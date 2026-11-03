@@ -1,3 +1,4 @@
+import { THEMES } from "../src/theme.ts";
 import { act, fireEvent, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { AGE_LEVELS, type AgeLevel, type AgeLevelSetting } from "../src/ageLevel.ts";
@@ -84,7 +85,7 @@ describe("the level switch", () => {
 
     const styles = within(levelSwitch()).getAllByRole("button").map((level) => getComputedStyle(level));
     expect(styles.map(({ fontWeight }) => fontWeight)).toEqual(["600", "700", "600"]);
-    expect(styles.map(({ boxShadow }) => boxShadow !== "none")).toEqual([false, true, false]);
+    expect(styles.map(({ boxShadow }) => boxShadow)).toEqual(["none", "none", "none"]);
     const style = getComputedStyle(levelSwitch());
     const room = px(getComputedStyle(levelSwitch().parentElement ?? document.body).width) - px(style.paddingLeft) - px(style.paddingRight) - 2 * px(style.borderLeftWidth);
     expect((room - columnGapOf(style) * 2) / 3).toBeGreaterThanOrEqual(48);
@@ -102,7 +103,7 @@ describe("the level switch", () => {
     expect([screenStyle.overflow, dinosaurs.flexShrink, px(dinosaurs.minHeight)]).toEqual(["hidden", "1", 0]);
   });
 
-  it.each(LANGUAGES.flatMap((language) => (["light", "dark"] as const).map((theme) => [language, theme] as const)))(
+  it.each(LANGUAGES.flatMap((language) => THEMES.map((theme) => [language, theme] as const)))(
     "reads each level's name on one line in %s and the %s theme, with at least 4.5:1 contrast",
     (language, theme) => {
       openSkeletonsApp({ deviceLanguage: DEVICES[language], appearance: theme });

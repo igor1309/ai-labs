@@ -1,3 +1,4 @@
+import { THEMES } from "../src/theme.ts";
 import { act, fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, onTestFinished } from "vitest";
@@ -123,7 +124,7 @@ describe("Whose Jaw audio control", () => {
   });
 
   it.each(([[390, 844, "tall-narrow"], [1180, 820, "wide"]] as const).flatMap(([width, height, layout]) =>
-    (["en", "ru"] as const).flatMap((language) => (["light", "dark"] as const).map((theme) => ({ width, height, layout, language, theme })))
+    (["en", "ru"] as const).flatMap((language) => THEMES.map((theme) => ({ width, height, layout, language, theme })))
   ))("fits $language welcome and card controls at $width × $height in $theme", ({ width, height, layout, language, theme }) => {
     openWindow(width, height);
     const app = openWhoseJawApp({ language, storage: memoryStorage({

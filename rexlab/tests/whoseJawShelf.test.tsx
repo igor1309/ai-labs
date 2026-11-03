@@ -1,3 +1,4 @@
+import { THEMES } from "../src/theme.ts";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, onTestFinished, vi } from "vitest";
@@ -133,7 +134,7 @@ describe("Whose Jaw museum shelf", () => {
     expect(app.stopped).toEqual({ sound: 16, voice: 16 });
   });
 
-  it.each(["light", "dark"] as const)("keeps shelf and card words readable in the %s theme", (theme) => {
+  it.each(THEMES)("keeps shelf and card words readable in the %s theme", (theme) => {
     const app = shelf();
     app.rerender(<div data-theme={theme}><WhoseJawShelfScreen {...app.props} /></div>);
     const page = document.querySelector(".whose-jaw-shelf-screen")!;

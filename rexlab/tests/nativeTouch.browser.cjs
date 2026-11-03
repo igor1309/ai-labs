@@ -62,20 +62,19 @@ async function check(browser, files, device) {
     assert.equal(await page.locator("body").evaluate(e => getComputedStyle(e).touchAction), "pan-x pan-y");
     assert(!await page.locator('meta[name="viewport"]').getAttribute("content").then(value => /user-scalable\s*=\s*no|maximum-scale\s*=\s*1(?:\D|$)/.test(value)));
 
-    // A nested Home scroller must still accept a native finger swipe.
+    // A native finger swipe up on Home's tiles scrolls the one page.
     const cdp = await context.newCDPSession(page);
-    const row = page.locator(".games-tiles");
-    const box = await row.boundingBox();
-    const before = await row.evaluate(e => e.scrollLeft);
-    const swipeX = Math.round(Math.min(box.x + box.width / 2, page.viewportSize().width - 30));
-    const swipeY = Math.round(box.y + box.height / 2);
+    const box = await page.locator(".home-ground-tile").first().boundingBox();
+    const before = await page.evaluate(() => scrollY);
+    const swipeX = Math.round(box.x + box.width / 2);
+    const swipeY = Math.round(Math.min(box.y + box.height / 2, page.viewportSize().height - 30));
     await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: swipeX, y: swipeY }] });
     for (let distance = 20; distance <= 180; distance += 20) {
-      await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: swipeX - distance, y: swipeY }] });
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: swipeX, y: swipeY - distance }] });
       await page.evaluate(() => new Promise(resolve => requestAnimationFrame(resolve)));
     }
     await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
-    await page.waitForFunction(before => document.querySelector(".games-tiles").scrollLeft > before, before);
+    await page.waitForFunction(before => scrollY > before, before);
 
     // Every game's entry and the catalogue/dinosaur page use the shared policy.
     for (const game of ["compare", "catalogue", "pairs", "skeletons", "dig", "sort", "care", "sandWriting", "picturePuzzle", "whoseJaw"]) {

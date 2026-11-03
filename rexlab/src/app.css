@@ -253,10 +253,9 @@ body:has(.sand-writing-screen) #version {
 .sand-writing-options button:focus-visible { outline: 3px solid #4f3b22; outline-offset: 3px; }
 
 /* Field Guide Midnight: warm paper, ink navy, amber and terracotta. The
-   colours are the design's fm-* variables, written out because each is
-   read back by the tests' computed styles. The light theme is the
-   default; the dark theme, at the end, gives each the dark value while
-   the app sets data-theme="dark" on the document.
+   colours still written out in the game boards and page backgrounds are
+   the design's fm-* variables. The light theme is the default; the dark
+   theme gives each its dark value.
 
    fm-*       light      dark
    bg         #F2EFE8    #0F1320
@@ -281,6 +280,344 @@ body:has(.sand-writing-screen) #version {
    design draws them. */
 :root {
   color-scheme: light;
+}
+
+/* Dig-site tokens: sky and strata, pockets and shadows; ink and surfaces;
+   actions, rewards and feedback; font, type and icon sizes; radii and spacing.
+   Light and iPad are the defaults; theme and phone size vary independently. */
+:root {
+  --ds-game-explore: #C9583D;
+  --ds-pocket-explore: #D1A282;
+  --ds-game-pairs: #4F7FB5;
+  --ds-pocket-pairs: #ADAEA6;
+  --ds-game-bones: #3A4A72;
+  --ds-pocket-bones: #A69E92;
+  --ds-game-dig: #B07A2E;
+  --ds-pocket-dig: #CAAC7D;
+  --ds-game-sort: #8A4FA0;
+  --ds-pocket-sort: #BEA09F;
+  --ds-game-care: #D0607A;
+  --ds-pocket-care: #D4A594;
+  --ds-game-draw: #A8862A;
+  --ds-pocket-draw: #C8B07C;
+  --ds-game-maze: #5E8A3A;
+  --ds-pocket-maze: #B1B181;
+  --ds-game-puzzle: #2E8C86;
+  --ds-pocket-puzzle: #A3B298;
+  --ds-game-teeth: #C2453F;
+  --ds-pocket-teeth: #CF9C82;
+  --ds-game-color: #6E58C8;
+  --ds-pocket-color: #B6A2AB;
+  --ds-game-compare: #2F9BC1;
+  --ds-pocket-compare: #A3B6A9;
+  --ds-size-tile-icon: 22px;
+  --ds-flag-edge: #00000026;
+  --ds-flag-white: #FFFFFF;
+  --ds-flag-uk-red: #C8102E;
+  --ds-flag-uk-blue: #012169;
+  --ds-flag-ru-blue: #0039A6;
+  --ds-flag-ru-red: #D52B1E;
+  --ds-sky-top: #DCE7EE;
+  --ds-sky-bottom: #F2EFE8;
+  --ds-sky-body: #E39B2D;
+  --ds-sky-halo: #E39B2D1F;
+  --ds-sky-core: #E39B2D33;
+  --ds-strata-1: #E4D5B7;
+  --ds-pocket-1: #D5C29F;
+  --ds-strata-2: #CDB48C;
+  --ds-pocket-2: #BEA278;
+  --ds-strata-3: #B39570;
+  --ds-paper: #FFFDF8;
+  --ds-on-good: #FFFDF8;
+  --ds-stage: #1F2B4D;
+  --ds-stage-sheen: #34436F;
+  --ds-groove: #A07D52;
+  --ds-groove-lip: #F8F0DF;
+  --ds-sand-glow: #FFF9EC99;
+  --ds-speck: #B39570;
+  --ds-font-hand: Caveat;
+  --ds-paint-blue: #2E86DE;
+  --ds-shade-12: #1D27421F;
+  --ds-shade-15: #1D274226;
+  --ds-shade-20: #1D274233;
+  --ds-shade-25: #1D274240;
+  --ds-shade-35: #1D274259;
+  --ds-stage-shadow: #00000040;
+  --ds-gate-shadow: #00000055;
+  --ds-scrim-puzzle: #1E2A3AB3;
+  --ds-paint-green: #9CCC65;
+  --ds-paint-purple: #AB67CB;
+  --ds-paint-orange: #FF9345;
+  --ds-paint-red: #EF5350;
+  --ds-paint-brown: #875C45;
+  --ds-paint-cream: #FFF0CF;
+  --ds-paint-yellow: #FFD84A;
+  --ds-paint-teal: #26A69A;
+  --ds-paint-sky: #42A5F5;
+  --ds-paint-indigo: #536DCE;
+  --ds-paint-pink: #F78FBD;
+  --ds-paint-charcoal: #3C4358;
+  --ds-draw-red: #C9583D;
+  --ds-draw-orange: #E39B2D;
+  --ds-draw-yellow: #F2D04A;
+  --ds-draw-green: #5E9F4E;
+  --ds-draw-blue: #3C7DC4;
+  --ds-draw-purple: #7A4FA8;
+  --ds-plank: #A9774A;
+  --ds-fade-edge: #A3835DF2;
+  --ds-glow-40: #E39B2D66;
+  --ds-glow-50: #E39B2D80;
+  --ds-glow-67: #E39B2DAA;
+  --ds-glow-80: #E39B2DCC;
+  --ds-treasure-glow: #F7C25AAA;
+  --ds-finger: #FFFDF8B3;
+  --ds-sparkle-sweep: #FFFDF8A6;
+  --ds-bubble: #FFFFFF99;
+  --ds-photo-white: #FEFEFE;
+  --ds-lift-shadow: #1D2742;
+  --ds-space-56: 56px;
+  --ds-size-48: 48px;
+  --ds-size-15: 15px;
+  --ds-space-20: 20px;
+  --ds-size-14: 14px;
+  --ds-space-6: 6px;
+  --ds-space-14: 14px;
+  --ds-space-18: 18px;
+  --ds-space-28: 28px;
+  --ds-size-16: 16px;
+  --ds-size-13: 13px;
+  --ds-space-7: 7px;
+  --ds-size-20: 20px;
+  --ds-space-40: 40px;
+  --ds-space-2: 2px;
+  --ds-radius-14: 14px;
+  --ds-size-26: 26px;
+  --ds-space-3: 3px;
+  --ds-size-17: 17px;
+  --ds-space-5: 5px;
+  --ds-radius-24: 24px;
+  --ds-radius-44: 44px;
+  --ds-radius-22: 22px;
+  --ds-radius-12: 12px;
+  --ds-radius-28: 28px;
+  --ds-space-22: 22px;
+  --ds-space-30: 30px;
+  --ds-radius-2: 2px;
+  --ds-size-24: 24px;
+  --ds-radius-30: 30px;
+  --ds-size-11: 11px;
+  --ds-radius-15: 15px;
+  --ds-size-40: 40px;
+  --ds-space-9: 9px;
+  --ds-size-22: 22px;
+  --ds-size-34: 34px;
+  --ds-space-11: 11px;
+  --ds-radius-32: 32px;
+  --ds-radius-16: 16px;
+  --ds-radius-3: 3px;
+  --ds-radius-36: 36px;
+  --ds-radius-18: 18px;
+  --ds-size-27: 27px;
+  --ds-size-88: 88px;
+  --ds-size-18: 18px;
+  --ds-space-26: 26px;
+  --ds-space-79: 79px;
+  --ds-radius-4: 4px;
+  --ds-radius-26: 26px;
+  --ds-size-36: 36px;
+  --ds-size-30: 30px;
+  --ds-radius-10: 10px;
+  --ds-size-44: 44px;
+  --ds-size-32: 32px;
+  --ds-size-10: 10px;
+  --ds-size-9: 9px;
+  --ds-radius-6: 6px;
+  --ds-size-80: 80px;
+  --ds-radius-17: 17px;
+  --ds-radius-15-5: 15.5px;
+  --ds-size-25: 25px;
+  --ds-radius-13: 13px;
+  --ds-size-42: 42px;
+  --ds-radius-5: 5px;
+  --ds-size-23: 23px;
+  --ds-radius-40: 40px;
+  --ds-radius-31: 31px;
+  --ds-space-19: 19px;
+  --ds-radius-38: 38px;
+  --ds-radius-25: 25px;
+  --ds-radius-29: 29px;
+  --ds-radius-27: 27px;
+  --ds-radius-19: 19px;
+  --ds-radius-11: 11px;
+  --ds-space-15: 15px;
+  --ds-radius-9: 9px;
+  --ds-radius-7: 7px;
+  --ds-size-19: 19px;
+  --ds-space-1: 1px;
+  --ds-space-13: 13px;
+  --ds-radius-1: 1px;
+  --ds-space-3-2: 3.2px;
+  --ds-space-3-84: 3.84px;
+  --ds-space-12-8: 12.8px;
+  --ds-pocket-3: #A3835D;
+  --ds-pocket-shadow: #5A432233;
+  --ds-ground-shadow: #1D27421F;
+  --ds-ink: #1D2742;
+  --ds-ink-soft: #5C647A;
+  --ds-label: #FFFDF8;
+  --ds-on-label: #1D2742;
+  --ds-quiet: #E6E2D9;
+  --ds-strong: #1F2B4D;
+  --ds-on-strong: #F6F2E9;
+  --ds-action: #C15036;
+  --ds-on-action: #FFFDF8;
+  --ds-reward: #E39B2D;
+  --ds-on-reward: #1D2742;
+  --ds-good: #3E8E5A;
+  --ds-bad: #C23B2E;
+  --ds-scrim: #1D274299;
+  --ds-outline: #1D274233;
+  --ds-font: "Lexend Variable", system-ui, sans-serif;
+  --ds-size-display: 64px;
+  --ds-size-title: 34px;
+  --ds-size-action: 28px;
+  --ds-size-label: 17px;
+  --ds-size-number: 24px;
+  --ds-size-tag: 14px;
+  --ds-size-foot: 12px;
+  --ds-icon-action: 26px;
+  --ds-icon-label: 18px;
+  --ds-radius-pill: 999px;
+  --ds-radius-tag: 8px;
+  --ds-radius-speech: 20px;
+  --ds-radius-pocket-top: 48px;
+  --ds-radius-pocket-bottom: 24px;
+  --ds-space-xs: 4px;
+  --ds-space-s: 8px;
+  --ds-space-m: 12px;
+  --ds-space-l: 16px;
+  --ds-space-xl: 24px;
+  --ds-space-2xl: 32px;
+  --ds-space-3xl: 48px;
+  --ds-page: 40px;
+  --ds-btn-pad-y: 16px;
+  --ds-btn-pad-x: 28px;
+  --ds-btn-gap: 10px;
+  --ds-chip-pad-y: 9px;
+  --ds-chip-pad-x: 14px;
+  --ds-chip-gap: 6px;
+  --ds-round: 50px;
+  --ds-icon-round: 24px;
+  --ds-radius-panel: 24px;
+  --ds-reward-glow: #E39B2D29;
+  --ds-chip-pad-x-lead: 11px;
+  --ds-tag-pad-y: 7px;
+  --ds-tag-pad-lead: 10px;
+  --ds-tag-gap: 6px;
+  --ds-level-pad: 5px;
+  --ds-level-pad-y: 10px;
+  --ds-level-pad-lead: 12px;
+  --ds-level-pad-tail: 18px;
+  --ds-menu-gap: 2px;
+  --ds-menu-pad-x: 14px;
+  --ds-dialog-pad: 36px;
+  --ds-dialog-gap: 20px;
+  --ds-score-gap: 10px;
+  --ds-star: 44px;
+  --ds-ten-star: 36px;
+  --ds-heart: 26px;
+}
+
+[data-theme="dark"] {
+  --ds-game-explore: #D88773;
+  --ds-pocket-explore: #734531;
+  --ds-game-pairs: #80A3CA;
+  --ds-pocket-pairs: #4C5158;
+  --ds-game-bones: #717D99;
+  --ds-pocket-bones: #454042;
+  --ds-game-dig: #C69F69;
+  --ds-pocket-dig: #6B502D;
+  --ds-game-sort: #AB80BB;
+  --ds-pocket-sort: #5E4251;
+  --ds-game-care: #DD8D9F;
+  --ds-pocket-care: #754845;
+  --ds-game-draw: #C0A866;
+  --ds-pocket-draw: #68542B;
+  --ds-game-maze: #8BAB71;
+  --ds-pocket-maze: #505530;
+  --ds-game-puzzle: #69ACA8;
+  --ds-pocket-puzzle: #415649;
+  --ds-game-teeth: #D37975;
+  --ds-pocket-teeth: #703F32;
+  --ds-game-color: #9787D7;
+  --ds-pocket-color: #56455E;
+  --ds-game-compare: #69B7D2;
+  --ds-pocket-compare: #415A5C;
+  --ds-sky-top: #0E1630;
+  --ds-sky-bottom: #27304F;
+  --ds-sky-body: #F1E6C8;
+  --ds-sky-halo: #F1E6C814;
+  --ds-sky-core: #F1E6C8E6;
+  --ds-strata-1: #5B4A37;
+  --ds-pocket-1: #4A3C2C;
+  --ds-strata-2: #46392B;
+  --ds-pocket-2: #382D22;
+  --ds-strata-3: #332A20;
+  --ds-paper: #E7DFCC;
+  --ds-on-good: #1D2742;
+  --ds-stage: #121A33;
+  --ds-stage-sheen: #25305A;
+  --ds-groove: #2E241A;
+  --ds-groove-lip: #7C6850;
+  --ds-sand-glow: #7A664E66;
+  --ds-speck: #3E3226;
+  --ds-paint-blue: #5AA4EC;
+  --ds-pocket-3: #271F18;
+  --ds-pocket-shadow: #00000066;
+  --ds-ground-shadow: #00000059;
+  --ds-ink: #F3EEE2;
+  --ds-ink-soft: #AEB3C4;
+  --ds-label: #1C2238;
+  --ds-on-label: #F3EEE2;
+  --ds-quiet: #3A4568;
+  --ds-strong: #EDE5D2;
+  --ds-on-strong: #1D2742;
+  --ds-action: #E57A5D;
+  --ds-on-action: #1D2742;
+  --ds-reward: #F0AE45;
+  --ds-on-reward: #1D2742;
+  --ds-good: #5DB27A;
+  --ds-bad: #E86A57;
+  --ds-scrim: #050814B3;
+  --ds-outline: #F3EEE233;
+  --ds-reward-glow: #F1E6C81A;
+}
+
+html[data-size="tall-narrow"],
+html[data-size="wide-short"] {
+  --ds-size-tile-icon: 18px;
+  --ds-size-display: 50px;
+  --ds-size-title: 28px;
+  --ds-size-action: 26px;
+  --ds-size-label: 14px;
+  --ds-size-number: 22px;
+  --ds-size-tag: 13px;
+  --ds-size-foot: 12px;
+  --ds-icon-action: 24px;
+  --ds-icon-label: 16px;
+  --ds-radius-pocket-top: 44px;
+  --ds-radius-pocket-bottom: 22px;
+  --ds-page: 20px;
+  --ds-btn-pad-y: 14px;
+  --ds-btn-pad-x: 24px;
+  --ds-btn-gap: 10px;
+  --ds-chip-pad-y: 8px;
+  --ds-chip-pad-x: 10px;
+  --ds-chip-gap: 5px;
+  --ds-round: 44px;
+  --ds-icon-round: 22px;
+  --ds-radius-panel: 22px;
+  --ds-chip-pad-x-lead: 8px;
 }
 
 /* The motion tokens every screen moves by: arrivals ease out, only
@@ -765,27 +1102,17 @@ img {
 .parent-menu-button {
   min-width: 44px;
   min-height: 44px;
-  padding: 0 13px;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  border: none;
-  border-radius: 22px;
-  background: none;
-  color: #5c647a;
-  font-size: 14px;
   font-weight: 500;
+  padding: 0 13px;
+  gap: 6px;
+  font-size: 14px;
 }
-
 .parent-menus .parent-menu-button {
   width: 48px;
   padding: 0;
-}
-
-.parent-menu-button[aria-expanded="true"] {
-  background: #fffdf8;
-  color: #1d2742;
 }
 
 /* What a button shows, which grows in anew as the choice changes. */
@@ -794,22 +1121,8 @@ img {
   align-items: center;
   gap: 6px;
 }
-
 .parent-menu-face[data-changed] {
   animation: grow-in var(--motion-small) var(--ease-out) both;
-}
-
-/* An age level's picture, at the size of a symbol beside it. */
-.parent-menu-picture {
-  width: 24px;
-  font-size: 24px;
-  line-height: 1;
-  text-align: center;
-}
-
-.parent-menu-button .parent-menu-picture {
-  width: 22px;
-  font-size: 20px;
 }
 
 /* A menu hangs under the pair of buttons, its right edge on theirs. */
@@ -819,17 +1132,12 @@ img {
   right: 0;
   width: 220px;
   box-sizing: border-box;
-  padding: 8px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  border-radius: 20px;
-  outline: 1px solid #1d27421f;
-  outline-offset: -0.5px;
-  background: #fffdf8;
-  box-shadow: 0 16px 40px #1d274224;
   transform-origin: top right;
   animation: grow-in var(--motion-small) var(--ease-out) both;
+  padding: 8px;
+  gap: 2px;
 }
 
 /* However a menu closes, it shrinks back the way it came, still catching
@@ -843,23 +1151,17 @@ img {
 .parent-menu-list[data-notes] {
   width: 300px;
 }
-
 .parent-menu-choice {
   height: 52px;
-  padding: 0 14px;
   display: flex;
   align-items: center;
-  gap: 12px;
-  border: none;
-  border-radius: 14px;
-  background: none;
-  font-size: 16px;
   font-weight: 400;
   text-align: left;
+  padding: 0 14px;
+  gap: 12px;
+  font-size: 16px;
 }
-
 .parent-menu-choice[aria-checked="true"] {
-  background: #e6e2d9;
   font-weight: 600;
 }
 
@@ -871,7 +1173,6 @@ img {
   font-size: 24px;
   line-height: 1;
 }
-
 .parent-menu-list[data-notes] .parent-menu-choice {
   height: 60px;
 }
@@ -882,7 +1183,6 @@ img {
   flex-direction: column;
   gap: 2px;
 }
-
 .parent-menu-name,
 .parent-menu-note {
   display: block;
@@ -894,7 +1194,6 @@ img {
   font-weight: 600;
   letter-spacing: 0.5px;
 }
-
 .parent-menu-list[data-notes] .parent-menu-choice[aria-checked="true"] .parent-menu-name {
   font-weight: 700;
 }
@@ -902,15 +1201,8 @@ img {
 /* The age under a level's name is a parents' footnote: small, in the soft
    ink. */
 .parent-menu-note {
-  font-size: 13px;
   font-weight: 400;
-  color: #5c647a;
-}
-
-/* The ✓ keeps 3:1 with the chosen row's shade: the terracotta, where the
-   amber would fade into it. */
-.parent-menu-tick {
-  color: #c9583d;
+  font-size: 13px;
 }
 
 /* Covers the page under an open menu, to catch a tap outside it. */
@@ -944,17 +1236,6 @@ body:has(.result) #version {
   font-size: 40px;
   font-weight: 700;
   letter-spacing: 1.5px;
-}
-
-/* The games keep the design's proportions, and shrink to fit a shorter
-   iPad above the bands of rock. The large card takes three sevenths of
-   the width and the tiles the rest, in columns of two. The sizes in the
-   tiles are what fits a column. */
-.games {
-  height: clamp(360px, calc(100vh - 380px), 520px);
-  height: clamp(360px, calc(100dvh - 380px), 520px);
-  display: flex;
-  gap: 28px;
 }
 
 /* The large card features one game in its tile's colours, picture,
@@ -1144,20 +1425,6 @@ body:has(.result) #version {
   color: #e39b2d;
 }
 
-/* The scrolling row reaches past the games above and below so its
-   tiles' shadows are not cut off. */
-.games-tiles {
-  flex: 4 1 0;
-  min-width: 0;
-  margin-block: -24px;
-  padding-block: 24px;
-  container-type: size;
-  overflow-x: auto;
-  overflow-y: hidden;
-  overscroll-behavior: none;
-  scrollbar-width: none;
-}
-
 /* In a tall window the home page stands upright: the corner and the
    greeting on top, the large card across the width under them, and under
    it the row of tiles, 36% of the height within the landscape row's
@@ -1209,13 +1476,6 @@ body:has(.result) #version {
   padding: 0 16px 0 12px;
 }
 
-[data-size="tall"] .games,
-[data-size="tall-narrow"] .games {
-  flex: 1 0 auto;
-  height: auto;
-  flex-direction: column;
-}
-
 [data-size="tall"] .featured-card,
 [data-size="tall-narrow"] .featured-card {
   flex: 1 0 0;
@@ -1258,14 +1518,6 @@ body:has(.result) #version {
 [data-size="tall"] .featured-card[data-game="dig"] .featured-card-footer,
 [data-size="tall-narrow"] .featured-card[data-game="dig"] .featured-card-footer {
   margin-top: 8px;
-}
-
-[data-size="tall"] .games-tiles,
-[data-size="tall-narrow"] .games-tiles {
-  flex: none;
-  height: clamp(360px, 36vh, 520px);
-  height: clamp(360px, 36dvh, 520px);
-  margin-right: -56px;
 }
 
 /* In a tall-narrow window, an iPhone upright, the page stands as in a
@@ -1335,14 +1587,6 @@ body:has(.result) #version {
   line-height: 36px;
 }
 
-/* Share the space left below the greeting instead of imposing card
-   minimums that make the document taller than the phone. */
-[data-size="tall-narrow"] .games {
-  flex: 1 1 0;
-  min-height: 0;
-  gap: 16px;
-}
-
 [data-size="tall-narrow"] .featured-card {
   flex: 1 1 0;
   min-height: 0;
@@ -1363,16 +1607,6 @@ body:has(.result) #version {
   right: 16px;
   padding: 8px 14px;
   font-size: 22px;
-}
-
-[data-size="tall-narrow"] .games-tiles {
-  flex: 1.3 1 0;
-  min-height: 0;
-  height: auto;
-  margin-block: 0;
-  padding-block: 0;
-  margin-right: -20px;
-  row-gap: 16px;
 }
 
 /* Under 360 wide (an iPhone with its display zoomed, or a window in
@@ -1466,14 +1700,7 @@ body:has(.result) #version {
   line-height: 60px;
 }
 
-[data-size="wide-short"] .games {
-  height: auto;
-  flex: 1 0 260px;
-  gap: 16px;
-}
-
-[data-size="wide-short"] .featured-card,
-[data-size="wide-short"] .games-tiles {
+[data-size="wide-short"] .featured-card {
   flex: 1 1 0;
 }
 
@@ -1498,15 +1725,9 @@ body:has(.result) #version {
   font-size: 22px;
 }
 
-[data-size="wide-short"] .games-tiles {
-  margin-right: -20px;
-
-}
-
 [data-size="wide-short"] .more-coming {
   padding: 16px 12px;
 }
-
 [data-size="wide-short"] .parent-menu-list {
   max-height: calc(100dvh - 84px);
   overflow-y: auto;
@@ -1522,12 +1743,6 @@ body:has(.result) #version {
 [data-size="wide-short"] body:has(.home) #version {
   right: calc(20px + var(--screen-right));
   bottom: calc(3px + env(safe-area-inset-bottom));
-}
-
-/* The row stays where the page put it until the motion to the other
-   layout settles: no swipe scrolls it meanwhile. */
-[data-turning] .games-tiles {
-  overflow-x: hidden;
 }
 
 /* The games still to come: a faded dinosaur's shape over a lock, on the
@@ -1577,49 +1792,6 @@ body:has(.result) #version {
   white-space: nowrap;
 }
 
-/* The quiz's tile, first in the row: the two dinosaurs facing off on
-   the navy, in the other tiles' shape, its symbol on amber over a shade
-   as the quiz's large card has always had them. */
-.compare-tile {
-  position: relative;
-  flex: 1 1 0;
-  min-height: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  overflow: hidden;
-  border: none;
-  border-radius: 28px;
-  background: #1f2b4d;
-  color: #f6f2e9;
-  box-shadow: 0 8px 24px #1d274224;
-  text-align: left;
-}
-
-.compare-tile .face-off {
-  padding: 16px 20px 10px;
-}
-
-/* The catalogue's tile is terracotta. White words keep text contrast on
-   terracotta only under the shade the quiz card's footer also has. */
-.catalogue-tile {
-  position: relative;
-  flex: 1 1 0;
-  min-height: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  overflow: hidden;
-  border: none;
-  border-radius: 28px;
-  background: #c9583d;
-  color: #ffffff;
-  box-shadow: 0 8px 24px #1d274224;
-  text-align: left;
-}
-
 .catalogue-tile-picture {
   flex: 1 1 0;
   min-height: 0;
@@ -1627,53 +1799,7 @@ body:has(.result) #version {
   box-sizing: border-box;
   padding: 16px 20px 10px;
   object-fit: contain;
-}/* The book sits in the picture's corner,  across from the count {
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  display: grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  background: #ffffff33;
-}/* The count sits in the tile's corner {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  height: 40px;
-  box-sizing: border-box;
-  padding: 0 12px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  border-radius: 20px;
-  background: #00000026;
-  font-size: 20px;
-  font-weight: 700;
-}
-
-/* Sorting and labyrinth use paper cards. */
-.sort-tile,
-.labyrinth-tile {
-  position: relative;
-  flex: 1 1 0;
-  min-height: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  overflow: hidden;
-  border: none;
-  border-radius: 28px;
-  outline: 1px solid #1d27421f;
-  outline-offset: -0.5px;
-  background: #fffdf8;
-  box-shadow: 0 8px 24px #1d274224;
-  text-align: left;
-}
-
-.sort-tile-picture,
+}.sort-tile-picture,
 .labyrinth-tile-picture {
   flex: 1 1 0;
   min-height: 0;
@@ -1683,24 +1809,8 @@ body:has(.result) #version {
   object-fit: contain;
 }
 
-/* Find the pair's tile, sky, under SORT and as tall: two cards of one
-   dinosaur with a face-down card between them, sized by the tile's
-   height. The ink keeps its contrast on sky. */
-.pairs-tile {
-  position: relative;
-  flex: 1 1 0;
-  min-height: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  border: none;
-  border-radius: 28px;
-  background: #a9bcd6;
-  color: #1d2742;
-  box-shadow: 0 8px 24px #1d274224;
-  text-align: left;
-}
+/* A pair's artwork keeps its cards together inside either picture area. */
+
 
 .pairs-tile-art {
   position: relative;
@@ -1752,27 +1862,6 @@ body:has(.result) #version {
   object-fit: contain;
 }
 
-/* The skeleton game's tile, over MORE COMING, in the other tiles'
-   shape. The design's forest green is no colour of either theme,
-   so the tile takes the navy, as the skeleton screens' mark does, and the
-   bones stand out on it in both themes. */
-.skeletons-tile {
-  position: relative;
-  flex: 1 1 0;
-  min-height: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  overflow: hidden;
-  border: none;
-  border-radius: 28px;
-  background: #1f2b4d;
-  color: #f6f2e9;
-  box-shadow: 0 8px 24px #1d274224;
-  text-align: left;
-}
-
 .skeletons-tile-picture {
   flex: 1 1 0;
   min-height: 0;
@@ -1780,27 +1869,6 @@ body:has(.result) #version {
   box-sizing: border-box;
   padding: 16px 20px 10px;
   object-fit: contain;
-}
-
-/* The dig game's tile, over MORE COMING, in the other tiles' shape. The
-   design's sand brown is no colour of either theme, so the tile takes the
-   deepest band of rock, the nearest the palette has to sand. */
-.sand-writing-tile,
-.dig-tile {
-  position: relative;
-  flex: 1 1 0;
-  min-height: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  overflow: hidden;
-  border: none;
-  border-radius: 28px;
-  background: #d0c5b2;
-  color: #1d2742;
-  box-shadow: 0 8px 24px #1d274224;
-  text-align: left;
 }
 
 .sand-writing-tile-art {
@@ -1867,18 +1935,12 @@ body:has(.result) #version {
   align-items: center;
   gap: 24px;
 }
-
 .home-button {
   height: 56px;
   padding: 0 20px 0 16px;
   display: flex;
   align-items: center;
   gap: 10px;
-  border: none;
-  border-radius: 16px;
-  outline: 1px solid #1d27421f;
-  outline-offset: -0.5px;
-  background: #fffdf8;
   font-size: 18px;
   font-weight: 600;
 }
@@ -2205,7 +2267,6 @@ html[data-size="tall-narrow"] .question {
 html[data-size="tall-narrow"] .question-bar {
   gap: 16px;
 }
-
 html[data-size="tall-narrow"] .question .home-button {
   width: 56px;
   padding: 0 16px;
@@ -2253,7 +2314,6 @@ html[data-size="wide-short"] .question-bar {
   grid-column: 1 / -1;
   gap: 16px;
 }
-
 html[data-size="wide-short"] .question .home-button {
   height: 48px;
   font-size: 17px;
@@ -2560,9 +2620,14 @@ html[data-size="tall-narrow"] .catalogue-bar {
 html[data-size="tall-narrow"] .food-chips {
   gap: 8px;
 }
-
-html[data-size="tall-narrow"] .catalogue-bar .home-button,
 html[data-size="tall-narrow"] .food-chip {
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  flex-shrink: 0;
+  justify-content: center;
+}
+html[data-size="tall-narrow"] .catalogue-bar .home-button {
   width: 48px;
   height: 48px;
   padding: 0;
@@ -2600,9 +2665,10 @@ html[data-size="wide-short"] .catalogue-bar {
 html[data-size="wide-short"] .food-chips {
   gap: 8px;
 }
-
-html[data-size="wide-short"] .catalogue-bar .home-button,
 html[data-size="wide-short"] .food-chip {
+  height: 48px;
+}
+html[data-size="wide-short"] .catalogue-bar .home-button {
   height: 48px;
 }
 
@@ -2704,7 +2770,6 @@ html[data-size="wide-short"] .catalogue-art {
   display: flex;
   gap: 6px;
 }
-
 .catalogue-chips .diet-tag {
   flex-shrink: 0;
 }
@@ -2742,65 +2807,39 @@ html[data-size="wide-short"] .catalogue-art {
   white-space: nowrap;
 }
 
-/* A food type's tag: meat in terracotta, plants in green and both in
-   amber, each with its symbols. White words on terracotta take the shade
-   the catalogue's tile has, to keep text contrast. */
+/* Food tags keep their symbols beside their words. */
 .diet-tag {
   display: flex;
   width: fit-content;
   overflow: hidden;
   font-weight: 700;
   white-space: nowrap;
-  color: #ffffff;
 }
-
 .diet-tag-face {
   display: flex;
   align-items: center;
   box-sizing: border-box;
 }
-
-.diet-tag[data-diet="meat"] .diet-tag-face {
-  background: #00000026;
-}
-
-.diet-tag[data-diet="meat"] {
-  background: #c9583d;
-}
-
-.diet-tag[data-diet="plants"] {
-  background: #2e7d4f;
-}
-
-.diet-tag[data-diet="both"] {
-  background: #e39b2d;
-  color: #1d2742;
-}
-
 .diet-tag-symbols {
   display: flex;
   align-items: center;
 }
 
+/* A small tag carries only its symbols. */
 .diet-tag[data-size="small"] {
-  border-radius: 10px;
   font-size: 15px;
 }
 
-/* A small tag has no words, so no shade for them. */
 .diet-tag[data-size="small"] .diet-tag-face {
   height: 32px;
   padding: 0 8px;
   gap: 5px;
-  background: none;
 }
-
 .diet-tag[data-size="small"] .diet-tag-symbols {
   gap: 2px;
 }
 
 .diet-tag[data-size="medium"] {
-  border-radius: 28px;
   font-size: 24px;
 }
 
@@ -2809,16 +2848,13 @@ html[data-size="wide-short"] .catalogue-art {
   padding: 0 22px 0 8px;
   gap: 10px;
 }
-
 .diet-tag[data-size="medium"] .diet-tag-symbols {
   min-width: 40px;
   height: 40px;
   box-sizing: border-box;
-  padding: 0 9px;
   justify-content: center;
+  padding: 0 9px;
   gap: 2px;
-  border-radius: 20px;
-  background: #ffffff33;
 }
 
 /* A dinosaur's page: its picture on the navy stage, with the arrows to
@@ -3088,17 +3124,18 @@ html[data-size="tall-narrow"] .dinosaur-page-name {
   font-size: min(64px, 7.8cqi);
   line-height: 1.25;
 }
-
-html[data-size="tall"] .dinosaur-bar .home-button,
-html[data-size="tall-narrow"] .dinosaur-bar .home-button,
 html[data-size="tall"] .dinosaur-position,
 html[data-size="tall-narrow"] .dinosaur-position,
-html[data-size="tall"] .dinosaur-info .diet-tag,
-html[data-size="tall-narrow"] .dinosaur-info .diet-tag,
 html[data-size="tall"] .dinosaur-fact-label,
 html[data-size="tall-narrow"] .dinosaur-fact-label,
 html[data-size="tall"] .dinosaur-fact-value,
 html[data-size="tall-narrow"] .dinosaur-fact-value {
+  line-height: 1.25;
+}
+html[data-size="tall"] .dinosaur-bar .home-button,
+html[data-size="tall-narrow"] .dinosaur-bar .home-button,
+html[data-size="tall"] .dinosaur-info .diet-tag,
+html[data-size="tall-narrow"] .dinosaur-info .diet-tag {
   line-height: 1.25;
 }
 
@@ -3135,7 +3172,6 @@ html[data-size="tall-narrow"] .dinosaur-page {
     calc(48px + env(safe-area-inset-bottom))
     calc(20px + var(--screen-left));
 }
-
 html[data-size="tall-narrow"] .dinosaur-bar .home-button {
   padding: 0 16px;
 }
@@ -3185,7 +3221,6 @@ html[data-size="wide-short"] .dinosaur-page {
     calc(20px + var(--screen-left));
   gap: 8px;
 }
-
 html[data-size="wide-short"] .dinosaur-bar .home-button {
   height: 48px;
 }
@@ -3257,28 +3292,25 @@ html[data-size="wide-short"] .dinosaur-fact-value {
 .gated-screen {
   display: contents;
 }
-
 .orientation-gate {
-  position: fixed;
-  inset: 0;
-  z-index: 100;
-  display: grid;
-  place-content: center;
-  justify-items: center;
   gap: 24px;
   padding:
     calc(24px + env(safe-area-inset-top))
     calc(24px + var(--screen-right))
     calc(24px + env(safe-area-inset-bottom))
     calc(24px + var(--screen-left));
-  background: #f2efe8;
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-content: center;
+  justify-items: center;
   text-align: center;
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
   transition: opacity var(--motion-screen) var(--ease-out), visibility var(--motion-screen) var(--ease-out);
 }
-
 .orientation-gate[data-shown] {
   opacity: 1;
   visibility: visible;
@@ -3286,12 +3318,11 @@ html[data-size="wide-short"] .dinosaur-fact-value {
   transition: opacity var(--motion-screen) var(--ease-out);
   animation: fade-in var(--motion-screen) var(--ease-out) both;
 }
-
 .orientation-gate-picture {
+  font-size: clamp(24px, 4vw, 40px);
+  gap: 32px;
   display: grid;
   justify-items: center;
-  gap: 32px;
-  font-size: clamp(24px, 4vw, 40px);
   font-weight: 700;
 }
 
@@ -3306,20 +3337,10 @@ html[data-size="wide-short"] .dinosaur-fact-value {
   height: 72px;
   stroke-width: 1.5;
 }
-
 .orientation-gate-note {
-  margin: 0;
   font-size: 13px;
+  margin: 0;
   font-weight: 400;
-  color: #5c647a;
-}
-
-[data-theme="dark"] .orientation-gate {
-  background: #0f1320;
-}
-
-[data-theme="dark"] .orientation-gate-note {
-  color: #9ca3b6;
 }
 
 /* The result is ink navy in both themes: the dinosaur on the left, the
@@ -3435,29 +3456,24 @@ html[data-size="wide-short"] .dinosaur-fact-value {
   align-items: center;
   gap: 24px;
 }
-
 .celebration {
   margin: 0;
   height: 60px;
   box-sizing: border-box;
-  padding: 0 28px 0 22px;
   display: flex;
   align-items: center;
-  gap: 12px;
-  border-radius: 30px;
-  background: #e39b2d;
-  color: #1d2742;
-  font-size: 26px;
   font-weight: 700;
   animation: pop-in var(--motion-screen) var(--ease-overshoot) both;
+  padding: 0 28px 0 22px;
+  gap: 12px;
+  font-size: 26px;
 }
-
 .result-score {
   margin: 0;
   display: flex;
   align-items: baseline;
-  gap: 12px;
   line-height: 1;
+  gap: 12px;
 }
 
 /* The score counts up from 0, drawn over its own digits. */
@@ -3472,16 +3488,15 @@ html[data-size="wide-short"] .dinosaur-fact-value {
     --count: 0;
   }
 }
-
 .result-score-value {
   --count: var(--score);
   display: inline-grid;
   justify-items: end;
   counter-reset: score var(--count);
-  font-size: min(220px, 24vh);
-  font-size: min(220px, 24dvh);
   font-weight: 700;
   animation: count-up var(--motion-count) var(--ease-out) both;
+  font-size: min(220px, 24vh);
+  font-size: min(220px, 24dvh);
 }
 
 .result-score-value::before {
@@ -3493,28 +3508,20 @@ html[data-size="wide-short"] .dinosaur-fact-value {
   grid-area: 1 / 1;
   visibility: hidden;
 }
-
 .result-score-total {
-  font-size: 60px;
   font-weight: 600;
-  color: #e39b2d;
+  font-size: 60px;
 }
-
 .result-stars {
   margin: 0;
   display: flex;
-  gap: 8px;
   font-size: 48px;
   line-height: 1;
-}
-
-.star {
-  color: #ffffff33;
+  gap: 8px;
 }
 
 /* The stars won pop in one by one. */
 .star-won {
-  color: #e39b2d;
   animation: pop-in var(--motion-standard) var(--ease-overshoot) both;
   animation-delay: calc(var(--star) * var(--motion-stagger) * 1.5);
 }
@@ -3524,33 +3531,20 @@ html[data-size="wide-short"] .dinosaur-fact-value {
   font-size: 48px;
   font-weight: 700;
 }
-
 .best-score {
   margin: 0;
   height: 48px;
   box-sizing: border-box;
-  padding: 0 20px;
   display: flex;
   align-items: center;
-  gap: 12px;
-  border-radius: 24px;
-  background: #00000033;
-  font-size: 20px;
   font-weight: 600;
+  padding: 0 20px;
+  gap: 12px;
+  font-size: 20px;
 }
-
-.best-score-beaten {
-  color: #f6f1e699;
-}
-
-.best-score svg {
-  color: #e39b2d;
-}
-
 .best-score-value {
-  font-size: 24px;
   font-weight: 700;
-  color: #e39b2d;
+  font-size: 24px;
 }
 
 .result-actions {
@@ -3558,30 +3552,21 @@ html[data-size="wide-short"] .dinosaur-fact-value {
   display: flex;
   gap: 16px;
 }
-
 .play-again-button,
 .result-actions .home-button {
   height: 80px;
   display: flex;
   align-items: center;
-  gap: 14px;
-  border: none;
-  border-radius: 22px;
-  font-size: 26px;
   font-weight: 700;
+  gap: 14px;
+  font-size: 26px;
 }
-
 .play-again-button {
   padding: 0 40px;
-  background: #e39b2d;
-  color: #1d2742;
 }
 
 .result-actions .home-button {
   padding: 0 32px;
-  outline: 1px solid #ffffff40;
-  outline-offset: -0.5px;
-  background: #ffffff1a;
 }
 
 /* Upright, a result stands in one centred column: the dinosaur on top,
@@ -3622,7 +3607,6 @@ html[data-size="tall-narrow"] .result-content {
   align-self: stretch;
   gap: 16px;
 }
-
 html[data-size="tall"] .result-score-value,
 html[data-size="tall-narrow"] .result-score-value {
   font-size: min(180px, 15vh);
@@ -3676,32 +3660,11 @@ html[data-size="tall-narrow"] .result-actions {
   flex-direction: column;
   gap: 12px;
 }
-
 html[data-size="tall-narrow"] .play-again-button,
 html[data-size="tall-narrow"] .result-actions .home-button {
   height: 64px;
-  padding: 0 20px;
   justify-content: center;
-}
-
-/* Dinosaur care's tile, amber, under the catalogue's, in its shape. The
-   ink keeps its contrast on amber with no shade under it, so the row is
-   lit, as the design draws it. */
-.care-tile {
-  position: relative;
-  flex: 1 1 0;
-  min-height: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  overflow: hidden;
-  border: none;
-  border-radius: 28px;
-  background: #e39b2d;
-  color: #1d2742;
-  box-shadow: 0 8px 24px #1d274224;
-  text-align: left;
+  padding: 0 20px;
 }
 
 .care-tile-picture {
@@ -3964,7 +3927,6 @@ html[data-size="tall"] .care-bar,
 html[data-size="tall-narrow"] .care-bar {
   gap: 16px;
 }
-
 html[data-size="tall"] .care-bar .home-button,
 html[data-size="tall-narrow"] .care-bar .home-button {
   width: 56px;
@@ -4006,7 +3968,6 @@ html[data-size="tall-narrow"] .visit {
   padding-right: calc(32px + var(--screen-right));
   padding-left: calc(32px + var(--screen-left));
 }
-
 html[data-size="tall"] .visit-bar .home-button,
 html[data-size="tall-narrow"] .visit-bar .home-button {
   width: 56px;
@@ -4556,21 +4517,15 @@ html[data-size="tall-narrow"] .tray-label {
 .care-result-hero {
   rotate: 6deg;
 }
-
 .result-hearts {
   margin: 0;
   display: flex;
-  gap: 14px;
   line-height: 0;
-}
-
-.result-heart {
-  color: #ffffff33;
+  gap: 14px;
 }
 
 /* The hearts earned fill one by one. */
 .result-heart-won {
-  color: #c9583d;
   animation: pop-in var(--motion-standard) var(--ease-overshoot) both;
   animation-delay: calc(var(--heart) * var(--motion-stagger) * 1.5);
 }
@@ -4609,13 +4564,12 @@ html[data-size="tall-narrow"] .tray-label {
 .care-result .result-actions {
   gap: 12px;
 }
-
 .care-result .play-again-button,
 .care-result .result-actions .home-button {
+  white-space: nowrap;
   padding: 0 22px;
   gap: 10px;
   font-size: 22px;
-  white-space: nowrap;
 }
 
 /* Upright, a care result stands in the result's centred column: the
@@ -4626,7 +4580,6 @@ html[data-size="tall"] .care-result .result-hero,
 html[data-size="tall-narrow"] .care-result .result-hero {
   max-height: min(480px, (100vw - 64px) * 3 / 4);
 }
-
 html[data-size="tall"] .care-result .result-hearts,
 html[data-size="tall-narrow"] .care-result .result-hearts {
   flex-wrap: nowrap;
@@ -4638,7 +4591,6 @@ html[data-size="tall-narrow"] .care-result .result-actions {
   padding-top: 0;
   flex-direction: column;
 }
-
 html[data-size="tall"] .care-result .play-again-button,
 html[data-size="tall-narrow"] .care-result .play-again-button,
 html[data-size="tall"] .care-result .result-actions .home-button,
@@ -4803,6 +4755,12 @@ html[data-size="tall-narrow"] .care-result .result-actions .home-button {
 }
 
 .no-friends-button {
+  gap: 14px;
+  border: none;
+  border-radius: 22px;
+  background: #e39b2d;
+  color: #1d2742;
+
   padding: 0 36px;
   font-size: 28px;
 }
@@ -4821,7 +4779,6 @@ html[data-size="tall-narrow"] .friends-bar {
   flex-wrap: wrap;
   row-gap: 20px;
 }
-
 html[data-size="tall"] .friends-bar .home-button,
 html[data-size="tall-narrow"] .friends-bar .home-button {
   width: 56px;
@@ -4873,7 +4830,6 @@ html[data-size="tall-narrow"] .friends-bar,
 html[data-size="tall-narrow"] .visit-bar {
   gap: 12px 8px;
 }
-
 html[data-size="tall-narrow"] .care-bar .home-button,
 html[data-size="tall-narrow"] .visit-bar .home-button,
 html[data-size="tall-narrow"] .friends-bar .home-button {
@@ -5090,7 +5046,6 @@ html[data-size="tall-narrow"] .friend-name {
 html[data-size="tall-narrow"] .care-result .result-hero {
   max-height: min(480px, (100vw - 40px) * 3 / 4);
 }
-
 html[data-size="tall-narrow"] .result-hearts {
   gap: 4px;
 }
@@ -5109,7 +5064,6 @@ html[data-size="tall-narrow"] .friend-chip {
 html[data-size="tall-narrow"] .care-result .result-actions {
   gap: 10px;
 }
-
 html[data-size="tall-narrow"] .care-result .play-again-button,
 html[data-size="tall-narrow"] .care-result .result-actions .home-button {
   height: 64px;
@@ -5709,7 +5663,6 @@ html[data-size="tall-narrow"] .sort {
 html[data-size="tall-narrow"] .sort-bar {
   gap: 16px;
 }
-
 html[data-size="tall-narrow"] .sort-bar .home-button {
   flex-shrink: 0;
   width: 56px;
@@ -6042,7 +5995,6 @@ html[data-size="tall-narrow"] .pairs-welcome {
     calc(20px + var(--screen-left));
   gap: 20px;
 }
-
 html[data-size="tall-narrow"] .pairs-welcome-bar .home-button {
   width: 56px;
   padding: 0 16px;
@@ -6113,7 +6065,6 @@ html[data-size="wide-short"] .pairs-welcome {
 html[data-size="wide-short"] .pairs-welcome .stratum-1 {
   height: 24px;
 }
-
 html[data-size="wide-short"] .pairs-welcome-bar .home-button {
   flex-shrink: 0;
   width: 48px;
@@ -6184,10 +6135,8 @@ html[data-size="wide-short"] .pairs-chip svg {
   width: 22px;
   height: 22px;
 }
-
 html[data-size="wide-short"] .pairs-welcome .level-switch {
   padding: 4px;
-  border-radius: 26px;
 }
 
 html[data-size="wide-short"] .pairs-welcome .level-switch-mark {
@@ -6195,12 +6144,9 @@ html[data-size="wide-short"] .pairs-welcome .level-switch-mark {
   bottom: 4px;
   left: 4px;
   width: calc((100% - 16px) / 3);
-  border-radius: 22px;
 }
-
 html[data-size="wide-short"] .pairs-welcome .level-switch-level {
   height: 44px;
-  border-radius: 22px;
 }
 
 html[data-size="wide-short"] .pairs-play-button {
@@ -6225,15 +6171,11 @@ html[data-size="wide-short"] .pairs-play-button svg {
   isolation: isolate;
   align-self: stretch;
   box-sizing: border-box;
-  padding: 6px;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
+  padding: 6px;
   gap: 4px;
-  border: 1px solid #1d27421f;
-  border-radius: 36px;
-  background: #e6e2d9;
 }
-
 .level-switch-mark {
   position: absolute;
   z-index: -1;
@@ -6241,25 +6183,15 @@ html[data-size="wide-short"] .pairs-play-button svg {
   bottom: 6px;
   left: 6px;
   width: calc((100% - 20px) / 3);
-  border-radius: 30px;
-  background: #1d2742;
   translate: calc(var(--chosen) * (100% + 4px)) 0;
   transition: translate var(--motion-standard) var(--ease-out);
 }
-
 .level-switch-level {
   height: 58px;
   min-width: 0;
-  padding: 0 6px;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  border: none;
-  border-radius: 30px;
-  background-color: transparent;
-  color: #1d2742;
-  font-size: 16px;
   font-weight: 600;
   letter-spacing: 0.5px;
   white-space: nowrap;
@@ -6267,13 +6199,12 @@ html[data-size="wide-short"] .pairs-play-button svg {
     color var(--motion-standard) var(--ease-out),
     background-color var(--motion-standard) var(--ease-out),
     filter var(--motion-small) var(--ease-out);
+  padding: 0 6px;
+  gap: 6px;
+  font-size: 16px;
 }
-
 .level-switch-level[aria-pressed="true"] {
-  background-color: #1d2742;
-  color: #fffdf8;
   font-weight: 700;
-  box-shadow: 0 4px 10px #1d274224;
 }
 
 /* An age level's picture, as in the age level menu. */
@@ -6300,7 +6231,6 @@ html[data-size="wide-short"] .pairs-play-button svg {
 .result-with-levels .result-content {
   gap: 16px;
 }
-
 .result-with-levels .celebration {
   height: 52px;
   font-size: 22px;
@@ -6315,47 +6245,10 @@ html[data-size="wide-short"] .pairs-play-button svg {
   font-size: 40px;
   line-height: 1.2;
 }
-
 .result-with-levels .play-again-button,
 .result-with-levels .result-actions .home-button {
   height: 72px;
   white-space: nowrap;
-}
-
-/* The result is navy in either theme, with a pale chosen mark, and so is
-   the dig game's reveal. */
-.result-with-levels .level-switch,
-.dig-reveal-screen .level-switch,
-[data-theme="dark"] .result-with-levels .level-switch,
-[data-theme="dark"] .dig-reveal-screen .level-switch {
-  background: #00000033;
-  border-color: #ffffff40;
-}
-
-.result-with-levels .level-switch-level,
-.dig-reveal-screen .level-switch-level,
-[data-theme="dark"] .result-with-levels .level-switch-level,
-[data-theme="dark"] .dig-reveal-screen .level-switch-level {
-  color: #f6f2e9;
-}
-
-.result-with-levels .level-switch-mark,
-.result-with-levels .level-switch-level[aria-pressed="true"],
-.dig-reveal-screen .level-switch-mark,
-.dig-reveal-screen .level-switch-level[aria-pressed="true"],
-[data-theme="dark"] .result-with-levels .level-switch-mark,
-[data-theme="dark"] .result-with-levels .level-switch-level[aria-pressed="true"],
-[data-theme="dark"] .dig-reveal-screen .level-switch-mark,
-[data-theme="dark"] .dig-reveal-screen .level-switch-level[aria-pressed="true"] {
-  background-color: #f6f2e9;
-}
-
-.result-with-levels .level-switch-level[aria-pressed="true"],
-.dig-reveal-screen .level-switch-level[aria-pressed="true"],
-[data-theme="dark"] .result-with-levels .level-switch-level[aria-pressed="true"],
-[data-theme="dark"] .dig-reveal-screen .level-switch-level[aria-pressed="true"] {
-  color: #1f2b4d;
-  box-shadow: 0 4px 10px #00000066;
 }
 
 /* Upright, a game's switch is its column's width, at most 648, each level
@@ -6368,25 +6261,7 @@ html[data-size="tall-narrow"] .level-switch {
   width: 100%;
   max-width: 648px;
   border: none;
-  box-shadow: inset 0 0 0 1px #1d27421f;
 }
-
-html[data-size="tall"][data-theme="dark"] .level-switch,
-html[data-size="tall-narrow"][data-theme="dark"] .level-switch {
-  box-shadow: inset 0 0 0 1px #ece8de1f;
-}
-
-html[data-size="tall"] .result-with-levels .level-switch,
-html[data-size="tall-narrow"] .result-with-levels .level-switch,
-html[data-size="tall"][data-theme="dark"] .result-with-levels .level-switch,
-html[data-size="tall-narrow"][data-theme="dark"] .result-with-levels .level-switch,
-html[data-size="tall"] .dig-reveal-screen .level-switch,
-html[data-size="tall-narrow"] .dig-reveal-screen .level-switch,
-html[data-size="tall"][data-theme="dark"] .dig-reveal-screen .level-switch,
-html[data-size="tall-narrow"][data-theme="dark"] .dig-reveal-screen .level-switch {
-  box-shadow: inset 0 0 0 1px #ffffff40;
-}
-
 html[data-size="tall"] .level-switch-level,
 html[data-size="tall-narrow"] .level-switch-level {
   height: 64px;
@@ -6424,20 +6299,19 @@ html[data-size="wide-short"] .result-with-levels .result-content {
   align-items: center;
   gap: 8px 16px;
 }
-
-html[data-size="wide-short"] .result-with-levels .best-score,
-html[data-size="wide-short"] .result-with-levels .level-switch,
 html[data-size="wide-short"] .result-with-levels .result-actions {
   order: 2;
 }
-
+html[data-size="wide-short"] .result-with-levels .best-score,
+html[data-size="wide-short"] .result-with-levels .level-switch {
+  order: 2;
+}
 html[data-size="wide-short"] .result-with-levels .celebration,
 html[data-size="wide-short"] .result-with-levels .best-score {
   grid-column: 1 / -1;
   justify-self: center;
   height: 36px;
 }
-
 html[data-size="wide-short"] .result-with-levels .celebration {
   padding: 0 16px 0 12px;
   gap: 8px;
@@ -6448,7 +6322,6 @@ html[data-size="wide-short"] .result-with-levels .celebration svg {
   width: 20px;
   height: 20px;
 }
-
 html[data-size="wide-short"] .result-with-levels .result-score {
   grid-column: 1;
   grid-row: span 2;
@@ -6474,10 +6347,9 @@ html[data-size="wide-short"] .result-with-levels .result-title {
 html[data-size="wide-short"] .result-with-levels .result-stars {
   order: 1;
   grid-column: 2;
-  gap: 4px;
   font-size: 20px;
+  gap: 4px;
 }
-
 html[data-size="wide-short"] .result-with-levels .best-score {
   padding: 0 14px;
   gap: 8px;
@@ -6492,22 +6364,17 @@ html[data-size="wide-short"] .result-with-levels .level-switch,
 html[data-size="wide-short"] .dig-reveal-screen .level-switch {
   grid-column: 1 / -1;
   padding: 4px;
-  border-radius: 26px;
 }
-
 html[data-size="wide-short"] .result-with-levels .level-switch-mark,
 html[data-size="wide-short"] .dig-reveal-screen .level-switch-mark {
   top: 4px;
   bottom: 4px;
   left: 4px;
   width: calc((100% - 16px) / 3);
-  border-radius: 22px;
 }
-
 html[data-size="wide-short"] .result-with-levels .level-switch-level,
 html[data-size="wide-short"] .dig-reveal-screen .level-switch-level {
   height: 44px;
-  border-radius: 22px;
 }
 
 html[data-size="wide-short"] .result-with-levels .result-actions {
@@ -6515,16 +6382,14 @@ html[data-size="wide-short"] .result-with-levels .result-actions {
   padding-top: 0;
   gap: 12px;
 }
-
 html[data-size="wide-short"] .result-with-levels .play-again-button,
 html[data-size="wide-short"] .result-with-levels .result-actions .home-button {
   flex: 1 1 0;
   min-width: 0;
   height: 48px;
-  padding: 0 16px;
   justify-content: center;
+  padding: 0 16px;
   gap: 8px;
-  border-radius: 16px;
   font-size: 18px;
 }
 
@@ -6809,7 +6674,6 @@ html[data-size="tall-narrow"] .pair-card-name[data-caption] {
 html[data-size="tall-narrow"] .pairs-bar {
   gap: 8px;
 }
-
 html[data-size="tall-narrow"] .pairs-bar .home-button {
   flex-shrink: 0;
   width: 48px;
@@ -6862,7 +6726,6 @@ html[data-size="wide-short"] .pairs-board-screen .pairs-bar {
   height: 48px;
   gap: 8px;
 }
-
 html[data-size="wide-short"] .pairs-bar .home-button {
   flex-shrink: 0;
   width: 48px;
@@ -7110,21 +6973,17 @@ html[data-size="wide-short"] .pairs-bar .home-button .upright-hidden {
   justify-content: center;
   gap: 16px;
 }
-
 .pairs-level-up {
   margin: 0;
   height: 60px;
   box-sizing: border-box;
-  padding: 0 20px;
   display: flex;
   align-items: center;
-  gap: 12px;
-  border-radius: 30px;
-  background: #a9bcd6;
-  color: #1d2742;
-  font-size: 26px;
   font-weight: 700;
   animation: pop-in var(--motion-screen) var(--ease-overshoot) both;
+  padding: 0 20px;
+  gap: 12px;
+  font-size: 26px;
 }
 
 .pairs-next-board {
@@ -7156,20 +7015,18 @@ html[data-size="wide-short"] .pairs-bar .home-button .upright-hidden {
 .pairs-result-hand {
   color: #e39b2d;
 }
-
 .pairs-result-stars {
+  font-size: 48px;
+  gap: 12px;
   margin: 0;
   display: flex;
   align-items: center;
-  gap: 12px;
-  font-size: 48px;
   font-weight: 700;
   line-height: 1;
 }
 
 /* The board's star pops into the stars earned. */
 .pairs-result-star {
-  color: #e39b2d;
   animation: pop-in var(--motion-standard) var(--ease-overshoot) both;
   animation-delay: var(--motion-screen);
 }
@@ -7299,7 +7156,6 @@ html[data-size="tall-narrow"] .pairs-result .result-actions button {
   padding: 0 12px;
   justify-content: center;
 }
-
 html[data-size="tall-narrow"] .pairs-result .result-actions .play-again-button {
   flex-basis: 100%;
 }
@@ -7376,16 +7232,13 @@ html[data-size="wide-short"] .pairs-badges {
   grid-column: 1 / -1;
   gap: 6px;
 }
-
 html[data-size="wide-short"] .pairs-result .celebration,
 html[data-size="wide-short"] .pairs-level-up {
   height: 32px;
   padding: 0 14px 0 10px;
   gap: 8px;
-  border-radius: 16px;
   font-size: 16px;
 }
-
 html[data-size="wide-short"] .pairs-result .celebration svg,
 html[data-size="wide-short"] .pairs-level-up svg {
   width: 20px;
@@ -7424,14 +7277,12 @@ html[data-size="wide-short"] .pairs-result .result-title {
   font-size: 24px;
   line-height: 1.2;
 }
-
 html[data-size="wide-short"] .pairs-result-stars {
+  font-size: 24px;
+  gap: 6px;
   order: 3;
   grid-column: 2;
-  gap: 6px;
-  font-size: 24px;
 }
-
 html[data-size="wide-short"] .pairs-result .best-score {
   order: 4;
   grid-column: 1 / -1;
@@ -7439,10 +7290,8 @@ html[data-size="wide-short"] .pairs-result .best-score {
   height: 32px;
   padding: 0 14px;
   gap: 8px;
-  border-radius: 16px;
   font-size: 14px;
 }
-
 html[data-size="wide-short"] .pairs-result .best-score svg {
   width: 18px;
   height: 18px;
@@ -7477,7 +7326,6 @@ html[data-size="wide-short"] .pairs-result .result-actions svg {
   width: 20px;
   height: 20px;
 }
-
 html[data-size="wide-short"] .pairs-result .result-actions .play-again-button {
   flex-basis: 100%;
 }
@@ -7490,8 +7338,8 @@ html[data-size="wide-short"] .pairs-result .result-actions .play-again-button {
   z-index: 20;
   display: grid;
   place-items: center;
-  padding: 24px;
   animation: fade-in var(--motion-screen) var(--ease-out) both;
+  padding: 24px;
 }
 
 .pairs-offer-scrim::before {
@@ -7501,7 +7349,6 @@ html[data-size="wide-short"] .pairs-result .result-actions .play-again-button {
   background: #0f1320;
   opacity: 0.6;
 }
-
 .pairs-offer {
   position: relative;
   box-sizing: border-box;
@@ -7512,68 +7359,45 @@ html[data-size="wide-short"] .pairs-result .result-actions .play-again-button {
   display: flex;
   flex-direction: column;
   align-items: center;
+  animation: rise-in var(--motion-screen) var(--ease-out) both;
   gap: 28px;
   padding: 44px 40px 40px;
-  border-radius: 36px;
-  background: #fffdf8;
-  color: #1d2742;
-  box-shadow: 0 24px 60px #1d274224;
-  animation: rise-in var(--motion-screen) var(--ease-out) both;
 }
-
 .pairs-offer-picture {
   display: grid;
   place-items: center;
   flex-shrink: 0;
   width: 132px;
   height: 132px;
-  border-radius: 50%;
-  background: #e6e2d9;
-  font-size: 72px;
   line-height: 1;
+  font-size: 72px;
 }
-
 .pairs-offer-question {
   width: 100%;
   margin: 0;
-  font-size: min(36px, 3.125vw);
   font-weight: 700;
   line-height: 1.2;
   text-align: center;
+  font-size: min(36px, 3.125vw);
 }
-
 .pairs-offer-answers {
   display: flex;
   width: 100%;
   gap: 16px;
 }
-
 .pairs-offer-answers button {
   flex: 1 1 0;
   min-width: 48px;
   height: 88px;
-  padding: 0 16px;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 14px;
-  border: 0;
-  border-radius: 24px;
-  font-size: 28px;
   font-weight: 700;
   white-space: nowrap;
+  padding: 0 16px;
+  gap: 14px;
+  font-size: 28px;
 }
-
-.pairs-offer-yes {
-  background: #e39b2d;
-  color: #1d2742;
-}
-
-.pairs-offer-not-now {
-  background: #e6e2d9;
-  color: #1d2742;
-}
-
 .pairs-offer-scrim[data-leaving] {
   animation: fade-out var(--motion-small) var(--ease-out) both;
 }
@@ -7586,12 +7410,10 @@ html[data-size="tall-narrow"] .pairs-offer-scrim {
   grid-template-columns: minmax(0, 710px);
   justify-content: center;
 }
-
 html[data-size="tall"] .pairs-offer,
 html[data-size="tall-narrow"] .pairs-offer {
   width: 100%;
 }
-
 html[data-size="tall"] .pairs-offer-question,
 html[data-size="tall-narrow"] .pairs-offer-question {
   font-size: 32px;
@@ -7601,7 +7423,6 @@ html[data-size="tall"] .pairs-offer-answers,
 html[data-size="tall-narrow"] .pairs-offer-answers {
   flex-direction: column;
 }
-
 html[data-size="tall"] .pairs-offer-answers button,
 html[data-size="tall-narrow"] .pairs-offer-answers button {
   flex: none;
@@ -7624,7 +7445,6 @@ html[data-size="tall-narrow"] .pairs-offer-picture {
   height: 96px;
   font-size: 52px;
 }
-
 html[data-size="tall-narrow"] .pairs-offer-question {
   font-size: 22px;
 }
@@ -7647,15 +7467,12 @@ html[data-size="wide-short"] .pairs-offer {
   width: min(520px, 100%);
   padding: 20px 16px 16px;
   gap: 12px;
-  border-radius: 24px;
 }
-
 html[data-size="wide-short"] .pairs-offer-picture {
   width: 64px;
   height: 64px;
   font-size: 36px;
 }
-
 html[data-size="wide-short"] .pairs-offer-question {
   font-size: 22px;
 }
@@ -7667,10 +7484,8 @@ html[data-size="wide-short"] .pairs-offer-answers {
 html[data-size="wide-short"] .pairs-offer-answers button {
   height: 52px;
   gap: 10px;
-  border-radius: 16px;
   font-size: 20px;
 }
-
 html[data-size="wide-short"] .pairs-offer-answers svg {
   width: 24px;
   height: 24px;
@@ -7863,7 +7678,6 @@ html[data-size="wide-short"] .pairs-offer-answers svg {
   font-size: 20px;
   font-weight: 700;
 }
-
 .dig-bar .home-button {
   flex-shrink: 0;
   min-width: 48px;
@@ -7936,18 +7750,9 @@ html[data-size="wide-short"] .pairs-offer-answers svg {
 .dig-brush-menu {
   display: none;
 }
-
 .dig-brush-menu .parent-menu-button {
   height: 48px;
   padding: 0 12px;
-  border-radius: 14px;
-  background: #e39b2d;
-  color: #1d2742;
-}
-
-.dig-brush-menu .parent-menu-button[aria-expanded="true"] {
-  background: #e39b2d;
-  color: #1d2742;
 }
 
 .dig-brush-menu .parent-menu-face {
@@ -7972,7 +7777,6 @@ html[data-size="wide-short"] .pairs-offer-answers svg {
   left: 0;
   transform-origin: top left;
 }
-
 .dig-brush-menu .parent-menu-choice {
   font-weight: 700;
 }
@@ -8034,25 +7838,21 @@ html[data-size="wide-short"] .pairs-offer-answers svg {
 .dig-field-guide-button[data-landed][data-motion] .dig-field-guide-count {
   animation: pop-in var(--motion-small) var(--ease-overshoot) both;
 }
-
 .dig-field-guide-new {
   position: absolute;
   left: 50%;
   bottom: calc(100% + 4px);
   height: 32px;
   box-sizing: border-box;
-  padding: 0 12px;
   display: flex;
   align-items: center;
   translate: -50% 0;
-  border-radius: 16px;
-  background: #e39b2d;
-  color: #1d2742;
-  font-size: 16px;
   font-weight: 700;
   white-space: nowrap;
   pointer-events: none;
   animation: pop-in var(--motion-small) var(--ease-overshoot) both;
+  padding: 0 12px;
+  font-size: 16px;
 }
 
 .dig-reveal-screen .dig-field-guide-button {
@@ -8900,11 +8700,10 @@ main.dig-reveal-screen[data-arrived] .result-actions > button {
 .dig-card-trophy {
   display: grid;
 }
-
 .dig-reveal-screen .celebration {
   height: 52px;
-  font-size: 22px;
   animation: none;
+  font-size: 22px;
 }
 
 /* The level switch above DIG AGAIN and HOME, which take no tap until the
@@ -8916,7 +8715,6 @@ main.dig-reveal-screen[data-arrived] .result-actions > button {
   align-items: center;
   gap: 16px;
 }
-
 .dig-reveal-screen .play-again-button,
 .dig-reveal-screen .result-actions .home-button {
   height: 72px;
@@ -8999,7 +8797,6 @@ html[data-size="tall-narrow"] .dig-reveal-screen .result-actions {
   flex-direction: column;
   gap: 12px;
 }
-
 html[data-size="tall"] .dig-reveal-screen .play-again-button,
 html[data-size="tall-narrow"] .dig-reveal-screen .play-again-button,
 html[data-size="tall"] .dig-reveal-screen .result-actions .home-button,
@@ -9095,7 +8892,6 @@ html[data-size="tall"] .dig-board-screen .dig-bar,
 html[data-size="tall-narrow"] .dig-board-screen .dig-bar {
   gap: 16px;
 }
-
 html[data-size="tall"] .dig-bar .home-button,
 html[data-size="tall-narrow"] .dig-bar .home-button {
   width: 56px;
@@ -9161,7 +8957,6 @@ html[data-size="tall-narrow"] .dig-board-screen .dig-bar,
 html[data-size="tall-narrow"] .dig-field-guide-screen .dig-bar {
   gap: 12px 8px;
 }
-
 html[data-size="tall-narrow"] .dig-bar .home-button {
   width: 48px;
 }
@@ -9188,15 +8983,12 @@ html[data-size="tall-narrow"] .dig-board-screen .dig-mark {
 html[data-size="tall-narrow"] .dig-board-screen .dig-bar {
   column-gap: 4px;
 }
-
 html[data-size="tall-narrow"] .dig-board-screen .home-button {
   order: -2;
 }
 
 /* HOME, the brush menu and the FIELD GUIDE are one family: 48 tall,
    at least 48 wide, the same corners and the same thin frame. */
-html[data-size="tall-narrow"] .dig-board-screen .home-button,
-html[data-size="tall-narrow"] .dig-board-screen .dig-brush-menu .parent-menu-button,
 html[data-size="tall-narrow"] .dig-board-screen .dig-field-guide-button {
   min-width: 48px;
   height: 48px;
@@ -9204,15 +8996,16 @@ html[data-size="tall-narrow"] .dig-board-screen .dig-field-guide-button {
   box-sizing: border-box;
   border-radius: 14px;
 }
+html[data-size="tall-narrow"] .dig-board-screen .home-button,
+html[data-size="tall-narrow"] .dig-board-screen .dig-brush-menu .parent-menu-button {
+  min-width: 48px;
+  height: 48px;
+  min-height: 48px;
+  box-sizing: border-box;
+}
 
 html[data-size="tall-narrow"] .dig-board-screen .dig-brush-menu .parent-menu-button {
   padding: 0 8px;
-  outline: 1px solid #1d27421f;
-  outline-offset: -0.5px;
-}
-
-[data-theme="dark"][data-size="tall-narrow"] .dig-board-screen .dig-brush-menu .parent-menu-button {
-  outline-color: #ece8de1f;
 }
 
 html[data-size="tall-narrow"] .dig-board-screen .dig-brush-menu {
@@ -9272,7 +9065,6 @@ html[data-size="wide-short"] .dig-field-guide-screen .dig-bar {
   height: 48px;
   gap: 8px;
 }
-
 html[data-size="wide-short"] .dig-board-screen .home-button,
 html[data-size="wide-short"] .dig-field-guide-screen .home-button {
   width: 48px;
@@ -9280,7 +9072,6 @@ html[data-size="wide-short"] .dig-field-guide-screen .home-button {
   min-height: 48px;
   padding: 0;
   justify-content: center;
-  border-radius: 14px;
 }
 
 html[data-size="wide-short"] .dig-board-screen .dig-title,
@@ -9555,20 +9346,17 @@ html[data-size="wide-short"] .dig-card svg {
 html[data-size="wide-short"] .dig-card-count {
   font-size: 16px;
 }
-
 html[data-size="wide-short"] .dig-card .level-badge {
   width: 28px;
   height: 28px;
   font-size: 16px;
 }
-
 html[data-size="wide-short"] .dig-reveal-screen .celebration {
   height: 36px;
   padding: 0 16px 0 12px;
   gap: 8px;
   font-size: 16px;
 }
-
 html[data-size="wide-short"] .dig-reveal-screen .celebration svg {
   width: 20px;
   height: 20px;
@@ -9583,15 +9371,13 @@ html[data-size="wide-short"] .dig-reveal-screen .result-actions {
   padding-top: 0;
   gap: 12px;
 }
-
 html[data-size="wide-short"] .dig-reveal-screen .play-again-button,
 html[data-size="wide-short"] .dig-reveal-screen .result-actions .home-button {
   flex: 1 1 auto;
   height: 48px;
-  padding: 0 14px;
   justify-content: center;
+  padding: 0 14px;
   gap: 8px;
-  border-radius: 16px;
   font-size: 18px;
 }
 
@@ -9751,7 +9537,6 @@ html[data-size="tall-narrow"] .dig-card-star {
 html[data-size="tall-narrow"] .dig-card-count {
   font-size: 22px;
 }
-
 html[data-size="tall-narrow"] .dig-reveal-screen .celebration {
   height: 44px;
   font-size: 18px;
@@ -9764,7 +9549,6 @@ html[data-size="tall-narrow"] .dig-reveal-ways {
 html[data-size="tall-narrow"] .dig-reveal-screen .result-actions {
   gap: 10px;
 }
-
 html[data-size="tall-narrow"] .dig-reveal-screen .play-again-button,
 html[data-size="tall-narrow"] .dig-reveal-screen .result-actions .home-button {
   height: 64px;
@@ -9787,7 +9571,6 @@ html[data-size="tall"] .skeleton-bar,
 html[data-size="tall-narrow"] .skeleton-bar {
   gap: 16px;
 }
-
 html[data-size="tall"] .skeleton-bar .home-button,
 html[data-size="tall-narrow"] .skeleton-bar .home-button {
   width: 56px;
@@ -10298,7 +10081,6 @@ html[data-size="tall-narrow"] .skeleton-puzzle .skeleton-tray {
 .skeleton-star[data-new] {
   animation: pop-in var(--motion-standard) var(--ease-overshoot) calc(var(--motion-screen) * 2) both;
 }
-
 .skeleton-reward .celebration {
   height: 52px;
   padding: 0 22px 0 16px;
@@ -10499,31 +10281,18 @@ html[data-size="tall-narrow"] .skeleton-guess-choices {
   flex-direction: column;
   gap: 14px;
 }
-
 .skeleton-build-another,
 .skeleton-actions .home-button {
   height: 72px;
-  padding: 0 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  border: none;
-  border-radius: 20px;
-  font-size: 22px;
   font-weight: 700;
   letter-spacing: 1px;
   white-space: nowrap;
-}
-
-.skeleton-build-another {
-  background: #1f2b4d;
-  color: #f6f2e9;
-}
-
-.skeleton-actions .home-button {
-  outline-width: 2px;
-  outline-offset: -1px;
+  padding: 0 12px;
+  gap: 12px;
+  font-size: 22px;
 }
 
 /* Upright, the finished skeleton stands over its reward: the board as
@@ -10562,7 +10331,6 @@ html[data-size="tall"] .skeleton-actions,
 html[data-size="tall-narrow"] .skeleton-actions {
   gap: 12px;
 }
-
 html[data-size="tall"] .skeleton-build-another,
 html[data-size="tall-narrow"] .skeleton-build-another,
 html[data-size="tall"] .skeleton-actions .home-button,
@@ -10594,7 +10362,6 @@ html[data-size="tall-narrow"] .skeleton-screen {
 html[data-size="tall-narrow"] .skeleton-bar {
   gap: 8px;
 }
-
 html[data-size="tall-narrow"] .skeleton-bar .home-button {
   flex-shrink: 0;
   width: 48px;
@@ -10724,7 +10491,6 @@ html[data-size="tall-narrow"] .skeleton-fact {
 html[data-size="tall-narrow"] .skeleton-actions {
   gap: 10px;
 }
-
 html[data-size="tall-narrow"] .skeleton-build-another,
 html[data-size="tall-narrow"] .skeleton-actions .home-button {
   height: 56px;
@@ -10807,7 +10573,7 @@ html[data-size="tall-narrow"] .skeleton-actions .home-button {
   border-radius: 20px;
 }
 
-/* A level badge: its level's picture in a round mark. */
+/* A level badge carries its level's picture. */
 .level-badge {
   flex-shrink: 0;
   width: 40px;
@@ -10815,13 +10581,8 @@ html[data-size="tall-narrow"] .skeleton-actions .home-button {
   box-sizing: border-box;
   display: grid;
   place-items: center;
-  border-radius: 50%;
-  outline: 1px solid #1d27421f;
-  outline-offset: -0.5px;
-  color: #1d2742;
-  background: #fffdf8;
-  font-size: 22px;
   line-height: 1;
+  font-size: 22px;
 }
 
 /* A stand's badges sit in its exhibit's top corner, over the skeleton. */
@@ -10838,10 +10599,10 @@ html[data-size="tall-narrow"] .skeleton-actions .home-button {
   margin: 0;
   display: flex;
   align-items: center;
-  gap: 12px;
-  font-size: 22px;
   font-weight: 700;
   animation: rise-in var(--motion-standard) var(--ease-out) both;
+  gap: 12px;
+  font-size: 22px;
 }
 
 .skeleton-exhibit-picture {
@@ -11205,11 +10966,7 @@ html[data-size="tall-narrow"] .skeleton-actions .home-button {
   align-items: center;
   gap: 16px;
 }
-
 .labyrinth-record .celebration { height: 52px; font-size: 22px; }
-.labyrinth-record .best-score { background: #1d27420d; }
-.labyrinth-record .best-score-value { color: #1d2742; }
-.labyrinth-record .best-score-beaten { color: #5c647a; }
 
 .labyrinth-reunion-levels { width: 648px; }
 
@@ -11217,31 +10974,22 @@ html[data-size="tall-narrow"] .skeleton-actions .home-button {
   display: flex;
   gap: 20px;
 }
-
 .labyrinth-reunion-actions button {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
   height: 72px;
-  padding: 0 24px;
-  border: 0;
-  border-radius: 16px;
-  background: #fffdf8;
-  color: #1d2742;
-  font-size: 24px;
   font-weight: 800;
   white-space: nowrap;
+  gap: 12px;
+  padding: 0 24px;
+  font-size: 24px;
 }
 
 .labyrinth-result-screen button:focus-visible { outline: 3px solid #c9583d; outline-offset: 3px; }
 .labyrinth-result-screen .glow { left: 50%; }
 
 [data-theme="dark"] .labyrinth-result-screen { background: #0f1320; color: #ece8de; }
-[data-theme="dark"] .labyrinth-reunion-actions button { background: #181e2e; color: #ece8de; }
-[data-theme="dark"] .labyrinth-record .best-score { background: #222a3d; }
-[data-theme="dark"] .labyrinth-record .best-score-value { color: #ece8de; }
-[data-theme="dark"] .labyrinth-record .best-score-beaten { color: #9ca3b6; }
 
 
 .whose-jaw-result {
@@ -11263,7 +11011,8 @@ html[data-size="tall-narrow"] .skeleton-actions .home-button {
 .whose-jaw-result h1 { margin: 0; font-size: clamp(28px, 4vw, 48px); animation: rise-in var(--motion-screen) var(--ease-out) both; }
 .whose-jaw-result .result-stars { margin: 0; }
 .jaw-result-record { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 12px; }
-.jaw-result-record .celebration, .jaw-result-record .best-score { margin: 0; }
+.jaw-result-record .celebration,
+.jaw-result-record .best-score { margin: 0; }
 .jaw-result-jaws { display: flex; justify-content: center; list-style: none; padding: 0; margin: 0; width: min(100%, 850px); }
 .jaw-result-jaws li { width: 20%; min-width: 0; animation: pop-in var(--motion-screen) var(--ease-overshoot) calc(var(--jaw) * var(--motion-stagger)) both; }
 .jaw-result-jaws .picture { display: block; width: 100%; height: auto; }
@@ -11273,13 +11022,12 @@ html[data-size="tall-narrow"] .skeleton-actions .home-button {
 .jaw-result-find { width: 20%; animation: jaw-to-shelf var(--motion-count) var(--ease-out) calc(var(--motion-screen) + var(--jaw) * var(--motion-stagger)) both; }
 .jaw-result-find .picture { display: block; width: 100%; height: auto; }
 .jaw-result-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; animation: rise-in var(--motion-screen) var(--ease-out) both; }
-.jaw-result-actions button { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 56px; padding: 14px 20px; border: 0; border-radius: 24px; background: #fffdf8; color: #1d2742; font-size: clamp(18px, 2vw, 26px); font-weight: 700; }
-.jaw-result-actions button:first-child { background: #e39b2d; }
+.jaw-result-actions button { display: flex; align-items: center; justify-content: center; min-height: 56px; font-weight: 700; gap: 10px; padding: 14px 20px; font-size: clamp(18px, 2vw, 26px); }
 @keyframes jaw-to-shelf { from { opacity: 0; transform: translateY(calc(-60px * var(--motion-amount))) scale(calc(1 + .3 * var(--motion-amount))); } to { opacity: 1; transform: translateY(calc(0px * var(--motion-amount))) scale(calc(1 + 0 * var(--motion-amount))); } }
 @media (max-width: 540px) {
   .whose-jaw-result { gap: 12px; }
   .jaw-result-actions { width: 100%; }
-  .jaw-result-actions button { width: 100%; }
+.jaw-result-actions button { width: 100%; }
 }
 html[data-size="tall-narrow"] .whose-jaw-result { gap: 12px; }
 html[data-size="tall-narrow"] .whose-jaw-result h1 { font-size: 28px; line-height: 1.2; }
@@ -11344,9 +11092,8 @@ html[data-size="tall-narrow"] .jaw-result-actions button { width: 100%; font-siz
 .whose-jaw-shelf { background: #fffdf8; color: #1d2742; }
 .whose-jaw-play svg,
 .whose-jaw-shelf svg { width: 28px; height: 28px; flex-shrink: 0; }
-.whose-jaw-tile,
 .featured-card[data-game="whoseJaw"] { background: #e39b2d; color: #1d2742; }
-.whose-jaw-tile { position: relative; flex: 1 1 0; min-height: 0; padding: 0; display: flex; flex-direction: column; overflow: hidden; border: 0; border-radius: 28px; text-align: left; }
+
 .whose-jaw-tile-picture { width: 100%; min-height: 0; flex: 1 1 0; object-fit: contain; }
 .featured-card[data-game="whoseJaw"] .whose-jaw-tile-picture { height: 100%; }
 html:is([data-size="tall"], [data-size="tall-narrow"]) .whose-jaw-welcome-body {
@@ -11383,7 +11130,6 @@ html[data-size="wide-short"] .whose-jaw-welcome-actions svg { width: 24px; heigh
 
 [data-theme="dark"] .whose-jaw-shelf { background: #181e2e; color: #ece8de; }
 [data-theme="dark"] .whose-jaw-play,
-[data-theme="dark"] .whose-jaw-tile,
 [data-theme="dark"] .featured-card[data-game="whoseJaw"] { background: #f2b24b; color: #1d2742; }
 
 /* Reduced motion comes after every rule it overrides, so that it wins
@@ -11532,7 +11278,6 @@ html[data-size="tall-narrow"] .jaw-shelf-picture { height: calc(100% - 42px); }
 .jaw-shelf-status .jaw-shelf-count { margin: 0; }
 .game-audio-button { flex-shrink: 0; min-width: 48px; min-height: 48px; gap: 8px; font-size: 16px; }
 .game-audio-button svg { animation: fade-in var(--motion-small) var(--ease-out) both; }
-.game-audio-button:focus-visible { outline: 3px solid #c9583d; outline-offset: 3px; }
 .jaw-result-audio { display: flex; justify-content: flex-end; width: 100%; }
 .whose-jaw-board-bar[data-audio] { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 12px; }
 .whose-jaw-board-bar[data-audio] .jaw-teeth { justify-content: center; }
@@ -11540,7 +11285,10 @@ html[data-size="tall-narrow"] .whose-jaw-board-bar[data-audio] { grid-template-c
 html[data-size="tall-narrow"] .whose-jaw-board-bar[data-audio] .home-button { box-sizing: border-box; width: 48px; min-width: 48px; height: 48px; padding: 12px; gap: 0; }
 html[data-size="tall-narrow"] .whose-jaw-board-bar[data-audio] .home-button span { display: none; }
 html[data-size="tall-narrow"] .whose-jaw-board-bar[data-audio] .jaw-socket { box-sizing: border-box; width: clamp(22px, 6vw, 32px); flex-shrink: 0; border-width: 2px; font-size: 18px; }
-html[data-size="tall-narrow"] .game-audio-button { padding: 8px 12px; }
+html[data-size="tall-narrow"] .game-audio-button {
+  padding: 8px 12px;
+}
+
 html[data-size="tall-narrow"] .whose-jaw-welcome header > .home-button:first-child,
 html[data-size="tall-narrow"] .jaw-card-controls > .home-button:first-child { box-sizing: border-box; width: 48px; min-width: 48px; padding: 12px; gap: 0; }
 html[data-size="tall-narrow"] .whose-jaw-welcome header > .home-button:first-child span,
@@ -11559,124 +11307,197 @@ html[data-size="tall-narrow"] .jaw-card-controls > .home-button:first-child span
 [data-theme="dark"] .jaw-shelf-silhouette { filter: brightness(0) invert(1) opacity(.2); }
 [data-theme="dark"] .jaw-shelf-place:disabled .jaw-shelf-name { color: #9ca3b6; }
 
-@media (prefers-reduced-motion: reduce) {
-  :root {
-    --motion-standard: 160ms;
-    --motion-screen: 160ms;
-    --motion-count: 0ms;
-    --motion-stagger: 0ms;
-    --motion-amount: 0;
-  }
-
-  .jaw-shelf-row, .jaw-shelf-card, .jaw-card-chomp[data-ready] { animation: fade-in var(--motion-small) var(--ease-out) both; }
-  .jaw-card-scrim[data-leaving] { animation: fade-out var(--motion-small) var(--ease-out) both; }
-
-  .whose-jaw-result h1, .jaw-result-jaws li, .jaw-result-find, .jaw-result-actions { animation: fade-in var(--motion-small) var(--ease-out) both; }
-
-  .whose-jaw-chomp[data-ready] { animation: fade-in var(--motion-small) var(--ease-out) both; }
-
-
-  .labyrinth-board-screen,
-  .labyrinth-step {
-    animation: fade-in var(--motion-small) var(--ease-out) both;
-  }
-
-  .sand-writing-options {
-    transition-property: opacity, visibility;
-  }
-
-  ::view-transition-old(.dig-reveal-change) {
-    animation: fade-out var(--motion-small) var(--ease-out) both;
-  }
-
-  .dig-reveal-screen[data-motion] .dig-reveal-art,
-  .dig-reveal-screen[data-motion] .dig-reveal-name,
-  .dig-reveal-screen[data-motion] .dig-card,
-  .dig-reveal-screen[data-motion] .dig-reveal-celebration,
-  .dig-reveal-screen[data-motion] .dig-reveal-level,
-  .dig-reveal-screen[data-motion] .result-actions > button {
-    animation: fade-in var(--motion-small) var(--ease-out) both;
-  }
-
-  .dig-screen[data-motion] .dig-board:not([data-lifting]):not([data-dropped]) {
-    animation: fade-in var(--motion-small) var(--ease-out) both;
-  }
-
-  .dig-landing {
-    display: none;
-  }
-
-  .dig-board[data-blown]:not([data-lifting]) .dig-sand {
-    animation: fade-out var(--motion-small) var(--ease-out) both;
-  }
-
-  .dig-board[data-lifting] .dig-picture,
-  .dig-board-star {
-    animation: fade-in var(--motion-small) var(--ease-out) both;
-  }
-
-  .dig-help-window[data-motion] {
-    animation-duration: var(--motion-small);
-  }
-
-  .pairs-offer-scrim,
-  .pairs-offer {
-    animation: fade-in var(--motion-small) var(--ease-out) both;
-  }
-
-  .pairs-offer-scrim[data-leaving] {
-    animation: fade-out var(--motion-small) var(--ease-out) both;
-  }
-
-  /* A pressed card and the progress steps change size at once. */
-  .card {
-    transition-property: filter, opacity;
-  }
-
-  .step {
-    transition-property: background-color;
-  }
-
-  /* So does the need asked now. */
-  .need {
-    transition-property: background-color;
-  }
-
-  /* Find the pair's climb level folds and unfolds at once, only fading. */
-  .pairs-climb {
-    transition-property: opacity;
-  }
-
-  /* The chosen mark does not travel: the chosen level's own fill fades in
-     where it is. */
-  .level-switch-mark {
-    visibility: hidden;
-    transition-property: none;
-  }
-
-  /* A card on the sorting board lifts and puts down in place, and slides
-     back only by fading in where it belongs. */
-  .sort-card {
-    transition-property: filter, opacity, box-shadow, outline;
-  }
-
-  /* A dinosaur's picture does not travel between its card and its page:
-     the two only cross-fade, in place. */
-  ::view-transition-group(.dinosaur-share) {
-    animation: none;
-  }
-
-  .whose-jaw-board .jaw-dinosaur, .whose-jaw-board[data-phase] .jaw-dinosaur,
-  .whose-jaw-board .jaw-loose, .whose-jaw-board[data-phase] .jaw-loose,
-  .whose-jaw-board .jaw-feedback p, .whose-jaw-board .jaw-next, .whose-jaw-board .jaw-socket[data-filled],
-  .whose-jaw-board[data-phase] .jaw-dinosaur[data-target] .jaw-fitted,
-  .whose-jaw-board[data-phase] .jaw-dinosaur .jaw-food {
-    animation: fade-in var(--motion-small) var(--ease-out) both;
-  }
-  .jaw-dinosaur { transition-property: opacity; }
-  .jaw-breath, .jaw-loose[data-inviting] .jaw-loose-art { animation: none; }
-
+/* Shared controls use token colours, radii and fonts; each screen owns
+   their sizes and spacing. */
+.home-button {
+  border: none;
+  outline: none;
+  border-radius: var(--ds-radius-pill);
+  background-color: var(--ds-quiet);
+  color: var(--ds-ink);
+  font-family: var(--ds-font);
+  box-shadow: none;
 }
+
+.play-again-button:not(.no-friends-button),
+.result-actions .home-button,
+.skeleton-build-another,
+.skeleton-actions .home-button,
+.jaw-result-actions button,
+.labyrinth-reunion-actions button,
+.picture-puzzle-result-actions .picture-puzzle-control,
+.coloring-result .coloring-result-actions button,
+.pairs-offer-answers button,
+.coloring-workshop .coloring-error button {
+  border: none;
+  outline: none;
+  border-radius: var(--ds-radius-pill);
+  background-color: var(--ds-strong);
+  color: var(--ds-on-strong);
+  font-family: var(--ds-font);
+  box-shadow: none;
+}
+
+.play-again-button:not(.no-friends-button),
+.skeleton-build-another,
+.jaw-result-actions button:first-child,
+.labyrinth-reunion-actions button:first-child,
+.picture-puzzle-result-actions .picture-puzzle-control:first-child,
+.coloring-result .coloring-result-actions button:last-child,
+.pairs-offer-answers .pairs-offer-yes,
+.coloring-workshop .coloring-error button:first-of-type {
+  background-color: var(--ds-action);
+  color: var(--ds-on-action);
+}
+
+/* An inset outline leaves the button's measured dimensions unchanged. */
+.pairs-offer-answers .pairs-offer-not-now,
+.coloring-result .coloring-result-actions .coloring-result-edit,
+.coloring-workshop .coloring-error:has(button:nth-of-type(2):last-child) button:first-of-type {
+  background: transparent;
+  color: var(--ds-ink);
+  border: 0 solid var(--ds-ink);
+  outline: 3px solid;
+  outline-color: var(--ds-ink);
+  outline-offset: -3px;
+}
+
+.level-switch {
+  border: 1px solid var(--ds-outline);
+  border-radius: var(--ds-radius-pill);
+  background-color: var(--ds-quiet);
+}
+
+.level-switch-mark {
+  border-radius: var(--ds-radius-pill);
+  background-color: var(--ds-strong);
+}
+
+.level-switch-level {
+  border: none;
+  border-radius: var(--ds-radius-pill);
+  background: transparent;
+  color: var(--ds-ink);
+  font-family: var(--ds-font);
+}
+
+.level-switch-level[aria-pressed="true"] {
+  background-color: var(--ds-strong);
+  color: var(--ds-on-strong);
+  box-shadow: none;
+}
+
+.level-badge,
+.diet-tag,
+.celebration,
+.pairs-level-up,
+.skeleton-badge-earned,
+.dig-field-guide-new {
+  border-radius: var(--ds-radius-tag);
+  outline: none;
+  background-color: var(--ds-strong);
+  color: var(--ds-on-strong);
+  font-family: var(--ds-font);
+  box-shadow: none;
+}
+
+.celebration,
+.pairs-level-up,
+.dig-field-guide-new { background-color: var(--ds-reward); color: var(--ds-on-reward); }
+
+.diet-tag-face { background: transparent; }
+
+.parent-menu-button {
+  border: none;
+  border-radius: var(--ds-radius-pill);
+  background-color: var(--ds-quiet);
+  color: var(--ds-ink);
+  font-family: var(--ds-font);
+  box-shadow: none;
+}
+
+.parent-menu-button[aria-expanded="true"] { background-color: var(--ds-quiet); color: var(--ds-ink); }
+
+.parent-menu-list {
+  border-radius: var(--ds-radius-panel);
+  outline: 1px solid;
+  outline-color: var(--ds-outline);
+  background-color: var(--ds-label);
+  color: var(--ds-on-label);
+  font-family: var(--ds-font);
+  box-shadow: none;
+}
+
+.parent-menu-choice {
+  border: none;
+  border-radius: var(--ds-radius-pill);
+  background: transparent;
+  color: var(--ds-ink);
+  font-family: var(--ds-font);
+}
+
+.parent-menu-choice[aria-checked="true"] { background-color: var(--ds-quiet); }
+.parent-menu-note { color: var(--ds-ink-soft); }
+.parent-menu-tick { color: var(--ds-action); }
+
+.pairs-offer-scrim::before { background-color: var(--ds-scrim); opacity: 1; }
+.pairs-offer,
+.coloring-workshop .coloring-error {
+  border-radius: var(--ds-radius-panel);
+  background-color: var(--ds-label);
+  color: var(--ds-on-label);
+  font-family: var(--ds-font);
+  box-shadow: none;
+}
+.pairs-offer-question,
+.coloring-workshop .coloring-error h2 { color: var(--ds-ink); }
+.pairs-offer-picture { background-color: var(--ds-pocket-1); color: var(--ds-ink); border-radius: var(--ds-radius-pocket-top) var(--ds-radius-pocket-top) var(--ds-radius-pocket-bottom) var(--ds-radius-pocket-bottom); }
+
+.coloring-overlay { background-color: var(--ds-scrim); }
+.coloring-workshop .coloring-error > svg { color: var(--ds-ink); }
+.coloring-error p { color: var(--ds-ink-soft); }
+
+.result-score { font-family: var(--ds-font); color: var(--result-ink, var(--ds-ink)); }
+
+.result-score-total { color: var(--result-ink-soft, var(--ds-ink-soft)); }
+
+/* The result screens still on their navy ground until their game moves
+   onto the sky: score and best keep the ground's light words there. */
+.result,
+.dig-reveal-screen,
+.whose-jaw-result {
+  --result-ink: #f6f2e9;
+  --result-ink-soft: #f6f2e9;
+}
+
+.star,
+.result-heart { color: var(--ds-ink-soft); }
+.star-won,
+.pairs-result-star { color: var(--ds-reward); }
+.result-heart-won { color: var(--ds-bad); }
+.best-score {
+  border-radius: 0;
+  background: transparent;
+  color: var(--result-ink-soft, var(--ds-ink-soft));
+  font-family: var(--ds-font);
+}
+.best-score svg { color: var(--ds-reward); }
+.best-score-beaten { color: var(--result-ink-soft, var(--ds-ink-soft)); }
+.best-score-value { color: var(--result-ink, var(--ds-ink)); }
+.orientation-gate { background-color: var(--ds-sky-bottom); color: var(--ds-ink); font-family: var(--ds-font); }
+
+.orientation-gate-note { color: var(--ds-ink-soft); }
+
+.home-button:focus-visible,
+.play-again-button:not(.no-friends-button):focus-visible,
+.level-switch-level:focus-visible,
+.parent-menu-button:focus-visible,
+.parent-menu-choice:focus-visible,
+.pairs-offer-answers button:focus-visible,
+.skeleton-actions button:focus-visible,
+.jaw-result-actions button:focus-visible,
+.labyrinth-reunion-actions button:focus-visible,
+.picture-puzzle-result-actions button:focus-visible { outline: 3px solid var(--ds-action); outline-offset: 3px; }
 
 /* The dark theme: each fm-* colour takes its dark value, in the same
    shapes. */
@@ -11714,10 +11535,6 @@ html[data-theme="dark"],
   background: #ece8de;
   color: #0f1320;
 }
-
-[data-theme="dark"] .parent-menu-button,
-[data-theme="dark"] .parent-menu-choice-code,
-[data-theme="dark"] .parent-menu-note,
 [data-theme="dark"] .progress,
 [data-theme="dark"] .dinosaur-position,
 [data-theme="dark"] .dinosaur-fact-label,
@@ -11727,20 +11544,6 @@ html[data-theme="dark"],
 [data-theme="dark"] #version {
   color: #9ca3b6;
 }
-
-[data-theme="dark"] .parent-menu-button[aria-expanded="true"] {
-  background: #181e2e;
-  color: #ece8de;
-}
-
-[data-theme="dark"] .parent-menu-list {
-  outline-color: #ece8de1f;
-  background: #181e2e;
-  box-shadow: 0 16px 40px #00000066;
-}
-
-[data-theme="dark"] .parent-menu-choice[aria-checked="true"],
-[data-theme="dark"] .parent-menu-choice-code,
 [data-theme="dark"] .featured-card[data-game="sort"] .featured-card-badge,
 [data-theme="dark"] .featured-card[data-game="labyrinth"] .featured-card-badge,
 [data-theme="dark"] .catalogue-art,
@@ -11749,27 +11552,16 @@ html[data-theme="dark"],
 [data-theme="dark"] .dinosaur-value-chip {
   background: #222a3d;
 }
-
-[data-theme="dark"] .parent-menu-choice[aria-checked="true"] .parent-menu-choice-code,
 [data-theme="dark"] .featured-card[data-game="compare"] .featured-card-symbol,
 [data-theme="dark"] .step[data-step="current"],
 [data-theme="dark"] .prompt-symbol,
-[data-theme="dark"] .confetti-amber,
-[data-theme="dark"] .celebration,
-[data-theme="dark"] .play-again-button,
-[data-theme="dark"] .diet-tag[data-diet="both"] {
+[data-theme="dark"] .confetti-amber {
   background: #f2b24b;
 }
-
-[data-theme="dark"] .parent-menu-tick,
 [data-theme="dark"] .featured-card[data-game="compare"] .featured-card-badge svg,
 [data-theme="dark"] .featured-card[data-game="sort"] .featured-card-badge svg,
 [data-theme="dark"] .featured-card[data-game="labyrinth"] .featured-card-badge svg,
-[data-theme="dark"] .featured-card[data-game="skeletons"] .featured-card-badge svg,
-[data-theme="dark"] .result-score-total,
-[data-theme="dark"] .star-won,
-[data-theme="dark"] .best-score svg,
-[data-theme="dark"] .best-score-value {
+[data-theme="dark"] .featured-card[data-game="skeletons"] .featured-card-badge svg {
   color: #f2b24b;
 }
 
@@ -11782,33 +11574,14 @@ html[data-theme="dark"],
   background: #2c3b66;
 }
 
-[data-theme="dark"] .compare-tile,
-[data-theme="dark"] .skeletons-tile {
-  background: #2c3b66;
-  box-shadow: 0 8px 24px #00000066;
-}
-
-[data-theme="dark"] .sort-tile,
-[data-theme="dark"] .labyrinth-tile {
-  background: #181e2e;
-  box-shadow: 0 8px 24px #00000066;
-}
-
 [data-theme="dark"] .featured-card[data-game="sort"],
 [data-theme="dark"] .featured-card[data-game="labyrinth"] {
   background: #181e2e;
 }
 
-[data-theme="dark"] .sort-tile,
-[data-theme="dark"] .labyrinth-tile,
 [data-theme="dark"] .featured-card[data-game="sort"],
 [data-theme="dark"] .featured-card[data-game="labyrinth"] {
   outline-color: #ece8de1f;
-}
-
-[data-theme="dark"] .home-button {
-  outline-color: #ece8de1f;
-  background: #181e2e;
 }
 
 [data-theme="dark"] .step[data-step="done"],
@@ -11892,31 +11665,19 @@ html[data-theme="dark"],
 }/* White words would fade on the dark theme's lighter terracotta and
    green,  so the tiles and tags there take the dark page's ink,  as the
    marks do. */
-[data-theme="dark"] .catalogue-tile,
-[data-theme="dark"] .diet-tag,
 [data-theme="dark"] .featured-card[data-game="catalogue"],
 [data-theme="dark"] .featured-card[data-game="sort"] .featured-card-symbol,
 [data-theme="dark"] .featured-card[data-game="labyrinth"] .featured-card-symbol {
   color: #0f1320;
 }
-
-[data-theme="dark"] .catalogue-tile,
-[data-theme="dark"] .diet-tag[data-diet="meat"],
 [data-theme="dark"] .featured-card[data-game="catalogue"],
 [data-theme="dark"] .featured-card[data-game="sort"] .featured-card-symbol,
 [data-theme="dark"] .featured-card[data-game="labyrinth"] .featured-card-symbol {
   background: #e57a5d;
 }
 
-[data-theme="dark"] .catalogue-tile {
-  box-shadow: 0 8px 24px #00000066;
-}
 
-[data-theme="dark"] .diet-tag[data-diet="plants"] {
-  background: #63c98c;
-}
-[data-theme="dark"] .featured-card[data-game="catalogue"] .featured-card-footer,
-[data-theme="dark"] .diet-tag[data-diet="meat"] .diet-tag-face {
+[data-theme="dark"] .featured-card[data-game="catalogue"] .featured-card-footer {
   background: none;
 }
 
@@ -11959,14 +11720,9 @@ html[data-theme="dark"],
 }
 
 /* The result's home button keeps its own outline on the navy. */
-[data-theme="dark"] .result-actions .home-button {
-  outline-color: #ffffff40;
-  background: #ffffff1a;
-}
 
 /* Care's screens take the dark values in the same shapes. Words and
    symbols on amber stay the light ink. */
-[data-theme="dark"] .care-tile,
 [data-theme="dark"] .featured-card[data-game="care"],
 [data-theme="dark"] .care-mark,
 [data-theme="dark"] .new-visitor-symbol,
@@ -11974,10 +11730,6 @@ html[data-theme="dark"],
 [data-theme="dark"] .bubble-badge,
 [data-theme="dark"] .new-visitor-button {
   background: #f2b24b;
-}
-
-[data-theme="dark"] .care-tile {
-  box-shadow: 0 8px 24px #00000066;
 }
 
 [data-theme="dark"] .care-best,
@@ -12058,10 +11810,8 @@ html[data-theme="dark"],
   background: #63c98c;
   color: #0f1320;
 }
-
 [data-theme="dark"] .friend-count svg,
 [data-theme="dark"] .hearts-counter svg,
-[data-theme="dark"] .result-heart-won,
 [data-theme="dark"] .friend-chip svg,
 [data-theme="dark"] .friend-footer svg,
 [data-theme="dark"] .no-friends-bubble {
@@ -12139,16 +11889,13 @@ html[data-theme="dark"],
 /* Find the pair takes the dark values in the same shapes. Words and
    symbols on amber stay the light ink; a silhouette is the dark ink's
    shape. */
-[data-theme="dark"] .pairs-tile,
 [data-theme="dark"] .featured-card[data-game="pairs"],
 [data-theme="dark"] .pairs-mark,
-[data-theme="dark"] .pairs-bar-mark,
-[data-theme="dark"] .pairs-level-up {
+[data-theme="dark"] .pairs-bar-mark {
   background: #34466e;
   color: #ece8de;
 }
 
-[data-theme="dark"] .pairs-tile,
 [data-theme="dark"] .pairs-tile-card {
   box-shadow: 0 8px 24px #00000066;
 }
@@ -12187,31 +11934,10 @@ html[data-theme="dark"],
 [data-theme="dark"] .pairs-play-button {
   box-shadow: 0 18px 40px #00000066;
 }
-
-[data-theme="dark"] .level-switch {
-  border-color: #ece8de1f;
-  background: #222a3d;
-}
-
-[data-theme="dark"] .level-switch-level {
-  color: #ece8de;
-}
-
-[data-theme="dark"] .level-switch-mark,
-[data-theme="dark"] .level-switch-level[aria-pressed="true"] {
-  background-color: #ece8de;
-}
-
-[data-theme="dark"] .level-switch-level[aria-pressed="true"] {
-  color: #181e2e;
-  box-shadow: 0 4px 10px #00000066;
-}
-
 [data-theme="dark"] .pairs-tile-back,
 [data-theme="dark"] .pair-card-back-frame,
 [data-theme="dark"] .pairs-stars svg,
-[data-theme="dark"] .pairs-result-hand,
-[data-theme="dark"] .pairs-result-star {
+[data-theme="dark"] .pairs-result-hand {
   color: #f2b24b;
 }
 
@@ -12312,12 +12038,6 @@ html[data-theme="dark"],
   border-color: #e57a5d;
 }
 
-[data-theme="dark"] .level-badge {
-  outline-color: #ece8de1f;
-  color: #ece8de;
-  background: #181e2e;
-}
-
 [data-theme="dark"] .skeleton-fact svg,
 [data-theme="dark"] .skeleton-best-beaten {
   color: #9ca3b6;
@@ -12330,10 +12050,6 @@ html[data-theme="dark"],
 
 [data-theme="dark"] .skeleton-star {
   box-shadow: 0 6px 16px #00000066;
-}
-
-[data-theme="dark"] .skeleton-build-another {
-  background: #2c3b66;
 }
 
 [data-theme="dark"] .skeleton-hall,
@@ -12368,8 +12084,6 @@ html[data-theme="dark"],
 }
 
 [data-theme="dark"] .featured-card[data-game="dig"],
-[data-theme="dark"] .dig-tile,
-[data-theme="dark"] .sand-writing-tile,
 [data-theme="dark"] .featured-card[data-game="sandWriting"] {
   background: #1f273c;
   color: #ece8de;
@@ -12382,12 +12096,6 @@ html[data-theme="dark"],
 }
 
 [data-theme="dark"] .dig-mark {
-  background: #f2b24b;
-  color: #1d2742;
-}
-
-[data-theme="dark"] .dig-brush-menu .parent-menu-button,
-[data-theme="dark"] .dig-brush-menu .parent-menu-button[aria-expanded="true"] {
   background: #f2b24b;
   color: #1d2742;
 }
@@ -12429,10 +12137,6 @@ html[data-theme="dark"],
 
 [data-theme="dark"] .dig-field-guide-button[data-landed] {
   outline-color: #f2b24b;
-}
-
-[data-theme="dark"] .dig-field-guide-new {
-  background: #f2b24b;
 }
 
 [data-theme="dark"] .dig-reveal-screen .dig-field-guide-button {
@@ -12541,22 +12245,6 @@ html[data-theme="dark"],
 
 [data-theme="dark"] .picture[data-picture="failed"] {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239ca3b6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 16v-2.38C4 11.5 2.97 10.5 3 8c.03-2.72 1.49-6 4.5-6C9.37 2 10 3.8 10 5.5c0 3.11-2 5.66-2 8.68V16a2 2 0 1 1-4 0Z'/%3E%3Cpath d='M20 20v-2.38c0-2.12 1.03-3.12 1-5.62-.03-2.72-1.49-6-4.5-6C14.63 6 14 7.8 14 9.5c0 3.11 2 5.66 2 8.68V20a2 2 0 1 0 4 0Z'/%3E%3Cpath d='M16 17h4'/%3E%3Cpath d='M4 13h4'/%3E%3C/svg%3E");
-}
-
-[data-theme="dark"] .pairs-offer {
-  background: #181e2e;
-  color: #ece8de;
-  box-shadow: 0 24px 60px #00000066;
-}
-
-[data-theme="dark"] .pairs-offer-picture,
-[data-theme="dark"] .pairs-offer-not-now {
-  background: #222a3d;
-  color: #ece8de;
-}
-
-[data-theme="dark"] .pairs-offer-yes {
-  background: #f2b24b;
 }
 
 html:has(.picture-puzzle-board-screen),
@@ -12792,43 +12480,27 @@ body:has(.picture-puzzle-board-screen) {
 .picture-puzzle-fact svg, .picture-puzzle-level-score svg { flex-shrink: 0; }
 .picture-puzzle-reward > :not(.picture-puzzle-round-star) { animation: fade-in var(--motion-screen) var(--ease-out) var(--motion-small) both; }
 .picture-puzzle-result-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
-.picture-puzzle-reward .best-score-beaten { color: #5c647a; }
 [data-theme="dark"] .picture-puzzle-result-screen { background: #0f1320; color: #ece8de; }
 [data-theme="dark"] .picture-puzzle-round-star { color: #f2b24b; }
-[data-theme="dark"] .picture-puzzle-reward .best-score-beaten { color: #9ca3b6; }
 
-.picture-puzzle-tile {
-  position: relative;
-  flex: 1 1 0;
-  min-height: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  border: none;
-  border-radius: 28px;
-  background: #dceade;
-  color: #1d2742;
-  box-shadow: 0 8px 24px #1d274224;
-  text-align: left;
-}
+
 .picture-puzzle-tile-art { display: block; flex: 1 1 0; min-height: 0; width: 100%; overflow: hidden; }
 .picture-puzzle-tile-art > .picture-puzzle-crop { width: 100%; height: 100%; }
 .featured-card[data-game="picturePuzzle"] { background: #dceade; color: #1d2742; }
 .featured-card[data-game="picturePuzzle"] .featured-card-symbol { background: #ffffff80; }
 .featured-card[data-game="picturePuzzle"] .featured-card-badge { background: #fffdf8; color: #1d2742; }
 .featured-card[data-game="picturePuzzle"] .featured-card-badge svg { color: #a66c16; }
-[data-theme="dark"] .picture-puzzle-tile,
 [data-theme="dark"] .featured-card[data-game="picturePuzzle"] { background: #253b37; color: #ece8de; }
 [data-theme="dark"] .featured-card[data-game="picturePuzzle"] .featured-card-symbol { background: #ffffff1f; }
 [data-theme="dark"] .featured-card[data-game="picturePuzzle"] .featured-card-badge { background: #181e2e; color: #ece8de; }
 [data-theme="dark"] .featured-card[data-game="picturePuzzle"] .featured-card-badge svg { color: #f2b24b; }
 
-.coloring-tile, .featured-card[data-game="coloring"] { background: #dceade; color: #1d2742; }
-.coloring-tile { position: relative; flex: 1 1 0; min-height: 0; padding: 0; display: flex; flex-direction: column; overflow: hidden; border: 0; border-radius: 28px; text-align: left; }
+.featured-card[data-game="coloring"] { background: #dceade; color: #1d2742; }
+
 .coloring-tile-picture { width: 100%; min-height: 0; flex: 1 1 0; object-fit: contain; }
-.featured-card[data-game="coloring"] .coloring-tile-picture { height: 100%; }
-[data-theme="dark"] .coloring-tile, [data-theme="dark"] .featured-card[data-game="coloring"] { background: #253b37; color: #ece8de; }
+.coloring-sky-picture { width: 100%; min-height: 0; flex: 1 1 0; object-fit: contain; }
+.featured-card[data-game="coloring"] .coloring-sky-picture { height: 100%; }
+[data-theme="dark"] .featured-card[data-game="coloring"] { background: #253b37; color: #ece8de; }
 
 /* A viewport-attached opaque edge lets WebKit extend a solid colour into
    its system top bar. Keep it outside screen transforms and transitions;
@@ -12848,128 +12520,518 @@ body:has(.picture-puzzle-board-screen) {
   background: #0f1320;
 }
 
-/* Size containment keeps the tiles' intrinsic widths out of the hero's
-   flex allocation. Columns follow the two rows' actual available height. */
-.tiles-grid {
-  height: 100%;
-  width: max-content;
-  display: grid;
-  grid-auto-flow: column;
-  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
-  grid-auto-columns: calc((100cqh - 28px) * 2 / 3);
-  row-gap: 28px;
-  column-gap: 16px;
+[data-theme="dark"] .no-friends-button { background: #f2b24b; }
+
+/* The sky opens onto the ground below. */
+html .home.home-dig-site {
+  padding: calc(36px + env(safe-area-inset-top)) var(--screen-right) 0 var(--screen-left);
+  height: auto; min-height: 100vh; min-height: 100dvh; --home-gap: 10px; gap: var(--home-gap);
+  font-family: var(--ds-font);
+  --home-sky-fade: 376px;
+  background: linear-gradient(var(--ds-sky-top), var(--ds-sky-bottom) var(--home-sky-fade)) var(--ds-sky-bottom);
+}
+.home.home-dig-site .home-header {
+  color: var(--ds-ink);
+  position: relative; z-index: 2;
+  margin-inline: var(--ds-page);
+  display: flex; align-items: center; justify-content: space-between; gap: var(--ds-space-m); min-height: 50px;
+}
+.home.home-dig-site .wordmark {
+  position: static; height: auto; gap: var(--ds-space-m); flex-shrink: 0;
+  font-size: 26px; font-weight: 800; letter-spacing: -.5px;
+}
+.home.home-dig-site .wordmark-mark { width: 42px; height: 43px; border-radius: 0; background: url("./assets/home/app-icon-trex.png") center / contain no-repeat; }
+.home.home-dig-site .home-corner { position: static; gap: var(--ds-space-m); }
+.home.home-dig-site .home-museum {
+  width: auto; min-width: 44px; height: auto; min-height: 44px;
+  padding: var(--ds-chip-pad-y) var(--ds-chip-pad-x); gap: var(--ds-chip-gap);
+  border-radius: var(--ds-radius-pill); background: var(--ds-strong); color: var(--ds-on-strong);
+  font-size: var(--ds-size-label); letter-spacing: 0;
+}
+.home.home-dig-site .parent-menus { gap: var(--ds-space-m); padding: 0; background: transparent; }
+.home.home-dig-site .parent-menu-button { width: var(--ds-round); height: var(--ds-round); padding: 0; }
+/* The language menu shows the chosen language's flag. */
+.language-flag-disc { display: block; width: 28px; height: 28px; }
+.home.home-dig-site .home-sky {
+  color: var(--ds-ink); position: relative; min-height: 280px; flex: none;
+  /* The halo may reach behind the header; slower sky art stops at earth. */
+  clip-path: inset(-100vh 0 0);
+  clip-path: inset(-100dvh 0 0);
+}
+.home.home-dig-site .home-sky-body {
+  position: absolute; width: 320px; height: 320px; left: 52%; top: -72px;
+  border-radius: 50%; background: var(--ds-sky-halo);
+}
+.home.home-dig-site .home-sky-body span { position: absolute; inset: 90px; border-radius: 50%; background: var(--ds-sky-core); }
+.home.home-dig-site .home-sky .featured-card {
+  /* A button centres what it holds; the copy starts at the sky's top. */
+  position: relative; display: flex; flex-direction: column; justify-content: flex-start; align-items: stretch;
+  width: 100%; height: auto; min-height: inherit; flex: none;
+  padding: 0; border: 0; border-radius: 0; outline: none; box-shadow: none;
+  background: transparent; color: var(--ds-ink); overflow: visible; container-type: normal;
+  transform: none; animation: none;
+}
+.home.home-dig-site .home-sky .featured-card:focus-visible { outline: 3px solid var(--ds-action); outline-offset: -3px; }
+.home.home-dig-site .home-today-copy {
+  position: relative; z-index: 1; display: flex; flex-direction: column; align-items: flex-start;
+  width: min(460px, 42%); margin-left: var(--ds-page); gap: 24px;
+  animation: rise-in var(--motion-screen) var(--ease-out) both;
+}
+.home.home-dig-site .home-sky .featured-card .featured-card-footer { display: flex; align-items: center; gap: 20px; width: 100%; padding: 0; margin: 0; background: transparent; }
+.home.home-dig-site .home-sky .featured-card .featured-card-symbol {
+  display: grid; place-items: center; flex: none; width: 72px; height: 72px; border-radius: 36px 36px 18px 18px;
+  box-shadow: inset 0 6px 10px var(--ds-pocket-shadow); background: var(--ds-pocket-1); color: var(--ds-action);
+}
+.home.home-dig-site .home-sky .featured-card .featured-card-symbol svg { width: 36px; height: 36px; }
+.home.home-dig-site .home-sky .featured-card .featured-card-footer { container-type: inline-size; }
+/* A name stays on one line: a long one takes smaller type, about 0.74em
+   a capital in this face, after the symbol and the gap beside it; a wider
+   face shrinks it further where it is measured. */
+.home.home-dig-site .home-sky .featured-card .featured-card-title {
+  min-width: 0; line-height: 1.1; font-weight: 800; letter-spacing: -1px; white-space: nowrap;
+  font-size: min(var(--ds-size-display), calc((100cqw - 92px) / (var(--title-chars) * 0.74)));
+}
+.home.home-dig-site .home-today-progress { display: flex; align-items: center; gap: 10px; }
+.home.home-dig-site .home-progress-total { color: var(--ds-ink-soft); font-size: var(--ds-size-label); font-weight: 700; }
+.home.home-dig-site .home-today-actions { display: flex; align-items: center; gap: 20px; }
+.home.home-dig-site .home-play {
+  display: flex; align-items: center; gap: var(--ds-btn-gap); padding: var(--ds-btn-pad-y) var(--ds-btn-pad-x);
+  border-radius: var(--ds-radius-pill); background: var(--ds-action); color: var(--ds-on-action);
+  font-size: var(--ds-size-action); font-weight: 800;
+}
+.home.home-dig-site .home-play svg { width: var(--ds-icon-action); height: var(--ds-icon-action); }
+.home.home-dig-site .home-sky .featured-card[data-pressed] .home-play { transform: scale(0.97); }
+.home.home-dig-site .home-sky .featured-card .featured-card-badge {
+  position: static; display: flex; align-items: center; gap: 10px; padding: 0;
+  background: transparent; color: var(--ds-ink); font-size: var(--ds-size-number); font-weight: 800;
+}
+.home.home-dig-site .home-sky .featured-card .featured-card-badge svg { color: var(--ds-reward); }
+/* The art stands clear of the earth's wave, which rises 20px into the sky,
+   so the shadow under its feet lies whole on the sky. It is a size
+   container, so each shadow can be measured from the picture it lies
+   under. */
+.home.home-dig-site .home-today-art {
+  position: absolute; display: flex; align-items: flex-end; justify-content: center;
+  right: 7%; bottom: 28px; width: 49%; height: 276px;
+  container-type: size;
+  /* The face-off's pictures' boxes, as shares of the art. */
+  --face-left-w: 49.15cqw; --face-left-h: 80cqh;
+  --face-right-w: 44.07cqw; --face-right-h: 100cqh;
+  animation: rise-in var(--motion-screen) var(--ease-out) var(--motion-stagger) both;
+}
+/* Today's pictures are drawn at 4:3 and stand on the bottom of their box,
+   so a picture's drawn width is its box's width or 4/3 of its height,
+   whichever is less; its shadow is centred under that width. */
+.home.home-dig-site .home-today-art img { object-position: center bottom; }
+.home.home-dig-site .home-today-art::before,
+.home.home-dig-site .home-today-art::after {
+  content: ""; position: absolute; bottom: -6px; height: 18px;
+  --drawn: min(100cqw, 133.33cqh); --centre: 50cqw; --share: .6;
+  width: calc(var(--drawn) * var(--share)); left: calc(var(--centre) - var(--drawn) * var(--share) / 2);
+  border-radius: 50%; background: var(--ds-ground-shadow);
+}
+.home.home-dig-site .home-today-art::after { display: none; }
+.home.home-dig-site .home-sky .featured-card[data-game="compare"] .home-today-art::before {
+  --drawn: min(var(--face-left-w), var(--face-left-h) * 4 / 3); --centre: calc(var(--face-left-w) / 2); --share: .75;
+}
+.home.home-dig-site .home-sky .featured-card[data-game="compare"] .home-today-art::after {
+  display: block;
+  --drawn: min(var(--face-right-w), var(--face-right-h) * 4 / 3); --centre: calc(100cqw - var(--face-right-w) / 2); --share: .82;
+}
+.home.home-dig-site .home-today-art > * { position: relative; z-index: 1; }
+/* The sky drifts at half the page's speed on the scroll timeline, which
+   the browser runs with the scroll; without it the sky simply scrolls.
+   Today's dinosaurs drift with their shadows, so none is left behind. */
+@keyframes home-sky-drift { to { translate: 0 calc(1000px * var(--motion-amount)); } }
+@supports (animation-timeline: scroll()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .home.home-dig-site .home-sky-body,
+    .home.home-dig-site .home-today-art > *,
+    .home.home-dig-site .home-today-art::before,
+    .home.home-dig-site .home-today-art::after {
+      animation: home-sky-drift linear both;
+      animation-timeline: scroll(root block);
+      animation-range: 0px 2000px;
+    }
+  }
+}
+.home.home-dig-site .home-today-art > .picture,
+.home.home-dig-site .home-today-art > .picture-puzzle-tile-art,
+.home.home-dig-site .home-today-art > .sand-writing-tile-art {
+  flex: none; width: 100%; height: 100%; max-height: none; margin: 0; padding: 0; object-fit: contain;
+}
+.home.home-dig-site .home-today-art .face-off { width: 100%; height: 100%; padding: 0; flex: none; }
+.home.home-dig-site .home-today-art .face-off-left { width: var(--face-left-w); height: var(--face-left-h); }
+.home.home-dig-site .home-today-art .face-off-right { width: var(--face-right-w); height: var(--face-right-h); }
+.home.home-dig-site .home-sky-wave { position: absolute; bottom: 0; left: 0; width: 100%; height: 30px; fill: var(--ds-strata-1); pointer-events: none; }
+
+
+@media (min-height: 800px) {
+  html .home.home-dig-site { --home-gap: 14px; --home-sky-fade: 410px; }
+  .home.home-dig-site .home-sky { min-height: 310px; }
+  .home.home-dig-site .home-today-art { right: 5.93%; width: 50%; height: 300px; }
+  .home.home-dig-site .home-sky-body { top: -70px; }
+}
+html[data-size="tall"] .home.home-dig-site .home-sky,
+html[data-size="tall-narrow"] .home.home-dig-site .home-sky { height: auto; min-height: 0; }
+html[data-size="tall"] .home.home-dig-site .home-sky .featured-card,
+html[data-size="tall-narrow"] .home.home-dig-site .home-sky .featured-card { padding-bottom: 203px; }
+html[data-size="tall"] .home.home-dig-site .home-today-art,
+html[data-size="tall-narrow"] .home.home-dig-site .home-today-art { width: 100%; height: 160px; right: 0; --face-left-w: 51cqw; --face-left-h: 140px; --face-right-w: 45cqw; --face-right-h: 144px; }
+html[data-size="tall"] .home.home-dig-site .home-today-copy,
+html[data-size="tall-narrow"] .home.home-dig-site .home-today-copy { width: calc(100% - var(--ds-page) * 2); }
+html[data-size="tall-narrow"] .home.home-dig-site { padding-top: calc(62px + env(safe-area-inset-top)); --home-gap: 20px; --home-sky-fade: 480px; }
+html[data-size="tall-narrow"] .home.home-dig-site .home-header { min-height: 44px; }
+html[data-size="tall-narrow"] .home.home-dig-site .wordmark { font-size: 22px; }
+html[data-size="tall-narrow"] .home.home-dig-site .wordmark-mark { width: 35px; min-width: 0; height: 36px; }
+html[data-size="tall-narrow"] .home.home-dig-site .home-museum { min-width: 44px; width: auto; }
+html[data-size="tall-narrow"] .home.home-dig-site .home-corner,
+html[data-size="tall-narrow"] .home.home-dig-site .parent-menus { gap: 8px; }
+html[data-size="tall-narrow"] .home.home-dig-site .home-today-copy { gap: 24px; }
+html[data-size="tall-narrow"] .home.home-dig-site .home-sky .featured-card .featured-card-footer { gap: 14px; }
+html[data-size="tall-narrow"] .home.home-dig-site .home-sky .featured-card .featured-card-symbol { width: 64px; height: 64px; border-radius: 32px 32px 16px 16px; }
+html[data-size="tall-narrow"] .home.home-dig-site .home-sky .featured-card .featured-card-symbol svg { width: 32px; height: 32px; }
+html[data-size="tall-narrow"] .home.home-dig-site .home-sky-body { top: 110px; left: calc(100% - 203px); width: 240px; height: 240px; }
+html[data-size="tall-narrow"] .home.home-dig-site .home-sky-body span { inset: 70px; }
+html[data-size="tall-narrow"] .home.home-dig-site .home-today-art::before,
+html[data-size="tall-narrow"] .home.home-dig-site .home-today-art::after { height: 16px; }
+/* The museum keeps its accessible name when its word leaves the row. */
+html[data-size="tall-narrow"] .home.home-dig-site .home-museum-word,
+html[data-size="wide-short"] .home.home-dig-site .home-museum-word {
+  position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+}
+html[data-size="tall-narrow"] .home.home-dig-site .home-museum,
+html[data-size="wide-short"] .home.home-dig-site .home-museum { padding: 11px; }
+html[data-size="wide-short"] .home.home-dig-site .home-sky .featured-card { min-height: 340px; }
+html[data-size="wide-short"] .home.home-dig-site .home-sky { height: auto; min-height: 0; }
+html[data-size="wide-short"] .home.home-dig-site .home-today-copy { width: 46%; }
+html[data-size="wide-short"] .home.home-dig-site .home-today-art { width: 44%; right: var(--ds-page); }
+@media (max-width: 359px) {
+  .home.home-dig-site .home-brand-name { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 }
 
-[data-size="wide-short"] .tiles-grid {
-  grid-auto-columns: calc((100cqh - 16px) * 2 / 3);
-  row-gap: 16px;
+.home.home-dig-site .home-today-art .pairs-tile-art { flex: none; width: 100%; height: 100%; container-type: size; }
+.home.home-dig-site .home-today-art .pairs-tile-card { height: min(65cqh, 32cqw); background: var(--ds-label); box-shadow: 0 4px 12px var(--ds-ground-shadow); }
+.home.home-dig-site .home-today-art .pairs-tile-back { background: var(--ds-strong); color: var(--ds-on-strong); }
+
+.home-ground .home-ground-tile[data-home-entrance="pending"] { opacity: 0; }
+.home-ground .home-ground-tile[data-home-entrance="revealed"] {
+  animation: rise-in var(--motion-screen) var(--ease-out) both;
 }
 
-.games-tiles .home-tile-footer {
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-standard: 160ms;
+    --motion-screen: 160ms;
+    --motion-count: 0ms;
+    --motion-stagger: 0ms;
+    --motion-amount: 0;
+  }
+
+  .home.home-dig-site .home-sky-body,
+  .home.home-dig-site .home-today-art > * { translate: none; }
+  .home-ground .home-ground-tile[data-home-entrance="revealed"] {
+    animation: fade-in var(--motion-small) var(--ease-out) both;
+  }
+
+  .jaw-shelf-row, .jaw-shelf-card, .jaw-card-chomp[data-ready] { animation: fade-in var(--motion-small) var(--ease-out) both; }
+  .jaw-card-scrim[data-leaving] { animation: fade-out var(--motion-small) var(--ease-out) both; }
+
+  .whose-jaw-result h1, .jaw-result-jaws li, .jaw-result-find, .jaw-result-actions { animation: fade-in var(--motion-small) var(--ease-out) both; }
+
+  .whose-jaw-chomp[data-ready] { animation: fade-in var(--motion-small) var(--ease-out) both; }
+
+
+  .labyrinth-board-screen,
+  .labyrinth-step {
+    animation: fade-in var(--motion-small) var(--ease-out) both;
+  }
+
+  .sand-writing-options {
+    transition-property: opacity, visibility;
+  }
+
+  ::view-transition-old(.dig-reveal-change) {
+    animation: fade-out var(--motion-small) var(--ease-out) both;
+  }
+
+  .dig-reveal-screen[data-motion] .dig-reveal-art,
+  .dig-reveal-screen[data-motion] .dig-reveal-name,
+  .dig-reveal-screen[data-motion] .dig-card,
+  .dig-reveal-screen[data-motion] .dig-reveal-celebration,
+  .dig-reveal-screen[data-motion] .dig-reveal-level,
+  .dig-reveal-screen[data-motion] .result-actions > button {
+    animation: fade-in var(--motion-small) var(--ease-out) both;
+  }
+
+  .dig-screen[data-motion] .dig-board:not([data-lifting]):not([data-dropped]) {
+    animation: fade-in var(--motion-small) var(--ease-out) both;
+  }
+
+  .dig-landing {
+    display: none;
+  }
+
+  .dig-board[data-blown]:not([data-lifting]) .dig-sand {
+    animation: fade-out var(--motion-small) var(--ease-out) both;
+  }
+
+  .dig-board[data-lifting] .dig-picture,
+  .dig-board-star {
+    animation: fade-in var(--motion-small) var(--ease-out) both;
+  }
+
+  .dig-help-window[data-motion] {
+    animation-duration: var(--motion-small);
+  }
+.pairs-offer-scrim,
+.pairs-offer {
+    animation: fade-in var(--motion-small) var(--ease-out) both;
+  }
+.pairs-offer-scrim[data-leaving] {
+    animation: fade-out var(--motion-small) var(--ease-out) both;
+  }
+
+  /* A pressed card and the progress steps change size at once. */
+  .card {
+    transition-property: filter, opacity;
+  }
+
+  .step {
+    transition-property: background-color;
+  }
+
+  /* So does the need asked now. */
+  .need {
+    transition-property: background-color;
+  }
+
+  /* Find the pair's climb level folds and unfolds at once, only fading. */
+  .pairs-climb {
+    transition-property: opacity;
+  }
+
+  /* The chosen mark does not travel: the chosen level's own fill fades in
+     where it is. */
+.level-switch-mark {
+    visibility: hidden;
+    transition-property: none;
+  }
+
+  /* A card on the sorting board lifts and puts down in place, and slides
+     back only by fading in where it belongs. */
+  .sort-card {
+    transition-property: filter, opacity, box-shadow, outline;
+  }
+
+  /* A dinosaur's picture does not travel between its card and its page:
+     the two only cross-fade, in place. */
+  ::view-transition-group(.dinosaur-share) {
+    animation: none;
+  }
+
+  .whose-jaw-board .jaw-dinosaur, .whose-jaw-board[data-phase] .jaw-dinosaur,
+  .whose-jaw-board .jaw-loose, .whose-jaw-board[data-phase] .jaw-loose,
+  .whose-jaw-board .jaw-feedback p, .whose-jaw-board .jaw-next, .whose-jaw-board .jaw-socket[data-filled],
+  .whose-jaw-board[data-phase] .jaw-dinosaur[data-target] .jaw-fitted,
+  .whose-jaw-board[data-phase] .jaw-dinosaur .jaw-food {
+    animation: fade-in var(--motion-small) var(--ease-out) both;
+  }
+  .jaw-dinosaur { transition-property: opacity; }
+  .jaw-breath, .jaw-loose[data-inviting] .jaw-loose-art { animation: none; }
+
+  .home.home-dig-site .home-today-copy,
+  .home.home-dig-site .home-today-art { animation: fade-in var(--motion-small) var(--ease-out) both; }
+}
+
+/* Each band holds six games, wrapping at the pocket size for the device. */
+.home.home-dig-site .home-ground {
+  flex: none;
+  margin-top: calc(-1 * var(--home-gap));
+  width: 100%;
+  min-width: 0;
+}
+.home-layer {
   position: relative;
+  container-type: inline-size;
+  --home-earth: var(--ds-strata-1);
+  background: var(--ds-strata-1);
+}
+.home-layer[data-depth="2"] {
+  --home-earth: var(--ds-strata-2);
+  background: var(--ds-strata-2);
+}
+.home-layer .tiles-grid {
+  display: grid;
+  /* A layer holds six games, so a row holds six or three, never a
+     count that leaves one alone below. */
+  grid-template-columns: repeat(3, minmax(0, 200px));
+  justify-content: center;
+  gap: 18px 12px;
+  padding: 16px var(--ds-page) 18px;
+  min-height: 180px;
   box-sizing: border-box;
+  align-content: start;
+}
+@container (min-width: 980px) {
+  .home-layer .tiles-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); justify-content: stretch; }
+}
+.home-ground .home-ground-tile {
+  position: relative;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  gap: 4px;
-  padding: 8px;
-  width: 100%;
-  height: 48px;
-  min-height: 48px;
-  flex: 0 0 48px;
-  margin: 0;
-  background: rgba(0, 0, 0, .1);
-}
-
-.games-tiles .more-coming {
+  gap: 10px;
+  min-width: 0;
+  min-height: 44px;
   padding: 0;
-  gap: 0;
-  overflow: hidden;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  outline: none;
+  box-shadow: none;
+  background: transparent;
+  color: var(--ds-on-label);
+  overflow: visible;
+  text-align: center;
+  container-type: inline-size;
+  touch-action: pan-y;
 }
-
-.games-tiles .more-coming-picture {
+.home-ground .home-ground-tile:focus-visible { outline: 3px solid var(--ds-action); outline-offset: 3px; }
+.home-tile-pocket {
   box-sizing: border-box;
-  padding: 20px 24px 10px;
+  width: 100%;
+  height: 96px;
+  padding: 9px 12px 3px;
+  display: flex;
+  position: relative;
+  border-radius: var(--ds-radius-pocket-top) var(--ds-radius-pocket-top) var(--ds-radius-pocket-bottom) var(--ds-radius-pocket-bottom);
+  background: var(--ds-pocket-1);
+  box-shadow: inset 0 6px 10px var(--ds-pocket-shadow);
 }
+.home-layer[data-depth="2"] .home-tile-pocket { background: var(--ds-pocket-2); }
+/* Each game has its own pocket and symbol colour, at every depth. */
+.home-ground .compare-tile { --home-tile-pocket: var(--ds-pocket-compare); --home-tile-symbol: var(--ds-game-compare); }
+.home-ground .catalogue-tile { --home-tile-pocket: var(--ds-pocket-explore); --home-tile-symbol: var(--ds-game-explore); }
+.home-ground .pairs-tile { --home-tile-pocket: var(--ds-pocket-pairs); --home-tile-symbol: var(--ds-game-pairs); }
+.home-ground .skeletons-tile { --home-tile-pocket: var(--ds-pocket-bones); --home-tile-symbol: var(--ds-game-bones); }
+.home-ground .dig-tile { --home-tile-pocket: var(--ds-pocket-dig); --home-tile-symbol: var(--ds-game-dig); }
+.home-ground .sort-tile { --home-tile-pocket: var(--ds-pocket-sort); --home-tile-symbol: var(--ds-game-sort); }
+.home-ground .care-tile { --home-tile-pocket: var(--ds-pocket-care); --home-tile-symbol: var(--ds-game-care); }
+.home-ground .sand-writing-tile { --home-tile-pocket: var(--ds-pocket-draw); --home-tile-symbol: var(--ds-game-draw); }
+.home-ground .labyrinth-tile { --home-tile-pocket: var(--ds-pocket-maze); --home-tile-symbol: var(--ds-game-maze); }
+.home-ground .picture-puzzle-tile { --home-tile-pocket: var(--ds-pocket-puzzle); --home-tile-symbol: var(--ds-game-puzzle); }
+.home-ground .whose-jaw-tile { --home-tile-pocket: var(--ds-pocket-teeth); --home-tile-symbol: var(--ds-game-teeth); }
+.home-ground .coloring-tile { --home-tile-pocket: var(--ds-pocket-color); --home-tile-symbol: var(--ds-game-color); }
+.home-ground .home-ground-tile:not(.more-coming) .home-tile-pocket { background: var(--home-tile-pocket); }
+.home-ground .more-coming .home-tile-pocket { background: var(--ds-pocket-2); }
 
-.games-tiles .home-tile-symbol {
+.home-tile-pocket > .picture,
+.home-tile-pocket > .face-off,
+.home-tile-pocket > .picture-puzzle-tile-art,
+.home-tile-pocket > .sand-writing-tile-art,
+.home-tile-pocket > .pairs-tile-art {
+  position: relative;
+  inset: auto;
+  flex: none;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  margin: 0;
+  object-fit: contain;
+}
+.home-tile-pocket .face-off-picture { width: 50%; height: 100%; }
+.home-tile-pocket .pairs-tile-art { container-type: size; }
+.home-tile-pocket .pairs-tile-card { height: min(65cqh, 32cqw); background: var(--ds-label); box-shadow: 0 4px 12px var(--ds-ground-shadow); }
+.home-tile-pocket .pairs-tile-back { background: var(--ds-strong); color: var(--ds-on-strong); }
+.home-ground .home-tile-footer {
   position: static;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex: 0 0 24px;
-  width: 24px;
-  height: 24px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, .18);
-  color: inherit;
+  flex: none;
+  box-sizing: border-box;
+  max-width: 100%;
+  width: max-content;
+  height: auto;
+  margin: 0;
+  padding: var(--ds-chip-pad-y) var(--ds-chip-pad-x) var(--ds-chip-pad-y) var(--ds-chip-pad-x-lead);
+  gap: var(--ds-chip-gap);
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-label);
+  color: var(--ds-on-label);
 }
-
-.games-tiles .home-tile-symbol svg {
-  width: 20px;
-  height: 20px;
+.home-ground .home-tile-symbol {
+  display: flex;
+  position: static;
+  flex: none;
+  width: var(--ds-size-tile-icon);
+  height: var(--ds-size-tile-icon);
+  border-radius: 0;
+  background: transparent;
+  color: var(--home-tile-symbol, var(--ds-action));
 }
-
-.games-tiles .home-tile-title {
+.home-ground .home-tile-symbol svg { width: 100%; height: 100%; }
+.home-ground .home-tile-title {
   min-width: 0;
-  font-size: 20px;
+  font-size: var(--ds-size-label);
   font-weight: 700;
-  line-height: 24px;
+  line-height: 1.25;
   letter-spacing: 0;
   white-space: nowrap;
 }
-
-/* Keep the approved phone hero and two readable rows. Shorter phones
-   scroll vertically rather than clipping game names or reducing tap targets. */
-[data-size="tall-narrow"] .home { height: auto; min-height: 100vh; min-height: 100dvh; }
-[data-size="tall-narrow"] .games { flex: 1 1 0; min-height: 0; gap: 28px; }
-[data-size="tall-narrow"] .featured-card { flex: 1 1 0; min-height: 240px; }
-[data-size="tall-narrow"] .games-tiles {
-  flex: 0 0 auto;
-  height: clamp(320px, 36vh, 420px);
-  height: clamp(320px, 36dvh, 420px);
-  margin-block: -24px;
-  padding-block: 24px;
+.home-new {
+  position: absolute;
+  top: -8px;
+  left: 4px;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  width: 24px;
+  height: 24px;
+  padding: 5px;
+  border-radius: 12px;
+  background: var(--ds-reward);
+  color: var(--ds-on-reward);
 }
-
-/* Upright on a phone the row of small tiles scrolls across the whole
-   width of the window, edge to edge; the ribbon inside it keeps the
-   page's sides as its own leading and trailing padding, so the first
-   and the last tile line up with the large card when scrolled to. */
-[data-size="tall-narrow"] .games-tiles {
-  margin-inline: calc(-20px - var(--screen-left)) calc(-20px - var(--screen-right));
-  padding-inline: calc(20px + var(--screen-left)) calc(20px + var(--screen-right));
-  scroll-padding-inline: calc(20px + var(--screen-left)) calc(20px + var(--screen-right));
+.home-ground .more-coming { opacity: .6; }
+.home-ground .more-coming-picture { opacity: .35; }
+.home-ground .more-coming .home-tile-footer { background: transparent; color: var(--ds-ink-soft); }
+.home-ground .more-coming .home-tile-symbol { color: var(--ds-ink-soft); }
+.home-earth-wave {
+  position: absolute;
+  left: 0;
+  top: -20px;
+  width: 100%;
+  height: 30px;
+  fill: var(--home-earth);
+  pointer-events: none;
 }
-
-/* LAB-909: upright on a phone the page is one column exactly the window's
-   height. The large card and the row of tiles share what the corner, the
-   greeting and the version line leave; neither has a floor that could
-   push the row past the page's bottom edge, where .home clips it. The
-   row's 24-pixel band for shadows stays inside the page at the bottom.
-   Shorter phones, an iPhone SE, keep the page that scrolls, where
-   both stay readable. */
-@media (min-height: 640px) {
-  [data-size="tall-narrow"] .home {
-    height: 100vh;
-    height: 100dvh;
-    min-height: 0;
-    padding-bottom: calc(24px + env(safe-area-inset-bottom));
-  }
-  [data-size="tall-narrow"] .games { flex: 1 1 0; min-height: 0; }
-  [data-size="tall-narrow"] .featured-card { flex: 1 1 0; min-height: 0; }
-  [data-size="tall-narrow"] .games-tiles {
-    flex: 0 1 clamp(320px, 36dvh, 420px);
-    height: auto;
-    min-height: 300px;
-    margin-top: -24px;
-    margin-bottom: 0;
-    padding-top: 24px;
-    padding-bottom: 0;
-  }
-  [data-size="tall-narrow"] #version,
-  [data-size="tall-narrow"] body:has(.home) #version {
-    bottom: calc(4px + env(safe-area-inset-bottom));
-  }
+.home-bedrock {
+  position: relative;
+  --home-earth: var(--ds-strata-3);
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex: 1 0 auto;
+  min-height: 80px;
+  padding: 0 var(--ds-page) env(safe-area-inset-bottom);
+  margin-top: calc(-1 * var(--home-gap));
+  background: var(--ds-strata-3);
+  color: var(--ds-ink);
 }
+.home-parent-note { margin: 0; font-size: var(--ds-size-foot); font-weight: 400; opacity: .75; }
+.home-version { flex: none; font-size: 11px; font-weight: 400; opacity: .6; }
+body:has(.home-dig-site) #version { display: none; }
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .home-layer .tiles-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  column-gap: 10px;
+  padding: var(--ds-space-l) 20px 24px;
+  min-height: 0;
+}
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .home-tile-pocket { height: 88px; padding: 8px 8px 2px; }
+html[data-size="tall-narrow"] .home-bedrock { flex-direction: column; align-items: flex-start; justify-content: flex-start; min-height: 110px; padding-top: 22px; }

@@ -1,7 +1,7 @@
+import { HOME_TILE_PICTURES } from "../src/homeTilePictures.ts";
 import { act, fireEvent, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { AgeLevel } from "../src/ageLevel.ts";
-import digTile from "../src/assets/dig/tile.webp";
 import { GUST, STAR_LANDS } from "../src/digGame.tsx";
 import { TEXTS } from "../src/language/texts.ts";
 import { AGE_LEVEL_KEY } from "../src/localAgeLevel.ts";
@@ -26,7 +26,7 @@ const finish = (app: ReturnType<typeof openDigApp>) => {
 it("offers committed sand art with the brush, and brightens and presses the tile before opening", async () => {
   const app = openDigApp();
   const tile = homeTile("DIG");
-  expect(tile.querySelector("img")?.getAttribute("src")).toBe(digTile);
+  expect(tile.querySelector("img")?.getAttribute("src")).toBe(HOME_TILE_PICTURES.dig);
   expect(symbolOf(tile)).toBe("brush");
   expect(tile.nextElementSibling).toBe(homeTile("SORT"));
   expect(tile.previousElementSibling).toBe(homeTile("SKELETONS"));

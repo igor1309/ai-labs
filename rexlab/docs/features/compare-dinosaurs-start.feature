@@ -3,8 +3,8 @@ Feature: Compare dinosaurs quiz: starting a round and asking
   round, and tries to beat their best score. Explorer also asks WHO IS LONGER?
   and Paleontologist adds WHO IS LIGHTER? and WHO IS SHORTER?; each level's
   questions are specified in its own compare feature.
-  home-tiles.feature tells how the games' tiles stand and scroll, and
-  home-featured-card.feature how the large card features a game.
+  home-games.feature tells how the games' tiles stand, and
+  home-today.feature how the sky features today's game.
 
   Background:
     Given an iPad in landscape

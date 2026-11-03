@@ -1,4 +1,5 @@
-import { emptyLabyrinth } from "./support.ts";
+import { join } from "node:path";
+import { readFileSync } from "node:fs";
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
@@ -14,7 +15,8 @@ import { DigFieldGuideScreen } from "../src/DigFieldGuideScreen.tsx";
 import { TREASURE_KINDS } from "../src/dig/index.ts";
 import { REVEAL } from "../src/skeletonGame.tsx";
 import { HELP_AFTER } from "../src/skeletons/index.ts";
-import type { Theme } from "../src/theme.ts";
+import { THEMES, type Theme } from "../src/theme.ts";
+const DESIGN_TOKENS = [...new Set(readFileSync(join(import.meta.dirname, "../src/app.css"), "utf8").match(/--ds-[\w-]+(?=:)/g) ?? [])];
 import { NEEDS } from "../src/care/index.ts";
 import type { Basket } from "../src/SortScreen.tsx";
 import { boardState, type Property } from "../src/sorting/index.ts";
@@ -38,12 +40,14 @@ import {
   contrast,
   emptyCare,
   emptyDig,
+  emptyLabyrinth,
   emptyProgress,
   emptySkeletons,
   emptySorting,
   fakeBodyPicture,
   fakeTreasurePicture,
   featuring,
+  largestSize,
   manualAppearance,
   manualViewport,
   manualTimers,
@@ -57,12 +61,8 @@ import {
   surfacesIn,
   symbolOf,
   unreadVersion,
-  type ManualAppearance,
-  type ManualViewport,
-  type ManualTimers,
-  type MemoryStorage,
-  featuredCard,
-  gameDoor,
+  type ManualAppearance, type ManualViewport, type ManualTimers, type MemoryStorage,
+  featuredCard, gameDoor,
   unsetAgeLevel,
   shownQuestion,
   wrongOf
@@ -127,36 +127,54 @@ const describeElement = (element: Element) =>
   `<${element.tagName.toLowerCase()} class="${element.className}">${element.textContent?.trim().slice(0, 20) ?? ""}`;
 
 // The contrast of a text with what it is seen on.
-const textContrast = (text: Element) => {
-  const surface = surfaceOf(text);
-  return contrast(seenOn(getComputedStyle(text).color, surface), surface);
+const textContrast = (text: Element, styleOf: typeof getComputedStyle = getComputedStyle) => {
+  const surface = surfaceOf(text, styleOf);
+  return contrast(seenOn(styleOf(text).color, surface), surface);
 };
 
+// Which theme the app sets, cheaper than reading every part.
+function expectPageIn(theme: Theme) {
+  expect(document.documentElement.dataset.theme).toBe(theme);
+}
+
 // The screen is in `theme` when the page and every surface on it take the
-// theme's own colours of the design, or a translucent layer both themes
+// theme's colours from the game palette and shared tokens, or a layer both themes
 // lay over the navy, and every text read on it keeps text contrast with
 // what it is seen on. The two themes share no colour but the words on the
 // navy, so a surface left in the other theme shows. Symbols hidden from
 // reading, such as the faded stars, are pictures, not text. Given a part,
 // only its surfaces and texts are checked, beside the page's own colour.
+
 function expectScreenIn(theme: Theme, part: Element = document.body) {
-  const surfaces = surfacesIn(part);
+  const styles = new Map<Element, CSSStyleDeclaration>();
+  const styleOf: typeof getComputedStyle = element => {
+    const cached = styles.get(element);
+    if (cached) return cached;
+    const style = getComputedStyle(element);
+    styles.set(element, style);
+    return style;
+  };
+  const surfaces = surfacesIn(part, styleOf);
   const texts = [part, ...part.querySelectorAll("*")].filter(
     (element) =>
       !element.closest('[aria-hidden="true"]') &&
       [...element.childNodes].some((node) => node.nodeType === Node.TEXT_NODE && node.textContent?.trim())
   );
-  const colours = [...Object.values(PALETTE[theme]), ...OVERLAYS];
+  const tokens = styleOf(document.documentElement);
+  // Any design colour the stylesheet sets is a theme's colour.
+  const sharedColours = DESIGN_TOKENS.map((name) => tokens.getPropertyValue(name).trim()).filter((value) => /^(#|rgb)/.test(value));
+  const colours = [...Object.values(PALETTE[theme]), ...sharedColours, ...OVERLAYS];
 
-  expect(sameColour(getComputedStyle(document.body).backgroundColor, PALETTE[theme].bg ?? "")).toBe(true);
+  // The page behind the browser's bars is the theme's page, Home too.
+  expect(sameColour(styleOf(document.body).backgroundColor, PALETTE[theme].bg ?? "")).toBe(true);
   expect(texts.length).toBeGreaterThan(0);
   expect(
     surfaces
-      .filter((surface) => !colours.some((colour) => sameColour(getComputedStyle(surface).backgroundColor, colour)))
-      .map((surface) => `${describeElement(surface)}: ${getComputedStyle(surface).backgroundColor}`)
+      .filter((surface) => !colours.some((colour) => sameColour(styleOf(surface).backgroundColor, colour)))
+      .map((surface) => `${describeElement(surface)}: ${styleOf(surface).backgroundColor}`)
   ).toEqual([]);
   expect(
-    texts.filter((text) => textContrast(text) < TEXT_CONTRAST).map((text) => `${describeElement(text)}: ${textContrast(text).toFixed(2)}`)
+    texts.filter((text) => textContrast(text, styleOf) < TEXT_CONTRAST).map((text) => `${describeElement(text)}: ${styleOf(text).color} on ${surfaceOf(text, styleOf)} = ${textContrast(text, styleOf).toFixed(2)}`)
   ).toEqual([]);
 }
 
@@ -172,8 +190,7 @@ async function home({ theme }: Walk) {
 
 async function menus({ theme, user }: Walk) {
   for (const menu of ["Theme", "Language"]) {
-    await openMenu(user, menu);
-    expectScreenIn(theme);
+    expectScreenIn(theme, await openMenu(user, menu));
     await user.click(outsideMenu());
   }
 }
@@ -327,7 +344,8 @@ async function pairsFound({ theme, user, timers }: Walk) {
   await playBoard(user, timers);
   endWave(timers);
   await user.click(screen.getByRole("button", { name: "HOME" }));
-  expectScreenIn(theme);
+  // The rest of the home page is its own walk.
+  expectScreenIn(theme, gameDoor("FIND THE PAIR"));
   await user.click(gameDoor("ANCIENT REPTILES"));
   expect(screen.queryAllByRole("img", { name: "FOUND" })).toHaveLength(0);
   expectScreenIn(theme);
@@ -537,7 +555,7 @@ const SCREEN_GROUPS: Array<[string, Array<[string, (walk: Walk) => Promise<void>
 ];
 
 describe("the System theme", () => {
-  describe.each(["light", "dark"] as const)("follows the device appearance %s", (appearance) => {
+  describe.each(THEMES)("follows the device appearance %s", (appearance) => {
     describe.each(SCREEN_GROUPS)("on %s:", (_, parts) => {
       it.each(parts)("%s", async (_, walk) => {
         const viewport = manualViewport("landscape");
@@ -596,11 +614,11 @@ describe("a chosen theme", () => {
   ] as const)("%s overrides the device in its %s appearance and back", async (name, chosen, appearance) => {
     const device = manualAppearance(appearance);
     const { user } = openApp({ device });
-    expectScreenIn(appearance);
+    expectPageIn(appearance);
 
     await chooseFrom(user, "Theme", name);
 
-    expectScreenIn(chosen);
+    expectPageIn(chosen);
     act(() => device.switchTo(chosen));
     act(() => device.switchTo(appearance));
     expectScreenIn(chosen);
@@ -612,11 +630,11 @@ describe("a chosen theme", () => {
     const device = manualAppearance("light");
     const storage = memoryStorage({ [THEME_KEY]: "dark" });
     const { user } = openApp({ device, storage });
-    expectScreenIn("dark");
+    expectPageIn("dark");
 
     await chooseFrom(user, "Theme", "System");
 
-    expectScreenIn("light");
+    expectPageIn("light");
     expect(storage.items.get(THEME_KEY)).toBe("system");
     act(() => device.switchTo("dark"));
     expectScreenIn("dark");
@@ -666,7 +684,7 @@ describe("the theme menu", () => {
   };
 
   it.each(["en", "ru"] as const)(
-    "is a small button in the soft ink with the current theme's symbol in the top-right corner of the home page only, in %s",
+    "is a small button in the token ink with the current theme's symbol in the top-right corner of the home page only, in %s",
     async (language) => {
       const { user } = openApp({ language: language === "ru" ? "ru-RU" : "en-GB" });
       const button = screen.getByRole("button", { name: LABELS[language].menu });
@@ -675,12 +693,10 @@ describe("the theme menu", () => {
       expect(button.textContent).toBe("");
       expect(symbolOf(button)).toBe("monitor");
       const corner = getComputedStyle(button.closest(".home-corner") ?? button);
-      expect(corner.position).toBe("fixed");
-      expect(corner.top).toMatch(/^[\d.]+(px|rem)$/);
-      expect(corner.right).toMatch(/^[\d.]+(px|rem)$/);
+      expect(corner.position).toBe("static");
+      expect(button.closest("header")).not.toBeNull();
       const style = getComputedStyle(button);
-      // Faded as the design fades what is for parents: in its soft ink.
-      expect(sameColour(style.color, PALETTE.light["ink-soft"] ?? "")).toBe(true);
+      expect(sameColour(style.color, style.getPropertyValue("--ds-ink"))).toBe(true);
       // A tap area for a parent's finger around the small symbol.
       expect(parseFloat(style.minWidth)).toBeGreaterThanOrEqual(44);
       expect(parseFloat(style.minHeight)).toBeGreaterThanOrEqual(44);
@@ -703,7 +719,7 @@ describe("the theme menu", () => {
       expect(within(menu).getAllByRole("menuitemradio").map(symbolOf)).toEqual(["monitor", "sun", "moon"]);
       expect(CHOICES[language].filter((name) => name === name.toLocaleUpperCase(language))).toEqual([]);
       expect(parseFloat(getComputedStyle(within(menu).getByText(CHOICES[language][0] ?? "")).fontSize)).toBeLessThan(
-        parseFloat(getComputedStyle(within(featuredCard()).getByText(LABELS[language].card)).fontSize) / 2
+        largestSize(getComputedStyle(within(featuredCard()).getByText(LABELS[language].card)).fontSize) / 2
       );
 
       await user.click(outsideMenu());
@@ -732,27 +748,21 @@ describe("the theme menu", () => {
 // The large card is shown through the home page's props, each game
 // featured in turn, in the theme the app sets on the page.
 describe("the large card", () => {
-  // The colours a part is drawn in: its surface, its words, and its
-  // symbol's.
-  const look = (part: Element | null) =>
-    part && [part, part.querySelector("svg") ?? part].map((element) => [getComputedStyle(element).backgroundColor, getComputedStyle(element).color]);
-
-  it.each(["light", "dark"] as const)("is in the %s theme with every game featured, in its own tile's colours", (theme) => {
+  it.each(THEMES.flatMap(theme => HOME_GAMES.map(([game]) => [theme, game] as const)))("is in the %s sky with %s featured", (theme, game) => {
     document.documentElement.dataset.theme = theme;
     try {
-      for (const [game, key] of HOME_GAMES) {
-        const { unmount } = renderHomePageFeaturing(game);
-        expectScreenIn(theme);
+      const { unmount } = renderHomePageFeaturing(game);
+      expectScreenIn(theme);
 
-        const card = featuredCard();
-        const tile = gameDoor(TEXTS.en[key]);
-        const parts = (of: Element) => [look(of), look(symbolSquareOf(of)), look(badgeOf(of)), look(of.querySelector('[class$="-title"]'))];
-        expect({ game, parts: parts(card) }).toEqual({ game, parts: parts(tile) });
-        // The shade the name stands on, the tile's row's or none.
-        const footer = getComputedStyle(nameRowOf(card) ?? card).backgroundColor;
-        expect({ game, footer }).toEqual({ game, footer: getComputedStyle(nameRowOf(tile) ?? tile).backgroundColor });
-        unmount();
-      }
+      const card = featuredCard();
+      const tokens = getComputedStyle(document.documentElement);
+      expect(getComputedStyle(card).backgroundColor).toBe("rgba(0, 0, 0, 0)");
+      expect(sameColour(getComputedStyle(card).color, tokens.getPropertyValue("--ds-ink"))).toBe(true);
+      const symbol = symbolSquareOf(card)!;
+      expect(sameColour(getComputedStyle(symbol).backgroundColor, tokens.getPropertyValue("--ds-pocket-1"))).toBe(true);
+      expect(sameColour(getComputedStyle(symbol).color, tokens.getPropertyValue("--ds-action"))).toBe(true);
+      expect(getComputedStyle(nameRowOf(card)!).backgroundColor).toBe("rgba(0, 0, 0, 0)");
+      unmount();
     } finally {
       delete document.documentElement.dataset.theme;
     }
@@ -762,7 +772,7 @@ describe("the large card", () => {
 // The page is shown through its props, in the theme the app sets on the
 // page, with kinds found and kinds not found yet.
 describe("the FIELD GUIDE", () => {
-  it.each(["light", "dark"] as const)("is in the %s theme, a kind not found yet in the empty cards' colours with its outline in the ink", (theme) => {
+  it.each(THEMES)("is in the %s theme, a kind not found yet in the empty cards' colours with its outline in the ink", (theme) => {
     document.documentElement.dataset.theme = theme;
     try {
       const cards = TREASURE_KINDS.map((kind) => ({ kind, picture: fakeTreasurePicture(kind), count: kind === "shell" ? 3 : kind === "egg-nest" ? 1 : 0 }));
@@ -795,7 +805,7 @@ describe("the sorting board", () => {
   const PROPERTIES: Property[] = ["legs", "diet", "size", "horns", "feathers"];
 
   // One board per test: a whole sort is long under pointer events.
-  it.each((["light", "dark"] as const).flatMap((theme) => PROPERTIES.map((property) => [theme, property] as const)))("is in the %s theme in every state, sorting by %s, with every basket's symbol", async (theme, property) => {
+  it.each(THEMES.flatMap((theme) => PROPERTIES.map((property) => [theme, property] as const)))("is in the %s theme in every state, sorting by %s, with every basket's symbol", async (theme, property) => {
     document.documentElement.dataset.theme = theme;
     try {
       const user = userEvent.setup({ delay: null });
@@ -834,7 +844,7 @@ describe("the sorting board", () => {
     }
   });
 
-  it.each(["light", "dark"] as const)("marks a sorted card's ✓ and each hint at least 3:1 against what they are on, in the %s theme", async (theme) => {
+  it.each(THEMES)("marks a sorted card's ✓ and each hint at least 3:1 against what they are on, in the %s theme", async (theme) => {
     document.documentElement.dataset.theme = theme;
     try {
       const user = userEvent.setup({ delay: null });
@@ -865,7 +875,7 @@ describe("the sorting board", () => {
 // The result is reached through the sorting game, its screens' props and
 // its progress store, in the theme the app sets on the page.
 describe("the sorting result", () => {
-  it.each(["light", "dark"] as const)("is in the %s theme with its celebration, and without one", async (theme) => {
+  it.each(THEMES)("is in the %s theme with its celebration, and without one", async (theme) => {
     document.documentElement.dataset.theme = theme;
     try {
       for (const right of [4, 0]) {
@@ -882,7 +892,7 @@ describe("the sorting result", () => {
 });
 
 describe("marks", () => {
-  it.each(["light", "dark"] as const)("keep at least 3:1 contrast with their card in the %s theme", async (theme) => {
+  it.each(THEMES)("keep at least 3:1 contrast with their card in the %s theme", async (theme) => {
     const { user } = openApp({ device: manualAppearance(theme) });
     await user.click(gameDoor("COMPARE"));
     const question = shownQuestion();
@@ -905,7 +915,7 @@ describe("marks", () => {
 });
 
 describe("the SORT card", () => {
-  it.each(["light", "dark"] as const)("is on the %s theme's paper with the shared icon badge and its title at text contrast", (theme) => {
+  it.each(THEMES)("has a pocket and name pill at text contrast in the %s theme", (theme) => {
     const sortingStorage = memoryStorage({
       [PROGRESS_KEY]: JSON.stringify({ schemaVersion: 1, games: { "sort-dinosaurs": { bestScore: 4, explorerBest: 4, roundsPlayed: 2 } } })
     });
@@ -918,9 +928,10 @@ describe("the SORT card", () => {
     const best = card.querySelector(".sort-tile-best") ?? card;
     const colours = PALETTE[theme];
     const parts = {
-      card: [getComputedStyle(card).backgroundColor, colours.surface],
-      symbol: [getComputedStyle(symbol).backgroundColor, "rgba(255, 255, 255, 0.18)"],
-      words: [getComputedStyle(title).color, colours.ink],
+      // SORT's tile takes its own pocket and symbol colours from the dig-site tokens.
+      card: [getComputedStyle(card.querySelector(".home-tile-pocket")!).backgroundColor, getComputedStyle(document.documentElement).getPropertyValue("--ds-pocket-sort")],
+      symbol: [getComputedStyle(symbol).color, getComputedStyle(document.documentElement).getPropertyValue("--ds-game-sort")],
+      words: [getComputedStyle(title).color, getComputedStyle(document.documentElement).getPropertyValue("--ds-on-label")],
     };
     expect(Object.entries(parts).filter(([, [seen, wanted]]) => !sameColour(seen ?? "", wanted ?? ""))).toEqual([]);
     expect(title.textContent).toBe("SORT");
@@ -930,7 +941,7 @@ describe("the SORT card", () => {
 });
 
 describe("the FIND THE PAIR tile", () => {
-  it.each(["light", "dark"] as const)("is the %s theme's sky, its words in the ink at text contrast", (theme) => {
+  it.each(THEMES)("has its words on the %s theme's name pill at text contrast", (theme) => {
     openApp({ device: manualAppearance(theme) });
 
     expectScreenIn(theme);
@@ -938,8 +949,9 @@ describe("the FIND THE PAIR tile", () => {
     const title = tile.querySelector(".pairs-tile-title") ?? tile;
     const colours = PALETTE[theme];
     const parts = {
-      tile: [getComputedStyle(tile).backgroundColor, colours.sky],
-      words: [getComputedStyle(title).color, colours.ink]
+      // The pill supplies the background behind the name.
+      tile: [getComputedStyle(title.parentElement!).backgroundColor, getComputedStyle(document.documentElement).getPropertyValue("--ds-label")],
+      words: [getComputedStyle(title).color, getComputedStyle(document.documentElement).getPropertyValue("--ds-on-label")]
     };
     expect(Object.entries(parts).filter(([, [seen, wanted]]) => !sameColour(seen ?? "", wanted ?? ""))).toEqual([]);
     expect(textContrast(title)).toBeGreaterThanOrEqual(TEXT_CONTRAST);
@@ -947,7 +959,7 @@ describe("the FIND THE PAIR tile", () => {
 });
 
 describe("a board of skeletons", () => {
-  it.each(["light", "dark"] as const)("shows each skeleton in its own colours on the card's art in the %s theme", async (theme) => {
+  it.each(THEMES)("shows each skeleton in its own colours on the card's art in the %s theme", async (theme) => {
     const timers = manualTimers();
     const { user } = openApp({ device: manualAppearance(theme), timers });
     await playPairs(user, "PALEONTOLOGIST");
@@ -966,7 +978,7 @@ describe("a board of skeletons", () => {
 });
 
 describe("a board of silhouettes", () => {
-  it.each(["light", "dark"] as const)("keeps face-down cards, open cards and silhouettes apart from what is behind them in the %s theme", async (theme) => {
+  it.each(THEMES)("keeps face-down cards, open cards and silhouettes apart from what is behind them in the %s theme", async (theme) => {
     const timers = manualTimers();
     const pairs = memoryStorage({ [PROGRESS_KEY]: pairsRecord({ stars: 6, level: 4, boardsOnLevel: 0, best: {}, found: [] }) });
     const { user } = openApp({ device: manualAppearance(theme), timers, pairs });

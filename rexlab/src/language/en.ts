@@ -31,6 +31,8 @@ export const en: Texts = {
     explorer: { name: "EXPLORER", age: "about 5" },
     paleontologist: { name: "PALEONTOLOGIST", age: "6 and up" }
   },
+  homeNew: "NEW",
+  homeParentNote: "Parents: progress is saved on this device. Settings are at the top of the page.",
   versionLabel: "Version",
   turnSideways: "TURN SIDEWAYS",
   makeWindowWider: "MAKE THE WINDOW WIDER",
@@ -102,6 +104,7 @@ export const en: Texts = {
   },
   pairs: "FIND THE PAIR",
   moreComing: "MORE COMING",
+  today: "TODAY",
   play: "PLAY",
   level: "LEVEL",
   ageLevelSwitch: "AGE LEVEL",

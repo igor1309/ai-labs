@@ -1,3 +1,4 @@
+import { THEMES } from "../src/theme.ts";
 import { screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { LANGUAGES, type Language } from "../src/language/language.ts";
@@ -39,7 +40,7 @@ async function openMuseum(language: Language, appearance: Theme) {
   return { hall, stands: within(hall).getAllByRole("region") };
 }
 
-describe.each(LANGUAGES.flatMap((language) => (["light", "dark"] as const).map((theme) => [language, theme] as const)))("the museum in %s, %s", (language, theme) => {
+describe.each(LANGUAGES.flatMap((language) => THEMES.map((theme) => [language, theme] as const)))("the museum in %s, %s", (language, theme) => {
   it("stands each button on its own under its exhibit, with no card behind it", async () => {
     const { stands } = await openMuseum(language, theme);
 

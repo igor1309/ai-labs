@@ -14,13 +14,13 @@ Feature: Age level
     Given the app is in <language>
     And the age level is Explorer
     When I open the home page
-    Then I see a small button with 🦖 in the shaded group of the parents' menus, after the theme menu
+    Then I see a small button with a compass line symbol in the shaded group of the parents' menus, after the theme menu
     When I tap it
-    Then a menu lists, in order, each level's picture, name and age:
-      | picture | name             | age     |
-      | 🥚      | <hatchling>      | <age 4> |
-      | 🦖      | <explorer>       | <age 5> |
-      | 🦴      | <paleontologist> | <age 6> |
+    Then a menu lists, in order, each level's line symbol, name and age:
+      | symbol  | name             | age     |
+      | egg     | <hatchling>      | <age 4> |
+      | compass | <explorer>       | <age 5> |
+      | pickaxe | <paleontologist> | <age 6> |
     And Explorer has a ✓
     When I tap outside the menu
     Then the menu closes and the age level is unchanged
@@ -33,7 +33,7 @@ Feature: Age level
   Scenario Outline: The level starts at Explorer when none is saved
     Given <saved>
     When I open the home page
-    Then the age level button shows 🦖
+    Then the age level button shows the compass
 
     Examples:
       | saved                                                    |
@@ -45,30 +45,30 @@ Feature: Age level
   Scenario Outline: A chosen level is shown and remembered
     Given the age level is <from>
     When I choose <level> in the age level menu
-    Then the menu closes and the button shows <picture>
+    Then the menu closes and the button shows <symbol>
     When I close and reopen the app
-    Then the button still shows <picture>
+    Then the button still shows <symbol>
     When I open the age level menu
     Then <level> has a ✓
 
     Examples:
-      | from           | level          | picture |
-      | Explorer       | Hatchling      | 🥚      |
-      | Explorer       | Paleontologist | 🦴      |
-      | Hatchling      | Explorer       | 🦖      |
+      | from           | level          | symbol  |
+      | Explorer       | Hatchling      | egg     |
+      | Explorer       | Paleontologist | pickaxe |
+      | Hatchling      | Explorer       | compass |
 
   Scenario Outline: A level that cannot be saved still applies until the app closes
     Given <saved>
     And the browser's storage cannot be written
     When I choose Hatchling in the age level menu
-    Then the button shows 🥚
+    Then the button shows the egg
     When I close and reopen the app
-    Then the button shows <picture>
+    Then the button shows <symbol>
 
     Examples:
-      | saved                   | picture |
-      | no age level is saved   | 🦖      |
-      | Paleontologist is saved | 🦴      |
+      | saved                   | symbol  |
+      | no age level is saved   | compass |
+      | Paleontologist is saved | pickaxe |
 
   Scenario Outline: The level outlives the games' progress
     Given I chose Paleontologist

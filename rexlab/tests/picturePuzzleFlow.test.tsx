@@ -1,3 +1,4 @@
+import { THEMES } from "../src/theme.ts";
 import { shortHomeName } from "./support.ts";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
@@ -68,15 +69,17 @@ function touch(target: EventTarget, type: string, time: number, point: { x: numb
 }
 
 describe.each(LANGUAGES)("the picture puzzle full flow in %s", (language) => {
-  it.each(["light", "dark"] as const)("completes from home, replays and reloads its collection in %s", (theme) => {
+  it.each(THEMES)("completes from home, replays and reloads its collection in %s", (theme) => {
     const text = TEXTS[language];
     const storage = memoryStorage();
     const featured = theme === "dark" ? "picturePuzzle" : "compare";
     const app = openApp(storage, language, theme, featured);
     expect(document.documentElement.dataset.theme).toBe(theme);
     const door = button(text.picturePuzzle);
-    expect(getComputedStyle(door).backgroundColor).toBe(theme === "dark" ? "rgb(37, 59, 55)" : "rgb(220, 234, 222)");
-    expect(door.querySelector(".picture-puzzle-backdrop")).not.toBeNull();
+    // The game opens from either its sky artwork or its ground pocket.
+    expect(getComputedStyle(door).backgroundColor).toBe("rgba(0, 0, 0, 0)");
+    if (featured !== "picturePuzzle") expect(door.querySelector(".home-tile-pocket")).not.toBeNull();
+    expect(door.querySelector(featured === "picturePuzzle" ? ".picture-puzzle-tile-picture" : ".home-tile-art")).not.toBeNull();
     expect(door.querySelector(".picture-puzzle-tile-count, .featured-card-badge")?.textContent).toBe(featured === "picturePuzzle" ? "0/3" : undefined);
     fireEvent.click(door);
     expect(app.countStart).not.toHaveBeenCalled();

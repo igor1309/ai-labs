@@ -43,7 +43,7 @@ const { chromium } = require("playwright");
     await page.reload();
     const animations = () => page.evaluate(async () => {
       await document.fonts.ready;
-      await Promise.all(document.getAnimations().filter(a => a.effect?.getComputedTiming().iterations !== Infinity).map(a => a.finished.catch(() => {})));
+      await Promise.all(document.getAnimations().filter(a => a.timeline === document.timeline && a.effect?.getComputedTiming().iterations !== Infinity).map(a => a.finished.catch(() => {})));
     });
     const press = async name => { await page.getByRole("button", { name, exact: true }).press("Enter"); await animations(); };
     // The system top-bar colour source survives screen transitions and cannot
@@ -76,7 +76,7 @@ const { chromium } = require("playwright");
     const homeCount = async count => {
       await home();
       await page.waitForFunction(count => document.querySelector('[data-turn-part="tile-coloring"]') ? !document.querySelector('.coloring-tile-count') : document.querySelector('.featured-card[data-game="coloring"] .featured-card-badge')?.textContent === String(count), count);
-      assert.equal(await entry().locator("svg.lucide-pencil").count(), 1);
+      assert.equal(await entry().locator("svg.lucide-palette").count(), 1);
     };
     const paint = async (color, fill = true) => {
       if (await page.getByRole("button", { name: "COLOR", exact: true }).isVisible()) await press("COLOR");
@@ -135,7 +135,7 @@ const { chromium } = require("playwright");
     const retained = await page.evaluate(() => ({ ...localStorage }));
     for (const [key, value] of Object.entries(settings)) assert.equal(retained[key], value);
     const otherScores = JSON.parse(retained["rexlab-progress"]).games;
-    assert.deepEqual(Object.keys(otherScores), ["home-featured"]);
+    assert.deepEqual(Object.keys(otherScores), ["home-featured", "home-first-visit"]);
     await entry().press("Enter"); await gallery();
     await press("HOME"); await page.evaluate(() => { window.storageFault = "read"; });
     await entry().press("Enter"); await gallery(); await page.getByRole("alert").waitFor();
@@ -200,7 +200,7 @@ const { chromium } = require("playwright");
           await p.goto(url); await p.locator('[data-turn-part="tile-coloring"], .featured-card[data-game="coloring"]').press("Enter");
           await p.locator('.gallery-works[aria-busy="false"]').waitFor();
           const checkLayout = async () => {
-            await p.evaluate(async () => { await Promise.all(document.getAnimations().filter(a => a.effect?.getComputedTiming().iterations !== Infinity).map(a => a.finished.catch(() => {}))); });
+            await p.evaluate(async () => { await Promise.all(document.getAnimations().filter(a => a.timeline === document.timeline && a.effect?.getComputedTiming().iterations !== Infinity).map(a => a.finished.catch(() => {}))); });
             const layout = await p.evaluate(() => {
               const screen = document.querySelector('.coloring-gallery, .coloring-workshop, .coloring-result');
               return { scroll: [document.documentElement.scrollWidth, document.documentElement.scrollHeight], boxes: [...screen.querySelectorAll('button, canvas:not([aria-hidden="true"])')].filter(e => e.getBoundingClientRect().width > 0 && getComputedStyle(e).visibility !== "hidden").map(e => { const b = e.getBoundingClientRect(); return { tag: e.tagName, text: e.textContent, picker: !!e.closest(".coloring-chooser"), rail: !!e.closest(".coloring-workshop .coloring-rail"), x: b.x, y: b.y, w: b.width, h: b.height }; }) };
@@ -253,7 +253,7 @@ const { chromium } = require("playwright");
           await p.locator(".coloring-result").waitFor(); await checkLayout();
           assert.equal(await p.locator("canvas").evaluate(e => getComputedStyle(e).animationName), "fade-in");
           assert.equal(await p.evaluate(() => JSON.parse(localStorage.getItem("rexlab-age-level")).level), level);
-          await p.getByRole("button", { name: language === "en" ? "EDIT" : "ЕЩЁ РИСОВАТЬ", exact: true }).evaluate(e => Promise.all(document.getAnimations().map(a => a.finished)));
+          await p.getByRole("button", { name: language === "en" ? "EDIT" : "ЕЩЁ РИСОВАТЬ", exact: true }).evaluate(e => Promise.all(document.getAnimations().filter(a => a.timeline === document.timeline).map(a => a.finished)));
           const edit = await p.getByRole("button", { name: language === "en" ? "EDIT" : "ЕЩЁ РИСОВАТЬ", exact: true }).boundingBox();
           await p.mouse.dblclick(edit.x + edit.width / 2, edit.y + edit.height / 2, { delay: 30 });
           await p.locator(".coloring-workshop").waitFor();

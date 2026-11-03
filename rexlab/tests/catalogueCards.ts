@@ -11,7 +11,7 @@ const part = (selector: string, within: ParentNode = document) => {
 
 // A style rule of the stylesheet: its selectors, each with its
 // specificity, and the widest card its container rule holds for, if any.
-type Rule = { style: CSSStyleDeclaration; selectors: Array<{ selector: string; specificity: Specificity; classes: string[] }>; most: number };
+type Rule = { style: CSSStyleDeclaration; selectors: Array<{ selector: string; specificity: Specificity; classes: string[] }>; least: number; most: number };
 type Candidate = Rule & { value: string };
 
 // Each stylesheet's rules, read once, and those setting each property, as
@@ -23,18 +23,21 @@ function rulesSetting(sheet: CSSStyleSheet, property: string) {
   let index = indexed.get(sheet);
   if (!index) {
     const rules: Rule[] = [];
-    const add = (rule: CSSStyleRule, most: number) => rules.push({
+    const add = (rule: CSSStyleRule, most: number, least = 0) => rules.push({
       style: rule.style,
       selectors: rule.selectorText.split(/,(?![^(]*\))/).map((selector) => selector.trim()).map((selector) => ({ selector, specificity: specificityOf(selector), classes: subjectClasses(selector) })),
+      least,
       most
     });
     for (const rule of sheet.cssRules) {
       if (rule instanceof CSSStyleRule) add(rule, Number.POSITIVE_INFINITY);
       if (!(rule instanceof CSSContainerRule)) continue;
-      const [, most] = /^\(max-width: (\d+)px\)$/.exec(rule.conditionText) ?? [];
-      if (most === undefined) throw new Error(`No sum for @container ${rule.conditionText}`);
+      const [, bound, width] = /^\((max|min)-width: (\d+)px\)$/.exec(rule.conditionText) ?? [];
+      if (width === undefined) throw new Error(`No sum for @container ${rule.conditionText}`);
       for (const inner of rule.cssRules) {
-        if (inner instanceof CSSStyleRule) add(inner, Number(most));
+        if (!(inner instanceof CSSStyleRule)) continue;
+        if (bound === "max") add(inner, Number(width));
+        else add(inner, Number.POSITIVE_INFINITY, Number(width));
       }
     }
     index = { rules, byProperty: new Map() };
@@ -133,8 +136,8 @@ export function inCard(element: Element, cardWidth: number, property: string) {
 function cascadeInCard(element: Element, cardWidth: number, property: string) {
   let found: { value: string; specificity: Specificity } | undefined;
   for (const sheet of document.styleSheets) {
-    for (const { selectors, value, most } of rulesSetting(sheet, property)) {
-      if (cardWidth > most) continue;
+    for (const { selectors, value, least, most } of rulesSetting(sheet, property)) {
+      if (cardWidth > most || cardWidth < least) continue;
       const specificity = selectors.filter(({ selector, classes }) => classes.every((name) => element.classList.contains(name)) && element.matches(selector)).map((each) => each.specificity).sort(compare).at(-1);
       // A later rule wins a tie, as in the browser's cascade.
       if (specificity && (!found || compare(specificity, found.specificity) >= 0)) found = { value, specificity };
