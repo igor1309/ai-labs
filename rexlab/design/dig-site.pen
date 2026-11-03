@@ -4648,6 +4648,150 @@
                       "fontWeight": "normal"
                     }
                   ]
+                },
+                {
+                  "type": "frame",
+                  "id": "Bk3GR",
+                  "name": "DS/Flag/English",
+                  "reusable": true,
+                  "clip": true,
+                  "width": 28,
+                  "height": 28,
+                  "cornerRadius": 14,
+                  "stroke": "#00000026",
+                  "strokeWidth": 1,
+                  "strokeAlignment": "inner",
+                  "layout": "none",
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "id": "K6xTq",
+                      "x": -14,
+                      "y": 0,
+                      "name": "Blue",
+                      "fill": "#012169",
+                      "width": 56,
+                      "height": 28
+                    },
+                    {
+                      "type": "path",
+                      "id": "f2lvz6",
+                      "x": -14,
+                      "y": 0,
+                      "name": "White saltire",
+                      "geometry": "M0 0l60 30m0-30l-60 30",
+                      "viewBox": [
+                        0,
+                        0,
+                        60,
+                        30
+                      ],
+                      "width": 56,
+                      "height": 28,
+                      "stroke": "#FFFFFF",
+                      "strokeWidth": 5.6
+                    },
+                    {
+                      "type": "path",
+                      "id": "ckrDg",
+                      "x": -14,
+                      "y": 0,
+                      "name": "Red saltire",
+                      "geometry": "M0 0l60 30m0-30l-60 30",
+                      "viewBox": [
+                        0,
+                        0,
+                        60,
+                        30
+                      ],
+                      "width": 56,
+                      "height": 28,
+                      "stroke": "#C8102E",
+                      "strokeWidth": 1.9
+                    },
+                    {
+                      "type": "path",
+                      "id": "nDYwA",
+                      "x": -14,
+                      "y": 0,
+                      "name": "White cross",
+                      "geometry": "M30 0v30m-30-15h60",
+                      "viewBox": [
+                        0,
+                        0,
+                        60,
+                        30
+                      ],
+                      "width": 56,
+                      "height": 28,
+                      "stroke": "#FFFFFF",
+                      "strokeWidth": 9.3
+                    },
+                    {
+                      "type": "path",
+                      "id": "Qtls7",
+                      "x": -14,
+                      "y": 0,
+                      "name": "Red cross",
+                      "geometry": "M30 0v30m-30-15h60",
+                      "viewBox": [
+                        0,
+                        0,
+                        60,
+                        30
+                      ],
+                      "width": 56,
+                      "height": 28,
+                      "stroke": "#C8102E",
+                      "strokeWidth": 5.6
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "wibLX",
+                  "name": "DS/Flag/Russian",
+                  "reusable": true,
+                  "clip": true,
+                  "width": 28,
+                  "height": 28,
+                  "cornerRadius": 14,
+                  "stroke": "#00000026",
+                  "strokeWidth": 1,
+                  "strokeAlignment": "inner",
+                  "layout": "none",
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "id": "P0wZkR",
+                      "x": 0,
+                      "y": 0,
+                      "name": "White",
+                      "fill": "#FFFFFF",
+                      "width": 28,
+                      "height": 9.34
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "Bx1jQ",
+                      "x": 0,
+                      "y": 9.33,
+                      "name": "Blue",
+                      "fill": "#0039A6",
+                      "width": 28,
+                      "height": 9.34
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "Z4WZZ",
+                      "x": 0,
+                      "y": 18.67,
+                      "name": "Red",
+                      "fill": "#D52B1E",
+                      "width": 28,
+                      "height": 9.34
+                    }
+                  ]
                 }
               ]
             }
@@ -5328,10 +5472,18 @@
                           "name": "Museum"
                         },
                         {
-                          "id": "g8zav",
+                          "id": "Vf9b3",
                           "type": "ref",
-                          "ref": "UziRJ",
-                          "name": "Language"
+                          "ref": "ImooT",
+                          "name": "Language",
+                          "children": [
+                            {
+                              "id": "re3DV",
+                              "type": "ref",
+                              "ref": "Bk3GR",
+                              "name": "Flag"
+                            }
+                          ]
                         },
                         {
                           "id": "a0TFjE",
@@ -6280,12 +6432,6 @@
                   "layout": "vertical",
                   "gap": 24,
                   "children": [
-                    {
-                      "id": "cJ9U3",
-                      "type": "ref",
-                      "ref": "q4qvx4",
-                      "name": "Today"
-                    },
                     {
                       "type": "frame",
                       "id": "SoABT",
@@ -11286,6 +11432,10 @@
             "uEZBH/V67ofj": {
               "enabled": false
             },
+            "Vf9b3": {
+              "width": 44,
+              "height": 44
+            },
             "a0TFjE": {
               "width": 44,
               "height": 44
@@ -13602,6 +13752,10 @@
             },
             "uEZBH/V67ofj": {
               "enabled": false
+            },
+            "Vf9b3": {
+              "width": 44,
+              "height": 44
             },
             "a0TFjE": {
               "width": 44,
@@ -17399,6 +17553,10 @@
             },
             "uEZBH/V67ofj": {
               "enabled": false
+            },
+            "Vf9b3": {
+              "width": 44,
+              "height": 44
             },
             "a0TFjE": {
               "width": 44,
@@ -420079,6 +420237,10 @@
             "uEZBH/V67ofj": {
               "enabled": false
             },
+            "Vf9b3": {
+              "width": 44,
+              "height": 44
+            },
             "a0TFjE": {
               "width": 44,
               "height": 44
@@ -420937,6 +421099,10 @@
             "uEZBH/V67ofj": {
               "enabled": false
             },
+            "Vf9b3": {
+              "width": 44,
+              "height": 44
+            },
             "a0TFjE": {
               "width": 44,
               "height": 44
@@ -421794,6 +421960,10 @@
             },
             "uEZBH/V67ofj": {
               "enabled": false
+            },
+            "Vf9b3": {
+              "width": 44,
+              "height": 44
             },
             "a0TFjE": {
               "width": 44,
@@ -423893,8 +424063,15 @@
             "uEZBH/V67ofj": {
               "content": "МУЗЕЙ"
             },
-            "g8zav/TpuSO": {
-              "content": "RU"
+            "Vf9b3": {
+              "children": [
+                {
+                  "id": "cDL01",
+                  "type": "ref",
+                  "ref": "wibLX",
+                  "name": "Flag"
+                }
+              ]
             }
           }
         },
@@ -423907,9 +424084,6 @@
           "y": 96,
           "gap": 20,
           "descendants": {
-            "cJ9U3/OzLnd": {
-              "content": "СЕГОДНЯ"
-            },
             "MKp0m": {
               "width": 72,
               "height": 72,
@@ -424756,8 +424930,17 @@
               "enabled": false,
               "content": "МУЗЕЙ"
             },
-            "g8zav/TpuSO": {
-              "content": "RU"
+            "Vf9b3": {
+              "width": 44,
+              "height": 44,
+              "children": [
+                {
+                  "id": "RILI6",
+                  "type": "ref",
+                  "ref": "wibLX",
+                  "name": "Flag"
+                }
+              ]
             },
             "a0TFjE": {
               "width": 44,
@@ -424780,9 +424963,6 @@
           "x": 20,
           "y": 126,
           "descendants": {
-            "cJ9U3/OzLnd": {
-              "content": "СЕГОДНЯ"
-            },
             "SoABT": {
               "gap": 14
             },
@@ -437136,6 +437316,276 @@
                   "content": "ЧЬЯ ЧЕЛЮСТЬ?"
                 }
               }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "LhUGC",
+      "x": 11946,
+      "y": 7400,
+      "name": "Home · logo · in its square or cut out · Light and Dark",
+      "width": 800,
+      "fill": "#F4EFE4",
+      "layout": "vertical",
+      "gap": 20,
+      "padding": 32,
+      "children": [
+        {
+          "type": "text",
+          "id": "b8rQiK",
+          "name": "Title",
+          "fill": "#1F2B4D",
+          "content": "RexLab mark: the app icon's square, or the T-rex alone",
+          "fontFamily": "$ds-font",
+          "fontSize": 20,
+          "fontWeight": "800"
+        },
+        {
+          "type": "frame",
+          "id": "XyYBL",
+          "name": "Row · light",
+          "theme": {
+            "mode": "light",
+            "device": "ipad"
+          },
+          "width": "fill_container",
+          "fill": "$ds-sky-top",
+          "cornerRadius": 16,
+          "gap": 24,
+          "padding": 24,
+          "children": [
+            {
+              "type": "frame",
+              "id": "RTPfb",
+              "name": "In its square (today)",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 12,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "mGqT1",
+                  "name": "Brand",
+                  "gap": 12,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 10,
+                      "id": "lLVWy",
+                      "name": "Logo",
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/app-icon-512.png",
+                        "mode": "cover"
+                      },
+                      "width": 34,
+                      "height": 34
+                    },
+                    {
+                      "type": "text",
+                      "id": "X4APgC",
+                      "name": "Wordmark",
+                      "fill": "$ds-ink",
+                      "content": "RexLab",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 26,
+                      "fontWeight": "800",
+                      "letterSpacing": -0.5
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "WQkVl",
+                  "name": "Caption",
+                  "fill": "$ds-ink",
+                  "content": "In its square (today)",
+                  "fontFamily": "$ds-font",
+                  "fontSize": 13,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "lXW0B",
+              "name": "Cut out (suggested)",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 12,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "hKSf5",
+                  "name": "Brand",
+                  "gap": 12,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "id": "Xqdf8",
+                      "name": "Logo",
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/app-icon-trex.png",
+                        "mode": "contain"
+                      },
+                      "width": 42,
+                      "height": 43
+                    },
+                    {
+                      "type": "text",
+                      "id": "NDfSH",
+                      "name": "Wordmark",
+                      "fill": "$ds-ink",
+                      "content": "RexLab",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 26,
+                      "fontWeight": "800",
+                      "letterSpacing": -0.5
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "olaoi",
+                  "name": "Caption",
+                  "fill": "$ds-ink",
+                  "content": "Cut out (suggested)",
+                  "fontFamily": "$ds-font",
+                  "fontSize": 13,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "ocvoS",
+          "name": "Row · dark",
+          "theme": {
+            "mode": "dark",
+            "device": "ipad"
+          },
+          "width": "fill_container",
+          "fill": "$ds-sky-top",
+          "cornerRadius": 16,
+          "gap": 24,
+          "padding": 24,
+          "children": [
+            {
+              "type": "frame",
+              "id": "t1bfLp",
+              "name": "In its square (today)",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 12,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "IVMgZ",
+                  "name": "Brand",
+                  "gap": 12,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 10,
+                      "id": "aw2xs",
+                      "name": "Logo",
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/app-icon-512.png",
+                        "mode": "cover"
+                      },
+                      "width": 34,
+                      "height": 34
+                    },
+                    {
+                      "type": "text",
+                      "id": "kGXYF",
+                      "name": "Wordmark",
+                      "fill": "$ds-ink",
+                      "content": "RexLab",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 26,
+                      "fontWeight": "800",
+                      "letterSpacing": -0.5
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "FSfPz",
+                  "name": "Caption",
+                  "fill": "$ds-ink",
+                  "content": "In its square (today)",
+                  "fontFamily": "$ds-font",
+                  "fontSize": 13,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "vYZPf",
+              "name": "Cut out (suggested)",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 12,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "BTKae",
+                  "name": "Brand",
+                  "gap": 12,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "id": "eyClD",
+                      "name": "Logo",
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/app-icon-trex.png",
+                        "mode": "contain"
+                      },
+                      "width": 42,
+                      "height": 43
+                    },
+                    {
+                      "type": "text",
+                      "id": "HDkUi",
+                      "name": "Wordmark",
+                      "fill": "$ds-ink",
+                      "content": "RexLab",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 26,
+                      "fontWeight": "800",
+                      "letterSpacing": -0.5
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "HE9Tk",
+                  "name": "Caption",
+                  "fill": "$ds-ink",
+                  "content": "Cut out (suggested)",
+                  "fontFamily": "$ds-font",
+                  "fontSize": 13,
+                  "fontWeight": "700"
+                }
+              ]
             }
           ]
         }
