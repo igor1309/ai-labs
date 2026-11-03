@@ -541814,6 +541814,4024 @@
           "height": 5
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "arLYx",
+      "x": 21000,
+      "y": 7400,
+      "name": "Home · Dig site v2 tiles · iPad 11 landscape 1180×820 · Light · whole page",
+      "theme": {
+        "mode": "light",
+        "device": "ipad"
+      },
+      "clip": true,
+      "width": 1180,
+      "height": 850,
+      "fill": {
+        "type": "gradient",
+        "gradientType": "linear",
+        "enabled": true,
+        "rotation": 180,
+        "size": {
+          "height": 1
+        },
+        "colors": [
+          {
+            "color": "$ds-sky-top",
+            "position": 0
+          },
+          {
+            "color": "$ds-sky-bottom",
+            "position": 0.5
+          }
+        ]
+      },
+      "layout": "none",
+      "children": [
+        {
+          "id": "eZTrs",
+          "type": "ref",
+          "ref": "s0Vee",
+          "name": "Sun",
+          "x": 620,
+          "y": 30,
+          "width": 320,
+          "height": 320,
+          "descendants": {
+            "c4WgiH": {
+              "width": 320,
+              "height": 320
+            },
+            "ovl4O": {
+              "x": 90,
+              "y": 90,
+              "width": 140,
+              "height": 140
+            }
+          }
+        },
+        {
+          "id": "zvEv2",
+          "type": "ref",
+          "ref": "s1Ymnh",
+          "name": "Header",
+          "x": 40,
+          "y": 36,
+          "width": 1100
+        },
+        {
+          "id": "HAjwk",
+          "type": "ref",
+          "ref": "ZpYVi",
+          "name": "Featured",
+          "x": 40,
+          "y": 100,
+          "gap": "$ds-space-20",
+          "descendants": {
+            "MKp0m": {
+              "width": 72,
+              "height": 72,
+              "cornerRadius": [
+                "$ds-radius-36",
+                "$ds-radius-36",
+                "$ds-radius-18",
+                "$ds-radius-18"
+              ]
+            },
+            "x3XOwo": {
+              "width": 36,
+              "height": 36
+            }
+          }
+        },
+        {
+          "id": "VhH6c",
+          "type": "ref",
+          "ref": "EsKu5",
+          "name": "T-Rex shadow",
+          "x": 555,
+          "y": 380,
+          "width": 220,
+          "height": 18
+        },
+        {
+          "id": "PmCDA",
+          "type": "ref",
+          "ref": "EsKu5",
+          "name": "Brachiosaurus shadow",
+          "x": 870,
+          "y": 380,
+          "width": 210,
+          "height": 18
+        },
+        {
+          "type": "rectangle",
+          "id": "C55Sq",
+          "x": 520,
+          "y": 150,
+          "name": "Tyrannosaurus",
+          "fill": {
+            "type": "image",
+            "enabled": true,
+            "url": "images/tyrannosaurus.webp",
+            "mode": "contain"
+          },
+          "width": 290,
+          "height": 240
+        },
+        {
+          "type": "rectangle",
+          "id": "XeIbb",
+          "x": 850,
+          "y": 92,
+          "name": "Brachiosaurus",
+          "fill": {
+            "type": "image",
+            "enabled": true,
+            "url": "images/brachiosaurus.webp",
+            "mode": "contain"
+          },
+          "width": 260,
+          "height": 300
+        },
+        {
+          "id": "3OFUL",
+          "type": "ref",
+          "ref": "m8Jt7",
+          "name": "Layer 1 · Sand edge",
+          "x": 0,
+          "y": 390,
+          "width": 1180,
+          "descendants": {
+            "uZToM": {
+              "width": 1180,
+              "fill": "$ds-strata-1"
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "9gfdO",
+          "x": 0,
+          "y": 410,
+          "name": "Layer 1 · Sand",
+          "width": 1180,
+          "height": 180,
+          "fill": "$ds-strata-1",
+          "gap": "$ds-space-m",
+          "padding": [
+            "$ds-space-l",
+            "$ds-space-40",
+            0,
+            "$ds-space-40"
+          ],
+          "children": [
+            {
+              "id": "hGVDE",
+              "type": "ref",
+              "ref": "L8jWq",
+              "name": "Tile · EXPLORE",
+              "width": "fill_container",
+              "descendants": {
+                "CAk7E": {
+                  "fill": "$ds-pocket-explore",
+                  "height": 112,
+                  "padding": [
+                    "$ds-space-9",
+                    "$ds-space-m",
+                    "$ds-space-3",
+                    "$ds-space-m"
+                  ]
+                },
+                "gIGvI": {
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/stegosaurus.webp",
+                    "mode": "contain"
+                  }
+                },
+                "t0wfo": {
+                  "icon": "book-open",
+                  "width": 22,
+                  "height": 22,
+                  "fill": "$ds-game-explore"
+                },
+                "bMwPQ": {
+                  "content": "EXPLORE"
+                },
+                "v6wxpm": {
+                  "x": 4,
+                  "y": -8,
+                  "width": 24,
+                  "height": 24,
+                  "padding": "$ds-space-5",
+                  "gap": 0,
+                  "cornerRadius": "$ds-radius-12",
+                  "layout": "horizontal",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                }
+              },
+              "gap": -18
+            },
+            {
+              "id": "saLMF",
+              "type": "ref",
+              "ref": "L8jWq",
+              "name": "Tile · PAIRS",
+              "width": "fill_container",
+              "descendants": {
+                "CAk7E": {
+                  "fill": "$ds-pocket-pairs",
+                  "height": 112,
+                  "padding": [
+                    "$ds-space-9",
+                    "$ds-space-m",
+                    "$ds-space-3",
+                    "$ds-space-m"
+                  ]
+                },
+                "gIGvI": {
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/pairs-home-triceratops.webp",
+                    "mode": "contain"
+                  }
+                },
+                "t0wfo": {
+                  "icon": "copy",
+                  "width": 22,
+                  "height": 22,
+                  "fill": "$ds-game-pairs"
+                },
+                "bMwPQ": {
+                  "content": "PAIRS"
+                },
+                "v6wxpm": {
+                  "x": 4,
+                  "y": -8,
+                  "width": 24,
+                  "height": 24,
+                  "padding": "$ds-space-5",
+                  "gap": 0,
+                  "cornerRadius": "$ds-radius-12",
+                  "layout": "horizontal",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                }
+              },
+              "gap": -18
+            },
+            {
+              "id": "br645",
+              "type": "ref",
+              "ref": "L8jWq",
+              "name": "Tile · BONES",
+              "width": "fill_container",
+              "descendants": {
+                "CAk7E": {
+                  "fill": "$ds-pocket-bones",
+                  "height": 112,
+                  "padding": [
+                    "$ds-space-9",
+                    "$ds-space-m",
+                    "$ds-space-3",
+                    "$ds-space-m"
+                  ]
+                },
+                "gIGvI": {
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/skeleton-brachiosaurus.webp",
+                    "mode": "contain"
+                  }
+                },
+                "t0wfo": {
+                  "icon": "bone",
+                  "width": 22,
+                  "height": 22,
+                  "fill": "$ds-game-bones"
+                },
+                "bMwPQ": {
+                  "content": "BONES"
+                },
+                "v6wxpm": {
+                  "x": 4,
+                  "y": -8,
+                  "width": 24,
+                  "height": 24,
+                  "padding": "$ds-space-5",
+                  "gap": 0,
+                  "cornerRadius": "$ds-radius-12",
+                  "layout": "horizontal",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                }
+              },
+              "gap": -18
+            },
+            {
+              "id": "cjyJX",
+              "type": "ref",
+              "ref": "L8jWq",
+              "name": "Tile · DIG",
+              "width": "fill_container",
+              "descendants": {
+                "CAk7E": {
+                  "fill": "$ds-pocket-dig",
+                  "height": 112,
+                  "padding": [
+                    "$ds-space-9",
+                    "$ds-space-m",
+                    "$ds-space-3",
+                    "$ds-space-m"
+                  ]
+                },
+                "gIGvI": {
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/home-tile-dig.webp",
+                    "mode": "contain"
+                  }
+                },
+                "t0wfo": {
+                  "icon": "brush",
+                  "width": 22,
+                  "height": 22,
+                  "fill": "$ds-game-dig"
+                },
+                "bMwPQ": {
+                  "content": "DIG"
+                },
+                "v6wxpm": {
+                  "x": 4,
+                  "y": -8,
+                  "width": 24,
+                  "height": 24,
+                  "padding": "$ds-space-5",
+                  "gap": 0,
+                  "cornerRadius": "$ds-radius-12",
+                  "layout": "horizontal",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                }
+              },
+              "gap": -18
+            },
+            {
+              "id": "c7ont",
+              "type": "ref",
+              "ref": "L8jWq",
+              "name": "Tile · SORT",
+              "width": "fill_container",
+              "descendants": {
+                "CAk7E": {
+                  "fill": "$ds-pocket-sort",
+                  "height": 112,
+                  "padding": [
+                    "$ds-space-9",
+                    "$ds-space-m",
+                    "$ds-space-3",
+                    "$ds-space-m"
+                  ]
+                },
+                "gIGvI": {
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/home-tile-sort.webp",
+                    "mode": "contain"
+                  }
+                },
+                "t0wfo": {
+                  "icon": "shapes",
+                  "width": 22,
+                  "height": 22,
+                  "fill": "$ds-game-sort"
+                },
+                "bMwPQ": {
+                  "content": "SORT"
+                },
+                "v6wxpm": {
+                  "x": 4,
+                  "y": -8,
+                  "width": 24,
+                  "height": 24,
+                  "padding": "$ds-space-5",
+                  "gap": 0,
+                  "cornerRadius": "$ds-radius-12",
+                  "layout": "horizontal",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                }
+              },
+              "gap": -18
+            },
+            {
+              "id": "SfyvF",
+              "type": "ref",
+              "ref": "L8jWq",
+              "name": "Tile · CARE",
+              "width": "fill_container",
+              "descendants": {
+                "CAk7E": {
+                  "fill": "$ds-pocket-care",
+                  "height": 112,
+                  "padding": [
+                    "$ds-space-9",
+                    "$ds-space-m",
+                    "$ds-space-3",
+                    "$ds-space-m"
+                  ]
+                },
+                "gIGvI": {
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/home-tile-care.webp",
+                    "mode": "contain"
+                  }
+                },
+                "t0wfo": {
+                  "icon": "heart",
+                  "width": 22,
+                  "height": 22,
+                  "fill": "$ds-game-care"
+                },
+                "bMwPQ": {
+                  "content": "CARE"
+                },
+                "v6wxpm": {
+                  "x": 4,
+                  "y": -8,
+                  "width": 24,
+                  "height": 24,
+                  "padding": "$ds-space-5",
+                  "gap": 0,
+                  "cornerRadius": "$ds-radius-12",
+                  "layout": "horizontal",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                }
+              },
+              "gap": -18
+            }
+          ]
+        },
+        {
+          "id": "ZNs1D",
+          "type": "ref",
+          "ref": "m8Jt7",
+          "name": "Layer 2 · Ochre edge",
+          "x": 0,
+          "y": 570,
+          "width": 1180,
+          "descendants": {
+            "uZToM": {
+              "width": 1180,
+              "fill": "$ds-strata-2"
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "9y9S8",
+          "x": 0,
+          "y": 590,
+          "name": "Layer 2 · Ochre",
+          "width": 1180,
+          "height": 180,
+          "fill": "$ds-strata-2",
+          "gap": "$ds-space-m",
+          "padding": [
+            "$ds-space-l",
+            "$ds-space-40",
+            0,
+            "$ds-space-40"
+          ],
+          "children": [
+            {
+              "id": "NDKP4",
+              "type": "ref",
+              "ref": "L8jWq",
+              "name": "Tile · DRAW",
+              "width": "fill_container",
+              "descendants": {
+                "CAk7E": {
+                  "fill": "$ds-pocket-draw",
+                  "height": 112,
+                  "padding": [
+                    "$ds-space-9",
+                    "$ds-space-m",
+                    "$ds-space-3",
+                    "$ds-space-m"
+                  ]
+                },
+                "gIGvI": {
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/home-tile-draw.webp",
+                    "mode": "contain"
+                  }
+                },
+                "t0wfo": {
+                  "icon": "pencil",
+                  "width": 22,
+                  "height": 22,
+                  "fill": "$ds-game-draw"
+                },
+                "bMwPQ": {
+                  "content": "DRAW"
+                },
+                "v6wxpm": {
+                  "x": 4,
+                  "y": -8,
+                  "width": 24,
+                  "height": 24,
+                  "padding": "$ds-space-5",
+                  "gap": 0,
+                  "cornerRadius": "$ds-radius-12",
+                  "layout": "horizontal",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                }
+              },
+              "gap": -18
+            },
+            {
+              "id": "eszqN",
+              "type": "ref",
+              "ref": "L8jWq",
+              "name": "Tile · MAZE",
+              "width": "fill_container",
+              "descendants": {
+                "CAk7E": {
+                  "fill": "$ds-pocket-maze",
+                  "height": 112,
+                  "padding": [
+                    "$ds-space-9",
+                    "$ds-space-m",
+                    "$ds-space-3",
+                    "$ds-space-m"
+                  ]
+                },
+                "gIGvI": {
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/home-tile-maze.webp",
+                    "mode": "contain"
+                  }
+                },
+                "t0wfo": {
+                  "icon": "route",
+                  "width": 22,
+                  "height": 22,
+                  "fill": "$ds-game-maze"
+                },
+                "bMwPQ": {
+                  "content": "MAZE"
+                },
+                "v6wxpm": {
+                  "x": 4,
+                  "y": -8,
+                  "width": 24,
+                  "height": 24,
+                  "padding": "$ds-space-5",
+                  "gap": 0,
+                  "cornerRadius": "$ds-radius-12",
+                  "layout": "horizontal",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                }
+              },
+              "gap": -18
+            },
+            {
+              "id": "aldE4",
+              "type": "ref",
+              "ref": "L8jWq",
+              "name": "Tile · PUZZLE",
+              "width": "fill_container",
+              "descendants": {
+                "CAk7E": {
+                  "fill": "$ds-pocket-puzzle",
+                  "height": 112,
+                  "padding": [
+                    "$ds-space-9",
+                    "$ds-space-m",
+                    "$ds-space-3",
+                    "$ds-space-m"
+                  ]
+                },
+                "gIGvI": {
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/home-tile-puzzle.webp",
+                    "mode": "contain"
+                  }
+                },
+                "t0wfo": {
+                  "icon": "puzzle",
+                  "width": 22,
+                  "height": 22,
+                  "fill": "$ds-game-puzzle"
+                },
+                "bMwPQ": {
+                  "content": "PUZZLE"
+                },
+                "v6wxpm": {
+                  "x": 4,
+                  "y": -8,
+                  "width": 24,
+                  "height": 24,
+                  "padding": "$ds-space-5",
+                  "gap": 0,
+                  "cornerRadius": "$ds-radius-12",
+                  "layout": "horizontal",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                }
+              },
+              "gap": -18
+            },
+            {
+              "id": "fp0G8",
+              "type": "ref",
+              "ref": "L8jWq",
+              "name": "Tile · TEETH",
+              "width": "fill_container",
+              "descendants": {
+                "CAk7E": {
+                  "fill": "$ds-pocket-teeth",
+                  "height": 112,
+                  "padding": [
+                    "$ds-space-9",
+                    "$ds-space-m",
+                    "$ds-space-3",
+                    "$ds-space-m"
+                  ]
+                },
+                "gIGvI": {
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/baryonyx.webp",
+                    "mode": "contain"
+                  }
+                },
+                "t0wfo": {
+                  "library": "Material Symbols Rounded",
+                  "icon": "dentistry",
+                  "width": 22,
+                  "height": 22,
+                  "fill": "$ds-game-teeth"
+                },
+                "bMwPQ": {
+                  "content": "TEETH"
+                },
+                "v6wxpm": {
+                  "enabled": true,
+                  "x": 4,
+                  "y": -8,
+                  "width": 24,
+                  "height": 24,
+                  "padding": "$ds-space-5",
+                  "gap": 0,
+                  "cornerRadius": "$ds-radius-12",
+                  "layout": "horizontal",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                }
+              },
+              "gap": -18
+            },
+            {
+              "id": "ipOdP",
+              "type": "ref",
+              "ref": "L8jWq",
+              "name": "Tile · COLOR",
+              "width": "fill_container",
+              "descendants": {
+                "CAk7E": {
+                  "fill": "$ds-pocket-color",
+                  "height": 112,
+                  "padding": [
+                    "$ds-space-9",
+                    "$ds-space-m",
+                    "$ds-space-3",
+                    "$ds-space-m"
+                  ]
+                },
+                "gIGvI": {
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/home-tile-color.webp",
+                    "mode": "contain"
+                  }
+                },
+                "t0wfo": {
+                  "icon": "palette",
+                  "width": 22,
+                  "height": 22,
+                  "fill": "$ds-game-color"
+                },
+                "bMwPQ": {
+                  "content": "COLOR"
+                },
+                "v6wxpm": {
+                  "x": 4,
+                  "y": -8,
+                  "width": 24,
+                  "height": 24,
+                  "padding": "$ds-space-5",
+                  "gap": 0,
+                  "cornerRadius": "$ds-radius-12",
+                  "layout": "horizontal",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                }
+              },
+              "gap": -18
+            },
+            {
+              "id": "dRZ2G",
+              "type": "ref",
+              "ref": "eZPLE",
+              "name": "Tile · SOON",
+              "width": "fill_container",
+              "descendants": {
+                "xEUIu": {
+                  "fill": "$ds-pocket-2",
+                  "height": 112,
+                  "padding": [
+                    "$ds-space-9",
+                    "$ds-space-m",
+                    "$ds-space-3",
+                    "$ds-space-m"
+                  ]
+                }
+              },
+              "gap": -8
+            }
+          ]
+        },
+        {
+          "id": "QFo1S",
+          "type": "ref",
+          "ref": "m8Jt7",
+          "name": "Bedrock edge",
+          "x": 0,
+          "y": 750,
+          "width": 1180,
+          "descendants": {
+            "uZToM": {
+              "width": 1180,
+              "fill": "$ds-strata-3"
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "sMKm9",
+          "x": 0,
+          "y": 770,
+          "name": "Bedrock",
+          "width": 1180,
+          "height": 80,
+          "fill": "$ds-strata-3",
+          "padding": [
+            0,
+            "$ds-space-40"
+          ],
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "id": "V7a6e",
+              "type": "ref",
+              "ref": "q065f",
+              "name": "Parent note",
+              "textGrowth": "auto",
+              "content": "Parents: progress is saved on this device. Settings are at the top of the page.",
+              "fill": "$ds-ink",
+              "opacity": 0.75
+            },
+            {
+              "id": "uVOMU",
+              "type": "ref",
+              "ref": "FKCrL",
+              "name": "Version",
+              "fill": "$ds-ink",
+              "opacity": 0.6
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "zdz6Y",
+          "x": 0,
+          "y": 0,
+          "name": "Status bar",
+          "width": 1180,
+          "height": 24,
+          "padding": [
+            "$ds-space-xs",
+            "$ds-space-xl",
+            0,
+            "$ds-space-xl"
+          ],
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "ufIxV",
+              "name": "Time",
+              "fill": "$ds-ink",
+              "content": "9:41  Mon 2 Nov",
+              "fontFamily": "Inter",
+              "fontSize": "$ds-size-13",
+              "fontWeight": "600"
+            },
+            {
+              "type": "frame",
+              "id": "aWzyl",
+              "name": "Indicators",
+              "gap": "$ds-space-6",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "EOV7l",
+                  "name": "signal",
+                  "width": 15,
+                  "height": 15,
+                  "icon": "signal",
+                  "library": "lucide",
+                  "fill": "$ds-ink"
+                },
+                {
+                  "type": "icon",
+                  "id": "M2ghz",
+                  "name": "wifi",
+                  "width": 15,
+                  "height": 15,
+                  "icon": "wifi",
+                  "library": "lucide",
+                  "fill": "$ds-ink"
+                },
+                {
+                  "type": "icon",
+                  "id": "Sp4z8",
+                  "name": "battery-full",
+                  "width": 15,
+                  "height": 15,
+                  "icon": "battery-full",
+                  "library": "lucide",
+                  "fill": "$ds-ink"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "rectangle",
+          "cornerRadius": "$ds-radius-3",
+          "id": "Q9l8s",
+          "x": 430,
+          "y": 838,
+          "name": "Home indicator",
+          "fill": "$ds-ink",
+          "width": 320,
+          "height": 5
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "3uXDl",
+      "x": 22280,
+      "y": 7400,
+      "name": "Home · Dig site v2 tiles · iPad 11 landscape 1180×820 · Dark · whole page",
+      "theme": {
+        "mode": "dark",
+        "device": "ipad"
+      },
+      "clip": true,
+      "width": 1180,
+      "height": 850,
+      "fill": {
+        "type": "gradient",
+        "gradientType": "linear",
+        "enabled": true,
+        "rotation": 180,
+        "size": {
+          "height": 1
+        },
+        "colors": [
+          {
+            "color": "$ds-sky-top",
+            "position": 0
+          },
+          {
+            "color": "$ds-sky-bottom",
+            "position": 0.5
+          }
+        ]
+      },
+      "layout": "none",
+      "children": [
+        {
+          "id": "Ph4yZ",
+          "type": "ref",
+          "ref": "s0Vee",
+          "name": "Moon",
+          "x": 620,
+          "y": 30,
+          "width": 320,
+          "height": 320,
+          "descendants": {
+            "c4WgiH": {
+              "width": 320,
+              "height": 320
+            },
+            "ovl4O": {
+              "x": 90,
+              "y": 90,
+              "width": 140,
+              "height": 140
+            }
+          }
+        },
+        {
+          "id": "yG2b7",
+          "type": "ref",
+          "ref": "s1Ymnh",
+          "name": "Header",
+          "x": 40,
+          "y": 36,
+          "width": 1100
+        },
+        {
+          "id": "Bt2Tc",
+          "type": "ref",
+          "ref": "ZpYVi",
+          "name": "Featured",
+          "x": 40,
+          "y": 100,
+          "gap": "$ds-space-20",
+          "descendants": {
+            "MKp0m": {
+              "width": 72,
+              "height": 72,
+              "cornerRadius": [
+                "$ds-radius-36",
+                "$ds-radius-36",
+                "$ds-radius-18",
+                "$ds-radius-18"
+              ]
+            },
+            "x3XOwo": {
+              "width": 36,
+              "height": 36
+            }
+          }
+        },
+        {
+          "id": "3MXJv",
+          "type": "ref",
+          "ref": "EsKu5",
+          "name": "T-Rex shadow",
+          "x": 555,
+          "y": 380,
+          "width": 220,
+          "height": 18
+        },
+        {
+          "id": "cMN2q",
+          "type": "ref",
+          "ref": "EsKu5",
+          "name": "Brachiosaurus shadow",
+          "x": 870,
+          "y": 380,
+          "width": 210,
+          "height": 18
+        },
+        {
+          "type": "rectangle",
+          "id": "Ohfer",
+          "x": 520,
+          "y": 150,
+          "name": "Tyrannosaurus",
+          "fill": {
+            "type": "image",
+            "enabled": true,
+            "url": "images/tyrannosaurus.webp",
+            "mode": "contain"
+          },
+          "width": 290,
+          "height": 240
+        },
+        {
+          "type": "rectangle",
+          "id": "tFT7U",
+          "x": 850,
+          "y": 92,
+          "name": "Brachiosaurus",
+          "fill": {
+            "type": "image",
+            "enabled": true,
+            "url": "images/brachiosaurus.webp",
+            "mode": "contain"
+          },
+          "width": 260,
+          "height": 300
+        },
+        {
+          "id": "iXSuu",
+          "type": "ref",
+          "ref": "m8Jt7",
+          "name": "Layer 1 · Sand edge",
+          "x": 0,
+          "y": 390,
+          "width": 1180,
+          "descendants": {
+            "uZToM": {
+              "width": 1180,
+              "fill": "$ds-strata-1"
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "5wzl5",
+          "x": 0,
+          "y": 410,
+          "name": "Layer 1 · Sand",
+          "width": 1180,
+          "height": 180,
+          "fill": "$ds-strata-1",
+          "gap": "$ds-space-m",
+          "padding": [
+            "$ds-space-l",
+            "$ds-space-40",
+            0,
+            "$ds-space-40"
+          ],
+          "children": [
+            {
+              "id": "jWoE3",
+              "type": "ref",
+              "ref": "L8jWq",
+              "name": "Tile · EXPLORE",
+              "width": "fill_container",
+              "descendants": {
+                "CAk7E": {
+                  "fill": "$ds-pocket-explore",
+                  "height": 112,
+                  "padding": [
+                    "$ds-space-9",
+                    "$ds-space-m",
+                    "$ds-space-3",
+                    "$ds-space-m"
+                  ]
+                },
+                "gIGvI": {
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/stegosaurus.webp",
+                    "mode": "contain"
+                  }
+                },
+                "t0wfo": {
+                  "icon": "book-open",
+                  "width": 22,
+                  "height": 22,
+                  "fill": "$ds-game-explore"
+                },
+                "bMwPQ": {
+                  "content": "EXPLORE"
+                },
+                "v6wxpm": {
+                  "x": 4,
+                  "y": -8,
+                  "width": 24,
+                  "height": 24,
+                  "padding": "$ds-space-5",
+                  "gap": 0,
+                  "cornerRadius": "$ds-radius-12",
+                  "layout": "horizontal",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                }
+              },
+              "gap": -18
+            },
+            {
+              "id": "Unko8",
+              "type": "ref",
+              "ref": "L8jWq",
+              "name": "Tile · PAIRS",
+              "width": "fill_container",
+              "descendants": {
+                "CAk7E": {
+                  "fill": "$ds-pocket-pairs",
+                  "height": 112,
+                  "padding": [
+                    "$ds-space-9",
+                    "$ds-space-m",
+                    "$ds-space-3",
+                    "$ds-space-m"
+                  ]
+                },
+                "gIGvI": {
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/pairs-home-triceratops.webp",
+                    "mode": "contain"
+                  }
+                },
+                "t0wfo": {
+                  "icon": "copy",
+                  "width": 22,
+                  "height": 22,
+                  "fill": "$ds-game-pairs"
+                },
+                "bMwPQ": {
+                  "content": "PAIRS"
+                },
+                "v6wxpm": {
+                  "x": 4,
+                  "y": -8,
+                  "width": 24,
+                  "height": 24,
+                  "padding": "$ds-space-5",
+                  "gap": 0,
+                  "cornerRadius": "$ds-radius-12",
+                  "layout": "horizontal",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                }
+              },
+              "gap": -18
+            },
+            {
+              "id": "CN4pE",
+              "type": "ref",
+              "ref": "L8jWq",
+              "name": "Tile · BONES",
+              "width": "fill_container",
+              "descendants": {
+                "CAk7E": {
+                  "fill": "$ds-pocket-bones",
+                  "height": 112,
+                  "padding": [
+                    "$ds-space-9",
+                    "$ds-space-m",
+                    "$ds-space-3",
+                    "$ds-space-m"
+                  ]
+                },
+                "gIGvI": {
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/skeleton-brachiosaurus.webp",
+                    "mode": "contain"
+                  }
+                },
+                "t0wfo": {
+                  "icon": "bone",
+                  "width": 22,
+                  "height": 22,
+                  "fill": "$ds-game-bones"
+                },
+                "bMwPQ": {
+                  "content": "BONES"
+                },
+                "v6wxpm": {
+                  "x": 4,
+                  "y": -8,
+                  "width": 24,
+                  "height": 24,
+                  "padding": "$ds-space-5",
+                  "gap": 0,
+                  "cornerRadius": "$ds-radius-12",
+                  "layout": "horizontal",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                }
+              },
+              "gap": -18
+            },
+            {
+              "id": "lRGKA",
+              "type": "ref",
+              "ref": "L8jWq",
+              "name": "Tile · DIG",
+              "width": "fill_container",
+              "descendants": {
+                "CAk7E": {
+                  "fill": "$ds-pocket-dig",
+                  "height": 112,
+                  "padding": [
+                    "$ds-space-9",
+                    "$ds-space-m",
+                    "$ds-space-3",
+                    "$ds-space-m"
+                  ]
+                },
+                "gIGvI": {
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/home-tile-dig.webp",
+                    "mode": "contain"
+                  }
+                },
+                "t0wfo": {
+                  "icon": "brush",
+                  "width": 22,
+                  "height": 22,
+                  "fill": "$ds-game-dig"
+                },
+                "bMwPQ": {
+                  "content": "DIG"
+                },
+                "v6wxpm": {
+                  "x": 4,
+                  "y": -8,
+                  "width": 24,
+                  "height": 24,
+                  "padding": "$ds-space-5",
+                  "gap": 0,
+                  "cornerRadius": "$ds-radius-12",
+                  "layout": "horizontal",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                }
+              },
+              "gap": -18
+            },
+            {
+              "id": "YVRVS",
+              "type": "ref",
+              "ref": "L8jWq",
+              "name": "Tile · SORT",
+              "width": "fill_container",
+              "descendants": {
+                "CAk7E": {
+                  "fill": "$ds-pocket-sort",
+                  "height": 112,
+                  "padding": [
+                    "$ds-space-9",
+                    "$ds-space-m",
+                    "$ds-space-3",
+                    "$ds-space-m"
+                  ]
+                },
+                "gIGvI": {
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/home-tile-sort.webp",
+                    "mode": "contain"
+                  }
+                },
+                "t0wfo": {
+                  "icon": "shapes",
+                  "width": 22,
+                  "height": 22,
+                  "fill": "$ds-game-sort"
+                },
+                "bMwPQ": {
+                  "content": "SORT"
+                },
+                "v6wxpm": {
+                  "x": 4,
+                  "y": -8,
+                  "width": 24,
+                  "height": 24,
+                  "padding": "$ds-space-5",
+                  "gap": 0,
+                  "cornerRadius": "$ds-radius-12",
+                  "layout": "horizontal",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                }
+              },
+              "gap": -18
+            },
+            {
+              "id": "s1mBY",
+              "type": "ref",
+              "ref": "L8jWq",
+              "name": "Tile · CARE",
+              "width": "fill_container",
+              "descendants": {
+                "CAk7E": {
+                  "fill": "$ds-pocket-care",
+                  "height": 112,
+                  "padding": [
+                    "$ds-space-9",
+                    "$ds-space-m",
+                    "$ds-space-3",
+                    "$ds-space-m"
+                  ]
+                },
+                "gIGvI": {
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/home-tile-care.webp",
+                    "mode": "contain"
+                  }
+                },
+                "t0wfo": {
+                  "icon": "heart",
+                  "width": 22,
+                  "height": 22,
+                  "fill": "$ds-game-care"
+                },
+                "bMwPQ": {
+                  "content": "CARE"
+                },
+                "v6wxpm": {
+                  "x": 4,
+                  "y": -8,
+                  "width": 24,
+                  "height": 24,
+                  "padding": "$ds-space-5",
+                  "gap": 0,
+                  "cornerRadius": "$ds-radius-12",
+                  "layout": "horizontal",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                }
+              },
+              "gap": -18
+            }
+          ]
+        },
+        {
+          "id": "2ycK7",
+          "type": "ref",
+          "ref": "m8Jt7",
+          "name": "Layer 2 · Ochre edge",
+          "x": 0,
+          "y": 570,
+          "width": 1180,
+          "descendants": {
+            "uZToM": {
+              "width": 1180,
+              "fill": "$ds-strata-2"
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "qmFz7",
+          "x": 0,
+          "y": 590,
+          "name": "Layer 2 · Ochre",
+          "width": 1180,
+          "height": 180,
+          "fill": "$ds-strata-2",
+          "gap": "$ds-space-m",
+          "padding": [
+            "$ds-space-l",
+            "$ds-space-40",
+            0,
+            "$ds-space-40"
+          ],
+          "children": [
+            {
+              "id": "0279V",
+              "type": "ref",
+              "ref": "L8jWq",
+              "name": "Tile · DRAW",
+              "width": "fill_container",
+              "descendants": {
+                "CAk7E": {
+                  "fill": "$ds-pocket-draw",
+                  "height": 112,
+                  "padding": [
+                    "$ds-space-9",
+                    "$ds-space-m",
+                    "$ds-space-3",
+                    "$ds-space-m"
+                  ]
+                },
+                "gIGvI": {
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/home-tile-draw.webp",
+                    "mode": "contain"
+                  }
+                },
+                "t0wfo": {
+                  "icon": "pencil",
+                  "width": 22,
+                  "height": 22,
+                  "fill": "$ds-game-draw"
+                },
+                "bMwPQ": {
+                  "content": "DRAW"
+                },
+                "v6wxpm": {
+                  "x": 4,
+                  "y": -8,
+                  "width": 24,
+                  "height": 24,
+                  "padding": "$ds-space-5",
+                  "gap": 0,
+                  "cornerRadius": "$ds-radius-12",
+                  "layout": "horizontal",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                }
+              },
+              "gap": -18
+            },
+            {
+              "id": "7kkX1",
+              "type": "ref",
+              "ref": "L8jWq",
+              "name": "Tile · MAZE",
+              "width": "fill_container",
+              "descendants": {
+                "CAk7E": {
+                  "fill": "$ds-pocket-maze",
+                  "height": 112,
+                  "padding": [
+                    "$ds-space-9",
+                    "$ds-space-m",
+                    "$ds-space-3",
+                    "$ds-space-m"
+                  ]
+                },
+                "gIGvI": {
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/home-tile-maze.webp",
+                    "mode": "contain"
+                  }
+                },
+                "t0wfo": {
+                  "icon": "route",
+                  "width": 22,
+                  "height": 22,
+                  "fill": "$ds-game-maze"
+                },
+                "bMwPQ": {
+                  "content": "MAZE"
+                },
+                "v6wxpm": {
+                  "x": 4,
+                  "y": -8,
+                  "width": 24,
+                  "height": 24,
+                  "padding": "$ds-space-5",
+                  "gap": 0,
+                  "cornerRadius": "$ds-radius-12",
+                  "layout": "horizontal",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                }
+              },
+              "gap": -18
+            },
+            {
+              "id": "Gq4rM",
+              "type": "ref",
+              "ref": "L8jWq",
+              "name": "Tile · PUZZLE",
+              "width": "fill_container",
+              "descendants": {
+                "CAk7E": {
+                  "fill": "$ds-pocket-puzzle",
+                  "height": 112,
+                  "padding": [
+                    "$ds-space-9",
+                    "$ds-space-m",
+                    "$ds-space-3",
+                    "$ds-space-m"
+                  ]
+                },
+                "gIGvI": {
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/home-tile-puzzle.webp",
+                    "mode": "contain"
+                  }
+                },
+                "t0wfo": {
+                  "icon": "puzzle",
+                  "width": 22,
+                  "height": 22,
+                  "fill": "$ds-game-puzzle"
+                },
+                "bMwPQ": {
+                  "content": "PUZZLE"
+                },
+                "v6wxpm": {
+                  "x": 4,
+                  "y": -8,
+                  "width": 24,
+                  "height": 24,
+                  "padding": "$ds-space-5",
+                  "gap": 0,
+                  "cornerRadius": "$ds-radius-12",
+                  "layout": "horizontal",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                }
+              },
+              "gap": -18
+            },
+            {
+              "id": "qTHOG",
+              "type": "ref",
+              "ref": "L8jWq",
+              "name": "Tile · TEETH",
+              "width": "fill_container",
+              "descendants": {
+                "CAk7E": {
+                  "fill": "$ds-pocket-teeth",
+                  "height": 112,
+                  "padding": [
+                    "$ds-space-9",
+                    "$ds-space-m",
+                    "$ds-space-3",
+                    "$ds-space-m"
+                  ]
+                },
+                "gIGvI": {
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/baryonyx.webp",
+                    "mode": "contain"
+                  }
+                },
+                "t0wfo": {
+                  "library": "Material Symbols Rounded",
+                  "icon": "dentistry",
+                  "width": 22,
+                  "height": 22,
+                  "fill": "$ds-game-teeth"
+                },
+                "bMwPQ": {
+                  "content": "TEETH"
+                },
+                "v6wxpm": {
+                  "enabled": true,
+                  "x": 4,
+                  "y": -8,
+                  "width": 24,
+                  "height": 24,
+                  "padding": "$ds-space-5",
+                  "gap": 0,
+                  "cornerRadius": "$ds-radius-12",
+                  "layout": "horizontal",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                }
+              },
+              "gap": -18
+            },
+            {
+              "id": "VKGnW",
+              "type": "ref",
+              "ref": "L8jWq",
+              "name": "Tile · COLOR",
+              "width": "fill_container",
+              "descendants": {
+                "CAk7E": {
+                  "fill": "$ds-pocket-color",
+                  "height": 112,
+                  "padding": [
+                    "$ds-space-9",
+                    "$ds-space-m",
+                    "$ds-space-3",
+                    "$ds-space-m"
+                  ]
+                },
+                "gIGvI": {
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/home-tile-color.webp",
+                    "mode": "contain"
+                  }
+                },
+                "t0wfo": {
+                  "icon": "palette",
+                  "width": 22,
+                  "height": 22,
+                  "fill": "$ds-game-color"
+                },
+                "bMwPQ": {
+                  "content": "COLOR"
+                },
+                "v6wxpm": {
+                  "x": 4,
+                  "y": -8,
+                  "width": 24,
+                  "height": 24,
+                  "padding": "$ds-space-5",
+                  "gap": 0,
+                  "cornerRadius": "$ds-radius-12",
+                  "layout": "horizontal",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                }
+              },
+              "gap": -18
+            },
+            {
+              "id": "be3Oy",
+              "type": "ref",
+              "ref": "eZPLE",
+              "name": "Tile · SOON",
+              "width": "fill_container",
+              "descendants": {
+                "xEUIu": {
+                  "fill": "$ds-pocket-2",
+                  "height": 112,
+                  "padding": [
+                    "$ds-space-9",
+                    "$ds-space-m",
+                    "$ds-space-3",
+                    "$ds-space-m"
+                  ]
+                },
+                "Qy5Bx": {
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/silhouette-dark-brachiosaurus.webp",
+                    "mode": "contain"
+                  }
+                }
+              },
+              "gap": -8
+            }
+          ]
+        },
+        {
+          "id": "jgQku",
+          "type": "ref",
+          "ref": "m8Jt7",
+          "name": "Bedrock edge",
+          "x": 0,
+          "y": 750,
+          "width": 1180,
+          "descendants": {
+            "uZToM": {
+              "width": 1180,
+              "fill": "$ds-strata-3"
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "QZvLO",
+          "x": 0,
+          "y": 770,
+          "name": "Bedrock",
+          "width": 1180,
+          "height": 80,
+          "fill": "$ds-strata-3",
+          "padding": [
+            0,
+            "$ds-space-40"
+          ],
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "id": "FrtW5",
+              "type": "ref",
+              "ref": "q065f",
+              "name": "Parent note",
+              "textGrowth": "auto",
+              "content": "Parents: progress is saved on this device. Settings are at the top of the page.",
+              "fill": "$ds-ink",
+              "opacity": 0.75
+            },
+            {
+              "id": "YfvwR",
+              "type": "ref",
+              "ref": "FKCrL",
+              "name": "Version",
+              "fill": "$ds-ink",
+              "opacity": 0.6
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "ZQ0n7",
+          "x": 0,
+          "y": 0,
+          "name": "Status bar",
+          "width": 1180,
+          "height": 24,
+          "padding": [
+            "$ds-space-xs",
+            "$ds-space-xl",
+            0,
+            "$ds-space-xl"
+          ],
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "sZ6BS",
+              "name": "Time",
+              "fill": "$ds-ink",
+              "content": "9:41  Mon 2 Nov",
+              "fontFamily": "Inter",
+              "fontSize": "$ds-size-13",
+              "fontWeight": "600"
+            },
+            {
+              "type": "frame",
+              "id": "G4Dmn",
+              "name": "Indicators",
+              "gap": "$ds-space-6",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "1feLg",
+                  "name": "signal",
+                  "width": 15,
+                  "height": 15,
+                  "icon": "signal",
+                  "library": "lucide",
+                  "fill": "$ds-ink"
+                },
+                {
+                  "type": "icon",
+                  "id": "iZ4LR",
+                  "name": "wifi",
+                  "width": 15,
+                  "height": 15,
+                  "icon": "wifi",
+                  "library": "lucide",
+                  "fill": "$ds-ink"
+                },
+                {
+                  "type": "icon",
+                  "id": "0kkSQ",
+                  "name": "battery-full",
+                  "width": 15,
+                  "height": 15,
+                  "icon": "battery-full",
+                  "library": "lucide",
+                  "fill": "$ds-ink"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "rectangle",
+          "cornerRadius": "$ds-radius-3",
+          "id": "aNiV9",
+          "x": 430,
+          "y": 838,
+          "name": "Home indicator",
+          "fill": "$ds-ink",
+          "width": 320,
+          "height": 5
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "LMsWJ",
+      "x": 23560,
+      "y": 7400,
+      "name": "Home · Dig site v2 tiles · iPhone 15 Pro portrait 393×852 · Light · whole page",
+      "theme": {
+        "mode": "light",
+        "device": "phone"
+      },
+      "clip": true,
+      "width": 393,
+      "height": 1276,
+      "fill": {
+        "type": "gradient",
+        "gradientType": "linear",
+        "enabled": true,
+        "rotation": 180,
+        "size": {
+          "height": 1
+        },
+        "colors": [
+          {
+            "color": "$ds-sky-top",
+            "position": 0
+          },
+          {
+            "color": "$ds-sky-bottom",
+            "position": 0.4
+          }
+        ]
+      },
+      "layout": "none",
+      "children": [
+        {
+          "id": "fEXoS",
+          "type": "ref",
+          "ref": "s0Vee",
+          "name": "Sun",
+          "x": 190,
+          "y": 236,
+          "width": 240,
+          "height": 240,
+          "descendants": {
+            "c4WgiH": {
+              "width": 240,
+              "height": 240
+            },
+            "ovl4O": {
+              "x": 70,
+              "y": 70,
+              "width": 100,
+              "height": 100
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "syHjC",
+          "x": 0,
+          "y": 0,
+          "name": "Status bar",
+          "width": 393,
+          "height": 54,
+          "padding": [
+            "$ds-space-18",
+            "$ds-space-2xl",
+            0,
+            "$ds-space-40"
+          ],
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "xXpTy",
+              "name": "Time",
+              "fill": "$ds-ink",
+              "content": "9:41",
+              "fontFamily": "Inter",
+              "fontSize": "$ds-size-17",
+              "fontWeight": "600"
+            },
+            {
+              "type": "frame",
+              "id": "PuZBw",
+              "name": "Indicators",
+              "gap": "$ds-space-6",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "VdtDC",
+                  "name": "signal",
+                  "width": 18,
+                  "height": 18,
+                  "icon": "signal",
+                  "library": "lucide",
+                  "fill": "$ds-ink"
+                },
+                {
+                  "type": "icon",
+                  "id": "zFN4v",
+                  "name": "wifi",
+                  "width": 18,
+                  "height": 18,
+                  "icon": "wifi",
+                  "library": "lucide",
+                  "fill": "$ds-ink"
+                },
+                {
+                  "type": "icon",
+                  "id": "BLCSY",
+                  "name": "battery-full",
+                  "width": 18,
+                  "height": 18,
+                  "icon": "battery-full",
+                  "library": "lucide",
+                  "fill": "$ds-ink"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "k9xrd",
+          "type": "ref",
+          "ref": "s1Ymnh",
+          "name": "Header",
+          "x": 20,
+          "y": 62,
+          "width": 353,
+          "descendants": {
+            "uLHwl": {
+              "width": 35,
+              "height": 36
+            },
+            "zZLHv": {
+              "fontSize": "$ds-size-22"
+            },
+            "aEYal": {
+              "gap": "$ds-space-s"
+            },
+            "uEZBH": {
+              "padding": "$ds-space-11"
+            },
+            "uEZBH/V67ofj": {
+              "enabled": false
+            },
+            "Vf9b3": {
+              "width": 44,
+              "height": 44
+            },
+            "a0TFjE": {
+              "width": 44,
+              "height": 44
+            },
+            "a0TFjE/Y1YWBe": {
+              "width": 20,
+              "height": 20
+            },
+            "t3ZWSa": {
+              "enabled": false
+            }
+          }
+        },
+        {
+          "id": "84nT7",
+          "type": "ref",
+          "ref": "ZpYVi",
+          "name": "Featured",
+          "x": 20,
+          "y": 126,
+          "descendants": {
+            "SoABT": {
+              "gap": "$ds-space-14"
+            },
+            "MKp0m": {
+              "width": 64,
+              "height": 64,
+              "cornerRadius": [
+                "$ds-radius-32",
+                "$ds-radius-32",
+                "$ds-radius-16",
+                "$ds-radius-16"
+              ]
+            },
+            "x3XOwo": {
+              "width": 32,
+              "height": 32
+            },
+            "xpUZe/h8hp2i": {
+              "width": 24,
+              "height": 24
+            },
+            "R00ORG/Lw9AV": {
+              "width": 18,
+              "height": 18
+            }
+          }
+        },
+        {
+          "id": "V9kXq",
+          "type": "ref",
+          "ref": "EsKu5",
+          "name": "T-Rex shadow",
+          "x": 24,
+          "y": 448,
+          "width": 160,
+          "height": 16
+        },
+        {
+          "id": "4zP7R",
+          "type": "ref",
+          "ref": "EsKu5",
+          "name": "Brachiosaurus shadow",
+          "x": 220,
+          "y": 448,
+          "width": 150,
+          "height": 16
+        },
+        {
+          "type": "rectangle",
+          "id": "hcMDM",
+          "x": 4,
+          "y": 316,
+          "name": "Tyrannosaurus",
+          "fill": {
+            "type": "image",
+            "enabled": true,
+            "url": "images/tyrannosaurus.webp",
+            "mode": "contain"
+          },
+          "width": 200,
+          "height": 140
+        },
+        {
+          "type": "rectangle",
+          "id": "FGFwD",
+          "x": 206,
+          "y": 312,
+          "name": "Brachiosaurus",
+          "fill": {
+            "type": "image",
+            "enabled": true,
+            "url": "images/brachiosaurus.webp",
+            "mode": "contain"
+          },
+          "width": 176,
+          "height": 144
+        },
+        {
+          "id": "7sXZ4",
+          "type": "ref",
+          "ref": "m8Jt7",
+          "name": "Layer 1 · Sand edge",
+          "y": 458,
+          "x": 0,
+          "width": 393,
+          "height": 24,
+          "descendants": {
+            "uZToM": {
+              "fill": "$ds-strata-1",
+              "width": 393,
+              "height": 24,
+              "viewBox": [
+                0,
+                0,
+                393,
+                24
+              ],
+              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z"
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "mcSac",
+          "x": 0,
+          "y": 474,
+          "name": "Layer 1 · Sand",
+          "width": 393,
+          "fill": "$ds-strata-1",
+          "layout": "vertical",
+          "padding": [
+            "$ds-space-l",
+            "$ds-space-20",
+            "$ds-space-xl",
+            "$ds-space-20"
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "v5rDE",
+              "name": "Row",
+              "width": "fill_container",
+              "gap": "$ds-btn-gap",
+              "justifyContent": "center",
+              "children": [
+                {
+                  "id": "tB6Kz",
+                  "type": "ref",
+                  "ref": "L8jWq",
+                  "name": "Tile · EXPLORE",
+                  "width": "fill_container",
+                  "descendants": {
+                    "CAk7E": {
+                      "fill": "$ds-pocket-explore",
+                      "height": 104,
+                      "padding": [
+                        "$ds-space-s",
+                        "$ds-space-s",
+                        "$ds-space-2",
+                        "$ds-space-s"
+                      ]
+                    },
+                    "gIGvI": {
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/stegosaurus.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    "t0wfo": {
+                      "icon": "book-open",
+                      "width": 22,
+                      "height": 22,
+                      "fill": "$ds-game-explore"
+                    },
+                    "bMwPQ": {
+                      "content": "EXPLORE"
+                    },
+                    "v6wxpm": {
+                      "x": 4,
+                      "y": -8,
+                      "width": 24,
+                      "height": 24,
+                      "padding": "$ds-space-5",
+                      "gap": 0,
+                      "cornerRadius": "$ds-radius-12",
+                      "layout": "horizontal",
+                      "justifyContent": "center",
+                      "alignItems": "center"
+                    }
+                  },
+                  "gap": -18
+                },
+                {
+                  "id": "TG52F",
+                  "type": "ref",
+                  "ref": "L8jWq",
+                  "name": "Tile · PAIRS",
+                  "width": "fill_container",
+                  "descendants": {
+                    "CAk7E": {
+                      "fill": "$ds-pocket-pairs",
+                      "height": 104,
+                      "padding": [
+                        "$ds-space-s",
+                        "$ds-space-s",
+                        "$ds-space-2",
+                        "$ds-space-s"
+                      ]
+                    },
+                    "gIGvI": {
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/pairs-home-triceratops.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    "t0wfo": {
+                      "icon": "copy",
+                      "width": 22,
+                      "height": 22,
+                      "fill": "$ds-game-pairs"
+                    },
+                    "bMwPQ": {
+                      "content": "PAIRS"
+                    },
+                    "v6wxpm": {
+                      "x": 4,
+                      "y": -8,
+                      "width": 24,
+                      "height": 24,
+                      "padding": "$ds-space-5",
+                      "gap": 0,
+                      "cornerRadius": "$ds-radius-12",
+                      "layout": "horizontal",
+                      "justifyContent": "center",
+                      "alignItems": "center"
+                    }
+                  },
+                  "gap": -18
+                },
+                {
+                  "id": "ZUe4c",
+                  "type": "ref",
+                  "ref": "L8jWq",
+                  "name": "Tile · BONES",
+                  "width": "fill_container",
+                  "descendants": {
+                    "CAk7E": {
+                      "fill": "$ds-pocket-bones",
+                      "height": 104,
+                      "padding": [
+                        "$ds-space-s",
+                        "$ds-space-s",
+                        "$ds-space-2",
+                        "$ds-space-s"
+                      ]
+                    },
+                    "gIGvI": {
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/skeleton-brachiosaurus.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    "t0wfo": {
+                      "icon": "bone",
+                      "width": 22,
+                      "height": 22,
+                      "fill": "$ds-game-bones"
+                    },
+                    "bMwPQ": {
+                      "content": "BONES"
+                    },
+                    "v6wxpm": {
+                      "x": 4,
+                      "y": -8,
+                      "width": 24,
+                      "height": 24,
+                      "padding": "$ds-space-5",
+                      "gap": 0,
+                      "cornerRadius": "$ds-radius-12",
+                      "layout": "horizontal",
+                      "justifyContent": "center",
+                      "alignItems": "center"
+                    }
+                  },
+                  "gap": -18
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "crc90",
+          "type": "ref",
+          "ref": "m8Jt7",
+          "name": "Layer 2 · Ochre edge",
+          "y": 630,
+          "x": 0,
+          "width": 393,
+          "height": 24,
+          "descendants": {
+            "uZToM": {
+              "fill": "$ds-strata-2",
+              "width": 393,
+              "height": 24,
+              "viewBox": [
+                0,
+                0,
+                393,
+                24
+              ],
+              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z"
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "7exBc",
+          "x": 0,
+          "y": 646,
+          "name": "Layer 2 · Ochre",
+          "width": 393,
+          "fill": "$ds-strata-2",
+          "layout": "vertical",
+          "padding": [
+            "$ds-space-l",
+            "$ds-space-20",
+            "$ds-space-xl",
+            "$ds-space-20"
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "hr7cR",
+              "name": "Row",
+              "width": "fill_container",
+              "gap": "$ds-btn-gap",
+              "justifyContent": "center",
+              "children": [
+                {
+                  "id": "ylmhZ",
+                  "type": "ref",
+                  "ref": "L8jWq",
+                  "name": "Tile · DIG",
+                  "width": "fill_container",
+                  "descendants": {
+                    "CAk7E": {
+                      "fill": "$ds-pocket-dig",
+                      "height": 104,
+                      "padding": [
+                        "$ds-space-s",
+                        "$ds-space-s",
+                        "$ds-space-2",
+                        "$ds-space-s"
+                      ]
+                    },
+                    "gIGvI": {
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/home-tile-dig.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    "t0wfo": {
+                      "icon": "brush",
+                      "width": 22,
+                      "height": 22,
+                      "fill": "$ds-game-dig"
+                    },
+                    "bMwPQ": {
+                      "content": "DIG"
+                    },
+                    "v6wxpm": {
+                      "x": 4,
+                      "y": -8,
+                      "width": 24,
+                      "height": 24,
+                      "padding": "$ds-space-5",
+                      "gap": 0,
+                      "cornerRadius": "$ds-radius-12",
+                      "layout": "horizontal",
+                      "justifyContent": "center",
+                      "alignItems": "center"
+                    }
+                  },
+                  "gap": -18
+                },
+                {
+                  "id": "iWNXz",
+                  "type": "ref",
+                  "ref": "L8jWq",
+                  "name": "Tile · SORT",
+                  "width": "fill_container",
+                  "descendants": {
+                    "CAk7E": {
+                      "fill": "$ds-pocket-sort",
+                      "height": 104,
+                      "padding": [
+                        "$ds-space-s",
+                        "$ds-space-s",
+                        "$ds-space-2",
+                        "$ds-space-s"
+                      ]
+                    },
+                    "gIGvI": {
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/home-tile-sort.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    "t0wfo": {
+                      "icon": "shapes",
+                      "width": 22,
+                      "height": 22,
+                      "fill": "$ds-game-sort"
+                    },
+                    "bMwPQ": {
+                      "content": "SORT"
+                    },
+                    "v6wxpm": {
+                      "x": 4,
+                      "y": -8,
+                      "width": 24,
+                      "height": 24,
+                      "padding": "$ds-space-5",
+                      "gap": 0,
+                      "cornerRadius": "$ds-radius-12",
+                      "layout": "horizontal",
+                      "justifyContent": "center",
+                      "alignItems": "center"
+                    }
+                  },
+                  "gap": -18
+                },
+                {
+                  "id": "wOo5T",
+                  "type": "ref",
+                  "ref": "L8jWq",
+                  "name": "Tile · CARE",
+                  "width": "fill_container",
+                  "descendants": {
+                    "CAk7E": {
+                      "fill": "$ds-pocket-care",
+                      "height": 104,
+                      "padding": [
+                        "$ds-space-s",
+                        "$ds-space-s",
+                        "$ds-space-2",
+                        "$ds-space-s"
+                      ]
+                    },
+                    "gIGvI": {
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/home-tile-care.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    "t0wfo": {
+                      "icon": "heart",
+                      "width": 22,
+                      "height": 22,
+                      "fill": "$ds-game-care"
+                    },
+                    "bMwPQ": {
+                      "content": "CARE"
+                    },
+                    "v6wxpm": {
+                      "x": 4,
+                      "y": -8,
+                      "width": 24,
+                      "height": 24,
+                      "padding": "$ds-space-5",
+                      "gap": 0,
+                      "cornerRadius": "$ds-radius-12",
+                      "layout": "horizontal",
+                      "justifyContent": "center",
+                      "alignItems": "center"
+                    }
+                  },
+                  "gap": -18
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "k6zvV",
+          "type": "ref",
+          "ref": "m8Jt7",
+          "name": "Layer 3 · Sand edge",
+          "y": 802,
+          "x": 0,
+          "width": 393,
+          "height": 24,
+          "descendants": {
+            "uZToM": {
+              "fill": "$ds-strata-1",
+              "width": 393,
+              "height": 24,
+              "viewBox": [
+                0,
+                0,
+                393,
+                24
+              ],
+              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z"
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "cH5pE",
+          "x": 0,
+          "y": 818,
+          "name": "Layer 3 · Sand",
+          "width": 393,
+          "fill": "$ds-strata-1",
+          "layout": "vertical",
+          "padding": [
+            "$ds-space-l",
+            "$ds-space-20",
+            "$ds-space-xl",
+            "$ds-space-20"
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "DMpPI",
+              "name": "Row",
+              "width": "fill_container",
+              "gap": "$ds-btn-gap",
+              "justifyContent": "center",
+              "children": [
+                {
+                  "id": "Qp7OI",
+                  "type": "ref",
+                  "ref": "L8jWq",
+                  "name": "Tile · DRAW",
+                  "width": "fill_container",
+                  "descendants": {
+                    "CAk7E": {
+                      "fill": "$ds-pocket-draw",
+                      "height": 104,
+                      "padding": [
+                        "$ds-space-s",
+                        "$ds-space-s",
+                        "$ds-space-2",
+                        "$ds-space-s"
+                      ]
+                    },
+                    "gIGvI": {
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/home-tile-draw.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    "t0wfo": {
+                      "icon": "pencil",
+                      "width": 22,
+                      "height": 22,
+                      "fill": "$ds-game-draw"
+                    },
+                    "bMwPQ": {
+                      "content": "DRAW"
+                    },
+                    "v6wxpm": {
+                      "x": 4,
+                      "y": -8,
+                      "width": 24,
+                      "height": 24,
+                      "padding": "$ds-space-5",
+                      "gap": 0,
+                      "cornerRadius": "$ds-radius-12",
+                      "layout": "horizontal",
+                      "justifyContent": "center",
+                      "alignItems": "center"
+                    }
+                  },
+                  "gap": -18
+                },
+                {
+                  "id": "CJnHb",
+                  "type": "ref",
+                  "ref": "L8jWq",
+                  "name": "Tile · MAZE",
+                  "width": "fill_container",
+                  "descendants": {
+                    "CAk7E": {
+                      "fill": "$ds-pocket-maze",
+                      "height": 104,
+                      "padding": [
+                        "$ds-space-s",
+                        "$ds-space-s",
+                        "$ds-space-2",
+                        "$ds-space-s"
+                      ]
+                    },
+                    "gIGvI": {
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/home-tile-maze.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    "t0wfo": {
+                      "icon": "route",
+                      "width": 22,
+                      "height": 22,
+                      "fill": "$ds-game-maze"
+                    },
+                    "bMwPQ": {
+                      "content": "MAZE"
+                    },
+                    "v6wxpm": {
+                      "x": 4,
+                      "y": -8,
+                      "width": 24,
+                      "height": 24,
+                      "padding": "$ds-space-5",
+                      "gap": 0,
+                      "cornerRadius": "$ds-radius-12",
+                      "layout": "horizontal",
+                      "justifyContent": "center",
+                      "alignItems": "center"
+                    }
+                  },
+                  "gap": -18
+                },
+                {
+                  "id": "4JChY",
+                  "type": "ref",
+                  "ref": "L8jWq",
+                  "name": "Tile · PUZZLE",
+                  "width": "fill_container",
+                  "descendants": {
+                    "CAk7E": {
+                      "fill": "$ds-pocket-puzzle",
+                      "height": 104,
+                      "padding": [
+                        "$ds-space-s",
+                        "$ds-space-s",
+                        "$ds-space-2",
+                        "$ds-space-s"
+                      ]
+                    },
+                    "gIGvI": {
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/home-tile-puzzle.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    "t0wfo": {
+                      "icon": "puzzle",
+                      "width": 22,
+                      "height": 22,
+                      "fill": "$ds-game-puzzle"
+                    },
+                    "bMwPQ": {
+                      "content": "PUZZLE"
+                    },
+                    "v6wxpm": {
+                      "x": 4,
+                      "y": -8,
+                      "width": 24,
+                      "height": 24,
+                      "padding": "$ds-space-5",
+                      "gap": 0,
+                      "cornerRadius": "$ds-radius-12",
+                      "layout": "horizontal",
+                      "justifyContent": "center",
+                      "alignItems": "center"
+                    }
+                  },
+                  "gap": -18
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "h46HP",
+          "type": "ref",
+          "ref": "m8Jt7",
+          "name": "Layer 4 · Ochre edge",
+          "y": 974,
+          "x": 0,
+          "width": 393,
+          "height": 24,
+          "descendants": {
+            "uZToM": {
+              "fill": "$ds-strata-2",
+              "width": 393,
+              "height": 24,
+              "viewBox": [
+                0,
+                0,
+                393,
+                24
+              ],
+              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z"
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "FhNRA",
+          "x": 0,
+          "y": 990,
+          "name": "Layer 4 · Ochre",
+          "width": 393,
+          "fill": "$ds-strata-2",
+          "layout": "vertical",
+          "padding": [
+            "$ds-space-l",
+            "$ds-space-20",
+            "$ds-space-xl",
+            "$ds-space-20"
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "zzcV9",
+              "name": "Row",
+              "width": "fill_container",
+              "gap": "$ds-btn-gap",
+              "justifyContent": "center",
+              "children": [
+                {
+                  "id": "DTpFx",
+                  "type": "ref",
+                  "ref": "L8jWq",
+                  "name": "Tile · TEETH",
+                  "width": "fill_container",
+                  "descendants": {
+                    "CAk7E": {
+                      "fill": "$ds-pocket-teeth",
+                      "height": 104,
+                      "padding": [
+                        "$ds-space-s",
+                        "$ds-space-s",
+                        "$ds-space-2",
+                        "$ds-space-s"
+                      ]
+                    },
+                    "gIGvI": {
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/baryonyx.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    "t0wfo": {
+                      "library": "Material Symbols Rounded",
+                      "icon": "dentistry",
+                      "width": 22,
+                      "height": 22,
+                      "fill": "$ds-game-teeth"
+                    },
+                    "bMwPQ": {
+                      "content": "TEETH"
+                    },
+                    "v6wxpm": {
+                      "enabled": true,
+                      "x": 4,
+                      "y": -8,
+                      "width": 24,
+                      "height": 24,
+                      "padding": "$ds-space-5",
+                      "gap": 0,
+                      "cornerRadius": "$ds-radius-12",
+                      "layout": "horizontal",
+                      "justifyContent": "center",
+                      "alignItems": "center"
+                    }
+                  },
+                  "gap": -18
+                },
+                {
+                  "id": "52UEJ",
+                  "type": "ref",
+                  "ref": "L8jWq",
+                  "name": "Tile · COLOR",
+                  "width": "fill_container",
+                  "descendants": {
+                    "CAk7E": {
+                      "fill": "$ds-pocket-color",
+                      "height": 104,
+                      "padding": [
+                        "$ds-space-s",
+                        "$ds-space-s",
+                        "$ds-space-2",
+                        "$ds-space-s"
+                      ]
+                    },
+                    "gIGvI": {
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/home-tile-color.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    "t0wfo": {
+                      "icon": "palette",
+                      "width": 22,
+                      "height": 22,
+                      "fill": "$ds-game-color"
+                    },
+                    "bMwPQ": {
+                      "content": "COLOR"
+                    },
+                    "v6wxpm": {
+                      "x": 4,
+                      "y": -8,
+                      "width": 24,
+                      "height": 24,
+                      "padding": "$ds-space-5",
+                      "gap": 0,
+                      "cornerRadius": "$ds-radius-12",
+                      "layout": "horizontal",
+                      "justifyContent": "center",
+                      "alignItems": "center"
+                    }
+                  },
+                  "gap": -18
+                },
+                {
+                  "id": "iBBXU",
+                  "type": "ref",
+                  "ref": "eZPLE",
+                  "name": "Tile · SOON",
+                  "width": "fill_container",
+                  "descendants": {
+                    "xEUIu": {
+                      "fill": "$ds-pocket-2",
+                      "height": 104,
+                      "padding": [
+                        "$ds-space-s",
+                        "$ds-space-s",
+                        "$ds-space-2",
+                        "$ds-space-s"
+                      ]
+                    },
+                    "swL2S": {
+                      "width": 16,
+                      "height": 16
+                    }
+                  },
+                  "gap": -8
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "Eu1fl",
+          "type": "ref",
+          "ref": "m8Jt7",
+          "name": "Bedrock edge",
+          "x": 0,
+          "y": 1150,
+          "width": 393,
+          "height": 24,
+          "descendants": {
+            "uZToM": {
+              "width": 393,
+              "height": 24,
+              "viewBox": [
+                0,
+                0,
+                393,
+                24
+              ],
+              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z",
+              "fill": "$ds-strata-3"
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "bRS8G",
+          "x": 0,
+          "y": 1166,
+          "name": "Bedrock",
+          "width": 393,
+          "height": 110,
+          "fill": "$ds-strata-3",
+          "layout": "vertical",
+          "gap": "$ds-space-s",
+          "padding": [
+            "$ds-space-22",
+            "$ds-space-20",
+            0,
+            "$ds-space-20"
+          ],
+          "children": [
+            {
+              "id": "awDdV",
+              "type": "ref",
+              "ref": "q065f",
+              "name": "Parent note",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "fill": "$ds-ink",
+              "opacity": 0.75,
+              "content": "Parents: progress is saved on this device. Settings are at the top of the page."
+            },
+            {
+              "id": "2Hd3l",
+              "type": "ref",
+              "ref": "FKCrL",
+              "name": "Version",
+              "fill": "$ds-ink",
+              "opacity": 0.6
+            }
+          ]
+        },
+        {
+          "type": "rectangle",
+          "cornerRadius": "$ds-radius-3",
+          "id": "g0SqV",
+          "x": 130,
+          "y": 1263,
+          "name": "Home indicator",
+          "fill": "$ds-ink",
+          "width": 134,
+          "height": 5
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "4gd8L",
+      "x": 24053,
+      "y": 7400,
+      "name": "Home · Dig site v2 tiles · iPhone 15 Pro portrait 393×852 · Dark · whole page",
+      "theme": {
+        "mode": "dark",
+        "device": "phone"
+      },
+      "clip": true,
+      "width": 393,
+      "height": 1276,
+      "fill": {
+        "type": "gradient",
+        "gradientType": "linear",
+        "enabled": true,
+        "rotation": 180,
+        "size": {
+          "height": 1
+        },
+        "colors": [
+          {
+            "color": "$ds-sky-top",
+            "position": 0
+          },
+          {
+            "color": "$ds-sky-bottom",
+            "position": 0.4
+          }
+        ]
+      },
+      "layout": "none",
+      "children": [
+        {
+          "id": "Cf3g9",
+          "type": "ref",
+          "ref": "s0Vee",
+          "name": "Sun",
+          "x": 190,
+          "y": 236,
+          "width": 240,
+          "height": 240,
+          "descendants": {
+            "c4WgiH": {
+              "width": 240,
+              "height": 240
+            },
+            "ovl4O": {
+              "x": 70,
+              "y": 70,
+              "width": 100,
+              "height": 100
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "kCP2d",
+          "x": 0,
+          "y": 0,
+          "name": "Status bar",
+          "width": 393,
+          "height": 54,
+          "padding": [
+            "$ds-space-18",
+            "$ds-space-2xl",
+            0,
+            "$ds-space-40"
+          ],
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "ayFaj",
+              "name": "Time",
+              "fill": "$ds-ink",
+              "content": "9:41",
+              "fontFamily": "Inter",
+              "fontSize": "$ds-size-17",
+              "fontWeight": "600"
+            },
+            {
+              "type": "frame",
+              "id": "M2sQI",
+              "name": "Indicators",
+              "gap": "$ds-space-6",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "hQPgO",
+                  "name": "signal",
+                  "width": 18,
+                  "height": 18,
+                  "icon": "signal",
+                  "library": "lucide",
+                  "fill": "$ds-ink"
+                },
+                {
+                  "type": "icon",
+                  "id": "88PIW",
+                  "name": "wifi",
+                  "width": 18,
+                  "height": 18,
+                  "icon": "wifi",
+                  "library": "lucide",
+                  "fill": "$ds-ink"
+                },
+                {
+                  "type": "icon",
+                  "id": "VREFt",
+                  "name": "battery-full",
+                  "width": 18,
+                  "height": 18,
+                  "icon": "battery-full",
+                  "library": "lucide",
+                  "fill": "$ds-ink"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "nZlkG",
+          "type": "ref",
+          "ref": "s1Ymnh",
+          "name": "Header",
+          "x": 20,
+          "y": 62,
+          "width": 353,
+          "descendants": {
+            "uLHwl": {
+              "width": 35,
+              "height": 36
+            },
+            "zZLHv": {
+              "fontSize": "$ds-size-22"
+            },
+            "aEYal": {
+              "gap": "$ds-space-s"
+            },
+            "uEZBH": {
+              "padding": "$ds-space-11"
+            },
+            "uEZBH/V67ofj": {
+              "enabled": false
+            },
+            "Vf9b3": {
+              "width": 44,
+              "height": 44
+            },
+            "a0TFjE": {
+              "width": 44,
+              "height": 44
+            },
+            "a0TFjE/Y1YWBe": {
+              "width": 20,
+              "height": 20
+            },
+            "t3ZWSa": {
+              "enabled": false
+            }
+          }
+        },
+        {
+          "id": "n01CF",
+          "type": "ref",
+          "ref": "ZpYVi",
+          "name": "Featured",
+          "x": 20,
+          "y": 126,
+          "descendants": {
+            "SoABT": {
+              "gap": "$ds-space-14"
+            },
+            "MKp0m": {
+              "width": 64,
+              "height": 64,
+              "cornerRadius": [
+                "$ds-radius-32",
+                "$ds-radius-32",
+                "$ds-radius-16",
+                "$ds-radius-16"
+              ]
+            },
+            "x3XOwo": {
+              "width": 32,
+              "height": 32
+            },
+            "xpUZe/h8hp2i": {
+              "width": 24,
+              "height": 24
+            },
+            "R00ORG/Lw9AV": {
+              "width": 18,
+              "height": 18
+            }
+          }
+        },
+        {
+          "id": "3CMFb",
+          "type": "ref",
+          "ref": "EsKu5",
+          "name": "T-Rex shadow",
+          "x": 24,
+          "y": 448,
+          "width": 160,
+          "height": 16
+        },
+        {
+          "id": "kft6m",
+          "type": "ref",
+          "ref": "EsKu5",
+          "name": "Brachiosaurus shadow",
+          "x": 220,
+          "y": 448,
+          "width": 150,
+          "height": 16
+        },
+        {
+          "type": "rectangle",
+          "id": "WoZV4",
+          "x": 4,
+          "y": 316,
+          "name": "Tyrannosaurus",
+          "fill": {
+            "type": "image",
+            "enabled": true,
+            "url": "images/tyrannosaurus.webp",
+            "mode": "contain"
+          },
+          "width": 200,
+          "height": 140
+        },
+        {
+          "type": "rectangle",
+          "id": "aqroC",
+          "x": 206,
+          "y": 312,
+          "name": "Brachiosaurus",
+          "fill": {
+            "type": "image",
+            "enabled": true,
+            "url": "images/brachiosaurus.webp",
+            "mode": "contain"
+          },
+          "width": 176,
+          "height": 144
+        },
+        {
+          "id": "fLLEU",
+          "type": "ref",
+          "ref": "m8Jt7",
+          "name": "Layer 1 · Sand edge",
+          "y": 458,
+          "x": 0,
+          "width": 393,
+          "height": 24,
+          "descendants": {
+            "uZToM": {
+              "fill": "$ds-strata-1",
+              "width": 393,
+              "height": 24,
+              "viewBox": [
+                0,
+                0,
+                393,
+                24
+              ],
+              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z"
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "P4ngc",
+          "x": 0,
+          "y": 474,
+          "name": "Layer 1 · Sand",
+          "width": 393,
+          "fill": "$ds-strata-1",
+          "layout": "vertical",
+          "padding": [
+            "$ds-space-l",
+            "$ds-space-20",
+            "$ds-space-xl",
+            "$ds-space-20"
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "dszEM",
+              "name": "Row",
+              "width": "fill_container",
+              "gap": "$ds-btn-gap",
+              "justifyContent": "center",
+              "children": [
+                {
+                  "id": "soXdW",
+                  "type": "ref",
+                  "ref": "L8jWq",
+                  "name": "Tile · EXPLORE",
+                  "width": "fill_container",
+                  "descendants": {
+                    "CAk7E": {
+                      "fill": "$ds-pocket-explore",
+                      "height": 104,
+                      "padding": [
+                        "$ds-space-s",
+                        "$ds-space-s",
+                        "$ds-space-2",
+                        "$ds-space-s"
+                      ]
+                    },
+                    "gIGvI": {
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/stegosaurus.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    "t0wfo": {
+                      "icon": "book-open",
+                      "width": 22,
+                      "height": 22,
+                      "fill": "$ds-game-explore"
+                    },
+                    "bMwPQ": {
+                      "content": "EXPLORE"
+                    },
+                    "v6wxpm": {
+                      "x": 4,
+                      "y": -8,
+                      "width": 24,
+                      "height": 24,
+                      "padding": "$ds-space-5",
+                      "gap": 0,
+                      "cornerRadius": "$ds-radius-12",
+                      "layout": "horizontal",
+                      "justifyContent": "center",
+                      "alignItems": "center"
+                    }
+                  },
+                  "gap": -18
+                },
+                {
+                  "id": "t6t7x",
+                  "type": "ref",
+                  "ref": "L8jWq",
+                  "name": "Tile · PAIRS",
+                  "width": "fill_container",
+                  "descendants": {
+                    "CAk7E": {
+                      "fill": "$ds-pocket-pairs",
+                      "height": 104,
+                      "padding": [
+                        "$ds-space-s",
+                        "$ds-space-s",
+                        "$ds-space-2",
+                        "$ds-space-s"
+                      ]
+                    },
+                    "gIGvI": {
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/pairs-home-triceratops.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    "t0wfo": {
+                      "icon": "copy",
+                      "width": 22,
+                      "height": 22,
+                      "fill": "$ds-game-pairs"
+                    },
+                    "bMwPQ": {
+                      "content": "PAIRS"
+                    },
+                    "v6wxpm": {
+                      "x": 4,
+                      "y": -8,
+                      "width": 24,
+                      "height": 24,
+                      "padding": "$ds-space-5",
+                      "gap": 0,
+                      "cornerRadius": "$ds-radius-12",
+                      "layout": "horizontal",
+                      "justifyContent": "center",
+                      "alignItems": "center"
+                    }
+                  },
+                  "gap": -18
+                },
+                {
+                  "id": "VpKy6",
+                  "type": "ref",
+                  "ref": "L8jWq",
+                  "name": "Tile · BONES",
+                  "width": "fill_container",
+                  "descendants": {
+                    "CAk7E": {
+                      "fill": "$ds-pocket-bones",
+                      "height": 104,
+                      "padding": [
+                        "$ds-space-s",
+                        "$ds-space-s",
+                        "$ds-space-2",
+                        "$ds-space-s"
+                      ]
+                    },
+                    "gIGvI": {
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/skeleton-brachiosaurus.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    "t0wfo": {
+                      "icon": "bone",
+                      "width": 22,
+                      "height": 22,
+                      "fill": "$ds-game-bones"
+                    },
+                    "bMwPQ": {
+                      "content": "BONES"
+                    },
+                    "v6wxpm": {
+                      "x": 4,
+                      "y": -8,
+                      "width": 24,
+                      "height": 24,
+                      "padding": "$ds-space-5",
+                      "gap": 0,
+                      "cornerRadius": "$ds-radius-12",
+                      "layout": "horizontal",
+                      "justifyContent": "center",
+                      "alignItems": "center"
+                    }
+                  },
+                  "gap": -18
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "SFxYk",
+          "type": "ref",
+          "ref": "m8Jt7",
+          "name": "Layer 2 · Ochre edge",
+          "y": 630,
+          "x": 0,
+          "width": 393,
+          "height": 24,
+          "descendants": {
+            "uZToM": {
+              "fill": "$ds-strata-2",
+              "width": 393,
+              "height": 24,
+              "viewBox": [
+                0,
+                0,
+                393,
+                24
+              ],
+              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z"
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "ozmJH",
+          "x": 0,
+          "y": 646,
+          "name": "Layer 2 · Ochre",
+          "width": 393,
+          "fill": "$ds-strata-2",
+          "layout": "vertical",
+          "padding": [
+            "$ds-space-l",
+            "$ds-space-20",
+            "$ds-space-xl",
+            "$ds-space-20"
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "aj7Xz",
+              "name": "Row",
+              "width": "fill_container",
+              "gap": "$ds-btn-gap",
+              "justifyContent": "center",
+              "children": [
+                {
+                  "id": "pJoMj",
+                  "type": "ref",
+                  "ref": "L8jWq",
+                  "name": "Tile · DIG",
+                  "width": "fill_container",
+                  "descendants": {
+                    "CAk7E": {
+                      "fill": "$ds-pocket-dig",
+                      "height": 104,
+                      "padding": [
+                        "$ds-space-s",
+                        "$ds-space-s",
+                        "$ds-space-2",
+                        "$ds-space-s"
+                      ]
+                    },
+                    "gIGvI": {
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/home-tile-dig.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    "t0wfo": {
+                      "icon": "brush",
+                      "width": 22,
+                      "height": 22,
+                      "fill": "$ds-game-dig"
+                    },
+                    "bMwPQ": {
+                      "content": "DIG"
+                    },
+                    "v6wxpm": {
+                      "x": 4,
+                      "y": -8,
+                      "width": 24,
+                      "height": 24,
+                      "padding": "$ds-space-5",
+                      "gap": 0,
+                      "cornerRadius": "$ds-radius-12",
+                      "layout": "horizontal",
+                      "justifyContent": "center",
+                      "alignItems": "center"
+                    }
+                  },
+                  "gap": -18
+                },
+                {
+                  "id": "ve5zS",
+                  "type": "ref",
+                  "ref": "L8jWq",
+                  "name": "Tile · SORT",
+                  "width": "fill_container",
+                  "descendants": {
+                    "CAk7E": {
+                      "fill": "$ds-pocket-sort",
+                      "height": 104,
+                      "padding": [
+                        "$ds-space-s",
+                        "$ds-space-s",
+                        "$ds-space-2",
+                        "$ds-space-s"
+                      ]
+                    },
+                    "gIGvI": {
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/home-tile-sort.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    "t0wfo": {
+                      "icon": "shapes",
+                      "width": 22,
+                      "height": 22,
+                      "fill": "$ds-game-sort"
+                    },
+                    "bMwPQ": {
+                      "content": "SORT"
+                    },
+                    "v6wxpm": {
+                      "x": 4,
+                      "y": -8,
+                      "width": 24,
+                      "height": 24,
+                      "padding": "$ds-space-5",
+                      "gap": 0,
+                      "cornerRadius": "$ds-radius-12",
+                      "layout": "horizontal",
+                      "justifyContent": "center",
+                      "alignItems": "center"
+                    }
+                  },
+                  "gap": -18
+                },
+                {
+                  "id": "9QsbP",
+                  "type": "ref",
+                  "ref": "L8jWq",
+                  "name": "Tile · CARE",
+                  "width": "fill_container",
+                  "descendants": {
+                    "CAk7E": {
+                      "fill": "$ds-pocket-care",
+                      "height": 104,
+                      "padding": [
+                        "$ds-space-s",
+                        "$ds-space-s",
+                        "$ds-space-2",
+                        "$ds-space-s"
+                      ]
+                    },
+                    "gIGvI": {
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/home-tile-care.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    "t0wfo": {
+                      "icon": "heart",
+                      "width": 22,
+                      "height": 22,
+                      "fill": "$ds-game-care"
+                    },
+                    "bMwPQ": {
+                      "content": "CARE"
+                    },
+                    "v6wxpm": {
+                      "x": 4,
+                      "y": -8,
+                      "width": 24,
+                      "height": 24,
+                      "padding": "$ds-space-5",
+                      "gap": 0,
+                      "cornerRadius": "$ds-radius-12",
+                      "layout": "horizontal",
+                      "justifyContent": "center",
+                      "alignItems": "center"
+                    }
+                  },
+                  "gap": -18
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "V6ioF",
+          "type": "ref",
+          "ref": "m8Jt7",
+          "name": "Layer 3 · Sand edge",
+          "y": 802,
+          "x": 0,
+          "width": 393,
+          "height": 24,
+          "descendants": {
+            "uZToM": {
+              "fill": "$ds-strata-1",
+              "width": 393,
+              "height": 24,
+              "viewBox": [
+                0,
+                0,
+                393,
+                24
+              ],
+              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z"
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "v4uT4",
+          "x": 0,
+          "y": 818,
+          "name": "Layer 3 · Sand",
+          "width": 393,
+          "fill": "$ds-strata-1",
+          "layout": "vertical",
+          "padding": [
+            "$ds-space-l",
+            "$ds-space-20",
+            "$ds-space-xl",
+            "$ds-space-20"
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "ze6Ku",
+              "name": "Row",
+              "width": "fill_container",
+              "gap": "$ds-btn-gap",
+              "justifyContent": "center",
+              "children": [
+                {
+                  "id": "ETHnQ",
+                  "type": "ref",
+                  "ref": "L8jWq",
+                  "name": "Tile · DRAW",
+                  "width": "fill_container",
+                  "descendants": {
+                    "CAk7E": {
+                      "fill": "$ds-pocket-draw",
+                      "height": 104,
+                      "padding": [
+                        "$ds-space-s",
+                        "$ds-space-s",
+                        "$ds-space-2",
+                        "$ds-space-s"
+                      ]
+                    },
+                    "gIGvI": {
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/home-tile-draw.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    "t0wfo": {
+                      "icon": "pencil",
+                      "width": 22,
+                      "height": 22,
+                      "fill": "$ds-game-draw"
+                    },
+                    "bMwPQ": {
+                      "content": "DRAW"
+                    },
+                    "v6wxpm": {
+                      "x": 4,
+                      "y": -8,
+                      "width": 24,
+                      "height": 24,
+                      "padding": "$ds-space-5",
+                      "gap": 0,
+                      "cornerRadius": "$ds-radius-12",
+                      "layout": "horizontal",
+                      "justifyContent": "center",
+                      "alignItems": "center"
+                    }
+                  },
+                  "gap": -18
+                },
+                {
+                  "id": "216f4",
+                  "type": "ref",
+                  "ref": "L8jWq",
+                  "name": "Tile · MAZE",
+                  "width": "fill_container",
+                  "descendants": {
+                    "CAk7E": {
+                      "fill": "$ds-pocket-maze",
+                      "height": 104,
+                      "padding": [
+                        "$ds-space-s",
+                        "$ds-space-s",
+                        "$ds-space-2",
+                        "$ds-space-s"
+                      ]
+                    },
+                    "gIGvI": {
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/home-tile-maze.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    "t0wfo": {
+                      "icon": "route",
+                      "width": 22,
+                      "height": 22,
+                      "fill": "$ds-game-maze"
+                    },
+                    "bMwPQ": {
+                      "content": "MAZE"
+                    },
+                    "v6wxpm": {
+                      "x": 4,
+                      "y": -8,
+                      "width": 24,
+                      "height": 24,
+                      "padding": "$ds-space-5",
+                      "gap": 0,
+                      "cornerRadius": "$ds-radius-12",
+                      "layout": "horizontal",
+                      "justifyContent": "center",
+                      "alignItems": "center"
+                    }
+                  },
+                  "gap": -18
+                },
+                {
+                  "id": "7JYet",
+                  "type": "ref",
+                  "ref": "L8jWq",
+                  "name": "Tile · PUZZLE",
+                  "width": "fill_container",
+                  "descendants": {
+                    "CAk7E": {
+                      "fill": "$ds-pocket-puzzle",
+                      "height": 104,
+                      "padding": [
+                        "$ds-space-s",
+                        "$ds-space-s",
+                        "$ds-space-2",
+                        "$ds-space-s"
+                      ]
+                    },
+                    "gIGvI": {
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/home-tile-puzzle.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    "t0wfo": {
+                      "icon": "puzzle",
+                      "width": 22,
+                      "height": 22,
+                      "fill": "$ds-game-puzzle"
+                    },
+                    "bMwPQ": {
+                      "content": "PUZZLE"
+                    },
+                    "v6wxpm": {
+                      "x": 4,
+                      "y": -8,
+                      "width": 24,
+                      "height": 24,
+                      "padding": "$ds-space-5",
+                      "gap": 0,
+                      "cornerRadius": "$ds-radius-12",
+                      "layout": "horizontal",
+                      "justifyContent": "center",
+                      "alignItems": "center"
+                    }
+                  },
+                  "gap": -18
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "g0dAX",
+          "type": "ref",
+          "ref": "m8Jt7",
+          "name": "Layer 4 · Ochre edge",
+          "y": 974,
+          "x": 0,
+          "width": 393,
+          "height": 24,
+          "descendants": {
+            "uZToM": {
+              "fill": "$ds-strata-2",
+              "width": 393,
+              "height": 24,
+              "viewBox": [
+                0,
+                0,
+                393,
+                24
+              ],
+              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z"
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "Uu5oC",
+          "x": 0,
+          "y": 990,
+          "name": "Layer 4 · Ochre",
+          "width": 393,
+          "fill": "$ds-strata-2",
+          "layout": "vertical",
+          "padding": [
+            "$ds-space-l",
+            "$ds-space-20",
+            "$ds-space-xl",
+            "$ds-space-20"
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "4hGdo",
+              "name": "Row",
+              "width": "fill_container",
+              "gap": "$ds-btn-gap",
+              "justifyContent": "center",
+              "children": [
+                {
+                  "id": "6jHXH",
+                  "type": "ref",
+                  "ref": "L8jWq",
+                  "name": "Tile · TEETH",
+                  "width": "fill_container",
+                  "descendants": {
+                    "CAk7E": {
+                      "fill": "$ds-pocket-teeth",
+                      "height": 104,
+                      "padding": [
+                        "$ds-space-s",
+                        "$ds-space-s",
+                        "$ds-space-2",
+                        "$ds-space-s"
+                      ]
+                    },
+                    "gIGvI": {
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/baryonyx.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    "t0wfo": {
+                      "library": "Material Symbols Rounded",
+                      "icon": "dentistry",
+                      "width": 22,
+                      "height": 22,
+                      "fill": "$ds-game-teeth"
+                    },
+                    "bMwPQ": {
+                      "content": "TEETH"
+                    },
+                    "v6wxpm": {
+                      "enabled": true,
+                      "x": 4,
+                      "y": -8,
+                      "width": 24,
+                      "height": 24,
+                      "padding": "$ds-space-5",
+                      "gap": 0,
+                      "cornerRadius": "$ds-radius-12",
+                      "layout": "horizontal",
+                      "justifyContent": "center",
+                      "alignItems": "center"
+                    }
+                  },
+                  "gap": -18
+                },
+                {
+                  "id": "zm5X9",
+                  "type": "ref",
+                  "ref": "L8jWq",
+                  "name": "Tile · COLOR",
+                  "width": "fill_container",
+                  "descendants": {
+                    "CAk7E": {
+                      "fill": "$ds-pocket-color",
+                      "height": 104,
+                      "padding": [
+                        "$ds-space-s",
+                        "$ds-space-s",
+                        "$ds-space-2",
+                        "$ds-space-s"
+                      ]
+                    },
+                    "gIGvI": {
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/home-tile-color.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    "t0wfo": {
+                      "icon": "palette",
+                      "width": 22,
+                      "height": 22,
+                      "fill": "$ds-game-color"
+                    },
+                    "bMwPQ": {
+                      "content": "COLOR"
+                    },
+                    "v6wxpm": {
+                      "x": 4,
+                      "y": -8,
+                      "width": 24,
+                      "height": 24,
+                      "padding": "$ds-space-5",
+                      "gap": 0,
+                      "cornerRadius": "$ds-radius-12",
+                      "layout": "horizontal",
+                      "justifyContent": "center",
+                      "alignItems": "center"
+                    }
+                  },
+                  "gap": -18
+                },
+                {
+                  "id": "HLMTh",
+                  "type": "ref",
+                  "ref": "eZPLE",
+                  "name": "Tile · SOON",
+                  "width": "fill_container",
+                  "descendants": {
+                    "xEUIu": {
+                      "fill": "$ds-pocket-2",
+                      "height": 104,
+                      "padding": [
+                        "$ds-space-s",
+                        "$ds-space-s",
+                        "$ds-space-2",
+                        "$ds-space-s"
+                      ]
+                    },
+                    "Qy5Bx": {
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/silhouette-dark-brachiosaurus.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    "swL2S": {
+                      "width": 16,
+                      "height": 16
+                    }
+                  },
+                  "gap": -8
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "Gzr4n",
+          "type": "ref",
+          "ref": "m8Jt7",
+          "name": "Bedrock edge",
+          "x": 0,
+          "y": 1150,
+          "width": 393,
+          "height": 24,
+          "descendants": {
+            "uZToM": {
+              "width": 393,
+              "height": 24,
+              "viewBox": [
+                0,
+                0,
+                393,
+                24
+              ],
+              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z",
+              "fill": "$ds-strata-3"
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "AJhpZ",
+          "x": 0,
+          "y": 1166,
+          "name": "Bedrock",
+          "width": 393,
+          "height": 110,
+          "fill": "$ds-strata-3",
+          "layout": "vertical",
+          "gap": "$ds-space-s",
+          "padding": [
+            "$ds-space-22",
+            "$ds-space-20",
+            0,
+            "$ds-space-20"
+          ],
+          "children": [
+            {
+              "id": "eyOww",
+              "type": "ref",
+              "ref": "q065f",
+              "name": "Parent note",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "fill": "$ds-ink",
+              "opacity": 0.75,
+              "content": "Parents: progress is saved on this device. Settings are at the top of the page."
+            },
+            {
+              "id": "5yXoa",
+              "type": "ref",
+              "ref": "FKCrL",
+              "name": "Version",
+              "fill": "$ds-ink",
+              "opacity": 0.6
+            }
+          ]
+        },
+        {
+          "type": "rectangle",
+          "cornerRadius": "$ds-radius-3",
+          "id": "2FZM7",
+          "x": 130,
+          "y": 1263,
+          "name": "Home indicator",
+          "fill": "$ds-ink",
+          "width": 134,
+          "height": 5
+        }
+      ]
     }
   ],
   "themes": {
@@ -543406,6 +547424,380 @@
     "ds-space-12-8": {
       "type": "number",
       "value": 12.8
+    },
+    "ds-game-explore": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#C9583D",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#D88773",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
+    },
+    "ds-pocket-explore": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#D1A282",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#734531",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
+    },
+    "ds-game-pairs": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#4F7FB5",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#80A3CA",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
+    },
+    "ds-pocket-pairs": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#ADAEA6",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#4C5158",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
+    },
+    "ds-game-bones": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#3A4A72",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#717D99",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
+    },
+    "ds-pocket-bones": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#A69E92",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#454042",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
+    },
+    "ds-game-dig": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#B07A2E",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#C69F69",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
+    },
+    "ds-pocket-dig": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#CAAC7D",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#6B502D",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
+    },
+    "ds-game-sort": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#8A4FA0",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#AB80BB",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
+    },
+    "ds-pocket-sort": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#BEA09F",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#5E4251",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
+    },
+    "ds-game-care": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#D0607A",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#DD8D9F",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
+    },
+    "ds-pocket-care": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#D4A594",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#754845",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
+    },
+    "ds-game-draw": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#A8862A",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#C0A866",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
+    },
+    "ds-pocket-draw": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#C8B07C",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#68542B",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
+    },
+    "ds-game-maze": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#5E8A3A",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#8BAB71",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
+    },
+    "ds-pocket-maze": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#B1B181",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#505530",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
+    },
+    "ds-game-puzzle": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#2E8C86",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#69ACA8",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
+    },
+    "ds-pocket-puzzle": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#A3B298",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#415649",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
+    },
+    "ds-game-teeth": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#C2453F",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#D37975",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
+    },
+    "ds-pocket-teeth": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#CF9C82",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#703F32",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
+    },
+    "ds-game-color": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#6E58C8",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#9787D7",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
+    },
+    "ds-pocket-color": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#B6A2AB",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#56455E",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
     }
   },
   "fileToken": "038dfbcf-cc60-4e78-8bca-50c4f8fe1555"

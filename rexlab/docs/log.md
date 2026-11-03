@@ -2,6 +2,7 @@
 
 ## 2026-11-03
 
+- Dig site proposal: new Home tiles for DIG, SORT, CARE, DRAW, MAZE, PUZZLE and COLOR show each game being played with its own dinosaur. Every game's pocket and icon get their own colour, and the label sits on the pocket so the tile reads as one button. The current Home stays alongside for comparison.
 - Dig site: each Home tile and featured hero shows its own game's dinosaur in that game's form (a Triceratops pair for PAIRS, a half-dug Therizinosaurus for DIG), and no hero borrows another game's dinosaur.
 - In Russian, Home's large card names the catalogue ДРЕВНИЕ ЯЩЕРЫ when it is today's game, as in English, instead of the old tile word ВСЕ.
 - A page change cut short by the window resizing no longer leaves an unhandled error behind.
