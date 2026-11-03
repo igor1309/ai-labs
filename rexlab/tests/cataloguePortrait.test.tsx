@@ -120,7 +120,7 @@ async function openList(
       chipWidths={chipWidths}
     />
   );
-  await user.click(gameDoor(TEXTS[language].catalogueTile));
+  await user.click(gameDoor(TEXTS[language].catalogue));
   return { viewport, user };
 }
 

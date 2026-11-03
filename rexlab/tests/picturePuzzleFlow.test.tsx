@@ -118,7 +118,7 @@ describe.each(LANGUAGES)("the picture puzzle full flow in %s", (language) => {
     expect(within(button(readPictureDinosaurs(records)[0]!.name[language].toLocaleUpperCase(language))).getByRole("img", { name: text.star })).not.toBeNull();
     fireEvent.click(button(text.home));
     expect(button(text.picturePuzzle).querySelector(".picture-puzzle-tile-count, .featured-card-badge")?.textContent).toBe(featured === "picturePuzzle" ? "1/3" : undefined);
-    fireEvent.click(button(text.catalogueTile));
+    fireEvent.click(button(text.catalogue));
     expect(screen.getByRole("main", { name: text.catalogue })).not.toBeNull();
     expect(screen.queryByLabelText(text.pictureCollection)).toBeNull();
     fireEvent.click(button(text.home));

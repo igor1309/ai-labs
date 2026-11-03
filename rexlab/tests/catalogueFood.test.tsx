@@ -85,7 +85,7 @@ const symbolsOf = (element: Element) =>
   [...element.querySelectorAll("svg.lucide")].map((svg) => [...svg.classList].find((name) => name.startsWith("lucide-"))?.slice("lucide-".length));
 
 async function openCatalogue(user: User, language: Language = "en") {
-  await user.click(gameDoor(TEXTS[language].catalogueTile));
+  await user.click(gameDoor(TEXTS[language].catalogue));
 }
 
 async function choose(user: User, name: string) {

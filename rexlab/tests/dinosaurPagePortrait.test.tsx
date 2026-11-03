@@ -59,7 +59,7 @@ async function openPage(size: WindowSize, {
     {...emptySkeletons()} {...emptyDig()} {...pageAtRest()}
     pictureTransition={pictures.Transition}
   />);
-  await user.click(gameDoor(TEXTS[language].catalogueTile));
+  await user.click(gameDoor(TEXTS[language].catalogue));
   const cardPicture = pictures.picture(`dinosaur-${id}`);
   const card = part(`[data-id="${id}"]`);
   await user.click(card);

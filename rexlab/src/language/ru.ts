@@ -61,7 +61,6 @@ export const ru: Texts = {
   best: "РЕКОРД",
   playAgain: "ЕЩЁ РАЗ",
   catalogue: "ДРЕВНИЕ ЯЩЕРЫ",
-  catalogueTile: "ВСЕ",
   diets: { meat: "МЯСО", plants: "РАСТЕНИЯ", both: "ВСЁ" },
   foodChoice: "ЕДА",
   everyFood: "ВСЕ",

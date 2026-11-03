@@ -1,5 +1,9 @@
 # rexlab — Change Log
 
+## 2026-11-03
+
+- In Russian, Home's large card names the catalogue ДРЕВНИЕ ЯЩЕРЫ when it is today's game, as in English, instead of the old tile word ВСЕ.
+
 ## 2026-11-02
 
 - LAB-906: Home games use 4:3 tiles, short English/Russian labels and matching icon footers. Small tiles omit progress badges; the featured card keeps its full title and rewards.
