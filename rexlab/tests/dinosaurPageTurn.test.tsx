@@ -219,7 +219,7 @@ async function openPage(from: Window, { id = "baryonyx", language = "en", reduce
   );
   act(() => pictures.finishAll());
   const user = userEvent.setup({ delay: null });
-  await user.click(gameDoor(TEXTS[language].catalogueTile));
+  await user.click(gameDoor(TEXTS[language].catalogue));
   act(() => pictures.finishAll());
   const card = document.querySelector<HTMLElement>(`.catalogue-card[data-id="${id}"]`)!;
   if (!list) {

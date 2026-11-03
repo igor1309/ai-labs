@@ -98,7 +98,7 @@ const chipsOf = (card: HTMLElement) =>
   [...card.querySelectorAll<HTMLElement>(".catalogue-chip, .diet-tag")].map((chip) => ({ symbols: symbolsOf(chip), words: words(chip) || `(${chip.getAttribute("aria-label")})` }));
 
 async function openCatalogue(user: ReturnType<typeof userEvent.setup>, language: Language = "en") {
-  await user.click(gameDoor(TEXTS[language].catalogueTile));
+  await user.click(gameDoor(TEXTS[language].catalogue));
 }
 
 async function openPage(user: ReturnType<typeof userEvent.setup>, id: string, language: Language = "en") {
@@ -412,7 +412,7 @@ describe("creatures that are not dinosaurs", () => {
 describe("the catalogue in Russian", () => {
   it("reads its tile, its food tags and its descriptions in Russian, the tile's title short", async () => {
     const user = openApp({ language: "ru" });
-    expect(words(gameDoor("ВСЕ"))).toBe("ЯЩЕРЫ");
+    expect(words(gameDoor("ДРЕВНИЕ ЯЩЕРЫ"))).toBe("ЯЩЕРЫ");
 
     await openPage(user, "gallimimus", "ru");
 

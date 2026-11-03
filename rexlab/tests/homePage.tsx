@@ -7,9 +7,9 @@ import { withPictures } from "./pictures.tsx";
 
 // Every game the home page offers, in its tiles' order, with the text
 // that names it.
-export const HOME_GAMES: Array<[HomeGame, "quizCard" | "catalogueTile" | "care" | "sort" | "pairs" | "skeletons" | "dig" | "sandWriting" | "labyrinth"]> = [
+export const HOME_GAMES: Array<[HomeGame, "quizCard" | "catalogue" | "care" | "sort" | "pairs" | "skeletons" | "dig" | "sandWriting" | "labyrinth"]> = [
   ["compare", "quizCard"],
-  ["catalogue", "catalogueTile"],
+  ["catalogue", "catalogue"],
   ["pairs", "pairs"],
   ["skeletons", "skeletons"],
   ["dig", "dig"],

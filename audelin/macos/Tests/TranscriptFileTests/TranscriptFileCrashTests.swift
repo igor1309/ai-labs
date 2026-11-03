@@ -66,6 +66,20 @@ struct TranscriptFileCrashTests {
         }
     }
 
+    /// A file holding only final text ends in one newline, not the blank line
+    /// that will separate it from what follows; a cut back to it keeps that.
+    @Test func sigkillWhileRewritingAfterOnlyFinalTextKeepsItWhole() async throws {
+
+        try await withTranscriptFolder { folder in
+            let url = folder.appendingPathComponent("transcript.md")
+            let point = "truncated after all final"
+            let lines = try await killedWriterLines(url: url, point: point)
+            #expect(lines == ["returned 1", "returned 2", "paused \(point)"])
+            #expect(try await transcriptText(url) == "# Transcript\n\n**Me** 00:00:01\nfinal\n")
+            #expect(try await folderNames(folder) == ["transcript.md"])
+        }
+    }
+
     /// Runs the crash writer to the chosen point, kills it there, and returns what it reported.
     private func killedWriterLines(url: URL, point: String) async throws -> [String] {
 

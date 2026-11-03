@@ -1,9 +1,9 @@
 ---
-date: 2026-10-14
+date: 2026-11-03
 author: Igor Malyarov
 model: claude-opus-5-5
 name: Code review — tests
-version: 0.2.0
+version: 0.3.0
 type: prompt
 ---
 
@@ -166,6 +166,24 @@ Definition of done:
     breaks while only that test fails, without naming the rule. Look for
     one case proved at two levels: the case is the change that must fix
     both.
+13. Test machinery stands in for no product fix. Look for test support
+    that adds its own concurrency, locking, scheduling or retry machinery
+    (a lock or trait that makes suites take turns, a retry around a call,
+    a forced order) and makes a failure go away rather than drive product
+    code. Look for a flake answered only by changing test ordering,
+    isolation or timing, with neither a product fix nor evidence that the
+    product is right and only the test was wrong (a leftover or race of
+    the test's own, traced path:line). Look for tests whose subject is a
+    test helper rather than product behaviour; a helper's own test counts
+    only where the helper is shared and its failure would hide a product
+    bug. Each of the three is a finding of its own. Its case names the
+    product behaviour or product gap the machinery stands in for: the
+    failure users meet too (another process holding the device, a call
+    that refuses), what the product does or reports then, and the product
+    change that would answer it, which the machinery lets stay unmade
+    while every test turns green. Do not ask to make such machinery or its
+    own tests better (more deterministic, better covered): that asks to
+    keep what the finding says to remove.
 
 Stop once the tests prove the change and the behaviour its goal requires.
 

@@ -10,7 +10,7 @@ const labels = {
 };
 const fullLabels = {
   en: ["COMPARE", "ANCIENT REPTILES", "FIND THE PAIR", "SKELETONS", "DIG", "SORT", "CARE", "SAND WRITING", "LABYRINTH", "PICTURE PUZZLE", "WHOSE JAW?", "COLOR A DINOSAUR"],
-  ru: ["СРАВНИ", "ВСЕ", "НАЙДИ ПАРУ", "СКЕЛЕТЫ", "РАСКОПКИ", "РАЗЛОЖИ", "ЗАБОТА", "РИСОВАНИЕ НА ПЕСКЕ", "ЛАБИРИНТ", "СОБЕРИ КАРТИНКУ", "ЧЬЯ ЧЕЛЮСТЬ?", "РАСКРАСЬ ДИНОЗАВРА"]
+  ru: ["СРАВНИ", "ДРЕВНИЕ ЯЩЕРЫ", "НАЙДИ ПАРУ", "СКЕЛЕТЫ", "РАСКОПКИ", "РАЗЛОЖИ", "ЗАБОТА", "РИСОВАНИЕ НА ПЕСКЕ", "ЛАБИРИНТ", "СОБЕРИ КАРТИНКУ", "ЧЬЯ ЧЕЛЮСТЬ?", "РАСКРАСЬ ДИНОЗАВРА"]
 };
 it.each((["en", "ru"] as const).flatMap(language => games.map(featured => ({ language, featured }))))("shows short $language tiles with $featured featured, preserving hero labels and rewards", async ({ language, featured }) => {
   const { user, opened } = renderHomePageFeaturing(featured, { language, allGames: true, scored: true });
