@@ -8,11 +8,14 @@ export type HomeMotionEnvironment = {
 // The sky's slower drift is CSS on the scroll timeline, so it runs with
 // the scroll itself and never waits for script.
 // A visit owns its entrances. Resize only changes layout, so a tile that
-// has appeared stays revealed until the child leaves Home.
+// has appeared stays revealed until the child leaves Home. Leaving Home
+// removes the tiles, so a new visit starts with fresh ones; starting again
+// on the same tiles (React's development check remounts effects) leaves a
+// tile that has appeared alone, so it does not drop and rise twice.
 export function homeMotion(page: HTMLElement, environment: HomeMotionEnvironment): () => void {
   environment.scrollToTop();
   const tiles = [...page.querySelectorAll<HTMLElement>(".home-ground-tile")];
-  for (const tile of tiles) tile.dataset.homeEntrance = "pending";
+  for (const tile of tiles) tile.dataset.homeEntrance ??= "pending";
   const reveal = (tile: HTMLElement) => {
     if (tile.dataset.homeEntrance === "pending") tile.dataset.homeEntrance = "revealed";
   };
@@ -27,6 +30,5 @@ export function homeMotion(page: HTMLElement, environment: HomeMotionEnvironment
   return () => {
     stopVisible();
     page.removeEventListener("focusin", focus);
-    for (const tile of tiles) delete tile.dataset.homeEntrance;
   };
 }

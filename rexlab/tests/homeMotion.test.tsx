@@ -54,7 +54,25 @@ it("reveals tiles only on first appearance, including keyboard focus, and dispos
   expect(tiles[3]!.dataset.homeEntrance).toBe("revealed");
   unmount();
   expect(driver.stopVisible).toHaveBeenCalledOnce();
-  expect(tiles.every(tile => !tile.hasAttribute("data-home-entrance"))).toBe(true);
+});
+
+// React's development check runs a page's effects a second time on the same
+// tiles; a tile already in view must not drop back and rise again.
+it("leaves revealed tiles revealed when it starts again on the same page", () => {
+  const driver = motionEnvironment();
+  renderHomePageFeaturing("compare", { allGames: true, motion: page => homeMotion(page, driver.environment) });
+  const page = document.querySelector<HTMLElement>(".home")!;
+  const tiles = driver.tiles();
+  driver.reveal(tiles[0]!);
+  const again = motionEnvironment();
+  const stop = homeMotion(page, again.environment);
+  expect(again.tiles()).toEqual(tiles);
+  expect(tiles[0]!.dataset.homeEntrance).toBe("revealed");
+  expect(tiles.slice(1).every(tile => tile.dataset.homeEntrance === "pending")).toBe(true);
+  again.reveal(tiles[1]!);
+  expect(tiles[1]!.dataset.homeEntrance).toBe("revealed");
+  stop();
+  expect(again.stopVisible).toHaveBeenCalledOnce();
 });
 
 it("keeps the same motion visit through turns and menu changes, and starts a fresh visit at the top on return", async () => {
