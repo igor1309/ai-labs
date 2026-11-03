@@ -2,14 +2,13 @@ import AppKit
 import Composer
 import Foundation
 import LiveText
-import Observation
-import PanelUI
 import SessionRehearsal
-import SwiftUI
 
-// A long synthetic call through the real session and panel: both tracks
-// recorded, Live text on, the transcript written, and the panel on screen,
-// fed faster than real time so a profiler sees a 3-hour call in minutes.
+// A long synthetic call through the app's composition and panel: a call app
+// joins, detection starts the recording, both tracks are recorded, Live text
+// is on, the transcript is written and the panel floats on screen, fed faster
+// than real time so a profiler sees a 3-hour call in minutes. The call app
+// then leaves and detection ends the recording.
 
 let options: Options
 do { options = try Options(Array(CommandLine.arguments.dropFirst())) } catch {
@@ -19,42 +18,16 @@ do { options = try Options(Array(CommandLine.arguments.dropFirst())) } catch {
 
 let application = NSApplication.shared
 application.setActivationPolicy(.regular)
-let shown = Shown()
-let window = NSWindow(
-    contentRect: NSRect(x: 0, y: 0, width: PanelConfig.glassLedger.panelWidth, height: 640),
-    styleMask: [.titled, .resizable], backing: .buffered, defer: false
-)
-window.title = "Audelin rehearsal"
-window.contentView = NSHostingView(rootView: ShownPanel(shown: shown))
-window.center()
-window.makeKeyAndOrderFront(nil)
+let panel = FloatingPanel.onScreen()
 
 Task { @MainActor in
-    let code = await rehearse(options, shown: shown)
+    let code = await rehearse(options, panel: panel)
     exit(code)
 }
 application.run()
 
-/// The panel's latest state, for the window to draw.
-@MainActor @Observable
-final class Shown {
-
-    var state = PanelState(recording: .off, log: .empty)
-}
-
-private struct ShownPanel: View {
-
-    let shown: Shown
-
-    var body: some View {
-
-        PanelView(state: shown.state, event: { _ in })
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-    }
-}
-
 @MainActor
-private func rehearse(_ options: Options, shown: Shown) async -> Int32 {
+private func rehearse(_ options: Options, panel: FloatingPanel) async -> Int32 {
 
     let root = options.recordingsDirectory.map { URL(fileURLWithPath: $0, isDirectory: true) }
         ?? FileManager.default.temporaryDirectory.appendingPathComponent("audelin-rehearsal-\(ProcessInfo.processInfo.processIdentifier)")
@@ -72,22 +45,25 @@ private func rehearse(_ options: Options, shown: Shown) async -> Int32 {
     let theirs = SpeakingRecognizer(name: "theirs", sentence: 10, pause: 5, offset: 6)
     let microphone = Feed<CaptureBuffer>(), call = Feed<CaptureBuffer>()
 
-    let boundary = rehearsalBoundary(
+    var boundary = rehearsalBoundary(
         capturePersistence: .recorded,
         microphone: { microphone.started() }, call: { _ in call.started() },
         mine: RehearsalRecognizer(mine), theirs: RehearsalRecognizer(theirs),
         now: { Date() }, timeZone: { .current }, sleep: { try await ContinuousClock().sleep(for: $0) },
         intervals: rehearsalIntervals()
     )
+    let callApp = RehearsalCallApp()
+    boundary.processes = callApp
     let composition: AudelinMenu
-    do { composition = try await startRehearsal(boundary: boundary, root: root) } catch {
+    do {
+        composition = try await startRehearsal(boundary: boundary, root: root, call: callApp,
+                                               presentPanel: { [weak panel] in panel?.setVisible($0) })
+    } catch {
         report("the session did not start: \(error)")
         return 1
     }
-    let showing = Task { @MainActor in
-        for await state in await composition.panelStates() { shown.state = state }
-    }
-    report("recording into \(root.path)")
+    panel.install(composition)
+    report("call detected, recording into \(root.path)")
 
     let rate = 48_000.0, micFrames = 1024, callFrames = 512
     let micPiece = CaptureBuffer(samples: .init(repeating: 0.25, count: micFrames), sampleRate: rate)
@@ -126,9 +102,12 @@ private func rehearse(_ options: Options, shown: Shown) async -> Int32 {
         }
     }
 
-    await composition.perform(.quit)
-    showing.cancel()
     let wall = started.duration(to: clock.now).seconds
+    // Detection waits 30 wall-clock seconds after the app leaves before it ends the call.
+    report("call app left")
+    await endRehearsalCall(composition, call: callApp)
+    report("call ended, recording stopped")
+    await composition.perform(.quit)
     report("""
         done: \(Int(options.minutes)) min at \(options.speed)x in \(Int(wall)) s; \
         mine \(await mine.words) words, theirs \(await theirs.words) words; \

@@ -26,9 +26,7 @@ struct AudelinApp: App {
     private func start() async {
 
         guard model == nil else { return }
-        let panel = FloatingPanel(makeWindow: {
-            TranscriptPanel(contentRect: $0, styleMask: $1, backing: .buffered, defer: false)
-        }, screenFrame: { NSScreen.main?.visibleFrame })
+        let panel = FloatingPanel.onScreen()
         self.panel = panel
         let callsWindow = CallsWindow(makeWindow: {
             NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1000, height: 560),
@@ -46,9 +44,7 @@ struct AudelinApp: App {
         )
         self.model = model
         if let calls = model.calls { callsWindow.install(content: NSHostingView(rootView: CallsContent(model: calls))) }
-        panel.install(content: NSHostingView(rootView: PanelContent(model: model)), onClose: { [weak model] in
-            model?.panelClosed()
-        })
+        panel.install(model)
         appDelegate.connect(model)
     }
 
@@ -118,35 +114,6 @@ final class AudelinAppDelegate: NSObject, NSApplicationDelegate {
     /// Tests call this: touching `NSApplication.shared` there takes seconds on CI
     /// and holds the main actor.
     func handleReopen() { reopen?() }
-}
-
-@MainActor
-func panelContentBinding(_ model: AudelinMenu) -> (state: PanelState, event: (PanelEvent) -> Task<Void, Never>) {
-
-    (model.panelState, { event in Task { await model.sendPanel(event) } })
-}
-
-private struct PanelContent: View {
-
-    let model: AudelinMenu
-
-    var body: some View {
-
-        GeometryReader { geometry in
-            let binding = panelContentBinding(model)
-            PanelView(state: binding.state, event: { event in
-                _ = binding.event(event)
-            }, config: config(width: geometry.size.width))
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        }
-    }
-
-    private func config(width: CGFloat) -> PanelConfig {
-
-        var config = PanelConfig.glassLedger
-        config.panelWidth = width
-        return config
-    }
 }
 
 private struct CallsContent: View {

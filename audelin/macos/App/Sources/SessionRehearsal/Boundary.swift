@@ -84,23 +84,34 @@ private struct RehearsalProcesses: CallProcessSource {
     func onProcessChange(_ object: UInt32, _ changed: @escaping @Sendable () -> Void) -> BoundaryCancellation { BoundaryCancellation {} }
 }
 
+/// Starts the composition over `boundary` with Live text on, recording into
+/// `root`. Without `call` it starts by hand; with it, automatic recording is on
+/// and the call app joining starts the recording through call detection.
 @MainActor
-public func startRehearsal(boundary: ComposerBoundary, root: URL) async throws -> AudelinMenu {
+public func startRehearsal(boundary: ComposerBoundary, root: URL, call: RehearsalCallApp? = nil,
+                           presentPanel: @escaping (Bool) -> Void = { _ in }) async throws -> AudelinMenu {
     let url = root.appendingPathComponent("preferences.json")
     try await withCheckedThrowingContinuation { (done: CheckedContinuation<Void, any Error>) in
         DispatchQueue(label: "audelin.rehearsal.preferences").async {
             done.resume(with: Result {
-                try PreferencesStore(fileURL: url).write(Preferences(automaticRecording: false, liveText: true, callsFolder: root))
+                try PreferencesStore(fileURL: url).write(Preferences(automaticRecording: call != nil, liveText: true, callsFolder: root))
             })
         }
     }
     let composition = await compose(boundary: boundary, preferencesURL: url,
-        openCallsFolder: { _ in false }, presentCalls: {}, openURL: { _ in }, presentPanel: { _ in }, terminate: {})
-    await composition.perform(.start)
+        openCallsFolder: { _ in false }, presentCalls: {}, openURL: { _ in }, presentPanel: presentPanel, terminate: {})
+    if let call { call.join() } else { await composition.perform(.start) }
     for await state in await composition.states() {
         if state.phase == .recording { return composition }
         if let reason = state.cannotRecord { throw RehearsalFailure.cannotRecord(reason) }
     }
     throw RehearsalFailure.ended
+}
+
+/// The call app leaves; returns once detection has ended the call and the recording stopped.
+@MainActor
+public func endRehearsalCall(_ composition: AudelinMenu, call: RehearsalCallApp) async {
+    call.leave()
+    for await state in await composition.states() where state.phase == .idle { return }
 }
 private enum RehearsalFailure: Error { case cannotRecord(String), ended }
