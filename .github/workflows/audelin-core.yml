@@ -54,7 +54,7 @@ jobs:
       - name: Fetch the speech models
         if: steps.models.outputs.cache-hit != 'true'
         working-directory: audelin/macos
-        run: sh ../scripts/swift-test-bounded.sh 900 -Xswiftc -O --filter RecognizerTests
+        run: sh ../scripts/swift-test-bounded.sh 900 -Xswiftc -O --filter ParakeetContractTests
 
       - name: Run tests
         working-directory: audelin/macos

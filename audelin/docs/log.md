@@ -2,6 +2,8 @@
 
 ## 2026-11-03
 
+- Parakeet omits whitespace-only model words while keeping spoken words' original timing (LAB-943).
+
 - Microphone capture keeps following the default input and checking device availability
   through replaceable native audio calls (LAB-945).
 
