@@ -39,10 +39,7 @@ let package = Package(
         ),
         .executableTarget(
             name: "AudelinRehearsal",
-            dependencies: [
-                "Composer", "SessionRehearsal",
-                .product(name: "LiveText", package: "macos"), .product(name: "ParakeetRecognizer", package: "macos"),
-            ]
+            dependencies: ["Composer", "SessionRehearsal"]
         ),
         .target(
             name: "SessionRehearsal",
