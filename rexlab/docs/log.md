@@ -2,6 +2,7 @@
 
 ## 2026-11-03
 
+- LAB-939: Dig site design: TEETH welcome and JAW SHELF are drawn for the upright iPad mini, the iPhone SE and the iPhone on its side, the result for the iPhone SE, and the Hatchling and Explorer boards for the upright iPad mini and the iPhone on its side.
 - LAB-914: Home is the dig site: today's game in the sky with PLAY and its progress, every other game as a pocket tile in deepening earth each with its dinosaur, a sparkle on games added since the first visit and SOON last, three to a layer on phones, the parents' note on the bedrock; one page scroll from sky to bedrock with a slower sky; the T. rex logo, and the language menu shows its flag. Each tile shows its game being played, in its game's own pocket and icon colours, light and dark; the theme and age-level buttons are line symbols. The COMPARE tile shows its Tyrannosaurus alone, and today's COLOR sky shows its page without a brush or paint dots.
 - Dig site: every Home game tile shows its game being played with its own dinosaur, cut to one or two things that read at tile size (a jaw for TEETH, a card over its basket for SORT, footprints to the Ankylosaurus for MAZE), and each game has its own colour on its pocket and icon, in Light and Dark.
 - Dig site: Home on iPhone and upright iPad has the age-level button again, beside language and theme, as on iPad landscape.
