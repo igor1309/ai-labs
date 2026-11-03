@@ -5431,19 +5431,11 @@
                           "fill": {
                             "type": "image",
                             "enabled": true,
-                            "url": "images/lab-906-v6/en-explorer-desktop.png",
-                            "mode": "cover",
-                            "transform": [
-                              47.61904761904761,
-                              0,
-                              0,
-                              29.761904761904763,
-                              -1.9047619047619047,
-                              -1.5714285714285716
-                            ]
+                            "url": "images/app-icon-trex.png",
+                            "mode": "contain"
                           },
-                          "width": 34,
-                          "height": 34
+                          "width": 42,
+                          "height": 43
                         },
                         {
                           "type": "text",
@@ -11417,8 +11409,8 @@
           "width": 353,
           "descendants": {
             "uLHwl": {
-              "width": 28,
-              "height": 28
+              "width": 35,
+              "height": 36
             },
             "zZLHv": {
               "fontSize": 22
@@ -13822,8 +13814,8 @@
           "width": 353,
           "descendants": {
             "uLHwl": {
-              "width": 28,
-              "height": 28
+              "width": 35,
+              "height": 36
             },
             "zZLHv": {
               "fontSize": 22
@@ -17707,8 +17699,8 @@
           "width": 353,
           "descendants": {
             "uLHwl": {
-              "width": 28,
-              "height": 28
+              "width": 35,
+              "height": 36
             },
             "zZLHv": {
               "fontSize": 22
@@ -420474,8 +420466,8 @@
           "width": 680,
           "descendants": {
             "uLHwl": {
-              "width": 28,
-              "height": 28
+              "width": 35,
+              "height": 36
             },
             "zZLHv": {
               "fontSize": 22
@@ -421370,8 +421362,8 @@
           "width": 680,
           "descendants": {
             "uLHwl": {
-              "width": 28,
-              "height": 28
+              "width": 35,
+              "height": 36
             },
             "zZLHv": {
               "fontSize": 22
@@ -422266,8 +422258,8 @@
           "width": 335,
           "descendants": {
             "uLHwl": {
-              "width": 28,
-              "height": 28
+              "width": 35,
+              "height": 36
             },
             "zZLHv": {
               "fontSize": 22
@@ -425318,8 +425310,8 @@
           "width": 353,
           "descendants": {
             "uLHwl": {
-              "width": 28,
-              "height": 28
+              "width": 35,
+              "height": 36
             },
             "zZLHv": {
               "fontSize": 22
@@ -437834,7 +437826,7 @@
           "id": "b8rQiK",
           "name": "Title",
           "fill": "#1F2B4D",
-          "content": "RexLab mark: the app icon's square, or the T-rex alone",
+          "content": "RexLab mark: the square stays the app icon; Home's header uses the T-rex alone",
           "fontFamily": "$ds-font",
           "fontSize": 20,
           "fontWeight": "800"
@@ -437856,7 +437848,7 @@
             {
               "type": "frame",
               "id": "RTPfb",
-              "name": "In its square (today)",
+              "name": "In its square · app icon",
               "width": "fill_container",
               "layout": "vertical",
               "gap": 12,
@@ -437900,7 +437892,7 @@
                   "id": "WQkVl",
                   "name": "Caption",
                   "fill": "$ds-ink",
-                  "content": "In its square (today)",
+                  "content": "In its square: the app icon only",
                   "fontFamily": "$ds-font",
                   "fontSize": 13,
                   "fontWeight": "700"
@@ -437910,7 +437902,7 @@
             {
               "type": "frame",
               "id": "lXW0B",
-              "name": "Cut out (suggested)",
+              "name": "Cut out · Home header",
               "width": "fill_container",
               "layout": "vertical",
               "gap": 12,
@@ -437953,7 +437945,7 @@
                   "id": "olaoi",
                   "name": "Caption",
                   "fill": "$ds-ink",
-                  "content": "Cut out (suggested)",
+                  "content": "Cut out: the Home header",
                   "fontFamily": "$ds-font",
                   "fontSize": 13,
                   "fontWeight": "700"
@@ -437979,7 +437971,7 @@
             {
               "type": "frame",
               "id": "t1bfLp",
-              "name": "In its square (today)",
+              "name": "In its square · app icon",
               "width": "fill_container",
               "layout": "vertical",
               "gap": 12,
@@ -438023,7 +438015,7 @@
                   "id": "FSfPz",
                   "name": "Caption",
                   "fill": "$ds-ink",
-                  "content": "In its square (today)",
+                  "content": "In its square: the app icon only",
                   "fontFamily": "$ds-font",
                   "fontSize": 13,
                   "fontWeight": "700"
@@ -438033,7 +438025,7 @@
             {
               "type": "frame",
               "id": "vYZPf",
-              "name": "Cut out (suggested)",
+              "name": "Cut out · Home header",
               "width": "fill_container",
               "layout": "vertical",
               "gap": 12,
@@ -438076,7 +438068,7 @@
                   "id": "HE9Tk",
                   "name": "Caption",
                   "fill": "$ds-ink",
-                  "content": "Cut out (suggested)",
+                  "content": "Cut out: the Home header",
                   "fontFamily": "$ds-font",
                   "fontSize": 13,
                   "fontWeight": "700"
@@ -446807,8 +446799,8 @@
           "width": 680,
           "descendants": {
             "uLHwl": {
-              "width": 28,
-              "height": 28
+              "width": 35,
+              "height": 36
             },
             "zZLHv": {
               "fontSize": 22
@@ -447798,8 +447790,8 @@
           "width": 353,
           "descendants": {
             "uLHwl": {
-              "width": 28,
-              "height": 28
+              "width": 35,
+              "height": 36
             },
             "zZLHv": {
               "fontSize": 22
@@ -448842,8 +448834,8 @@
           "width": 353,
           "descendants": {
             "uLHwl": {
-              "width": 28,
-              "height": 28
+              "width": 35,
+              "height": 36
             },
             "zZLHv": {
               "fontSize": 22
@@ -449934,8 +449926,8 @@
           "width": 335,
           "descendants": {
             "uLHwl": {
-              "width": 28,
-              "height": 28
+              "width": 35,
+              "height": 36
             },
             "zZLHv": {
               "fontSize": 22
@@ -454446,8 +454438,8 @@
           "width": 680,
           "descendants": {
             "uLHwl": {
-              "width": 28,
-              "height": 28
+              "width": 35,
+              "height": 36
             },
             "zZLHv": {
               "fontSize": 22
@@ -455448,8 +455440,8 @@
           "width": 353,
           "descendants": {
             "uLHwl": {
-              "width": 28,
-              "height": 28
+              "width": 35,
+              "height": 36
             },
             "zZLHv": {
               "fontSize": 22
@@ -456503,8 +456495,8 @@
           "width": 353,
           "descendants": {
             "uLHwl": {
-              "width": 28,
-              "height": 28
+              "width": 35,
+              "height": 36
             },
             "zZLHv": {
               "fontSize": 22
@@ -457606,8 +457598,8 @@
           "width": 335,
           "descendants": {
             "uLHwl": {
-              "width": 28,
-              "height": 28
+              "width": 35,
+              "height": 36
             },
             "zZLHv": {
               "fontSize": 22
@@ -461897,8 +461889,8 @@
           "width": 680,
           "descendants": {
             "uLHwl": {
-              "width": 28,
-              "height": 28
+              "width": 35,
+              "height": 36
             },
             "zZLHv": {
               "fontSize": 22
@@ -462874,8 +462866,8 @@
           "width": 353,
           "descendants": {
             "uLHwl": {
-              "width": 28,
-              "height": 28
+              "width": 35,
+              "height": 36
             },
             "zZLHv": {
               "fontSize": 22
@@ -463904,8 +463896,8 @@
           "width": 353,
           "descendants": {
             "uLHwl": {
-              "width": 28,
-              "height": 28
+              "width": 35,
+              "height": 36
             },
             "zZLHv": {
               "fontSize": 22
@@ -464982,8 +464974,8 @@
           "width": 335,
           "descendants": {
             "uLHwl": {
-              "width": 28,
-              "height": 28
+              "width": 35,
+              "height": 36
             },
             "zZLHv": {
               "fontSize": 22
@@ -469433,8 +469425,8 @@
           "width": 680,
           "descendants": {
             "uLHwl": {
-              "width": 28,
-              "height": 28
+              "width": 35,
+              "height": 36
             },
             "zZLHv": {
               "fontSize": 22
@@ -470456,8 +470448,8 @@
           "width": 353,
           "descendants": {
             "uLHwl": {
-              "width": 28,
-              "height": 28
+              "width": 35,
+              "height": 36
             },
             "zZLHv": {
               "fontSize": 22
@@ -471532,8 +471524,8 @@
           "width": 353,
           "descendants": {
             "uLHwl": {
-              "width": 28,
-              "height": 28
+              "width": 35,
+              "height": 36
             },
             "zZLHv": {
               "fontSize": 22
@@ -472656,8 +472648,8 @@
           "width": 335,
           "descendants": {
             "uLHwl": {
-              "width": 28,
-              "height": 28
+              "width": 35,
+              "height": 36
             },
             "zZLHv": {
               "fontSize": 22
@@ -477294,8 +477286,8 @@
           "width": 680,
           "descendants": {
             "uLHwl": {
-              "width": 28,
-              "height": 28
+              "width": 35,
+              "height": 36
             },
             "zZLHv": {
               "fontSize": 22
@@ -478352,8 +478344,8 @@
           "width": 353,
           "descendants": {
             "uLHwl": {
-              "width": 28,
-              "height": 28
+              "width": 35,
+              "height": 36
             },
             "zZLHv": {
               "fontSize": 22
@@ -479463,8 +479455,8 @@
           "width": 353,
           "descendants": {
             "uLHwl": {
-              "width": 28,
-              "height": 28
+              "width": 35,
+              "height": 36
             },
             "zZLHv": {
               "fontSize": 22
@@ -480622,8 +480614,8 @@
           "width": 335,
           "descendants": {
             "uLHwl": {
-              "width": 28,
-              "height": 28
+              "width": 35,
+              "height": 36
             },
             "zZLHv": {
               "fontSize": 22
@@ -485114,8 +485106,8 @@
           "width": 680,
           "descendants": {
             "uLHwl": {
-              "width": 28,
-              "height": 28
+              "width": 35,
+              "height": 36
             },
             "zZLHv": {
               "fontSize": 22
@@ -486127,8 +486119,8 @@
           "width": 353,
           "descendants": {
             "uLHwl": {
-              "width": 28,
-              "height": 28
+              "width": 35,
+              "height": 36
             },
             "zZLHv": {
               "fontSize": 22
@@ -487193,8 +487185,8 @@
           "width": 353,
           "descendants": {
             "uLHwl": {
-              "width": 28,
-              "height": 28
+              "width": 35,
+              "height": 36
             },
             "zZLHv": {
               "fontSize": 22
@@ -488307,8 +488299,8 @@
           "width": 335,
           "descendants": {
             "uLHwl": {
-              "width": 28,
-              "height": 28
+              "width": 35,
+              "height": 36
             },
             "zZLHv": {
               "fontSize": 22
@@ -492680,8 +492672,8 @@
           "width": 680,
           "descendants": {
             "uLHwl": {
-              "width": 28,
-              "height": 28
+              "width": 35,
+              "height": 36
             },
             "zZLHv": {
               "fontSize": 22
@@ -493674,8 +493666,8 @@
           "width": 353,
           "descendants": {
             "uLHwl": {
-              "width": 28,
-              "height": 28
+              "width": 35,
+              "height": 36
             },
             "zZLHv": {
               "fontSize": 22
@@ -494721,8 +494713,8 @@
           "width": 353,
           "descendants": {
             "uLHwl": {
-              "width": 28,
-              "height": 28
+              "width": 35,
+              "height": 36
             },
             "zZLHv": {
               "fontSize": 22
@@ -495816,8 +495808,8 @@
           "width": 335,
           "descendants": {
             "uLHwl": {
-              "width": 28,
-              "height": 28
+              "width": 35,
+              "height": 36
             },
             "zZLHv": {
               "fontSize": 22
@@ -500254,8 +500246,8 @@
           "width": 680,
           "descendants": {
             "uLHwl": {
-              "width": 28,
-              "height": 28
+              "width": 35,
+              "height": 36
             },
             "zZLHv": {
               "fontSize": 22
@@ -501272,8 +501264,8 @@
           "width": 353,
           "descendants": {
             "uLHwl": {
-              "width": 28,
-              "height": 28
+              "width": 35,
+              "height": 36
             },
             "zZLHv": {
               "fontSize": 22
@@ -502343,8 +502335,8 @@
           "width": 353,
           "descendants": {
             "uLHwl": {
-              "width": 28,
-              "height": 28
+              "width": 35,
+              "height": 36
             },
             "zZLHv": {
               "fontSize": 22
@@ -503462,8 +503454,8 @@
           "width": 335,
           "descendants": {
             "uLHwl": {
-              "width": 28,
-              "height": 28
+              "width": 35,
+              "height": 36
             },
             "zZLHv": {
               "fontSize": 22
@@ -508393,8 +508385,8 @@
           "width": 680,
           "descendants": {
             "uLHwl": {
-              "width": 28,
-              "height": 28
+              "width": 35,
+              "height": 36
             },
             "zZLHv": {
               "fontSize": 22
@@ -509526,8 +509518,8 @@
           "width": 353,
           "descendants": {
             "uLHwl": {
-              "width": 28,
-              "height": 28
+              "width": 35,
+              "height": 36
             },
             "zZLHv": {
               "fontSize": 22
@@ -510712,8 +510704,8 @@
           "width": 353,
           "descendants": {
             "uLHwl": {
-              "width": 28,
-              "height": 28
+              "width": 35,
+              "height": 36
             },
             "zZLHv": {
               "fontSize": 22
@@ -511946,8 +511938,8 @@
           "width": 335,
           "descendants": {
             "uLHwl": {
-              "width": 28,
-              "height": 28
+              "width": 35,
+              "height": 36
             },
             "zZLHv": {
               "fontSize": 22
@@ -516421,8 +516413,8 @@
           "width": 680,
           "descendants": {
             "uLHwl": {
-              "width": 28,
-              "height": 28
+              "width": 35,
+              "height": 36
             },
             "zZLHv": {
               "fontSize": 22
@@ -517411,8 +517403,8 @@
           "width": 353,
           "descendants": {
             "uLHwl": {
-              "width": 28,
-              "height": 28
+              "width": 35,
+              "height": 36
             },
             "zZLHv": {
               "fontSize": 22
@@ -518454,8 +518446,8 @@
           "width": 353,
           "descendants": {
             "uLHwl": {
-              "width": 28,
-              "height": 28
+              "width": 35,
+              "height": 36
             },
             "zZLHv": {
               "fontSize": 22
@@ -519545,8 +519537,8 @@
           "width": 335,
           "descendants": {
             "uLHwl": {
-              "width": 28,
-              "height": 28
+              "width": 35,
+              "height": 36
             },
             "zZLHv": {
               "fontSize": 22
@@ -524126,8 +524118,8 @@
           "width": 680,
           "descendants": {
             "uLHwl": {
-              "width": 28,
-              "height": 28
+              "width": 35,
+              "height": 36
             },
             "zZLHv": {
               "fontSize": 22
@@ -525178,8 +525170,8 @@
           "width": 353,
           "descendants": {
             "uLHwl": {
-              "width": 28,
-              "height": 28
+              "width": 35,
+              "height": 36
             },
             "zZLHv": {
               "fontSize": 22
@@ -526283,8 +526275,8 @@
           "width": 353,
           "descendants": {
             "uLHwl": {
-              "width": 28,
-              "height": 28
+              "width": 35,
+              "height": 36
             },
             "zZLHv": {
               "fontSize": 22
@@ -527436,8 +527428,8 @@
           "width": 335,
           "descendants": {
             "uLHwl": {
-              "width": 28,
-              "height": 28
+              "width": 35,
+              "height": 36
             },
             "zZLHv": {
               "fontSize": 22
