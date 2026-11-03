@@ -90,7 +90,7 @@ final class NativeMicrophoneBinding: MicrophoneBinding, @unchecked Sendable {
         }
         try Self.check(AudioObjectAddPropertyListenerBlock(
             AudioObjectID(kAudioObjectSystemObject), &address, notifications, listener
-        ))
+        ), "watching the default input")
         defaultListener = listener
     }
 
@@ -215,7 +215,7 @@ final class NativeMicrophoneBinding: MicrophoneBinding, @unchecked Sendable {
         var address = defaultInputAddress
         var device = AudioObjectID(kAudioObjectUnknown)
         var size = UInt32(MemoryLayout<AudioObjectID>.size)
-        try check(AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size, &device))
+        try check(AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size, &device), "reading the default input")
         guard device != kAudioObjectUnknown else { throw CaptureError.noInput }
         return device
     }
@@ -229,7 +229,7 @@ final class NativeMicrophoneBinding: MicrophoneBinding, @unchecked Sendable {
 
         var host: UInt64 = 0
         var continuous: UInt64 = 0
-        try check(microphoneGetTimes(&host, &continuous, nil))
+        try check(microphoneGetTimes(&host, &continuous, nil), "reading the clocks")
         return MicrophoneClockReading(
             host: AVAudioTime.seconds(forHostTime: host),
             continuous: AVAudioTime.seconds(forHostTime: continuous)
@@ -265,15 +265,24 @@ final class NativeMicrophoneBinding: MicrophoneBinding, @unchecked Sendable {
         )
     }
 
-    private static func check(_ status: OSStatus) throws {
+    private static func check(_ status: OSStatus, _ call: String) throws {
 
-        guard status == noErr else { throw NativeMicrophoneError(status: status) }
+        guard status == noErr else { throw NativeMicrophoneError(call: call, status: status) }
     }
 }
 
-private struct NativeMicrophoneError: Error {
+/// Names the native call that refused, since one status such as 'nope' can come from any of them.
+struct NativeMicrophoneError: Error, CustomStringConvertible {
 
+    let call: String
     let status: OSStatus
+
+    var description: String {
+
+        let bytes = withUnsafeBytes(of: UInt32(bitPattern: status).bigEndian, Array.init)
+        let code = bytes.allSatisfy { (0x20...0x7e).contains($0) } ? "'\(String(decoding: bytes, as: UTF8.self))' " : ""
+        return "Microphone \(call) failed: \(code)\(status)"
+    }
 }
 
 final class NativeTap: Sendable {
@@ -355,7 +364,7 @@ final class SystemMicrophoneEngine: MicrophoneEngine, @unchecked Sendable {
             unit, kAudioOutputUnitProperty_CurrentDevice, kAudioUnitScope_Global, 0,
             &device, UInt32(MemoryLayout<UInt32>.size)
         )
-        guard status == noErr else { throw NativeMicrophoneError(status: status) }
+        guard status == noErr else { throw NativeMicrophoneError(call: "choosing the input device", status: status) }
     }
 
     func inputFormat() -> AVAudioFormat {
