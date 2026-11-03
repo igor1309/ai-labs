@@ -11,6 +11,12 @@ The live panel and settings UI are not connected yet.
 Build: `cd audelin/macos && sh scripts/bundle.sh`.
 Components: `macos/`; composer, app, rehearsal and their integration tests: `macos/App/`.
 Build and test each package from its directory with `swift build --build-tests` and `swift test`.
+Reading exposes its complete state, including rendered lines, the stored `log`,
+rendering indexes and per-reduction work counts. Public initializers retain the supplied
+values; reduction keeps `log` coherent with the lines and status. Construct a
+`ReadingReducer(recordingTime:lineTime:span:)` to inject rendering closures, or use
+`ReadingReducer.reduce` with the production functions in `ReadingFormatting`.
+
 Run: `open .build/Audelin.app` from `audelin/macos`.
 Logs: `log stream --predicate 'subsystem == "dev.igor1309.audelin"'`.
 Profile: from `audelin/macos`, `scripts/profile-rehearsal.sh capture --capture-after 120 --capture-for 30 --minutes 20 --speed 1`
