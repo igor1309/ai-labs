@@ -5,6 +5,7 @@ import Testing
 struct ReadingRenderingTests {
 
     @Test func constructionDoesNotRenderOrChooseALog() {
+
         let spy = RenderingSpy()
         _ = makeReducer(spy)
         let state = ReadingState(recording: .on(elapsed: "given"), status: .listening,
@@ -14,6 +15,7 @@ struct ReadingRenderingTests {
     }
 
     @Test func recordingUsesInjectedTime() {
+
         let spy = RenderingSpy()
         let state = makeState()
         assert(state, .recordingChanged(.on(elapsed: 3_661.9)), delivers: nil, using: makeReducer(spy)) {
@@ -24,6 +26,7 @@ struct ReadingRenderingTests {
     }
 
     @Test func entriesAndLateSpanUseInjectedStrings() {
+
         let spy = RenderingSpy()
         let first = makeText(0, start: 61.9, end: 80, late: true)
         let second = makeText(1, start: 65, end: 70, late: true)
@@ -48,6 +51,7 @@ struct ReadingRenderingTests {
     }
 
     @Test func revisionsFormatTheOriginalAnchor() {
+
         let spy = RenderingSpy()
         let text = makeText(0, start: 99, end: 100)
         let state = makePreparedState()
@@ -60,6 +64,7 @@ struct ReadingRenderingTests {
     }
 
     @Test func unpreparedPublicStateFormatsAtItsAnchor() {
+
         let spy = RenderingSpy()
         var state = makePreparedState()
         state.rendered = .init()
@@ -72,6 +77,7 @@ struct ReadingRenderingTests {
     }
 
     @Test func bannersGapsAndSplitSpansUseInjectedStrings() {
+
         let spy = RenderingSpy()
         let first = makeText(0, start: 2, end: 8, late: true)
         let last = makeText(1, start: 6, end: 7, late: true)
@@ -92,6 +98,7 @@ struct ReadingRenderingTests {
     }
 
     @Test func stoppingReformatsOnlyTheJoinedSpan() {
+
         let spy = RenderingSpy()
         let first = makeText(0, start: 2, end: 8, late: true)
         let last = makeText(1, start: 6, end: 7, late: true)
@@ -115,7 +122,106 @@ struct ReadingRenderingTests {
         #expect(spy.calls == [.line(2), .line(8), .span("line(2.0)", "line(8.0)")])
     }
 
+    @Test(arguments: [false, true])
+    func repeatedProblemsDoNotRender(_ changedTimestamp: Bool) {
+
+        let spy = RenderingSpy()
+        let state = makeProblemState()
+        let problems: [ReadingProblem] = [
+            .init(.microphone, began: changedTimestamp ? 99 : 4),
+            .init(.callSilent, began: changedTimestamp ? 100 : 9),
+        ]
+        assert(state, .problemsChanged(problems), delivers: nil, using: makeReducer(spy))
+        #expect(spy.calls == [])
+    }
+
+    @Test func clearingAnAbsentWarningDoesNotRender() {
+
+        let spy = RenderingSpy()
+        var state = makeProblemState()
+        state.problems.removeLast()
+        state.banners.removeFirst()
+        assert(state, .problemsChanged([]), delivers: nil, using: makeReducer(spy))
+        #expect(spy.calls == [])
+    }
+
+    @Test func clearingWarningDoesNotReformatFaultsOrGaps() {
+
+        let spy = RenderingSpy()
+        assert(makeProblemState(), .problemsChanged([]), delivers: nil, using: makeReducer(spy)) {
+            $0.problems.removeLast()
+            $0.banners.removeFirst()
+        }
+        #expect(spy.calls == [])
+    }
+
+    @Test func newWarningFormatsOnlyItsBanner() {
+
+        let spy = RenderingSpy()
+        var state = makeProblemState()
+        state.problems.removeLast()
+        state.banners.removeFirst()
+        assert(state, .problemsChanged([.init(.callSilent, began: 12)]), delivers: nil, using: makeReducer(spy)) {
+            $0.problems.append(.init(.callSilent, began: 12))
+            $0.banners.insert(.init(kind: .callSilent, time: "line(12.0)"), at: 0)
+        }
+        #expect(spy.calls == [.line(12)])
+    }
+
+    @Test func lateWordRevisionFormatsItsAnchorWithoutReformattingTheSpan() {
+
+        let spy = RenderingSpy()
+        let first = makeText(0, start: 2, end: 8, late: true)
+        let last = makeText(1, start: 6, end: 7, late: true)
+        let revision = ReadingTextUpdate.Entry(id: first.id, start: 2, end: 8, settled: "revised", writtenLater: true)
+        assert(makeLateState(first, last), .textUpdated(.init(status: .listening, entries: [revision, last])),
+               delivers: nil, using: makeReducer(spy)) {
+            $0.text[first.id] = revision
+            $0.lines.rows = [.late(.init(span: "given span", entries: [
+                .init(id: 0, time: "line(2.0)", speaker: .mine, settled: "revised"),
+                makeEntry(1, time: "given last"),
+            ]))]
+            $0.log = .lines($0.lines)
+        }
+        #expect(spy.calls == [.line(2)])
+    }
+
+    @Test func unpreparedProblemsRenderTheLayoutOnce() {
+
+        let spy = RenderingSpy()
+        let first = makeText(0, start: 2, end: 8, late: true)
+        let last = makeText(1, start: 6, end: 7, late: true)
+        var state = makeLateState(first, last)
+        state.text[last.id] = nil
+        state.anchors[last.id] = nil
+        state.nextDisplayID = 1
+        state.lines.rows = [.late(.init(span: "given span", entries: [makeEntry(0, time: "given first")]))]
+        state.log = .lines(state.lines)
+        state.rendered = .init()
+        assert(state, .problemsChanged([.init(.microphone, began: 4)]), delivers: nil, using: makeReducer(spy)) {
+            $0.problems = [.init(.microphone, began: 4)]
+            $0.banners = [.init(kind: .microphone, time: "line(4.0)")]
+            $0.lines.rows = [
+                .late(.init(span: "span[line(2.0)|line(8.0)]", entries: [makeEntry(0, time: "line(2.0)")])),
+                .gap(.init(speaker: .mine, time: "line(4.0)", kind: .microphone)),
+            ]
+            $0.log = .lines($0.lines)
+        }
+        #expect(spy.calls == [.line(4), .line(2), .line(2), .line(8),
+                              .span("line(2.0)", "line(8.0)"), .line(4)])
+    }
+
+    @Test func stoppingWithoutGapsDoesNotRenderTheLateSpan() {
+
+        let spy = RenderingSpy()
+        let first = makeText(0, start: 2, end: 8, late: true)
+        let last = makeText(1, start: 6, end: 7, late: true)
+        assert(makeLateState(first, last), .recordingChanged(.off), delivers: nil, using: makeReducer(spy))
+        #expect(spy.calls == [])
+    }
+
     @Test func holdingPreservesExactTextWithoutFormatting() {
+
         let spy = RenderingSpy()
         let held = ReadingState.Held(entryID: 0, text: " exact \n text ")
         assert(makePreparedState(), .hold(held), delivers: nil, using: makeReducer(spy)) {
@@ -125,8 +231,27 @@ struct ReadingRenderingTests {
         #expect(spy.calls == [])
     }
 
+    @Test func lettingGoAndScrollingDoNotFormat() {
+
+        let spy = RenderingSpy()
+        let held = ReadingState.Held(entryID: 0, text: " exact ")
+        var state = makePreparedState()
+        state.lines.holds = [held]
+        state.log = .lines(state.lines)
+        assert(state, .letGo(held), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.holds = []
+            $0.log = .lines($0.lines)
+        }
+        assert(state, .scrolled(atBottom: false), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.followsLive = false
+            $0.log = .lines($0.lines)
+        }
+        #expect(spy.calls == [])
+    }
+
     @Test(arguments: [ReadingTextUpdate.Status.off, .gettingReady, .failed("unavailable"), .finished])
     func statusChangesDoNotReformatCachedEntries(_ status: ReadingTextUpdate.Status) {
+
         let spy = RenderingSpy()
         assert(makePreparedState(), .textUpdated(.init(status: status, entries: [])), delivers: nil, using: makeReducer(spy)) {
             $0.status = status
@@ -136,6 +261,7 @@ struct ReadingRenderingTests {
     }
 
     @Test func unchangedLateTextDoesNotFormatTimesOrSpans() {
+
         let spy = RenderingSpy()
         let first = makeText(0, start: 2, end: 8, late: true)
         let last = makeText(1, start: 6, end: 7, late: true)
@@ -144,7 +270,21 @@ struct ReadingRenderingTests {
         #expect(spy.calls == [])
     }
 
+    @Test func finalizingUnchangedTextDoesNotRender() {
+
+        let spy = RenderingSpy()
+        let text = makeText(0, start: 2, end: 3)
+        assert(makePreparedState(), .textUpdated(.init(status: .listening, entries: [text], finalCount: 1)),
+               delivers: nil, using: makeReducer(spy)) {
+            $0.text.seal(text.id)
+            $0.anchors.seal(text.id)
+            $0.lines.rows.seal(upTo: 1)
+        }
+        #expect(spy.calls == [])
+    }
+
     @Test func interactionsAndUnchangedTextDoNotRender() {
+
         let held = ReadingState.Held(entryID: 0, text: " exact \n text ")
         var state = makePreparedState()
         state.lines.holds = [held]
@@ -167,34 +307,41 @@ private final class RenderingSpy: Sendable {
     private let storage = Mutex<[Call]>([])
     var calls: [Call] { storage.withLock { $0 } }
     func recording(_ value: Double) -> String {
+
         storage.withLock { $0.append(.recording(value)) }
         return "recording(\(value))"
     }
     func line(_ value: Double) -> String {
+
         storage.withLock { $0.append(.line(value)) }
         return "line(\(value))"
     }
     func span(_ start: String, _ end: String) -> String {
+
         storage.withLock { $0.append(.span(start, end)) }
         return "span[\(start)|\(end)]"
     }
 }
 
 private func makeReducer(_ spy: RenderingSpy) -> ReadingReducer {
+
     .init(recordingTime: { spy.recording($0) }, lineTime: { spy.line($0) }, span: { spy.span($0, $1) })
 }
 
 private func makeState() -> ReadingState { .init() }
 
 private func makeText(_ id: Int, start: Double, end: Double, late: Bool = false) -> ReadingTextUpdate.Entry {
+
     .init(id: .init(speaker: .mine, localID: id), start: start, end: end, writtenLater: late)
 }
 
 private func makeEntry(_ id: Int, time: String) -> ReadingState.Entry {
+
     .init(id: id, time: time, speaker: .mine, settled: "", pending: "")
 }
 
 private func makePreparedState() -> ReadingState {
+
     let text = makeText(0, start: 2, end: 3)
     let entry = makeEntry(0, time: "given")
     let lines = ReadingState.Lines(rows: [.entry(entry)])
@@ -206,22 +353,24 @@ private func makePreparedState() -> ReadingState {
 }
 
 private func makeLateState(_ first: ReadingTextUpdate.Entry, _ last: ReadingTextUpdate.Entry) -> ReadingState {
+
     let entries = [makeEntry(0, time: "given first"), makeEntry(1, time: "given last")]
     let lines = ReadingState.Lines(rows: [.late(.init(span: "given span", entries: entries))])
     return .init(log: .lines(lines), status: .listening,
                  anchors: [first.id: .init(id: 0, start: 2), last.id: .init(id: 1, start: 6)], nextDisplayID: 2,
                  text: [first.id: first, last.id: last], lines: lines,
                  rendered: .init(prepared: true, ordered: [first.id, last.id],
-                                 entries: [first.id: entries[0], last.id: entries[1]]))
+                                 entries: [first.id: entries[0], last.id: entries[1]],
+                                 locations: [first.id: .init(row: 0, lateEntry: 0),
+                                             last.id: .init(row: 0, lateEntry: 1)]))
 }
 
-private func assert(
-    _ state: ReadingState, _ event: ReadingEvent, delivers effect: Never?, using reducer: ReadingReducer,
-    sourceLocation: SourceLocation = #_sourceLocation, _ change: (inout ReadingState) -> Void = { _ in }
-) {
-    var expected = state
-    change(&expected)
-    let result = reducer.reduce(state, event)
-    #expect(result.0 == expected, sourceLocation: sourceLocation)
-    #expect(result.1 == effect, sourceLocation: sourceLocation)
+private func makeProblemState() -> ReadingState {
+
+    var state = makePreparedState()
+    state.problems = [.init(.microphone, began: 4), .init(.callSilent, began: 9)]
+    state.banners = [.init(kind: .callSilent, time: "given warning"), .init(kind: .microphone, time: "given fault")]
+    state.lines.rows.append(.gap(.init(speaker: .mine, time: "given gap", kind: .microphone)))
+    state.log = .lines(state.lines)
+    return state
 }

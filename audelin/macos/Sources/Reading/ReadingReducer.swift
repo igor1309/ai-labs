@@ -12,6 +12,7 @@ public struct ReadingReducer: Sendable {
         lineTime: @escaping @Sendable (Double) -> String,
         span: @escaping @Sendable (String, String) -> String
     ) {
+
         self.recordingTime = recordingTime
         self.lineTime = lineTime
         self.span = span
@@ -32,23 +33,35 @@ public struct ReadingReducer: Sendable {
         case let .recordingChanged(recording):
             switch recording {
             case .off:
+                let removesGaps = hasGaps(state)
+                let wasPrepared = state.rendered.prepared
                 state.recording = .off
                 state.problems = []
                 state.banners = []
                 prepareRows(&state)
-                rebuildLayout(&state)
+                if wasPrepared && removesGaps { rebuildLayout(&state) }
             case let .on(elapsed): state.recording = .on(elapsed: recordingTime(elapsed))
             }
         case let .problemsChanged(problems):
+            let previous = state.problems
             state.problems.removeAll { $0.kind == .callSilent && !problems.contains(where: { $0.kind == .callSilent }) }
             for problem in problems where !state.problems.contains(where: { $0.kind == problem.kind }) {
                 state.problems.append(problem)
             }
-            state.banners = state.problems.enumerated().sorted {
-                $0.element.began == $1.element.began ? $0.offset > $1.offset : $0.element.began > $1.element.began
-            }.map { .init(kind: $0.element.kind, time: lineTime($0.element.began)) }
+            if state.problems != previous {
+                state.banners = state.problems.enumerated().sorted {
+                    $0.element.began == $1.element.began ? $0.offset > $1.offset : $0.element.began > $1.element.began
+                }.map { problem in
+                    state.banners.first { $0.kind == problem.element.kind }
+                        ?? .init(kind: problem.element.kind, time: lineTime(problem.element.began))
+                }
+            }
+            let wasPrepared = state.rendered.prepared
             prepareRows(&state)
-            rebuildLayout(&state)
+            if wasPrepared,
+               previous.filter({ $0.kind != .callSilent }) != state.problems.filter({ $0.kind != .callSilent }) {
+                rebuildLayout(&state)
+            }
         case let .textUpdated(update):
             prepareRows(&state)
             state.status = update.status
@@ -233,8 +246,9 @@ public struct ReadingReducer: Sendable {
 
             if state.text.isSealed(id) {
                 if state.rendered.locations[id] != location { state.rendered.locations.setSealed(id, location) }
+            } else {
+                state.rendered.locations[id] = location
             }
-            else { state.rendered.locations[id] = location }
         }
         var lateStart = 0.0
         var lateEnd = 0.0
@@ -286,5 +300,4 @@ public struct ReadingReducer: Sendable {
         state.lines.rows = .init(sealed: kept, tail: result)
         sealRows(&state)
     }
-
 }

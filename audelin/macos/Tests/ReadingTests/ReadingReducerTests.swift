@@ -4,6 +4,7 @@ import Testing
 struct ReadingReducerTests {
 
     @Test func recordingOnShowsElapsedTime() {
+
         assert(makeState(), .recordingChanged(.on(elapsed: 3_661.9)), delivers: nil) {
             $0.recording = .on(elapsed: "01:01:01")
             $0.log = .liveTextOff(kept: nil)
@@ -11,6 +12,7 @@ struct ReadingReducerTests {
     }
 
     @Test func recordingOffClearsElapsedTime() {
+
         assert(makeRecording(.on(elapsed: "00:00:12")), .recordingChanged(.off), delivers: nil) {
             $0.recording = .off
             $0.log = .empty
@@ -18,6 +20,7 @@ struct ReadingReducerTests {
     }
 
     @Test func listeningTextBecomesARow() {
+
         assert(makeState(), .textUpdated(listening(entry)), delivers: nil) {
             $0.status = .listening
             $0.anchors[entry.id] = .init(id: 0, start: 2)
@@ -29,6 +32,7 @@ struct ReadingReducerTests {
     }
 
     @Test func holdAddsAHold() {
+
         assert(makeState(), .hold(held), delivers: nil) {
             $0.lines.holds = [held]
             $0.log = .lines($0.lines)
@@ -36,6 +40,7 @@ struct ReadingReducerTests {
     }
 
     @Test func letGoRemovesTheHold() {
+
         assert(makeLines { $0.holds = [held] }, .letGo(held), delivers: nil) {
             $0.lines.holds = []
             $0.log = .empty
@@ -43,12 +48,14 @@ struct ReadingReducerTests {
     }
 
     @Test func scrollingUpStopsFollowing() {
+
         assert(makeState(), .scrolled(atBottom: false), delivers: nil) {
             $0.lines.followsLive = false
         }
     }
 
     @Test func scrollingToBottomFollowsAndClearsNew() {
+
         assert(makeBehind(), .scrolled(atBottom: true), delivers: nil) {
             $0.lines.followsLive = true
             $0.lines.newBelow = 0
@@ -56,6 +63,7 @@ struct ReadingReducerTests {
     }
 
     @Test func jumpToLiveFollowsAndClearsNew() {
+
         assert(makeBehind(), .jumpToLive, delivers: nil) {
             $0.lines.followsLive = true
             $0.lines.newBelow = 0
@@ -63,6 +71,7 @@ struct ReadingReducerTests {
     }
 
     @Test func callOrderGivesEachSpeakerItsOwnRow() {
+
         assert(makeState(), .textUpdated(listening(draft, first)), delivers: nil) {
             $0.status = .listening
             $0.anchors[draft.id] = .init(id: 0, start: 8)
@@ -76,6 +85,7 @@ struct ReadingReducerTests {
     }
 
     @Test func settlingKeepsIDsTimesAndOrder() {
+
         assert(makeCalled(), .textUpdated(listening(firm, first)), delivers: nil) {
             $0.text[firm.id] = firm
             $0.lines.rows[1] = row(0, "00:08", .mine, settled: "firm", pending: " next")
@@ -84,17 +94,19 @@ struct ReadingReducerTests {
     }
 
     @Test func recordingRestartShowsZero() {
+
         assert(makeRecording(.on(elapsed: "01:01:01")), .recordingChanged(.on(elapsed: 0)), delivers: nil) {
             $0.recording = .on(elapsed: "00:00:00")
         }
     }
 
     @Test func consecutiveLateEntriesGroupInCallOrder() {
+
         assert(makeState(), .textUpdated(listening(late4, on3, late2, late1, early)), delivers: nil) {
             $0.status = .listening
             for (id, text) in [late4, on3, late2, late1, early].enumerated() {
-            $0.anchors[text.id] = .init(id: id, start: text.start)
-            $0.text[text.id] = text
+                $0.anchors[text.id] = .init(id: id, start: text.start)
+                $0.text[text.id] = text
             }
             $0.nextDisplayID = 5
             $0.lines.rows = [
@@ -108,6 +120,7 @@ struct ReadingReducerTests {
     }
 
     @Test func holdAddsToTheHolds() {
+
         assert(makeHolding(heldFirst), .hold(heldSecond), delivers: nil) {
             $0.lines.holds.append(heldSecond)
             $0.log = .lines($0.lines)
@@ -115,10 +128,12 @@ struct ReadingReducerTests {
     }
 
     @Test func holdingAgainChangesNothing() {
+
         assert(makeHolding(heldFirst, heldSecond), .hold(heldFirst), delivers: nil)
     }
 
     @Test func holdsSurviveRevisedText() {
+
         assert(makeHolding(heldFirst, heldSecond), .textUpdated(listening(different)), delivers: nil) {
             $0.text[different.id] = different
             $0.lines.rows[0] = row(0, "00:01", .mine, settled: "different text")
@@ -127,6 +142,7 @@ struct ReadingReducerTests {
     }
 
     @Test func holdsSurviveTheirEntryLeaving() {
+
         assert(makeHolding(heldFirst, heldSecond), .textUpdated(listening()), delivers: nil) {
             $0.text[uncertain.id] = nil
             $0.anchors[uncertain.id] = nil
@@ -136,6 +152,7 @@ struct ReadingReducerTests {
     }
 
     @Test func holdsSurviveScrollingUp() {
+
         assert(makeHeldOnly(), .scrolled(atBottom: false), delivers: nil) {
             $0.lines.followsLive = false
             $0.log = .lines($0.lines)
@@ -143,6 +160,7 @@ struct ReadingReducerTests {
     }
 
     @Test func holdsSurviveJumpToLive() {
+
         assert(makeHeldOnly(followsLive: false), .jumpToLive, delivers: nil) {
             $0.lines.followsLive = true
             $0.log = .lines($0.lines)
@@ -150,16 +168,19 @@ struct ReadingReducerTests {
     }
 
     @Test func holdsSurviveRecordingOff() {
+
         assert(makeHeldOnly(), .recordingChanged(.off), delivers: nil)
     }
 
     @Test func holdsSurviveLiveTextOff() {
+
         assert(makeHeldOnly(), .textUpdated(.init(status: .off, entries: [])), delivers: nil) {
             $0.status = .off
         }
     }
 
     @Test func holdsSurviveRecordingOn() {
+
         assert(makeHeldOnly(.off), .recordingChanged(.on(elapsed: 12)), delivers: nil) {
             $0.recording = .on(elapsed: "00:00:12")
             $0.log = .liveTextOff(kept: $0.lines)
@@ -167,6 +188,7 @@ struct ReadingReducerTests {
     }
 
     @Test func holdsSurviveRecordingOffWithLiveTextOff() {
+
         assert(makeHeldOnly(.off, recording: .on(elapsed: "00:00:12")), .recordingChanged(.off), delivers: nil) {
             $0.recording = .off
             $0.log = .lines($0.lines)
@@ -174,6 +196,7 @@ struct ReadingReducerTests {
     }
 
     @Test func holdsSurviveGettingReady() {
+
         assert(makeHeldOnly(.off), .textUpdated(.init(status: .gettingReady, entries: [])), delivers: nil) {
             $0.status = .gettingReady
             $0.log = .preparing(holds: $0.lines.holds)
@@ -181,6 +204,7 @@ struct ReadingReducerTests {
     }
 
     @Test func holdsSurviveFailure() {
+
         assert(makeHeldOnly(.gettingReady), .textUpdated(.init(status: .failed("unavailable"), entries: [])), delivers: nil) {
             $0.status = .failed("unavailable")
             $0.log = .lines($0.lines)
@@ -188,12 +212,14 @@ struct ReadingReducerTests {
     }
 
     @Test func holdsSurviveFinishing() {
+
         assert(makeHeldOnly(.failed("unavailable")), .textUpdated(.init(status: .finished, entries: [])), delivers: nil) {
             $0.status = .finished
         }
     }
 
     @Test func letGoRemovesOnlyThatHold() {
+
         assert(makeHeldOnly(.finished), .letGo(heldFirst), delivers: nil) {
             $0.lines.holds.removeFirst()
             $0.log = .lines($0.lines)
@@ -201,10 +227,12 @@ struct ReadingReducerTests {
     }
 
     @Test func letGoOfAnAbsentHoldChangesNothing() {
+
         assert(makeHeldOnly(.finished, holds: [heldSecond]), .letGo(heldFirst), delivers: nil)
     }
 
     @Test func letGoOfTheLastHoldEmptiesHolds() {
+
         assert(makeHeldOnly(.finished, holds: [heldSecond]), .letGo(heldSecond), delivers: nil) {
             $0.lines.holds = []
             $0.log = .lines($0.lines)
@@ -212,6 +240,7 @@ struct ReadingReducerTests {
     }
 
     @Test func settlingIsNotNewBelow() {
+
         assert(makeAwayDraft(), .textUpdated(listening(settledDraft)), delivers: nil) {
             $0.text[settledDraft.id] = settledDraft
             $0.lines.rows[0] = row(0, "00:10", .mine, settled: "settled")
@@ -220,6 +249,7 @@ struct ReadingReducerTests {
     }
 
     @Test func newIdentitiesCountBelow() {
+
         assert(makeAwaySettled(), .textUpdated(listening(next, lateTheirs, settledDraft)), delivers: nil) {
             $0.text[next.id] = next
             $0.text[lateTheirs.id] = lateTheirs
@@ -234,16 +264,19 @@ struct ReadingReducerTests {
     }
 
     @Test func reorderedEntriesAreNotNew() {
+
         assert(makeArrivals(), .textUpdated(listening(settledDraft, lateTheirs, next)), delivers: nil)
     }
 
     @Test func liveTextOffKeepsNewBelow() {
+
         assert(makeArrivals(), .textUpdated(.init(status: .off, entries: [])), delivers: nil) {
             $0.status = .off
         }
     }
 
     @Test func scrollingToBottomWithLiveTextOffFollows() {
+
         assert(makeArrivals(.off), .scrolled(atBottom: true), delivers: nil) {
             $0.lines.newBelow = 0
             $0.lines.followsLive = true
@@ -252,6 +285,7 @@ struct ReadingReducerTests {
     }
 
     @Test func gettingReadyKeepsTheRecording() {
+
         assert(makeRecording(.on(elapsed: "00:00:12")), .textUpdated(.init(status: .gettingReady, entries: [])), delivers: nil) {
             $0.status = .gettingReady
             $0.log = .preparing(holds: [])
@@ -259,6 +293,7 @@ struct ReadingReducerTests {
     }
 
     @Test func listeningWithNothingShowsEmptyLines() {
+
         assert(makeGiven(next: 0, status: .gettingReady, recording: twelve), .textUpdated(listening()), delivers: nil) {
             $0.status = .listening
             $0.log = .lines($0.lines)
@@ -266,6 +301,7 @@ struct ReadingReducerTests {
     }
 
     @Test func liveTextOffKeepsWhatWasRead() {
+
         assert(makeReadSoFar(), .textUpdated(.init(status: .off, entries: [])), delivers: nil) {
             $0.status = .off
             $0.log = .liveTextOff(kept: $0.lines)
@@ -273,6 +309,7 @@ struct ReadingReducerTests {
     }
 
     @Test func gettingReadyKeepsWhatWasRead() {
+
         assert(makeReadSoFar(.off), .textUpdated(.init(status: .gettingReady, entries: [])), delivers: nil) {
             $0.status = .gettingReady
             $0.log = .preparing(holds: [])
@@ -280,6 +317,7 @@ struct ReadingReducerTests {
     }
 
     @Test func failedRestartKeepsWhatWasRead() {
+
         assert(makeReadSoFar(.gettingReady), .textUpdated(.init(status: .failed("could not restart"), entries: [])), delivers: nil) {
             $0.status = .failed("could not restart")
             $0.log = .lines($0.lines)
@@ -287,36 +325,42 @@ struct ReadingReducerTests {
     }
 
     @Test func listeningAfterFailureShowsTheSameLines() {
+
         assert(makeReadSoFar(.failed("could not restart")), .textUpdated(listening(readEntry)), delivers: nil) {
             $0.status = .listening
         }
     }
 
     @Test func failureKeepsLinesAndRecording() {
+
         assert(makeReadSoFar(), .textUpdated(.init(status: .failed("recognition failed"), entries: [])), delivers: nil) {
             $0.status = .failed("recognition failed")
         }
     }
 
     @Test func finishingKeepsWhatWasRead() {
+
         assert(makeReadSoFar(.failed("recognition failed")), .textUpdated(.init(status: .finished, entries: [])), delivers: nil) {
             $0.status = .finished
         }
     }
 
     @Test func recordingOffAfterFinishingKeepsLines() {
+
         assert(makeReadSoFar(.finished), .recordingChanged(.off), delivers: nil) {
             $0.recording = .off
         }
     }
 
     @Test func liveTextOffAfterRecordingKeepsLines() {
+
         assert(makeReadSoFar(.finished, recording: .off), .textUpdated(.init(status: .off, entries: [])), delivers: nil) {
             $0.status = .off
         }
     }
 
     @Test(arguments: transitions) func transitionsReviseAndAddWithoutListening(_ status: ReadingTextUpdate.Status) {
+
         assert(makeBeforeRevision(), .textUpdated(.init(status: status, entries: [revised, added])), delivers: nil) {
             $0.status = status
             $0.text[revised.id] = revised
@@ -330,6 +374,7 @@ struct ReadingReducerTests {
     }
 
     @Test func omittedEntryLeavesNoIdentity() {
+
         assert(makeAwayAtFour(), .textUpdated(listening()), delivers: nil) {
             $0.text[atFour.id] = nil
             $0.anchors[atFour.id] = nil
@@ -339,6 +384,7 @@ struct ReadingReducerTests {
     }
 
     @Test func returningEntryGetsAFreshIdentity() {
+
         assert(makeGiven(next: 1, followsLive: false), .textUpdated(listening(atFour)), delivers: nil) {
             $0.text[atFour.id] = atFour
             $0.anchors[atFour.id] = .init(id: 1, start: 4)
@@ -350,6 +396,7 @@ struct ReadingReducerTests {
     }
 
     @Test func freeingASlotKeepsItsHold() {
+
         assert(makeSlotTaken(), .textUpdated(listening(still)), delivers: nil) {
             $0.text[heldDraft.id] = nil
             $0.anchors[heldDraft.id] = nil
@@ -359,6 +406,7 @@ struct ReadingReducerTests {
     }
 
     @Test func reusedSlotGetsAFreshTimeAndID() {
+
         assert(makeSlotFreed(), .textUpdated(listening(reused, still)), delivers: nil) {
             $0.text[reused.id] = reused
             $0.anchors[reused.id] = .init(id: 2, start: 12)
@@ -370,6 +418,7 @@ struct ReadingReducerTests {
     }
 
     @Test func reusedSlotSettlesInPlace() {
+
         assert(makeSlotReused(), .textUpdated(listening(still, reusedSettled)), delivers: nil) {
             $0.text[reusedSettled.id] = reusedSettled
             $0.lines.rows[1] = row(2, "00:12", .mine, settled: "new speech")
@@ -381,40 +430,47 @@ struct ReadingReducerTests {
 struct ReadingLogTests {
 
     @Test func nothingReadIsEmpty() {
+
         assert(makeState(), .jumpToLive, delivers: nil)
     }
 
     @Test func recordingWithLiveTextOffKeepsNothing() {
+
         assert(makeLogState(recording: twelve), .jumpToLive, delivers: nil) {
             $0.log = .liveTextOff(kept: nil)
         }
     }
 
     @Test func recordingWithLiveTextOffKeepsHolds() {
+
         assert(makeLogState(holds: [heldFirst, heldSecond], recording: twelve), .jumpToLive, delivers: nil) {
             $0.log = .liveTextOff(kept: $0.lines)
         }
     }
 
     @Test func liveTextOffWithoutRecordingShowsHolds() {
+
         assert(makeLogState(holds: [heldFirst, heldSecond]), .jumpToLive, delivers: nil) {
             $0.log = .lines($0.lines)
         }
     }
 
     @Test func gettingReadyShowsHolds() {
+
         assert(makeLogState(.gettingReady, holds: [heldFirst, heldSecond]), .jumpToLive, delivers: nil) {
             $0.log = .preparing(holds: $0.lines.holds)
         }
     }
 
     @Test func gettingReadyShowsNoLines() {
+
         assert(makeLogState(.gettingReady, rows: [row(0, "00:01", .mine, settled: "read so far")]), .jumpToLive, delivers: nil) {
             $0.log = .preparing(holds: [])
         }
     }
 
     @Test func recordingWithLiveTextOffKeepsLines() {
+
         assert(makeLogState(rows: [row(0, "00:01", .mine, settled: "read so far")], recording: twelve), .jumpToLive, delivers: nil) {
             $0.log = .liveTextOff(kept: $0.lines)
         }
@@ -422,6 +478,7 @@ struct ReadingLogTests {
 
     @Test(arguments: [ReadingTextUpdate.Status.listening, .failed("could not restart"), .finished, .off])
     func availableLinesStayVisible(_ status: ReadingTextUpdate.Status) {
+
         assert(makeLogState(status, rows: [row(0, "00:01", .mine, settled: "read so far")]), .jumpToLive, delivers: nil) {
             $0.log = .lines($0.lines)
         }
@@ -432,6 +489,7 @@ private func makeLogState(
     _ status: ReadingTextUpdate.Status = .off, rows: [ReadingState.Row] = [],
     holds: [ReadingState.Held] = [], recording: ReadingState.Recording = .off
 ) -> ReadingState {
+
     .init(recording: recording, status: status, lines: .init(rows: .init(tail: rows), holds: holds))
 }
 
@@ -439,8 +497,10 @@ private let entry = ReadingTextUpdate.Entry(id: .init(speaker: .mine, localID: 1
 private let held = ReadingState.Held(entryID: 0, text: "words")
 private func makeBehind() -> ReadingState {
 
-    makeLines { $0.followsLive = false
-            $0.newBelow = 2 }
+    makeLines {
+        $0.followsLive = false
+        $0.newBelow = 2
+    }
 }
 
 private let twelve = ReadingState.Recording.on(elapsed: "00:00:12")
@@ -635,11 +695,12 @@ private func makeLines(_ change: (inout ReadingState.Lines) -> Void) -> ReadingS
 
 func assert(
     _ state: ReadingState, _ event: ReadingEvent, delivers effect: Never?,
+    using reducer: ReadingReducer? = nil,
     sourceLocation: SourceLocation = #_sourceLocation, _ change: (inout ReadingState) -> Void = { _ in }
 ) {
     var expected = state
     change(&expected)
-    let result = ReadingReducer.reduce(state, event)
+    let result = reducer?.reduce(state, event) ?? ReadingReducer.reduce(state, event)
     #expect(result.0 == expected, sourceLocation: sourceLocation)
     #expect(result.1 == effect, sourceLocation: sourceLocation)
 }
@@ -647,6 +708,7 @@ func assert(
 private func makeState() -> ReadingState { .init() }
 
 private func makeLog(_ state: ReadingState) -> ReadingState.Log {
+
     switch state.status {
     case .off:
         let kept = state.lines.rows.isEmpty && state.lines.holds.isEmpty ? nil : state.lines

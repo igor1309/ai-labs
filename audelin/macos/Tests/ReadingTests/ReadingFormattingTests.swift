@@ -12,17 +12,20 @@ struct ReadingFormattingTests {
         (360_000.1, "100:00:00", "6000:00"),
     ])
     func elapsedTimeFloorsFractions(value: Double, recording: String, line: String) {
+
         #expect(ReadingFormatting.recordingTime(value) == recording)
         #expect(ReadingFormatting.lineTime(value) == line)
     }
 
     @Test(arguments: [-1.0, -0.1, -Double.infinity, Double.infinity, Double.nan])
     func nonpositiveAndNonfiniteTimesAreZero(_ value: Double) {
+
         #expect(ReadingFormatting.recordingTime(value) == "00:00:00")
         #expect(ReadingFormatting.lineTime(value) == "00:00")
     }
 
     @Test func spanJoinsTheSuppliedStringsWithAnEnDash() {
+
         #expect(ReadingFormatting.span("01:02", "63:04") == "01:02–63:04")
         #expect(ReadingFormatting.span("start", "end") == "start–end")
     }

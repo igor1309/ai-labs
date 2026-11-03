@@ -234,6 +234,7 @@ public struct ReadingState: Equatable, Sendable {
         text: SplitDictionary<ReadingTextUpdate.Entry.ID, ReadingTextUpdate.Entry> = [:],
         lines: Lines = .init(), rendered: Rendered = .init(), work: Work = .init()
     ) {
+
         self.banners = banners
         self.recording = recording
         self.log = log

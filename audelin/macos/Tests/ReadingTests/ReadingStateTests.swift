@@ -4,6 +4,7 @@ import Testing
 struct ReadingStateTests {
 
     @Test func publicConstructionPreservesAllSuppliedStorage() {
+
         let id = ReadingTextUpdate.Entry.ID(speaker: .theirs, localID: 8)
         let text = ReadingTextUpdate.Entry(id: id, start: 2, end: 5, settled: "source")
         let entry = ReadingState.Entry(id: 12, time: "rendered", speaker: .theirs, settled: "shown", pending: " next")
@@ -43,6 +44,7 @@ struct ReadingStateTests {
     }
 
     @Test func logIsStoredUntilReduction() {
+
         var state = makeState()
         state.status = .gettingReady
         state.recording = .on(elapsed: "given")
@@ -54,6 +56,7 @@ struct ReadingStateTests {
     }
 
     @Test func equalityIgnoresIndexesAndWorkButObservesStoredLog() {
+
         let state = makeState()
         var other = state
         other.rendered.prepared = true
@@ -70,6 +73,7 @@ struct ReadingStateTests {
     }
 
     @Test func finalPrefixDistinguishesOtherwiseEqualText() {
+
         let id = ReadingTextUpdate.Entry.ID(speaker: .mine, localID: 1)
         var state = makeState()
         state.text[id] = .init(id: id, start: 0, end: 1)

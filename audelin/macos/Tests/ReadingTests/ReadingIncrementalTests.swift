@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 import Reading
 
@@ -7,7 +8,12 @@ struct ReadingIncrementalTests {
     func newestRevisionBuildsOneRowWithoutOrdering(precedingCount: Int, late: Bool) {
 
         let entries = (0...precedingCount).map { segment($0, at: Double($0), pending: "draft", late: late) }
-        let state = makeApplying(.textUpdated(update(entries)))
+        let shown = entries.enumerated().map {
+            ReadingState.Entry(id: $0.offset, time: String(format: "%02d:%02d", $0.offset / 60, $0.offset % 60), speaker: .mine, pending: "draft")
+        }
+        let state = makeState(entries: entries, rows: late
+                              ? [.late(.init(span: "given span", entries: shown))]
+                              : shown.map(ReadingState.Row.entry))
         var revised = entries
         revised[precedingCount] = segment(precedingCount, at: Double(precedingCount), settled: "settled", late: late)
         let event = ReadingEvent.textUpdated(update(revised))
@@ -28,6 +34,7 @@ struct ReadingIncrementalTests {
     }
 
     @Test func insertingBeforeAndAtTheSameAnchorKeepsOrder() {
+
         assert(makeInitial(), .textUpdated(update([middle, first, last, sameTime])), delivers: nil) {
             $0.text[middle.id] = middle
             $0.text[sameTime.id] = sameTime
@@ -40,7 +47,8 @@ struct ReadingIncrementalTests {
     }
 
     @Test func problemsSplitLateGroupsWithoutRebuildingEntries() {
-        assert(makeLateInitial(), .problemsChanged([gap]), delivers: nil) {
+
+        assert(makeInitial(), .problemsChanged([gap]), delivers: nil) {
             $0.problems = [gap]
             $0.banners = [.init(kind: .microphone, time: "00:04")]
             $0.lines.rows = [late("00:02–00:12", [firstRow]), gapRow, late("00:06–00:07", [lastRow])]
@@ -49,6 +57,7 @@ struct ReadingIncrementalTests {
     }
 
     @Test func recordingOffJoinsLateGroupsAcrossRemovedGaps() {
+
         assert(makeCachedSplit(), .recordingChanged(.off), delivers: nil) {
             $0.recording = .off
             $0.problems = []
@@ -59,6 +68,7 @@ struct ReadingIncrementalTests {
     }
 
     @Test func listeningOmissionJoinsLateGroups() {
+
         assert(makeCachedSeparated(), .textUpdated(update([first, last])), delivers: nil) {
             $0.text[middle.id] = nil
             $0.anchors[middle.id] = nil
@@ -68,6 +78,7 @@ struct ReadingIncrementalTests {
     }
 
     @Test func entryJoiningLateGroupMergesNeighbours() {
+
         assert(makeCachedSeparated(), .textUpdated(update([first, middleLate, last])), delivers: nil) {
             $0.text[middle.id] = middleLate
             $0.lines.rows = [late("00:02–00:12", [firstRow, middleRow, lastRow])]
@@ -76,6 +87,7 @@ struct ReadingIncrementalTests {
     }
 
     @Test func entryLeavingLateGroupSplitsNeighbours() {
+
         assert(makeCachedMerged(), .textUpdated(update([first, middle, last])), delivers: nil) {
             $0.text[middle.id] = middle
             $0.lines.rows = [late("00:02–00:12", [firstRow]), .entry(middleRow), late("00:06–00:07", [lastRow])]
@@ -84,6 +96,7 @@ struct ReadingIncrementalTests {
     }
 
     @Test func revisedEndCanShortenLateSpan() {
+
         assert(makeCachedJoined(), .textUpdated(update([shorterFirst, middleLate, last, sameTime])), delivers: nil) {
             $0.text[first.id] = shorterFirst
             $0.lines.rows[0] = late("00:02–00:05", [firstRow, middleRow])
@@ -92,6 +105,7 @@ struct ReadingIncrementalTests {
     }
 
     @Test func revisedEndCanLengthenLateSpan() {
+
         assert(makeCachedJoined(), .textUpdated(update([first, middleLate, longerLast, sameTime])), delivers: nil) {
             $0.text[last.id] = longerLast
             $0.lines.rows[2] = late("00:06–00:15", [lastRow])
@@ -100,6 +114,7 @@ struct ReadingIncrementalTests {
     }
 
     @Test func revisionKeepsItsAnchorDespiteTimingChange() {
+
         assert(makeCachedInserted(), .textUpdated(update([first, movedMiddle, last, sameTime])), delivers: nil) {
             $0.text[middle.id] = movedMiddle
             $0.lines.rows[1] = .entry(shown(2, "00:04", settled: "revised"))
@@ -108,6 +123,7 @@ struct ReadingIncrementalTests {
     }
 
     @Test func revisionInsideLateGroupKeepsOtherEntries() {
+
         assert(makeCachedSplit(), .textUpdated(update([revisedFirst, last])), delivers: nil) {
             $0.text[first.id] = revisedFirst
             $0.lines.rows[0] = late("00:02–00:12", [shown(0, "00:02", settled: "revised")])
@@ -116,7 +132,8 @@ struct ReadingIncrementalTests {
     }
 
     @Test func multipleRevisionsInsideOneGroupAreKept() {
-        assert(makeLateInitial(), .textUpdated(update([revisedFirst, revisedLast])), delivers: nil) {
+
+        assert(makeInitial(), .textUpdated(update([revisedFirst, revisedLast])), delivers: nil) {
             $0.text[first.id] = revisedFirst
             $0.text[last.id] = revisedLast
             $0.lines.rows[0] = late("00:02–00:12", [shown(0, "00:02", settled: "revised"), shown(1, "00:06", settled: "revised last")])
@@ -125,6 +142,7 @@ struct ReadingIncrementalTests {
     }
 
     @Test func insertionAtGapTimeFollowsTheGap() {
+
         assert(makeCachedSplit(), .textUpdated(update([first, atGap, last])), delivers: nil) {
             $0.text[atGap.id] = atGap
             $0.anchors[atGap.id] = .init(id: 2, start: 4)
@@ -135,6 +153,7 @@ struct ReadingIncrementalTests {
     }
 
     @Test func tailOmissionRetainsTheFinalPrefix() {
+
         let state = makeFinalPrefix()
         let omitted = segment(2, at: 2)
         let remaining = segment(3, at: 3)
@@ -154,7 +173,7 @@ struct ReadingIncrementalTests {
     }
 
     @Test func unchangedUpdateBuildsNoRows() { expectWork(makeCachedJoined(), .textUpdated(update([sameTime, last, middleLate, first])), rowsBuilt: 0) }
-    @Test func problemsReuseEntryRows() { expectWork(makeLateInitial(), .problemsChanged([gap]), rowsBuilt: 0) }
+    @Test func problemsReuseEntryRows() { expectWork(makeInitial(), .problemsChanged([gap]), rowsBuilt: 0) }
     @Test func stoppingReusesEntryRows() { expectWork(makeCachedSplit(), .recordingChanged(.off), rowsBuilt: 0) }
     @Test func omissionReusesRemainingRows() { expectWork(makeCachedInserted(), .textUpdated(update([first, last, sameTime])), rowsBuilt: 0) }
     @Test func joiningBuildsOnlyTheChangedEntry() { expectWork(makeCachedInserted(), .textUpdated(update([first, middleLate, last, sameTime])), rowsBuilt: 1) }
@@ -180,16 +199,92 @@ private let lastRow = shown(1, "00:06")
 private let middleRow = shown(2, "00:04")
 private let sameTimeRow = shown(3, "00:04")
 private let gapRow = ReadingState.Row.gap(.init(speaker: .mine, time: "00:04", kind: .microphone))
-private func makeInitial() -> ReadingState { makeApplying(.textUpdated(update([first, last])), to: makeApplying(.recordingChanged(.on(elapsed: 20)))) }
-private func makeLateInitial() -> ReadingState { makeInitial() }
-private func makeCachedSeparated() -> ReadingState { makeApplying(.textUpdated(update([first, middle, last])), to: makeInitial()) }
-private func makeCachedMerged() -> ReadingState { makeApplying(.textUpdated(update([first, middleLate, last])), to: makeCachedSeparated()) }
-private func makeCachedInserted() -> ReadingState { makeApplying(.textUpdated(update([middle, first, last, sameTime])), to: makeInitial()) }
-private func makeCachedSplit() -> ReadingState { makeApplying(.problemsChanged([gap]), to: makeInitial()) }
-private func makeCachedJoined() -> ReadingState { makeApplying(.textUpdated(update([first, middleLate, last, sameTime])), to: makeCachedInserted()) }
+private func makeInitial() -> ReadingState {
+
+    makeState(entries: [first, last], rows: [late("00:02–00:12", [firstRow, lastRow])])
+}
+
+private func makeCachedSeparated() -> ReadingState {
+
+    makeState(entries: [first, last, middle], rows: [
+        late("00:02–00:12", [firstRow]), .entry(middleRow), late("00:06–00:07", [lastRow]),
+    ])
+}
+
+private func makeCachedMerged() -> ReadingState {
+
+    makeState(entries: [first, last, middleLate], rows: [late("00:02–00:12", [firstRow, middleRow, lastRow])])
+}
+
+private func makeCachedInserted() -> ReadingState {
+
+    makeState(entries: [first, last, middle, sameTime], rows: [
+        late("00:02–00:12", [firstRow]), .entry(middleRow), .entry(sameTimeRow), late("00:06–00:07", [lastRow]),
+    ])
+}
+
+private func makeCachedSplit() -> ReadingState {
+
+    makeState(entries: [first, last], rows: [late("00:02–00:12", [firstRow]), gapRow, late("00:06–00:07", [lastRow])],
+              problems: [gap], banners: [.init(kind: .microphone, time: "00:04")])
+}
+
+private func makeCachedJoined() -> ReadingState {
+
+    makeState(entries: [first, last, middleLate, sameTime], rows: [
+        late("00:02–00:12", [firstRow, middleRow]), .entry(sameTimeRow), late("00:06–00:07", [lastRow]),
+    ])
+}
 
 private func makeFinalPrefix() -> ReadingState {
-    makeApplying(.textUpdated(.init(status: .listening, entries: (0..<4).map { segment($0, at: Double($0)) }, finalCount: 2)))
+
+    var state = makeState(entries: (0..<4).map { segment($0, at: Double($0)) }, rows: [
+        .entry(shown(0, "00:00")), .entry(shown(1, "00:01")),
+        .entry(shown(2, "00:02")), .entry(shown(3, "00:03")),
+    ])
+    for id in 0..<2 {
+        let key = ReadingTextUpdate.Entry.ID(speaker: .mine, localID: id)
+        state.text.seal(key)
+        state.anchors.seal(key)
+        state.rendered.entries.seal(key)
+        state.rendered.locations.seal(key)
+    }
+    state.lines.rows.seal(upTo: 2)
+    state.rendered.inSealedRows = 2
+    state.log = .lines(state.lines)
+    return state
+}
+
+private func makeState(
+    entries: [ReadingTextUpdate.Entry], rows: [ReadingState.Row],
+    problems: [ReadingProblem] = [], banners: [ReadingState.Banner] = []
+) -> ReadingState {
+
+    let lines = ReadingState.Lines(rows: .init(tail: rows))
+    var state = ReadingState(banners: banners, recording: .on(elapsed: "00:00:20"), log: .lines(lines),
+                             problems: problems, status: .listening, nextDisplayID: entries.count,
+                             lines: lines, rendered: .init(prepared: true))
+    for entry in entries {
+        state.text[entry.id] = entry
+        state.anchors[entry.id] = .init(id: entry.id.localID, start: entry.start)
+    }
+    let keys = Dictionary(uniqueKeysWithValues: entries.map { ($0.id.localID, $0.id) })
+    func cache(_ entry: ReadingState.Entry, row: Int, lateEntry: Int? = nil) {
+
+        let key = keys[entry.id]!
+        state.rendered.ordered.append(key)
+        state.rendered.entries[key] = entry
+        state.rendered.locations[key] = .init(row: row, lateEntry: lateEntry)
+    }
+    for (row, value) in rows.enumerated() {
+        switch value {
+        case let .entry(entry): cache(entry, row: row)
+        case let .late(group):
+            for (index, entry) in group.entries.enumerated() { cache(entry, row: row, lateEntry: index) }
+        case .gap: break
+        }
+    }
+    return state
 }
 
 private func segment(
@@ -213,11 +308,6 @@ private func late(_ span: String, _ entries: [ReadingState.Entry]) -> ReadingSta
 private func update(_ entries: [ReadingTextUpdate.Entry]) -> ReadingTextUpdate {
 
     .init(status: .listening, entries: entries)
-}
-
-private func makeApplying(_ event: ReadingEvent, to state: ReadingState = .init()) -> ReadingState {
-
-    ReadingReducer.reduce(state, event).0
 }
 
 private func expectWork(
