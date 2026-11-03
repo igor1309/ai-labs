@@ -16,7 +16,9 @@ struct ReadingScrollAcknowledgementTests {
     @Test(arguments: [false, true])
     func acknowledgingAScrollHasNoEffect(atBottom: Bool) {
 
-        assert(makeReading(atBottom: atBottom, acknowledgement: previous), .scrolled(atBottom: atBottom, interaction: latest), delivers: nil)
+        assert(makeReading(atBottom: atBottom, acknowledgement: previous), .scrolled(atBottom: atBottom, interaction: latest), delivers: nil) {
+            $0.scrollAcknowledgement = latest
+        }
     }
 
     @Test(arguments: [false, true])
