@@ -1,4 +1,3 @@
-import AVFoundation
 import Darwin
 import Foundation
 
@@ -29,14 +28,12 @@ public struct Calls: Sendable {
     private let rename: @Sendable (URL, URL) throws -> Void
     private let remove: @Sendable (URL) throws -> Void
 
-    public init(folder: URL, timeZone: TimeZone) {
+    /// Uses the supplied reader for track durations. Listing performs blocking disk work.
+    public init(folder: URL, timeZone: TimeZone, duration: @escaping @Sendable (URL) throws -> TimeInterval) {
         self.init(folder: folder, timeZone: timeZone,
                   children: { try FileManager.default.contentsOfDirectory(at: $0, includingPropertiesForKeys: nil) },
                   values: { try $0.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey, .fileSizeKey]) },
-                  duration: {
-                      let file = try AVAudioFile(forReading: $0)
-                      return Double(file.length) / file.fileFormat.sampleRate
-                  }, rename: { source, target in
+                  duration: duration, rename: { source, target in
                       guard renamex_np(source.path, target.path, UInt32(RENAME_EXCL)) == 0 else {
                           throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
                       }
