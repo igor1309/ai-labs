@@ -79,7 +79,7 @@ describe.each(LANGUAGES)("the picture puzzle full flow in %s", (language) => {
     // The game opens from either its sky artwork or its ground pocket.
     expect(getComputedStyle(door).backgroundColor).toBe("rgba(0, 0, 0, 0)");
     if (featured !== "picturePuzzle") expect(door.querySelector(".home-tile-pocket")).not.toBeNull();
-    expect(door.querySelector(".picture-puzzle-tile-picture")).not.toBeNull();
+    expect(door.querySelector(featured === "picturePuzzle" ? ".picture-puzzle-tile-picture" : ".home-tile-art")).not.toBeNull();
     expect(door.querySelector(".picture-puzzle-tile-count, .featured-card-badge")?.textContent).toBe(featured === "picturePuzzle" ? "0/3" : undefined);
     fireEvent.click(door);
     expect(app.countStart).not.toHaveBeenCalled();
