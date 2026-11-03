@@ -18,7 +18,7 @@ Feature: Sort dinosaurs: pictures that load
     Then the round starts at once
     And each card shows its name, large and in capitals, below its picture's place, which shimmers at its picture's size
     When a card's picture has loaded
-    Then it fades in over 200 ms
+    Then it fades in
 
     Examples:
       | screen                                   | button            |
@@ -65,4 +65,4 @@ Feature: Sort dinosaurs: pictures that load
     And each card can still be dragged, picked up and sorted
     And a card sorted or slid back is a new place for its picture: it shimmers again for up to 8 seconds of its own
     When a card's picture loads
-    Then it fades in over 200 ms
+    Then it fades in

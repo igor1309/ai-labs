@@ -13,29 +13,29 @@ Feature: Skeleton assembly: revealing and rewarding a dinosaur
     Then I briefly see the complete skeleton
     And the dinosaur's body picture fades in aligned over its skeleton
     And I see its name in large capital letters and one short anatomy fact
-    And I see a star reward and my collection score out of 3
+    And I see a star reward and my collection score out of 5
     And I see "BUILD ANOTHER", "MUSEUM" and "HOME", each with its symbol
 
   Scenario: The first skeleton earns a star and celebrates the first best
     Given I have never finished a skeleton
     When I finish Tyrannosaurus
     Then one star is earned for Tyrannosaurus
-    And my collection score and skeleton best score become "1/3"
+    And my collection score and skeleton best score become "1/5"
     And I see a first best score celebration
     And the Tyrannosaurus skeleton is added to its museum stand
 
   Scenario: A different skeleton increases the collection best
-    Given I have earned a Tyrannosaurus star and my skeleton best score is "1/3"
+    Given I have earned a Tyrannosaurus star and my skeleton best score is "1/5"
     When I finish Triceratops for the first time
     Then I have one star for each of those two dinosaurs
-    And my collection score and skeleton best score become "2/3"
+    And my collection score and skeleton best score become "2/5"
     And I see a new best score celebration
 
-  Scenario: Finishing all three fills the museum
-    Given Tyrannosaurus and Triceratops are displayed on their earned stands
-    When I finish Stegosaurus for the first time
-    Then I see a collection score and skeleton best score of "3/3"
-    And all three museum stands have their skeletons and earned stars
+  Scenario: Finishing all five fills the museum
+    Given Tyrannosaurus, Triceratops, Stegosaurus and Brachiosaurus are displayed on their earned stands
+    When I finish Spinosaurus for the first time
+    Then I see a collection score and skeleton best score of "5/5"
+    And all five museum stands have their skeletons and earned stars
     And I can still rebuild any of them
 
   Scenario: Completion is recorded once before the reveal animation
@@ -80,7 +80,7 @@ Feature: Skeleton assembly: revealing and rewarding a dinosaur
   Scenario: Build another returns to dinosaur selection
     Given I am on a skeleton result screen
     When I tap "BUILD ANOTHER" twice quickly
-    Then I see one dinosaur selection screen with all three choices
+    Then I see one dinosaur selection screen with all five choices
     And the completed dinosaur is marked with its earned star
     And its museum stand stays complete until I choose to rebuild it
 

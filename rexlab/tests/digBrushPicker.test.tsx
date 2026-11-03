@@ -7,7 +7,7 @@ import { board, clearCells, digUp, finishBoard, openDigApp, placeBoard } from ".
 import { SHIPPED_DIG, homeTile } from "./support.ts";
 import { tapAt } from "./taps.ts";
 
-// dig-brush-picker.feature: DIG's bar picks the brush or the wide brush,
+// dig-brush-choice.feature, as DIG's bar picker meets it: the brush or the wide brush,
 // twice as big, and the pick stays while DIG is open. Every test round,
 // drawn at 0, digs up a Tyrannosaurus.
 

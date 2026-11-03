@@ -11,7 +11,7 @@ Feature: Skeleton assembly: the museum and rebuilding
     Given I have never finished a skeleton
     When I open "MUSEUM"
     Then I see a museum hall with five empty stands, three above and two centred below, showing the silhouettes and names of the skeletons still to build
-    And my collection score is "0/3" beside a star symbol
+    And my collection score is "0/5" beside a star symbol
     And each empty stand offers building its dinosaur with a bone picture
     And I see "BUILD ANOTHER" and "HOME" with their symbols
 
@@ -30,12 +30,12 @@ Feature: Skeleton assembly: the museum and rebuilding
       | Russian  |
 
   Scenario: A finished skeleton has its own exhibit
-    Given I have finished Triceratops but neither of the other skeletons
+    Given I have finished Triceratops but none of the other skeletons
     When I open "MUSEUM"
     Then the Triceratops skeleton is on its stand with its name and earned star
     And it has a "REBUILD" button with a rebuild symbol
-    And the other two stands still show their unearned silhouettes
-    And my collection score is "1/3"
+    And the other four stands still show their unearned silhouettes
+    And my collection score is "1/5"
 
   Scenario: An empty stand starts that dinosaur's puzzle
     Given the Stegosaurus stand is unearned
@@ -79,10 +79,10 @@ Feature: Skeleton assembly: the museum and rebuilding
     Then a fresh Triceratops puzzle starts with all four pieces unplaced
 
   Scenario: Completing a rebuild restores the exhibit without another star
-    Given my collection score and skeleton best score are "2/3"
+    Given my collection score and skeleton best score are "2/5"
     And Triceratops is an earned skeleton awaiting rebuilding
     When I finish rebuilding Triceratops
     Then I see its dinosaur reveal, short fact and existing earned star
     And the Triceratops skeleton returns to the same museum stand
-    And my collection score and skeleton best score stay "2/3"
+    And my collection score and skeleton best score stay "2/5"
     And I see no new best score celebration or duplicate star

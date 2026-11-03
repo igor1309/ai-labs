@@ -13,7 +13,7 @@ Feature: Skeleton assembly: keeping the collection
   Scenario: Earned stars and completed exhibits survive reopening
     Given I have finished Tyrannosaurus and Triceratops
     When I close and reopen the app and visit the museum
-    Then my collection score and skeleton best score are "2/3"
+    Then my collection score and skeleton best score are "2/5"
     And those two skeletons are on their earned stands
     And the Stegosaurus stand still has an unearned silhouette
 
@@ -23,7 +23,7 @@ Feature: Skeleton assembly: keeping the collection
     When I <leave>
     And I reopen the skeleton game
     Then I see the dinosaur selection screen
-    And my collection score and skeleton best score are still "1/3"
+    And my collection score and skeleton best score are still "1/5"
     And Tyrannosaurus is still displayed and the Triceratops stand is unearned
     When I choose Triceratops
     Then all four pieces are in the tray and none are fitted
@@ -62,7 +62,7 @@ Feature: Skeleton assembly: keeping the collection
     Given stored skeleton progress is <state>
     When I open the skeleton game
     Then I have no earned skeleton stars or skeleton best score
-    And all three museum stands have unearned silhouettes
+    And all five museum stands have unearned silhouettes
     When I finish a skeleton
     Then its first star, completed stand and first best score are saved in readable skeleton progress
     And readable progress for other games is preserved
@@ -88,9 +88,9 @@ Feature: Skeleton assembly: keeping the collection
     And I see no historical best score or best score celebration
 
   Scenario: A browser that cannot save progress keeps it for the session
-    Given my saved collection has one star and a best score of "1/3"
+    Given my saved collection has one star and a best score of "1/5"
     And the browser can read progress but cannot save it
     When I finish a different skeleton
-    Then I see two earned stars, two completed exhibits and a new best score celebration of "2/3"
+    Then I see two earned stars, two completed exhibits and a new best score celebration of "2/5"
     And rebuilding either skeleton in this session cannot earn a duplicate star
     But after reloading only the previously saved collection can be restored

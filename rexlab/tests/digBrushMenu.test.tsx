@@ -8,8 +8,8 @@ import { board, brushAll, choiceCard, clearCells, openDigApp, placeBoard } from 
 import { homeTile, manualViewport } from "./support.ts";
 import { openWindow } from "./windowSizes.ts";
 
-// dig-brush-menu.feature: on a phone upright DIG's brushes are a menu
-// opened from the title's brush, in place of the bar's pair of buttons.
+// dig-brush-choice.feature, as a phone upright meets it: DIG's brushes are
+// a menu opened from the title's brush, in place of the bar's pair of buttons.
 
 const NARROW_LAYOUTS: PortraitLayouts = { home: ["tall-narrow"], "dig-board": ["tall-narrow"], "dig-question": ["tall-narrow"] };
 
