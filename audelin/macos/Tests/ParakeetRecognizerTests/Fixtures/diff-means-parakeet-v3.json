@@ -1,0 +1,51 @@
+[
+  {
+    "confidence" : 0.7636719,
+    "endTime" : 1.44,
+    "startTime" : 1.2,
+    "token" : " Di",
+    "tokenId" : 4293
+  },
+  {
+    "confidence" : 0.96972656,
+    "endTime" : 1.68,
+    "startTime" : 1.44,
+    "token" : "ff",
+    "tokenId" : 651
+  },
+  {
+    "confidence" : 0.9980469,
+    "endTime" : 2.32,
+    "startTime" : 2,
+    "token" : " me",
+    "tokenId" : 525
+  },
+  {
+    "confidence" : 0.99902344,
+    "endTime" : 2.4,
+    "startTime" : 2.32,
+    "token" : "ans",
+    "tokenId" : 667
+  },
+  {
+    "confidence" : 0.92041016,
+    "endTime" : 4,
+    "startTime" : 3.68,
+    "token" : " comp",
+    "tokenId" : 1469
+  },
+  {
+    "confidence" : 0.99902344,
+    "endTime" : 4.24,
+    "startTime" : 4,
+    "token" : "ar",
+    "tokenId" : 287
+  },
+  {
+    "confidence" : 0.9995117,
+    "endTime" : 4.880000000000001,
+    "startTime" : 4.5600000000000005,
+    "token" : "ing",
+    "tokenId" : 381
+  }
+]

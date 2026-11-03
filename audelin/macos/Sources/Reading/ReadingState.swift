@@ -24,11 +24,20 @@ public struct ReadingState: Equatable, Sendable {
 
     public struct Entry: Equatable, Identifiable, Sendable {
 
-        public let id: Int
-        public let time: String
-        public let speaker: Speaker
-        public let settled: String
-        public let pending: String
+        public var id: Int
+        public var time: String
+        public var speaker: Speaker
+        public var settled: String
+        public var pending: String
+
+        public init(id: Int, time: String, speaker: Speaker, settled: String = "", pending: String = "") {
+
+            self.id = id
+            self.time = time
+            self.speaker = speaker
+            self.settled = settled
+            self.pending = pending
+        }
     }
 
     public enum Row: Equatable, Sendable {
@@ -40,27 +49,46 @@ public struct ReadingState: Equatable, Sendable {
 
     public struct Gap: Equatable, Sendable {
 
-        public let speaker: Speaker
-        public let time: String
-        public let kind: ReadingProblem.Kind
+        public var speaker: Speaker
+        public var time: String
+        public var kind: ReadingProblem.Kind
+
+        public init(speaker: Speaker, time: String, kind: ReadingProblem.Kind) {
+
+            self.speaker = speaker
+            self.time = time
+            self.kind = kind
+        }
     }
 
     public struct Banner: Equatable, Sendable {
 
-        public let kind: ReadingProblem.Kind
-        public let time: String
+        public var kind: ReadingProblem.Kind
+        public var time: String
+
+        public init(kind: ReadingProblem.Kind, time: String) {
+
+            self.kind = kind
+            self.time = time
+        }
     }
 
     public struct Late: Equatable, Sendable {
 
-        public let span: String
-        public let entries: [Entry]
+        public var span: String
+        public var entries: [Entry]
+
+        public init(span: String, entries: [Entry]) {
+
+            self.span = span
+            self.entries = entries
+        }
     }
 
     public struct Held: Equatable, Sendable {
 
-        public let entryID: Entry.ID
-        public let text: String
+        public var entryID: Entry.ID
+        public var text: String
 
         public init(entryID: Entry.ID, text: String) {
 
@@ -71,12 +99,12 @@ public struct ReadingState: Equatable, Sendable {
 
     public struct Lines: Equatable, Sendable {
 
-        public internal(set) var rows: SplitRows<Row> = []
+        public var rows: SplitRows<Row> = []
         /// Changes whenever `rows` is laid out again, so its sealed part may differ.
-        public internal(set) var layout = 0
-        public internal(set) var holds: [Held] = []
-        public internal(set) var newBelow = 0
-        public internal(set) var followsLive = true
+        public var layout = 0
+        public var holds: [Held] = []
+        public var newBelow = 0
+        public var followsLive = true
 
         public static func == (lhs: Self, rhs: Self) -> Bool {
 
@@ -94,69 +122,100 @@ public struct ReadingState: Equatable, Sendable {
                 }
             }
         }
+
+        public init(
+            rows: SplitRows<Row> = [], layout: Int = 0, holds: [Held] = [],
+            newBelow: Int = 0, followsLive: Bool = true
+        ) {
+
+            self.rows = rows
+            self.layout = layout
+            self.holds = holds
+            self.newBelow = newBelow
+            self.followsLive = followsLive
+        }
     }
 
     /// How many entries the lines hold, without walking them.
     public var entryCount: Int { text.count }
 
-    public internal(set) var banners: [Banner] = []
+    public var banners: [Banner] = []
 
-    public internal(set) var recording: Recording = .off
+    public var recording: Recording = .off
 
-    public var log: Log {
-
-        switch status {
-        case .off:
-            let kept = lines.rows.isEmpty && lines.holds.isEmpty ? nil : lines
-            return recording == .off ? kept.map(Log.lines) ?? .empty : .liveTextOff(kept: kept)
-        case .gettingReady:
-            if !banners.isEmpty { return .lines(lines) }
-            return .preparing(holds: lines.holds)
-        case .listening, .failed, .finished:
-            return .lines(lines)
-        }
-    }
+    public var log: Log = .empty
 
     // Anchors keep revisions in place while an entry remains present.
     // Listening omissions retire them because producer ids can be reused.
-    struct Anchor: Equatable, Sendable {
+    public struct Anchor: Equatable, Sendable {
 
-        let id: Int
-        let start: Double
+        public var id: Int
+        public var start: Double
+
+        public init(id: Int, start: Double) {
+
+            self.id = id
+            self.start = start
+        }
     }
 
-    var problems: [ReadingProblem] = []
-    var status: ReadingTextUpdate.Status = .off
-    var anchors: SplitDictionary<ReadingTextUpdate.Entry.ID, Anchor> = [:]
-    var nextDisplayID = 0
-    var text: SplitDictionary<ReadingTextUpdate.Entry.ID, ReadingTextUpdate.Entry> = [:]
-    var lines = Lines()
+    public var problems: [ReadingProblem] = []
+    public var status: ReadingTextUpdate.Status = .off
+    public var anchors: SplitDictionary<ReadingTextUpdate.Entry.ID, Anchor> = [:]
+    public var nextDisplayID = 0
+    public var text: SplitDictionary<ReadingTextUpdate.Entry.ID, ReadingTextUpdate.Entry> = [:]
+    public var lines = Lines()
 
-    struct Rendered: Sendable {
+    public struct Rendered: Sendable {
 
-        struct Location: Equatable, Sendable {
+        public struct Location: Equatable, Sendable {
 
-            let row: Int
-            let lateEntry: Int?
+            public var row: Int
+            public var lateEntry: Int?
+
+            public init(row: Int, lateEntry: Int? = nil) {
+
+                self.row = row
+                self.lateEntry = lateEntry
+            }
         }
 
-        var prepared = false
-        var ordered: [ReadingTextUpdate.Entry.ID] = []
+        public var prepared = false
+        public var ordered: [ReadingTextUpdate.Entry.ID] = []
         /// Leading `ordered` entries that the sealed rows show.
-        var inSealedRows = 0
-        var entries: SplitDictionary<ReadingTextUpdate.Entry.ID, Entry> = [:]
-        var locations: SplitDictionary<ReadingTextUpdate.Entry.ID, Location> = [:]
+        public var inSealedRows = 0
+        public var entries: SplitDictionary<ReadingTextUpdate.Entry.ID, Entry> = [:]
+        public var locations: SplitDictionary<ReadingTextUpdate.Entry.ID, Location> = [:]
+
+        public init(
+            prepared: Bool = false, ordered: [ReadingTextUpdate.Entry.ID] = [], inSealedRows: Int = 0,
+            entries: SplitDictionary<ReadingTextUpdate.Entry.ID, Entry> = [:],
+            locations: SplitDictionary<ReadingTextUpdate.Entry.ID, Location> = [:]
+        ) {
+
+            self.prepared = prepared
+            self.ordered = ordered
+            self.inSealedRows = inSealedRows
+            self.entries = entries
+            self.locations = locations
+        }
     }
 
     // Per-reduction work stays local to the value and does not affect what the panel observes.
-    struct Work: Sendable {
+    public struct Work: Sendable {
 
-        var entryOrderComparisons = 0
-        var rowsBuilt = 0
+        public var entryOrderComparisons = 0
+        public var rowsBuilt = 0
+
+        public init(entryOrderComparisons: Int = 0, rowsBuilt: Int = 0) {
+
+            self.entryOrderComparisons = entryOrderComparisons
+            self.rowsBuilt = rowsBuilt
+        }
     }
 
-    var rendered = Rendered()
-    var work = Work()
+    public var rendered = Rendered()
+    public var work = Work()
 
     // Rendering indexes and work counts are derived bookkeeping, not panel state.
     public static func == (lhs: Self, rhs: Self) -> Bool {
@@ -165,8 +224,27 @@ public struct ReadingState: Equatable, Sendable {
         lhs.text.sealed.count == rhs.text.sealed.count
             && lhs.banners == rhs.banners && lhs.recording == rhs.recording && lhs.problems == rhs.problems
             && lhs.status == rhs.status && lhs.anchors == rhs.anchors && lhs.nextDisplayID == rhs.nextDisplayID
-            && lhs.text == rhs.text && lhs.lines == rhs.lines
+            && lhs.text == rhs.text && lhs.lines == rhs.lines && lhs.log == rhs.log
     }
 
-    public init() {}
+    public init(
+        banners: [Banner] = [], recording: Recording = .off, log: Log = .empty,
+        problems: [ReadingProblem] = [], status: ReadingTextUpdate.Status = .off,
+        anchors: SplitDictionary<ReadingTextUpdate.Entry.ID, Anchor> = [:], nextDisplayID: Int = 0,
+        text: SplitDictionary<ReadingTextUpdate.Entry.ID, ReadingTextUpdate.Entry> = [:],
+        lines: Lines = .init(), rendered: Rendered = .init(), work: Work = .init()
+    ) {
+
+        self.banners = banners
+        self.recording = recording
+        self.log = log
+        self.problems = problems
+        self.status = status
+        self.anchors = anchors
+        self.nextDisplayID = nextDisplayID
+        self.text = text
+        self.lines = lines
+        self.rendered = rendered
+        self.work = work
+    }
 }

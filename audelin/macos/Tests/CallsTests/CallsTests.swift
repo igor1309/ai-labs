@@ -1,26 +1,69 @@
-import AVFoundation
 import BlockingTestWork
 import Darwin
 import Foundation
+import Synchronization
 import Testing
+import TrackFile
 @testable import Calls
 
 @Suite(.timeLimit(.minutes(1)))
 struct CallsTests {
     @Test func S1_callsAreListedNewestFirst() async throws {
         try await withFolders { root in
-            try await offPool {
-                for name in ["2026.10.24-1405 Zoom", "2026.10.24-1405-2", "2026.10.25-0900 Синк"] {
-                    let folder = try make(root, name)
-                    try track(folder.appendingPathComponent("microphone.caf"), seconds: 0.02)
-                    try track(folder.appendingPathComponent("call.caf"), seconds: 0.04)
-                }
+            for name in ["2026.10.24-1405 Zoom", "2026.10.24-1405-2", "2026.10.25-0900 Синк"] {
+                let folder = try await offPool { try make(root, name) }
+                try await track(folder.appendingPathComponent("microphone.caf"), seconds: 0.02)
+                try await track(folder.appendingPathComponent("call.caf"), seconds: 0.04)
             }
             let calls = try await offPool { try adapter(root).list() }
             #expect(calls.map(\.id) == ["2026.10.25-0900", "2026.10.24-1405-2", "2026.10.24-1405"])
             #expect(calls.map(\.title) == ["Синк", "", "Zoom"])
             #expect(calls.map(\.start) == [utc("2026-10-25T00:00:00Z"), utc("2026-10-24T05:05:00Z"), utc("2026-10-24T05:05:00Z")])
             #expect(calls.allSatisfy { abs(($0.duration ?? 0) - 0.04) < 0.0001 })
+        }
+    }
+
+    @Test(arguments: ["", "microphone.caf", "call.caf", "*"])
+    func durationClosureReceivesBothTracksAndKeepsTheCallOnFailure(failing: String) async throws {
+        try await withFolders { root in
+            let folder = try await offPool {
+                let folder = try make(root, "2026.10.24-1405 Zoom")
+                for name in ["microphone.caf", "call.caf"] {
+                    try Data().write(to: folder.appendingPathComponent(name))
+                }
+                return folder
+            }
+            let received = Mutex<[URL]>([])
+            let sut = Calls(folder: root, timeZone: tokyo,
+                            children: { _ in [folder] },
+                            values: { try $0.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey]) },
+                            duration: { url in
+                                received.withLock { $0.append(url) }
+                                if failing == "*" || failing == url.lastPathComponent { throw POSIXError(.EACCES) }
+                                return url.lastPathComponent == "microphone.caf" ? 12.5 : 3.25
+                            }, rename: { _, _ in throw POSIXError(.EIO) },
+                            remove: { _ in throw POSIXError(.EIO) })
+            #expect(received.withLock { $0.isEmpty })
+            let calls = try await offPool { try sut.list() }
+            #expect(received.withLock { $0 } == [folder.appendingPathComponent("microphone.caf"), folder.appendingPathComponent("call.caf")])
+            #expect(calls == [.init(id: "2026.10.24-1405", title: "Zoom", start: utc("2026-10-24T05:05:00Z"), duration: failing == "*" ? nil : failing == "microphone.caf" ? 3.25 : 12.5)])
+        }
+    }
+
+    @Test(arguments: [Double.nan, .infinity, -.infinity, -1, 0, 7.5])
+    func unusableDurationDoesNotHideTheOtherTrack(length: Double) async throws {
+        try await withFolders { root in
+            try await offPool {
+                let folder = try make(root, "2026.10.24-1405 Zoom")
+                for name in ["microphone.caf", "call.caf"] {
+                    try Data().write(to: folder.appendingPathComponent(name))
+                }
+            }
+            let sut = Calls(folder: root, timeZone: tokyo, duration: { url in
+                url.lastPathComponent == "microphone.caf" ? length : 2.25
+            })
+            let calls = try await offPool { try sut.list() }
+            #expect(calls == [.init(id: "2026.10.24-1405", title: "Zoom", start: utc("2026-10-24T05:05:00Z"), duration: length.isFinite && length >= 0 ? max(length, 2.25) : 2.25)])
         }
     }
 
@@ -183,7 +226,7 @@ struct CallsTests {
 
 private let tokyo = TimeZone(identifier: "Asia/Tokyo")!
 private func utc(_ value: String) -> Date { ISO8601DateFormatter().date(from: value)! }
-private func adapter(_ root: URL) -> Calls { Calls(folder: root, timeZone: tokyo) }
+private func adapter(_ root: URL) -> Calls { Calls(folder: root, timeZone: tokyo, duration: TrackFile.duration(at:)) }
 private func bytes(_ url: URL) async throws -> Data { try await offPool { try Data(contentsOf: url) } }
 private func exists(_ url: URL) async -> Bool { await offPool { FileManager.default.fileExists(atPath: url.path) } }
 private func names(_ url: URL) async throws -> [String] { try await offPool { try FileManager.default.contentsOfDirectory(atPath: url.path).sorted() } }
@@ -192,13 +235,10 @@ private func make(_ root: URL, _ name: String) throws -> URL {
     try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
     return url
 }
-private func track(_ url: URL, seconds: Double) throws {
-    let format = AVAudioFormat(standardFormatWithSampleRate: 16_000, channels: 1)!
-    let file = try AVAudioFile(forWriting: url, settings: format.settings)
-    let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(seconds * 16_000))!
-    buffer.frameLength = buffer.frameCapacity
-    memset(buffer.floatChannelData![0], 0, Int(buffer.frameLength) * MemoryLayout<Float>.size)
-    try file.write(from: buffer)
+private func track(_ url: URL, seconds: Double) async throws {
+    let track = try await TrackFile(url: url)
+    try await track.write(Array(repeating: 0, count: Int(seconds * 48_000)), sampleRate: 48_000)
+    try await track.close()
 }
 private func withFolders(_ body: (URL) async throws -> Void) async throws {
     let root = await offPool { FileManager.default.temporaryDirectory.resolvingSymlinksInPath().appendingPathComponent(UUID().uuidString, isDirectory: true) }
