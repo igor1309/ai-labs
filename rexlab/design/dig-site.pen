@@ -9481,7 +9481,7 @@
                           "type": "ellipse",
                           "id": "X5zcU",
                           "x": 40,
-                          "y": -10,
+                          "y": 0,
                           "name": "Glow 1",
                           "fill": "$ds-reward-glow",
                           "width": 480,
