@@ -1,3 +1,5 @@
+import Foundation
+
 /// The text available for one recording: `entries` run from position `from` in
 /// the call, and the call's leading `finalCount` entries will never change again.
 public struct ReadingTextUpdate: Equatable, Sendable {
@@ -71,7 +73,7 @@ public enum ReadingEvent: Equatable, Sendable {
     case problemsChanged([ReadingProblem])
     case hold(ReadingState.Held)
     case letGo(ReadingState.Held)
-    case scrolled(atBottom: Bool)
+    case scrolled(atBottom: Bool, interaction: UUID? = nil)
     case jumpToLive
 }
 

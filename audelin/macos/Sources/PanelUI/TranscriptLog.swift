@@ -142,7 +142,9 @@ extension TranscriptLog {
 
         var parent: TranscriptLog {
             didSet {
-                if !oldValue.lines.followsLive, parent.lines.followsLive { readerPaused = false }
+                if let pendingScroll, parent.lines.scrollAcknowledgement == pendingScroll.id {
+                    self.pendingScroll = nil
+                }
             }
         }
         var entries: [Transcript.EntryRange] = []
@@ -151,15 +153,14 @@ extension TranscriptLog {
         /// A drag is selecting text: the log holds still under it.
         var isSelecting = false
         private var isQuiet = false
-        private var atBottom = true
-        private var readerPaused = false
+        private var pendingScroll: (id: UUID, atBottom: Bool)?
         private var origin = NSPoint.zero
         private var size = NSSize.zero
         private var documentSize = NSSize.zero
 
-        // The reader's event reaches the parent asynchronously. Keep the pause
-        // through stale snapshots; a paused-to-live transition resumes it.
-        var followsLive: Bool { parent.lines.followsLive && !readerPaused }
+        // A snapshot can authorize scrolling only after it has consumed the
+        // latest callback. An older resume must not move a newer reader pause.
+        var followsLive: Bool { parent.lines.followsLive && pendingScroll == nil }
 
         init(_ parent: TranscriptLog) { self.parent = parent }
 
@@ -217,7 +218,6 @@ extension TranscriptLog {
                 origin = scroll?.contentView.bounds.origin ?? .zero
                 size = scroll?.contentView.bounds.size ?? .zero
                 documentSize = scroll?.documentView?.frame.size ?? .zero
-                atBottom = isAtBottom
             }
             isQuiet = wasQuiet
         }
@@ -265,11 +265,11 @@ extension TranscriptLog {
             origin = clip.bounds.origin
 
             let now = isAtBottom
-            guard now != atBottom else { return }
+            guard now != (pendingScroll?.atBottom ?? parent.lines.followsLive) else { return }
 
-            atBottom = now
-            readerPaused = !now
-            parent.event(.scrolled(atBottom: now))
+            let interaction = UUID()
+            pendingScroll = (interaction, now)
+            parent.event(.scrolled(atBottom: now, interaction: interaction))
         }
 
         private var isAtBottom: Bool {

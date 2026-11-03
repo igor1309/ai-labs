@@ -1,3 +1,4 @@
+import Foundation
 import PanelUI
 
 /// A scripted call that stands in for the recorder and the recogniser.
@@ -29,6 +30,7 @@ struct FakeCall: Equatable {
     private(set) var liveText = true
     /// The log scrolls to each new line; off while the reader is scrolled up.
     private(set) var followsLive = true
+    private var scrollAcknowledgement: UUID?
     /// Selections the reader holds, oldest first; each stays until let go.
     private(set) var holds: [PanelState.Held] = []
     private var newBelow = 0
@@ -57,7 +59,7 @@ struct FakeCall: Equatable {
 
         guard isRecording else { return .init(recording: .off, log: .empty) }
 
-        let lines = PanelState.Lines(rows: .init(tail: rows), holds: holds, newBelow: newBelow, followsLive: followsLive)
+        let lines = PanelState.Lines(rows: .init(tail: rows), holds: holds, newBelow: newBelow, followsLive: followsLive, scrollAcknowledgement: scrollAcknowledgement)
         let kept = rows.isEmpty ? nil : lines
 
         return .init(
@@ -86,7 +88,8 @@ struct FakeCall: Equatable {
         case let .letGo(selection):
             holds.removeAll { $0 == selection }
 
-        case let .scrolled(atBottom):
+        case let .scrolled(atBottom, interaction):
+            if let interaction { scrollAcknowledgement = interaction }
             if atBottom {
                 followLive()
             } else {

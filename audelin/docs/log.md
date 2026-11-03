@@ -3,7 +3,8 @@
 ## 2026-11-03
 
 - The live panel keeps the newest text visible after later layout growth,
-  while paused reading and active text selection stay in place (LAB-942).
+  while paused reading and active text selection stay in place. Delayed scroll
+  acknowledgements preserve the reader’s latest position (LAB-942).
 
 ## 2026-10-30
 

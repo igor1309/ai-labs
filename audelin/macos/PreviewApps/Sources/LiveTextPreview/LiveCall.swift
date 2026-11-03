@@ -1,3 +1,4 @@
+import Foundation
 import AVFoundation
 import LiveText
 import NemotronRecognizer
@@ -65,6 +66,7 @@ final class LiveCall {
     private(set) var transcript = Transcript()
     private(set) var started: ContinuousClock.Instant?
     var followsLive = true
+    private var scrollAcknowledgement: UUID?
     var holds: [PanelState.Held] = []
 
     struct Audio {
@@ -126,7 +128,7 @@ final class LiveCall {
 
         guard isRecording || !transcript.entries.isEmpty else { return .init(recording: .off, log: .empty) }
         let elapsed = started.map { (now - $0).components.seconds } ?? 0
-        let lines = PanelState.Lines(entries: transcript.entries, holds: holds, followsLive: followsLive)
+        let lines = PanelState.Lines(entries: transcript.entries, holds: holds, followsLive: followsLive, scrollAcknowledgement: scrollAcknowledgement)
         let recording: PanelState.Recording = isRecording
             ? .on(elapsed: String(format: "%02d:%02d:%02d", elapsed / 3600, elapsed / 60 % 60, elapsed % 60))
             : .off
@@ -142,7 +144,9 @@ final class LiveCall {
         case .switchLiveTextOn: break
         case let .hold(held): holds.append(held)
         case let .letGo(held): holds.removeAll { $0 == held }
-        case let .scrolled(atBottom): followsLive = atBottom
+        case let .scrolled(atBottom, interaction):
+            if let interaction { scrollAcknowledgement = interaction }
+            followsLive = atBottom
         case .jumpToLive: followsLive = true
         }
     }

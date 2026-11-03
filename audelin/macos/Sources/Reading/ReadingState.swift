@@ -1,3 +1,4 @@
+import Foundation
 import SplitRows
 
 /// What one recording's panel shows, with no view or session dependencies.
@@ -99,6 +100,9 @@ public struct ReadingState: Equatable, Sendable {
     /// How many entries the lines hold, without walking them.
     public var entryCount: Int { text.count }
 
+    /// The latest reader scroll consumed by this state, independent of text updates.
+    public var scrollAcknowledgement: UUID?
+
     public internal(set) var banners: [Banner] = []
 
     public internal(set) var recording: Recording = .off
@@ -164,9 +168,13 @@ public struct ReadingState: Equatable, Sendable {
         // More text being final is a change, and finding that out need not walk the call.
         lhs.text.sealed.count == rhs.text.sealed.count
             && lhs.banners == rhs.banners && lhs.recording == rhs.recording && lhs.problems == rhs.problems
+            && lhs.scrollAcknowledgement == rhs.scrollAcknowledgement
             && lhs.status == rhs.status && lhs.anchors == rhs.anchors && lhs.nextDisplayID == rhs.nextDisplayID
             && lhs.text == rhs.text && lhs.lines == rhs.lines
     }
 
-    public init() {}
+    public init(scrollAcknowledgement: UUID? = nil) {
+
+        self.scrollAcknowledgement = scrollAcknowledgement
+    }
 }
