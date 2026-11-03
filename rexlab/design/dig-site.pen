@@ -437815,8 +437815,11 @@
       "x": 11946,
       "y": 7400,
       "name": "Home · logo · in its square or cut out · Light and Dark",
+      "theme": {
+        "mode": "light"
+      },
       "width": 800,
-      "fill": "#F4EFE4",
+      "fill": "$ds-sky-bottom",
       "layout": "vertical",
       "gap": 20,
       "padding": 32,
@@ -437825,7 +437828,7 @@
           "type": "text",
           "id": "b8rQiK",
           "name": "Title",
-          "fill": "#1F2B4D",
+          "fill": "$ds-ink",
           "content": "RexLab mark: the square stays the app icon; Home's header uses the T-rex alone",
           "fontFamily": "$ds-font",
           "fontSize": 20,
@@ -438085,7 +438088,10 @@
       "x": 11946,
       "y": 7847,
       "name": "Home · how the tiles flow · every window width",
-      "fill": "#F4EFE4",
+      "theme": {
+        "mode": "light"
+      },
+      "fill": "$ds-sky-bottom",
       "layout": "vertical",
       "gap": 18,
       "padding": 32,
@@ -438094,7 +438100,7 @@
           "type": "text",
           "id": "BsXsR",
           "name": "Title",
-          "fill": "#1F2B4D",
+          "fill": "$ds-ink",
           "content": "Tiles flow: as many as fit, spread evenly, one earth layer per row",
           "fontFamily": "$ds-font",
           "fontSize": 20,
@@ -438104,7 +438110,7 @@
           "type": "text",
           "id": "WJuQ7",
           "name": "Rule",
-          "fill": "#1F2B4D",
+          "fill": "$ds-ink",
           "textGrowth": "fixed-width",
           "width": 960,
           "content": "Across = how many tiles of the smallest size fit between the margins (150 on iPad and desktop, 100 on phones, with their gaps). Rows = the tiles ÷ across, rounded up. The tiles are then spread evenly over those rows, longer rows first, so rows differ by one tile at most and no tile sits alone. Tiles widen to share a row, up to 200 on iPad and 130 on phones, and the row centres. Twelve tiles: eleven games and SOON; today's game is in the sky.",
@@ -438131,7 +438137,7 @@
                   "type": "text",
                   "id": "eHbSJ",
                   "name": "Device",
-                  "fill": "#1F2B4D",
+                  "fill": "$ds-ink",
                   "content": "iPhone SE · 375",
                   "fontFamily": "$ds-font",
                   "fontSize": 15,
@@ -438141,7 +438147,7 @@
                   "type": "text",
                   "id": "hyJ1n",
                   "name": "Counts",
-                  "fill": "#5A4A37",
+                  "fill": "$ds-ink-soft",
                   "content": "3 · 3 · 3 · 3  ·  tile 105",
                   "fontFamily": "$ds-font",
                   "fontSize": 13,
@@ -438163,7 +438169,7 @@
                   "id": "WtCVL",
                   "name": "Layer 1",
                   "width": "fill_container",
-                  "fill": "#E4D5B7",
+                  "fill": "$ds-strata-1",
                   "gap": 3.2,
                   "padding": [
                     6,
@@ -438181,7 +438187,7 @@
                       ],
                       "id": "E61VBo",
                       "name": "Tile",
-                      "fill": "#D5C29F",
+                      "fill": "$ds-pocket-1",
                       "width": 34,
                       "height": 27
                     },
@@ -438195,7 +438201,7 @@
                       ],
                       "id": "z3j0WD",
                       "name": "Tile",
-                      "fill": "#D5C29F",
+                      "fill": "$ds-pocket-1",
                       "width": 34,
                       "height": 27
                     },
@@ -438209,7 +438215,7 @@
                       ],
                       "id": "NlKHy",
                       "name": "Tile",
-                      "fill": "#D5C29F",
+                      "fill": "$ds-pocket-1",
                       "width": 34,
                       "height": 27
                     }
@@ -438220,7 +438226,7 @@
                   "id": "ls68h",
                   "name": "Layer 2",
                   "width": "fill_container",
-                  "fill": "#CDB48C",
+                  "fill": "$ds-strata-2",
                   "gap": 3.2,
                   "padding": [
                     6,
@@ -438238,7 +438244,7 @@
                       ],
                       "id": "ZKvTR",
                       "name": "Tile",
-                      "fill": "#BEA278",
+                      "fill": "$ds-pocket-2",
                       "width": 34,
                       "height": 27
                     },
@@ -438252,7 +438258,7 @@
                       ],
                       "id": "PHtbk",
                       "name": "Tile",
-                      "fill": "#BEA278",
+                      "fill": "$ds-pocket-2",
                       "width": 34,
                       "height": 27
                     },
@@ -438266,7 +438272,7 @@
                       ],
                       "id": "cuYNZ",
                       "name": "Tile",
-                      "fill": "#BEA278",
+                      "fill": "$ds-pocket-2",
                       "width": 34,
                       "height": 27
                     }
@@ -438277,7 +438283,7 @@
                   "id": "E0Wtb",
                   "name": "Layer 3",
                   "width": "fill_container",
-                  "fill": "#E4D5B7",
+                  "fill": "$ds-strata-1",
                   "gap": 3.2,
                   "padding": [
                     6,
@@ -438295,7 +438301,7 @@
                       ],
                       "id": "ui4L0",
                       "name": "Tile",
-                      "fill": "#D5C29F",
+                      "fill": "$ds-pocket-1",
                       "width": 34,
                       "height": 27
                     },
@@ -438309,7 +438315,7 @@
                       ],
                       "id": "u9qTf",
                       "name": "Tile",
-                      "fill": "#D5C29F",
+                      "fill": "$ds-pocket-1",
                       "width": 34,
                       "height": 27
                     },
@@ -438323,7 +438329,7 @@
                       ],
                       "id": "o5EMna",
                       "name": "Tile",
-                      "fill": "#D5C29F",
+                      "fill": "$ds-pocket-1",
                       "width": 34,
                       "height": 27
                     }
@@ -438334,7 +438340,7 @@
                   "id": "eKPXG",
                   "name": "Layer 4",
                   "width": "fill_container",
-                  "fill": "#CDB48C",
+                  "fill": "$ds-strata-2",
                   "gap": 3.2,
                   "padding": [
                     6,
@@ -438352,7 +438358,7 @@
                       ],
                       "id": "eWm3u",
                       "name": "Tile",
-                      "fill": "#BEA278",
+                      "fill": "$ds-pocket-2",
                       "width": 34,
                       "height": 27
                     },
@@ -438366,7 +438372,7 @@
                       ],
                       "id": "nDgcK",
                       "name": "Tile",
-                      "fill": "#BEA278",
+                      "fill": "$ds-pocket-2",
                       "width": 34,
                       "height": 27
                     },
@@ -438380,7 +438386,7 @@
                       ],
                       "id": "eqj1P",
                       "name": "Tile",
-                      "fill": "#BEA278",
+                      "fill": "$ds-pocket-2",
                       "width": 34,
                       "height": 27
                     }
@@ -438408,7 +438414,7 @@
                   "type": "text",
                   "id": "oX5Bf",
                   "name": "Device",
-                  "fill": "#1F2B4D",
+                  "fill": "$ds-ink",
                   "content": "iPhone · 393",
                   "fontFamily": "$ds-font",
                   "fontSize": 15,
@@ -438418,7 +438424,7 @@
                   "type": "text",
                   "id": "Wkwt0",
                   "name": "Counts",
-                  "fill": "#5A4A37",
+                  "fill": "$ds-ink-soft",
                   "content": "3 · 3 · 3 · 3  ·  tile 111",
                   "fontFamily": "$ds-font",
                   "fontSize": 13,
@@ -438440,7 +438446,7 @@
                   "id": "eqMD8",
                   "name": "Layer 1",
                   "width": "fill_container",
-                  "fill": "#E4D5B7",
+                  "fill": "$ds-strata-1",
                   "gap": 3.2,
                   "padding": [
                     6,
@@ -438458,7 +438464,7 @@
                       ],
                       "id": "YThAs",
                       "name": "Tile",
-                      "fill": "#D5C29F",
+                      "fill": "$ds-pocket-1",
                       "width": 36,
                       "height": 28
                     },
@@ -438472,7 +438478,7 @@
                       ],
                       "id": "wJOtS",
                       "name": "Tile",
-                      "fill": "#D5C29F",
+                      "fill": "$ds-pocket-1",
                       "width": 36,
                       "height": 28
                     },
@@ -438486,7 +438492,7 @@
                       ],
                       "id": "QBs55",
                       "name": "Tile",
-                      "fill": "#D5C29F",
+                      "fill": "$ds-pocket-1",
                       "width": 36,
                       "height": 28
                     }
@@ -438497,7 +438503,7 @@
                   "id": "qEC08",
                   "name": "Layer 2",
                   "width": "fill_container",
-                  "fill": "#CDB48C",
+                  "fill": "$ds-strata-2",
                   "gap": 3.2,
                   "padding": [
                     6,
@@ -438515,7 +438521,7 @@
                       ],
                       "id": "yaH7M",
                       "name": "Tile",
-                      "fill": "#BEA278",
+                      "fill": "$ds-pocket-2",
                       "width": 36,
                       "height": 28
                     },
@@ -438529,7 +438535,7 @@
                       ],
                       "id": "wZ4Fa",
                       "name": "Tile",
-                      "fill": "#BEA278",
+                      "fill": "$ds-pocket-2",
                       "width": 36,
                       "height": 28
                     },
@@ -438543,7 +438549,7 @@
                       ],
                       "id": "yXsbc",
                       "name": "Tile",
-                      "fill": "#BEA278",
+                      "fill": "$ds-pocket-2",
                       "width": 36,
                       "height": 28
                     }
@@ -438554,7 +438560,7 @@
                   "id": "v6RbO",
                   "name": "Layer 3",
                   "width": "fill_container",
-                  "fill": "#E4D5B7",
+                  "fill": "$ds-strata-1",
                   "gap": 3.2,
                   "padding": [
                     6,
@@ -438572,7 +438578,7 @@
                       ],
                       "id": "GR2Q8",
                       "name": "Tile",
-                      "fill": "#D5C29F",
+                      "fill": "$ds-pocket-1",
                       "width": 36,
                       "height": 28
                     },
@@ -438586,7 +438592,7 @@
                       ],
                       "id": "gL1dF",
                       "name": "Tile",
-                      "fill": "#D5C29F",
+                      "fill": "$ds-pocket-1",
                       "width": 36,
                       "height": 28
                     },
@@ -438600,7 +438606,7 @@
                       ],
                       "id": "Pcpye",
                       "name": "Tile",
-                      "fill": "#D5C29F",
+                      "fill": "$ds-pocket-1",
                       "width": 36,
                       "height": 28
                     }
@@ -438611,7 +438617,7 @@
                   "id": "sTsCS",
                   "name": "Layer 4",
                   "width": "fill_container",
-                  "fill": "#CDB48C",
+                  "fill": "$ds-strata-2",
                   "gap": 3.2,
                   "padding": [
                     6,
@@ -438629,7 +438635,7 @@
                       ],
                       "id": "v2gSA",
                       "name": "Tile",
-                      "fill": "#BEA278",
+                      "fill": "$ds-pocket-2",
                       "width": 36,
                       "height": 28
                     },
@@ -438643,7 +438649,7 @@
                       ],
                       "id": "SglMQ",
                       "name": "Tile",
-                      "fill": "#BEA278",
+                      "fill": "$ds-pocket-2",
                       "width": 36,
                       "height": 28
                     },
@@ -438657,7 +438663,7 @@
                       ],
                       "id": "eLnn2",
                       "name": "Tile",
-                      "fill": "#BEA278",
+                      "fill": "$ds-pocket-2",
                       "width": 36,
                       "height": 28
                     }
@@ -438685,7 +438691,7 @@
                   "type": "text",
                   "id": "iNevq",
                   "name": "Device",
-                  "fill": "#1F2B4D",
+                  "fill": "$ds-ink",
                   "content": "iPad mini upright · 744",
                   "fontFamily": "$ds-font",
                   "fontSize": 15,
@@ -438695,7 +438701,7 @@
                   "type": "text",
                   "id": "VI5Y3",
                   "name": "Counts",
-                  "fill": "#5A4A37",
+                  "fill": "$ds-ink-soft",
                   "content": "4 · 4 · 4  ·  tile 157",
                   "fontFamily": "$ds-font",
                   "fontSize": 13,
@@ -438717,7 +438723,7 @@
                   "id": "HnzoN",
                   "name": "Layer 1",
                   "width": "fill_container",
-                  "fill": "#E4D5B7",
+                  "fill": "$ds-strata-1",
                   "gap": 3.84,
                   "padding": [
                     6,
@@ -438735,7 +438741,7 @@
                       ],
                       "id": "V2VnSK",
                       "name": "Tile",
-                      "fill": "#D5C29F",
+                      "fill": "$ds-pocket-1",
                       "width": 50,
                       "height": 40
                     },
@@ -438749,7 +438755,7 @@
                       ],
                       "id": "glX3l",
                       "name": "Tile",
-                      "fill": "#D5C29F",
+                      "fill": "$ds-pocket-1",
                       "width": 50,
                       "height": 40
                     },
@@ -438763,7 +438769,7 @@
                       ],
                       "id": "oowsy",
                       "name": "Tile",
-                      "fill": "#D5C29F",
+                      "fill": "$ds-pocket-1",
                       "width": 50,
                       "height": 40
                     },
@@ -438777,7 +438783,7 @@
                       ],
                       "id": "g5dZC",
                       "name": "Tile",
-                      "fill": "#D5C29F",
+                      "fill": "$ds-pocket-1",
                       "width": 50,
                       "height": 40
                     }
@@ -438788,7 +438794,7 @@
                   "id": "d0ncje",
                   "name": "Layer 2",
                   "width": "fill_container",
-                  "fill": "#CDB48C",
+                  "fill": "$ds-strata-2",
                   "gap": 3.84,
                   "padding": [
                     6,
@@ -438806,7 +438812,7 @@
                       ],
                       "id": "maVT9",
                       "name": "Tile",
-                      "fill": "#BEA278",
+                      "fill": "$ds-pocket-2",
                       "width": 50,
                       "height": 40
                     },
@@ -438820,7 +438826,7 @@
                       ],
                       "id": "u6TWK",
                       "name": "Tile",
-                      "fill": "#BEA278",
+                      "fill": "$ds-pocket-2",
                       "width": 50,
                       "height": 40
                     },
@@ -438834,7 +438840,7 @@
                       ],
                       "id": "N16NX",
                       "name": "Tile",
-                      "fill": "#BEA278",
+                      "fill": "$ds-pocket-2",
                       "width": 50,
                       "height": 40
                     },
@@ -438848,7 +438854,7 @@
                       ],
                       "id": "Ta2Wm",
                       "name": "Tile",
-                      "fill": "#BEA278",
+                      "fill": "$ds-pocket-2",
                       "width": 50,
                       "height": 40
                     }
@@ -438859,7 +438865,7 @@
                   "id": "ucH3J",
                   "name": "Layer 3",
                   "width": "fill_container",
-                  "fill": "#E4D5B7",
+                  "fill": "$ds-strata-1",
                   "gap": 3.84,
                   "padding": [
                     6,
@@ -438877,7 +438883,7 @@
                       ],
                       "id": "h4daNh",
                       "name": "Tile",
-                      "fill": "#D5C29F",
+                      "fill": "$ds-pocket-1",
                       "width": 50,
                       "height": 40
                     },
@@ -438891,7 +438897,7 @@
                       ],
                       "id": "DrSpR",
                       "name": "Tile",
-                      "fill": "#D5C29F",
+                      "fill": "$ds-pocket-1",
                       "width": 50,
                       "height": 40
                     },
@@ -438905,7 +438911,7 @@
                       ],
                       "id": "wrEzm",
                       "name": "Tile",
-                      "fill": "#D5C29F",
+                      "fill": "$ds-pocket-1",
                       "width": 50,
                       "height": 40
                     },
@@ -438919,7 +438925,7 @@
                       ],
                       "id": "feLYm",
                       "name": "Tile",
-                      "fill": "#D5C29F",
+                      "fill": "$ds-pocket-1",
                       "width": 50,
                       "height": 40
                     }
@@ -438947,7 +438953,7 @@
                   "type": "text",
                   "id": "rw9DL",
                   "name": "Device",
-                  "fill": "#1F2B4D",
+                  "fill": "$ds-ink",
                   "content": "iPhone on its side · 852",
                   "fontFamily": "$ds-font",
                   "fontSize": 15,
@@ -438957,7 +438963,7 @@
                   "type": "text",
                   "id": "Jqppv",
                   "name": "Counts",
-                  "fill": "#5A4A37",
+                  "fill": "$ds-ink-soft",
                   "content": "6 · 6  ·  tile 107",
                   "fontFamily": "$ds-font",
                   "fontSize": 13,
@@ -438979,7 +438985,7 @@
                   "id": "GeWIM",
                   "name": "Layer 1",
                   "width": "fill_container",
-                  "fill": "#E4D5B7",
+                  "fill": "$ds-strata-1",
                   "gap": 3.2,
                   "padding": [
                     6,
@@ -438997,7 +439003,7 @@
                       ],
                       "id": "Nmosr",
                       "name": "Tile",
-                      "fill": "#D5C29F",
+                      "fill": "$ds-pocket-1",
                       "width": 34,
                       "height": 27
                     },
@@ -439011,7 +439017,7 @@
                       ],
                       "id": "C2rWDF",
                       "name": "Tile",
-                      "fill": "#D5C29F",
+                      "fill": "$ds-pocket-1",
                       "width": 34,
                       "height": 27
                     },
@@ -439025,7 +439031,7 @@
                       ],
                       "id": "V1YtO",
                       "name": "Tile",
-                      "fill": "#D5C29F",
+                      "fill": "$ds-pocket-1",
                       "width": 34,
                       "height": 27
                     },
@@ -439039,7 +439045,7 @@
                       ],
                       "id": "Cipez",
                       "name": "Tile",
-                      "fill": "#D5C29F",
+                      "fill": "$ds-pocket-1",
                       "width": 34,
                       "height": 27
                     },
@@ -439053,7 +439059,7 @@
                       ],
                       "id": "ULwEi",
                       "name": "Tile",
-                      "fill": "#D5C29F",
+                      "fill": "$ds-pocket-1",
                       "width": 34,
                       "height": 27
                     },
@@ -439067,7 +439073,7 @@
                       ],
                       "id": "Kyvhe",
                       "name": "Tile",
-                      "fill": "#D5C29F",
+                      "fill": "$ds-pocket-1",
                       "width": 34,
                       "height": 27
                     }
@@ -439078,7 +439084,7 @@
                   "id": "B3ppp",
                   "name": "Layer 2",
                   "width": "fill_container",
-                  "fill": "#CDB48C",
+                  "fill": "$ds-strata-2",
                   "gap": 3.2,
                   "padding": [
                     6,
@@ -439096,7 +439102,7 @@
                       ],
                       "id": "VYGzd",
                       "name": "Tile",
-                      "fill": "#BEA278",
+                      "fill": "$ds-pocket-2",
                       "width": 34,
                       "height": 27
                     },
@@ -439110,7 +439116,7 @@
                       ],
                       "id": "EJZqd",
                       "name": "Tile",
-                      "fill": "#BEA278",
+                      "fill": "$ds-pocket-2",
                       "width": 34,
                       "height": 27
                     },
@@ -439124,7 +439130,7 @@
                       ],
                       "id": "Z65PM2",
                       "name": "Tile",
-                      "fill": "#BEA278",
+                      "fill": "$ds-pocket-2",
                       "width": 34,
                       "height": 27
                     },
@@ -439138,7 +439144,7 @@
                       ],
                       "id": "l4dfJg",
                       "name": "Tile",
-                      "fill": "#BEA278",
+                      "fill": "$ds-pocket-2",
                       "width": 34,
                       "height": 27
                     },
@@ -439152,7 +439158,7 @@
                       ],
                       "id": "J5n7pe",
                       "name": "Tile",
-                      "fill": "#BEA278",
+                      "fill": "$ds-pocket-2",
                       "width": 34,
                       "height": 27
                     },
@@ -439166,7 +439172,7 @@
                       ],
                       "id": "KOQWp",
                       "name": "Tile",
-                      "fill": "#BEA278",
+                      "fill": "$ds-pocket-2",
                       "width": 34,
                       "height": 27
                     }
@@ -439194,7 +439200,7 @@
                   "type": "text",
                   "id": "ZfB2K",
                   "name": "Device",
-                  "fill": "#1F2B4D",
+                  "fill": "$ds-ink",
                   "content": "Browser window · 960",
                   "fontFamily": "$ds-font",
                   "fontSize": 15,
@@ -439204,7 +439210,7 @@
                   "type": "text",
                   "id": "BVnNL",
                   "name": "Counts",
-                  "fill": "#5A4A37",
+                  "fill": "$ds-ink-soft",
                   "content": "4 · 4 · 4  ·  tile 200",
                   "fontFamily": "$ds-font",
                   "fontSize": 13,
@@ -439226,7 +439232,7 @@
                   "id": "gkPUZ",
                   "name": "Layer 1",
                   "width": "fill_container",
-                  "fill": "#E4D5B7",
+                  "fill": "$ds-strata-1",
                   "gap": 3.84,
                   "padding": [
                     6,
@@ -439244,7 +439250,7 @@
                       ],
                       "id": "RIVBE",
                       "name": "Tile",
-                      "fill": "#D5C29F",
+                      "fill": "$ds-pocket-1",
                       "width": 64,
                       "height": 51
                     },
@@ -439258,7 +439264,7 @@
                       ],
                       "id": "OFNSz",
                       "name": "Tile",
-                      "fill": "#D5C29F",
+                      "fill": "$ds-pocket-1",
                       "width": 64,
                       "height": 51
                     },
@@ -439272,7 +439278,7 @@
                       ],
                       "id": "aJMgr",
                       "name": "Tile",
-                      "fill": "#D5C29F",
+                      "fill": "$ds-pocket-1",
                       "width": 64,
                       "height": 51
                     },
@@ -439286,7 +439292,7 @@
                       ],
                       "id": "QIRbi",
                       "name": "Tile",
-                      "fill": "#D5C29F",
+                      "fill": "$ds-pocket-1",
                       "width": 64,
                       "height": 51
                     }
@@ -439297,7 +439303,7 @@
                   "id": "kPy74",
                   "name": "Layer 2",
                   "width": "fill_container",
-                  "fill": "#CDB48C",
+                  "fill": "$ds-strata-2",
                   "gap": 3.84,
                   "padding": [
                     6,
@@ -439315,7 +439321,7 @@
                       ],
                       "id": "u1ZZf",
                       "name": "Tile",
-                      "fill": "#BEA278",
+                      "fill": "$ds-pocket-2",
                       "width": 64,
                       "height": 51
                     },
@@ -439329,7 +439335,7 @@
                       ],
                       "id": "n1iNu",
                       "name": "Tile",
-                      "fill": "#BEA278",
+                      "fill": "$ds-pocket-2",
                       "width": 64,
                       "height": 51
                     },
@@ -439343,7 +439349,7 @@
                       ],
                       "id": "SlJ6o",
                       "name": "Tile",
-                      "fill": "#BEA278",
+                      "fill": "$ds-pocket-2",
                       "width": 64,
                       "height": 51
                     },
@@ -439357,7 +439363,7 @@
                       ],
                       "id": "Miz5e",
                       "name": "Tile",
-                      "fill": "#BEA278",
+                      "fill": "$ds-pocket-2",
                       "width": 64,
                       "height": 51
                     }
@@ -439368,7 +439374,7 @@
                   "id": "aOz0h",
                   "name": "Layer 3",
                   "width": "fill_container",
-                  "fill": "#E4D5B7",
+                  "fill": "$ds-strata-1",
                   "gap": 3.84,
                   "padding": [
                     6,
@@ -439386,7 +439392,7 @@
                       ],
                       "id": "WaxKU",
                       "name": "Tile",
-                      "fill": "#D5C29F",
+                      "fill": "$ds-pocket-1",
                       "width": 64,
                       "height": 51
                     },
@@ -439400,7 +439406,7 @@
                       ],
                       "id": "IQWZg",
                       "name": "Tile",
-                      "fill": "#D5C29F",
+                      "fill": "$ds-pocket-1",
                       "width": 64,
                       "height": 51
                     },
@@ -439414,7 +439420,7 @@
                       ],
                       "id": "D1dF2c",
                       "name": "Tile",
-                      "fill": "#D5C29F",
+                      "fill": "$ds-pocket-1",
                       "width": 64,
                       "height": 51
                     },
@@ -439428,7 +439434,7 @@
                       ],
                       "id": "Jgre3",
                       "name": "Tile",
-                      "fill": "#D5C29F",
+                      "fill": "$ds-pocket-1",
                       "width": 64,
                       "height": 51
                     }
@@ -439456,7 +439462,7 @@
                   "type": "text",
                   "id": "V4Rwn9",
                   "name": "Device",
-                  "fill": "#1F2B4D",
+                  "fill": "$ds-ink",
                   "content": "iPad mini · 1133",
                   "fontFamily": "$ds-font",
                   "fontSize": 15,
@@ -439466,7 +439472,7 @@
                   "type": "text",
                   "id": "ruyIZ",
                   "name": "Counts",
-                  "fill": "#5A4A37",
+                  "fill": "$ds-ink-soft",
                   "content": "6 · 6  ·  tile 166",
                   "fontFamily": "$ds-font",
                   "fontSize": 13,
@@ -439488,7 +439494,7 @@
                   "id": "giC36",
                   "name": "Layer 1",
                   "width": "fill_container",
-                  "fill": "#E4D5B7",
+                  "fill": "$ds-strata-1",
                   "gap": 3.84,
                   "padding": [
                     6,
@@ -439506,7 +439512,7 @@
                       ],
                       "id": "V03Fn",
                       "name": "Tile",
-                      "fill": "#D5C29F",
+                      "fill": "$ds-pocket-1",
                       "width": 53,
                       "height": 42
                     },
@@ -439520,7 +439526,7 @@
                       ],
                       "id": "FCZsR",
                       "name": "Tile",
-                      "fill": "#D5C29F",
+                      "fill": "$ds-pocket-1",
                       "width": 53,
                       "height": 42
                     },
@@ -439534,7 +439540,7 @@
                       ],
                       "id": "PW3Xc",
                       "name": "Tile",
-                      "fill": "#D5C29F",
+                      "fill": "$ds-pocket-1",
                       "width": 53,
                       "height": 42
                     },
@@ -439548,7 +439554,7 @@
                       ],
                       "id": "pEtyd",
                       "name": "Tile",
-                      "fill": "#D5C29F",
+                      "fill": "$ds-pocket-1",
                       "width": 53,
                       "height": 42
                     },
@@ -439562,7 +439568,7 @@
                       ],
                       "id": "X1me3",
                       "name": "Tile",
-                      "fill": "#D5C29F",
+                      "fill": "$ds-pocket-1",
                       "width": 53,
                       "height": 42
                     },
@@ -439576,7 +439582,7 @@
                       ],
                       "id": "r19tx",
                       "name": "Tile",
-                      "fill": "#D5C29F",
+                      "fill": "$ds-pocket-1",
                       "width": 53,
                       "height": 42
                     }
@@ -439587,7 +439593,7 @@
                   "id": "SoDNW",
                   "name": "Layer 2",
                   "width": "fill_container",
-                  "fill": "#CDB48C",
+                  "fill": "$ds-strata-2",
                   "gap": 3.84,
                   "padding": [
                     6,
@@ -439605,7 +439611,7 @@
                       ],
                       "id": "HmibG",
                       "name": "Tile",
-                      "fill": "#BEA278",
+                      "fill": "$ds-pocket-2",
                       "width": 53,
                       "height": 42
                     },
@@ -439619,7 +439625,7 @@
                       ],
                       "id": "wcZPM",
                       "name": "Tile",
-                      "fill": "#BEA278",
+                      "fill": "$ds-pocket-2",
                       "width": 53,
                       "height": 42
                     },
@@ -439633,7 +439639,7 @@
                       ],
                       "id": "fRtTG",
                       "name": "Tile",
-                      "fill": "#BEA278",
+                      "fill": "$ds-pocket-2",
                       "width": 53,
                       "height": 42
                     },
@@ -439647,7 +439653,7 @@
                       ],
                       "id": "FlfYB",
                       "name": "Tile",
-                      "fill": "#BEA278",
+                      "fill": "$ds-pocket-2",
                       "width": 53,
                       "height": 42
                     },
@@ -439661,7 +439667,7 @@
                       ],
                       "id": "PfduH",
                       "name": "Tile",
-                      "fill": "#BEA278",
+                      "fill": "$ds-pocket-2",
                       "width": 53,
                       "height": 42
                     },
@@ -439675,7 +439681,7 @@
                       ],
                       "id": "AMrcK",
                       "name": "Tile",
-                      "fill": "#BEA278",
+                      "fill": "$ds-pocket-2",
                       "width": 53,
                       "height": 42
                     }
@@ -439703,7 +439709,7 @@
                   "type": "text",
                   "id": "lnpPj",
                   "name": "Device",
-                  "fill": "#1F2B4D",
+                  "fill": "$ds-ink",
                   "content": "Desktop · 1440",
                   "fontFamily": "$ds-font",
                   "fontSize": 15,
@@ -439713,7 +439719,7 @@
                   "type": "text",
                   "id": "GlVEu",
                   "name": "Counts",
-                  "fill": "#5A4A37",
+                  "fill": "$ds-ink-soft",
                   "content": "6 · 6  ·  tile 200",
                   "fontFamily": "$ds-font",
                   "fontSize": 13,
@@ -439735,7 +439741,7 @@
                   "id": "XHex7",
                   "name": "Layer 1",
                   "width": "fill_container",
-                  "fill": "#E4D5B7",
+                  "fill": "$ds-strata-1",
                   "gap": 3.84,
                   "padding": [
                     6,
@@ -439753,7 +439759,7 @@
                       ],
                       "id": "IAl6U",
                       "name": "Tile",
-                      "fill": "#D5C29F",
+                      "fill": "$ds-pocket-1",
                       "width": 64,
                       "height": 51
                     },
@@ -439767,7 +439773,7 @@
                       ],
                       "id": "U6n3U",
                       "name": "Tile",
-                      "fill": "#D5C29F",
+                      "fill": "$ds-pocket-1",
                       "width": 64,
                       "height": 51
                     },
@@ -439781,7 +439787,7 @@
                       ],
                       "id": "nYQpW",
                       "name": "Tile",
-                      "fill": "#D5C29F",
+                      "fill": "$ds-pocket-1",
                       "width": 64,
                       "height": 51
                     },
@@ -439795,7 +439801,7 @@
                       ],
                       "id": "RzlnV",
                       "name": "Tile",
-                      "fill": "#D5C29F",
+                      "fill": "$ds-pocket-1",
                       "width": 64,
                       "height": 51
                     },
@@ -439809,7 +439815,7 @@
                       ],
                       "id": "YAFqV",
                       "name": "Tile",
-                      "fill": "#D5C29F",
+                      "fill": "$ds-pocket-1",
                       "width": 64,
                       "height": 51
                     },
@@ -439823,7 +439829,7 @@
                       ],
                       "id": "LtQq1",
                       "name": "Tile",
-                      "fill": "#D5C29F",
+                      "fill": "$ds-pocket-1",
                       "width": 64,
                       "height": 51
                     }
@@ -439834,7 +439840,7 @@
                   "id": "cRLQH",
                   "name": "Layer 2",
                   "width": "fill_container",
-                  "fill": "#CDB48C",
+                  "fill": "$ds-strata-2",
                   "gap": 3.84,
                   "padding": [
                     6,
@@ -439852,7 +439858,7 @@
                       ],
                       "id": "UBvZV",
                       "name": "Tile",
-                      "fill": "#BEA278",
+                      "fill": "$ds-pocket-2",
                       "width": 64,
                       "height": 51
                     },
@@ -439866,7 +439872,7 @@
                       ],
                       "id": "xET0f",
                       "name": "Tile",
-                      "fill": "#BEA278",
+                      "fill": "$ds-pocket-2",
                       "width": 64,
                       "height": 51
                     },
@@ -439880,7 +439886,7 @@
                       ],
                       "id": "ddHGo",
                       "name": "Tile",
-                      "fill": "#BEA278",
+                      "fill": "$ds-pocket-2",
                       "width": 64,
                       "height": 51
                     },
@@ -439894,7 +439900,7 @@
                       ],
                       "id": "jk96y",
                       "name": "Tile",
-                      "fill": "#BEA278",
+                      "fill": "$ds-pocket-2",
                       "width": 64,
                       "height": 51
                     },
@@ -439908,7 +439914,7 @@
                       ],
                       "id": "FfB29",
                       "name": "Tile",
-                      "fill": "#BEA278",
+                      "fill": "$ds-pocket-2",
                       "width": 64,
                       "height": 51
                     },
@@ -439922,7 +439928,7 @@
                       ],
                       "id": "gitZK",
                       "name": "Tile",
-                      "fill": "#BEA278",
+                      "fill": "$ds-pocket-2",
                       "width": 64,
                       "height": 51
                     }
@@ -439950,7 +439956,7 @@
                   "type": "text",
                   "id": "YlWT1",
                   "name": "Device",
-                  "fill": "#1F2B4D",
+                  "fill": "$ds-ink",
                   "content": "Wide desktop · 2560",
                   "fontFamily": "$ds-font",
                   "fontSize": 15,
@@ -439960,7 +439966,7 @@
                   "type": "text",
                   "id": "OH1lJ",
                   "name": "Counts",
-                  "fill": "#5A4A37",
+                  "fill": "$ds-ink-soft",
                   "content": "12  ·  tile 196",
                   "fontFamily": "$ds-font",
                   "fontSize": 13,
@@ -439982,7 +439988,7 @@
                   "id": "l5dLN",
                   "name": "Layer 1",
                   "width": "fill_container",
-                  "fill": "#E4D5B7",
+                  "fill": "$ds-strata-1",
                   "gap": 3.84,
                   "padding": [
                     6,
@@ -440000,7 +440006,7 @@
                       ],
                       "id": "l8uxx",
                       "name": "Tile",
-                      "fill": "#D5C29F",
+                      "fill": "$ds-pocket-1",
                       "width": 63,
                       "height": 50
                     },
@@ -440014,7 +440020,7 @@
                       ],
                       "id": "h4zde",
                       "name": "Tile",
-                      "fill": "#D5C29F",
+                      "fill": "$ds-pocket-1",
                       "width": 63,
                       "height": 50
                     },
@@ -440028,7 +440034,7 @@
                       ],
                       "id": "abdsY",
                       "name": "Tile",
-                      "fill": "#D5C29F",
+                      "fill": "$ds-pocket-1",
                       "width": 63,
                       "height": 50
                     },
@@ -440042,7 +440048,7 @@
                       ],
                       "id": "e69kiU",
                       "name": "Tile",
-                      "fill": "#D5C29F",
+                      "fill": "$ds-pocket-1",
                       "width": 63,
                       "height": 50
                     },
@@ -440056,7 +440062,7 @@
                       ],
                       "id": "i4xgf1",
                       "name": "Tile",
-                      "fill": "#D5C29F",
+                      "fill": "$ds-pocket-1",
                       "width": 63,
                       "height": 50
                     },
@@ -440070,7 +440076,7 @@
                       ],
                       "id": "W0JkT",
                       "name": "Tile",
-                      "fill": "#D5C29F",
+                      "fill": "$ds-pocket-1",
                       "width": 63,
                       "height": 50
                     },
@@ -440084,7 +440090,7 @@
                       ],
                       "id": "HAJme",
                       "name": "Tile",
-                      "fill": "#D5C29F",
+                      "fill": "$ds-pocket-1",
                       "width": 63,
                       "height": 50
                     },
@@ -440098,7 +440104,7 @@
                       ],
                       "id": "WgaDr",
                       "name": "Tile",
-                      "fill": "#D5C29F",
+                      "fill": "$ds-pocket-1",
                       "width": 63,
                       "height": 50
                     },
@@ -440112,7 +440118,7 @@
                       ],
                       "id": "p6Ha8",
                       "name": "Tile",
-                      "fill": "#D5C29F",
+                      "fill": "$ds-pocket-1",
                       "width": 63,
                       "height": 50
                     },
@@ -440126,7 +440132,7 @@
                       ],
                       "id": "BSjI4",
                       "name": "Tile",
-                      "fill": "#D5C29F",
+                      "fill": "$ds-pocket-1",
                       "width": 63,
                       "height": 50
                     },
@@ -440140,7 +440146,7 @@
                       ],
                       "id": "TvHyu",
                       "name": "Tile",
-                      "fill": "#D5C29F",
+                      "fill": "$ds-pocket-1",
                       "width": 63,
                       "height": 50
                     },
@@ -440154,7 +440160,7 @@
                       ],
                       "id": "PJkdx",
                       "name": "Tile",
-                      "fill": "#D5C29F",
+                      "fill": "$ds-pocket-1",
                       "width": 63,
                       "height": 50
                     }
@@ -451575,7 +451581,7 @@
           "fill": "$ds-ink-soft",
           "textGrowth": "fixed-width",
           "width": "fill_container",
-          "content": "Each game's art stands in one box per device, on the ground just above the first layer: right of the name on iPad mini and on a phone on its side, across the width under the name on the upright iPad, between PLAY and the first layer on iPhone. The art is the game's own pictures, already cut out, scaled together to fit the box and centred. What walks stands on the ground with a soft shadow; what flies has none. The sun or moon stays behind it.",
+          "content": "Each game's art stands in one box per device, on the ground just above the first layer: right of the name on iPad mini and on a phone on its side, across the width under the name on the upright iPad, between PLAY and the first layer on iPhone. The art is the game's own pictures, already cut out, scaled together to fit the box and centred. What walks stands on the ground with a soft shadow; what flies has none. The sun or moon stays behind it. Anything the art adds around the pictures is built from the design tokens, as the screen is: a card or tray has the panel corner, a basket or pocket the pocket corners, a puzzle piece the tag corner; a raised thing casts the ground shadow; paints are the action, reward, good and paint-blue colours; written words use the hand font. So the art turns dark with the screen.",
           "lineHeight": 1.45,
           "fontFamily": "$ds-font",
           "fontSize": 14,
@@ -451732,13 +451738,13 @@
               "mode": "contain"
             }
           ],
-          "cornerRadius": 20,
+          "cornerRadius": "$ds-radius-panel",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 4,
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000033",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 6
@@ -451764,13 +451770,13 @@
               "mode": "contain"
             }
           ],
-          "cornerRadius": 20,
+          "cornerRadius": "$ds-radius-panel",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 4,
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000033",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 6
@@ -452568,13 +452574,13 @@
               "mode": "contain"
             }
           ],
-          "cornerRadius": 20,
+          "cornerRadius": "$ds-radius-panel",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 4,
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000033",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 6
@@ -452600,13 +452606,13 @@
               "mode": "contain"
             }
           ],
-          "cornerRadius": 20,
+          "cornerRadius": "$ds-radius-panel",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 4,
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000033",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 6
@@ -453412,13 +453418,13 @@
               "mode": "contain"
             }
           ],
-          "cornerRadius": 20,
+          "cornerRadius": "$ds-radius-panel",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 4,
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000033",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 6
@@ -453444,13 +453450,13 @@
               "mode": "contain"
             }
           ],
-          "cornerRadius": 20,
+          "cornerRadius": "$ds-radius-panel",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 4,
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000033",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 6
@@ -454302,13 +454308,13 @@
               "mode": "contain"
             }
           ],
-          "cornerRadius": 19,
+          "cornerRadius": "$ds-radius-panel",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 4,
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000033",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 6
@@ -454334,13 +454340,13 @@
               "mode": "contain"
             }
           ],
-          "cornerRadius": 19,
+          "cornerRadius": "$ds-radius-panel",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 4,
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000033",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 6
@@ -455304,13 +455310,13 @@
               "mode": "contain"
             }
           ],
-          "cornerRadius": 10,
+          "cornerRadius": "$ds-radius-panel",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 2,
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000033",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 3
@@ -455336,13 +455342,13 @@
               "mode": "contain"
             }
           ],
-          "cornerRadius": 10,
+          "cornerRadius": "$ds-radius-panel",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 2,
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000033",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 3
@@ -456359,13 +456365,13 @@
               "mode": "contain"
             }
           ],
-          "cornerRadius": 10,
+          "cornerRadius": "$ds-radius-panel",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 2,
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000033",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 3
@@ -456391,13 +456397,13 @@
               "mode": "contain"
             }
           ],
-          "cornerRadius": 10,
+          "cornerRadius": "$ds-radius-panel",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 2,
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000033",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 3
@@ -457462,13 +457468,13 @@
               "mode": "contain"
             }
           ],
-          "cornerRadius": 10,
+          "cornerRadius": "$ds-radius-panel",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 2,
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000033",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 3
@@ -457494,13 +457500,13 @@
               "mode": "contain"
             }
           ],
-          "cornerRadius": 10,
+          "cornerRadius": "$ds-radius-panel",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 2,
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000033",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 3
@@ -458517,13 +458523,13 @@
               "mode": "contain"
             }
           ],
-          "cornerRadius": 13,
+          "cornerRadius": "$ds-radius-panel",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 3,
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000033",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 4
@@ -458549,13 +458555,13 @@
               "mode": "contain"
             }
           ],
-          "cornerRadius": 13,
+          "cornerRadius": "$ds-radius-panel",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 3,
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000033",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 4
@@ -466636,10 +466642,10 @@
             }
           ],
           "cornerRadius": [
-            40,
-            40,
-            18,
-            18
+            "$ds-radius-pocket-top",
+            "$ds-radius-pocket-top",
+            "$ds-radius-pocket-bottom",
+            "$ds-radius-pocket-bottom"
           ],
           "effect": {
             "type": "shadow",
@@ -467493,10 +467499,10 @@
             }
           ],
           "cornerRadius": [
-            40,
-            40,
-            18,
-            18
+            "$ds-radius-pocket-top",
+            "$ds-radius-pocket-top",
+            "$ds-radius-pocket-bottom",
+            "$ds-radius-pocket-bottom"
           ],
           "effect": {
             "type": "shadow",
@@ -468358,10 +468364,10 @@
             }
           ],
           "cornerRadius": [
-            40,
-            40,
-            18,
-            18
+            "$ds-radius-pocket-top",
+            "$ds-radius-pocket-top",
+            "$ds-radius-pocket-bottom",
+            "$ds-radius-pocket-bottom"
           ],
           "effect": {
             "type": "shadow",
@@ -469269,10 +469275,10 @@
             }
           ],
           "cornerRadius": [
-            38,
-            38,
-            17,
-            17
+            "$ds-radius-pocket-top",
+            "$ds-radius-pocket-top",
+            "$ds-radius-pocket-bottom",
+            "$ds-radius-pocket-bottom"
           ],
           "effect": {
             "type": "shadow",
@@ -470292,10 +470298,10 @@
             }
           ],
           "cornerRadius": [
-            23,
-            23,
-            10,
-            10
+            "$ds-radius-pocket-top",
+            "$ds-radius-pocket-top",
+            "$ds-radius-pocket-bottom",
+            "$ds-radius-pocket-bottom"
           ],
           "effect": {
             "type": "shadow",
@@ -471368,10 +471374,10 @@
             }
           ],
           "cornerRadius": [
-            23,
-            23,
-            10,
-            10
+            "$ds-radius-pocket-top",
+            "$ds-radius-pocket-top",
+            "$ds-radius-pocket-bottom",
+            "$ds-radius-pocket-bottom"
           ],
           "effect": {
             "type": "shadow",
@@ -472492,10 +472498,10 @@
             }
           ],
           "cornerRadius": [
-            23,
-            23,
-            10,
-            10
+            "$ds-radius-pocket-top",
+            "$ds-radius-pocket-top",
+            "$ds-radius-pocket-bottom",
+            "$ds-radius-pocket-bottom"
           ],
           "effect": {
             "type": "shadow",
@@ -473568,10 +473574,10 @@
             }
           ],
           "cornerRadius": [
-            26,
-            26,
-            12,
-            12
+            "$ds-radius-pocket-top",
+            "$ds-radius-pocket-top",
+            "$ds-radius-pocket-bottom",
+            "$ds-radius-pocket-bottom"
           ],
           "effect": {
             "type": "shadow",
@@ -474356,10 +474362,10 @@
             }
           ],
           "cornerRadius": [
-            40,
-            40,
-            18,
-            18
+            "$ds-radius-pocket-top",
+            "$ds-radius-pocket-top",
+            "$ds-radius-pocket-bottom",
+            "$ds-radius-pocket-bottom"
           ],
           "effect": {
             "type": "shadow",
@@ -474390,10 +474396,10 @@
             }
           ],
           "cornerRadius": [
-            40,
-            40,
-            18,
-            18
+            "$ds-radius-pocket-top",
+            "$ds-radius-pocket-top",
+            "$ds-radius-pocket-bottom",
+            "$ds-radius-pocket-bottom"
           ],
           "effect": {
             "type": "shadow",
@@ -474424,13 +474430,13 @@
               "mode": "contain"
             }
           ],
-          "cornerRadius": 20,
+          "cornerRadius": "$ds-radius-panel",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 4,
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000033",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 6
@@ -474456,13 +474462,13 @@
               "mode": "contain"
             }
           ],
-          "cornerRadius": 20,
+          "cornerRadius": "$ds-radius-panel",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 4,
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000033",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 6
@@ -475248,10 +475254,10 @@
             }
           ],
           "cornerRadius": [
-            40,
-            40,
-            18,
-            18
+            "$ds-radius-pocket-top",
+            "$ds-radius-pocket-top",
+            "$ds-radius-pocket-bottom",
+            "$ds-radius-pocket-bottom"
           ],
           "effect": {
             "type": "shadow",
@@ -475282,10 +475288,10 @@
             }
           ],
           "cornerRadius": [
-            40,
-            40,
-            18,
-            18
+            "$ds-radius-pocket-top",
+            "$ds-radius-pocket-top",
+            "$ds-radius-pocket-bottom",
+            "$ds-radius-pocket-bottom"
           ],
           "effect": {
             "type": "shadow",
@@ -475316,13 +475322,13 @@
               "mode": "contain"
             }
           ],
-          "cornerRadius": 20,
+          "cornerRadius": "$ds-radius-panel",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 4,
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000033",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 6
@@ -475348,13 +475354,13 @@
               "mode": "contain"
             }
           ],
-          "cornerRadius": 20,
+          "cornerRadius": "$ds-radius-panel",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 4,
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000033",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 6
@@ -476148,10 +476154,10 @@
             }
           ],
           "cornerRadius": [
-            40,
-            40,
-            18,
-            18
+            "$ds-radius-pocket-top",
+            "$ds-radius-pocket-top",
+            "$ds-radius-pocket-bottom",
+            "$ds-radius-pocket-bottom"
           ],
           "effect": {
             "type": "shadow",
@@ -476182,10 +476188,10 @@
             }
           ],
           "cornerRadius": [
-            40,
-            40,
-            18,
-            18
+            "$ds-radius-pocket-top",
+            "$ds-radius-pocket-top",
+            "$ds-radius-pocket-bottom",
+            "$ds-radius-pocket-bottom"
           ],
           "effect": {
             "type": "shadow",
@@ -476216,13 +476222,13 @@
               "mode": "contain"
             }
           ],
-          "cornerRadius": 20,
+          "cornerRadius": "$ds-radius-panel",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 4,
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000033",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 6
@@ -476248,13 +476254,13 @@
               "mode": "contain"
             }
           ],
-          "cornerRadius": 20,
+          "cornerRadius": "$ds-radius-panel",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 4,
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000033",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 6
@@ -477094,10 +477100,10 @@
             }
           ],
           "cornerRadius": [
-            38,
-            38,
-            17,
-            17
+            "$ds-radius-pocket-top",
+            "$ds-radius-pocket-top",
+            "$ds-radius-pocket-bottom",
+            "$ds-radius-pocket-bottom"
           ],
           "effect": {
             "type": "shadow",
@@ -477128,10 +477134,10 @@
             }
           ],
           "cornerRadius": [
-            38,
-            38,
-            17,
-            17
+            "$ds-radius-pocket-top",
+            "$ds-radius-pocket-top",
+            "$ds-radius-pocket-bottom",
+            "$ds-radius-pocket-bottom"
           ],
           "effect": {
             "type": "shadow",
@@ -477162,13 +477168,13 @@
               "mode": "contain"
             }
           ],
-          "cornerRadius": 19,
+          "cornerRadius": "$ds-radius-panel",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 4,
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000033",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 6
@@ -477194,13 +477200,13 @@
               "mode": "contain"
             }
           ],
-          "cornerRadius": 19,
+          "cornerRadius": "$ds-radius-panel",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 4,
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000033",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 6
@@ -478152,10 +478158,10 @@
             }
           ],
           "cornerRadius": [
-            23,
-            23,
-            10,
-            10
+            "$ds-radius-pocket-top",
+            "$ds-radius-pocket-top",
+            "$ds-radius-pocket-bottom",
+            "$ds-radius-pocket-bottom"
           ],
           "effect": {
             "type": "shadow",
@@ -478186,10 +478192,10 @@
             }
           ],
           "cornerRadius": [
-            23,
-            23,
-            10,
-            10
+            "$ds-radius-pocket-top",
+            "$ds-radius-pocket-top",
+            "$ds-radius-pocket-bottom",
+            "$ds-radius-pocket-bottom"
           ],
           "effect": {
             "type": "shadow",
@@ -478220,13 +478226,13 @@
               "mode": "contain"
             }
           ],
-          "cornerRadius": 11,
+          "cornerRadius": "$ds-radius-panel",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 2,
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000033",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 3
@@ -478252,13 +478258,13 @@
               "mode": "contain"
             }
           ],
-          "cornerRadius": 11,
+          "cornerRadius": "$ds-radius-panel",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 2,
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000033",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 3
@@ -479263,10 +479269,10 @@
             }
           ],
           "cornerRadius": [
-            23,
-            23,
-            10,
-            10
+            "$ds-radius-pocket-top",
+            "$ds-radius-pocket-top",
+            "$ds-radius-pocket-bottom",
+            "$ds-radius-pocket-bottom"
           ],
           "effect": {
             "type": "shadow",
@@ -479297,10 +479303,10 @@
             }
           ],
           "cornerRadius": [
-            23,
-            23,
-            10,
-            10
+            "$ds-radius-pocket-top",
+            "$ds-radius-pocket-top",
+            "$ds-radius-pocket-bottom",
+            "$ds-radius-pocket-bottom"
           ],
           "effect": {
             "type": "shadow",
@@ -479331,13 +479337,13 @@
               "mode": "contain"
             }
           ],
-          "cornerRadius": 11,
+          "cornerRadius": "$ds-radius-panel",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 2,
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000033",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 3
@@ -479363,13 +479369,13 @@
               "mode": "contain"
             }
           ],
-          "cornerRadius": 11,
+          "cornerRadius": "$ds-radius-panel",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 2,
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000033",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 3
@@ -480422,10 +480428,10 @@
             }
           ],
           "cornerRadius": [
-            23,
-            23,
-            10,
-            10
+            "$ds-radius-pocket-top",
+            "$ds-radius-pocket-top",
+            "$ds-radius-pocket-bottom",
+            "$ds-radius-pocket-bottom"
           ],
           "effect": {
             "type": "shadow",
@@ -480456,10 +480462,10 @@
             }
           ],
           "cornerRadius": [
-            23,
-            23,
-            10,
-            10
+            "$ds-radius-pocket-top",
+            "$ds-radius-pocket-top",
+            "$ds-radius-pocket-bottom",
+            "$ds-radius-pocket-bottom"
           ],
           "effect": {
             "type": "shadow",
@@ -480490,13 +480496,13 @@
               "mode": "contain"
             }
           ],
-          "cornerRadius": 11,
+          "cornerRadius": "$ds-radius-panel",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 2,
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000033",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 3
@@ -480522,13 +480528,13 @@
               "mode": "contain"
             }
           ],
-          "cornerRadius": 11,
+          "cornerRadius": "$ds-radius-panel",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 2,
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000033",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 3
@@ -481533,10 +481539,10 @@
             }
           ],
           "cornerRadius": [
-            26,
-            26,
-            12,
-            12
+            "$ds-radius-pocket-top",
+            "$ds-radius-pocket-top",
+            "$ds-radius-pocket-bottom",
+            "$ds-radius-pocket-bottom"
           ],
           "effect": {
             "type": "shadow",
@@ -481567,10 +481573,10 @@
             }
           ],
           "cornerRadius": [
-            26,
-            26,
-            12,
-            12
+            "$ds-radius-pocket-top",
+            "$ds-radius-pocket-top",
+            "$ds-radius-pocket-bottom",
+            "$ds-radius-pocket-bottom"
           ],
           "effect": {
             "type": "shadow",
@@ -481601,13 +481607,13 @@
               "mode": "contain"
             }
           ],
-          "cornerRadius": 13,
+          "cornerRadius": "$ds-radius-panel",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 3,
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000033",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 4
@@ -481633,13 +481639,13 @@
               "mode": "contain"
             }
           ],
-          "cornerRadius": 13,
+          "cornerRadius": "$ds-radius-panel",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 3,
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000033",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 4
@@ -490012,7 +490018,7 @@
           "width": 290,
           "height": 156,
           "fill": "$ds-strata-1",
-          "cornerRadius": 28,
+          "cornerRadius": "$ds-radius-panel",
           "effect": {
             "type": "shadow",
             "shadowType": "inner",
@@ -490037,7 +490043,7 @@
           "content": "REX",
           "textAlign": "center",
           "textAlignVertical": "middle",
-          "fontFamily": "Caveat",
+          "fontFamily": "$ds-font-hand",
           "fontSize": 122,
           "fontWeight": "700"
         },
@@ -490838,7 +490844,7 @@
           "width": 290,
           "height": 156,
           "fill": "$ds-strata-1",
-          "cornerRadius": 28,
+          "cornerRadius": "$ds-radius-panel",
           "effect": {
             "type": "shadow",
             "shadowType": "inner",
@@ -490863,7 +490869,7 @@
           "content": "REX",
           "textAlign": "center",
           "textAlignVertical": "middle",
-          "fontFamily": "Caveat",
+          "fontFamily": "$ds-font-hand",
           "fontSize": 122,
           "fontWeight": "700"
         },
@@ -491672,7 +491678,7 @@
           "width": 290,
           "height": 156,
           "fill": "$ds-strata-1",
-          "cornerRadius": 28,
+          "cornerRadius": "$ds-radius-panel",
           "effect": {
             "type": "shadow",
             "shadowType": "inner",
@@ -491697,7 +491703,7 @@
           "content": "РЕКС",
           "textAlign": "center",
           "textAlignVertical": "middle",
-          "fontFamily": "Caveat",
+          "fontFamily": "$ds-font-hand",
           "fontSize": 122,
           "fontWeight": "700"
         },
@@ -492552,7 +492558,7 @@
           "width": 273.18840579710144,
           "height": 146.95652173913044,
           "fill": "$ds-strata-1",
-          "cornerRadius": 26,
+          "cornerRadius": "$ds-radius-panel",
           "effect": {
             "type": "shadow",
             "shadowType": "inner",
@@ -492577,7 +492583,7 @@
           "content": "REX",
           "textAlign": "center",
           "textAlignVertical": "middle",
-          "fontFamily": "Caveat",
+          "fontFamily": "$ds-font-hand",
           "fontSize": 115,
           "fontWeight": "700"
         },
@@ -493546,7 +493552,7 @@
           "width": 141.84782608695653,
           "height": 76.30434782608695,
           "fill": "$ds-strata-1",
-          "cornerRadius": 14,
+          "cornerRadius": "$ds-radius-panel",
           "effect": {
             "type": "shadow",
             "shadowType": "inner",
@@ -493571,7 +493577,7 @@
           "content": "REX",
           "textAlign": "center",
           "textAlignVertical": "middle",
-          "fontFamily": "Caveat",
+          "fontFamily": "$ds-font-hand",
           "fontSize": 60,
           "fontWeight": "700"
         },
@@ -494593,7 +494599,7 @@
           "width": 160.7608695652174,
           "height": 86.47826086956522,
           "fill": "$ds-strata-1",
-          "cornerRadius": 16,
+          "cornerRadius": "$ds-radius-panel",
           "effect": {
             "type": "shadow",
             "shadowType": "inner",
@@ -494618,7 +494624,7 @@
           "content": "РЕКС",
           "textAlign": "center",
           "textAlignVertical": "middle",
-          "fontFamily": "Caveat",
+          "fontFamily": "$ds-font-hand",
           "fontSize": 67,
           "fontWeight": "700"
         },
@@ -495688,7 +495694,7 @@
           "width": 141.84782608695653,
           "height": 76.30434782608695,
           "fill": "$ds-strata-1",
-          "cornerRadius": 14,
+          "cornerRadius": "$ds-radius-panel",
           "effect": {
             "type": "shadow",
             "shadowType": "inner",
@@ -495713,7 +495719,7 @@
           "content": "REX",
           "textAlign": "center",
           "textAlignVertical": "middle",
-          "fontFamily": "Caveat",
+          "fontFamily": "$ds-font-hand",
           "fontSize": 60,
           "fontWeight": "700"
         },
@@ -496735,7 +496741,7 @@
           "width": 191.60714285714286,
           "height": 103.07142857142857,
           "fill": "$ds-strata-1",
-          "cornerRadius": 19,
+          "cornerRadius": "$ds-radius-panel",
           "effect": {
             "type": "shadow",
             "shadowType": "inner",
@@ -496760,7 +496766,7 @@
           "content": "REX",
           "textAlign": "center",
           "textAlignVertical": "middle",
-          "fontFamily": "Caveat",
+          "fontFamily": "$ds-font-hand",
           "fontSize": 80,
           "fontWeight": "700"
         },
@@ -505147,7 +505153,7 @@
           "width": 380,
           "height": 280,
           "fill": "$ds-pocket-1",
-          "cornerRadius": 24,
+          "cornerRadius": "$ds-radius-panel",
           "effect": {
             "type": "shadow",
             "shadowType": "inner",
@@ -505184,7 +505190,7 @@
               ]
             }
           ],
-          "cornerRadius": 10,
+          "cornerRadius": "$ds-radius-tag",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 3
         },
@@ -505213,7 +505219,7 @@
               ]
             }
           ],
-          "cornerRadius": 10,
+          "cornerRadius": "$ds-radius-tag",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 3
         },
@@ -505242,7 +505248,7 @@
               ]
             }
           ],
-          "cornerRadius": 10,
+          "cornerRadius": "$ds-radius-tag",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 3
         },
@@ -505271,7 +505277,7 @@
               ]
             }
           ],
-          "cornerRadius": 10,
+          "cornerRadius": "$ds-radius-tag",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 3
         },
@@ -505300,7 +505306,7 @@
               ]
             }
           ],
-          "cornerRadius": 10,
+          "cornerRadius": "$ds-radius-tag",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 3
         },
@@ -505330,13 +505336,13 @@
               ]
             }
           ],
-          "cornerRadius": 10,
+          "cornerRadius": "$ds-radius-tag",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 3,
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000040",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 10
@@ -506114,7 +506120,7 @@
           "width": 380,
           "height": 280,
           "fill": "$ds-pocket-1",
-          "cornerRadius": 24,
+          "cornerRadius": "$ds-radius-panel",
           "effect": {
             "type": "shadow",
             "shadowType": "inner",
@@ -506151,7 +506157,7 @@
               ]
             }
           ],
-          "cornerRadius": 10,
+          "cornerRadius": "$ds-radius-tag",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 3
         },
@@ -506180,7 +506186,7 @@
               ]
             }
           ],
-          "cornerRadius": 10,
+          "cornerRadius": "$ds-radius-tag",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 3
         },
@@ -506209,7 +506215,7 @@
               ]
             }
           ],
-          "cornerRadius": 10,
+          "cornerRadius": "$ds-radius-tag",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 3
         },
@@ -506238,7 +506244,7 @@
               ]
             }
           ],
-          "cornerRadius": 10,
+          "cornerRadius": "$ds-radius-tag",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 3
         },
@@ -506267,7 +506273,7 @@
               ]
             }
           ],
-          "cornerRadius": 10,
+          "cornerRadius": "$ds-radius-tag",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 3
         },
@@ -506297,13 +506303,13 @@
               ]
             }
           ],
-          "cornerRadius": 10,
+          "cornerRadius": "$ds-radius-tag",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 3,
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000040",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 10
@@ -507089,7 +507095,7 @@
           "width": 380,
           "height": 280,
           "fill": "$ds-pocket-1",
-          "cornerRadius": 24,
+          "cornerRadius": "$ds-radius-panel",
           "effect": {
             "type": "shadow",
             "shadowType": "inner",
@@ -507126,7 +507132,7 @@
               ]
             }
           ],
-          "cornerRadius": 10,
+          "cornerRadius": "$ds-radius-tag",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 3
         },
@@ -507155,7 +507161,7 @@
               ]
             }
           ],
-          "cornerRadius": 10,
+          "cornerRadius": "$ds-radius-tag",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 3
         },
@@ -507184,7 +507190,7 @@
               ]
             }
           ],
-          "cornerRadius": 10,
+          "cornerRadius": "$ds-radius-tag",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 3
         },
@@ -507213,7 +507219,7 @@
               ]
             }
           ],
-          "cornerRadius": 10,
+          "cornerRadius": "$ds-radius-tag",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 3
         },
@@ -507242,7 +507248,7 @@
               ]
             }
           ],
-          "cornerRadius": 10,
+          "cornerRadius": "$ds-radius-tag",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 3
         },
@@ -507272,13 +507278,13 @@
               ]
             }
           ],
-          "cornerRadius": 10,
+          "cornerRadius": "$ds-radius-tag",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 3,
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000040",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 10
@@ -508110,7 +508116,7 @@
           "width": 357.9710144927536,
           "height": 263.768115942029,
           "fill": "$ds-pocket-1",
-          "cornerRadius": 23,
+          "cornerRadius": "$ds-radius-panel",
           "effect": {
             "type": "shadow",
             "shadowType": "inner",
@@ -508147,7 +508153,7 @@
               ]
             }
           ],
-          "cornerRadius": 9,
+          "cornerRadius": "$ds-radius-tag",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 3
         },
@@ -508176,7 +508182,7 @@
               ]
             }
           ],
-          "cornerRadius": 9,
+          "cornerRadius": "$ds-radius-tag",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 3
         },
@@ -508205,7 +508211,7 @@
               ]
             }
           ],
-          "cornerRadius": 9,
+          "cornerRadius": "$ds-radius-tag",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 3
         },
@@ -508234,7 +508240,7 @@
               ]
             }
           ],
-          "cornerRadius": 9,
+          "cornerRadius": "$ds-radius-tag",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 3
         },
@@ -508263,7 +508269,7 @@
               ]
             }
           ],
-          "cornerRadius": 9,
+          "cornerRadius": "$ds-radius-tag",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 3
         },
@@ -508293,13 +508299,13 @@
               ]
             }
           ],
-          "cornerRadius": 9,
+          "cornerRadius": "$ds-radius-tag",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 3,
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000040",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 9
@@ -509243,7 +509249,7 @@
           "width": 185.8695652173913,
           "height": 136.95652173913044,
           "fill": "$ds-pocket-1",
-          "cornerRadius": 12,
+          "cornerRadius": "$ds-radius-panel",
           "effect": {
             "type": "shadow",
             "shadowType": "inner",
@@ -509280,7 +509286,7 @@
               ]
             }
           ],
-          "cornerRadius": 5,
+          "cornerRadius": "$ds-radius-tag",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 1
         },
@@ -509309,7 +509315,7 @@
               ]
             }
           ],
-          "cornerRadius": 5,
+          "cornerRadius": "$ds-radius-tag",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 1
         },
@@ -509338,7 +509344,7 @@
               ]
             }
           ],
-          "cornerRadius": 5,
+          "cornerRadius": "$ds-radius-tag",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 1
         },
@@ -509367,7 +509373,7 @@
               ]
             }
           ],
-          "cornerRadius": 5,
+          "cornerRadius": "$ds-radius-tag",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 1
         },
@@ -509396,7 +509402,7 @@
               ]
             }
           ],
-          "cornerRadius": 5,
+          "cornerRadius": "$ds-radius-tag",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 1
         },
@@ -509426,13 +509432,13 @@
               ]
             }
           ],
-          "cornerRadius": 5,
+          "cornerRadius": "$ds-radius-tag",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 1,
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000040",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 5
@@ -510429,7 +510435,7 @@
           "width": 199.63768115942028,
           "height": 147.1014492753623,
           "fill": "$ds-pocket-1",
-          "cornerRadius": 13,
+          "cornerRadius": "$ds-radius-panel",
           "effect": {
             "type": "shadow",
             "shadowType": "inner",
@@ -510466,7 +510472,7 @@
               ]
             }
           ],
-          "cornerRadius": 5,
+          "cornerRadius": "$ds-radius-tag",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 2
         },
@@ -510495,7 +510501,7 @@
               ]
             }
           ],
-          "cornerRadius": 5,
+          "cornerRadius": "$ds-radius-tag",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 2
         },
@@ -510524,7 +510530,7 @@
               ]
             }
           ],
-          "cornerRadius": 5,
+          "cornerRadius": "$ds-radius-tag",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 2
         },
@@ -510553,7 +510559,7 @@
               ]
             }
           ],
-          "cornerRadius": 5,
+          "cornerRadius": "$ds-radius-tag",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 2
         },
@@ -510582,7 +510588,7 @@
               ]
             }
           ],
-          "cornerRadius": 5,
+          "cornerRadius": "$ds-radius-tag",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 2
         },
@@ -510612,13 +510618,13 @@
               ]
             }
           ],
-          "cornerRadius": 5,
+          "cornerRadius": "$ds-radius-tag",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 2,
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000040",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 5
@@ -511663,7 +511669,7 @@
           "width": 194.13043478260872,
           "height": 143.0434782608696,
           "fill": "$ds-pocket-1",
-          "cornerRadius": 12,
+          "cornerRadius": "$ds-radius-panel",
           "effect": {
             "type": "shadow",
             "shadowType": "inner",
@@ -511700,7 +511706,7 @@
               ]
             }
           ],
-          "cornerRadius": 5,
+          "cornerRadius": "$ds-radius-tag",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 2
         },
@@ -511729,7 +511735,7 @@
               ]
             }
           ],
-          "cornerRadius": 5,
+          "cornerRadius": "$ds-radius-tag",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 2
         },
@@ -511758,7 +511764,7 @@
               ]
             }
           ],
-          "cornerRadius": 5,
+          "cornerRadius": "$ds-radius-tag",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 2
         },
@@ -511787,7 +511793,7 @@
               ]
             }
           ],
-          "cornerRadius": 5,
+          "cornerRadius": "$ds-radius-tag",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 2
         },
@@ -511816,7 +511822,7 @@
               ]
             }
           ],
-          "cornerRadius": 5,
+          "cornerRadius": "$ds-radius-tag",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 2
         },
@@ -511846,13 +511852,13 @@
               ]
             }
           ],
-          "cornerRadius": 5,
+          "cornerRadius": "$ds-radius-tag",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 2,
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000040",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 5
@@ -512849,7 +512855,7 @@
           "width": 251.07142857142856,
           "height": 185,
           "fill": "$ds-pocket-1",
-          "cornerRadius": 16,
+          "cornerRadius": "$ds-radius-panel",
           "effect": {
             "type": "shadow",
             "shadowType": "inner",
@@ -512886,7 +512892,7 @@
               ]
             }
           ],
-          "cornerRadius": 7,
+          "cornerRadius": "$ds-radius-tag",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 2
         },
@@ -512915,7 +512921,7 @@
               ]
             }
           ],
-          "cornerRadius": 7,
+          "cornerRadius": "$ds-radius-tag",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 2
         },
@@ -512944,7 +512950,7 @@
               ]
             }
           ],
-          "cornerRadius": 7,
+          "cornerRadius": "$ds-radius-tag",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 2
         },
@@ -512973,7 +512979,7 @@
               ]
             }
           ],
-          "cornerRadius": 7,
+          "cornerRadius": "$ds-radius-tag",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 2
         },
@@ -513002,7 +513008,7 @@
               ]
             }
           ],
-          "cornerRadius": 7,
+          "cornerRadius": "$ds-radius-tag",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 2
         },
@@ -513032,13 +513038,13 @@
               ]
             }
           ],
-          "cornerRadius": 7,
+          "cornerRadius": "$ds-radius-tag",
           "stroke": "$ds-pocket-2",
           "strokeWidth": 2,
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000040",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 7
@@ -521238,7 +521244,7 @@
           "x": 906,
           "y": 226,
           "name": "Art · Paint 1",
-          "fill": "#E4572E",
+          "fill": "$ds-action",
           "width": 58,
           "height": 58,
           "stroke": "$ds-label",
@@ -521246,7 +521252,7 @@
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000030",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 4
@@ -521260,7 +521266,7 @@
           "x": 976,
           "y": 226,
           "name": "Art · Paint 2",
-          "fill": "#F3B61F",
+          "fill": "$ds-reward",
           "width": 58,
           "height": 58,
           "stroke": "$ds-label",
@@ -521268,7 +521274,7 @@
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000030",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 4
@@ -521282,7 +521288,7 @@
           "x": 906,
           "y": 294,
           "name": "Art · Paint 3",
-          "fill": "#3FA34D",
+          "fill": "$ds-good",
           "width": 58,
           "height": 58,
           "stroke": "$ds-label",
@@ -521290,7 +521296,7 @@
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000030",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 4
@@ -521304,7 +521310,7 @@
           "x": 976,
           "y": 294,
           "name": "Art · Paint 4",
-          "fill": "#2E86DE",
+          "fill": "$ds-paint-blue",
           "width": 58,
           "height": 58,
           "stroke": "$ds-label",
@@ -521312,7 +521318,7 @@
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000030",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 4
@@ -522124,7 +522130,7 @@
           "x": 906,
           "y": 226,
           "name": "Art · Paint 1",
-          "fill": "#E4572E",
+          "fill": "$ds-action",
           "width": 58,
           "height": 58,
           "stroke": "$ds-label",
@@ -522132,7 +522138,7 @@
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000030",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 4
@@ -522146,7 +522152,7 @@
           "x": 976,
           "y": 226,
           "name": "Art · Paint 2",
-          "fill": "#F3B61F",
+          "fill": "$ds-reward",
           "width": 58,
           "height": 58,
           "stroke": "$ds-label",
@@ -522154,7 +522160,7 @@
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000030",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 4
@@ -522168,7 +522174,7 @@
           "x": 906,
           "y": 294,
           "name": "Art · Paint 3",
-          "fill": "#3FA34D",
+          "fill": "$ds-good",
           "width": 58,
           "height": 58,
           "stroke": "$ds-label",
@@ -522176,7 +522182,7 @@
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000030",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 4
@@ -522190,7 +522196,7 @@
           "x": 976,
           "y": 294,
           "name": "Art · Paint 4",
-          "fill": "#2E86DE",
+          "fill": "$ds-paint-blue",
           "width": 58,
           "height": 58,
           "stroke": "$ds-label",
@@ -522198,7 +522204,7 @@
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000030",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 4
@@ -523018,7 +523024,7 @@
           "x": 906,
           "y": 226,
           "name": "Art · Paint 1",
-          "fill": "#E4572E",
+          "fill": "$ds-action",
           "width": 58,
           "height": 58,
           "stroke": "$ds-label",
@@ -523026,7 +523032,7 @@
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000030",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 4
@@ -523040,7 +523046,7 @@
           "x": 976,
           "y": 226,
           "name": "Art · Paint 2",
-          "fill": "#F3B61F",
+          "fill": "$ds-reward",
           "width": 58,
           "height": 58,
           "stroke": "$ds-label",
@@ -523048,7 +523054,7 @@
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000030",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 4
@@ -523062,7 +523068,7 @@
           "x": 906,
           "y": 294,
           "name": "Art · Paint 3",
-          "fill": "#3FA34D",
+          "fill": "$ds-good",
           "width": 58,
           "height": 58,
           "stroke": "$ds-label",
@@ -523070,7 +523076,7 @@
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000030",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 4
@@ -523084,7 +523090,7 @@
           "x": 976,
           "y": 294,
           "name": "Art · Paint 4",
-          "fill": "#2E86DE",
+          "fill": "$ds-paint-blue",
           "width": 58,
           "height": 58,
           "stroke": "$ds-label",
@@ -523092,7 +523098,7 @@
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000030",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 4
@@ -523958,7 +523964,7 @@
           "x": 488.8115942028985,
           "y": 473.768115942029,
           "name": "Art · Paint 1",
-          "fill": "#E4572E",
+          "fill": "$ds-action",
           "width": 54.63768115942029,
           "height": 54.63768115942029,
           "stroke": "$ds-label",
@@ -523966,7 +523972,7 @@
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000030",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 4
@@ -523980,7 +523986,7 @@
           "x": 554.7536231884058,
           "y": 473.768115942029,
           "name": "Art · Paint 2",
-          "fill": "#F3B61F",
+          "fill": "$ds-reward",
           "width": 54.63768115942029,
           "height": 54.63768115942029,
           "stroke": "$ds-label",
@@ -523988,7 +523994,7 @@
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000030",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 4
@@ -524002,7 +524008,7 @@
           "x": 488.8115942028985,
           "y": 537.8260869565217,
           "name": "Art · Paint 3",
-          "fill": "#3FA34D",
+          "fill": "$ds-good",
           "width": 54.63768115942029,
           "height": 54.63768115942029,
           "stroke": "$ds-label",
@@ -524010,7 +524016,7 @@
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000030",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 4
@@ -524024,7 +524030,7 @@
           "x": 554.7536231884058,
           "y": 537.8260869565217,
           "name": "Art · Paint 4",
-          "fill": "#2E86DE",
+          "fill": "$ds-paint-blue",
           "width": 54.63768115942029,
           "height": 54.63768115942029,
           "stroke": "$ds-label",
@@ -524032,7 +524038,7 @@
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000030",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 4
@@ -525010,7 +525016,7 @@
           "x": 262.54347826086956,
           "y": 384.6304347826087,
           "name": "Art · Paint 1",
-          "fill": "#E4572E",
+          "fill": "$ds-action",
           "width": 30.89130434782609,
           "height": 30.89130434782609,
           "stroke": "$ds-label",
@@ -525018,7 +525024,7 @@
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000030",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 2
@@ -525032,7 +525038,7 @@
           "x": 299.82608695652175,
           "y": 384.6304347826087,
           "name": "Art · Paint 2",
-          "fill": "#F3B61F",
+          "fill": "$ds-reward",
           "width": 30.89130434782609,
           "height": 30.89130434782609,
           "stroke": "$ds-label",
@@ -525040,7 +525046,7 @@
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000030",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 2
@@ -525054,7 +525060,7 @@
           "x": 262.54347826086956,
           "y": 420.8478260869565,
           "name": "Art · Paint 3",
-          "fill": "#3FA34D",
+          "fill": "$ds-good",
           "width": 30.89130434782609,
           "height": 30.89130434782609,
           "stroke": "$ds-label",
@@ -525062,7 +525068,7 @@
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000030",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 2
@@ -525076,7 +525082,7 @@
           "x": 299.82608695652175,
           "y": 420.8478260869565,
           "name": "Art · Paint 4",
-          "fill": "#2E86DE",
+          "fill": "$ds-paint-blue",
           "width": 30.89130434782609,
           "height": 30.89130434782609,
           "stroke": "$ds-label",
@@ -525084,7 +525090,7 @@
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000030",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 2
@@ -526115,7 +526121,7 @@
           "x": 266.13768115942025,
           "y": 380.74637681159425,
           "name": "Art · Paint 1",
-          "fill": "#E4572E",
+          "fill": "$ds-action",
           "width": 32.572463768115945,
           "height": 32.572463768115945,
           "stroke": "$ds-label",
@@ -526123,7 +526129,7 @@
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000030",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 2
@@ -526137,7 +526143,7 @@
           "x": 305.4492753623189,
           "y": 380.74637681159425,
           "name": "Art · Paint 2",
-          "fill": "#F3B61F",
+          "fill": "$ds-reward",
           "width": 32.572463768115945,
           "height": 32.572463768115945,
           "stroke": "$ds-label",
@@ -526145,7 +526151,7 @@
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000030",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 2
@@ -526159,7 +526165,7 @@
           "x": 266.13768115942025,
           "y": 418.9347826086956,
           "name": "Art · Paint 3",
-          "fill": "#3FA34D",
+          "fill": "$ds-good",
           "width": 32.572463768115945,
           "height": 32.572463768115945,
           "stroke": "$ds-label",
@@ -526167,7 +526173,7 @@
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000030",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 2
@@ -526181,7 +526187,7 @@
           "x": 305.4492753623189,
           "y": 418.9347826086956,
           "name": "Art · Paint 4",
-          "fill": "#2E86DE",
+          "fill": "$ds-paint-blue",
           "width": 32.572463768115945,
           "height": 32.572463768115945,
           "stroke": "$ds-label",
@@ -526189,7 +526195,7 @@
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000030",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 2
@@ -527268,7 +527274,7 @@
           "x": 256.2391304347826,
           "y": 381.7173913043478,
           "name": "Art · Paint 1",
-          "fill": "#E4572E",
+          "fill": "$ds-action",
           "width": 32.15217391304348,
           "height": 32.15217391304348,
           "stroke": "$ds-label",
@@ -527276,7 +527282,7 @@
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000030",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 2
@@ -527290,7 +527296,7 @@
           "x": 295.0434782608695,
           "y": 381.7173913043478,
           "name": "Art · Paint 2",
-          "fill": "#F3B61F",
+          "fill": "$ds-reward",
           "width": 32.15217391304348,
           "height": 32.15217391304348,
           "stroke": "$ds-label",
@@ -527298,7 +527304,7 @@
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000030",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 2
@@ -527312,7 +527318,7 @@
           "x": 256.2391304347826,
           "y": 419.4130434782609,
           "name": "Art · Paint 3",
-          "fill": "#3FA34D",
+          "fill": "$ds-good",
           "width": 32.15217391304348,
           "height": 32.15217391304348,
           "stroke": "$ds-label",
@@ -527320,7 +527326,7 @@
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000030",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 2
@@ -527334,7 +527340,7 @@
           "x": 295.0434782608695,
           "y": 419.4130434782609,
           "name": "Art · Paint 4",
-          "fill": "#2E86DE",
+          "fill": "$ds-paint-blue",
           "width": 32.15217391304348,
           "height": 32.15217391304348,
           "stroke": "$ds-label",
@@ -527342,7 +527348,7 @@
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000030",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 2
@@ -528373,7 +528379,7 @@
           "x": 696.9285714285714,
           "y": 197.46428571428572,
           "name": "Art · Paint 1",
-          "fill": "#E4572E",
+          "fill": "$ds-action",
           "width": 38.32142857142857,
           "height": 38.32142857142857,
           "stroke": "$ds-label",
@@ -528381,7 +528387,7 @@
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000030",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 3
@@ -528395,7 +528401,7 @@
           "x": 743.1785714285714,
           "y": 197.46428571428572,
           "name": "Art · Paint 2",
-          "fill": "#F3B61F",
+          "fill": "$ds-reward",
           "width": 38.32142857142857,
           "height": 38.32142857142857,
           "stroke": "$ds-label",
@@ -528403,7 +528409,7 @@
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000030",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 3
@@ -528417,7 +528423,7 @@
           "x": 696.9285714285714,
           "y": 242.39285714285714,
           "name": "Art · Paint 3",
-          "fill": "#3FA34D",
+          "fill": "$ds-good",
           "width": 38.32142857142857,
           "height": 38.32142857142857,
           "stroke": "$ds-label",
@@ -528425,7 +528431,7 @@
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000030",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 3
@@ -528439,7 +528445,7 @@
           "x": 743.1785714285714,
           "y": 242.39285714285714,
           "name": "Art · Paint 4",
-          "fill": "#2E86DE",
+          "fill": "$ds-paint-blue",
           "width": 38.32142857142857,
           "height": 38.32142857142857,
           "stroke": "$ds-label",
@@ -528447,7 +528453,7 @@
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000030",
+            "color": "$ds-ground-shadow",
             "offset": {
               "x": 0,
               "y": 3
@@ -530143,6 +530149,27 @@
         },
         {
           "value": "#3E3226",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
+    },
+    "ds-font-hand": {
+      "type": "string",
+      "value": "Caveat"
+    },
+    "ds-paint-blue": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#2E86DE",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#5AA4EC",
           "theme": {
             "mode": "dark"
           }
