@@ -28,6 +28,8 @@ protocol TextEngine: Sendable {
 extension TrackText: TextEngine {}
 
 /// Connects a call side to its retained engine and a fresh fill-in on each switch.
+/// Without a written track, nothing missed can be filled in: switching on only
+/// readies the engine, and live audio, delivered from the call's start, is all it hears.
 struct CallSide: CallText.Side {
 
     private let side: SideReader
@@ -36,7 +38,7 @@ struct CallSide: CallText.Side {
 
     init(
         audio: any SideText.LiveAudio, text: any TextEngine,
-        written: any FillIn.WrittenTrack, sampleRate: Double,
+        written: (any FillIn.WrittenTrack)?, sampleRate: Double,
         mapEntry: @escaping @Sendable (SideText.State.Entry) -> SideState.Entry = CallSide.entry,
         snapshotTaken: @escaping @Sendable (SideText.State) -> Void = { _ in }
     ) {
@@ -46,7 +48,8 @@ struct CallSide: CallText.Side {
         let audio = SideAudio(source: audio)
         let hearing = SideHearing(text: text)
         side = SideReader(audio: audio, text: hearing, fillIn: {
-            Filling(written: written, text: text, audio: audio, sampleRate: sampleRate)
+            guard let written else { return Preparing(text: text) }
+            return Filling(written: written, text: text, audio: audio, sampleRate: sampleRate)
         })
     }
 
@@ -199,6 +202,20 @@ private struct Filling: SideText.FillingIn {
     }
 
     func abandon() async { await fill.abandon() }
+}
+
+/// Readies live text without hearing anything missed. Audio captured while
+/// live text was switched off is lost, so live hearing then fails at its gap.
+private struct Preparing: SideText.FillingIn {
+
+    let text: any TextEngine
+
+    func fillIn(from: Double, receive: @escaping @Sendable (FilledText) async -> Void) async throws {
+
+        try await text.prepare()
+    }
+
+    func abandon() async {}
 }
 
 private struct FillFailure: Error, CustomStringConvertible {

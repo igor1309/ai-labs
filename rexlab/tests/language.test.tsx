@@ -255,7 +255,7 @@ describe("the language menu", () => {
 
   it.each([
     ["ru-RU", "Версия", "Язык", "English", "ANCIENT REPTILES", "Version", "HOME", "Language", "Русский"],
-    ["en-GB", "Version", "Language", "Русский", "ВСЕ", "Версия", "ДОМОЙ", "Язык", "English"]
+    ["en-GB", "Version", "Language", "Русский", "ДРЕВНИЕ ЯЩЕРЫ", "Версия", "ДОМОЙ", "Язык", "English"]
   ])(
     "names the version footer of the static page in the app's language, on %s from %s, on another screen and after switching back",
     async (device, first, menu, choice, tile, then, home, menuBack, choiceBack) => {
@@ -678,7 +678,7 @@ async function catalogue(language: Language): Promise<Seen> {
   const play = openPlay(language);
   const { user, look } = play;
   const text = TEXTS[language];
-  await user.click(gameDoor(text.catalogueTile));
+  await user.click(gameDoor(text.catalogue));
   look();
   await user.click(within(screen.getByRole("group", { name: text.catalogue })).getByRole("button", { name: byName("Gallimimus").name[language] }));
   look();
@@ -783,7 +783,7 @@ async function findThePair(language: Language): Promise<Seen> {
   expect(screen.getAllByRole("status")).toHaveLength(1);
   await user.click(screen.getByRole("button", { name: text.home }));
   look();
-  await user.click(gameDoor(text.catalogueTile));
+  await user.click(gameDoor(text.catalogue));
   look();
   const catalogue = screen.getByRole("group", { name: text.catalogue });
   await user.click(within(catalogue).getAllByRole("button")[0] as HTMLElement);

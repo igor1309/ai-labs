@@ -58,7 +58,7 @@ private struct PausingHandle: TranscriptFileHandle {
     func truncate(to length: Int) throws {
 
         try base.truncate(to: length)
-        if point == "truncated" { try binding.pause() }
+        if point.hasPrefix("truncated") { try binding.pause() }
     }
 
     func flush() throws {
@@ -76,10 +76,14 @@ for number in 1...3 {
         .init(side: .mine, start: 1, settled: "\(number) mine settled", pending: "\(number) mine pending"),
         .init(side: .theirs, start: 2, settled: "\(number) theirs settled", pending: "\(number) theirs pending"),
     ]
+    let final = TranscriptFile.Segment(side: .mine, start: 1, settled: "final", pending: "")
     if point == "truncated" || point == "written" {
         // The first segment is final and never changes; only the second is rewritten.
-        let final = TranscriptFile.Segment(side: .mine, start: 1, settled: "final", pending: "")
         try await file.write(count: 2, finalCount: 1) { $0 == 0 ? final : segments[1] }
+    } else if point == "truncated after all final" {
+        // Until the last write the file holds only the final segment, ending in one newline.
+        let count = number == 3 ? 2 : 1
+        try await file.write(count: count, finalCount: 1) { $0 == 0 ? final : segments[1] }
     } else {
         try await file.write(segments)
     }

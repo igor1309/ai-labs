@@ -118,3 +118,16 @@ private func defaultInputDescription() -> String {
     let label = named ? (name?.takeRetainedValue() as String? ?? "device \(device)") : "device \(device)"
     return "\(label) (\(kind))"
 }
+
+struct NativeMicrophoneErrorTests {
+
+    /// A refusal names its call and spells a four-character status, so a log says which call refused.
+    @Test(arguments: [
+        (1_852_797_029, "Microphone choosing the input device failed: 'nope' 1852797029"),
+        (-50, "Microphone choosing the input device failed: -50"),
+    ] as [(Int32, String)])
+    func aRefusalNamesItsCallAndStatus(status: Int32, description: String) {
+
+        #expect(String(describing: NativeMicrophoneError(call: "choosing the input device", status: status)) == description)
+    }
+}

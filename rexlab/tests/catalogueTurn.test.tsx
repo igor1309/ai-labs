@@ -381,7 +381,7 @@ function expectBox(actual: Box, expected: Box) {
 }
 
 async function closeBaryonyx(app: ReturnType<typeof openCatalogue>, loaded = false) {
-  await app.user.click(gameDoor(TEXTS.en.catalogueTile));
+  await app.user.click(gameDoor(TEXTS.en.catalogue));
   expect(app.pictures.loading()).toContain("/pictures/baryonyx.webp");
   if (loaded) act(() => app.pictures.finish("/pictures/baryonyx.webp"));
   await app.user.click(card("baryonyx"));
@@ -473,7 +473,7 @@ describe("the picture's close interrupted by a turn", () => {
     const app = openCatalogue();
     await closeBaryonyx(app);
     await app.user.click(screen.getByRole("button", { name: "HOME" }));
-    await app.user.click(gameDoor(TEXTS.en.catalogueTile));
+    await app.user.click(gameDoor(TEXTS.en.catalogue));
     app.resize([820, 1180, "tall"]);
     expect(app.animations.some(({ name }) => name === "closing-picture")).toBe(false);
     app.settle();
@@ -485,7 +485,7 @@ describe("the production shared picture binding", () => {
     const app = openCatalogue(1180, 820, { productionPictures: true });
     const pictures = () => [...new Map(vi.mocked(ViewTransition).mock.calls.map(([props]) => props).filter(({ name }) => name?.startsWith("dinosaur-")).map((props) => [props.name, props])).values()];
     vi.mocked(ViewTransition).mockClear();
-    await app.user.click(gameDoor(TEXTS.en.catalogueTile));
+    await app.user.click(gameDoor(TEXTS.en.catalogue));
     const cards = pictures();
     expect(new Set(cards.map(({ name }) => name))).toEqual(new Set(IDS.map((id) => `dinosaur-${id}`)));
     expect(cards.every(({ children }) => (children as { props: { className: string } }).props.className === "catalogue-picture")).toBe(true);
@@ -587,13 +587,13 @@ describe("catalogue's shared turn", () => {
     const app = openCatalogue(1180, 820, { portraitLayouts: { home: ["tall"], catalogue: ["tall"] } });
     app.resize([768, 1024, "tall"]);
     app.settle();
-    await app.user.click(gameDoor(TEXTS.en.catalogueTile));
+    await app.user.click(gameDoor(TEXTS.en.catalogue));
     expect(document.querySelector<HTMLElement>(".food-chips")?.dataset.arrangement).toBe("spaced");
     await app.user.click(screen.getByRole("button", { name: TEXTS.en.home }));
     await chooseFrom(app.user, "Language", "Русский");
     app.animations.length = 0;
 
-    await app.user.click(gameDoor(TEXTS.ru.catalogueTile));
+    await app.user.click(gameDoor(TEXTS.ru.catalogue));
 
     expect(document.querySelector<HTMLElement>(".food-chips")?.dataset.arrangement).toBe("closed");
     expect(app.animations.filter(own)).toEqual([]);
@@ -638,7 +638,7 @@ describe("catalogue's shared turn", () => {
     [[700, 1000, "tall"], [744, 1000, "tall"], { columns: "2", chips: "stacked" }, { columns: "2", chips: "closed" }]
   ] as const)("captures the old Russian arrangement from %j before fading to %j", async (from, to, before, after) => {
     const app = openCatalogue(from[0], from[1], { reduced: true, language: "ru" });
-    await app.user.click(gameDoor(TEXTS.ru.catalogueTile));
+    await app.user.click(gameDoor(TEXTS.ru.catalogue));
     app.resize(from);
     app.updateFade();
     app.endFade();
@@ -840,7 +840,7 @@ describe("catalogue's shared turn", () => {
     [[820, 1180, "tall"], [834, 1194, "tall"], false]
   ] as const)("resizing Russian catalogue from %j to %j moves as specified", async (from, to, glides) => {
     const app = openCatalogue(from[0], from[1], { language: "ru" });
-    await app.user.click(gameDoor(TEXTS.ru.catalogueTile));
+    await app.user.click(gameDoor(TEXTS.ru.catalogue));
     app.resize(from);
     app.settle();
     app.animations.length = 0;
@@ -875,7 +875,7 @@ describe("catalogue's shared turn", () => {
 
   it("continues a catalogue turn from its drawn parts through a second resize and keeps the list anchor", async () => {
     const app = openCatalogue(744, 1133, { language: "ru" });
-    await app.user.click(gameDoor(TEXTS.ru.catalogueTile));
+    await app.user.click(gameDoor(TEXTS.ru.catalogue));
     app.resize([744, 1133, "tall"]);
     app.settle();
     app.animations.length = 0;

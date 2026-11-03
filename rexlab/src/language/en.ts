@@ -61,7 +61,6 @@ export const en: Texts = {
   best: "BEST",
   playAgain: "PLAY AGAIN",
   catalogue: "ANCIENT REPTILES",
-  catalogueTile: "ANCIENT REPTILES",
   diets: { meat: "MEAT", plants: "PLANTS", both: "BOTH" },
   foodChoice: "FOOD",
   everyFood: "ALL",

@@ -804,7 +804,7 @@ export function tilesRow(): HTMLElement {
 // large card's game has no tile.
 export const shortHomeName = (name: string) => ({
   "COMPARE": "COMPARE", "ANCIENT REPTILES": "EXPLORE", "CARE": "CARE", "SORT": "SORT", "FIND THE PAIR": "PAIRS", "SKELETONS": "BONES", "DIG": "DIG", "SAND WRITING": "DRAW", "LABYRINTH": "MAZE", "PICTURE PUZZLE": "PUZZLE", "WHOSE JAW?": "TEETH", "COLOR A DINOSAUR": "COLOR",
-  "СРАВНИ": "СРАВНИ", "ВСЕ": "ЯЩЕРЫ", "ЗАБОТА": "ЗАБОТА", "РАЗЛОЖИ": "СОРТИРУЙ", "НАЙДИ ПАРУ": "ПАРЫ", "СКЕЛЕТЫ": "КОСТИ", "РАСКОПКИ": "КОПАЙ", "РИСОВАНИЕ НА ПЕСКЕ": "РИСУЙ", "ЛАБИРИНТ": "ЛАБИРИНТ", "СОБЕРИ КАРТИНКУ": "ПАЗЛ", "ЧЬЯ ЧЕЛЮСТЬ?": "ЗУБЫ", "РАСКРАСЬ ДИНОЗАВРА": "РАСКРАСЬ"
+  "СРАВНИ": "СРАВНИ", "ДРЕВНИЕ ЯЩЕРЫ": "ЯЩЕРЫ", "ЗАБОТА": "ЗАБОТА", "РАЗЛОЖИ": "СОРТИРУЙ", "НАЙДИ ПАРУ": "ПАРЫ", "СКЕЛЕТЫ": "КОСТИ", "РАСКОПКИ": "КОПАЙ", "РИСОВАНИЕ НА ПЕСКЕ": "РИСУЙ", "ЛАБИРИНТ": "ЛАБИРИНТ", "СОБЕРИ КАРТИНКУ": "ПАЗЛ", "ЧЬЯ ЧЕЛЮСТЬ?": "ЗУБЫ", "РАСКРАСЬ ДИНОЗАВРА": "РАСКРАСЬ"
 } as Record<string, string>)[name] ?? name;
 export const homeTile = (name: string) => within(tilesRow()).getByRole("button", { name: shortHomeName(name) });
 

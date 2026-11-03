@@ -14,28 +14,26 @@
 
 ## Designing in pen.dev
 
-- Work only on the `.pen` in your own worktree, through the pencil MCP. Do
-  it yourself; never ask the owner to open a file or click in the editor.
-  Do not use the `pen` CLI: it runs pen.dev's own agent.
-- The MCP sends a call to the Pen.app window that has its exact `filePath`
-  open. If no window has it, the call silently goes to the last-focused
-  window, which may be another agent's file.
-- So first open your file in its own window: `open -a Pen <absolute path>`.
-  Then give focus back to any other agent's window with
-  `open -a Pen <their path>`; that only focuses it.
-- Pass your absolute `filePath` on every call. Before the first edit, prove
-  the route with a read-only `Get` (e.g. a count of top-level frames).
-- Pen.app does not auto-save a file you opened; it only writes a backup,
-  and the MCP has no save. To save, focus your window (`open -a Pen <your
-  path>`), check that the front window's `AXDocument` (via `osascript`
-  and System Events) is exactly your path, then click Pen's File › Save
-  through System Events (`click menu item "Save" of menu 1 of menu bar
-  item "File" of menu bar 1` of process "Pen"), and give focus back. A ⌘S
-  keystroke goes to the terminal while it is the front app, and ⌘W does
-  not close a Pen window. Never save without that check: every window is
-  titled `rexlab.pen`. Commit the file from your worktree.
+- Work only on the `.pen` in your own worktree, headless, through
+  `pen interactive` (the `pen` CLI, logged in with `pen status`). It runs
+  the design tools with no Pen.app window and no agent: each run loads
+  only the file it is given, so no call can reach another agent's file.
+  Do not use agent mode (`pen --prompt ...`): it runs pen.dev's own agent.
+- Run `pen interactive --in <file> --out <file>` (the same path saves in
+  place) and send it one call per line on stdin, ending with `save()` and
+  `exit()`: `execute({ input: '<script>' })`, where the script uses
+  `Get`, `Update`, `Insert`, `Export` and `Print`. Without `save()` the
+  edits are lost. Read `Print` output from the run, and check exported
+  images exist: an export failure can exit 0.
+- Run it with the sandbox off. Pipe the lines with `printf '%s\n' ...`
+  or a heredoc; keep each run's calls together, since every run starts
+  from the file on disk.
+- Do it yourself; never ask the owner to open a file or click in the
+  editor. Use the pencil MCP and Pen.app only to show the owner a file;
+  the MCP has no save.
 - A `.pen` file is JSON. To start a new one, write
-  `{"version": "2.21", "children": []}` to its path, then open it.
+  `{"version": "2.21", "children": []}` to its path. Commit the file
+  from your worktree.
 - Never edit another agent's document or branch. If you did, tell that
   agent at once, with what you changed.
 

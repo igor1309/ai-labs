@@ -275,6 +275,17 @@ func TestCodeReviewPromptDoDsCoverTheirReviewObligations(t *testing.T) {
 		{"code-review-clarity.md", 7, []string{"Repeated definitions relevant to the change", "including CSS", "concrete change"}},
 		{"code-review-clarity.md", 10, []string{"goal-required scenario", "outside the diff", "clarity defect"}},
 		{"code-review-tests.md", 1, []string{"names the class of inputs", "concrete case as a witness", "test of that class"}},
+		{"code-review-tests.md", 13, []string{
+			"concurrency, locking, scheduling or retry machinery",
+			"makes a failure go away rather than drive product code",
+			"a flake answered only by changing test ordering, isolation or timing",
+			"evidence that the product is right and only the test was wrong",
+			"tests whose subject is a test helper rather than product behaviour",
+			"the helper is shared and its failure would hide a product bug",
+			"names the product behaviour or product gap the machinery stands in for",
+			"Each of the three is a finding of its own",
+			"Do not ask to make such machinery or its own tests better",
+		}},
 		{"code-review-judge.md", 1, []string{"Merge findings making the same claim", "highest supported severity", "sort items by severity"}},
 		{"code-review-judge.md", 5, []string{"presented evidence", "Add no finding or evidence of your own"}},
 		{"code-review-judge.md", 6, []string{
