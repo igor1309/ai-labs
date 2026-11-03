@@ -370,6 +370,50 @@ struct TranscriptLogTests {
         #expect(events == [.scrolled(atBottom: false), .scrolled(atBottom: true)])
     }
 
+    @Test(arguments: [false, true])
+    func readerScrollSurvivesGrowthBeforeThePausedSnapshot(documentFirst: Bool) throws {
+
+        var events: [PanelEvent] = []
+        let event: (PanelEvent) -> Void = { events.append($0) }
+        let (scroll, coordinator) = geometry(event: event)
+        defer { TranscriptLog.dismantleNSView(scroll, coordinator: coordinator) }
+        let document = try #require(scroll.documentView)
+        let clip = try #require(scroll.contentView as? ScrollingClipView)
+        clip.postsBoundsChangedNotifications = !documentFirst
+        clip.didScroll = {
+            clip.didScroll = nil
+            document.setFrameSize(NSSize(width: 200, height: 1_000))
+        }
+
+        clip.scroll(to: .zero)
+        if documentFirst {
+            clip.postsBoundsChangedNotifications = true
+            NotificationCenter.default.post(name: NSView.boundsDidChangeNotification, object: clip)
+        }
+
+        #expect(coordinator.parent.lines.followsLive)
+        #expect(clip.bounds.origin == .zero)
+        #expect(events == [.scrolled(atBottom: false)])
+
+        // An unrelated update can still carry the pre-scroll snapshot.
+        coordinator.parent = TranscriptLog(lines: .init(entries: []), tokens: .light, config: .glassLedger, event: event)
+        coordinator.quietly { }
+        #expect(clip.bounds.origin == .zero)
+
+        coordinator.parent = TranscriptLog(lines: .init(entries: [], followsLive: false), tokens: .light, config: .glassLedger, event: event)
+        coordinator.quietly { }
+        document.setFrameSize(NSSize(width: 200, height: 1_200))
+        #expect(clip.bounds.origin == .zero)
+        #expect(events == [.scrolled(atBottom: false)])
+
+        coordinator.parent = TranscriptLog(lines: .init(entries: []), tokens: .light, config: .glassLedger, event: event)
+        coordinator.quietly { }
+        #expect(isAtBottom(scroll))
+        document.setFrameSize(NSSize(width: 200, height: 1_400))
+        #expect(isAtBottom(scroll))
+        #expect(events == [.scrolled(atBottom: false)])
+    }
+
     @Test func dismantlingStopsObservingDocumentAndClipGeometry() throws {
 
         var events: [PanelEvent] = []

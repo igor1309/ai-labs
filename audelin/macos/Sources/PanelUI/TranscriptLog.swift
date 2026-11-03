@@ -76,7 +76,7 @@ struct TranscriptLog: NSViewRepresentable {
             let length = storage.length
             text.setSelectedRange(NSIntersectionRange(selection, NSRange(location: 0, length: length)))
 
-            if lines.followsLive, !coordinator.isSelecting { text.scrollToEndOfDocument(nil) }
+            if coordinator.followsLive, !coordinator.isSelecting { text.scrollToEndOfDocument(nil) }
         }
     }
 
@@ -140,7 +140,11 @@ extension TranscriptLog {
     @MainActor
     final class Coordinator: NSObject {
 
-        var parent: TranscriptLog
+        var parent: TranscriptLog {
+            didSet {
+                if !oldValue.lines.followsLive, parent.lines.followsLive { readerPaused = false }
+            }
+        }
         var entries: [Transcript.EntryRange] = []
         var rows = Transcript.Rows()
         weak var scroll: NSScrollView?
@@ -148,8 +152,14 @@ extension TranscriptLog {
         var isSelecting = false
         private var isQuiet = false
         private var atBottom = true
+        private var readerPaused = false
+        private var origin = NSPoint.zero
         private var size = NSSize.zero
         private var documentSize = NSSize.zero
+
+        // The reader's event reaches the parent asynchronously. Keep the pause
+        // through stale snapshots; a paused-to-live transition resumes it.
+        var followsLive: Bool { parent.lines.followsLive && !readerPaused }
 
         init(_ parent: TranscriptLog) { self.parent = parent }
 
@@ -204,6 +214,7 @@ extension TranscriptLog {
             change()
             if !wasQuiet {
                 followDocumentBottom()
+                origin = scroll?.contentView.bounds.origin ?? .zero
                 size = scroll?.contentView.bounds.size ?? .zero
                 documentSize = scroll?.documentView?.frame.size ?? .zero
                 atBottom = isAtBottom
@@ -213,7 +224,7 @@ extension TranscriptLog {
 
         private func followDocumentBottom() {
 
-            guard parent.lines.followsLive, !isSelecting,
+            guard followsLive, !isSelecting,
                   let scroll, let document = scroll.documentView else { return }
 
             // Layout can grow the document after the text-range scroll. Follow
@@ -230,6 +241,7 @@ extension TranscriptLog {
         @objc func documentFrameChanged(_ notification: Notification) {
 
             guard !isQuiet else { return }
+            reportReaderScroll()
             quietly { }
         }
 
@@ -237,16 +249,26 @@ extension TranscriptLog {
 
             guard !isQuiet, let scroll else { return }
 
+            reportReaderScroll()
             // A document resize can move the clip before its frame observer runs.
             if scroll.contentView.bounds.size != size || scroll.documentView?.frame.size != documentSize {
                 quietly { }
-                return
             }
+        }
+
+        private func reportReaderScroll() {
+
+            guard let clip = scroll?.contentView, clip.bounds.size == size,
+                  clip.bounds.origin != origin else { return }
+            // Growth at the same origin is layout, even if the bottom moved.
+            // Movement can precede both the bounds and document notifications.
+            origin = clip.bounds.origin
 
             let now = isAtBottom
             guard now != atBottom else { return }
 
             atBottom = now
+            readerPaused = !now
             parent.event(.scrolled(atBottom: now))
         }
 
