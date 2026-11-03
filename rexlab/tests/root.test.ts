@@ -273,7 +273,7 @@ describe("the app in a browser", () => {
     const ended = settling();
     const given = browser();
     const document = Object.assign(given.document, {
-      startViewTransition: ((update: unknown) => (fades.push(update), { finished: ended.promise, ready: ended.promise })) as unknown as Document["startViewTransition"]
+      startViewTransition: ((update: unknown) => (fades.push(update), { finished: ended.promise, ready: ended.promise, updateCallbackDone: ended.promise })) as unknown as Document["startViewTransition"]
     });
     const { layoutMotion } = appProps({ ...given, document });
     const box = { left: 1, top: 2, width: 3, height: 4 };
@@ -325,7 +325,7 @@ describe("the app in a browser", () => {
   it("ends the fade once the view transition is skipped, too", async () => {
     const ended = settling();
     const given = browser();
-    const document = Object.assign(given.document, { startViewTransition: (() => ({ finished: ended.promise, ready: ended.promise })) as unknown as Document["startViewTransition"] });
+    const document = Object.assign(given.document, { startViewTransition: (() => ({ finished: ended.promise, ready: ended.promise, updateCallbackDone: ended.promise })) as unknown as Document["startViewTransition"] });
     let finished = 0;
     appProps({ ...given, document }).layoutMotion.startViewTransition(
       () => {},
@@ -343,7 +343,21 @@ describe("the app in a browser", () => {
     const ready = { then: (_: unknown, rejected?: unknown) => (handled.push(rejected), ready) };
     const given = browser();
     const document = Object.assign(given.document, {
-      startViewTransition: (() => ({ finished: settling().promise, ready })) as unknown as Document["startViewTransition"]
+      startViewTransition: (() => ({ finished: settling().promise, ready, updateCallbackDone: settling().promise })) as unknown as Document["startViewTransition"]
+    });
+
+    appProps({ ...given, document }).layoutMotion.startViewTransition(() => {}, () => {});
+
+    expect(handled).toHaveLength(1);
+    expect(handled[0]).toBeTypeOf("function");
+  });
+
+  it("handles a skipped view transition's update promise, so the page reports no unhandled rejection", () => {
+    const handled: unknown[] = [];
+    const updateCallbackDone = { then: (_: unknown, rejected?: unknown) => (handled.push(rejected), updateCallbackDone) };
+    const given = browser();
+    const document = Object.assign(given.document, {
+      startViewTransition: (() => ({ finished: settling().promise, ready: settling().promise, updateCallbackDone })) as unknown as Document["startViewTransition"]
     });
 
     appProps({ ...given, document }).layoutMotion.startViewTransition(() => {}, () => {});
