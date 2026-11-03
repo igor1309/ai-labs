@@ -19,9 +19,17 @@ public actor TrackFile {
         case writingEnded
         case invalidAudio
         case invalidRange
+        case invalidFile
     }
 
     public nonisolated static let sampleRate: Double = 48_000
+
+    /// Reads the duration of this adapter's 48 kHz mono Int16 CAF, sealed or open-ended.
+    /// An open-ended track counts only the whole frames available on disk.
+    /// Performs blocking disk work; call on a dedicated disk queue, never the cooperative pool.
+    public nonisolated static func duration(at url: URL) throws -> TimeInterval {
+        try DiskTrackBinding.duration(at: url)
+    }
     public nonisolated let url: URL
 
     private let binding: any TrackFileBinding

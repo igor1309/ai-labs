@@ -1,9 +1,31 @@
 import SplitRows
 
 /// Decides what to read without starting work or changing the recording.
-public enum ReadingReducer {
+public struct ReadingReducer: Sendable {
+
+    private let recordingTime: @Sendable (Double) -> String
+    private let lineTime: @Sendable (Double) -> String
+    private let span: @Sendable (String, String) -> String
+
+    public init(
+        recordingTime: @escaping @Sendable (Double) -> String,
+        lineTime: @escaping @Sendable (Double) -> String,
+        span: @escaping @Sendable (String, String) -> String
+    ) {
+
+        self.recordingTime = recordingTime
+        self.lineTime = lineTime
+        self.span = span
+    }
 
     public static func reduce(_ state: ReadingState, _ event: ReadingEvent) -> (ReadingState, Never?) {
+
+        Self(recordingTime: ReadingFormatting.recordingTime,
+             lineTime: ReadingFormatting.lineTime,
+             span: ReadingFormatting.span).reduce(state, event)
+    }
+
+    public func reduce(_ state: ReadingState, _ event: ReadingEvent) -> (ReadingState, Never?) {
 
         var state = state
         state.work = .init()
@@ -11,23 +33,35 @@ public enum ReadingReducer {
         case let .recordingChanged(recording):
             switch recording {
             case .off:
+                let removesGaps = hasGaps(state)
+                let wasPrepared = state.rendered.prepared
                 state.recording = .off
                 state.problems = []
                 state.banners = []
                 prepareRows(&state)
-                rebuildLayout(&state)
+                if wasPrepared && removesGaps { rebuildLayout(&state) }
             case let .on(elapsed): state.recording = .on(elapsed: recordingTime(elapsed))
             }
         case let .problemsChanged(problems):
+            let previous = state.problems
             state.problems.removeAll { $0.kind == .callSilent && !problems.contains(where: { $0.kind == .callSilent }) }
             for problem in problems where !state.problems.contains(where: { $0.kind == problem.kind }) {
                 state.problems.append(problem)
             }
-            state.banners = state.problems.enumerated().sorted {
-                $0.element.began == $1.element.began ? $0.offset > $1.offset : $0.element.began > $1.element.began
-            }.map { .init(kind: $0.element.kind, time: lineTime($0.element.began)) }
+            if state.problems != previous {
+                state.banners = state.problems.enumerated().sorted {
+                    $0.element.began == $1.element.began ? $0.offset > $1.offset : $0.element.began > $1.element.began
+                }.map { problem in
+                    state.banners.first { $0.kind == problem.element.kind }
+                        ?? .init(kind: problem.element.kind, time: lineTime(problem.element.began))
+                }
+            }
+            let wasPrepared = state.rendered.prepared
             prepareRows(&state)
-            rebuildLayout(&state)
+            if wasPrepared,
+               previous.filter({ $0.kind != .callSilent }) != state.problems.filter({ $0.kind != .callSilent }) {
+                rebuildLayout(&state)
+            }
         case let .textUpdated(update):
             prepareRows(&state)
             state.status = update.status
@@ -104,10 +138,19 @@ public enum ReadingReducer {
             state.lines.followsLive = true
             state.lines.newBelow = 0
         }
+        switch state.status {
+        case .off:
+            let kept = state.lines.rows.isEmpty && state.lines.holds.isEmpty ? nil : state.lines
+            state.log = state.recording == .off ? kept.map(ReadingState.Log.lines) ?? .empty : .liveTextOff(kept: kept)
+        case .gettingReady:
+            state.log = state.banners.isEmpty ? .preparing(holds: state.lines.holds) : .lines(state.lines)
+        case .listening, .failed, .finished:
+            state.log = .lines(state.lines)
+        }
         return (state, nil)
     }
 
-    private static func prepareRows(_ state: inout ReadingState) {
+    private func prepareRows(_ state: inout ReadingState) {
 
         guard !state.rendered.prepared else { return }
         state.rendered.prepared = true
@@ -120,7 +163,7 @@ public enum ReadingReducer {
 
     /// Places the entry in call order, returning where.
     @discardableResult
-    private static func insert(_ id: ReadingTextUpdate.Entry.ID, into state: inout ReadingState) -> Int {
+    private func insert(_ id: ReadingTextUpdate.Entry.ID, into state: inout ReadingState) -> Int {
 
         let anchor = state.anchors[id]!
         var lower = 0
@@ -139,14 +182,14 @@ public enum ReadingReducer {
         return lower
     }
 
-    private static func hasGaps(_ state: ReadingState) -> Bool {
+    private func hasGaps(_ state: ReadingState) -> Bool {
 
         state.problems.contains { $0.kind != .callSilent }
     }
 
     /// Rows before the first that still holds a changeable entry cannot change.
     /// A late group stays open at the end, since the next late entry joins it.
-    private static func sealRows(_ state: inout ReadingState) {
+    private func sealRows(_ state: inout ReadingState) {
 
         let rows = state.lines.rows
         var end = state.rendered.locations.tail.values.map(\.row).min() ?? rows.count
@@ -162,7 +205,7 @@ public enum ReadingReducer {
         state.lines.rows.seal(upTo: end)
     }
 
-    private static func displayEntry(
+    private func displayEntry(
         _ text: ReadingTextUpdate.Entry, in state: inout ReadingState
     ) -> ReadingState.Entry {
 
@@ -172,7 +215,7 @@ public enum ReadingReducer {
                      settled: text.settled, pending: text.pending)
     }
 
-    private static func replaceRow(_ id: ReadingTextUpdate.Entry.ID, in state: inout ReadingState) {
+    private func replaceRow(_ id: ReadingTextUpdate.Entry.ID, in state: inout ReadingState) {
 
         let location = state.rendered.locations[id]!
         let entry = state.rendered.entries[id]!
@@ -187,7 +230,7 @@ public enum ReadingReducer {
 
     /// Lays the rows out again. Keeping the sealed rows needs nothing new to fall
     /// among them, and no gaps, which a problem can place anywhere.
-    private static func rebuildLayout(_ state: inout ReadingState, keepingSealedRows: Bool = false) {
+    private func rebuildLayout(_ state: inout ReadingState, keepingSealedRows: Bool = false) {
 
         let kept = keepingSealedRows ? state.lines.rows.sealed : []
         var result: [ReadingState.Row] = []
@@ -204,8 +247,9 @@ public enum ReadingReducer {
 
             if state.text.isSealed(id) {
                 if state.rendered.locations[id] != location { state.rendered.locations.setSealed(id, location) }
+            } else {
+                state.rendered.locations[id] = location
             }
-            else { state.rendered.locations[id] = location }
         }
         var lateStart = 0.0
         var lateEnd = 0.0
@@ -216,7 +260,7 @@ public enum ReadingReducer {
                 locate(id, .init(row: kept.count + result.count, lateEntry: index))
             }
             lateIDs = []
-            result.append(.late(.init(span: "\(lineTime(lateStart))–\(lineTime(lateEnd))", entries: late)))
+            result.append(.late(.init(span: span(lineTime(lateStart), lineTime(lateEnd)), entries: late)))
             late = []
         }
         let gaps = state.problems.enumerated().filter { $0.element.kind != .callSilent }.sorted {
@@ -256,28 +300,5 @@ public enum ReadingReducer {
         for problem in gaps.dropFirst(gapIndex) { appendGap(problem) }
         state.lines.rows = .init(sealed: kept, tail: result)
         sealRows(&state)
-    }
-
-    private static func seconds(_ value: Double) -> Int {
-
-        guard value.isFinite, value > 0 else { return 0 }
-        return Int(min(value.rounded(.down), Double(Int.max / 2)))
-    }
-
-    private static func padded(_ value: Int) -> String {
-
-        value < 10 ? "0\(value)" : String(value)
-    }
-
-    private static func lineTime(_ value: Double) -> String {
-
-        let seconds = seconds(value)
-        return "\(padded(seconds / 60)):\(padded(seconds % 60))"
-    }
-
-    private static func recordingTime(_ value: Double) -> String {
-
-        let seconds = seconds(value)
-        return "\(padded(seconds / 3600)):\(padded(seconds / 60 % 60)):\(padded(seconds % 60))"
     }
 }

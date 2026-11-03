@@ -1,3 +1,4 @@
+import BlockingTestWork
 import Darwin
 import Foundation
 import Testing
@@ -47,6 +48,14 @@ struct TrackFileFailureTests {
                     expectSamples(samples, Array(expected.prefix(samples.count)))
                     #expect(try await dataChunkLength(url) == -1)
                     try await expectAfinfo(url, frames: samples.count)
+                    #expect(try await offPool { try TrackFile.duration(at: url) } == Double(samples.count) / 48_000)
+                    try await offPool {
+                        let file = try FileHandle(forWritingTo: url)
+                        defer { try? file.close() }
+                        try file.seekToEnd()
+                        try file.write(contentsOf: Data([0]))
+                    }
+                    #expect(try await offPool { try TrackFile.duration(at: url) } == Double(samples.count) / 48_000)
                 } onCancel: {
                     command.kill()
                 }

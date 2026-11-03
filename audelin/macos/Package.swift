@@ -48,7 +48,7 @@ let package = Package(
         .target(name: "Calls"),
         .target(name: "Recordings"),
         .target(name: "CallsListUI", dependencies: ["GlassLedger"]),
-        .testTarget(name: "CallsTests", dependencies: ["Calls", "BlockingTestWork"]),
+        .testTarget(name: "CallsTests", dependencies: ["Calls", "TrackFile", "BlockingTestWork"]),
         .testTarget(name: "RecordingsTests", dependencies: ["Recordings"]),
         .testTarget(name: "CallsListUITests", dependencies: ["CallsListUI"]),
         .target(name: "CallAudioProbe"),
@@ -223,7 +223,7 @@ let package = Package(
         ),
         .testTarget(
             name: "MicrophoneCaptureTests",
-            dependencies: ["MicrophoneCapture"]
+            dependencies: ["MicrophoneCapture", "BlockingTestWork"]
         ),
         .testTarget(
             name: "ModelLoadingTests",
@@ -231,7 +231,7 @@ let package = Package(
         ),
         .testTarget(
             name: "NemotronRecognizerTests",
-            dependencies: ["NemotronRecognizer", "BlockingTestWork"]
+            dependencies: ["NemotronRecognizer", "BlockingTestWork", .product(name: "FluidAudio", package: "FluidAudio")]
         ),
         .testTarget(
             name: "PanelUITests",
@@ -239,7 +239,8 @@ let package = Package(
         ),
         .testTarget(
             name: "ParakeetRecognizerTests",
-            dependencies: ["ParakeetRecognizer", "BlockingTestWork", .product(name: "FluidAudio", package: "FluidAudio")]
+            dependencies: ["ParakeetRecognizer", "BlockingTestWork", .product(name: "FluidAudio", package: "FluidAudio")],
+            resources: [.copy("Fixtures")]
         ),
         .testTarget(
             name: "PreferencesTests",
