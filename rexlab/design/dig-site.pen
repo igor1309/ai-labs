@@ -443779,7 +443779,7 @@
           "fill": "$ds-ink",
           "textGrowth": "fixed-width",
           "width": 960,
-          "content": "Each Home game owns one different creature in every theme, locale and device. A skeleton, jaw, silhouette or colouring still counts as the same species: never reuse it for another game. COMPARE — Tyrannosaurus; EXPLORE — Stegosaurus; PAIRS — Triceratops; BONES — Brachiosaurus skeleton; DIG — Therizinosaurus; SORT — Pachycephalosaurus (full colour, never silhouette); CARE — Oviraptor; DRAW — Parasaurolophus; MAZE — Ankylosaurus; PUZZLE — Spinosaurus; TEETH — Baryonyx; COLOR — Mosasaurus. SOON has no creature. Reserve a new unused species for each new game.",
+          "content": "Each Home game owns one different creature in every theme, locale and device. A skeleton, jaw, silhouette or colouring still counts as the same species: never reuse it for another game. Show it in the game's own form on both the tile and the featured hero: PAIRS a matched pair of cards, BONES a skeleton, DIG half-dug from the sand, TEETH its jaw, COLOR its colouring page. COMPARE — Tyrannosaurus; EXPLORE — Stegosaurus; PAIRS — Triceratops; BONES — Brachiosaurus skeleton; DIG — Therizinosaurus; SORT — Pachycephalosaurus (full colour, never silhouette); CARE — Oviraptor; DRAW — Parasaurolophus; MAZE — Ankylosaurus; PUZZLE — Spinosaurus; TEETH — Baryonyx; COLOR — Mosasaurus. SOON has no creature. Reserve a new unused species for each new game.",
           "lineHeight": 1.4,
           "fontFamily": "$ds-font",
           "fontSize": "$ds-size-14",
