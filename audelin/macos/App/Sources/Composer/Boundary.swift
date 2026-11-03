@@ -107,6 +107,17 @@ public protocol FolderCapacity: Sendable {
     func available(at folder: URL) -> Int64?
 }
 
+/// A mono recording whose read positions and samples use 48 kHz.
+public protocol AudioRecording: Sendable {
+    func write(_ samples: [Float], sampleRate: Double) async throws
+    func read(from start: Double, to end: Double) async throws -> [Float]
+    func close() async throws
+}
+
+public protocol RecordingStorage: Sendable {
+    func open(at url: URL) async throws -> any AudioRecording
+}
+
 /// Everything a caller replaces when running the same composition elsewhere.
 public struct ComposerBoundary: Sendable {
     public var capturePersistence: CapturePersistence
@@ -120,6 +131,7 @@ public struct ComposerBoundary: Sendable {
     public var time: any ComposerClock
     public var log: any LogSink
     public var intervals: ProfileIntervals
+    public var recordings: any RecordingStorage = FileRecordingStorage()
 
     public init(capturePersistence: CapturePersistence, microphone: any MicrophoneSource, callAudio: any CallAudioSource,
                 recognizers: any RecognizerSource, processes: any CallProcessSource, access: any CallAudioAccessSource,

@@ -4,120 +4,92 @@ import Testing
 @Suite(.timeLimit(.minutes(1)))
 struct DeviceFollowingTests {
 
-    struct Step: Sendable {
-        let event: DeviceFollowing.Event
-        let input: UInt32
-        let pending: DeviceFollowing.Settle?
-        let failed: Bool
-        let action: DeviceFollowing.Action
-
-        init(
-            _ event: DeviceFollowing.Event, input: UInt32 = 1,
-            pending: DeviceFollowing.Settle? = nil, failed: Bool = false,
-            action: DeviceFollowing.Action = .none
-        ) {
-            self.event = event
-            self.input = input
-            self.pending = pending
-            self.failed = failed
-            self.action = action
-        }
+    @Test func repeatedNotificationsKeepTheOriginalDeadline() async throws {
+        let binding = FakeMicrophoneBinding()
+        let capture = try await MicrophoneCapture(binding: binding)
+        defer { capture.stop() }
+        binding.changeDefault(to: 2)
+        await capture.synchronize()
+        binding.advance(1)
+        binding.changeDefault(to: 2)
+        await capture.synchronize()
+        binding.advance(0.49)
+        await capture.synchronize()
+        #expect(binding.state.withLock { $0.starts } == [1])
+        binding.advance(0.01)
+        await capture.synchronize()
+        #expect(binding.state.withLock { $0.starts } == [1, 2])
+        binding.send([[9]])
+        capture.stop()
+        #expect(try await drain(capture) == [
+            AudioPiece(samples: Array(repeating: 0, count: 6), sampleRate: 4),
+            AudioPiece(samples: [9], sampleRate: 4),
+        ])
     }
 
-    struct Rule: Sendable, CustomStringConvertible {
-        let description: String
-        let steps: [Step]
+    @Test func configurationPreservesAnAvailableInputWhileTheDefaultIsMissing() async throws {
+        let binding = FakeMicrophoneBinding()
+        let capture = try await MicrophoneCapture(binding: binding)
+        defer { capture.stop() }
+        binding.changeDefault(to: 0)
+        await capture.synchronize()
+        binding.configure(input: 0)
+        await capture.synchronize()
+        #expect(binding.state.withLock { $0.starts } == [1, 1])
+        binding.advance(1.375)
+        binding.send([[7]])
+        await capture.synchronize()
+        binding.advance(0)
+        let result = await readUntilFailure(capture)
+        #expect(result.pieces == [
+            AudioPiece(samples: Array(repeating: 0, count: 11), sampleRate: 8),
+            AudioPiece(samples: [7], sampleRate: 8),
+        ])
+        #expect(result.error as? CaptureError == .noInput)
+        #expect(binding.state.withLock { $0.starts } == [1, 1])
     }
 
-    static let two = DeviceFollowing.Settle(input: 2, deadline: 1.5)
-    static let missing = DeviceFollowing.Settle(input: nil, deadline: 1.5)
-    static let three = DeviceFollowing.Settle(input: 3, deadline: 2.5)
-    static let returningTwo = DeviceFollowing.Settle(input: 2, deadline: 2.75)
+    @Test(arguments: [UInt32(2), 3])
+    func configurationUsesTheLatestDefaultWithoutANotification(input: UInt32) async throws {
+        let binding = FakeMicrophoneBinding()
+        let capture = try await MicrophoneCapture(binding: binding)
+        defer { capture.stop() }
+        binding.send([[1, 2]])
+        binding.state.withLock { $0.unavailableInputs = [1] }
+        let rate = input == 2 ? 4.0 : 16.0
+        binding.configure(input: input, rate: rate)
+        await capture.synchronize()
+        binding.send([[3, 4]])
+        capture.stop()
+        #expect(try await drain(capture) == [
+            AudioPiece(samples: [1, 2], sampleRate: 8),
+            AudioPiece(samples: [3, 4], sampleRate: rate),
+        ])
+        #expect(binding.state.withLock { $0.starts } == [1, input])
+    }
 
-    static let rules: [Rule] = [
-        Rule(description: "a delivering input stays until the default holds for 1.5 seconds", steps: [
-            Step(.defaultChanged(2, at: 0), pending: two),
-            Step(.currentInputDelivering, pending: two),
-            Step(.settleReached(two, at: 1.49), pending: two),
-            Step(.settleReached(two, at: 1.5), input: 2, action: .rebuild(2)),
-        ]),
-        Rule(description: "repeated notifications do not restart a held candidate", steps: [
-            Step(.defaultChanged(2, at: 0), pending: two),
-            Step(.defaultChanged(2, at: 1), pending: two),
-            Step(.settleReached(two, at: 1.5), input: 2, action: .rebuild(2)),
-        ]),
-        Rule(description: "reverting to the delivering input cancels the candidate", steps: [
-            Step(.defaultChanged(2, at: 0), pending: two),
-            Step(.defaultChanged(1, at: 1)),
-            Step(.settleReached(two, at: 1.5)),
-        ]),
-        Rule(description: "a different candidate gets a full new wait", steps: [
-            Step(.defaultChanged(2, at: 0), pending: two),
-            Step(.defaultChanged(3, at: 1), pending: three),
-            Step(.settleReached(two, at: 1.5), pending: three),
-            Step(.settleReached(three, at: 2.5), input: 3, action: .rebuild(3)),
-        ]),
-        Rule(description: "a returning candidate cannot use its old settle time", steps: [
-            Step(.defaultChanged(2, at: 0), pending: two),
-            Step(.defaultChanged(1, at: 1)),
-            Step(.defaultChanged(2, at: 1.25), pending: returningTwo),
-            Step(.settleReached(two, at: 1.5), pending: returningTwo),
-            Step(.settleReached(returningTwo, at: 2.74), pending: returningTwo),
-            Step(.settleReached(returningTwo, at: 2.75), input: 2, action: .rebuild(2)),
-        ]),
-        Rule(description: "a missing default for 110 milliseconds during a settle does nothing", steps: [
-            Step(.defaultChanged(2, at: 0), pending: two),
-            Step(.defaultChanged(nil, at: 1.4), pending: .init(input: nil, deadline: 2.9)),
-            Step(.settleReached(two, at: 1.5), pending: .init(input: nil, deadline: 2.9)),
-            Step(.defaultChanged(2, at: 1.51), pending: .init(input: 2, deadline: 3.01)),
-        ]),
-        Rule(description: "a held missing default fails only at its deadline", steps: [
-            Step(.defaultChanged(nil, at: 0), pending: missing),
-            Step(.currentInputDelivering, pending: missing),
-            Step(.settleReached(missing, at: 1.49), pending: missing),
-            Step(.settleReached(missing, at: 1.5), failed: true, action: .fail),
-            Step(.defaultChanged(2, at: 2), failed: true),
-        ]),
-        Rule(description: "configuration keeps an available input while its replacement settles", steps: [
-            Step(.defaultChanged(2, at: 0), pending: two),
-            Step(.configurationChanged(currentAvailable: true, defaultInput: 2), pending: two, action: .rebuild(1)),
-            Step(.settleReached(two, at: 1.5), input: 2, action: .rebuild(2)),
-        ]),
-        Rule(description: "configuration recovers a gone input onto the settling default immediately", steps: [
-            Step(.defaultChanged(2, at: 0), pending: two),
-            Step(.configurationChanged(currentAvailable: false, defaultInput: 2), input: 2, action: .rebuild(2)),
-            Step(.settleReached(two, at: 1.5), input: 2),
-        ]),
-        Rule(description: "configuration uses the current default even without a notification", steps: [
-            Step(.configurationChanged(currentAvailable: false, defaultInput: 3), input: 3, action: .rebuild(3)),
-        ]),
-        Rule(description: "configuration with a gone input and no default fails immediately", steps: [
-            Step(.defaultChanged(2, at: 0), pending: two),
-            Step(.configurationChanged(currentAvailable: false, defaultInput: nil), failed: true, action: .fail),
-        ]),
-        Rule(description: "configuration preserves an available input during a missing default", steps: [
-            Step(.defaultChanged(nil, at: 0), pending: missing),
-            Step(.configurationChanged(currentAvailable: true, defaultInput: nil), pending: missing, action: .rebuild(1)),
-        ]),
-        Rule(description: "a refused rebuild fails and cancels its pending candidate", steps: [
-            Step(.defaultChanged(2, at: 0), pending: two),
-            Step(.rebuildRefused, failed: true, action: .fail),
-            Step(.settleReached(two, at: 1.5), failed: true),
-            Step(.configurationChanged(currentAvailable: false, defaultInput: 2), failed: true),
-        ]),
-    ]
-
-    @Test(arguments: rules)
-    func deviceFollowingObeysEachRule(rule: Rule) {
-
-        var state = DeviceFollowing(input: 1)
-        for step in rule.steps {
-            let result = state.transition(step.event)
-            #expect(result.action == step.action)
-            #expect(result.state.input == step.input)
-            #expect(result.state.pending == step.pending)
-            #expect(result.state.failed == step.failed)
-            state = result.state
-        }
+    @Test func aRefusedRebuildCannotBeRevivedByPendingCallbacks() async throws {
+        let binding = FakeMicrophoneBinding()
+        let capture = try await MicrophoneCapture(binding: binding)
+        defer { capture.stop() }
+        binding.send([[1, 2]])
+        binding.changeDefault(to: 2)
+        await capture.synchronize()
+        let settle = try #require(binding.state.withLock { $0.timers.values.first?.1 })
+        let configuration = try #require(binding.state.withLock { $0.changed })
+        let defaultChanged = try #require(binding.state.withLock { $0.defaultChanged })
+        binding.state.withLock { $0.refuseStart = true }
+        configuration()
+        let result = await readUntilFailure(capture)
+        #expect(result.pieces == [AudioPiece(samples: [1, 2], sampleRate: 8)])
+        #expect(result.error is Refusal)
+        binding.state.withLock { $0.refuseStart = false }
+        binding.advance(2)
+        settle()
+        configuration()
+        defaultChanged(3)
+        await capture.synchronize()
+        #expect(binding.state.withLock { $0.starts } == [1, 1])
+        #expect(binding.state.withLock { $0.receive == nil && $0.defaultChanged == nil && $0.timers.isEmpty })
     }
 }

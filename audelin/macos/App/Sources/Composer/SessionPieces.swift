@@ -24,7 +24,7 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
     struct Side {
 
         let audio: DeferredAudio
-        var track: TrackFile?
+        var track: (any AudioRecording)?
         var stopCapture: (@Sendable () async throws -> Void)?
     }
 
@@ -102,7 +102,7 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
     func openTrack(_ side: SessionSide, in folder: SessionCallFolder) async throws {
 
         let made = try places(in: folder)
-        sides[side]?.track = try await TrackFile(url: side == .microphone ? made.microphoneURL : made.callURL)
+        sides[side]?.track = try await boundary.recordings.open(at: side == .microphone ? made.microphoneURL : made.callURL)
     }
 
     func closeTrack(_ side: SessionSide) async throws {
