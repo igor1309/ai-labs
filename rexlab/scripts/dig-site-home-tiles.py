@@ -116,21 +116,18 @@ BASKET = (
 
 
 def sort():
-    """A Pachycephalosaurus card dropping into the plant basket, beside the meat one."""
+    """A Pachycephalosaurus card dropping into its plant basket."""
     c = Image.new("RGBA", (W, H))
-    for x, item, h in ((215, "care-plants.webp", 150), (585, "care-meat.webp", 140)):
-        food = fit(load(item), w=230, h=h)
-        put(c, food, x - food.width // 2, 400 - food.height + 12)
-    c.alpha_composite(svg(BASKET.format(x=215) + BASKET.format(x=585)))
-    card = Image.new("RGBA", (300, 230))
+    food = fit(load("care-plants.webp"), w=300, h=170)
+    put(c, food, 400 - food.width // 2, 330 - food.height + 40)
+    c.alpha_composite(svg(BASKET.format(x=400).replace('translate(400 0)', 'translate(400 0) scale(1.2 1) translate(0 -20)')))
+    card = Image.new("RGBA", (330, 250))
     card.alpha_composite(svg(
-        f'<rect x="6" y="6" width="288" height="218" rx="26" fill="#FFFDF8" stroke="{INK}" stroke-width="6"/>', 300, 230))
-    pachy = fit(load("pachycephalosaurus.webp"), w=250, h=180)
-    card.alpha_composite(pachy, ((300 - pachy.width) // 2, (230 - pachy.height) // 2))
-    card = card.rotate(10, Image.BICUBIC, expand=True)
-    put(c, card, 60, 10, drop=dict(blur=12, alpha=90, dy=14))
-    c.alpha_composite(svg(
-        f'<path d="M420 60 Q470 140 420 220" fill="none" stroke="#FFFDF8" stroke-width="12" stroke-linecap="round" stroke-dasharray="2 26"/>'))
+        f'<rect x="6" y="6" width="318" height="238" rx="28" fill="#FFFDF8" stroke="{INK}" stroke-width="7"/>', 330, 250))
+    pachy = fit(load("pachycephalosaurus.webp"), w=280, h=200)
+    card.alpha_composite(pachy, ((330 - pachy.width) // 2, (250 - pachy.height) // 2))
+    card = card.rotate(-8, Image.BICUBIC, expand=True)
+    put(c, card, 400 - card.width // 2, 0, drop=dict(blur=12, alpha=90, dy=14))
     return c
 
 
@@ -186,21 +183,19 @@ def draw():
 
 
 def maze():
-    """A baby Ankylosaurus at the maze entrance, footprints leading to its parent."""
+    """Footprints winding through a maze to the Ankylosaurus."""
     c = Image.new("RGBA", (W, H))
-    walls = ["M24 272 H560", "M240 428 H776", "M560 272 V230", "M240 428 V390", "M420 120 V150", "M520 584 V550"]
-    path = "M620 508 H130 V350 H680 V196 H360"
-    feet = "".join(f'<ellipse cx="{x:.0f}" cy="{y:.0f}" rx="11" ry="14" fill="#8E5E30"/>' for x, y in _along(path, 44))
+    walls = ["M24 350 H560"]
+    path = "M680 520 H110 V220 H330"
+    feet = "".join(f'<ellipse cx="{x:.0f}" cy="{y:.0f}" rx="16" ry="20" fill="#8E5E30"/>' for x, y in _along(path, 64))
     c.alpha_composite(svg(
-        f'<rect x="20" y="120" width="760" height="464" rx="40" fill="#E9D3A6" stroke="#6F8742" stroke-width="30"/>'
-        f'<rect x="4" y="104" width="792" height="496" rx="52" fill="none" stroke="{INK}" stroke-width="6"/>'
-        + "".join(f'<path d="{p}" stroke="#6F8742" stroke-width="34" stroke-linecap="round" fill="none"/>' for p in walls)
-        + "".join(f'<path d="{p}" stroke="#9BB262" stroke-width="14" stroke-linecap="round" fill="none"/>' for p in walls)
+        f'<rect x="20" y="120" width="760" height="464" rx="40" fill="#E9D3A6" stroke="#6F8742" stroke-width="34"/>'
+        f'<rect x="2" y="102" width="796" height="500" rx="56" fill="none" stroke="{INK}" stroke-width="6"/>'
+        + "".join(f'<path d="{p}" stroke="#6F8742" stroke-width="40" stroke-linecap="round" fill="none"/>' for p in walls)
+        + "".join(f'<path d="{p}" stroke="#9BB262" stroke-width="16" stroke-linecap="round" fill="none"/>' for p in walls)
         + feet))
-    parent = fit(load("ankylosaurus.webp"), w=290, h=150).transpose(Image.FLIP_LEFT_RIGHT)
-    put(c, parent, 40, 258 - parent.height, drop=dict(blur=8, alpha=60, dy=6))
-    baby = fit(load("ankylosaurus.webp"), w=150)
-    put(c, baby, 760 - baby.width, 568 - baby.height, drop=dict(blur=6, alpha=60, dy=5))
+    anky = fit(load("ankylosaurus.webp"), w=380, h=210).transpose(Image.FLIP_LEFT_RIGHT)
+    put(c, anky, 770 - anky.width, 330 - anky.height, drop=dict(blur=8, alpha=60, dy=6))
     return c
 
 
@@ -268,15 +263,15 @@ def puzzle():
     pic.alpha_composite(bg)
     spino = fit(load("spinosaurus.webp"), w=560, h=380)
     pic.alpha_composite(spino, ((pw - spino.width) // 2, ph - spino.height - 20))
-    pieces = jigsaw(3, 2, pw, ph)
-    out_key = (2, 0)
+    pieces = jigsaw(2, 2, pw, ph)
+    out_key = (1, 0)
     c = Image.new("RGBA", (W, H))
     c.alpha_composite(svg(f'<rect x="{ox - 14}" y="{oy - 14}" width="{pw + 28}" height="{ph + 28}" rx="28" fill="#B98B57" stroke="{INK}" stroke-width="8"/>'))
     hole = svg(f'<path d="{pieces[out_key]}" fill="#fff"/>', pw, ph).getchannel("A")
     board = masked(pic, ImageChops.invert(hole))
     c.alpha_composite(board, (ox, oy))
     c.alpha_composite(svg(f'<path d="{pieces[out_key]}" fill="#8C6238" stroke="{INK}" stroke-width="4"/>', pw, ph), (ox, oy))
-    lines = "".join(f'<path d="{p}" fill="none" stroke="#FFFDF8" stroke-opacity="0.85" stroke-width="5" stroke-linejoin="round"/>'
+    lines = "".join(f'<path d="{p}" fill="none" stroke="#FFFDF8" stroke-opacity="0.9" stroke-width="8" stroke-linejoin="round"/>'
                     for k, p in pieces.items() if k != out_key)
     c.alpha_composite(svg(lines, pw, ph), (ox, oy))
     piece = masked(pic, hole)
