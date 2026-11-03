@@ -1,3 +1,4 @@
+import drawTilePicture from "../src/assets/home/tile-draw.webp";
 import { emptyLabyrinth } from "./support.ts";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { addTransitionType } from "react";
@@ -71,7 +72,7 @@ describe("sand writing through Home", () => {
     expect(text.sandWriting).toBe(text.sandWriting.toLocaleUpperCase(language));
     expect(symbolOf(door.querySelector(".featured-card-symbol") ?? door)).toBe("pencil");
     if (featured) expect(door.querySelector(".home-today-art > .sand-writing-tile-art")).not.toBeNull();
-    else expect(door.querySelector("img")?.getAttribute("src")).toBe(fakeBodyPicture("parasaurolophus"));
+    else expect(door.querySelector("img")?.getAttribute("src")).toBe(drawTilePicture);
     expect(badgeOf(door)).toBeNull();
     expect(app.starts).toEqual([]);
     const layout = () => {

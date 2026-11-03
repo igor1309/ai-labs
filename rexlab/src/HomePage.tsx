@@ -74,6 +74,8 @@ export type HomePageProps = {
   moreComing: string;
   // How many tiles share a row; each row is its own layer of earth.
   tilesPerLayer: number;
+  // A game whose tile shows it being played, apart from its picture in the sky.
+  tilePictures?: Partial<Record<HomeGame, string>>;
   onCompareDinosaurs: () => void;
   onCatalogue: () => void;
   onCare: () => void;
@@ -137,7 +139,8 @@ export function HomePage({
   sandWritingPicture,
   onSandWriting,
   onLabyrinth,
-  tilesPerLayer
+  tilesPerLayer,
+  tilePictures = {}
 }: HomePageProps) {
   const page = useRef<HTMLElement>(null);
   useLayoutEffect(() => motion(page.current!), [motion]);
@@ -251,9 +254,10 @@ export function HomePage({
     if (!entry) return [game, undefined];
     const prefix = game.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
     const Symbol = entry.symbol;
+    const tilePicture = tilePictures[game];
     return [game, (
       <Button key={game} className={`card home-ground-tile ${prefix}-tile`} data-turn-part={`tile-${game}`} aria-label={labels[game]} onClick={entry.onOpen}>
-        <span className="home-tile-pocket">{entry.picture}</span>
+        <span className="home-tile-pocket">{tilePicture === undefined ? entry.picture : <Picture className={`${prefix}-tile-picture`} src={tilePicture} alt="" width={800} height={600} />}</span>
         {newGames.includes(game) && <span className="home-new" role="img" aria-label={text.homeNew}><Sparkles size={14} aria-hidden="true" /></span>}
         <span className={`${prefix}-tile-row home-tile-footer`}>
           <span className={`${prefix}-tile-symbol home-tile-symbol`} aria-hidden="true">

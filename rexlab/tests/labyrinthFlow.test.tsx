@@ -1,3 +1,4 @@
+import mazeTilePicture from "../src/assets/home/tile-maze.webp";
 import { gameDoor } from "./support.ts";
 import { act, fireEvent, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
@@ -154,7 +155,7 @@ describe("labyrinth through the app", () => {
     openLabyrinthApp({ language: "ru" });
     const tile = homeTile("ЛАБИРИНТ");
     expect(tile.querySelector(".lucide-route")).not.toBeNull();
-    expect(tile.querySelector("img")?.getAttribute("src")).toBe(fakeBodyPicture("ankylosaurus"));
+    expect(tile.querySelector("img")?.getAttribute("src")).toBe(mazeTilePicture);
     fireEvent.click(tile);
     expect(mazeBoard()).not.toBeNull();
   });

@@ -161,7 +161,7 @@ function expectScreenIn(theme: Theme, part: Element = document.body) {
       [...element.childNodes].some((node) => node.nodeType === Node.TEXT_NODE && node.textContent?.trim())
   );
   const tokens = styleOf(document.documentElement);
-  const sharedColours = ["quiet", "strong", "action", "label", "reward", "pocket-1", "pocket-2", "strata-1", "strata-2", "strata-3", "sky-top", "sky-bottom", "sky-halo", "sky-core"]
+  const sharedColours = ["quiet", "strong", "action", "label", "reward", "pocket-1", "pocket-2", ...["compare", "explore", "pairs", "bones", "dig", "sort", "care", "draw", "maze", "puzzle", "teeth", "color"].map((game) => `pocket-${game}`), "strata-1", "strata-2", "strata-3", "sky-top", "sky-bottom", "sky-halo", "sky-core"]
     .map((name) => tokens.getPropertyValue(`--ds-${name}`));
   const colours = [...Object.values(PALETTE[theme]), ...sharedColours, ...OVERLAYS];
 
@@ -929,9 +929,9 @@ describe("the SORT card", () => {
     const best = card.querySelector(".sort-tile-best") ?? card;
     const colours = PALETTE[theme];
     const parts = {
-      // Ground tiles take their surfaces and ink from the dig-site tokens.
-      card: [getComputedStyle(card.querySelector(".home-tile-pocket")!).backgroundColor, getComputedStyle(document.documentElement).getPropertyValue("--ds-pocket-1")],
-      symbol: [getComputedStyle(symbol).color, getComputedStyle(document.documentElement).getPropertyValue("--ds-action")],
+      // SORT's tile takes its own pocket and symbol colours from the dig-site tokens.
+      card: [getComputedStyle(card.querySelector(".home-tile-pocket")!).backgroundColor, getComputedStyle(document.documentElement).getPropertyValue("--ds-pocket-sort")],
+      symbol: [getComputedStyle(symbol).color, getComputedStyle(document.documentElement).getPropertyValue("--ds-game-sort")],
       words: [getComputedStyle(title).color, getComputedStyle(document.documentElement).getPropertyValue("--ds-on-label")],
     };
     expect(Object.entries(parts).filter(([, [seen, wanted]]) => !sameColour(seen ?? "", wanted ?? ""))).toEqual([]);

@@ -3,7 +3,7 @@ import { emptyLabyrinth, largestSize } from "./support.ts";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import { App } from "../src/App.tsx";
+import { App, HOME_TILE_PICTURES } from "../src/App.tsx";
 import { HomePage, type HomeGame } from "../src/HomePage.tsx";
 import { LANGUAGES } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
@@ -243,12 +243,12 @@ describe("the home page", () => {
     expect(tile.querySelector(".pairs-tile-stars")).toBeNull();
   });
 
-  it("offers sand writing as a tile of a Parasaurolophus, its pencil symbol beside its title", () => {
+  it("offers sand writing as a tile of a Parasaurolophus traced in sand, its pencil symbol beside its title", () => {
     openHomePage();
     const tile = homeTile("SAND WRITING");
     expect(tile.textContent).toBe("DRAW");
     expect(symbolsOf(tile)).toEqual(["pencil"]);
-    expect(tile.querySelector("img")?.getAttribute("src")).toBe(fakeBodyPicture("parasaurolophus"));
+    expect(tile.querySelector("img")?.getAttribute("src")).toBe(HOME_TILE_PICTURES.sandWriting);
   });
 
   it("brightens find the pair's tile under a pointer, and presses it in", async () => {
@@ -343,13 +343,13 @@ describe("the home page", () => {
     expect(symbolsOf(tile)).toEqual(["scale"]);
   });
 
-  it("offers the sorting game as a SORT card with a dinosaur's picture beside a symbol of shapes, and no best score before a board is finished", () => {
+  it("offers the sorting game as a SORT card with a Pachycephalosaurus card over its basket beside a symbol of shapes, and no best score before a board is finished", () => {
     openHomePage();
 
     const sort = screen.getByRole("button", { name: "SORT" });
     expect(sort.textContent).toBe("SORT");
     expect(symbolsOf(sort)).toEqual(["shapes"]);
-    expect(sort.querySelector("img.sort-tile-picture")?.getAttribute("src")).toBe(fakeBodyPicture("pachycephalosaurus"));
+    expect(sort.querySelector("img.sort-tile-picture")?.getAttribute("src")).toBe(HOME_TILE_PICTURES.sort);
     const title = sort.querySelector(".sort-tile-title");
     expect(title?.previousElementSibling?.contains(sort.querySelector("svg.lucide-shapes"))).toBe(true);
     expect(sort.querySelector(".sort-tile-best")).toBeNull();
@@ -593,10 +593,15 @@ describe("the large card", () => {
     const doubled = await openedBy(game, (user) => user.dblClick(featuredCard()));
     const once = await openedBy(other, (user) => user.click(homeTile(TEXTS.en[key])));
 
-    // The home page's pictures load in the order its tiles stand; DRAW's
-    // tile picture is not asked for while its sky shows sand.
-    const tileOnly = game === "sandWriting" ? [fakeBodyPicture("parasaurolophus")] : [];
-    expect({ ...doubled, asked: [...doubled.asked].sort() }).toEqual({ ...once, asked: once.asked.filter((url) => !tileOnly.includes(url)).sort() });
+    // The home page's pictures load in the order its tiles stand. A game
+    // whose tile shows it being played asks for that picture only as a tile,
+    // and for its sky's own picture only when featured; DRAW's sky is sand.
+    const tilePicture = HOME_TILE_PICTURES[game];
+    const tileOnly = tilePicture === undefined ? [] : [tilePicture];
+    const skyOnly = doubled.asked.filter((url) => !once.asked.includes(url));
+    expect(once.asked.filter((url) => !doubled.asked.includes(url))).toEqual(tileOnly);
+    expect(skyOnly.length).toBe(tilePicture === undefined || game === "sandWriting" ? 0 : 1);
+    expect({ ...doubled, asked: doubled.asked.filter((url) => !skyOnly.includes(url)).sort() }).toEqual({ ...once, asked: once.asked.filter((url) => !tileOnly.includes(url)).sort() });
     expect(once.shown).not.toContain("games-tiles");
   });
 });

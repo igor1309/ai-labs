@@ -49,17 +49,20 @@ for (const theme of ["light", "dark"]) for (const size of ["wide", "tall", "tall
     };
     matches('.home-layer[data-depth="1"]', { "background-color": "strata-1" });
     matches('.home-layer[data-depth="2"]', { "background-color": "strata-2" });
-    matches('.home-layer[data-depth="1"] .home-tile-pocket', { "background-color": "pocket-1" });
-    matches('.home-layer[data-depth="2"] .home-tile-pocket', { "background-color": "pocket-2" });
+    // Each game's pocket and symbol take the game's own colours, at any depth; SOON's pocket is the deeper earth.
+    for (const [tile, game] of [["compare", "compare"], ["catalogue", "explore"], ["pairs", "pairs"], ["skeletons", "bones"], ["dig", "dig"], ["sort", "sort"], ["sand-writing", "draw"], ["labyrinth", "maze"], ["picture-puzzle", "puzzle"], ["whose-jaw", "teeth"], ["coloring", "color"]]) {
+      matches(`.${tile}-tile .home-tile-pocket`, { "background-color": `pocket-${game}` });
+      matches(`.${tile}-tile .home-tile-symbol`, { color: `game-${game}`, width: "size-tile-icon", height: "size-tile-icon" });
+    }
+    matches('.more-coming .home-tile-pocket', { "background-color": "pocket-2" });
     matches('.home-tile-footer', { "background-color": "label", color: "on-label", "border-radius": "radius-pill", "padding-left": "chip-pad-x-lead", "padding-right": "chip-pad-x" });
     matches('.home-tile-title', { "font-size": "size-label" });
-    matches('.home-tile-symbol', { color: "action" });
     matches('.home-new', { "background-color": "reward", color: "on-reward" });
     matches('.home-bedrock', { "background-color": "strata-3", color: "ink" });
     matches('.home-parent-note', { "font-size": "size-foot" });
     const phone = size === "tall-narrow" || size === "wide-short";
     expect(style(part('.home-tile-pocket')).height).toBe(phone ? "88px" : "96px");
-    expect(style(part('.home-tile-symbol')).width).toBe(phone ? "16px" : "18px");
+    expect(style(part(".home-tile-symbol")).width).toBe(phone ? "18px" : "22px");
     expect(style(part('.home-tile-pocket')).borderRadius).toBe(`${token("radius-pocket-top")} ${token("radius-pocket-top")} ${token("radius-pocket-bottom")} ${token("radius-pocket-bottom")}`);
   });
 }

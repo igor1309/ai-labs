@@ -177,7 +177,7 @@ describe("the dig game's tile", () => {
     const tile = homeTile("DIG");
     expect(symbolOf(tile.querySelector(".dig-tile-symbol") ?? tile)).toBe("brush");
     expect(tile.querySelector(".dig-tile-count")).toBeNull();
-    const picture = getComputedStyle(tile.querySelector(".dig-fossil-picture")!);
+    const picture = getComputedStyle(tile.querySelector(".home-tile-pocket img")!);
     // Artwork fills the ground's pocket; the pocket owns its shape.
     expect([picture.width, picture.height, picture.objectFit, picture.padding]).toEqual(["100%", "100%", "contain", "0px"]);
     fireEvent.click(tile);

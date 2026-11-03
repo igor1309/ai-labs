@@ -286,6 +286,31 @@ body:has(.sand-writing-screen) #version {
    actions, rewards and feedback; font, type and icon sizes; radii and spacing.
    Light and iPad are the defaults; theme and phone size vary independently. */
 :root {
+  --ds-game-explore: #C9583D;
+  --ds-pocket-explore: #D1A282;
+  --ds-game-pairs: #4F7FB5;
+  --ds-pocket-pairs: #ADAEA6;
+  --ds-game-bones: #3A4A72;
+  --ds-pocket-bones: #A69E92;
+  --ds-game-dig: #B07A2E;
+  --ds-pocket-dig: #CAAC7D;
+  --ds-game-sort: #8A4FA0;
+  --ds-pocket-sort: #BEA09F;
+  --ds-game-care: #D0607A;
+  --ds-pocket-care: #D4A594;
+  --ds-game-draw: #A8862A;
+  --ds-pocket-draw: #C8B07C;
+  --ds-game-maze: #5E8A3A;
+  --ds-pocket-maze: #B1B181;
+  --ds-game-puzzle: #2E8C86;
+  --ds-pocket-puzzle: #A3B298;
+  --ds-game-teeth: #C2453F;
+  --ds-pocket-teeth: #CF9C82;
+  --ds-game-color: #6E58C8;
+  --ds-pocket-color: #B6A2AB;
+  --ds-game-compare: #2F9BC1;
+  --ds-pocket-compare: #A3B6A9;
+  --ds-size-tile-icon: 22px;
   --ds-flag-edge: #00000026;
   --ds-flag-white: #FFFFFF;
   --ds-flag-uk-red: #C8102E;
@@ -504,6 +529,30 @@ body:has(.sand-writing-screen) #version {
 }
 
 [data-theme="dark"] {
+  --ds-game-explore: #D88773;
+  --ds-pocket-explore: #734531;
+  --ds-game-pairs: #80A3CA;
+  --ds-pocket-pairs: #4C5158;
+  --ds-game-bones: #717D99;
+  --ds-pocket-bones: #454042;
+  --ds-game-dig: #C69F69;
+  --ds-pocket-dig: #6B502D;
+  --ds-game-sort: #AB80BB;
+  --ds-pocket-sort: #5E4251;
+  --ds-game-care: #DD8D9F;
+  --ds-pocket-care: #754845;
+  --ds-game-draw: #C0A866;
+  --ds-pocket-draw: #68542B;
+  --ds-game-maze: #8BAB71;
+  --ds-pocket-maze: #505530;
+  --ds-game-puzzle: #69ACA8;
+  --ds-pocket-puzzle: #415649;
+  --ds-game-teeth: #D37975;
+  --ds-pocket-teeth: #703F32;
+  --ds-game-color: #9787D7;
+  --ds-pocket-color: #56455E;
+  --ds-game-compare: #69B7D2;
+  --ds-pocket-compare: #415A5C;
   --ds-sky-top: #0E1630;
   --ds-sky-bottom: #27304F;
   --ds-sky-body: #F1E6C8;
@@ -546,6 +595,7 @@ body:has(.sand-writing-screen) #version {
 
 html[data-size="tall-narrow"],
 html[data-size="wide-short"] {
+  --ds-size-tile-icon: 18px;
   --ds-size-display: 50px;
   --ds-size-title: 28px;
   --ds-size-action: 26px;
@@ -12862,6 +12912,22 @@ html[data-size="wide-short"] .home.home-dig-site .home-today-art { width: 44%; r
   box-shadow: inset 0 6px 10px var(--ds-pocket-shadow);
 }
 .home-layer[data-depth="2"] .home-tile-pocket { background: var(--ds-pocket-2); }
+/* Each game has its own pocket and symbol colour, at every depth. */
+.home-ground .compare-tile { --home-tile-pocket: var(--ds-pocket-compare); --home-tile-symbol: var(--ds-game-compare); }
+.home-ground .catalogue-tile { --home-tile-pocket: var(--ds-pocket-explore); --home-tile-symbol: var(--ds-game-explore); }
+.home-ground .pairs-tile { --home-tile-pocket: var(--ds-pocket-pairs); --home-tile-symbol: var(--ds-game-pairs); }
+.home-ground .skeletons-tile { --home-tile-pocket: var(--ds-pocket-bones); --home-tile-symbol: var(--ds-game-bones); }
+.home-ground .dig-tile { --home-tile-pocket: var(--ds-pocket-dig); --home-tile-symbol: var(--ds-game-dig); }
+.home-ground .sort-tile { --home-tile-pocket: var(--ds-pocket-sort); --home-tile-symbol: var(--ds-game-sort); }
+.home-ground .care-tile { --home-tile-pocket: var(--ds-pocket-care); --home-tile-symbol: var(--ds-game-care); }
+.home-ground .sand-writing-tile { --home-tile-pocket: var(--ds-pocket-draw); --home-tile-symbol: var(--ds-game-draw); }
+.home-ground .labyrinth-tile { --home-tile-pocket: var(--ds-pocket-maze); --home-tile-symbol: var(--ds-game-maze); }
+.home-ground .picture-puzzle-tile { --home-tile-pocket: var(--ds-pocket-puzzle); --home-tile-symbol: var(--ds-game-puzzle); }
+.home-ground .whose-jaw-tile { --home-tile-pocket: var(--ds-pocket-teeth); --home-tile-symbol: var(--ds-game-teeth); }
+.home-ground .coloring-tile { --home-tile-pocket: var(--ds-pocket-color); --home-tile-symbol: var(--ds-game-color); }
+.home-ground .home-ground-tile:not(.more-coming) .home-tile-pocket { background: var(--home-tile-pocket); }
+.home-ground .more-coming .home-tile-pocket { background: var(--ds-pocket-2); }
+
 .home-tile-pocket > .picture,
 .home-tile-pocket > .face-off,
 .home-tile-pocket > .picture-puzzle-tile-art,
@@ -12902,11 +12968,11 @@ html[data-size="wide-short"] .home.home-dig-site .home-today-art { width: 44%; r
   display: flex;
   position: static;
   flex: none;
-  width: 18px;
-  height: 18px;
+  width: var(--ds-size-tile-icon);
+  height: var(--ds-size-tile-icon);
   border-radius: 0;
   background: transparent;
-  color: var(--ds-action);
+  color: var(--home-tile-symbol, var(--ds-action));
 }
 .home-ground .home-tile-symbol svg { width: 100%; height: 100%; }
 .home-ground .home-tile-title {
@@ -12969,5 +13035,4 @@ html:is([data-size="tall-narrow"], [data-size="wide-short"]) .home-layer .tiles-
   min-height: 0;
 }
 html:is([data-size="tall-narrow"], [data-size="wide-short"]) .home-tile-pocket { height: 88px; padding: 8px 8px 2px; }
-html:is([data-size="tall-narrow"], [data-size="wide-short"]) .home-ground .home-tile-symbol { width: 16px; height: 16px; }
 html[data-size="tall-narrow"] .home-bedrock { flex-direction: column; align-items: flex-start; justify-content: flex-start; min-height: 110px; padding-top: 22px; }

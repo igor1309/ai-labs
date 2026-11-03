@@ -1,4 +1,4 @@
-import digTile from "../src/assets/home/dig-therizinosaurus.webp";
+import digTile from "../src/assets/home/tile-dig.webp";
 import { act, fireEvent, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { AgeLevel } from "../src/ageLevel.ts";

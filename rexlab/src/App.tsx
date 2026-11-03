@@ -46,6 +46,14 @@ import { turnMotion, type TurnMotion, type TurnMotionSeams } from "./turnMotion.
 import pairsTile from "./assets/home/pairs-triceratops.webp";
 import digTile from "./assets/home/dig-therizinosaurus.webp";
 import colorPage from "./assets/home/color-mosasaurus.webp";
+import careTilePicture from "./assets/home/tile-care.webp";
+import colorTilePicture from "./assets/home/tile-color.webp";
+import digTilePicture from "./assets/home/tile-dig.webp";
+import drawTilePicture from "./assets/home/tile-draw.webp";
+import mazeTilePicture from "./assets/home/tile-maze.webp";
+import puzzleTilePicture from "./assets/home/tile-puzzle.webp";
+import sortTilePicture from "./assets/home/tile-sort.webp";
+import teethTilePicture from "./assets/home/tile-teeth.webp";
 import { useWhoseJawGame, type WhoseJawGameProps, type WhoseJawPhase } from "./whoseJawGame.tsx";
 
 export type LanguageStore = {
@@ -185,6 +193,18 @@ const SKELETONS_TILE = "brachiosaurus";
 
 // Home shows six tiles to a layer of earth where the page is wide enough, three elsewhere.
 const homeTilesPerLayer = (width: number) => width >= 1000 ? 6 : 3;
+
+// The tiles that show their game being played; each game's sky keeps its own picture.
+export const HOME_TILE_PICTURES: Partial<Record<HomeGame, string>> = {
+  care: careTilePicture,
+  coloring: colorTilePicture,
+  dig: digTilePicture,
+  sandWriting: drawTilePicture,
+  labyrinth: mazeTilePicture,
+  picturePuzzle: puzzleTilePicture,
+  sort: sortTilePicture,
+  whoseJaw: teethTilePicture
+};
 
 // The dinosaurs on the care, jaw and colouring games' tiles; pairs and dig
 // show the design's own pictures of their games.
@@ -739,6 +759,7 @@ export function App({
             labyrinth={{ picture: bodyPicture("ankylosaurus"), stars: labyrinth.stars }}
             moreComing={bodyPicture(MORE_COMING)}
             tilesPerLayer={tilesPerLayer}
+            tilePictures={HOME_TILE_PICTURES}
             onCompareDinosaurs={openCompare}
             onCatalogue={openCatalogue}
             onCare={openCare}
