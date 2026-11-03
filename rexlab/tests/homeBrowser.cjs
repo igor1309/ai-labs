@@ -172,6 +172,10 @@ exports.runHome = async function(sizes) {
               title: box(title), actions: box(part('.home-today-actions')), art: box(part('.home-today-art')), sky: box(sky),
               titleFits: title.scrollWidth <= title.clientWidth + 1,
               images: [...part('.home-today-art').querySelectorAll('img')].map(box),
+              // Each shadow beside the width its picture is drawn at (4:3, contained in its box).
+              shadows: ['::before', '::after'].map(pseudo => getComputedStyle(part('.home-today-art'), pseudo)).filter(style => style.display !== 'none')
+                .map(style => ({ left: part('.home-today-art').getBoundingClientRect().left + parseFloat(style.left), width: parseFloat(style.width) })),
+              drawn: [...part('.home-today-art').querySelectorAll('img')].map(e => { const b = e.getBoundingClientRect(); const width = Math.min(b.width, b.height * 4 / 3); return { left: b.left + (b.width - width) / 2, width }; }),
               tiles: [...document.querySelectorAll('.tiles-grid > *')].map(box),
               layerColumns: [...document.querySelectorAll('.tiles-grid')].map(grid => getComputedStyle(grid).gridTemplateColumns.split(' ').length),
               pocketHeights: [...document.querySelectorAll('.home-tile-pocket')].map(e => e.getBoundingClientRect().height),
@@ -200,6 +204,7 @@ exports.runHome = async function(sizes) {
           assert(measured.actions.bottom <= measured.sky.bottom, `${label}: actions clipped`);
           // The earth's wave rises 20px into the sky and a shadow lies 6px under its art's feet.
           assert(measured.art.bottom <= measured.sky.bottom - 26, `${label}: today's shadow reaches into the earth`);
+          measured.shadows.forEach((shadow, index) => { const drawn = measured.drawn[index]; if (drawn) assert(shadow.left >= drawn.left - 1 && shadow.left + shadow.width <= drawn.left + drawn.width + 1, `${label}: shadow ${index} spreads past its dinosaur`); });
           assert(measured.images.every(b => b.width > 0 && b.height > 0 && (b.cropped || (b.x >= 0 && b.right <= width + 1 && b.bottom <= measured.sky.bottom))), `${label}: artwork clipped`);
           assert(measured.tiles.every(b => b.height >= 44), `${label}: tile targets`);
           assert(measured.titlesFit, `${label}: tile names clipped`);

@@ -12567,23 +12567,38 @@ html .home.home-dig-site {
   background: transparent; color: var(--ds-ink); font-size: var(--ds-size-number); font-weight: 800;
 }
 .home.home-dig-site .home-sky .featured-card .featured-card-badge svg { color: var(--ds-reward); }
+/* The art stands clear of the earth's wave, which rises 20px into the sky,
+   so the shadow under its feet lies whole on the sky. It is a size
+   container, so each shadow can be measured from the picture it lies
+   under. */
 .home.home-dig-site .home-today-art {
   position: absolute; display: flex; align-items: flex-end; justify-content: center;
   right: 7%; bottom: 28px; width: 49%; height: 276px;
+  container-type: size;
+  /* The face-off's pictures' boxes, as shares of the art. */
+  --face-left-w: 49.15cqw; --face-left-h: 80cqh;
+  --face-right-w: 44.07cqw; --face-right-h: 100cqh;
   animation: rise-in var(--motion-screen) var(--ease-out) var(--motion-stagger) both;
 }
+/* Today's pictures are drawn at 4:3 and stand on the bottom of their box,
+   so a picture's drawn width is its box's width or 4/3 of its height,
+   whichever is less; its shadow is centred under that width. */
+.home.home-dig-site .home-today-art img { object-position: center bottom; }
 .home.home-dig-site .home-today-art::before,
 .home.home-dig-site .home-today-art::after {
-  content: ""; position: absolute; bottom: -6px; left: 6%; width: 78%; height: 18px;
+  content: ""; position: absolute; bottom: -6px; height: 18px;
+  --drawn: min(100cqw, 133.33cqh); --centre: 50cqw; --share: .6;
+  width: calc(var(--drawn) * var(--share)); left: calc(var(--centre) - var(--drawn) * var(--share) / 2);
   border-radius: 50%; background: var(--ds-ground-shadow);
 }
 .home.home-dig-site .home-today-art::after { display: none; }
-/* The art stands clear of the earth's wave, which rises 20px into the sky,
-   so the shadow under its feet lies whole on the sky. */
-/* One picture casts a shadow under its own feet, not past them. */
-.home.home-dig-site .home-today-art::before { left: 20%; width: 60%; }
-.home.home-dig-site .home-sky .featured-card[data-game="compare"] .home-today-art::before { width: 37%; }
-.home.home-dig-site .home-sky .featured-card[data-game="compare"] .home-today-art::after { display: block; left: 59%; width: 36%; }
+.home.home-dig-site .home-sky .featured-card[data-game="compare"] .home-today-art::before {
+  --drawn: min(var(--face-left-w), var(--face-left-h) * 4 / 3); --centre: calc(var(--face-left-w) / 2); --share: .75;
+}
+.home.home-dig-site .home-sky .featured-card[data-game="compare"] .home-today-art::after {
+  display: block;
+  --drawn: min(var(--face-right-w), var(--face-right-h) * 4 / 3); --centre: calc(100cqw - var(--face-right-w) / 2); --share: .82;
+}
 .home.home-dig-site .home-today-art > * { position: relative; z-index: 1; }
 /* The sky drifts at half the page's speed on the scroll timeline, which
    the browser runs with the scroll; without it the sky simply scrolls.
@@ -12607,8 +12622,8 @@ html .home.home-dig-site {
   flex: none; width: 100%; height: 100%; max-height: none; margin: 0; padding: 0; object-fit: contain;
 }
 .home.home-dig-site .home-today-art .face-off { width: 100%; height: 100%; padding: 0; flex: none; }
-.home.home-dig-site .home-today-art .face-off-left { width: 49.15%; height: 80%; }
-.home.home-dig-site .home-today-art .face-off-right { width: 44.07%; height: 100%; }
+.home.home-dig-site .home-today-art .face-off-left { width: var(--face-left-w); height: var(--face-left-h); }
+.home.home-dig-site .home-today-art .face-off-right { width: var(--face-right-w); height: var(--face-right-h); }
 .home.home-dig-site .home-sky-wave { position: absolute; bottom: 0; left: 0; width: 100%; height: 30px; fill: var(--ds-strata-1); pointer-events: none; }
 
 
@@ -12623,7 +12638,7 @@ html[data-size="tall-narrow"] .home.home-dig-site .home-sky { height: auto; min-
 html[data-size="tall"] .home.home-dig-site .home-sky .featured-card,
 html[data-size="tall-narrow"] .home.home-dig-site .home-sky .featured-card { padding-bottom: 203px; }
 html[data-size="tall"] .home.home-dig-site .home-today-art,
-html[data-size="tall-narrow"] .home.home-dig-site .home-today-art { width: 100%; height: 160px; right: 0; }
+html[data-size="tall-narrow"] .home.home-dig-site .home-today-art { width: 100%; height: 160px; right: 0; --face-left-w: 51cqw; --face-left-h: 140px; --face-right-w: 45cqw; --face-right-h: 144px; }
 html[data-size="tall"] .home.home-dig-site .home-today-copy,
 html[data-size="tall-narrow"] .home.home-dig-site .home-today-copy { width: calc(100% - var(--ds-page) * 2); }
 html[data-size="tall-narrow"] .home.home-dig-site { padding-top: calc(62px + env(safe-area-inset-top)); --home-gap: 20px; --home-sky-fade: 480px; }
@@ -12643,8 +12658,6 @@ html[data-size="tall-narrow"] .home.home-dig-site .home-sky-body { top: 110px; l
 html[data-size="tall-narrow"] .home.home-dig-site .home-sky-body span { inset: 70px; }
 html[data-size="tall-narrow"] .home.home-dig-site .home-today-art::before,
 html[data-size="tall-narrow"] .home.home-dig-site .home-today-art::after { height: 16px; }
-html[data-size="tall-narrow"] .home.home-dig-site .home-today-art .face-off-left { width: 51%; height: 140px; }
-html[data-size="tall-narrow"] .home.home-dig-site .home-today-art .face-off-right { width: 45%; height: 144px; }
 /* The museum keeps its accessible name when its word leaves the row. */
 html[data-size="tall-narrow"] .home.home-dig-site .home-museum-word,
 html[data-size="wide-short"] .home.home-dig-site .home-museum-word {
