@@ -16,7 +16,7 @@ struct ReadingScrollAcknowledgementTests {
     @Test(arguments: [false, true])
     func acknowledgingAScrollHasNoEffect(atBottom: Bool) {
 
-        assert(makeReading(atBottom: atBottom, acknowledgement: previous), .scrolled(atBottom: atBottom, interaction: latest), effect: nil)
+        assert(makeReading(atBottom: atBottom, acknowledgement: previous), .scrolled(atBottom: atBottom, interaction: latest), delivers: nil)
     }
 
     @Test(arguments: [false, true])
@@ -28,7 +28,7 @@ struct ReadingScrollAcknowledgementTests {
     @Test(arguments: [false, true])
     func legacyScrollHasNoEffect(atBottom: Bool) {
 
-        assert(makeReading(atBottom: atBottom, acknowledgement: latest), .scrolled(atBottom: atBottom), effect: nil)
+        assert(makeReading(atBottom: atBottom, acknowledgement: latest), .scrolled(atBottom: atBottom), delivers: nil)
     }
 
     @Test func jumpKeepsTheIdentityOfTheScrollItFollows() {
@@ -38,7 +38,7 @@ struct ReadingScrollAcknowledgementTests {
 
     @Test func jumpHasNoEffect() {
 
-        assert(makeReading(atBottom: true, acknowledgement: latest), .jumpToLive, effect: nil)
+        assert(makeReading(atBottom: true, acknowledgement: latest), .jumpToLive, delivers: nil)
     }
 
     @Test func textUpdatesKeepTheReaderAcknowledgement() {
@@ -48,7 +48,7 @@ struct ReadingScrollAcknowledgementTests {
 
     @Test func textUpdateHasNoEffect() {
 
-        assert(makeReading(atBottom: true, acknowledgement: latest), .textUpdated(.init(status: .off, entries: [])), effect: nil)
+        assert(makeReading(atBottom: true, acknowledgement: latest), .textUpdated(.init(status: .off, entries: [])), delivers: nil)
     }
 }
 
