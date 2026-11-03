@@ -108,10 +108,18 @@ public func startRehearsal(boundary: ComposerBoundary, root: URL, call: Rehearsa
     throw RehearsalFailure.ended
 }
 
-/// The call app leaves; returns once detection has ended the call and the recording stopped.
-@MainActor
-public func endRehearsalCall(_ composition: AudelinMenu, call: RehearsalCallApp) async {
+/// The call app leaves; returns once detection has ended the call and the
+/// recording stopped, with how long stopping took from the recording's end
+/// to its final transcript, when the end was seen.
+@MainActor @discardableResult
+public func endRehearsalCall(_ composition: AudelinMenu, call: RehearsalCallApp) async -> Duration? {
     call.leave()
-    for await state in await composition.states() where state.phase == .idle { return }
+    let clock = ContinuousClock()
+    var ending: ContinuousClock.Instant?
+    for await state in await composition.states() {
+        if state.phase == .ending, ending == nil { ending = clock.now }
+        if state.phase == .idle { return ending.map { $0.duration(to: clock.now) } }
+    }
+    return nil
 }
 private enum RehearsalFailure: Error { case cannotRecord(String), ended }
