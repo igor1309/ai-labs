@@ -2,6 +2,7 @@
 
 ## 2026-11-03
 
+- LAB-925: Care's FRIENDS is the dig site: HOME, BACK, the title and the heart count in the sky with NEW VISITOR under them, the friend cards in the sand, as many to a row as the window holds; with no friends, HOME and a count of 0 stay and the nest lies in a pit.
 - LAB-914: Home is the dig site: today's game in the sky with PLAY and its progress, every other game as a pocket tile in deepening earth each with its dinosaur, a sparkle on games added since the first visit and SOON last, three to a layer on phones, the parents' note on the bedrock; one page scroll from sky to bedrock with a slower sky; the T. rex logo, and the language menu shows its flag. Each tile shows its game being played, in its game's own pocket and icon colours, light and dark; the theme and age-level buttons are line symbols. The COMPARE tile shows its Tyrannosaurus alone, and today's COLOR sky shows its page without a brush or paint dots.
 - Dig site: every Home game tile shows its game being played with its own dinosaur, cut to one or two things that read at tile size (a jaw for TEETH, a card over its basket for SORT, footprints to the Ankylosaurus for MAZE), and each game has its own colour on its pocket and icon, in Light and Dark.
 - Dig site: Home on iPhone and upright iPad has the age-level button again, beside language and theme, as on iPad landscape.

@@ -3,7 +3,10 @@ const assert = require('node:assert/strict');
 const { readFile, mkdir } = require('node:fs/promises');
 const { resolve, extname, join } = require('node:path');
 const { chromium } = require('playwright');
-const sizes = [[1133, 744, 5, 196, 116], [744, 1133, 2, 210, 220], [393, 852, 2, 216, 110], [375, 667, 2, 170, 96], [852, 393, 3, 130, 84], [600, 1000, 2, 210, 220], [1440, 900, 7, 196, 116], [320, 568, 2, 170, 96]];
+// Each size's columns, sand top, picture pocket and least title size: the
+// board's own title size where a board draws the window, and 18 px, still
+// readable, on a window narrower than its shape's boards.
+const sizes = [[1133, 744, 5, 196, 116, 34], [744, 1133, 2, 210, 220, 32], [393, 852, 2, 216, 110, 22], [375, 667, 2, 170, 96, 22], [852, 393, 3, 130, 84, 24], [600, 1000, 2, 210, 220, 18], [1440, 900, 7, 196, 116, 34], [320, 568, 2, 170, 96, 18]];
 async function settle(page) {
   await page.waitForFunction(() => !document.documentElement.hasAttribute('data-turning'));
   await page.evaluate(async () => {
@@ -21,7 +24,7 @@ async function main() {
   const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || undefined, headless: true });
   let checked = 0;
   try {
-    for (const [width, height, columns, sandTop, pocketHeight] of sizes) for (const language of ['en', 'ru']) for (const theme of ['light', 'dark']) {
+    for (const [width, height, columns, sandTop, pocketHeight, titleSize] of sizes) for (const language of ['en', 'ru']) for (const theme of ['light', 'dark']) {
       const context = await browser.newContext({ viewport: { width, height }, reducedMotion: 'reduce', serviceWorkers: 'block' });
       try {
         await context.route('http://friends.test/**', async route => {
@@ -50,6 +53,10 @@ async function main() {
           await page.locator('.friends-card').press('Enter');
           await page.locator('.friends-dig-site').waitFor();
           await settle(page);
+          if (!count) {
+            await page.waitForFunction(() => ['appearing', 'shown'].includes(document.querySelector('.no-friends-nest').dataset.picture));
+            await settle(page);
+          }
           const label = `${width}x${height} ${language} ${theme} ${count}`;
           const measured = await page.evaluate(() => {
             const q = s => document.querySelector(s);
@@ -66,6 +73,7 @@ async function main() {
               columns: q('.friends-grid') ? style('.friends-grid').gridTemplateColumns.split(' ').length : 0,
               cardNames: [...document.querySelectorAll('.friend-name')].every(fitting),
               titleFits: fitting(q('.friends-title-word')),
+              titleSize: parseFloat(style('.friends-title-word').fontSize),
               action: box('.new-visitor-button, .no-friends-button'),
               actionFits: fitting(q('.new-visitor-button, .no-friends-button')),
               wave: box('.friends-sand-wave'), pathWidth: q('.friends-sand-wave path').getBBox().width, sand: box('.friends-sand'),
@@ -73,6 +81,10 @@ async function main() {
               noHearts: cards.every(e => !e.querySelector('.friend-footer svg')),
               home: !!q('.friends-home svg.lucide-house'), back: !!q('.friends-back svg.lucide-arrow-left'),
               pit: q('.no-friends-picture') ? box('.no-friends-picture') : null,
+              nest: q('.no-friends-nest') && (() => {
+                const nest = q('.no-friends-nest'), b = nest.getBoundingClientRect();
+                return { box: b.toJSON(), drawn: nest.naturalWidth > 0 && style('.no-friends-nest').opacity === '1' && style('.no-friends-nest').visibility === 'visible', onTop: document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2) === nest };
+              })(),
               animations: cards.map(e => getComputedStyle(e).animationName),
               grid: q('.friends-grid') ? box('.friends-grid') : null
             };
@@ -81,6 +93,7 @@ async function main() {
           assert.equal(measured.count, `${count}`, label);
           assert(measured.home && measured.back, `${label}: navigation`);
           assert(measured.title.width > 1 && measured.titleFits, `${label}: visible title fits`);
+          assert(measured.titleSize >= titleSize, `${label}: title at ${measured.titleSize}px, under ${titleSize}px`);
           assert(measured.bar.every(b => Math.abs(b.y + b.height / 2 - (measured.bar[0].y + measured.bar[0].height / 2)) < 1), `${label}: bar stays one row`);
           assert(measured.cardNames && measured.actionFits && measured.noHearts, `${label}: complete names and action fit`);
           assert(measured.action.x >= 0 && measured.action.right <= width + 1, `${label}: action inside window`);
@@ -91,6 +104,11 @@ async function main() {
           assert.equal(measured.sand.y, sandTop, `${label}: sand starts at the design edge`);
           if (count) assert.equal(measured.pocketHeight, pocketHeight, `${label}: picture pocket height`);
           if (!count) assert.deepEqual([measured.pit.width, measured.pit.height], width < 600 ? [150, 150] : [200, 200], label);
+          if (!count) {
+            const { nest: { box: nest, drawn, onTop }, pit } = measured;
+            assert(nest.width > 0 && nest.height > 0 && drawn && onTop, `${label}: nest drawn`);
+            assert(nest.x >= pit.x && nest.right <= pit.right && nest.y >= pit.y && nest.bottom <= pit.bottom, `${label}: nest in the pit`);
+          }
           if (count) {
             assert(measured.animations.every(n => n === 'fade-in'), `${label}: reduced motion fades`);
             const sky = await page.locator('.friends-sky').boundingBox();
