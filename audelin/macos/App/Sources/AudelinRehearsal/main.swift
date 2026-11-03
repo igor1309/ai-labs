@@ -112,7 +112,7 @@ private func rehearse(_ options: Options, panel: FloatingPanel) async -> Int32 {
             reported = Int(audio) / every
             let footprint = footprint ?? footprintMiB()
             peak = max(peak, footprint)
-            let backlog = Double(min(micSent, callSent)) / rate - heard
+            let backlog = max(0, Double(min(micSent, callSent)) / rate - heard)
             report("\(reported * every / 60) min of audio in \(elapsed.seconds.rounded()) s, at most \(format(behind)) s behind, now \(format(backlog)) s\(voices.lagLine()), footprint \(footprint) MiB, peak \(peak) MiB")
         }
     }
