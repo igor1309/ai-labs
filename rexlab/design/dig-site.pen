@@ -27062,6 +27062,508 @@
     },
     {
       "type": "frame",
+      "id": "gw1gE",
+      "x": 4067,
+      "y": 12400,
+      "name": "COMPARE · result · new best · iPhone SE 375×667 · Light · whole page, scrolls (712)",
+      "theme": {
+        "mode": "light",
+        "device": "phone"
+      },
+      "clip": true,
+      "width": 375,
+      "height": 712,
+      "fill": {
+        "type": "gradient",
+        "gradientType": "linear",
+        "enabled": true,
+        "rotation": 180,
+        "size": {
+          "height": 1
+        },
+        "colors": [
+          {
+            "color": "$ds-sky-top",
+            "position": 0
+          },
+          {
+            "color": "$ds-sky-bottom",
+            "position": 0.4
+          }
+        ]
+      },
+      "layout": "none",
+      "children": [
+        {
+          "id": "wZ1DS",
+          "type": "ref",
+          "ref": "m8Jt7",
+          "name": "Layer 1 · Sand edge",
+          "x": 0,
+          "y": 160,
+          "width": 375,
+          "height": 24,
+          "descendants": {
+            "uZToM": {
+              "width": 375,
+              "height": 24,
+              "viewBox": [
+                0,
+                0,
+                375,
+                24
+              ],
+              "geometry": "M0 8 Q31.25 0 62.5 8 T125 8 Q156.25 16 187.5 8 T250 8 Q281.25 0 312.5 8 T375 8 L375 24 L0 24 Z",
+              "fill": "$ds-strata-1"
+            }
+          }
+        },
+        {
+          "id": "KEeW6",
+          "type": "ref",
+          "ref": "S542ia",
+          "name": "Celebration",
+          "x": 0,
+          "y": 20,
+          "width": 375,
+          "height": 170,
+          "descendants": {
+            "X5zcU": {
+              "x": 57,
+              "y": 12,
+              "width": 260,
+              "height": 150
+            },
+            "K9qAif": {
+              "x": 92,
+              "y": 28,
+              "width": 190,
+              "height": 115
+            },
+            "ArYMH": {
+              "x": 122,
+              "y": 45,
+              "width": 130,
+              "height": 80
+            },
+            "PryUO": {
+              "x": 36,
+              "y": 30
+            },
+            "yvgck": {
+              "x": 326,
+              "y": 38
+            },
+            "NpqbQ": {
+              "x": 60,
+              "y": 130
+            },
+            "Zei5T": {
+              "x": 306,
+              "y": 128
+            },
+            "KL73W": {
+              "x": 180,
+              "y": 2
+            },
+            "ClQ7i": {
+              "x": 14,
+              "y": 84
+            },
+            "a2EQn": {
+              "x": 350,
+              "y": 80
+            },
+            "y29Yn": {
+              "x": 240,
+              "y": 150
+            },
+            "g6DBi": {
+              "enabled": false
+            },
+            "k3GFg7": {
+              "x": 107,
+              "y": 20,
+              "width": 160,
+              "height": 120
+            },
+            "sbJOe": {
+              "enabled": false
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "cVQUC",
+          "x": 0,
+          "y": 176,
+          "name": "Layer 1 · Sand",
+          "width": 375,
+          "fill": "$ds-strata-1",
+          "layout": "vertical",
+          "gap": "$ds-space-m",
+          "padding": [
+            "$ds-space-14",
+            "$ds-space-20",
+            0,
+            "$ds-space-20"
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "id": "CRNuh",
+              "type": "ref",
+              "ref": "wFOlT",
+              "name": "Score",
+              "descendants": {
+                "icigh": {
+                  "content": "9",
+                  "fontSize": 80
+                },
+                "puNM8": {
+                  "fontSize": "$ds-size-34",
+                  "lineHeight": 1.6
+                }
+              }
+            },
+            {
+              "id": "husit",
+              "type": "ref",
+              "ref": "iLaVY",
+              "name": "Stars",
+              "gap": "$ds-space-xs",
+              "descendants": {
+                "ryh7R": {
+                  "width": 29,
+                  "height": 29,
+                  "icon": "star-fill",
+                  "fill": "$ds-reward"
+                },
+                "fjZ6Z": {
+                  "width": 29,
+                  "height": 29,
+                  "icon": "star-fill",
+                  "fill": "$ds-reward"
+                },
+                "wvnsG": {
+                  "width": 29,
+                  "height": 29,
+                  "icon": "star-fill",
+                  "fill": "$ds-reward"
+                },
+                "C5ERgB": {
+                  "width": 29,
+                  "height": 29,
+                  "icon": "star-fill",
+                  "fill": "$ds-reward"
+                },
+                "DIqoz": {
+                  "width": 29,
+                  "height": 29,
+                  "icon": "star-fill",
+                  "fill": "$ds-reward"
+                },
+                "tatQG": {
+                  "width": 29,
+                  "height": 29,
+                  "icon": "star-fill",
+                  "fill": "$ds-reward"
+                },
+                "InxFG": {
+                  "width": 29,
+                  "height": 29,
+                  "icon": "star-fill",
+                  "fill": "$ds-reward"
+                },
+                "zpxEI": {
+                  "width": 29,
+                  "height": 29,
+                  "icon": "star-fill",
+                  "fill": "$ds-reward"
+                },
+                "fr58N": {
+                  "width": 29,
+                  "height": 29,
+                  "icon": "star-fill",
+                  "fill": "$ds-reward"
+                },
+                "BU8z1": {
+                  "width": 29,
+                  "height": 29
+                }
+              }
+            },
+            {
+              "type": "text",
+              "id": "bvHm7",
+              "name": "Praise",
+              "fill": "$ds-ink",
+              "content": "WELL DONE!",
+              "fontFamily": "$ds-font",
+              "fontSize": "$ds-size-34",
+              "fontWeight": "800"
+            },
+            {
+              "type": "frame",
+              "id": "QlWmV",
+              "name": "New best",
+              "fill": "$ds-reward",
+              "cornerRadius": "$ds-radius-tag",
+              "gap": "$ds-btn-gap",
+              "padding": [
+                "$ds-btn-gap",
+                "$ds-space-18",
+                "$ds-btn-gap",
+                "$ds-space-14"
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "k8dLb",
+                  "name": "Icon",
+                  "width": 28,
+                  "height": 28,
+                  "icon": "trophy-fill",
+                  "library": "phosphor",
+                  "fill": "$ds-on-reward"
+                },
+                {
+                  "type": "text",
+                  "id": "R8YxL",
+                  "name": "Label",
+                  "fill": "$ds-on-reward",
+                  "content": "NEW BEST!",
+                  "fontFamily": "$ds-font",
+                  "fontSize": "$ds-size-18",
+                  "fontWeight": "800"
+                },
+                {
+                  "type": "text",
+                  "id": "fpQYp",
+                  "name": "Number",
+                  "fill": "$ds-on-reward",
+                  "content": "9",
+                  "fontFamily": "$ds-font",
+                  "fontSize": "$ds-size-22",
+                  "fontWeight": "800"
+                }
+              ]
+            },
+            {
+              "id": "ZbgIu",
+              "type": "ref",
+              "ref": "I0PBB",
+              "name": "Level switch",
+              "descendants": {
+                "Dln4w": {
+                  "padding": [
+                    "$ds-space-m",
+                    "$ds-space-26"
+                  ]
+                },
+                "gKAVd": {
+                  "enabled": false
+                },
+                "sy9WI": {
+                  "padding": [
+                    "$ds-space-m",
+                    "$ds-space-26"
+                  ]
+                },
+                "xIBWN": {
+                  "enabled": false
+                },
+                "IEhDY": {
+                  "padding": [
+                    "$ds-space-m",
+                    "$ds-space-26"
+                  ]
+                },
+                "DiQ29": {
+                  "enabled": false
+                }
+              }
+            },
+            {
+              "id": "RaT4U",
+              "type": "ref",
+              "ref": "q7W1Cw",
+              "name": "Play again",
+              "width": "fill_container",
+              "height": 64,
+              "justifyContent": "center",
+              "descendants": {
+                "h8hp2i": {
+                  "icon": "rotate-ccw"
+                },
+                "kWZZZ": {
+                  "content": "PLAY AGAIN"
+                }
+              }
+            },
+            {
+              "id": "hCp38",
+              "type": "ref",
+              "ref": "YcGaY",
+              "name": "Home",
+              "width": "fill_container",
+              "height": 64,
+              "justifyContent": "center",
+              "descendants": {
+                "q6PILi": {
+                  "icon": "house"
+                },
+                "xdZD6": {
+                  "content": "HOME"
+                }
+              }
+            }
+          ],
+          "height": 500
+        },
+        {
+          "id": "wNr4m",
+          "type": "ref",
+          "ref": "m8Jt7",
+          "name": "Layer 2 · Ochre edge",
+          "x": 0,
+          "y": 676,
+          "width": 375,
+          "height": 24,
+          "descendants": {
+            "uZToM": {
+              "width": 375,
+              "height": 24,
+              "viewBox": [
+                0,
+                0,
+                375,
+                24
+              ],
+              "geometry": "M0 8 Q31.25 0 62.5 8 T125 8 Q156.25 16 187.5 8 T250 8 Q281.25 0 312.5 8 T375 8 L375 24 L0 24 Z",
+              "fill": "$ds-strata-2"
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "bY2RB",
+          "x": 0,
+          "y": 692,
+          "name": "Layer 2 · Ochre",
+          "width": 375,
+          "height": 20,
+          "fill": "$ds-strata-2",
+          "layout": "none"
+        },
+        {
+          "type": "frame",
+          "id": "pHOAM",
+          "x": 0,
+          "y": 0,
+          "name": "Status bar",
+          "width": 375,
+          "height": 20,
+          "padding": [
+            "$ds-space-18",
+            "$ds-space-2xl",
+            0,
+            "$ds-space-40"
+          ],
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "Ywsa4",
+              "name": "Time",
+              "fill": "$ds-ink",
+              "content": "9:41",
+              "fontFamily": "Inter",
+              "fontSize": "$ds-size-17",
+              "fontWeight": "600"
+            },
+            {
+              "type": "frame",
+              "id": "yXxrY",
+              "name": "Indicators",
+              "gap": "$ds-space-6",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "rrcP7",
+                  "name": "signal",
+                  "width": 18,
+                  "height": 18,
+                  "icon": "signal",
+                  "library": "lucide",
+                  "fill": "$ds-ink"
+                },
+                {
+                  "type": "icon",
+                  "id": "mf4xW",
+                  "name": "wifi",
+                  "width": 18,
+                  "height": 18,
+                  "icon": "wifi",
+                  "library": "lucide",
+                  "fill": "$ds-ink"
+                },
+                {
+                  "type": "icon",
+                  "id": "Dm1qj",
+                  "name": "battery-full",
+                  "width": 18,
+                  "height": 18,
+                  "icon": "battery-full",
+                  "library": "lucide",
+                  "fill": "$ds-ink"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "rectangle",
+          "id": "mk2Cp",
+          "x": 0,
+          "y": 665,
+          "name": "Fold · 667 (screen ends, page scrolls)",
+          "fill": "$ds-ink",
+          "width": 375,
+          "height": 4
+        },
+        {
+          "type": "frame",
+          "id": "hHIsE",
+          "x": 8,
+          "y": 671,
+          "name": "Fold label",
+          "fill": "$ds-ink",
+          "cornerRadius": "$ds-radius-4",
+          "padding": [
+            "$ds-space-3",
+            "$ds-space-s"
+          ],
+          "children": [
+            {
+              "type": "text",
+              "id": "THTAU",
+              "name": "Text",
+              "fill": "$ds-label",
+              "content": "screen ends at 667 · the page scrolls 45 more",
+              "fontFamily": "$ds-font",
+              "fontSize": "$ds-size-11",
+              "fontWeight": "700"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
       "id": "R4RR3",
       "x": 2712,
       "y": 10900,
@@ -541286,6 +541788,324 @@
           "fill": "$ds-ink",
           "width": 134,
           "height": 5
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "sMaL7",
+      "x": 20209,
+      "y": 15444,
+      "name": "DIG · reveal · new best · iPad mini upright 744×1133 · Light",
+      "theme": {
+        "mode": "light",
+        "device": "ipad"
+      },
+      "clip": true,
+      "width": 744,
+      "height": 1133,
+      "fill": {
+        "type": "gradient",
+        "gradientType": "linear",
+        "enabled": true,
+        "rotation": 180,
+        "size": {
+          "height": 1
+        },
+        "colors": [
+          {
+            "color": "$ds-sky-top",
+            "position": 0
+          },
+          {
+            "color": "$ds-sky-bottom",
+            "position": 0.5
+          }
+        ]
+      },
+      "layout": "none",
+      "children": [
+        {
+          "id": "fRcWQ",
+          "type": "ref",
+          "ref": "m8Jt7",
+          "name": "Layer 1 · Sand edge",
+          "x": 0,
+          "y": 460,
+          "width": 744,
+          "descendants": {
+            "uZToM": {
+              "width": 744,
+              "fill": "$ds-strata-1"
+            }
+          }
+        },
+        {
+          "id": "eqyCV",
+          "type": "ref",
+          "ref": "S542ia",
+          "name": "Celebration",
+          "x": 92,
+          "y": 50,
+          "descendants": {
+            "k3GFg7": {
+              "fill": {
+                "type": "image",
+                "enabled": true,
+                "url": "images/triceratops.webp",
+                "mode": "contain"
+              }
+            },
+            "sbJOe": {
+              "enabled": false
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "Nnn93",
+          "x": 0,
+          "y": 480,
+          "name": "Layer 1 · Sand",
+          "width": 744,
+          "height": 583,
+          "fill": "$ds-strata-1",
+          "layout": "vertical",
+          "gap": "$ds-space-20",
+          "padding": [
+            "$ds-space-40",
+            "$ds-space-56",
+            0,
+            "$ds-space-56"
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "SHYIY",
+              "name": "Name",
+              "fill": "$ds-ink",
+              "content": "TRICERATOPS",
+              "fontFamily": "$ds-font",
+              "fontSize": "$ds-size-display",
+              "fontWeight": "800",
+              "letterSpacing": -1
+            },
+            {
+              "id": "B0yqBg",
+              "type": "ref",
+              "ref": "TxEoT",
+              "name": "Dug up",
+              "descendants": {
+                "QMAvP": {
+                  "enabled": true
+                }
+              }
+            },
+            {
+              "type": "frame",
+              "id": "MoTn2",
+              "name": "New best",
+              "fill": "$ds-reward",
+              "cornerRadius": "$ds-radius-tag",
+              "gap": "$ds-btn-gap",
+              "padding": [
+                "$ds-btn-gap",
+                "$ds-space-18",
+                "$ds-btn-gap",
+                "$ds-space-14"
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "rqUXG",
+                  "name": "Icon",
+                  "width": 28,
+                  "height": 28,
+                  "icon": "trophy-fill",
+                  "library": "phosphor",
+                  "fill": "$ds-on-reward"
+                },
+                {
+                  "type": "text",
+                  "id": "zKWKi",
+                  "name": "Label",
+                  "fill": "$ds-on-reward",
+                  "content": "NEW BEST!",
+                  "fontFamily": "$ds-font",
+                  "fontSize": "$ds-size-20",
+                  "fontWeight": "800"
+                },
+                {
+                  "type": "text",
+                  "id": "k6vXS6",
+                  "name": "Number",
+                  "fill": "$ds-on-reward",
+                  "content": "5",
+                  "fontFamily": "$ds-font",
+                  "fontSize": "$ds-size-26",
+                  "fontWeight": "800"
+                }
+              ]
+            },
+            {
+              "id": "XKvOS",
+              "type": "ref",
+              "ref": "I0PBB",
+              "name": "Level switch"
+            },
+            {
+              "type": "frame",
+              "id": "a851e",
+              "name": "Buttons",
+              "gap": "$ds-space-l",
+              "alignItems": "center",
+              "children": [
+                {
+                  "id": "sNNwX",
+                  "type": "ref",
+                  "ref": "q7W1Cw",
+                  "name": "Play again",
+                  "descendants": {
+                    "h8hp2i": {
+                      "icon": "rotate-ccw"
+                    },
+                    "kWZZZ": {
+                      "content": "DIG AGAIN"
+                    }
+                  }
+                },
+                {
+                  "id": "ABWNC",
+                  "type": "ref",
+                  "ref": "YcGaY",
+                  "name": "Home",
+                  "descendants": {
+                    "q6PILi": {
+                      "icon": "house"
+                    },
+                    "xdZD6": {
+                      "content": "HOME"
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "GRP0G",
+          "type": "ref",
+          "ref": "m8Jt7",
+          "name": "Layer 2 · Ochre edge",
+          "x": 0,
+          "y": 1063,
+          "width": 744,
+          "descendants": {
+            "uZToM": {
+              "width": 744,
+              "fill": "$ds-strata-2"
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "B7qm0",
+          "x": 0,
+          "y": 1083,
+          "name": "Layer 2 · Ochre",
+          "width": 744,
+          "height": 50,
+          "fill": "$ds-strata-2",
+          "layout": "none"
+        },
+        {
+          "type": "frame",
+          "id": "bUNdk",
+          "x": 0,
+          "y": 0,
+          "name": "Status bar",
+          "width": 744,
+          "height": 24,
+          "padding": [
+            "$ds-space-xs",
+            "$ds-space-xl",
+            0,
+            "$ds-space-xl"
+          ],
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "F1bPwF",
+              "name": "Time",
+              "fill": "$ds-ink",
+              "content": "9:41  Mon 2 Nov",
+              "fontFamily": "Inter",
+              "fontSize": "$ds-size-13",
+              "fontWeight": "600"
+            },
+            {
+              "type": "frame",
+              "id": "JKybX",
+              "name": "Indicators",
+              "gap": "$ds-space-6",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "utJTf",
+                  "name": "signal",
+                  "width": 15,
+                  "height": 15,
+                  "icon": "signal",
+                  "library": "lucide",
+                  "fill": "$ds-ink"
+                },
+                {
+                  "type": "icon",
+                  "id": "l62vQ9",
+                  "name": "wifi",
+                  "width": 15,
+                  "height": 15,
+                  "icon": "wifi",
+                  "library": "lucide",
+                  "fill": "$ds-ink"
+                },
+                {
+                  "type": "icon",
+                  "id": "n2AJnN",
+                  "name": "battery-full",
+                  "width": 15,
+                  "height": 15,
+                  "icon": "battery-full",
+                  "library": "lucide",
+                  "fill": "$ds-ink"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "rectangle",
+          "cornerRadius": "$ds-radius-3",
+          "id": "iw18t",
+          "x": 212,
+          "y": 1121,
+          "name": "Home indicator",
+          "fill": "$ds-ink",
+          "width": 320,
+          "height": 5
+        },
+        {
+          "id": "UmeXx",
+          "type": "ref",
+          "ref": "SUciX",
+          "name": "Field guide",
+          "x": 644,
+          "y": 30
         }
       ]
     }
