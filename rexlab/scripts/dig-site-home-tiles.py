@@ -144,13 +144,18 @@ HEART = (
 
 
 def care():
-    """Oviraptor at its water bowl, a heart bubble over its head."""
+    """Oviraptor settled in its nest, a heart bubble over it."""
     c = Image.new("RGBA", (W, H))
-    bowl = fit(load("care-water.webp"), w=290)
-    put(c, bowl, 470, 590 - bowl.height, drop=dict(blur=8, alpha=60, dy=6))
-    ovi = fit(load("oviraptor.webp"), w=470, h=470)
-    put(c, ovi, 40, 590 - ovi.height)
-    c.alpha_composite(svg(HEART.format(x=640, y=130)))
+    nest = fit(load("care-nest.webp"), w=560)
+    nx, ny = 40, 600 - nest.height
+    put(c, nest, nx, ny, drop=dict(blur=10, alpha=60, dy=8))
+    ovi = fit(load("oviraptor.webp"), w=520, h=500)
+    put(c, ovi, 60, ny + nest.height // 2 - round(ovi.height * 0.78))
+    front = nest.copy()
+    cut = Image.new("L", nest.size, 0)
+    ImageDraw.Draw(cut).ellipse((-40, nest.height * 0.42, nest.width + 40, nest.height * 1.6), fill=255)
+    c.alpha_composite(masked(front, cut.filter(ImageFilter.GaussianBlur(6))), (nx, ny))
+    c.alpha_composite(svg('<g transform="scale(1.35) translate(-150 -20)">' + HEART.format(x=640, y=120) + '</g>'))
     return c
 
 
@@ -283,17 +288,31 @@ def puzzle():
 
 
 def color():
-    """A half-painted Mosasaurus colouring page, the brush still painting."""
+    """The Mosasaurus alone, head and body painted, tail still blank, the brush at the edge."""
+    done_full = load("color-mosasaurus-hatchling-done.webp")
+    hsv = done_full.convert("RGB").convert("HSV")
+    hue, sat, val = hsv.split()
+    scenery = ImageChops.multiply(ImageChops.multiply(
+        hue.point(lambda h: 255 if 20 <= h <= 140 else 0), sat.point(lambda v: 255 if v > 90 else 0)),
+        val.point(lambda v: 255 if v > 110 else 0))
+    scenery = scenery.filter(ImageFilter.MinFilter(3))
+    scenery = scenery.filter(ImageFilter.MaxFilter(15))
+    keep = ImageChops.invert(scenery)
+    box = (30, 200, 1104, 600)
+
+    def creature(im):
+        return masked(im, keep).crop(box)
+    blank, done = creature(load("color-mosasaurus-hatchling-blank.webp")), creature(done_full)
+    edge = Image.new("L", blank.size, 0)
+    ImageDraw.Draw(edge).polygon(
+        [(470 + 26 * math.sin(y / 34), y) for y in range(0, blank.height + 1, 8)] + [(blank.width, blank.height), (blank.width, 0)],
+        fill=255)
+    pic = blank.copy()
+    pic.alpha_composite(masked(done, edge))
+    pic = fit(pic, w=780, h=420)
     c = Image.new("RGBA", (W, H))
-    page = load("color-mosasaurus-explorer-draft.webp")
-    page = page.resize((640, round(page.height * 640 / page.width)), Image.LANCZOS)
-    sheet = Image.new("RGBA", (page.width + 36, page.height + 36))
-    sheet.alpha_composite(svg(f'<rect x="4" y="4" width="{page.width + 28}" height="{page.height + 28}" rx="22" fill="#FFFDF8" stroke="{INK}" stroke-width="6"/>',
-                              sheet.width, sheet.height))
-    sheet.alpha_composite(page, (18, 18))
-    sheet = sheet.rotate(-4, Image.BICUBIC, expand=True)
-    put(c, sheet, 10, 600 - sheet.height - 10, drop=dict(blur=12, alpha=80, dy=12))
-    c.alpha_composite(svg(BRUSH.format(x=250, y=330, r=-32, tip="#8A4FD0")))
+    put(c, pic, (W - pic.width) // 2, (H - pic.height) // 2 + 40)
+    c.alpha_composite(svg(BRUSH.format(x=455, y=300, r=-24, tip="#A35FCB")))
     return c
 
 
