@@ -176358,6 +176358,28 @@
               "alignItems": "center",
               "children": [
                 {
+                  "id": "p9viS",
+                  "type": "ref",
+                  "ref": "qWLc5",
+                  "name": "Title",
+                  "gap": 8,
+                  "descendants": {
+                    "T62ne": {
+                      "width": 36,
+                      "height": 36
+                    },
+                    "R8Y1D1": {
+                      "icon": "heart-handshake",
+                      "width": 20,
+                      "height": 20
+                    },
+                    "R8y9v": {
+                      "content": "FRIENDS",
+                      "fontSize": 22
+                    }
+                  }
+                },
+                {
                   "type": "frame",
                   "id": "ke91X",
                   "name": "Friend count",
@@ -176738,6 +176760,28 @@
               "gap": 12,
               "alignItems": "center",
               "children": [
+                {
+                  "id": "voYUu",
+                  "type": "ref",
+                  "ref": "qWLc5",
+                  "name": "Title",
+                  "gap": 8,
+                  "descendants": {
+                    "T62ne": {
+                      "width": 36,
+                      "height": 36
+                    },
+                    "R8Y1D1": {
+                      "icon": "heart-handshake",
+                      "width": 20,
+                      "height": 20
+                    },
+                    "R8y9v": {
+                      "content": "FRIENDS",
+                      "fontSize": 22
+                    }
+                  }
+                },
                 {
                   "type": "frame",
                   "id": "DaUxM",
@@ -179716,6 +179760,28 @@
               "gap": 12,
               "alignItems": "center",
               "children": [
+                {
+                  "id": "M7xCe9",
+                  "type": "ref",
+                  "ref": "qWLc5",
+                  "name": "Title",
+                  "gap": 8,
+                  "descendants": {
+                    "T62ne": {
+                      "width": 36,
+                      "height": 36
+                    },
+                    "R8Y1D1": {
+                      "icon": "heart-handshake",
+                      "width": 20,
+                      "height": 20
+                    },
+                    "R8y9v": {
+                      "content": "FRIENDS",
+                      "fontSize": 22
+                    }
+                  }
+                },
                 {
                   "type": "frame",
                   "id": "whnsv",
@@ -190377,6 +190443,28 @@
               "alignItems": "center",
               "children": [
                 {
+                  "id": "a34bUQ",
+                  "type": "ref",
+                  "ref": "qWLc5",
+                  "name": "Title",
+                  "gap": 8,
+                  "descendants": {
+                    "T62ne": {
+                      "width": 36,
+                      "height": 36
+                    },
+                    "R8Y1D1": {
+                      "icon": "heart-handshake",
+                      "width": 20,
+                      "height": 20
+                    },
+                    "R8y9v": {
+                      "content": "ДРУЗЬЯ",
+                      "fontSize": 22
+                    }
+                  }
+                },
+                {
                   "type": "frame",
                   "id": "zq6eB",
                   "name": "Friend count",
@@ -190920,6 +191008,28 @@
               "gap": 12,
               "alignItems": "center",
               "children": [
+                {
+                  "id": "WhIoc",
+                  "type": "ref",
+                  "ref": "qWLc5",
+                  "name": "Title",
+                  "gap": 8,
+                  "descendants": {
+                    "T62ne": {
+                      "width": 36,
+                      "height": 36
+                    },
+                    "R8Y1D1": {
+                      "icon": "heart-handshake",
+                      "width": 20,
+                      "height": 20
+                    },
+                    "R8y9v": {
+                      "content": "ДРУЗЬЯ",
+                      "fontSize": 22
+                    }
+                  }
+                },
                 {
                   "type": "frame",
                   "id": "SyD34",
