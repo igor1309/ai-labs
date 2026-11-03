@@ -1,5 +1,9 @@
 # Log
 
+## 2026-11-03
+
+- Streaming transcript text leaves trailing space so the scrollbar does not cover words or the live caret (LAB-934).
+
 ## 2026-10-30
 
 - Call text keeps an ordered final prefix and merges only the remaining entries;

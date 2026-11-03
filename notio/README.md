@@ -172,3 +172,18 @@ Send a link or a note from Telegram and it lands in a persistent inbox. The core
 - Docker
 - Cloudflare Tunnel
 - Telegram Bot
+
+## Supabase heartbeat
+
+The `Notio Supabase Keep-Alive` GitHub workflow writes to `public.keepalive`
+(row `id=1`) every four hours and requires the updated row in the response.
+Failures use the shared Telegram CI notification workflow. This follows the
+Claude Insights heartbeat schedule to generate several database requests a day.
+
+Apply `backend/supabase/migrations/003_create_keepalive.sql` to project
+`qdqxgonksjtnjhbdxltu` and configure repository Actions secrets
+`NOTIO_SUPABASE_URL` and `NOTIO_SUPABASE_KEY` (the service-role key).
+The key must stay in Actions secrets, never in frontend configuration.
+If the project is already paused, resume it in the Supabase dashboard first;
+the heartbeat cannot resume a paused database. After deployment, dispatch
+`notio-supabase-keepalive.yml` and confirm it returns `[{"id":1}]`.

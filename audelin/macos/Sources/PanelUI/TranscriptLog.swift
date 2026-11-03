@@ -50,6 +50,13 @@ struct TranscriptLog: NSViewRepresentable {
             name: NSView.boundsDidChangeNotification,
             object: scroll.contentView
         )
+        text.postsFrameChangedNotifications = true
+        NotificationCenter.default.addObserver(
+            coordinator,
+            selector: #selector(Coordinator.textResized(_:)),
+            name: NSView.frameDidChangeNotification,
+            object: text
+        )
         coordinator.scroll = scroll
 
         return scroll
@@ -184,6 +191,15 @@ extension TranscriptLog {
             isQuiet = false
             size = scroll?.contentView.bounds.size ?? .zero
             atBottom = isAtBottom
+        }
+
+        /// TextKit lays text out lazily, so the text grows after the update
+        /// that scrolled to its end, or before the log has its size at all.
+        @objc func textResized(_ notification: Notification) {
+
+            guard !isQuiet, parent.lines.followsLive, !isSelecting, !isAtBottom, let scroll else { return }
+
+            quietly { scroll.documentView?.scrollToEndOfDocument(nil) }
         }
 
         @objc func boundsChanged(_ notification: Notification) {
