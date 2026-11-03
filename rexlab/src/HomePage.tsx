@@ -257,7 +257,7 @@ export function HomePage({
     const tilePicture = tilePictures[game];
     return [game, (
       <Button key={game} className={`card home-ground-tile ${prefix}-tile`} data-turn-part={`tile-${game}`} aria-label={labels[game]} onClick={entry.onOpen}>
-        <span className="home-tile-pocket">{tilePicture === undefined ? entry.picture : <Picture className={`${prefix}-tile-picture`} src={tilePicture} alt="" width={800} height={600} />}</span>
+        <span className="home-tile-pocket">{tilePicture === undefined ? entry.picture : <Picture className="home-tile-art" src={tilePicture} alt="" width={800} height={600} />}</span>
         {newGames.includes(game) && <span className="home-new" role="img" aria-label={text.homeNew}><Sparkles size={14} aria-hidden="true" /></span>}
         <span className={`${prefix}-tile-row home-tile-footer`}>
           <span className={`${prefix}-tile-symbol home-tile-symbol`} aria-hidden="true">

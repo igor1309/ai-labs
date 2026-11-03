@@ -178,6 +178,8 @@ exports.runHome = async function(sizes) {
               drawn: [...part('.home-today-art').querySelectorAll('img')].map(e => { const b = e.getBoundingClientRect(); const width = Math.min(b.width, b.height * 4 / 3); return { left: b.left + (b.width - width) / 2, width }; }),
               tiles: [...document.querySelectorAll('.tiles-grid > *')].map(box),
               layerColumns: [...document.querySelectorAll('.tiles-grid')].map(grid => getComputedStyle(grid).gridTemplateColumns.split(' ').length),
+              // A tile's art fills its pocket as the design draws it, the same in every game.
+              tileArt: [...document.querySelectorAll('.home-tile-pocket > .home-tile-art')].map(e => { const b = e.getBoundingClientRect(), p = e.parentElement.getBoundingClientRect(); return `${Math.round(p.width - b.width)}x${Math.round(p.height - b.height)}`; }),
               pocketHeights: [...document.querySelectorAll('.home-tile-pocket')].map(e => e.getBoundingClientRect().height),
               bands: [...document.querySelectorAll('.home-layer')].map(e => getComputedStyle(e).backgroundColor),
               bedrock: getComputedStyle(part('.home-bedrock')).backgroundColor,
@@ -207,6 +209,7 @@ exports.runHome = async function(sizes) {
           measured.shadows.forEach((shadow, index) => { const drawn = measured.drawn[index]; if (drawn) assert(shadow.left >= drawn.left - 1 && shadow.left + shadow.width <= drawn.left + drawn.width + 1, `${label}: shadow ${index} spreads past its dinosaur`); });
           assert(measured.images.every(b => b.width > 0 && b.height > 0 && (b.cropped || (b.x >= 0 && b.right <= width + 1 && b.bottom <= measured.sky.bottom))), `${label}: artwork clipped`);
           assert(measured.tiles.every(b => b.height >= 44), `${label}: tile targets`);
+          assert(measured.tileArt.length > 0 && new Set(measured.tileArt).size === 1, `${label}: tile art sized unlike its pocket: ${measured.tileArt}`);
           assert(measured.titlesFit, `${label}: tile names clipped`);
           assert(measured.noFeaturedTile, `${label}: featured tile repeated`);
           assert.equal(measured.skyName, language === 'en' ? 'TODAY' : 'СЕГОДНЯ', label);

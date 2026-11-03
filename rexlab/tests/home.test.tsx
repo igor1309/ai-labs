@@ -350,7 +350,7 @@ describe("the home page", () => {
     const sort = screen.getByRole("button", { name: "SORT" });
     expect(sort.textContent).toBe("SORT");
     expect(symbolsOf(sort)).toEqual(["shapes"]);
-    expect(sort.querySelector("img.sort-tile-picture")?.getAttribute("src")).toBe(HOME_TILE_PICTURES.sort);
+    expect(sort.querySelector("img.home-tile-art")?.getAttribute("src")).toBe(HOME_TILE_PICTURES.sort);
     const title = sort.querySelector(".sort-tile-title");
     expect(title?.previousElementSibling?.contains(sort.querySelector("svg.lucide-shapes"))).toBe(true);
     expect(sort.querySelector(".sort-tile-best")).toBeNull();
