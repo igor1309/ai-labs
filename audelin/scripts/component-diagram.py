@@ -68,6 +68,7 @@ TARGETS = {
     "CallAudioProbe": ("capture", "hears a muted own-process stimulus", 4),
     "SystemAudioCapture": ("capture", "Core Audio process tap", 1),
     "CoreAudioProcesses": ("capture", "processes with audio open,\ncall events", 3),
+    "CoreAudioProcessBinding": ("capture", "binds Core Audio process events", 5),
     "CallAppProcesses": ("capture", "which processes to hear\nfor the call app", 2),
 }
 

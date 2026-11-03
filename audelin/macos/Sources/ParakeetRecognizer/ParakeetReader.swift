@@ -31,14 +31,22 @@ extension ParakeetRecognizer {
 
 /// Parakeet v3 through FluidAudio, reading each window from a fresh decoder
 /// state.
-private final class ParakeetReader: WindowReader {
+final class ParakeetReader: WindowReader {
 
-    private let manager: AsrManager
+    private let transcribe: @Sendable ([Float], inout TdtDecoderState) async throws -> [TokenTiming]
 
-    init(models: AsrModels) async throws {
+    init(transcribe: @escaping @Sendable ([Float], inout TdtDecoderState) async throws -> [TokenTiming]) {
 
-        manager = AsrManager(config: .default)
+        self.transcribe = transcribe
+    }
+
+    convenience init(models: AsrModels) async throws {
+
+        let manager = AsrManager(config: .default)
         try await manager.loadModels(models)
+        self.init(transcribe: { samples, state in
+            try await manager.transcribe(samples, decoderState: &state).tokenTimings ?? []
+        })
     }
 
     func read(_ samples: [Float]) async throws -> [WindowWord] {
@@ -48,9 +56,9 @@ private final class ParakeetReader: WindowReader {
         let shortest = ASRConstants.minimumRequiredSamples(forSampleRate: 16_000)
         let padded = samples + [Float](repeating: 0, count: max(0, shortest - samples.count))
         var state = TdtDecoderState.make()
-        let result = try await manager.transcribe(padded, decoderState: &state)
+        let timings = try await transcribe(padded, &state)
         let duration = Double(samples.count) / 16_000
-        return words(result.tokenTimings ?? []).filter { $0.start < duration }
+        return words(timings).filter { $0.start < duration }
     }
 
     /// Joins tokens into words: a token starting with a space starts a word.
@@ -65,6 +73,6 @@ private final class ParakeetReader: WindowReader {
                 words[words.count - 1].end = timing.endTime
             }
         }
-        return words.filter { !$0.text.isEmpty }
+        return words.filter { !$0.text.trimmingCharacters(in: .whitespaces).isEmpty }
     }
 }
