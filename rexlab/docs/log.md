@@ -2,6 +2,8 @@
 
 ## 2026-11-03
 
+- Dig site: every Home game tile shows its game being played with its own dinosaur, cut to one or two things that read at tile size (a jaw for TEETH, a card over its basket for SORT, footprints to the Ankylosaurus for MAZE), and each game has its own colour on its pocket and icon, in Light and Dark.
+- Dig site: Home on iPhone and upright iPad has the age-level button again, beside language and theme, as on iPad landscape.
 - Dig site: each Home tile and featured hero shows its own game's dinosaur in that game's form (a Triceratops pair for PAIRS, a half-dug Therizinosaurus for DIG), and no hero borrows another game's dinosaur.
 - In Russian, Home's large card names the catalogue ДРЕВНИЕ ЯЩЕРЫ when it is today's game, as in English, instead of the old tile word ВСЕ.
 - A page change cut short by the window resizing no longer leaves an unhandled error behind.
