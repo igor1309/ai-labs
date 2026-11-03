@@ -209380,7 +209380,7 @@
                   "fill": "$ds-ink",
                   "content": "TYRANNOSAURUS",
                   "fontFamily": "$ds-font",
-                  "fontSize": 28,
+                  "fontSize": 22,
                   "fontWeight": "800"
                 }
               ]
@@ -209954,7 +209954,7 @@
                   "fill": "$ds-ink",
                   "content": "TRICERATOPS",
                   "fontFamily": "$ds-font",
-                  "fontSize": 28,
+                  "fontSize": 22,
                   "fontWeight": "800"
                 }
               ]
@@ -210550,7 +210550,7 @@
                   "fill": "$ds-ink",
                   "content": "STEGOSAURUS",
                   "fontFamily": "$ds-font",
-                  "fontSize": 28,
+                  "fontSize": 22,
                   "fontWeight": "800"
                 }
               ]
@@ -211372,7 +211372,7 @@
                   "fill": "$ds-ink",
                   "content": "TYRANNOSAURUS",
                   "fontFamily": "$ds-font",
-                  "fontSize": 28,
+                  "fontSize": 22,
                   "fontWeight": "800"
                 }
               ]
