@@ -28,6 +28,8 @@ it("leaves the sky's drift to the stylesheet's scroll timeline", () => {
   const drift = /@supports \(animation-timeline: scroll\(\)\) \{\s*@media \(prefers-reduced-motion: no-preference\) \{([^}]*)\{([^}]*)\}/.exec(css);
   expect(drift?.[1]).toContain(".home-sky-body");
   expect(drift?.[1]).toContain(".home-today-art > *");
+  expect(drift?.[1]).toContain(".home-today-art::before");
+  expect(drift?.[1]).toContain(".home-today-art::after");
   expect(drift?.[2]).toContain("animation-timeline: scroll(root block)");
   expect(css).toMatch(/@keyframes home-sky-drift \{ to \{ translate: 0 calc\(1000px \* var\(--motion-amount\)\); \} \}/);
   expect(drift?.[2]).toContain("animation-range: 0px 2000px");

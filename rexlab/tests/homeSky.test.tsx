@@ -129,3 +129,13 @@ for (const game of HOME_GAMES) for (const theme of ["light", "dark"]) {
     }
   });
 }
+
+test("WHOSE JAW? shows its jaw in the sky", () => {
+  renderHomePageFeaturing("whoseJaw", { allGames: true });
+  expect([...part(".home-today-art").querySelectorAll("img")].map((picture) => picture.getAttribute("src"))).toEqual(["jaw.webp"]);
+});
+
+test("the TEETH tile shows the jaw's dinosaur", () => {
+  renderHomePageFeaturing("compare", { allGames: true });
+  expect(tilesRow().querySelector('[data-turn-part="tile-whoseJaw"] img')?.getAttribute("src")).toBe("baryonyx.webp");
+});

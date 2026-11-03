@@ -734,7 +734,7 @@ export function App({
             sort={{ picture: bodyPicture(SORT_TILE), best: sorting.best }}
             dig={{ picture: bodyPicture(DIG_TILE), dugUp: dig.dugUp }}
             coloring={coloring && { picture: bodyPicture(COLOR_TILE), completed: coloringCount, onOpen: () => go({ kind: "coloring" }) }}
-            whoseJaw={whoseJaw && { picture: bodyPicture(JAW_TILE), collected: jawGame.collected, total: whoseJaw.total, onOpen: () => go({ kind: "whoseJaw" }, { also: jawGame.open }) }}
+            whoseJaw={whoseJaw && { picture: bodyPicture(JAW_TILE), jaw: whoseJaw.jawFor(JAW_TILE), collected: jawGame.collected, total: whoseJaw.total, onOpen: () => go({ kind: "whoseJaw" }, { also: jawGame.open }) }}
             picturePuzzle={picturePuzzle && { picture: bodyPicture("spinosaurus"), collected: pictureGame.collected, onOpen: () => go({ kind: "picturePuzzle" }) }}
             labyrinth={{ picture: bodyPicture("ankylosaurus"), stars: labyrinth.stars }}
             moreComing={bodyPicture(MORE_COMING)}

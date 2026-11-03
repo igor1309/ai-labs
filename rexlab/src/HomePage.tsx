@@ -62,7 +62,8 @@ export type HomePageProps = {
   // been dug up, undefined until one has.
   dig: { picture: string; dugUp: number | undefined };
   // The featured card shows the collection across all levels.
-  whoseJaw?: { picture: string; collected: number; total: number; onOpen: () => void } | undefined;
+  // The jaw stands in the sky when the game is today's; its dinosaur stands on the tile.
+  whoseJaw?: { picture: string; jaw: string; collected: number; total: number; onOpen: () => void } | undefined;
   coloring?: { picture: string; completed: number | null | undefined; onOpen: () => void } | undefined;
   picturePuzzle?: { picture: string; collected: number; onOpen: () => void } | undefined;
   // The dinosaur whose shape stands on the tile of the games still to
@@ -154,7 +155,7 @@ export function HomePage({
   });
   const ThemeSymbol = THEME_SYMBOLS[theme];
   // Both doors share artwork and navigation; rewards belong to the hero.
-  type GameEntry = { name: string; symbol: LucideIcon; picture: ReactNode; badge: Badge | undefined; onOpen: () => void };
+  type GameEntry = { name: string; symbol: LucideIcon; picture: ReactNode; skyPicture?: ReactNode; badge: Badge | undefined; onOpen: () => void };
   const games: Record<Exclude<HomeGame, "picturePuzzle" | "whoseJaw" | "coloring">, GameEntry> & { picturePuzzle: GameEntry | undefined; whoseJaw: GameEntry | undefined; coloring: GameEntry | undefined } = {
     compare: {
       name: text.quizCard,
@@ -214,6 +215,7 @@ export function HomePage({
     whoseJaw: whoseJaw && {
       name: text.whoseJaw, symbol: Landmark,
       picture: <Picture className="whose-jaw-tile-picture" src={whoseJaw.picture} alt="" width={600} height={450} />,
+      skyPicture: <Picture className="whose-jaw-sky-picture" src={whoseJaw.jaw} alt="" width={600} height={450} />,
       badge: { symbol: Landmark, value: `${whoseJaw.collected}/${whoseJaw.total}` }, onOpen: whoseJaw.onOpen
     },
     picturePuzzle: picturePuzzle && {
@@ -361,7 +363,7 @@ export function HomePage({
               </span>}
             </span>
           </span>
-          <span className="home-today-art">{today.picture}</span>
+          <span className="home-today-art">{today.skyPicture ?? today.picture}</span>
         </Button>
         <svg className="home-sky-wave" viewBox="0 0 1440 30" preserveAspectRatio="none" aria-hidden="true">
           <path d="M0 10q60-10 120 0t120 0q60 10 120 0t120 0q60-10 120 0t120 0q60 10 120 0t120 0q60-10 120 0t120 0q60 10 120 0t120 0l0 20-1440 0z" />

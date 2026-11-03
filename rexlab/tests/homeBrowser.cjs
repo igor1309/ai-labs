@@ -198,6 +198,8 @@ exports.runHome = async function(sizes) {
           assert(measured.header.bottom <= measured.title.y, `${label}: header meets title`);
           assert(measured.titleFits, `${label}: full title`);
           assert(measured.actions.bottom <= measured.sky.bottom, `${label}: actions clipped`);
+          // The earth's wave rises 20px into the sky and a shadow lies 6px under its art's feet.
+          assert(measured.art.bottom <= measured.sky.bottom - 26, `${label}: today's shadow reaches into the earth`);
           assert(measured.images.every(b => b.width > 0 && b.height > 0 && (b.cropped || (b.x >= 0 && b.right <= width + 1 && b.bottom <= measured.sky.bottom))), `${label}: artwork clipped`);
           assert(measured.tiles.every(b => b.height >= 44), `${label}: tile targets`);
           assert(measured.titlesFit, `${label}: tile names clipped`);

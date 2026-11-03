@@ -54,7 +54,7 @@ export function renderHomePageFeaturing(featured: HomeGame, { language = "en", s
       labyrinth={{ picture: fakeBodyPicture("triceratops"), stars: score(9) }}
       {...(allGames && {
         coloring: { picture: fakeBodyPicture("triceratops"), completed: scored ? 4 : undefined, onOpen: () => opened.push("coloring") },
-        whoseJaw: { picture: "jaw.webp", collected: scored ? 5 : 0, total: 16, onOpen: () => opened.push("whoseJaw") },
+        whoseJaw: { picture: "baryonyx.webp", jaw: "jaw.webp", collected: scored ? 5 : 0, total: 16, onOpen: () => opened.push("whoseJaw") },
         picturePuzzle: { picture: fakeBodyPicture("triceratops"), collected: scored ? 2 : 0, onOpen: () => opened.push("picturePuzzle") }
       })}
       moreComing={fakeBodyPicture("triceratops")}
