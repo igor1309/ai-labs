@@ -1,3 +1,4 @@
+import { THEMES } from "../src/theme.ts";
 import { GameAudioButton } from "../src/GameAudioButton.tsx";
 import { fireEvent, render } from "@testing-library/react";
 import { join } from "node:path";
@@ -7,7 +8,7 @@ import { TEXTS } from "../src/language/texts.ts";
 import { AGE_LEVELS, type AgeLevel } from "../src/ageLevel.ts";
 import { jawMouth } from "../src/jawPresentation.ts";
 import { WhoseJawBoardScreen, type WhoseJawBoardScreenProps } from "../src/WhoseJawBoardScreen.tsx";
-import { manualPictures } from "./support.ts";
+import { manualPictures, sameColour } from "./support.ts";
 import { withManualPictures } from "./pictures.tsx";
 import { JAWS } from "./whoseJaw.ts";
 import { openWindow, styleAt, windowsAnd, type WindowSize } from "./windowSizes.ts";
@@ -176,8 +177,8 @@ describe("Whose Jaw portrait composition", () => {
   it.each(PORTRAITS)("keeps a visible frame and pickup highlight in dark theme at %i by %i", (width, height, layout) => {
     const size = [width, height] as const;
     show(size, layout, "paleontologist", "en", "dark");
-    expect(style(".game-audio-button", size).value("background-color")).toBe("rgb(24, 30, 46)");
-    expect(style(".game-audio-button", size).value("color")).toBe("rgb(236, 232, 222)");
+    expect(sameColour(style(".game-audio-button", size).value("background-color"), getComputedStyle(part(".game-audio-button")).getPropertyValue("--ds-quiet"))).toBe(true);
+    expect(sameColour(style(".game-audio-button", size).value("color"), getComputedStyle(part(".game-audio-button")).getPropertyValue("--ds-ink"))).toBe(true);
     expect(style(".jaw-dinosaur", size).value("background-color")).toBe("rgb(24, 30, 46)");
     expect(style(".jaw-dinosaur", size).value("border-top-color")).toBe("rgb(71, 81, 106)");
     expect(style(".jaw-tray", size).value("background-color")).toBe("rgb(24, 30, 46)");
@@ -191,7 +192,7 @@ describe("Whose Jaw portrait composition", () => {
 
 describe("Whose Jaw landscape composition", () => {
   it.each(windowsAnd([1180, 820], [1366, 956]).flatMap((size) => AGE_LEVELS.flatMap((level) =>
-    (["en", "ru"] as const).flatMap((language) => ["light", "dark"].map((theme) => ({ size, level, language, theme })))
+    (["en", "ru"] as const).flatMap((language) => THEMES.map((theme) => ({ size, level, language, theme })))
   )))("bounds the $language $level board at $size in $theme", ({ size, level, language, theme }) => {
     const { count, props, view } = show(size, "wide", level, language, theme);
     expect(style(".whose-jaw-board-bar", size).value("grid-template-columns")).toBe("auto minmax(0, 1fr) auto auto");

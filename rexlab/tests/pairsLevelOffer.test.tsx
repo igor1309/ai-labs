@@ -1,3 +1,5 @@
+import type { Theme } from "../src/theme.ts";
+import { THEMES } from "../src/theme.ts";
 import { StrictMode } from "react";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -24,7 +26,7 @@ beforeEach(() => {
 afterEach(() => { Reflect.deleteProperty(Element.prototype, "getAnimations"); });
 
 function open({ language = "en", theme = "light", level = "explorer", celebration = "new-best", levelUp = null, strict = false }: {
-  language?: Language; theme?: "light" | "dark"; level?: "explorer" | "paleontologist";
+  language?: Language; theme?: Theme; level?: "explorer" | "paleontologist";
   celebration?: PairsResultScreenProps["celebration"]; levelUp?: PairsResultScreenProps["levelUp"]; strict?: boolean;
 } = {}) {
   const clock = manualTimers();
@@ -148,7 +150,7 @@ it("uses the CSS engine's remaining time, including reduced motion, without a ne
 });
 
 const CASES = WINDOW_SIZES.flatMap(([width, height]) =>
-  LANGUAGES.flatMap((language) => (["light", "dark"] as const).flatMap((theme) => (["explorer", "paleontologist"] as const).map((level) => ({ language, theme, level, width, height }))))
+  LANGUAGES.flatMap((language) => THEMES.flatMap((theme) => (["explorer", "paleontologist"] as const).map((level) => ({ language, theme, level, width, height }))))
 );
 describe.each(CASES)("$language $theme $level offer at $width×$height", ({ width: windowWidth, height: windowHeight, ...options }) => {
   it("uses the menu picture and name, fits the question and answers, and keeps text contrast", () => {
@@ -194,7 +196,7 @@ describe.each(CASES)("$language $theme $level offer at $width×$height", ({ widt
     expect(contrast(qs.color, surfaceOf(question))).toBeGreaterThanOrEqual(4.5);
     const picture = dialog.querySelector(".pairs-offer-picture");
     if (!picture) throw new Error("No picture");
-    expect(getComputedStyle(picture).borderRadius).toBe("50%");
+    expect(getComputedStyle(picture).borderRadius).toBe("48px 48px 24px 24px");
     const height = px(card.paddingTop) + px(getComputedStyle(picture).height) + 2 * px(card.gap) + lines * size * Number(qs.lineHeight) + px(getComputedStyle(buttons[0]!).height) + px(card.paddingBottom);
     expect(height + 48).toBeLessThanOrEqual(windowHeight);
   });

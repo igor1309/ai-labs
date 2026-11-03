@@ -54,14 +54,19 @@ describe("safe areas stay clear", () => {
   });
 
   it("finds every screen's root", () => {
-    expect(SCREEN_ROOTS).toEqual(expect.arrayContaining(["home", "catalogue", "dinosaur-page", "question", "result", "result result-with-levels", "dig-screen dig-reveal-screen", "dig-screen dig-field-guide-screen", "skeleton-screen"]));
+    expect(SCREEN_ROOTS).toEqual(expect.arrayContaining(["home home-dig-site", "catalogue", "dinosaur-page", "question", "result", "result result-with-levels", "dig-screen dig-reveal-screen", "dig-screen dig-field-guide-screen", "skeleton-screen"]));
   });
 
   it.each(SCREEN_ROOTS)("insets the content of .%s by adding the safe areas to its own padding, its background still filling the window", (classes) => {
     const root = screenRoot(classes);
+    const bedrock = classes === "home home-dig-site" ? document.createElement("footer") : undefined;
+    if (bedrock) { bedrock.className = "home-bedrock"; root.append(bedrock); }
     const measure = () => {
       const style = getComputedStyle(root);
-      return { padding: padding(style), box: box(style) };
+      const contentPadding = padding(style);
+      // Home's last band owns the bottom inset so its earth reaches the edge.
+      if (bedrock) contentPadding.bottom += px(getComputedStyle(bedrock).paddingBottom);
+      return { padding: contentPadding, box: box(style) };
     };
     const without = measure();
 

@@ -1,3 +1,4 @@
+import { THEMES } from "../src/theme.ts";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
@@ -128,7 +129,7 @@ describe("reunion actions", () => {
   });
 });
 
-describe.each(LANGUAGES.flatMap((language) => (["light", "dark"] as const).map((theme) => ({ language, theme }))))("reunion fit in $language, $theme", ({ language, theme }) => {
+describe.each(LANGUAGES.flatMap((language) => THEMES.map((theme) => ({ language, theme }))))("reunion fit in $language, $theme", ({ language, theme }) => {
   it.each(windowsAnd([1024, 670]))("keeps the whole family, reward and controls visible at %i by %i", (width, height) => {
     openWindow(width, height);
     document.documentElement.dataset.theme = theme;

@@ -1,3 +1,4 @@
+import { HOME_TILE_PICTURES } from "../src/homeTilePictures.ts";
 import { emptyLabyrinth } from "./support.ts";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { addTransitionType } from "react";
@@ -69,8 +70,9 @@ describe("sand writing through Home", () => {
     const door = featured ? featuredCard() : homeTile(text.sandWriting);
     expect(door.getAttribute("aria-label")).toBe(featured ? text.sandWriting : (language === "en" ? "DRAW" : "РИСУЙ"));
     expect(text.sandWriting).toBe(text.sandWriting.toLocaleUpperCase(language));
-    expect(symbolOf(door)).toBe("pencil");
-    expect(door.querySelector("img")).toBeNull();
+    expect(symbolOf(door.querySelector(".featured-card-symbol") ?? door)).toBe("pencil");
+    if (featured) expect(door.querySelector(".home-today-art > .sand-writing-tile-art")).not.toBeNull();
+    else expect(door.querySelector("img")?.getAttribute("src")).toBe(HOME_TILE_PICTURES.sandWriting);
     expect(badgeOf(door)).toBeNull();
     expect(app.starts).toEqual([]);
     const layout = () => {
@@ -79,7 +81,9 @@ describe("sand writing through Home", () => {
         getComputedStyle(document.documentElement).overflow, getComputedStyle(app.footer).display, app.footer.getAttribute("aria-label")];
     };
     const initialLayout = layout();
-    expect(initialLayout[5]).not.toBe("none");
+    // Home shows its version on the bedrock instead of the static game footer.
+    expect(initialLayout[5]).toBe("none");
+    expect(document.querySelector(".home-version")?.textContent).toMatch(/^v\d/);
     expect(gateShown()).toBe(false);
 
     // Both activations reach the same Home door before React commits it.

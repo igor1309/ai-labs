@@ -1,3 +1,4 @@
+import { THEMES } from "../src/theme.ts";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
@@ -42,7 +43,7 @@ describe("the result's level switch, in the sorting game and the quiz", () => {
     expect(levelSwitch().style.getPropertyValue("--chosen")).toBe(String(AGE_LEVELS.indexOf(level)));
     const selected = getComputedStyle(within(levelSwitch()).getByRole("button", { pressed: true }));
     expect(selected.fontWeight).toBe("700");
-    expect(selected.boxShadow).not.toBe("none");
+    expect(selected.boxShadow).toBe("none");
     for (const other of within(levelSwitch()).getAllByRole("button", { pressed: false })) {
       expect([getComputedStyle(other).fontWeight, getComputedStyle(other).boxShadow]).toEqual(["600", "none"]);
     }
@@ -99,7 +100,7 @@ const WORD_EMS: Record<string, number> = {
 const wordWidth = (word: string, size: number) => (WORD_EMS[word] ?? NaN) * size;
 
 describe.each(
-  WINDOW_SIZES.flatMap(([windowWidth, windowHeight]) => LANGUAGES.flatMap((language) => (["light", "dark"] as const).map((theme) => [language, theme, windowWidth, windowHeight] as const)))
+  WINDOW_SIZES.flatMap(([windowWidth, windowHeight]) => LANGUAGES.flatMap((language) => THEMES.map((theme) => [language, theme, windowWidth, windowHeight] as const)))
 )("the result with levels in %s, %s at %i by %i", (language, theme, windowWidth, windowHeight) => {
   function pixels(value: string): number {
     if (value === "0") return 0;
@@ -145,7 +146,7 @@ describe.each(
         expect(pixels(s.height)).toBeGreaterThanOrEqual(48);
         const surface = surfaceOf(name);
         expect(contrast(seenOn(s.color, surface), surface)).toBeGreaterThanOrEqual(4.5);
-        expect(sameColour(s.color, "#f6f2e9")).toBe(button.getAttribute("aria-pressed") !== "true");
+        expect(sameColour(s.color, s.getPropertyValue(button.getAttribute("aria-pressed") === "true" ? "--ds-on-strong" : "--ds-ink"))).toBe(true);
       }
 
       const stars = screen.getByRole("img", { name: text.stars(10, 10) });

@@ -64,7 +64,8 @@ describe("the page does not pull or bounce", () => {
   it("keeps every scrolling part from bouncing or passing its scroll on", () => {
     const scrolling = RULES.filter(({ declarations }) => declarations.some(({ property, value }) => /^overflow(-[xy])?$/.test(property) && /\b(auto|scroll)\b/.test(value)));
 
-    expect(scrolling.map(({ selector }) => selector)).toEqual(expect.arrayContaining([".games-tiles", ".catalogue-grid", ".friends-grid"]));
+    // Home's ground now takes part in the page scroll.
+    expect(scrolling.map(({ selector }) => selector)).toEqual(expect.arrayContaining([ ".catalogue-grid", ".friends-grid"]));
     expect(scrolling.map((rule) => [rule.selector, overscrollOf(rule)])).toEqual(scrolling.map(({ selector }) => [selector, ["overscroll-behavior: none"]]));
   });
 });

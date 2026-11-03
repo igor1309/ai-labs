@@ -1,8 +1,9 @@
 import { render } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HomePage, type HomeGame } from "../src/HomePage.tsx";
+import type { HomeMotion } from "../src/homeMotion.ts";
 import type { Language } from "../src/language/language.ts";
-import { SHIPPED_CATALOGUE, fakeBodyPicture, fakeSkeletonPicture, keptNothing, manualViewport } from "./support.ts";
+import { SHIPPED_CATALOGUE, fakeBodyPicture, fakeSkeletonPicture } from "./support.ts";
 import { withPictures } from "./pictures.tsx";
 
 // Every game the home page offers, in its tiles' order, with the text
@@ -20,16 +21,18 @@ export const HOME_GAMES: Array<[HomeGame, "quizCard" | "catalogue" | "care" | "s
 ];
 
 const nothing = () => {};
+const still: HomeMotion = () => nothing;
 
 // The home page alone, featuring `featured`, with every game's badge
 // filled in when `scored` and every one that can be empty left empty
 // when not; each game's opening counted in `opened`.
-export function renderHomePageFeaturing(featured: HomeGame, { language = "en", scored = true, allGames = false }: { language?: Language; scored?: boolean; allGames?: boolean } = {}) {
+export function renderHomePageFeaturing(featured: HomeGame, { language = "en", scored = true, allGames = false, best = 7, newGames = [], motion = still }: { motion?: HomeMotion; language?: Language; scored?: boolean; allGames?: boolean; best?: number; newGames?: readonly string[] } = {}) {
   const opened: HomeGame[] = [];
   const score = (value: number) => (scored ? value : undefined);
   const view = render(
     <HomePage
-      readTileColumns={() => ({ column: 274.6667, gap: 16 })}
+      motion={motion}
+      tilesPerLayer={6}
       language={language}
       onLanguage={nothing}
       theme="light"
@@ -37,10 +40,11 @@ export function renderHomePageFeaturing(featured: HomeGame, { language = "en", s
       ageLevel="explorer"
       onAgeLevel={nothing}
       startTimer={() => nothing}
-      layoutKeeping={keptNothing}
+      newGames={newGames}
+      version="v1.2.3"
       featured={featured}
       faceOff={{ left: fakeBodyPicture("tyrannosaurus"), right: fakeBodyPicture("brachiosaurus") }}
-      best={score(7)}
+      best={score(best)}
       catalogue={{ picture: fakeBodyPicture("stegosaurus"), count: SHIPPED_CATALOGUE.length }}
       care={{ picture: fakeBodyPicture("parasaurolophus"), best: score(8) }}
       sort={{ picture: fakeBodyPicture("triceratops"), best: score(6) }}
@@ -49,8 +53,8 @@ export function renderHomePageFeaturing(featured: HomeGame, { language = "en", s
       dig={{ picture: fakeBodyPicture("stegosaurus"), dugUp: score(4) }}
       labyrinth={{ picture: fakeBodyPicture("triceratops"), stars: score(9) }}
       {...(allGames && {
-        coloring: { picture: fakeBodyPicture("triceratops"), completed: scored ? 4 : undefined, onOpen: () => opened.push("coloring") },
-        whoseJaw: { picture: "jaw.webp", collected: scored ? 5 : 0, total: 16, onOpen: () => opened.push("whoseJaw") },
+        coloring: { picture: fakeBodyPicture("triceratops"), page: "page.webp", completed: scored ? 4 : undefined, onOpen: () => opened.push("coloring") },
+        whoseJaw: { picture: "baryonyx.webp", jaw: "jaw.webp", collected: scored ? 5 : 0, total: 16, onOpen: () => opened.push("whoseJaw") },
         picturePuzzle: { picture: fakeBodyPicture("triceratops"), collected: scored ? 2 : 0, onOpen: () => opened.push("picturePuzzle") }
       })}
       moreComing={fakeBodyPicture("triceratops")}
@@ -62,6 +66,7 @@ export function renderHomePageFeaturing(featured: HomeGame, { language = "en", s
       onSkeletons={() => opened.push("skeletons")}
       onMuseum={nothing}
       onDig={() => opened.push("dig")}
+      sandWritingPicture="/sand.webp"
       onSandWriting={() => opened.push("sandWriting")}
       onLabyrinth={() => opened.push("labyrinth")}
     />,

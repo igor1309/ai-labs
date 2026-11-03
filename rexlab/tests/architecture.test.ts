@@ -90,7 +90,7 @@ const PRESENTATION = [
   "SharedPicture.tsx",
   "SkeletonBar.tsx",
   "formatValue.ts",
-  "useKeptRow.ts",
+  "layoutKeeping.ts",
   "usePointerState.ts"
 ];
 // The catalogue's own model of a dinosaur, apart from the quiz's.
@@ -146,7 +146,7 @@ const SCREEN_STATE = "screens.ts";
 const OWNED_TIMERS = "ownedTimers.ts";
 // The motion of a screen to its other layout as the window turns, and
 // where a row of columns or a list of cards stands through it.
-const TURN_MOTION = ["turnMotion.ts", "rowAnchor.ts", "listAnchor.ts"];
+const TURN_MOTION = ["turnMotion.ts", "listAnchor.ts"];
 // The catalogue's cards in a row and how its chips stand, by the window.
 const CATALOGUE_GEOMETRY = ["catalogueColumns.ts", "chipArrangement.ts"];
 // How App sets each window's layout through the turn motion.
@@ -370,7 +370,7 @@ describe("the import graph", () => {
     expect(edges((file) => file === OWNED_TIMERS, () => true)).toEqual([]);
   });
 
-  it("keeps the turn motion and the row's and the list's anchors free of the rest of the app", () => {
+  it("keeps the turn motion and the list's anchor free of the rest of the app", () => {
     expect(TURN_MOTION.filter((file) => !GRAPH.has(file))).toEqual([]);
     expect(edges((file) => TURN_MOTION.includes(file), () => true)).toEqual([]);
   });
@@ -380,10 +380,10 @@ describe("the import graph", () => {
     expect(edges((file) => CATALOGUE_GEOMETRY.includes(file), () => true)).toEqual([]);
   });
 
-  it("keeps App's layout turns free of all but the turn motion, and the row's keeping free of all but the row's anchor", () => {
+  it("keeps App's layout turns free of all but the turn motion, and the layout keeping contract free of the app", () => {
     expect(GRAPH.get("App.tsx")).toContain(LAYOUT_TURNS);
     expect(edges((file) => file === LAYOUT_TURNS, (target) => target !== "turnMotion.ts")).toEqual([]);
-    expect(edges((file) => file === "useKeptRow.ts", (target) => target !== "rowAnchor.ts")).toEqual([]);
+    expect(edges((file) => file === "layoutKeeping.ts", () => true)).toEqual([]);
   });
 
   it("leaves the composition root to the composition root", () => {

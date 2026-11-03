@@ -1,3 +1,5 @@
+import packageInfo from "../package.json";
+import { COLOR_PAGE, DIG_PICTURE, HOME_TILE_PICTURES, PAIRS_PICTURE } from "./homeTilePictures.ts";
 import { coloringVersionsFor } from "./coloringWorkshopRoot.ts";
 import { ColoringGame, type ColoringGameProps } from "./ColoringGame.tsx";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, ViewTransition } from "react";
@@ -10,14 +12,14 @@ import { chipArrangement, type ChipContent } from "./chipArrangement.ts";
 import { closingPicture, refitPicture, type PictureMotion } from "./closingPicture.ts";
 import { compareQuestionType, compareQuestionWidth, NARROW_QUESTION, PORTRAIT_QUESTION } from "./compareQuestionLayout.ts";
 import { compareResultType, compareResultWidth, NARROW_RESULT, PORTRAIT_RESULT } from "./compareResultLayout.ts";
-import digTile from "./assets/dig/tile.webp";
 import { DIG_REVEAL, useDigGame, type DigGameProps, type DigPhase } from "./digGame.tsx";
 import { DinosaurPage, NEXT_DINOSAUR, PREVIOUS_DINOSAUR, type DinosaurPageLayout } from "./DinosaurPage.tsx";
 import { dinosaurSlide } from "./dinosaurSlide.ts";
 import { dinosaurWordsWidth, keptLines, NARROW_PAGE, PORTRAIT_PAGE } from "./dinosaurPageLayout.ts";
 import { calendarDay, chooseFeatured, type FeaturedStore } from "./featured.ts";
 import type { ChipWidths } from "./FoodChips.tsx";
-import { HOME_GAMES, HomePage, type HomePageProps, type HomeGame } from "./HomePage.tsx";
+import { HOME_GAMES, HomePage, type HomeGame } from "./HomePage.tsx";
+import type { HomeMotion } from "./homeMotion.ts";
 import { languageOfDevice, type Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 import { useLayoutTurns } from "./layoutTurns.ts";
@@ -132,7 +134,9 @@ export type AppProps = CareGameProps &
     whoseJaw?: WhoseJawGameProps;
     // The skeleton game's sounds, silent if none.
     skeletonSounds?: SkeletonSounds;
-    readTileColumns: HomePageProps["readTileColumns"];
+    // Unstarted games added after the first visit, none when storage is unavailable.
+    newHomeGames: () => readonly string[];
+    homeMotion: HomeMotion;
     viewport: Viewport;
     portraitLayouts: PortraitLayouts;
     // How the catalogue's food chips' parts are measured as laid out.
@@ -168,24 +172,31 @@ export type AppProps = CareGameProps &
 // The two dinosaurs facing off in the quiz's picture on the home page.
 const FACE_OFF = { left: "tyrannosaurus", right: "brachiosaurus" };
 
+// The quiz's own dinosaur alone on its tile; Brachiosaurus belongs to BONES.
+const COMPARE_TILE = FACE_OFF.left;
+
 // The dinosaur on the catalogue's tile.
 const CATALOGUE_TILE = "stegosaurus";
 
-// The dinosaur on dinosaur care's tile.
-const CARE_TILE = "parasaurolophus";
-
 // The dinosaur on the sorting game's card.
-const SORT_TILE = "triceratops";
-
-// The dinosaur on find the pair's tile.
-const PAIRS_TILE = "stegosaurus";
+const SORT_TILE = "pachycephalosaurus";
 
 // The dinosaur whose skeleton stands on the skeleton game's tile.
-const SKELETONS_TILE = "triceratops";
+const SKELETONS_TILE = "brachiosaurus";
+
+// Home shows six tiles to a layer of earth where the page is wide enough, three elsewhere.
+const homeTilesPerLayer = (width: number) => width >= 1000 ? 6 : 3;
+
+
+// The dinosaurs on the care, jaw and colouring games' tiles; pairs and dig
+// show the design's own pictures of their games.
+const CARE_TILE = "oviraptor";
+const JAW_TILE = "baryonyx";
+const COLOR_TILE = "mosasaurus";
 
 // The dinosaur whose shape stands on the home tile of the games still to
 // come.
-const MORE_COMING = "triceratops";
+const MORE_COMING = "brachiosaurus";
 
 const STEPS: Record<Step, string> = { next: NEXT_DINOSAUR, previous: PREVIOUS_DINOSAUR };
 
@@ -230,7 +241,8 @@ export function App({
   bodyPicture,
   random,
   viewport,
-  readTileColumns,
+  newHomeGames,
+  homeMotion,
   portraitLayouts,
   chipWidths,
   layoutMotion,
@@ -268,6 +280,7 @@ export function App({
 }: AppProps) {
   const { screen, go, set } = useScreens<Screen, Step>({ kind: "home" }, transitionFor);
   const size = useSyncExternalStore(viewport.subscribe, viewport.sizeClass);
+  const tilesPerLayer = useSyncExternalStore(viewport.subscribe, () => homeTilesPerLayer(viewport.width()));
   const screenUpright = useSyncExternalStore(viewport.subscribe, viewport.isScreenUpright);
   const [closing] = useState<ReturnType<typeof closingPicture>>(() => closingPicture(layoutMotion, pictureMotion));
   const [sliding] = useState<ReturnType<typeof dinosaurSlide>>(() => dinosaurSlide(layoutMotion, pictureMotion));
@@ -703,29 +716,32 @@ export function App({
       case "home":
         return (
           <HomePage
+            motion={homeMotion}
             language={language}
             onLanguage={chooseLanguage}
             theme={themeChoice}
             onTheme={chooseTheme}
-            readTileColumns={readTileColumns}
+            newGames={newHomeGames()}
+            version={`v${packageInfo.version}`}
             ageLevel={ageLevel.level}
             onAgeLevel={chooseAgeLevel}
             startTimer={startTimer}
-            layoutKeeping={turns}
             featured={featured}
             faceOff={{ left: bodyPicture(FACE_OFF.left), right: bodyPicture(FACE_OFF.right) }}
             best={quiz.best}
             catalogue={{ picture: bodyPicture(CATALOGUE_TILE), count: catalogue.length }}
             care={{ picture: bodyPicture(CARE_TILE), best: care.best }}
-            pairs={{ picture: bodyPicture(PAIRS_TILE), stars: pairs.stars }}
+            pairs={{ picture: PAIRS_PICTURE, stars: pairs.stars }}
             skeletons={{ picture: skeletonPicture(SKELETONS_TILE, "skeleton"), best: skeletonGame.best }}
             sort={{ picture: bodyPicture(SORT_TILE), best: sorting.best }}
-            dig={{ picture: digTile, dugUp: dig.dugUp }}
-            coloring={coloring && { picture: bodyPicture("stegosaurus"), completed: coloringCount, onOpen: () => go({ kind: "coloring" }) }}
-            whoseJaw={whoseJaw && { picture: whoseJaw.jawPicture, collected: jawGame.collected, total: whoseJaw.total, onOpen: () => go({ kind: "whoseJaw" }, { also: jawGame.open }) }}
-            picturePuzzle={picturePuzzle && { picture: bodyPicture("tyrannosaurus"), collected: pictureGame.collected, onOpen: () => go({ kind: "picturePuzzle" }) }}
-            labyrinth={{ picture: bodyPicture("triceratops"), stars: labyrinth.stars }}
+            dig={{ picture: DIG_PICTURE, dugUp: dig.dugUp }}
+            coloring={coloring && { picture: bodyPicture(COLOR_TILE), page: COLOR_PAGE, completed: coloringCount, onOpen: () => go({ kind: "coloring" }) }}
+            whoseJaw={whoseJaw && { picture: bodyPicture(JAW_TILE), jaw: whoseJaw.jawFor(JAW_TILE), collected: jawGame.collected, total: whoseJaw.total, onOpen: () => go({ kind: "whoseJaw" }, { also: jawGame.open }) }}
+            picturePuzzle={picturePuzzle && { picture: bodyPicture("spinosaurus"), collected: pictureGame.collected, onOpen: () => go({ kind: "picturePuzzle" }) }}
+            labyrinth={{ picture: bodyPicture("ankylosaurus"), stars: labyrinth.stars }}
             moreComing={bodyPicture(MORE_COMING)}
+            tilesPerLayer={tilesPerLayer}
+            tilePictures={{ ...HOME_TILE_PICTURES, compare: bodyPicture(COMPARE_TILE) }}
             onCompareDinosaurs={openCompare}
             onCatalogue={openCatalogue}
             onCare={openCare}
@@ -734,6 +750,7 @@ export function App({
             onSkeletons={openSkeletons}
             onMuseum={openMuseum}
             onDig={openDig}
+            sandWritingPicture={bodyPicture("parasaurolophus")}
             onSandWriting={openSandWriting}
             onLabyrinth={() => labyrinth.start(() => set({ kind: "labyrinth" }))}
           />

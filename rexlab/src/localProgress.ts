@@ -389,6 +389,9 @@ function bothBadges(one: SkeletonProgress["badges"], other: SkeletonProgress["ba
 // longer offered is left out.
 export function localFeatured(storage: () => KeyValueStorage, games: readonly string[]) {
   const entry = gameProgress<StoredFeatured>(storage, "home-featured", NO_FEATURED, (stored) => readFeatured(stored, games));
+  // This snapshot never grows: only later additions can be new.
+  const firstVisit = gameProgress(storage, "home-first-visit", { games: [...games] }, (raw) =>
+    isIds(raw.games) ? { games: [...raw.games] } : undefined);
   let visit: StoredFeatured | undefined;
   const held = () => (visit ??= entry.load() ?? NO_FEATURED);
   const keep = (stored: StoredFeatured) => {
@@ -396,6 +399,13 @@ export function localFeatured(storage: () => KeyValueStorage, games: readonly st
     entry.save(stored);
   };
   return {
+    newGames: (): readonly string[] => {
+      const first = firstVisit.load();
+      // A browser that cannot keep progress must not promise NEW tags.
+      if (!first || !firstVisit.save(first)) return [];
+      const { starts } = held();
+      return games.filter((game) => !first.games.includes(game) && (starts[game] ?? 0) === 0);
+    },
     history: (): FeaturedHistory => {
       const { starts, featured } = held();
       return { timesStarted: new Map(Object.entries(starts)), lastFeatured: featured && { game: featured.game, on: featured.day } };

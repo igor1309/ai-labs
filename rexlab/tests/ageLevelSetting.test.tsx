@@ -44,7 +44,7 @@ const NAMES = { hatchling: "HATCHLING", explorer: "EXPLORER", paleontologist: "P
 
 type Level = keyof typeof NAMES;
 
-const PICTURES: Record<Level, string> = { hatchling: "🥚", explorer: "🦖", paleontologist: "🦴" };
+const PICTURES: Record<Level, string> = { hatchling: "egg", explorer: "compass", paleontologist: "pickaxe" };
 
 // The day the app is opened on, with the large card's game already
 // chosen for it.
@@ -96,7 +96,8 @@ function openApp({ storage = memoryStorage(), language = "en" }: { storage?: Mem
 
 const levelButton = (language: Language = "en") => screen.getByRole("button", { name: LABELS[language] });
 
-const pictureOn = (element: Element) => element.querySelector(".parent-menu-picture")?.textContent;
+// The line symbol a level is shown by, named as lucide names it.
+const pictureOn = (element: Element) => [...(element.querySelector("svg.lucide:not(.lucide-check)")?.classList ?? [])].find((name) => name.startsWith("lucide-"))?.slice("lucide-".length);
 
 // Each choice in the age level menu: its picture, name and age, and
 // whether it is checked and shows a ✓.
@@ -123,20 +124,20 @@ async function chooseLevel(user: UserEvent, name: string, language: Language = "
 }
 
 // What each tile's badge and the large card's badge read, in order.
-const badgesOnHome = () => [...tilesRow().children, featuredCard()].map((card) => badgeOf(card)?.textContent ?? null);
+const badgesOnHome = () => [...tilesRow().querySelectorAll(".tiles-grid > *"), featuredCard()].map((card) => badgeOf(card)?.textContent ?? null);
 
 const saved = (level: Level) => JSON.stringify({ level, revision: `picked-${level}` });
 
 describe("the age level menu", () => {
   it.each([
-    ["en", "Language", "Theme", [["🥚", "HATCHLING", "about 4"], ["🦖", "EXPLORER", "about 5"], ["🦴", "PALEONTOLOGIST", "6 and up"]]],
-    ["ru", "Язык", "Тема", [["🥚", "ДЕТЁНЫШ", "около 4 лет"], ["🦖", "ИССЛЕДОВАТЕЛЬ", "около 5 лет"], ["🦴", "ПАЛЕОНТОЛОГ", "6 лет и старше"]]]
+    ["en", "Language", "Theme", [["egg", "HATCHLING", "about 4"], ["compass", "EXPLORER", "about 5"], ["pickaxe", "PALEONTOLOGIST", "6 and up"]]],
+    ["ru", "Язык", "Тема", [["egg", "ДЕТЁНЫШ", "около 4 лет"], ["compass", "ИССЛЕДОВАТЕЛЬ", "около 5 лет"], ["pickaxe", "ПАЛЕОНТОЛОГ", "6 лет и старше"]]]
   ] as const)("is for parents, after the theme menu, and lists each level's picture, name and age, in %s", async (language, languageMenu, themeMenu, levels) => {
     const storage = memoryStorage({ [AGE_LEVEL_KEY]: saved("explorer") });
     const { user, timers } = openApp({ storage, language });
 
     const button = levelButton(language);
-    expect(pictureOn(button)).toBe("🦖");
+    expect(pictureOn(button)).toBe("compass");
     const group = button.closest(".parent-menus");
     expect(group).not.toBeNull();
     expect([...(group?.querySelectorAll(".parent-menu-button") ?? [])].map((each) => each.getAttribute("aria-label"))).toEqual([
@@ -153,7 +154,7 @@ describe("the age level menu", () => {
     act(() => timers.fire(MENU_EXIT));
 
     expect(document.querySelector(".parent-menu-list")).toBeNull();
-    expect(pictureOn(levelButton(language))).toBe("🦖");
+    expect(pictureOn(levelButton(language))).toBe("compass");
     expect(storage.items.get(AGE_LEVEL_KEY)).toBe(saved("explorer"));
   });
 
@@ -168,7 +169,7 @@ describe("the age level menu", () => {
   ])("starts at Explorer when %s", async (_, storage) => {
     const { user } = openApp({ storage });
 
-    expect(pictureOn(levelButton())).toBe("🦖");
+    expect(pictureOn(levelButton())).toBe("compass");
     expect(tickedIn(await openMenu(user, LABELS.en))).toEqual(["EXPLORER"]);
   });
 });
@@ -193,15 +194,15 @@ describe("a chosen level", () => {
   });
 
   it.each([
-    ["no age level is saved", {}, "🦖"],
-    ["Paleontologist is saved", { [AGE_LEVEL_KEY]: saved("paleontologist") }, "🦴"]
+    ["no age level is saved", {}, "compass"],
+    ["Paleontologist is saved", { [AGE_LEVEL_KEY]: saved("paleontologist") }, "pickaxe"]
   ])("still applies until the app closes when it cannot be saved and %s", async (_, items, reopened) => {
     const storage = memoryStorage(items, { save: false });
     const { user, unmount } = openApp({ storage });
 
     await chooseLevel(user, NAMES.hatchling);
 
-    expect(pictureOn(levelButton())).toBe("🥚");
+    expect(pictureOn(levelButton())).toBe("egg");
     unmount();
     openApp({ storage });
     expect(pictureOn(levelButton())).toBe(reopened);
@@ -219,7 +220,7 @@ describe("a chosen level", () => {
     lose(storage);
     const { user: again } = openApp({ storage });
 
-    expect(pictureOn(levelButton())).toBe("🦴");
+    expect(pictureOn(levelButton())).toBe("pickaxe");
     expect(tickedIn(await openMenu(again, LABELS.en))).toEqual(["PALEONTOLOGIST"]);
   });
 
@@ -240,9 +241,9 @@ describe("a chosen level", () => {
 
     for (const level of ["hatchling", "paleontologist", "explorer", "hatchling"] as const) await chooseLevel(user, NAMES[level]);
 
-    expect(pictureOn(levelButton())).toBe("🥚");
+    expect(pictureOn(levelButton())).toBe("egg");
     // Small tiles omit rewards even when the selected level changes.
-    expect(badges).toEqual([null, "6"]);
+    expect(badges).toEqual([...Array(9).fill(null), "6"]);
     expect([badgesOnHome(), featuredCard().getAttribute("data-game")]).toEqual([badges, featured]);
     expect(featured).toBe("care");
     expect([...storage.items].filter(([key]) => key !== AGE_LEVEL_KEY)).toEqual([...kept].filter(([key]) => key !== AGE_LEVEL_KEY));

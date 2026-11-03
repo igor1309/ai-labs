@@ -1,3 +1,4 @@
+import { THEMES } from "../src/theme.ts";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { LANGUAGES } from "../src/language/language.ts";
@@ -52,7 +53,7 @@ describe.each(FIT_TABLE)("%s's %i-dinosaur result at %i by %i", (_, count, width
   const vertical = (s: CSSStyleDeclaration) => pixels(s.paddingTop) + pixels(s.paddingBottom);
   const wordWidth = (words: string, size: number) => (WORD_EMS[words] ?? NaN) * size;
 
-  it.each(LANGUAGES.flatMap((language) => (["light", "dark"] as const).map((theme) => [language, theme] as const)))(
+  it.each(LANGUAGES.flatMap((language) => THEMES.map((theme) => [language, theme] as const)))(
     "keeps every name, reward and action on screen in %s, %s",
     (language, theme) => {
       openWindow(width, height);

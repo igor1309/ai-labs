@@ -1,3 +1,4 @@
+import { THEMES } from "../src/theme.ts";
 import { act, fireEvent, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { brushWidth } from "../src/dig/index.ts";
@@ -69,7 +70,7 @@ describe("the bar's picker", () => {
     expect([brushButton(language), wideButton(language)].map((button) => button.getAttribute("aria-pressed"))).toEqual(["true", "false"]);
   });
 
-  it.each(["light", "dark"] as const)("shows each button at least 48 by 48, a dot of 14 or 28, the picked one filled amber, in the %s theme", (theme) => {
+  it.each(THEMES)("shows each button at least 48 by 48, a dot of 14 or 28, the picked one filled amber, in the %s theme", (theme) => {
     openRound("hatchling", { theme });
     const amber = theme === "light" ? "rgb(227, 155, 45)" : "rgb(242, 178, 75)";
     const look = () => [brushButton(), wideButton()].map((button) => {

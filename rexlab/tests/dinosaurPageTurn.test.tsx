@@ -1,4 +1,3 @@
-import { homeTileGeometry } from "./support.ts";
 import { gameDoor } from "./support.ts";
 import { emptyLabyrinth } from "./support.ts";
 import { act, fireEvent, render, screen } from "@testing-library/react";
@@ -181,7 +180,7 @@ async function openPage(from: Window, { id = "baryonyx", language = "en", reduce
   let clock = 0;
   onTestFinished(() => void (document.documentElement.scrollTop = 0));
   render(
-    <App readTileColumns={homeTileGeometry} {...emptyLabyrinth()}
+    <App homeMotion={() => () => {}} newHomeGames={() => []} {...emptyLabyrinth()}
       {...featuring()}
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={SHIPPED_CATALOGUE}

@@ -1,3 +1,4 @@
+import type { Theme } from "../src/theme.ts";
 import { gameDoor } from "./support.ts";
 import { emptyLabyrinth } from "./support.ts";
 import { act, render, screen, within } from "@testing-library/react";
@@ -51,7 +52,7 @@ export type PairsAppOptions<C extends Clock> = {
   // The screens with a portrait layout, none unless given.
   portraitLayouts?: PortraitLayouts;
   deviceLanguage?: string;
-  theme?: "light" | "dark";
+  theme?: Theme;
   // The age level a parent picked, or "unset" for none picked yet.
   ageLevel?: AgeLevelSetting | "unset";
   // Reuse the parent's saved setting across app reloads, independently

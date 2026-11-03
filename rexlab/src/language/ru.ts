@@ -31,6 +31,8 @@ export const ru: Texts = {
     explorer: { name: "ИССЛЕДОВАТЕЛЬ", age: "около 5 лет" },
     paleontologist: { name: "ПАЛЕОНТОЛОГ", age: "6 лет и старше" }
   },
+  homeNew: "НОВИНКА",
+  homeParentNote: "Родителям: прогресс сохраняется на этом устройстве. Настройки — вверху страницы.",
   versionLabel: "Версия",
   turnSideways: "ПОВЕРНИ БОКОМ",
   makeWindowWider: "СДЕЛАЙ ОКНО ШИРЕ",
@@ -106,6 +108,7 @@ export const ru: Texts = {
   },
   pairs: "НАЙДИ ПАРУ",
   moreComing: "СКОРО ЕЩЁ",
+  today: "СЕГОДНЯ",
   play: "ИГРАТЬ",
   level: "УРОВЕНЬ",
   ageLevelSwitch: "ВОЗРАСТНОЙ УРОВЕНЬ",

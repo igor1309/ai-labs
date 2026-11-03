@@ -1,3 +1,4 @@
+import type { Theme } from "../src/theme.ts";
 export { mosasaurusHatchlingProbes, mosasaurusExplorerProbes } from "./mosasaurusSceneProbes.ts";
 export { trexHatchlingProbes, trexExplorerProbes, trexProtectedProbes } from "./trexSceneProbes.ts";
 export { ankylosaurusHatchlingProbes, ankylosaurusExplorerProbes } from "./ankylosaurusSceneProbes.ts";
@@ -62,7 +63,7 @@ function show() {
     identity={() => Array.from(crypto.getRandomValues(new Uint32Array(4)), value => value.toString(16)).join("-")} countStart={() => { starts++; }}
     home={() => { homes++; flushSync(() => root!.render(<button onClick={show}>ENTER COLORING</button>)); }} /></InputArbitrationContext>));
 }
-export async function mount(options: { language?: Language; level?: AgeLevel; theme?: "light" | "dark"; seed?: boolean } = {}) {
+export async function mount(options: { language?: Language; level?: AgeLevel; theme?: Theme; seed?: boolean } = {}) {
   root?.unmount(); await resources?.close();
   level = options.level ?? "hatchling";
   language = options.language ?? "en"; denyReads = false; denyWrites = false; abortCompletion = false;
@@ -86,7 +87,7 @@ export const reset = () => resources.reset();
 export const readFailure = (deny: boolean) => { denyReads = deny; };
 export const writeFailure = (deny: boolean) => { denyWrites = deny; };
 export const completionAbort = (abort: boolean) => { abortCompletion = abort; };
-export function appearance(next: Language, theme: "light" | "dark") {
+export function appearance(next: Language, theme: Theme) {
   language = next; document.documentElement.dataset.theme = theme; show();
 }
 export async function damage(id: string, part: "paint" | "history") {

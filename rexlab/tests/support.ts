@@ -25,7 +25,7 @@ import { attributeOf, correctOf, QUESTION_KINDS, ROUND_LENGTH, type Question } f
 import { TEXTS } from "../src/language/texts.ts";
 import { boardState, startBoard, type Dinosaur as Sortable, type Property, type Sorting } from "../src/sorting/index.ts";
 import type { Theme } from "../src/theme.ts";
-import type { LayoutKeeping } from "../src/useKeptRow.ts";
+import type { LayoutKeeping } from "../src/layoutKeeping.ts";
 import { styleAt } from "./windowSizes.ts";
 
 export const SHIPPED_DINOSAURS = readDinosaurs(records);
@@ -508,10 +508,11 @@ export function emptyDig(): Pick<AppProps, "digDinosaurs" | "digProgress" | "san
 // are not about them: every part is measured where it stands in any
 // layout, so nothing glides, and a fade changes the layout and ends at
 // once; every chip's parts take no width, so the chips stand on one row.
-export function pageAtRest(): Pick<AppProps, "layoutMotion" | "chipWidths" | "pictureMotion" | "readTileColumns"> {
+export function pageAtRest(): Pick<AppProps, "layoutMotion" | "chipWidths" | "pictureMotion" | "newHomeGames" | "homeMotion"> {
   return {
+    homeMotion: () => () => {},
     pictureMotion: { now: () => 0, duration: 320, easing: "cubic-bezier(0.22, 1, 0.36, 1)" },
-    readTileColumns: () => homeTileGeometry(),
+    newHomeGames: () => [],
     chipWidths: { width: () => 0, subscribe: () => () => {} },
     layoutMotion: {
       parts: document,
@@ -682,20 +683,18 @@ export function seenOn(color: string, under: string): string {
   return format([0, 1, 2].map((at) => (top[at] ?? 0) * alpha + (bottom[at] ?? 0) * (1 - alpha)));
 }
 
-const hasBackground = (element: Element) => rgba(getComputedStyle(element).backgroundColor)[3] > 0;
-
 // The elements with a background of their own, translucent or not.
-export function surfacesIn(root: Element): Element[] {
-  return [root, ...root.querySelectorAll("*")].filter(hasBackground);
+export function surfacesIn(root: Element, styleOf: typeof getComputedStyle = getComputedStyle): Element[] {
+  return [root, ...root.querySelectorAll("*")].filter(element => rgba(styleOf(element).backgroundColor)[3] > 0);
 }
 
 // The colour an element is seen on: its own background, or the nearest
 // one behind it, with each translucent layer laid over what is behind it.
-export function surfaceOf(element: Element): string {
+export function surfaceOf(element: Element, styleOf: typeof getComputedStyle = getComputedStyle): string {
   const layers: string[] = [];
   for (let at: Element | null = element; at; at = at.parentElement) {
-    const background = getComputedStyle(at).backgroundColor;
-    if (!hasBackground(at)) continue;
+    const background = styleOf(at).backgroundColor;
+    if (rgba(background)[3] === 0) continue;
     if (rgba(background)[3] < 1) {
       layers.push(background);
       continue;
@@ -801,44 +800,6 @@ export function tilesRow(): HTMLElement {
   return row;
 }
 
-// The home page's row of tiles laid out as a browser would, which jsdom
-// does not: upright it runs from the page's 56-pixel padding to the
-// window's right edge, and in landscape it takes four sevenths of what
-// the page's 56-pixel sides and the large card's 28-pixel gap leave, or,
-// in a wide-short window, half of what its 20-pixel sides and 16-pixel
-// gap leave with the right side it reaches into. Its columns, of two each, are as wide
-// and as far apart as the stylesheet sets them in the test's window, a
-// share of the row's width in a wide-short one. A tile's frame, drawn
-// under it as it glides, takes no place in them.
-// jsdom has no layout; tests supply measured columns at the app boundary.
-export function homeTileGeometry() {
-  const size = document.documentElement.dataset.size;
-  const gap = size === "wide-short" ? 16 : 28;
-  const height = size === "tall" ? Math.max(360, Math.min(window.innerHeight * .36, 520)) : size === "tall-narrow" ? Math.max(320, Math.min(window.innerHeight * .36, 420)) : size === "wide-short" ? Math.max(260, window.innerHeight - 100) : Math.max(360, Math.min(window.innerHeight - 380, 520));
-  return { column: (height - gap) * 2 / 3, gap: 16 };
-}
-
-export function layOutTilesRow(): HTMLElement {
-  const row = tilesRow();
-  const size = () => document.documentElement.dataset.size;
-  const width = () => (size() === "tall" ? window.innerWidth - 56 : size() === "tall-narrow" ? window.innerWidth - 20 : size() === "wide-short" ? Math.round((window.innerWidth - 40 - 16 + 20) / 2) : Math.round(((window.innerWidth - 112 - 28) * 4) / 7));
-  const grid = row.querySelector<HTMLElement>(".tiles-grid")!;
-  const column = () => homeTileGeometry().column;
-  const scrollWidth = () => {
-    const columns = Math.ceil([...grid.children].filter((child) => !child.hasAttribute("data-turn-frame")).length / 2);
-    return Math.round(columns * column() + (columns - 1) * 16);
-  };
-  Object.defineProperties(row, { clientWidth: { get: width }, scrollWidth: { get: scrollWidth } });
-  return row;
-}
-
-// The child swipes the row of tiles to `scroll`, as the browser reports
-// it in a scroll event.
-export function swipeTiles(row: HTMLElement, scroll: number) {
-  row.scrollLeft = scroll;
-  fireEvent.scroll(row);
-}
-
 // A game's own tile on the home page, apart from the large card. The
 // large card's game has no tile.
 export const shortHomeName = (name: string) => ({
@@ -857,4 +818,10 @@ export function featuredCard(): HTMLElement {
   const card = document.querySelector<HTMLElement>(".featured-card:not([data-turn-frame])");
   if (!card) throw new Error("No featured card on the page");
   return card;
+}
+
+// The largest a font size can be: a title fitted to its card is
+// `min(<its size>, <what fits>)`, at its size when the name fits.
+export function largestSize(fontSize: string): number {
+  return parseFloat(/^min\(([\d.]+)px,/.exec(fontSize)?.[1] ?? fontSize);
 }

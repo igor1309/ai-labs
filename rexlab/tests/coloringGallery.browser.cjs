@@ -36,7 +36,7 @@ const { chromium } = require("playwright");
     const press = async name => {
       await page.getByRole("button", { name, exact: true }).press("Enter");
       await page.evaluate(async () => {
-        await Promise.all(document.getAnimations().filter(a => a.effect?.getComputedTiming().iterations !== Infinity).map(a => a.finished.catch(() => {})));
+        await Promise.all(document.getAnimations().filter(a => a.timeline === document.timeline && a.effect?.getComputedTiming().iterations !== Infinity).map(a => a.finished.catch(() => {})));
       });
     };
     const listed = () => page.evaluate(async () => {
@@ -366,7 +366,7 @@ const { chromium } = require("playwright");
         assert.deepEqual(await page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.scrollHeight]), [viewport.width, viewport.height]);
         if (viewport.width === 1180 && language === "en" && theme === "light") {
           await page.evaluate(async () => {
-            await Promise.all(document.getAnimations().filter(animation => animation.effect?.getComputedTiming().iterations !== Infinity).map(animation => animation.finished.catch(() => {})));
+            await Promise.all(document.getAnimations().filter(animation => animation.timeline === document.timeline && animation.effect?.getComputedTiming().iterations !== Infinity).map(animation => animation.finished.catch(() => {})));
           });
           await page.screenshot({ path: join(artifacts, "triceratops.png") });
         }
@@ -434,7 +434,7 @@ const { chromium } = require("playwright");
           if (level === "explorer" && viewport.width === 1180 && language === "en" && theme === "light") {
             await page.evaluate(async () => {
               await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-              await Promise.all(document.getAnimations().filter(a => a.effect?.getComputedTiming().iterations !== Infinity).map(a => a.finished.catch(() => {})));
+              await Promise.all(document.getAnimations().filter(a => a.timeline === document.timeline && a.effect?.getComputedTiming().iterations !== Infinity).map(a => a.finished.catch(() => {})));
             });
             await page.screenshot({ path: join(artifacts, "triceratops-explorer.png") });
           }
@@ -878,7 +878,7 @@ const { chromium } = require("playwright");
       for (const [width, height, language, theme] of [[1180, 820, "en", "light"], [1024, 768, "ru", "dark"]]) {
         await page.setViewportSize({ width, height });
         await page.evaluate(({ language, theme }) => window.gallery.appearance(language, theme), { language, theme });
-        await page.evaluate(async () => { await Promise.all(document.getAnimations().filter(a => a.effect?.getComputedTiming().iterations !== Infinity).map(a => a.finished.catch(() => {}))); });
+        await page.evaluate(async () => { await Promise.all(document.getAnimations().filter(a => a.timeline === document.timeline && a.effect?.getComputedTiming().iterations !== Infinity).map(a => a.finished.catch(() => {}))); });
         const boxes = await page.locator(".coloring-workshop").evaluate(s => [...s.querySelectorAll("button, canvas")].filter(e => e.getBoundingClientRect().width > 0).map(e => {
           const b = e.getBoundingClientRect(); return { canvas: e.tagName === "CANVAS", x: b.x, y: b.y, w: b.width, h: b.height };
         }));
