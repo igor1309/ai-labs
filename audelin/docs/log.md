@@ -2,7 +2,7 @@
 
 ## 2026-11-03
 
-- Parakeet v3 word boundaries and timings are pinned to a recorded speech clip; both speech adapters preserve model token text and timing through tested bindings (LAB-943).
+- Parakeet omits whitespace-only model words while keeping spoken words' original timing (LAB-943).
 
 - Streaming transcript text leaves trailing space so the scrollbar does not cover words or the live caret (LAB-934).
 

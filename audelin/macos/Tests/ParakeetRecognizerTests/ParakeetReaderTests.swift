@@ -49,6 +49,20 @@ struct ParakeetReaderTests {
         #expect(try await read(reader, samples: []) == [])
     }
 
+    @Test(arguments: [" ", "\t", "\n", " \t\r\n", "\u{00a0}"])
+    func whitespaceOnlyWordsAreOmitted(_ whitespace: String) async throws {
+
+        let reader = ParakeetReader(transcribe: { _, _ in [
+            timing(" ", 0.1, 0.2), timing(whitespace, 0.2, 0.3),
+            timing(" word", 0.4, 0.5),
+            timing(" ", 0.6, 0.7), timing(whitespace, 0.7, 0.8),
+        ] })
+
+        #expect(try await read(reader, samples: .init(repeating: 0, count: 16_000)) == [
+            WindowWord("word", start: 0.4, end: 0.5),
+        ])
+    }
+
     @Test func paddingPreservesSamplesAndAddsOnlyTheMissingSilence() async throws {
 
         let minimum = ASRConstants.minimumRequiredSamples(forSampleRate: 16_000)

@@ -73,6 +73,6 @@ final class ParakeetReader: WindowReader {
                 words[words.count - 1].end = timing.endTime
             }
         }
-        return words.filter { !$0.text.trimmingCharacters(in: .whitespaces).isEmpty }
+        return words.filter { !$0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     }
 }
