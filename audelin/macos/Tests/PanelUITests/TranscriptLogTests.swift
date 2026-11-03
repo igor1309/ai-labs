@@ -7,6 +7,30 @@ import Testing
 @MainActor
 struct TranscriptLogTests {
 
+    @Test func wrappedStreamingTextStaysClearOfTheScrollbar() throws {
+
+        let words = String(repeating: "обсуждаем streaming transcript ", count: 12)
+        let host = hosted(.init(entries: [
+            .init(id: 1, time: "12:44", speaker: .me, settled: words, pending: words),
+        ]), height: 100)
+        let text = try #require(Offscreen.textView(in: host))
+        let scroll = try #require(scrollView(in: host))
+        scroll.scrollerStyle = .overlay
+        scroll.layoutSubtreeIfNeeded()
+        let layout = try #require(text.textLayoutManager)
+        layout.ensureLayout(for: layout.documentRange)
+
+        let clearance = NSScroller.scrollerWidth(for: .regular, scrollerStyle: .overlay)
+        var segments = 0
+        layout.enumerateTextSegments(in: layout.documentRange, type: .standard, options: []) { _, rect, _, _ in
+            segments += 1
+            #expect(rect.maxX + text.textContainerOrigin.x <= text.bounds.width - clearance)
+            return true
+        }
+        #expect(segments > 2)
+        #expect(isTallerThanItsView(scroll))
+    }
+
     @Test func gapUsesSmallMutedTextAndNamesItsMissingSide() throws {
 
         for (speaker, label): (PanelState.Speaker, String) in [(.me, "я"), (.them, "они")] {
