@@ -147,15 +147,13 @@ const brightness = (element: Element) => {
 };
 
 describe("the home page", () => {
-  it("offers the quiz as the first tile, with the app's own Tyrannosaurus and Brachiosaurus facing off", () => {
+  it("offers the quiz as the first tile, with the app's own Tyrannosaurus alone", () => {
     const { tile } = openWithCompareTile();
 
     expect(tile).toBe(tilesRow().querySelector(".tiles-grid")?.firstElementChild);
     expect(tile.textContent).toBe("COMPARE");
     expect(symbolsOf(tile)).toEqual(["scale"]);
-    const faceOff = within(tile).getByRole("img", { name: "TWO DINOSAURS" });
-    const pictures = [...faceOff.querySelectorAll("img")];
-    expect(pictures.map((picture) => picture.getAttribute("src"))).toEqual([fakeBodyPicture("tyrannosaurus"), fakeBodyPicture("brachiosaurus")]);
+    expect([...tile.querySelectorAll("img")].map((picture) => picture.getAttribute("src"))).toEqual([fakeBodyPicture("tyrannosaurus")]);
   });
 
   it("stands every other game in order beneath the sky, with SOON last", () => {

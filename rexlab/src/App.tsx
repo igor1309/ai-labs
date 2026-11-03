@@ -172,6 +172,9 @@ export type AppProps = CareGameProps &
 // The two dinosaurs facing off in the quiz's picture on the home page.
 const FACE_OFF = { left: "tyrannosaurus", right: "brachiosaurus" };
 
+// The quiz's own dinosaur alone on its tile; Brachiosaurus belongs to BONES.
+const COMPARE_TILE = FACE_OFF.left;
+
 // The dinosaur on the catalogue's tile.
 const CATALOGUE_TILE = "stegosaurus";
 
@@ -738,7 +741,7 @@ export function App({
             labyrinth={{ picture: bodyPicture("ankylosaurus"), stars: labyrinth.stars }}
             moreComing={bodyPicture(MORE_COMING)}
             tilesPerLayer={tilesPerLayer}
-            tilePictures={HOME_TILE_PICTURES}
+            tilePictures={{ ...HOME_TILE_PICTURES, compare: bodyPicture(COMPARE_TILE) }}
             onCompareDinosaurs={openCompare}
             onCatalogue={openCatalogue}
             onCare={openCare}
