@@ -12585,7 +12585,8 @@ html .home.home-dig-site {
 .home.home-dig-site .home-sky .featured-card .featured-card-symbol svg { width: 36px; height: 36px; }
 .home.home-dig-site .home-sky .featured-card .featured-card-footer { container-type: inline-size; }
 /* A name stays on one line: a long one takes smaller type, about 0.74em
-   a capital in this face, after the symbol and the gap beside it. */
+   a capital in this face, after the symbol and the gap beside it; a wider
+   face shrinks it further where it is measured. */
 .home.home-dig-site .home-sky .featured-card .featured-card-title {
   min-width: 0; line-height: 1.1; font-weight: 800; letter-spacing: -1px; white-space: nowrap;
   font-size: min(var(--ds-size-display), calc((100cqw - 92px) / (var(--title-chars) * 0.74)));
@@ -12684,8 +12685,6 @@ html[data-size="tall-narrow"] .home.home-dig-site .home-header { min-height: 44p
 html[data-size="tall-narrow"] .home.home-dig-site .wordmark { font-size: 22px; }
 html[data-size="tall-narrow"] .home.home-dig-site .wordmark-mark { width: 35px; min-width: 0; height: 36px; }
 html[data-size="tall-narrow"] .home.home-dig-site .home-museum { min-width: 44px; width: auto; }
-/* The page behind the browser's bars and below the bedrock is bedrock. */
-html.home-page, html.home-page body { background-color: var(--ds-strata-3); }
 html[data-size="tall-narrow"] .home.home-dig-site .home-corner,
 html[data-size="tall-narrow"] .home.home-dig-site .parent-menus { gap: 8px; }
 html[data-size="tall-narrow"] .home.home-dig-site .home-today-copy { gap: 24px; }
@@ -12954,7 +12953,7 @@ html[data-size="wide-short"] .home.home-dig-site .home-today-art { width: 44%; r
   justify-content: center;
   flex: none;
   box-sizing: border-box;
-  max-width: none;
+  max-width: 100%;
   width: max-content;
   height: auto;
   margin: 0;

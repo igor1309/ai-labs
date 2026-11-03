@@ -165,9 +165,8 @@ function expectScreenIn(theme: Theme, part: Element = document.body) {
   const sharedColours = DESIGN_TOKENS.map((name) => tokens.getPropertyValue(name).trim()).filter((value) => /^(#|rgb)/.test(value));
   const colours = [...Object.values(PALETTE[theme]), ...sharedColours, ...OVERLAYS];
 
-  // Home's page, past its ground, is bedrock.
-  const page = document.querySelector(".home-dig-site") ? tokens.getPropertyValue("--ds-strata-3") : PALETTE[theme].bg ?? "";
-  expect(sameColour(styleOf(document.body).backgroundColor, page)).toBe(true);
+  // The page behind the browser's bars is the theme's page, Home too.
+  expect(sameColour(styleOf(document.body).backgroundColor, PALETTE[theme].bg ?? "")).toBe(true);
   expect(texts.length).toBeGreaterThan(0);
   expect(
     surfaces

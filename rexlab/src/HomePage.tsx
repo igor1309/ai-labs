@@ -263,7 +263,7 @@ export function HomePage({
           <span className={`${prefix}-tile-symbol home-tile-symbol`} aria-hidden="true">
             {game === "whoseJaw" ? <Tooth /> : <Symbol size={20} />}
           </span>
-          <span className={`${prefix}-tile-title home-tile-title`}>{labels[game]}</span>
+          <FitText className={`${prefix}-tile-title home-tile-title`} text={labels[game]} />
         </span>
       </Button>
     )];
@@ -277,7 +277,7 @@ export function HomePage({
       <span className="home-tile-pocket"><Picture className="more-coming-picture" src={moreComing} alt="" width={800} height={600} /></span>
       <span className="more-coming-row home-tile-footer" aria-hidden="true">
         <span className="home-tile-symbol" aria-hidden="true"><Lock size={18} /></span>
-        <span className="more-coming-title home-tile-title">{labels.moreComing}</span>
+        <FitText className="more-coming-title home-tile-title" text={labels.moreComing} />
       </span>
     </div>
   );
@@ -360,7 +360,7 @@ export function HomePage({
               <span className="featured-card-symbol" aria-hidden="true">
                 {featuredGame === "whoseJaw" ? <Tooth /> : <FeaturedSymbol size={36} />}
               </span>
-              <span className="featured-card-title" style={{ "--title-chars": today.name.length } as CSSProperties}>{today.name}</span>
+              <FitText className="featured-card-title" text={today.name} style={{ "--title-chars": today.name.length } as CSSProperties} />
             </span>
             <span className="home-today-actions">
               <span className="home-play"><Play aria-hidden="true" />{text.play}</span>
@@ -427,4 +427,28 @@ function BadgeChip({ badge, className, size }: { badge: Badge | undefined; class
       {badge.value}
     </span>
   );
+}
+
+// A name stays on one line in its room: its type shrinks by what it
+// measures over, since a fallback face (Russian has no Lexend)
+// can be wider than the room was sized for.
+function FitText({ className, text, style }: { className: string; text: string; style?: CSSProperties }) {
+  const element = useRef<HTMLSpanElement>(null);
+  useLayoutEffect(() => {
+    const shown = element.current;
+    if (shown === null) return;
+    const fit = () => {
+      shown.style.removeProperty("font-size");
+      if (shown.scrollWidth > shown.clientWidth) shown.style.fontSize = `${parseFloat(getComputedStyle(shown).fontSize) * shown.clientWidth / shown.scrollWidth}px`;
+    };
+    fit();
+    const observer = typeof ResizeObserver === "undefined" ? undefined : new ResizeObserver(fit);
+    if (shown.parentElement) observer?.observe(shown.parentElement);
+    document.fonts?.addEventListener("loadingdone", fit);
+    return () => {
+      observer?.disconnect();
+      document.fonts?.removeEventListener("loadingdone", fit);
+    };
+  }, [text]);
+  return <span ref={element} className={className} style={style}>{text}</span>;
 }

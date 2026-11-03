@@ -137,6 +137,13 @@ exports.runHome = async function(sizes) {
           localStorage.setItem('rexlab-theme', theme);
           localStorage.setItem('rexlab-age-level', JSON.stringify({ level, revision: 'home-sky' }));
           Math.random = () => 0;
+          // Lexend has no Cyrillic, so Russian falls back to a system face; here a
+          // wide one, as on Linux, where Verdana is absent and its own is as wide.
+          document.addEventListener('DOMContentLoaded', () => {
+            const wide = document.createElement('style');
+            wide.textContent = '@font-face { font-family: "Lexend Variable"; src: local("Verdana Bold"); unicode-range: U+0400-04FF; font-weight: 100 900; }';
+            document.head.prepend(wide);
+          });
         }, { language, theme, level });
         const page = await context.newPage();
         await page.goto('http://home.test/');

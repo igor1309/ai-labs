@@ -76,7 +76,7 @@ const { chromium } = require("playwright");
     const homeCount = async count => {
       await home();
       await page.waitForFunction(count => document.querySelector('[data-turn-part="tile-coloring"]') ? !document.querySelector('.coloring-tile-count') : document.querySelector('.featured-card[data-game="coloring"] .featured-card-badge')?.textContent === String(count), count);
-      assert.equal(await entry().locator("svg.lucide-pencil").count(), 1);
+      assert.equal(await entry().locator("svg.lucide-palette").count(), 1);
     };
     const paint = async (color, fill = true) => {
       if (await page.getByRole("button", { name: "COLOR", exact: true }).isVisible()) await press("COLOR");
@@ -135,7 +135,7 @@ const { chromium } = require("playwright");
     const retained = await page.evaluate(() => ({ ...localStorage }));
     for (const [key, value] of Object.entries(settings)) assert.equal(retained[key], value);
     const otherScores = JSON.parse(retained["rexlab-progress"]).games;
-    assert.deepEqual(Object.keys(otherScores), ["home-featured"]);
+    assert.deepEqual(Object.keys(otherScores), ["home-featured", "home-first-visit"]);
     await entry().press("Enter"); await gallery();
     await press("HOME"); await page.evaluate(() => { window.storageFault = "read"; });
     await entry().press("Enter"); await gallery(); await page.getByRole("alert").waitFor();
