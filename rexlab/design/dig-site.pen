@@ -173,7 +173,7 @@
                 {
                   "type": "frame",
                   "id": "j1GqC",
-                  "name": "ds-sky-body",
+                  "name": "ds-sky-halo",
                   "width": 170,
                   "layout": "vertical",
                   "gap": 6,
@@ -182,8 +182,8 @@
                       "type": "rectangle",
                       "cornerRadius": 8,
                       "id": "yH3K8",
-                      "name": "ds-sky-body Chip",
-                      "fill": "$ds-sky-body",
+                      "name": "ds-sky-halo Chip",
+                      "fill": "$ds-sky-halo",
                       "width": "fill_container",
                       "height": 72,
                       "stroke": "$ds-outline",
@@ -192,9 +192,9 @@
                     {
                       "type": "text",
                       "id": "Jt3HZ",
-                      "name": "ds-sky-body Name",
+                      "name": "ds-sky-halo Name",
                       "fill": "$ds-ink",
-                      "content": "ds-sky-body",
+                      "content": "ds-sky-halo",
                       "fontFamily": "$ds-font",
                       "fontSize": 12,
                       "fontWeight": "600"
@@ -202,9 +202,9 @@
                     {
                       "type": "text",
                       "id": "YmeK4",
-                      "name": "ds-sky-body Role",
+                      "name": "ds-sky-halo Role",
                       "fill": "$ds-ink-soft",
-                      "content": "sun / moon",
+                      "content": "sun / moon halo",
                       "fontFamily": "$ds-font",
                       "fontSize": 12,
                       "fontWeight": "normal"
@@ -1054,6 +1054,684 @@
                   ]
                 }
               ]
+            },
+            {
+              "type": "frame",
+              "id": "jHPKi",
+              "name": "Earth details",
+              "width": "fill_container",
+              "gap": 16,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "j0HGC",
+                  "name": "Earth details Label",
+                  "fill": "$ds-ink",
+                  "textGrowth": "fixed-width",
+                  "width": 150,
+                  "content": "Earth details",
+                  "fontFamily": "$ds-font",
+                  "fontSize": 15,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "frame",
+                  "id": "CwZiY",
+                  "name": "ds-pocket-shadow",
+                  "width": 170,
+                  "layout": "vertical",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 8,
+                      "id": "lX6u6",
+                      "name": "ds-pocket-shadow Chip",
+                      "fill": "$ds-pocket-shadow",
+                      "width": "fill_container",
+                      "height": 72,
+                      "stroke": "$ds-outline",
+                      "strokeWidth": 1
+                    },
+                    {
+                      "type": "text",
+                      "id": "Tr71t",
+                      "name": "ds-pocket-shadow Name",
+                      "fill": "$ds-ink",
+                      "content": "ds-pocket-shadow",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "y04mhO",
+                      "name": "ds-pocket-shadow Role",
+                      "fill": "$ds-ink-soft",
+                      "content": "pocket inner shadow",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "r1WWyS",
+                  "name": "ds-speck",
+                  "width": 170,
+                  "layout": "vertical",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 8,
+                      "id": "DhS4M",
+                      "name": "ds-speck Chip",
+                      "fill": "$ds-speck",
+                      "width": "fill_container",
+                      "height": 72,
+                      "stroke": "$ds-outline",
+                      "strokeWidth": 1
+                    },
+                    {
+                      "type": "text",
+                      "id": "yKGOe",
+                      "name": "ds-speck Name",
+                      "fill": "$ds-ink",
+                      "content": "ds-speck",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "eLXds",
+                      "name": "ds-speck Role",
+                      "fill": "$ds-ink-soft",
+                      "content": "sand grains",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "qJ1cR",
+                  "name": "ds-groove",
+                  "width": 170,
+                  "layout": "vertical",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 8,
+                      "id": "LGPCz",
+                      "name": "ds-groove Chip",
+                      "fill": "$ds-groove",
+                      "width": "fill_container",
+                      "height": 72,
+                      "stroke": "$ds-outline",
+                      "strokeWidth": 1
+                    },
+                    {
+                      "type": "text",
+                      "id": "yAF6G",
+                      "name": "ds-groove Name",
+                      "fill": "$ds-ink",
+                      "content": "ds-groove",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "Tsvmq",
+                      "name": "ds-groove Role",
+                      "fill": "$ds-ink-soft",
+                      "content": "groove · maze, sand",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "Z9SXf",
+                  "name": "ds-groove-lip",
+                  "width": 170,
+                  "layout": "vertical",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 8,
+                      "id": "pvpwD",
+                      "name": "ds-groove-lip Chip",
+                      "fill": "$ds-groove-lip",
+                      "width": "fill_container",
+                      "height": 72,
+                      "stroke": "$ds-outline",
+                      "strokeWidth": 1
+                    },
+                    {
+                      "type": "text",
+                      "id": "LKea3",
+                      "name": "ds-groove-lip Name",
+                      "fill": "$ds-ink",
+                      "content": "ds-groove-lip",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "SKPEr",
+                      "name": "ds-groove-lip Role",
+                      "fill": "$ds-ink-soft",
+                      "content": "groove lip",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "V5bBcV",
+                  "name": "ds-sand-glow",
+                  "width": 170,
+                  "layout": "vertical",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 8,
+                      "id": "BDFYW",
+                      "name": "ds-sand-glow Chip",
+                      "fill": "$ds-sand-glow",
+                      "width": "fill_container",
+                      "height": 72,
+                      "stroke": "$ds-outline",
+                      "strokeWidth": 1
+                    },
+                    {
+                      "type": "text",
+                      "id": "lAljs",
+                      "name": "ds-sand-glow Name",
+                      "fill": "$ds-ink",
+                      "content": "ds-sand-glow",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "HeQn4",
+                      "name": "ds-sand-glow Role",
+                      "fill": "$ds-ink-soft",
+                      "content": "sand glow",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "ZImjx",
+              "name": "Art",
+              "width": "fill_container",
+              "gap": 16,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "X9Zw6x",
+                  "name": "Art Label",
+                  "fill": "$ds-ink",
+                  "textGrowth": "fixed-width",
+                  "width": 150,
+                  "content": "Art",
+                  "fontFamily": "$ds-font",
+                  "fontSize": 15,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "frame",
+                  "id": "B5BBOB",
+                  "name": "ds-paper",
+                  "width": 170,
+                  "layout": "vertical",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 8,
+                      "id": "t4x3E",
+                      "name": "ds-paper Chip",
+                      "fill": "$ds-paper",
+                      "width": "fill_container",
+                      "height": 72,
+                      "stroke": "$ds-outline",
+                      "strokeWidth": 1
+                    },
+                    {
+                      "type": "text",
+                      "id": "RXrqb",
+                      "name": "ds-paper Name",
+                      "fill": "$ds-ink",
+                      "content": "ds-paper",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "mO1ql",
+                      "name": "ds-paper Role",
+                      "fill": "$ds-ink-soft",
+                      "content": "colouring paper",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "r7hPe3",
+                  "name": "ds-stage",
+                  "width": 170,
+                  "layout": "vertical",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 8,
+                      "id": "vVgLB",
+                      "name": "ds-stage Chip",
+                      "fill": "$ds-stage",
+                      "width": "fill_container",
+                      "height": 72,
+                      "stroke": "$ds-outline",
+                      "strokeWidth": 1
+                    },
+                    {
+                      "type": "text",
+                      "id": "xdYfi",
+                      "name": "ds-stage Name",
+                      "fill": "$ds-ink",
+                      "content": "ds-stage",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "cheA6",
+                      "name": "ds-stage Role",
+                      "fill": "$ds-ink-soft",
+                      "content": "picture stage",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "oFAkx",
+                  "name": "ds-stage-sheen",
+                  "width": 170,
+                  "layout": "vertical",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 8,
+                      "id": "EjGEZ",
+                      "name": "ds-stage-sheen Chip",
+                      "fill": "$ds-stage-sheen",
+                      "width": "fill_container",
+                      "height": 72,
+                      "stroke": "$ds-outline",
+                      "strokeWidth": 1
+                    },
+                    {
+                      "type": "text",
+                      "id": "XpBXM",
+                      "name": "ds-stage-sheen Name",
+                      "fill": "$ds-ink",
+                      "content": "ds-stage-sheen",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "sgpfU",
+                      "name": "ds-stage-sheen Role",
+                      "fill": "$ds-ink-soft",
+                      "content": "stage sheen",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "BqeqV",
+                  "name": "ds-reward-glow",
+                  "width": 170,
+                  "layout": "vertical",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 8,
+                      "id": "h8y4Ah",
+                      "name": "ds-reward-glow Chip",
+                      "fill": "$ds-reward-glow",
+                      "width": "fill_container",
+                      "height": 72,
+                      "stroke": "$ds-outline",
+                      "strokeWidth": 1
+                    },
+                    {
+                      "type": "text",
+                      "id": "W7EK2",
+                      "name": "ds-reward-glow Name",
+                      "fill": "$ds-ink",
+                      "content": "ds-reward-glow",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "HrP9X",
+                      "name": "ds-reward-glow Role",
+                      "fill": "$ds-ink-soft",
+                      "content": "hint and help glow",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "N6troz",
+                  "name": "ds-paint-blue",
+                  "width": 170,
+                  "layout": "vertical",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 8,
+                      "id": "V7mK9",
+                      "name": "ds-paint-blue Chip",
+                      "fill": "$ds-paint-blue",
+                      "width": "fill_container",
+                      "height": 72,
+                      "stroke": "$ds-outline",
+                      "strokeWidth": 1
+                    },
+                    {
+                      "type": "text",
+                      "id": "ajHZ6",
+                      "name": "ds-paint-blue Name",
+                      "fill": "$ds-ink",
+                      "content": "ds-paint-blue",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "Cg9qD",
+                      "name": "ds-paint-blue Role",
+                      "fill": "$ds-ink-soft",
+                      "content": "paint · blue",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "vwONS",
+              "name": "On colours",
+              "width": "fill_container",
+              "gap": 16,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "upQjf",
+                  "name": "On colours Label",
+                  "fill": "$ds-ink",
+                  "textGrowth": "fixed-width",
+                  "width": 150,
+                  "content": "On colours",
+                  "fontFamily": "$ds-font",
+                  "fontSize": 15,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "frame",
+                  "id": "S8bAha",
+                  "name": "ds-on-action",
+                  "width": 170,
+                  "layout": "vertical",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 8,
+                      "id": "DHc0P",
+                      "name": "ds-on-action Chip",
+                      "fill": "$ds-on-action",
+                      "width": "fill_container",
+                      "height": 72,
+                      "stroke": "$ds-outline",
+                      "strokeWidth": 1
+                    },
+                    {
+                      "type": "text",
+                      "id": "OnzPL",
+                      "name": "ds-on-action Name",
+                      "fill": "$ds-ink",
+                      "content": "ds-on-action",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "kJkxo",
+                      "name": "ds-on-action Role",
+                      "fill": "$ds-ink-soft",
+                      "content": "text on action",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "lpUQc",
+                  "name": "ds-on-good",
+                  "width": 170,
+                  "layout": "vertical",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 8,
+                      "id": "PrcRD",
+                      "name": "ds-on-good Chip",
+                      "fill": "$ds-on-good",
+                      "width": "fill_container",
+                      "height": 72,
+                      "stroke": "$ds-outline",
+                      "strokeWidth": 1
+                    },
+                    {
+                      "type": "text",
+                      "id": "a6QQH",
+                      "name": "ds-on-good Name",
+                      "fill": "$ds-ink",
+                      "content": "ds-on-good",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "sWH6j",
+                      "name": "ds-on-good Role",
+                      "fill": "$ds-ink-soft",
+                      "content": "text on good",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "H9CicL",
+                  "name": "ds-on-label",
+                  "width": 170,
+                  "layout": "vertical",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 8,
+                      "id": "zvg49",
+                      "name": "ds-on-label Chip",
+                      "fill": "$ds-on-label",
+                      "width": "fill_container",
+                      "height": 72,
+                      "stroke": "$ds-outline",
+                      "strokeWidth": 1
+                    },
+                    {
+                      "type": "text",
+                      "id": "VIgiv",
+                      "name": "ds-on-label Name",
+                      "fill": "$ds-ink",
+                      "content": "ds-on-label",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "i2yWDg",
+                      "name": "ds-on-label Role",
+                      "fill": "$ds-ink-soft",
+                      "content": "text on label",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "V1wsn7",
+                  "name": "ds-on-reward",
+                  "width": 170,
+                  "layout": "vertical",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 8,
+                      "id": "SZB1z",
+                      "name": "ds-on-reward Chip",
+                      "fill": "$ds-on-reward",
+                      "width": "fill_container",
+                      "height": 72,
+                      "stroke": "$ds-outline",
+                      "strokeWidth": 1
+                    },
+                    {
+                      "type": "text",
+                      "id": "B5R3Y",
+                      "name": "ds-on-reward Name",
+                      "fill": "$ds-ink",
+                      "content": "ds-on-reward",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "tJ1nj",
+                      "name": "ds-on-reward Role",
+                      "fill": "$ds-ink-soft",
+                      "content": "text on reward",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "qZMQi",
+                  "name": "ds-on-strong",
+                  "width": 170,
+                  "layout": "vertical",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 8,
+                      "id": "l4qlL",
+                      "name": "ds-on-strong Chip",
+                      "fill": "$ds-on-strong",
+                      "width": "fill_container",
+                      "height": 72,
+                      "stroke": "$ds-outline",
+                      "strokeWidth": 1
+                    },
+                    {
+                      "type": "text",
+                      "id": "F2926p",
+                      "name": "ds-on-strong Name",
+                      "fill": "$ds-ink",
+                      "content": "ds-on-strong",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "iXbPX",
+                      "name": "ds-on-strong Role",
+                      "fill": "$ds-ink-soft",
+                      "content": "text on strong",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
             }
           ]
         },
@@ -1313,7 +1991,7 @@
                   "id": "UMYgJ",
                   "name": "Tag Sample",
                   "fill": "$ds-ink",
-                  "content": "TODAY",
+                  "content": "NEW",
                   "fontFamily": "$ds-font",
                   "fontSize": "$ds-size-tag",
                   "fontWeight": "700",
@@ -1533,7 +2211,7 @@
                               "id": "jZSlX",
                               "name": "Label",
                               "fill": "$ds-on-strong",
-                              "content": "TODAY",
+                              "content": "NEW",
                               "fontFamily": "$ds-font",
                               "fontSize": 16,
                               "fontWeight": "700",
@@ -1560,7 +2238,7 @@
                       "fill": "$ds-ink-soft",
                       "textGrowth": "fixed-width",
                       "width": "fill_container",
-                      "content": "8px corners (ds-radius-tag). Today, new, level, counts. Never round like a button. Plain numbers can sit straight on the page.",
+                      "content": "8px corners (ds-radius-tag). New, level, counts. Never round like a button. Plain numbers can sit straight on the page.",
                       "lineHeight": 1.4,
                       "fontFamily": "$ds-font",
                       "fontSize": 13,
@@ -2205,7 +2883,7 @@
                 {
                   "type": "frame",
                   "id": "JkYaR",
-                  "name": "ds-sky-body",
+                  "name": "ds-sky-halo",
                   "width": 170,
                   "layout": "vertical",
                   "gap": 6,
@@ -2214,8 +2892,8 @@
                       "type": "rectangle",
                       "cornerRadius": 8,
                       "id": "kcfTE",
-                      "name": "ds-sky-body Chip",
-                      "fill": "$ds-sky-body",
+                      "name": "ds-sky-halo Chip",
+                      "fill": "$ds-sky-halo",
                       "width": "fill_container",
                       "height": 72,
                       "stroke": "$ds-outline",
@@ -2224,9 +2902,9 @@
                     {
                       "type": "text",
                       "id": "DLkaY",
-                      "name": "ds-sky-body Name",
+                      "name": "ds-sky-halo Name",
                       "fill": "$ds-ink",
-                      "content": "ds-sky-body",
+                      "content": "ds-sky-halo",
                       "fontFamily": "$ds-font",
                       "fontSize": 12,
                       "fontWeight": "600"
@@ -2234,9 +2912,9 @@
                     {
                       "type": "text",
                       "id": "JSIh0",
-                      "name": "ds-sky-body Role",
+                      "name": "ds-sky-halo Role",
                       "fill": "$ds-ink-soft",
-                      "content": "sun / moon",
+                      "content": "sun / moon halo",
                       "fontFamily": "$ds-font",
                       "fontSize": 12,
                       "fontWeight": "normal"
@@ -3086,6 +3764,684 @@
                   ]
                 }
               ]
+            },
+            {
+              "type": "frame",
+              "id": "T7Mdn",
+              "name": "Earth details",
+              "width": "fill_container",
+              "gap": 16,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "y5moik",
+                  "name": "Earth details Label",
+                  "fill": "$ds-ink",
+                  "textGrowth": "fixed-width",
+                  "width": 150,
+                  "content": "Earth details",
+                  "fontFamily": "$ds-font",
+                  "fontSize": 15,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "frame",
+                  "id": "fVpyl",
+                  "name": "ds-pocket-shadow",
+                  "width": 170,
+                  "layout": "vertical",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 8,
+                      "id": "HelCx",
+                      "name": "ds-pocket-shadow Chip",
+                      "fill": "$ds-pocket-shadow",
+                      "width": "fill_container",
+                      "height": 72,
+                      "stroke": "$ds-outline",
+                      "strokeWidth": 1
+                    },
+                    {
+                      "type": "text",
+                      "id": "CJD4a",
+                      "name": "ds-pocket-shadow Name",
+                      "fill": "$ds-ink",
+                      "content": "ds-pocket-shadow",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "F54mu",
+                      "name": "ds-pocket-shadow Role",
+                      "fill": "$ds-ink-soft",
+                      "content": "pocket inner shadow",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "QUedC",
+                  "name": "ds-speck",
+                  "width": 170,
+                  "layout": "vertical",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 8,
+                      "id": "gAc7j",
+                      "name": "ds-speck Chip",
+                      "fill": "$ds-speck",
+                      "width": "fill_container",
+                      "height": 72,
+                      "stroke": "$ds-outline",
+                      "strokeWidth": 1
+                    },
+                    {
+                      "type": "text",
+                      "id": "Q41VI",
+                      "name": "ds-speck Name",
+                      "fill": "$ds-ink",
+                      "content": "ds-speck",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "S2Hlsf",
+                      "name": "ds-speck Role",
+                      "fill": "$ds-ink-soft",
+                      "content": "sand grains",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "e4JXUl",
+                  "name": "ds-groove",
+                  "width": 170,
+                  "layout": "vertical",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 8,
+                      "id": "xbkqJ",
+                      "name": "ds-groove Chip",
+                      "fill": "$ds-groove",
+                      "width": "fill_container",
+                      "height": 72,
+                      "stroke": "$ds-outline",
+                      "strokeWidth": 1
+                    },
+                    {
+                      "type": "text",
+                      "id": "KdcmX",
+                      "name": "ds-groove Name",
+                      "fill": "$ds-ink",
+                      "content": "ds-groove",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "f95OX",
+                      "name": "ds-groove Role",
+                      "fill": "$ds-ink-soft",
+                      "content": "groove · maze, sand",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "iX9Z2",
+                  "name": "ds-groove-lip",
+                  "width": 170,
+                  "layout": "vertical",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 8,
+                      "id": "V1GnN8",
+                      "name": "ds-groove-lip Chip",
+                      "fill": "$ds-groove-lip",
+                      "width": "fill_container",
+                      "height": 72,
+                      "stroke": "$ds-outline",
+                      "strokeWidth": 1
+                    },
+                    {
+                      "type": "text",
+                      "id": "Gh7dp",
+                      "name": "ds-groove-lip Name",
+                      "fill": "$ds-ink",
+                      "content": "ds-groove-lip",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "vOZRW",
+                      "name": "ds-groove-lip Role",
+                      "fill": "$ds-ink-soft",
+                      "content": "groove lip",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "z6OXL",
+                  "name": "ds-sand-glow",
+                  "width": 170,
+                  "layout": "vertical",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 8,
+                      "id": "e4sWMQ",
+                      "name": "ds-sand-glow Chip",
+                      "fill": "$ds-sand-glow",
+                      "width": "fill_container",
+                      "height": 72,
+                      "stroke": "$ds-outline",
+                      "strokeWidth": 1
+                    },
+                    {
+                      "type": "text",
+                      "id": "OCVFO",
+                      "name": "ds-sand-glow Name",
+                      "fill": "$ds-ink",
+                      "content": "ds-sand-glow",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "q6TY7f",
+                      "name": "ds-sand-glow Role",
+                      "fill": "$ds-ink-soft",
+                      "content": "sand glow",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "CCwwm",
+              "name": "Art",
+              "width": "fill_container",
+              "gap": 16,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "jxvF9",
+                  "name": "Art Label",
+                  "fill": "$ds-ink",
+                  "textGrowth": "fixed-width",
+                  "width": 150,
+                  "content": "Art",
+                  "fontFamily": "$ds-font",
+                  "fontSize": 15,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "frame",
+                  "id": "u09Q6",
+                  "name": "ds-paper",
+                  "width": 170,
+                  "layout": "vertical",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 8,
+                      "id": "vVfeY",
+                      "name": "ds-paper Chip",
+                      "fill": "$ds-paper",
+                      "width": "fill_container",
+                      "height": 72,
+                      "stroke": "$ds-outline",
+                      "strokeWidth": 1
+                    },
+                    {
+                      "type": "text",
+                      "id": "ioETp",
+                      "name": "ds-paper Name",
+                      "fill": "$ds-ink",
+                      "content": "ds-paper",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "W1QS8d",
+                      "name": "ds-paper Role",
+                      "fill": "$ds-ink-soft",
+                      "content": "colouring paper",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "rS1rq",
+                  "name": "ds-stage",
+                  "width": 170,
+                  "layout": "vertical",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 8,
+                      "id": "RpP0Q",
+                      "name": "ds-stage Chip",
+                      "fill": "$ds-stage",
+                      "width": "fill_container",
+                      "height": 72,
+                      "stroke": "$ds-outline",
+                      "strokeWidth": 1
+                    },
+                    {
+                      "type": "text",
+                      "id": "fd4dP",
+                      "name": "ds-stage Name",
+                      "fill": "$ds-ink",
+                      "content": "ds-stage",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "u9m3A6",
+                      "name": "ds-stage Role",
+                      "fill": "$ds-ink-soft",
+                      "content": "picture stage",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "aJRez",
+                  "name": "ds-stage-sheen",
+                  "width": 170,
+                  "layout": "vertical",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 8,
+                      "id": "quxqP",
+                      "name": "ds-stage-sheen Chip",
+                      "fill": "$ds-stage-sheen",
+                      "width": "fill_container",
+                      "height": 72,
+                      "stroke": "$ds-outline",
+                      "strokeWidth": 1
+                    },
+                    {
+                      "type": "text",
+                      "id": "M4MC8p",
+                      "name": "ds-stage-sheen Name",
+                      "fill": "$ds-ink",
+                      "content": "ds-stage-sheen",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "l8dKoj",
+                      "name": "ds-stage-sheen Role",
+                      "fill": "$ds-ink-soft",
+                      "content": "stage sheen",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "K2Dt8",
+                  "name": "ds-reward-glow",
+                  "width": 170,
+                  "layout": "vertical",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 8,
+                      "id": "sZV4c",
+                      "name": "ds-reward-glow Chip",
+                      "fill": "$ds-reward-glow",
+                      "width": "fill_container",
+                      "height": 72,
+                      "stroke": "$ds-outline",
+                      "strokeWidth": 1
+                    },
+                    {
+                      "type": "text",
+                      "id": "L4olZP",
+                      "name": "ds-reward-glow Name",
+                      "fill": "$ds-ink",
+                      "content": "ds-reward-glow",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "tEQWn",
+                      "name": "ds-reward-glow Role",
+                      "fill": "$ds-ink-soft",
+                      "content": "hint and help glow",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "Siwcv",
+                  "name": "ds-paint-blue",
+                  "width": 170,
+                  "layout": "vertical",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 8,
+                      "id": "lguAp",
+                      "name": "ds-paint-blue Chip",
+                      "fill": "$ds-paint-blue",
+                      "width": "fill_container",
+                      "height": 72,
+                      "stroke": "$ds-outline",
+                      "strokeWidth": 1
+                    },
+                    {
+                      "type": "text",
+                      "id": "t9cbP",
+                      "name": "ds-paint-blue Name",
+                      "fill": "$ds-ink",
+                      "content": "ds-paint-blue",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "O12P7y",
+                      "name": "ds-paint-blue Role",
+                      "fill": "$ds-ink-soft",
+                      "content": "paint · blue",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "MBq1i",
+              "name": "On colours",
+              "width": "fill_container",
+              "gap": 16,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "uwvPm",
+                  "name": "On colours Label",
+                  "fill": "$ds-ink",
+                  "textGrowth": "fixed-width",
+                  "width": 150,
+                  "content": "On colours",
+                  "fontFamily": "$ds-font",
+                  "fontSize": 15,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "frame",
+                  "id": "n0wuiK",
+                  "name": "ds-on-action",
+                  "width": 170,
+                  "layout": "vertical",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 8,
+                      "id": "AgnlF",
+                      "name": "ds-on-action Chip",
+                      "fill": "$ds-on-action",
+                      "width": "fill_container",
+                      "height": 72,
+                      "stroke": "$ds-outline",
+                      "strokeWidth": 1
+                    },
+                    {
+                      "type": "text",
+                      "id": "ka9Ti",
+                      "name": "ds-on-action Name",
+                      "fill": "$ds-ink",
+                      "content": "ds-on-action",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "w8kYrf",
+                      "name": "ds-on-action Role",
+                      "fill": "$ds-ink-soft",
+                      "content": "text on action",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "fXNzD",
+                  "name": "ds-on-good",
+                  "width": 170,
+                  "layout": "vertical",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 8,
+                      "id": "Iv0HB",
+                      "name": "ds-on-good Chip",
+                      "fill": "$ds-on-good",
+                      "width": "fill_container",
+                      "height": 72,
+                      "stroke": "$ds-outline",
+                      "strokeWidth": 1
+                    },
+                    {
+                      "type": "text",
+                      "id": "sPrxs",
+                      "name": "ds-on-good Name",
+                      "fill": "$ds-ink",
+                      "content": "ds-on-good",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "R7eMM",
+                      "name": "ds-on-good Role",
+                      "fill": "$ds-ink-soft",
+                      "content": "text on good",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "FZyBN",
+                  "name": "ds-on-label",
+                  "width": 170,
+                  "layout": "vertical",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 8,
+                      "id": "jnoYd",
+                      "name": "ds-on-label Chip",
+                      "fill": "$ds-on-label",
+                      "width": "fill_container",
+                      "height": 72,
+                      "stroke": "$ds-outline",
+                      "strokeWidth": 1
+                    },
+                    {
+                      "type": "text",
+                      "id": "D1MwAN",
+                      "name": "ds-on-label Name",
+                      "fill": "$ds-ink",
+                      "content": "ds-on-label",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "DZL2c",
+                      "name": "ds-on-label Role",
+                      "fill": "$ds-ink-soft",
+                      "content": "text on label",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "lpFQ5",
+                  "name": "ds-on-reward",
+                  "width": 170,
+                  "layout": "vertical",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 8,
+                      "id": "AJAsm",
+                      "name": "ds-on-reward Chip",
+                      "fill": "$ds-on-reward",
+                      "width": "fill_container",
+                      "height": 72,
+                      "stroke": "$ds-outline",
+                      "strokeWidth": 1
+                    },
+                    {
+                      "type": "text",
+                      "id": "RujKj",
+                      "name": "ds-on-reward Name",
+                      "fill": "$ds-ink",
+                      "content": "ds-on-reward",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "t9k5G",
+                      "name": "ds-on-reward Role",
+                      "fill": "$ds-ink-soft",
+                      "content": "text on reward",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "v7Ltn",
+                  "name": "ds-on-strong",
+                  "width": 170,
+                  "layout": "vertical",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 8,
+                      "id": "cANrd",
+                      "name": "ds-on-strong Chip",
+                      "fill": "$ds-on-strong",
+                      "width": "fill_container",
+                      "height": 72,
+                      "stroke": "$ds-outline",
+                      "strokeWidth": 1
+                    },
+                    {
+                      "type": "text",
+                      "id": "Et1gI",
+                      "name": "ds-on-strong Name",
+                      "fill": "$ds-ink",
+                      "content": "ds-on-strong",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "nzQFC",
+                      "name": "ds-on-strong Role",
+                      "fill": "$ds-ink-soft",
+                      "content": "text on strong",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
             }
           ]
         },
@@ -3345,7 +4701,7 @@
                   "id": "kk8Ad",
                   "name": "Tag Sample",
                   "fill": "$ds-ink",
-                  "content": "TODAY",
+                  "content": "NEW",
                   "fontFamily": "$ds-font",
                   "fontSize": "$ds-size-tag",
                   "fontWeight": "700",
@@ -3565,7 +4921,7 @@
                               "id": "VZBed",
                               "name": "Label",
                               "fill": "$ds-on-strong",
-                              "content": "TODAY",
+                              "content": "NEW",
                               "fontFamily": "$ds-font",
                               "fontSize": 16,
                               "fontWeight": "700",
@@ -3592,7 +4948,7 @@
                       "fill": "$ds-ink-soft",
                       "textGrowth": "fixed-width",
                       "width": "fill_container",
-                      "content": "8px corners (ds-radius-tag). Today, new, level, counts. Never round like a button. Plain numbers can sit straight on the page.",
+                      "content": "8px corners (ds-radius-tag). New, level, counts. Never round like a button. Plain numbers can sit straight on the page.",
                       "lineHeight": 1.4,
                       "fontFamily": "$ds-font",
                       "fontSize": 13,
@@ -4316,7 +5672,7 @@
               "id": "SaGgS",
               "name": "Small buttons",
               "width": "fill_container",
-              "gap": 40,
+              "gap": 24,
               "alignItems": "end",
               "children": [
                 {
@@ -4601,7 +5957,7 @@
                       "id": "h25m0B",
                       "name": "Caption",
                       "fill": "$ds-ink-soft",
-                      "content": "Home · iPad, first in every top bar; a workshop tool row shows Home as its first tool",
+                      "content": "Home · iPad, first in every top bar",
                       "fontFamily": "$ds-font",
                       "fontSize": 12,
                       "fontWeight": "normal"
@@ -4644,7 +6000,7 @@
                       "id": "WBjFu",
                       "name": "Caption",
                       "fill": "$ds-ink-soft",
-                      "content": "Home · phone, first in every top bar; a workshop tool row shows Home as its first tool",
+                      "content": "Home · phone, first in every top bar",
                       "fontFamily": "$ds-font",
                       "fontSize": 12,
                       "fontWeight": "normal"
@@ -4865,7 +6221,7 @@
                           "id": "OzLnd",
                           "name": "Label",
                           "fill": "$ds-on-strong",
-                          "content": "TODAY",
+                          "content": "LEVEL 3",
                           "fontFamily": "$ds-font",
                           "fontSize": "$ds-size-tag",
                           "fontWeight": "700",
@@ -4878,7 +6234,7 @@
                       "id": "AwAEU",
                       "name": "Caption",
                       "fill": "$ds-ink-soft",
-                      "content": "Tag · today, level",
+                      "content": "Tag · level",
                       "fontFamily": "$ds-font",
                       "fontSize": 12,
                       "fontWeight": "normal"
@@ -6512,7 +7868,7 @@
                   "id": "YnsuC",
                   "name": "Caption",
                   "fill": "$ds-ink-soft",
-                  "content": "Today's game · tag, symbol, title, PLAY, best score",
+                  "content": "Featured game · symbol, title, PLAY, best score",
                   "fontFamily": "$ds-font",
                   "fontSize": 12,
                   "fontWeight": "normal"
@@ -9873,7 +11229,7 @@
                       "id": "rvF4i",
                       "name": "Caption",
                       "fill": "$ds-ink-soft",
-                      "content": "Tag · today, level",
+                      "content": "Tag · level",
                       "fontFamily": "$ds-font",
                       "fontSize": 12,
                       "fontWeight": "normal"
@@ -10350,7 +11706,7 @@
                   "id": "dKNNW",
                   "name": "Caption",
                   "fill": "$ds-ink-soft",
-                  "content": "Today's game · tag, symbol, title, PLAY, best score",
+                  "content": "Featured game · symbol, title, PLAY, best score",
                   "fontFamily": "$ds-font",
                   "fontSize": 12,
                   "fontWeight": "normal"
