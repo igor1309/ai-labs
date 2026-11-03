@@ -43,14 +43,7 @@ struct TranscriptLog: NSViewRepresentable {
             coordinator.finishSelecting(text)
         }
 
-        scroll.contentView.postsBoundsChangedNotifications = true
-        NotificationCenter.default.addObserver(
-            coordinator,
-            selector: #selector(Coordinator.boundsChanged(_:)),
-            name: NSView.boundsDidChangeNotification,
-            object: scroll.contentView
-        )
-        coordinator.scroll = scroll
+        coordinator.observeGeometry(of: scroll)
 
         return scroll
     }
@@ -156,8 +149,35 @@ extension TranscriptLog {
         private var isQuiet = false
         private var atBottom = true
         private var size = NSSize.zero
+        private var documentSize = NSSize.zero
 
         init(_ parent: TranscriptLog) { self.parent = parent }
+
+        func observeGeometry(of scroll: NSScrollView) {
+
+            self.scroll = scroll
+            scroll.contentView.postsBoundsChangedNotifications = true
+            scroll.contentView.postsFrameChangedNotifications = true
+            scroll.documentView?.postsFrameChangedNotifications = true
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(boundsChanged(_:)),
+                name: NSView.boundsDidChangeNotification,
+                object: scroll.contentView
+            )
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(boundsChanged(_:)),
+                name: NSView.frameDidChangeNotification,
+                object: scroll.contentView
+            )
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(documentFrameChanged(_:)),
+                name: NSView.frameDidChangeNotification,
+                object: scroll.documentView
+            )
+        }
 
         /// A drag ended: what it selected is held, and the selection fades
         /// from the log, which draws held text like any other. A click that
@@ -179,22 +199,47 @@ extension TranscriptLog {
         /// Moves the log without reporting a scroll: only the reader scrolls.
         func quietly(_ change: () -> Void) {
 
+            let wasQuiet = isQuiet
             isQuiet = true
             change()
-            isQuiet = false
-            size = scroll?.contentView.bounds.size ?? .zero
-            atBottom = isAtBottom
+            if !wasQuiet {
+                followDocumentBottom()
+                size = scroll?.contentView.bounds.size ?? .zero
+                documentSize = scroll?.documentView?.frame.size ?? .zero
+                atBottom = isAtBottom
+            }
+            isQuiet = wasQuiet
+        }
+
+        private func followDocumentBottom() {
+
+            guard parent.lines.followsLive, !isSelecting,
+                  let scroll, let document = scroll.documentView else { return }
+
+            // Layout can grow the document after the text-range scroll. Follow
+            // its current geometry without laying out the whole transcript.
+            var height: CGFloat
+            repeat {
+                height = document.frame.height
+                let clip = scroll.contentView
+                clip.scroll(to: NSPoint(x: clip.bounds.minX, y: max(0, document.frame.maxY - clip.bounds.height)))
+                scroll.reflectScrolledClipView(clip)
+            } while document.frame.height != height
+        }
+
+        @objc func documentFrameChanged(_ notification: Notification) {
+
+            guard !isQuiet else { return }
+            quietly { }
         }
 
         @objc func boundsChanged(_ notification: Notification) {
 
             guard !isQuiet, let scroll else { return }
 
-            // The log was resized, not scrolled.
-            if scroll.contentView.bounds.size != size {
-                quietly {
-                    if parent.lines.followsLive { scroll.documentView?.scrollToEndOfDocument(nil) }
-                }
+            // A document resize can move the clip before its frame observer runs.
+            if scroll.contentView.bounds.size != size || scroll.documentView?.frame.size != documentSize {
+                quietly { }
                 return
             }
 

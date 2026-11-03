@@ -257,6 +257,149 @@ struct TranscriptLogTests {
         #expect(settles { isAtBottom(scroll) }, "the newest line is out of view")
     }
 
+    @Test func followsDocumentGrowthAfterTheInitialScroll() throws {
+
+        var events: [PanelEvent] = []
+        let host = hosted(.init(entries: many(12)), height: 160, event: { events.append($0) })
+        let scroll = try #require(scrollView(in: host))
+        let text = try #require(scroll.documentView as? LogTextView)
+        text.scrollToEndOfDocument(nil)
+        try #require(isAtBottom(scroll))
+        events.removeAll()
+
+        // Drive later layout's geometry change without a run-loop wait.
+        for growth: CGFloat in [80, 160] {
+            let height = text.frame.height + growth
+            text.setFrameSize(NSSize(width: text.frame.width, height: height))
+
+            #expect(text.frame.height == height)
+            #expect(isAtBottom(scroll), "the newly laid out bottom is out of view")
+            #expect(events.isEmpty, "layout reported a reader scroll: \(events)")
+        }
+    }
+
+    @Test(arguments: [false, true])
+    func growthAndResizeHoldTheReadersPosition(selecting: Bool) throws {
+
+        var events: [PanelEvent] = []
+        let host = hosted(.init(entries: many(12), followsLive: selecting), height: 160, event: { events.append($0) })
+        let scroll = try #require(scrollView(in: host))
+        let text = try #require(scroll.documentView as? LogTextView)
+        if selecting { text.selectionStarted?() }
+        let selection = NSRange(location: 20, length: 6)
+        text.setSelectedRange(selection)
+        scroll.contentView.scroll(to: NSPoint(x: 0, y: 80))
+        let origin = scroll.contentView.bounds.origin
+        events.removeAll()
+
+        text.setFrameSize(NSSize(width: text.frame.width, height: text.frame.height + 200))
+        #expect(scroll.contentView.bounds.origin == origin)
+        scroll.contentView.setFrameSize(NSSize(width: scroll.contentView.frame.width, height: 100))
+        #expect(scroll.contentView.bounds.origin == origin)
+
+        host.rootView = log(.init(entries: many(14), followsLive: selecting), height: 100, event: { events.append($0) })
+        host.layoutSubtreeIfNeeded()
+
+        #expect(scroll.contentView.bounds.origin == origin)
+        #expect(text.selectedRange() == selection)
+        #expect(events.isEmpty, "geometry reported a reader scroll: \(events)")
+    }
+
+    @Test func viewportResizeKeepsFollowingWithoutReportingAReaderScroll() throws {
+
+        var events: [PanelEvent] = []
+        let host = hosted(.init(entries: many(12)), height: 160, event: { events.append($0) })
+        let scroll = try #require(scrollView(in: host))
+        events.removeAll()
+
+        for height: CGFloat in [100, 240] {
+            host.rootView = log(.init(entries: many(12)), height: height, event: { events.append($0) })
+            host.layoutSubtreeIfNeeded()
+            #expect(isAtBottom(scroll), "document: \(String(describing: scroll.documentView?.frame)), clip: \(scroll.contentView.bounds)")
+            #expect(events.isEmpty)
+        }
+
+        scroll.contentView.scroll(to: .zero)
+        #expect(events == [.scrolled(atBottom: false)])
+    }
+
+    @Test func documentGrowthIsQuietWhenTheClipNotificationArrivesFirst() throws {
+
+        var events: [PanelEvent] = []
+        let (scroll, coordinator) = geometry(event: { events.append($0) })
+        defer { TranscriptLog.dismantleNSView(scroll, coordinator: coordinator) }
+        let document = try #require(scroll.documentView)
+        document.postsFrameChangedNotifications = false
+        document.setFrameSize(NSSize(width: 200, height: 1_000))
+
+        NotificationCenter.default.post(name: NSView.boundsDidChangeNotification, object: scroll.contentView)
+        NotificationCenter.default.post(name: NSView.frameDidChangeNotification, object: document)
+
+        #expect(isAtBottom(scroll))
+        #expect(events.isEmpty)
+        scroll.contentView.scroll(to: .zero)
+        #expect(events == [.scrolled(atBottom: false)])
+    }
+
+    @Test func growthDuringFollowingAndNestedQuietChangesStayQuiet() throws {
+
+        var events: [PanelEvent] = []
+        let (scroll, coordinator) = geometry(event: { events.append($0) })
+        defer { TranscriptLog.dismantleNSView(scroll, coordinator: coordinator) }
+        let document = try #require(scroll.documentView)
+        let clip = try #require(scroll.contentView as? ScrollingClipView)
+        clip.didScroll = {
+            clip.didScroll = nil
+            document.setFrameSize(NSSize(width: 200, height: 1_200))
+        }
+
+        document.setFrameSize(NSSize(width: 200, height: 1_000))
+        #expect(document.frame.height == 1_200)
+        #expect(isAtBottom(scroll))
+        #expect(events.isEmpty)
+
+        coordinator.quietly {
+            coordinator.quietly { }
+            clip.scroll(to: .zero)
+            #expect(events.isEmpty)
+        }
+        #expect(isAtBottom(scroll))
+
+        clip.scroll(to: .zero)
+        clip.scroll(to: NSPoint(x: 0, y: document.frame.height - clip.bounds.height))
+        #expect(events == [.scrolled(atBottom: false), .scrolled(atBottom: true)])
+    }
+
+    @Test func dismantlingStopsObservingDocumentAndClipGeometry() throws {
+
+        var events: [PanelEvent] = []
+        let (scroll, coordinator) = geometry(event: { events.append($0) })
+        let document = try #require(scroll.documentView)
+        TranscriptLog.dismantleNSView(scroll, coordinator: coordinator)
+        let origin = scroll.contentView.bounds.origin
+
+        document.setFrameSize(NSSize(width: 200, height: 1_000))
+        #expect(scroll.contentView.bounds.origin == origin)
+        #expect(!isAtBottom(scroll))
+        scroll.setFrameSize(NSSize(width: 200, height: 100))
+        #expect(scroll.contentView.bounds.origin == origin)
+        scroll.contentView.scroll(to: .zero)
+        #expect(events.isEmpty)
+    }
+
+    @Test func geometryObserversDoNotRetainTheCoordinator() {
+
+        weak var released: TranscriptLog.Coordinator?
+        let scroll: NSScrollView
+        do {
+            let pair = geometry()
+            scroll = pair.scroll
+            released = pair.coordinator
+        }
+        #expect(released == nil)
+        scroll.documentView?.setFrameSize(NSSize(width: 200, height: 1_000))
+    }
+
     @Test func staysWhereTheReaderScrolled() throws {
 
         let host = hosted(.init(entries: many(12), followsLive: false), height: 160)
@@ -294,6 +437,18 @@ struct TranscriptLogTests {
     }
 
     // MARK: - Helpers
+
+    private func geometry(event: @escaping (PanelEvent) -> Void = { _ in }) -> (scroll: NSScrollView, coordinator: TranscriptLog.Coordinator) {
+
+        let scroll = NSScrollView(frame: NSRect(x: 0, y: 0, width: 200, height: 160))
+        scroll.contentView = ScrollingClipView(frame: scroll.contentView.frame)
+        scroll.documentView = GeometryDocument(frame: NSRect(x: 0, y: 0, width: 200, height: 800))
+        let parent = TranscriptLog(lines: .init(entries: []), tokens: .light, config: .glassLedger, event: event)
+        let coordinator = parent.makeCoordinator()
+        coordinator.observeGeometry(of: scroll)
+        coordinator.quietly { }
+        return (scroll, coordinator)
+    }
 
     /// A live entry, minutes filled in late, then live entries again.
     private var lateLines: PanelState.Lines {
@@ -433,6 +588,22 @@ struct TranscriptLogTests {
 
         guard let document = scroll.documentView else { return false }
         return scroll.contentView.documentVisibleRect.maxY >= document.bounds.height - 1
+    }
+}
+
+private final class GeometryDocument: NSView {
+
+    override var isFlipped: Bool { true }
+}
+
+private final class ScrollingClipView: NSClipView {
+
+    var didScroll: (() -> Void)?
+
+    override func scroll(to newOrigin: NSPoint) {
+
+        super.scroll(to: newOrigin)
+        didScroll?()
     }
 }
 
