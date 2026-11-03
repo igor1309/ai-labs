@@ -1,3 +1,4 @@
+import type { Theme } from "../src/theme.ts";
 import { fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import type { PortraitLayouts } from "../src/App.tsx";
@@ -19,7 +20,7 @@ afterEach(() => {
 
 type Level = "hatchling" | "explorer" | "paleontologist";
 
-function openPhone(level: Level = "hatchling", language: "en" | "ru" = "en", theme: "light" | "dark" = "light") {
+function openPhone(level: Level = "hatchling", language: "en" | "ru" = "en", theme: Theme = "light") {
   openWindow(393, 852);
   const viewport = manualViewport("portrait");
   viewport.resize("tall-narrow", true);

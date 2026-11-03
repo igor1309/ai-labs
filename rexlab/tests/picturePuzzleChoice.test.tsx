@@ -1,3 +1,4 @@
+import { THEMES } from "../src/theme.ts";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { AGE_LEVELS, type AgeLevelSetting } from "../src/ageLevel.ts";
@@ -36,7 +37,7 @@ function openChoice(storage: MemoryStorage, setting: AgeLevelSetting, language: 
 }
 
 describe.each(LANGUAGES)("picture choice in %s", (language) => {
-  it.each(["light", "dark"] as const)("shows three named pictures, shared collection stars and usable controls in %s", (theme) => {
+  it.each(THEMES)("shows three named pictures, shared collection stars and usable controls in %s", (theme) => {
     const storage = memoryStorage({ [PROGRESS_KEY]: JSON.stringify({ schemaVersion: 1, games: {
       "picture-puzzle": { earned: ["tyrannosaurus", "tyrannosaurus", "obsolete-id", "stegosaurus"] }
     } }) });

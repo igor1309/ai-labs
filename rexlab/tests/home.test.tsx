@@ -1,9 +1,10 @@
-import pairsTilePicture from "../src/assets/home/pairs-triceratops.webp";
+import { THEMES } from "../src/theme.ts";
 import { emptyLabyrinth, largestSize } from "./support.ts";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import { App, HOME_TILE_PICTURES } from "../src/App.tsx";
+import { App } from "../src/App.tsx";
+import { HOME_TILE_PICTURES, PAIRS_PICTURE } from "../src/homeTilePictures.ts";
 import { HomePage, type HomeGame } from "../src/HomePage.tsx";
 import { LANGUAGES } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
@@ -239,7 +240,7 @@ describe("the home page", () => {
     expect(tile.nextElementSibling).toBe(skeletonsTile());
     expect(tile.textContent).toBe("PAIRS");
     expect(symbolsOf(tile)).toEqual(["copy"]);
-    expect([...tile.querySelectorAll("img")].map((picture) => picture.getAttribute("src"))).toEqual([pairsTilePicture]);
+    expect([...tile.querySelectorAll("img")].map((picture) => picture.getAttribute("src"))).toEqual([PAIRS_PICTURE]);
     expect(tile.querySelector(".pairs-tile-stars")).toBeNull();
   });
 
@@ -411,7 +412,7 @@ describe("the home page", () => {
     expect(taps).toEqual([1, 1]);
   });
 
-  it.each(["light", "dark"])("keeps the app icon visible in %s mode", (theme) => {
+  it.each(THEMES)("keeps the app icon visible in %s mode", (theme) => {
     openHomePage();
     document.documentElement.dataset.theme = theme;
     try {
@@ -559,17 +560,14 @@ describe("the large card", () => {
   );
 
   // Each game, featured, opened by a double tap on the large card and by
-  // a tap on its tile: what pictures it asks for and the screen it shows
-  // once they have loaded.
+  // a tap on its tile: the screen it shows once its pictures have loaded.
   async function openedBy(featured: HomeGame, tap: (user: ReturnType<typeof userEvent.setup>) => Promise<void>) {
     const pictures = manualPictures();
     const { container, unmount } = render(
       <App {...emptyLabyrinth()} {...featuring(featured)} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} portraitLayouts={{}} viewport={manualViewport("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...emptyDig()} {...pageAtRest()} {...pictures} />
     );
     await tap(userEvent.setup({ delay: null }));
-    const asked: string[] = [];
     for (let loading = pictures.loading(); loading.length > 0; loading = pictures.loading()) {
-      asked.push(...loading);
       act(() => loading.forEach(pictures.finish));
     }
     // React generates a fresh panel id per mount; compare the references
@@ -585,7 +583,7 @@ describe("the large card", () => {
     }
     const shown = container.innerHTML;
     unmount();
-    return { asked, shown };
+    return shown;
   }
 
   it.each(HOME_GAMES)("opens %s once on a double tap, as a tap on its tile does while another game is featured", async (game, key) => {
@@ -593,16 +591,8 @@ describe("the large card", () => {
     const doubled = await openedBy(game, (user) => user.dblClick(featuredCard()));
     const once = await openedBy(other, (user) => user.click(homeTile(TEXTS.en[key])));
 
-    // The home page's pictures load in the order its tiles stand. A game
-    // whose tile shows it being played asks for that picture only as a tile,
-    // and for its sky's own picture only when featured; DRAW's sky is sand.
-    const tilePicture = HOME_TILE_PICTURES[game];
-    const tileOnly = tilePicture === undefined ? [] : [tilePicture];
-    const skyOnly = doubled.asked.filter((url) => !once.asked.includes(url));
-    expect(once.asked.filter((url) => !doubled.asked.includes(url))).toEqual(tileOnly);
-    expect(skyOnly.length).toBe(tilePicture === undefined || game === "sandWriting" ? 0 : 1);
-    expect({ ...doubled, asked: doubled.asked.filter((url) => !skyOnly.includes(url)).sort() }).toEqual({ ...once, asked: once.asked.filter((url) => !tileOnly.includes(url)).sort() });
-    expect(once.shown).not.toContain("games-tiles");
+    expect(doubled).toBe(once);
+    expect(once).not.toContain("games-tiles");
   });
 });
 

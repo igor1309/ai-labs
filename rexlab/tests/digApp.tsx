@@ -1,3 +1,4 @@
+import type { Theme } from "../src/theme.ts";
 import { emptyLabyrinth } from "./support.ts";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -51,7 +52,7 @@ export function openDigApp({
   ageLevel?: { level: "hatchling" | "explorer" | "paleontologist"; revision: string | null };
   reducedMotion?: boolean | (() => boolean);
   language?: "en" | "ru";
-  theme?: "light" | "dark";
+  theme?: Theme;
   timers?: ManualPictures | ManualTimers;
   viewport?: ManualViewport;
   visibility?: ManualVisibility;

@@ -1,3 +1,4 @@
+import { THEMES } from "../src/theme.ts";
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, onTestFinished, vi } from "vitest";
@@ -243,7 +244,7 @@ describe("a playable labyrinth board", () => {
     expect(maze().style.getPropertyValue("--columns")).toBe(String(layout.rows[0]!.length));
   });
 
-  it.each(AGE_LEVELS.flatMap((level) => (["light", "dark"] as const).map((theme) => ({ level, theme }))))("keeps paths, walls, hints and focus distinct in $theme at $level", ({ theme, level }) => {
+  it.each(AGE_LEVELS.flatMap((level) => THEMES.map((theme) => ({ level, theme }))))("keeps paths, walls, hints and focus distinct in $theme at $level", ({ theme, level }) => {
     document.documentElement.dataset.theme = theme;
     try {
       const initial = startMaze(layoutFor(level));

@@ -1,3 +1,4 @@
+import { THEMES } from "../src/theme.ts";
 import { afterEach, expect, test } from "vitest";
 import { appStylesheet, computedStyleWithVariables } from "./stylesheet.ts";
 
@@ -9,7 +10,7 @@ afterEach(() => {
   delete document.documentElement.dataset.size;
 });
 
-for (const theme of ["light", "dark"]) for (const size of ["wide", "tall-narrow", "wide-short"]) {
+for (const theme of THEMES) for (const size of ["wide", "tall-narrow", "wide-short"]) {
   test(`computed variables serialize literals in ${theme}, ${size}`, () => {
     document.documentElement.dataset.theme = theme;
     document.documentElement.dataset.size = size;

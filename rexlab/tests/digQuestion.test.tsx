@@ -1,3 +1,4 @@
+import { THEMES } from "../src/theme.ts";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { GUST, LIFT, STAR_LANDS } from "../src/digGame.tsx";
@@ -87,7 +88,7 @@ describe.each(["explorer", "paleontologist"] as const)("the question at %s", (le
     expect(board().hasAttribute("data-blown")).toBe(false);
   });
 
-  it.each(["light", "dark"] as const)("shows an empty card for each choice from the start, in the %s theme, that no tap or screen reader takes", (theme) => {
+  it.each(THEMES)("shows an empty card for each choice from the start, in the %s theme, that no tap or screen reader takes", (theme) => {
     openRound(level, { theme });
     const colours = PALETTE[theme];
     expect([column()?.getAttribute("aria-hidden"), choices().length, choices().every((card) => card.disabled && card.tabIndex === -1)])

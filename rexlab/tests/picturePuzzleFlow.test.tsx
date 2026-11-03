@@ -1,3 +1,4 @@
+import { THEMES } from "../src/theme.ts";
 import { shortHomeName } from "./support.ts";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
@@ -68,7 +69,7 @@ function touch(target: EventTarget, type: string, time: number, point: { x: numb
 }
 
 describe.each(LANGUAGES)("the picture puzzle full flow in %s", (language) => {
-  it.each(["light", "dark"] as const)("completes from home, replays and reloads its collection in %s", (theme) => {
+  it.each(THEMES)("completes from home, replays and reloads its collection in %s", (theme) => {
     const text = TEXTS[language];
     const storage = memoryStorage();
     const featured = theme === "dark" ? "picturePuzzle" : "compare";

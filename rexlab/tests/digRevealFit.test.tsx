@@ -1,3 +1,4 @@
+import { THEMES } from "../src/theme.ts";
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { DigRevealScreen, STAR_LANDS } from "../src/DigRevealScreen.tsx";
@@ -31,7 +32,7 @@ const element = (selector: string) => {
 };
 const style = (selector: string) => getComputedStyle(element(selector));
 
-describe.each(LANGUAGES.flatMap((language) => (["light", "dark"] as const).map((theme) => [language, theme] as const)))("the dig reveal in %s, %s", (language, theme) => {
+describe.each(LANGUAGES.flatMap((language) => THEMES.map((theme) => [language, theme] as const)))("the dig reveal in %s, %s", (language, theme) => {
   it.each(windowsAnd([1366, 1024]))("shows the name, the fullest DUG UP card, the switch and both actions with no scrolling, every word readable, in a %i by %i window", (windowWidth, windowHeight) => {
     openWindow(windowWidth, windowHeight);
     document.documentElement.dataset.theme = theme;

@@ -1,4 +1,5 @@
 import packageInfo from "../package.json";
+import { COLOR_PAGE, DIG_PICTURE, HOME_TILE_PICTURES, PAIRS_PICTURE } from "./homeTilePictures.ts";
 import { coloringVersionsFor } from "./coloringWorkshopRoot.ts";
 import { ColoringGame, type ColoringGameProps } from "./ColoringGame.tsx";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, ViewTransition } from "react";
@@ -43,17 +44,6 @@ import { useSortingGame, type SortingGameProps, type SortingPhase } from "./sort
 import { themeOf, type ThemeChoice } from "./theme.ts";
 import { turnMotion, type TurnMotion, type TurnMotionSeams } from "./turnMotion.ts";
 
-import pairsTile from "./assets/home/pairs-triceratops.webp";
-import digTile from "./assets/home/dig-therizinosaurus.webp";
-import colorPage from "./assets/home/color-mosasaurus.webp";
-import careTilePicture from "./assets/home/tile-care.webp";
-import colorTilePicture from "./assets/home/tile-color.webp";
-import digTilePicture from "./assets/home/tile-dig.webp";
-import drawTilePicture from "./assets/home/tile-draw.webp";
-import mazeTilePicture from "./assets/home/tile-maze.webp";
-import puzzleTilePicture from "./assets/home/tile-puzzle.webp";
-import sortTilePicture from "./assets/home/tile-sort.webp";
-import teethTilePicture from "./assets/home/tile-teeth.webp";
 import { useWhoseJawGame, type WhoseJawGameProps, type WhoseJawPhase } from "./whoseJawGame.tsx";
 
 export type LanguageStore = {
@@ -194,17 +184,6 @@ const SKELETONS_TILE = "brachiosaurus";
 // Home shows six tiles to a layer of earth where the page is wide enough, three elsewhere.
 const homeTilesPerLayer = (width: number) => width >= 1000 ? 6 : 3;
 
-// The tiles that show their game being played; each game's sky keeps its own picture.
-export const HOME_TILE_PICTURES: Partial<Record<HomeGame, string>> = {
-  care: careTilePicture,
-  coloring: colorTilePicture,
-  dig: digTilePicture,
-  sandWriting: drawTilePicture,
-  labyrinth: mazeTilePicture,
-  picturePuzzle: puzzleTilePicture,
-  sort: sortTilePicture,
-  whoseJaw: teethTilePicture
-};
 
 // The dinosaurs on the care, jaw and colouring games' tiles; pairs and dig
 // show the design's own pictures of their games.
@@ -749,11 +728,11 @@ export function App({
             best={quiz.best}
             catalogue={{ picture: bodyPicture(CATALOGUE_TILE), count: catalogue.length }}
             care={{ picture: bodyPicture(CARE_TILE), best: care.best }}
-            pairs={{ picture: pairsTile, stars: pairs.stars }}
+            pairs={{ picture: PAIRS_PICTURE, stars: pairs.stars }}
             skeletons={{ picture: skeletonPicture(SKELETONS_TILE, "skeleton"), best: skeletonGame.best }}
             sort={{ picture: bodyPicture(SORT_TILE), best: sorting.best }}
-            dig={{ picture: digTile, dugUp: dig.dugUp }}
-            coloring={coloring && { picture: bodyPicture(COLOR_TILE), page: colorPage, completed: coloringCount, onOpen: () => go({ kind: "coloring" }) }}
+            dig={{ picture: DIG_PICTURE, dugUp: dig.dugUp }}
+            coloring={coloring && { picture: bodyPicture(COLOR_TILE), page: COLOR_PAGE, completed: coloringCount, onOpen: () => go({ kind: "coloring" }) }}
             whoseJaw={whoseJaw && { picture: bodyPicture(JAW_TILE), jaw: whoseJaw.jawFor(JAW_TILE), collected: jawGame.collected, total: whoseJaw.total, onOpen: () => go({ kind: "whoseJaw" }, { also: jawGame.open }) }}
             picturePuzzle={picturePuzzle && { picture: bodyPicture("spinosaurus"), collected: pictureGame.collected, onOpen: () => go({ kind: "picturePuzzle" }) }}
             labyrinth={{ picture: bodyPicture("ankylosaurus"), stars: labyrinth.stars }}

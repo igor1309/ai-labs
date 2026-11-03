@@ -1,3 +1,4 @@
+import { THEMES } from "../src/theme.ts";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AGE_LEVELS, type AgeLevel } from "../src/ageLevel.ts";
@@ -300,7 +301,7 @@ it("compares with collections saved by another tab before the last piece", () =>
   view.unmount();
 });
 
-it.each(["light", "dark"])("keeps the previous best legible in %s", (theme) => {
+it.each(THEMES)("keeps the previous best legible in %s", (theme) => {
   const view = render(<div data-theme={theme}><PicturePuzzleResultScreen language="en" name="Stegosaurus" fact={TEXTS.en.pictureFacts.stegosaurus}
     level="explorer" score={2} shared={2} best={2} beaten={1} celebration="new-best" picture={fakeBodyPicture("stegosaurus")}
     onReplay={vi.fn()} onAnother={vi.fn()} onHome={vi.fn()} /></div>, withPictures);

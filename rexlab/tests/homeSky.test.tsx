@@ -1,3 +1,4 @@
+import { THEMES } from "../src/theme.ts";
 import { act, fireEvent, screen } from "@testing-library/react";
 import { afterEach, expect, test } from "vitest";
 import { join } from "node:path";
@@ -35,7 +36,7 @@ for (const language of ["en", "ru"] as const) for (const game of HOME_GAMES) {
   });
 }
 
-for (const theme of ["light", "dark"]) for (const size of ["wide", "tall", "wide-short", "tall-narrow"]) {
+for (const theme of THEMES) for (const size of ["wide", "tall", "wide-short", "tall-narrow"]) {
   test(`sky reads design tokens in ${theme}, ${size}`, () => {
     document.documentElement.dataset.theme = theme;
     document.documentElement.dataset.size = size;
@@ -118,7 +119,7 @@ for (const [size, frameName] of [["wide", "Home · Dig site · iPad 11 landscape
   });
 }
 
-for (const game of HOME_GAMES) for (const theme of ["light", "dark"]) {
+for (const game of HOME_GAMES) for (const theme of THEMES) {
   test(`${game}'s progress stands on the ${theme} sky`, () => {
     document.documentElement.dataset.theme = theme;
     renderHomePageFeaturing(game, { allGames: true });

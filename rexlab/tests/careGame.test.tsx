@@ -1,4 +1,4 @@
-import careTilePicture from "../src/assets/home/tile-care.webp";
+import { HOME_TILE_PICTURES } from "../src/homeTilePictures.ts";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { act, fireEvent, screen, within } from "@testing-library/react";
@@ -43,7 +43,7 @@ describe("the CARE tile", () => {
 
     const tile = gameDoor("CARE");
     expect(symbolOf(tile)).toBe("heart");
-    expect(tile.querySelector("img")?.getAttribute("src")).toBe(careTilePicture);
+    expect(tile.querySelector("img")?.getAttribute("src")).toBe(HOME_TILE_PICTURES.care);
     // Games read across the earth bands, so order spans their grid containers.
     const tiles = [...tilesRow().querySelectorAll(".tiles-grid > *")];
     expect(tiles.indexOf(tile)).toBe(5);

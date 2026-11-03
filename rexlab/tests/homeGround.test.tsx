@@ -1,3 +1,4 @@
+import { THEMES } from "../src/theme.ts";
 import { fireEvent, screen } from "@testing-library/react";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -39,7 +40,7 @@ it.each(["en", "ru"] as const)("shows both new games and a parents' note in %s",
   expect(part(".home-version").getAttribute("aria-label")).toBe(language === "en" ? "Version" : "Версия");
 });
 
-for (const theme of ["light", "dark"]) for (const size of ["wide", "tall", "tall-narrow", "wide-short"]) {
+for (const theme of THEMES) for (const size of ["wide", "tall", "tall-narrow", "wide-short"]) {
   it(`uses the ground's design tokens in ${theme} ${size}`, () => {
     document.documentElement.dataset.theme = theme;
     document.documentElement.dataset.size = size;

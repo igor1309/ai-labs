@@ -1,3 +1,4 @@
+import { THEMES } from "../src/theme.ts";
 import { gameDoor } from "./support.ts";
 import { emptyLabyrinth } from "./support.ts";
 import { render, screen, within } from "@testing-library/react";
@@ -227,7 +228,7 @@ describe("the catalogue's food chips", () => {
     expect(chips(language).map((each) => each.getAttribute("aria-label"))).toEqual(names);
   });
 
-  it.each(["light", "dark"] as const)("lift the chosen one by a shadow, its outline off, in the %s theme", async (theme) => {
+  it.each(THEMES)("lift the chosen one by a shadow, its outline off, in the %s theme", async (theme) => {
     const user = openApp({ theme });
     await openCatalogue(user);
 

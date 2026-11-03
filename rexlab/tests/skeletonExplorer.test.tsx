@@ -1,3 +1,4 @@
+import { THEMES } from "../src/theme.ts";
 import { screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { AgeLevel } from "../src/ageLevel.ts";
@@ -31,7 +32,7 @@ describe("Explorer's puzzle", () => {
     expect(counter()).toBe(`0/${count}`);
   });
 
-  it.each<Theme>(["light", "dark"])("shows every spot and slot plain in the %s theme, nothing tinted by body area", async (theme) => {
+  it.each<Theme>(THEMES)("shows every spot and slot plain in the %s theme, nothing tinted by body area", async (theme) => {
     await openExplorer("TYRANNOSAURUS", theme);
 
     const tints = spotPieces().map((piece) => getComputedStyle(spotOf(piece)).backgroundColor);

@@ -1,3 +1,4 @@
+import { THEMES } from "../src/theme.ts";
 import { GameAudioButton } from "../src/GameAudioButton.tsx";
 import { fireEvent, render } from "@testing-library/react";
 import { join } from "node:path";
@@ -191,7 +192,7 @@ describe("Whose Jaw portrait composition", () => {
 
 describe("Whose Jaw landscape composition", () => {
   it.each(windowsAnd([1180, 820], [1366, 956]).flatMap((size) => AGE_LEVELS.flatMap((level) =>
-    (["en", "ru"] as const).flatMap((language) => ["light", "dark"].map((theme) => ({ size, level, language, theme })))
+    (["en", "ru"] as const).flatMap((language) => THEMES.map((theme) => ({ size, level, language, theme })))
   )))("bounds the $language $level board at $size in $theme", ({ size, level, language, theme }) => {
     const { count, props, view } = show(size, "wide", level, language, theme);
     expect(style(".whose-jaw-board-bar", size).value("grid-template-columns")).toBe("auto minmax(0, 1fr) auto auto");

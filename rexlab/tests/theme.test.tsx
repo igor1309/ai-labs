@@ -1,4 +1,5 @@
-import { emptyLabyrinth, largestSize } from "./support.ts";
+import { join } from "node:path";
+import { readFileSync } from "node:fs";
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
@@ -14,7 +15,8 @@ import { DigFieldGuideScreen } from "../src/DigFieldGuideScreen.tsx";
 import { TREASURE_KINDS } from "../src/dig/index.ts";
 import { REVEAL } from "../src/skeletonGame.tsx";
 import { HELP_AFTER } from "../src/skeletons/index.ts";
-import type { Theme } from "../src/theme.ts";
+import { THEMES, type Theme } from "../src/theme.ts";
+const DESIGN_TOKENS = [...new Set(readFileSync(join(import.meta.dirname, "../src/app.css"), "utf8").match(/--ds-[\w-]+(?=:)/g) ?? [])];
 import { NEEDS } from "../src/care/index.ts";
 import type { Basket } from "../src/SortScreen.tsx";
 import { boardState, type Property } from "../src/sorting/index.ts";
@@ -38,12 +40,14 @@ import {
   contrast,
   emptyCare,
   emptyDig,
+  emptyLabyrinth,
   emptyProgress,
   emptySkeletons,
   emptySorting,
   fakeBodyPicture,
   fakeTreasurePicture,
   featuring,
+  largestSize,
   manualAppearance,
   manualViewport,
   manualTimers,
@@ -57,12 +61,8 @@ import {
   surfacesIn,
   symbolOf,
   unreadVersion,
-  type ManualAppearance,
-  type ManualViewport,
-  type ManualTimers,
-  type MemoryStorage,
-  featuredCard,
-  gameDoor,
+  type ManualAppearance, type ManualViewport, type ManualTimers, type MemoryStorage,
+  featuredCard, gameDoor,
   unsetAgeLevel,
   shownQuestion,
   wrongOf
@@ -161,8 +161,8 @@ function expectScreenIn(theme: Theme, part: Element = document.body) {
       [...element.childNodes].some((node) => node.nodeType === Node.TEXT_NODE && node.textContent?.trim())
   );
   const tokens = styleOf(document.documentElement);
-  const sharedColours = ["quiet", "strong", "action", "label", "reward", "pocket-1", "pocket-2", ...["compare", "explore", "pairs", "bones", "dig", "sort", "care", "draw", "maze", "puzzle", "teeth", "color"].map((game) => `pocket-${game}`), "strata-1", "strata-2", "strata-3", "sky-top", "sky-bottom", "sky-halo", "sky-core"]
-    .map((name) => tokens.getPropertyValue(`--ds-${name}`));
+  // Any design colour the stylesheet sets is a theme's colour.
+  const sharedColours = DESIGN_TOKENS.map((name) => tokens.getPropertyValue(name).trim()).filter((value) => /^(#|rgb)/.test(value));
   const colours = [...Object.values(PALETTE[theme]), ...sharedColours, ...OVERLAYS];
 
   // Home's page, past its ground, is bedrock.
@@ -556,7 +556,7 @@ const SCREEN_GROUPS: Array<[string, Array<[string, (walk: Walk) => Promise<void>
 ];
 
 describe("the System theme", () => {
-  describe.each(["light", "dark"] as const)("follows the device appearance %s", (appearance) => {
+  describe.each(THEMES)("follows the device appearance %s", (appearance) => {
     describe.each(SCREEN_GROUPS)("on %s:", (_, parts) => {
       it.each(parts)("%s", async (_, walk) => {
         const viewport = manualViewport("landscape");
@@ -749,7 +749,7 @@ describe("the theme menu", () => {
 // The large card is shown through the home page's props, each game
 // featured in turn, in the theme the app sets on the page.
 describe("the large card", () => {
-  it.each((["light", "dark"] as const).flatMap(theme => HOME_GAMES.map(([game]) => [theme, game] as const)))("is in the %s sky with %s featured", (theme, game) => {
+  it.each(THEMES.flatMap(theme => HOME_GAMES.map(([game]) => [theme, game] as const)))("is in the %s sky with %s featured", (theme, game) => {
     document.documentElement.dataset.theme = theme;
     try {
       const { unmount } = renderHomePageFeaturing(game);
@@ -773,7 +773,7 @@ describe("the large card", () => {
 // The page is shown through its props, in the theme the app sets on the
 // page, with kinds found and kinds not found yet.
 describe("the FIELD GUIDE", () => {
-  it.each(["light", "dark"] as const)("is in the %s theme, a kind not found yet in the empty cards' colours with its outline in the ink", (theme) => {
+  it.each(THEMES)("is in the %s theme, a kind not found yet in the empty cards' colours with its outline in the ink", (theme) => {
     document.documentElement.dataset.theme = theme;
     try {
       const cards = TREASURE_KINDS.map((kind) => ({ kind, picture: fakeTreasurePicture(kind), count: kind === "shell" ? 3 : kind === "egg-nest" ? 1 : 0 }));
@@ -806,7 +806,7 @@ describe("the sorting board", () => {
   const PROPERTIES: Property[] = ["legs", "diet", "size", "horns", "feathers"];
 
   // One board per test: a whole sort is long under pointer events.
-  it.each((["light", "dark"] as const).flatMap((theme) => PROPERTIES.map((property) => [theme, property] as const)))("is in the %s theme in every state, sorting by %s, with every basket's symbol", async (theme, property) => {
+  it.each(THEMES.flatMap((theme) => PROPERTIES.map((property) => [theme, property] as const)))("is in the %s theme in every state, sorting by %s, with every basket's symbol", async (theme, property) => {
     document.documentElement.dataset.theme = theme;
     try {
       const user = userEvent.setup({ delay: null });
@@ -845,7 +845,7 @@ describe("the sorting board", () => {
     }
   });
 
-  it.each(["light", "dark"] as const)("marks a sorted card's ✓ and each hint at least 3:1 against what they are on, in the %s theme", async (theme) => {
+  it.each(THEMES)("marks a sorted card's ✓ and each hint at least 3:1 against what they are on, in the %s theme", async (theme) => {
     document.documentElement.dataset.theme = theme;
     try {
       const user = userEvent.setup({ delay: null });
@@ -876,7 +876,7 @@ describe("the sorting board", () => {
 // The result is reached through the sorting game, its screens' props and
 // its progress store, in the theme the app sets on the page.
 describe("the sorting result", () => {
-  it.each(["light", "dark"] as const)("is in the %s theme with its celebration, and without one", async (theme) => {
+  it.each(THEMES)("is in the %s theme with its celebration, and without one", async (theme) => {
     document.documentElement.dataset.theme = theme;
     try {
       for (const right of [4, 0]) {
@@ -893,7 +893,7 @@ describe("the sorting result", () => {
 });
 
 describe("marks", () => {
-  it.each(["light", "dark"] as const)("keep at least 3:1 contrast with their card in the %s theme", async (theme) => {
+  it.each(THEMES)("keep at least 3:1 contrast with their card in the %s theme", async (theme) => {
     const { user } = openApp({ device: manualAppearance(theme) });
     await user.click(gameDoor("COMPARE"));
     const question = shownQuestion();
@@ -916,7 +916,7 @@ describe("marks", () => {
 });
 
 describe("the SORT card", () => {
-  it.each(["light", "dark"] as const)("has a pocket and name pill at text contrast in the %s theme", (theme) => {
+  it.each(THEMES)("has a pocket and name pill at text contrast in the %s theme", (theme) => {
     const sortingStorage = memoryStorage({
       [PROGRESS_KEY]: JSON.stringify({ schemaVersion: 1, games: { "sort-dinosaurs": { bestScore: 4, explorerBest: 4, roundsPlayed: 2 } } })
     });
@@ -942,7 +942,7 @@ describe("the SORT card", () => {
 });
 
 describe("the FIND THE PAIR tile", () => {
-  it.each(["light", "dark"] as const)("has its words on the %s theme's name pill at text contrast", (theme) => {
+  it.each(THEMES)("has its words on the %s theme's name pill at text contrast", (theme) => {
     openApp({ device: manualAppearance(theme) });
 
     expectScreenIn(theme);
@@ -960,7 +960,7 @@ describe("the FIND THE PAIR tile", () => {
 });
 
 describe("a board of skeletons", () => {
-  it.each(["light", "dark"] as const)("shows each skeleton in its own colours on the card's art in the %s theme", async (theme) => {
+  it.each(THEMES)("shows each skeleton in its own colours on the card's art in the %s theme", async (theme) => {
     const timers = manualTimers();
     const { user } = openApp({ device: manualAppearance(theme), timers });
     await playPairs(user, "PALEONTOLOGIST");
@@ -979,7 +979,7 @@ describe("a board of skeletons", () => {
 });
 
 describe("a board of silhouettes", () => {
-  it.each(["light", "dark"] as const)("keeps face-down cards, open cards and silhouettes apart from what is behind them in the %s theme", async (theme) => {
+  it.each(THEMES)("keeps face-down cards, open cards and silhouettes apart from what is behind them in the %s theme", async (theme) => {
     const timers = manualTimers();
     const pairs = memoryStorage({ [PROGRESS_KEY]: pairsRecord({ stars: 6, level: 4, boardsOnLevel: 0, best: {}, found: [] }) });
     const { user } = openApp({ device: manualAppearance(theme), timers, pairs });

@@ -1,3 +1,4 @@
+import { THEMES } from "../src/theme.ts";
 import { GameAudioButton } from "../src/GameAudioButton.tsx";
 import { render } from "@testing-library/react";
 import { describe, expect, it, onTestFinished } from "vitest";
@@ -102,7 +103,7 @@ describe("Whose Jaw welcome portrait balance", () => {
   });
 
   it.each(([[1180, 820, "wide"], [844, 390, "wide-short"]] as const).flatMap(([width, height, layout]) =>
-    (["en", "ru"] as const).flatMap((language) => (["light", "dark"] as const).map((theme) => ({ size: [width, height] as WindowSize, layout, language, theme }))))
+    (["en", "ru"] as const).flatMap((language) => THEMES.map((theme) => ({ size: [width, height] as WindowSize, layout, language, theme }))))
   )("fits landscape artwork and wrapping $language actions at $size in $theme", ({ size, layout, language, theme }) => {
     show(size, layout, language, 10, theme);
     const short = layout === "wide-short";

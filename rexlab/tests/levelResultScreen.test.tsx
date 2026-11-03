@@ -1,3 +1,4 @@
+import { THEMES } from "../src/theme.ts";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
@@ -99,7 +100,7 @@ const WORD_EMS: Record<string, number> = {
 const wordWidth = (word: string, size: number) => (WORD_EMS[word] ?? NaN) * size;
 
 describe.each(
-  WINDOW_SIZES.flatMap(([windowWidth, windowHeight]) => LANGUAGES.flatMap((language) => (["light", "dark"] as const).map((theme) => [language, theme, windowWidth, windowHeight] as const)))
+  WINDOW_SIZES.flatMap(([windowWidth, windowHeight]) => LANGUAGES.flatMap((language) => THEMES.map((theme) => [language, theme, windowWidth, windowHeight] as const)))
 )("the result with levels in %s, %s at %i by %i", (language, theme, windowWidth, windowHeight) => {
   function pixels(value: string): number {
     if (value === "0") return 0;

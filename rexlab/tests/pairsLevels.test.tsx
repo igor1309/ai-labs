@@ -1,3 +1,4 @@
+import { THEMES } from "../src/theme.ts";
 import { NO_LEVEL_OFFER } from "../src/levelOffer.ts";
 import { act, fireEvent, isInaccessible, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
@@ -19,7 +20,6 @@ import { SHIPPED_PALS, contrast, fakeBodyPicture, fakeSkeletonPicture, gameDoor,
 
 const DEVICES: Record<Language, string> = { en: "en-GB", ru: "ru-RU" };
 
-const THEMES = ["light", "dark"] as const;
 
 const NAMES = AGE_LEVELS.map((level) => TEXTS.en.ageLevels[level].name);
 

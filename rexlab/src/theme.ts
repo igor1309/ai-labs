@@ -1,5 +1,8 @@
 export type Theme = "light" | "dark";
 
+// Every theme the app draws; tests and the design file go through each.
+export const THEMES: readonly Theme[] = ["light", "dark"];
+
 // What a parent chooses: a theme of its own, or System, which follows the
 // device.
 export type ThemeChoice = "system" | Theme;

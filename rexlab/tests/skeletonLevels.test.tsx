@@ -1,3 +1,4 @@
+import { THEMES } from "../src/theme.ts";
 import { act, fireEvent, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { AGE_LEVELS, type AgeLevel, type AgeLevelSetting } from "../src/ageLevel.ts";
@@ -102,7 +103,7 @@ describe("the level switch", () => {
     expect([screenStyle.overflow, dinosaurs.flexShrink, px(dinosaurs.minHeight)]).toEqual(["hidden", "1", 0]);
   });
 
-  it.each(LANGUAGES.flatMap((language) => (["light", "dark"] as const).map((theme) => [language, theme] as const)))(
+  it.each(LANGUAGES.flatMap((language) => THEMES.map((theme) => [language, theme] as const)))(
     "reads each level's name on one line in %s and the %s theme, with at least 4.5:1 contrast",
     (language, theme) => {
       openSkeletonsApp({ deviceLanguage: DEVICES[language], appearance: theme });

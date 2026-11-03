@@ -1,3 +1,4 @@
+import { THEMES } from "../src/theme.ts";
 import { act, screen, within } from "@testing-library/react";
 import type { UserEvent } from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
@@ -14,7 +15,6 @@ import { WINDOW_SIZES, openWindow } from "./windowSizes.ts";
 
 const DEVICES: Record<Language, string> = { en: "en-GB", ru: "ru-RU" };
 
-const THEMES = ["light", "dark"] as const;
 
 const px = (value: string) => Number.parseFloat(value) || 0;
 

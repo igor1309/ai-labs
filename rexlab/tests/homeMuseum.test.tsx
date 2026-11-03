@@ -1,3 +1,4 @@
+import { THEMES } from "../src/theme.ts";
 import { act, fireEvent, screen, within } from "@testing-library/react";
 import { addTransitionType } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -122,7 +123,7 @@ describe("the museum on the home page", () => {
     expect([onHomePage(), hall()]).toEqual([true, null]);
   });
 
-  it.each(["light", "dark"] as const)("reads in the %s theme, brightens under a pointer and presses in", async (theme) => {
+  it.each(THEMES)("reads in the %s theme, brightens under a pointer and presses in", async (theme) => {
     const { user } = openHomeApp({ appearance: theme });
 
     const button = museumButton();
