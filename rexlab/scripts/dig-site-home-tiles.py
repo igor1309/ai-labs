@@ -316,7 +316,32 @@ def color():
     return c
 
 
-GAMES = {"dig": dig, "sort": sort, "care": care, "draw": draw, "maze": maze, "puzzle": puzzle, "color": color}
+def cut_white(im):
+    """Clear the white page around a picture, flooding in from its edges."""
+    im = im.convert("RGBA")
+    for xy in ((0, 0), (im.width - 1, 0), (0, im.height - 1), (im.width - 1, im.height - 1)):
+        ImageDraw.floodfill(im, xy, (255, 255, 255, 0), thresh=40)
+    a = im.getchannel("A").filter(ImageFilter.MinFilter(3)).filter(ImageFilter.GaussianBlur(1))
+    im.putalpha(a)
+    return im
+
+
+def teeth():
+    """The toothless Baryonyx of the game, its jaw on the way back to its open mouth."""
+    c = Image.new("RGBA", (W, H))
+    dino = fit(cut_white(load("whose-jaw-gummy-baryonyx.webp")), w=640, h=500).transpose(Image.FLIP_LEFT_RIGHT)
+    dx, dy = 0, 590 - dino.height
+    put(c, dino, dx, dy)
+    jaw = fit(load("whose-jaw-jaw-baryonyx-cutout.webp"), w=400).transpose(Image.FLIP_LEFT_RIGHT)
+    jaw = jaw.rotate(10, Image.BICUBIC, expand=True)
+    put(c, jaw, W - jaw.width, 0, drop=dict(blur=12, alpha=90, dy=14))
+    c.alpha_composite(svg(
+        f'<path d="M600 230 Q650 270 {dx + dino.width - 40} {dy + 70}" fill="none" stroke="#FFFDF8" stroke-width="14" '
+        'stroke-linecap="round" stroke-dasharray="2 30"/>'))
+    return c
+
+
+GAMES = {"dig": dig, "sort": sort, "care": care, "draw": draw, "maze": maze, "puzzle": puzzle, "color": color, "teeth": teeth}
 
 if __name__ == "__main__":
     for name, make in GAMES.items():

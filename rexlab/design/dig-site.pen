@@ -542120,7 +542120,7 @@
     },
     {
       "type": "frame",
-      "id": "JJKrW",
+      "id": "arLYx",
       "x": 21000,
       "y": 7400,
       "name": "Home · Dig site v2 tiles · iPad 11 landscape 1180×820 · Light · whole page",
@@ -542153,7 +542153,7 @@
       "layout": "none",
       "children": [
         {
-          "id": "PZF0h",
+          "id": "eZTrs",
           "type": "ref",
           "ref": "s0Vee",
           "name": "Sun",
@@ -542175,7 +542175,7 @@
           }
         },
         {
-          "id": "NcHSk",
+          "id": "zvEv2",
           "type": "ref",
           "ref": "s1Ymnh",
           "name": "Header",
@@ -542185,7 +542185,7 @@
           "descendants": {}
         },
         {
-          "id": "H9Bkw",
+          "id": "HAjwk",
           "type": "ref",
           "ref": "ZpYVi",
           "name": "Featured",
@@ -542210,7 +542210,7 @@
           }
         },
         {
-          "id": "3jDsi",
+          "id": "VhH6c",
           "type": "ref",
           "ref": "EsKu5",
           "name": "T-Rex shadow",
@@ -542220,7 +542220,7 @@
           "height": 18
         },
         {
-          "id": "Qh21y",
+          "id": "PmCDA",
           "type": "ref",
           "ref": "EsKu5",
           "name": "Brachiosaurus shadow",
@@ -542231,7 +542231,7 @@
         },
         {
           "type": "rectangle",
-          "id": "u4rbN",
+          "id": "C55Sq",
           "x": 520,
           "y": 150,
           "name": "Tyrannosaurus",
@@ -542246,7 +542246,7 @@
         },
         {
           "type": "rectangle",
-          "id": "oIUk3",
+          "id": "XeIbb",
           "x": 850,
           "y": 92,
           "name": "Brachiosaurus",
@@ -542260,7 +542260,7 @@
           "height": 300
         },
         {
-          "id": "yTer2",
+          "id": "3OFUL",
           "type": "ref",
           "ref": "m8Jt7",
           "name": "Layer 1 · Sand edge",
@@ -542276,7 +542276,7 @@
         },
         {
           "type": "frame",
-          "id": "dpnTB",
+          "id": "9gfdO",
           "x": 0,
           "y": 410,
           "name": "Layer 1 · Sand",
@@ -542292,7 +542292,7 @@
           ],
           "children": [
             {
-              "id": "HK53X",
+              "id": "hGVDE",
               "type": "ref",
               "ref": "L8jWq",
               "name": "Tile · EXPLORE",
@@ -542340,7 +542340,7 @@
               }
             },
             {
-              "id": "r0C3D",
+              "id": "saLMF",
               "type": "ref",
               "ref": "L8jWq",
               "name": "Tile · PAIRS",
@@ -542388,7 +542388,7 @@
               }
             },
             {
-              "id": "sY4zf",
+              "id": "br645",
               "type": "ref",
               "ref": "L8jWq",
               "name": "Tile · BONES",
@@ -542436,7 +542436,7 @@
               }
             },
             {
-              "id": "I4Mg4",
+              "id": "cjyJX",
               "type": "ref",
               "ref": "L8jWq",
               "name": "Tile · DIG",
@@ -542484,7 +542484,7 @@
               }
             },
             {
-              "id": "n03WC",
+              "id": "c7ont",
               "type": "ref",
               "ref": "L8jWq",
               "name": "Tile · SORT",
@@ -542532,7 +542532,7 @@
               }
             },
             {
-              "id": "6knL7",
+              "id": "SfyvF",
               "type": "ref",
               "ref": "L8jWq",
               "name": "Tile · CARE",
@@ -542582,7 +542582,7 @@
           ]
         },
         {
-          "id": "KNgpK",
+          "id": "ZNs1D",
           "type": "ref",
           "ref": "m8Jt7",
           "name": "Layer 2 · Ochre edge",
@@ -542598,7 +542598,7 @@
         },
         {
           "type": "frame",
-          "id": "SJeiZ",
+          "id": "9y9S8",
           "x": 0,
           "y": 590,
           "name": "Layer 2 · Ochre",
@@ -542614,7 +542614,7 @@
           ],
           "children": [
             {
-              "id": "1xxav",
+              "id": "NDKP4",
               "type": "ref",
               "ref": "L8jWq",
               "name": "Tile · DRAW",
@@ -542662,7 +542662,7 @@
               }
             },
             {
-              "id": "uHZLM",
+              "id": "eszqN",
               "type": "ref",
               "ref": "L8jWq",
               "name": "Tile · MAZE",
@@ -542710,7 +542710,7 @@
               }
             },
             {
-              "id": "rlTde",
+              "id": "aldE4",
               "type": "ref",
               "ref": "L8jWq",
               "name": "Tile · PUZZLE",
@@ -542758,7 +542758,7 @@
               }
             },
             {
-              "id": "iJyyx",
+              "id": "fp0G8",
               "type": "ref",
               "ref": "L8jWq",
               "name": "Tile · TEETH",
@@ -542778,7 +542778,7 @@
                   "fill": {
                     "type": "image",
                     "enabled": true,
-                    "url": "images/baryonyx.webp",
+                    "url": "images/home-tile-teeth.webp",
                     "mode": "contain"
                   }
                 },
@@ -542808,7 +542808,7 @@
               }
             },
             {
-              "id": "Y9vI1",
+              "id": "ipOdP",
               "type": "ref",
               "ref": "L8jWq",
               "name": "Tile · COLOR",
@@ -542856,7 +542856,7 @@
               }
             },
             {
-              "id": "hZFtT",
+              "id": "dRZ2G",
               "type": "ref",
               "ref": "eZPLE",
               "name": "Tile · SOON",
@@ -542877,7 +542877,7 @@
           ]
         },
         {
-          "id": "F4iQe",
+          "id": "QFo1S",
           "type": "ref",
           "ref": "m8Jt7",
           "name": "Bedrock edge",
@@ -542893,7 +542893,7 @@
         },
         {
           "type": "frame",
-          "id": "mgSmq",
+          "id": "sMKm9",
           "x": 0,
           "y": 770,
           "name": "Bedrock",
@@ -542908,7 +542908,7 @@
           "alignItems": "center",
           "children": [
             {
-              "id": "RmjQI",
+              "id": "V7a6e",
               "type": "ref",
               "ref": "q065f",
               "name": "Parent note",
@@ -542918,7 +542918,7 @@
               "opacity": 0.75
             },
             {
-              "id": "ZcYUf",
+              "id": "uVOMU",
               "type": "ref",
               "ref": "FKCrL",
               "name": "Version",
@@ -542929,7 +542929,7 @@
         },
         {
           "type": "frame",
-          "id": "YhXUq",
+          "id": "zdz6Y",
           "x": 0,
           "y": 0,
           "name": "Status bar",
@@ -542946,7 +542946,7 @@
           "children": [
             {
               "type": "text",
-              "id": "Xljhc",
+              "id": "ufIxV",
               "name": "Time",
               "fill": "$ds-ink",
               "content": "9:41  Mon 2 Nov",
@@ -542956,14 +542956,14 @@
             },
             {
               "type": "frame",
-              "id": "HunZi",
+              "id": "aWzyl",
               "name": "Indicators",
               "gap": "$ds-space-6",
               "alignItems": "center",
               "children": [
                 {
                   "type": "icon",
-                  "id": "FhVc6",
+                  "id": "EOV7l",
                   "name": "signal",
                   "width": 15,
                   "height": 15,
@@ -542973,7 +542973,7 @@
                 },
                 {
                   "type": "icon",
-                  "id": "7zBFu",
+                  "id": "M2ghz",
                   "name": "wifi",
                   "width": 15,
                   "height": 15,
@@ -542983,7 +542983,7 @@
                 },
                 {
                   "type": "icon",
-                  "id": "uNS5K",
+                  "id": "Sp4z8",
                   "name": "battery-full",
                   "width": 15,
                   "height": 15,
@@ -542998,7 +542998,7 @@
         {
           "type": "rectangle",
           "cornerRadius": "$ds-radius-3",
-          "id": "Jyvq7",
+          "id": "Q9l8s",
           "x": 430,
           "y": 838,
           "name": "Home indicator",
@@ -543010,7 +543010,7 @@
     },
     {
       "type": "frame",
-      "id": "fBtog",
+      "id": "3uXDl",
       "x": 22280,
       "y": 7400,
       "name": "Home · Dig site v2 tiles · iPad 11 landscape 1180×820 · Dark · whole page",
@@ -543043,7 +543043,7 @@
       "layout": "none",
       "children": [
         {
-          "id": "0rqLQ",
+          "id": "Ph4yZ",
           "type": "ref",
           "ref": "s0Vee",
           "name": "Moon",
@@ -543065,7 +543065,7 @@
           }
         },
         {
-          "id": "pKxnk",
+          "id": "yG2b7",
           "type": "ref",
           "ref": "s1Ymnh",
           "name": "Header",
@@ -543075,7 +543075,7 @@
           "descendants": {}
         },
         {
-          "id": "fgxzz",
+          "id": "Bt2Tc",
           "type": "ref",
           "ref": "ZpYVi",
           "name": "Featured",
@@ -543100,7 +543100,7 @@
           }
         },
         {
-          "id": "KxNEv",
+          "id": "3MXJv",
           "type": "ref",
           "ref": "EsKu5",
           "name": "T-Rex shadow",
@@ -543110,7 +543110,7 @@
           "height": 18
         },
         {
-          "id": "biNXl",
+          "id": "cMN2q",
           "type": "ref",
           "ref": "EsKu5",
           "name": "Brachiosaurus shadow",
@@ -543121,7 +543121,7 @@
         },
         {
           "type": "rectangle",
-          "id": "1CaYE",
+          "id": "Ohfer",
           "x": 520,
           "y": 150,
           "name": "Tyrannosaurus",
@@ -543136,7 +543136,7 @@
         },
         {
           "type": "rectangle",
-          "id": "uiQYq",
+          "id": "tFT7U",
           "x": 850,
           "y": 92,
           "name": "Brachiosaurus",
@@ -543150,7 +543150,7 @@
           "height": 300
         },
         {
-          "id": "5qc2G",
+          "id": "iXSuu",
           "type": "ref",
           "ref": "m8Jt7",
           "name": "Layer 1 · Sand edge",
@@ -543166,7 +543166,7 @@
         },
         {
           "type": "frame",
-          "id": "XJkSV",
+          "id": "5wzl5",
           "x": 0,
           "y": 410,
           "name": "Layer 1 · Sand",
@@ -543182,7 +543182,7 @@
           ],
           "children": [
             {
-              "id": "O8N7I",
+              "id": "jWoE3",
               "type": "ref",
               "ref": "L8jWq",
               "name": "Tile · EXPLORE",
@@ -543230,7 +543230,7 @@
               }
             },
             {
-              "id": "Me6qm",
+              "id": "Unko8",
               "type": "ref",
               "ref": "L8jWq",
               "name": "Tile · PAIRS",
@@ -543278,7 +543278,7 @@
               }
             },
             {
-              "id": "FHJYM",
+              "id": "CN4pE",
               "type": "ref",
               "ref": "L8jWq",
               "name": "Tile · BONES",
@@ -543326,7 +543326,7 @@
               }
             },
             {
-              "id": "GaNs7",
+              "id": "lRGKA",
               "type": "ref",
               "ref": "L8jWq",
               "name": "Tile · DIG",
@@ -543374,7 +543374,7 @@
               }
             },
             {
-              "id": "2JvsJ",
+              "id": "YVRVS",
               "type": "ref",
               "ref": "L8jWq",
               "name": "Tile · SORT",
@@ -543422,7 +543422,7 @@
               }
             },
             {
-              "id": "zWGUl",
+              "id": "s1mBY",
               "type": "ref",
               "ref": "L8jWq",
               "name": "Tile · CARE",
@@ -543472,7 +543472,7 @@
           ]
         },
         {
-          "id": "Qe4FA",
+          "id": "2ycK7",
           "type": "ref",
           "ref": "m8Jt7",
           "name": "Layer 2 · Ochre edge",
@@ -543488,7 +543488,7 @@
         },
         {
           "type": "frame",
-          "id": "p6aRX",
+          "id": "qmFz7",
           "x": 0,
           "y": 590,
           "name": "Layer 2 · Ochre",
@@ -543504,7 +543504,7 @@
           ],
           "children": [
             {
-              "id": "avUTX",
+              "id": "0279V",
               "type": "ref",
               "ref": "L8jWq",
               "name": "Tile · DRAW",
@@ -543552,7 +543552,7 @@
               }
             },
             {
-              "id": "xScZ7",
+              "id": "7kkX1",
               "type": "ref",
               "ref": "L8jWq",
               "name": "Tile · MAZE",
@@ -543600,7 +543600,7 @@
               }
             },
             {
-              "id": "egVr0",
+              "id": "Gq4rM",
               "type": "ref",
               "ref": "L8jWq",
               "name": "Tile · PUZZLE",
@@ -543648,7 +543648,7 @@
               }
             },
             {
-              "id": "VEt9l",
+              "id": "qTHOG",
               "type": "ref",
               "ref": "L8jWq",
               "name": "Tile · TEETH",
@@ -543668,7 +543668,7 @@
                   "fill": {
                     "type": "image",
                     "enabled": true,
-                    "url": "images/baryonyx.webp",
+                    "url": "images/home-tile-teeth.webp",
                     "mode": "contain"
                   }
                 },
@@ -543698,7 +543698,7 @@
               }
             },
             {
-              "id": "1lViB",
+              "id": "VKGnW",
               "type": "ref",
               "ref": "L8jWq",
               "name": "Tile · COLOR",
@@ -543746,7 +543746,7 @@
               }
             },
             {
-              "id": "UeiHW",
+              "id": "be3Oy",
               "type": "ref",
               "ref": "eZPLE",
               "name": "Tile · SOON",
@@ -543775,7 +543775,7 @@
           ]
         },
         {
-          "id": "Y4mYB",
+          "id": "jgQku",
           "type": "ref",
           "ref": "m8Jt7",
           "name": "Bedrock edge",
@@ -543791,7 +543791,7 @@
         },
         {
           "type": "frame",
-          "id": "Qbxf7",
+          "id": "QZvLO",
           "x": 0,
           "y": 770,
           "name": "Bedrock",
@@ -543806,7 +543806,7 @@
           "alignItems": "center",
           "children": [
             {
-              "id": "Fig0k",
+              "id": "FrtW5",
               "type": "ref",
               "ref": "q065f",
               "name": "Parent note",
@@ -543816,7 +543816,7 @@
               "opacity": 0.75
             },
             {
-              "id": "mUpPw",
+              "id": "YfvwR",
               "type": "ref",
               "ref": "FKCrL",
               "name": "Version",
@@ -543827,7 +543827,7 @@
         },
         {
           "type": "frame",
-          "id": "k6T60",
+          "id": "ZQ0n7",
           "x": 0,
           "y": 0,
           "name": "Status bar",
@@ -543844,7 +543844,7 @@
           "children": [
             {
               "type": "text",
-              "id": "D7aH1",
+              "id": "sZ6BS",
               "name": "Time",
               "fill": "$ds-ink",
               "content": "9:41  Mon 2 Nov",
@@ -543854,14 +543854,14 @@
             },
             {
               "type": "frame",
-              "id": "6lBRW",
+              "id": "G4Dmn",
               "name": "Indicators",
               "gap": "$ds-space-6",
               "alignItems": "center",
               "children": [
                 {
                   "type": "icon",
-                  "id": "30ahW",
+                  "id": "1feLg",
                   "name": "signal",
                   "width": 15,
                   "height": 15,
@@ -543871,7 +543871,7 @@
                 },
                 {
                   "type": "icon",
-                  "id": "Ejh33",
+                  "id": "iZ4LR",
                   "name": "wifi",
                   "width": 15,
                   "height": 15,
@@ -543881,7 +543881,7 @@
                 },
                 {
                   "type": "icon",
-                  "id": "1JyD0",
+                  "id": "0kkSQ",
                   "name": "battery-full",
                   "width": 15,
                   "height": 15,
@@ -543896,7 +543896,7 @@
         {
           "type": "rectangle",
           "cornerRadius": "$ds-radius-3",
-          "id": "s1u4V",
+          "id": "aNiV9",
           "x": 430,
           "y": 838,
           "name": "Home indicator",
@@ -543908,7 +543908,7 @@
     },
     {
       "type": "frame",
-      "id": "9KBtd",
+      "id": "LMsWJ",
       "x": 23560,
       "y": 7400,
       "name": "Home · Dig site v2 tiles · iPhone 15 Pro portrait 393×852 · Light · whole page",
@@ -543941,7 +543941,7 @@
       "layout": "none",
       "children": [
         {
-          "id": "7dobB",
+          "id": "fEXoS",
           "type": "ref",
           "ref": "s0Vee",
           "name": "Sun",
@@ -543964,7 +543964,7 @@
         },
         {
           "type": "frame",
-          "id": "X7PKI",
+          "id": "syHjC",
           "x": 0,
           "y": 0,
           "name": "Status bar",
@@ -543981,7 +543981,7 @@
           "children": [
             {
               "type": "text",
-              "id": "m74w8",
+              "id": "xXpTy",
               "name": "Time",
               "fill": "$ds-ink",
               "content": "9:41",
@@ -543991,14 +543991,14 @@
             },
             {
               "type": "frame",
-              "id": "Cs0V4",
+              "id": "PuZBw",
               "name": "Indicators",
               "gap": "$ds-space-6",
               "alignItems": "center",
               "children": [
                 {
                   "type": "icon",
-                  "id": "zegya",
+                  "id": "VdtDC",
                   "name": "signal",
                   "width": 18,
                   "height": 18,
@@ -544008,7 +544008,7 @@
                 },
                 {
                   "type": "icon",
-                  "id": "m3nrK",
+                  "id": "zFN4v",
                   "name": "wifi",
                   "width": 18,
                   "height": 18,
@@ -544018,7 +544018,7 @@
                 },
                 {
                   "type": "icon",
-                  "id": "AYkdS",
+                  "id": "BLCSY",
                   "name": "battery-full",
                   "width": 18,
                   "height": 18,
@@ -544031,7 +544031,7 @@
           ]
         },
         {
-          "id": "H8vMK",
+          "id": "k9xrd",
           "type": "ref",
           "ref": "s1Ymnh",
           "name": "Header",
@@ -544078,7 +544078,7 @@
           }
         },
         {
-          "id": "K3Zv7",
+          "id": "84nT7",
           "type": "ref",
           "ref": "ZpYVi",
           "name": "Featured",
@@ -544113,7 +544113,7 @@
           }
         },
         {
-          "id": "JoaNk",
+          "id": "V9kXq",
           "type": "ref",
           "ref": "EsKu5",
           "name": "T-Rex shadow",
@@ -544123,7 +544123,7 @@
           "height": 16
         },
         {
-          "id": "pSM8J",
+          "id": "4zP7R",
           "type": "ref",
           "ref": "EsKu5",
           "name": "Brachiosaurus shadow",
@@ -544134,7 +544134,7 @@
         },
         {
           "type": "rectangle",
-          "id": "lAk06",
+          "id": "hcMDM",
           "x": 4,
           "y": 316,
           "name": "Tyrannosaurus",
@@ -544149,7 +544149,7 @@
         },
         {
           "type": "rectangle",
-          "id": "J2iRS",
+          "id": "FGFwD",
           "x": 206,
           "y": 312,
           "name": "Brachiosaurus",
@@ -544163,7 +544163,7 @@
           "height": 144
         },
         {
-          "id": "hfTCO",
+          "id": "7sXZ4",
           "type": "ref",
           "ref": "m8Jt7",
           "name": "Layer 1 · Sand edge",
@@ -544188,7 +544188,7 @@
         },
         {
           "type": "frame",
-          "id": "k0fnn",
+          "id": "mcSac",
           "x": 0,
           "y": 474,
           "name": "Layer 1 · Sand",
@@ -544204,14 +544204,14 @@
           "children": [
             {
               "type": "frame",
-              "id": "8qPJZ",
+              "id": "v5rDE",
               "name": "Row",
               "width": "fill_container",
               "gap": "$ds-btn-gap",
               "justifyContent": "center",
               "children": [
                 {
-                  "id": "Clbu1",
+                  "id": "tB6Kz",
                   "type": "ref",
                   "ref": "L8jWq",
                   "name": "Tile · EXPLORE",
@@ -544259,7 +544259,7 @@
                   }
                 },
                 {
-                  "id": "pSqdc",
+                  "id": "TG52F",
                   "type": "ref",
                   "ref": "L8jWq",
                   "name": "Tile · PAIRS",
@@ -544307,7 +544307,7 @@
                   }
                 },
                 {
-                  "id": "fVm34",
+                  "id": "ZUe4c",
                   "type": "ref",
                   "ref": "L8jWq",
                   "name": "Tile · BONES",
@@ -544359,7 +544359,7 @@
           ]
         },
         {
-          "id": "IinLV",
+          "id": "crc90",
           "type": "ref",
           "ref": "m8Jt7",
           "name": "Layer 2 · Ochre edge",
@@ -544384,7 +544384,7 @@
         },
         {
           "type": "frame",
-          "id": "N2qA0",
+          "id": "7exBc",
           "x": 0,
           "y": 646,
           "name": "Layer 2 · Ochre",
@@ -544400,14 +544400,14 @@
           "children": [
             {
               "type": "frame",
-              "id": "BMwCG",
+              "id": "hr7cR",
               "name": "Row",
               "width": "fill_container",
               "gap": "$ds-btn-gap",
               "justifyContent": "center",
               "children": [
                 {
-                  "id": "nYdOl",
+                  "id": "ylmhZ",
                   "type": "ref",
                   "ref": "L8jWq",
                   "name": "Tile · DIG",
@@ -544455,7 +544455,7 @@
                   }
                 },
                 {
-                  "id": "Q3seu",
+                  "id": "iWNXz",
                   "type": "ref",
                   "ref": "L8jWq",
                   "name": "Tile · SORT",
@@ -544503,7 +544503,7 @@
                   }
                 },
                 {
-                  "id": "yVvNu",
+                  "id": "wOo5T",
                   "type": "ref",
                   "ref": "L8jWq",
                   "name": "Tile · CARE",
@@ -544555,7 +544555,7 @@
           ]
         },
         {
-          "id": "E3VUq",
+          "id": "k6zvV",
           "type": "ref",
           "ref": "m8Jt7",
           "name": "Layer 3 · Sand edge",
@@ -544580,7 +544580,7 @@
         },
         {
           "type": "frame",
-          "id": "8fayP",
+          "id": "cH5pE",
           "x": 0,
           "y": 818,
           "name": "Layer 3 · Sand",
@@ -544596,14 +544596,14 @@
           "children": [
             {
               "type": "frame",
-              "id": "QlnJe",
+              "id": "DMpPI",
               "name": "Row",
               "width": "fill_container",
               "gap": "$ds-btn-gap",
               "justifyContent": "center",
               "children": [
                 {
-                  "id": "ZjeND",
+                  "id": "Qp7OI",
                   "type": "ref",
                   "ref": "L8jWq",
                   "name": "Tile · DRAW",
@@ -544651,7 +544651,7 @@
                   }
                 },
                 {
-                  "id": "HMzEh",
+                  "id": "CJnHb",
                   "type": "ref",
                   "ref": "L8jWq",
                   "name": "Tile · MAZE",
@@ -544699,7 +544699,7 @@
                   }
                 },
                 {
-                  "id": "GAdkY",
+                  "id": "4JChY",
                   "type": "ref",
                   "ref": "L8jWq",
                   "name": "Tile · PUZZLE",
@@ -544751,7 +544751,7 @@
           ]
         },
         {
-          "id": "S0MrT",
+          "id": "h46HP",
           "type": "ref",
           "ref": "m8Jt7",
           "name": "Layer 4 · Ochre edge",
@@ -544776,7 +544776,7 @@
         },
         {
           "type": "frame",
-          "id": "99vf6",
+          "id": "FhNRA",
           "x": 0,
           "y": 990,
           "name": "Layer 4 · Ochre",
@@ -544792,14 +544792,14 @@
           "children": [
             {
               "type": "frame",
-              "id": "s3Fg2",
+              "id": "zzcV9",
               "name": "Row",
               "width": "fill_container",
               "gap": "$ds-btn-gap",
               "justifyContent": "center",
               "children": [
                 {
-                  "id": "rsenZ",
+                  "id": "DTpFx",
                   "type": "ref",
                   "ref": "L8jWq",
                   "name": "Tile · TEETH",
@@ -544819,7 +544819,7 @@
                       "fill": {
                         "type": "image",
                         "enabled": true,
-                        "url": "images/baryonyx.webp",
+                        "url": "images/home-tile-teeth.webp",
                         "mode": "contain"
                       }
                     },
@@ -544849,7 +544849,7 @@
                   }
                 },
                 {
-                  "id": "jfzOH",
+                  "id": "52UEJ",
                   "type": "ref",
                   "ref": "L8jWq",
                   "name": "Tile · COLOR",
@@ -544897,7 +544897,7 @@
                   }
                 },
                 {
-                  "id": "9rjf8",
+                  "id": "iBBXU",
                   "type": "ref",
                   "ref": "eZPLE",
                   "name": "Tile · SOON",
@@ -544924,7 +544924,7 @@
           ]
         },
         {
-          "id": "z1brH",
+          "id": "Eu1fl",
           "type": "ref",
           "ref": "m8Jt7",
           "name": "Bedrock edge",
@@ -544949,7 +544949,7 @@
         },
         {
           "type": "frame",
-          "id": "3scan",
+          "id": "bRS8G",
           "x": 0,
           "y": 1166,
           "name": "Bedrock",
@@ -544966,7 +544966,7 @@
           ],
           "children": [
             {
-              "id": "4mIHD",
+              "id": "awDdV",
               "type": "ref",
               "ref": "q065f",
               "name": "Parent note",
@@ -544977,7 +544977,7 @@
               "content": "Parents: progress is saved on this device. Settings are at the top of the page."
             },
             {
-              "id": "Br3ro",
+              "id": "2Hd3l",
               "type": "ref",
               "ref": "FKCrL",
               "name": "Version",
@@ -544989,7 +544989,7 @@
         {
           "type": "rectangle",
           "cornerRadius": "$ds-radius-3",
-          "id": "rYDX6",
+          "id": "g0SqV",
           "x": 130,
           "y": 1263,
           "name": "Home indicator",
@@ -545001,7 +545001,7 @@
     },
     {
       "type": "frame",
-      "id": "WLske",
+      "id": "4gd8L",
       "x": 24053,
       "y": 7400,
       "name": "Home · Dig site v2 tiles · iPhone 15 Pro portrait 393×852 · Dark · whole page",
@@ -545034,7 +545034,7 @@
       "layout": "none",
       "children": [
         {
-          "id": "ranzq",
+          "id": "Cf3g9",
           "type": "ref",
           "ref": "s0Vee",
           "name": "Sun",
@@ -545057,7 +545057,7 @@
         },
         {
           "type": "frame",
-          "id": "fz5ZV",
+          "id": "kCP2d",
           "x": 0,
           "y": 0,
           "name": "Status bar",
@@ -545074,7 +545074,7 @@
           "children": [
             {
               "type": "text",
-              "id": "qIUE3",
+              "id": "ayFaj",
               "name": "Time",
               "fill": "$ds-ink",
               "content": "9:41",
@@ -545084,14 +545084,14 @@
             },
             {
               "type": "frame",
-              "id": "1XHlA",
+              "id": "M2sQI",
               "name": "Indicators",
               "gap": "$ds-space-6",
               "alignItems": "center",
               "children": [
                 {
                   "type": "icon",
-                  "id": "kxuu8",
+                  "id": "hQPgO",
                   "name": "signal",
                   "width": 18,
                   "height": 18,
@@ -545101,7 +545101,7 @@
                 },
                 {
                   "type": "icon",
-                  "id": "J0ZrG",
+                  "id": "88PIW",
                   "name": "wifi",
                   "width": 18,
                   "height": 18,
@@ -545111,7 +545111,7 @@
                 },
                 {
                   "type": "icon",
-                  "id": "e4WFb",
+                  "id": "VREFt",
                   "name": "battery-full",
                   "width": 18,
                   "height": 18,
@@ -545124,7 +545124,7 @@
           ]
         },
         {
-          "id": "X4IZl",
+          "id": "nZlkG",
           "type": "ref",
           "ref": "s1Ymnh",
           "name": "Header",
@@ -545171,7 +545171,7 @@
           }
         },
         {
-          "id": "teuuO",
+          "id": "n01CF",
           "type": "ref",
           "ref": "ZpYVi",
           "name": "Featured",
@@ -545206,7 +545206,7 @@
           }
         },
         {
-          "id": "lOw46",
+          "id": "3CMFb",
           "type": "ref",
           "ref": "EsKu5",
           "name": "T-Rex shadow",
@@ -545216,7 +545216,7 @@
           "height": 16
         },
         {
-          "id": "uaKjN",
+          "id": "kft6m",
           "type": "ref",
           "ref": "EsKu5",
           "name": "Brachiosaurus shadow",
@@ -545227,7 +545227,7 @@
         },
         {
           "type": "rectangle",
-          "id": "QMntL",
+          "id": "WoZV4",
           "x": 4,
           "y": 316,
           "name": "Tyrannosaurus",
@@ -545242,7 +545242,7 @@
         },
         {
           "type": "rectangle",
-          "id": "bhjcK",
+          "id": "aqroC",
           "x": 206,
           "y": 312,
           "name": "Brachiosaurus",
@@ -545256,7 +545256,7 @@
           "height": 144
         },
         {
-          "id": "NvjSe",
+          "id": "fLLEU",
           "type": "ref",
           "ref": "m8Jt7",
           "name": "Layer 1 · Sand edge",
@@ -545281,7 +545281,7 @@
         },
         {
           "type": "frame",
-          "id": "JqixU",
+          "id": "P4ngc",
           "x": 0,
           "y": 474,
           "name": "Layer 1 · Sand",
@@ -545297,14 +545297,14 @@
           "children": [
             {
               "type": "frame",
-              "id": "QEwSD",
+              "id": "dszEM",
               "name": "Row",
               "width": "fill_container",
               "gap": "$ds-btn-gap",
               "justifyContent": "center",
               "children": [
                 {
-                  "id": "JD3OG",
+                  "id": "soXdW",
                   "type": "ref",
                   "ref": "L8jWq",
                   "name": "Tile · EXPLORE",
@@ -545352,7 +545352,7 @@
                   }
                 },
                 {
-                  "id": "LsxEc",
+                  "id": "t6t7x",
                   "type": "ref",
                   "ref": "L8jWq",
                   "name": "Tile · PAIRS",
@@ -545400,7 +545400,7 @@
                   }
                 },
                 {
-                  "id": "BwabC",
+                  "id": "VpKy6",
                   "type": "ref",
                   "ref": "L8jWq",
                   "name": "Tile · BONES",
@@ -545452,7 +545452,7 @@
           ]
         },
         {
-          "id": "HB8KT",
+          "id": "SFxYk",
           "type": "ref",
           "ref": "m8Jt7",
           "name": "Layer 2 · Ochre edge",
@@ -545477,7 +545477,7 @@
         },
         {
           "type": "frame",
-          "id": "4WzMI",
+          "id": "ozmJH",
           "x": 0,
           "y": 646,
           "name": "Layer 2 · Ochre",
@@ -545493,14 +545493,14 @@
           "children": [
             {
               "type": "frame",
-              "id": "MqJ5i",
+              "id": "aj7Xz",
               "name": "Row",
               "width": "fill_container",
               "gap": "$ds-btn-gap",
               "justifyContent": "center",
               "children": [
                 {
-                  "id": "e3IbN",
+                  "id": "pJoMj",
                   "type": "ref",
                   "ref": "L8jWq",
                   "name": "Tile · DIG",
@@ -545548,7 +545548,7 @@
                   }
                 },
                 {
-                  "id": "OmFi3",
+                  "id": "ve5zS",
                   "type": "ref",
                   "ref": "L8jWq",
                   "name": "Tile · SORT",
@@ -545596,7 +545596,7 @@
                   }
                 },
                 {
-                  "id": "5XnWn",
+                  "id": "9QsbP",
                   "type": "ref",
                   "ref": "L8jWq",
                   "name": "Tile · CARE",
@@ -545648,7 +545648,7 @@
           ]
         },
         {
-          "id": "f8gM9",
+          "id": "V6ioF",
           "type": "ref",
           "ref": "m8Jt7",
           "name": "Layer 3 · Sand edge",
@@ -545673,7 +545673,7 @@
         },
         {
           "type": "frame",
-          "id": "x2JIk",
+          "id": "v4uT4",
           "x": 0,
           "y": 818,
           "name": "Layer 3 · Sand",
@@ -545689,14 +545689,14 @@
           "children": [
             {
               "type": "frame",
-              "id": "Dz2Cm",
+              "id": "ze6Ku",
               "name": "Row",
               "width": "fill_container",
               "gap": "$ds-btn-gap",
               "justifyContent": "center",
               "children": [
                 {
-                  "id": "F6V8w",
+                  "id": "ETHnQ",
                   "type": "ref",
                   "ref": "L8jWq",
                   "name": "Tile · DRAW",
@@ -545744,7 +545744,7 @@
                   }
                 },
                 {
-                  "id": "OXEL6",
+                  "id": "216f4",
                   "type": "ref",
                   "ref": "L8jWq",
                   "name": "Tile · MAZE",
@@ -545792,7 +545792,7 @@
                   }
                 },
                 {
-                  "id": "JNq1n",
+                  "id": "7JYet",
                   "type": "ref",
                   "ref": "L8jWq",
                   "name": "Tile · PUZZLE",
@@ -545844,7 +545844,7 @@
           ]
         },
         {
-          "id": "wODXh",
+          "id": "g0dAX",
           "type": "ref",
           "ref": "m8Jt7",
           "name": "Layer 4 · Ochre edge",
@@ -545869,7 +545869,7 @@
         },
         {
           "type": "frame",
-          "id": "OVUt1",
+          "id": "Uu5oC",
           "x": 0,
           "y": 990,
           "name": "Layer 4 · Ochre",
@@ -545885,14 +545885,14 @@
           "children": [
             {
               "type": "frame",
-              "id": "8Ti8J",
+              "id": "4hGdo",
               "name": "Row",
               "width": "fill_container",
               "gap": "$ds-btn-gap",
               "justifyContent": "center",
               "children": [
                 {
-                  "id": "cEM6q",
+                  "id": "6jHXH",
                   "type": "ref",
                   "ref": "L8jWq",
                   "name": "Tile · TEETH",
@@ -545912,7 +545912,7 @@
                       "fill": {
                         "type": "image",
                         "enabled": true,
-                        "url": "images/baryonyx.webp",
+                        "url": "images/home-tile-teeth.webp",
                         "mode": "contain"
                       }
                     },
@@ -545942,7 +545942,7 @@
                   }
                 },
                 {
-                  "id": "FMCIA",
+                  "id": "zm5X9",
                   "type": "ref",
                   "ref": "L8jWq",
                   "name": "Tile · COLOR",
@@ -545990,7 +545990,7 @@
                   }
                 },
                 {
-                  "id": "1yMy6",
+                  "id": "HLMTh",
                   "type": "ref",
                   "ref": "eZPLE",
                   "name": "Tile · SOON",
@@ -546025,7 +546025,7 @@
           ]
         },
         {
-          "id": "NiTDB",
+          "id": "Gzr4n",
           "type": "ref",
           "ref": "m8Jt7",
           "name": "Bedrock edge",
@@ -546050,7 +546050,7 @@
         },
         {
           "type": "frame",
-          "id": "Ev0nw",
+          "id": "AJhpZ",
           "x": 0,
           "y": 1166,
           "name": "Bedrock",
@@ -546067,7 +546067,7 @@
           ],
           "children": [
             {
-              "id": "z5hh4",
+              "id": "eyOww",
               "type": "ref",
               "ref": "q065f",
               "name": "Parent note",
@@ -546078,7 +546078,7 @@
               "content": "Parents: progress is saved on this device. Settings are at the top of the page."
             },
             {
-              "id": "LZz3o",
+              "id": "5yXoa",
               "type": "ref",
               "ref": "FKCrL",
               "name": "Version",
@@ -546090,7 +546090,7 @@
         {
           "type": "rectangle",
           "cornerRadius": "$ds-radius-3",
-          "id": "s2FNS",
+          "id": "2FZM7",
           "x": 130,
           "y": 1263,
           "name": "Home indicator",
