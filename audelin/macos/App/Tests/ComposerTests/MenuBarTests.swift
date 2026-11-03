@@ -66,7 +66,8 @@ struct MenuBarTests {
                         after: { delay, fire in
                             let token = clock.after(delay, fire)
                             return BoundaryCancellation { token.cancel() }
-                        }, ticks: panelClock.ticks), log: TestLogSink(), intervals: testIntervals
+                        }, ticks: panelClock.ticks), log: TestLogSink(), intervals: testIntervals,
+                    recordings: FileRecordingStorage()
                 )
                 let app = await compose(boundary: boundary, preferencesURL: root.appendingPathComponent("preferences.json"),
                     openCallsFolder: { _ in false }, presentCalls: {}, openURL: { _ in }, presentPanel: { _ in },

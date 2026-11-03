@@ -9,8 +9,10 @@ import Foundation
 
 extension TrackFile: AudioRecording {}
 
-struct FileRecordingStorage: RecordingStorage {
-    func open(at url: URL) async throws -> any AudioRecording { try await TrackFile(url: url) }
+/// Stores recordings in audio files, with TrackFile's queued I/O.
+public struct FileRecordingStorage: RecordingStorage {
+    public init() {}
+    public func open(at url: URL) async throws -> any AudioRecording { try await TrackFile(url: url) }
 }
 
 typealias CapturedPiece = LiveAudio.AudioPiece

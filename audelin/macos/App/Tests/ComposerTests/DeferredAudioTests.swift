@@ -1,4 +1,5 @@
 import Composer
+import LiveText
 import Testing
 
 /// Through the session: text listens before the capture exists when Live text
@@ -110,4 +111,43 @@ struct DeferredAudioCompositionTests {
         }
     }
 
+    @Test func recordingDrainsWhileTheAudioListenerIsBlocked() async throws {
+        let listening = DrainGate(), source = BoundaryCapture(), track = MemoryRecording()
+        let mine = HeldAudioRecognizer(listening: listening)
+        defer { listening.release(); source.finish() }
+        try await withComposition(recognizers: (mine, SessionRecognizer(name: "theirs")), configure: { boundary in
+            boundary.microphone = FixtureMicrophone { source.start() }
+            boundary.recordings = FixtureRecordings(microphone: track, call: MemoryRecording())
+        }) { rig in
+            try await rig.start()
+            _ = try await rig.panel { if case .lines = $0.log { true } else { false } }
+            source.give([boundaryTones[0]])
+            await listening.waitUntilEntered()
+            source.give(Array(boundaryTones.dropFirst()))
+            await track.waitForPieces(3)
+            #expect(track.pieces.all == boundaryTones)
+            #expect(await mine.base.chunks.isEmpty)
+            let stop = Task { try await rig.stop() }
+            await track.waitUntilClosed()
+            #expect(await mine.base.chunks.isEmpty)
+            #expect(source.stops.all == [true])
+            listening.release()
+            try await stop.value
+            #expect(await mine.base.chunks.map { CaptureBuffer(samples: $0.samples, sampleRate: $0.sampleRate) } == boundaryTones)
+            #expect(await mine.base.finishes == 1)
+            #expect(track.closed.all == [true])
+        }
+    }
+
+}
+
+private actor HeldAudioRecognizer: Recognizer {
+    let base = SessionRecognizer(name: "mine")
+    let listening: DrainGate
+    init(listening: DrainGate) { self.listening = listening }
+    func hear(_ chunk: AudioChunk) async -> Hearing {
+        await listening.wait()
+        return await base.hear(chunk)
+    }
+    func finish() async -> Hearing { await base.finish() }
 }

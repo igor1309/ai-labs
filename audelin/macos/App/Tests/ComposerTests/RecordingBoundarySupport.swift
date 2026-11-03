@@ -9,6 +9,7 @@ final class MemoryRecording: AudioRecording {
     let reads = Values<Range<Double>>()
     private let attempts = Mutex(0)
     private let written = Signal()
+    private let closing = Signal()
     let firstWrite: DrainGate?
     let failingWrite: Int?
     let readSamples: [Float]
@@ -32,7 +33,11 @@ final class MemoryRecording: AudioRecording {
         return Array(readSamples.dropFirst(Int((start * 48_000).rounded())).prefix(Int(((end - start) * 48_000).rounded())))
     }
 
-    func close() async throws { closed.append(true) }
+    func close() async throws { closed.append(true); closing.send() }
+
+    func waitUntilClosed() async {
+        if closed.all.isEmpty { await closing.next() }
+    }
 
     func waitForPieces(_ count: Int) async {
         while pieces.all.count < count { await written.next() }
