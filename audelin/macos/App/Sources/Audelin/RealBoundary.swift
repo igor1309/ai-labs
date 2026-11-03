@@ -1,7 +1,7 @@
 import AVFoundation
 import CallAudioAccess
 import Composer
-import struct CoreAudioProcesses.CoreAudioBinding
+import struct CoreAudioProcessBinding.CoreAudioBinding
 import struct CoreAudioProcesses.ContinuousCallClock
 import Foundation
 import LiveText

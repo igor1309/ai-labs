@@ -17,6 +17,7 @@ let package = Package(
         .library(name: "CallFolder", targets: ["CallFolder"]),
         .library(name: "CallText", targets: ["CallText"]),
         .library(name: "CoreAudioProcesses", targets: ["CoreAudioProcesses"]),
+        .library(name: "CoreAudioProcessBinding", targets: ["CoreAudioProcessBinding"]),
         .library(name: "FillIn", targets: ["FillIn"]),
         .library(name: "GlassLedger", targets: ["GlassLedger"]),
         .library(name: "LiveAudio", targets: ["LiveAudio"]),
@@ -69,6 +70,10 @@ let package = Package(
         ),
         .target(
             name: "CoreAudioProcesses"
+        ),
+        .target(
+            name: "CoreAudioProcessBinding",
+            dependencies: ["CoreAudioProcesses"]
         ),
         .target(
             name: "FillIn"
@@ -190,7 +195,11 @@ let package = Package(
         ),
         .testTarget(
             name: "CoreAudioProcessesTests",
-            dependencies: ["CoreAudioProcesses", "BlockingTestWork"]
+            dependencies: ["CoreAudioProcesses"]
+        ),
+        .testTarget(
+            name: "CoreAudioProcessBindingTests",
+            dependencies: ["CoreAudioProcessBinding", "CoreAudioProcesses", "BlockingTestWork"]
         ),
         .testTarget(
             name: "FillInTests",
