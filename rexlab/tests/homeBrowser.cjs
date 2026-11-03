@@ -55,7 +55,7 @@ async function fullFlow(page, { width, height, language, theme, reduced }) {
   assert.equal(pageRules.skyTop, 0, `${label}: sky reaches top edge`);
   if (width === 1180 || width === 1133) assert(pageRules.initialTiles.every(b => b.bottom <= height), `${label}: all iPad games on first screen`);
   if (width === 393 && height === 852) {
-    const nextRow = pageRules.initialTiles[3];
+    const nextRow = pageRules.initialTiles[6]; // the design shows two whole rows, the third peeking
     assert(nextRow.y < height && nextRow.bottom > height, `${label}: next row peeks into first screen`);
   }
 
@@ -239,6 +239,7 @@ exports.runHome = async function(sizes) {
           await page.evaluate(games => {
             const record = JSON.parse(localStorage.getItem('rexlab-progress'));
             record.games['home-first-visit'] = { games: games.filter(game => game !== 'catalogue') };
+            delete record.games['home-featured'].starts.catalogue;
             localStorage.setItem('rexlab-progress', JSON.stringify(record));
           }, games);
           await page.reload();

@@ -1,5 +1,9 @@
 # rexlab — Change Log
 
+## 2026-11-03
+
+- LAB-914: Home is the dig site: today's game in the sky with PLAY and its progress, every other game as a pocket tile in deepening earth with NEW for games added since the first visit and SOON last, the parents' note on the bedrock; one page scroll from sky to bedrock with a slower sky.
+
 ## 2026-11-02
 
 - LAB-913: Shared parts (main buttons, round home and hear buttons, level switch and badge, level offer and dialogs, parent menu, result score, stars and best, orientation gate) take the dig-site colours, corners and font in light and dark; sizes and layouts stay until each game moves.
