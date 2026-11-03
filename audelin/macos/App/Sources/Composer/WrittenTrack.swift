@@ -4,9 +4,9 @@ import TrackFile
 
 struct WrittenTrack: FillIn.WrittenTrack {
 
-    private let track: TrackFile
+    private let track: any AudioRecording
 
-    init(track: TrackFile) {
+    init(track: any AudioRecording) {
 
         self.track = track
     }

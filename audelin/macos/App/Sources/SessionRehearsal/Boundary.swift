@@ -46,7 +46,7 @@ public func rehearsalBoundary(
                 }
                 output.onTermination = { _ in task.cancel() }
             }
-        }), log: RehearsalLog(), intervals: intervals)
+        }), log: RehearsalLog(), intervals: intervals, recordings: FileRecordingStorage())
 }
 
 private struct RehearsalMicrophone: MicrophoneSource {
