@@ -356,8 +356,10 @@ export function appProps(browser: Browser): AppProps {
         }
         const transition = browser.document.startViewTransition(update);
         // A transition skipped before it starts, as when the viewport
-        // resizes, rejects ready; the page then just changes at once.
+        // resizes, rejects ready and its update promise; the page then just
+        // changes at once.
         transition.ready.then(undefined, () => {});
+        transition.updateCallbackDone.then(undefined, () => {});
         transition.finished.then(finished, finished);
       },
       timing: TURN_TIMING

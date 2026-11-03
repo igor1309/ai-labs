@@ -219,7 +219,7 @@ private extension Transcript {
             newParagraph()
 
             let size = tokens.typeBody
-            let paragraph = paragraph(size: size, indent: style.config.gutterWidth + tokens.space12, spacing: spacing)
+            let paragraph = paragraph(size: size, indent: timeWidth(size) + tokens.space12, spacing: spacing)
             current = paragraph
             func attributes(_ font: NSFont, _ color: Color) -> [NSAttributedString.Key: Any] {
                 [
@@ -230,14 +230,12 @@ private extension Transcript {
                 ]
             }
 
-            var gutter = attributes(font(size), tokens.gutter)
-            gutter[Transcript.gutter] = true
-            var speaker = attributes(font(size, .semibold), entry.speaker == .me ? tokens.me : tokens.them)
-            speaker[Transcript.gutter] = true
+            // The time, in the speaker's colour, is the only mark of who
+            // spoke: no label, so the text keeps the panel's width.
+            var time = attributes(font(size), entry.speaker == .me ? tokens.me : tokens.them)
+            time[Transcript.gutter] = true
 
-            result.append(.init(string: entry.time + "\t", attributes: gutter))
-            result.append(.init(string: entry.speaker == .me ? "я" : "они", attributes: speaker))
-            result.append(.init(string: "\t", attributes: gutter))
+            result.append(.init(string: entry.time + "\t", attributes: time))
 
             let start = result.length
             result.append(.init(string: entry.settled, attributes: attributes(font(size), tokens.text)))
@@ -321,20 +319,20 @@ private extension Transcript {
             style.maximumLineHeight = height
             style.paragraphSpacing = spacing
             style.headIndent = indent
+            // Keep wrapped text and the live caret clear of overlay scrollbars.
+            style.tailIndent = -tokens.space24
 
-            style.tabStops = [
-                NSTextTab(textAlignment: .left, location: timeWidth(size) + tokens.space8),
-                NSTextTab(textAlignment: .left, location: indent),
-            ]
+            style.tabStops = [NSTextTab(textAlignment: .left, location: indent)]
             paragraphs[key] = style
             return style
         }
 
-        /// How wide the gutter's time is, so the speaker lines up after it.
+        /// How wide the gutter's time is, up to a call of 999 minutes, so the
+        /// text starts at the same place on every line.
         private func timeWidth(_ size: CGFloat) -> CGFloat {
 
             if let width = timeWidths[size] { return width }
-            let width = NSAttributedString(string: "00:00", attributes: [.font: font(size)]).size().width
+            let width = NSAttributedString(string: "000:00", attributes: [.font: font(size)]).size().width.rounded(.up)
             timeWidths[size] = width
             return width
         }

@@ -7,6 +7,30 @@ import Testing
 @MainActor
 struct TranscriptLogTests {
 
+    @Test func wrappedStreamingTextStaysClearOfTheScrollbar() throws {
+
+        let words = String(repeating: "обсуждаем streaming transcript ", count: 12)
+        let host = hosted(.init(entries: [
+            .init(id: 1, time: "12:44", speaker: .me, settled: words, pending: words),
+        ]), height: 100)
+        let text = try #require(Offscreen.textView(in: host))
+        let scroll = try #require(scrollView(in: host))
+        scroll.scrollerStyle = .overlay
+        scroll.layoutSubtreeIfNeeded()
+        let layout = try #require(text.textLayoutManager)
+        layout.ensureLayout(for: layout.documentRange)
+
+        let clearance = NSScroller.scrollerWidth(for: .regular, scrollerStyle: .overlay)
+        var segments = 0
+        layout.enumerateTextSegments(in: layout.documentRange, type: .standard, options: []) { _, rect, _, _ in
+            segments += 1
+            #expect(rect.maxX + text.textContainerOrigin.x <= text.bounds.width - clearance)
+            return true
+        }
+        #expect(segments > 2)
+        #expect(isTallerThanItsView(scroll))
+    }
+
     @Test func gapUsesSmallMutedTextAndNamesItsMissingSide() throws {
 
         for (speaker, label): (PanelState.Speaker, String) in [(.me, "я"), (.them, "они")] {
@@ -22,6 +46,18 @@ struct TranscriptLogTests {
             #expect(color == NSColor(GlassLedger.light.gutter))
             #expect(font.pointSize == GlassLedger.light.typeCaption)
         }
+    }
+
+    @Test func theTimeInItsSpeakersColourIsTheOnlySpeakerMark() throws {
+
+        let text = try #require(Offscreen.textView(in: hosted(.init(rows: [
+            .entry(.init(id: 1, time: "12:44", speaker: .me, settled: "mine")),
+            .entry(.init(id: 2, time: "12:45", speaker: .them, settled: "theirs")),
+        ]))))
+
+        #expect(text.string == "12:44\tmine\n12:45\ttheirs")
+        #expect(attribute(.foregroundColor, of: "12:44", in: text) as? NSColor == NSColor(GlassLedger.light.me))
+        #expect(attribute(.foregroundColor, of: "12:45", in: text) as? NSColor == NSColor(GlassLedger.light.them))
     }
 
     @Test func placesALateGroupWhereItsMinutesWere() throws {
@@ -120,7 +156,7 @@ struct TranscriptLogTests {
         // From the newline that opens its paragraph.
         let start = (first.text.string as NSString).range(of: "13:10").location - 1
         #expect(edit.range == NSRange(location: start, length: first.text.length - start))
-        #expect(edit.entries.last?.body.location == start + ("\n13:10\tя\t" as NSString).length)
+        #expect(edit.entries.last?.body.location == start + ("\n13:10\t" as NSString).length)
     }
 
     @Test func anUpdateBehindUnchangedSealedRowsAppliesCleanly() {
@@ -243,6 +279,17 @@ struct TranscriptLogTests {
 
         #expect(isTallerThanItsView(scroll))
         #expect(settles { isAtBottom(scroll) }, "the newest line is out of view")
+    }
+
+    /// TextKit lays text out after the update that scrolled to its end, so
+    /// the text grows under a scroll that was made too early.
+    @Test func opensALongLogAtItsNewestLine() throws {
+
+        let host = hosted(.init(entries: many(14)), height: 160)
+        let scroll = try #require(scrollView(in: host))
+
+        #expect(isTallerThanItsView(scroll))
+        #expect(settles { isAtBottom(scroll) }, "a long log opens away from its newest line")
     }
 
     @Test func staysWhereTheReaderScrolled() throws {

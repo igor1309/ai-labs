@@ -1,5 +1,10 @@
 # Log
 
+## 2026-11-03
+
+- Streaming transcript text leaves trailing space so the scrollbar does not cover words or the live caret (LAB-934).
+- Recorded calls show the duration of tracks kept after a crash, as well as closed tracks (LAB-944).
+
 ## 2026-10-30
 
 - Call text keeps an ordered final prefix and merges only the remaining entries;
