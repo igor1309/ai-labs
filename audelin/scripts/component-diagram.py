@@ -69,6 +69,7 @@ TARGETS = {
     "SystemAudioCapture": ("capture", "Core Audio process tap", 1),
     "CoreAudioProcessBinding": ("capture", "native process properties", 5),
     "CoreAudioProcesses": ("capture", "processes with audio open,\ncall events", 3),
+    "CoreAudioProcessBinding": ("capture", "Core Audio process properties\nand listeners", 5),
     "CallAppProcesses": ("capture", "which processes to hear\nfor the call app", 2),
 }
 

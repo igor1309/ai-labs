@@ -16,7 +16,31 @@ final class DiskTrackBinding: TrackFileBinding {
     private let descriptor: Int32
     private let url: URL
     private let positionedWrite: @Sendable (Int32, UnsafeRawBufferPointer, Int64) throws -> Int
-    private static let audioOffset: Int64 = 68
+    private enum Layout {
+        static let audioOffset: Int64 = 68
+        static let lengthOffset = 56
+        static let editCountBytes: UInt64 = 4
+        static let bytesPerFrame: Int64 = 2
+
+        static var header: Data {
+            var header = Data("caff".utf8)
+            header.appendInteger(UInt16(1))
+            header.appendInteger(UInt16(0))
+            header.append(contentsOf: "desc".utf8)
+            header.appendInteger(UInt64(32))
+            header.appendInteger(TrackFile.sampleRate.bitPattern)
+            header.append(contentsOf: "lpcm".utf8)
+            header.appendInteger(UInt32(2)) // Signed integer PCM in little-endian order.
+            header.appendInteger(UInt32(bytesPerFrame))
+            header.appendInteger(UInt32(1))
+            header.appendInteger(UInt32(1))
+            header.appendInteger(UInt32(16))
+            header.append(contentsOf: "data".utf8)
+            header.appendInteger(UInt64.max)
+            header.appendInteger(UInt32(0))
+            return header
+        }
+    }
 
     convenience init(url: URL) throws {
 
@@ -42,28 +66,52 @@ final class DiskTrackBinding: TrackFileBinding {
 
     func initialize() throws {
 
-        var header = Data("caff".utf8)
-        header.appendInteger(UInt16(1))
-        header.appendInteger(UInt16(0))
-        header.append(contentsOf: "desc".utf8)
-        header.appendInteger(UInt64(32))
-        header.appendInteger(Double(48_000).bitPattern)
-        header.append(contentsOf: "lpcm".utf8)
-        header.appendInteger(UInt32(2)) // Signed integer PCM in little-endian order.
-        header.appendInteger(UInt32(2))
-        header.appendInteger(UInt32(1))
-        header.appendInteger(UInt32(1))
-        header.appendInteger(UInt32(16))
-        header.append(contentsOf: "data".utf8)
-        header.appendInteger(UInt64.max)
-        header.appendInteger(UInt32(0))
-        try writeAll(header, at: 0)
+        try writeAll(Layout.header, at: 0)
+    }
+
+    static func duration(at url: URL) throws -> TimeInterval {
+
+        guard url.isFileURL else { throw TrackFile.Failure.invalidFile }
+        // Nonblocking open also lets a non-regular input be rejected without waiting on a pipe.
+        let descriptor = Darwin.open(url.path, O_RDONLY | O_CLOEXEC | O_NONBLOCK)
+        guard descriptor >= 0 else { throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO) }
+        defer { Darwin.close(descriptor) }
+        var info = stat()
+        guard fstat(descriptor, &info) == 0 else { throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO) }
+        guard info.st_mode & S_IFMT == S_IFREG, info.st_size >= Layout.audioOffset else {
+            throw TrackFile.Failure.invalidFile
+        }
+        var header = Data(count: Int(Layout.audioOffset))
+        try header.withUnsafeMutableBytes { buffer in
+            var done = 0
+            while done < buffer.count {
+                let count = pread(descriptor, buffer.baseAddress!.advanced(by: done), buffer.count - done, Int64(done))
+                if count < 0 {
+                    if errno == EINTR { continue }
+                    throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
+                }
+                guard count > 0 else { throw TrackFile.Failure.invalidFile }
+                done += count
+            }
+        }
+        let expected = Layout.header
+        let lengthEnd = Layout.lengthOffset + MemoryLayout<UInt64>.size
+        guard header[..<Layout.lengthOffset] == expected[..<Layout.lengthOffset],
+              header[lengthEnd...] == expected[lengthEnd...] else { throw TrackFile.Failure.invalidFile }
+        let length = header[Layout.lengthOffset..<lengthEnd].reduce(UInt64(0)) { ($0 << 8) | UInt64($1) }
+        let available = UInt64(info.st_size - Layout.audioOffset)
+        if length != UInt64.max {
+            // A sealed track ends at its declared data chunk and contains whole frames.
+            guard length >= Layout.editCountBytes, length - Layout.editCountBytes == available,
+                  available % UInt64(Layout.bytesPerFrame) == 0 else { throw TrackFile.Failure.invalidFile }
+        }
+        return Double(available / UInt64(Layout.bytesPerFrame)) / TrackFile.sampleRate
     }
 
     func write(_ samples: [Int16], at frame: Int64) throws {
 
         guard !samples.isEmpty else { return }
-        let offset = Self.audioOffset + frame * 2
+        let offset = Layout.audioOffset + frame * Layout.bytesPerFrame
         let bytes = samples.map(\.littleEndian).withUnsafeBytes { Data($0) }
         var info = stat()
         guard fstat(descriptor, &info) == 0 else { throw currentError() }
@@ -77,12 +125,12 @@ final class DiskTrackBinding: TrackFileBinding {
 
     func read(from frame: Int64, count: Int) throws -> [Float] {
 
-        var bytes = Data(count: count * 2)
+        var bytes = Data(count: count * Int(Layout.bytesPerFrame))
         try bytes.withUnsafeMutableBytes { buffer in
             var done = 0
             while done < buffer.count {
                 let size = pread(descriptor, buffer.baseAddress!.advanced(by: done), buffer.count - done,
-                                 Self.audioOffset + frame * 2 + Int64(done))
+                                 Layout.audioOffset + frame * Layout.bytesPerFrame + Int64(done))
                 if size < 0 {
                     if errno == EINTR { continue }
                     throw currentError()
@@ -99,11 +147,11 @@ final class DiskTrackBinding: TrackFileBinding {
     func finalize(frames: Int64) throws {
 
         var length = Data()
-        length.appendInteger(UInt64(frames * 2 + 4))
-        do { try writeAll(length, at: 56) }
+        length.appendInteger(UInt64(frames * Layout.bytesPerFrame) + Layout.editCountBytes)
+        do { try writeAll(length, at: Int64(Layout.lengthOffset)) }
         catch {
             // Restore the open-ended header if sealing its length only partly succeeded.
-            try? writeAll(Data(repeating: 0xff, count: 8), at: 56)
+            try? writeAll(Data(repeating: 0xff, count: MemoryLayout<UInt64>.size), at: Int64(Layout.lengthOffset))
             throw error
         }
     }

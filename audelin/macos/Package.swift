@@ -48,7 +48,7 @@ let package = Package(
         .target(name: "Calls"),
         .target(name: "Recordings"),
         .target(name: "CallsListUI", dependencies: ["GlassLedger"]),
-        .testTarget(name: "CallsTests", dependencies: ["Calls", "BlockingTestWork"]),
+        .testTarget(name: "CallsTests", dependencies: ["Calls", "TrackFile", "BlockingTestWork"]),
         .testTarget(name: "RecordingsTests", dependencies: ["Recordings"]),
         .testTarget(name: "CallsListUITests", dependencies: ["CallsListUI"]),
         .target(name: "CallAudioProbe"),
