@@ -11911,30 +11911,19 @@
                           "type": "frame",
                           "id": "AuVM7",
                           "name": "Gutter",
-                          "width": 80,
+                          "width": 47,
                           "gap": "$space-8",
                           "children": [
                             {
                               "type": "text",
                               "id": "lCRql",
                               "name": "Time",
-                              "fill": "$gutter",
+                              "fill": "$me",
                               "content": "12:42",
                               "lineHeight": 1.45,
                               "fontFamily": "$font-data",
                               "fontSize": "$type-body",
                               "fontWeight": "normal"
-                            },
-                            {
-                              "type": "text",
-                              "id": "td2UJ",
-                              "name": "Who",
-                              "fill": "$me",
-                              "content": "я",
-                              "lineHeight": 1.45,
-                              "fontFamily": "$font-data",
-                              "fontSize": "$type-body",
-                              "fontWeight": "600"
                             }
                           ]
                         },
@@ -11974,30 +11963,19 @@
                           "type": "frame",
                           "id": "RYHli",
                           "name": "Gutter",
-                          "width": 80,
+                          "width": 47,
                           "gap": "$space-8",
                           "children": [
                             {
                               "type": "text",
                               "id": "KM1eH",
                               "name": "Time",
-                              "fill": "$gutter",
+                              "fill": "$them",
                               "content": "12:42",
                               "lineHeight": 1.45,
                               "fontFamily": "$font-data",
                               "fontSize": "$type-body",
                               "fontWeight": "normal"
-                            },
-                            {
-                              "type": "text",
-                              "id": "Ac6t5",
-                              "name": "Who",
-                              "fill": "$them",
-                              "content": "они",
-                              "lineHeight": 1.45,
-                              "fontFamily": "$font-data",
-                              "fontSize": "$type-body",
-                              "fontWeight": "600"
                             }
                           ]
                         },
@@ -12037,30 +12015,19 @@
                           "type": "frame",
                           "id": "elANQ",
                           "name": "Gutter",
-                          "width": 80,
+                          "width": 47,
                           "gap": "$space-8",
                           "children": [
                             {
                               "type": "text",
                               "id": "Fwp4c",
                               "name": "Time",
-                              "fill": "$gutter",
+                              "fill": "$me",
                               "content": "12:42",
                               "lineHeight": 1.45,
                               "fontFamily": "$font-data",
                               "fontSize": "$type-body",
                               "fontWeight": "normal"
-                            },
-                            {
-                              "type": "text",
-                              "id": "wM2fA",
-                              "name": "Who",
-                              "fill": "$me",
-                              "content": "я",
-                              "lineHeight": 1.45,
-                              "fontFamily": "$font-data",
-                              "fontSize": "$type-body",
-                              "fontWeight": "600"
                             }
                           ]
                         },
@@ -17736,9 +17703,6 @@
                                         "lCRql": {
                                           "content": "12:42"
                                         },
-                                        "td2UJ": {
-                                          "content": "я"
-                                        },
                                         "s85yGn": {
                                           "content": "Accountable — я. По слог отвечает команда Ильи.",
                                           "fill": "$text"
@@ -17755,9 +17719,6 @@
                                         "KM1eH": {
                                           "content": "12:44"
                                         },
-                                        "Ac6t5": {
-                                          "content": "они"
-                                        },
                                         "IMPcg": {
                                           "content": "Окей. Тогда ОКР на квартал. На квартал синхронизируем до пятницы.",
                                           "fill": "$text"
@@ -17773,9 +17734,6 @@
                                       "descendants": {
                                         "Fwp4c": {
                                           "content": "12:47"
-                                        },
-                                        "wM2fA": {
-                                          "content": "я"
                                         },
                                         "lO4cT": {
                                           "content": "И ещё по NPS —",
@@ -18141,9 +18099,6 @@
                                         "lCRql": {
                                           "content": "12:42"
                                         },
-                                        "td2UJ": {
-                                          "content": "я"
-                                        },
                                         "s85yGn": {
                                           "content": "Accountable — я. По слог отвечает команда Ильи.",
                                           "fill": "$text"
@@ -18159,9 +18114,6 @@
                                       "descendants": {
                                         "KM1eH": {
                                           "content": "12:44"
-                                        },
-                                        "Ac6t5": {
-                                          "content": "они"
                                         },
                                         "IMPcg": {
                                           "content": "Окей. Тогда ОКР на квартал. На квартал синхронизируем до пятницы.",
@@ -18857,9 +18809,6 @@
                                         "KM1eH": {
                                           "content": "12:41"
                                         },
-                                        "Ac6t5": {
-                                          "content": "они"
-                                        },
                                         "X4atW": {
                                           "fill": [],
                                           "cornerRadius": "$radius-control"
@@ -18880,9 +18829,6 @@
                                         "lCRql": {
                                           "content": "12:42"
                                         },
-                                        "td2UJ": {
-                                          "content": "я"
-                                        },
                                         "s85yGn": {
                                           "content": "Accountable — я. По слог отвечает команда Ильи.",
                                           "fill": "$text"
@@ -18898,9 +18844,6 @@
                                       "descendants": {
                                         "KM1eH": {
                                           "content": "12:44"
-                                        },
-                                        "Ac6t5": {
-                                          "content": "они"
                                         },
                                         "X4atW": {
                                           "fill": [],
@@ -19151,9 +19094,6 @@
                                       "descendants": {
                                         "KM1eH": {
                                           "content": "12:41"
-                                        },
-                                        "Ac6t5": {
-                                          "content": "они"
                                         },
                                         "IMPcg": {
                                           "content": "по запуску — кто у нас accountable за слог поддержки?",
@@ -19565,9 +19505,6 @@
                                         "lCRql": {
                                           "content": "12:42"
                                         },
-                                        "td2UJ": {
-                                          "content": "я"
-                                        },
                                         "s85yGn": {
                                           "content": "Accountable — я. По слог отвечает команда Ильи.",
                                           "fill": "$text"
@@ -19584,9 +19521,6 @@
                                         "KM1eH": {
                                           "content": "12:44"
                                         },
-                                        "Ac6t5": {
-                                          "content": "они"
-                                        },
                                         "IMPcg": {
                                           "content": "Окей. Тогда ОКР на квартал. На квартал синхронизируем до пятницы.",
                                           "fill": "$text"
@@ -19602,9 +19536,6 @@
                                       "descendants": {
                                         "Fwp4c": {
                                           "content": "12:47"
-                                        },
-                                        "wM2fA": {
-                                          "content": "я"
                                         },
                                         "lO4cT": {
                                           "content": "И ещё по NPS —",
@@ -19970,9 +19901,6 @@
                                         "lCRql": {
                                           "content": "12:42"
                                         },
-                                        "td2UJ": {
-                                          "content": "я"
-                                        },
                                         "s85yGn": {
                                           "content": "Accountable — я. По слог отвечает команда Ильи.",
                                           "fill": "$text"
@@ -19988,9 +19916,6 @@
                                       "descendants": {
                                         "KM1eH": {
                                           "content": "12:44"
-                                        },
-                                        "Ac6t5": {
-                                          "content": "они"
                                         },
                                         "IMPcg": {
                                           "content": "Окей. Тогда ОКР на квартал. На квартал синхронизируем до пятницы.",
@@ -20689,9 +20614,6 @@
                                         "KM1eH": {
                                           "content": "12:41"
                                         },
-                                        "Ac6t5": {
-                                          "content": "они"
-                                        },
                                         "X4atW": {
                                           "fill": [],
                                           "cornerRadius": "$radius-control"
@@ -20712,9 +20634,6 @@
                                         "lCRql": {
                                           "content": "12:42"
                                         },
-                                        "td2UJ": {
-                                          "content": "я"
-                                        },
                                         "s85yGn": {
                                           "content": "Accountable — я. По слог отвечает команда Ильи.",
                                           "fill": "$text"
@@ -20730,9 +20649,6 @@
                                       "descendants": {
                                         "KM1eH": {
                                           "content": "12:44"
-                                        },
-                                        "Ac6t5": {
-                                          "content": "они"
                                         },
                                         "X4atW": {
                                           "fill": [],
@@ -20983,9 +20899,6 @@
                                       "descendants": {
                                         "KM1eH": {
                                           "content": "12:41"
-                                        },
-                                        "Ac6t5": {
-                                          "content": "они"
                                         },
                                         "IMPcg": {
                                           "content": "по запуску — кто у нас accountable за слог поддержки?",
