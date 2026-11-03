@@ -11,10 +11,12 @@ export const TITLE_EMS: Record<string, number> = {
   COMPARE: 5.1,
   СРАВНИ: 4.1,
   "ANCIENT REPTILES": 10.3,
-  // ANCIENT REPTILES may wrap on the large card, so each of its words is here.
+  "ДРЕВНИЕ ЯЩЕРЫ": 9.4,
+  // Both catalogue names may wrap on the large card, so each word is here.
   ANCIENT: 4.9,
   REPTILES: 5.2,
-  ВСЕ: 2.1,
+  ДРЕВНИЕ: 5.0,
+  ЯЩЕРЫ: 4.1,
   CARE: 2.8,
   ЗАБОТА: 4.0,
   SORT: 2.9,
@@ -47,9 +49,9 @@ export const TITLE_EMS: Record<string, number> = {
 };
 
 // The words each tile's title on the home page shows.
-export const TITLE_TEXTS: Record<string, "quizCard" | "catalogueTile" | "care" | "sort" | "skeletons" | "dig" | "moreComing" | "labyrinth"> = {
+export const TITLE_TEXTS: Record<string, "quizCard" | "catalogue" | "care" | "sort" | "skeletons" | "dig" | "moreComing" | "labyrinth"> = {
   "compare-tile-title": "quizCard",
-  "catalogue-tile-title": "catalogueTile",
+  "catalogue-tile-title": "catalogue",
   "care-tile-title": "care",
   "labyrinth-tile-title": "labyrinth",
   "sort-tile-title": "sort",

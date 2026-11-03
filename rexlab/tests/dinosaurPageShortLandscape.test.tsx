@@ -62,7 +62,7 @@ async function openPage(size: WindowSize, insets: SafeArea, language: Language =
     {...emptyCare()} {...emptySorting()} {...emptyPairs()}
     {...emptySkeletons()} {...emptyDig()} {...pageAtRest()}
   />);
-  await user.click(gameDoor(TEXTS[language].catalogueTile));
+  await user.click(gameDoor(TEXTS[language].catalogue));
   await user.click(part('[data-id="pachycephalosaurus"]'));
   return { viewport };
 }

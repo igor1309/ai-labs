@@ -152,7 +152,7 @@ export function HomePage({
       onOpen: onCompareDinosaurs
     },
     catalogue: {
-      name: text.catalogueTile,
+      name: text.catalogue,
       symbol: BookOpen,
       picture: <Picture className="catalogue-tile-picture" src={catalogue.picture} alt="" width={800} height={600} />,
       badge: { symbol: Footprints, value: catalogue.count },
