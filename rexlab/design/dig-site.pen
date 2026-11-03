@@ -32147,7 +32147,7 @@
         "device": "phone"
       },
       "clip": true,
-      "width": 740,
+      "width": 880,
       "fill": "$ds-sky-bottom",
       "layout": "vertical",
       "gap": 18,
@@ -32309,7 +32309,7 @@
           "fill": "$ds-ink-soft",
           "textGrowth": "fixed-width",
           "width": "fill_container",
-          "content": "Five cards in their fixed order; found ones show the picture, name and ×count, the rest an outline and ?. On a phone they become rows, and the title is the book alone.",
+          "content": "Five cards in their fixed order; found ones show the picture, name and ×count, the rest an outline and ?. On an upright phone they become rows, and the title is the book alone. The upright iPad puts them in rows of two that share the height, the last one centred, with BACK and HOME as symbols in the bar. On a phone on its side the bar is short (HOME and BACK as squares, the title, FOUND) and the cards share the height: one row in English, three over two in Russian, where each card is small and upright so ЗОЛОТАЯ ОКАМЕНЕЛОСТЬ stays whole.",
           "lineHeight": 1.45,
           "fontFamily": "$ds-font",
           "fontSize": 14,
@@ -428872,8 +428872,12 @@
                       "height": 156
                     },
                     "NQqwo": {
-                      "content": "РАКОВИНА",
-                      "fontSize": 20
+                      "content": "РАКУШКА",
+                      "fontSize": 20,
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "textAlign": "center",
+                      "lineHeight": 1.05
                     },
                     "f7Ffew": {
                       "enabled": true
@@ -428964,8 +428968,12 @@
                       "height": 156
                     },
                     "NQqwo": {
-                      "content": "ГНЕЗДО",
-                      "fontSize": 20
+                      "content": "ГНЕЗДО С ЯЙЦАМИ",
+                      "fontSize": 20,
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "textAlign": "center",
+                      "lineHeight": 1.05
                     },
                     "f7Ffew": {
                       "enabled": true
@@ -440161,6 +440169,3903 @@
                   ]
                 }
               ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "nxHL0",
+      "x": 9964,
+      "y": 14544,
+      "name": "DIG · FIELD GUIDE · every kind found · iPad mini upright 744×1133 · Light",
+      "theme": {
+        "mode": "light",
+        "device": "ipad"
+      },
+      "clip": true,
+      "width": 744,
+      "height": 1133,
+      "fill": {
+        "type": "gradient",
+        "gradientType": "linear",
+        "enabled": true,
+        "rotation": 180,
+        "size": {
+          "height": 1
+        },
+        "colors": [
+          {
+            "color": "$ds-sky-top",
+            "position": 0
+          },
+          {
+            "color": "$ds-sky-bottom",
+            "position": 0.5
+          }
+        ]
+      },
+      "layout": "none",
+      "children": [
+        {
+          "id": "s5LeO",
+          "type": "ref",
+          "ref": "m8Jt7",
+          "name": "Layer 1 · Sand edge",
+          "x": 0,
+          "y": 100,
+          "width": 744,
+          "descendants": {
+            "uZToM": {
+              "width": 1133,
+              "fill": "$ds-strata-1"
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "ZYU5O",
+          "x": 0,
+          "y": 120,
+          "name": "Layer 1 · Sand",
+          "width": 744,
+          "height": 963,
+          "fill": "$ds-strata-1",
+          "layout": "vertical",
+          "gap": 16,
+          "padding": [
+            44,
+            56,
+            64,
+            56
+          ],
+          "justifyContent": "center",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "TKEKI",
+              "name": "Row 1",
+              "width": "fill_container",
+              "height": "fill_container",
+              "gap": 16,
+              "justifyContent": "center",
+              "children": [
+                {
+                  "id": "sgtwL",
+                  "type": "ref",
+                  "ref": "GKHil",
+                  "name": "Treasure · SHELL",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "gap": 12,
+                  "descendants": {
+                    "KxXyM": {
+                      "width": 150,
+                      "height": 150,
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/dig-treasure-shell.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    "NQqwo": {
+                      "content": "SHELL",
+                      "fontSize": 24,
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "textAlign": "center",
+                      "lineHeight": 1.05
+                    },
+                    "f7Ffew": {
+                      "enabled": true
+                    },
+                    "bC6Z2": {
+                      "content": "×3"
+                    }
+                  }
+                },
+                {
+                  "id": "pLFe2",
+                  "type": "ref",
+                  "ref": "GKHil",
+                  "name": "Treasure · TOOTH",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "gap": 12,
+                  "descendants": {
+                    "KxXyM": {
+                      "width": 150,
+                      "height": 150,
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/dig-treasure-tooth.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    "NQqwo": {
+                      "content": "TOOTH",
+                      "fontSize": 24,
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "textAlign": "center",
+                      "lineHeight": 1.05
+                    },
+                    "f7Ffew": {
+                      "enabled": true
+                    },
+                    "bC6Z2": {
+                      "content": "×2"
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "mwxlY",
+              "name": "Row 2",
+              "width": "fill_container",
+              "height": "fill_container",
+              "gap": 16,
+              "justifyContent": "center",
+              "children": [
+                {
+                  "id": "P5kIl",
+                  "type": "ref",
+                  "ref": "GKHil",
+                  "name": "Treasure · AMBER",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "gap": 12,
+                  "descendants": {
+                    "KxXyM": {
+                      "width": 150,
+                      "height": 150,
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/dig-treasure-amber.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    "NQqwo": {
+                      "content": "AMBER",
+                      "fontSize": 24,
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "textAlign": "center",
+                      "lineHeight": 1.05
+                    },
+                    "f7Ffew": {
+                      "enabled": true
+                    },
+                    "bC6Z2": {
+                      "content": "×1"
+                    }
+                  }
+                },
+                {
+                  "id": "IgJs5",
+                  "type": "ref",
+                  "ref": "GKHil",
+                  "name": "Treasure · EGG NEST",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "gap": 12,
+                  "descendants": {
+                    "KxXyM": {
+                      "width": 150,
+                      "height": 150,
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/dig-treasure-egg-nest.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    "NQqwo": {
+                      "content": "EGG NEST",
+                      "fontSize": 24,
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "textAlign": "center",
+                      "lineHeight": 1.05
+                    },
+                    "f7Ffew": {
+                      "enabled": true
+                    },
+                    "bC6Z2": {
+                      "content": "×1"
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "r7vETs",
+              "name": "Row 3",
+              "width": "fill_container",
+              "height": "fill_container",
+              "gap": 16,
+              "justifyContent": "center",
+              "children": [
+                {
+                  "id": "sqOgN",
+                  "type": "ref",
+                  "ref": "GKHil",
+                  "name": "Treasure · GOLDEN FOSSIL",
+                  "width": 308,
+                  "height": "fill_container",
+                  "gap": 12,
+                  "descendants": {
+                    "KxXyM": {
+                      "width": 150,
+                      "height": 150,
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/dig-treasure-golden-fossil.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    "NQqwo": {
+                      "content": "GOLDEN FOSSIL",
+                      "fontSize": 24,
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "textAlign": "center",
+                      "lineHeight": 1.05
+                    },
+                    "f7Ffew": {
+                      "enabled": true
+                    },
+                    "bC6Z2": {
+                      "content": "×1"
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "B46ZGS",
+          "type": "ref",
+          "ref": "m8Jt7",
+          "name": "Layer 2 · Ochre edge",
+          "x": 0,
+          "y": 1063,
+          "width": 744,
+          "descendants": {
+            "uZToM": {
+              "width": 1133,
+              "fill": "$ds-strata-2"
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "e66nb",
+          "x": 0,
+          "y": 1083,
+          "name": "Layer 2 · Ochre",
+          "width": 744,
+          "height": 50,
+          "fill": "$ds-strata-2",
+          "layout": "none"
+        },
+        {
+          "type": "frame",
+          "id": "TMW6O",
+          "x": 0,
+          "y": 0,
+          "name": "Status bar",
+          "width": 744,
+          "height": 24,
+          "padding": [
+            4,
+            24,
+            0,
+            24
+          ],
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "Y12NZR",
+              "name": "Time",
+              "fill": "$ds-ink",
+              "content": "9:41  Mon 2 Nov",
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "600"
+            },
+            {
+              "type": "frame",
+              "id": "nOnyK",
+              "name": "Indicators",
+              "gap": 6,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "pU0sk",
+                  "name": "signal",
+                  "width": 15,
+                  "height": 15,
+                  "icon": "signal",
+                  "library": "lucide",
+                  "fill": "$ds-ink"
+                },
+                {
+                  "type": "icon",
+                  "id": "H3cmb",
+                  "name": "wifi",
+                  "width": 15,
+                  "height": 15,
+                  "icon": "wifi",
+                  "library": "lucide",
+                  "fill": "$ds-ink"
+                },
+                {
+                  "type": "icon",
+                  "id": "l8so2",
+                  "name": "battery-full",
+                  "width": 15,
+                  "height": 15,
+                  "icon": "battery-full",
+                  "library": "lucide",
+                  "fill": "$ds-ink"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "rectangle",
+          "cornerRadius": 3,
+          "id": "RjS4A",
+          "x": 212,
+          "y": 1121,
+          "name": "Home indicator",
+          "fill": "$ds-ink",
+          "width": 320,
+          "height": 5
+        },
+        {
+          "type": "frame",
+          "id": "TSRV6",
+          "x": 56,
+          "y": 30,
+          "name": "Top bar",
+          "width": 632,
+          "height": 60,
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "h3O5j",
+              "name": "Left",
+              "gap": 16,
+              "alignItems": "center",
+              "children": [
+                {
+                  "id": "tywLs",
+                  "type": "ref",
+                  "ref": "ImooT",
+                  "name": "Back",
+                  "width": 48,
+                  "height": 48,
+                  "descendants": {
+                    "Y1YWBe": {
+                      "icon": "arrow-left",
+                      "width": 26,
+                      "height": 26
+                    }
+                  }
+                },
+                {
+                  "id": "Fhx8K",
+                  "type": "ref",
+                  "ref": "iPOQT",
+                  "name": "Title",
+                  "descendants": {
+                    "iN7RG": {
+                      "icon": "book-open"
+                    },
+                    "JXiLX": {
+                      "content": "FIELD GUIDE"
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "LewMI",
+              "name": "Right",
+              "gap": 20,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "JguA4",
+                  "name": "Found",
+                  "gap": 8,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "Az20o",
+                      "name": "Label",
+                      "fill": "$ds-ink-soft",
+                      "content": "FOUND",
+                      "fontFamily": "$ds-font",
+                      "fontSize": "$ds-size-tag",
+                      "fontWeight": "700",
+                      "letterSpacing": 1.5
+                    },
+                    {
+                      "type": "text",
+                      "id": "J7Pqw",
+                      "name": "Count",
+                      "fill": "$ds-ink",
+                      "content": "5",
+                      "fontFamily": "$ds-font",
+                      "fontSize": "$ds-size-number",
+                      "fontWeight": "800"
+                    },
+                    {
+                      "type": "text",
+                      "id": "Y5qBD",
+                      "name": "Of",
+                      "fill": "$ds-ink-soft",
+                      "content": "/5",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 16,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "id": "z0DX1h",
+                  "type": "ref",
+                  "ref": "ImooT",
+                  "name": "Home",
+                  "width": 48,
+                  "height": 48,
+                  "descendants": {
+                    "Y1YWBe": {
+                      "icon": "house",
+                      "width": 24,
+                      "height": 24
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "SYvV5",
+      "x": 10808,
+      "y": 14544,
+      "name": "DIG · FIELD GUIDE · every kind found · iPhone on its side 852×393 · Light",
+      "theme": {
+        "mode": "light",
+        "device": "phone"
+      },
+      "clip": true,
+      "width": 852,
+      "height": 393,
+      "fill": {
+        "type": "gradient",
+        "gradientType": "linear",
+        "enabled": true,
+        "rotation": 180,
+        "size": {
+          "height": 1
+        },
+        "colors": [
+          {
+            "color": "$ds-sky-top",
+            "position": 0
+          },
+          {
+            "color": "$ds-sky-bottom",
+            "position": 0.4
+          }
+        ]
+      },
+      "layout": "none",
+      "children": [
+        {
+          "id": "wLjeF",
+          "type": "ref",
+          "ref": "m8Jt7",
+          "name": "Layer 1 · Sand edge",
+          "x": 0,
+          "y": 62,
+          "width": 852,
+          "height": 24,
+          "descendants": {
+            "uZToM": {
+              "width": 393,
+              "height": 24,
+              "viewBox": [
+                0,
+                0,
+                393,
+                24
+              ],
+              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z",
+              "fill": "$ds-strata-1"
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "jmYBY",
+          "x": 0,
+          "y": 78,
+          "name": "Layer 1 · Sand",
+          "width": 852,
+          "height": 315,
+          "fill": "$ds-strata-1",
+          "layout": "vertical",
+          "gap": 12,
+          "padding": [
+            14,
+            79,
+            26,
+            79
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "bmnda",
+              "name": "Row 1",
+              "width": "fill_container",
+              "height": "fill_container",
+              "gap": 12,
+              "justifyContent": "center",
+              "children": [
+                {
+                  "id": "Q9wsv",
+                  "type": "ref",
+                  "ref": "GKHil",
+                  "name": "Treasure · SHELL",
+                  "height": "fill_container",
+                  "width": "fill_container",
+                  "gap": 8,
+                  "padding": [
+                    12,
+                    8
+                  ],
+                  "descendants": {
+                    "KxXyM": {
+                      "width": 100,
+                      "height": 100,
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/dig-treasure-shell.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    "NQqwo": {
+                      "content": "SHELL",
+                      "fontSize": 17,
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "textAlign": "center",
+                      "lineHeight": 1.05
+                    },
+                    "bC6Z2": {
+                      "content": "×3",
+                      "fontSize": 15
+                    }
+                  }
+                },
+                {
+                  "id": "Q4HHO",
+                  "type": "ref",
+                  "ref": "GKHil",
+                  "name": "Treasure · TOOTH",
+                  "height": "fill_container",
+                  "width": "fill_container",
+                  "gap": 8,
+                  "padding": [
+                    12,
+                    8
+                  ],
+                  "descendants": {
+                    "KxXyM": {
+                      "width": 100,
+                      "height": 100,
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/dig-treasure-tooth.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    "NQqwo": {
+                      "content": "TOOTH",
+                      "fontSize": 17,
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "textAlign": "center",
+                      "lineHeight": 1.05
+                    },
+                    "bC6Z2": {
+                      "content": "×2",
+                      "fontSize": 15
+                    }
+                  }
+                },
+                {
+                  "id": "oLJta",
+                  "type": "ref",
+                  "ref": "GKHil",
+                  "name": "Treasure · AMBER",
+                  "height": "fill_container",
+                  "width": "fill_container",
+                  "gap": 8,
+                  "padding": [
+                    12,
+                    8
+                  ],
+                  "descendants": {
+                    "KxXyM": {
+                      "width": 100,
+                      "height": 100,
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/dig-treasure-amber.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    "NQqwo": {
+                      "content": "AMBER",
+                      "fontSize": 17,
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "textAlign": "center",
+                      "lineHeight": 1.05
+                    },
+                    "bC6Z2": {
+                      "content": "×1",
+                      "fontSize": 15
+                    }
+                  }
+                },
+                {
+                  "id": "DEccO",
+                  "type": "ref",
+                  "ref": "GKHil",
+                  "name": "Treasure · EGG NEST",
+                  "height": "fill_container",
+                  "width": "fill_container",
+                  "gap": 8,
+                  "padding": [
+                    12,
+                    8
+                  ],
+                  "descendants": {
+                    "KxXyM": {
+                      "width": 100,
+                      "height": 100,
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/dig-treasure-egg-nest.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    "NQqwo": {
+                      "content": "EGG NEST",
+                      "fontSize": 17,
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "textAlign": "center",
+                      "lineHeight": 1.05
+                    },
+                    "bC6Z2": {
+                      "content": "×1",
+                      "fontSize": 15
+                    }
+                  }
+                },
+                {
+                  "id": "kQkOS",
+                  "type": "ref",
+                  "ref": "GKHil",
+                  "name": "Treasure · GOLDEN FOSSIL",
+                  "height": "fill_container",
+                  "width": "fill_container",
+                  "gap": 8,
+                  "padding": [
+                    12,
+                    8
+                  ],
+                  "descendants": {
+                    "KxXyM": {
+                      "width": 100,
+                      "height": 100,
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/dig-treasure-golden-fossil.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    "NQqwo": {
+                      "content": "GOLDEN FOSSIL",
+                      "fontSize": 17,
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "textAlign": "center",
+                      "lineHeight": 1.05
+                    },
+                    "bC6Z2": {
+                      "content": "×1",
+                      "fontSize": 15
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "rectangle",
+          "cornerRadius": 3,
+          "id": "CiYx8",
+          "x": 359,
+          "y": 385,
+          "name": "Home indicator",
+          "fill": "$ds-ink",
+          "width": 134,
+          "height": 5
+        },
+        {
+          "type": "frame",
+          "id": "ZNCuL",
+          "x": 79,
+          "y": 8,
+          "name": "Top bar",
+          "width": 694,
+          "height": 48,
+          "gap": 16,
+          "alignItems": "center",
+          "children": [
+            {
+              "id": "Rnfky",
+              "type": "ref",
+              "ref": "tAopu",
+              "name": "Home"
+            },
+            {
+              "id": "CEEqY",
+              "type": "ref",
+              "ref": "tAopu",
+              "name": "Back",
+              "descendants": {
+                "E32xd": {
+                  "icon": "arrow-left"
+                }
+              }
+            },
+            {
+              "id": "tbOLG",
+              "type": "ref",
+              "ref": "iPOQT",
+              "name": "Title",
+              "width": "fill_container",
+              "descendants": {
+                "iN7RG": {
+                  "icon": "book-open"
+                },
+                "JXiLX": {
+                  "content": "FIELD GUIDE",
+                  "fontSize": 22
+                }
+              }
+            },
+            {
+              "type": "frame",
+              "id": "uWE2z",
+              "name": "Found",
+              "gap": 8,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "JzRF6",
+                  "name": "Label",
+                  "fill": "$ds-ink-soft",
+                  "content": "FOUND",
+                  "fontFamily": "$ds-font",
+                  "fontSize": "$ds-size-tag",
+                  "fontWeight": "700",
+                  "letterSpacing": 1.5
+                },
+                {
+                  "type": "text",
+                  "id": "UdPfb",
+                  "name": "Count",
+                  "fill": "$ds-ink",
+                  "content": "5",
+                  "fontFamily": "$ds-font",
+                  "fontSize": "$ds-size-number",
+                  "fontWeight": "800"
+                },
+                {
+                  "type": "text",
+                  "id": "EWzo6",
+                  "name": "Of",
+                  "fill": "$ds-ink-soft",
+                  "content": "/5",
+                  "fontFamily": "$ds-font",
+                  "fontSize": 16,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "AdH4f",
+      "x": 10808,
+      "y": 15037,
+      "name": "DIG · FIELD GUIDE · every kind found · iPhone on its side 852×393 · Light · RU",
+      "theme": {
+        "mode": "light",
+        "device": "phone"
+      },
+      "clip": true,
+      "width": 852,
+      "height": 393,
+      "fill": {
+        "type": "gradient",
+        "gradientType": "linear",
+        "enabled": true,
+        "rotation": 180,
+        "size": {
+          "height": 1
+        },
+        "colors": [
+          {
+            "color": "$ds-sky-top",
+            "position": 0
+          },
+          {
+            "color": "$ds-sky-bottom",
+            "position": 0.4
+          }
+        ]
+      },
+      "layout": "none",
+      "children": [
+        {
+          "id": "MAHBL",
+          "type": "ref",
+          "ref": "m8Jt7",
+          "name": "Layer 1 · Sand edge",
+          "x": 0,
+          "y": 62,
+          "width": 852,
+          "height": 24,
+          "descendants": {
+            "uZToM": {
+              "width": 393,
+              "height": 24,
+              "viewBox": [
+                0,
+                0,
+                393,
+                24
+              ],
+              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z",
+              "fill": "$ds-strata-1"
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "zDAFe",
+          "x": 0,
+          "y": 78,
+          "name": "Layer 1 · Sand",
+          "width": 852,
+          "height": 315,
+          "fill": "$ds-strata-1",
+          "layout": "vertical",
+          "gap": 12,
+          "padding": [
+            14,
+            79,
+            26,
+            79
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "JCuUX",
+              "name": "Row 1",
+              "width": "fill_container",
+              "height": "fill_container",
+              "gap": 12,
+              "justifyContent": "center",
+              "children": [
+                {
+                  "id": "V260s",
+                  "type": "ref",
+                  "ref": "GKHil",
+                  "name": "Treasure · РАКУШКА",
+                  "height": "fill_container",
+                  "width": 223,
+                  "layout": "vertical",
+                  "gap": 4,
+                  "padding": [
+                    6,
+                    8
+                  ],
+                  "justifyContent": "center",
+                  "cornerRadius": [
+                    "$ds-radius-pocket-top",
+                    "$ds-radius-pocket-top",
+                    "$ds-radius-pocket-bottom",
+                    "$ds-radius-pocket-bottom"
+                  ],
+                  "alignItems": "center",
+                  "descendants": {
+                    "KxXyM": {
+                      "width": 66,
+                      "height": 66,
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/dig-treasure-shell.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    "NQqwo": {
+                      "content": "РАКУШКА",
+                      "fontSize": 15,
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "lineHeight": 1.05,
+                      "textAlign": "center"
+                    },
+                    "f7Ffew": {
+                      "padding": [
+                        3,
+                        10
+                      ]
+                    },
+                    "bC6Z2": {
+                      "content": "×3",
+                      "fontSize": 13
+                    }
+                  }
+                },
+                {
+                  "id": "My1Tj",
+                  "type": "ref",
+                  "ref": "GKHil",
+                  "name": "Treasure · ЗУБ",
+                  "height": "fill_container",
+                  "width": 223,
+                  "layout": "vertical",
+                  "gap": 4,
+                  "padding": [
+                    6,
+                    8
+                  ],
+                  "justifyContent": "center",
+                  "cornerRadius": [
+                    "$ds-radius-pocket-top",
+                    "$ds-radius-pocket-top",
+                    "$ds-radius-pocket-bottom",
+                    "$ds-radius-pocket-bottom"
+                  ],
+                  "alignItems": "center",
+                  "descendants": {
+                    "KxXyM": {
+                      "width": 66,
+                      "height": 66,
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/dig-treasure-tooth.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    "NQqwo": {
+                      "content": "ЗУБ",
+                      "fontSize": 15,
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "lineHeight": 1.05,
+                      "textAlign": "center"
+                    },
+                    "f7Ffew": {
+                      "padding": [
+                        3,
+                        10
+                      ]
+                    },
+                    "bC6Z2": {
+                      "content": "×2",
+                      "fontSize": 13
+                    }
+                  }
+                },
+                {
+                  "id": "RvZms",
+                  "type": "ref",
+                  "ref": "GKHil",
+                  "name": "Treasure · ЯНТАРЬ",
+                  "height": "fill_container",
+                  "width": 223,
+                  "layout": "vertical",
+                  "gap": 4,
+                  "padding": [
+                    6,
+                    8
+                  ],
+                  "justifyContent": "center",
+                  "cornerRadius": [
+                    "$ds-radius-pocket-top",
+                    "$ds-radius-pocket-top",
+                    "$ds-radius-pocket-bottom",
+                    "$ds-radius-pocket-bottom"
+                  ],
+                  "alignItems": "center",
+                  "descendants": {
+                    "KxXyM": {
+                      "width": 66,
+                      "height": 66,
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/dig-treasure-amber.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    "NQqwo": {
+                      "content": "ЯНТАРЬ",
+                      "fontSize": 15,
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "lineHeight": 1.05,
+                      "textAlign": "center"
+                    },
+                    "f7Ffew": {
+                      "padding": [
+                        3,
+                        10
+                      ]
+                    },
+                    "bC6Z2": {
+                      "content": "×1",
+                      "fontSize": 13
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "uf3rW",
+              "name": "Row 2",
+              "width": "fill_container",
+              "height": "fill_container",
+              "gap": 12,
+              "justifyContent": "center",
+              "children": [
+                {
+                  "id": "x1Lqs",
+                  "type": "ref",
+                  "ref": "GKHil",
+                  "name": "Treasure · ГНЕЗДО С ЯЙЦАМИ",
+                  "height": "fill_container",
+                  "width": 223,
+                  "layout": "vertical",
+                  "gap": 4,
+                  "padding": [
+                    6,
+                    8
+                  ],
+                  "justifyContent": "center",
+                  "cornerRadius": [
+                    "$ds-radius-pocket-top",
+                    "$ds-radius-pocket-top",
+                    "$ds-radius-pocket-bottom",
+                    "$ds-radius-pocket-bottom"
+                  ],
+                  "alignItems": "center",
+                  "descendants": {
+                    "KxXyM": {
+                      "width": 66,
+                      "height": 66,
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/dig-treasure-egg-nest.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    "NQqwo": {
+                      "content": "ГНЕЗДО С ЯЙЦАМИ",
+                      "fontSize": 15,
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "lineHeight": 1.05,
+                      "textAlign": "center"
+                    },
+                    "f7Ffew": {
+                      "padding": [
+                        3,
+                        10
+                      ]
+                    },
+                    "bC6Z2": {
+                      "content": "×1",
+                      "fontSize": 13
+                    }
+                  }
+                },
+                {
+                  "id": "bLPBg",
+                  "type": "ref",
+                  "ref": "GKHil",
+                  "name": "Treasure · ЗОЛОТАЯ ОКАМЕНЕЛОСТЬ",
+                  "height": "fill_container",
+                  "width": 223,
+                  "layout": "vertical",
+                  "gap": 4,
+                  "padding": [
+                    6,
+                    8
+                  ],
+                  "justifyContent": "center",
+                  "cornerRadius": [
+                    "$ds-radius-pocket-top",
+                    "$ds-radius-pocket-top",
+                    "$ds-radius-pocket-bottom",
+                    "$ds-radius-pocket-bottom"
+                  ],
+                  "alignItems": "center",
+                  "descendants": {
+                    "KxXyM": {
+                      "width": 66,
+                      "height": 66,
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/dig-treasure-golden-fossil.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    "NQqwo": {
+                      "content": "ЗОЛОТАЯ ОКАМЕНЕЛОСТЬ",
+                      "fontSize": 15,
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "lineHeight": 1.05,
+                      "textAlign": "center"
+                    },
+                    "f7Ffew": {
+                      "padding": [
+                        3,
+                        10
+                      ]
+                    },
+                    "bC6Z2": {
+                      "content": "×1",
+                      "fontSize": 13
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "rectangle",
+          "cornerRadius": 3,
+          "id": "D9h7fl",
+          "x": 359,
+          "y": 385,
+          "name": "Home indicator",
+          "fill": "$ds-ink",
+          "width": 134,
+          "height": 5
+        },
+        {
+          "type": "frame",
+          "id": "Y9VAAJ",
+          "x": 79,
+          "y": 8,
+          "name": "Top bar",
+          "width": 694,
+          "height": 48,
+          "gap": 16,
+          "alignItems": "center",
+          "children": [
+            {
+              "id": "nhAOy",
+              "type": "ref",
+              "ref": "tAopu",
+              "name": "Home"
+            },
+            {
+              "id": "l8hlx",
+              "type": "ref",
+              "ref": "tAopu",
+              "name": "Back",
+              "descendants": {
+                "E32xd": {
+                  "icon": "arrow-left"
+                }
+              }
+            },
+            {
+              "id": "WZR91",
+              "type": "ref",
+              "ref": "iPOQT",
+              "name": "Title",
+              "width": "fill_container",
+              "descendants": {
+                "iN7RG": {
+                  "icon": "book-open"
+                },
+                "JXiLX": {
+                  "content": "ПОЛЕВОЙ ДНЕВНИК",
+                  "fontSize": 22
+                }
+              }
+            },
+            {
+              "type": "frame",
+              "id": "XAzKZ",
+              "name": "Found",
+              "gap": 8,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "IlZxM",
+                  "name": "Label",
+                  "fill": "$ds-ink-soft",
+                  "content": "НАЙДЕНО",
+                  "fontFamily": "$ds-font",
+                  "fontSize": "$ds-size-tag",
+                  "fontWeight": "700",
+                  "letterSpacing": 1.5
+                },
+                {
+                  "type": "text",
+                  "id": "YToHb",
+                  "name": "Count",
+                  "fill": "$ds-ink",
+                  "content": "5",
+                  "fontFamily": "$ds-font",
+                  "fontSize": "$ds-size-number",
+                  "fontWeight": "800"
+                },
+                {
+                  "type": "text",
+                  "id": "M2wC5h",
+                  "name": "Of",
+                  "fill": "$ds-ink-soft",
+                  "content": "/5",
+                  "fontFamily": "$ds-font",
+                  "fontSize": 16,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "hJkN8",
+      "x": 11760,
+      "y": 14544,
+      "name": "DIG · FIELD GUIDE · iPhone SE 375×667 · Light",
+      "theme": {
+        "mode": "light",
+        "device": "phone"
+      },
+      "clip": true,
+      "width": 375,
+      "height": 667,
+      "fill": {
+        "type": "gradient",
+        "gradientType": "linear",
+        "enabled": true,
+        "rotation": 180,
+        "size": {
+          "height": 1
+        },
+        "colors": [
+          {
+            "color": "$ds-sky-top",
+            "position": 0
+          },
+          {
+            "color": "$ds-sky-bottom",
+            "position": 0.4
+          }
+        ]
+      },
+      "layout": "none",
+      "children": [
+        {
+          "id": "I20vsx",
+          "type": "ref",
+          "ref": "m8Jt7",
+          "name": "Layer 1 · Sand edge",
+          "x": 0,
+          "y": 92,
+          "width": 375,
+          "height": 24,
+          "descendants": {
+            "uZToM": {
+              "width": 393,
+              "height": 24,
+              "viewBox": [
+                0,
+                0,
+                393,
+                24
+              ],
+              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z",
+              "fill": "$ds-strata-1"
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "ctSW7",
+          "x": 0,
+          "y": 108,
+          "name": "Layer 1 · Sand",
+          "width": 375,
+          "height": 549,
+          "fill": "$ds-strata-1",
+          "layout": "vertical",
+          "gap": 10,
+          "padding": [
+            12,
+            20,
+            20,
+            20
+          ],
+          "children": [
+            {
+              "id": "Trpno",
+              "type": "ref",
+              "ref": "GKHil",
+              "name": "Treasure · SHELL",
+              "width": "fill_container",
+              "height": 80,
+              "layout": "horizontal",
+              "padding": [
+                8,
+                18,
+                8,
+                10
+              ],
+              "gap": 14,
+              "cornerRadius": 20,
+              "justifyContent": "start",
+              "descendants": {
+                "KxXyM": {
+                  "width": 64,
+                  "height": 64,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/dig-treasure-shell.webp",
+                    "mode": "contain"
+                  }
+                },
+                "NQqwo": {
+                  "content": "SHELL",
+                  "fontSize": 20,
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container"
+                },
+                "f7Ffew": {
+                  "enabled": true
+                },
+                "bC6Z2": {
+                  "content": "×3"
+                }
+              }
+            },
+            {
+              "id": "DEmdL",
+              "type": "ref",
+              "ref": "GKHil",
+              "name": "Treasure · TOOTH",
+              "width": "fill_container",
+              "height": 80,
+              "layout": "horizontal",
+              "padding": [
+                8,
+                18,
+                8,
+                10
+              ],
+              "gap": 14,
+              "cornerRadius": 20,
+              "justifyContent": "start",
+              "descendants": {
+                "KxXyM": {
+                  "width": 64,
+                  "height": 64,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/dig-treasure-tooth-outline.webp",
+                    "mode": "contain"
+                  }
+                },
+                "NQqwo": {
+                  "content": "?",
+                  "fontSize": 30,
+                  "fill": "$ds-ink-soft",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container"
+                },
+                "f7Ffew": {
+                  "enabled": false
+                },
+                "bC6Z2": {
+                  "content": ""
+                }
+              }
+            },
+            {
+              "id": "KjY17",
+              "type": "ref",
+              "ref": "GKHil",
+              "name": "Treasure · AMBER",
+              "width": "fill_container",
+              "height": 80,
+              "layout": "horizontal",
+              "padding": [
+                8,
+                18,
+                8,
+                10
+              ],
+              "gap": 14,
+              "cornerRadius": 20,
+              "justifyContent": "start",
+              "descendants": {
+                "KxXyM": {
+                  "width": 64,
+                  "height": 64,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/dig-treasure-amber-outline.webp",
+                    "mode": "contain"
+                  }
+                },
+                "NQqwo": {
+                  "content": "?",
+                  "fontSize": 30,
+                  "fill": "$ds-ink-soft",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container"
+                },
+                "f7Ffew": {
+                  "enabled": false
+                },
+                "bC6Z2": {
+                  "content": ""
+                }
+              }
+            },
+            {
+              "id": "iY4Cc",
+              "type": "ref",
+              "ref": "GKHil",
+              "name": "Treasure · EGG NEST",
+              "width": "fill_container",
+              "height": 80,
+              "layout": "horizontal",
+              "padding": [
+                8,
+                18,
+                8,
+                10
+              ],
+              "gap": 14,
+              "cornerRadius": 20,
+              "justifyContent": "start",
+              "descendants": {
+                "KxXyM": {
+                  "width": 64,
+                  "height": 64,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/dig-treasure-egg-nest.webp",
+                    "mode": "contain"
+                  }
+                },
+                "NQqwo": {
+                  "content": "EGG NEST",
+                  "fontSize": 20,
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container"
+                },
+                "f7Ffew": {
+                  "enabled": true
+                },
+                "bC6Z2": {
+                  "content": "×1"
+                }
+              }
+            },
+            {
+              "id": "sbdnv",
+              "type": "ref",
+              "ref": "GKHil",
+              "name": "Treasure · GOLDEN FOSSIL",
+              "width": "fill_container",
+              "height": 80,
+              "layout": "horizontal",
+              "padding": [
+                8,
+                18,
+                8,
+                10
+              ],
+              "gap": 14,
+              "cornerRadius": 20,
+              "justifyContent": "start",
+              "descendants": {
+                "KxXyM": {
+                  "width": 64,
+                  "height": 64,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/dig-treasure-golden-fossil-outline.webp",
+                    "mode": "contain"
+                  }
+                },
+                "NQqwo": {
+                  "content": "?",
+                  "fontSize": 30,
+                  "fill": "$ds-ink-soft",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container"
+                },
+                "f7Ffew": {
+                  "enabled": false
+                },
+                "bC6Z2": {
+                  "content": ""
+                }
+              }
+            },
+            {
+              "id": "txl55",
+              "type": "ref",
+              "ref": "YcGaY",
+              "name": "Home",
+              "width": "fill_container",
+              "justifyContent": "center",
+              "descendants": {
+                "q6PILi": {
+                  "icon": "house"
+                },
+                "xdZD6": {
+                  "content": "HOME"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "wko1q",
+          "type": "ref",
+          "ref": "m8Jt7",
+          "name": "Layer 2 · Ochre edge",
+          "x": 0,
+          "y": 641,
+          "width": 375,
+          "height": 24,
+          "descendants": {
+            "uZToM": {
+              "width": 393,
+              "height": 24,
+              "viewBox": [
+                0,
+                0,
+                393,
+                24
+              ],
+              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z",
+              "fill": "$ds-strata-2"
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "MXqfG",
+          "x": 0,
+          "y": 657,
+          "name": "Layer 2 · Ochre",
+          "width": 375,
+          "height": 10,
+          "fill": "$ds-strata-2",
+          "layout": "none"
+        },
+        {
+          "type": "frame",
+          "id": "DebGp",
+          "x": 0,
+          "y": 0,
+          "name": "Status bar",
+          "width": 375,
+          "height": 20,
+          "padding": [
+            2,
+            16,
+            0,
+            16
+          ],
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "lSIae",
+              "name": "Time",
+              "fill": "$ds-ink",
+              "content": "9:41",
+              "fontFamily": "Inter",
+              "fontSize": 17,
+              "fontWeight": "600"
+            },
+            {
+              "type": "frame",
+              "id": "SpZrZ",
+              "name": "Indicators",
+              "gap": 6,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "OMj1q",
+                  "name": "signal",
+                  "width": 18,
+                  "height": 18,
+                  "icon": "signal",
+                  "library": "lucide",
+                  "fill": "$ds-ink"
+                },
+                {
+                  "type": "icon",
+                  "id": "KWPDc",
+                  "name": "wifi",
+                  "width": 18,
+                  "height": 18,
+                  "icon": "wifi",
+                  "library": "lucide",
+                  "fill": "$ds-ink"
+                },
+                {
+                  "type": "icon",
+                  "id": "A45WuG",
+                  "name": "battery-full",
+                  "width": 18,
+                  "height": 18,
+                  "icon": "battery-full",
+                  "library": "lucide",
+                  "fill": "$ds-ink"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "rectangle",
+          "cornerRadius": 3,
+          "id": "VVPLI",
+          "x": 120.5,
+          "y": 654,
+          "name": "Home indicator",
+          "fill": "$ds-ink",
+          "width": 134,
+          "height": 5
+        },
+        {
+          "type": "frame",
+          "id": "S8xi9",
+          "x": 20,
+          "y": 28,
+          "name": "Top bar",
+          "width": 335,
+          "height": 48,
+          "gap": 16,
+          "alignItems": "center",
+          "children": [
+            {
+              "id": "mMj32",
+              "type": "ref",
+              "ref": "ImooT",
+              "name": "Home",
+              "width": 48,
+              "height": 48,
+              "descendants": {
+                "Y1YWBe": {
+                  "icon": "arrow-left",
+                  "width": 26,
+                  "height": 26
+                }
+              }
+            },
+            {
+              "id": "hHiq8",
+              "type": "ref",
+              "ref": "iPOQT",
+              "name": "Title",
+              "width": "fill_container",
+              "descendants": {
+                "tmwYT": {
+                  "enabled": true
+                },
+                "iN7RG": {
+                  "icon": "book-open"
+                },
+                "JXiLX": {
+                  "fontSize": 22,
+                  "enabled": false
+                }
+              }
+            },
+            {
+              "type": "frame",
+              "id": "N8OTFy",
+              "name": "Found",
+              "gap": 6,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "vHPRB",
+                  "name": "Label",
+                  "fill": "$ds-ink-soft",
+                  "content": "FOUND",
+                  "fontFamily": "$ds-font",
+                  "fontSize": "$ds-size-tag",
+                  "fontWeight": "700",
+                  "letterSpacing": 1.5
+                },
+                {
+                  "type": "text",
+                  "id": "at6YY",
+                  "name": "Count",
+                  "fill": "$ds-ink",
+                  "content": "2",
+                  "fontFamily": "$ds-font",
+                  "fontSize": "$ds-size-number",
+                  "fontWeight": "800"
+                },
+                {
+                  "type": "text",
+                  "id": "Dyup2",
+                  "name": "Of",
+                  "fill": "$ds-ink-soft",
+                  "content": "/5",
+                  "fontFamily": "$ds-font",
+                  "fontSize": 15,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "qWbaW",
+      "x": 12235,
+      "y": 14544,
+      "name": "DIG · FIELD GUIDE · iPhone 393×852 · Dark",
+      "theme": {
+        "mode": "dark",
+        "device": "phone"
+      },
+      "clip": true,
+      "width": 393,
+      "height": 852,
+      "fill": {
+        "type": "gradient",
+        "gradientType": "linear",
+        "enabled": true,
+        "rotation": 180,
+        "size": {
+          "height": 1
+        },
+        "colors": [
+          {
+            "color": "$ds-sky-top",
+            "position": 0
+          },
+          {
+            "color": "$ds-sky-bottom",
+            "position": 0.4
+          }
+        ]
+      },
+      "layout": "none",
+      "children": [
+        {
+          "id": "HQU5I",
+          "type": "ref",
+          "ref": "m8Jt7",
+          "name": "Layer 1 · Sand edge",
+          "x": 0,
+          "y": 146,
+          "width": 393,
+          "height": 24,
+          "descendants": {
+            "uZToM": {
+              "width": 393,
+              "height": 24,
+              "viewBox": [
+                0,
+                0,
+                393,
+                24
+              ],
+              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z",
+              "fill": "$ds-strata-1"
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "CKvfn",
+          "x": 0,
+          "y": 162,
+          "name": "Layer 1 · Sand",
+          "width": 393,
+          "height": 660,
+          "fill": "$ds-strata-1",
+          "layout": "vertical",
+          "gap": 10,
+          "padding": [
+            16,
+            20,
+            0,
+            20
+          ],
+          "children": [
+            {
+              "id": "UZglj",
+              "type": "ref",
+              "ref": "GKHil",
+              "name": "Treasure · SHELL",
+              "width": "fill_container",
+              "height": 96,
+              "layout": "horizontal",
+              "padding": [
+                8,
+                18,
+                8,
+                10
+              ],
+              "gap": 14,
+              "cornerRadius": 20,
+              "justifyContent": "start",
+              "descendants": {
+                "KxXyM": {
+                  "width": 80,
+                  "height": 80,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/dig-treasure-shell.webp",
+                    "mode": "contain"
+                  }
+                },
+                "NQqwo": {
+                  "content": "SHELL",
+                  "fontSize": 20,
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container"
+                },
+                "f7Ffew": {
+                  "enabled": true
+                },
+                "bC6Z2": {
+                  "content": "×3"
+                }
+              }
+            },
+            {
+              "id": "ziR6M",
+              "type": "ref",
+              "ref": "GKHil",
+              "name": "Treasure · TOOTH",
+              "width": "fill_container",
+              "height": 96,
+              "layout": "horizontal",
+              "padding": [
+                8,
+                18,
+                8,
+                10
+              ],
+              "gap": 14,
+              "cornerRadius": 20,
+              "justifyContent": "start",
+              "descendants": {
+                "KxXyM": {
+                  "width": 80,
+                  "height": 80,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/dig-treasure-tooth-outline-dark.webp",
+                    "mode": "contain"
+                  }
+                },
+                "NQqwo": {
+                  "content": "?",
+                  "fontSize": 30,
+                  "fill": "$ds-ink-soft",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container"
+                },
+                "f7Ffew": {
+                  "enabled": false
+                },
+                "bC6Z2": {
+                  "content": ""
+                }
+              }
+            },
+            {
+              "id": "CfimJ",
+              "type": "ref",
+              "ref": "GKHil",
+              "name": "Treasure · AMBER",
+              "width": "fill_container",
+              "height": 96,
+              "layout": "horizontal",
+              "padding": [
+                8,
+                18,
+                8,
+                10
+              ],
+              "gap": 14,
+              "cornerRadius": 20,
+              "justifyContent": "start",
+              "descendants": {
+                "KxXyM": {
+                  "width": 80,
+                  "height": 80,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/dig-treasure-amber-outline-dark.webp",
+                    "mode": "contain"
+                  }
+                },
+                "NQqwo": {
+                  "content": "?",
+                  "fontSize": 30,
+                  "fill": "$ds-ink-soft",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container"
+                },
+                "f7Ffew": {
+                  "enabled": false
+                },
+                "bC6Z2": {
+                  "content": ""
+                }
+              }
+            },
+            {
+              "id": "g9naq0",
+              "type": "ref",
+              "ref": "GKHil",
+              "name": "Treasure · EGG NEST",
+              "width": "fill_container",
+              "height": 96,
+              "layout": "horizontal",
+              "padding": [
+                8,
+                18,
+                8,
+                10
+              ],
+              "gap": 14,
+              "cornerRadius": 20,
+              "justifyContent": "start",
+              "descendants": {
+                "KxXyM": {
+                  "width": 80,
+                  "height": 80,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/dig-treasure-egg-nest.webp",
+                    "mode": "contain"
+                  }
+                },
+                "NQqwo": {
+                  "content": "EGG NEST",
+                  "fontSize": 20,
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container"
+                },
+                "f7Ffew": {
+                  "enabled": true
+                },
+                "bC6Z2": {
+                  "content": "×1"
+                }
+              }
+            },
+            {
+              "id": "Q1RU3y",
+              "type": "ref",
+              "ref": "GKHil",
+              "name": "Treasure · GOLDEN FOSSIL",
+              "width": "fill_container",
+              "height": 96,
+              "layout": "horizontal",
+              "padding": [
+                8,
+                18,
+                8,
+                10
+              ],
+              "gap": 14,
+              "cornerRadius": 20,
+              "justifyContent": "start",
+              "descendants": {
+                "KxXyM": {
+                  "width": 80,
+                  "height": 80,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/dig-treasure-golden-fossil-outline-dark.webp",
+                    "mode": "contain"
+                  }
+                },
+                "NQqwo": {
+                  "content": "?",
+                  "fontSize": 30,
+                  "fill": "$ds-ink-soft",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container"
+                },
+                "f7Ffew": {
+                  "enabled": false
+                },
+                "bC6Z2": {
+                  "content": ""
+                }
+              }
+            },
+            {
+              "id": "rltq8",
+              "type": "ref",
+              "ref": "YcGaY",
+              "name": "Home",
+              "width": "fill_container",
+              "justifyContent": "center",
+              "descendants": {
+                "q6PILi": {
+                  "icon": "house"
+                },
+                "xdZD6": {
+                  "content": "HOME"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "uJCc8",
+          "type": "ref",
+          "ref": "m8Jt7",
+          "name": "Layer 2 · Ochre edge",
+          "x": 0,
+          "y": 806,
+          "width": 393,
+          "height": 24,
+          "descendants": {
+            "uZToM": {
+              "width": 393,
+              "height": 24,
+              "viewBox": [
+                0,
+                0,
+                393,
+                24
+              ],
+              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z",
+              "fill": "$ds-strata-2"
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "wGoiP",
+          "x": 0,
+          "y": 822,
+          "name": "Layer 2 · Ochre",
+          "width": 393,
+          "height": 30,
+          "fill": "$ds-strata-2",
+          "layout": "none"
+        },
+        {
+          "type": "frame",
+          "id": "bNphS",
+          "x": 0,
+          "y": 0,
+          "name": "Status bar",
+          "width": 393,
+          "height": 54,
+          "padding": [
+            18,
+            32,
+            0,
+            40
+          ],
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "EKkcq",
+              "name": "Time",
+              "fill": "$ds-ink",
+              "content": "9:41",
+              "fontFamily": "Inter",
+              "fontSize": 17,
+              "fontWeight": "600"
+            },
+            {
+              "type": "frame",
+              "id": "mAiP3",
+              "name": "Indicators",
+              "gap": 6,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "KLhvV",
+                  "name": "signal",
+                  "width": 18,
+                  "height": 18,
+                  "icon": "signal",
+                  "library": "lucide",
+                  "fill": "$ds-ink"
+                },
+                {
+                  "type": "icon",
+                  "id": "Qo6Dw",
+                  "name": "wifi",
+                  "width": 18,
+                  "height": 18,
+                  "icon": "wifi",
+                  "library": "lucide",
+                  "fill": "$ds-ink"
+                },
+                {
+                  "type": "icon",
+                  "id": "FWkxm",
+                  "name": "battery-full",
+                  "width": 18,
+                  "height": 18,
+                  "icon": "battery-full",
+                  "library": "lucide",
+                  "fill": "$ds-ink"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "rectangle",
+          "cornerRadius": 3,
+          "id": "ZJe7Y",
+          "x": 130,
+          "y": 839,
+          "name": "Home indicator",
+          "fill": "$ds-ink",
+          "width": 134,
+          "height": 5
+        },
+        {
+          "type": "frame",
+          "id": "sT2Ef",
+          "x": 20,
+          "y": 78,
+          "name": "Top bar",
+          "width": 353,
+          "height": 48,
+          "gap": 16,
+          "alignItems": "center",
+          "children": [
+            {
+              "id": "j7UDJ",
+              "type": "ref",
+              "ref": "ImooT",
+              "name": "Home",
+              "width": 48,
+              "height": 48,
+              "descendants": {
+                "Y1YWBe": {
+                  "icon": "arrow-left",
+                  "width": 26,
+                  "height": 26
+                }
+              }
+            },
+            {
+              "id": "ZpDCs",
+              "type": "ref",
+              "ref": "iPOQT",
+              "name": "Title",
+              "width": "fill_container",
+              "descendants": {
+                "tmwYT": {
+                  "enabled": true
+                },
+                "iN7RG": {
+                  "icon": "book-open"
+                },
+                "JXiLX": {
+                  "fontSize": 22,
+                  "enabled": false
+                }
+              }
+            },
+            {
+              "type": "frame",
+              "id": "wHD22",
+              "name": "Found",
+              "gap": 6,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "h93Ar9",
+                  "name": "Label",
+                  "fill": "$ds-ink-soft",
+                  "content": "FOUND",
+                  "fontFamily": "$ds-font",
+                  "fontSize": "$ds-size-tag",
+                  "fontWeight": "700",
+                  "letterSpacing": 1.5
+                },
+                {
+                  "type": "text",
+                  "id": "L0BUTt",
+                  "name": "Count",
+                  "fill": "$ds-ink",
+                  "content": "2",
+                  "fontFamily": "$ds-font",
+                  "fontSize": "$ds-size-number",
+                  "fontWeight": "800"
+                },
+                {
+                  "type": "text",
+                  "id": "ZAsnY",
+                  "name": "Of",
+                  "fill": "$ds-ink-soft",
+                  "content": "/5",
+                  "fontFamily": "$ds-font",
+                  "fontSize": 15,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "fX22N",
+      "x": 12728,
+      "y": 14544,
+      "name": "DIG · FIELD GUIDE · iPhone 393×852 · Light · RU",
+      "theme": {
+        "mode": "light",
+        "device": "phone"
+      },
+      "clip": true,
+      "width": 393,
+      "height": 852,
+      "fill": {
+        "type": "gradient",
+        "gradientType": "linear",
+        "enabled": true,
+        "rotation": 180,
+        "size": {
+          "height": 1
+        },
+        "colors": [
+          {
+            "color": "$ds-sky-top",
+            "position": 0
+          },
+          {
+            "color": "$ds-sky-bottom",
+            "position": 0.4
+          }
+        ]
+      },
+      "layout": "none",
+      "children": [
+        {
+          "id": "rGRc3",
+          "type": "ref",
+          "ref": "m8Jt7",
+          "name": "Layer 1 · Sand edge",
+          "x": 0,
+          "y": 146,
+          "width": 393,
+          "height": 24,
+          "descendants": {
+            "uZToM": {
+              "width": 393,
+              "height": 24,
+              "viewBox": [
+                0,
+                0,
+                393,
+                24
+              ],
+              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z",
+              "fill": "$ds-strata-1"
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "kJv8S",
+          "x": 0,
+          "y": 162,
+          "name": "Layer 1 · Sand",
+          "width": 393,
+          "height": 660,
+          "fill": "$ds-strata-1",
+          "layout": "vertical",
+          "gap": 10,
+          "padding": [
+            16,
+            20,
+            0,
+            20
+          ],
+          "children": [
+            {
+              "id": "wADG8",
+              "type": "ref",
+              "ref": "GKHil",
+              "name": "Treasure · SHELL",
+              "width": "fill_container",
+              "height": 96,
+              "layout": "horizontal",
+              "padding": [
+                8,
+                18,
+                8,
+                10
+              ],
+              "gap": 14,
+              "cornerRadius": 20,
+              "justifyContent": "start",
+              "descendants": {
+                "KxXyM": {
+                  "width": 80,
+                  "height": 80,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/dig-treasure-shell.webp",
+                    "mode": "contain"
+                  }
+                },
+                "NQqwo": {
+                  "content": "РАКУШКА",
+                  "fontSize": 20,
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container"
+                },
+                "f7Ffew": {
+                  "enabled": true
+                },
+                "bC6Z2": {
+                  "content": "×3"
+                }
+              }
+            },
+            {
+              "id": "ifaTJ",
+              "type": "ref",
+              "ref": "GKHil",
+              "name": "Treasure · TOOTH",
+              "width": "fill_container",
+              "height": 96,
+              "layout": "horizontal",
+              "padding": [
+                8,
+                18,
+                8,
+                10
+              ],
+              "gap": 14,
+              "cornerRadius": 20,
+              "justifyContent": "start",
+              "descendants": {
+                "KxXyM": {
+                  "width": 80,
+                  "height": 80,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/dig-treasure-tooth-outline.webp",
+                    "mode": "contain"
+                  }
+                },
+                "NQqwo": {
+                  "content": "?",
+                  "fontSize": 30,
+                  "fill": "$ds-ink-soft",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container"
+                },
+                "f7Ffew": {
+                  "enabled": false
+                },
+                "bC6Z2": {
+                  "content": ""
+                }
+              }
+            },
+            {
+              "id": "SW4s0",
+              "type": "ref",
+              "ref": "GKHil",
+              "name": "Treasure · AMBER",
+              "width": "fill_container",
+              "height": 96,
+              "layout": "horizontal",
+              "padding": [
+                8,
+                18,
+                8,
+                10
+              ],
+              "gap": 14,
+              "cornerRadius": 20,
+              "justifyContent": "start",
+              "descendants": {
+                "KxXyM": {
+                  "width": 80,
+                  "height": 80,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/dig-treasure-amber-outline.webp",
+                    "mode": "contain"
+                  }
+                },
+                "NQqwo": {
+                  "content": "?",
+                  "fontSize": 30,
+                  "fill": "$ds-ink-soft",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container"
+                },
+                "f7Ffew": {
+                  "enabled": false
+                },
+                "bC6Z2": {
+                  "content": ""
+                }
+              }
+            },
+            {
+              "id": "y0lgi",
+              "type": "ref",
+              "ref": "GKHil",
+              "name": "Treasure · EGG NEST",
+              "width": "fill_container",
+              "height": 96,
+              "layout": "horizontal",
+              "padding": [
+                8,
+                18,
+                8,
+                10
+              ],
+              "gap": 14,
+              "cornerRadius": 20,
+              "justifyContent": "start",
+              "descendants": {
+                "KxXyM": {
+                  "width": 80,
+                  "height": 80,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/dig-treasure-egg-nest.webp",
+                    "mode": "contain"
+                  }
+                },
+                "NQqwo": {
+                  "content": "ГНЕЗДО С ЯЙЦАМИ",
+                  "fontSize": 20,
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container"
+                },
+                "f7Ffew": {
+                  "enabled": true
+                },
+                "bC6Z2": {
+                  "content": "×1"
+                }
+              }
+            },
+            {
+              "id": "SrxSD",
+              "type": "ref",
+              "ref": "GKHil",
+              "name": "Treasure · GOLDEN FOSSIL",
+              "width": "fill_container",
+              "height": 96,
+              "layout": "horizontal",
+              "padding": [
+                8,
+                18,
+                8,
+                10
+              ],
+              "gap": 14,
+              "cornerRadius": 20,
+              "justifyContent": "start",
+              "descendants": {
+                "KxXyM": {
+                  "width": 80,
+                  "height": 80,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/dig-treasure-golden-fossil-outline.webp",
+                    "mode": "contain"
+                  }
+                },
+                "NQqwo": {
+                  "content": "?",
+                  "fontSize": 30,
+                  "fill": "$ds-ink-soft",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container"
+                },
+                "f7Ffew": {
+                  "enabled": false
+                },
+                "bC6Z2": {
+                  "content": ""
+                }
+              }
+            },
+            {
+              "id": "qjT84",
+              "type": "ref",
+              "ref": "YcGaY",
+              "name": "Home",
+              "width": "fill_container",
+              "justifyContent": "center",
+              "descendants": {
+                "q6PILi": {
+                  "icon": "house"
+                },
+                "xdZD6": {
+                  "content": "ДОМОЙ"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "Lolcf",
+          "type": "ref",
+          "ref": "m8Jt7",
+          "name": "Layer 2 · Ochre edge",
+          "x": 0,
+          "y": 806,
+          "width": 393,
+          "height": 24,
+          "descendants": {
+            "uZToM": {
+              "width": 393,
+              "height": 24,
+              "viewBox": [
+                0,
+                0,
+                393,
+                24
+              ],
+              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z",
+              "fill": "$ds-strata-2"
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "y3wa7i",
+          "x": 0,
+          "y": 822,
+          "name": "Layer 2 · Ochre",
+          "width": 393,
+          "height": 30,
+          "fill": "$ds-strata-2",
+          "layout": "none"
+        },
+        {
+          "type": "frame",
+          "id": "vYlMw",
+          "x": 0,
+          "y": 0,
+          "name": "Status bar",
+          "width": 393,
+          "height": 54,
+          "padding": [
+            18,
+            32,
+            0,
+            40
+          ],
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "SIItr",
+              "name": "Time",
+              "fill": "$ds-ink",
+              "content": "9:41",
+              "fontFamily": "Inter",
+              "fontSize": 17,
+              "fontWeight": "600"
+            },
+            {
+              "type": "frame",
+              "id": "lwEpZ",
+              "name": "Indicators",
+              "gap": 6,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "CUriF",
+                  "name": "signal",
+                  "width": 18,
+                  "height": 18,
+                  "icon": "signal",
+                  "library": "lucide",
+                  "fill": "$ds-ink"
+                },
+                {
+                  "type": "icon",
+                  "id": "nEA66",
+                  "name": "wifi",
+                  "width": 18,
+                  "height": 18,
+                  "icon": "wifi",
+                  "library": "lucide",
+                  "fill": "$ds-ink"
+                },
+                {
+                  "type": "icon",
+                  "id": "H4rRo5",
+                  "name": "battery-full",
+                  "width": 18,
+                  "height": 18,
+                  "icon": "battery-full",
+                  "library": "lucide",
+                  "fill": "$ds-ink"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "rectangle",
+          "cornerRadius": 3,
+          "id": "FDgCe",
+          "x": 130,
+          "y": 839,
+          "name": "Home indicator",
+          "fill": "$ds-ink",
+          "width": 134,
+          "height": 5
+        },
+        {
+          "type": "frame",
+          "id": "wwtcQ",
+          "x": 20,
+          "y": 78,
+          "name": "Top bar",
+          "width": 353,
+          "height": 48,
+          "gap": 16,
+          "alignItems": "center",
+          "children": [
+            {
+              "id": "iXmRF",
+              "type": "ref",
+              "ref": "ImooT",
+              "name": "Home",
+              "width": 48,
+              "height": 48,
+              "descendants": {
+                "Y1YWBe": {
+                  "icon": "arrow-left",
+                  "width": 26,
+                  "height": 26
+                }
+              }
+            },
+            {
+              "id": "B5P0XF",
+              "type": "ref",
+              "ref": "iPOQT",
+              "name": "Title",
+              "width": "fill_container",
+              "descendants": {
+                "tmwYT": {
+                  "enabled": true
+                },
+                "iN7RG": {
+                  "icon": "book-open"
+                },
+                "JXiLX": {
+                  "fontSize": 22,
+                  "enabled": false,
+                  "content": "ПОЛЕВОЙ ДНЕВНИК"
+                }
+              }
+            },
+            {
+              "type": "frame",
+              "id": "CcWIo",
+              "name": "Found",
+              "gap": 6,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "BWQb8",
+                  "name": "Label",
+                  "fill": "$ds-ink-soft",
+                  "content": "НАЙДЕНО",
+                  "fontFamily": "$ds-font",
+                  "fontSize": "$ds-size-tag",
+                  "fontWeight": "700",
+                  "letterSpacing": 1.5
+                },
+                {
+                  "type": "text",
+                  "id": "k3rJ7",
+                  "name": "Count",
+                  "fill": "$ds-ink",
+                  "content": "2",
+                  "fontFamily": "$ds-font",
+                  "fontSize": "$ds-size-number",
+                  "fontWeight": "800"
+                },
+                {
+                  "type": "text",
+                  "id": "O9tL6",
+                  "name": "Of",
+                  "fill": "$ds-ink-soft",
+                  "content": "/5",
+                  "fontFamily": "$ds-font",
+                  "fontSize": 15,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "R8bxgS",
+      "x": 9616,
+      "y": 63153,
+      "name": "BONES · museum · built, awaiting rebuild, badges, jaw shelf · iPhone 393×852 · Dark",
+      "theme": {
+        "mode": "dark",
+        "device": "phone"
+      },
+      "clip": true,
+      "width": 393,
+      "height": 852,
+      "fill": {
+        "type": "gradient",
+        "gradientType": "linear",
+        "enabled": true,
+        "rotation": 180,
+        "size": {
+          "height": 1
+        },
+        "colors": [
+          {
+            "color": "$ds-sky-top",
+            "position": 0
+          },
+          {
+            "color": "$ds-sky-bottom",
+            "position": 0.4
+          }
+        ]
+      },
+      "layout": "none",
+      "children": [
+        {
+          "id": "a7fn8n",
+          "type": "ref",
+          "ref": "m8Jt7",
+          "name": "Layer 1 · Sand edge",
+          "x": 0,
+          "y": 186,
+          "width": 393,
+          "height": 24,
+          "descendants": {
+            "uZToM": {
+              "width": 393,
+              "height": 24,
+              "viewBox": [
+                0,
+                0,
+                393,
+                24
+              ],
+              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z",
+              "fill": "$ds-strata-1"
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "y0FgXh",
+          "x": 0,
+          "y": 206,
+          "name": "Layer 1 · Sand",
+          "width": 393,
+          "height": 616,
+          "fill": "$ds-strata-1",
+          "layout": "vertical",
+          "gap": 16,
+          "padding": [
+            12,
+            20,
+            0,
+            20
+          ],
+          "justifyContent": "center",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "e09PJ",
+              "name": "Hall row 1",
+              "gap": 12,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "aUQoG",
+                  "name": "Stand · tyrannosaurus · built",
+                  "width": 166,
+                  "layout": "vertical",
+                  "gap": 6,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "W4ROrj",
+                      "name": "Name and star",
+                      "gap": 6,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "DPX41",
+                          "name": "Name",
+                          "fill": "$ds-ink",
+                          "content": "TYRANNOSAURUS",
+                          "fontFamily": "$ds-font",
+                          "fontSize": 15,
+                          "fontWeight": "800"
+                        },
+                        {
+                          "type": "icon",
+                          "id": "X5dGNI",
+                          "name": "Star · earned",
+                          "width": 17,
+                          "height": 17,
+                          "icon": "star-fill",
+                          "library": "phosphor",
+                          "fill": "$ds-reward"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "qjpFI",
+                      "name": "Exhibit",
+                      "width": 144,
+                      "height": 94,
+                      "layout": "none",
+                      "children": [
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": [
+                            5,
+                            5,
+                            2,
+                            2
+                          ],
+                          "id": "X4rjc",
+                          "x": 17,
+                          "y": 80,
+                          "name": "Plinth",
+                          "fill": "$ds-strata-2",
+                          "width": 109,
+                          "height": 10
+                        },
+                        {
+                          "type": "rectangle",
+                          "id": "otzxD",
+                          "x": 8,
+                          "y": 0,
+                          "name": "Skeleton",
+                          "fill": {
+                            "type": "image",
+                            "enabled": true,
+                            "url": "images/skeleton-tyrannosaurus.webp",
+                            "mode": "contain"
+                          },
+                          "width": 128,
+                          "height": 78
+                        }
+                      ]
+                    },
+                    {
+                      "id": "oIhM7",
+                      "type": "ref",
+                      "ref": "YcGaY",
+                      "name": "Rebuild",
+                      "padding": [
+                        9,
+                        14
+                      ],
+                      "gap": 8,
+                      "descendants": {
+                        "q6PILi": {
+                          "icon": "rotate-ccw",
+                          "width": 19,
+                          "height": 19
+                        },
+                        "xdZD6": {
+                          "content": "REBUILD",
+                          "fontSize": 15
+                        }
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "FlnxG",
+                  "name": "Stand · triceratops · rebuilding",
+                  "width": 166,
+                  "layout": "vertical",
+                  "gap": 6,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "N38uk",
+                      "name": "Name and star",
+                      "gap": 6,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "EI20L",
+                          "name": "Name",
+                          "fill": "$ds-ink",
+                          "content": "TRICERATOPS",
+                          "fontFamily": "$ds-font",
+                          "fontSize": 15,
+                          "fontWeight": "800"
+                        },
+                        {
+                          "type": "icon",
+                          "id": "abPEZ",
+                          "name": "Star · earned",
+                          "width": 17,
+                          "height": 17,
+                          "icon": "star-fill",
+                          "library": "phosphor",
+                          "fill": "$ds-reward"
+                        },
+                        {
+                          "type": "rectangle",
+                          "id": "T30Da",
+                          "name": "Badge · explorer",
+                          "fill": {
+                            "type": "image",
+                            "enabled": true,
+                            "url": "images/tyrannosaurus.webp",
+                            "mode": "contain"
+                          },
+                          "width": 17,
+                          "height": 17
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "n2pouX",
+                      "name": "Exhibit",
+                      "width": 144,
+                      "height": 94,
+                      "fill": "$ds-reward-glow",
+                      "cornerRadius": 16,
+                      "stroke": "$ds-reward",
+                      "strokeWidth": 3,
+                      "strokeAlignment": "inner",
+                      "layout": "none",
+                      "children": [
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": [
+                            5,
+                            5,
+                            2,
+                            2
+                          ],
+                          "id": "u1mJz",
+                          "x": 17,
+                          "y": 80,
+                          "name": "Plinth",
+                          "fill": "$ds-strata-2",
+                          "width": 109,
+                          "height": 10
+                        },
+                        {
+                          "type": "rectangle",
+                          "id": "Z0vi9I",
+                          "x": 8,
+                          "y": 0,
+                          "name": "Silhouette",
+                          "opacity": 0.38,
+                          "fill": {
+                            "type": "image",
+                            "enabled": true,
+                            "url": "images/bones-triceratops-silhouette-dark.webp",
+                            "mode": "contain"
+                          },
+                          "width": 128,
+                          "height": 78
+                        }
+                      ]
+                    },
+                    {
+                      "id": "Sk5Uy",
+                      "type": "ref",
+                      "ref": "q7W1Cw",
+                      "name": "Continue",
+                      "padding": [
+                        9,
+                        14
+                      ],
+                      "gap": 8,
+                      "stroke": "$ds-reward",
+                      "strokeWidth": 3,
+                      "strokeAlignment": "outer",
+                      "descendants": {
+                        "h8hp2i": {
+                          "icon": "hammer",
+                          "width": 19,
+                          "height": 19
+                        },
+                        "kWZZZ": {
+                          "content": "CONTINUE",
+                          "fontSize": 15
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "PIeyQ",
+              "name": "Hall row 2",
+              "gap": 12,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "RwXy8",
+                  "name": "Stand · stegosaurus · empty",
+                  "width": 166,
+                  "layout": "vertical",
+                  "gap": 6,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "r7z9Qz",
+                      "name": "Name and star",
+                      "gap": 6,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "DfKhK",
+                          "name": "Name",
+                          "fill": "$ds-ink-soft",
+                          "content": "STEGOSAURUS",
+                          "fontFamily": "$ds-font",
+                          "fontSize": 15,
+                          "fontWeight": "800"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "E5gSr",
+                      "name": "Exhibit",
+                      "width": 144,
+                      "height": 94,
+                      "layout": "none",
+                      "children": [
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": [
+                            5,
+                            5,
+                            2,
+                            2
+                          ],
+                          "id": "ezbZY",
+                          "x": 17,
+                          "y": 80,
+                          "name": "Plinth",
+                          "fill": "$ds-strata-2",
+                          "width": 109,
+                          "height": 10
+                        },
+                        {
+                          "type": "rectangle",
+                          "id": "lx7eY",
+                          "x": 8,
+                          "y": 0,
+                          "name": "Silhouette",
+                          "opacity": 0.22,
+                          "fill": {
+                            "type": "image",
+                            "enabled": true,
+                            "url": "images/bones-stegosaurus-silhouette-dark.webp",
+                            "mode": "contain"
+                          },
+                          "width": 128,
+                          "height": 78
+                        }
+                      ]
+                    },
+                    {
+                      "id": "AUbQf",
+                      "type": "ref",
+                      "ref": "q7W1Cw",
+                      "name": "Build",
+                      "padding": [
+                        9,
+                        14
+                      ],
+                      "gap": 8,
+                      "descendants": {
+                        "h8hp2i": {
+                          "icon": "bone",
+                          "width": 19,
+                          "height": 19
+                        },
+                        "kWZZZ": {
+                          "content": "BUILD",
+                          "fontSize": 15
+                        }
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "oLkxF",
+                  "name": "Stand · brachiosaurus · empty",
+                  "width": 166,
+                  "layout": "vertical",
+                  "gap": 6,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "N0DB5",
+                      "name": "Name and star",
+                      "gap": 6,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "PZqA2",
+                          "name": "Name",
+                          "fill": "$ds-ink-soft",
+                          "content": "BRACHIOSAURUS",
+                          "fontFamily": "$ds-font",
+                          "fontSize": 15,
+                          "fontWeight": "800"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "AVhfU",
+                      "name": "Exhibit",
+                      "width": 144,
+                      "height": 94,
+                      "layout": "none",
+                      "children": [
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": [
+                            5,
+                            5,
+                            2,
+                            2
+                          ],
+                          "id": "g6nxWc",
+                          "x": 17,
+                          "y": 80,
+                          "name": "Plinth",
+                          "fill": "$ds-strata-2",
+                          "width": 109,
+                          "height": 10
+                        },
+                        {
+                          "type": "rectangle",
+                          "id": "wNT0A",
+                          "x": 8,
+                          "y": 0,
+                          "name": "Silhouette",
+                          "opacity": 0.22,
+                          "fill": {
+                            "type": "image",
+                            "enabled": true,
+                            "url": "images/bones-brachiosaurus-silhouette-dark.webp",
+                            "mode": "contain"
+                          },
+                          "width": 128,
+                          "height": 78
+                        }
+                      ]
+                    },
+                    {
+                      "id": "Gun3D",
+                      "type": "ref",
+                      "ref": "q7W1Cw",
+                      "name": "Build",
+                      "padding": [
+                        9,
+                        14
+                      ],
+                      "gap": 8,
+                      "descendants": {
+                        "h8hp2i": {
+                          "icon": "bone",
+                          "width": 19,
+                          "height": 19
+                        },
+                        "kWZZZ": {
+                          "content": "BUILD",
+                          "fontSize": 15
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "JX1fA",
+              "name": "Hall row 3",
+              "gap": 12,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "VaU9t",
+                  "name": "Stand · spinosaurus · built",
+                  "width": 166,
+                  "layout": "vertical",
+                  "gap": 6,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "LMoKr",
+                      "name": "Name and star",
+                      "gap": 6,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "aeOdF",
+                          "name": "Name",
+                          "fill": "$ds-ink",
+                          "content": "SPINOSAURUS",
+                          "fontFamily": "$ds-font",
+                          "fontSize": 15,
+                          "fontWeight": "800"
+                        },
+                        {
+                          "type": "icon",
+                          "id": "Epcqd",
+                          "name": "Star · earned",
+                          "width": 17,
+                          "height": 17,
+                          "icon": "star-fill",
+                          "library": "phosphor",
+                          "fill": "$ds-reward"
+                        },
+                        {
+                          "type": "rectangle",
+                          "id": "Cb0x7",
+                          "name": "Badge · explorer",
+                          "fill": {
+                            "type": "image",
+                            "enabled": true,
+                            "url": "images/tyrannosaurus.webp",
+                            "mode": "contain"
+                          },
+                          "width": 17,
+                          "height": 17
+                        },
+                        {
+                          "type": "rectangle",
+                          "id": "n1Kvo",
+                          "name": "Badge · paleontologist",
+                          "fill": {
+                            "type": "image",
+                            "enabled": true,
+                            "url": "images/dig-treasure-golden-fossil.webp",
+                            "mode": "contain"
+                          },
+                          "width": 17,
+                          "height": 17
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "U48pZA",
+                      "name": "Exhibit",
+                      "width": 144,
+                      "height": 94,
+                      "layout": "none",
+                      "children": [
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": [
+                            5,
+                            5,
+                            2,
+                            2
+                          ],
+                          "id": "gjLAn",
+                          "x": 17,
+                          "y": 80,
+                          "name": "Plinth",
+                          "fill": "$ds-strata-2",
+                          "width": 109,
+                          "height": 10
+                        },
+                        {
+                          "type": "rectangle",
+                          "id": "tUygK",
+                          "x": 8,
+                          "y": 0,
+                          "name": "Skeleton",
+                          "fill": {
+                            "type": "image",
+                            "enabled": true,
+                            "url": "images/skeleton-spinosaurus.webp",
+                            "mode": "contain"
+                          },
+                          "width": 128,
+                          "height": 78
+                        }
+                      ]
+                    },
+                    {
+                      "id": "nAZxR",
+                      "type": "ref",
+                      "ref": "YcGaY",
+                      "name": "Rebuild",
+                      "padding": [
+                        9,
+                        14
+                      ],
+                      "gap": 8,
+                      "descendants": {
+                        "q6PILi": {
+                          "icon": "rotate-ccw",
+                          "width": 19,
+                          "height": 19
+                        },
+                        "xdZD6": {
+                          "content": "REBUILD",
+                          "fontSize": 15
+                        }
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "ELcGx",
+                  "name": "Stand · jaw · jaw",
+                  "width": 166,
+                  "layout": "vertical",
+                  "gap": 6,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "R7GTJl",
+                      "name": "Name and star",
+                      "gap": 6,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "rectangle",
+                          "id": "Feplh",
+                          "name": "Tooth",
+                          "fill": {
+                            "type": "image",
+                            "enabled": true,
+                            "url": "images/dig-treasure-tooth.webp",
+                            "mode": "contain"
+                          },
+                          "width": 17,
+                          "height": 17
+                        },
+                        {
+                          "type": "text",
+                          "id": "Mb1R8",
+                          "name": "Name",
+                          "fill": "$ds-ink",
+                          "content": "JAW SHELF",
+                          "fontFamily": "$ds-font",
+                          "fontSize": 15,
+                          "fontWeight": "800"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "U2JR0",
+                      "name": "Exhibit",
+                      "width": 144,
+                      "height": 94,
+                      "layout": "none",
+                      "children": [
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": [
+                            5,
+                            5,
+                            2,
+                            2
+                          ],
+                          "id": "klDL5",
+                          "x": 17,
+                          "y": 80,
+                          "name": "Plinth",
+                          "fill": "$ds-strata-2",
+                          "width": 109,
+                          "height": 10
+                        },
+                        {
+                          "type": "rectangle",
+                          "id": "jGi0q",
+                          "x": 8,
+                          "y": 0,
+                          "name": "Jaw exhibit",
+                          "fill": {
+                            "type": "image",
+                            "enabled": true,
+                            "url": "images/whose-jaw-jaw-tyrannosaurus.webp",
+                            "mode": "contain"
+                          },
+                          "width": 128,
+                          "height": 78
+                        }
+                      ]
+                    },
+                    {
+                      "id": "Az0Ak",
+                      "type": "ref",
+                      "ref": "YcGaY",
+                      "name": "Jaw shelf",
+                      "padding": [
+                        9,
+                        14
+                      ],
+                      "gap": 8,
+                      "descendants": {
+                        "q6PILi": {
+                          "icon": "landmark",
+                          "width": 19,
+                          "height": 19
+                        },
+                        "xdZD6": {
+                          "content": "JAW SHELF",
+                          "fontSize": 15
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "XvRC5",
+          "type": "ref",
+          "ref": "m8Jt7",
+          "name": "Layer 2 · Ochre edge",
+          "x": 0,
+          "y": 826,
+          "width": 393,
+          "height": 24,
+          "descendants": {
+            "uZToM": {
+              "width": 393,
+              "height": 24,
+              "viewBox": [
+                0,
+                0,
+                393,
+                24
+              ],
+              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z",
+              "fill": "$ds-strata-2"
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "IdvqY",
+          "x": 0,
+          "y": 842,
+          "name": "Layer 2 · Ochre",
+          "width": 393,
+          "height": 10,
+          "fill": "$ds-strata-2",
+          "layout": "none"
+        },
+        {
+          "type": "frame",
+          "id": "X6avG",
+          "x": 0,
+          "y": 0,
+          "name": "Status bar",
+          "width": 393,
+          "height": 54,
+          "padding": [
+            18,
+            32,
+            0,
+            40
+          ],
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "GNSs2",
+              "name": "Time",
+              "fill": "$ds-ink",
+              "content": "9:41",
+              "fontFamily": "Inter",
+              "fontSize": 17,
+              "fontWeight": "600"
+            },
+            {
+              "type": "frame",
+              "id": "aC5Z1",
+              "name": "Indicators",
+              "gap": 6,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "khvcq",
+                  "name": "signal",
+                  "width": 18,
+                  "height": 18,
+                  "icon": "signal",
+                  "library": "lucide",
+                  "fill": "$ds-ink"
+                },
+                {
+                  "type": "icon",
+                  "id": "SRGBL",
+                  "name": "wifi",
+                  "width": 18,
+                  "height": 18,
+                  "icon": "wifi",
+                  "library": "lucide",
+                  "fill": "$ds-ink"
+                },
+                {
+                  "type": "icon",
+                  "id": "BNxWD",
+                  "name": "battery-full",
+                  "width": 18,
+                  "height": 18,
+                  "icon": "battery-full",
+                  "library": "lucide",
+                  "fill": "$ds-ink"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "rectangle",
+          "cornerRadius": 3,
+          "id": "f940E",
+          "x": 130,
+          "y": 839,
+          "name": "Home indicator",
+          "fill": "$ds-ink",
+          "width": 134,
+          "height": 5
+        },
+        {
+          "type": "frame",
+          "id": "UFdQn",
+          "x": 20,
+          "y": 62,
+          "name": "Top bar",
+          "width": 353,
+          "gap": 12,
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "v0bEbd",
+              "name": "Left",
+              "gap": 10,
+              "alignItems": "center",
+              "children": [
+                {
+                  "id": "yXClV",
+                  "type": "ref",
+                  "ref": "tAopu",
+                  "name": "Home"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "D18EVN",
+              "name": "Right",
+              "gap": 10,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "QQiDQ",
+                  "name": "Stars · collected",
+                  "fill": "$ds-label",
+                  "cornerRadius": "$ds-radius-pill",
+                  "gap": 8,
+                  "padding": [
+                    7,
+                    12
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "gYrwX",
+                      "name": "Icon",
+                      "width": 20,
+                      "height": 20,
+                      "icon": "star-fill",
+                      "library": "phosphor",
+                      "fill": "$ds-reward"
+                    },
+                    {
+                      "type": "text",
+                      "id": "PjdbD",
+                      "name": "Value",
+                      "fill": "$ds-ink",
+                      "content": "3/5",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 20,
+                      "fontWeight": "800"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "CTUzM",
+                  "name": "Best · skeletons finished",
+                  "fill": "$ds-label",
+                  "cornerRadius": "$ds-radius-pill",
+                  "gap": 8,
+                  "padding": [
+                    7,
+                    12
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "jClvG",
+                      "name": "Icon",
+                      "width": 20,
+                      "height": 20,
+                      "icon": "trophy-fill",
+                      "library": "phosphor",
+                      "fill": "$ds-reward"
+                    },
+                    {
+                      "type": "text",
+                      "id": "okqZx",
+                      "name": "Value",
+                      "fill": "$ds-ink",
+                      "content": "3/5",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 20,
+                      "fontWeight": "800"
+                    }
+                  ]
+                },
+                {
+                  "id": "U7LdzA",
+                  "type": "ref",
+                  "ref": "ImooT",
+                  "name": "Build another",
+                  "width": 48,
+                  "height": 48,
+                  "descendants": {
+                    "Y1YWBe": {
+                      "icon": "bone",
+                      "width": 22,
+                      "height": 22
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "ilPv7",
+          "x": 20,
+          "y": 132,
+          "name": "Question line",
+          "width": 353,
+          "justifyContent": "center",
+          "children": [
+            {
+              "id": "Hkvfg",
+              "type": "ref",
+              "ref": "qWLc5",
+              "name": "Title",
+              "descendants": {
+                "T62ne": {
+                  "width": 44,
+                  "height": 44,
+                  "cornerRadius": [
+                    22,
+                    22,
+                    11,
+                    11
+                  ]
+                },
+                "R8Y1D1": {
+                  "icon": "landmark",
+                  "width": 22,
+                  "height": 22
+                },
+                "R8y9v": {
+                  "content": "MUSEUM",
+                  "fontSize": 28
+                }
+              }
             }
           ]
         }
