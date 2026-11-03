@@ -1,8 +1,7 @@
-import { Route, Bone, BookOpen, Brush, Copy, Footprints, Heart, Landmark, Lock, Monitor, Moon, Palette, Pencil, Play, Puzzle, Scale, Shapes, Star, Sun, Sparkles, TriangleAlert, Trophy, type LucideIcon } from "lucide-react";
+import { Route, Bone, BookOpen, Brush, Compass, Egg, Pickaxe, Copy, Footprints, Heart, Landmark, Lock, Monitor, Moon, Palette, Pencil, Play, Puzzle, Scale, Shapes, Star, Sun, Sparkles, TriangleAlert, Trophy, type LucideIcon } from "lucide-react";
 import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import type { HomeMotion } from "./homeMotion.ts";
 import { AGE_LEVELS, type AgeLevel } from "./ageLevel.ts";
-import { AGE_LEVEL_PICTURES } from "./ageLevelPictures.ts";
 import { Button } from "./Button.tsx";
 import { LANGUAGE_FLAGS, LANGUAGE_NAMES, LANGUAGES, type Language } from "./language/language.ts";
 import { SandWritingPicture } from "./SandWritingPicture.tsx";
@@ -13,6 +12,8 @@ import { Picture } from "./Picture.tsx";
 import { THEME_CHOICES, type ThemeChoice } from "./theme.ts";
 
 const THEME_SYMBOLS: Record<ThemeChoice, LucideIcon> = { system: Monitor, light: Sun, dark: Moon };
+// The age level menu's button shows the chosen level as a line symbol.
+const LEVEL_SYMBOLS: Record<AgeLevel, LucideIcon> = { hatchling: Egg, explorer: Compass, paleontologist: Pickaxe };
 
 // The app's name, the same in every language.
 const BRAND = "RexLab";
@@ -65,7 +66,7 @@ export type HomePageProps = {
   // The featured card shows the collection across all levels.
   // The jaw stands in the sky when the game is today's; its dinosaur stands on the tile.
   whoseJaw?: { picture: string; jaw: string; collected: number; total: number; onOpen: () => void } | undefined;
-  coloring?: { picture: string; completed: number | null | undefined; onOpen: () => void } | undefined;
+  coloring?: { picture: string; page: string; completed: number | null | undefined; onOpen: () => void } | undefined;
   picturePuzzle?: { picture: string; collected: number; onOpen: () => void } | undefined;
   // The dinosaur whose shape stands on the tile of the games still to
   // come.
@@ -155,6 +156,7 @@ export function HomePage({
     startTimer
   });
   const ThemeSymbol = THEME_SYMBOLS[theme];
+  const LevelSymbol = LEVEL_SYMBOLS[ageLevel];
   // Both doors share artwork and navigation; rewards belong to the hero.
   type GameEntry = { name: string; symbol: LucideIcon; picture: ReactNode; skyPicture?: ReactNode; badge: Badge | undefined; onOpen: () => void };
   const games: Record<Exclude<HomeGame, "picturePuzzle" | "whoseJaw" | "coloring">, GameEntry> & { picturePuzzle: GameEntry | undefined; whoseJaw: GameEntry | undefined; coloring: GameEntry | undefined } = {
@@ -210,6 +212,7 @@ export function HomePage({
     coloring: coloring && {
       name: text.coloring, symbol: Palette,
       picture: <Picture className="coloring-tile-picture" src={coloring.picture} alt="" width={800} height={600} />,
+      skyPicture: <Picture className="coloring-sky-picture" src={coloring.page} alt="" width={1104} height={744} />,
       badge: coloring.completed === undefined ? undefined : coloring.completed === null ? { symbol: TriangleAlert, value: "?" } : { symbol: Star, value: coloring.completed },
       onOpen: coloring.onOpen
     },
@@ -316,7 +319,7 @@ export function HomePage({
             />
             <ParentMenu
               label={text.themeMenu}
-              button={<ThemeSymbol size={18} />}
+              button={<ThemeSymbol size={24} />}
               choices={THEME_CHOICES.map((choice) => {
                 const ChoiceSymbol = THEME_SYMBOLS[choice];
                 return { value: choice, name: text.themes[choice], symbol: <ChoiceSymbol size={18} /> };
@@ -327,13 +330,11 @@ export function HomePage({
             />
             <ParentMenu
               label={text.ageLevelMenu}
-              button={<AgeLevelPicture level={ageLevel} />}
-              choices={AGE_LEVELS.map((level) => ({
-                value: level,
-                name: text.ageLevels[level].name,
-                note: text.ageLevels[level].age,
-                symbol: <AgeLevelPicture level={level} />
-              }))}
+              button={<LevelSymbol size={24} aria-hidden="true" />}
+              choices={AGE_LEVELS.map((level) => {
+                const ChoiceSymbol = LEVEL_SYMBOLS[level];
+                return { value: level, name: text.ageLevels[level].name, note: text.ageLevels[level].age, symbol: <ChoiceSymbol size={18} /> };
+              })}
               chosen={ageLevel}
               onChoose={onAgeLevel}
               {...menu("ageLevel")}
@@ -401,14 +402,6 @@ function EarthEdge() {
   </svg>;
 }
 
-// An age level's picture, beside its name or standing for it.
-function AgeLevelPicture({ level }: { level: AgeLevel }) {
-  return (
-    <span className="parent-menu-picture" aria-hidden="true">
-      {AGE_LEVEL_PICTURES[level]}
-    </span>
-  );
-}
 
 // The quiz's picture: two dinosaurs facing off.
 function FaceOff({ label, left, right }: { label: string; left: string; right: string }) {

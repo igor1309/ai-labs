@@ -43,6 +43,9 @@ import { useSortingGame, type SortingGameProps, type SortingPhase } from "./sort
 import { themeOf, type ThemeChoice } from "./theme.ts";
 import { turnMotion, type TurnMotion, type TurnMotionSeams } from "./turnMotion.ts";
 
+import pairsTile from "./assets/home/pairs-triceratops.webp";
+import digTile from "./assets/home/dig-therizinosaurus.webp";
+import colorPage from "./assets/home/color-mosasaurus.webp";
 import { useWhoseJawGame, type WhoseJawGameProps, type WhoseJawPhase } from "./whoseJawGame.tsx";
 
 export type LanguageStore = {
@@ -177,17 +180,14 @@ const CATALOGUE_TILE = "stegosaurus";
 // The dinosaur on the sorting game's card.
 const SORT_TILE = "pachycephalosaurus";
 
-// The dinosaur on find the pair's tile.
-const PAIRS_TILE = "triceratops";
-
 // The dinosaur whose skeleton stands on the skeleton game's tile.
 const SKELETONS_TILE = "brachiosaurus";
 
 // Home shows six tiles to a layer of earth where the page is wide enough, three elsewhere.
 const homeTilesPerLayer = (width: number) => width >= 1000 ? 6 : 3;
 
-// The dinosaurs on the other games' tiles.
-const DIG_TILE = "therizinosaurus";
+// The dinosaurs on the care, jaw and colouring games' tiles; pairs and dig
+// show the design's own pictures of their games.
 const CARE_TILE = "oviraptor";
 const JAW_TILE = "baryonyx";
 const COLOR_TILE = "mosasaurus";
@@ -729,11 +729,11 @@ export function App({
             best={quiz.best}
             catalogue={{ picture: bodyPicture(CATALOGUE_TILE), count: catalogue.length }}
             care={{ picture: bodyPicture(CARE_TILE), best: care.best }}
-            pairs={{ picture: bodyPicture(PAIRS_TILE), stars: pairs.stars }}
+            pairs={{ picture: pairsTile, stars: pairs.stars }}
             skeletons={{ picture: skeletonPicture(SKELETONS_TILE, "skeleton"), best: skeletonGame.best }}
             sort={{ picture: bodyPicture(SORT_TILE), best: sorting.best }}
-            dig={{ picture: bodyPicture(DIG_TILE), dugUp: dig.dugUp }}
-            coloring={coloring && { picture: bodyPicture(COLOR_TILE), completed: coloringCount, onOpen: () => go({ kind: "coloring" }) }}
+            dig={{ picture: digTile, dugUp: dig.dugUp }}
+            coloring={coloring && { picture: bodyPicture(COLOR_TILE), page: colorPage, completed: coloringCount, onOpen: () => go({ kind: "coloring" }) }}
             whoseJaw={whoseJaw && { picture: bodyPicture(JAW_TILE), jaw: whoseJaw.jawFor(JAW_TILE), collected: jawGame.collected, total: whoseJaw.total, onOpen: () => go({ kind: "whoseJaw" }, { also: jawGame.open }) }}
             picturePuzzle={picturePuzzle && { picture: bodyPicture("spinosaurus"), collected: pictureGame.collected, onOpen: () => go({ kind: "picturePuzzle" }) }}
             labyrinth={{ picture: bodyPicture("ankylosaurus"), stars: labyrinth.stars }}

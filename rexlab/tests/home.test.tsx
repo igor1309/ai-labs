@@ -1,3 +1,4 @@
+import pairsTilePicture from "../src/assets/home/pairs-triceratops.webp";
 import { emptyLabyrinth, largestSize } from "./support.ts";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -228,7 +229,7 @@ describe("the home page", () => {
   });
 
   // Tile geometry and title fit require a browser with real fonts.
-  it("offers find the pair as a tile under ANCIENT REPTILES, before SKELETONS: a Triceratops, its symbol beside its title", () => {
+  it("offers find the pair as a tile under ANCIENT REPTILES, before SKELETONS: a matched pair of Triceratops cards, its symbol beside its title", () => {
     openHomePage();
 
     const tile = pairsTile();
@@ -238,7 +239,7 @@ describe("the home page", () => {
     expect(tile.nextElementSibling).toBe(skeletonsTile());
     expect(tile.textContent).toBe("PAIRS");
     expect(symbolsOf(tile)).toEqual(["copy"]);
-    expect([...tile.querySelectorAll("img")].map((picture) => picture.getAttribute("src"))).toEqual([fakeBodyPicture("triceratops")]);
+    expect([...tile.querySelectorAll("img")].map((picture) => picture.getAttribute("src"))).toEqual([pairsTilePicture]);
     expect(tile.querySelector(".pairs-tile-stars")).toBeNull();
   });
 

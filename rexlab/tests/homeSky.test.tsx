@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import { HOME_GAMES } from "../src/HomePage.tsx";
 import { TEXTS } from "../src/language/texts.ts";
 import { renderHomePageFeaturing } from "./homePage.tsx";
-import { featuredCard, largestSize, manualViewport, tilesRow } from "./support.ts";
+import { fakeBodyPicture, featuredCard, largestSize, manualViewport, tilesRow } from "./support.ts";
 import { openHomeApp } from "./skeletonsApp.tsx";
 
 const design = JSON.parse(readFileSync(join(import.meta.dirname, "../design/dig-site.pen"), "utf8"));
@@ -138,6 +138,16 @@ test("WHOSE JAW? shows its jaw in the sky", () => {
 test("the TEETH tile shows the jaw's dinosaur", () => {
   renderHomePageFeaturing("compare", { allGames: true });
   expect(tilesRow().querySelector('[data-turn-part="tile-whoseJaw"] img')?.getAttribute("src")).toBe("baryonyx.webp");
+});
+
+test("COLOR shows its colouring page in the sky", () => {
+  renderHomePageFeaturing("coloring", { allGames: true });
+  expect([...part(".home-today-art").querySelectorAll("img")].map((picture) => picture.getAttribute("src"))).toEqual(["page.webp"]);
+});
+
+test("the COLOR tile shows the dinosaur, not its page", () => {
+  renderHomePageFeaturing("compare", { allGames: true });
+  expect(tilesRow().querySelector('[data-turn-part="tile-coloring"] img')?.getAttribute("src")).toBe(fakeBodyPicture("triceratops"));
 });
 
 test("DRAW shows marks in the sand in the sky", () => {

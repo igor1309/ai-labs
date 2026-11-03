@@ -522,6 +522,7 @@ describe("found cards on a phone", () => {
     }
     const loading = dealtBoard.cards.findIndex(({ pal }, place) => !failed.includes(place) && pictures.loading().includes(fakeBodyPicture(pal.id)));
     const shown = placesOf(names, names[loading] ?? "");
+    expect(shown.length).toBeGreaterThan(0);
     for (const place of shown) {
       await turnCard(user, place);
       act(() => pictures.finish(pictureOn(dealtBoard, place)));
@@ -534,7 +535,7 @@ describe("found cards on a phone", () => {
     }
     for (const place of shown) {
       expect(styleAt(nameOf(place), [393, 852]).value("display")).toBe("none");
-      expect(labelAt(place)).toContain(pal(dealtBoard.cards[place]!.pal.id).name.en);
+      expect(labelAt(place)).toContain(pal(dealtBoard.cards[place]!.pal.id).name.en.toLocaleUpperCase("en"));
     }
   });
 });

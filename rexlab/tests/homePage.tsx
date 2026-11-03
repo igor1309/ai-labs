@@ -53,7 +53,7 @@ export function renderHomePageFeaturing(featured: HomeGame, { language = "en", s
       dig={{ picture: fakeBodyPicture("stegosaurus"), dugUp: score(4) }}
       labyrinth={{ picture: fakeBodyPicture("triceratops"), stars: score(9) }}
       {...(allGames && {
-        coloring: { picture: fakeBodyPicture("triceratops"), completed: scored ? 4 : undefined, onOpen: () => opened.push("coloring") },
+        coloring: { picture: fakeBodyPicture("triceratops"), page: "page.webp", completed: scored ? 4 : undefined, onOpen: () => opened.push("coloring") },
         whoseJaw: { picture: "baryonyx.webp", jaw: "jaw.webp", collected: scored ? 5 : 0, total: 16, onOpen: () => opened.push("whoseJaw") },
         picturePuzzle: { picture: fakeBodyPicture("triceratops"), collected: scored ? 2 : 0, onOpen: () => opened.push("picturePuzzle") }
       })}

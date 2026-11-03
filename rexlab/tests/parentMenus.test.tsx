@@ -62,17 +62,17 @@ describe("the age level menu", () => {
       const top = px(corner.top) + px(corner.paddingTop) + px(menus.paddingTop) + Math.max(...buttons) + px(menus.paddingBottom) + 8;
       expect(top + height).toBeLessThanOrEqual(windowHeight);
 
-      // Each name and age stands on one line beside the picture and room
+      // Each name and age stands on one line beside the symbol and room
       // for the ✓, which the chosen row draws.
       const room = px(style.width) - px(style.paddingLeft) - px(style.paddingRight);
       const tick = px(within(menu).getByRole("menuitemradio", { checked: true }).querySelector("svg.lucide-check")?.getAttribute("width") ?? "");
       expect(tick).toBeGreaterThan(0);
       for (const choice of choices) {
         const row = getComputedStyle(choice);
-        const picture = choice.querySelector(".parent-menu-picture");
+        const picture = choice.querySelector("svg.lucide:not(.lucide-check)");
         const words = choice.querySelector(".parent-menu-words");
-        if (!picture || !words) throw new Error("A level without its picture or words");
-        const wordsRoom = room - px(row.paddingLeft) - px(row.paddingRight) - px(getComputedStyle(picture).width) - tick - px(row.gap) * 2;
+        if (!picture || !words) throw new Error("A level without its symbol or words");
+        const wordsRoom = room - px(row.paddingLeft) - px(row.paddingRight) - px(picture.getAttribute("width") ?? "") - tick - px(row.gap) * 2;
         for (const text of words.children) {
           expect(getComputedStyle(text).whiteSpace).toBe("nowrap");
           expect(textWidth(text)).toBeLessThanOrEqual(wordsRoom);
