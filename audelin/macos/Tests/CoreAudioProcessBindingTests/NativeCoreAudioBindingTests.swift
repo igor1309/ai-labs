@@ -1,4 +1,5 @@
-@testable import CoreAudioProcesses
+@testable import CoreAudioProcessBinding
+import CoreAudioProcesses
 import CoreFoundation
 import Foundation
 import Synchronization
