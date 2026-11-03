@@ -24,6 +24,18 @@ struct TranscriptLogTests {
         }
     }
 
+    @Test func theTimeInItsSpeakersColourIsTheOnlySpeakerMark() throws {
+
+        let text = try #require(Offscreen.textView(in: hosted(.init(rows: [
+            .entry(.init(id: 1, time: "12:44", speaker: .me, settled: "mine")),
+            .entry(.init(id: 2, time: "12:45", speaker: .them, settled: "theirs")),
+        ]))))
+
+        #expect(text.string == "12:44\tmine\n12:45\ttheirs")
+        #expect(attribute(.foregroundColor, of: "12:44", in: text) as? NSColor == NSColor(GlassLedger.light.me))
+        #expect(attribute(.foregroundColor, of: "12:45", in: text) as? NSColor == NSColor(GlassLedger.light.them))
+    }
+
     @Test func placesALateGroupWhereItsMinutesWere() throws {
 
         let text = try #require(Offscreen.textView(in: hosted(lateLines)))
@@ -120,7 +132,7 @@ struct TranscriptLogTests {
         // From the newline that opens its paragraph.
         let start = (first.text.string as NSString).range(of: "13:10").location - 1
         #expect(edit.range == NSRange(location: start, length: first.text.length - start))
-        #expect(edit.entries.last?.body.location == start + ("\n13:10\tя\t" as NSString).length)
+        #expect(edit.entries.last?.body.location == start + ("\n13:10\t" as NSString).length)
     }
 
     @Test func anUpdateBehindUnchangedSealedRowsAppliesCleanly() {
