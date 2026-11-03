@@ -70,7 +70,7 @@ describe("sand writing through Home", () => {
     expect(door.getAttribute("aria-label")).toBe(featured ? text.sandWriting : (language === "en" ? "DRAW" : "РИСУЙ"));
     expect(text.sandWriting).toBe(text.sandWriting.toLocaleUpperCase(language));
     expect(symbolOf(door.querySelector(".featured-card-symbol") ?? door)).toBe("pencil");
-    expect(door.querySelector("img")).toBeNull();
+    expect(door.querySelector("img")?.getAttribute("src")).toBe(fakeBodyPicture("parasaurolophus"));
     expect(badgeOf(door)).toBeNull();
     expect(app.starts).toEqual([]);
     const layout = () => {

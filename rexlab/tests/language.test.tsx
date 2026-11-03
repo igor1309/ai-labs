@@ -1,5 +1,5 @@
 import packageInfo from "../package.json";
-import { emptyLabyrinth } from "./support.ts";
+import { emptyLabyrinth, largestSize } from "./support.ts";
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
@@ -174,20 +174,20 @@ describe("the language menu", () => {
     ["en-GB", "en", "Language", "COMPARE"],
     ["ru-RU", "ru", "Язык", "СРАВНИ"]
   ] as const)(
-    "is a flag-only button in the soft ink in the top-right corner of the home page only, on a %s device",
+    "is a globe and the language's code on a button in the soft ink in the top-right corner of the home page only, on a %s device",
     async (device, language, label, card) => {
       const { user } = openApp({ device });
       const button = screen.getByRole("button", { name: label });
 
-      expect(button.textContent).toBe(LANGUAGE_FLAGS[language]);
-      expect(button.querySelector(".language-flag")?.getAttribute("aria-hidden")).toBe("true");
+      expect(button.textContent).toBe(language.toUpperCase());
+      expect(button.querySelector("svg.lucide-globe")?.getAttribute("aria-hidden")).toBe("true");
       const corner = getComputedStyle(button.closest(".home-corner") ?? button);
       expect(corner.position).toBe("static");
       expect(button.closest("header")).not.toBeNull();
       const style = getComputedStyle(button);
       // The quiet chip carries its symbol in the design ink.
       expect(sameColour(style.color, style.getPropertyValue("--ds-ink"))).toBe(true);
-      expect(parseFloat(style.fontSize)).toBeLessThan(parseFloat(getComputedStyle(within(featuredCard()).getByText(card)).fontSize) / 2);
+      expect(parseFloat(style.fontSize)).toBeLessThan(largestSize(getComputedStyle(within(featuredCard()).getByText(card)).fontSize) / 2);
       // A tap area for a parent's finger around the small symbol.
       expect(parseFloat(style.minWidth)).toBeGreaterThanOrEqual(44);
       expect(parseFloat(style.minHeight)).toBeGreaterThanOrEqual(44);
@@ -233,7 +233,7 @@ describe("the language menu", () => {
     await chooseFrom(user, "Language", "Русский");
 
     expect(screen.queryByRole("menu")).toBeNull();
-    expect(screen.getByRole("button", { name: "Язык" }).textContent).toBe(LANGUAGE_FLAGS.ru);
+    expect(screen.getByRole("button", { name: "Язык" }).textContent).toBe("RU");
     expect(choicesIn(await openMenu(user, "Язык")).filter(({ tick }) => tick)).toEqual([{ name: "Русский", checked: true, tick: true }]);
   });
 

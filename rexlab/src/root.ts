@@ -80,23 +80,8 @@ export const TURN_TIMING = { glide: 240, easing: "cubic-bezier(0.22, 1, 0.36, 1)
 
 function browserHomeMotion(page: HTMLElement): () => void {
   const view = page.ownerDocument.defaultView!;
-  const motion = view.matchMedia("(prefers-reduced-motion: reduce)");
   return homeMotion(page, {
     scrollToTop: () => view.scrollTo({ top: 0, left: 0, behavior: "instant" }),
-    scrollY: () => view.scrollY,
-    reducedMotion: () => motion.matches,
-    subscribeScroll: (update) => {
-      view.addEventListener("scroll", update, { passive: true });
-      return () => view.removeEventListener("scroll", update);
-    },
-    subscribeMotion: (update) => {
-      motion.addEventListener("change", update);
-      return () => motion.removeEventListener("change", update);
-    },
-    nextFrame: (update) => {
-      const id = view.requestAnimationFrame(update);
-      return () => view.cancelAnimationFrame(id);
-    },
     watchVisible: (tiles, reveal) => {
       const observer = new view.IntersectionObserver(entries => {
         for (const entry of entries) if (entry.isIntersecting) {

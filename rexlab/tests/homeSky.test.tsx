@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import { HOME_GAMES } from "../src/HomePage.tsx";
 import { TEXTS } from "../src/language/texts.ts";
 import { renderHomePageFeaturing } from "./homePage.tsx";
-import { featuredCard, manualViewport, tilesRow } from "./support.ts";
+import { featuredCard, largestSize, manualViewport, tilesRow } from "./support.ts";
 import { openHomeApp } from "./skeletonsApp.tsx";
 
 const design = JSON.parse(readFileSync(join(import.meta.dirname, "../design/dig-site.pen"), "utf8"));
@@ -40,7 +40,8 @@ for (const theme of ["light", "dark"]) for (const size of ["wide", "tall", "wide
     renderHomePageFeaturing("compare");
     const matches = (selector: string, properties: Record<string, string>) => {
       for (const [property, name] of Object.entries(properties)) {
-        expect(getComputedStyle(part(selector)).getPropertyValue(property), `${selector} ${property}`).toBe(literal(property, token(name)));
+        const value = getComputedStyle(part(selector)).getPropertyValue(property);
+        expect(property === "font-size" ? `${largestSize(value)}px` : value, `${selector} ${property}`).toBe(literal(property, token(name)));
       }
     };
     matches(".home-sky", { color: "ink" });

@@ -7,9 +7,10 @@ const games = ['compare', 'catalogue', 'pairs', 'skeletons', 'dig', 'sort', 'car
 const levels = ['hatchling', 'explorer', 'paleontologist'];
 async function settle(page) {
   await page.waitForFunction(() => !document.documentElement.hasAttribute('data-turning'));
+  // Scroll-driven animations follow the page and never finish.
   await page.evaluate(async () => {
     await document.fonts.ready;
-    await Promise.all(document.getAnimations().filter(a => a.effect?.getComputedTiming().iterations !== Infinity).map(a => a.finished.catch(() => {})));
+    await Promise.all(document.getAnimations().filter(a => a.timeline === document.timeline && a.effect?.getComputedTiming().iterations !== Infinity).map(a => a.finished.catch(() => {})));
   });
 }
 

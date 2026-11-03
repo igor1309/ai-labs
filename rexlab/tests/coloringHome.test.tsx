@@ -47,11 +47,11 @@ function fixture({ language = "en", featured = "compare", level = "explorer" }: 
   return { ...view, artworks: props.coloring.artworks, defer: (value: Promise<GalleryCollection>) => { deferred = value; }, viewport, click, countStart, source, saveAge, dot, active: () => active, fail: (value: boolean) => { failure = value; }, collection: (value: GalleryCollection) => { collection = value; } };
 }
 
-it.each(["en", "ru"] as Language[])("keeps the count on the featured card and the drawing symbol on both %s doors", async language => {
+it.each(["en", "ru"] as Language[])("keeps the count on the featured card and the palette symbol on both %s doors", async language => {
   for (const featured of ["compare", "coloring"] as const) {
     const f = fixture({ language, featured }); await act(async () => {});
     const entry = screen.getByRole("button", { name: featured === "coloring" ? (language === "en" ? "COLOR A DINOSAUR" : "РАСКРАСЬ ДИНОЗАВРА") : (language === "en" ? "COLOR" : "РАСКРАСЬ") });
-    expect(entry.querySelector(".lucide-pencil")).not.toBeNull();
+    expect(entry.querySelector(".lucide-palette")).not.toBeNull();
     expect(entry.querySelector(".coloring-tile-count, .featured-card-badge")?.textContent).toBe(featured === "coloring" ? "4" : undefined);
     await act(async () => { fireEvent.click(entry); });
     expect(screen.getByRole("region", { name: language === "en" ? "MY ART" : "МОИ РАБОТЫ" })).toBeTruthy();

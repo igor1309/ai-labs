@@ -1,9 +1,9 @@
 import { act, fireEvent, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { AgeLevel } from "../src/ageLevel.ts";
-import digTile from "../src/assets/dig/tile.webp";
 import { GUST, STAR_LANDS } from "../src/digGame.tsx";
 import { TEXTS } from "../src/language/texts.ts";
+import { TREASURE_PICTURES } from "../src/treasurePictures.ts";
 import { AGE_LEVEL_KEY } from "../src/localAgeLevel.ts";
 import { PROGRESS_KEY } from "../src/localProgress.ts";
 import { PICTURE_LIMIT } from "../src/Picture.tsx";
@@ -26,7 +26,7 @@ const finish = (app: ReturnType<typeof openDigApp>) => {
 it("offers committed sand art with the brush, and brightens and presses the tile before opening", async () => {
   const app = openDigApp();
   const tile = homeTile("DIG");
-  expect(tile.querySelector("img")?.getAttribute("src")).toBe(digTile);
+  expect(tile.querySelector("img")?.getAttribute("src")).toBe(TREASURE_PICTURES["golden-fossil"]);
   expect(symbolOf(tile)).toBe("brush");
   expect(tile.nextElementSibling).toBe(homeTile("SORT"));
   expect(tile.previousElementSibling).toBe(homeTile("SKELETONS"));

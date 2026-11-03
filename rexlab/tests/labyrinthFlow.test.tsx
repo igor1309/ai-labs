@@ -126,7 +126,7 @@ describe("labyrinth through the app", () => {
     openLabyrinthApp({ storage });
     expect(featuredCard().dataset.game).toBe("labyrinth");
     expect(featuredCard().querySelector(".featured-card-badge")?.textContent).toBe("3");
-    expect(featuredCard().querySelector("img")?.getAttribute("src")).toBe(fakeBodyPicture("triceratops"));
+    expect(featuredCard().querySelector("img")?.getAttribute("src")).toBe(fakeBodyPicture("ankylosaurus"));
     expect(featuredCard().querySelector(".lucide-route")).not.toBeNull();
     fireEvent.click(homeTile("ANCIENT REPTILES"));
     expect(document.querySelector('[class*="labyrinth"]')).toBeNull();
@@ -154,7 +154,7 @@ describe("labyrinth through the app", () => {
     openLabyrinthApp({ language: "ru" });
     const tile = homeTile("ЛАБИРИНТ");
     expect(tile.querySelector(".lucide-route")).not.toBeNull();
-    expect(tile.querySelector("img")?.getAttribute("src")).toBe(fakeBodyPicture("triceratops"));
+    expect(tile.querySelector("img")?.getAttribute("src")).toBe(fakeBodyPicture("ankylosaurus"));
     fireEvent.click(tile);
     expect(mazeBoard()).not.toBeNull();
   });

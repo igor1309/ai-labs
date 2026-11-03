@@ -12343,7 +12343,7 @@ html .home.home-dig-site {
   height: auto; min-height: 100vh; min-height: 100dvh; --home-gap: 10px; gap: var(--home-gap);
   font-family: var(--ds-font);
   --home-sky-fade: 376px;
-  background: linear-gradient(var(--ds-sky-top), var(--ds-sky-bottom) var(--home-sky-fade));
+  background: linear-gradient(var(--ds-sky-top), var(--ds-sky-bottom) var(--home-sky-fade)) var(--ds-sky-bottom);
 }
 .home.home-dig-site .home-header {
   color: var(--ds-ink);
@@ -12365,6 +12365,9 @@ html .home.home-dig-site {
 }
 .home.home-dig-site .parent-menus { gap: var(--ds-space-m); padding: 0; background: transparent; }
 .home.home-dig-site .parent-menu-button { width: var(--ds-round); height: var(--ds-round); padding: 0; }
+/* The language menu reads its choice as a code beside a globe. */
+.home.home-dig-site .parent-menu-chip { width: auto; padding: 0 var(--ds-chip-pad-x); border-radius: var(--ds-radius-pill); }
+.home-language-chip { display: flex; align-items: center; gap: var(--ds-chip-gap); font-size: var(--ds-size-label); font-weight: 800; }
 .home.home-dig-site .home-sky {
   color: var(--ds-ink); position: relative; min-height: 280px; flex: none;
   /* The halo may reach behind the header; slower sky art stops at earth. */
@@ -12377,7 +12380,9 @@ html .home.home-dig-site {
 }
 .home.home-dig-site .home-sky-body span { position: absolute; inset: 90px; border-radius: 50%; background: var(--ds-sky-core); }
 .home.home-dig-site .home-sky .featured-card {
-  position: relative; display: block; width: 100%; height: auto; min-height: inherit; flex: none;
+  /* A button centres what it holds; the copy starts at the sky's top. */
+  position: relative; display: flex; flex-direction: column; justify-content: flex-start; align-items: stretch;
+  width: 100%; height: auto; min-height: inherit; flex: none;
   padding: 0; border: 0; border-radius: 0; outline: none; box-shadow: none;
   background: transparent; color: var(--ds-ink); overflow: visible; container-type: normal;
   transform: none; animation: none;
@@ -12400,9 +12405,12 @@ html .home.home-dig-site {
   box-shadow: inset 0 6px 10px var(--ds-pocket-shadow); background: var(--ds-pocket-1); color: var(--ds-action);
 }
 .home.home-dig-site .home-sky .featured-card .featured-card-symbol svg { width: 36px; height: 36px; }
+.home.home-dig-site .home-sky .featured-card .featured-card-footer { container-type: inline-size; }
+/* A name stays on one line: a long one takes smaller type, about 0.74em
+   a capital in this face, after the symbol and the gap beside it. */
 .home.home-dig-site .home-sky .featured-card .featured-card-title {
-  min-width: 0; font-size: var(--ds-size-display); line-height: 1.1; font-weight: 800;
-  letter-spacing: -1px; white-space: normal; overflow-wrap: anywhere;
+  min-width: 0; line-height: 1.1; font-weight: 800; letter-spacing: -1px; white-space: nowrap;
+  font-size: min(var(--ds-size-display), calc((100cqw - 92px) / (var(--title-chars) * 0.74)));
 }
 .home.home-dig-site .home-today-progress { display: flex; align-items: center; gap: 10px; }
 .home.home-dig-site .home-progress-total { color: var(--ds-ink-soft); font-size: var(--ds-size-label); font-weight: 700; }
@@ -12433,8 +12441,19 @@ html .home.home-dig-site {
 .home.home-dig-site .home-sky .featured-card[data-game="compare"] .home-today-art::before { width: 37%; }
 .home.home-dig-site .home-sky .featured-card[data-game="compare"] .home-today-art::after { display: block; left: 59%; width: 36%; }
 .home.home-dig-site .home-today-art > * { position: relative; z-index: 1; }
-.home.home-dig-site .home-sky-body,
-.home.home-dig-site .home-today-art > * { translate: 0 var(--home-parallax, 0px); }
+/* The sky drifts at half the page's speed on the scroll timeline, which
+   the browser runs with the scroll; without it the sky simply scrolls. */
+@keyframes home-sky-drift { to { translate: 0 calc(1000px * var(--motion-amount)); } }
+@supports (animation-timeline: scroll()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .home.home-dig-site .home-sky-body,
+    .home.home-dig-site .home-today-art > * {
+      animation: home-sky-drift linear both;
+      animation-timeline: scroll(root block);
+      animation-range: 0px 2000px;
+    }
+  }
+}
 .home.home-dig-site .home-today-art > .picture,
 .home.home-dig-site .home-today-art > .picture-puzzle-tile-art,
 .home.home-dig-site .home-today-art > .sand-writing-tile-art {
@@ -12455,7 +12474,7 @@ html .home.home-dig-site {
 html[data-size="tall"] .home.home-dig-site .home-sky,
 html[data-size="tall-narrow"] .home.home-dig-site .home-sky { height: auto; min-height: 0; }
 html[data-size="tall"] .home.home-dig-site .home-sky .featured-card,
-html[data-size="tall-narrow"] .home.home-dig-site .home-sky .featured-card { padding-bottom: 151px; }
+html[data-size="tall-narrow"] .home.home-dig-site .home-sky .featured-card { padding-bottom: 145px; }
 html[data-size="tall"] .home.home-dig-site .home-today-art,
 html[data-size="tall-narrow"] .home.home-dig-site .home-today-art { width: 100%; height: 160px; right: 0; }
 html[data-size="tall"] .home.home-dig-site .home-today-copy,
@@ -12463,7 +12482,10 @@ html[data-size="tall-narrow"] .home.home-dig-site .home-today-copy { width: calc
 html[data-size="tall-narrow"] .home.home-dig-site { padding-top: calc(62px + env(safe-area-inset-top)); --home-gap: 20px; --home-sky-fade: 480px; }
 html[data-size="tall-narrow"] .home.home-dig-site .home-header { min-height: 44px; }
 html[data-size="tall-narrow"] .home.home-dig-site .wordmark { font-size: 22px; }
-html[data-size="tall-narrow"] .home.home-dig-site .wordmark-mark { width: 28px; height: 28px; }
+html[data-size="tall-narrow"] .home.home-dig-site .wordmark-mark { width: 28px; min-width: 0; height: 28px; }
+html[data-size="tall-narrow"] .home.home-dig-site .home-museum { min-width: 44px; width: auto; }
+/* The page behind the browser's bars and below the bedrock is bedrock. */
+html.home-page, html.home-page body { background-color: var(--ds-strata-3); }
 html[data-size="tall-narrow"] .home.home-dig-site .home-corner,
 html[data-size="tall-narrow"] .home.home-dig-site .parent-menus { gap: 8px; }
 html[data-size="tall-narrow"] .home.home-dig-site .home-today-copy { gap: 24px; }
@@ -12634,6 +12656,7 @@ html[data-size="wide-short"] .home.home-dig-site .home-today-art { width: 44%; r
 }
 .home-layer {
   position: relative;
+  container-type: inline-size;
   --home-earth: var(--ds-strata-1);
   background: var(--ds-strata-1);
 }
@@ -12643,12 +12666,18 @@ html[data-size="wide-short"] .home.home-dig-site .home-today-art { width: 44%; r
 }
 .home-layer .tiles-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
+  /* A layer holds six games, so a row holds six or three, never a
+     count that leaves one alone below. */
+  grid-template-columns: repeat(3, minmax(0, 200px));
+  justify-content: center;
   gap: 18px 12px;
   padding: 16px var(--ds-page) 18px;
   min-height: 180px;
   box-sizing: border-box;
   align-content: start;
+}
+@container (min-width: 980px) {
+  .home-layer .tiles-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); justify-content: stretch; }
 }
 .home-ground .home-ground-tile {
   position: relative;
@@ -12758,6 +12787,13 @@ html[data-size="wide-short"] .home.home-dig-site .home-today-art { width: 44%; r
 }
 .home-ground .more-coming { opacity: .6; }
 .home-ground .more-coming-picture { opacity: .35; }
+/* SORT's tile is a dinosaur's shape in the strong colour. */
+.sort-tile-silhouette {
+  display: block; width: 100%; height: 100%;
+  background: var(--ds-strong);
+  -webkit-mask: var(--silhouette) center / contain no-repeat;
+  mask: var(--silhouette) center / contain no-repeat;
+}
 .home-ground .more-coming .home-tile-footer { background: transparent; color: var(--ds-ink-soft); }
 .home-ground .more-coming .home-tile-symbol { color: var(--ds-ink-soft); }
 .home-earth-wave {
@@ -12788,7 +12824,7 @@ html[data-size="wide-short"] .home.home-dig-site .home-today-art { width: 44%; r
 .home-version { flex: none; font-size: 11px; font-weight: 400; opacity: .6; }
 body:has(.home-dig-site) #version { display: none; }
 html:is([data-size="tall-narrow"], [data-size="wide-short"]) .home-layer .tiles-grid {
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 100px), 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   column-gap: 10px;
   padding-bottom: 22px;
 }

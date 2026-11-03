@@ -819,3 +819,9 @@ export function featuredCard(): HTMLElement {
   if (!card) throw new Error("No featured card on the page");
   return card;
 }
+
+// The largest a font size can be: a title fitted to its card is
+// `min(<its size>, <what fits>)`, at its size when the name fits.
+export function largestSize(fontSize: string): number {
+  return parseFloat(/^min\(([\d.]+)px,/.exec(fontSize)?.[1] ?? fontSize);
+}

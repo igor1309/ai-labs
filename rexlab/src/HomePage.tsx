@@ -1,5 +1,5 @@
-import { Route, Bone, BookOpen, Brush, Copy, Footprints, Heart, Landmark, Lock, Monitor, Moon, Pencil, Play, Puzzle, Scale, Shapes, Star, Sun, Sparkles, TriangleAlert, Trophy, type LucideIcon } from "lucide-react";
-import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { Route, Bone, BookOpen, Brush, Copy, Footprints, Heart, Landmark, Lock, Monitor, Moon, Palette, Pencil, Globe, Play, Puzzle, Scale, Shapes, Star, Sun, Sparkles, TriangleAlert, Trophy, type LucideIcon } from "lucide-react";
+import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import type { HomeMotion } from "./homeMotion.ts";
 import { AGE_LEVELS, type AgeLevel } from "./ageLevel.ts";
 import { AGE_LEVEL_PICTURES } from "./ageLevelPictures.ts";
@@ -8,8 +8,6 @@ import { LANGUAGE_FLAGS, LANGUAGE_NAMES, LANGUAGES, type Language } from "./lang
 import { TEXTS } from "./language/texts.ts";
 import { ParentMenu, type ParentMenuProps } from "./ParentMenu.tsx";
 import { Picture } from "./Picture.tsx";
-import { PicturePuzzlePicture } from "./PicturePuzzlePicture.tsx";
-import { SandWritingPicture } from "./SandWritingPicture.tsx";
 import { THEME_CHOICES, type ThemeChoice } from "./theme.ts";
 
 const THEME_SYMBOLS: Record<ThemeChoice, LucideIcon> = { system: Monitor, light: Sun, dark: Moon };
@@ -79,6 +77,8 @@ export type HomePageProps = {
   // The skeleton game's museum, opened straight from the home page.
   onMuseum: () => void;
   onDig: () => void;
+  // Sand writing's tile picture.
+  sandWritingPicture: string;
   onSandWriting: () => void;
   onLabyrinth: () => void;
 };
@@ -128,11 +128,18 @@ export function HomePage({
   onSkeletons,
   onMuseum,
   onDig,
+  sandWritingPicture,
   onSandWriting,
   onLabyrinth
 }: HomePageProps) {
   const page = useRef<HTMLElement>(null);
   useLayoutEffect(() => motion(page.current!), [motion]);
+  // The browser shows the page's own colour past the ground: the bedrock.
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    root.classList.add("home-page");
+    return () => root.classList.remove("home-page");
+  }, []);
   const text = TEXTS[language];
   const [openMenu, setOpenMenu] = useState<Menu>();
   const menu = (name: Menu) => ({
@@ -169,14 +176,14 @@ export function HomePage({
     sort: {
       name: text.sort,
       symbol: Shapes,
-      picture: <Picture className="sort-tile-picture" src={sort.picture} alt="" width={800} height={600} />,
+      picture: <span className="sort-tile-silhouette" style={{ "--silhouette": `url("${sort.picture}")` } as CSSProperties} />,
       badge: sort.best === undefined ? undefined : { symbol: Trophy, value: sort.best },
       onOpen: onSort
     },
     pairs: {
       name: text.pairs,
       symbol: Copy,
-      picture: <PairsArt picture={pairs.picture} />,
+      picture: <Picture className="pairs-dino-picture" src={pairs.picture} alt="" width={800} height={600} />,
       badge: pairs.stars === undefined ? undefined : { symbol: Star, value: pairs.stars },
       onOpen: onPairs
     },
@@ -190,12 +197,12 @@ export function HomePage({
     dig: {
       name: text.dig,
       symbol: Brush,
-      picture: <Picture className="dig-tile-picture" src={dig.picture} alt="" width={800} height={600} />,
+      picture: <Picture className="dig-fossil-picture" src={dig.picture} alt="" width={800} height={600} />,
       badge: dig.dugUp === undefined ? undefined : { symbol: Star, value: dig.dugUp },
       onOpen: onDig
     },
     coloring: coloring && {
-      name: text.coloring, symbol: Pencil,
+      name: text.coloring, symbol: Palette,
       picture: <Picture className="coloring-tile-picture" src={coloring.picture} alt="" width={800} height={600} />,
       badge: coloring.completed === undefined ? undefined : coloring.completed === null ? { symbol: TriangleAlert, value: "?" } : { symbol: Star, value: coloring.completed },
       onOpen: coloring.onOpen
@@ -208,7 +215,7 @@ export function HomePage({
     picturePuzzle: picturePuzzle && {
       name: text.picturePuzzle,
       symbol: Puzzle,
-      picture: <span className="picture-puzzle-tile-art"><PicturePuzzlePicture src={picturePuzzle.picture} /></span>,
+      picture: <Picture className="picture-puzzle-tile-picture" src={picturePuzzle.picture} alt="" width={800} height={600} />,
       badge: { symbol: Star, value: `${picturePuzzle.collected}/3` },
       onOpen: picturePuzzle.onOpen
     },
@@ -222,7 +229,7 @@ export function HomePage({
     sandWriting: {
       name: text.sandWriting,
       symbol: Pencil,
-      picture: <SandWritingPicture />,
+      picture: <Picture className="sand-writing-tile-picture" src={sandWritingPicture} alt="" width={800} height={600} />,
       badge: undefined,
       onOpen: onSandWriting
     }
@@ -275,7 +282,8 @@ export function HomePage({
           <div className="parent-menus">
             <ParentMenu
               label={text.languageMenu}
-              button={<span className="language-flag" aria-hidden="true">{LANGUAGE_FLAGS[language]}</span>}
+              chip
+              button={<span className="home-language-chip" aria-hidden="true"><Globe size={18} />{language.toUpperCase()}</span>}
               choices={LANGUAGES.map((option) => ({
                 value: option,
                 name: LANGUAGE_NAMES[option],
@@ -332,7 +340,7 @@ export function HomePage({
               <span className="featured-card-symbol" aria-hidden="true">
                 {featuredGame === "whoseJaw" ? <Tooth /> : <FeaturedSymbol size={36} />}
               </span>
-              <span className="featured-card-title">{today.name}</span>
+              <span className="featured-card-title" style={{ "--title-chars": today.name.length } as CSSProperties}>{today.name}</span>
             </span>
             <span className="home-today-actions">
               <span className="home-play"><Play aria-hidden="true" />{text.play}</span>
@@ -395,24 +403,6 @@ function FaceOff({ label, left, right }: { label: string; left: string; right: s
     <span className="face-off" role="img" aria-label={label}>
       <Picture className="face-off-picture face-off-left" src={left} alt="" width={800} height={600} />
       <Picture className="face-off-picture face-off-right" src={right} alt="" width={800} height={600} />
-    </span>
-  );
-}
-
-// Find the pair's picture: two cards of one dinosaur with a face-down
-// card between them.
-function PairsArt({ picture }: { picture: string }) {
-  return (
-    <span className="pairs-tile-art" aria-hidden="true">
-      <span className="pairs-tile-card pairs-tile-card-first">
-        <Picture className="pairs-tile-picture" src={picture} alt="" width={800} height={600} />
-      </span>
-      <span className="pairs-tile-card pairs-tile-back">
-        <Footprints size={44} />
-      </span>
-      <span className="pairs-tile-card pairs-tile-card-second">
-        <Picture className="pairs-tile-picture" src={picture} alt="" width={800} height={600} />
-      </span>
     </span>
   );
 }

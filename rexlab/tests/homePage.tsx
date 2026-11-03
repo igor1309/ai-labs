@@ -65,6 +65,7 @@ export function renderHomePageFeaturing(featured: HomeGame, { language = "en", s
       onSkeletons={() => opened.push("skeletons")}
       onMuseum={nothing}
       onDig={() => opened.push("dig")}
+      sandWritingPicture="/sand.webp"
       onSandWriting={() => opened.push("sandWriting")}
       onLabyrinth={() => opened.push("labyrinth")}
     />,

@@ -1,11 +1,10 @@
-import { emptyLabyrinth } from "./support.ts";
+import { emptyLabyrinth, largestSize } from "./support.ts";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { App } from "../src/App.tsx";
 import { HomePage, type HomeGame } from "../src/HomePage.tsx";
 import { LANGUAGES } from "../src/language/language.ts";
-import { SAND } from "../src/sandWritingCanvas.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { PROGRESS_KEY, localCareProgress, localDigProgress, localLabyrinthProgress, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress } from "../src/localProgress.ts";
 import { careRecord } from "./careApp.tsx";
@@ -120,6 +119,7 @@ function renderHomePage(taps: number[]) {
       onSkeletons={nothing}
       onMuseum={nothing}
       onDig={nothing}
+      sandWritingPicture="/sand.webp"
       onSandWriting={nothing}
       onLabyrinth={nothing}
     />,
@@ -196,7 +196,7 @@ describe("the home page", () => {
     expect(row.isConnected).toBe(false);
   });
 
-  it("shows the games still to come as a faded Triceratops's shape over a lock, with nothing to tap, brighten or press in", async () => {
+  it("shows the games still to come as a faded Brachiosaurus's shape over a lock, with nothing to tap, brighten or press in", async () => {
     const { user } = openHomePage();
 
     const tile = document.querySelector(".more-coming");
@@ -208,7 +208,7 @@ describe("the home page", () => {
     expect(TEXTS.ru.moreComing).toBe("СКОРО ЕЩЁ");
     expect(symbolsOf(tile)).toEqual(["lock"]);
     const picture = tile.querySelector("img");
-    expect(picture?.getAttribute("src")).toBe(fakeBodyPicture("triceratops"));
+    expect(picture?.getAttribute("src")).toBe(fakeBodyPicture("brachiosaurus"));
     expect(brightness(picture ?? tile)).toBe(0);
     expect(Number(getComputedStyle(picture ?? tile).opacity)).toBeLessThan(0.5);
 
@@ -227,7 +227,7 @@ describe("the home page", () => {
   });
 
   // Tile geometry and title fit require a browser with real fonts.
-  it("offers find the pair as a tile under ANCIENT REPTILES, before SKELETONS: two cards of a Stegosaurus and a face-down card, its symbol beside its title", () => {
+  it("offers find the pair as a tile under ANCIENT REPTILES, before SKELETONS: a Triceratops, its symbol beside its title", () => {
     openHomePage();
 
     const tile = pairsTile();
@@ -236,22 +236,17 @@ describe("the home page", () => {
     expect([...tilesRow().querySelector(".tiles-grid")!.children].indexOf(tile)).toBe(1);
     expect(tile.nextElementSibling).toBe(skeletonsTile());
     expect(tile.textContent).toBe("PAIRS");
-    expect(symbolsOf(tile)).toEqual(["footprints", "copy"]);
-    expect([...tile.querySelectorAll("img")].map((picture) => picture.getAttribute("src"))).toEqual([fakeBodyPicture("stegosaurus"), fakeBodyPicture("stegosaurus")]);
+    expect(symbolsOf(tile)).toEqual(["copy"]);
+    expect([...tile.querySelectorAll("img")].map((picture) => picture.getAttribute("src"))).toEqual([fakeBodyPicture("triceratops")]);
     expect(tile.querySelector(".pairs-tile-stars")).toBeNull();
   });
 
-  it("offers sand writing as a tile of a 2, an A and a circle written in the canvas's sand, its pencil symbol beside its title", () => {
+  it("offers sand writing as a tile of a Parasaurolophus, its pencil symbol beside its title", () => {
     openHomePage();
     const tile = homeTile("SAND WRITING");
     expect(tile.textContent).toBe("DRAW");
     expect(symbolsOf(tile)).toEqual(["pencil"]);
-    const art = tile.querySelector(".sand-writing-tile-art");
-    if (!art) throw new Error("No sand picture on the tile");
-    expect(art.getAttribute("aria-hidden")).toBe("true");
-    // Each mark is the canvas's light lip under its darker groove.
-    const layers = [...art.querySelectorAll(".sand-writing-tile-marks > g > g")].map((layer) => [layer.getAttribute("stroke"), layer.querySelectorAll("path").length]);
-    expect(layers).toEqual([[SAND.lip, 3], [SAND.groove, 3]]);
+    expect(tile.querySelector("img")?.getAttribute("src")).toBe(fakeBodyPicture("parasaurolophus"));
   });
 
   it("brightens find the pair's tile under a pointer, and presses it in", async () => {
@@ -346,13 +341,13 @@ describe("the home page", () => {
     expect(symbolsOf(tile)).toEqual(["scale"]);
   });
 
-  it("offers the sorting game as a SORT card with a Triceratops beside a symbol of shapes, and no best score before a board is finished", () => {
+  it("offers the sorting game as a SORT card with a Tyrannosaurus's silhouette beside a symbol of shapes, and no best score before a board is finished", () => {
     openHomePage();
 
     const sort = screen.getByRole("button", { name: "SORT" });
     expect(sort.textContent).toBe("SORT");
     expect(symbolsOf(sort)).toEqual(["shapes"]);
-    expect(sort.querySelector("img")?.getAttribute("src")).toBe(fakeBodyPicture("triceratops"));
+    expect(sort.querySelector<HTMLElement>(".sort-tile-silhouette")?.style.getPropertyValue("--silhouette")).toBe(`url("${fakeBodyPicture("tyrannosaurus")}")`);
     const title = sort.querySelector(".sort-tile-title");
     expect(title?.previousElementSibling?.contains(sort.querySelector("svg.lucide-shapes"))).toBe(true);
     expect(sort.querySelector(".sort-tile-best")).toBeNull();
@@ -433,7 +428,7 @@ describe("the home page", () => {
     expect(wordmark.closest("header")).not.toBeNull();
     // The wordmark stays smaller than the hero; small tiles use 20px labels.
     expect(parseFloat(style.fontSize)).toBe(26);
-    expect(parseFloat(style.fontSize)).toBeLessThan(parseFloat(getComputedStyle(within(card).getByText("COMPARE")).fontSize));
+    expect(parseFloat(style.fontSize)).toBeLessThan(largestSize(getComputedStyle(within(card).getByText("COMPARE")).fontSize));
   });
 
   it("opens one menu for parents at a time, and a tap outside it does not start a round", async () => {

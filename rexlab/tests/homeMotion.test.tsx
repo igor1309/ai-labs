@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { act, fireEvent, screen } from "@testing-library/react";
 import { expect, it, vi } from "vitest";
 import { homeMotion, type HomeMotionEnvironment } from "../src/homeMotion.ts";
@@ -6,55 +8,31 @@ import { openHomeApp } from "./skeletonsApp.tsx";
 import { manualViewport } from "./support.ts";
 
 function motionEnvironment() {
-  let scrollY = 0;
-  let reduced = false;
-  let scroll = () => {};
-  let motion = () => {};
-  let frame = () => {};
   let reveal = (_: HTMLElement) => {};
   let tiles: readonly HTMLElement[] = [];
-  const stopScroll = vi.fn(), stopMotion = vi.fn(), stopVisible = vi.fn(), cancelFrame = vi.fn();
+  const stopVisible = vi.fn();
   const environment: HomeMotionEnvironment = {
-    scrollToTop: vi.fn(() => { scrollY = 0; }),
-    scrollY: () => scrollY,
-    reducedMotion: () => reduced,
-    subscribeScroll: vi.fn(update => { scroll = update; return stopScroll; }),
-    subscribeMotion: vi.fn(update => { motion = update; return stopMotion; }),
-    nextFrame: vi.fn(update => { frame = update; return cancelFrame; }),
+    scrollToTop: vi.fn(),
     watchVisible: vi.fn((offered, update) => { tiles = offered; reveal = update; return stopVisible; })
   };
   return {
-    environment, stopScroll, stopMotion, stopVisible, cancelFrame,
-    scroll: (y: number) => { scrollY = y; scroll(); },
-    reduced: (value: boolean) => { reduced = value; motion(); },
-    frame: () => frame(),
+    environment, stopVisible,
     tiles: () => tiles,
     reveal: (tile: HTMLElement) => reveal(tile)
   };
 }
 
-it("moves the sky at half page speed, coalesces scroll frames and removes parallax as motion preferences change", () => {
-  const driver = motionEnvironment();
-  renderHomePageFeaturing("compare", { motion: page => homeMotion(page, driver.environment) });
-  const page = document.querySelector<HTMLElement>(".home")!;
-  const offset = () => page.style.getPropertyValue("--home-parallax");
-  expect(offset()).toBe("0px");
-  driver.scroll(60);
-  driver.scroll(180);
-  expect(driver.environment.nextFrame).toHaveBeenCalledTimes(1);
-  expect(offset()).toBe("0px");
-  driver.frame();
-  expect(offset()).toBe("90px");
-  driver.scroll(240);
-  driver.reduced(true);
-  expect(offset()).toBe("0px");
-  driver.frame();
-  expect(offset()).toBe("0px");
-  driver.reduced(false);
-  expect(offset()).toBe("120px");
-  driver.scroll(-20);
-  driver.frame();
-  expect(offset()).toBe("0px");
+// The drift is on the scroll timeline, so nothing is set from script as the page scrolls.
+it("leaves the sky's drift to the stylesheet's scroll timeline", () => {
+  const css = readFileSync(join(import.meta.dirname, "../src/app.css"), "utf8");
+  const drift = /@supports \(animation-timeline: scroll\(\)\) \{\s*@media \(prefers-reduced-motion: no-preference\) \{([^}]*)\{([^}]*)\}/.exec(css);
+  expect(drift?.[1]).toContain(".home-sky-body");
+  expect(drift?.[1]).toContain(".home-today-art > *");
+  expect(drift?.[2]).toContain("animation-timeline: scroll(root block)");
+  expect(css).toMatch(/@keyframes home-sky-drift \{ to \{ translate: 0 calc\(1000px \* var\(--motion-amount\)\); \} \}/);
+  expect(drift?.[2]).toContain("animation-range: 0px 2000px");
+  renderHomePageFeaturing("compare", { motion: page => homeMotion(page, motionEnvironment().environment) });
+  expect(document.querySelector<HTMLElement>(".home")!.getAttribute("style")).toBeNull();
 });
 
 it("reveals tiles only on first appearance, including keyboard focus, and disposes the visit's work", () => {
@@ -72,13 +50,8 @@ it("reveals tiles only on first appearance, including keyboard focus, and dispos
   expect(tiles[0]!.dataset.homeEntrance).toBe("revealed");
   fireEvent.focusIn(tiles[3]!);
   expect(tiles[3]!.dataset.homeEntrance).toBe("revealed");
-  driver.scroll(100);
   unmount();
-  expect(driver.stopScroll).toHaveBeenCalledOnce();
-  expect(driver.stopMotion).toHaveBeenCalledOnce();
   expect(driver.stopVisible).toHaveBeenCalledOnce();
-  expect(driver.cancelFrame).toHaveBeenCalledOnce();
-  expect(page.style.getPropertyValue("--home-parallax")).toBe("");
   expect(tiles.every(tile => !tile.hasAttribute("data-home-entrance"))).toBe(true);
 });
 
@@ -98,13 +71,10 @@ it("keeps the same motion visit through turns and menu changes, and starts a fre
   expect(motion).toHaveBeenCalledOnce();
   expect(driver.environment.scrollToTop).toHaveBeenCalledOnce();
   fireEvent.click(document.querySelector(".menu-backdrop")!);
-  driver.scroll(300);
-  driver.frame();
   await user.click(screen.getByRole("button", { name: "EXPLORE" }));
   expect(driver.stopVisible).toHaveBeenCalledOnce();
   await user.click(screen.getByRole("button", { name: "HOME" }));
   expect(motion).toHaveBeenCalledTimes(2);
   expect(driver.environment.scrollToTop).toHaveBeenCalledTimes(2);
-  expect(document.querySelector<HTMLElement>(".home")!.style.getPropertyValue("--home-parallax")).toBe("0px");
   expect(driver.tiles()[0]).not.toBe(firstTile);
 });

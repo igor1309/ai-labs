@@ -1,4 +1,4 @@
-import { emptyLabyrinth } from "./support.ts";
+import { emptyLabyrinth, largestSize } from "./support.ts";
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
@@ -132,6 +132,11 @@ const textContrast = (text: Element, styleOf: typeof getComputedStyle = getCompu
   return contrast(seenOn(styleOf(text).color, surface), surface);
 };
 
+// Which theme the app sets, cheaper than reading every part.
+function expectPageIn(theme: Theme) {
+  expect(document.documentElement.dataset.theme).toBe(theme);
+}
+
 // The screen is in `theme` when the page and every surface on it take the
 // theme's colours from the game palette and shared tokens, or a layer both themes
 // lay over the navy, and every text read on it keeps text contrast with
@@ -139,6 +144,7 @@ const textContrast = (text: Element, styleOf: typeof getComputedStyle = getCompu
 // navy, so a surface left in the other theme shows. Symbols hidden from
 // reading, such as the faded stars, are pictures, not text. Given a part,
 // only its surfaces and texts are checked, beside the page's own colour.
+
 function expectScreenIn(theme: Theme, part: Element = document.body) {
   const styles = new Map<Element, CSSStyleDeclaration>();
   const styleOf: typeof getComputedStyle = element => {
@@ -159,7 +165,9 @@ function expectScreenIn(theme: Theme, part: Element = document.body) {
     .map((name) => tokens.getPropertyValue(`--ds-${name}`));
   const colours = [...Object.values(PALETTE[theme]), ...sharedColours, ...OVERLAYS];
 
-  expect(sameColour(styleOf(document.body).backgroundColor, PALETTE[theme].bg ?? "")).toBe(true);
+  // Home's page, past its ground, is bedrock.
+  const page = document.querySelector(".home-dig-site") ? tokens.getPropertyValue("--ds-strata-3") : PALETTE[theme].bg ?? "";
+  expect(sameColour(styleOf(document.body).backgroundColor, page)).toBe(true);
   expect(texts.length).toBeGreaterThan(0);
   expect(
     surfaces
@@ -183,8 +191,7 @@ async function home({ theme }: Walk) {
 
 async function menus({ theme, user }: Walk) {
   for (const menu of ["Theme", "Language"]) {
-    await openMenu(user, menu);
-    expectScreenIn(theme);
+    expectScreenIn(theme, await openMenu(user, menu));
     await user.click(outsideMenu());
   }
 }
@@ -338,7 +345,8 @@ async function pairsFound({ theme, user, timers }: Walk) {
   await playBoard(user, timers);
   endWave(timers);
   await user.click(screen.getByRole("button", { name: "HOME" }));
-  expectScreenIn(theme);
+  // The rest of the home page is its own walk.
+  expectScreenIn(theme, gameDoor("FIND THE PAIR"));
   await user.click(gameDoor("ANCIENT REPTILES"));
   expect(screen.queryAllByRole("img", { name: "FOUND" })).toHaveLength(0);
   expectScreenIn(theme);
@@ -607,11 +615,11 @@ describe("a chosen theme", () => {
   ] as const)("%s overrides the device in its %s appearance and back", async (name, chosen, appearance) => {
     const device = manualAppearance(appearance);
     const { user } = openApp({ device });
-    expectScreenIn(appearance);
+    expectPageIn(appearance);
 
     await chooseFrom(user, "Theme", name);
 
-    expectScreenIn(chosen);
+    expectPageIn(chosen);
     act(() => device.switchTo(chosen));
     act(() => device.switchTo(appearance));
     expectScreenIn(chosen);
@@ -623,11 +631,11 @@ describe("a chosen theme", () => {
     const device = manualAppearance("light");
     const storage = memoryStorage({ [THEME_KEY]: "dark" });
     const { user } = openApp({ device, storage });
-    expectScreenIn("dark");
+    expectPageIn("dark");
 
     await chooseFrom(user, "Theme", "System");
 
-    expectScreenIn("light");
+    expectPageIn("light");
     expect(storage.items.get(THEME_KEY)).toBe("system");
     act(() => device.switchTo("dark"));
     expectScreenIn("dark");
@@ -712,7 +720,7 @@ describe("the theme menu", () => {
       expect(within(menu).getAllByRole("menuitemradio").map(symbolOf)).toEqual(["monitor", "sun", "moon"]);
       expect(CHOICES[language].filter((name) => name === name.toLocaleUpperCase(language))).toEqual([]);
       expect(parseFloat(getComputedStyle(within(menu).getByText(CHOICES[language][0] ?? "")).fontSize)).toBeLessThan(
-        parseFloat(getComputedStyle(within(featuredCard()).getByText(LABELS[language].card)).fontSize) / 2
+        largestSize(getComputedStyle(within(featuredCard()).getByText(LABELS[language].card)).fontSize) / 2
       );
 
       await user.click(outsideMenu());

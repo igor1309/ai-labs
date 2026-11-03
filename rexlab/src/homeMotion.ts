@@ -2,14 +2,11 @@ export type HomeMotion = (page: HTMLElement) => () => void;
 
 export type HomeMotionEnvironment = {
   scrollToTop(): void;
-  scrollY(): number;
-  reducedMotion(): boolean;
-  subscribeScroll(update: () => void): () => void;
-  subscribeMotion(update: () => void): () => void;
-  nextFrame(update: () => void): () => void;
   watchVisible(tiles: readonly HTMLElement[], reveal: (tile: HTMLElement) => void): () => void;
 };
 
+// The sky's slower drift is CSS on the scroll timeline, so it runs with
+// the scroll itself and never waits for script.
 // A visit owns its entrances. Resize only changes layout, so a tile that
 // has appeared stays revealed until the child leaves Home.
 export function homeMotion(page: HTMLElement, environment: HomeMotionEnvironment): () => void {
@@ -27,27 +24,9 @@ export function homeMotion(page: HTMLElement, environment: HomeMotionEnvironment
   };
   page.addEventListener("focusin", focus);
 
-  let cancelFrame: (() => void) | undefined;
-  const draw = () => {
-    page.style.setProperty("--home-parallax", `${environment.reducedMotion() ? 0 : Math.max(0, environment.scrollY()) / 2}px`);
-  };
-  const update = () => {
-    if (cancelFrame) return;
-    cancelFrame = environment.nextFrame(() => {
-      cancelFrame = undefined;
-      draw();
-    });
-  };
-  const stopScroll = environment.subscribeScroll(update);
-  const stopMotion = environment.subscribeMotion(draw);
-  draw();
   return () => {
     stopVisible();
-    stopScroll();
-    stopMotion();
-    cancelFrame?.();
     page.removeEventListener("focusin", focus);
-    page.style.removeProperty("--home-parallax");
     for (const tile of tiles) delete tile.dataset.homeEntrance;
   };
 }
