@@ -3,6 +3,7 @@
 ## 2026-11-03
 
 - In Russian, Home's large card names the catalogue ДРЕВНИЕ ЯЩЕРЫ when it is today's game, as in English, instead of the old tile word ВСЕ.
+- A page change cut short by the window resizing no longer leaves an unhandled error behind.
 
 ## 2026-11-02
 
