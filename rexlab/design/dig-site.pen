@@ -282220,7 +282220,10 @@
                             {
                               "type": "icon",
                               "id": "Y8fpb",
+                              "x": 0,
+                              "y": 0,
                               "name": "Icon",
+                              "enabled": false,
                               "width": 30,
                               "height": 30,
                               "icon": "arrow-clockwise",
@@ -305767,7 +305770,10 @@
                 {
                   "type": "icon",
                   "id": "iNw4n",
+                  "x": 0,
+                  "y": 0,
                   "name": "Icon",
+                  "enabled": false,
                   "width": 30,
                   "height": 30,
                   "icon": "arrow-clockwise",
@@ -309652,7 +309658,10 @@
                 {
                   "type": "icon",
                   "id": "Eee9A",
+                  "x": 0,
+                  "y": 0,
                   "name": "Icon",
+                  "enabled": false,
                   "width": 30,
                   "height": 30,
                   "icon": "arrow-clockwise",
@@ -322666,7 +322675,10 @@
                 {
                   "type": "icon",
                   "id": "SyDVQ",
+                  "x": 0,
+                  "y": 0,
                   "name": "Icon",
+                  "enabled": false,
                   "width": 30,
                   "height": 30,
                   "icon": "arrow-clockwise",
