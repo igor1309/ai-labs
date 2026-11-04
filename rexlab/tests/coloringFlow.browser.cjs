@@ -1,20 +1,18 @@
 // Contract test: released app composition, service-worker offline reload,
 // real Canvas/IndexedDB, Home progress and shared input in Chromium.
 const assert = require("node:assert/strict");
-const { mkdir, mkdtemp, rm } = require("node:fs/promises");
-const { tmpdir } = require("node:os");
-const { join, resolve } = require("node:path");
+const { mkdir } = require("node:fs/promises");
+const { join } = require("node:path");
+const { appDir, root } = require("./appBuild.cjs");
 const { chromium } = require("playwright");
 
 (async () => {
-  const output = await mkdtemp(join(tmpdir(), "rexlab-coloring-flow-"));
+  const app = await appDir();
   let server, browser;
   try {
-    const { build, preview } = await import("vite");
-    const root = resolve(__dirname, "..");
-    await build({ root, logLevel: "error", build: { outDir: output } });
+    const { preview } = await import("vite");
     // Preview CORS adds Vary: Origin, unlike the same-origin release host.
-    server = await preview({ root, logLevel: "error", build: { outDir: output }, preview: { cors: false, host: "127.0.0.1", port: 0, open: false } });
+    server = await preview({ root, logLevel: "error", build: { outDir: app.dir }, preview: { cors: false, host: "127.0.0.1", port: 0, open: false } });
     const url = server.resolvedUrls.local[0];
     browser = await chromium.launch({ headless: true,
       ...(process.env.CHROMIUM_SINGLE_PROCESS === "1" ? { args: ["--single-process", "--in-process-gpu"] } : {}) });
@@ -279,7 +277,7 @@ const { chromium } = require("playwright");
     try { await browser?.close(); }
     finally {
       try { if (server) { server.httpServer.closeAllConnections(); await new Promise((resolve, reject) => server.httpServer.close(error => error ? reject(error) : resolve())); } }
-      finally { await rm(output, { recursive: true, force: true }); }
+      finally { await app.done(); }
     }
   }
 })().catch(error => { console.error(error); console.error(`FAIL coloring flow: ${error.message.split("\n")[0]}`); process.exitCode = 1; });

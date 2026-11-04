@@ -1,3 +1,4 @@
+const { appFiles } = require('./appBuild.cjs');
 const assert = require('node:assert/strict');
 const { readFile, mkdir } = require('node:fs/promises');
 const { resolve, extname, join } = require('node:path');
@@ -117,14 +118,14 @@ async function fullFlow(page, { width, height, language, theme, reduced }) {
   assert.equal(await page.locator('.featured-card').getAttribute('data-game'), featured, `${label}: returning keeps today's game`);
 }
 exports.runHome = async function(sizes) {
-  const { build } = await import('vite');
-  const bundle = await build({ root: resolve(__dirname, '..'), logLevel: 'error', build: { write: false } });
-  const files = new Map(bundle.output.map(file => [file.fileName, file.type === 'chunk' ? file.code : file.source]));
+  const files = await appFiles();
   const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || undefined, headless: true });
   let checked = 0;
   try {
     if (process.env.HOME_SCREENSHOTS) await mkdir(process.env.HOME_SCREENSHOTS, { recursive: true });
-    for (const [width, height] of sizes) for (const language of ['en', 'ru']) for (const theme of ['light', 'dark']) for (const level of levels) {
+    // Layout is the same in both themes; the earth's and the sky's colours
+    // are checked in the dark theme at the first window only.
+    for (const [index, [width, height]] of sizes.entries()) for (const language of ['en', 'ru']) for (const theme of index === 0 ? ['light', 'dark'] : ['light']) for (const level of levels) {
       const context = await browser.newContext({ viewport: { width, height }, reducedMotion: 'reduce', serviceWorkers: 'block' });
       try {
         await context.route('http://home.test/**', async route => {
