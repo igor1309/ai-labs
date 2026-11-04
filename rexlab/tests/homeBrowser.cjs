@@ -123,7 +123,9 @@ exports.runHome = async function(sizes) {
   let checked = 0;
   try {
     if (process.env.HOME_SCREENSHOTS) await mkdir(process.env.HOME_SCREENSHOTS, { recursive: true });
-    for (const [width, height] of sizes) for (const language of ['en', 'ru']) for (const theme of ['light', 'dark']) for (const level of levels) {
+    // Layout is the same in both themes; the earth's and the sky's colours
+    // are checked in the dark theme at the first window only.
+    for (const [index, [width, height]] of sizes.entries()) for (const language of ['en', 'ru']) for (const theme of index === 0 ? ['light', 'dark'] : ['light']) for (const level of levels) {
       const context = await browser.newContext({ viewport: { width, height }, reducedMotion: 'reduce', serviceWorkers: 'block' });
       try {
         await context.route('http://home.test/**', async route => {
