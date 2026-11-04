@@ -6,6 +6,7 @@ set -euo pipefail
 # CI on the merge commit. Each outcome goes to ntfy on the topic in
 # ~/.config/ntfy/topic. Exits 0 only when trunk's run on the merge passed.
 # Then run finish-merged-pr.sh <branch>.
+# A branch may be behind trunk; GitHub still enforces checks and conflicts.
 
 [[ $# -eq 1 ]] || { echo "usage: $(basename "$0") <pr-number>" >&2; exit 2; }
 pr="$1"

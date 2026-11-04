@@ -45,6 +45,8 @@
   lands moments later. Wait until `gh pr view` says `MERGED` before running
   cleanup or closing the issue. Run `finish-merged-pr.sh` from the feature
   branch's own worktree.
+- A PR branch need not include the latest trunk. Do not merge trunk solely
+  for freshness; resolve merge conflicts and test those changes when needed.
 - Use a merge commit only; do not squash or rebase-merge.
 - Do not add a `Co-Authored-By` trailer or any other AI attribution to
   commit messages.
