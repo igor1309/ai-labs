@@ -7,11 +7,24 @@ const { chromium } = require('playwright');
 // window no board draws takes its shape's.
 const sizes = [[1133, 744, 206, 60], [744, 1133, 206, 50], [393, 852, 208, 30], [375, 667, 186, 14], [852, 393, 124, 0], [1440, 900, 206, 60]];
 const returning = { best: { hatchling: 3, explorer: 2, paleontologist: null }, earned: ['tyrannosaurus', 'triceratops', 'stegosaurus', 'brachiosaurus', 'velociraptor'] };
+// A screen's layout turn starts from an effect after it is drawn, so a
+// slow machine can show the new screen a frame before the turn begins:
+// the page is still only when two frames in a row show no turn and no
+// finite animation.
 async function settle(page) {
-  await page.waitForFunction(() => !document.documentElement.hasAttribute('data-turning'));
   await page.evaluate(async () => {
     await document.fonts.ready;
-    await Promise.all(document.getAnimations().filter(a => a.timeline === document.timeline && a.effect?.getComputedTiming().iterations !== Infinity).map(a => a.finished.catch(() => {})));
+    const frame = () => new Promise(resolve => requestAnimationFrame(resolve));
+    const moving = () => document.documentElement.hasAttribute('data-turning') ||
+      document.getAnimations().some(a => a.timeline === document.timeline && a.playState === 'running' && a.effect?.getComputedTiming().iterations !== Infinity);
+    for (let still = 0; still < 2;) {
+      if (moving()) {
+        still = 0;
+        await Promise.all(document.getAnimations().filter(a => a.timeline === document.timeline && a.playState === 'running' && a.effect?.getComputedTiming().iterations !== Infinity).map(a => a.finished.catch(() => {})));
+      }
+      await frame();
+      still = moving() ? 0 : still + 1;
+    }
   });
 }
 function inside(box, width, height, label) {
