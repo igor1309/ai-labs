@@ -1,6 +1,10 @@
-import { ArrowLeft, House, Landmark, X } from "lucide-react";
+import { ArrowLeft, House, LibraryBig } from "lucide-react";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import meatPicture from "./assets/care/meat.webp?url&no-inline";
+import plantsPicture from "./assets/care/plants.webp?url&no-inline";
 import { Button } from "./Button.tsx";
+import { FitText } from "./FitText.tsx";
+import { Tooth } from "./Tooth.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 import { useGateShown } from "./OrientationGate.tsx";
@@ -36,16 +40,16 @@ export function WhoseJawShelfScreen({ audioControl, language, jaws, earned, jawF
   const ordered = [...jaws.filter(({ diet }) => diet === "plants"), ...jaws.filter(({ diet }) => diet === "meat")];
   const rows = Array.from({ length: Math.ceil(ordered.length / 4) }, (_, row) => ordered.slice(row * 4, row * 4 + 4));
   return <main className="whose-jaw-shelf-screen">
-    <div inert={card !== undefined} aria-hidden={card ? true : undefined}>
+    <div className="jaw-shelf-content" inert={card !== undefined} aria-hidden={card ? true : undefined}>
       <header className="jaw-shelf-bar">
-        <Button className="home-button" onClick={onBack}><ArrowLeft aria-hidden="true" />{text.back}</Button>
-        <h1><Landmark aria-hidden="true" />{text.jawShelf}</h1>
-        <Button className="home-button" onClick={onHome}><House aria-hidden="true" />{text.home}</Button>
+        <Button className="home-button" aria-label={text.back} onClick={onBack}><ArrowLeft aria-hidden="true" /><span>{text.back}</span></Button>
+        <h1><LibraryBig aria-hidden="true" /><FitText className="jaw-shelf-title" text={text.jawShelf} /></h1>
+        <Button className="home-button" aria-label={text.home} onClick={onHome}><House aria-hidden="true" /><span>{text.home}</span></Button>
       </header>
-      <div className="jaw-shelf-status">{audioControl}<p className="jaw-shelf-count" aria-label={text.jawCollection}>🦷 {jaws.filter(({ id }) => earned.includes(id)).length} / {jaws.length}</p></div>
+      <div className="jaw-shelf-status">{audioControl}<p className="jaw-shelf-count" aria-label={text.jawCollection}><Tooth /><strong>{jaws.filter(({ id }) => earned.includes(id)).length}</strong><span>/ {jaws.length}</span></p></div>
       <div className="jaw-shelves" role="group" aria-label={text.jawShelf}>
         {rows.map((row, index) => <section className="jaw-shelf-row" key={index}>
-          <div className="jaw-shelf-labels">{[...new Set(row.map(({ diet }) => diet))].map((diet) => <span key={diet}><span aria-hidden="true">{diet === "meat" ? "🥩" : "🌿"}</span> {text.jawFoods[diet]}</span>)}</div>
+          <div className="jaw-shelf-labels">{[...new Set(row.map(({ diet }) => diet))].map((diet) => <span key={diet}><Picture className="jaw-shelf-food" src={diet === "meat" ? meatPicture : plantsPicture} alt="" width={34} height={24} /> {text.jawFoods[diet]}</span>)}</div>
           <div className="jaw-shelf-places">{row.map((jaw) => {
             const unlocked = earned.includes(jaw.id);
             const name = jaw.name[language].toLocaleUpperCase(language);
@@ -55,8 +59,9 @@ export function WhoseJawShelfScreen({ audioControl, language, jaws, earned, jawF
                 opener.current = event.currentTarget;
                 setCard({ id: jaw.id, leaving: false });
               }}>
-              <Picture className={unlocked ? "jaw-shelf-picture" : "jaw-shelf-picture jaw-shelf-silhouette"} src={jawFor(jaw.id)} alt="" width={600} height={450} />
-              <span className="jaw-shelf-name">{unlocked ? name : "?"}</span>
+              <span className="jaw-shelf-pocket"><Picture className={unlocked ? "jaw-shelf-picture" : "jaw-shelf-picture jaw-shelf-silhouette"} src={jawFor(jaw.id)} alt="" width={600} height={450} />
+                {!unlocked && <span className="jaw-shelf-unknown" aria-hidden="true">?</span>}</span>
+              <span className="jaw-shelf-name">{unlocked ? name : ""}</span>
             </Button>;
           })}</div>
         </section>)}
@@ -110,14 +115,14 @@ function JawCard({ audioControl, jaw, language, jawPicture, gummyPicture, pitch,
       }
     }}>
     <section className="jaw-shelf-card" role="dialog" aria-modal="true" aria-labelledby={title}>
-      <header className="jaw-card-controls"><Button ref={close} className="home-button" aria-label={text.back} aria-disabled={leaving} onClick={() => { if (!leaving) onClose(); }}><X aria-hidden="true" /><span>{text.back}</span></Button>{audioControl}</header>
-      <h2 id={title}>{jaw.name[language].toLocaleUpperCase(language)}</h2>
       <div className="jaw-card-pictures">
         <PictureImage look={gummyLook} className="jaw-card-dinosaur" src={gummyPicture} alt={jaw.name[language].toLocaleUpperCase(language)} width={800} height={600} />
         <div className="jaw-card-chomp" data-ready={ready || undefined}><PictureImage look={look} className="jaw-card-jaw" src={jawPicture} alt="" width={600} height={450} /></div>
       </div>
-      <p className="jaw-card-diet"><span aria-hidden="true">{jaw.diet === "meat" ? "🥩" : "🌿"}</span> {text.jawFoods[jaw.diet]}</p>
-      <p className="jaw-card-fact">🦷 {jaw.fact[language].toLocaleUpperCase(language)}</p>
+      <h2 id={title}><FitText className="jaw-card-title" text={jaw.name[language].toLocaleUpperCase(language)} /></h2>
+      <p className="jaw-card-diet"><Picture className="jaw-shelf-food" src={jaw.diet === "meat" ? meatPicture : plantsPicture} alt="" width={34} height={24} /> {text.jawFoods[jaw.diet]}</p>
+      <p className="jaw-card-fact"><Tooth /><span>{jaw.fact[language].toLocaleUpperCase(language)}</span></p>
+      <footer className="jaw-card-controls"><Button ref={close} className="home-button" aria-label={text.back} aria-disabled={leaving} onClick={() => { if (!leaving) onClose(); }}><ArrowLeft aria-hidden="true" /><span>{text.back}</span></Button>{audioControl}</footer>
     </section>
   </div>;
 }

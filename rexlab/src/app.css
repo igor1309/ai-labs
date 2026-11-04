@@ -10770,7 +10770,6 @@ html[data-size="tall-narrow"] .jaw-result-actions button { width: 100%; font-siz
 
 .whose-jaw-tile-picture { width: 100%; min-height: 0; flex: 1 1 0; object-fit: contain; }
 .featured-card[data-game="whoseJaw"] .whose-jaw-tile-picture { height: 100%; }
-[data-theme="dark"] .whose-jaw-shelf-screen { background: #0f1320; color: #ece8de; }
 [data-theme="dark"] .featured-card[data-game="whoseJaw"] { background: #f2b24b; color: #1d2742; }
 
 /* Reduced motion comes after every rule it overrides, so that it wins
@@ -10887,36 +10886,6 @@ html[data-size="wide-short"] .jaw-next { min-height: 48px; padding: 10px 16px; f
 
 .jaw-museum-tooth { font-size: clamp(64px, 12vh, 140px); font-size: clamp(64px, 12dvh, 140px); margin: auto; }
 
-.whose-jaw-shelf-screen {
-  min-height: 100dvh; box-sizing: border-box; background: #f2efe8; color: #1d2742;
-  padding: calc(16px + env(safe-area-inset-top)) calc(24px + var(--screen-right)) calc(16px + env(safe-area-inset-bottom)) calc(24px + var(--screen-left));
-}
-.jaw-shelf-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.jaw-shelf-bar h1 { display: flex; align-items: center; gap: 10px; margin: 0; font-size: clamp(22px, 3vw, 36px); }
-.jaw-shelf-count { text-align: center; margin: 8px 0; font-size: 22px; font-weight: 700; }
-.jaw-shelves { max-width: 1120px; margin: auto; display: grid; gap: 12px; }
-.jaw-shelf-row { min-width: 0; animation: rise-in var(--motion-screen) var(--ease-out) both; }
-.jaw-shelf-labels { display: flex; gap: 12px; margin-bottom: 4px; font-size: 16px; line-height: 20px; font-weight: 700; }
-.jaw-shelf-labels > span { background: #fffdf8; border-radius: 12px; padding: 2px 12px; }
-.jaw-shelf-places { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; border-bottom: 14px solid #a9774a; border-radius: 6px; }
-.jaw-shelf-place { position: relative; display: flex; flex-direction: column; align-items: center; width: 100%; height: clamp(84px, 12vh, 148px); height: clamp(84px, 12dvh, 148px); min-width: 0; border: 0; padding: 0 4px; border-radius: 20px 20px 0 0; background: transparent; color: inherit; }
-.jaw-shelf-picture { width: 100%; height: calc(100% - 36px); object-fit: contain; }
-.jaw-shelf-silhouette { filter: brightness(0) opacity(.16); }
-.jaw-shelf-name { display: grid; place-items: center; height: 36px; width: 100%; font-size: clamp(14px, 1.5vw, 20px); font-weight: 700; line-height: 1.1; overflow-wrap: anywhere; }
-.jaw-shelf-place:disabled { opacity: 1; }
-.jaw-shelf-place:disabled .jaw-shelf-name { color: #5c647a; font-size: 28px; }
-.jaw-shelf-place:focus-visible, .jaw-shelf-card button:focus-visible { outline: 3px solid #c9583d; outline-offset: 3px; }
-html[data-size="tall-narrow"] .jaw-shelf-bar { display: grid; grid-template-columns: 56px minmax(0, 1fr) 56px; }
-html[data-size="tall-narrow"] .jaw-shelf-bar h1 { justify-content: center; font-size: 22px; }
-html[data-size="tall-narrow"] .jaw-shelf-bar .home-button { min-width: 56px; width: 56px; padding: 12px; gap: 0; font-size: 0; }
-html[data-size="tall-narrow"] .jaw-shelf-bar .home-button svg { width: 24px; height: 24px; }
-html[data-size="tall-narrow"] .jaw-shelf-name { height: 42px; font-size: 12px; line-height: 14px; }
-html[data-size="tall-narrow"] .jaw-shelf-picture { height: calc(100% - 42px); }
-.jaw-card-scrim { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; padding: 24px; background: #0f1320aa; animation: fade-in var(--motion-small) var(--ease-out) both; }
-.jaw-shelf-card { box-sizing: border-box; width: min(640px, 100%); max-height: calc(100dvh - 48px); overflow-y: auto; overscroll-behavior: none; padding: 20px; border-radius: 28px; background: #fffdf8; color: #1d2742; text-align: center; animation: rise-in var(--motion-screen) var(--ease-out) both; }
-.jaw-card-controls { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.jaw-shelf-status { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 12px; margin: 8px 0; }
-.jaw-shelf-status .jaw-shelf-count { margin: 0; }
 .game-audio-button { flex-shrink: 0; min-width: 48px; min-height: 48px; gap: 8px; font-size: 16px; }
 .game-audio-button svg { animation: fade-in var(--motion-small) var(--ease-out) both; }
 .jaw-result-audio { display: flex; justify-content: flex-end; width: 100%; }
@@ -10929,22 +10898,6 @@ html[data-size="tall-narrow"] .whose-jaw-board-bar[data-audio] .jaw-socket { box
 html[data-size="tall-narrow"] .game-audio-button {
   padding: 8px 12px;
 }
-
-html[data-size="tall-narrow"] .jaw-card-controls > .home-button:first-child { box-sizing: border-box; width: 48px; min-width: 48px; padding: 12px; gap: 0; }
-html[data-size="tall-narrow"] .jaw-card-controls > .home-button:first-child span { display: none; }
-.jaw-shelf-card h2 { margin: 12px 0; font-size: clamp(24px, 3vw, 36px); overflow-wrap: anywhere; }
-.jaw-card-pictures { display: flex; align-items: center; justify-content: center; height: min(30vh, 240px); height: min(30dvh, 240px); }
-.jaw-card-dinosaur { width: 65%; height: 100%; object-fit: contain; }
-.jaw-card-chomp { width: 35%; }
-.jaw-card-chomp[data-ready] { animation: jaw-chomp var(--motion-alive) var(--ease-out) 2; }
-.jaw-card-jaw { display: block; width: 100%; height: auto; }
-.jaw-card-diet { margin: 8px 0; font-size: 24px; font-weight: 700; }
-.jaw-card-fact { font-size: clamp(18px, 2.4vw, 26px); font-weight: 700; }
-.jaw-card-scrim[data-leaving] { animation: fade-out var(--motion-screen) var(--ease-out) both; }
-.jaw-card-scrim[data-leaving] .jaw-shelf-card { animation: none; }
-[data-theme="dark"] .jaw-shelf-labels > span, [data-theme="dark"] .jaw-shelf-card { background: #181e2e; color: #ece8de; }
-[data-theme="dark"] .jaw-shelf-silhouette { filter: brightness(0) invert(1) opacity(.2); }
-[data-theme="dark"] .jaw-shelf-place:disabled .jaw-shelf-name { color: #9ca3b6; }
 
 /* Shared controls use token colours, radii and fonts; each screen owns
    their sizes and spacing. */
@@ -12702,6 +12655,125 @@ html[data-size="wide-short"] .whose-jaw-play { flex: 0 0 auto; min-width: 160px;
 html[data-size="wide-short"] .whose-jaw-shelf { flex: 1 1 0; }
 html[data-size="wide-short"] .whose-jaw-welcome-bedrock { display: none; }
 
+/* Museum shelves keep the sand across the whole screen. On a short
+   landscape, two columns keep all sixteen places above the bottom edge. */
+.whose-jaw-shelf-screen {
+  --shelf-picture: 104px;
+  --shelf-name: 30px;
+  --shelf-plank: 14px;
+  box-sizing: border-box;
+  height: 100dvh;
+  padding: calc(36px + env(safe-area-inset-top)) calc(40px + var(--screen-right)) calc(24px + env(safe-area-inset-bottom)) calc(40px + var(--screen-left));
+  background: var(--ds-strata-1);
+  color: var(--ds-ink);
+  font-family: var(--ds-font);
+  overflow: hidden;
+  animation: fade-in var(--motion-screen) var(--ease-out) both;
+}
+.jaw-shelf-content { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--ds-space-s) var(--ds-space-l); max-width: 1280px; margin: auto; }
+.jaw-shelf-bar { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: var(--ds-space-s); align-items: center; min-width: 0; }
+.jaw-shelf-bar h1 { display: flex; justify-content: center; align-items: center; gap: var(--ds-space-m); min-width: 0; margin: 0; font-size: var(--ds-size-title); font-weight: 800; }
+.jaw-shelf-bar h1 svg { flex: none; width: 34px; height: 34px; }
+.jaw-shelf-title, .jaw-card-title { display: block; min-width: 0; white-space: nowrap; }
+.jaw-shelf-bar .home-button { box-sizing: border-box; height: 48px; min-height: 48px; padding: 0 var(--ds-space-m); gap: var(--ds-space-s); font-size: var(--ds-size-label); font-weight: 800; }
+.jaw-shelf-status { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--ds-space-s); }
+.jaw-shelf-status .game-audio-button { box-sizing: border-box; height: 48px; min-height: 48px; padding-block: 0; }
+.jaw-shelf-count { display: flex; align-items: center; gap: var(--ds-space-s); margin: 0; padding: var(--ds-space-s) var(--ds-space-m); border-radius: var(--ds-radius-tag); background: var(--ds-quiet); font-size: var(--ds-size-number); font-weight: 800; line-height: 1; }
+.jaw-shelf-count svg { width: 26px; height: 26px; }
+.jaw-shelf-count span { color: var(--ds-ink-soft); font-size: var(--ds-size-20); }
+.jaw-shelves { grid-column: 1 / -1; display: grid; gap: var(--ds-btn-gap); min-width: 0; }
+.jaw-shelf-row { position: relative; display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: var(--ds-space-l); min-width: 0; padding-bottom: var(--shelf-plank); animation: rise-in var(--motion-screen) var(--ease-out) both; }
+.jaw-shelf-row::after { content: ""; position: absolute; bottom: 0; left: 0; right: 0; height: var(--shelf-plank); border-radius: var(--ds-radius-4); background: var(--ds-plank); }
+.jaw-shelf-labels { display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-start; gap: var(--ds-space-6); padding-bottom: var(--shelf-name); font-size: var(--ds-size-15); font-weight: 800; }
+.jaw-shelf-food { flex: none; width: 34px; height: 24px; object-fit: contain; }
+.jaw-shelf-labels > span { display: flex; align-items: center; gap: var(--ds-space-s); padding: var(--ds-space-6) var(--ds-btn-gap); border-radius: var(--ds-radius-tag); background: var(--ds-label); color: var(--ds-ink); white-space: nowrap; }
+.jaw-shelf-places { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--ds-space-l); min-width: 0; }
+.jaw-shelf-place { display: flex; flex-direction: column; align-items: center; min-width: 0; width: 100%; border: 0; padding: 0; background: transparent; color: var(--ds-ink); border-radius: var(--ds-radius-16); }
+.jaw-shelf-pocket { position: relative; display: block; width: 100%; height: var(--shelf-picture); border-radius: var(--ds-radius-16); background: var(--ds-label); }
+.jaw-shelf-picture { box-sizing: border-box; width: 100%; height: 100%; padding: var(--ds-space-6); object-fit: contain; }
+.jaw-shelf-silhouette { opacity: .12; }
+.jaw-shelf-place:disabled { opacity: 1; }
+.jaw-shelf-place:disabled .jaw-shelf-pocket { background: var(--ds-quiet); }
+.jaw-shelf-unknown { position: absolute; inset: 0; display: grid; place-items: center; color: var(--ds-ink-soft); font-size: var(--ds-size-44); font-weight: 800; }
+.jaw-shelf-name { box-sizing: border-box; display: grid; place-items: center; width: 100%; height: var(--shelf-name); font-size: var(--ds-size-15); line-height: 15px; font-weight: 800; overflow-wrap: anywhere; }
+.jaw-shelf-place:focus-visible, .jaw-shelf-card button:focus-visible { outline: 3px solid var(--ds-action); outline-offset: 3px; }
+.jaw-card-scrim { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; padding: var(--ds-space-m); background: var(--ds-scrim); animation: fade-in var(--motion-small) var(--ease-out) both; }
+.jaw-shelf-card { box-sizing: border-box; display: flex; flex-direction: column; align-items: center; gap: var(--ds-space-m); width: min(520px, 100%); max-height: calc(100dvh - 32px); overflow-y: auto; overscroll-behavior: none; padding: var(--ds-space-28); border-radius: var(--ds-radius-24); background: var(--ds-label); color: var(--ds-ink); text-align: center; animation: rise-in var(--motion-screen) var(--ease-out) both; }
+.jaw-card-pictures { position: relative; flex: none; width: 100%; height: 252px; border-radius: var(--ds-radius-22); background: var(--ds-photo-white); }
+.jaw-card-dinosaur { display: block; width: 100%; height: 100%; object-fit: contain; }
+.jaw-card-chomp { position: absolute; right: 0; bottom: var(--ds-space-s); box-sizing: border-box; width: 36%; padding: var(--ds-space-6); border: 2px solid var(--ds-outline); border-radius: var(--ds-radius-16); background: var(--ds-photo-white); }
+.jaw-card-chomp[data-ready] { animation: jaw-chomp var(--motion-alive) var(--ease-out) 2; }
+.jaw-card-jaw { display: block; width: 100%; height: auto; }
+.jaw-shelf-card h2 { width: 100%; margin: 0; font-size: var(--ds-size-title); font-weight: 800; }
+.jaw-card-diet { display: flex; gap: var(--ds-space-m); align-items: center; margin: 0; padding: var(--ds-space-s) var(--ds-space-l); border-radius: var(--ds-radius-tag); background: var(--ds-quiet); font-size: var(--ds-size-label); font-weight: 800; }
+.jaw-card-fact { display: flex; align-items: center; gap: var(--ds-space-m); margin: 0; text-align: left; font-size: var(--ds-size-22); line-height: 1.25; font-weight: 800; }
+.jaw-card-fact svg { flex: none; width: 28px; height: 28px; color: var(--ds-reward); }
+.jaw-card-controls { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: var(--ds-space-s); }
+.jaw-card-controls > .home-button:not(.game-audio-button) { min-height: 64px; padding: var(--ds-space-s) var(--ds-space-28); border: 3px solid var(--ds-ink); background: transparent; color: var(--ds-ink); font-size: var(--ds-size-action); font-weight: 800; }
+.jaw-card-scrim[data-leaving] { animation: fade-out var(--motion-screen) var(--ease-out) both; }
+.jaw-card-scrim[data-leaving] .jaw-shelf-card { animation: none; }
+.whose-jaw-shelf-screen .picture[data-picture="loading"] { --shimmer-from: var(--ds-pocket-1); --shimmer-to: var(--ds-label); }
+html[data-size="tall"] .whose-jaw-shelf-screen { padding-inline: calc(56px + var(--screen-left)) calc(56px + var(--screen-right)); --shelf-picture: 112px; --shelf-name: 42px; }
+html[data-size="tall"] .jaw-shelf-content { grid-template-columns: minmax(0, 1fr); gap: var(--ds-space-28); }
+html[data-size="tall"] .jaw-shelves { gap: var(--ds-space-28); }
+html:is([data-size="tall"], [data-size="tall-narrow"], [data-size="wide-short"]) .jaw-shelf-row { grid-template-columns: minmax(0, 1fr); gap: var(--ds-space-xs); }
+html:is([data-size="tall"], [data-size="tall-narrow"], [data-size="wide-short"]) .jaw-shelf-labels { flex-direction: row; padding: 0; }
+html[data-size="tall-narrow"] .whose-jaw-shelf-screen { padding: calc(62px + env(safe-area-inset-top)) calc(20px + var(--screen-right)) calc(24px + env(safe-area-inset-bottom)) calc(20px + var(--screen-left)); --shelf-picture: 64px; --shelf-name: 42px; --shelf-plank: 12px; }
+html[data-size="tall-narrow"] .jaw-shelf-content { grid-template-columns: minmax(0, 1fr); gap: var(--ds-space-m); }
+html[data-size="tall-narrow"] .jaw-shelf-bar { grid-template-columns: 56px minmax(0, 1fr) 56px; }
+html[data-size="tall-narrow"] .jaw-shelf-bar h1 { font-size: var(--ds-size-24); gap: var(--ds-space-s); }
+html[data-size="tall-narrow"] .jaw-shelf-bar h1 svg { width: 24px; height: 24px; }
+html[data-size="tall-narrow"] .jaw-shelf-bar .home-button { min-width: 56px; width: 56px; height: 56px; padding: 12px; gap: 0; font-size: 0; }
+html[data-size="tall-narrow"] .jaw-shelf-bar .home-button svg { width: 24px; height: 24px; }
+html[data-size="tall-narrow"] .jaw-shelf-bar .home-button span { display: none; }
+html[data-size="tall-narrow"] .jaw-shelves { gap: var(--ds-space-m); }
+html[data-size="tall-narrow"] .jaw-shelf-places { gap: var(--ds-space-s); }
+html[data-size="tall-narrow"] .jaw-shelf-labels .jaw-shelf-food { width: 24px; height: 18px; }
+html[data-size="tall-narrow"] .jaw-shelf-labels { font-size: var(--ds-size-13); }
+html[data-size="tall-narrow"] .jaw-shelf-name { height: 42px; font-size: var(--ds-size-11); line-height: 14px; }
+html[data-size="tall-narrow"] .jaw-shelf-pocket { border-radius: var(--ds-radius-12); }
+html[data-size="tall-narrow"] .jaw-shelf-unknown { font-size: var(--ds-size-34); }
+html[data-size="tall-narrow"] .jaw-shelf-card { padding: var(--ds-space-20); }
+html[data-size="tall-narrow"] .jaw-card-pictures { height: 180px; }
+html[data-size="tall-narrow"] .jaw-card-controls .game-audio-button { min-width: 48px; width: 48px; padding: 0; justify-content: center; }
+html[data-size="tall-narrow"] .jaw-card-controls .game-audio-button span { display: none; }
+html[data-size="tall-narrow"] .jaw-card-fact { font-size: var(--ds-size-20); }
+html[data-size="tall-narrow"] .jaw-card-diet { font-size: var(--ds-size-16); }
+@media (max-height: 700px) {
+  html[data-size="tall-narrow"] .whose-jaw-shelf-screen { padding-top: calc(20px + env(safe-area-inset-top)); --shelf-picture: 46px; --shelf-plank: 8px; padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
+  html[data-size="tall-narrow"] .jaw-shelf-content { gap: var(--ds-space-s); }
+  html[data-size="tall-narrow"] .jaw-shelves { gap: var(--ds-space-xs); }
+  html[data-size="tall-narrow"] .jaw-shelf-labels > span { padding-block: var(--ds-space-xs); }
+  html[data-size="tall-narrow"] .jaw-shelf-card { gap: var(--ds-space-s); }
+  html[data-size="tall-narrow"] .jaw-card-pictures { height: 150px; }
+}
+html[data-size="wide-short"] .whose-jaw-shelf-screen { padding: calc(8px + env(safe-area-inset-top)) calc(79px + var(--screen-right)) calc(24px + env(safe-area-inset-bottom)) calc(79px + var(--screen-left)); --shelf-picture: 58px; --shelf-name: 42px; --shelf-plank: 12px; }
+html[data-size="wide-short"] .jaw-shelf-content { grid-template-columns: minmax(0, 1fr) auto; }
+html[data-size="wide-short"] .jaw-shelf-bar .home-button { min-width: 44px; width: 44px; padding: 0; }
+html[data-size="wide-short"] .jaw-shelf-bar .home-button span { display: none; }
+html[data-size="wide-short"] .jaw-shelf-bar h1 { font-size: var(--ds-size-24); gap: var(--ds-space-s); }
+html[data-size="wide-short"] .jaw-shelf-status .game-audio-button { min-width: 44px; width: 44px; padding: 0; }
+html[data-size="wide-short"] .jaw-shelf-status .game-audio-button span { display: none; }
+html[data-size="wide-short"] .jaw-shelf-count { font-size: var(--ds-size-20); }
+html[data-size="wide-short"] .jaw-shelf-count span { font-size: var(--ds-size-15); }
+html[data-size="wide-short"] .jaw-shelves { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-flow: column; grid-template-rows: repeat(2, auto); gap: var(--ds-space-s) var(--ds-space-20); }
+html[data-size="wide-short"] .jaw-shelf-places { gap: var(--ds-space-s); }
+html[data-size="wide-short"] .jaw-shelf-labels .jaw-shelf-food { width: 24px; height: 18px; }
+html[data-size="wide-short"] .jaw-shelf-labels { font-size: var(--ds-size-13); }
+html[data-size="wide-short"] .jaw-shelf-labels > span { padding-block: var(--ds-space-xs); }
+html[data-size="wide-short"] .jaw-shelf-name { font-size: var(--ds-size-11); line-height: 14px; }
+html[data-size="wide-short"] .jaw-shelf-unknown { font-size: var(--ds-size-34); }
+/* A landscape card keeps its picture beside the words so BACK stays in
+   view without making the fact or the dinosaur too small. */
+html[data-size="wide-short"] .jaw-shelf-card { width: min(694px, 100%); display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: var(--ds-space-s) var(--ds-space-m); padding: var(--ds-space-m); }
+html[data-size="wide-short"] .jaw-card-pictures { grid-row: 1 / 5; height: 220px; }
+html[data-size="wide-short"] .jaw-shelf-card h2 { font-size: var(--ds-size-24); }
+html[data-size="wide-short"] .jaw-card-diet { justify-self: center; font-size: var(--ds-size-16); padding: var(--ds-space-6) var(--ds-space-m); }
+html[data-size="wide-short"] .jaw-card-fact { font-size: var(--ds-size-16); gap: var(--ds-space-s); }
+html[data-size="wide-short"] .jaw-card-controls > .home-button:not(.game-audio-button) { min-height: 48px; padding: var(--ds-space-s) var(--ds-space-m); font-size: var(--ds-size-20); }
+
+body:has(.whose-jaw-shelf-screen) #version { display: none; }
+
 @media (prefers-reduced-motion: reduce) {
   :root {
     --motion-standard: 160ms;
@@ -12711,6 +12783,9 @@ html[data-size="wide-short"] .whose-jaw-welcome-bedrock { display: none; }
     --motion-amount: 0;
   }
 
+  .jaw-shelf-row, .jaw-shelf-card, .jaw-card-chomp[data-ready] { animation: fade-in var(--motion-small) var(--ease-out) both; }
+  .jaw-card-scrim[data-leaving] { animation: fade-out var(--motion-small) var(--ease-out) both; }
+
   .friends-dig-site .friend-card, .friends-dig-site .no-friends { animation: fade-in var(--motion-small) var(--ease-out) both; }
 
   .home.home-dig-site .home-sky-body,
@@ -12719,8 +12794,6 @@ html[data-size="wide-short"] .whose-jaw-welcome-bedrock { display: none; }
     animation: fade-in var(--motion-small) var(--ease-out) both;
   }
 
-  .jaw-shelf-row, .jaw-shelf-card, .jaw-card-chomp[data-ready] { animation: fade-in var(--motion-small) var(--ease-out) both; }
-  .jaw-card-scrim[data-leaving] { animation: fade-out var(--motion-small) var(--ease-out) both; }
 
   .whose-jaw-result h1, .jaw-result-jaws li, .jaw-result-find, .jaw-result-actions { animation: fade-in var(--motion-small) var(--ease-out) both; }
 

@@ -76,6 +76,86 @@ async function welcome(page, width, height, label, { sandTop, bedrock, phone, be
     assert(name.fits && name.size >= 13, `${label}: level name fits: ${JSON.stringify(name)}`);
   }
 }
+async function shelf(page, width, height, label, earned) {
+  await page.locator('.whose-jaw-shelf').press('Enter');
+  await page.locator('.whose-jaw-shelf-screen').waitFor();
+  await page.waitForFunction(() => [...document.querySelectorAll('.jaw-shelf-picture')].every(e => ['appearing', 'shown'].includes(e.dataset.picture)));
+  await settle(page);
+  const measured = await page.evaluate(() => {
+    const box = e => { const { top, right, bottom, left, width, height } = e.getBoundingClientRect(); return { top, right, bottom, left, width, height }; };
+    const fits = e => e.scrollWidth <= e.clientWidth + 1 && e.scrollHeight <= e.clientHeight + 1;
+    return {
+      overflow: [document.documentElement.scrollWidth > innerWidth, document.documentElement.scrollHeight > innerHeight],
+      content: box(document.querySelector('.jaw-shelf-content')),
+      rows: [...document.querySelectorAll('.jaw-shelf-row')].map(e => ({ box: box(e), places: e.querySelectorAll('.jaw-shelf-place').length, plank: getComputedStyle(e, '::after').backgroundColor })),
+      taps: [...document.querySelectorAll('.whose-jaw-shelf-screen button:not(:disabled)')].map(e => ({ ...box(e), hit: e.contains(document.elementFromPoint(e.getBoundingClientRect().x + e.clientWidth / 2, e.getBoundingClientRect().y + e.clientHeight / 2)) })),
+      labels: [...document.querySelectorAll('.jaw-shelf-name, .jaw-shelf-title, .jaw-shelf-labels > span')].map(e => ({ text: e.textContent, fits: fits(e), size: parseFloat(getComputedStyle(e).fontSize), ...box(e) })),
+      places: [...document.querySelectorAll('.jaw-shelf-place')].map(e => ({ box: box(e), disabled: e.disabled, unknown: !!e.querySelector('.jaw-shelf-unknown'), opacity: e.querySelector('.jaw-shelf-silhouette') && getComputedStyle(e.querySelector('.jaw-shelf-silhouette')).opacity })),
+      count: document.querySelector('.jaw-shelf-count').textContent,
+      version: getComputedStyle(document.querySelector('#version')).display,
+      motion: getComputedStyle(document.querySelector('.jaw-shelf-row')).animationName
+    };
+  });
+  assert.deepEqual(measured.overflow, [false, false], `${label}: shelf page scrolls`);
+  inside(measured.content, width, height, `${label}: shelf content`);
+  assert.equal(measured.version, 'none', `${label}: version hidden`);
+  assert.equal(measured.motion, 'fade-in', `${label}: reduced shelf motion`);
+  assert.equal(measured.count, `${earned}/ 16`, `${label}: collection count`);
+  assert.equal(measured.rows.length, 4);
+  for (const [i, row] of measured.rows.entries()) {
+    assert.equal(row.places, 4);
+    assert.notEqual(row.plank, 'rgba(0, 0, 0, 0)', `${label}: plank`);
+    inside(row.box, width, height, `${label}: row ${i}`);
+    for (const other of measured.rows.slice(i + 1)) apart(row.box, other.box, `${label}: rows`);
+  }
+  assert.equal(measured.places.filter(e => !e.disabled).length, earned);
+  for (const [i, place] of measured.places.entries()) {
+    inside(place.box, width, height, `${label}: place ${i}`);
+    assert.equal(place.unknown, place.disabled);
+    if (place.disabled) assert.equal(place.opacity, '0.12');
+    for (const other of measured.places.slice(i + 1)) apart(place.box, other.box, `${label}: places`);
+  }
+  for (const tap of measured.taps) assert(tap.width >= 44 && tap.height >= 44 && tap.hit, `${label}: shelf tap ${JSON.stringify(tap)}`);
+  for (const word of measured.labels) assert(word.fits && word.size >= 11, `${label}: shelf word ${JSON.stringify(word)}`);
+  if (process.env.TEETH_SCREENSHOTS) await page.screenshot({ path: join(process.env.TEETH_SCREENSHOTS, `shelf-${label.replaceAll(' ', '-')}.png`) });
+  const openers = page.locator('.jaw-shelf-place:not(:disabled)');
+  // The full collection exercises every localized name and fact, including
+  // the longest, against the card's available space.
+  for (let i = 0; i < await openers.count(); i++) {
+    const opener = openers.nth(i);
+    await opener.press('Enter');
+    await page.getByRole('dialog').waitFor();
+    await page.waitForFunction(() => [...document.querySelectorAll('.jaw-shelf-card img')].every(e => ['appearing', 'shown'].includes(e.dataset.picture)));
+    await settle(page);
+    const card = await page.evaluate(() => {
+      const q = s => document.querySelector(s);
+      const box = e => { const { top, right, bottom, left } = e.getBoundingClientRect(); return { top, right, bottom, left }; };
+      const selectors = ['.jaw-card-pictures', '.jaw-shelf-card h2', '.jaw-card-diet', '.jaw-card-fact', '.jaw-card-controls'];
+      return {
+        box: box(q('.jaw-shelf-card')),
+        scrolls: q('.jaw-shelf-card').scrollHeight > q('.jaw-shelf-card').clientHeight + 1,
+        parts: selectors.map(s => box(q(s))),
+        labels: ['.jaw-card-title', '.jaw-card-fact', '.jaw-card-diet'].map(s => ({ text: q(s).textContent, fits: q(s).scrollWidth <= q(s).clientWidth + 1, size: parseFloat(getComputedStyle(q(s)).fontSize) })),
+        motion: getComputedStyle(q('.jaw-card-chomp')).animationName,
+        pictures: [...document.querySelectorAll('.jaw-shelf-card img')].every(e => e.naturalWidth > 0),
+        focus: q('.jaw-shelf-card').contains(document.activeElement)
+      };
+    });
+    inside(card.box, width, height, `${label}: card`);
+    assert(!card.scrolls && card.focus && card.pictures, `${label}: card visible, loaded and focused`);
+    assert.equal(card.motion, 'fade-in', `${label}: reduced chomp motion`);
+    for (const [j, a] of card.parts.entries()) {
+      inside(a, width, height, `${label}: card part ${j}`);
+      for (const b of card.parts.slice(j + 1)) apart(a, b, `${label}: card parts`);
+    }
+    for (const word of card.labels) assert(word.fits && word.size >= 16, `${label}: card word ${JSON.stringify(word)}`);
+    if (i === 0 && process.env.TEETH_SCREENSHOTS) await page.screenshot({ path: join(process.env.TEETH_SCREENSHOTS, `card-${label.replaceAll(' ', '-')}.png`) });
+    await page.keyboard.press('Escape');
+    await page.getByRole('dialog').waitFor({ state: 'detached' });
+    assert(await opener.evaluate(e => document.activeElement === e), `${label}: focus returns to the shelf place`);
+  }
+}
+
 async function main() {
   const { build } = await import('vite');
   const bundle = await build({ root: resolve(__dirname, '..'), logLevel: 'error', build: { write: false } });
@@ -122,10 +202,19 @@ async function main() {
           }
           checked++;
         }
+        for (const saved of [undefined, returning, { ...returning, earned: require('../src/data/jaws.json').map(jaw => jaw.id) }]) {
+          await page.goto('http://teeth.test/');
+          await page.evaluate(saved => localStorage.setItem('rexlab-progress', JSON.stringify({ schemaVersion: 1, games: { 'whose-jaw': saved, 'home-featured': { featured: { game: 'compare', visit: 1 }, starts: {} } } })), saved);
+          await page.reload();
+          await page.locator('[data-turn-part="tile-whoseJaw"]').press('Enter');
+          await page.locator('.whose-jaw-welcome').waitFor();
+          await settle(page);
+          await shelf(page, width, height, `${width}x${height} ${language} ${theme} ${saved?.earned.length || 0}`, saved?.earned.length || 0);
+        }
         assert.deepEqual(errors, [], `${width}x${height} ${language} ${theme}: page errors`);
       } finally { await context.close(); }
     }
-    console.log(`PASS ${checked} WHOSE JAW? welcome configurations: layout, fit, overlap, scrolling, labels and motion`);
+    console.log(`PASS ${checked} WHOSE JAW? welcome and 72 shelf configurations with every collected card: layout, fit, overlap, scrolling, labels and motion`);
   } finally { await browser.close(); }
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });
