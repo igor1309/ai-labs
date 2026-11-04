@@ -41,7 +41,7 @@ private extension String {
 
         let lookalikes: [Character: Character] = [
             "а": "a", "в": "b", "е": "e", "к": "k", "м": "m", "н": "h", "о": "o",
-            "р": "p", "с": "c", "т": "t", "у": "y", "х": "x", "0": "o",
+            "р": "p", "с": "c", "т": "t", "у": "y", "х": "x", "0": "o", "п": "n", "и": "u",
         ]
         return String(lowercased().filter { $0.isLetter || $0.isNumber }.map { lookalikes[$0] ?? $0 })
     }

@@ -86,6 +86,12 @@ struct SettingsViewRenderTests {
         #expect(!text.shows("52 звонка"), "\(text)")
     }
 
+    @Test func readingForgivesLettersTheReaderMixesAcrossScripts() {
+
+        #expect(RenderedText(lines: ["есть • из Аmапи"]).shows("есть · из Amanu"))
+        #expect(!RenderedText(lines: ["есть"]).shows("есть · из Amanu"))
+    }
+
     // MARK: - Helpers
 
     private func rendered(_ state: SettingsState, _ scheme: ColorScheme) async throws -> RenderedText {
