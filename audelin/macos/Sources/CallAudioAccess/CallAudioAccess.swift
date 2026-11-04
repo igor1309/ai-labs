@@ -18,7 +18,7 @@ public struct AccessState: Equatable, Sendable {
     public var recording = false
     public var phase: Phase = .idle
     public var ready = false
-    public var published: Bool { evidence == .heard }
+    public var published = false
 
     public init() {}
 
@@ -43,6 +43,7 @@ public enum AccessReducer {
         var state = state
         func invalidate() {
             state.generation += 1
+            state.published = false
             state.evidence = nil
             state.measuredAt = nil
             state.ready = false
@@ -58,6 +59,7 @@ public enum AccessReducer {
         case let .measured(generation, evidence, device, at):
             guard case let .probing(active, output) = state.phase, active == generation else { return state }
             state.phase = .idle
+            state.published = false
             state.evidence = nil
             state.measuredAt = nil
             state.ready = false
@@ -66,6 +68,7 @@ public enum AccessReducer {
             state.device = device
             state.measuredAt = at
             state.ready = evidence == .heard
+            state.published = evidence == .heard
         case .invalidated:
             invalidate()
         case let .expired(generation):

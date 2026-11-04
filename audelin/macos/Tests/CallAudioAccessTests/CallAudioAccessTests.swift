@@ -4,80 +4,89 @@ import Testing
 
 @Suite(.timeLimit(.minutes(1)))
 struct CallAudioAccessTests {
-    @Test func join() { assert(probing(), .refresh(now: 100, device: 10), reducedTo: probing()) }
+    @Test func join() { assert(makeProbingState(), .refresh(now: 100, device: 10)) }
 
     @Test func recordingExcludesProbing() {
-        var state = heard(); state.recording = true
-        var expected = state; expected.ready = false
-        assert(state, .refresh(now: 131, device: 10), reducedTo: expected)
+        var state = makeHeardState(); state.recording = true
+        assert(state, .refresh(now: 131, device: 10)) { $0.ready = false }
     }
 
     @Test func nilAndZeroOutputDoNotProbe() {
         for output: UInt32? in [nil, 0] {
-            var expected = AccessState(); expected.device = output; expected.generation = 2
-            assert(heard(), .refresh(now: 101, device: output), reducedTo: expected)
+            assert(makeHeardState(), .refresh(now: 101, device: output)) {
+                $0.device = output; $0.generation = 2
+                $0.evidence = nil; $0.measuredAt = nil; $0.ready = false; $0.published = false
+            }
         }
     }
 
     @Test func exactlyThirtySecondsFutureAndNonfiniteTimesAreNotFresh() {
         for time in [130.0, 99, .infinity, -.infinity, .nan] {
-            var expected = heard(); expected.ready = false; expected.generation = 2
-            expected.phase = .probing(generation: 2, device: 10)
-            assert(heard(), .refresh(now: time, device: 10), reducedTo: expected)
+            assert(makeHeardState(), .refresh(now: time, device: 10)) {
+                $0.ready = false; $0.generation = 2
+                $0.phase = .probing(generation: 2, device: 10)
+            }
         }
         for time in [100.0, 129.999] {
-            assert(heard(), .refresh(now: time, device: 10), reducedTo: heard())
+            assert(makeHeardState(), .refresh(now: time, device: 10))
         }
         for time in [Double.infinity, -.infinity, .nan] {
-            var expected = AccessState(); expected.generation = 1; expected.device = 10
-            assert(probing(), .measured(generation: 1, evidence: .heard, device: 10, at: time), reducedTo: expected)
+            assert(makeProbingState(), .measured(generation: 1, evidence: .heard, device: 10, at: time)) {
+                $0.phase = .idle
+            }
         }
     }
 
     @Test func invalidationMidProbeThenMeasured() {
-        var invalid = probing(); invalid.generation = 2
-        assert(probing(), .invalidated, reducedTo: invalid)
-        var complete = invalid; complete.phase = .idle
-        assert(invalid, .measured(generation: 1, evidence: .heard, device: 10, at: 100), reducedTo: complete)
+        let state = makeProbingState()
+        assert(state, .invalidated) { $0.generation = 2 }
+        let invalid = AccessReducer.reduce(state, .invalidated)
+        assert(invalid, .measured(generation: 1, evidence: .heard, device: 10, at: 100)) { $0.phase = .idle }
     }
 
     @Test func repeatedInvalidationDoesNotResetGenerationsOrReleaseProbe() {
-        var state = probing(); state.generation = 5
-        var expected = state; expected.generation = 6
-        assert(state, .invalidated, reducedTo: expected)
-        expected.generation = 7
-        assert(AccessReducer.reduce(state, .invalidated), .invalidated, reducedTo: expected)
+        var state = makeProbingState(); state.generation = 5
+        assert(state, .invalidated) { $0.generation = 6 }
+        let invalid = AccessReducer.reduce(state, .invalidated)
+        assert(invalid, .invalidated) { $0.generation = 7 }
     }
 
-    @Test func staleExpiryDoesNothing() { assert(heard(), .expired(generation: 0), reducedTo: heard()) }
+    @Test func staleExpiryDoesNothing() { assert(makeHeardState(), .expired(generation: 0)) }
 
     @Test func routeChangeInvalidatesEvidenceAndJoinsOutstandingCleanup() {
-        var next = AccessState(); next.device = 20; next.generation = 3; next.phase = .probing(generation: 3, device: 20)
-        assert(heard(), .refresh(now: 101, device: 20), reducedTo: next)
-        var joined = probing(); joined.device = 20; joined.generation = 2
-        assert(probing(), .refresh(now: 101, device: 20), reducedTo: joined)
+        assert(makeHeardState(), .refresh(now: 101, device: 20)) {
+            $0.device = 20; $0.generation = 3; $0.phase = .probing(generation: 3, device: 20)
+            $0.evidence = nil; $0.measuredAt = nil; $0.ready = false; $0.published = false
+        }
+        assert(makeProbingState(), .refresh(now: 101, device: 20)) { $0.device = 20; $0.generation = 2 }
     }
 
     @Test func expiredHeardKeepsPublishedAvailable() {
-        var expected = heard(); expected.ready = false
-        assert(heard(), .expired(generation: 1), reducedTo: expected)
-        #expect(expected.published)
+        assert(makeHeardState(), .expired(generation: 1)) { $0.ready = false }
     }
 
     @Test func reservationRequiresFreshEvidenceAndNoProbe() {
-        var expected = heard(); expected.recording = true
-        assert(heard(), .recording(true, now: 101, device: 10), reducedTo: expected)
-        assert(probing(), .recording(true, now: 101, device: 10), reducedTo: probing())
-        var stale = heard(); stale.ready = false
-        assert(heard(), .recording(true, now: 130, device: 10), reducedTo: stale)
-        assert(expected, .recording(false, now: 101, device: nil), reducedTo: heard())
+        let state = makeHeardState()
+        assert(state, .recording(true, now: 101, device: 10)) { $0.recording = true }
+        assert(makeProbingState(), .recording(true, now: 101, device: 10))
+        assert(state, .recording(true, now: 130, device: 10)) { $0.ready = false }
+        let recording = AccessReducer.reduce(state, .recording(true, now: 101, device: 10))
+        assert(recording, .recording(false, now: 101, device: nil)) { $0.recording = false }
     }
 
     @Test func measuredEvidenceControlsPublication() {
         for evidence: AccessEvidence in [.heard, .silent, .refused] {
-            var expected = heard(); expected.evidence = evidence; expected.ready = evidence == .heard
-            assert(probing(), .measured(generation: 1, evidence: evidence, device: 10, at: 100), reducedTo: expected)
-            #expect(expected.published == (evidence == .heard))
+            assert(makeProbingState(), .measured(generation: 1, evidence: evidence, device: 10, at: 100)) {
+                $0.phase = .idle; $0.evidence = evidence; $0.measuredAt = 100
+                $0.ready = evidence == .heard; $0.published = evidence == .heard
+            }
+        }
+    }
+
+    @Test func invalidationClearsPublishedEvidence() {
+        assert(makeHeardState(), .invalidated) {
+            $0.generation = 2; $0.evidence = nil; $0.measuredAt = nil
+            $0.ready = false; $0.published = false
         }
     }
 }
@@ -88,7 +97,7 @@ struct AccessDoerTests {
         let rig = DoerRig(), doer: AccessDoer
         doer = rig.doer()
         defer { doer.end() }
-        doer.act(on: probing()); doer.act(on: probing())
+        doer.act(on: makeProbingState()); doer.act(on: makeProbingState())
         await rig.started()
         rig.finishProbe()
         #expect(await rig.next() == .measured(generation: 1, evidence: .heard, device: 10, at: 100))
@@ -99,9 +108,9 @@ struct AccessDoerTests {
         let rig = DoerRig(), doer: AccessDoer
         doer = rig.doer()
         defer { doer.end() }
-        doer.act(on: probing())
+        doer.act(on: makeProbingState())
         await rig.started()
-        doer.act(on: AccessReducer.reduce(probing(), .invalidated))
+        doer.act(on: AccessReducer.reduce(makeProbingState(), .invalidated))
         #expect(rig.events.withLock { $0 }.isEmpty)
         rig.finishProbe()
         #expect(await rig.next() == .measured(generation: 1, evidence: .heard, device: 10, at: 100))
@@ -111,7 +120,7 @@ struct AccessDoerTests {
         for changed in [false, true] {
             let rig = DoerRig()
             let doer = rig.doer()
-            doer.act(on: probing())
+            doer.act(on: makeProbingState())
             await rig.started()
             rig.time.withLock { $0 = 200 }
             if changed { rig.output.withLock { $0 = 20 } }
@@ -125,7 +134,7 @@ struct AccessDoerTests {
         let rig = DoerRig()
         let doer = rig.doer()
         defer { doer.end() }
-        doer.act(on: heard()); doer.act(on: heard())
+        doer.act(on: makeHeardState()); doer.act(on: makeHeardState())
         await rig.timerStarted()
         rig.fireTimer()
         #expect(await rig.next() == .expired(generation: 1))
@@ -136,24 +145,28 @@ struct AccessDoerTests {
         let rig = DoerRig()
         let doer = rig.doer()
         defer { doer.end() }
-        doer.act(on: heard())
+        doer.act(on: makeHeardState())
         await rig.timerStarted()
-        var newer = heard(); newer.generation = 2; newer.measuredAt = 120
+        var newer = makeHeardState(); newer.generation = 2; newer.measuredAt = 120
         rig.fireTimer()
-        assert(newer, await rig.next(), reducedTo: newer)
+        assert(newer, await rig.next())
     }
 }
 
-private func heard() -> AccessState {
+private func makeHeardState() -> AccessState {
     var state = AccessState()
-    state.evidence = .heard; state.device = 10; state.measuredAt = 100; state.ready = true; state.generation = 1
+    state.evidence = .heard; state.device = 10; state.measuredAt = 100; state.ready = true; state.published = true; state.generation = 1
     return state
 }
-private func probing() -> AccessState {
+private func makeProbingState() -> AccessState {
     var state = AccessState(); state.device = 10; state.generation = 1; state.phase = .probing(generation: 1, device: 10)
     return state
 }
-private func assert(_ state: AccessState, _ event: AccessEvent, reducedTo expected: AccessState, sourceLocation: SourceLocation = #_sourceLocation) {
+private func assert(_ state: AccessState, _ event: AccessEvent,
+                    sourceLocation: SourceLocation = #_sourceLocation,
+                    changes: (inout AccessState) -> Void = { _ in }) {
+    var expected = state
+    changes(&expected)
     #expect(AccessReducer.reduce(state, event) == expected, sourceLocation: sourceLocation)
 }
 
