@@ -46,32 +46,14 @@ jobs:
         working-directory: rexlab
         run: npm run build
 
-  # Each browser contract owns its server/build lifecycle. Keep their budgets
-  # independent of unit shards and of the other browser contracts.
+  # The browser contracts run on this Mac's runner, one after another in
+  # one job: one runner takes one job at a time, and a job per contract
+  # would queue past the 15-minute local-wait limit. Each contract owns its
+  # server and build, keeps its own 10-minute limit, and every failure is
+  # named, not only the first.
   browser:
-    strategy:
-      fail-fast: false
-      matrix:
-        script:
-          - compareQuestion
-          - compareResult
-          - compareFlow
-          - whoseJawBoardLandscape
-          - catalogueFit
-          - coloringProbe
-          - coloringPainter
-          - coloringWorkshop
-          - coloringDrawing
-          - coloringGallery
-          - coloringResult
-          - coloringFlow
-          - homePhone
-          - nativeTouch
-          - homeTiles
-          - careFriends
-          - browserChrome
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
+    runs-on: [self-hosted, local-mac]
+    timeout-minutes: 60
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -87,15 +69,19 @@ jobs:
         working-directory: rexlab
         run: npm ci
 
-      - name: Install browser engine
+      - name: Install browser engines
+        working-directory: rexlab
+        run: npx playwright install chromium webkit
+
+      - name: Run browser contracts
         working-directory: rexlab
         run: |
-          if [ "${{ matrix.script }}" = "browserChrome" ]; then
-            npx playwright install --with-deps webkit
-          else
-            npx playwright install --with-deps chromium
-          fi
-
-      - name: Run browser contract
-        working-directory: rexlab
-        run: node tests/${{ matrix.script }}.browser.cjs
+          failed=()
+          for script in compareQuestion compareResult compareFlow whoseJawBoardLandscape catalogueFit \
+            coloringProbe coloringPainter coloringWorkshop coloringDrawing coloringGallery coloringResult \
+            coloringFlow homePhone nativeTouch homeTiles careFriends browserChrome; do
+            echo "::group::$script"
+            if ! perl -e 'alarm 600; exec @ARGV' node "tests/$script.browser.cjs"; then failed+=("$script"); fi
+            echo "::endgroup::"
+          done
+          if [ ${#failed[@]} -gt 0 ]; then echo "::error::Failed: ${failed[*]}"; exit 1; fi
