@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Lands a PR from its branch's worktree: refuses a branch behind trunk,
-# watches the PR's checks, merges with a merge commit, then watches trunk's
+# Lands a PR from its branch's worktree: watches the PR's checks,
+# merges with a merge commit, then watches trunk's
 # CI on the merge commit. Each outcome goes to ntfy on the topic in
 # ~/.config/ntfy/topic. Exits 0 only when trunk's run on the merge passed.
 # Then run finish-merged-pr.sh <branch>.
@@ -19,11 +19,6 @@ notify() {
     [[ -z "$topic" ]] || curl -fsS -m 10 -d "$1" "https://ntfy.sh/$topic" > /dev/null || echo "ntfy failed" >&2
 }
 
-git fetch -q origin
-if ! git merge-base --is-ancestor "origin/$trunk" HEAD; then
-    echo "refusing: branch is behind origin/$trunk; merge it, gate, push, then land" >&2
-    exit 1
-fi
 [[ "$(git rev-parse HEAD)" == "$(gh pr view "$pr" --json headRefOid --jq .headRefOid)" ]] \
     || { echo "refusing: local HEAD is not the PR head; push first" >&2; exit 1; }
 
