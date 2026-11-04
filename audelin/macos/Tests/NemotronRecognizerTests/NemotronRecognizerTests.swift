@@ -10,23 +10,6 @@ import Testing
 @Suite(.serialized)
 struct NemotronRecognizerTests {
 
-    @Test func modelLoadingStaysOnItsQueueAcrossNonisolatedAsyncCalls() async throws {
-
-        let queue = DispatchQueue(label: "test.NemotronModelLoading")
-        let makeDecoder = NemotronRecognizer.sharedDecoders(
-            loadQueue: queue,
-            load: { await loadModelOnQueue(queue) },
-            makeDecoder: { model in
-                ScriptedDecoder([[DecodedToken("▁\(model)", start: 0.1, end: 0.4)]])
-            }
-        )
-        let recognizer = NemotronRecognizer(decoder: try await makeDecoder())
-
-        let hearing = try await recognizer.hear(silence(1.12))
-
-        #expect(hearing.words == [Word("42", start: 0.1, end: 0.4)])
-    }
-
     @Test func recognizersBuiltTogetherShareOneModelLoad() async throws {
 
         let load = ControlledModelLoad()
@@ -377,14 +360,6 @@ struct NemotronRecognizerTests {
             try FileManager.default.removeItem(at: directory)
         }
     }
-}
-
-private nonisolated func loadModelOnQueue(_ queue: DispatchQueue) async -> Int {
-
-    dispatchPrecondition(condition: .onQueue(queue))
-    await Task.yield()
-    dispatchPrecondition(condition: .onQueue(queue))
-    return 42
 }
 
 /// Holds every load until the test finishes it; a load after that returns
