@@ -89,9 +89,15 @@ const { chromium } = require("playwright");
     assert.equal(await starts(), 0);
     // The released worker has installed the complete app before going offline.
     await page.waitForFunction(async () => (await navigator.serviceWorker.getRegistration())?.active?.state === "activated");
-    await page.reload(); await homeCount(0); await entry().press("Enter"); await gallery();
-    // Activation can come before the reloaded page is controlled.
-    await page.waitForFunction(() => !!navigator.serviceWorker.controller);
+    // A page that loads without the worker stays uncontrolled until its next
+    // navigation, however long it waits, so only another reload can take control.
+    let controlled = false;
+    for (let attempt = 1; attempt <= 3 && !controlled; attempt++) {
+      await page.reload(); await homeCount(0); await entry().press("Enter"); await gallery();
+      controlled = await page.waitForFunction(() => !!navigator.serviceWorker.controller, null, { timeout: 5000 }).then(() => true, () => false);
+      if (!controlled) console.error(`reload ${attempt}: page not controlled`, await page.evaluate(async () => { const r = await navigator.serviceWorker.getRegistration(); return { installing: r?.installing?.state, waiting: r?.waiting?.state, active: r?.active?.state }; }));
+    }
+    assert(controlled, "no reload brought the page under the service worker");
     await context.setOffline(true);
     await press("NEW WORK"); await workshop(); await topEdge(); await paint("RED", false);
     assert.equal(await starts(), 1);
