@@ -57,6 +57,7 @@ jobs:
           - compareResult
           - compareFlow
           - whoseJawBoardLandscape
+          - catalogueFit
           - coloringProbe
           - coloringPainter
           - coloringWorkshop

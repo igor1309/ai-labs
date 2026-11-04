@@ -10,12 +10,14 @@ const NO_INSETS = { top: 0, right: 0, bottom: 0, left: 0 };
 const LEVELS = ["hatchling", "explorer", "paleontologist"];
 
 // The windows each screen's size classes change at, and the devices the
-// app ships for. Each size class is opened at both of its edges.
+// app ships for. Each size class is opened at both edges of the range the
+// app promises: a wide window from 1024 by 670 (window-fit.feature), a
+// tall-narrow one upright or a landscape window under 568 wide.
 const EDGES = {
-  wide: [[900, 600], [1024, 690], [1920, 1080]],
+  wide: [[1024, 670], [1024, 690], [1920, 1080]],
   "wide-short": [[899, 599], [1508, 594], [568, 320], [667, 375]],
   tall: [[600, 800], [1024, 1366]],
-  "tall-narrow": [[599, 1000], [320, 568], [567, 400]]
+  "tall-narrow": [[599, 1000], [320, 568], [567, 520]]
 };
 
 const DEVICES = {
