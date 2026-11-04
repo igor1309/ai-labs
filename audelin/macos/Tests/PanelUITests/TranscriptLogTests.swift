@@ -39,7 +39,10 @@ struct TranscriptLogTests {
                 .entry(.init(id: 1, time: "12:44", speaker: .me, settled: "kept words")),
                 .gap(.init(speaker: speaker, text: gap)),
             ]))))
-            #expect(text.string.contains("\(label)  \(gap)"))
+            #expect(text.string.contains("\u{FFFC}\t\(gap)"))
+            let start = (text.string as NSString).range(of: gap).location - 2
+            let symbol = try #require(text.attributedString().attribute(.attachment, at: start, effectiveRange: nil) as? NSTextAttachment)
+            #expect(symbol.image?.accessibilityDescription == label)
             #expect(text.string.contains("kept words"))
             let color = try #require(attribute(.foregroundColor, of: gap, in: text) as? NSColor)
             let font = try #require(attribute(.font, of: gap, in: text) as? NSFont)

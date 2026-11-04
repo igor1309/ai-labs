@@ -36944,36 +36944,29 @@
                                       "id": "rSoXE",
                                       "name": "Entry 12:43",
                                       "width": "fill_container",
-                                      "gap": "$space-8",
+                                      "gap": 4,
+                                      "alignItems": "center",
                                       "children": [
                                         {
                                           "type": "frame",
-                                          "id": "Jtvvt",
-                                          "name": "Gutter",
-                                          "width": 80,
-                                          "gap": "$space-8",
+                                          "id": "T1Hlw",
+                                          "name": "Symbol speaker.wave.2",
+                                          "width": 16,
+                                          "height": 12,
+                                          "layout": "none",
                                           "children": [
                                             {
-                                              "type": "text",
-                                              "id": "ilZD4",
-                                              "name": "Time",
-                                              "fill": "$gutter",
-                                              "content": "12:43",
-                                              "lineHeight": 1.55,
-                                              "fontFamily": "$font-data",
-                                              "fontSize": "$type-body",
-                                              "fontWeight": "normal"
-                                            },
-                                            {
-                                              "type": "text",
-                                              "id": "so9WM",
-                                              "name": "Who",
-                                              "fill": "$gutter",
-                                              "content": "они",
-                                              "lineHeight": 1.55,
-                                              "fontFamily": "$font-data",
-                                              "fontSize": "$type-body",
-                                              "fontWeight": "600"
+                                              "type": "path",
+                                              "id": "RJrWd",
+                                              "x": 1.5,
+                                              "y": 1.25,
+                                              "name": "speaker.wave.2",
+                                              "geometry": "M0.5 3.5h2.5l3.5-3v9l-3.5-3h-2.5z m8-0.3a2.5 2.5 0 0 1 0 3.6m2-5.3a5 5 0 0 1 0 7",
+                                              "fill": "#00000000",
+                                              "width": 13,
+                                              "height": 9.5,
+                                              "stroke": "$them",
+                                              "strokeWidth": 1
                                             }
                                           ]
                                         },
@@ -37240,36 +37233,27 @@
                                       "id": "qA9Kv",
                                       "name": "Entry 12:45",
                                       "width": "fill_container",
-                                      "gap": "$space-8",
+                                      "gap": 4,
+                                      "alignItems": "center",
                                       "children": [
                                         {
                                           "type": "frame",
-                                          "id": "TOsBz",
-                                          "name": "Gutter",
-                                          "width": 80,
-                                          "gap": "$space-8",
+                                          "id": "s8Dfy",
+                                          "name": "Symbol mic.fill",
+                                          "width": 16,
+                                          "height": 12,
+                                          "layout": "none",
                                           "children": [
                                             {
-                                              "type": "text",
-                                              "id": "HBwBJ",
-                                              "name": "Time",
-                                              "fill": "$gutter",
-                                              "content": "12:45",
-                                              "lineHeight": 1.55,
-                                              "fontFamily": "$font-data",
-                                              "fontSize": "$type-body",
-                                              "fontWeight": "normal"
-                                            },
-                                            {
-                                              "type": "text",
-                                              "id": "af4in",
-                                              "name": "Who",
-                                              "fill": "$gutter",
-                                              "content": "я",
-                                              "lineHeight": 1.55,
-                                              "fontFamily": "$font-data",
-                                              "fontSize": "$type-body",
-                                              "fontWeight": "600"
+                                              "type": "path",
+                                              "id": "YPpqn",
+                                              "x": 4,
+                                              "y": 0,
+                                              "name": "mic.fill",
+                                              "geometry": "M4 0a2 2 0 0 1 2 2v3.5a2 2 0 0 1-4 0v-3.5a2 2 0 0 1 2-2z m-4 5h0.9v0.5a3.1 3.1 0 0 0 6.2 0v-0.5h0.9v0.5a4 4 0 0 1-3.55 3.97v1.63h1.55v0.9h-4v-0.9h1.55v-1.63a4 4 0 0 1-3.55-3.97z",
+                                              "fill": "$me",
+                                              "width": 8,
+                                              "height": 12
                                             }
                                           ]
                                         },
@@ -38093,36 +38077,29 @@
                                       "id": "E29LSn",
                                       "name": "Entry 12:43",
                                       "width": "fill_container",
-                                      "gap": "$space-8",
+                                      "gap": 4,
+                                      "alignItems": "center",
                                       "children": [
                                         {
                                           "type": "frame",
-                                          "id": "sZwky",
-                                          "name": "Gutter",
-                                          "width": 80,
-                                          "gap": "$space-8",
+                                          "id": "WRBLo",
+                                          "name": "Symbol speaker.wave.2",
+                                          "width": 16,
+                                          "height": 12,
+                                          "layout": "none",
                                           "children": [
                                             {
-                                              "type": "text",
-                                              "id": "uBifA",
-                                              "name": "Time",
-                                              "fill": "$gutter",
-                                              "content": "12:43",
-                                              "lineHeight": 1.55,
-                                              "fontFamily": "$font-data",
-                                              "fontSize": "$type-body",
-                                              "fontWeight": "normal"
-                                            },
-                                            {
-                                              "type": "text",
-                                              "id": "R3ENq",
-                                              "name": "Who",
-                                              "fill": "$gutter",
-                                              "content": "они",
-                                              "lineHeight": 1.55,
-                                              "fontFamily": "$font-data",
-                                              "fontSize": "$type-body",
-                                              "fontWeight": "600"
+                                              "type": "path",
+                                              "id": "K9B15",
+                                              "x": 1.5,
+                                              "y": 1.25,
+                                              "name": "speaker.wave.2",
+                                              "geometry": "M0.5 3.5h2.5l3.5-3v9l-3.5-3h-2.5z m8-0.3a2.5 2.5 0 0 1 0 3.6m2-5.3a5 5 0 0 1 0 7",
+                                              "fill": "#00000000",
+                                              "width": 13,
+                                              "height": 9.5,
+                                              "stroke": "$them",
+                                              "strokeWidth": 1
                                             }
                                           ]
                                         },
@@ -38389,36 +38366,27 @@
                                       "id": "V5yWwX",
                                       "name": "Entry 12:45",
                                       "width": "fill_container",
-                                      "gap": "$space-8",
+                                      "gap": 4,
+                                      "alignItems": "center",
                                       "children": [
                                         {
                                           "type": "frame",
-                                          "id": "sULP4",
-                                          "name": "Gutter",
-                                          "width": 80,
-                                          "gap": "$space-8",
+                                          "id": "kipY0",
+                                          "name": "Symbol mic.fill",
+                                          "width": 16,
+                                          "height": 12,
+                                          "layout": "none",
                                           "children": [
                                             {
-                                              "type": "text",
-                                              "id": "H18Xjn",
-                                              "name": "Time",
-                                              "fill": "$gutter",
-                                              "content": "12:45",
-                                              "lineHeight": 1.55,
-                                              "fontFamily": "$font-data",
-                                              "fontSize": "$type-body",
-                                              "fontWeight": "normal"
-                                            },
-                                            {
-                                              "type": "text",
-                                              "id": "EmW5k",
-                                              "name": "Who",
-                                              "fill": "$gutter",
-                                              "content": "я",
-                                              "lineHeight": 1.55,
-                                              "fontFamily": "$font-data",
-                                              "fontSize": "$type-body",
-                                              "fontWeight": "600"
+                                              "type": "path",
+                                              "id": "uTAJx",
+                                              "x": 4,
+                                              "y": 0,
+                                              "name": "mic.fill",
+                                              "geometry": "M4 0a2 2 0 0 1 2 2v3.5a2 2 0 0 1-4 0v-3.5a2 2 0 0 1 2-2z m-4 5h0.9v0.5a3.1 3.1 0 0 0 6.2 0v-0.5h0.9v0.5a4 4 0 0 1-3.55 3.97v1.63h1.55v0.9h-4v-0.9h1.55v-1.63a4 4 0 0 1-3.55-3.97z",
+                                              "fill": "$me",
+                                              "width": 8,
+                                              "height": 12
                                             }
                                           ]
                                         },
