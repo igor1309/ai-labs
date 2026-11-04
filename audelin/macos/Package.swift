@@ -50,7 +50,7 @@ let package = Package(
         .target(name: "CallsListUI", dependencies: ["GlassLedger"]),
         .testTarget(name: "CallsTests", dependencies: ["Calls", "TrackFile", "BlockingTestWork"]),
         .testTarget(name: "RecordingsTests", dependencies: ["Recordings"]),
-        .testTarget(name: "CallsListUITests", dependencies: ["CallsListUI"]),
+        .testTarget(name: "CallsListUITests", dependencies: ["CallsListUI", "RenderedText", "BlockingTestWork"]),
         .target(name: "CallAudioProbe"),
         .target(name: "CallAudioAccess"),
         .testTarget(name: "CallAudioProbeTests", dependencies: ["CallAudioProbe", "BlockingTestWork"]),
@@ -175,6 +175,14 @@ let package = Package(
             dependencies: ["LiveText"]
         ),
         .target(
+            name: "RenderedText",
+            path: "Tests/RenderedText"
+        ),
+        .testTarget(
+            name: "GlassLedgerTests",
+            dependencies: ["GlassLedger"]
+        ),
+        .target(
             name: "BlockingTestWork",
             path: "Tests/BlockingTestWork"
         ),
@@ -236,7 +244,7 @@ let package = Package(
         ),
         .testTarget(
             name: "PanelUITests",
-            dependencies: ["PanelUI"]
+            dependencies: ["PanelUI", "RenderedText"]
         ),
         .testTarget(
             name: "ParakeetRecognizerTests",
@@ -257,7 +265,7 @@ let package = Package(
         ),
         .testTarget(
             name: "SettingsUITests",
-            dependencies: ["SettingsUI"]
+            dependencies: ["SettingsUI", "RenderedText", "BlockingTestWork"]
         ),
         .testTarget(
             name: "SideTextTests",
