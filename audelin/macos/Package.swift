@@ -55,6 +55,7 @@ let package = Package(
         .target(name: "CallAudioProbe"),
         .target(name: "CallAudioAccess"),
         .testTarget(name: "CallAudioProbeTests", dependencies: ["CallAudioProbe", "BlockingTestWork"]),
+        .testTarget(name: "AudioConversionTests", dependencies: ["AudioConversion", "BlockingTestWork"]),
         .testTarget(name: "CallAudioAccessTests", dependencies: ["CallAudioAccess"]),
         .target(
             name: "AudioConversion"
