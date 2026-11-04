@@ -1,6 +1,8 @@
 Feature: Sort dinosaurs: the result in a tall-narrow window
-  On a phone upright sort's result shows upright, with no ask to turn
-  sideways, and as the compare quiz's result does on a phone. The level
+  In a tall-narrow window sort's existing result shows upright with no
+  orientation gate. The dinosaur stays at least 120 CSS pixels high and
+  the whole page scrolls when minimum content cannot fit. PLAY AGAIN
+  stands above HOME. The level
   switch may show its pictures without their words, so long as each
   level keeps its name for screen readers. Where the parts sit and their
   sizes are the design's call, not this spec's.

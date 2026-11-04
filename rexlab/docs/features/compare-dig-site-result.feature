@@ -1,5 +1,7 @@
 Feature: COMPARE results in the dig site
   Rewards and level choices remain independent of appearance.
+  A first round scoring zero saves a best of zero without earning a
+  celebration. Every layout keeps a dinosaur at least 120 pixels high.
   Layout follows the window, independently of the device's identity:
     | class       | window                                                   |
     | wide        | landscape, at least 600 CSS pixels tall                   |

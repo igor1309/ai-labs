@@ -34,7 +34,7 @@ Feature: COMPARE in the dig site
       | English  | light | 700   | 700    | stacked      |
       | Russian  | dark  | 500   | 500    | stacked      |
 
-  Scenario Outline: A stacked question keeps its picture minimum
+  Scenario Outline: A question keeps its picture minimum
     Given a <class> window whose content cannot fit at the minimum picture height
     When I see the question
     Then each picture stays at least <minimum> CSS pixels high
@@ -46,6 +46,8 @@ Feature: COMPARE in the dig site
       | class       | minimum |
       | tall        | 150     |
       | tall-narrow | 110     |
+      | wide        | 150     |
+      | wide-short  | 110     |
 
   Scenario Outline: The bar shows an available current-level best on larger layouts
     Given the current level has a saved best of <best>
@@ -55,12 +57,12 @@ Feature: COMPARE in the dig site
 
     Examples:
       | best        | class       | shown                                    |
-      | 7           | wide        | a trophy and 7 appear in the sky          |
-      | 7           | tall        | a trophy and 7 appear in the sky          |
+      | 7           | wide        | a trophy and 7 / 10 appear in the sky          |
+      | 7           | tall        | a trophy and 7 / 10 appear in the sky          |
       | 7           | tall-narrow | no best-score trophy or number is shown   |
       | 7           | wide-short  | no best-score trophy or number is shown   |
       | unavailable | wide        | no best-score trophy or number is shown   |
-      | 0           | wide        | a trophy and 0 appear in the sky          |
+      | 0           | wide        | a trophy and 0 / 10 appear in the sky          |
 
   Scenario: An answer marks its pocket and its progress step
     Given an unanswered question

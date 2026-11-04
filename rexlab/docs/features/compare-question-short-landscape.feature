@@ -1,7 +1,9 @@
-Feature: A compare question on an iPhone on its side
+Feature: A compare question in a short landscape window
 
   In a wide-short window, landscape under 600 tall and at least 568 wide, a compare
-  question keeps its two dinosaurs side by side, whole within the height.
+  question keeps its two dinosaurs side by side. Its pictures stay at least 110
+  CSS pixels high; when minimum content cannot fit, the whole page scrolls
+  vertically and the sky scrolls with it.
 
   Scenario Outline: The cards share the row under a short bar
     Given the language is <language>
@@ -22,7 +24,7 @@ Feature: A compare question on an iPhone on its side
       | Russian  | 852   | 393    |
       | Russian  | 932   | 430    |
 
-  Scenario: Every word fits at every phone's width
+  Scenario: Every word fits across short landscape widths
     Given a compare question in a wide-short window, from 568 to 932 pixels wide
     Then every prompt fits on one line beside the widest NEXT
     And every name fits on one line in its card
@@ -33,7 +35,13 @@ Feature: A compare question on an iPhone on its side
     When the child taps a card
     Then NEXT appears beside the prompt and each value at the bottom right of its picture, and no card grows
 
-  Scenario: A taller window goes back to the wide layout
+  Scenario Outline: Resizing selects the new window class
     Given a compare question in a wide-short window
-    When the window reaches 600 CSS pixels tall
-    Then the question takes the wide layout
+    When the window becomes <width> by <height> CSS pixels
+    Then its class is <class> and the cards are <cards>
+
+    Examples:
+      | width | height | class       | cards        |
+      | 852   | 600    | wide        | side by side |
+      | 568   | 600    | tall-narrow | stacked      |
+      | 600   | 600    | tall        | stacked      |
