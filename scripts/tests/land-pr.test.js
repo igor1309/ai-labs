@@ -65,16 +65,15 @@ esac
   }
 }
 
-it('refuses a branch behind trunk without merging', () => {
-  withRepo({ behind: true }, (result, calls) => {
-    assert.equal(result.status, 1);
-    assert.match(result.stderr, /behind origin\/trunk/);
-    assert.doesNotMatch(calls, /pr merge/);
+it('merges a green PR even when its branch is behind trunk', () => {
+  withRepo({ behind: true, trunkRuns: [{ status: 'completed', conclusion: 'success' }] }, (result, calls) => {
+    assert.equal(result.status, 0);
+    assert.match(calls, /pr merge 7 --merge/);
   });
 });
 
 it('does not merge a red PR and says so', () => {
-  withRepo({ checks: 1 }, (result, calls, notes) => {
+  withRepo({ behind: true, checks: 1 }, (result, calls, notes) => {
     assert.equal(result.status, 1);
     assert.doesNotMatch(calls, /pr merge/);
     assert.match(notes, /PR #7 red, not merged/);

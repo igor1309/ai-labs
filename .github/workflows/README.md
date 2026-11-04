@@ -13,7 +13,7 @@ Workflows are organized into four categories:
 - **Release** — tag-triggered pipelines for per-unit and legacy Oracle releases.
 - **Scheduled & Independent** — health checks, dashboards, deployments, and housekeeping that run on cron or trunk push.
 
-`update-behind-prs.yml` runs on each trunk push. It updates every open PR that has auto-merge armed and has fallen behind trunk, so it is tested again and lands without a hand update. Branch protection requires up-to-date branches. A PR that conflicts fails the run, naming the PR. It pushes with `PR_UPDATE_TOKEN`, because an update pushed with `GITHUB_TOKEN` would start no CI.
+PR branches may merge after required checks pass without incorporating the latest trunk. Merges use merge commits; conflicts must be resolved before merging. Trunk pushes do not automatically update waiting PR branches.
 
 ## Path Filtering Policy
 

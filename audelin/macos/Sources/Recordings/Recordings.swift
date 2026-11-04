@@ -49,8 +49,20 @@ public enum RecordingsEffect: Equatable, Sendable {
     case list, rename(id: String, title: String), delete(String)
 }
 
-public enum RecordingsReducer {
+public struct RecordingsReducer: Sendable {
+    private let failureMessage: @Sendable (String, String) -> String
+
+    public init(failureMessage: @escaping @Sendable (String, String) -> String) {
+        self.failureMessage = failureMessage
+    }
+
     public static func reduce(_ state: RecordingsState, _ event: RecordingsEvent) -> (RecordingsState, RecordingsEffect?) {
+        Self(failureMessage: { prior, refreshError in
+            prior + " Не удалось обновить список: " + refreshError
+        }).reduce(state, event)
+    }
+
+    public func reduce(_ state: RecordingsState, _ event: RecordingsEvent) -> (RecordingsState, RecordingsEffect?) {
         var state = state
         switch event {
         case let .recordingChanged(id):
@@ -70,12 +82,12 @@ public enum RecordingsReducer {
             guard state.isListing else { return (state, nil) }
             state.isListing = false
             if let failure = state.failure {
-                state.failure = .init(id: failure.id, reason: failure.reason + " Не удалось обновить список: " + reason)
+                state.failure = .init(id: failure.id, reason: failureMessage(failure.reason, reason))
             } else {
                 state.failure = .init(id: nil, reason: reason)
             }
         case let .rename(id, title):
-            guard acceptsAction(state), id != state.recordingID else { return (state, nil) }
+            guard Self.acceptsAction(state), id != state.recordingID else { return (state, nil) }
             state.phase = .renaming(id)
             state.failure = nil
             return (state, .rename(id: id, title: title))
@@ -89,7 +101,7 @@ public enum RecordingsReducer {
             state.phase = .idle
             state.failure = .init(id: id, reason: reason)
         case let .askDelete(id):
-            guard acceptsAction(state), id != state.recordingID else { return (state, nil) }
+            guard Self.acceptsAction(state), id != state.recordingID else { return (state, nil) }
             state.phase = .askingDelete(id)
             state.failure = nil
         case .cancelDelete:
