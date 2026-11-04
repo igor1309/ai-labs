@@ -12435,7 +12435,7 @@ html[data-size="wide-short"] .whose-jaw-start { display: flex; flex-direction: c
 html[data-size="wide-short"] .whose-jaw-welcome-actions { align-self: stretch; gap: var(--ds-space-s); }
 html[data-size="wide-short"] :is(.whose-jaw-play, .whose-jaw-shelf) { height: 56px; gap: var(--ds-space-s); padding: 0 var(--ds-space-l); font-size: var(--ds-size-18); }
 html[data-size="wide-short"] :is(.whose-jaw-play, .whose-jaw-shelf) svg { width: 20px; height: 20px; }
-html[data-size="wide-short"] .whose-jaw-play { flex: 0 0 auto; min-width: 160px; }
+html[data-size="wide-short"] .whose-jaw-play { flex: 0 0 auto; min-width: 136px; }
 html[data-size="wide-short"] .whose-jaw-shelf { flex: 1 1 0; }
 html[data-size="wide-short"] .whose-jaw-welcome-bedrock { display: none; }
 
