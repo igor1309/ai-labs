@@ -164,13 +164,14 @@ function expectScreenIn(theme: Theme, part: Element = document.body) {
   // Any design colour the stylesheet sets is a theme's colour.
   const sharedColours = DESIGN_TOKENS.map((name) => tokens.getPropertyValue(name).trim()).filter((value) => /^(#|rgb)/.test(value));
   const colours = [...Object.values(PALETTE[theme]), ...sharedColours, ...OVERLAYS];
-
+  const accepted = new Map<string, boolean>(); // each colour is checked once
+  const inPalette = (bg: string) => accepted.get(bg) ?? accepted.set(bg, colours.some(colour => sameColour(bg, colour))).get(bg)!;
   // The page behind the browser's bars is the theme's page, Home too.
   expect(sameColour(styleOf(document.body).backgroundColor, PALETTE[theme].bg ?? "")).toBe(true);
   expect(texts.length).toBeGreaterThan(0);
   expect(
     surfaces
-      .filter((surface) => !colours.some((colour) => sameColour(styleOf(surface).backgroundColor, colour)))
+      .filter((surface) => !inPalette(styleOf(surface).backgroundColor))
       .map((surface) => `${describeElement(surface)}: ${styleOf(surface).backgroundColor}`)
   ).toEqual([]);
   expect(

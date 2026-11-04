@@ -1,13 +1,18 @@
 /// Window presence policy, independent of AppKit and recording's types.
 public struct PanelPresence: Equatable, Sendable {
 
-    public private(set) var recordingID: UInt64?
-    public private(set) var visible = false
-    private var generation: UInt64 = 0
+    public var recordingID: UInt64?
+    public var visible: Bool
+    public var generation: UInt64
+    public var offersReopen: Bool
 
-    public init() {}
-
-    public var offersReopen: Bool { recordingID != nil && !visible }
+    public init(recordingID: UInt64? = nil, visible: Bool = false,
+                generation: UInt64 = 0, offersReopen: Bool = false) {
+        self.recordingID = recordingID
+        self.visible = visible
+        self.generation = generation
+        self.offersReopen = offersReopen
+    }
 
     public enum Event: Equatable, Sendable {
         case recordingChanged(UInt64?)
@@ -64,6 +69,7 @@ public struct PanelPresence: Equatable, Sendable {
             next.visible = false
             effects.append(.hide(.recordingEnded))
         }
+        next.offersReopen = next.recordingID != nil && !next.visible
         return (next, effects)
     }
 }

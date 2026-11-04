@@ -1,7 +1,7 @@
 Feature: Care: the friends in a tall window
   In a tall window, portrait and at least 600 CSS pixels wide, care's
-  FRIENDS stands upright: BACK and HOME as their symbols, the title and
-  the friend count on the bar, NEW VISITOR across the width under it,
+  FRIENDS stands upright: HOME, BACK, the title and the friend count on
+  the bar, NEW VISITOR across the width under it,
   and the friends' cards two to a row. With no friends yet, the nest
   and NEW VISITOR stand in the middle. The rest is as
   dinosaur-care-friends.feature tells. A tall-narrow window has its own sizes.

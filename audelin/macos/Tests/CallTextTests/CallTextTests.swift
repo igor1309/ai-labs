@@ -1,6 +1,6 @@
 import Synchronization
 import Testing
-@testable import CallText
+import CallText
 
 @Suite(.timeLimit(.minutes(1)))
 struct CallTextTests {
@@ -20,12 +20,12 @@ struct CallTextTests {
         await rig.microphone.revise(reused)
         await rig.call.stop()
 
-        var listening: [State] = []
+        var listening: [CallOutput] = []
         while let state = await updates.next() {
-            if state.status == .listening { listening.append(state) }
+            if state.status == .listening { listening.append(CallOutput(state)) }
         }
         #expect(Array(listening.prefix(3)) == [original, [], reused].map { entries in
-            State(status: .listening, entries: entries.map {
+            CallOutput(status: .listening, entries: entries.map {
                 .init(speaker: .mine, text: $0.text, writtenLater: $0.writtenLater)
             })
         })
@@ -35,9 +35,10 @@ struct CallTextTests {
 
         let rig = Rig()
         await rig.call.start()
+        var updates = await listeningUpdates(rig.call)
         for word in 0..<12 {
             await rig.microphone.say(word)
-            #expect(await rig.call.state == State(status: .listening, entries: entries(0...word, speaker: .mine)))
+            #expect(await updates.next().map(CallOutput.init) == CallOutput(status: .listening, entries: entries(0...word, speaker: .mine)))
         }
         await rig.call.stop()
     }
@@ -46,9 +47,10 @@ struct CallTextTests {
 
         let rig = Rig()
         await rig.call.start()
+        var updates = await listeningUpdates(rig.call)
         for word in 0..<4 {
             await rig.other.say(word)
-            #expect(await rig.call.state == State(status: .listening, entries: entries(0...word, speaker: .theirs)))
+            #expect(await updates.next().map(CallOutput.init) == CallOutput(status: .listening, entries: entries(0...word, speaker: .theirs)))
         }
         await rig.call.stop()
     }
@@ -58,9 +60,9 @@ struct CallTextTests {
 
         let rig = Rig(microphoneLoading: !onCallSide, callLoading: onCallSide)
         await rig.call.start()
-        #expect(await rig.call.state == State(status: .gettingReady, entries: []))
+        #expect(CallOutput(await rig.call.state) == CallOutput(status: .gettingReady, entries: []))
         await (onCallSide ? rig.other : rig.microphone).release()
-        #expect(await rig.call.state.status == .listening)
+        #expect(CallOutput(await rig.call.state).status == .listening)
         await rig.call.stop()
     }
 
@@ -72,10 +74,10 @@ struct CallTextTests {
             await rig.microphone.say(word)
             await rig.other.say(word + 100, at: word)
         }
-        #expect(await rig.call.state.entries.isEmpty)
+        #expect(CallOutput(await rig.call.state).entries.isEmpty)
         await rig.microphone.release()
         await rig.other.release()
-        #expect(await rig.call.state == State(status: .listening, entries: ordered(
+        #expect(CallOutput(await rig.call.state) == CallOutput(status: .listening, entries: ordered(
             entries(0...29, speaker: .mine) + entries(100...129, speaker: .theirs)
         )))
         await rig.call.stop()
@@ -87,14 +89,14 @@ struct CallTextTests {
         await rig.call.start()
         await rig.microphone.say(0)
         await rig.other.say(100, at: 0)
-        let frozen = await rig.call.state.entries
+        let frozen = CallOutput(await rig.call.state).entries
         #expect(frozen == ordered(entries(0...0, speaker: .mine) + entries(100...100, speaker: .theirs)))
         await rig.call.setEnabled(false)
         for word in 1..<8 {
             await rig.microphone.say(word)
             await rig.other.say(word + 100, at: word)
         }
-        #expect(await rig.call.state == State(status: .off, entries: frozen))
+        #expect(CallOutput(await rig.call.state) == CallOutput(status: .off, entries: frozen))
         #expect(await rig.microphone.switches == [false])
         #expect(await rig.other.switches == [false])
         await rig.call.stop()
@@ -108,13 +110,13 @@ struct CallTextTests {
             await rig.microphone.say(word)
             await rig.other.say(word + 100, at: word)
         }
-        #expect(await rig.call.state == State(status: .off, entries: []))
+        #expect(CallOutput(await rig.call.state) == CallOutput(status: .off, entries: []))
         await rig.call.setEnabled(true)
         let recovered = ordered(entries(0...19, speaker: .mine, later: true) + entries(100...119, speaker: .theirs, later: true))
-        #expect(await rig.call.state == State(status: .listening, entries: recovered))
+        #expect(CallOutput(await rig.call.state) == CallOutput(status: .listening, entries: recovered))
         await rig.microphone.say(20)
         await rig.other.say(120, at: 20)
-        #expect(await rig.call.state == State(status: .listening, entries: recovered + entries(20...20, speaker: .mine) + entries(120...120, speaker: .theirs)))
+        #expect(CallOutput(await rig.call.state) == CallOutput(status: .listening, entries: recovered + entries(20...20, speaker: .mine) + entries(120...120, speaker: .theirs)))
         #expect(await rig.microphone.switches == [true])
         #expect(await rig.other.switches == [true])
         await rig.call.stop()
@@ -124,9 +126,10 @@ struct CallTextTests {
 
         let rig = Rig()
         await rig.call.start()
+        var updates = await listeningUpdates(rig.call)
         for word in 0..<5 {
             await rig.microphone.say(word, write: false)
-            #expect(await rig.call.state == State(status: .listening, entries: entries(0...word, speaker: .mine)))
+            #expect(await updates.next().map(CallOutput.init) == CallOutput(status: .listening, entries: entries(0...word, speaker: .mine)))
         }
         #expect(await rig.microphone.written.isEmpty)
         await rig.call.stop()
@@ -148,16 +151,16 @@ struct CallTextTests {
             else { await call.setEnabled(!enabled) }
         }
         await held.waitUntilEntered()
-        await observed.wait(for: State(status: enabled ? .off : .gettingReady, entries: []))
+        await observed.wait(for: CallOutput(status: enabled ? .off : .gettingReady, entries: []))
         let latest = Task { await call.setEnabled(enabled) }
-        await observed.wait(for: State(status: enabled ? .gettingReady : .off, entries: []))
+        await observed.wait(for: CallOutput(status: enabled ? .gettingReady : .off, entries: []))
         held.open()
         await earlier.value
         await latest.value
         await call.setEnabled(enabled)
         #expect(await microphone.enabled == enabled)
         #expect(await other.enabled == enabled)
-        #expect(await call.state.status == (enabled ? .listening : .off))
+        #expect(CallOutput(await call.state).status == (enabled ? .listening : .off))
         await call.stop()
         await listener.value
     }
@@ -170,7 +173,7 @@ struct CallTextTests {
         await rig.other.say(100, at: 0)
         let revision = SideState.Entry(text: Text(id: 0, start: 0, end: 1, settled: "revised"), writtenLater: true)
         await rig.microphone.revise([revision])
-        #expect(await rig.call.state == State(status: .listening, entries: [
+        #expect(CallOutput(await rig.call.state) == CallOutput(status: .listening, entries: [
             .init(speaker: .mine, text: revision.text, writtenLater: true),
         ] + entries(100...100, speaker: .theirs)))
         await rig.call.stop()
@@ -187,7 +190,7 @@ struct CallTextTests {
         let going = onCallTrack ? rig.microphone : rig.other
         await failing.fail()
         await going.say(onCallTrack ? 1 : 101, at: 1)
-        #expect(await rig.call.state == State(status: .failed("Live text failed"), entries: ordered(
+        #expect(CallOutput(await rig.call.state) == CallOutput(status: .failed("Live text failed"), entries: ordered(
             entries(0...(onCallTrack ? 1 : 0), speaker: .mine) + entries(100...(onCallTrack ? 100 : 101), speaker: .theirs)
         )))
         #expect(!going.stopped)
@@ -205,7 +208,7 @@ struct CallTextTests {
         await failing.say(0)
         let listener = Task { await observed.listen(to: call) }
         await failing.fail()
-        let failed = State(status: .failed("Live text failed"), entries: entries(0...0, speaker: onCallTrack ? .theirs : .mine))
+        let failed = CallOutput(status: .failed("Live text failed"), entries: entries(0...0, speaker: onCallTrack ? .theirs : .mine))
         await observed.wait(for: failed)
         #expect(!observed.ended)
         #expect(other.stopRequests == 0)
@@ -234,7 +237,7 @@ struct CallTextTests {
         await other.stopRequested.wait()
         await failing.fail()
         let retained = ordered(entries(0...0, speaker: .mine) + entries(100...100, speaker: .theirs))
-        await observed.wait(for: State(status: .failed("Live text failed"), entries: retained))
+        await observed.wait(for: CallOutput(status: .failed("Live text failed"), entries: retained))
         #expect(!observed.ended)
         #expect(!other.stopped)
         stop.open()
@@ -258,7 +261,7 @@ struct CallTextTests {
         await rig.microphone.endAudio()
         await rig.microphone.waitForEnd()
         await rig.other.say(101, at: 1)
-        let intermediate = State(status: .listening, entries: ordered(
+        let intermediate = CallOutput(status: .listening, entries: ordered(
             settled(entries(0...1, speaker: .mine)) + entries(100...101, speaker: .theirs)
         ))
         await observed.wait(for: intermediate)
@@ -270,7 +273,7 @@ struct CallTextTests {
         await rig.other.endAudio()
         await listener.value
         #expect(observed.ended)
-        #expect(observed.latest == State(status: .finished, entries: ordered(
+        #expect(observed.latest == CallOutput(status: .finished, entries: ordered(
             settled(entries(0...1, speaker: .mine) + entries(100...102, speaker: .theirs))
         )))
         #expect(rig.other.liveTextReleased)
@@ -285,7 +288,7 @@ struct CallTextTests {
         let listener = Task { await observed.listen(to: rig.call) }
         await rig.microphone.say(0)
         await rig.other.say(100, at: 0)
-        await observed.wait(for: State(status: .listening, entries: ordered(
+        await observed.wait(for: CallOutput(status: .listening, entries: ordered(
             entries(0...0, speaker: .mine) + entries(100...100, speaker: .theirs)
         )))
         await rig.microphone.holdWords([1, 2], at: 1, until: mine)
@@ -304,7 +307,7 @@ struct CallTextTests {
         mine.open()
         await rig.microphone.stopReturned.wait()
         await rig.microphone.waitForEnd()
-        let intermediate = State(status: .listening, entries: ordered(
+        let intermediate = CallOutput(status: .listening, entries: ordered(
             settled(entries(0...2, speaker: .mine)) + entries(100...100, speaker: .theirs)
         ))
         await observed.wait(for: intermediate)
@@ -318,7 +321,7 @@ struct CallTextTests {
         #expect(rig.microphone.stopped)
         #expect(rig.other.stopped)
         #expect(observed.ended)
-        #expect(observed.latest == State(status: .finished, entries: ordered(
+        #expect(observed.latest == CallOutput(status: .finished, entries: ordered(
             settled(entries(0...2, speaker: .mine) + entries(100...102, speaker: .theirs))
         )))
         #expect(rig.microphone.liveTextReleased)
@@ -331,14 +334,14 @@ struct CallTextTests {
         await rig.call.start()
         await rig.microphone.say(0)
         await rig.call.setEnabled(false)
-        let retained = await rig.call.state.entries
+        let retained = CallOutput(await rig.call.state).entries
         await rig.call.stop()
-        #expect(await rig.call.state == State(status: .finished, entries: retained))
+        #expect(CallOutput(await rig.call.state) == CallOutput(status: .finished, entries: retained))
         #expect(rig.microphone.stopped)
         #expect(rig.other.stopped)
-        var final: State?
-        for await snapshot in rig.call.updates { final = snapshot }
-        #expect(final == State(status: .finished, entries: retained))
+        var final: CallOutput?
+        for await snapshot in rig.call.updates { final = CallOutput(snapshot) }
+        #expect(final == CallOutput(status: .finished, entries: retained))
     }
 }
 
@@ -531,7 +534,7 @@ private actor CueSide: Side {
     }
 }
 
-private func entries(_ words: ClosedRange<Int>, speaker: State.Speaker, later: Bool = false) -> [State.Entry] {
+private func entries(_ words: ClosedRange<Int>, speaker: State.Speaker, later: Bool = false) -> [CallOutput.Entry] {
 
     words.map { word in
         let start = Double(word % 100)
@@ -539,7 +542,7 @@ private func entries(_ words: ClosedRange<Int>, speaker: State.Speaker, later: B
     }
 }
 
-private func ordered(_ entries: [State.Entry]) -> [State.Entry] {
+private func ordered(_ entries: [CallOutput.Entry]) -> [CallOutput.Entry] {
 
     entries.sorted {
         if $0.text.start != $1.text.start { return $0.text.start < $1.text.start }
@@ -547,10 +550,20 @@ private func ordered(_ entries: [State.Entry]) -> [State.Entry] {
     }
 }
 
-private func settled(_ entries: [State.Entry]) -> [State.Entry] {
+private func settled(_ entries: [CallOutput.Entry]) -> [CallOutput.Entry] {
 
     entries.map {
         .init(speaker: $0.speaker, text: Text(id: $0.text.id, start: $0.text.start, end: $0.text.end,
                                            settled: $0.text.pending), writtenLater: $0.writtenLater)
     }
+}
+
+private func listeningUpdates(_ call: CallText) async -> AsyncStream<State>.Iterator {
+
+    var updates = call.updates.makeAsyncIterator()
+    while let snapshot = await updates.next() {
+        if snapshot.status == .listening { return updates }
+    }
+    Issue.record("Call ended before listening")
+    return updates
 }

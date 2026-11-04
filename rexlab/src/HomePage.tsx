@@ -1,3 +1,5 @@
+import { FitText } from "./FitText.tsx";
+import { EarthEdge } from "./EarthEdge.tsx";
 import { Route, Bone, BookOpen, Brush, Compass, Egg, Pickaxe, Copy, Footprints, Heart, Landmark, Lock, Monitor, Moon, Palette, Pencil, Play, Puzzle, Scale, Shapes, Star, Sun, Sparkles, TriangleAlert, Trophy, type LucideIcon } from "lucide-react";
 import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import type { HomeMotion } from "./homeMotion.ts";
@@ -372,9 +374,7 @@ export function HomePage({
           </span>
           <span className="home-today-art">{today.skyPicture ?? today.picture}</span>
         </Button>
-        <svg className="home-sky-wave" viewBox="0 0 1440 30" preserveAspectRatio="none" aria-hidden="true">
-          <path d="M0 10q60-10 120 0t120 0q60 10 120 0t120 0q60-10 120 0t120 0q60 10 120 0t120 0q60-10 120 0t120 0q60 10 120 0t120 0l0 20-1440 0z" />
-        </svg>
+        <EarthEdge className="home-sky-wave" />
       </section>
       <div className="home-ground games-tiles">
         {layersOf([...shown, "moreComing" as const], tilesPerLayer).map((layer, index) => (
@@ -400,13 +400,6 @@ function layersOf<Tile>(tiles: readonly Tile[], perLayer: number): Tile[][] {
   return Array.from({ length: Math.ceil(tiles.length / perLayer) }, (_, at) => tiles.slice(at * perLayer, (at + 1) * perLayer));
 }
 
-function EarthEdge() {
-  return <svg className="home-earth-wave" viewBox="0 0 1440 30" preserveAspectRatio="none" aria-hidden="true">
-    <path d="M0 10q60-10 120 0t120 0q60 10 120 0t120 0q60-10 120 0t120 0q60 10 120 0t120 0q60-10 120 0t120 0q60 10 120 0t120 0l0 20-1440 0z" />
-  </svg>;
-}
-
-
 // The quiz's picture: two dinosaurs facing off.
 function FaceOff({ label, left, right }: { label: string; left: string; right: string }) {
   return (
@@ -427,28 +420,4 @@ function BadgeChip({ badge, className, size }: { badge: Badge | undefined; class
       {badge.value}
     </span>
   );
-}
-
-// A name stays on one line in its room: its type shrinks by what it
-// measures over, since a fallback face (Russian has no Lexend)
-// can be wider than the room was sized for.
-function FitText({ className, text, style }: { className: string; text: string; style?: CSSProperties }) {
-  const element = useRef<HTMLSpanElement>(null);
-  useLayoutEffect(() => {
-    const shown = element.current;
-    if (shown === null) return;
-    const fit = () => {
-      shown.style.removeProperty("font-size");
-      if (shown.scrollWidth > shown.clientWidth) shown.style.fontSize = `${parseFloat(getComputedStyle(shown).fontSize) * shown.clientWidth / shown.scrollWidth}px`;
-    };
-    fit();
-    const observer = typeof ResizeObserver === "undefined" ? undefined : new ResizeObserver(fit);
-    if (shown.parentElement) observer?.observe(shown.parentElement);
-    document.fonts?.addEventListener("loadingdone", fit);
-    return () => {
-      observer?.disconnect();
-      document.fonts?.removeEventListener("loadingdone", fit);
-    };
-  }, [text]);
-  return <span ref={element} className={className} style={style}>{text}</span>;
 }

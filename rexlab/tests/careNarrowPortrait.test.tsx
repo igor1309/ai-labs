@@ -134,40 +134,31 @@ describe("care upright on a phone", () => {
     const size: WindowSize = [width, height];
     openCare(size, language);
     fireEvent.click(screen.getByRole("button", { name: TEXTS[language].friends }));
-    phoneScreen(".friends", size);
+    expect([document.documentElement.dataset.size, gateShown()]).toEqual(["tall-narrow", false]);
     const text = TEXTS[language];
-    const grid = styleAt(part(".friends-grid"), size);
-    expect([grid.value("grid-template-columns"), grid.columnGap()]).toEqual(["repeat(2, minmax(0, 1fr))", 12]);
-    // BACK, HOME and the count on the first row, the title for screen
-    // readers alone.
-    const title = styleAt(part(".friends-bar .friends-title"), size);
-    expect([title.value("position"), title.px("width"), title.value("clip-path")]).toEqual(["absolute", 1, "inset(50%)"]);
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toContain(text.friends);
-    const bar = styleAt(part(".friends-bar"), size);
-    expect(48 + 48 + countWidth(styleAt(part(".friends-bar .friend-count"), size)) + 2 * bar.columnGap()).toBeLessThanOrEqual(width - 40);
-    // Every shipped name in its card's three lines.
-    const footer = styleAt(part(".friend-footer"), size);
-    const name = styleAt(part(".friend-name"), size);
-    expect(footer.px("height")).toBe(footer.px("padding-top") + footer.px("padding-bottom") + 3 * name.px("line-height"));
-    const line = (width - 40 - grid.columnGap()) / 2 - footer.px("padding-left") - footer.px("padding-right") - 20 - footer.columnGap();
-    for (const visitor of SHIPPED_VISITORS) expect(capitalsWidth(visitor.name[language], name), visitor.name[language]).toBeLessThanOrEqual(3 * line);
+    expect(part(".friends").style.getPropertyValue("--friends-columns")).toBe("2");
+    expect(styleAt(part(".friends-grid"), size).columnGap()).toBe(12);
+    expect(styleAt(part(".friends-title"), size).value("position")).not.toBe("absolute");
+    expect(screen.getByRole("heading").textContent).toBe(text.friends);
+    expect(screen.getByRole("button", { name: text.home })).toBeDefined();
+    expect(screen.getByRole("button", { name: text.back })).toBeDefined();
+    expect(styleAt(part(".friend-name"), size).value("white-space")).toBe("nowrap");
+    expect(part(".friend-footer").querySelector("svg")).toBeNull();
   });
 
-  it.each(BOTH)("stands FRIENDS upright at %i by %i in %s with no friends yet, the nest inside the width", (width, height, language) => {
+  it.each(BOTH)("stands FRIENDS upright at %i by %i in %s with its nest in a round pit", (width, height, language) => {
     const size: WindowSize = [width, height];
     openCare(size, language, narrowViewport(), []);
     fireEvent.click(screen.getByRole("button", { name: TEXTS[language].friends }));
-    phoneScreen(".friends", size);
+    expect([document.documentElement.dataset.size, gateShown()]).toEqual(["tall-narrow", false]);
     const text = TEXTS[language];
-    const room = width - 40;
     const picture = styleAt(part(".no-friends-picture"), size);
-    const bubble = styleAt(part(".no-friends-bubble"), size);
-    expect(picture.value("width")).toBe("100%");
-    expect(0.6 * room + bubble.px("width")).toBeLessThanOrEqual(room);
-    const words = styleAt(part(".no-friends-text"), size);
-    expect(Math.max(...text.noFriends.split(" ").map((word) => capitalsWidth(word, words)))).toBeLessThanOrEqual(room);
-    const button = styleAt(part(".no-friends-button"), size);
-    expect(button.px("padding-left") + 30 + button.columnGap() + capitalsWidth(text.newVisitor, button) + button.px("padding-right")).toBeLessThanOrEqual(room);
+    expect([picture.px("width"), picture.px("height"), picture.value("border-radius")]).toEqual([150, 150, "50%"]);
+    expect(part(".no-friends-text").textContent).toBe(text.noFriends);
+    expect(part(".friend-count").textContent).toBe("0");
+    expect(screen.getByRole("button", { name: text.newVisitor }).querySelector("svg.lucide-footprints")).not.toBeNull();
+    expect(screen.getByRole("button", { name: text.home })).toBeDefined();
+    expect(screen.getByRole("button", { name: text.back })).toBeDefined();
   });
 
   it.each(BOTH)("stands the result upright at %i by %i in %s, its eight hearts on one row", async (width, height, language) => {
