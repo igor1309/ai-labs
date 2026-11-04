@@ -10776,115 +10776,12 @@ html[data-size="tall-narrow"] .jaw-result-actions button { width: 100%; font-siz
 /* Reduced motion comes after every rule it overrides, so that it wins
    over them: a later rule of the same weight would undo it. */
 
-.whose-jaw-board {
-  min-height: 100dvh; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px;
-  overflow-x: clip;
-  padding: calc(16px + env(safe-area-inset-top)) calc(20px + var(--screen-right)) calc(16px + env(safe-area-inset-bottom)) calc(20px + var(--screen-left));
-  background: #f2efe8; color: #1d2742;
-}
-.whose-jaw-board-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.jaw-teeth { display: flex; gap: clamp(4px, 1vw, 12px); }
-.jaw-socket { display: grid; place-items: center; width: clamp(32px, 5vw, 64px); aspect-ratio: 1; background: #e6e2d9; border: 3px solid #c9c2b3; border-radius: 50%; font-size: clamp(22px, 3vw, 38px); transition: background var(--motion-small) var(--ease-out); }
-.jaw-socket[data-filled] { background: #2f4a3f; animation: pop-in var(--motion-standard) var(--ease-overshoot) both; }
-.jaw-socket[data-shining] { background: #e39b2d; box-shadow: 0 0 18px #e39b2d70; }
-.jaw-board-title { margin: 0; text-align: center; font-size: clamp(22px, 3vw, 32px); line-height: 1.2; }
-.jaw-choices { flex: 0 0 auto; display: grid; grid-template-columns: repeat(var(--choices), minmax(0, 1fr)); gap: 12px; align-items: stretch; align-content: start; width: min(100%, calc(var(--choices) * min(300px, 34dvh) + (var(--choices) - 1) * 12px)); align-self: center; }
-.jaw-dinosaur { box-sizing: border-box; border: 2px solid #d8d2c5; padding: 6px; background: #fffdf8; box-shadow: 0 4px 0 #1d274210; color: inherit; border-radius: 24px; min-width: 0; position: relative; transition: background var(--motion-small) var(--ease-out), scale var(--motion-small) var(--ease-out); }
-.jaw-dinosaur[data-over] { scale: calc(1 + .04 * var(--motion-amount)); }
-.jaw-dinosaur-art { display: block; position: relative; width: 100%; max-width: none; margin: auto; }
-.jaw-breath { display: block; position: relative; animation: jaw-breathe calc(var(--motion-standard) * 12.5) var(--ease-out) infinite alternate; }
-.jaw-gummy, .jaw-fitted-picture, .jaw-food-picture { display: block; width: 100%; height: auto; }
-.jaw-mouth-glow { position: absolute; left: var(--mouth-x); top: var(--mouth-y); width: var(--mouth-width); height: 10%; translate: -50% -50%; border-radius: 50%; pointer-events: none; transition: box-shadow var(--motion-standard) var(--ease-out); }
-.jaw-dinosaur[data-hint] .jaw-mouth-glow, .jaw-dinosaur[data-over] .jaw-mouth-glow { box-shadow: 0 0 24px 12px #e39b2d90; }
-.jaw-dinosaur[data-hint] .jaw-gummy { filter: drop-shadow(0 0 10px #e39b2d); }
-.jaw-name { display: block; margin-top: 4px; min-height: 2.4em; line-height: 1.2; font-weight: 800; font-size: clamp(16px, 1.8vw, 24px); overflow-wrap: anywhere; }
-.jaw-food { position: absolute; left: var(--mouth-x); top: var(--mouth-y); width: calc(var(--mouth-width) * .6); height: auto; translate: -50% -15%; }
-.jaw-dinosaur[data-hint] .jaw-food { animation: hop var(--motion-alive) var(--ease-out) infinite; }
-.jaw-fitted { position: absolute; left: var(--mouth-x); top: var(--mouth-y); width: var(--mouth-width); height: auto; translate: -50% -55%; animation: pop-in var(--motion-small) var(--ease-overshoot) both; }
-.jaw-fitted-picture { rotate: var(--mouth-angle); scale: var(--mouth-mirror) 1; }
-.jaw-feedback { min-height: 64px; display: grid; place-items: center; align-self: center; max-width: 100%; }
-.jaw-feedback:empty { display: none; }
-.jaw-feedback p { box-sizing: border-box; margin: 0; padding: 8px 12px; border-radius: 22px; max-width: min(100%, 800px); background: #1f2b4d; color: white; font-size: clamp(16px, 2.4vw, 24px); line-height: 1.25; font-weight: 700; text-align: center; animation: rise-in var(--motion-standard) var(--ease-out) both; }
-.jaw-feedback p[data-reaction="🌿"] { background: #e39b2d; color: #1d2742; }
-.jaw-feedback p[data-reaction="🥩"] { background: #2f4a3f; }
-.jaw-tray { box-sizing: border-box; flex: 0 0 auto; display: grid; place-items: center; min-height: 0; border: 2px dashed #c9c2b3; padding: 4px 8px; border-radius: 28px; background: #fffdf8; width: fit-content; max-width: 100%; align-self: center; margin-top: clamp(12px, 3dvh, 28px); }
-.jaw-tray > button { grid-area: 1 / 1; }
-.jaw-next { display: flex; align-items: center; justify-content: center; gap: 12px; min-height: 56px; padding: 14px 24px; border: 0; border-radius: 24px; background: #e39b2d; color: #1d2742; font-size: clamp(20px, 2.4vw, 28px); font-weight: 800; animation: rise-in var(--motion-standard) var(--ease-out) both; }
-.jaw-next:disabled { opacity: .5; }
-.jaw-next:focus-visible { outline: 3px solid #c9583d; outline-offset: 4px; }
-.jaw-loose { position: relative; width: clamp(280px, 46dvh, 440px); max-width: 100%; border: 0; border-radius: 24px; background: transparent; touch-action: none; padding: 0; z-index: 2; }
-.jaw-loose { animation: fade-in var(--motion-small) var(--ease-out) both; }
-.jaw-loose-picture { display: block; width: 100%; height: auto; }
-.jaw-loose[aria-pressed="true"] { outline: 4px solid #e39b2d; background: #fffdf8; }
-.jaw-loose[data-dragging] { z-index: 20; pointer-events: none; }
-.jaw-loose[data-returning] { animation: settle-in var(--motion-standard) var(--ease-out) both; }
-.jaw-loose-art { display: block; }
-.jaw-loose[data-inviting] .jaw-loose-art { animation: jaw-invite calc(var(--motion-screen) * 12.5) var(--ease-out) infinite; }
-.jaw-diet-hint { position: absolute; right: 0; top: 0; font-size: 32px; }
-.whose-jaw-board[data-phase="entering"] .jaw-dinosaur { animation: slide-in var(--motion-standard) var(--ease-out) both; }
-.whose-jaw-board[data-phase="entering"] .jaw-loose { animation: rise-in var(--motion-standard) var(--ease-out) both; }
-.whose-jaw-board:is([data-phase="right"], [data-phase="reading"]) .jaw-dinosaur[data-target] { animation: jaw-walk calc(var(--motion-alive) * 3.75) var(--ease-out) both; }
-.whose-jaw-board:is([data-phase="right"], [data-phase="reading"]) .jaw-dinosaur[data-target] .jaw-fitted { animation: jaw-chomp var(--motion-alive) var(--ease-out) var(--motion-small) 2; }
-.whose-jaw-board:is([data-phase="right"], [data-phase="reading"]) .jaw-dinosaur[data-target] .jaw-food { animation: jaw-bites calc(var(--motion-alive) * 2) var(--ease-out) var(--motion-small) both; }
-/* Feedback releases the artwork's grid row so Next needs only its own height. */
-.whose-jaw-board:is([data-phase="right"], [data-phase="reading"], [data-phase="wrong"]) .jaw-loose { display: none; }
-.whose-jaw-board[data-phase="wrong"] .jaw-fitted { animation: jaw-miss calc(var(--motion-standard) * 5) var(--ease-out) both; }
-.whose-jaw-board[data-phase="done"] .jaw-tray { opacity: 0; }
 @keyframes jaw-breathe { to { transform: translateY(calc(-3px * var(--motion-amount))) scale(calc(1 + .015 * var(--motion-amount))); } }
 @keyframes jaw-invite { 0%, 86%, 100% { transform: rotate(calc(0deg * var(--motion-amount))); } 90% { transform: rotate(calc(-6deg * var(--motion-amount))); } 95% { transform: rotate(calc(6deg * var(--motion-amount))); } }
 @keyframes jaw-chomp { 50% { transform: rotate(calc(-8deg * var(--motion-amount))) scaleY(calc(1 - .15 * var(--motion-amount))); } }
 @keyframes jaw-bites { 45% { clip-path: inset(0 calc(45% * var(--motion-amount)) 0 0); } to { clip-path: inset(0 calc(100% * var(--motion-amount)) 0 0); } }
 @keyframes jaw-walk { 0%, 63% { transform: translateX(calc(0px * var(--motion-amount))); opacity: 1; } 100% { transform: translateX(calc(80px * var(--motion-amount))); opacity: 0; } }
 @keyframes jaw-miss { 0%, 35% { transform: rotate(calc(-12deg * var(--motion-amount))); } 65% { transform: rotate(calc(12deg * var(--motion-amount))); } 100% { transform: translateY(calc(100px * var(--motion-amount))); opacity: 0; } }
-@media (max-width: 700px) {
-  .jaw-choices { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .whose-jaw-board { padding-left: calc(12px + var(--screen-left)); padding-right: calc(12px + var(--screen-right)); }
-  .jaw-teeth { gap: 4px; }
-  .jaw-feedback { min-height: 60px; }
-}
-
-html[data-size="tall-narrow"] .whose-jaw-board { gap: 8px; }
-html[data-size="tall"] .jaw-choices,
-html[data-size="tall-narrow"] .jaw-choices {
-  flex: 0 0 auto; grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-items: stretch; align-content: start; width: min(100%, 680px, 58dvh); margin-top: 0;
-}
-html[data-size="tall"] .jaw-name,
-html[data-size="tall-narrow"] .jaw-name { font-size: clamp(16px, 2.4vw, 22px); }
-html[data-size="tall"] .jaw-feedback,
-html[data-size="tall-narrow"] .jaw-feedback { min-height: 48px; width: min(100%, 680px); align-self: center; }
-html[data-size="tall"] .jaw-feedback p,
-html[data-size="tall-narrow"] .jaw-feedback p { box-sizing: border-box; max-width: 100%; padding: 8px 12px; font-size: clamp(16px, 2.2vw, 20px); line-height: 1.25; }
-html[data-size="tall"] .jaw-tray,
-html[data-size="tall-narrow"] .jaw-tray { width: min(100%, 520px); margin-top: 0; margin-bottom: 0; }
-html[data-size="tall"] .jaw-loose,
-html[data-size="tall-narrow"] .jaw-loose { width: clamp(300px, 40dvh, 440px); max-width: 100%; }
-[data-theme="dark"] .whose-jaw-board { background: #0f1320; color: #ece8de; }
-[data-theme="dark"] .jaw-dinosaur,
-[data-theme="dark"] .jaw-tray { background: #181e2e; border-color: #47516a; }
-.jaw-dinosaur[data-over],
-.whose-jaw-board[data-holding] .jaw-dinosaur { background: #e39b2d30; border-color: #e39b2d; }
-
-/* A side tray leaves enough height for the cards and a full fact on phones. */
-html[data-size="wide-short"] .whose-jaw-board {
-  display: grid; grid-template-columns: minmax(0, 1fr) minmax(180px, 28%);
-  grid-template-rows: auto auto auto auto; align-content: start;
-  grid-template-areas: "bar bar" "title title" "choices tray" "feedback feedback";
-  gap: 8px 12px; padding-top: calc(8px + env(safe-area-inset-top)); padding-bottom: calc(8px + env(safe-area-inset-bottom));
-}
-html[data-size="wide-short"] .whose-jaw-board-bar { grid-area: bar; }
-html[data-size="wide-short"] .whose-jaw-board-bar .home-button { box-sizing: border-box; width: 48px; min-width: 48px; height: 48px; padding: 12px; gap: 0; }
-html[data-size="wide-short"] .whose-jaw-board-bar .home-button span { display: none; }
-html[data-size="wide-short"] .jaw-socket { box-sizing: border-box; width: 32px; font-size: 22px; }
-html[data-size="wide-short"] .jaw-board-title { grid-area: title; font-size: 22px; }
-html[data-size="wide-short"] .jaw-choices { grid-area: choices; grid-template-columns: repeat(var(--choices), minmax(0, 1fr)); width: min(100%, calc(var(--choices) * 40dvh + (var(--choices) - 1) * 12px)); justify-self: center; align-self: start; }
-html[data-size="wide-short"] .jaw-name { font-size: 16px; }
-html[data-size="wide-short"] .jaw-tray { grid-area: tray; margin-top: 0; justify-self: center; }
-html[data-size="wide-short"] .jaw-loose { width: clamp(160px, 44dvh, 240px); }
-html[data-size="wide-short"] .jaw-feedback { grid-area: feedback; min-height: 48px; justify-self: center; }
-html[data-size="wide-short"] .jaw-feedback p { box-sizing: border-box; max-width: 100%; padding: 8px 12px; font-size: 16px; line-height: 1.25; }
-html[data-size="wide-short"] .jaw-next { min-height: 48px; padding: 10px 16px; font-size: 18px; }
-
 .jaw-museum-tooth { font-size: clamp(64px, 12vh, 140px); font-size: clamp(64px, 12dvh, 140px); margin: auto; }
 
 .whose-jaw-shelf-screen {
@@ -10920,12 +10817,6 @@ html[data-size="tall-narrow"] .jaw-shelf-picture { height: calc(100% - 42px); }
 .game-audio-button { flex-shrink: 0; min-width: 48px; min-height: 48px; gap: 8px; font-size: 16px; }
 .game-audio-button svg { animation: fade-in var(--motion-small) var(--ease-out) both; }
 .jaw-result-audio { display: flex; justify-content: flex-end; width: 100%; }
-.whose-jaw-board-bar[data-audio] { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 12px; }
-.whose-jaw-board-bar[data-audio] .jaw-teeth { justify-content: center; }
-html[data-size="tall-narrow"] .whose-jaw-board-bar[data-audio] { grid-template-columns: 48px minmax(0, 1fr) 48px 48px; gap: 6px; }
-html[data-size="tall-narrow"] .whose-jaw-board-bar[data-audio] .home-button { box-sizing: border-box; width: 48px; min-width: 48px; height: 48px; padding: 12px; gap: 0; }
-html[data-size="tall-narrow"] .whose-jaw-board-bar[data-audio] .home-button span { display: none; }
-html[data-size="tall-narrow"] .whose-jaw-board-bar[data-audio] .jaw-socket { box-sizing: border-box; width: clamp(22px, 6vw, 32px); flex-shrink: 0; border-width: 2px; font-size: 18px; }
 html[data-size="tall-narrow"] .game-audio-button {
   padding: 8px 12px;
 }
@@ -12702,6 +12593,284 @@ html[data-size="wide-short"] .whose-jaw-play { flex: 0 0 auto; min-width: 160px;
 html[data-size="wide-short"] .whose-jaw-shelf { flex: 1 1 0; }
 html[data-size="wide-short"] .whose-jaw-welcome-bedrock { display: none; }
 
+/* The tooth game's board. The sizes are the boards' for 1133 by 744; a
+   wider or taller window of that shape scales the cards by --jb-unit, one
+   board pixel, and leaves the rest. */
+.whose-jaw-board {
+  --jb-top: 36px;
+  --jb-sky: 206px;
+  --jb-sky-gap: var(--ds-space-l);
+  --jb-sky-side: var(--ds-space-40);
+  --jb-side: var(--ds-space-40);
+  --jb-bottom: 60px;
+  --jb-wave: 30px;
+  --jb-body-top: var(--ds-space-18);
+  --jb-body-bottom: var(--jb-bottom);
+  --jb-body-gap: var(--ds-space-xl);
+  --jb-unit: min(calc(100vw / 1133), calc(100dvh / 744));
+  --jb-card: calc(var(--jb-unit) * 360);
+  --jb-pocket: calc(var(--jb-unit) * 200);
+  --jb-pad: var(--ds-space-s);
+  --jb-card-gap: var(--ds-btn-gap);
+  --jb-row-gap: var(--ds-space-m);
+  --jb-column-gap: var(--ds-space-3xl);
+  --jb-jaw-w: 230px;
+  --jb-jaw-h: 126px;
+  --jb-name: var(--ds-size-20);
+  --jb-cue-lift: 44px;
+  position: relative;
+  box-sizing: border-box;
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  color: var(--ds-ink);
+  font-family: var(--ds-font);
+  background: linear-gradient(var(--ds-sky-top), var(--ds-sky-bottom) 50vh) var(--ds-sky-bottom);
+  background: linear-gradient(var(--ds-sky-top), var(--ds-sky-bottom) 50dvh) var(--ds-sky-bottom);
+}
+.whose-jaw-board:has(.jaw-choices[data-choices="3"]) { --jb-card: calc(var(--jb-unit) * 300); --jb-pocket: calc(var(--jb-unit) * 172); --jb-column-gap: 36px; }
+.whose-jaw-board:has(.jaw-choices[data-choices="4"]) { --jb-card: calc(var(--jb-unit) * 236); --jb-pocket: calc(var(--jb-unit) * 140); --jb-column-gap: var(--ds-space-xl); }
+.whose-jaw-board-sky {
+  flex: none;
+  box-sizing: border-box;
+  height: calc(var(--jb-sky) + env(safe-area-inset-top));
+  display: flex;
+  flex-direction: column;
+  gap: var(--jb-sky-gap);
+  padding: calc(var(--jb-top) + env(safe-area-inset-top)) calc(var(--jb-sky-side) + var(--screen-right)) 0 calc(var(--jb-sky-side) + var(--screen-left));
+}
+.whose-jaw-board-bar { display: flex; align-items: center; gap: var(--ds-space-m); min-width: 0; }
+.whose-jaw-board-bar .home-button {
+  display: flex; flex: none; align-items: center; justify-content: center; min-width: 48px; min-height: 0;
+  box-sizing: border-box; height: 48px; gap: var(--ds-space-s); padding: 0 var(--ds-space-18) 0 var(--ds-space-l);
+  border: 0; border-radius: var(--ds-radius-pill); background: var(--ds-quiet); color: var(--ds-ink);
+  font-size: var(--ds-size-label); font-weight: 800;
+}
+.whose-jaw-board-bar .home-button svg { flex: none; width: 22px; height: 22px; }
+.whose-jaw-board-bar .home-button:last-child { width: 48px; padding: 0; }
+.whose-jaw-board .game-audio-button { box-sizing: border-box; height: 48px; min-height: 48px; padding-block: 0; }
+.jaw-teeth { display: flex; flex: none; align-items: center; gap: var(--ds-space-s); margin-inline: auto; }
+.jaw-socket {
+  display: grid; place-items: center; box-sizing: border-box; width: 36px; height: 42px;
+  border: 2px solid var(--ds-outline);
+  border-top-left-radius: var(--ds-radius-10); border-top-right-radius: var(--ds-radius-10);
+  border-bottom-left-radius: var(--ds-radius-16); border-bottom-right-radius: var(--ds-radius-16);
+  background: var(--ds-quiet); color: var(--ds-outline);
+  transition: background var(--motion-small) var(--ease-out);
+}
+.jaw-socket svg { width: 24px; height: 24px; }
+.jaw-socket[data-filled] { border-color: transparent; background: var(--ds-strong); color: var(--ds-on-strong); animation: pop-in var(--motion-standard) var(--ease-overshoot) both; }
+.jaw-socket[data-filled] svg { fill: currentColor; }
+.jaw-socket[data-shining] { border: 3px solid var(--ds-reward); }
+.jaw-board-best { display: flex; flex: none; align-items: center; gap: var(--ds-btn-gap); margin: 0; line-height: 1.25; white-space: nowrap; }
+.jaw-board-best svg { flex: none; width: 18px; height: 18px; color: var(--ds-reward); fill: currentColor; }
+.jaw-board-best-number { color: var(--ds-ink); font-size: var(--ds-size-number); font-weight: 800; }
+.jaw-board-best-of { color: var(--ds-ink-soft); font-size: var(--ds-size-label); font-weight: 700; }
+.jaw-board-title { display: flex; align-items: center; justify-content: center; gap: var(--ds-space-l); min-width: 0; margin: 0; font-size: var(--ds-size-40); font-weight: 800; letter-spacing: -.5px; line-height: 1.25; }
+.jaw-board-word { display: block; min-width: 0; white-space: nowrap; }
+.jaw-board-mark {
+  display: grid; place-items: center; flex: none; width: 60px; height: 60px;
+  border-top-left-radius: var(--ds-radius-30); border-top-right-radius: var(--ds-radius-30);
+  border-bottom-left-radius: var(--ds-radius-15); border-bottom-right-radius: var(--ds-radius-15);
+  background: var(--ds-pocket-1); color: var(--ds-action); box-shadow: inset 0 6px 10px var(--ds-pocket-shadow);
+}
+.jaw-board-mark svg { width: 30px; height: 30px; }
+.jaw-sand { position: relative; flex: 1 1 0; min-height: 0; display: flex; background: var(--ds-strata-1); --jb-cue-margin: var(--jb-side); }
+.jaw-sand-wave { position: absolute; pointer-events: none; top: calc(var(--jb-wave) * -2 / 3); left: 0; width: 100%; height: var(--jb-wave); fill: var(--ds-strata-1); }
+.jaw-sand-body {
+  flex: 1 1 0; min-width: 0; min-height: 0; box-sizing: border-box;
+  display: flex; flex-direction: column; align-items: center; gap: var(--jb-body-gap);
+  padding: var(--jb-body-top) calc(var(--jb-side) + var(--screen-right)) calc(var(--jb-body-bottom) + env(safe-area-inset-bottom)) calc(var(--jb-side) + var(--screen-left));
+}
+.jaw-bedrock { position: absolute; bottom: 0; left: 0; right: 0; height: calc(var(--jb-bottom) + env(safe-area-inset-bottom)); background: var(--ds-strata-2); --home-earth: var(--ds-strata-2); pointer-events: none; }
+.jaw-bedrock .home-earth-wave { top: calc(var(--jb-wave) * -2 / 3); height: var(--jb-wave); }
+
+.jaw-choices { flex: none; display: grid; grid-template-columns: repeat(var(--choices), var(--jb-card)); justify-content: center; align-items: end; gap: var(--jb-row-gap) var(--jb-column-gap); max-width: 100%; }
+.jaw-dinosaur {
+  display: flex; flex-direction: column; align-items: center; gap: var(--jb-card-gap); box-sizing: border-box; min-width: 0; padding: 0;
+  position: relative; border: 0; border-radius: var(--ds-radius-24); background: transparent; box-shadow: none; color: var(--ds-ink);
+  transition: rotate var(--motion-small) var(--ease-out);
+}
+.jaw-dinosaur[data-over] { rotate: calc(4deg * var(--motion-amount)); }
+.jaw-dinosaur:focus-visible { outline: 3px solid var(--ds-action); outline-offset: 3px; }
+/* The stroke grows inwards and the padding gives way, so the picture
+   stays where it is as the card lights up. */
+.jaw-pocket {
+  --jb-stroke: 2px;
+  display: block; flex: none; box-sizing: border-box; width: 100%; height: var(--jb-pocket);
+  padding: max(0px, calc(var(--jb-pad) - var(--jb-stroke)));
+  border: var(--jb-stroke) solid var(--ds-outline); border-radius: var(--ds-radius-24); background: var(--ds-photo-white);
+}
+.whose-jaw-board[data-holding] .jaw-pocket { --jb-stroke: 3px; border-color: var(--ds-strong); }
+.jaw-dinosaur[data-hint] .jaw-pocket { --jb-stroke: 6px; border-color: var(--ds-reward); box-shadow: 0 0 28px var(--ds-glow-67); }
+.jaw-dinosaur[data-over] .jaw-pocket,
+.whose-jaw-board:is([data-phase="right"], [data-phase="reading"]) .jaw-dinosaur[data-target] .jaw-pocket { --jb-stroke: 5px; border-color: var(--ds-good); box-shadow: none; }
+.whose-jaw-board[data-phase="wrong"] .jaw-dinosaur[data-target] .jaw-pocket { --jb-stroke: 5px; border-color: var(--ds-bad); box-shadow: none; }
+/* A card's own fade-in holds its opacity, so the unchosen cards fade
+   what they hold. */
+.whose-jaw-board:is([data-phase="right"], [data-phase="reading"]) .jaw-dinosaur:not([data-target]) > * { opacity: .35; }
+/* The picture covers its window and keeps its proportions, so the mouth
+   positions, given as shares of the picture, stay on the mouth. */
+.jaw-window { display: block; position: relative; width: 100%; height: 100%; overflow: hidden; border-radius: var(--ds-radius-16); }
+.jaw-dinosaur-art {
+  display: block; position: absolute; left: 50%; top: 50%; translate: -50% -50%;
+  width: max(100%, calc((var(--jb-pocket) - 2 * var(--jb-pad)) * 4 / 3)); max-width: none; aspect-ratio: 4 / 3; margin: 0;
+}
+.jaw-breath { display: block; position: relative; width: 100%; height: 100%; animation: jaw-breathe calc(var(--motion-standard) * 12.5) var(--ease-out) infinite alternate; }
+.jaw-gummy { display: block; width: 100%; height: 100%; object-fit: cover; }
+.jaw-fitted-picture, .jaw-food-picture { display: block; width: 100%; height: auto; }
+.jaw-sand .picture[data-picture="loading"] { --shimmer-from: var(--ds-pocket-1); --shimmer-to: var(--ds-label); }
+.jaw-mouth-glow { position: absolute; left: var(--mouth-x); top: var(--mouth-y); width: var(--mouth-width); height: 10%; translate: -50% -50%; border-radius: 50%; pointer-events: none; transition: box-shadow var(--motion-standard) var(--ease-out); }
+.jaw-dinosaur[data-hint] .jaw-mouth-glow, .jaw-dinosaur[data-over] .jaw-mouth-glow { box-shadow: 0 0 24px 12px var(--ds-glow-50); }
+.jaw-food { position: absolute; left: var(--mouth-x); top: var(--mouth-y); width: calc(var(--mouth-width) * .6); height: auto; translate: -50% -15%; }
+.jaw-fitted { position: absolute; left: var(--mouth-x); top: var(--mouth-y); width: var(--mouth-width); height: auto; translate: -50% -55%; animation: pop-in var(--motion-small) var(--ease-overshoot) both; }
+.jaw-fitted-picture { rotate: var(--mouth-angle); scale: var(--mouth-mirror) 1; }
+.jaw-food-tag {
+  display: flex; flex: none; align-items: center; gap: var(--ds-space-s); max-width: 100%; box-sizing: border-box;
+  padding: var(--jb-tag-y, var(--ds-space-6)) var(--jb-tag-end, var(--ds-space-14)) var(--jb-tag-y, var(--ds-space-6)) var(--jb-tag-start, var(--ds-space-s));
+  border-radius: var(--ds-radius-tag); background: var(--ds-label); color: var(--ds-on-label);
+  font-size: var(--ds-size-label); font-weight: 700; line-height: 28px;
+}
+.jaw-food-tag-picture, .jaw-diet-hint-picture { display: block; flex: none; width: 52px; height: 28px; object-fit: contain; }
+.jaw-dinosaur[data-hint] .jaw-food-tag { background: var(--ds-reward); color: var(--ds-on-reward); animation: hop var(--motion-alive) var(--ease-out) infinite; }
+.jaw-name { display: block; width: 100%; min-width: 0; color: var(--ds-ink); font-size: var(--jb-name); font-weight: 800; line-height: 1.25; text-align: center; white-space: nowrap; }
+
+.jaw-tray {
+  display: flex; flex: none; align-items: center; justify-content: center; gap: var(--ds-space-xl); box-sizing: border-box;
+  max-width: 100%; min-height: 150px; padding: var(--ds-space-m) var(--ds-space-28);
+  border-radius: var(--ds-radius-28); background: var(--ds-pocket-1);
+}
+.jaw-slot { position: relative; flex: none; width: var(--jb-jaw-w); height: var(--jb-jaw-h); }
+.whose-jaw-board[data-phase="wrong"] .jaw-slot { opacity: .6; }
+.whose-jaw-board:is([data-phase="right"], [data-phase="reading"]) .jaw-slot { display: none; }
+.jaw-ghost { position: absolute; inset: 0; overflow: hidden; border-radius: var(--ds-radius-speech); background: var(--ds-photo-white); opacity: .18; }
+.jaw-ghost-picture { display: block; width: 100%; height: 100%; object-fit: contain; }
+.jaw-loose {
+  display: block; position: relative; z-index: 2; box-sizing: border-box; width: 230px; height: 100%; padding: 0;
+  border: 0; border-radius: var(--ds-radius-speech); background: var(--ds-photo-white); touch-action: none;
+  animation: fade-in var(--motion-small) var(--ease-out) both;
+}
+html[data-size="tall-narrow"] .jaw-loose,
+html[data-size="wide-short"] .jaw-loose { width: 170px; }
+.jaw-loose-art { display: block; width: 100%; height: 100%; }
+.jaw-loose-picture { display: block; width: 100%; height: 100%; object-fit: contain; }
+.jaw-loose[aria-pressed="true"] { rotate: calc(-6deg * var(--motion-amount)); box-shadow: 0 10px 24px var(--ds-glow-80); }
+.jaw-loose[data-dragging] { z-index: 20; pointer-events: none; rotate: calc(-8deg * var(--motion-amount)); box-shadow: 0 14px 24px var(--ds-shade-25); }
+.jaw-loose[data-returning] { animation: settle-in var(--motion-standard) var(--ease-out) both; }
+.jaw-loose:focus-visible { outline: 3px solid var(--ds-action); outline-offset: 3px; }
+.jaw-loose[data-inviting] .jaw-loose-art { animation: jaw-invite calc(var(--motion-screen) * 12.5) var(--ease-out) infinite; }
+.jaw-prompt { display: flex; align-items: center; gap: var(--ds-btn-gap); min-width: 0; margin: 0; color: var(--ds-ink); font-size: var(--jb-prompt, var(--ds-size-24)); font-weight: 800; line-height: 1.25; }
+.jaw-prompt svg { flex: none; width: 26px; height: 26px; }
+.jaw-diet-hint { display: block; flex: none; }
+/* Holding the jaw clears the prompt but keeps its room, so the tray does
+   not re-centre the jaw under the finger. */
+.whose-jaw-board[data-holding] .jaw-prompt { visibility: hidden; }
+.whose-jaw-board:is([data-phase="wrong"], [data-phase="right"], [data-phase="reading"], [data-phase="done"]) .jaw-prompt { display: none; }
+.jaw-feedback:empty { display: none; }
+.jaw-feedback { flex: 0 1 auto; min-width: 0; }
+.jaw-feedback p { display: flex; align-items: center; gap: var(--ds-btn-gap); margin: 0; color: var(--ds-ink); font-size: var(--jb-fact, var(--ds-size-22)); font-weight: 800; line-height: 1.25; animation: rise-in var(--motion-standard) var(--ease-out) both; }
+.jaw-feedback p svg { flex: none; width: 26px; height: 26px; color: var(--ds-reward); }
+.whose-jaw-board[data-phase="wrong"] .jaw-feedback {
+  position: absolute; z-index: 5; left: var(--cue-x, 0); top: calc(var(--cue-y, 0px) - var(--jb-cue-lift));
+  max-width: calc(100% - 2 * var(--jb-side)); pointer-events: none;
+}
+.whose-jaw-board[data-phase="wrong"] .jaw-feedback p {
+  position: relative; box-sizing: border-box; padding: var(--ds-space-l) var(--ds-space-22); border-radius: var(--ds-radius-speech);
+  background: var(--ds-label); color: var(--ds-on-label); font-size: var(--ds-size-label); font-weight: 700;
+}
+.whose-jaw-board[data-phase="wrong"] .jaw-feedback p svg { width: 24px; height: 24px; color: var(--ds-action); }
+.whose-jaw-board[data-phase="wrong"] .jaw-feedback p::after { content: ""; position: absolute; left: var(--ds-space-30); top: 100%; width: 22px; height: 14px; background: var(--ds-label); clip-path: polygon(0 0, 100% 0, 18% 100%); }
+.jaw-next {
+  display: flex; flex: none; align-items: center; justify-content: center; gap: var(--ds-btn-gap); box-sizing: border-box; min-height: 48px;
+  padding: var(--ds-btn-pad-y) var(--ds-btn-pad-x); border: 0; border-radius: var(--ds-radius-pill);
+  background: var(--ds-action); color: var(--ds-on-action); font-size: var(--ds-size-action); font-weight: 800; line-height: 1.25; white-space: nowrap;
+  animation: rise-in var(--motion-standard) var(--ease-out) both;
+}
+.jaw-next svg { flex: none; width: var(--ds-icon-action); height: var(--ds-icon-action); }
+.jaw-next:disabled { opacity: .5; }
+.jaw-next:focus-visible { outline: 3px solid var(--ds-strong); outline-offset: 3px; }
+.whose-jaw-board[data-phase="entering"] .jaw-dinosaur { animation: slide-in var(--motion-standard) var(--ease-out) both; }
+.whose-jaw-board[data-phase="entering"] .jaw-loose { animation: rise-in var(--motion-standard) var(--ease-out) both; }
+.whose-jaw-board:is([data-phase="right"], [data-phase="reading"]) .jaw-dinosaur[data-target] { animation: jaw-walk calc(var(--motion-alive) * 3.75) var(--ease-out) both; }
+.whose-jaw-board:is([data-phase="right"], [data-phase="reading"]) .jaw-dinosaur[data-target] .jaw-fitted { animation: jaw-chomp var(--motion-alive) var(--ease-out) var(--motion-small) 2; }
+.whose-jaw-board:is([data-phase="right"], [data-phase="reading"]) .jaw-dinosaur[data-target] .jaw-food { animation: jaw-bites calc(var(--motion-alive) * 2) var(--ease-out) var(--motion-small) both; }
+.whose-jaw-board[data-phase="wrong"] .jaw-fitted { animation: jaw-miss calc(var(--motion-standard) * 5) var(--ease-out) both; }
+.whose-jaw-board[data-phase="done"] .jaw-tray { opacity: 0; }
+
+/* Upright on an iPad: two cards a row, the third of three centred under
+   them. */
+html[data-size="tall"] .whose-jaw-board { --jb-sky-side: var(--ds-space-56); --jb-side: var(--ds-space-56); --jb-bottom: 50px; --jb-pocket: 260px; --jb-body-top: var(--ds-space-40); --jb-body-gap: var(--ds-space-40); --jb-column-gap: var(--ds-space-20); --jb-row-gap: var(--ds-space-20); }
+html[data-size="tall"] .whose-jaw-board:has(.jaw-choices[data-choices="3"]) { --jb-pocket: 220px; --jb-body-gap: var(--ds-space-28); --jb-column-gap: var(--ds-space-20); }
+html[data-size="tall"] .whose-jaw-board:has(.jaw-choices[data-choices="4"]) { --jb-pocket: 200px; --jb-body-top: var(--ds-space-22); --jb-body-gap: var(--ds-space-28); --jb-column-gap: var(--ds-space-20); --jb-card-gap: var(--ds-space-s); }
+html[data-size="tall"] .jaw-choices { width: 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+html[data-size="tall"] .jaw-choices[data-choices="3"] .jaw-dinosaur:nth-child(3) { grid-column: 1 / -1; justify-self: center; width: calc((100% - var(--jb-column-gap)) / 2); }
+html[data-size="tall"] .whose-jaw-board .game-audio-button { width: 48px; padding-inline: 0; }
+html[data-size="tall"] .whose-jaw-board .game-audio-button span { display: none; }
+
+/* An iPhone upright: one column of two or three cards, four in two rows,
+   a tray as wide as the sand, and the sockets narrowed for the controls
+   the bar keeps beside them. */
+html[data-size="tall-narrow"] .whose-jaw-board { --jb-top: 62px; --jb-sky: 208px; --jb-sky-gap: 22px; --jb-sky-side: var(--ds-space-20); --jb-side: var(--ds-space-20); --jb-bottom: 30px; --jb-wave: 24px; --jb-body-top: var(--ds-space-14); --jb-body-gap: var(--ds-space-14); --jb-pocket: 150px; --jb-card-gap: var(--ds-space-s); --jb-row-gap: var(--ds-space-m); --jb-column-gap: var(--ds-space-m); --jb-jaw-w: 170px; --jb-jaw-h: 93px; --jb-name: var(--ds-size-15); --jb-prompt: var(--ds-size-18); --jb-fact: var(--ds-size-18); --jb-cue-lift: -4px; background: linear-gradient(var(--ds-sky-top), var(--ds-sky-bottom) 40vh) var(--ds-sky-bottom); background: linear-gradient(var(--ds-sky-top), var(--ds-sky-bottom) 40dvh) var(--ds-sky-bottom); }
+html[data-size="tall-narrow"] .whose-jaw-board:has(.jaw-choices[data-choices="3"]) { --jb-pocket: 118px; }
+html[data-size="tall-narrow"] .whose-jaw-board:has(.jaw-choices[data-choices="4"]) { --jb-pocket: 96px; --jb-card-gap: var(--ds-space-6); }
+html[data-size="tall-narrow"] .jaw-choices { width: 100%; grid-template-columns: minmax(0, 1fr); }
+html[data-size="tall-narrow"] .jaw-choices[data-choices="4"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+html[data-size="tall-narrow"] .jaw-tray { align-self: stretch; justify-content: flex-start; gap: var(--ds-space-m); min-height: 120px; padding: var(--ds-space-m) var(--ds-space-l); }
+html[data-size="tall-narrow"] .whose-jaw-board:is([data-phase="right"], [data-phase="reading"]) .jaw-tray { flex-direction: column; align-items: stretch; justify-content: center; }
+html[data-size="tall-narrow"] .jaw-prompt { flex: 1 1 0; }
+html[data-size="tall-narrow"] .whose-jaw-board-bar { gap: var(--ds-space-s); }
+html[data-size="tall-narrow"] .jaw-teeth { gap: var(--ds-space-xs); }
+html[data-size="tall-narrow"] .jaw-socket { width: clamp(20px, 7.6vw, 30px); height: 36px; }
+html[data-size="tall-narrow"] .jaw-socket svg { width: 20px; height: 20px; }
+html[data-size="tall-narrow"] .jaw-board-title { gap: var(--ds-space-m); font-size: var(--ds-size-27); }
+html[data-size="tall-narrow"] .jaw-board-mark { width: 46px; height: 46px; }
+html[data-size="tall-narrow"] .jaw-board-mark svg { width: 24px; height: 24px; }
+/* An iPhone SE's board is shorter: a nearer top, smaller pockets and jaw,
+   and closer parts over the thinnest bedrock. */
+@media (max-height: 700px) {
+  html[data-size="tall-narrow"] .whose-jaw-board { --jb-top: 44px; --jb-sky: 186px; --jb-sky-gap: 28px; --jb-bottom: 14px; --jb-body-top: var(--ds-space-m); --jb-body-gap: var(--ds-space-m); --jb-pocket: 108px; --jb-pad: var(--ds-space-6); --jb-card-gap: var(--ds-space-6); --jb-row-gap: var(--ds-btn-gap); --jb-column-gap: var(--ds-btn-gap); --jb-jaw-w: 160px; --jb-jaw-h: 84px; --jb-name: var(--ds-size-13); --jb-prompt: var(--ds-size-16); --jb-fact: var(--ds-size-16); --jb-tag-y: var(--ds-space-xs); --jb-tag-end: var(--ds-space-m); --jb-tag-start: var(--ds-space-6); }
+  html[data-size="tall-narrow"] .whose-jaw-board:has(.jaw-choices[data-choices="3"]) { --jb-pocket: 92px; }
+  html[data-size="tall-narrow"] .whose-jaw-board:has(.jaw-choices[data-choices="4"]) { --jb-pocket: 78px; --jb-card-gap: var(--ds-space-xs); }
+  html[data-size="tall-narrow"] .jaw-tray { gap: var(--ds-btn-gap); min-height: 104px; padding: var(--ds-btn-gap) var(--ds-space-14); }
+  html[data-size="tall-narrow"] .jaw-loose { width: 160px; }
+  html[data-size="tall-narrow"] .jaw-board-title { font-size: var(--ds-size-24); }
+  html[data-size="tall-narrow"] .jaw-board-mark { width: 42px; height: 42px; }
+  html[data-size="tall-narrow"] .jaw-next { min-height: 48px; padding: var(--ds-space-s) var(--ds-space-xl); font-size: var(--ds-size-20); }
+}
+
+/* An iPhone on its side: HOME, the sockets and the title share one row in
+   the sky, the tray stands beside the cards, and the sand reaches the
+   bottom. */
+html[data-size="wide-short"] .whose-jaw-board { --jb-top: 8px; --jb-sky: 124px; --jb-sky-side: min(var(--ds-space-79), 9.27vw); --jb-side: min(var(--ds-space-79), 9.27vw); --jb-bottom: 0px; --jb-wave: 24px; --jb-body-top: var(--ds-space-m); --jb-body-bottom: var(--ds-space-26); --jb-body-gap: var(--ds-space-20); --jb-pocket: 150px; --jb-choices: 420px; --jb-column-gap: var(--ds-space-s); --jb-row-gap: var(--ds-space-6); --jb-jaw-w: 170px; --jb-jaw-h: 93px; --jb-name: var(--ds-size-13); --jb-prompt: var(--ds-size-16); --jb-fact: var(--ds-size-16); --jb-cue-lift: 12px; }
+html[data-size="wide-short"] .whose-jaw-board:has(.jaw-choices[data-choices="3"]) { --jb-pocket: 110px; --jb-choices: 470px; --jb-column-gap: var(--ds-space-s); }
+html[data-size="wide-short"] .whose-jaw-board:has(.jaw-choices[data-choices="4"]) { --jb-pocket: 76px; --jb-pad: var(--ds-space-xs); --jb-choices: 440px; --jb-column-gap: var(--ds-btn-gap); --jb-card-gap: var(--ds-space-2); }
+html[data-size="wide-short"] .whose-jaw-board-sky { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto auto; align-items: start; column-gap: var(--ds-space-s); }
+html[data-size="wide-short"] .whose-jaw-board-bar { display: contents; }
+html[data-size="wide-short"] .whose-jaw-board-bar > * { grid-row: 1; }
+html[data-size="wide-short"] .jaw-teeth { grid-column: 2; margin-inline: var(--ds-space-m) 0; height: 48px; }
+html[data-size="wide-short"] .jaw-board-title { grid-column: 3; grid-row: 1; gap: var(--ds-space-m); font-size: var(--ds-size-24); }
+html[data-size="wide-short"] .jaw-board-mark { width: 40px; height: 40px; }
+html[data-size="wide-short"] .jaw-board-mark svg { width: 22px; height: 22px; }
+html[data-size="wide-short"] .whose-jaw-board .game-audio-button { grid-column: 4; width: 48px; padding-inline: 0; }
+html[data-size="wide-short"] .whose-jaw-board-bar .home-button:last-child { grid-column: 5; }
+html[data-size="wide-short"] .jaw-sand-body { flex-direction: row; justify-content: center; }
+html[data-size="wide-short"] .jaw-choices { flex: 0 1 var(--jb-choices); min-width: 0; grid-template-columns: repeat(var(--choices), minmax(0, 1fr)); }
+html[data-size="wide-short"] .jaw-choices[data-choices="4"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+html[data-size="wide-short"] .jaw-tray { flex-direction: column; gap: var(--ds-btn-gap); width: 220px; min-height: 0; padding: var(--ds-space-14) var(--ds-space-l); }
+html[data-size="wide-short"] .whose-jaw-board:is([data-phase="right"], [data-phase="reading"]) .jaw-tray { width: 280px; }
+html[data-size="wide-short"] .jaw-next { min-height: 48px; padding: var(--ds-space-s) var(--ds-space-xl); font-size: var(--ds-size-18); }
+html[data-size="wide-short"] .jaw-next svg { width: 20px; height: 20px; }
+html[data-size="wide-short"] .jaw-bedrock { display: none; }
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .whose-jaw-board-bar .home-button { width: 48px; padding: 0; }
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .whose-jaw-board-bar .home-button svg { width: 24px; height: 24px; }
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .whose-jaw-board-bar .home-button span { display: none; }
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .jaw-board-best { display: none; }
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .whose-jaw-board .game-audio-button { width: 48px; padding: 0; }
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .whose-jaw-board .game-audio-button span { display: none; }
+
+
 @media (prefers-reduced-motion: reduce) {
   :root {
     --motion-standard: 160ms;
@@ -13013,7 +13182,7 @@ html[data-size="wide-short"] .whose-jaw-welcome-bedrock { display: none; }
 .home-version { flex: none; font-size: 11px; font-weight: 400; opacity: .6; }
 body:has(.home-dig-site) #version,
 body:has(.friends-dig-site) #version,
-body:has(.whose-jaw-welcome) #version { display: none; }
+body:has(.whose-jaw-welcome, .whose-jaw-board) #version { display: none; }
 html:is([data-size="tall-narrow"], [data-size="wide-short"]) .home-layer .tiles-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   column-gap: 10px;

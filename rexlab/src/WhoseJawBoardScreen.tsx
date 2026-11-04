@@ -1,10 +1,13 @@
-import { ArrowLeft, ArrowRight, House } from "lucide-react";
+import { ArrowLeft, ArrowRight, CircleHelp, Hand, House, Ruler, Star, Zap } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from "react";
 import { Button } from "./Button.tsx";
+import { EarthEdge } from "./EarthEdge.tsx";
+import { FitText } from "./FitText.tsx";
 import { useGateShown } from "./OrientationGate.tsx";
 import { Picture, PictureImage, usePicture } from "./Picture.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
+import { Tooth } from "./Tooth.tsx";
 
 export type JawChoiceView = {
   id: string; name: string; picture: string; food: string; diet: "meat" | "plants";
@@ -23,6 +26,7 @@ export type WhoseJawBoardScreenProps = {
   foodShown: boolean;
   namesShown: boolean;
   feedback: { words: string; symbol: string } | undefined;
+  best?: number | null;
   onPlace(id: string): void;
   onNext(): void;
   onName(id: string): void;
@@ -33,7 +37,12 @@ export type WhoseJawBoardScreenProps = {
 type Hold = { pointerId: number; x: number; y: number; dx: number; dy: number; dragging: boolean };
 type Returned = { x: number; y: number; count: number };
 
-export function WhoseJawBoardScreen({ audioControl, language, phase, choices, jawPicture, placed, target, hint, jawDiet, foodShown, namesShown, feedback, onPlace, onNext, onName, onSlide, onBack, onHome }: WhoseJawBoardScreenProps) {
+const MOST_STARS = 3;
+const REACTIONS: Record<string, ReactNode> = {
+  "🌿": <Zap aria-hidden="true" />, "🥩": <CircleHelp aria-hidden="true" />, "📏": <Ruler aria-hidden="true" />, "🦷": <Tooth />
+};
+
+export function WhoseJawBoardScreen({ audioControl, language, phase, choices, jawPicture, placed, target, hint, jawDiet, foodShown, namesShown, feedback, best = null, onPlace, onNext, onName, onSlide, onBack, onHome }: WhoseJawBoardScreenProps) {
   const text = TEXTS[language];
   const gate = useGateShown();
   const [picked, setPicked] = useState(false);
@@ -46,6 +55,7 @@ export function WhoseJawBoardScreen({ audioControl, language, phase, choices, ja
   const hold = useRef<Hold>(undefined);
   const suppressClick = useRef(false);
   const elements = useRef(new Map<string, HTMLButtonElement>());
+  const cue = useRef<HTMLDivElement>(null);
   const look = usePicture(jawPicture);
   const ready = look === "appearing" || look === "shown";
   const enabled = phase === "waiting" && !gate;
@@ -71,6 +81,19 @@ export function WhoseJawBoardScreen({ audioControl, language, phase, choices, ja
     locked.current = !enabled;
     if (!enabled) cancel();
   }, [enabled]);
+
+  // The cue stands on the wrong card's top-right corner, wherever the size
+  // puts that card, and a long cue slides along rather than leave the sand.
+  useLayoutEffect(() => {
+    const region = cue.current;
+    const card = target === undefined ? undefined : elements.current.get(target);
+    const sand = region?.offsetParent;
+    if (phase !== "wrong" || !region || !card || !(sand instanceof HTMLElement)) return;
+    const margin = parseFloat(getComputedStyle(sand).getPropertyValue("--jb-cue-margin")) || 0;
+    const left = card.offsetLeft + card.offsetWidth + margin - region.offsetWidth;
+    region.style.setProperty("--cue-x", `${Math.max(margin, Math.min(left, sand.clientWidth - margin - region.offsetWidth))}px`);
+    region.style.setProperty("--cue-y", `${card.offsetTop}px`);
+  }, [phase, target, feedback?.words]);
 
   // Expanded zones can overlap on a phone. The nearest centre decides,
   // so a finger in the visible dinosaur always has a predictable target.
@@ -152,53 +175,68 @@ export function WhoseJawBoardScreen({ audioControl, language, phase, choices, ja
         if (!hold.current) suppressClick.current = false;
       }
     }} onClick={() => pick(false)}>
-    <header className="whose-jaw-board-bar" data-audio={audioControl ? true : undefined}>
-      <Button className="home-button" aria-label={text.home} onClick={onHome}><House aria-hidden="true" /><span className="narrow-hidden">{text.home}</span></Button>
-      <div className="jaw-teeth" role="img" aria-label={`${text.jawProgress}: ${placed.length} / 5`}>
-        {Array.from({ length: 5 }, (_, at) => <span key={at} className="jaw-socket" data-filled={!!placed[at] || undefined}
-          data-shining={(placed[at]?.firstTry || phase === "done") || undefined} aria-hidden="true">{placed[at] ? "🦷" : ""}</span>)}
+    <div className="whose-jaw-board-sky">
+      <header className="whose-jaw-board-bar">
+        <Button className="home-button" aria-label={text.home} onClick={onHome}><House aria-hidden="true" /><span>{text.home}</span></Button>
+        <div className="jaw-teeth" role="img" aria-label={`${text.jawProgress}: ${placed.length} / 5`}>
+          {Array.from({ length: 5 }, (_, at) => <span key={at} className="jaw-socket" data-filled={!!placed[at] || undefined}
+            data-shining={(placed[at]?.firstTry || phase === "done") || undefined} aria-hidden="true"><Tooth /></span>)}
+        </div>
+        {best !== null && <p className="jaw-board-best" aria-label={text.bestScore}><Star aria-hidden="true" /><span className="jaw-board-best-number">{best}</span> <span className="jaw-board-best-of">/ {MOST_STARS}</span></p>}
+        {audioControl}
+        <Button className="home-button" aria-label={text.back} onClick={onBack}><ArrowLeft aria-hidden="true" /></Button>
+      </header>
+      <h1 className="jaw-board-title"><span className="jaw-board-mark"><Tooth /></span><FitText className="jaw-board-word" text={text.whoseJaw} /></h1>
+    </div>
+    <section className="jaw-sand">
+      <EarthEdge className="jaw-sand-wave" />
+      <div className="jaw-sand-body">
+        <div className="jaw-choices" role="group" aria-label={text.creatures} data-choices={choices.length} style={{ "--choices": choices.length } as CSSProperties}>
+          {choices.map((choice, at) => <Button key={choice.id} className="jaw-dinosaur" aria-label={choice.name} aria-disabled={!enabled}
+            data-over={over === choice.id || undefined} data-hint={hint === choice.id || undefined}
+            data-target={target === choice.id || undefined} style={{ "--place": at } as CSSProperties}
+            ref={(element) => { if (element) elements.current.set(choice.id, element); else elements.current.delete(choice.id); }}
+            onClick={(event) => { event.stopPropagation(); if (!enabled || locked.current || hold.current) return; if (selected.current) { place(choice.id); } else onName(choice.id); }}>
+            <span className="jaw-pocket"><span className="jaw-window"><span className="jaw-dinosaur-art" style={{
+              "--mouth-x": `${choice.mouth.x}%`, "--mouth-y": `${choice.mouth.y}%`, "--mouth-width": `${choice.mouth.width}%`,
+              "--mouth-mirror": choice.mouth.mirror ? -1 : 1, "--mouth-angle": `${choice.mouth.angle}deg`
+            } as CSSProperties}>
+              <span className="jaw-breath"><Picture className="jaw-gummy" src={choice.picture} alt="" width={800} height={600} />
+              <span className="jaw-mouth-glow" aria-hidden="true" />
+              {target === choice.id && <span className="jaw-fitted"><Picture className="jaw-fitted-picture" src={jawPicture} alt="" width={600} height={450} /></span>}
+              {target === choice.id && correct && <span className="jaw-food"><Picture className="jaw-food-picture" src={choice.food} alt={text.jawFoods[choice.diet]} width={400} height={400} /></span>}
+              </span>
+            </span></span></span>
+            {foodShown && <span className="jaw-food-tag"><Picture className="jaw-food-tag-picture" src={choice.food} alt="" width={400} height={400} /><span>{text.jawFoods[choice.diet]}</span></span>}
+            {namesShown && <FitText className="jaw-name" text={choice.name} />}
+          </Button>)}
+        </div>
+        <div className="jaw-tray">
+          <div className="jaw-slot">
+            {held?.dragging && <span className="jaw-ghost" aria-hidden="true"><PictureImage look={look} className="jaw-ghost-picture" src={jawPicture} alt="" width={600} height={450} /></span>}
+            <Button key={back?.count ?? 0} className="jaw-loose" aria-label={text.jawPick} aria-pressed={holding} aria-disabled={!enabled}
+              data-dragging={held?.dragging || undefined} data-returning={!!back || undefined} data-inviting={enabled && !touched && ready || undefined}
+              style={{ ...(held?.dragging && { translate: `${held.dx}px ${held.dy}px` }), "--from-x": `${back?.x ?? 0}px`, "--from-y": `${back?.y ?? 0}px` } as CSSProperties}
+              onPointerDown={(event) => {
+                if (!enabled || locked.current || hold.current || event.button !== 0) return;
+                setTouched(true);
+                updateHold({ pointerId: event.pointerId, x: event.clientX, y: event.clientY, dx: 0, dy: 0, dragging: false });
+              }}
+              onClick={(event) => { event.stopPropagation(); if (!enabled || locked.current) return; setTouched(true); pick(!selected.current); }}>
+              <span className="jaw-loose-art"><PictureImage look={look} className="jaw-loose-picture" src={jawPicture} alt="" width={600} height={450} /></span>
+            </Button>
+          </div>
+          {hint && foodShown
+            ? <p className="jaw-prompt"><span className="jaw-diet-hint" role="img" aria-label={text.jawFoods[jawDiet]}><Picture className="jaw-diet-hint-picture" src={choices.find(({ diet }) => diet === jawDiet)?.food ?? ""} alt="" width={400} height={400} /></span><span aria-hidden="true">{text.jawFoods[jawDiet]}</span></p>
+            : <p className="jaw-prompt" aria-hidden="true"><Hand /><span>{text.jawPick}</span></p>}
+          <div ref={cue} className="jaw-feedback" aria-live="polite">
+            {feedback && <p key={`${target}-${feedback.symbol}`} data-reaction={feedback.symbol}>{REACTIONS[feedback.symbol]} {feedback.words}</p>}
+          </div>
+          {correct && <Button className="jaw-next" disabled={phase !== "reading" || gate} onClick={onNext}
+            onKeyDown={(event) => { if (event.repeat) event.preventDefault(); }}><ArrowRight aria-hidden="true" />{text.next}</Button>}
+        </div>
       </div>
-      {audioControl}
-      <Button className="home-button" aria-label={text.back} onClick={onBack}><ArrowLeft aria-hidden="true" /></Button>
-    </header>
-    <h1 className="jaw-board-title"><span aria-hidden="true">🦷</span> {text.whoseJaw}</h1>
-    <div className="jaw-choices" role="group" aria-label={text.creatures} style={{ "--choices": choices.length } as CSSProperties}>
-      {choices.map((choice, at) => <Button key={choice.id} className="jaw-dinosaur" aria-label={choice.name} aria-disabled={!enabled}
-        data-over={over === choice.id || undefined} data-hint={hint === choice.id || undefined}
-        data-target={target === choice.id || undefined} style={{ "--place": at } as CSSProperties}
-        ref={(element) => { if (element) elements.current.set(choice.id, element); else elements.current.delete(choice.id); }}
-        onClick={(event) => { event.stopPropagation(); if (!enabled || locked.current || hold.current) return; if (selected.current) { place(choice.id); } else onName(choice.id); }}>
-        <span className="jaw-dinosaur-art" style={{
-          "--mouth-x": `${choice.mouth.x}%`, "--mouth-y": `${choice.mouth.y}%`, "--mouth-width": `${choice.mouth.width}%`,
-          "--mouth-mirror": choice.mouth.mirror ? -1 : 1, "--mouth-angle": `${choice.mouth.angle}deg`
-        } as CSSProperties}>
-          <span className="jaw-breath"><Picture className="jaw-gummy" src={choice.picture} alt="" width={800} height={600} />
-          <span className="jaw-mouth-glow" aria-hidden="true" />
-          {target === choice.id && <span className="jaw-fitted"><Picture className="jaw-fitted-picture" src={jawPicture} alt="" width={600} height={450} /></span>}
-          {(foodShown || (target === choice.id && correct)) && <span className="jaw-food"><Picture className="jaw-food-picture" src={choice.food} alt={text.jawFoods[choice.diet]} width={400} height={400} /></span>}
-          </span>
-        </span>
-        {namesShown && <span className="jaw-name">{choice.name}</span>}
-      </Button>)}
-    </div>
-    <div className="jaw-feedback" aria-live="polite">
-      {feedback && <p key={`${target}-${feedback.symbol}`} data-reaction={feedback.symbol}><span aria-hidden="true">{feedback.symbol}</span> {feedback.words}</p>}
-    </div>
-    <div className="jaw-tray">
-      {correct && <Button className="jaw-next" disabled={phase !== "reading" || gate} onClick={onNext}
-        onKeyDown={(event) => { if (event.repeat) event.preventDefault(); }}><ArrowRight aria-hidden="true" />{text.next}</Button>}
-      <Button key={back?.count ?? 0} className="jaw-loose" aria-label={text.jawPick} aria-pressed={holding} aria-disabled={!enabled}
-        data-dragging={held?.dragging || undefined} data-returning={!!back || undefined} data-inviting={enabled && !touched && ready || undefined}
-        style={{ ...(held?.dragging && { translate: `${held.dx}px ${held.dy}px` }), "--from-x": `${back?.x ?? 0}px`, "--from-y": `${back?.y ?? 0}px` } as CSSProperties}
-        onPointerDown={(event) => {
-          if (!enabled || locked.current || hold.current || event.button !== 0) return;
-          setTouched(true);
-          updateHold({ pointerId: event.pointerId, x: event.clientX, y: event.clientY, dx: 0, dy: 0, dragging: false });
-        }}
-        onClick={(event) => { event.stopPropagation(); if (!enabled || locked.current) return; setTouched(true); pick(!selected.current); }}>
-        <span className="jaw-loose-art"><PictureImage look={look} className="jaw-loose-picture" src={jawPicture} alt="" width={600} height={450} /></span>
-        {hint && foodShown && <span className="jaw-diet-hint" role="img" aria-label={text.jawFoods[jawDiet]}>{jawDiet === "meat" ? "🥩" : "🌿"}</span>}
-      </Button>
-    </div>
+    </section>
+    <div className="jaw-bedrock" aria-hidden="true"><EarthEdge /></div>
   </main>;
 }

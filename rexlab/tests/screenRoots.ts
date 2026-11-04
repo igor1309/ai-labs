@@ -42,7 +42,8 @@ export function edgePart(tag: string, attributes: { id?: string; className?: str
 // than their root, so the earth and its waves can reach both window edges.
 const DIG_SITE_CONTENT: Record<string, string[]> = {
   "friends-dig-site": ["friends-sky", "friends-grid", "no-friends"],
-  "whose-jaw-welcome": ["whose-jaw-welcome-sky", "whose-jaw-welcome-body"]
+  "whose-jaw-welcome": ["whose-jaw-welcome-sky", "whose-jaw-welcome-body"],
+  "whose-jaw-board": ["whose-jaw-board-sky", "jaw-sand-body"]
 };
 
 // Whether a screen's root pads parts of its own, not itself.

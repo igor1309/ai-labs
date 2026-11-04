@@ -1,4 +1,4 @@
-// Contract test: the tooth game's dig-site screens laid out, fitted and moving in Chromium.
+// Contract test: the tooth game's dig-site welcome and board laid out, fitted and moving in Chromium.
 const assert = require('node:assert/strict');
 const { readFile, mkdir } = require('node:fs/promises');
 const { resolve, extname, join } = require('node:path');
@@ -76,18 +76,210 @@ async function welcome(page, width, height, label, { sandTop, bedrock, phone, be
     assert(name.fits && name.size >= 13, `${label}: level name fits: ${JSON.stringify(name)}`);
   }
 }
+const LEVELS = ['hatchling', 'explorer', 'paleontologist'];
+// Every part of the board a step shows, measured as it is drawn.
+async function measureBoard(page) {
+  return page.evaluate(() => {
+    const q = s => document.querySelector(s);
+    const all = s => [...document.querySelectorAll(s)];
+    const box = e => { const { x, y, width, height, top, right, bottom, left } = e.getBoundingClientRect(); return { x, y, width, height, top, right, bottom, left }; };
+    const shown = e => !!e && e.getClientRects().length > 0 && getComputedStyle(e).visibility !== 'hidden' && getComputedStyle(e).display !== 'none';
+    const hit = e => { const b = e.getBoundingClientRect(); return e.contains(document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2)); };
+    const body = q('.jaw-sand-body');
+    const bar = [...q('.whose-jaw-board-bar').children].filter(shown);
+    const cue = q('.jaw-feedback p');
+    return {
+      phase: q('.whose-jaw-board').dataset.phase,
+      overflow: [document.documentElement.scrollWidth > innerWidth, document.documentElement.scrollHeight > innerHeight],
+      scrolls: body.scrollHeight > body.clientHeight + 1 || body.scrollWidth > body.clientWidth + 1,
+      sand: box(q('.jaw-sand')), wave: box(q('.jaw-sand-wave')),
+      bedrock: getComputedStyle(q('.jaw-bedrock')).display === 'none' ? 0 : box(q('.jaw-bedrock')).height,
+      bar: bar.map(e => ({ name: e.className, ...box(e) })),
+      title: box(q('.jaw-board-title')), choices: box(q('.jaw-choices')), tray: box(q('.jaw-tray')),
+      cards: all('.jaw-dinosaur').map(card => ({
+        name: card.getAttribute('aria-label'), ...box(card), pocket: box(card.querySelector('.jaw-pocket')),
+        tag: card.querySelector('.jaw-food-tag') && box(card.querySelector('.jaw-food-tag')),
+        label: card.querySelector('.jaw-name') && box(card.querySelector('.jaw-name'))
+      })),
+      jaw: shown(q('.jaw-loose')) ? box(q('.jaw-loose')) : null,
+      ghost: q('.jaw-ghost') && box(q('.jaw-ghost')),
+      prompt: shown(q('.jaw-prompt')) ? box(q('.jaw-prompt')) : null,
+      promptPicture: !!q('.jaw-prompt img'),
+      cue: cue && { ...box(cue), wrong: q('.whose-jaw-board').dataset.phase === 'wrong' },
+      next: q('.jaw-next') && box(q('.jaw-next')),
+      taps: [...q('.whose-jaw-board-bar').querySelectorAll('button'), ...all('.jaw-dinosaur'), ...all('.jaw-loose, .jaw-next')].filter(shown)
+        .map(e => ({ label: e.getAttribute('aria-label') || e.textContent, ...box(e), hit: hit(e) })),
+      words: all('.jaw-board-word, .jaw-name, .jaw-food-tag > span, .jaw-prompt > span, .jaw-feedback p, .jaw-next').filter(shown)
+        .map(e => ({ text: e.textContent, fits: e.scrollWidth <= e.clientWidth + 1, size: parseFloat(getComputedStyle(e).fontSize), ...box(e) })),
+      pictures: all('.jaw-sand img').filter(shown).map(e => e.complete && e.naturalWidth > 0),
+      loading: all('.whose-jaw-board .picture[data-picture="loading"]').length,
+      motion: [getComputedStyle(q('.jaw-breath')).animationName, q('.jaw-loose-art') && getComputedStyle(q('.jaw-loose-art')).animationName]
+    };
+  });
+}
+// What every step of the board holds to: it fits the window without
+// scrolling, its parts stay apart and its words are whole and readable.
+function boardFits(measured, width, height, label, { sandTop, bedrock, phone }) {
+  assert.deepEqual(measured.overflow, [false, false], `${label}: the page scrolls`);
+  assert(!measured.scrolls, `${label}: the sand scrolls`);
+  assert.equal(measured.sand.y, sandTop, `${label}: sand starts at the board's edge`);
+  assert.deepEqual([measured.wave.x, measured.wave.width], [0, width], `${label}: the wave reaches both sides`);
+  assert.equal(measured.bedrock, bedrock, `${label}: bedrock height`);
+  const ground = height - bedrock;
+  for (const part of measured.bar) inside(part, width, measured.sand.y, `${label} ${part.name} in the sky`);
+  for (const [i, a] of measured.bar.entries()) for (const b of measured.bar.slice(i + 1)) apart(a, b, `${label} ${a.name}/${b.name}`);
+  for (const part of measured.bar) apart(part, measured.title, `${label} ${part.name}/title`);
+  assert(measured.title.bottom <= sandTop + .5, `${label}: title stays in the sky`);
+  inside(measured.title, width, height, `${label} title`);
+  for (const name of ['choices', 'tray']) {
+    inside(measured[name], width, ground, `${label} ${name} over the bedrock`);
+    assert(measured[name].top >= sandTop - .5, `${label}: ${name} on the sand`);
+  }
+  apart(measured.choices, measured.tray, `${label} cards/tray`);
+  for (const [i, a] of measured.cards.entries()) {
+    for (const b of measured.cards.slice(i + 1)) apart(a, b, `${label} ${a.name}/${b.name}`);
+    for (const part of [a.tag, a.label].filter(Boolean)) {
+      assert(part.top >= a.pocket.bottom - .5 && part.bottom <= a.bottom + .5 && part.left >= a.left - .5 && part.right <= a.right + .5, `${label}: ${a.name}'s tag or name under its picture`);
+    }
+  }
+  const tray = [measured.jaw, measured.prompt, measured.next, measured.cue && !measured.cue.wrong && measured.cue].filter(Boolean);
+  for (const part of tray) assert(part.left >= measured.tray.left - .5 && part.right <= measured.tray.right + .5 && part.top >= measured.tray.top - .5 && part.bottom <= measured.tray.bottom + .5, `${label}: ${JSON.stringify(part)} in the tray`);
+  for (const [i, a] of tray.entries()) for (const b of tray.slice(i + 1)) apart(a, b, `${label} tray parts`);
+  for (const tap of measured.taps) assert(tap.width >= 44 && tap.height >= 44 && tap.hit, `${label}: ${tap.label} is a tap target: ${JSON.stringify(tap)}`);
+  for (const word of measured.words) {
+    assert(word.fits && word.width > 1 && word.size >= (phone ? 13 : 16), `${label}: ${word.text} readable: ${JSON.stringify(word)}`);
+    inside(word, width, height, `${label} ${word.text}`);
+  }
+  if (!measured.loading) assert(measured.pictures.every(Boolean), `${label}: pictures drawn`);
+  assert.deepEqual(measured.motion.filter(Boolean), measured.motion[1] ? ['none', 'none'] : ['none'], `${label}: reduced motion keeps the dinosaurs and the jaw still`);
+}
+// The cue stands on the wrong card's top-right corner, inside the window
+// and clear of the sky's controls.
+function cueOn(measured, wrong, width, height, label) {
+  const card = measured.cards.find(card => card.name === wrong);
+  const { cue } = measured;
+  assert(cue?.wrong, `${label}: the cue shows`);
+  inside(cue, width, height, `${label} cue`);
+  assert(cue.left <= card.right + .5 && cue.right >= card.right - .5, `${label}: cue over the card's right edge: ${JSON.stringify([cue, card])}`);
+  assert(cue.top <= card.top + 4.5 && cue.bottom >= card.top - .5, `${label}: cue on the card's top edge: ${JSON.stringify([cue, card])}`);
+  for (const part of [...measured.bar, measured.title]) apart(cue, part, `${label} cue/sky`);
+  apart(cue, measured.tray, `${label} cue/tray`);
+}
+const phaseIs = (page, phase) => page.waitForFunction(phase => document.querySelector('.whose-jaw-board')?.dataset.phase === phase, phase);
+async function owner(page) {
+  const id = (await page.locator('.jaw-loose img').getAttribute('src')).match(/\/([^/]+)\/[^/]+\.webp/)[1];
+  const cards = page.locator('.jaw-dinosaur');
+  const names = await cards.evaluateAll(cards => cards.map(card => [card.getAttribute('aria-label'), card.querySelector('.jaw-gummy').getAttribute('src')]));
+  const right = names.find(([, src]) => src.includes(`/${id}/`))[0];
+  return { right, wrong: names.find(([name]) => name !== right)[0] };
+}
+const card = (page, name) => page.locator(`.jaw-dinosaur[aria-label="${name}"]`);
+async function waiting(page) {
+  await phaseIs(page, 'waiting');
+  await page.waitForFunction(() => [...document.querySelectorAll('.jaw-sand img')].every(e => e.complete && e.naturalWidth > 0));
+  await settle(page);
+}
+// Puts the jaw on a card by tapping both; the cue's wrong step lasts
+// only as long as the game shows it, so it is measured as it comes.
+async function tapPlace(page, name) {
+  await page.locator('.jaw-loose').click();
+  await card(page, name).click();
+}
+async function wrongStep(page, name) {
+  await tapPlace(page, name);
+  await phaseIs(page, 'wrong');
+  await page.waitForFunction(() => document.querySelector('.jaw-feedback')?.style.getPropertyValue('--cue-x'));
+  return measureBoard(page);
+}
+async function rightStep(page, name) {
+  await tapPlace(page, name);
+  await phaseIs(page, 'reading');
+  await settle(page);
+  return measureBoard(page);
+}
+// A board's sockets keep their size filled or empty, so the fifth jaw's
+// board differs from the first's only in them: the walk to it, five of
+// the game's own right steps long, is made once per size.
+async function board(page, width, height, label, fit, level, shoot, fifth) {
+  const steps = [];
+  const check = (step, measured) => { boardFits(measured, width, height, `${label} ${level} ${step}`, fit); steps.push(step); return measured; };
+  const first = await measureBoard(page);
+  if (first.loading) check('pictures loading', first);
+  await page.evaluate(() => window.__release());
+  await waiting(page);
+  const shown = check('jaw waiting', await measureBoard(page));
+  assert.equal(shown.cards.length, LEVELS.indexOf(level) + 2, `${label} ${level}: cards`);
+  assert.equal(shown.cards.filter(card => card.tag).length, level === 'hatchling' ? 2 : 0, `${label} ${level}: food tags`);
+  assert.equal(shown.cards.filter(card => card.label).length, level === 'paleontologist' ? 4 : 0, `${label} ${level}: names`);
+  assert(shown.prompt && shown.jaw, `${label} ${level}: jaw and prompt in the tray`);
+  await shoot(`${level}-waiting`);
+  const { right, wrong } = await owner(page);
+  if (level === 'hatchling') {
+    await page.locator('.jaw-loose').click();
+    const held = check('jaw picked up', await measureBoard(page));
+    assert.equal(held.prompt, null, `${label}: the held jaw clears the prompt`);
+    await shoot(`${level}-picked`);
+    await card(page, wrong).click();
+    await phaseIs(page, 'wrong');
+    await page.waitForFunction(() => document.querySelector('.jaw-feedback')?.style.getPropertyValue('--cue-x'));
+    cueOn(check('wrong', await measureBoard(page)), wrong, width, height, `${label} ${level}`);
+    await waiting(page);
+    await wrongStep(page, wrong);
+    await waiting(page);
+    const hint = check('hint', await measureBoard(page));
+    assert(hint.promptPicture, `${label}: the hint's food in the tray`);
+    await shoot(`${level}-hint`);
+  } else if (level === 'explorer') {
+    const jaw = await page.locator('.jaw-loose').boundingBox(), to = await card(page, wrong).boundingBox();
+    await page.mouse.move(jaw.x + jaw.width / 2, jaw.y + jaw.height / 2);
+    await page.mouse.down();
+    await page.mouse.move((jaw.x + jaw.width / 2 + to.x + to.width / 2) / 2, (jaw.y + jaw.height / 2 + to.y + to.height / 2) / 2, { steps: 4 });
+    const dragged = await measureBoard(page);
+    assert(dragged.ghost, `${label}: a faint jaw stays in the tray while one is dragged`);
+    await shoot(`${level}-dragging`);
+    await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 4 });
+    await page.mouse.up();
+    await phaseIs(page, 'wrong');
+    await page.waitForFunction(() => document.querySelector('.jaw-feedback')?.style.getPropertyValue('--cue-x'));
+    cueOn(check('wrong', await measureBoard(page)), wrong, width, height, `${label} ${level}`);
+    await shoot(`${level}-wrong`);
+    await waiting(page);
+  } else {
+    cueOn(check('look-alike', await wrongStep(page, wrong)), wrong, width, height, `${label} ${level}`);
+    await shoot(`${level}-wrong`);
+    await waiting(page);
+    for (let jaw = 1; fifth && jaw < 5; jaw++) {
+      await rightStep(page, (await owner(page)).right);
+      await page.locator('.jaw-next').press('Enter');
+      await waiting(page);
+    }
+  }
+  const read = check(level === 'paleontologist' && fifth ? 'fifth jaw right' : 'right', await rightStep(page, (await owner(page)).right));
+  if (level === 'paleontologist' && fifth) assert.equal(await page.locator('.jaw-socket[data-filled]').count(), 5, `${label}: five jaws placed`);
+  assert(read.next, `${label} ${level}: NEXT waits`);
+  assert.equal(!!read.cue, level === 'paleontologist', `${label} ${level}: the fact only for a paleontologist`);
+  await shoot(`${level}-right`);
+  return steps;
+}
 async function main() {
   const { build } = await import('vite');
   const bundle = await build({ root: resolve(__dirname, '..'), logLevel: 'error', build: { write: false } });
   const files = new Map(bundle.output.map(f => [f.fileName, f.type === 'chunk' ? f.code : f.source]));
   const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || undefined, headless: true });
-  let checked = 0;
+  let checked = 0, boardSteps = 0;
   try {
     for (const [width, height, sandTop, bedrock] of sizes) for (const language of ['en', 'ru']) for (const theme of ['light', 'dark']) {
       const context = await browser.newContext({ viewport: { width, height }, reducedMotion: 'reduce', serviceWorkers: 'block' });
       try {
+        // Pictures asked for while holding wait until the page releases
+        // them, so a board can be seen with its pictures loading.
+        let holding = false;
+        const held = [];
+        await context.exposeFunction('__hold', () => { holding = true; });
+        await context.exposeFunction('__release', () => { holding = false; held.splice(0).forEach(release => release()); });
         await context.route('http://teeth.test/**', async route => {
           const file = new URL(route.request().url()).pathname.slice(1) || 'index.html';
+          if (holding && extname(file) === '.webp') await new Promise(release => held.push(release));
           const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.woff2': 'font/woff2', '.webp': 'image/webp', '.png': 'image/png', '.json': 'application/json', '.mp3': 'audio/mpeg' };
           await route.fulfill({ body: files.get(file) ?? await readFile(resolve(__dirname, '../public', file)), contentType: types[extname(file)] });
         });
@@ -122,10 +314,31 @@ async function main() {
           }
           checked++;
         }
+        for (const level of LEVELS) {
+          const label = `${width}x${height} ${language} ${theme}`;
+          await page.reload();
+          await page.locator('[data-turn-part="tile-whoseJaw"]').press('Enter');
+          await page.locator('.whose-jaw-welcome').waitFor();
+          // Keys, not taps: the app takes a second tap this close to the
+          // first for half of a double tap.
+          const choice = page.locator('.whose-jaw-welcome .level-switch-level').nth(LEVELS.indexOf(level));
+          if (await choice.getAttribute('aria-pressed') !== 'true') await choice.press('Enter');
+          await page.waitForFunction(at => document.querySelectorAll('.whose-jaw-welcome .level-switch-level')[at]?.getAttribute('aria-pressed') === 'true', LEVELS.indexOf(level));
+          await settle(page);
+          await page.evaluate(() => window.__hold());
+          await page.locator('.whose-jaw-play').press('Enter');
+          await page.locator('.whose-jaw-board').waitFor();
+          await settle(page);
+          const shoot = async name => {
+            if (!process.env.TEETH_SCREENSHOTS) return;
+            await page.screenshot({ path: join(process.env.TEETH_SCREENSHOTS, `board-${width}x${height}-${language}-${theme}-${name}.png`) });
+          };
+          boardSteps += (await board(page, width, height, label, { sandTop, bedrock, phone: width < 600 || height < 600 }, level, shoot, language === 'en' && theme === 'light')).length;
+        }
         assert.deepEqual(errors, [], `${width}x${height} ${language} ${theme}: page errors`);
       } finally { await context.close(); }
     }
-    console.log(`PASS ${checked} WHOSE JAW? welcome configurations: layout, fit, overlap, scrolling, labels and motion`);
+    console.log(`PASS ${checked} WHOSE JAW? welcome configurations and ${boardSteps} board steps: layout, fit, overlap, scrolling, labels and motion`);
   } finally { await browser.close(); }
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });
