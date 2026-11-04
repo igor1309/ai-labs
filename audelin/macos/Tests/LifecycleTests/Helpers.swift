@@ -1,16 +1,21 @@
 import Lifecycle
 import Testing
 
+func makeState(_ state: LifecycleState = .running) -> LifecycleState { state }
+
 func assert(
-    _ state: LifecycleState, _ event: LifecycleEvent, reducedTo expected: LifecycleState,
+    _ state: LifecycleState, _ event: LifecycleEvent,
+    _ update: (inout LifecycleState) -> Void = { _ in },
     sourceLocation: SourceLocation = #_sourceLocation
 ) {
 
+    var expected = state
+    update(&expected)
     #expect(LifecycleReducer.reduce(state, event).0 == expected, "\(state) + \(event)", sourceLocation: sourceLocation)
 }
 
 func assert(
-    _ state: LifecycleState, _ event: LifecycleEvent, effect expected: LifecycleEffect?,
+    _ state: LifecycleState, _ event: LifecycleEvent, delivers expected: LifecycleEffect?,
     sourceLocation: SourceLocation = #_sourceLocation
 ) {
 
