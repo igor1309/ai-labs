@@ -2,8 +2,8 @@ import AppKit
 import GlassLedger
 import SwiftUI
 
-/// The log as one attributed string: each entry a paragraph with its time
-/// and speaker in a hanging gutter.
+/// The log as one attributed string: each entry a paragraph with its speaker's
+/// symbol and its time in a hanging gutter.
 @MainActor
 struct Transcript {
 
@@ -157,11 +157,16 @@ private extension Transcript {
 
         private var tokens: GlassLedger { style.tokens }
 
+        private static let symbolSize: CGFloat = 11
+        /// Wide enough for either speaker's symbol, so the times line up.
+        private static let symbolSlot: CGFloat = 16
+
         // Built once a style: every row shares the same few.
         private var fonts: [FontKey: NSFont] = [:]
         private var paragraphs: [ParagraphKey: NSParagraphStyle] = [:]
         private var timeWidths: [CGFloat: CGFloat] = [:]
         private var caretImage: NSImage?
+        private var symbols: [SymbolKey: NSTextAttachment] = [:]
         /// The style of the paragraph being built, which the text system
         /// gives its ending newline too.
         private var current: NSParagraphStyle?
@@ -203,7 +208,7 @@ private extension Transcript {
         private func caption(_ string: String, alpha: CGFloat, spacing: CGFloat) {
 
             newParagraph()
-            let paragraph = paragraph(size: tokens.typeCaption, indent: 0, spacing: spacing)
+            let paragraph = paragraph(size: tokens.typeCaption, indent: 0, timeAt: nil, spacing: spacing)
             current = paragraph
             result.append(.init(string: string, attributes: [
                 .font: font(tokens.typeCaption),
@@ -219,7 +224,12 @@ private extension Transcript {
             newParagraph()
 
             let size = tokens.typeBody
-            let paragraph = paragraph(size: size, indent: timeWidth(size) + tokens.space12, spacing: spacing)
+            let paragraph = paragraph(
+                size: size,
+                indent: Self.symbolSlot + tokens.space4 + timeWidth(size) + tokens.space12,
+                timeAt: Self.symbolSlot + tokens.space4,
+                spacing: spacing
+            )
             current = paragraph
             func attributes(_ font: NSFont, _ color: Color) -> [NSAttributedString.Key: Any] {
                 [
@@ -230,12 +240,15 @@ private extension Transcript {
                 ]
             }
 
-            // The time, in the speaker's colour, is the only mark of who
-            // spoke: no label, so the text keeps the panel's width.
+            // The speaker's symbol and the time, both in the speaker's colour,
+            // mark who spoke.
             var time = attributes(font(size), entry.speaker == .me ? tokens.me : tokens.them)
             time[Transcript.gutter] = true
 
-            result.append(.init(string: entry.time + "\t", attributes: time))
+            let symbol = NSMutableAttributedString(attachment: symbol(entry.speaker, alpha: alpha, size: size))
+            symbol.addAttributes(time, range: NSRange(location: 0, length: symbol.length))
+            result.append(symbol)
+            result.append(.init(string: "\t" + entry.time + "\t", attributes: time))
 
             let start = result.length
             result.append(.init(string: entry.settled, attributes: attributes(font(size), tokens.text)))
@@ -259,6 +272,39 @@ private extension Transcript {
 
             guard let last = ranges.last else { return }
             result.addAttribute(Transcript.ruleBelow, value: gap, range: last.body)
+        }
+
+        /// The speaker's symbol, centred in the gutter's slot and on the
+        /// time's capital letters, so it sits on the text's first baseline.
+        private func symbol(_ speaker: PanelState.Speaker, alpha: CGFloat, size: CGFloat) -> NSTextAttachment {
+
+            let key = SymbolKey(speaker: speaker, alpha: alpha, size: size)
+            if let attachment = symbols[key] { return attachment }
+
+            let name = speaker == .me ? "mic.fill" : "speaker.wave.2"
+            let label = speaker == .me ? "я" : "они"
+            let color = NSColor(speaker == .me ? tokens.me : tokens.them).withAlphaComponent(alpha)
+            let configuration = NSImage.SymbolConfiguration(pointSize: Self.symbolSize, weight: .regular)
+                .applying(.init(paletteColors: [color]))
+            let glyph = NSImage(systemSymbolName: name, accessibilityDescription: label)?
+                .withSymbolConfiguration(configuration) ?? NSImage()
+            let slot = NSSize(width: Self.symbolSlot, height: glyph.size.height)
+            let image = NSImage(size: slot, flipped: false) { rect in
+                glyph.draw(in: NSRect(
+                    x: (rect.width - glyph.size.width) / 2,
+                    y: 0,
+                    width: glyph.size.width,
+                    height: glyph.size.height
+                ))
+                return true
+            }
+            image.accessibilityDescription = label
+
+            let attachment = NSTextAttachment()
+            attachment.image = image
+            attachment.bounds = CGRect(origin: .init(x: 0, y: (font(size).capHeight - slot.height) / 2), size: slot)
+            symbols[key] = attachment
+            return attachment
         }
 
         private func caret(_ paragraph: NSParagraphStyle) -> NSAttributedString {
@@ -308,9 +354,9 @@ private extension Transcript {
 
         /// The design's line height, with the extra space split above and
         /// below the glyphs as the SwiftUI log does.
-        private func paragraph(size: CGFloat, indent: CGFloat, spacing: CGFloat) -> NSParagraphStyle {
+        private func paragraph(size: CGFloat, indent: CGFloat, timeAt: CGFloat?, spacing: CGFloat) -> NSParagraphStyle {
 
-            let key = ParagraphKey(size: size, indent: indent, spacing: spacing)
+            let key = ParagraphKey(size: size, indent: indent, timeAt: timeAt, spacing: spacing)
             if let style = paragraphs[key] { return style }
 
             let style = NSMutableParagraphStyle()
@@ -322,7 +368,7 @@ private extension Transcript {
             // Keep wrapped text and the live caret clear of overlay scrollbars.
             style.tailIndent = -tokens.space24
 
-            style.tabStops = [NSTextTab(textAlignment: .left, location: indent)]
+            style.tabStops = ([timeAt, indent] as [CGFloat?]).compactMap { $0 }.map { NSTextTab(textAlignment: .left, location: $0) }
             paragraphs[key] = style
             return style
         }
@@ -348,6 +394,14 @@ private extension Transcript {
 
         let size: CGFloat
         let indent: CGFloat
+        let timeAt: CGFloat?
         let spacing: CGFloat
+    }
+
+    struct SymbolKey: Hashable {
+
+        let speaker: PanelState.Speaker
+        let alpha: CGFloat
+        let size: CGFloat
     }
 }

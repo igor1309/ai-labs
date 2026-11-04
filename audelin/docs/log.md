@@ -3,6 +3,7 @@
 ## 2026-11-04
 
 - Session exposes its complete audio observation state and accepts replaceable failure wording while preserving recording behavior (LAB-951).
+- Audio conversion refuses a zero or non-finite sample rate instead of accepting it (LAB-949).
 
 ## 2026-11-03
 
