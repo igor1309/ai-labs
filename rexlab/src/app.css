@@ -12394,6 +12394,8 @@ html:is([data-size="tall-narrow"], [data-size="wide-short"]) .whose-jaw-welcome 
   position: static; width: auto; height: auto; margin: 0; overflow: visible; clip-path: none;
 }
 html:is([data-size="tall-narrow"], [data-size="wide-short"]) .whose-jaw-badges { flex-direction: row; }
+/* The narrowest phones keep the chosen level's Russian name whole. */
+@media (max-width: 380px) { html[data-size="tall-narrow"] .whose-jaw-welcome .level-switch-level { padding-inline: var(--ds-space-m); } }
 
 html[data-size="tall-narrow"] .whose-jaw-welcome { --wj-top: 62px; --wj-sky: 208px; --wj-side: var(--ds-space-20); --wj-sky-side: var(--ds-space-20); --wj-bottom: 30px; background: linear-gradient(var(--ds-sky-top), var(--ds-sky-bottom) 40vh) var(--ds-sky-bottom); background: linear-gradient(var(--ds-sky-top), var(--ds-sky-bottom) 40dvh) var(--ds-sky-bottom); }
 html[data-size="tall-narrow"] .whose-jaw-welcome-sky { gap: 22px; }
