@@ -91,7 +91,19 @@ const { chromium } = require("playwright");
     await page.waitForFunction(async () => (await navigator.serviceWorker.getRegistration())?.active?.state === "activated");
     await page.reload(); await homeCount(0); await entry().press("Enter"); await gallery();
     // Activation can come before the reloaded page is controlled.
-    await page.waitForFunction(() => !!navigator.serviceWorker.controller);
+    await page.waitForFunction(() => !!navigator.serviceWorker.controller).catch(async error => {
+      // Shows how the reload came to be uncontrolled: whether the worker ran
+      // for the page's request and what the registration held.
+      const state = await page.evaluate(async () => {
+        const registration = await navigator.serviceWorker.getRegistration();
+        const [navigation] = performance.getEntriesByType("navigation");
+        return { controller: !!navigator.serviceWorker.controller, url: location.href, scope: registration?.scope,
+          installing: registration?.installing?.state, waiting: registration?.waiting?.state, active: registration?.active?.state,
+          workerStart: navigation?.workerStart, transferSize: navigation?.transferSize, type: navigation?.type };
+      });
+      console.error("UNCONTROLLED", JSON.stringify(state));
+      throw error;
+    });
     await context.setOffline(true);
     await press("NEW WORK"); await workshop(); await topEdge(); await paint("RED", false);
     assert.equal(await starts(), 1);
