@@ -1,10 +1,11 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { catalogueColumns } from "../src/catalogueColumns.ts";
 import { mediaViewport } from "../src/mediaViewport.ts";
-import { EDGE_PARTS, SCREEN_ROOTS, edgePart, screenRoot } from "./screenRoots.ts";
-import { appStylesheet, type SafeArea } from "./stylesheet.ts";
+import { EDGE_PARTS, SCREEN_ROOTS, edgePart, screenRoot, contentRoots } from "./screenRoots.ts";
+import { appStylesheet, computedStyleWithVariables, type SafeArea } from "./stylesheet.ts";
 import { manualWindow, mediaQueries } from "./support.ts";
 
+const browserStyle = computedStyleWithVariables(window.getComputedStyle.bind(window));
 const INSETS: SafeArea = { top: 11, right: 13, bottom: 17, left: 19 };
 const SIDES = ["top", "right", "bottom", "left"] as const;
 const px = (value: string) => parseFloat(value);
@@ -59,11 +60,17 @@ describe("safe areas stay clear", () => {
 
   it.each(SCREEN_ROOTS)("insets the content of .%s by adding the safe areas to its own padding, its background still filling the window", (classes) => {
     const root = screenRoot(classes);
+    const content = contentRoots(root);
     const bedrock = classes === "home home-dig-site" ? document.createElement("footer") : undefined;
     if (bedrock) { bedrock.className = "home-bedrock"; root.append(bedrock); }
     const measure = () => {
       const style = getComputedStyle(root);
       const contentPadding = padding(style);
+      if (root.classList.contains("friends-dig-site")) {
+        const sky = padding(browserStyle(content[0]!));
+        const grid = padding(browserStyle(content[1]!));
+        Object.assign(contentPadding, { ...grid, top: sky.top });
+      }
       // Home's last band owns the bottom inset so its earth reaches the edge.
       if (bedrock) contentPadding.bottom += px(getComputedStyle(bedrock).paddingBottom);
       return { padding: contentPadding, box: box(style) };

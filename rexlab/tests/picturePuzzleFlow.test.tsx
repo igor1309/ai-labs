@@ -69,7 +69,7 @@ function touch(target: EventTarget, type: string, time: number, point: { x: numb
 }
 
 describe.each(LANGUAGES)("the picture puzzle full flow in %s", (language) => {
-  it.each(THEMES)("completes from home, replays and reloads its collection in %s", (theme) => {
+  it.each(THEMES)("completes from home and reloads its collection in %s", (theme) => {
     const text = TEXTS[language];
     const storage = memoryStorage();
     const featured = theme === "dark" ? "picturePuzzle" : "compare";
@@ -111,20 +111,6 @@ describe.each(LANGUAGES)("the picture puzzle full flow in %s", (language) => {
     expect(screen.getByText(text.pictureFacts.tyrannosaurus)).not.toBeNull();
     expect(screen.getByRole("status").textContent).toBe(text.celebrations["first-best"].text);
     expect(screen.getByLabelText(text.bestScore).textContent).toBe(`${text.best}1/3`);
-    fireEvent.click(button(text.playAgain));
-    expect(screen.getByLabelText(text.pictureFitted).textContent).toBe("0/12");
-    expect(app.countStart.mock.calls).toEqual([["picturePuzzle"], ["picturePuzzle"]]);
-    finish(language, 12);
-    expect(screen.queryByText(text.celebrations["new-best"].text)).toBeNull();
-    fireEvent.click(button(text.pictureAnother));
-    expect(screen.getByLabelText(text.pictureCollection).textContent).toBe("1/3");
-    expect(within(button(readPictureDinosaurs(records)[0]!.name[language].toLocaleUpperCase(language))).getByRole("img", { name: text.star })).not.toBeNull();
-    fireEvent.click(button(text.home));
-    expect(button(text.picturePuzzle).querySelector(".picture-puzzle-tile-count, .featured-card-badge")?.textContent).toBe(featured === "picturePuzzle" ? "1/3" : undefined);
-    fireEvent.click(button(text.catalogue));
-    expect(screen.getByRole("main", { name: text.catalogue })).not.toBeNull();
-    expect(screen.queryByLabelText(text.pictureCollection)).toBeNull();
-    fireEvent.click(button(text.home));
     app.unmount();
     const reloaded = openApp(storage, language, theme, featured);
     expect(button(text.picturePuzzle).querySelector(".picture-puzzle-tile-count, .featured-card-badge")?.textContent).toBe(featured === "picturePuzzle" ? "1/3" : undefined);
@@ -132,6 +118,35 @@ describe.each(LANGUAGES)("the picture puzzle full flow in %s", (language) => {
     expect(button(text.ageLevels.hatchling.name).getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByLabelText(text.pictureCollection).textContent).toBe("1/3");
     reloaded.unmount();
+  });
+
+  // A win already in the collection: playing it again celebrates nothing new.
+  it.each(THEMES)("replays a won picture and goes home through its collection in %s", (theme) => {
+    const text = TEXTS[language];
+    const storage = memoryStorage();
+    localPicturePuzzleProgress(() => storage).save({ earned: ["tyrannosaurus"],
+      completed: { hatchling: ["tyrannosaurus"], explorer: [], paleontologist: [] } });
+    const featured = theme === "dark" ? "picturePuzzle" : "compare";
+    const app = openApp(storage, language, theme, featured);
+    const name = readPictureDinosaurs(records)[0]!.name[language].toLocaleUpperCase(language);
+    fireEvent.click(button(text.picturePuzzle));
+    fireEvent.click(button(text.ageLevels.hatchling.name));
+    fireEvent.click(button(name));
+    expect(app.countStart.mock.calls).toEqual([["picturePuzzle"]]);
+    act(() => app.pictures.finish(fakeBodyPicture("tyrannosaurus")));
+    finish(language, 12);
+    expect(screen.getByRole("heading", { level: 2 }).textContent).toBe(name);
+    expect(screen.queryByText(text.celebrations["new-best"].text)).toBeNull();
+    expect(screen.queryByText(text.celebrations["first-best"].text)).toBeNull();
+    fireEvent.click(button(text.pictureAnother));
+    expect(screen.getByLabelText(text.pictureCollection).textContent).toBe("1/3");
+    expect(within(button(name)).getByRole("img", { name: text.star })).not.toBeNull();
+    fireEvent.click(button(text.home));
+    expect(button(text.picturePuzzle).querySelector(".picture-puzzle-tile-count, .featured-card-badge")?.textContent).toBe(featured === "picturePuzzle" ? "1/3" : undefined);
+    fireEvent.click(button(text.catalogue));
+    expect(screen.getByRole("main", { name: text.catalogue })).not.toBeNull();
+    expect(screen.queryByLabelText(text.pictureCollection)).toBeNull();
+    app.unmount();
   });
 });
 
