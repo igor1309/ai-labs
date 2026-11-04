@@ -1,6 +1,7 @@
 import AppKit
 import GlassLedger
 import SwiftUI
+import RenderedText
 import Testing
 @testable import PanelUI
 

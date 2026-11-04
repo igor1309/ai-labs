@@ -28,6 +28,7 @@ LANES = {
 # Target: (lane, line under its name, slot in the lane). Planned boxes have no target yet.
 TARGETS = {
     "BlockingTestWork": ("external", "test helper: dispatches blocking work", 3),
+    "RenderedText": ("external", "test helper: reads what a view draws", 4),
     "AudelinRehearsal": ("tools", "synthetic call through the shipped composition", 0),
     "SessionRehearsal": ("tools", "synthetic recogniser", 1),
     "SessionCrashWriter": ("tools", "test helper: call killed mid-save", 2),
