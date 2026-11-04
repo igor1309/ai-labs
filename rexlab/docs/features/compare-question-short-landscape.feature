@@ -1,6 +1,6 @@
 Feature: A compare question on an iPhone on its side
 
-  In a landscape window under 600 tall, an iPhone on its side, a compare
+  In a wide-short window, landscape under 600 tall and at least 568 wide, a compare
   question keeps its two dinosaurs side by side, whole within the height.
 
   Scenario Outline: The cards share the row under a short bar
@@ -23,17 +23,17 @@ Feature: A compare question on an iPhone on its side
       | Russian  | 932   | 430    |
 
   Scenario: Every word fits at every phone's width
-    Given a compare question on an iPhone on its side, from 568 to 932 pixels wide
+    Given a compare question in a wide-short window, from 568 to 932 pixels wide
     Then every prompt fits on one line beside the widest NEXT
     And every name fits on one line in its card
     And every value, once shown, fits in its picture's area
 
   Scenario: An answer moves nothing
-    Given a compare question on an iPhone on its side
+    Given a compare question in a wide-short window
     When the child taps a card
     Then NEXT appears beside the prompt and each value at the bottom right of its picture, and no card grows
 
-  Scenario: A taller window goes back to the iPad's layout
-    Given a compare question on an iPhone on its side
-    When the window grows past 600 tall
-    Then the question takes the iPad's layout
+  Scenario: A taller window goes back to the wide layout
+    Given a compare question in a wide-short window
+    When the window reaches 600 CSS pixels tall
+    Then the question takes the wide layout

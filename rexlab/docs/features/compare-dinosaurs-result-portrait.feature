@@ -42,19 +42,6 @@ Feature: Compare dinosaurs quiz: the result in a tall window
       | English  | a scrollbar that takes 16    |
       | Russian  | a scrollbar that takes 16    |
 
-  Scenario Outline: The offer of a level fits a tall window
-    Given the app is in <language>
-    And a window of 600 by 800 CSS pixels
-    When a game offers the "<level>" level in its dialog
-    Then the dialog is the window less 24 a side, at most 710 wide
-    And the question is in 32-pixel type, on at most three lines, none cut
-    And "YES" and "NOT NOW" stand one above the other, each across the dialog, on one line
-
-    Examples:
-      | language | level          |
-      | English  | PALEONTOLOGIST |
-      | Russian  | ИССЛЕДОВАТЕЛЬ  |
-
   Scenario: The level switch works upright
     Given a window of 820 by 1180 CSS pixels on the compare quiz's result
     When I tap "EXPLORER" on the level switch

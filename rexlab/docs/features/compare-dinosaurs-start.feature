@@ -7,7 +7,7 @@ Feature: Compare dinosaurs quiz: starting a round and asking
   home-today.feature how the sky features today's game.
 
   Background:
-    Given an iPad in landscape
+    Given a window of 1180 by 820 CSS pixels
 
   Scenario: The home page offers the quiz as a tile
     When I open the home page
@@ -76,7 +76,7 @@ Feature: Compare dinosaurs quiz: starting a round and asking
   Scenario: Every question in a round is a fair pair
     When a round of 10 questions is generated
     Then Hatchling questions compare mass or height, and Explorer questions can also compare length
-    And a height only of two dinosaurs, as a flying or sea reptile is not measured standing
+    And a height question pairs only dinosaurs, since flying and sea reptiles are not measured standing
     And each question's two dinosaurs are different
     And in each question the larger value is at least 1.5 times the smaller
     And no two questions use the same two dinosaurs, whatever they compare

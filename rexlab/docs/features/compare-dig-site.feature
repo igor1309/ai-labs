@@ -13,7 +13,7 @@ Feature: COMPARE in the dig site
     Given the app is in <language> with the <theme> appearance
     And a window of <width> by <height> CSS pixels
     When I start COMPARE
-    Then HOME, ten progress steps and the question sit in the sky
+    Then HOME, ten progress steps, the current position and the question sit in the sky
     And the cards are dug into the sand with names beneath their pictures inside the pockets
     And names, pockets and their rings use the current appearance's design tokens
     And the cards are <cards> with VS between them, or ИЛИ in Russian
@@ -29,6 +29,10 @@ Feature: COMPARE in the dig site
       | English  | light | 375   | 667    | stacked      |
       | Russian  | dark  | 852   | 393    | side by side |
       | English  | dark  | 1440  | 900    | side by side |
+      | English  | light | 567   | 360    | stacked      |
+      | English  | light | 568   | 360    | side by side |
+      | English  | light | 700   | 700    | stacked      |
+      | Russian  | dark  | 500   | 500    | stacked      |
 
   Scenario Outline: A stacked question keeps its picture minimum
     Given a <class> window whose content cannot fit at the minimum picture height

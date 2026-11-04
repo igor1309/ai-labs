@@ -1,6 +1,6 @@
 Feature: The compare quiz's result on an iPhone on its side
 
-  In a landscape window under 600 tall, an iPhone on its side, the
+  In a wide-short window, landscape under 600 tall and at least 568 wide, the
   compare quiz's result keeps its dinosaur beside the rewards, the level
   switch and the actions, all within the height. The sorting game's
   result, the same screen, stands the same way.
@@ -26,11 +26,11 @@ Feature: The compare quiz's result on an iPhone on its side
       | Russian  | 932   | 430    |
 
   Scenario: Every word fits at every phone's width
-    Given the result on an iPhone on its side, from 568 to 932 pixels wide
+    Given the result in a wide-short window, from 568 to 932 pixels wide
     Then ten stars fit beside the score, and WELL DONE! beside it in either language
     And PLAY AGAIN and HOME fit side by side, and every celebration on its chip
 
-  Scenario: A taller window goes back to the iPad's layout
-    Given the result on an iPhone on its side
-    When the window grows past 600 tall
-    Then the result takes the iPad's layout
+  Scenario: A taller window goes back to the wide layout
+    Given the result in a wide-short window
+    When the window reaches 600 CSS pixels tall
+    Then the result takes the wide layout

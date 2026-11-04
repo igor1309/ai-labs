@@ -26,7 +26,7 @@ Feature: COMPARE results in the dig site
       | 0     | none        | trophy and 0                   | absent                         |
 
   Scenario Outline: Result layout follows the window
-    Given a completed result in a <class> window
+    Given a completed result in a <width> by <height> CSS-pixel window of class <class>
     When its result is shown
     Then the dinosaur is <placement>
     And the score, ten stars, title, available best and earned celebration stand in the sand
@@ -35,15 +35,19 @@ Feature: COMPARE results in the dig site
     And the level switch shows <levels>
 
     Examples:
-      | class       | placement                  | actions      | levels                               |
-      | wide        | in the sky above rewards   | side by side | pictures and accessible names        |
-      | tall        | in the sky above rewards   | side by side | pictures and accessible names        |
-      | tall-narrow | in the sky above rewards   | stacked      | pictures, with names for accessibility |
-      | wide-short  | beside the rewards         | side by side | pictures, with names for accessibility |
+      | class       | width | height | placement                | actions      | levels                                |
+      | wide        | 1180  | 820    | in the sky above rewards | side by side | pictures with visible names           |
+      | tall        | 744   | 1133   | in the sky above rewards | side by side | pictures with visible names           |
+      | tall-narrow | 393   | 852    | in the sky above rewards | stacked      | pictures only, names kept accessible  |
+      | wide-short  | 852   | 393    | beside the rewards       | side by side | pictures only, names kept accessible  |
+      | tall-narrow | 567   | 360    | in the sky above rewards | stacked      | pictures only, names kept accessible  |
+      | wide-short  | 568   | 360    | beside the rewards       | side by side | pictures only, names kept accessible  |
+      | tall        | 700   | 700    | in the sky above rewards | side by side | pictures with visible names           |
+      | tall-narrow | 500   | 500    | in the sky above rewards | stacked      | pictures only, names kept accessible  |
 
-  Scenario Outline: A stacked result scrolls when its minimum content cannot fit
+  Scenario Outline: A result scrolls when its minimum content cannot fit
     Given a completed result in a <class> window
-    And the rewards and controls would leave the dinosaur less than 120 CSS pixels high
+    And the dinosaur would be less than 120 CSS pixels high or the rewards and controls would overflow the height
     When its result is shown
     Then the dinosaur remains at least 120 CSS pixels high
     And the whole screen, sky included, scrolls vertically
@@ -54,6 +58,7 @@ Feature: COMPARE results in the dig site
       | wide        |
       | tall        |
       | tall-narrow |
+      | wide-short  |
 
   Scenario: Choosing a level leaves the finished round's reward intact
     Given an Explorer result showing 7 out of 10
