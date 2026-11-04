@@ -53,6 +53,7 @@ TARGETS = {
     "TrackFileCrashWriter": ("storage", "test helper: killed mid-write", 3),
     "TranscriptFileCrashWriter": ("storage", "test helper: killed mid-write", 4),
     "TranscriptWriting": ("storage", "keeps call text's latest text\nin the transcript", 5),
+    "CallFolderName": ("storage", "the call folder name's format", 8),
     "Preferences": ("storage", "reads and writes user preferences", 6),
     "CallText": ("text", "both sides' text;\nswitches live text", 0),
     "LiveText": ("text", "cuts recognised text into\nsegments, partial or settled", 1),

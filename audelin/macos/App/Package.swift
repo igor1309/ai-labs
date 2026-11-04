@@ -92,6 +92,8 @@ let package = Package(
             dependencies: [
                 "Composer", "Audelin",
                 .product(name: "CallAudioAccess", package: "macos"),
+                .product(name: "CallFolder", package: "macos"),
+                .product(name: "Calls", package: "macos"),
                 .product(name: "Lifecycle", package: "macos"),
                 .product(name: "Recording", package: "macos"),
                 .product(name: "BlockingTestWork", package: "macos"),

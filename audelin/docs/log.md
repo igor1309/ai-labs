@@ -1,5 +1,9 @@
 # Log
 
+## 2026-11-04
+
+- A call given an empty title gets the bare date and time as its folder name, with no trailing space (LAB-946).
+
 ## 2026-11-03
 
 - Parakeet omits whitespace-only model words while keeping spoken words' original timing (LAB-943).
