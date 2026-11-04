@@ -42,10 +42,11 @@ export function ScoreCount({ language, score, total, part }: { language: Languag
 
 // The best score, after the best it beat when there is one; `total`, when
 // given, is shown after it.
-export function BestScore({ language, best, beaten, total, part }: { language: Language; best: number; beaten: number | undefined; total?: number; part?: string }) {
+export function BestScore({ language, best, beaten, total, part, symbol = false }: { language: Language; best: number; beaten: number | undefined; total?: number; part?: string; symbol?: boolean }) {
   const text = TEXTS[language];
   return (
     <p className="best-score" data-turn-part={part} aria-label={text.bestScore}>
+      {symbol && <Trophy size={20} fill="currentColor" aria-hidden="true" />}
       {text.best}
       {beaten !== undefined && (
         <>

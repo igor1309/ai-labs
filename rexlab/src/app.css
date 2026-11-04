@@ -10870,7 +10870,7 @@ html[data-theme="dark"],
 
 [data-theme="dark"] .step[data-step="done"],
 [data-theme="dark"] .dinosaur-stage,
-[data-theme="dark"] .result {
+[data-theme="dark"] .result:not(.compare-result) {
   background: #2c3b66;
 }
 
@@ -13062,3 +13062,192 @@ html[data-size="wide-short"] .question-best {
     animation: fade-in var(--motion-small) var(--ease-out) both;
   }
 }
+
+/* COMPARE keeps the shared rewards and turn parts, on the dig site's sky
+   and sand. Minimum picture and control sizes grow the whole page. */
+html[data-size] .compare-result {
+  --result-ink: var(--ds-ink);
+  --result-ink-soft: var(--ds-ink-soft);
+  --result-side: 32px;
+  height: auto;
+  min-height: 100dvh;
+  padding: calc(32px + env(safe-area-inset-top)) calc(32px + var(--screen-right)) 0 calc(32px + var(--screen-left));
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 0;
+  overflow: hidden;
+  background-color: var(--ds-sky-bottom);
+  background-image: linear-gradient(180deg, var(--ds-sky-top), var(--ds-sky-bottom) 50%);
+  color: var(--ds-ink);
+}
+.compare-result-sky {
+  position: relative;
+  isolation: isolate;
+  container-type: inline-size;
+  flex: 1 0 120px;
+  min-height: 120px;
+  max-height: none;
+}
+html[data-size] .compare-result .result-hero {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 120px;
+  max-height: min(100%, 480px, 75cqi);
+  top: auto;
+  object-fit: contain;
+}
+.compare-result-sky::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  bottom: 0;
+  left: 35%;
+  width: 30%;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--ds-ground-shadow);
+}
+html[data-size] .compare-result .result-content {
+  position: relative;
+  isolation: isolate;
+  container-type: inline-size;
+  flex: 0 0 auto;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 22px 0 calc(44px + env(safe-area-inset-bottom));
+}
+.compare-result-sand {
+  position: absolute;
+  z-index: -1;
+  inset: 0 calc(-1 * (var(--result-side) + var(--screen-right))) 0 calc(-1 * (var(--result-side) + var(--screen-left)));
+  background: var(--ds-strata-1);
+  pointer-events: none;
+}
+.compare-result-edge {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% - 1px);
+  width: 100%;
+  height: 24px;
+  fill: var(--ds-strata-1);
+}
+.compare-result-ochre {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: calc(20px + env(safe-area-inset-bottom));
+  background: var(--ds-strata-2);
+}
+.compare-result-ochre .compare-result-edge { fill: var(--ds-strata-2); height: 16px; }
+html[data-size] .compare-result .result-score { order: 1; gap: 8px; }
+html[data-size] .compare-result .result-score-value { font-size: 64px; font-weight: 800; }
+html[data-size] .compare-result .result-score-total { font-size: 34px; color: var(--ds-ink-soft); }
+html[data-size] .compare-result .result-stars { order: 2; font-size: 44px; gap: 6px; }
+.compare-result .star { display: flex; width: 1em; height: 1em; color: var(--ds-ink-soft); }
+.compare-result .star svg { width: 100%; height: 100%; stroke: var(--ds-ink-soft); }
+.compare-result .star-won { color: var(--ds-reward); }
+html[data-size] .compare-result .result-title { order: 3; font-size: 34px; line-height: 1.2; font-weight: 800; }
+html[data-size] .compare-result .celebration {
+  order: 4;
+  height: 44px;
+  padding: 0 14px;
+  gap: 8px;
+  border-radius: var(--ds-radius-tag);
+  background: var(--ds-reward);
+  color: var(--ds-on-reward);
+  font-size: 20px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+html[data-size] .compare-result .celebration svg { width: 24px; height: 24px; fill: currentColor; }
+html[data-size] .compare-result .best-score {
+  order: 5;
+  height: 36px;
+  padding: 0 12px;
+  gap: 8px;
+  font-size: 16px;
+  background: var(--ds-label);
+  color: var(--ds-on-label);
+  border-radius: var(--ds-radius-tag);
+  white-space: nowrap;
+}
+.compare-result .best-score-value { font-size: 20px; }
+.compare-result .best-score-beaten { text-decoration: line-through; }
+.compare-result .level-switch { order: 6; }
+html[data-size] .compare-result .result-actions { order: 7; padding-top: 0; gap: 12px; }
+html[data-size] .compare-result .play-again-button,
+html[data-size] .compare-result .result-actions .home-button {
+  height: 64px;
+  padding: 0 24px;
+  gap: 10px;
+  font-size: 24px;
+  border: 0;
+  border-radius: var(--ds-radius-pill);
+  white-space: nowrap;
+}
+.compare-result .play-again-button { background: var(--ds-action); color: var(--ds-on-action); }
+html[data-size] .compare-result .result-actions .home-button { background: var(--ds-strong); color: var(--ds-on-strong); }
+.compare-result .festivity { z-index: -1; overflow: hidden; }
+.compare-result .glow { left: 50%; top: 55%; background: var(--ds-reward-glow); opacity: 1; }
+.compare-result .glow-outer { width: min(100%, 560px); height: 100%; }
+.compare-result .glow-mid { width: min(75%, 420px); height: 75%; }
+.compare-result .glow-inner { width: min(50%, 280px); height: 50%; }
+.compare-result .confetti { width: 16px; height: 8px; border-radius: 2px; }
+.compare-result .confetti-amber { background: var(--ds-reward); }
+.compare-result .confetti-terra { background: var(--ds-action); }
+.compare-result .confetti-sky { background: var(--ds-strong); }
+.compare-result .confetti:nth-child(3n) { background: var(--ds-good); }
+body:has(.compare-result) #version { color: var(--ds-ink); }
+
+html[data-size="tall-narrow"] .compare-result { --result-side: 20px; padding: calc(20px + env(safe-area-inset-top)) calc(20px + var(--screen-right)) 0 calc(20px + var(--screen-left)); }
+html[data-size="tall-narrow"] .compare-result .result-stars { font-size: min(31px, (100cqi - 36px) / 10); gap: 4px; }
+html[data-size="tall-narrow"] .compare-result .result-title { font-size: var(--ds-size-34); }
+html[data-size="tall-narrow"] .compare-result .celebration { font-size: 18px; height: 40px; padding: 0 12px; }
+html[data-size="tall-narrow"] .compare-result .best-score { height: 32px; font-size: 14px; }
+html[data-size="tall-narrow"] .compare-result .result-actions { flex-direction: column; align-self: stretch; gap: 12px; }
+html[data-size="tall-narrow"] .compare-result .play-again-button,
+html[data-size="tall-narrow"] .compare-result .result-actions .home-button { padding: 0 20px; font-size: 26px; justify-content: center; }
+
+/* The short landscape composition uses the same rewards beside the sky.
+   A minimum row grows the page instead of clipping either column. */
+html[data-size="wide-short"] .compare-result {
+  --result-side: 20px;
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) minmax(0, 400px);
+  grid-template-rows: minmax(120px, 1fr);
+  align-items: stretch;
+  gap: 20px;
+  padding: calc(12px + env(safe-area-inset-top)) calc(20px + var(--screen-right)) calc(12px + env(safe-area-inset-bottom)) calc(20px + var(--screen-left));
+}
+html[data-size="wide-short"] .compare-result .compare-result-sky { min-height: 120px; max-height: none; }
+html[data-size="wide-short"] .compare-result .result-content {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-content: center;
+  gap: 8px 12px;
+  padding: 12px 0 24px;
+}
+html[data-size="wide-short"] .compare-result .compare-result-sand { bottom: calc(-12px - env(safe-area-inset-bottom)); }
+html[data-size="wide-short"] .compare-result .result-score { order: 1; grid-column: 1; grid-row: span 2; }
+html[data-size="wide-short"] .compare-result .result-score-value { font-size: 48px; }
+html[data-size="wide-short"] .compare-result .result-score-total { font-size: 20px; color: var(--ds-ink); }
+html[data-size="wide-short"] .compare-result .result-title { order: 1; grid-column: 2; font-size: 20px; }
+html[data-size="wide-short"] .compare-result .result-stars { order: 2; grid-column: 2; font-size: 16px; gap: 2px; }
+html[data-size="wide-short"] .compare-result .celebration { order: 0; grid-column: 1 / -1; height: 36px; font-size: 16px; }
+html[data-size="wide-short"] .compare-result .celebration svg { width: 20px; height: 20px; }
+html[data-size="wide-short"] .compare-result .best-score { grid-column: 1 / -1; height: 32px; font-size: 14px; }
+html[data-size="wide-short"] .compare-result .result-actions { grid-column: 1 / -1; flex-direction: row; }
+html[data-size="wide-short"] .compare-result .play-again-button,
+html[data-size="wide-short"] .compare-result .result-actions .home-button { height: 48px; padding: 0 12px; gap: 8px; font-size: 17px; }
+
+html[data-size="tall"] .compare-result .result-score-value { font-size: min(150px, 15dvh); }
+html[data-size="tall-narrow"] .compare-result .result-score-value { font-size: var(--ds-size-88); }
+html[data-size="tall-narrow"] .compare-result .result-content { gap: 12px; }

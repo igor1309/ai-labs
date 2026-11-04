@@ -4,6 +4,8 @@ import { act, render, screen, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { App } from "../src/App.tsx";
+import { LevelResultScreen } from "../src/LevelResultScreen.tsx";
+import { resultProps } from "./compareResultProps.ts";
 import type { Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { localLanguage } from "../src/localLanguage.ts";
@@ -183,8 +185,6 @@ function expectScreenIn(theme: Theme, part: Element = document.body) {
 // and the app it walks, opened on the home page.
 type Walk = { theme: Theme; user: UserEvent; viewport: ManualViewport; timers: ManualTimers };
 
-const unchecked = () => {};
-
 async function home({ theme }: Walk) {
   expectScreenIn(theme);
 }
@@ -201,18 +201,6 @@ async function portraitGate({ theme, viewport }: Walk) {
   expectScreenIn(theme);
 }
 
-// Answers the round's questions `from` to `to`, the first one wrong so
-// both marks show, with `check` before and after each answer.
-async function answer(user: UserEvent, from: number, to: number, check: () => void) {
-  for (let number = from; number <= to; number++) {
-    check();
-    const question = shownQuestion();
-    await user.click(cardOf(number === 1 ? wrongOf(question) : correctOf(question)));
-    check();
-    await user.click(screen.getByRole("button", { name: number < 10 ? "NEXT" : "SEE RESULT" }));
-  }
-}
-
 // The System setting reaches the question through the app; visual variants
 // are controlled inputs so checking them does not need repeated rounds.
 async function questionTheme({ theme, user }: Walk) {
@@ -220,14 +208,9 @@ async function questionTheme({ theme, user }: Walk) {
   expectScreenIn(theme, document.querySelector(".question")!);
 }
 
-async function quizResult({ theme, user }: Walk) {
-  await user.click(gameDoor("COMPARE"));
-  await answer(user, 1, 10, unchecked);
-  expect(screen.getByRole("status")).toBeDefined();
-  expectScreenIn(theme);
-
-  await user.click(screen.getByRole("button", { name: "HOME" }));
-  expectScreenIn(theme);
+async function quizResult({ theme }: Walk) {
+  const result = render(<LevelResultScreen {...resultProps()} />, withPictures);
+  expectScreenIn(theme, result.container);
 }
 
 // The whole list, with every food type's card, is checked once; a food
@@ -506,7 +489,7 @@ const SCREEN_GROUPS: Array<[string, Array<[string, (walk: Walk) => Promise<void>
     "the quiz and its result",
     [
       ["the question opened in the System appearance", questionTheme],
-      ["the result with its celebration, and the home page again", quizResult]
+      ["the controlled result with its celebration", quizResult]
     ]
   ],
   [

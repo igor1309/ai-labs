@@ -145,6 +145,7 @@ export function useQuizGame({ dinosaurs, progress, bodyPicture, random }: QuizGa
       case "result":
         return (
           <LevelResultScreen
+            presentation="dig-site"
             language={language}
             {...presentResult(screen.result)}
             hero={bodyPicture(HERO)}
