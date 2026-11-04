@@ -1,3 +1,4 @@
+import Foundation
 import struct CallText.State
 import PanelUI
 import SplitRows
@@ -34,7 +35,7 @@ func readingEvent(_ event: PanelEvent) -> ReadingEvent? {
     switch event {
     case let .hold(held): .hold(.init(entryID: held.entryID, text: held.text))
     case let .letGo(held): .letGo(.init(entryID: held.entryID, text: held.text))
-    case let .scrolled(atBottom): .scrolled(atBottom: atBottom)
+    case let .scrolled(atBottom, interaction): .scrolled(atBottom: atBottom, interaction: interaction)
     case .jumpToLive: .jumpToLive
     case .start, .stop, .switchLiveTextOn, .openSettings, .openCallsFolder: nil
     }
@@ -62,9 +63,9 @@ func panelState(_ state: ReadingState, rows: inout MappedRows) -> PanelState {
     }
     let log: PanelState.Log = switch state.log {
     case .empty: .empty
-    case let .liveTextOff(kept): .liveTextOff(kept: kept.map { panelLines($0, rows: &rows) })
+    case let .liveTextOff(kept): .liveTextOff(kept: kept.map { panelLines($0, acknowledgement: state.scrollAcknowledgement, rows: &rows) })
     case let .preparing(holds): .preparing(holds: holds.map(panelHeld))
-    case let .lines(lines): .lines(panelLines(lines, rows: &rows))
+    case let .lines(lines): .lines(panelLines(lines, acknowledgement: state.scrollAcknowledgement, rows: &rows))
     }
     return .init(recording: recording, log: log, banners: state.banners.map { banner in
         switch banner.kind {
@@ -86,7 +87,7 @@ private func panelRow(_ row: ReadingState.Row) -> PanelState.Row {
     }
 }
 
-private func panelLines(_ lines: ReadingState.Lines, rows: inout MappedRows) -> PanelState.Lines {
+private func panelLines(_ lines: ReadingState.Lines, acknowledgement: UUID?, rows: inout MappedRows) -> PanelState.Lines {
 
     let sealed = lines.rows.sealed
     if rows.layout != lines.layout || rows.mapped > sealed.count { rows = .init(layout: lines.layout) }
@@ -94,7 +95,7 @@ private func panelLines(_ lines: ReadingState.Lines, rows: inout MappedRows) -> 
         rows.sealed.append(contentsOf: sealed[rows.mapped...].map(panelRow))
         rows.mapped = sealed.count
     }
-    return .init(rows: .init(sealed: rows.sealed, tail: lines.rows.tail.map(panelRow)), holds: lines.holds.map(panelHeld), newBelow: lines.newBelow, followsLive: lines.followsLive)
+    return .init(rows: .init(sealed: rows.sealed, tail: lines.rows.tail.map(panelRow)), holds: lines.holds.map(panelHeld), newBelow: lines.newBelow, followsLive: lines.followsLive, scrollAcknowledgement: acknowledgement)
 }
 
 private func panelEntry(_ entry: ReadingState.Entry) -> PanelState.Entry {

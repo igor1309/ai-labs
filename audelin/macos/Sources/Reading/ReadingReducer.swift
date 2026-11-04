@@ -130,7 +130,8 @@ public struct ReadingReducer: Sendable {
             if !state.lines.holds.contains(held) { state.lines.holds.append(held) }
         case let .letGo(held):
             state.lines.holds.removeAll { $0 == held }
-        case let .scrolled(atBottom):
+        case let .scrolled(atBottom, interaction):
+            if let interaction { state.scrollAcknowledgement = interaction }
             state.lines.followsLive = atBottom
             if atBottom { state.lines.newBelow = 0 }
         case .jumpToLive:

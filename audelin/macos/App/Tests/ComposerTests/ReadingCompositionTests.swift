@@ -6,6 +6,7 @@ import Session
 import Observation
 import Synchronization
 import Testing
+import Foundation
 import protocol TranscriptWriting.CallText
 @testable import Composer
 
@@ -28,6 +29,36 @@ struct ReadingCompositionTests {
             let released = try await rig.panel { if case let .lines(lines) = $0.log { lines.holds.isEmpty } else { false } }
             if case let .lines(lines) = released.log { #expect(lines.entries.contains { $0.id == entry.id }) }
             try await rig.stop()
+        }
+    }
+
+    @Test func mapsScrollIdentityThroughTheReducerAndEveryKeptLogMode() throws {
+
+        let interaction = UUID(uuid: (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7))
+        for atBottom in [false, true] {
+            let event = try #require(readingEvent(.scrolled(atBottom: atBottom, interaction: interaction)))
+            #expect(event == .scrolled(atBottom: atBottom, interaction: interaction))
+            var reading = ReadingReducer.reduce(.init(), .textUpdated(.init(status: .listening, entries: [
+                .init(id: .init(speaker: .mine, localID: 1), start: 0, end: 1, settled: "kept"),
+            ]))).0
+            reading = ReadingReducer.reduce(reading, event).0
+            var rows = MappedRows()
+            guard case let .lines(lines) = panelState(reading, rows: &rows).log else {
+                Issue.record("expected a listening log")
+                return
+            }
+            #expect(lines.scrollAcknowledgement == interaction)
+            #expect(lines.followsLive == atBottom)
+            reading = ReadingReducer.reduce(reading, .recordingChanged(.on(elapsed: 0))).0
+            reading = ReadingReducer.reduce(reading, .textUpdated(.init(status: .off, entries: []))).0
+            #expect(panelState(reading, rows: &rows).log == .liveTextOff(kept: lines))
+            reading = ReadingReducer.reduce(reading, .jumpToLive).0
+            guard case let .liveTextOff(kept) = panelState(reading, rows: &rows).log else {
+                Issue.record("expected kept text")
+                return
+            }
+            #expect(kept?.scrollAcknowledgement == interaction)
+            #expect(kept?.followsLive == true)
         }
     }
 

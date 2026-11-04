@@ -6,6 +6,10 @@
 
 ## 2026-11-03
 
+- The live panel keeps the newest text visible after later layout growth,
+  while paused reading and active text selection stay in place. Delayed scroll
+  acknowledgements preserve the reader’s latest position (LAB-942).
+
 - Parakeet omits whitespace-only model words while keeping spoken words' original timing (LAB-943).
 
 - Microphone capture keeps following the default input and checking device availability
