@@ -3,95 +3,188 @@ import Testing
 
 struct PanelPresenceTests {
 
+    @Test func defaultStatePreservesInitialPresence() {
+
+        let state = PanelPresence()
+        #expect(state.recordingID == nil)
+        #expect(!state.visible)
+        #expect(state.generation == 0)
+        #expect(!state.offersReopen)
+    }
+
+    @Test func everyStateFieldIsPubliclyConstructibleAndMutable() {
+
+        var state = makePresence(recordingID: 7, visible: true, generation: 19, offersReopen: true)
+        #expect(state.recordingID == 7)
+        #expect(state.visible)
+        #expect(state.generation == 19)
+        #expect(state.offersReopen)
+
+        state.recordingID = 8
+        state.visible = false
+        state.generation = 23
+        state.offersReopen = false
+        #expect(state.recordingID == 8)
+        #expect(!state.visible)
+        #expect(state.generation == 23)
+        #expect(!state.offersReopen)
+    }
+
+    @Test func recordingBeginsOrReplacesTheCurrentRecording() {
+
+        for (state, effects): (PanelPresence, [PanelPresence.Effect]) in [
+            (makePresence(generation: 4), [.cancelDelay, .show(.recordingBegan)]),
+            (makePresence(recordingID: 1, visible: true, generation: 5), [.cancelDelay]),
+            (makePresence(recordingID: 1, generation: 6, offersReopen: true),
+                [.cancelDelay, .show(.recordingBegan)]),
+            (makePresence(visible: true, generation: 7), [.cancelDelay]),
+        ] {
+            assert(state, .recordingChanged(2)) {
+                $0.recordingID = 2
+                $0.visible = true
+                $0.generation += 1
+                $0.offersReopen = false
+            }
+            assert(state, .recordingChanged(2), delivers: effects)
+        }
+    }
+
+    @Test func endingKeepsVisibleUntilThreeSecondDelayElapses() {
+
+        let shown = makePresence(recordingID: 1, visible: true, generation: 5)
+        assert(shown, .recordingChanged(nil)) {
+            $0.recordingID = nil
+            $0.generation = 6
+        }
+        assert(shown, .recordingChanged(nil), delivers: [.cancelDelay, .hideAfter(seconds: 3, generation: 6)])
+
+        let ending = makePresence(visible: true, generation: 6)
+        assert(ending, .delayElapsed(6)) { $0.visible = false }
+        assert(ending, .delayElapsed(6), delivers: [.hide(.recordingEnded)])
+    }
+
+    @Test func endingAClosedRecordingClearsReopenWithoutSchedulingAHide() {
+
+        let state = makePresence(recordingID: 1, generation: 8, offersReopen: true)
+        assert(state, .recordingChanged(nil)) {
+            $0.recordingID = nil
+            $0.generation = 9
+            $0.offersReopen = false
+        }
+        assert(state, .recordingChanged(nil), delivers: [.cancelDelay])
+    }
+
+    @Test func repeatedRecordingNotificationsLeavePresenceAndEffectsUnchanged() {
+
+        for state in [
+            makePresence(),
+            makePresence(recordingID: 1, visible: true, generation: 5),
+            makePresence(recordingID: 1, generation: 6, offersReopen: true),
+            makePresence(visible: true, generation: 7),
+            makePresence(generation: 8),
+        ] {
+            assert(state, .recordingChanged(state.recordingID))
+            assert(state, .recordingChanged(state.recordingID), delivers: [])
+        }
+    }
+
+    @Test func ignoredDelaysLeavePresenceAndEffectsUnchanged() {
+
+        for state in [
+            makePresence(generation: 6),
+            makePresence(recordingID: 1, visible: true, generation: 6),
+            makePresence(recordingID: 1, generation: 6, offersReopen: true),
+        ] {
+            assert(state, .delayElapsed(6))
+            assert(state, .delayElapsed(6), delivers: [])
+        }
+        for state in [
+            makePresence(visible: true, generation: 6),
+            makePresence(recordingID: 2, visible: true, generation: 7),
+            makePresence(visible: true, generation: 8),
+        ] {
+            for generation: UInt64 in [5, 9] {
+                assert(state, .delayElapsed(generation))
+                assert(state, .delayElapsed(generation), delivers: [])
+            }
+        }
+    }
+
+    @Test func userCloseCancelsDelaysAndOffersReopenOnlyDuringARecording() {
+
+        for (state, offersReopen, effects): (PanelPresence, Bool, [PanelPresence.Effect]) in [
+            (makePresence(), false, [.cancelDelay]),
+            (makePresence(visible: true, generation: 6), false, [.cancelDelay, .hide(.userClosed)]),
+            (makePresence(recordingID: 1, visible: true, generation: 5), true,
+                [.cancelDelay, .hide(.userClosed)]),
+            (makePresence(recordingID: 1, generation: 6, offersReopen: true), true, [.cancelDelay]),
+        ] {
+            assert(state, .userClosed) {
+                $0.visible = false
+                $0.generation += 1
+                $0.offersReopen = offersReopen
+            }
+            assert(state, .userClosed, delivers: effects)
+        }
+    }
+
+    @Test func menuReopenShowsAClosedRecordingPanel() {
+
+        let state = makePresence(recordingID: 1, generation: 6, offersReopen: true)
+        assert(state, .reopen) {
+            $0.visible = true
+            $0.offersReopen = false
+        }
+        assert(state, .reopen, delivers: [.show(.menuReopen)])
+    }
+
+    @Test func menuReopenIsIgnoredUnlessOffered() {
+
+        for state in [
+            makePresence(),
+            makePresence(recordingID: 1, visible: true, generation: 5),
+            makePresence(recordingID: 1, visible: true, generation: 6),
+            makePresence(visible: true, generation: 7),
+            makePresence(generation: 8),
+        ] {
+            assert(state, .reopen)
+            assert(state, .reopen, delivers: [])
+        }
+    }
+
     @Test func appReopenShowsTheRecordingPanelWithItsOwnReason() {
 
-        let initial = PanelPresence()
-        let (shown, _) = PanelPresence.reduce(initial, .recordingChanged(1))
-        let (hidden, _) = PanelPresence.reduce(shown, .userClosed)
-        let (reopened, _) = PanelPresence.reduce(hidden, .reopen)
-        let (ending, _) = PanelPresence.reduce(shown, .recordingChanged(nil))
-        let (ended, _) = PanelPresence.reduce(hidden, .recordingChanged(nil))
-        for state in [initial, ending, ended] {
-            assert(state, .appReopen, reducedTo: state)
-            assert(state, .appReopen, effects: [.showCalls])
+        for state in [
+            makePresence(recordingID: 1, visible: true, generation: 5),
+            makePresence(recordingID: 1, visible: true, generation: 6),
+        ] {
+            assert(state, .appReopen)
+            assert(state, .appReopen, delivers: [.show(.appReopen)])
         }
-        for state in [shown, reopened] {
-            assert(state, .appReopen, reducedTo: state)
-            assert(state, .appReopen, effects: [.show(.appReopen)])
+        let hidden = makePresence(recordingID: 1, generation: 6, offersReopen: true)
+        assert(hidden, .appReopen) {
+            $0.visible = true
+            $0.offersReopen = false
         }
-        assert(hidden, .appReopen, reducedTo: reopened)
-        assert(hidden, .appReopen, effects: [.show(.appReopen)])
+        assert(hidden, .appReopen, delivers: [.show(.appReopen)])
     }
 
-    @Test func endingKeepsVisibleUntilThreeSecondDelayElapses() throws {
+    @Test func appReopenBetweenRecordingsShowsCallsWithoutChangingPresence() {
 
-        let (shown, _) = PanelPresence.reduce(.init(), .recordingChanged(1))
-        let (ending, effects) = PanelPresence.reduce(shown, .recordingChanged(nil))
-        #expect(ending.visible)
-        #expect(!ending.offersReopen)
-        guard case let .hideAfter(seconds, generation) = try #require(effects.last) else {
-            Issue.record("Ending must request a delayed hide")
-            return
+        for state in [makePresence(), makePresence(visible: true, generation: 7), makePresence(generation: 8)] {
+            assert(state, .appReopen)
+            assert(state, .appReopen, delivers: [.showCalls])
         }
-        #expect(seconds == 3)
-        #expect(PanelPresence.reduce(ending, .recordingChanged(nil)).1.isEmpty)
-        let (hidden, hiddenEffects) = PanelPresence.reduce(ending, .delayElapsed(generation))
-        #expect(!hidden.visible)
-        #expect(hiddenEffects == [.hide(.recordingEnded)])
-        #expect(PanelPresence.reduce(hidden, .delayElapsed(generation)).1.isEmpty)
-    }
-
-    @Test func newRecordingInvalidatesEarlierDelaysEvenAfterItEnds() throws {
-
-        let (shown, _) = PanelPresence.reduce(.init(), .recordingChanged(1))
-        let (ending, effects) = PanelPresence.reduce(shown, .recordingChanged(nil))
-        guard case let .hideAfter(_, generation) = try #require(effects.last) else {
-            Issue.record("Ending must request a delayed hide")
-            return
-        }
-        let (restarted, restartedEffects) = PanelPresence.reduce(ending, .recordingChanged(2))
-        #expect(restarted.visible)
-        #expect(restartedEffects == [.cancelDelay])
-        #expect(PanelPresence.reduce(restarted, .delayElapsed(generation)).0 == restarted)
-        let (endingAgain, _) = PanelPresence.reduce(restarted, .recordingChanged(nil))
-        #expect(PanelPresence.reduce(endingAgain, .delayElapsed(generation)).0 == endingAgain)
-    }
-
-    @Test func userCloseLastsUntilMenuReopenOrNextRecording() {
-
-        let (shown, shownEffects) = PanelPresence.reduce(.init(), .recordingChanged(1))
-        #expect(shown.visible)
-        #expect(shown.recordingID == 1)
-        #expect(shownEffects == [.cancelDelay, .show(.recordingBegan)])
-        #expect(PanelPresence.reduce(shown, .recordingChanged(1)).1.isEmpty)
-        let (closed, effects) = PanelPresence.reduce(shown, .userClosed)
-        let (repeated, _) = PanelPresence.reduce(closed, .recordingChanged(1))
-        #expect(!repeated.visible)
-        #expect(!closed.visible)
-        #expect(closed.offersReopen)
-        #expect(effects == [.cancelDelay, .hide(.userClosed)])
-        let (reopened, reopenEffects) = PanelPresence.reduce(closed, .reopen)
-        #expect(reopened.visible)
-        #expect(reopenEffects == [.show(.menuReopen)])
-        #expect(PanelPresence.reduce(reopened, .reopen).1.isEmpty)
-        let (ended, endEffects) = PanelPresence.reduce(closed, .recordingChanged(nil))
-        #expect(!ended.visible)
-        #expect(endEffects == [.cancelDelay])
-        #expect(PanelPresence.reduce(ended, .reopen).0 == ended)
-        let (next, nextEffects) = PanelPresence.reduce(ended, .recordingChanged(2))
-        #expect(next.visible)
-        #expect(nextEffects == [.cancelDelay, .show(.recordingBegan)])
     }
 
     @Test func menuOffersReopenOnlyDuringARecordingWithHiddenPanel() {
 
-        let initial = PanelPresence()
-        let (shown, _) = PanelPresence.reduce(initial, .recordingChanged(1))
-        let (hidden, _) = PanelPresence.reduce(shown, .userClosed)
-        let (ended, _) = PanelPresence.reduce(hidden, .recordingChanged(nil))
-        let (reopened, _) = PanelPresence.reduce(hidden, .reopen)
         for (presence, offers): (PanelPresence, Bool) in [
-            (initial, false), (shown, false), (hidden, true), (ended, false), (reopened, false),
+            (makePresence(), false),
+            (makePresence(recordingID: 1, visible: true, generation: 5), false),
+            (makePresence(recordingID: 1, generation: 6, offersReopen: true), true),
+            (makePresence(generation: 7), false),
+            (makePresence(recordingID: 1, visible: true, generation: 6), false),
         ] {
             #expect(presence.offersReopen == offers)
             for recording: MenuBarRecording in [
@@ -108,12 +201,20 @@ struct PanelPresenceTests {
     }
 }
 
-private func assert(_ state: PanelPresence, _ event: PanelPresence.Event, reducedTo expected: PanelPresence,
-                    sourceLocation: SourceLocation = #_sourceLocation) {
+private func makePresence(recordingID: UInt64? = nil, visible: Bool = false,
+                          generation: UInt64 = 0, offersReopen: Bool = false) -> PanelPresence {
+    PanelPresence(recordingID: recordingID, visible: visible, generation: generation, offersReopen: offersReopen)
+}
+
+private func assert(_ state: PanelPresence, _ event: PanelPresence.Event,
+                    sourceLocation: SourceLocation = #_sourceLocation,
+                    _ mutate: (inout PanelPresence) -> Void = { _ in }) {
+    var expected = state
+    mutate(&expected)
     #expect(PanelPresence.reduce(state, event).0 == expected, sourceLocation: sourceLocation)
 }
 
-private func assert(_ state: PanelPresence, _ event: PanelPresence.Event, effects expected: [PanelPresence.Effect],
+private func assert(_ state: PanelPresence, _ event: PanelPresence.Event, delivers expected: [PanelPresence.Effect],
                     sourceLocation: SourceLocation = #_sourceLocation) {
     #expect(PanelPresence.reduce(state, event).1 == expected, sourceLocation: sourceLocation)
 }
