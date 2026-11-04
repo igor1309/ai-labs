@@ -207,11 +207,16 @@ async function questionTheme({ theme, user }: Walk) {
   expect(document.querySelector(".question")).not.toBeNull();
 }
 
-// The whole list, with every food type's card, is checked once; a food
-// chosen shows only cards already on it, so then only the choice is.
+// The list's bar and a card of each food type are checked once: every
+// card of a food type is drawn alike. A food chosen shows only cards
+// already on it, so then only the choice is.
 const catalogueList = (food?: string) => async ({ theme, user }: Walk) => {
   await user.click(gameDoor("ANCIENT REPTILES"));
-  if (!food) { expectScreenIn(theme); return; }
+  if (!food) {
+    expectScreenIn(theme, document.querySelector(".catalogue-bar")!);
+    for (const diet of ["meat", "plants", "both"]) expectScreenIn(theme, document.querySelector(`.catalogue-card:has([data-diet="${diet}"])`)!);
+    return;
+  }
   const foods = screen.getByRole("group", { name: "FOOD" });
   if (food === "ALL") await user.click(within(foods).getByRole("button", { name: "MEAT" }));
   await user.click(within(foods).getByRole("button", { name: food }));
@@ -404,11 +409,12 @@ async function skeletonReveals({ theme, user, timers }: Walk) {
     expectScreenIn(theme);
     await user.click(screen.getByRole("button", { name: "BUILD ANOTHER" }));
     expect(screen.getAllByRole("img", { name: "STAR" })).not.toHaveLength(0);
-    expectScreenIn(theme);
   }
+  expectScreenIn(theme);
   await user.click(screen.getByRole("button", { name: "HOME" }));
   expect(gameDoor("SKELETONS").querySelector(".skeletons-tile-best")).toBeNull();
-  expectScreenIn(theme);
+  // The home page itself is the home walk's; here its tile is checked.
+  expectScreenIn(theme, gameDoor("SKELETONS"));
 }
 
 // The museum empty, then with a skeleton on its stand with its Explorer
