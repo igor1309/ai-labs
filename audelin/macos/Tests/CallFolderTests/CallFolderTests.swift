@@ -49,7 +49,7 @@ struct CallFolderTests {
         }
     }
 
-    @Test func titleFollowsTheTimestampAndATakenNameNumbersTheTimestamp() async throws {
+    @Test func titleFollowsTheIdAndAnIdTakenByAnyTitleIsNumbered() async throws {
 
         try await withCallsFolder { calls in
             let adapter = CallFolder(callsURL: calls, now: { fixedStart.addingTimeInterval(249_540) }, timeZone: tokyo)
@@ -58,8 +58,8 @@ struct CallFolderTests {
                 adapter.make(title: "a/b:c"), adapter.make(title: "//::"), adapter.make(title: ""),
             ] }
             #expect(made.map(\.url.lastPathComponent) == [
-                "2026.10.27-1124 Zoom", "2026.10.27-1124", "2026.10.27-1124-2 Zoom",
-                "2026.10.27-1124 a-b-c", "2026.10.27-1124 ----", "2026.10.27-1124-2",
+                "2026.10.27-1124 Zoom", "2026.10.27-1124-2", "2026.10.27-1124-3 Zoom",
+                "2026.10.27-1124-4 a-b-c", "2026.10.27-1124-5 ----", "2026.10.27-1124-6",
             ])
             for folder in made { try await expectDirectory(folder.url) }
         }
@@ -130,7 +130,7 @@ struct CallFolderTests {
                         // Inject the denial because privileged test runners can write read-only folders.
             let adapter = CallFolder(callsURL: calls, now: { fixedStart }, timeZone: tokyo, createDirectory: { _ in
                 throw POSIXError(code)
-            })
+            }, names: { _ in [] })
             await #expect(throws: POSIXError(code)) { try await offPool { try adapter.make() } }
             #expect(try await names(calls).isEmpty)
             try await offPool { try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: calls.path) }
@@ -172,6 +172,35 @@ struct CallFolderTests {
             #expect(try await offPool { try FileManager.default.destinationOfSymbolicLink(atPath: link.path) } == target.path)
             #expect(await !exists(target.path))
             #expect(try await names(calls) == ["2026.10.24-1405", "2026.10.24-1405-2"])
+        }
+    }
+
+    @Test func anEntryOfAnyKindWithTheIdAndATitleTakesTheId() async throws {
+
+        try await withCallsFolder { calls in
+            let bytes = Data([0, 255, 42, 10])
+            try await offPool { try bytes.write(to: calls.appendingPathComponent("2026.10.24-1405 Meet")) }
+            try await offPool { try FileManager.default.createDirectory(
+                at: calls.appendingPathComponent("2026.10.24-1405-2 Zoom"), withIntermediateDirectories: false) }
+            try await offPool { try bytes.write(to: calls.appendingPathComponent("2026.10.24-14050")) }
+            let made = try await offPool { try maker(calls).make(title: "Zoom") }
+            #expect(made.url.lastPathComponent == "2026.10.24-1405-3 Zoom")
+            #expect(try await contents(calls.appendingPathComponent("2026.10.24-1405 Meet")) == bytes)
+            #expect(try await names(calls) == [
+                "2026.10.24-1405 Meet", "2026.10.24-1405-2 Zoom", "2026.10.24-1405-3 Zoom", "2026.10.24-14050",
+            ])
+        }
+    }
+
+    @Test func failedListingFailsWithoutCreatingAnything() async throws {
+
+        try await withCallsFolder { calls in
+            let adapter = CallFolder(callsURL: calls, now: { fixedStart }, timeZone: tokyo, createDirectory: { _ in
+                Issue.record("made a folder after listing failed")
+            }, names: { _ in throw POSIXError(.EACCES) })
+            await #expect(throws: POSIXError(.EACCES)) { try await offPool { try adapter.make() } }
+            let left = try await names(calls)
+            #expect(left.isEmpty)
         }
     }
 
