@@ -1,5 +1,4 @@
 import BlockingTestWork
-import Dispatch
 import Foundation
 import Testing
 @testable import TrackFile
@@ -30,31 +29,34 @@ struct TrackFileExecutorTests {
         }
     }
 
-    @Test func releasingTheLastReferenceReleasesTheBindingOnTheFilesQueue() async throws {
+    @Test func blockedReleasesOutnumberingThePoolAllFinish() async throws {
 
         try await withTrackFolder { folder in
-            let key = DispatchSpecificKey<Void>()
-            let released = AsyncStream<Bool>.makeStream()
-            var track: TrackFile? = try await TrackFile(
-                url: folder.appendingPathComponent("track.caf"),
-                makeBinding: { url in
-                    ReleaseSpy(disk: try DiskTrackBinding(url: url)) {
-                        released.continuation.yield(DispatchQueue.getSpecific(key: key) != nil)
-                        released.continuation.finish()
-                    }
-                },
-                makeConversion: { try CompleteConversion(inputRate: $0) }
-            )
-            try #require(track).queue.setSpecific(key: key, value: ())
-            try await track?.close()
-            track = nil
-            var onQueue = released.stream.makeAsyncIterator()
-            #expect(await onQueue.next() == true)
+            let barrier = ThreadBarrier()
+            let released = AsyncStream<Void>.makeStream()
+            var tracks: [TrackFile] = []
+            for index in 0..<barrier.count {
+                tracks.append(try await TrackFile(
+                    url: folder.appendingPathComponent("\(index).caf"),
+                    makeBinding: { url in
+                        ReleaseSpy(disk: try DiskTrackBinding(url: url)) {
+                            barrier.arrive()
+                            released.continuation.yield(())
+                        }
+                    },
+                    makeConversion: { try CompleteConversion(inputRate: $0) }
+                ))
+            }
+            for track in tracks { try await track.close() }
+            tracks.removeAll()
+            var releases = released.stream.makeAsyncIterator()
+            for _ in 0..<barrier.count { await releases.next() }
+            #expect(barrier.met)
         }
     }
 }
 
-/// Reports where its last reference was released.
+/// Reports when its last reference is released.
 private final class ReleaseSpy: TrackFileBinding {
 
     private let disk: DiskTrackBinding

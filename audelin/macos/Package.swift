@@ -245,7 +245,7 @@ let package = Package(
         ),
         .testTarget(
             name: "ModelLoadingTests",
-            dependencies: ["ModelLoading"]
+            dependencies: ["ModelLoading", "BlockingTestWork"]
         ),
         .testTarget(
             name: "NemotronRecognizerTests",
