@@ -188,7 +188,7 @@ private extension Transcript {
                 self.entry(entry, alpha: 1, spacing: log)
 
             case let .gap(gap):
-                caption("\(gap.speaker == .me ? "я" : "они")  \(gap.text)", alpha: 1, spacing: log)
+                caption(gap.text, speaker: gap.speaker, alpha: 1, spacing: log)
 
             case let .late(late):
                 // The design dims the whole group, spaces it tighter than the
@@ -205,18 +205,28 @@ private extension Transcript {
             return Piece(row: row, text: result, entries: ranges, paragraph: current!)
         }
 
-        private func caption(_ string: String, alpha: CGFloat, spacing: CGFloat) {
+        /// A caption with a speaker starts with its symbol, and its text lines
+        /// up with the entries' times.
+        private func caption(_ string: String, speaker: PanelState.Speaker? = nil, alpha: CGFloat, spacing: CGFloat) {
 
             newParagraph()
-            let paragraph = paragraph(size: tokens.typeCaption, indent: 0, timeAt: nil, spacing: spacing)
+            let indent = speaker == nil ? 0 : Self.symbolSlot + tokens.space4
+            let paragraph = paragraph(size: tokens.typeCaption, indent: indent, timeAt: nil, spacing: spacing)
             current = paragraph
-            result.append(.init(string: string, attributes: [
+            let attributes: [NSAttributedString.Key: Any] = [
                 .font: font(tokens.typeCaption),
                 .baselineOffset: lift(tokens.typeCaption),
                 .foregroundColor: NSColor(tokens.gutter).withAlphaComponent(alpha),
                 .paragraphStyle: paragraph,
                 Transcript.gutter: true,
-            ]))
+            ]
+            if let speaker {
+                let symbol = NSMutableAttributedString(attachment: symbol(speaker, alpha: alpha, size: tokens.typeCaption))
+                symbol.addAttributes(attributes, range: NSRange(location: 0, length: symbol.length))
+                result.append(symbol)
+                result.append(.init(string: "\t", attributes: attributes))
+            }
+            result.append(.init(string: string, attributes: attributes))
         }
 
         private func entry(_ entry: PanelState.Entry, alpha: CGFloat, spacing: CGFloat) {
