@@ -70,20 +70,20 @@ describe("the bar's picker", () => {
     expect([brushButton(language), wideButton(language)].map((button) => button.getAttribute("aria-pressed"))).toEqual(["true", "false"]);
   });
 
-  it.each(THEMES)("shows each button at least 48 by 48, a dot of 14 or 28, the picked one filled amber, in the %s theme", (theme) => {
+  it.each(THEMES)("shows each button a 52 round, an ink dot of 12 or 24, the picked one filled amber, in the %s theme", (theme) => {
     openRound("hatchling", { theme });
-    const amber = theme === "light" ? "rgb(227, 155, 45)" : "rgb(242, 178, 75)";
+    const amber = theme === "light" ? "rgb(227, 155, 45)" : "rgb(240, 174, 69)";
     const look = () => [brushButton(), wideButton()].map((button) => {
       const own = getComputedStyle(button);
       const dot = getComputedStyle(button.querySelector(".dig-brush-dot")!);
       return { size: [own.width, own.height], filled: own.backgroundColor === amber, dot: [dot.width, dot.height], dotAmber: dot.backgroundColor === amber };
     });
-    const brush = { size: ["48px", "48px"], dot: ["14px", "14px"] };
-    const wide = { size: ["48px", "48px"], dot: ["28px", "28px"] };
+    const brush = { size: ["52px", "52px"], dot: ["12px", "12px"], dotAmber: false };
+    const wide = { size: ["52px", "52px"], dot: ["24px", "24px"], dotAmber: false };
 
-    expect(look()).toEqual([{ ...brush, filled: true, dotAmber: false }, { ...wide, filled: false, dotAmber: true }]);
+    expect(look()).toEqual([{ ...brush, filled: true }, { ...wide, filled: false }]);
     fireEvent.click(wideButton());
-    expect(look()).toEqual([{ ...brush, filled: false, dotAmber: true }, { ...wide, filled: true, dotAmber: false }]);
+    expect(look()).toEqual([{ ...brush, filled: false }, { ...wide, filled: true }]);
   });
 
   it("picks the wide brush and back, clearing no sand", () => {

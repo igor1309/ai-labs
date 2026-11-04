@@ -1,6 +1,6 @@
 import { House, RotateCcw, Star, Trophy } from "lucide-react";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { DigBar, FieldGuideButton } from "./DigBar.tsx";
+import { DigBar, DigGround, FieldGuideButton } from "./DigBar.tsx";
 import { Button } from "./Button.tsx";
 import { Festivity } from "./Festivity.tsx";
 import type { Language } from "./language/language.ts";
@@ -129,7 +129,7 @@ export function DigRevealScreen({
       <main ref={result} inert={blocked} className="dig-screen dig-reveal-screen" data-motion={!reducedMotion || undefined} data-arrived={arrived || undefined}
         style={{ "--dig-reveal-duration": `${REVEAL_GLIDE[timing]}ms`, "--dig-reveal-stagger": `${REVEAL_STAGGER[timing]}ms` } as CSSProperties}>
         {celebration && <Festivity />}
-        <div className="stratum result-stratum" aria-hidden="true" />
+        <DigGround />
         <DigBar language={language}>
           <FieldGuideButton language={language} count={treasures} disabled={!landed || blocked} onFieldGuide={onFieldGuide} />
         </DigBar>
@@ -142,7 +142,7 @@ export function DigRevealScreen({
             {dugUp !== undefined && (
               <section className="dig-card" aria-label={text.dugUp} data-new={newStar || undefined} style={arrival()}>
                 <span className="dig-card-star" role="img" aria-label={text.star}>
-                  <Star size={36} aria-hidden="true" />
+                  <Star size={36} fill="currentColor" aria-hidden="true" />
                 </span>
                 <span className="dig-card-words" aria-hidden="true">
                   {text.dugUp}

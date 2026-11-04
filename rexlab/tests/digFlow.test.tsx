@@ -60,7 +60,7 @@ describe("the board's lift and collection star", () => {
       const chip = screen.getByLabelText("DUG UP");
       // The count ticks up as the star lands; under reduced motion it
       // simply changes.
-      const before = `${reducedMotion ? 1 : 0}/${SHIPPED_DIG.length}`;
+      const before = `DUG UP${reducedMotion ? 1 : 0}/${SHIPPED_DIG.length}`;
       expect(chip.textContent).toBe(before);
       expect(board().hasAttribute("data-lifting")).toBe(false);
       expect(document.querySelector(".dig-board-star")).toBeNull();
@@ -99,7 +99,7 @@ describe("the board's lift and collection star", () => {
       act(() => app.timers.fire(LIFT[timing]));
       expect(document.querySelector(".dig-board-star")).toBeNull();
       if (!reducedMotion) {
-        expect(chip.textContent).toBe(`1/${SHIPPED_DIG.length}`);
+        expect(chip.textContent).toBe(`DUG UP1/${SHIPPED_DIG.length}`);
         expect(getComputedStyle(chip.querySelector("span")!).animation).toBe("pop-in var(--motion-small) var(--ease-overshoot) both");
         expect(screen.queryByRole("heading", { level: 2 })).toBeNull();
         expect(app.timers.timers()).toEqual([COUNT_SETTLE.motion]);
@@ -130,7 +130,7 @@ describe("the board's lift and collection star", () => {
     placeBoard(800);
     digUp();
     landTreasure(app.timers, timing);
-    expect(screen.getByLabelText("DUG UP").textContent).toBe(`${dug.length}/${dug.length}`);
+    expect(screen.getByLabelText("DUG UP").textContent).toBe(`DUG UP${dug.length}/${dug.length}`);
     act(() => app.timers.fire(GUST[timing]));
     expect(board().hasAttribute("data-lifting")).toBe(true);
     expect(document.querySelector(".dig-board-star")).toBeNull();
@@ -216,13 +216,13 @@ describe("the board's lift and collection star", () => {
         expect(getComputedStyle(star).animation).toBe(reducedMotion
           ? "fade-in var(--dig-lift) var(--ease-out) both"
           : "dig-board-star var(--dig-lift) var(--ease-out) both");
-        expect(screen.getByLabelText("DUG UP").textContent).toBe(`${reducedMotion ? 1 : 0}/${SHIPPED_DIG.length}`);
+        expect(screen.getByLabelText("DUG UP").textContent).toBe(`DUG UP${reducedMotion ? 1 : 0}/${SHIPPED_DIG.length}`);
         expect(app.timers.timers()).toEqual([LIFT[timing]]);
         act(() => app.timers.fire(LIFT[timing]));
       }
       expect(document.querySelector(".dig-board-star")).toBeNull();
       if (phase === "counted" || !reducedMotion) {
-        expect(screen.getByLabelText("DUG UP").textContent).toBe(`1/${SHIPPED_DIG.length}`);
+        expect(screen.getByLabelText("DUG UP").textContent).toBe(`DUG UP1/${SHIPPED_DIG.length}`);
         expect(screen.queryByRole("heading", { level: 2 })).toBeNull();
         expect(app.timers.timers()).toEqual([COUNT_SETTLE.motion]);
         act(() => app.timers.fire(COUNT_SETTLE.motion));

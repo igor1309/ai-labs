@@ -483,7 +483,7 @@ async function dugUp({ theme, user, timers }: Walk, check: boolean) {
 async function digReveal(walk: Walk) {
   const { theme, user, timers } = walk; await dugUp(walk, false);
   act(() => timers.fire(LIFT.motion));
-  expect(screen.getByLabelText("DUG UP").textContent).toBe(`1/${SHIPPED_DIG.length}`);
+  expect(screen.getByLabelText("DUG UP").textContent).toBe(`DUG UP1/${SHIPPED_DIG.length}`);
   expectScreenIn(theme);
   act(() => timers.fire(COUNT_SETTLE.motion)); expect(screen.getByRole("heading", { level: 2 })).toBeDefined();
   expectScreenIn(theme);
@@ -773,14 +773,13 @@ describe("the large card", () => {
 // The page is shown through its props, in the theme the app sets on the
 // page, with kinds found and kinds not found yet.
 describe("the FIELD GUIDE", () => {
-  it.each(THEMES)("is in the %s theme, a kind not found yet in the empty cards' colours with its outline in the ink", (theme) => {
+  it.each(THEMES)("is in the %s theme, every card a sand pocket, a kind not found yet its outline in the deepest pocket", (theme) => {
     document.documentElement.dataset.theme = theme;
     try {
       const cards = TREASURE_KINDS.map((kind) => ({ kind, picture: fakeTreasurePicture(kind), count: kind === "shell" ? 3 : kind === "egg-nest" ? 1 : 0 }));
       render(<DigFieldGuideScreen language="en" cards={cards} onBack={() => {}} onHome={() => {}} />, withPictures);
 
       expectScreenIn(theme);
-      const colours = PALETTE[theme];
       const look = (selector: string) => {
         const style = getComputedStyle(document.querySelector(selector) ?? document.body);
         return { background: style.backgroundColor, border: style.borderColor, width: style.borderWidth, color: style.color, opacity: style.opacity };
@@ -789,11 +788,12 @@ describe("the FIELD GUIDE", () => {
       const missing = look(".dig-guide-card:not([data-found])");
       const outline = look(".dig-guide-outline");
       const unknown = look(".dig-guide-unknown");
-      expect([sameColour(found.background, colours.surface ?? ""), sameColour(found.border, colours.line ?? ""), found.width]).toEqual([true, true, "1px"]);
-      expect([sameColour(missing.background, colours["surface-2"] ?? ""), sameColour(missing.border, colours.line ?? ""), missing.width]).toEqual([true, true, "2px"]);
-      expect([sameColour(outline.background, colours.ink ?? ""), outline.opacity]).toEqual([true, "0.16"]);
-      // "?" is the ink at 40%, as the design draws it.
-      expect(sameColour(unknown.color, `${colours.ink}66`)).toBe(true);
+      // Each card a sand pocket; a kind not found its outline and soft "?".
+      const token = (name: string) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+      expect([sameColour(found.background, token("--ds-pocket-1")), found.width]).toEqual([true, "0px"]);
+      expect([sameColour(missing.background, token("--ds-pocket-1")), missing.width]).toEqual([true, "0px"]);
+      expect([sameColour(outline.background, token("--ds-pocket-3")), outline.opacity]).toEqual([true, "0.55"]);
+      expect(sameColour(unknown.color, token("--ds-ink-soft"))).toBe(true);
     } finally {
       delete document.documentElement.dataset.theme;
     }
