@@ -9,9 +9,10 @@ struct SideTextTests {
         await withRig { rig in
             await rig.side.start()
             await rig.listening()
+            var updates = rig.side.updates.makeAsyncIterator()
             for word in 1...5 {
                 await rig.audio.send(tones(word...word, sampleRate: sampleRate))
-                #expect(await rig.side.state == expected(1...word, sampleRate: sampleRate))
+                #expect(await updates.next().map(SideOutput.init) == expected(1...word, sampleRate: sampleRate))
             }
             #expect(await rig.text.samples == (1...5).map(Float.init))
         }
@@ -29,10 +30,10 @@ struct SideTextTests {
                 await rig.audio.deliver(Audio(start: 1, samples: [2, 2, 3, 3, 4, 4, 5, 5], sampleRate: 2))
             }
             await rig.inputQueued()
-            #expect(await rig.side.state == State(status: .fillingIn, entries: []))
+            #expect(SideOutput(await rig.side.state) == SideOutput(status: .fillingIn, entries: []))
             await loading.release()
             await delivery.value
-            #expect(await rig.side.state == expected(1...5))
+            #expect(SideOutput(await rig.side.state) == expected(1...5))
             #expect(await rig.text.samples == [1, 1, 2, 2, 3, 3, 4, 4, 5, 5])
             #expect(await rig.fills[0].starts == [0])
         }
@@ -50,17 +51,17 @@ struct SideTextTests {
             rig.audio.capture(tones(1...3))
             await rig.side.start()
             await filling.entered()
-            #expect(await rig.side.state == expected(1...1, status: .fillingIn))
+            #expect(SideOutput(await rig.side.state) == expected(1...1, status: .fillingIn))
             await rig.side.setEnabled(false)
             #expect(await rig.fills[0].abandoned)
             #expect(await filling.isHeld)
             await rig.audio.deliver(tones(2...3))
             let frozen = expected(1...1, status: .off)
-            #expect(await rig.side.state == frozen)
+            #expect(SideOutput(await rig.side.state) == frozen)
             #expect(await rig.text.stopCalls == 0)
             await filling.release()
             await rig.side.waitForWork()
-            #expect(await rig.side.state == frozen)
+            #expect(SideOutput(await rig.side.state) == frozen)
             #expect(await rig.text.stopCalls == 0)
             if !failing {
                 await rig.side.setEnabled(true)
@@ -87,7 +88,7 @@ struct SideTextTests {
                 await rig.side.setEnabled(false)
                 #expect(await rig.fills[index].abandoned)
                 #expect(await filling.isHeld)
-                #expect(await rig.side.state == expected(1...1, status: .off))
+                #expect(SideOutput(await rig.side.state) == expected(1...1, status: .off))
                 #expect(await rig.text.stopCalls == 0)
                 await filling.release()
                 await rig.side.waitForWork()
@@ -106,16 +107,16 @@ struct SideTextTests {
             await rig.side.start()
             await rig.listening()
             for word in 1...2 { await rig.audio.send(tones(word...word)) }
-            #expect(await rig.side.state == expected(1...2))
+            #expect(SideOutput(await rig.side.state) == expected(1...2))
             await rig.side.setEnabled(false)
             for word in 3...5 { await rig.audio.send(tones(word...word)) }
-            #expect(await rig.side.state == expected(1...2, status: .off))
+            #expect(SideOutput(await rig.side.state) == expected(1...2, status: .off))
             await rig.side.setEnabled(true)
             #expect(await rig.listening() == expected(1...5, later: 3..<6))
             #expect(await rig.fills[1].starts == [2])
             #expect(await rig.text.samples == [1, 2, 3, 4, 5])
             await rig.audio.send(tones(6...6))
-            #expect(await rig.side.state == expected(1...6, later: 3..<6))
+            #expect(SideOutput(await rig.side.state) == expected(1...6, later: 3..<6))
         }
     }
 
@@ -130,7 +131,7 @@ struct SideTextTests {
             let held = Task { await rig.audio.send(tones(2...2)) }
             await hearing.entered()
             await rig.side.setEnabled(false)
-            #expect(await rig.side.state == expected(1...1, status: .off))
+            #expect(SideOutput(await rig.side.state) == expected(1...1, status: .off))
             await rig.side.setEnabled(true)
             await hearing.release()
             await held.value
@@ -156,7 +157,7 @@ struct SideTextTests {
             #expect(await rig.text.stopCalls == 0)
             #expect(await rig.text.samples == [1])
             await rig.audio.send(tones(3...3))
-            #expect(await rig.side.state == expected(1...1, status: .off))
+            #expect(SideOutput(await rig.side.state) == expected(1...1, status: .off))
             await rig.side.setEnabled(true)
             #expect(await rig.listening() == expected(1...3, later: 2..<4))
             #expect(await rig.fills[1].starts == [1])
@@ -171,7 +172,7 @@ struct SideTextTests {
             await rig.side.start()
             await rig.listening()
             for word in 1...3 { await rig.audio.send(tones(word...word)) }
-            #expect(await rig.side.state == expected(1...2))
+            #expect(SideOutput(await rig.side.state) == expected(1...2))
             rig.audio.end()
             await rig.heldStop(stopping, keeps: expected(1...3, settled: true))
             await stopping.release()
@@ -191,7 +192,7 @@ struct SideTextTests {
             await filling.entered()
             rig.audio.end()
             await rig.audioEndReceived()
-            #expect(await rig.side.state == expected(1...1, status: .fillingIn))
+            #expect(SideOutput(await rig.side.state) == expected(1...1, status: .fillingIn))
             #expect(await rig.text.stopCalls == 0)
             #expect(await rig.text.finishCalls == 0)
             #expect(await rig.fills[0].abandoned == false)
@@ -240,7 +241,7 @@ struct SideTextTests {
             for word in 1...3 { await rig.audio.send(tones(word...word)) }
             let abandoning = Task {
                 await rig.side.abandon()
-                return await rig.side.state
+                return SideOutput(await rig.side.state)
             }
             await rig.heldStop(stopping, keeps: expected(1...2))
             #expect(rig.audio.isEnded == false)
@@ -292,7 +293,7 @@ struct SideTextTests {
             await switching?.value
             await filling.release()
             await rig.side.waitForWork()
-            #expect(await rig.side.state == final)
+            #expect(SideOutput(await rig.side.state) == final)
             #expect(await rig.text.finishCalls == 0)
         }
     }
@@ -318,7 +319,7 @@ struct SideTextTests {
             #expect(await hearing.isHeld)
             await hearing.release()
             await delivery.value
-            #expect(await rig.side.state == final)
+            #expect(SideOutput(await rig.side.state) == final)
             #expect(await rig.text.stopCalls == 1)
             #expect(await rig.text.finishCalls == 0)
         }
@@ -334,16 +335,16 @@ struct SideTextTests {
             rig.audio.holdNextDelivery(delivery)
             let sending = Task { await rig.audio.send(tones(1...4)) }
             await delivery.entered()
-            var stops: [Task<State, Never>] = []
+            var stops: [Task<SideOutput, Never>] = []
             for _ in 0..<stopCount {
                 stops.append(Task {
                     await rig.side.stop()
-                    return await rig.side.state
+                    return SideOutput(await rig.side.state)
                 })
                 await rig.stopRequested()
             }
             rig.audio.end()
-            #expect(await rig.side.state == State(status: .listening, entries: []))
+            #expect(SideOutput(await rig.side.state) == SideOutput(status: .listening, entries: []))
             #expect(await rig.text.stopCalls == 0)
             await delivery.release()
             await sending.value
@@ -356,7 +357,7 @@ struct SideTextTests {
             #expect(await rig.text.finishCalls == 1)
             await rig.side.stop()
             await rig.side.abandon()
-            #expect(await rig.side.state == final)
+            #expect(SideOutput(await rig.side.state) == final)
             #expect(await rig.text.stopCalls == 1)
         }
     }
@@ -372,7 +373,7 @@ struct SideTextTests {
             await filling.entered()
             let ending = Task {
                 if abandon { await rig.side.abandon() } else { await rig.side.stop() }
-                return await rig.side.state
+                return SideOutput(await rig.side.state)
             }
             await rig.heldStop(stopping, keeps: expected(1...1, status: .fillingIn))
             #expect(await rig.fills[0].abandoned)
@@ -386,7 +387,7 @@ struct SideTextTests {
             #expect(rig.audio.isEnded == false)
             await filling.release()
             await rig.side.waitForWork()
-            #expect(await rig.side.state == final)
+            #expect(SideOutput(await rig.side.state) == final)
             #expect(await rig.text.finishCalls == 0)
         }
     }
@@ -400,7 +401,7 @@ struct SideTextTests {
             await rig.audio.send(tones(1...1))
             let failing = Task { await rig.audio.send(tones(2...2)) }
             await stopping.entered()
-            #expect(await rig.side.state == expected(1...1))
+            #expect(SideOutput(await rig.side.state) == expected(1...1))
             #expect(await rig.text.stopped == false)
             await stopping.release()
             await failing.value
@@ -417,7 +418,7 @@ struct SideTextTests {
             for word in 1...3 { await rig.audio.send(tones(word...word)) }
             rig.audio.end()
             await stopping.entered()
-            #expect(await rig.side.state == expected(1...3))
+            #expect(SideOutput(await rig.side.state) == expected(1...3))
             #expect(await rig.text.stopped == false)
             await stopping.release()
             #expect(await rig.result() == expected(1...3, status: .failed(.finishing("finishing failed"))))
@@ -432,7 +433,7 @@ struct SideTextTests {
             rig.audio.capture(tones(1...3))
             await rig.side.start()
             await stopping.entered()
-            #expect(await rig.side.state == expected(1...1, status: .fillingIn))
+            #expect(SideOutput(await rig.side.state) == expected(1...1, status: .fillingIn))
             #expect(await rig.text.stopped == false)
             await stopping.release()
             #expect(await rig.result() == expected(1...1, status: .failed(.fillingIn("fill in failed"))))

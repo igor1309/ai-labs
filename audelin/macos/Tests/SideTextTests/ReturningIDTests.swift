@@ -1,5 +1,5 @@
 import Testing
-@testable import SideText
+import SideText
 
 /// Updates replace unread ones, so whether an id was left out can only be
 /// told where each hearing arrives.

@@ -1,6 +1,6 @@
 import Synchronization
 import Testing
-@testable import FillIn
+import FillIn
 
 /// Ignores cancellation so abandonment is proved independently of collaborators.
 actor Gate {
@@ -131,13 +131,16 @@ struct Rig: Sendable {
         audio.set(through: Double(words.upperBound), ended: ended)
     }
 
-    func result() async -> State {
+    func result() async -> FillOutput {
 
         var final: State?
         for await state in fill.updates { final = state }
-        let state = await fill.state
-        #expect(final == state)
-        return state
+        guard let final else {
+            Issue.record("Fill-in ended without publishing a result")
+            return FillOutput(await fill.state)
+        }
+        #expect(FillOutput(final) == FillOutput(await fill.state))
+        return FillOutput(final)
     }
 }
 
@@ -157,4 +160,28 @@ func withRig(
     await readHold?.1.release()
     await hearHold?.1.release()
     await fill.waitForWork()
+}
+
+struct FillOutput: Equatable, Sendable {
+
+    struct Entry: Equatable, Sendable {
+        let text: Text
+        let writtenLater: Bool
+    }
+
+    let status: State.Status
+    let entries: [Entry]
+    let heardThrough: Double
+
+    init(status: State.Status, entries: [Entry], heardThrough: Double) {
+        self.status = status
+        self.entries = entries
+        self.heardThrough = heardThrough
+    }
+
+    init(_ snapshot: State) {
+        status = snapshot.status
+        entries = snapshot.entries.map { Entry(text: $0.text, writtenLater: $0.writtenLater) }
+        heardThrough = snapshot.heardThrough
+    }
 }
