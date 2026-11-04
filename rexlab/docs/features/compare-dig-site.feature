@@ -2,13 +2,20 @@ Feature: COMPARE in the dig site
   A round keeps its questions, answers, score, saved progress and level choices
   while its presentation uses the dig site's sky, sand, pockets and rewards.
   Light and dark appearance use the same game state and interactions.
+  Layout follows the window, independently of the device's identity:
+    | class       | window                                                   |
+    | wide        | landscape, at least 600 CSS pixels tall                   |
+    | wide-short  | landscape, under 600 tall and at least 568 wide            |
+    | tall        | portrait including square, at least 600 CSS pixels wide   |
+    | tall-narrow | portrait under 600 wide, or landscape under 568 wide       |
 
   Scenario Outline: A question takes the window's shape
     Given the app is in <language> with the <theme> appearance
     And a window of <width> by <height> CSS pixels
     When I start COMPARE
     Then HOME, ten progress steps and the question sit in the sky
-    And the cards are dug into the sand with a dark name label under each picture
+    And the cards are dug into the sand with names beneath their pictures inside the pockets
+    And names, pockets and their rings use the current appearance's design tokens
     And the cards are <cards> with VS between them, or ИЛИ in Russian
     And prompts, names and values fit without clipping or horizontal scrolling
     And safe areas keep every control clear of the notch and home indicator
@@ -23,19 +30,33 @@ Feature: COMPARE in the dig site
       | Russian  | dark  | 852   | 393    | side by side |
       | English  | dark  | 1440  | 900    | side by side |
 
-  Scenario: A small window scrolls as one screen
-    Given the question's pictures would be smaller than 110 pixels on a phone or 150 pixels on an upright iPad
+  Scenario Outline: A stacked question keeps its picture minimum
+    Given a <class> window whose content cannot fit at the minimum picture height
     When I see the question
-    Then the whole screen scrolls vertically to keep the pictures at their minimum
+    Then each picture stays at least <minimum> CSS pixels high
+    And the whole screen, sky included, scrolls vertically
     And NEXT follows the cards in the scroll
     And there is no nested board scroll
 
-  Scenario: The bar shows the current level's saved best
-    Given the level being played has a saved best of 7
-    When I see a question on an iPad or desktop
-    Then the sky shows a trophy and 7
-    And on a narrow phone the best is kept for the result
-    And an unavailable best is not invented as 0
+    Examples:
+      | class       | minimum |
+      | tall        | 150     |
+      | tall-narrow | 110     |
+
+  Scenario Outline: The bar shows an available current-level best on larger layouts
+    Given the current level has a saved best of <best>
+    And the window is <class>
+    When I see a question
+    Then <shown>
+
+    Examples:
+      | best        | class       | shown                                    |
+      | 7           | wide        | a trophy and 7 appear in the sky          |
+      | 7           | tall        | a trophy and 7 appear in the sky          |
+      | 7           | tall-narrow | no best-score trophy or number is shown   |
+      | 7           | wide-short  | no best-score trophy or number is shown   |
+      | unavailable | wide        | no best-score trophy or number is shown   |
+      | 0           | wide        | a trophy and 0 appear in the sky          |
 
   Scenario: An answer marks its pocket and its progress step
     Given an unanswered question
@@ -49,47 +70,9 @@ Feature: COMPARE in the dig site
     And further taps cannot change the answer
 
   Scenario: Pictures can still be loading when a question opens
-    When a question opens before its pictures are loaded
+    Given the next question's pictures have not loaded
+    When that question opens
     Then its prompt, progress and names show at once
     And each picture shimmers until loaded
     And no values or NEXT show before an answer
 
-  Scenario Outline: A result separates sky and rewards
-    Given a finished round with <celebration>
-    When its result is shown
-    Then the dinosaur stands in the sky and the rewards stand in the sand
-    And the score, ten stars, WELL DONE and best appear with their appropriate symbols
-    And only the earned celebration is shown
-    And the chosen level, PLAY AGAIN and HOME remain available
-    And short landscape puts the dinosaur beside the rewards
-    And narrow portrait puts PLAY AGAIN above HOME and keeps level names accessible with their pictures
-    And a window that cannot keep a 120-pixel dinosaur scrolls as one screen
-
-    Examples:
-      | celebration                   |
-      | a first best                  |
-      | a new best over an older best |
-      | no new best                   |
-      | an unavailable saved best     |
-      | a first round scoring zero    |
-
-  Scenario: Choosing a level leaves the finished round's reward intact
-    Given an Explorer result showing 7 out of 10
-    When I choose Hatchling
-    Then the score and Explorer best remain unchanged
-    And no round starts until PLAY AGAIN
-    And PLAY AGAIN starts Hatchling
-
-  Scenario: Turning and reduced motion preserve the round
-    Given an answered question or a completed result
-    When the window changes shape or appearance
-    Then the current question, marks, values, score and chosen level remain
-    And layout changes animate with the shared motion timings
-    And a completed celebration does not replay on a window turn
-    And reduced motion uses short fades
-
-  Scenario: Game behaviour and theme have separate checks
-    Then behaviour tests prove state, actions, scoring and persistence using deterministic collaborators
-    And presentation tests render controlled states in both appearances and every affected size class
-    And browser tests prove actual fit, scrolling and controls in English and Russian for all three age levels
-    And a full-flow test proves answering, the result, choosing a level, replay and HOME without repeating whole games for cosmetic variants

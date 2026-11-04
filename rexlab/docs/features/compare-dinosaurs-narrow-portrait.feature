@@ -1,35 +1,31 @@
 Feature: Compare dinosaurs quiz: a question in a tall-narrow window
-  In a tall-narrow window, portrait and under 600 CSS pixels wide (an
-  iPhone upright), a question of the compare dinosaurs quiz stands
-  upright as in a tall window, on 20-pixel sides and with less room
-  between its parts: the bar, the prompt, the cards and the row for
-  "NEXT" are 20 apart, the page's padding is 24 at the top and 32 at the
-  bottom, and the two cards are 16 apart. "HOME" shows its house alone,
-  a 56-pixel square, and keeps its word for screen readers; the steps
-  and the position keep the rest of the bar. A card's picture has
-  16-pixel padding and its footer 20; a card is never shorter than a
-  110-pixel picture with its padding and its footer, and below that the
-  whole screen scrolls. The prompt and the names take the type as in a
-  tall window, from the width less the 20-pixel sides, so every prompt
-  and name in either language fits from 320 wide. The marks, the values'
-  chips, "VS" and "NEXT" keep their sizes; every tap is at least 44
-  pixels.
+  In a tall-narrow window, portrait under 600 CSS pixels wide or landscape
+  under 568 wide, the sky holds the house, steps and position over the
+  prompt. HOME is a 56-pixel square showing its house, with its word kept
+  accessible. Two pocket cards stack in the sand, with VS (ИЛИ in Russian)
+  centred on their seam. Each picture is at least 110 CSS pixels high.
+  The cards share the available height equally; the whole page, sky
+  included, scrolls vertically only when the minimum content cannot fit.
+  NEXT follows the cards, across the width and 64 pixels tall.
+  Dig-site tokens size type, colours, spacing and pockets; every prompt,
+  name and value fits from 320 pixels wide and every tap is at least 44.
 
-  Scenario Outline: A question stands upright on a phone
+  Scenario Outline: A question stands upright in a narrow window
     Given a window of <width> by <height> CSS pixels, with no safe areas
     When I start the compare quiz
-    Then I see no picture asking to turn sideways or to make the window wider
-    And the house, the steps and "1/10" stand in one row at the top
-    And under the prompt each card is <card> pixels tall, its picture <picture> tall
-    And the screen <scrolls>
+    Then no orientation gate covers the question
+    And the house, steps and 1/10 stand in one row above the prompt
+    And equal-height cards stack with pictures at least 110 CSS pixels high
+    And NEXT follows them without a nested board scroll
+    And the whole screen scrolls vertically only when its minimum content cannot fit
 
     Examples:
-      | width | height | card | picture | scrolls         |
-      | 320   | 568    | 206  | 110     | scrolls         |
-      | 375   | 667    | 211  | 110     | scrolls         |
-      | 393   | 759    | 222  | 119     | does not scroll |
-      | 393   | 852    | 268  | 165     | does not scroll |
-      | 430   | 932    | 308  | 202     | does not scroll |
+      | width | height |
+      | 320   | 568    |
+      | 375   | 667    |
+      | 393   | 759    |
+      | 393   | 852    |
+      | 430   | 932    |
 
   Scenario Outline: Every word fits the narrowest phone
     Given the language is <language>

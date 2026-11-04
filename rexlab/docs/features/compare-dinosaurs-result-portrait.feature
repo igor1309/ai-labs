@@ -1,45 +1,30 @@
 Feature: Compare dinosaurs quiz: the result in a tall window
-  In a tall window, portrait and at least 600 CSS pixels wide (an iPad
-  upright, a Stage Manager or tall Mac window), the compare quiz's
-  result stands upright in one column: the cheering dinosaur at the
-  top, centred, and under it, centred, the celebration, the score, the
-  stars, "WELL DONE!", the best score, the level switch and the
-  actions, "PLAY AGAIN" and "HOME" side by side. The rest is as
-  compare-dinosaurs-result.feature and compare-dinosaurs-level-switch.feature
-  tell. A tall-narrow window has its own upright result.
-
-  The result's padding (32), the gaps between its parts (16), the
-  celebration, "WELL DONE!", the best score and the actions keep their
-  landscape sizes. "The width" is the window's less its side insets and
-  the padding (a scrollbar that takes room narrows it). The score is
-  15% of the window's height, at most 180 pixels. The stars stand on
-  one line, as large as lets ten fit the width with their gaps (8), at
-  most 48 pixels. The level switch is the width, at most 648, each
-  level 64 tall, its picture standing above its name; its names take one type in
-  the window, as large as lets the longest name in either language fit
-  its third of the switch, at most 16 pixels. The dinosaur, at its 4:3,
-  takes the height the column leaves, 20 above the celebration, at most
-  480 tall and the width wide. It is never under 200 tall; where the
-  window leaves it less, the whole screen scrolls. These parts, as the
-  other results' (find the pair, sort, care, skeletons, DIG's reveal),
-  are the shared result parts: their upright sizes hold wherever a
-  result stands upright. Sizes hold to within a pixel, the dinosaur's
-  to within 4.
+  In a tall window, portrait and at least 600 CSS pixels wide, the result
+  places the cheering dinosaur in the sky and the score, ten stars,
+  WELL DONE!, available best and earned celebration in the sand.
+  The level switch stands above PLAY AGAIN and HOME, which are side by
+  side. Dig-site tokens size colours, type, spacing and corners. All
+  words remain readable in English and Russian, clear of safe areas.
+  The dinosaur keeps its 4:3 proportions and takes the space left by the
+  rewards, never below 120 CSS pixels high. If those minimum contents
+  cannot fit, the whole page, sky included, scrolls vertically.
+  These sizes describe COMPARE; other games keep their own layout.
 
   Scenario Outline: The result stands upright
     Given a window of <width> by <height> CSS pixels, with no safe areas and scrollbars that take no room
     When I finish a round of the compare dinosaurs quiz with a new best score
-    Then I see no picture asking to turn sideways or to make the window wider
-    And the dinosaur stands at the top, <dinosaur> CSS pixels tall, and the rewards, the level switch and the actions under it in one centred column
-    And the screen <scrolls> up and down
+    Then no orientation gate covers the result
+    And the dinosaur stands at the top at least 120 CSS pixels high
+    And the rewards, level switch and actions stand under it in one centred column
+    And the screen scrolls vertically only when its minimum content cannot fit
 
     Examples:
-      | width | height | dinosaur | scrolls         | window                  |
-      | 600   | 800    | 200      | scrolls         | Stage Manager, or a Mac |
-      | 744   | 1133   | 431      | does not scroll | iPad mini upright       |
-      | 768   | 1024   | 338      | does not scroll | iPad 9.7" upright       |
-      | 820   | 1180   | 471      | does not scroll | iPad Air upright        |
-      | 1024  | 1366   | 480      | does not scroll | iPad Pro 12.9" upright  |
+      | width | height |
+      | 600   | 800    |
+      | 744   | 1133   |
+      | 768   | 1024   |
+      | 820   | 1180   |
+      | 1024  | 1366   |
 
   Scenario Outline: Every word fits the narrowest width
     Given the app is in <language>

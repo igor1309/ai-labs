@@ -49,12 +49,13 @@ Feature: Compare dinosaurs quiz: starting a round and asking
     Then one round starts, at "1/10"
     And COMPARE counts one more start
 
-  Scenario: Portrait asks to turn sideways
+  Scenario: Turning preserves the current question
     Given I am on question 3 of a round
-    When I turn the iPad to portrait
-    Then I see a picture asking to turn sideways
-    When I turn the iPad back to landscape
-    Then I am on question 3 again
+    When the window becomes portrait
+    Then the cards stack with no orientation gate
+    And I am still on question 3 with the same answer state
+    When the window becomes landscape again
+    Then the cards stand side by side and I remain on question 3
 
   Scenario Outline: A question shows its attribute and two dinosaurs
     Given a round has started

@@ -9,7 +9,7 @@ Feature: A compare question on an iPhone on its side
     When a compare question opens
     Then HOME, the steps and the progress stand on one short bar, 8 pixels under the top
     And the prompt stands on one line under the bar, with the row for NEXT beside it
-    And the two cards stand side by side, "VS" between them, in the height the bar and the prompt leave
+    And the two cards stand side by side, VS, or ИЛИ in Russian, between them, in the height the bar and the prompt leave
     And the question keeps 20 pixels past the notch on each side and clears the home indicator
     And every tap is at least 44 pixels
 
