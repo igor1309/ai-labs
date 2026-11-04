@@ -9,7 +9,7 @@ import { TEXTS } from "../src/language/texts.ts";
 import { localLanguage } from "../src/localLanguage.ts";
 import { PROGRESS_KEY, localPairsProgress, localSortingProgress } from "../src/localProgress.ts";
 import { THEME_KEY, localTheme } from "../src/localTheme.ts";
-import { correctOf, type Dinosaur } from "../src/quiz/round.ts";
+import { type Dinosaur } from "../src/quiz/round.ts";
 import { COUNT_SETTLE, GUST, LIFT, STAR_LANDS } from "../src/digGame.tsx";
 import { DigFieldGuideScreen } from "../src/DigFieldGuideScreen.tsx";
 import { TREASURE_KINDS } from "../src/dig/index.ts";
@@ -183,8 +183,6 @@ function expectScreenIn(theme: Theme, part: Element = document.body) {
 // and the app it walks, opened on the home page.
 type Walk = { theme: Theme; user: UserEvent; viewport: ManualViewport; timers: ManualTimers };
 
-const unchecked = () => {};
-
 async function home({ theme }: Walk) {
   expectScreenIn(theme);
 }
@@ -201,35 +199,12 @@ async function portraitGate({ theme, viewport }: Walk) {
   expectScreenIn(theme);
 }
 
-// Answers the round's questions `from` to `to`, the first one wrong so
-// both marks show, with `check` before and after each answer.
-async function answer(user: UserEvent, from: number, to: number, check: () => void) {
-  for (let number = from; number <= to; number++) {
-    check();
-    const question = shownQuestion();
-    await user.click(cardOf(number === 1 ? wrongOf(question) : correctOf(question)));
-    check();
-    await user.click(screen.getByRole("button", { name: number < 10 ? "NEXT" : "SEE RESULT" }));
-  }
-}
-
-// Questions `from` to `to`, those before them answered unchecked.
-const questions =
-  (from: number, to: number) =>
-  async ({ theme, user }: Walk) => {
-    await user.click(gameDoor("COMPARE"));
-    await answer(user, 1, from - 1, unchecked);
-    await answer(user, from, to, () => expectScreenIn(theme));
-  };
-
-async function quizResult({ theme, user }: Walk) {
+// The System setting reaches the question through the app; visual variants
+// are controlled inputs so checking them does not need repeated rounds.
+async function questionTheme({ theme, user }: Walk) {
   await user.click(gameDoor("COMPARE"));
-  await answer(user, 1, 10, unchecked);
-  expect(screen.getByRole("status")).toBeDefined();
-  expectScreenIn(theme);
-
-  await user.click(screen.getByRole("button", { name: "HOME" }));
-  expectScreenIn(theme);
+  expectPageIn(theme);
+  expect(document.querySelector(".question")).not.toBeNull();
 }
 
 // The whole list, with every food type's card, is checked once; a food
@@ -505,12 +480,9 @@ const SCREEN_GROUPS: Array<[string, Array<[string, (walk: Walk) => Promise<void>
     ]
   ],
   [
-    "the quiz and its result",
+    "the quiz",
     [
-      ["questions 1 to 4 before and after their answers, the first one wrong so both marks show", questions(1, 4)],
-      ["questions 5 to 7 before and after their answers", questions(5, 7)],
-      ["questions 8 to 10 before and after their answers", questions(8, 10)],
-      ["the result with its celebration, and the home page again", quizResult]
+      ["the question opened in the System appearance", questionTheme]
     ]
   ],
   [
@@ -586,12 +558,12 @@ describe("the System theme", () => {
     const { user, unmount } = openApp({ device });
     await user.click(gameDoor("COMPARE"));
     await user.click(cardOf(wrongOf(shownQuestion())));
-    expectScreenIn("light");
+    expectPageIn("light");
     const answered = document.body.innerHTML;
 
     act(() => device.switchTo("dark"));
 
-    expectScreenIn("dark");
+    expectPageIn("dark");
     expect(tint.content).toBe("#0f1320");
     expect(sameColour(getComputedStyle(document.documentElement).backgroundColor, PALETTE.dark.bg ?? "")).toBe(true);
     expect(document.body.innerHTML).toBe(answered);
@@ -599,7 +571,7 @@ describe("the System theme", () => {
 
     act(() => device.switchTo("light"));
 
-    expectScreenIn("light");
+    expectPageIn("light");
     expect(document.body.innerHTML).toBe(answered);
     expect(tint.content).toBe("#f2efe8");
     unmount();
@@ -624,7 +596,7 @@ describe("a chosen theme", () => {
     act(() => device.switchTo(appearance));
     expectScreenIn(chosen);
     await user.click(gameDoor("COMPARE"));
-    expectScreenIn(chosen);
+    expectPageIn(chosen);
   });
 
   it("gives way to the device again once System is chosen", async () => {
@@ -888,29 +860,6 @@ describe("the sorting result", () => {
       }
     } finally {
       delete document.documentElement.dataset.theme;
-    }
-  });
-});
-
-describe("marks", () => {
-  it.each(THEMES)("keep at least 3:1 contrast with their card in the %s theme", async (theme) => {
-    const { user } = openApp({ device: manualAppearance(theme) });
-    await user.click(gameDoor("COMPARE"));
-    const question = shownQuestion();
-
-    await user.click(cardOf(wrongOf(question)));
-
-    expectScreenIn(theme);
-    const marks = [correctOf(question), wrongOf(question)].map((dinosaur) => {
-      const mark = within(cardOf(dinosaur)).getByRole("img", { name: /^(RIGHT|WRONG)$/ });
-      return { symbol: symbolOf(mark), colour: getComputedStyle(mark).backgroundColor, card: surfaceOf(mark.parentElement ?? mark) };
-    });
-    expect(marks.map(({ symbol }) => symbol)).toEqual(["check", "x"]);
-    // The right answer in the design's green, the wrong one in its
-    // terracotta.
-    expect(marks.map(({ colour }, at) => sameColour(colour, [PALETTE[theme].good, PALETTE[theme].bad][at] ?? ""))).toEqual([true, true]);
-    for (const { colour, card } of marks) {
-      expect(contrast(colour, card)).toBeGreaterThanOrEqual(3);
     }
   });
 });

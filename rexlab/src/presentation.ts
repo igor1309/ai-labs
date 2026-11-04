@@ -12,7 +12,7 @@ import { CLIMB_LEVELS, shapeOf, type Board, type Celebration as PairsCelebration
 import type { PairCardView, PairsBoardScreenProps } from "./PairsBoardScreen.tsx";
 import type { PairsCelebration as ShownPairsCelebration, PairsResultScreenProps } from "./PairsResultScreen.tsx";
 import { bestForLevel as bestForQuizLevel, type Attribute, type Celebration, type Option, type QuestionState, type RoundResult } from "./quiz/index.ts";
-import type { DinosaurCardView, Prompt, QuestionScreenProps } from "./QuestionScreen.tsx";
+import type { DinosaurCardView, Prompt, QuestionScreenProps, QuestionStep } from "./QuestionScreen.tsx";
 import type { ResultScreenProps, Celebration as ShownCelebration } from "./ResultScreen.tsx";
 import type { Celebration as ShownSkeletonCelebration } from "./ResultParts.tsx";
 import type { SkeletonChoiceView } from "./SkeletonChoiceScreen.tsx";
@@ -58,9 +58,10 @@ const FORMATS: Record<Attribute, (value: number, language: Language) => string> 
 
 const CELEBRATIONS: Record<Celebration, ShownCelebration> = { "first-best": "first-best", "new-best": "new-best" };
 
-export type QuestionView = Pick<QuestionScreenProps, "prompt" | "number" | "total" | "left" | "right" | "answered" | "last">;
+export type QuestionView = Pick<QuestionScreenProps, "prompt" | "number" | "total" | "steps" | "best" | "left" | "right" | "answered" | "last">;
 
-export function presentQuestion(question: QuestionState, language: Language, bodyPicture: (dinosaurId: string) => string): QuestionView {
+// `best` is the level's best score, undefined when there is none to show.
+export function presentQuestion(question: QuestionState, language: Language, bodyPicture: (dinosaurId: string) => string, best: number | undefined): QuestionView {
   // Once answered, the right answer is marked whichever card was tapped,
   // so a wrong answer still shows the child which one wins.
   const card = ({ dinosaur, value, correct, chosen }: Option): DinosaurCardView => ({
@@ -71,10 +72,21 @@ export function presentQuestion(question: QuestionState, language: Language, bod
     mark: !question.answered ? undefined : correct ? "correct" : chosen ? "wrong" : undefined,
     chosen
   });
+  // Each question's step: its answer once it has one, the question on
+  // screen just answered standing out from the earlier ones it joins.
+  const step = (_: unknown, index: number): QuestionStep => {
+    const answer = question.answers[index];
+    const onScreen = index + 1 === question.number;
+    if (answer === undefined) return onScreen ? "current" : "to-come";
+    if (!answer) return "wrong";
+    return onScreen ? "just-right" : "right";
+  };
   return {
     prompt: PROMPTS[question.kind],
     number: question.number,
     total: question.total,
+    steps: Array.from({ length: question.total }, step),
+    best,
     left: card(question.left),
     right: card(question.right),
     answered: question.answered,

@@ -53,6 +53,9 @@ jobs:
       fail-fast: false
       matrix:
         script:
+          - compareQuestion
+          - compareResult
+          - compareFlow
           - whoseJawBoardLandscape
           - coloringProbe
           - coloringPainter

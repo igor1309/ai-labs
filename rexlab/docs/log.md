@@ -2,6 +2,8 @@
 
 ## 2026-11-04
 
+- LAB-915: COMPARE uses the dig-site sky, sand and pocket cards, with answer-history progress and each level’s best; its rewards and level choices fit wide, upright and phone windows in light and dark.
+
 - LAB-916: DIG is the dig site: the board, the question, the reveal and the FIELD GUIDE stand on sky over sand and ochre; DUG UP in the bar with its star (its words from the iPad mini's width up), the brush pair as amber rounds, the board a dug-out groove, each dinosaur card a sand pocket with a green check or TRY ANOTHER; on phones the two brushes are labelled buttons under the sand instead of a menu; the FIELD GUIDE's cards are sand pockets with a dark count tag.
 
 ## 2026-11-03
