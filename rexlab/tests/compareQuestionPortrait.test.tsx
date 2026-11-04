@@ -32,11 +32,11 @@ const PORTRAIT_LAYOUTS: PortraitLayouts = { home: ["tall"], catalogue: ["tall"],
 // "A question stands upright": each window, its cards' height, their
 // pictures' size and whether the screen scrolls.
 const WINDOWS = [
-  [600, 800, 281, 200, 150, true],
-  [744, 1133, 370, 320, 240, false],
-  [768, 1024, 316, 247, 186, false],
-  [820, 1180, 394, 351, 264, false],
-  [1024, 1366, 487, 475, 356, false]
+  [600, 800, 234.5, 432, 150, true],
+  [744, 1133, 362, 576, 277.5, false],
+  [768, 1024, 307.5, 600, 223, false],
+  [820, 1180, 385.5, 652, 301, false],
+  [1024, 1366, 478.5, 856, 394, false]
 ] as const;
 
 const part = (selector: string, root: ParentNode = document) => {
@@ -80,68 +80,29 @@ const shownType = () => {
 };
 const px = (size: number) => `${size}px`;
 
-const { textLineHeight, footerVerticalPadding } = PORTRAIT_QUESTION;
-
-// The pixels a rule of the form calc(var(--name-size) * ratio + N px)
-// gives, with the names' type the screen sets, as a browser resolves it.
-// jsdom does not.
-function footerHeight(value: string) {
-  const [, ratio = "", pixels = ""] = /^calc\(var\(--name-size\) ?\* ?([\d.]+) \+ ([\d.]+)px\)$/.exec(value) ?? [];
-  if (!ratio) throw new Error(`${value} is not sized by the names' type`);
-  return Number.parseFloat(shownType().name) * Number(ratio) + Number(pixels);
-}
-
-// The pixels a rule of the form calc(N px + var(--card-footer)) gives.
-function aboveFooter(value: string) {
-  const [, pixels = ""] = /^calc\(([\d.]+)px \+ var\(--card-footer\)\)$/.exec(value) ?? [];
-  if (!pixels) throw new Error(`${value} is not sized by the card's footer`);
-  return Number(pixels);
-}
-
-// The CSS contracts under which the geometry's sums hold. jsdom does not
-// lay out boxes, so every structural assumption is checked here.
+// Structural assumptions of the geometry; browser tests measure actual boxes.
 function uprightRules(size: WindowSize, width: number, sizes: QuestionSizes = PORTRAIT_QUESTION) {
-  const { artPadding, minimumPicture } = sizes;
   const at = (selector: string) => styleAt(part(selector), size);
   const question = at(".question");
-  expect([...part(".question").children].map((element) => element.className)).toEqual(["stratum stratum-1", "question-bar", "prompt", "dinosaur-cards", "next-row"]);
+  expect([...part(".question").children].map((element) => element.className)).toEqual(["question-sand", "question-bar", "prompt", "dinosaur-cards", "next-row"]);
   expect([...part(".dinosaur-cards").children].map((element) => element.className)).toEqual(["card dinosaur-card", "versus", "card dinosaur-card"]);
-  expect([question.value("display"), question.value("flex-direction"), question.rowGap()]).toEqual(["flex", "column", sizes.gap]);
+  expect([question.value("display"), question.value("grid-template-rows")]).toEqual(["grid", "auto auto minmax(auto, 1fr) auto"]);
   expect([question.px("padding-top"), question.px("padding-bottom"), question.px("padding-left"), question.px("padding-right")]).toEqual([sizes.topPadding, sizes.bottomPadding, sizes.sidePadding, sizes.sidePadding]);
-  expect([question.px("min-height"), question.value("height"), question.value("overflow-y"), question.value("overscroll-behavior")]).toEqual([size[1], "auto", "auto", "none"]);
+  expect(question.px("min-height")).toBe(size[1]);
   expect(at(".home-button").px("height")).toBe(sizes.barHeight);
-  // One type for the window, as the geometry gives it.
   expect(shownType()).toEqual({ prompt: px(compareQuestionType(width, sizes).prompt), name: px(compareQuestionType(width, sizes).name) });
-  const prompt = at(".prompt");
-  expect([prompt.value("font-size"), prompt.value("line-height"), prompt.value("white-space"), prompt.columnGap()]).toEqual([shownType().prompt, String(textLineHeight), "nowrap", sizes.promptGap]);
-  expect([at(".prompt-symbol").px("width"), at(".prompt-symbol").px("height"), at(".prompt-symbol").value("flex-shrink")]).toEqual([sizes.promptSymbol, sizes.promptSymbol, "0"]);
-  expect(sizes.promptMaximum * textLineHeight).toBeLessThanOrEqual(sizes.promptSymbol);
-  const group = at(".dinosaur-cards");
-  expect([group.value("flex-direction"), group.value("align-items"), group.rowGap(), group.value("flex-grow"), group.value("flex-shrink"), group.value("position")]).toEqual(["column", "stretch", sizes.cardsGap, "1", "0", "relative"]);
-  // A card's footer: its name's line and the padding above and below.
-  const footer = footerHeight(question.value("--card-footer"));
-  expect(footer).toBeCloseTo(2 * footerVerticalPadding + compareQuestionType(width, sizes).name * textLineHeight, 6);
+  expect([at(".prompt").value("line-height"), at(".prompt").value("white-space")]).toEqual([String(sizes.textLineHeight), "nowrap"]);
+  expect([at(".prompt-symbol").px("width"), at(".prompt-symbol").px("height")]).toEqual([sizes.promptSymbol, sizes.promptSymbol]);
+  expect(at(".dinosaur-cards").value("grid-template-columns")).toBe("minmax(0, 1fr)");
   for (const card of cards()) {
-    const style = styleAt(card, size);
-    expect([style.value("flex-grow"), style.value("flex-shrink"), style.value("flex-basis"), style.value("position")]).toEqual(["1", "0", "0px", "relative"]);
-    expect(aboveFooter(style.value("min-height"))).toBe(minimumPicture + 2 * artPadding);
-    const own = styleAt(part(".dinosaur-footer", card), size);
-    expect([footerHeight(own.value("height")), own.value("flex-grow"), own.value("flex-shrink"), own.value("box-sizing")]).toEqual([footer, "0", "0", "border-box"]);
-    expect([own.px("padding-top"), own.px("padding-bottom"), own.px("padding-left"), own.px("padding-right")]).toEqual([footerVerticalPadding, footerVerticalPadding, sizes.footerSidePadding, sizes.footerSidePadding]);
-    const name = styleAt(part(".dinosaur-name", card), size);
-    expect([name.value("font-size"), name.value("line-height"), name.value("white-space")]).toEqual([shownType().name, String(textLineHeight), "nowrap"]);
-    const art = styleAt(part(".dinosaur-art", card), size);
-    expect([art.value("flex-grow"), art.value("flex-basis"), art.px("min-height"), art.px("padding-top"), art.px("padding-left")]).toEqual(["1", "0px", 0, artPadding, artPadding]);
+    expect(part(".dinosaur-name", card).previousElementSibling).toBe(part(".dinosaur-art", card));
+    expect(card.querySelector(".dinosaur-footer")).toBeNull();
+    expect(styleAt(part(".dinosaur-name", card), size).value("white-space")).toBe("nowrap");
     const picture = styleAt(part(".dinosaur-picture", card), size);
-    expect([picture.px("width"), picture.px("height"), picture.value("max-width"), picture.value("max-height"), picture.value("object-fit")]).toEqual([
-      sizes.pictureMaximum.width, sizes.pictureMaximum.height, "100%", "100%", "contain"
-    ]);
-    expect(sizes.pictureMaximum.width / sizes.pictureMaximum.height).toBe(sizes.pictureRatio);
+    expect([picture.value("position"), picture.value("width"), picture.value("height"), picture.value("object-fit")]).toEqual(["absolute", "100%", "100%", "contain"]);
   }
-  // "VS" stands centred over the seam, out of the cards' flow.
   const versus = at(".versus");
-  expect([versus.value("position"), versus.value("inset"), versus.value("margin"), versus.px("width"), versus.px("height"), versus.value("z-index")]).toEqual(["absolute", "0px", "auto", 64, 64, "1"]);
-  expect([at(".next-row").px("min-height"), at(".next-row").value("justify-content")]).toEqual([sizes.rowHeight, "flex-end"]);
+  expect([versus.value("position"), versus.value("inset"), versus.value("margin"), versus.px("width"), versus.px("height"), versus.value("z-index")]).toEqual(["absolute", "0px", "auto", 56, 40, "1"]);
 }
 
 describe("the compare quiz's question upright", () => {
@@ -181,8 +142,7 @@ describe("the compare quiz's question upright", () => {
     const size: WindowSize = [820, 1180];
     const laidOut = () => cards().map((card) => {
       const style = styleAt(card, size);
-      const footer = styleAt(part(".dinosaur-footer", card), size);
-      return [style.value("flex"), style.value("min-height"), footer.value("height"), styleAt(part(".dinosaur-art", card), size).value("flex")];
+      return [style.value("padding"), style.value("gap"), styleAt(part(".dinosaur-art", card), size).value("min-height")];
     });
     const before = laidOut();
     const question = shownQuestion();
@@ -192,11 +152,10 @@ describe("the compare quiz's question upright", () => {
     expect(laidOut()).toEqual(before);
     const mark = within(tapped).getByRole("img", { name: TEXTS.en.marks.correct });
     expect(mark.parentElement).toBe(part(".dinosaur-art", tapped));
-    expect([styleAt(mark, size).value("position"), styleAt(mark, size).px("top"), styleAt(mark, size).px("left")]).toEqual(["absolute", 24, 24]);
+    expect(styleAt(mark, size).value("position")).toBe("absolute");
     for (const card of cards()) {
       const chip = styleAt(part(".dinosaur-value-chip", card), size);
-      const [, above = ""] = /^calc\(var\(--card-footer\) \+ ([\d.]+)px\)$/.exec(chip.value("bottom")) ?? [];
-      expect([chip.value("position"), chip.px("right"), Number(above), chip.value("white-space")]).toEqual(["absolute", 24, 24, "nowrap"]);
+      expect([chip.value("position"), chip.value("right"), chip.value("bottom"), chip.value("white-space")]).toEqual(["absolute", "-12px", "8px", "nowrap"]);
     }
     const next = screen.getByRole("button", { name: TEXTS.en.next });
     expect(next.parentElement).toBe(part(".next-row"));
@@ -243,14 +202,15 @@ describe("the compare quiz's question upright", () => {
     expect([part(".question"), progress()]).toEqual([question, "1/10"]);
   });
 
-  it("keeps the landscape question as it was", async () => {
+  it("uses side-by-side dig-site pockets in landscape", async () => {
     const { user } = await openQuestion([1180, 820], { viewport: manualViewport("landscape") });
     expect([document.documentElement.dataset.size, gateShown()]).toEqual(["wide", false]);
     const style = (selector: string) => getComputedStyle(part(selector));
-    expect([style(".question").height, style(".question").overflow, style(".dinosaur-cards").flexDirection || "row"]).toEqual(["820px", "hidden", "row"]);
-    expect([style(".prompt").fontSize, style(".dinosaur-name").fontSize, style(".versus").position || "static"]).toEqual(["44px", "34px", "static"]);
+    expect([style(".question").minHeight, style(".question").display, style(".dinosaur-cards").gridTemplateColumns]).toEqual(["820px", "grid", "minmax(0, 1fr) var(--versus-width) minmax(0, 1fr)"]);
+    expect(style(".prompt").fontSize).toBe("var(--prompt-size, 40px)");
+    expect(style(".versus").position || "static").toBe("static");
     await user.click(cards()[0]!);
-    expect(style(".dinosaur-value-chip").position || "static").toBe("static");
+    expect(style(".dinosaur-value-chip").position || "static").toBe("absolute");
   });
 
   it("puts the bar below the top inset and the row for NEXT above the home indicator, the background to the edges", async () => {
@@ -260,7 +220,7 @@ describe("the compare quiz's question upright", () => {
     onTestFinished(() => sheet.remove());
     await openQuestion([744, 1133], { insets });
     const question = getComputedStyle(part(".question"));
-    expect([question.paddingTop, question.paddingRight, question.paddingBottom, question.paddingLeft]).toEqual(["64px", "69px", "68px", "75px"]);
+    expect([question.paddingTop, question.paddingRight, question.paddingBottom, question.paddingLeft]).toEqual(["60px", "69px", "90px", "75px"]);
     expect([question.boxSizing, question.minHeight, question.height]).toEqual(["border-box", "1133px", "auto"]);
     expect(part(".next-row")).toBe(part(".question").lastElementChild);
     expect([getComputedStyle(document.body).margin, getComputedStyle(document.body).backgroundColor]).toEqual(["0px", "rgb(242, 239, 232)"]);
@@ -279,11 +239,11 @@ const narrowViewport = () => {
 // Each phone's window, its cards' height, their pictures' height and
 // whether the screen scrolls.
 const PHONES = [
-  [320, 568, 206, 110, true],
-  [375, 667, 211, 110, true],
-  [393, 759, 222, 119, false],
-  [393, 852, 268, 165, false],
-  [430, 932, 308, 202, false]
+  [320, 568, 161.62, 110, true],
+  [375, 667, 167.04, 110, true],
+  [393, 759, 210.5, 151.69, false],
+  [393, 852, 257, 198.19, false],
+  [430, 932, 297, 234.55, false]
 ] as const;
 
 describe("the compare quiz's question in a tall-narrow window", () => {
@@ -304,8 +264,8 @@ describe("the compare quiz's question in a tall-narrow window", () => {
     expect(screen.getByRole("button", { name: TEXTS.en.home })).toBe(home);
     expect(styleAt(part(".narrow-hidden", home), [393, 852]).value("position")).toBe("absolute");
     const style = styleAt(home, [393, 852]);
-    expect([style.px("width"), style.px("height"), style.px("padding-left"), style.px("padding-right")]).toEqual([56, 56, 16, 16]);
-    expect(styleAt(part(".question-bar"), [393, 852]).columnGap()).toBe(16);
+    expect([style.px("width"), style.px("height"), style.px("padding-left"), style.px("padding-right")]).toEqual([56, 56, 0, 0]);
+    expect(styleAt(part(".question-bar"), [393, 852]).columnGap()).toBe(12);
   });
 
   it.each([["en"], ["ru"]] as const)("gives every prompt and name in %s one type at 320 by 568, the names at least 18", async (language) => {

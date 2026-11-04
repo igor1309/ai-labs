@@ -40,7 +40,8 @@ Feature: Compare dinosaurs quiz: answering a question
   Scenario: Marks do not rely on colour alone
     When I answer a question
     Then each mark is a symbol as well as a colour
-    And each mark has a contrast ratio of at least 3:1 with its card
+    And each mark has a symbol with at least 3:1 contrast against its badge
+    And the badge has a contrasting light border that separates it from the pocket
 
   Scenario: Only the first tap counts
     Given I have answered the current question

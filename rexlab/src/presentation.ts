@@ -61,7 +61,7 @@ const CELEBRATIONS: Record<Celebration, ShownCelebration> = { "first-best": "fir
 export type QuestionView = Pick<QuestionScreenProps, "prompt" | "number" | "total" | "steps" | "best" | "left" | "right" | "answered" | "last">;
 
 // `best` is the level's best score, undefined when there is none to show.
-export function presentQuestion(question: QuestionState, language: Language, bodyPicture: (dinosaurId: string) => string, best?: number): QuestionView {
+export function presentQuestion(question: QuestionState, language: Language, bodyPicture: (dinosaurId: string) => string, best: number | undefined): QuestionView {
   // Once answered, the right answer is marked whichever card was tapped,
   // so a wrong answer still shows the child which one wins.
   const card = ({ dinosaur, value, correct, chosen }: Option): DinosaurCardView => ({

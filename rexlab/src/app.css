@@ -10835,13 +10835,10 @@ html[data-theme="dark"],
 }
 [data-theme="dark"] .featured-card[data-game="sort"] .featured-card-badge,
 [data-theme="dark"] .featured-card[data-game="labyrinth"] .featured-card-badge,
-[data-theme="dark"] .catalogue-art,
-[data-theme="dark"] .step {
+[data-theme="dark"] .catalogue-art {
   background: #222a3d;
 }
 [data-theme="dark"] .featured-card[data-game="compare"] .featured-card-symbol,
-[data-theme="dark"] .step[data-step="current"],
-[data-theme="dark"] .prompt-symbol,
 [data-theme="dark"] .confetti-amber {
   background: #f2b24b;
 }
@@ -10872,11 +10869,15 @@ html[data-theme="dark"],
 }
 
 [data-theme="dark"] .step[data-step="done"],
-[data-theme="dark"] .next-button,
 [data-theme="dark"] .dinosaur-stage,
 [data-theme="dark"] .result {
   background: #2c3b66;
 }
+
+[data-theme="dark"] .step { background: #222a3d; }
+[data-theme="dark"] .step[data-step="current"] { background: #f2b24b; }
+[data-theme="dark"] .prompt-symbol { background: #f2b24b; }
+[data-theme="dark"] .next-button { background: #2c3b66; }
 
 [data-theme="dark"] .catalogue-card,
 [data-theme="dark"] .dinosaur-fact {
@@ -12108,132 +12109,7 @@ html[data-size="wide-short"] .friends-dig-site .new-visitor-button svg { width: 
 html:is([data-size="tall-narrow"], [data-size="wide-short"]) .friends-dig-site .friends-sand-wave { height: 24px; }
 html[data-size="wide-short"] .friends-dig-site .friends-bedrock { display: none; }
 
-@media (prefers-reduced-motion: reduce) {
-  :root {
-    --motion-standard: 160ms;
-    --motion-screen: 160ms;
-    --motion-count: 0ms;
-    --motion-stagger: 0ms;
-    --motion-amount: 0;
-  }
 
-  .friends-dig-site .friend-card, .friends-dig-site .no-friends { animation: fade-in var(--motion-small) var(--ease-out) both; }
-
-  .home.home-dig-site .home-sky-body,
-  .home.home-dig-site .home-today-art > * { translate: none; }
-  .home-ground .home-ground-tile[data-home-entrance="revealed"] {
-    animation: fade-in var(--motion-small) var(--ease-out) both;
-  }
-
-  .jaw-shelf-row, .jaw-shelf-card, .jaw-card-chomp[data-ready] { animation: fade-in var(--motion-small) var(--ease-out) both; }
-  .jaw-card-scrim[data-leaving] { animation: fade-out var(--motion-small) var(--ease-out) both; }
-
-  .whose-jaw-result h1, .jaw-result-jaws li, .jaw-result-find, .jaw-result-actions { animation: fade-in var(--motion-small) var(--ease-out) both; }
-
-  .whose-jaw-chomp[data-ready] { animation: fade-in var(--motion-small) var(--ease-out) both; }
-
-
-  .labyrinth-board-screen,
-  .labyrinth-step {
-    animation: fade-in var(--motion-small) var(--ease-out) both;
-  }
-
-  .sand-writing-options {
-    transition-property: opacity, visibility;
-  }
-
-  ::view-transition-old(.dig-reveal-change) {
-    animation: fade-out var(--motion-small) var(--ease-out) both;
-  }
-
-  .dig-reveal-screen[data-motion] .dig-reveal-art,
-  .dig-reveal-screen[data-motion] .dig-reveal-name,
-  .dig-reveal-screen[data-motion] .dig-card,
-  .dig-reveal-screen[data-motion] .dig-reveal-celebration,
-  .dig-reveal-screen[data-motion] .dig-reveal-level,
-  .dig-reveal-screen[data-motion] .result-actions > button {
-    animation: fade-in var(--motion-small) var(--ease-out) both;
-  }
-
-  .dig-screen[data-motion] .dig-board:not([data-lifting]):not([data-dropped]) {
-    animation: fade-in var(--motion-small) var(--ease-out) both;
-  }
-
-  .dig-landing {
-    display: none;
-  }
-
-  .dig-board[data-blown]:not([data-lifting]) .dig-sand {
-    animation: fade-out var(--motion-small) var(--ease-out) both;
-  }
-
-  .dig-board[data-lifting] .dig-picture,
-  .dig-board-star {
-    animation: fade-in var(--motion-small) var(--ease-out) both;
-  }
-
-  .dig-help-window[data-motion] {
-    animation-duration: var(--motion-small);
-  }
-.pairs-offer-scrim,
-.pairs-offer {
-    animation: fade-in var(--motion-small) var(--ease-out) both;
-  }
-.pairs-offer-scrim[data-leaving] {
-    animation: fade-out var(--motion-small) var(--ease-out) both;
-  }
-
-  /* A pressed card and the progress steps change size at once. */
-  .card {
-    transition-property: filter, opacity;
-  }
-
-  .step {
-    transition-property: background-color;
-  }
-
-  /* So does the need asked now. */
-  .need {
-    transition-property: background-color;
-  }
-
-  /* Find the pair's climb level folds and unfolds at once, only fading. */
-  .pairs-climb {
-    transition-property: opacity;
-  }
-
-  /* The chosen mark does not travel: the chosen level's own fill fades in
-     where it is. */
-.level-switch-mark {
-    visibility: hidden;
-    transition-property: none;
-  }
-
-  /* A card on the sorting board lifts and puts down in place, and slides
-     back only by fading in where it belongs. */
-  .sort-card {
-    transition-property: filter, opacity, box-shadow, outline;
-  }
-
-  /* A dinosaur's picture does not travel between its card and its page:
-     the two only cross-fade, in place. */
-  ::view-transition-group(.dinosaur-share) {
-    animation: none;
-  }
-
-  .whose-jaw-board .jaw-dinosaur, .whose-jaw-board[data-phase] .jaw-dinosaur,
-  .whose-jaw-board .jaw-loose, .whose-jaw-board[data-phase] .jaw-loose,
-  .whose-jaw-board .jaw-feedback p, .whose-jaw-board .jaw-next, .whose-jaw-board .jaw-socket[data-filled],
-  .whose-jaw-board[data-phase] .jaw-dinosaur[data-target] .jaw-fitted,
-  .whose-jaw-board[data-phase] .jaw-dinosaur .jaw-food {
-    animation: fade-in var(--motion-small) var(--ease-out) both;
-  }
-  .jaw-dinosaur { transition-property: opacity; }
-  .jaw-breath, .jaw-loose[data-inviting] .jaw-loose-art { animation: none; }
-
-  .home.home-dig-site .home-today-copy,
-  .home.home-dig-site .home-today-art { animation: fade-in var(--motion-small) var(--ease-out) both; }
-}
 
 /* Each band holds six games, wrapping at the pocket size for the device. */
 .home.home-dig-site .home-ground {
@@ -12432,8 +12308,8 @@ html[data-size="tall-narrow"] .home-bedrock { flex-direction: column; align-item
    rises behind the cards and NEXT, and the ochre layer lies under them.
    The whole page scrolls when the pictures would fall under their least
    height; nothing inside it scrolls of its own. Each size class below only
-   sets the measures. This block stands last so it outranks the shared parts'
-   dark colours without leaning on selectors of its own. */
+   sets the measures. The shared controls above retain their other games'
+   appearance; question-specific rules use the dig-site tokens. */
 .question {
   --sky-fade: 50%;
   --side: 40px;
@@ -12816,6 +12692,7 @@ html[data-size="tall-narrow"] .home-bedrock { flex-direction: column; align-item
 html[data-size="tall"] .question,
 html[data-size="tall-narrow"] .question {
   --sand-pad: 22px;
+  --sand-lead: 68px;
   --next-lead: 20px;
   padding:
     calc(36px + env(safe-area-inset-top))
@@ -12957,7 +12834,7 @@ html[data-size="wide-short"] .question {
 }
 
 /* A short window's narrowest widths close the gaps before the type gives. */
-@container (max-width: 659px) {
+@container (max-width: 675px) {
   html[data-size="wide-short"] .dinosaur-cards {
     --cards-gap: 8px;
     --versus-width: 40px;
@@ -13025,12 +12902,14 @@ html[data-size="wide-short"] .dinosaur-name {
 }
 
 html[data-size="wide-short"] .next-row {
+  width: 210px;
   grid-row: 2;
   grid-column: 2;
   margin-top: var(--bar-gap);
 }
 
 html[data-size="wide-short"] .question .next-button {
+  width: 100%;
   padding: 0 20px 0 24px;
   font-size: 20px;
 }
@@ -13044,4 +12923,142 @@ html[data-size="wide-short"] .question .next-button svg {
 html[data-size="tall-narrow"] .question-best,
 html[data-size="wide-short"] .question-best {
   display: none;
+}
+
+.question button:focus-visible { outline: 3px solid var(--ds-action); outline-offset: 3px; }
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-standard: 160ms;
+    --motion-screen: 160ms;
+    --motion-count: 0ms;
+    --motion-stagger: 0ms;
+    --motion-amount: 0;
+  }
+
+  .friends-dig-site .friend-card, .friends-dig-site .no-friends { animation: fade-in var(--motion-small) var(--ease-out) both; }
+
+  .home.home-dig-site .home-sky-body,
+  .home.home-dig-site .home-today-art > * { translate: none; }
+  .home-ground .home-ground-tile[data-home-entrance="revealed"] {
+    animation: fade-in var(--motion-small) var(--ease-out) both;
+  }
+
+  .jaw-shelf-row, .jaw-shelf-card, .jaw-card-chomp[data-ready] { animation: fade-in var(--motion-small) var(--ease-out) both; }
+  .jaw-card-scrim[data-leaving] { animation: fade-out var(--motion-small) var(--ease-out) both; }
+
+  .whose-jaw-result h1, .jaw-result-jaws li, .jaw-result-find, .jaw-result-actions { animation: fade-in var(--motion-small) var(--ease-out) both; }
+
+  .whose-jaw-chomp[data-ready] { animation: fade-in var(--motion-small) var(--ease-out) both; }
+
+
+  .labyrinth-board-screen,
+  .labyrinth-step {
+    animation: fade-in var(--motion-small) var(--ease-out) both;
+  }
+
+  .sand-writing-options {
+    transition-property: opacity, visibility;
+  }
+
+  ::view-transition-old(.dig-reveal-change) {
+    animation: fade-out var(--motion-small) var(--ease-out) both;
+  }
+
+  .dig-reveal-screen[data-motion] .dig-reveal-art,
+  .dig-reveal-screen[data-motion] .dig-reveal-name,
+  .dig-reveal-screen[data-motion] .dig-card,
+  .dig-reveal-screen[data-motion] .dig-reveal-celebration,
+  .dig-reveal-screen[data-motion] .dig-reveal-level,
+  .dig-reveal-screen[data-motion] .result-actions > button {
+    animation: fade-in var(--motion-small) var(--ease-out) both;
+  }
+
+  .dig-screen[data-motion] .dig-board:not([data-lifting]):not([data-dropped]) {
+    animation: fade-in var(--motion-small) var(--ease-out) both;
+  }
+
+  .dig-landing {
+    display: none;
+  }
+
+  .dig-board[data-blown]:not([data-lifting]) .dig-sand {
+    animation: fade-out var(--motion-small) var(--ease-out) both;
+  }
+
+  .dig-board[data-lifting] .dig-picture,
+  .dig-board-star {
+    animation: fade-in var(--motion-small) var(--ease-out) both;
+  }
+
+  .dig-help-window[data-motion] {
+    animation-duration: var(--motion-small);
+  }
+.pairs-offer-scrim,
+.pairs-offer {
+    animation: fade-in var(--motion-small) var(--ease-out) both;
+  }
+.pairs-offer-scrim[data-leaving] {
+    animation: fade-out var(--motion-small) var(--ease-out) both;
+  }
+
+  /* A pressed card and the progress steps change size at once. */
+  .card {
+    transition-property: filter, opacity;
+  }
+
+  .step {
+    transition-property: background-color;
+  }
+
+  /* So does the need asked now. */
+  .need {
+    transition-property: background-color;
+  }
+
+  /* Find the pair's climb level folds and unfolds at once, only fading. */
+  .pairs-climb {
+    transition-property: opacity;
+  }
+
+  /* The chosen mark does not travel: the chosen level's own fill fades in
+     where it is. */
+.level-switch-mark {
+    visibility: hidden;
+    transition-property: none;
+  }
+
+  /* A card on the sorting board lifts and puts down in place, and slides
+     back only by fading in where it belongs. */
+  .sort-card {
+    transition-property: filter, opacity, box-shadow, outline;
+  }
+
+  /* A dinosaur's picture does not travel between its card and its page:
+     the two only cross-fade, in place. */
+  ::view-transition-group(.dinosaur-share) {
+    animation: none;
+  }
+
+  .whose-jaw-board .jaw-dinosaur, .whose-jaw-board[data-phase] .jaw-dinosaur,
+  .whose-jaw-board .jaw-loose, .whose-jaw-board[data-phase] .jaw-loose,
+  .whose-jaw-board .jaw-feedback p, .whose-jaw-board .jaw-next, .whose-jaw-board .jaw-socket[data-filled],
+  .whose-jaw-board[data-phase] .jaw-dinosaur[data-target] .jaw-fitted,
+  .whose-jaw-board[data-phase] .jaw-dinosaur .jaw-food {
+    animation: fade-in var(--motion-small) var(--ease-out) both;
+  }
+  .jaw-dinosaur { transition-property: opacity; }
+  .jaw-breath, .jaw-loose[data-inviting] .jaw-loose-art { animation: none; }
+
+  .home.home-dig-site .home-today-copy,
+  .home.home-dig-site .home-today-art { animation: fade-in var(--motion-small) var(--ease-out) both; }
+
+  .question .dinosaur-card[data-mark],
+  .question .dinosaur-card[data-mark="correct"][data-chosen],
+  .question .mark,
+  .question .versus,
+  .question .dinosaur-value-chip,
+  .question .next-button {
+    animation: fade-in var(--motion-small) var(--ease-out) both;
+  }
 }

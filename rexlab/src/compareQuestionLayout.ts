@@ -7,7 +7,7 @@ export const PORTRAIT_QUESTION = {
   barHeight: 48,
   barGap: 16,
   // From the prompt's foot to the cards: the sand's edge and its lead.
-  sandLead: 64,
+  sandLead: 68,
   promptSymbol: 60,
   promptGap: 16,
   promptMaximum: 40,
