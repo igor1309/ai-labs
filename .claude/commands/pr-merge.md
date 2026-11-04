@@ -17,7 +17,19 @@ Complete the current branch's PR lifecycle:
    cover the conflicting files before pushing. Stop and report only when
    the two sides contradict each other and choosing between them is a
    product call.
-2. Push the current branch if it has unpushed commits.
+2. Before every push, including pushes for later fixes, check for unfinished
+   PR workflow runs on the current branch with `gh run list --branch
+   <feature-branch> --event pull_request --limit 100 --json
+   databaseId,status,url`. Include queued runs and runs on earlier commits,
+   not just the current head. Paginate if needed so no unfinished run is
+   missed. Wait for each unfinished run with `gh run watch <run-id>
+   --exit-status`, in the background, and recheck until none remain. Do not
+   cancel a run to make way for the push. If a run fails or is stuck, stop
+   and report it; do not push past it.
+   Then repeat step 1 to fetch and merge the latest `origin/trunk`, run the
+   checks covering any merge changes, and push if there are unpushed
+   commits. Do not rely on the branch update from the start of this workflow:
+   trunk may have advanced while CI was running.
 3. Create a PR with `gh pr create` and record its number and URL.
 4. If the branch is stacked on another unmerged PR's branch, stop after
    step 3 and report: auto-merge waits until the PR below has merged and
