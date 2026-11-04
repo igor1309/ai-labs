@@ -1,4 +1,4 @@
-@testable import CallText
+import CallText
 import PanelUI
 import Reading
 import Recording
@@ -7,7 +7,6 @@ import Observation
 import Synchronization
 import Testing
 import protocol TranscriptWriting.CallText
-@testable import Audelin
 @testable import Composer
 
 struct ReadingCompositionTests {
@@ -32,17 +31,19 @@ struct ReadingCompositionTests {
         }
     }
 
-    @Test func translatesPopulatedReadingAndEveryTextStatusAndLogMode() {
+    @Test func translatesPopulatedReadingAndEveryTextStatusAndLogMode() async throws {
 
         let statuses: [(State.Status, ReadingTextUpdate.Status)] = [
             (.off, .off), (.gettingReady, .gettingReady), (.listening, .listening),
             (.failed("reason"), .failed("reason")), (.finished, .finished),
         ]
         for (source, expected) in statuses {
-            let translated = readingText(.init(status: source, entries: [
-                callEntry(.mine, 7, start: 1, settled: "settled", pending: " pending"),
-                callEntry(.theirs, 7, start: 3, settled: "late", late: true),
-            ]))
+            let snapshot = try await publishedCall(status: source, mine: [
+                .init(text: .init(id: 7, start: 1, end: 2, settled: "settled", pending: " pending")),
+            ], theirs: [
+                .init(text: .init(id: 7, start: 3, end: 4, settled: "late"), writtenLater: true),
+            ])
+            let translated = readingText(snapshot)
             #expect(translated == .init(status: expected, entries: [
                 .init(id: .init(speaker: .mine, localID: 7), start: 1, end: 2, settled: "settled", pending: " pending"),
                 .init(id: .init(speaker: .theirs, localID: 7), start: 3, end: 4, settled: "late", writtenLater: true),
@@ -54,10 +55,12 @@ struct ReadingCompositionTests {
         send(.recordingChanged(.on(elapsed: 62)))
         #expect(panelState(reading) == .init(recording: .on(elapsed: "00:01:02"), log: .liveTextOff(kept: nil)))
         send(.scrolled(atBottom: false))
-        send(.textUpdated(readingText(.init(status: .listening, entries: [
-            callEntry(.mine, 1, start: 1, settled: "settled", pending: " pending"),
-            callEntry(.theirs, 1, start: 3, settled: "late", late: true),
-        ]))))
+        let snapshot = try await publishedCall(status: .listening, mine: [
+            .init(text: .init(id: 1, start: 1, end: 2, settled: "settled", pending: " pending")),
+        ], theirs: [
+            .init(text: .init(id: 1, start: 3, end: 4, settled: "late"), writtenLater: true),
+        ])
+        send(.textUpdated(readingText(snapshot)))
         send(.hold(.init(entryID: 0, text: "held")))
         let holds = [PanelState.Held(entryID: 0, text: "held")]
         let expected = PanelState.Lines(rows: [
@@ -74,12 +77,4 @@ struct ReadingCompositionTests {
         for event in [PanelEvent.start, .stop, .switchLiveTextOn] { #expect(readingEvent(event) == nil) }
     }
 
-}
-
-private func callEntry(
-    _ speaker: State.Speaker, _ id: Int, start: Double = 0,
-    settled: String, pending: String = "", late: Bool = false
-) -> State.Entry {
-
-    .init(speaker: speaker, text: .init(id: id, start: start, end: start + 1, settled: settled, pending: pending), writtenLater: late)
 }
