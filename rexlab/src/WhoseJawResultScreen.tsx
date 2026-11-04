@@ -87,7 +87,7 @@ export function WhoseJawResultScreen({ audioControl, language, result, offer, on
       <nav className="jaw-result-actions">
         <Button className="jaw-result-play" disabled={blocked} onClick={onPlayAgain}><RotateCcw aria-hidden="true" /><FitText className="jaw-result-action-word" text={text.playAgain} /></Button>
         <Button className="jaw-result-visit" disabled={blocked} onClick={onShelf}><LibraryBig aria-hidden="true" /><FitText className="jaw-result-action-word" text={text.jawShelf} /></Button>
-        <Button className="jaw-result-home" disabled={blocked} onClick={onHome}><House aria-hidden="true" /><FitText className="jaw-result-action-word" text={text.home} /></Button>
+        <Button className="jaw-result-home" aria-label={text.home} disabled={blocked} onClick={onHome}><House aria-hidden="true" /><FitText className="jaw-result-action-word" text={text.home} /></Button>
       </nav>
     </main>
     {shown && blocked && <LevelOfferDialog controls={audioControl} language={language} offer={shown} leaving={phase === "leaving"} onShown={shown.onShown}

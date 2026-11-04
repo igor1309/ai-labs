@@ -319,7 +319,7 @@ async function result(page, width, height, label, newly, pictures) {
       finds: [...document.querySelectorAll('.jaw-result-find')].map(box),
       shelf: q('.jaw-result-shelf') && box(q('.jaw-result-shelf')),
       buttons: [...document.querySelectorAll('.whose-jaw-result button')].map(e => ({ label: e.textContent, ...box(e), hit: hit(e) })),
-      words: [...document.querySelectorAll('.jaw-result-title, .jaw-result-action-word, .jaw-result-new-label, .celebration-text')].map(e => ({ text: e.textContent, minimum: e.matches('.celebration-text, .jaw-result-new-label') ? 14 : 18, fits: e.scrollWidth <= e.clientWidth + 1, size: parseFloat(getComputedStyle(e).fontSize), ...box(e) })),
+      words: [...document.querySelectorAll('.jaw-result-title, .jaw-result-action-word, .jaw-result-new-label, .celebration-text')].filter(e => e.getClientRects().length > 0).map(e => ({ text: e.textContent, minimum: e.matches('.celebration-text, .jaw-result-new-label') ? 14 : 18, fits: e.scrollWidth <= e.clientWidth + 1, size: parseFloat(getComputedStyle(e).fontSize), ...box(e) })),
       record: box(q('.jaw-result-record')),
       recordParts: [...document.querySelectorAll('.jaw-result-record > *')].map(box),
       bedrock: getComputedStyle(q('.jaw-result-bedrock')).display === 'none' ? innerHeight : box(q('.jaw-result-bedrock')).top - 10,

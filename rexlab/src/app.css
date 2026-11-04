@@ -12805,7 +12805,10 @@ html[data-size="tall-narrow"] .jaw-result-pile { width: min(100% - 44px, 300px);
 html[data-size="tall-narrow"] .whose-jaw-result h1 { font-size: var(--ds-size-action); }
 html[data-size="tall-narrow"] .whose-jaw-result .star svg { width: 48px; height: 48px; }
 html[data-size="tall-narrow"] .jaw-result-record { padding: var(--ds-space-s) var(--ds-space-l); }
-html[data-size="tall-narrow"] .jaw-result-actions { gap: var(--ds-space-m); grid-template-columns: auto auto; column-gap: var(--ds-space-s); }
+html[data-size="tall-narrow"] .jaw-result-actions { gap: var(--ds-space-m); grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--ds-space-s); }
+/* On a phone HOME is its house alone, as in the board's bar, so JAW SHELF keeps its words at 18 px in Russian. */
+html[data-size="tall-narrow"] .jaw-result-actions .jaw-result-home { aspect-ratio: 1; padding: 0; }
+html[data-size="tall-narrow"] .jaw-result-home .jaw-result-action-word { display: none; }
 html[data-size="tall-narrow"] .jaw-result-actions button { height: 60px; font-size: var(--ds-size-18); gap: var(--ds-space-xs); padding-inline: var(--ds-space-6); }
 html[data-size="tall-narrow"] .jaw-result-actions .jaw-result-play { justify-self: stretch; font-size: var(--ds-size-26); }
 html[data-size="tall-narrow"] .jaw-result-actions svg { width: 26px; height: 26px; }
@@ -12817,7 +12820,7 @@ html[data-size="tall-narrow"] .jaw-result-actions svg { width: 26px; height: 26p
   html[data-size="tall-narrow"] .jaw-result-actions button { height: 52px; }
   html[data-size="tall-narrow"] .jaw-result-actions { gap: var(--ds-space-s); }
 }
-/* The narrowest phones keep both lower buttons' words at 18 px in Russian. */
+/* The narrowest phones keep JAW SHELF's words at 18 px in Russian. */
 @media (max-width: 380px) {
   html[data-size="tall-narrow"] .whose-jaw-result { padding-inline: calc(var(--ds-space-m) + var(--screen-left)) calc(var(--ds-space-m) + var(--screen-right)); }
   html[data-size="tall-narrow"] .jaw-result-actions svg { width: 22px; height: 22px; }
