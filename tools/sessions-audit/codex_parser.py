@@ -9,6 +9,12 @@ Codex documents transcript_path as an unstable interface. This parser therefore
 handles current Responses-style rollout records plus common legacy shapes, and
 ignores unknown records. It deliberately ignores event_msg/item_completed output
 copies so current rollout duplication does not inflate result-size metrics.
+
+Current Codex runs tools in "code mode": the model sends one `exec` custom tool
+call whose input is a JavaScript program, and the real tool calls happen inside
+it as `tools.exec_command({cmd: "..."})`, `tools.apply_patch("...")` and so on.
+Those nested calls are unpacked from the source and analyzed like direct calls;
+a nested call whose arguments are not string literals is counted but not read.
 """
 
 from __future__ import annotations
@@ -25,7 +31,146 @@ from sessions_audit_core import SessionStats, Tracker, iter_jsonl, norm_path, sk
 NAME = "codex"
 TITLE = "Codex"
 
-SUBAGENT_NAME = re.compile(r"(?:spawn|start|create|delegate).*agent|agent.*(?:spawn|start|create|delegate)", re.I)
+SUBAGENT_TOOLS = {"spawn_agent", "create_agent", "delegate_to_agent"}
+POLLING_TOOLS = {"sleep"}
+READ_TOOLS = {"read", "read_file", "file_read"}
+EDIT_TOOLS = {"write", "write_file", "edit", "edit_file"}
+# Commands that print whole files. `cat a | head` is a pipeline and not a read.
+FULL_READ_COMMANDS = {"cat", "nl"}
+SHELL_WRAPPERS = {"bash", "sh", "zsh"}
+
+CODE_MODE_TOOL = "exec"
+CODE_MODE_CALL = re.compile(r"tools\.(\w+)\s*\(")
+JS_ESCAPES = {"n": "\n", "t": "\t", "r": "\r", "0": "\0"}
+CODE_MODE_KEYS = ("cmd", "command", "workdir", "path", "file_path", "input", "patch")
+JS_KEY = re.compile(r"""(["']?)(\w+)\1\s*:\s*""")
+# `nl` options whose value can be the next word (`nl -w 3 file`).
+NL_VALUE_OPTIONS = {"-b", "-d", "-f", "-h", "-i", "-l", "-n", "-p", "-s", "-v", "-w"}
+
+
+def js_string(literal: str) -> str:
+    return re.sub(r"\\(.)", lambda m: JS_ESCAPES.get(m.group(1), m.group(1)), literal[1:-1], flags=re.S)
+
+
+def js_skip(source: str, i: int) -> int | None:
+    """End of the string or comment starting at `i`, or None if neither starts there."""
+    two = source[i:i + 2]
+    if two == "//":
+        end = source.find("\n", i)
+        return len(source) if end < 0 else end
+    if two == "/*":
+        end = source.find("*/", i + 2)
+        return len(source) if end < 0 else end + 2
+    quote = source[i:i + 1]
+    if quote not in {'"', "'", "`"} or not quote:
+        return None
+    j = i + 1
+    while j < len(source):
+        c = source[j]
+        if c == "\\":
+            j += 2
+        elif c == quote:
+            return j + 1
+        elif c == "\n" and quote != "`":
+            return j  # unterminated: a regex literal holding a quote, say
+        elif quote == "`" and source[j:j + 2] == "${":
+            j = js_balanced(source, j + 2, "{", "}")
+        else:
+            j += 1
+    return len(source)
+
+
+def js_balanced(source: str, i: int, opener: str, closer: str) -> int:
+    """Index just past the `closer` matching an `opener` already consumed before `i`."""
+    depth = 1
+    while i < len(source):
+        end = js_skip(source, i)
+        if end is not None:
+            i = end
+            continue
+        if source[i] == opener:
+            depth += 1
+        elif source[i] == closer:
+            depth -= 1
+            if depth == 0:
+                return i + 1
+        i += 1
+    return len(source)
+
+
+def js_literal_at(source: str, i: int) -> str | None:
+    """The value of a whole string-literal expression at `i`; None for anything else."""
+    if source[i:i + 1] not in {'"', "'", "`"}:
+        return None
+    end = js_skip(source, i)
+    literal = source[i:end]
+    if len(literal) < 2 or literal[-1] != literal[0]:
+        return None
+    if literal[0] == "`" and "${" in literal:
+        return None
+    rest = source[end:].lstrip()
+    if rest and rest[0] not in ",})":
+        return None  # `"cat " + name`
+    return js_string(literal)
+
+
+def js_arguments(args: str) -> dict[str, Any]:
+    """String-literal properties of a call's object argument, or its first string argument."""
+    start = len(args) - len(args.lstrip())
+    first = js_literal_at(args, start)
+    if first is not None:
+        return {"input": first}
+    if args[start:start + 1] != "{":
+        return {}
+    inp: dict[str, Any] = {}
+    i, depth, previous = start, 0, ""
+    while i < len(args):
+        if depth == 1 and previous in {"{", ","}:
+            m = JS_KEY.match(args, i)
+            if m:
+                previous = ":"
+                i = m.end()
+                value = js_literal_at(args, i)
+                if value is not None and m.group(2) in CODE_MODE_KEYS:
+                    inp[m.group(2)] = value
+                continue
+        end = js_skip(args, i)
+        if end is not None:
+            previous = "x"
+            i = end
+            continue
+        c = args[i]
+        if c in "([{":
+            depth += 1
+        elif c in ")]}":
+            depth -= 1
+        if not c.isspace():
+            previous = c
+        i += 1
+    return inp
+
+
+def code_mode_calls(source: str) -> list[tuple[str, dict[str, Any]]]:
+    """Nested `tools.<name>(...)` calls of a code-mode program, in order.
+
+    Text inside strings and comments is not code, so a patch or a grep that
+    mentions `tools.x(` adds no call, and each call reads only its own arguments.
+    """
+    calls: list[tuple[str, dict[str, Any]]] = []
+    i = 0
+    while i < len(source):
+        end = js_skip(source, i)
+        if end is not None:
+            i = end
+            continue
+        m = CODE_MODE_CALL.match(source, i)
+        if m and (i == 0 or not (source[i - 1].isalnum() or source[i - 1] == "_")):
+            close = js_balanced(source, m.end(), "(", ")")
+            calls.append((m.group(1), js_arguments(source[m.end():close])))
+            i = m.end()  # a call can sit inside another's arguments
+            continue
+        i += 1
+    return calls
 
 
 def parse_args_value(value: Any) -> Any:
@@ -48,6 +193,9 @@ def command_of(inp: Any) -> str | None:
         if isinstance(command, list):
             # shell_command can represent argv or a command sequence depending on version.
             strings = [x for x in command if isinstance(x, str)]
+            # `["bash", "-lc", "<script>"]`: the script is the command.
+            if len(strings) == 3 and Path(strings[0]).name in SHELL_WRAPPERS and strings[1] in {"-c", "-lc"}:
+                return strings[2]
             return " ".join(strings) if strings else None
         if isinstance(command, str):
             return command
@@ -64,23 +212,53 @@ def path_of(inp: Any) -> str | None:
     return None
 
 
-def simple_cat_paths(command: str) -> list[str]:
-    """Return paths for a simple `cat file...` command; skip pipelines/redirection."""
-    if re.search(r"[|<>`;]|\$\(", command):
+def shell_reads(command: str, cwd: str | None) -> list[str]:
+    """Paths printed whole by `cat`/`nl` segments of a shell command.
+
+    The command is split on newlines, `&&`, `||` and `;`; a `cd dir` moves the
+    base for later relative paths. Segments with a pipe are filtered output and
+    do not count; commands with substitution or redirection are skipped whole.
+    """
+    if re.search(r"[<>`]|\$\(", command):
         return []
+    lexer = shlex.shlex(command.replace("\\\n", " "), posix=True, punctuation_chars=";&|\n")
+    lexer.whitespace = " \t\r"
+    lexer.whitespace_split = True
+    lexer.commenters = ""
     try:
-        parts = shlex.split(command)
+        tokens = list(lexer)
     except ValueError:
         return []
-    if not parts:
-        return []
-    # Allow a leading `cd path && cat ...` by keeping only the final segment.
-    if "&&" in parts:
-        idx = max(i for i, x in enumerate(parts) if x == "&&")
-        parts = parts[idx + 1 :]
-    if not parts or parts[0] != "cat":
-        return []
-    return [p for p in parts[1:] if not p.startswith("-")]
+    segments: list[list[str]] = [[]]
+    for tok in tokens:
+        operator = tok.replace("\n", "")
+        if not tok.strip(";&|\n") and operator in {"|", "|&", "&"}:
+            segments[-1].append(operator)  # a pipe may continue on the next line
+        elif not tok.strip(";&|\n"):
+            segments.append([])
+        else:
+            segments[-1].append(tok)
+    base = cwd
+    out: list[str] = []
+    for seg in segments:
+        comment = next((i for i, tok in enumerate(seg) if tok.startswith("#")), None)
+        if comment is not None:
+            seg = seg[:comment]
+        if not seg or any(tok in {"|", "&", "|&"} for tok in seg):
+            continue
+        if seg[0] == "cd" and len(seg) == 2:
+            base = norm_path(seg[1], base)
+        elif seg[0] in FULL_READ_COMMANDS:
+            words = seg[1:]
+            for i, word in enumerate(words):
+                if word.startswith("-"):
+                    continue
+                if seg[0] == "nl" and i > 0 and words[i - 1] in NL_VALUE_OPTIONS:
+                    continue
+                path = norm_path(word, base)
+                if "$" not in path:  # a shell variable names no known file
+                    out.append(path)
+    return out
 
 
 def patch_paths(inp: Any) -> list[str]:
@@ -145,30 +323,35 @@ def analyze(path: Path, large_result_threshold: int) -> SessionStats:
     token_total: dict[str, int] = {}
     peak_last_input = 0
 
-    def on_read(p: str) -> None:
-        t.read(norm_path(p, cwd), True)
-
     def on_tool(name: str, inp: Any, call_id: str | None) -> None:
         t.tool(name, call_id)
         lname = name.lower()
+        if lname == CODE_MODE_TOOL and isinstance(inp, dict) and isinstance(inp.get("input"), str):
+            for nested_name, nested_inp in code_mode_calls(inp["input"]):
+                on_tool(nested_name, nested_inp, None)
+            return
+        workdir = inp.get("workdir") if isinstance(inp, dict) else None
+        base = norm_path(workdir, cwd) if isinstance(workdir, str) and workdir else cwd
         p = path_of(inp)
-        if p and lname in {"read", "read_file", "file_read"}:
-            on_read(p)
-        if p and lname in {"write", "write_file", "edit", "edit_file"}:
-            t.edit(norm_path(p, cwd))
+        if p and lname in READ_TOOLS:
+            t.read(norm_path(p, base), True)
+        if p and lname in EDIT_TOOLS:
+            t.edit(norm_path(p, base))
         if "apply_patch" in lname:
             for changed in patch_paths(inp):
-                t.edit(norm_path(changed, cwd))
+                t.edit(norm_path(changed, base))
 
         cmd = command_of(inp)
         if cmd:
             t.command(cmd)
-            for cat_path in simple_cat_paths(cmd):
-                on_read(cat_path)
+            for read_path in shell_reads(cmd, base):
+                t.read(read_path, True)
 
         t.skill(skill_name(name, inp, cmd))
 
-        if SUBAGENT_NAME.search(name) or lname in {"spawn_agent", "create_agent"}:
+        if lname in POLLING_TOOLS:
+            t.polling()
+        if lname in SUBAGENT_TOOLS:
             t.subagent(inp)
 
     for rec in iter_jsonl(path):

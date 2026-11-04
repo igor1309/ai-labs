@@ -25,7 +25,13 @@ from typing import Any, Callable, Iterable, TextIO
 SCHEMA_VERSION = 1
 
 RAW_BUILD = re.compile(r"(^|[\s;&(])(xcodebuild\b|swift\s+(?:build|test)\b)")
-BUILD_FILTER = re.compile(r"xcsift|xcbeautify|xcpretty|\s-quiet\b")
+# Output that does not reach the context whole: a formatter, `-quiet`, stdout
+# redirected to a file (not `2>&1` or `2>file`), or a pipe into head/tail/grep.
+BUILD_FILTER = re.compile(
+    r"xcsift|xcbeautify|xcpretty|\s-quiet\b"
+    r"|(?:^|[^0-9>])>{1,2}\s*[^&\s>]"
+    r"|\|\s*(?:head|tail|grep|rg)\b"
+)
 POLLING = re.compile(r"(?:^|[;&|]\s*)sleep\b|\b(?:watch|gh\s+run\s+watch|gh\s+pr\s+checks\s+--watch)\b")
 CHECK_COMMAND = re.compile(r"\b(?:gh\s+(?:run\s+view|pr\s+checks)|curl|wget)\b")
 SKILL_IN_COMMAND = re.compile(r"(?:^|\s)([^\s'\"]*SKILL\.md)(?:\s|$)")
@@ -125,16 +131,33 @@ class SessionStats:
         return score_of(self)
 
 
-def score_of(c: Any) -> int:
+# Score weights: roughly how much avoidable context one occurrence costs,
+# relative to one full-file read (weight 1, the baseline: often needed, so it
+# only counts lightly). The README explains each weight.
+SCORE_WEIGHTS: dict[str, int] = {
+    "unfiltered_builds": 5,  # a raw build log is usually the largest single dump
+    "repeated_reads": 4,  # a whole file already in context, re-sent unchanged
+    "duplicate_skill_loads": 3,  # the same instructions loaded again
+    "repeated_checks": 3,  # the same status output again, with nothing new
+    "large_results": 2,  # big, but sometimes the point of the call
+    "full_reads": 1,
+}
+
+
+def score_of(c: Any, weights: dict[str, int] | None = None) -> int:
     get = c.get if isinstance(c, dict) else lambda k, d=0: getattr(c, k, d)
-    return (
-        get("repeated_reads", 0) * 4
-        + get("unfiltered_builds", 0) * 5
-        + get("duplicate_skill_loads", 0) * 3
-        + get("repeated_checks", 0) * 3
-        + get("large_results", 0) * 2
-        + get("full_reads", 0)
-    )
+    return sum(get(k, 0) * w for k, w in (weights or SCORE_WEIGHTS).items())
+
+
+def merge_stats(dst: SessionStats, src: SessionStats) -> None:
+    """Add a sidechain file's counters into its parent session."""
+    for k in COUNTERS:
+        setattr(dst, k, getattr(dst, k) + getattr(src, k))
+    dst.largest_result_chars = max(dst.largest_result_chars, src.largest_result_chars)
+    for k in TOKEN_KEYS:
+        dst.tokens[k] = dst.tokens.get(k, 0) + src.tokens.get(k, 0)
+    dst.subagent_models.update(src.subagent_models)
+    dst.tool_names.update(src.tool_names)
 
 
 class Tracker:
@@ -184,6 +207,10 @@ class Tracker:
             self.last_check = normalized
         else:
             self.last_check = None
+
+    def polling(self) -> None:
+        """A dedicated wait/sleep tool call, as opposed to a `sleep` command."""
+        self.s.polling_candidates += 1
 
     def skill(self, name: str | None) -> None:
         if not name:
@@ -480,7 +507,7 @@ def build_json(
         "schema_version": SCHEMA_VERSION,
         "generated_at": iso_utc(now),
         "window": window.to_json(),
-        "options": {"large_result_chars": threshold, "top": top},
+        "options": {"large_result_chars": threshold, "top": top, "score_weights": dict(SCORE_WEIGHTS)},
         "agents": agents,
         "totals": sum_counters(b["totals"] for b in agents.values()),
     }
@@ -491,6 +518,21 @@ def fmt_tokens(t: dict[str, int]) -> str:
         f"input={t['input']:,} cached={t['cached']:,} cache-create={t['cache_creation']:,} "
         f"output={t['output']:,} reasoning={t['reasoning']:,} total={total_tokens(t):,}"
     )
+
+
+def display_path(path: str, root: str | None) -> str:
+    """Path for human output: relative to the agent's root, else `~`-abbreviated."""
+    p = Path(path)
+    if root:
+        try:
+            return str(p.relative_to(root))
+        except ValueError:
+            pass
+    home = Path.home()
+    try:
+        return "~/" + str(p.relative_to(home))
+    except ValueError:
+        return path
 
 
 def print_text(
@@ -536,13 +578,14 @@ def print_text(
                         f"{total_tokens(row['tokens']):14,d}  {row['project']}"
                     )
 
+        root = r.source.get("root") or r.source.get("home")
         ranked = sorted(r.items, key=lambda x: (x.score, x.result_chars), reverse=True)[:top]
         if ranked:
             p("\nHighest-signal sessions:")
             for s in ranked:
                 p(
                     f"  score={s.score:4d} repeat_reads={s.repeated_reads:3d} raw_builds={s.unfiltered_builds:3d} "
-                    f"dup_skills={s.duplicate_skill_loads:3d} large_results={s.large_results:3d}  {s.path}"
+                    f"dup_skills={s.duplicate_skill_loads:3d} large_results={s.large_results:3d}  {display_path(s.path, root)}"
                 )
 
     if len(results) > 1:
