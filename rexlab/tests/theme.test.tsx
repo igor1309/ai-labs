@@ -207,16 +207,18 @@ async function questionTheme({ theme, user }: Walk) {
   expect(document.querySelector(".question")).not.toBeNull();
 }
 
-// The list's bar and a card of each food type are checked once: every
-// card of a food type is drawn alike. A food chosen shows only cards
-// already on it, so then only the choice is.
+// The list's bar and a card of each food type: every card of a food
+// type is drawn alike.
+function expectCatalogueIn(theme: Theme) {
+  expectScreenIn(theme, document.querySelector(".catalogue-bar")!);
+  for (const diet of ["meat", "plants", "both"]) expectScreenIn(theme, document.querySelector(`.catalogue-card:has([data-diet="${diet}"])`)!);
+}
+
+// The whole list is checked once. A food chosen shows only cards already
+// on it, so then only the choice is.
 const catalogueList = (food?: string) => async ({ theme, user }: Walk) => {
   await user.click(gameDoor("ANCIENT REPTILES"));
-  if (!food) {
-    expectScreenIn(theme, document.querySelector(".catalogue-bar")!);
-    for (const diet of ["meat", "plants", "both"]) expectScreenIn(theme, document.querySelector(`.catalogue-card:has([data-diet="${diet}"])`)!);
-    return;
-  }
+  if (!food) { expectCatalogueIn(theme); return; }
   const foods = screen.getByRole("group", { name: "FOOD" });
   if (food === "ALL") await user.click(within(foods).getByRole("button", { name: "MEAT" }));
   await user.click(within(foods).getByRole("button", { name: food }));
@@ -328,7 +330,7 @@ const pairsFound = (part: "home" | "catalogue" | "page") => async ({ theme, user
   if (part === "home") { expectScreenIn(theme, gameDoor("FIND THE PAIR")); return; }
   await user.click(gameDoor("ANCIENT REPTILES"));
   expect(screen.queryAllByRole("img", { name: "FOUND" })).toHaveLength(0);
-  if (part === "catalogue") { expectScreenIn(theme); return; }
+  if (part === "catalogue") { expectCatalogueIn(theme); return; }
   const grid = screen.getByRole("group", { name: "ANCIENT REPTILES" });
   await user.click(within(grid).getAllByRole("button")[0] as HTMLElement);
   expect(screen.queryByRole("img", { name: "FOUND" })).toBeNull();
