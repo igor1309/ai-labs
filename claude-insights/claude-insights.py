@@ -398,7 +398,6 @@ def main():
     metas = filter_by_date(all_metas, after, before)
     if not metas:
         print(f"No sessions found between {after.date()} and {before.date()}", file=sys.stderr)
-        sys.exit(0)
 
     narrative, raw_html = extract_narrative(REPORT_HTML)
 

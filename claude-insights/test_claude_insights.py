@@ -174,14 +174,16 @@ def test_malformed_jsonl_contributes_only_aggregate_parse_errors(tmp_path):
     assert "secret" not in json.dumps(result)
 
 
+@pytest.mark.parametrize("usage_in_window", [False, True])
 @pytest.mark.parametrize("with_codex", [False, True])
 @pytest.mark.parametrize("explicit_dates", [False, True])
-def test_main_json_includes_hygiene_with_report_bounds(tmp_path, monkeypatch, with_codex, explicit_dates):
+def test_main_json_includes_hygiene_with_report_bounds(tmp_path, monkeypatch, with_codex, explicit_dates, usage_in_window):
     usage = tmp_path / "usage"
     facets, metas = usage / "facets", usage / "session-meta"
     facets.mkdir(parents=True)
     metas.mkdir()
-    metas.joinpath("s.json").write_text(json.dumps({"start_time": AFTER.isoformat()}))
+    start = AFTER if usage_in_window else AFTER - timedelta(days=30)
+    metas.joinpath("s.json").write_text(json.dumps({"start_time": start.isoformat()}))
     root, home = tmp_path / "claude", tmp_path / "codex"
     for when, name in ((AFTER - timedelta(seconds=1), "before"), (AFTER, "start"), (BEFORE, "end")):
         write_transcript(root / f"{name}.jsonl", claude_records(), when)
@@ -215,7 +217,7 @@ def test_main_json_includes_hygiene_with_report_bounds(tmp_path, monkeypatch, wi
         ci.main()
     report = json.loads(out.getvalue())
     assert report["context_hygiene"] == ci.collect_context_hygiene(after, before, tmp_path / "projects", home if with_codex else None)
-    assert report["total_sessions"] == 1
+    assert report["total_sessions"] == int(usage_in_window)
     assert report["context_hygiene"]["claude"]["sessions"] == (2 if explicit_dates else 1)
     assert set(report["context_hygiene"]) == ({"claude", "codex"} if with_codex else {"claude"})
 

@@ -96,6 +96,8 @@ empty window. Usage-data facets and session-meta are still required. Raw analyze
 data stays local: the new section exports no paths, commands, session details,
 project names, tool names or model names. This restriction applies to hygiene;
 the existing projects and narrative report fields retain their original content.
+When no usage-data session started within the window, the report still includes
+hygiene, with zero usage totals, so resumed sessions and Codex activity remain visible.
 
 ## Telegram Bot (@ClaudeInsightsBot)
 
@@ -110,6 +112,8 @@ deltas against the preceding stored snapshot when its matching fields exist.
 That snapshot can be more than a week old. Missing/null hygiene on older rows
 renders no block or invented zero baseline. `/compare` likewise treats those
 weeks as unavailable rather than zero.
+If the webhook cannot read the preceding snapshot, it sends the current digest
+without deltas.
 
 ## Scheduling
 

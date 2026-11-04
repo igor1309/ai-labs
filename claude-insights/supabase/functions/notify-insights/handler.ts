@@ -17,19 +17,25 @@ export async function handleRequest(req: Request): Promise<Response> {
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!supabaseUrl || !supabaseKey) {
-    return new Response("Missing Supabase env vars", { status: 500 });
+  let previous: Record<string, unknown> | undefined;
+  if (supabaseUrl && supabaseKey) {
+    try {
+      // Strictly older excludes this week's row on INSERT and UPDATE webhooks.
+      const url = `${supabaseUrl}/rest/v1/claude_insights?week=lt.${encodeURIComponent(row.week)}&order=week.desc&limit=1`;
+      const resp = await fetch(url, {
+        headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` },
+      });
+      if (resp.ok) {
+        const rows = await resp.json();
+        if (Array.isArray(rows)) previous = rows[0];
+      } else {
+        await resp.body?.cancel();
+      }
+    } catch {
+      // Optional history must not prevent delivery of the current snapshot.
+    }
   }
-  // Strictly older excludes this week's row on both INSERT and UPDATE webhooks.
-  const url = `${supabaseUrl}/rest/v1/claude_insights?week=lt.${encodeURIComponent(row.week)}&order=week.desc&limit=1`;
-  const resp = await fetch(url, {
-    headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` },
-  });
-  if (!resp.ok) {
-    return new Response("Failed to fetch previous insights", { status: 502 });
-  }
-  const previous = await resp.json();
-  const message = formatInsights(row, previous[0]);
+  const message = formatInsights(row, previous);
   await sendTelegram(botToken, chatId, message);
 
   return new Response(JSON.stringify({ ok: true }), {
