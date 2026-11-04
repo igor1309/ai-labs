@@ -54,6 +54,7 @@ jobs:
       matrix:
         script:
           - whoseJawBoardLandscape
+          - whoseJawDigSite
           - coloringProbe
           - coloringPainter
           - coloringWorkshop

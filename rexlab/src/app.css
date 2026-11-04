@@ -10766,94 +10766,11 @@ html[data-size="tall-narrow"] .jaw-result-actions button { width: 100%; font-siz
   .jaw-result-collection { width: min(45%, 320px); }
 }
 
-.whose-jaw-welcome {
-  box-sizing: border-box;
-  min-height: 100dvh;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: calc(28px + env(safe-area-inset-top)) calc(28px + var(--screen-right)) calc(28px + env(safe-area-inset-bottom)) calc(28px + var(--screen-left));
-  background: #f2efe8;
-  color: #1d2742;
-  animation: fade-in var(--motion-screen) var(--ease-out) both;
-}
-.whose-jaw-welcome header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.whose-jaw-welcome-body {
-  flex: 1 0 auto;
-  width: 100%;
-  display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
-  align-items: center;
-  gap: 28px;
-  max-width: 1200px;
-  margin: auto;
-  min-height: 0;
-}
-.whose-jaw-hero { position: relative; min-width: 0; width: 100%; aspect-ratio: 4 / 3; }
-.whose-jaw-gummy { width: 100%; height: auto; }
-.whose-jaw-chomp {
-  width: 44%;
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  margin: 0;
-  transform-origin: center;
-}
-.whose-jaw-chomp[data-ready] { animation: whose-jaw-chomp var(--motion-alive) var(--ease-out) 2; }
-.whose-jaw-chomp .picture { width: 100%; height: auto; }
-@keyframes whose-jaw-chomp {
-  50% { transform: scaleY(calc(1 - .3 * var(--motion-amount))) rotate(calc(-8deg * var(--motion-amount))); }
-}
-.whose-jaw-start { --level-name-size: 16px; display: flex; flex-direction: column; gap: 20px; min-width: 0; text-align: center; }
-.whose-jaw-start .level-switch-level { flex-direction: column; height: 64px; gap: 4px; font-size: var(--level-name-size); }
-.whose-jaw-start h1 { margin: 0; font-size: clamp(28px, 4vw, 54px); line-height: 1.15; }
-.whose-jaw-badges { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
-.whose-jaw-badges p { margin: 0; padding: 8px 16px; border-radius: 24px; background: #e6e2d9; display: flex; align-items: center; gap: 8px; font-size: 24px; font-weight: 700; }
-.whose-jaw-welcome-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; }
-.whose-jaw-play,
-.whose-jaw-shelf { flex: 0 0 auto; width: max-content; max-width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 56px; padding: 12px 18px; border: 0; border-radius: 20px; font-weight: 700; font-size: 20px; line-height: 1.25; }
-.whose-jaw-play { background: #e39b2d; color: #1d2742; }
-.whose-jaw-shelf { background: #fffdf8; color: #1d2742; }
-.whose-jaw-play svg,
-.whose-jaw-shelf svg { width: 28px; height: 28px; flex-shrink: 0; }
 .featured-card[data-game="whoseJaw"] { background: #e39b2d; color: #1d2742; }
 
 .whose-jaw-tile-picture { width: 100%; min-height: 0; flex: 1 1 0; object-fit: contain; }
 .featured-card[data-game="whoseJaw"] .whose-jaw-tile-picture { height: 100%; }
-html:is([data-size="tall"], [data-size="tall-narrow"]) .whose-jaw-welcome-body {
-  max-width: 560px;
-  grid-template-columns: minmax(0, 1fr);
-  align-content: center;
-  gap: 20px;
-}
-html:is([data-size="tall"], [data-size="tall-narrow"]) .whose-jaw-hero {
-  margin: 0 auto;
-  border-radius: 32px;
-  background: radial-gradient(ellipse at center, #e39b2d26, transparent 70%);
-}
-html:is([data-size="tall"], [data-size="tall-narrow"]) .whose-jaw-start { gap: 16px; }
-html:is([data-size="tall"], [data-size="tall-narrow"]) .whose-jaw-start h1 { font-size: clamp(32px, 4vw, 44px); }
-html:is([data-size="tall"], [data-size="tall-narrow"]) .whose-jaw-badges { justify-content: center; gap: 8px; }
-html:is([data-size="tall"], [data-size="tall-narrow"]) .whose-jaw-badges p { padding: 6px 12px; font-size: 20px; }
-html:is([data-size="tall"], [data-size="tall-narrow"]) .whose-jaw-start .level-switch-level { height: 56px; }
-html[data-size="tall-narrow"] .whose-jaw-welcome { padding: calc(16px + env(safe-area-inset-top)) calc(16px + var(--screen-right)) calc(16px + env(safe-area-inset-bottom)) calc(16px + var(--screen-left)); }
-html[data-size="wide-short"] .whose-jaw-welcome { padding: calc(12px + env(safe-area-inset-top)) calc(20px + var(--screen-right)) calc(12px + env(safe-area-inset-bottom)) calc(20px + var(--screen-left)); }
-html[data-size="wide-short"] .whose-jaw-welcome-body { grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); }
-html[data-size="wide-short"] .whose-jaw-hero { width: min(100%, 76dvh); justify-self: center; }
-html[data-size="wide-short"] .whose-jaw-start { gap: 12px; }
-html[data-size="wide-short"] .whose-jaw-start h1 { font-size: 28px; }
-html[data-size="wide-short"] .whose-jaw-start .level-switch-level { height: 48px; }
-html[data-size="wide-short"] .whose-jaw-badges p { padding: 6px 12px; font-size: 20px; }
-html[data-size="wide-short"] .whose-jaw-play,
-html[data-size="wide-short"] .whose-jaw-shelf { min-height: 48px; padding: 12px 16px; font-size: 18px; }
-html[data-size="wide-short"] .whose-jaw-welcome-actions svg { width: 24px; height: 24px; }
-
-[data-theme="dark"] .whose-jaw-welcome,
 [data-theme="dark"] .whose-jaw-shelf-screen { background: #0f1320; color: #ece8de; }
-[data-theme="dark"] .whose-jaw-badges p { background: #222a3d; }
-
-[data-theme="dark"] .whose-jaw-shelf { background: #181e2e; color: #ece8de; }
-[data-theme="dark"] .whose-jaw-play,
 [data-theme="dark"] .featured-card[data-game="whoseJaw"] { background: #f2b24b; color: #1d2742; }
 
 /* Reduced motion comes after every rule it overrides, so that it wins
@@ -11013,9 +10930,7 @@ html[data-size="tall-narrow"] .game-audio-button {
   padding: 8px 12px;
 }
 
-html[data-size="tall-narrow"] .whose-jaw-welcome header > .home-button:first-child,
 html[data-size="tall-narrow"] .jaw-card-controls > .home-button:first-child { box-sizing: border-box; width: 48px; min-width: 48px; padding: 12px; gap: 0; }
-html[data-size="tall-narrow"] .whose-jaw-welcome header > .home-button:first-child span,
 html[data-size="tall-narrow"] .jaw-card-controls > .home-button:first-child span { display: none; }
 .jaw-shelf-card h2 { margin: 12px 0; font-size: clamp(24px, 3vw, 36px); overflow-wrap: anywhere; }
 .jaw-card-pictures { display: flex; align-items: center; justify-content: center; height: min(30vh, 240px); height: min(30dvh, 240px); }
@@ -12574,6 +12489,219 @@ html[data-size="wide-short"] .friends-dig-site .new-visitor-button svg { width: 
 html:is([data-size="tall-narrow"], [data-size="wide-short"]) .friends-dig-site .friends-sand-wave { height: 24px; }
 html[data-size="wide-short"] .friends-dig-site .friends-bedrock { display: none; }
 
+/* The tooth game's welcome is the dig site: its title in the sky, the jaw
+   beside its gummy dinosaur and the controls on the sand, the bedrock
+   along the bottom. Each size takes its board's offsets; the hero keeps
+   its board's proportions as it narrows on a window smaller than any
+   board. */
+.whose-jaw-welcome {
+  --wj-top: 36px;
+  --wj-sky: 206px;
+  --wj-side: var(--ds-space-40);
+  --wj-sky-side: var(--ds-space-40);
+  --wj-bottom: 60px;
+  --wj-wave: 30px;
+  --wj-hero-w: 440;
+  --wj-hero-h: 200;
+  --wj-gummy-w: 340;
+  --wj-gummy-h: 186;
+  --wj-jaw-x: 250;
+  --wj-jaw-y: 84;
+  --wj-jaw-w: 190;
+  --wj-jaw-h: 104;
+  position: relative;
+  box-sizing: border-box;
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  color: var(--ds-ink);
+  font-family: var(--ds-font);
+  background: linear-gradient(var(--ds-sky-top), var(--ds-sky-bottom) 50vh) var(--ds-sky-bottom);
+  background: linear-gradient(var(--ds-sky-top), var(--ds-sky-bottom) 50dvh) var(--ds-sky-bottom);
+  animation: fade-in var(--motion-screen) var(--ease-out) both;
+}
+.whose-jaw-welcome-sky {
+  flex: none;
+  box-sizing: border-box;
+  height: calc(var(--wj-sky) + env(safe-area-inset-top));
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-l);
+  padding: calc(var(--wj-top) + env(safe-area-inset-top)) calc(var(--wj-sky-side) + var(--screen-right)) 0 calc(var(--wj-sky-side) + var(--screen-left));
+}
+.whose-jaw-welcome-bar { display: flex; align-items: center; justify-content: space-between; gap: var(--ds-space-m); min-width: 0; }
+/* The sound control stands as tall as HOME, so the title keeps its
+   board's place under them. */
+.whose-jaw-welcome .game-audio-button { box-sizing: border-box; height: 48px; min-height: 48px; padding-block: 0; }
+.whose-jaw-welcome-home {
+  display: flex; flex: none; align-items: center; justify-content: center;
+  box-sizing: border-box; height: 48px; gap: var(--ds-space-s); padding: 0 var(--ds-space-18) 0 var(--ds-space-l);
+  border: 0; border-radius: var(--ds-radius-pill); background: var(--ds-quiet); color: var(--ds-ink);
+  font-size: var(--ds-size-label); font-weight: 800;
+}
+.whose-jaw-welcome-home svg { flex: none; width: 22px; height: 22px; }
+.whose-jaw-welcome-title { display: flex; align-items: center; justify-content: center; gap: var(--ds-space-l); min-width: 0; margin: 0; font-size: var(--ds-size-40); font-weight: 800; letter-spacing: -.5px; line-height: 1.25; }
+.whose-jaw-welcome-word { display: block; min-width: 0; white-space: nowrap; }
+.whose-jaw-welcome-mark {
+  display: grid; place-items: center; flex: none; width: 60px; height: 60px;
+  border-top-left-radius: var(--ds-radius-30); border-top-right-radius: var(--ds-radius-30);
+  border-bottom-left-radius: var(--ds-radius-15); border-bottom-right-radius: var(--ds-radius-15);
+  background: var(--ds-pocket-1); color: var(--ds-action); box-shadow: inset 0 6px 10px var(--ds-pocket-shadow);
+}
+.whose-jaw-welcome-mark svg { width: 30px; height: 30px; }
+.whose-jaw-welcome-sand { position: relative; flex: 1 1 0; min-height: 0; display: flex; background: var(--ds-strata-1); }
+.whose-jaw-welcome-wave { position: absolute; pointer-events: none; top: calc(var(--wj-wave) * -2 / 3); left: 0; width: 100%; height: var(--wj-wave); fill: var(--ds-strata-1); }
+/* Wide, the hero and its badges share a row over the switch and the
+   actions; the column holding them lays out only on a short landscape. */
+.whose-jaw-welcome-body {
+  flex: 1 1 0; min-width: 0; min-height: 0; overflow-y: auto; overscroll-behavior: none; box-sizing: border-box;
+  display: grid; grid-template-columns: auto auto; justify-content: center; align-content: start; justify-items: center; align-items: center;
+  column-gap: var(--ds-space-3xl); row-gap: var(--ds-space-22);
+  padding: var(--ds-space-xl) calc(var(--wj-side) + var(--screen-right)) calc(var(--wj-bottom) + env(safe-area-inset-bottom)) calc(var(--wj-side) + var(--screen-left));
+}
+.whose-jaw-start { display: contents; }
+.whose-jaw-welcome .level-switch,
+.whose-jaw-welcome-actions { grid-column: 1 / -1; }
+.whose-jaw-hero {
+  position: relative; flex: 0 1 auto; min-width: 0;
+  width: calc(var(--wj-hero-w) * 1px); max-width: 100%;
+  aspect-ratio: var(--wj-hero-w) / var(--wj-hero-h);
+}
+.whose-jaw-gummy {
+  position: absolute; left: 0; top: 0; box-sizing: border-box;
+  width: calc(100% * var(--wj-gummy-w) / var(--wj-hero-w)); height: calc(100% * var(--wj-gummy-h) / var(--wj-hero-h));
+  border-radius: var(--ds-radius-24); background-color: var(--ds-photo-white); object-fit: cover;
+}
+.whose-jaw-chomp {
+  position: absolute; margin: 0; overflow: hidden;
+  left: calc(100% * var(--wj-jaw-x) / var(--wj-hero-w)); top: calc(100% * var(--wj-jaw-y) / var(--wj-hero-h));
+  width: calc(100% * var(--wj-jaw-w) / var(--wj-hero-w)); height: calc(100% * var(--wj-jaw-h) / var(--wj-hero-h));
+  rotate: 8deg; transform-origin: center;
+  border-radius: var(--ds-radius-18); background: var(--ds-photo-white); box-shadow: 0 10px 20px var(--ds-shade-20);
+}
+.whose-jaw-chomp[data-ready] { animation: whose-jaw-chomp var(--motion-alive) var(--ease-out) 2; }
+.whose-jaw-chomp .picture { display: block; width: 100%; height: 100%; object-fit: contain; }
+.whose-jaw-hero .picture[data-picture="loading"] { --shimmer-from: var(--ds-pocket-1); --shimmer-to: var(--ds-label); }
+@keyframes whose-jaw-chomp {
+  50% { transform: scaleY(calc(1 - .3 * var(--motion-amount))) rotate(calc(-8deg * var(--motion-amount))); }
+}
+.whose-jaw-badges { display: flex; flex-direction: column; align-items: flex-start; gap: var(--ds-space-l); }
+.whose-jaw-badges p {
+  display: flex; align-items: center; gap: var(--ds-btn-gap); margin: 0;
+  padding: var(--ds-btn-gap) var(--ds-space-18); border-radius: var(--ds-radius-tag);
+  font-weight: 800; line-height: 1.25; white-space: nowrap;
+}
+.whose-jaw-badges svg { flex: none; width: 32px; height: 32px; }
+.whose-jaw-badge-number { font-size: var(--ds-size-32); }
+.whose-jaw-badge-of { font-size: var(--ds-size-22); font-weight: 700; color: var(--ds-ink-soft); }
+.whose-jaw-best { background: var(--ds-reward); color: var(--ds-on-reward); }
+.whose-jaw-collection { background: var(--ds-quiet); color: var(--ds-ink); }
+/* The welcome's switch is its board's: each level as wide as its name,
+   its picture beside it, the chosen one filled where it stands, in every
+   shape, over the upright switch's full width and stacked names. */
+html .whose-jaw-welcome .level-switch { display: flex; align-self: center; width: auto; max-width: 100%; padding: var(--ds-space-5); gap: var(--ds-space-xs); border: 0; }
+html .whose-jaw-welcome .level-switch-mark { display: none; }
+html .whose-jaw-welcome .level-switch-level {
+  flex: 0 1 auto; height: auto; flex-direction: row; gap: var(--ds-space-s);
+  padding: var(--ds-btn-gap) var(--ds-space-18) var(--ds-btn-gap) var(--ds-space-m);
+  font-size: var(--ds-size-tag); font-weight: 700; letter-spacing: 0;
+}
+html .whose-jaw-welcome .level-switch-picture { width: 32px; height: 32px; font-size: 26px; line-height: 32px; }
+.whose-jaw-welcome-actions { display: flex; justify-content: center; gap: var(--ds-space-l); min-width: 0; max-width: 100%; }
+.whose-jaw-play,
+.whose-jaw-shelf {
+  display: flex; flex: 0 1 auto; align-items: center; justify-content: center; min-width: 0;
+  box-sizing: border-box; gap: var(--ds-btn-gap); padding: var(--ds-btn-pad-y) var(--ds-btn-pad-x);
+  border: 0; border-radius: var(--ds-radius-pill);
+  font-size: var(--ds-size-action); font-weight: 800; line-height: 1.25;
+}
+.whose-jaw-play { background: var(--ds-action); color: var(--ds-on-action); }
+.whose-jaw-shelf { background: var(--ds-strong); color: var(--ds-on-strong); }
+.whose-jaw-play svg,
+.whose-jaw-shelf svg { flex: none; width: var(--ds-icon-action); height: var(--ds-icon-action); }
+.whose-jaw-action-word { display: block; min-width: 0; white-space: nowrap; }
+.whose-jaw-welcome button:focus-visible { outline: 3px solid var(--ds-action); outline-offset: -3px; }
+.whose-jaw-welcome-bedrock { position: absolute; bottom: 0; left: 0; right: 0; height: calc(var(--wj-bottom) + env(safe-area-inset-bottom)); background: var(--ds-strata-2); --home-earth: var(--ds-strata-2); pointer-events: none; }
+.whose-jaw-welcome-bedrock .home-earth-wave { top: calc(var(--wj-wave) * -2 / 3); height: var(--wj-wave); }
+
+/* Upright on an iPad the badges stand under the hero, and the sand
+   centres its column. */
+html[data-size="tall"] .whose-jaw-welcome { --wj-sky-side: 56px; --wj-bottom: 50px; }
+html[data-size="tall"] .whose-jaw-welcome-body { grid-template-columns: auto; align-content: safe center; row-gap: var(--ds-space-40); }
+html[data-size="tall"] .whose-jaw-badges { margin-top: calc(var(--ds-space-3xl) - var(--ds-space-40)); align-items: center; }
+html[data-size="tall"] .whose-jaw-welcome .level-switch,
+html[data-size="tall"] .whose-jaw-welcome-actions { grid-column: auto; }
+
+/* On a phone the hero is narrower, the badges share a row, the switch
+   names only the chosen level and the actions span the column. */
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .whose-jaw-welcome {
+  --wj-wave: 24px;
+  --wj-hero-w: 340;
+  --wj-gummy-w: 290;
+  --wj-gummy-h: 158;
+  --wj-jaw-x: 180;
+  --wj-jaw-y: 100;
+  --wj-jaw-w: 160;
+  --wj-jaw-h: 88;
+}
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .whose-jaw-welcome-home { width: 48px; padding: 0; }
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .whose-jaw-welcome-home svg { width: 24px; height: 24px; }
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .whose-jaw-welcome-home span { display: none; }
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .whose-jaw-gummy { border-radius: var(--ds-radius-22); }
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .whose-jaw-chomp { border-radius: var(--ds-radius-16); }
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .whose-jaw-welcome .level-switch-level { padding: var(--ds-space-m) var(--ds-space-26); }
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .whose-jaw-welcome .level-switch-level[aria-pressed="false"] .level-switch-name {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+}
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .whose-jaw-welcome .level-switch-level[aria-pressed="true"] .level-switch-name {
+  position: static; width: auto; height: auto; margin: 0; overflow: visible; clip-path: none;
+}
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .whose-jaw-badges { flex-direction: row; }
+
+html[data-size="tall-narrow"] .whose-jaw-welcome { --wj-top: 62px; --wj-sky: 208px; --wj-side: var(--ds-space-20); --wj-sky-side: var(--ds-space-20); --wj-bottom: 30px; background: linear-gradient(var(--ds-sky-top), var(--ds-sky-bottom) 40vh) var(--ds-sky-bottom); background: linear-gradient(var(--ds-sky-top), var(--ds-sky-bottom) 40dvh) var(--ds-sky-bottom); }
+html[data-size="tall-narrow"] .whose-jaw-welcome-sky { gap: 22px; }
+html[data-size="tall-narrow"] .whose-jaw-welcome-title { gap: var(--ds-space-m); font-size: var(--ds-size-27); }
+html[data-size="tall-narrow"] .whose-jaw-welcome-mark { width: 46px; height: 46px; }
+html[data-size="tall-narrow"] .whose-jaw-welcome-mark svg { width: 24px; height: 24px; }
+html[data-size="tall-narrow"] .whose-jaw-welcome-body { grid-template-columns: minmax(0, 1fr); justify-content: stretch; row-gap: var(--ds-space-l); padding-top: var(--ds-space-20); }
+html[data-size="tall-narrow"] .whose-jaw-badges { gap: var(--ds-space-m); }
+html[data-size="tall-narrow"] .whose-jaw-badges p { padding: var(--ds-btn-gap) var(--ds-space-l); }
+html[data-size="tall-narrow"] .whose-jaw-badges svg { width: 28px; height: 28px; }
+html[data-size="tall-narrow"] .whose-jaw-badge-number { font-size: var(--ds-size-title); }
+html[data-size="tall-narrow"] .whose-jaw-badge-of { font-size: var(--ds-size-20); }
+html[data-size="tall-narrow"] .whose-jaw-welcome-actions { flex-direction: column; justify-self: stretch; gap: var(--ds-space-l); }
+html[data-size="tall-narrow"] :is(.whose-jaw-play, .whose-jaw-shelf) { height: 64px; padding-block: 0; }
+/* An iPhone SE's board is shorter: a nearer top, a lower hero, closer
+   parts and lower actions over the thinnest bedrock. */
+@media (max-height: 700px) {
+  html[data-size="tall-narrow"] .whose-jaw-welcome { --wj-top: 44px; --wj-sky: 186px; --wj-bottom: 14px; --wj-hero-h: 160; }
+  html[data-size="tall-narrow"] .whose-jaw-welcome-sky { gap: 28px; }
+  html[data-size="tall-narrow"] .whose-jaw-welcome-body { row-gap: var(--ds-space-s); padding-top: var(--ds-space-m); }
+  html[data-size="tall-narrow"] :is(.whose-jaw-play, .whose-jaw-shelf) { height: 52px; }
+}
+
+/* On a phone on its side the hero stands beside a column of the badges,
+   the switch and the two actions, and the title shares HOME's row; the
+   sand reaches the bottom. */
+html[data-size="wide-short"] .whose-jaw-welcome { --wj-top: 8px; --wj-sky: 124px; --wj-sky-side: var(--ds-space-79); --wj-bottom: 0px; }
+html[data-size="wide-short"] .whose-jaw-welcome-sky { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; column-gap: var(--ds-space-m); }
+html[data-size="wide-short"] .whose-jaw-welcome-bar { display: contents; }
+html[data-size="wide-short"] .whose-jaw-welcome-bar > :first-child { grid-column: 1; grid-row: 1; margin-top: 6px; }
+html[data-size="wide-short"] .whose-jaw-welcome-bar > :nth-child(2) { grid-column: 3; grid-row: 1; margin-top: 6px; }
+html[data-size="wide-short"] .whose-jaw-welcome-title { grid-column: 2; grid-row: 1; justify-content: flex-end; }
+html[data-size="wide-short"] .whose-jaw-welcome-body { display: flex; align-items: center; justify-content: center; gap: var(--ds-space-20); }
+/* Both actions share the column's row in either language, so they take
+   the short type and icon of the other games' short landscape actions. */
+html[data-size="wide-short"] .whose-jaw-start { display: flex; flex-direction: column; align-items: center; gap: var(--ds-space-s); flex: 0 1 412px; min-width: 0; }
+html[data-size="wide-short"] .whose-jaw-welcome-actions { align-self: stretch; gap: var(--ds-space-s); }
+html[data-size="wide-short"] :is(.whose-jaw-play, .whose-jaw-shelf) { height: 56px; gap: var(--ds-space-s); padding: 0 var(--ds-space-l); font-size: var(--ds-size-18); }
+html[data-size="wide-short"] :is(.whose-jaw-play, .whose-jaw-shelf) svg { width: 20px; height: 20px; }
+html[data-size="wide-short"] .whose-jaw-play { flex: 0 0 auto; min-width: 160px; }
+html[data-size="wide-short"] .whose-jaw-shelf { flex: 1 1 0; }
+html[data-size="wide-short"] .whose-jaw-welcome-bedrock { display: none; }
+
 @media (prefers-reduced-motion: reduce) {
   :root {
     --motion-standard: 160ms;
@@ -12884,7 +13012,8 @@ html[data-size="wide-short"] .friends-dig-site .friends-bedrock { display: none;
 .home-parent-note { margin: 0; font-size: var(--ds-size-foot); font-weight: 400; opacity: .75; }
 .home-version { flex: none; font-size: 11px; font-weight: 400; opacity: .6; }
 body:has(.home-dig-site) #version,
-body:has(.friends-dig-site) #version { display: none; }
+body:has(.friends-dig-site) #version,
+body:has(.whose-jaw-welcome) #version { display: none; }
 html:is([data-size="tall-narrow"], [data-size="wide-short"]) .home-layer .tiles-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   column-gap: 10px;
