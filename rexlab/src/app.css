@@ -7034,43 +7034,6 @@ html[data-size="wide-short"] .pairs-offer-answers svg {
   background: #1d2742;
 }
 
-/* The phone's brush menu, shown only there: its button DIG's amber brush
-   with the picked brush's dot, half the picker's; its
-   menu hangs from the button's left edge. */
-.dig-brush-menu {
-  display: none;
-}
-.dig-brush-menu .parent-menu-button {
-  height: 48px;
-  padding: 0 12px;
-}
-
-.dig-brush-menu .parent-menu-face {
-  gap: 4px;
-}
-
-.dig-brush-menu .parent-menu-face .dig-brush-dot {
-  width: 7px;
-  height: 7px;
-  background: #1d2742;
-}
-
-.dig-brush-menu .parent-menu-face .dig-brush-dot[data-wide] {
-  width: 14px;
-  height: 14px;
-}
-
-/* The menu stands over its backdrop, which takes every tap but its own. */
-.dig-brush-menu .parent-menu-list {
-  z-index: 2;
-  right: auto;
-  left: 0;
-  transform-origin: top left;
-}
-.dig-brush-menu .parent-menu-choice {
-  font-weight: 700;
-}
-
 .dig-brush-slot {
   flex-shrink: 0;
   width: 28px;
@@ -8286,24 +8249,11 @@ html[data-size="tall-narrow"] .dig-board-screen .dig-field-guide-button {
   box-sizing: border-box;
   border-radius: 14px;
 }
-html[data-size="tall-narrow"] .dig-board-screen .home-button,
-html[data-size="tall-narrow"] .dig-board-screen .dig-brush-menu .parent-menu-button {
+html[data-size="tall-narrow"] .dig-board-screen .home-button {
   min-width: 48px;
   height: 48px;
   min-height: 48px;
   box-sizing: border-box;
-}
-
-html[data-size="tall-narrow"] .dig-board-screen .dig-brush-menu .parent-menu-button {
-  padding: 0 8px;
-}
-
-html[data-size="tall-narrow"] .dig-board-screen .dig-brush-menu {
-  position: relative;
-  z-index: 2;
-  order: -1;
-  flex-shrink: 0;
-  display: block;
 }
 
 /* The title takes two lines where it has two words or more, as large as
@@ -11374,10 +11324,6 @@ html[data-theme="dark"],
   background: #181e2e;
 }
 
-[data-theme="dark"] .dig-brush-menu .parent-menu-face .dig-brush-dot {
-  background: #181e2e;
-}
-
 [data-theme="dark"] .dig-field-guide-button {
   outline-color: #ece8de1f;
   background: #181e2e;
@@ -13257,3 +13203,118 @@ html[data-size="tall-narrow"] .compare-result .result-content { gap: 12px; }
 body:has(.question, .compare-result) { position: relative; }
 body:has(.question, .compare-result) #version { position: absolute; }
 html[data-size="wide-short"] body:has(.question, .compare-result) #version { display: none; }
+
+/* DIG on the dig site, as its boards draw it: the sky behind the bar, the
+   sand below its wavy edge and the ochre layer along the bottom; the bar's
+   pieces, the sand in its groove, the choices as sand pockets, the reveal
+   in the sky over the sand, and the FIELD GUIDE's pockets. Sizes and the
+   board's fit stay the dig screens' own. */
+html .dig-screen {
+  --dig-sky: calc(110px + env(safe-area-inset-top));
+  --dig-ochre: calc(60px + env(safe-area-inset-bottom));
+  color: var(--ds-ink);
+  font-family: var(--ds-font);
+  background: linear-gradient(var(--ds-sky-top), var(--ds-sky-bottom) 40vh) var(--ds-sky-bottom);
+  background: linear-gradient(var(--ds-sky-top), var(--ds-sky-bottom) 40dvh) var(--ds-sky-bottom);
+}
+html .dig-board-screen {
+  --dig-sky: calc(110px + env(safe-area-inset-top) - clamp(0px, 768px - 100vh, 98px) * 12 / 98);
+  --dig-sky: calc(110px + env(safe-area-inset-top) - clamp(0px, 768px - 100dvh, 98px) * 12 / 98);
+}
+html[data-size="tall-narrow"] .dig-screen { --dig-sky: calc(84px + env(safe-area-inset-top)); --dig-ochre: calc(30px + env(safe-area-inset-bottom)); }
+html[data-size="wide-short"] .dig-screen { --dig-sky: calc(64px + env(safe-area-inset-top)); --dig-ochre: calc(16px + env(safe-area-inset-bottom)); }
+.dig-ground { position: absolute; inset: 0; z-index: -1; pointer-events: none; }
+.dig-ground-sand { position: absolute; top: var(--dig-sky); left: 0; right: 0; bottom: 0; background: var(--ds-strata-1); }
+.dig-ground-ochre { position: absolute; left: 0; right: 0; bottom: 0; height: var(--dig-ochre); background: var(--ds-strata-2); }
+.dig-ground-wave { position: absolute; top: -20px; left: 0; width: 100%; height: 30px; }
+.dig-ground-sand .dig-ground-wave { fill: var(--ds-strata-1); }
+.dig-ground-ochre .dig-ground-wave { fill: var(--ds-strata-2); }
+
+/* The bar: HOME a quiet pill, the title beside its amber symbol, then
+   DUG UP, the brushes and the FIELD GUIDE. */
+html .dig-screen .dig-bar { position: relative; z-index: 1; }
+html .dig-screen .dig-bar .home-button { height: 48px; min-height: 48px; padding: 0 var(--ds-space-18) 0 var(--ds-space-l); gap: var(--ds-space-s); border: 0; border-radius: var(--ds-radius-pill); background: var(--ds-quiet); color: var(--ds-ink); font-size: var(--ds-size-label); font-weight: 800; box-shadow: none; }
+html .dig-screen .dig-bar .home-button svg { width: 22px; height: 22px; }
+html .dig-screen .dig-title { gap: var(--ds-space-m); color: var(--ds-ink); font-weight: 800; letter-spacing: .5px; }
+html .dig-screen .dig-mark { width: 48px; height: 48px; border-radius: var(--ds-radius-tag); background: var(--ds-reward); color: var(--ds-on-reward); }
+html .dig-screen .dig-mark svg { width: 30px; height: 30px; }
+html .dig-board-screen .dig-title-words,
+html .dig-field-guide-screen .dig-title-words { font-size: min(34px, (100cqi - 60px) / (var(--letters) * 0.75)); }
+html .dig-screen .dig-chip { order: -1; height: auto; padding: 0; gap: var(--ds-space-s); border-radius: 0; background: none; color: var(--ds-ink); }
+html .dig-screen .dig-chip svg { color: var(--ds-reward); }
+html .dig-screen .dig-chip-words { color: var(--ds-ink-soft); font-size: var(--ds-size-tag); font-weight: 700; letter-spacing: 1.5px; }
+html .dig-screen .dig-chip-count { color: var(--ds-ink); font-size: var(--ds-size-number); font-weight: 800; white-space: nowrap; }
+html .dig-screen .dig-chip-of { margin-left: var(--ds-space-xs); color: var(--ds-ink-soft); font-size: var(--ds-size-16); font-weight: 700; }
+html .dig-screen .dig-chip[data-counted] .dig-chip-count { animation: pop-in var(--motion-small) var(--ease-overshoot) both; }
+html .dig-screen .dig-brush-picker { height: auto; padding: 0; gap: var(--ds-space-s); border-radius: 0; outline: 0; background: none; }
+html .dig-screen .dig-brush-option { width: 52px; height: 52px; border-radius: var(--ds-radius-26); background: var(--ds-quiet); }
+html .dig-screen .dig-brush-option[aria-pressed="true"] { background: var(--ds-reward); }
+html .dig-screen .dig-brush-dot,
+html .dig-screen .dig-brush-option[aria-pressed="true"] .dig-brush-dot { width: 12px; height: 12px; background: var(--ds-ink); }
+html .dig-screen .dig-brush-dot[data-wide],
+html .dig-screen .dig-brush-option[aria-pressed="true"] .dig-brush-dot[data-wide] { width: 24px; height: 24px; }
+html .dig-screen .dig-field-guide-button { height: 60px; padding: 0 var(--ds-space-18) 0 var(--ds-space-l); gap: var(--ds-space-s); border-radius: var(--ds-radius-pill); outline: 0; background: var(--ds-quiet); color: var(--ds-ink); font-size: var(--ds-size-number); font-weight: 800; }
+html .dig-screen .dig-field-guide-button svg { width: 26px; height: 26px; color: var(--ds-ink); }
+html .dig-screen .dig-field-guide-button[data-landed] { outline: 3px solid var(--ds-reward); outline-offset: -3px; }
+html .dig-screen .dig-field-guide-new { top: calc(100% - 14px); bottom: auto; left: -6px; height: auto; translate: none; padding: var(--ds-space-xs) var(--ds-space-s); border-radius: var(--ds-radius-tag); background: var(--ds-action); color: var(--ds-on-action); font-size: var(--ds-size-13); font-weight: 800; letter-spacing: 1px; }
+html .dig-screen button:focus-visible { outline: 3px solid var(--ds-action); outline-offset: 2px; }
+
+/* The board is the sand in its groove; the choices are sand pockets, the
+   picture beside the name, the right one ringed in green with its tick,
+   a wrong one faded with TRY ANOTHER. */
+html .dig-screen .dig-board { border-radius: var(--ds-radius-panel); outline: 0; background: var(--ds-strata-1); }
+html .dig-screen .dig-board::after { content: ""; position: absolute; inset: 0; z-index: 3; border-radius: inherit; pointer-events: none; box-shadow: inset 0 0 0 4px var(--ds-pocket-2), inset 0 6px 12px var(--ds-pocket-shadow); }
+html .dig-screen .dig-empty-card { border-radius: var(--ds-radius-speech); }
+html .dig-screen .dig-choice-card { overflow: visible; border: 2px solid transparent; border-radius: var(--ds-radius-speech); background: var(--ds-pocket-1); color: var(--ds-ink); box-shadow: inset 0 5px 8px var(--ds-pocket-shadow); }
+html .dig-screen .dig-choice-card[data-correct] { border-color: var(--ds-good); }
+html .dig-screen .dig-choice-card[data-rejected] { border-color: transparent; }
+html .dig-screen .dig-choice-name { color: var(--ds-ink); }
+html .dig-screen .dig-choice-card[data-rejected] .dig-choice-name { color: var(--ds-ink-soft); }
+html .dig-screen .dig-choice-mark { box-shadow: none; }
+html .dig-screen .dig-choice-mark-correct { top: -10px; right: auto; left: -10px; width: 48px; height: 48px; padding: 0; border: 3px solid var(--ds-label); border-radius: var(--ds-radius-24); background: var(--ds-good); color: var(--ds-on-good); }
+html .dig-screen .dig-choice-mark-rejected { display: flex; justify-content: center; gap: var(--ds-space-6); padding: var(--ds-space-6) var(--ds-btn-gap) var(--ds-space-6) var(--ds-space-s); border-radius: var(--ds-radius-tag); background: var(--ds-label); color: var(--ds-ink-soft); font-size: var(--ds-size-13); font-weight: 700; letter-spacing: 1px; }
+html .dig-screen .dig-brush-buttons { display: none; }
+
+/* On a phone the bar is HOME's round, the title alone and the FIELD
+   GUIDE; the choices stand two by two, each its picture over its name,
+   and the brushes are two wide buttons under them. */
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .dig-screen .dig-bar .home-button { width: 48px; padding: 0; justify-content: center; border-radius: 50%; }
+html[data-size="tall-narrow"] .dig-screen .dig-field-guide-button { height: 48px; padding: 0 var(--ds-space-m); border-radius: var(--ds-radius-pill); font-size: 18px; }
+html[data-size="tall-narrow"] .dig-screen .dig-field-guide-button svg { width: 24px; height: 24px; }
+html[data-size="tall-narrow"] .dig-screen .dig-board { border-radius: var(--ds-radius-speech); }
+html[data-size="tall-narrow"] .dig-screen .dig-choice-mark-correct { top: -8px; left: -8px; width: 36px; height: 36px; }
+html[data-size="tall-narrow"] .dig-screen .dig-choice-mark-correct svg { width: 20px; height: 20px; }
+html[data-size="tall-narrow"] .dig-board-screen .dig-brush-buttons { flex: none; display: flex; gap: var(--ds-space-m); }
+.dig-brush-button { flex: 1 1 0; min-width: 0; height: 64px; display: flex; align-items: center; justify-content: center; gap: var(--ds-btn-gap); padding: 0 var(--ds-space-s); border: 1px solid var(--ds-outline); border-radius: var(--ds-radius-pill); background: var(--ds-label); color: var(--ds-ink); font-size: var(--ds-size-17); font-weight: 800; white-space: nowrap; }
+.dig-brush-button[aria-pressed="true"] { border-color: transparent; background: var(--ds-reward); color: var(--ds-on-reward); }
+.dig-brush-button .dig-brush-slot { flex: none; width: 32px; height: 32px; display: grid; place-items: center; }
+.dig-brush-button:disabled { opacity: .5; }
+
+/* The reveal: the dinosaur in its glow on the sky, its name, DUG UP's
+   card on paper and the celebration beside it, then the level and the
+   ways on, over the sand. */
+html .dig-reveal-screen { --dig-sky: 58%; }
+html[data-size="tall-narrow"] .dig-reveal-screen { --dig-sky: 36%; }
+html .dig-reveal-screen .dig-title { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+html .dig-reveal-screen .dig-bar { justify-content: flex-end; }
+html .dig-reveal-screen .dig-field-guide-button { background: var(--ds-quiet); }
+html .dig-reveal-screen .dig-reveal-name { color: var(--ds-ink); font-weight: 800; }
+html:not([data-size="wide-short"]) .dig-reveal-screen .dig-card { border: 0; background: var(--ds-label); color: var(--ds-ink); box-shadow: none; }
+html .dig-reveal-screen .dig-card-star { border: 0; background: none; color: var(--ds-reward); box-shadow: none; }
+html:not([data-size="wide-short"]) .dig-reveal-screen :is(.dig-card-words, .dig-card-count) { color: var(--ds-ink); }
+html .dig-reveal-screen .dig-card-new { background: var(--ds-action); color: var(--ds-on-action); }
+html .dig-reveal-screen .dig-card-trophy { background: var(--ds-reward); color: var(--ds-on-reward); }
+
+/* The FIELD GUIDE: a sand pocket for each kind, its name and a dark tag
+   with its count; a kind not found yet a faint outline and "?". */
+html .dig-field-guide-screen .dig-kinds-found { gap: var(--ds-space-s); }
+html:not([data-size="wide-short"]) .dig-field-guide-screen .dig-guide-card { padding: var(--ds-space-xl) var(--ds-space-m); gap: var(--ds-space-m); border: 0; border-radius: var(--ds-radius-pocket-top); background: var(--ds-pocket-1); color: var(--ds-ink); box-shadow: inset 0 6px 10px var(--ds-pocket-shadow); }
+html .dig-field-guide-screen .dig-guide-card:not([data-found]) { background: var(--ds-pocket-1); }
+html .dig-field-guide-screen .dig-guide-outline { background: var(--ds-pocket-3); opacity: .55; }
+html .dig-field-guide-screen .dig-guide-name { color: var(--ds-ink); font-weight: 800; }
+html .dig-field-guide-screen .dig-guide-count { padding: var(--ds-space-6) var(--ds-btn-gap); border-radius: var(--ds-radius-tag); background: var(--ds-strong); color: var(--ds-on-strong); font-weight: 800; }
+html .dig-field-guide-screen .dig-guide-unknown { color: var(--ds-ink-soft); font-size: var(--ds-size-34); font-weight: 800; }
+/* DUG UP's words fit the bar only as wide as the iPad mini's; narrower,
+   the chip is its star and the count dug up. */
+html .dig-board-screen :is(.dig-chip-words, .dig-chip-of) { display: none; }
+@media (min-width: 1100px) { html .dig-board-screen :is(.dig-chip-words, .dig-chip-of) { display: inline; } }

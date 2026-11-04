@@ -224,7 +224,6 @@ export type Texts = {
   brush: string;
   wideBrush: string;
   // The name of the phone's menu of brushes.
-  brushMenu: string;
   // The FIELD GUIDE's page: its cards, read out, the kinds of treasure
   // found, read out on their count, and each kind's name.
   treasureCards: string;
