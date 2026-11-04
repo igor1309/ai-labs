@@ -1,5 +1,9 @@
 # Log
 
+## 2026-11-04
+
+- Audio conversion refuses a zero or non-finite sample rate instead of accepting it (LAB-949).
+
 ## 2026-11-03
 
 - Parakeet omits whitespace-only model words while keeping spoken words' original timing (LAB-943).
