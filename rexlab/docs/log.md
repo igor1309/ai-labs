@@ -1,5 +1,9 @@
 # rexlab — Change Log
 
+## 2026-11-04
+
+- LAB-917: WHOSE JAW? is the dig site on every device, light, dark and Russian: the welcome with its tooth title, dinosaur and tilted jaw cards, red PLAY and navy JAW SHELF; the board with tooth sockets and best score in the sky, dinosaur cards on the sand and the jaw in a tray, the cue on the wrong card; the result with the round's jaws fanned beside the stars and new finds on a plank; the JAW SHELF as rows of four on planks with its diet tags and a restyled jaw card. A word fitted to its room now always fits, in every game.
+
 ## 2026-11-03
 
 - LAB-925: Care's FRIENDS is the dig site: HOME, BACK, the title and the heart count in the sky with NEW VISITOR under them, the friend cards in the sand, as many to a row as the window holds; with no friends, HOME and a count of 0 stay and the nest lies in a pit.

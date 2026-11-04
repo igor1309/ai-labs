@@ -277,7 +277,7 @@ it("stands the cue on the wrong card's top-right corner and keeps it on the sand
   vi.spyOn(HTMLElement.prototype, "offsetLeft", "get").mockImplementation(function (this: HTMLElement) { return has(this, "jaw-dinosaur") ? card.left : 0; });
   vi.spyOn(HTMLElement.prototype, "offsetTop", "get").mockImplementation(function (this: HTMLElement) { return has(this, "jaw-dinosaur") ? cardTop : 0; });
   vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockImplementation(function (this: HTMLElement) { return has(this, "jaw-sand") ? sandWidth : 0; });
-  const cue = () => { const region = part(".jaw-feedback") as HTMLElement; return [region.style.getPropertyValue("--cue-x"), region.style.getPropertyValue("--cue-y")]; };
+  const cue = () => { const region = part(".jaw-feedback") as HTMLElement; return [region.style.getPropertyValue("--cue-x"), region.style.getPropertyValue("--cue-y"), region.style.getPropertyValue("--cue-tail")]; };
   const wrongAt = (target: string, left: number, width: number) => {
     card = { left, width };
     const view = showBoard(2);
@@ -288,9 +288,12 @@ it("stands the cue on the wrong card's top-right corner and keeps it on the sand
     return placed;
   };
   try {
-    expect(wrongAt("triceratops", 590, 360)).toEqual([`${590 + 360 + margin - cueWidth}px`, `${cardTop}px`]);
-    expect(wrongAt("tyrannosaurus", 0, 100)).toEqual([`${margin}px`, `${cardTop}px`]);
-    expect(wrongAt("triceratops", 1000, 133)).toEqual([`${sandWidth - margin - cueWidth}px`, `${cardTop}px`]);
+    // The tail points at the wrong card's centre, kept clear of the cue's rounded ends.
+    expect(wrongAt("triceratops", 590, 360)).toEqual([`${590 + 360 + margin - cueWidth}px`, `${cardTop}px`, `${590 + 180 - (590 + 360 + margin - cueWidth)}px`]);
+    expect(wrongAt("tyrannosaurus", 0, 100)).toEqual([`${margin}px`, `${cardTop}px`, "24px"]);
+    expect(wrongAt("triceratops", 1000, 133)).toEqual([`${sandWidth - margin - cueWidth}px`, `${cardTop}px`, `${cueWidth - 46}px`]);
+    // A cue wider than its card sits partly over the card before it; the tail still points into the wrong card.
+    expect(wrongAt("triceratops", 320, 235)).toEqual([`${320 + 235 + margin - cueWidth}px`, `${cardTop}px`, `${320 + 117.5 - (320 + 235 + margin - cueWidth)}px`]);
   } finally {
     vi.restoreAllMocks();
   }

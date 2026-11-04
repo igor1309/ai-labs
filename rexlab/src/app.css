@@ -12679,7 +12679,7 @@ html[data-size="wide-short"] .jaw-loose { width: 170px; }
   background: var(--ds-label); color: var(--ds-on-label); font-size: var(--ds-size-label); font-weight: 700;
 }
 .whose-jaw-board[data-phase="wrong"] .jaw-feedback p svg { width: 24px; height: 24px; color: var(--ds-action); }
-.whose-jaw-board[data-phase="wrong"] .jaw-feedback p::after { content: ""; position: absolute; left: var(--ds-space-30); top: 100%; width: 22px; height: 14px; background: var(--ds-label); clip-path: polygon(0 0, 100% 0, 18% 100%); }
+.whose-jaw-board[data-phase="wrong"] .jaw-feedback p::after { content: ""; position: absolute; left: var(--cue-tail, var(--ds-space-30)); top: 100%; width: 22px; height: 14px; background: var(--ds-label); clip-path: polygon(0 0, 100% 0, 18% 100%); }
 .jaw-next {
   display: flex; flex: none; align-items: center; justify-content: center; gap: var(--ds-btn-gap); box-sizing: border-box; min-height: 48px;
   padding: var(--ds-btn-pad-y) var(--ds-btn-pad-x); border: 0; border-radius: var(--ds-radius-pill);

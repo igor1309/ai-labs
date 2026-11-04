@@ -242,10 +242,12 @@ async function board(page, width, height, label, fit, level, shoot, fifth) {
     await phaseIs(page, 'wrong');
     await page.waitForFunction(() => document.querySelector('.jaw-feedback')?.style.getPropertyValue('--cue-x'));
     cueOn(check('wrong', await measureBoard(page)), wrong, width, height, `${label} ${level}`);
+    await settle(page);
     await shoot(`${level}-wrong`);
     await waiting(page);
   } else {
     cueOn(check('look-alike', await wrongStep(page, wrong)), wrong, width, height, `${label} ${level}`);
+    await settle(page);
     await shoot(`${level}-wrong`);
     await waiting(page);
     for (let jaw = 1; fifth && jaw < 5; jaw++) {

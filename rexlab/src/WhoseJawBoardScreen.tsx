@@ -91,7 +91,10 @@ export function WhoseJawBoardScreen({ audioControl, language, phase, choices, ja
     if (phase !== "wrong" || !region || !card || !(sand instanceof HTMLElement)) return;
     const margin = parseFloat(getComputedStyle(sand).getPropertyValue("--jb-cue-margin")) || 0;
     const left = card.offsetLeft + card.offsetWidth + margin - region.offsetWidth;
-    region.style.setProperty("--cue-x", `${Math.max(margin, Math.min(left, sand.clientWidth - margin - region.offsetWidth))}px`);
+    const x = Math.max(margin, Math.min(left, sand.clientWidth - margin - region.offsetWidth));
+    region.style.setProperty("--cue-x", `${x}px`);
+    // The tail points into the wrong card, not at a neighbour under a wide cue.
+    region.style.setProperty("--cue-tail", `${Math.max(24, Math.min(card.offsetLeft + card.offsetWidth / 2 - x, region.offsetWidth - 46))}px`);
     region.style.setProperty("--cue-y", `${card.offsetTop}px`);
   }, [phase, target, feedback?.words]);
 
