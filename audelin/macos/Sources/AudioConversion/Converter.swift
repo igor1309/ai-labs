@@ -8,10 +8,18 @@ public final class Converter {
     private let converter: AVAudioConverter
     private let input: AVAudioFormat
     private let output: AVAudioFormat
+    private let spareFrames: AVAudioFrameCount
 
-    public init(from inputRate: Double, to outputRate: Double) throws {
+    public convenience init(from inputRate: Double, to outputRate: Double) throws {
+
+        try self.init(from: inputRate, to: outputRate, spareFrames: 64)
+    }
+
+    /// `spareFrames` is the room each result has beyond the converted input.
+    init(from inputRate: Double, to outputRate: Double, spareFrames: AVAudioFrameCount) throws {
 
         guard
+            inputRate.isFinite, outputRate.isFinite, inputRate > 0, outputRate > 0,
             let input = AVAudioFormat(standardFormatWithSampleRate: inputRate, channels: 1),
             let output = AVAudioFormat(standardFormatWithSampleRate: outputRate, channels: 1),
             let converter = AVAudioConverter(from: input, to: output)
@@ -20,6 +28,7 @@ public final class Converter {
         self.input = input
         self.output = output
         self.converter = converter
+        self.spareFrames = spareFrames
     }
 
     public func convert(_ samples: [Float]) throws -> [Float] {
@@ -53,7 +62,7 @@ public final class Converter {
     /// Converts the buffer, or ends the stream when there is none.
     private func run(_ buffer: AVAudioPCMBuffer?, capacity: Int, draining: Bool = false) throws -> [Float] {
 
-        let frames = AVAudioFrameCount(Double(capacity) * output.sampleRate / input.sampleRate) + 64
+        let frames = AVAudioFrameCount(Double(capacity) * output.sampleRate / input.sampleRate) + spareFrames
         guard let result = AVAudioPCMBuffer(pcmFormat: output, frameCapacity: frames) else { throw ConversionFailed() }
         // The converter asks for input before `convert` returns.
         nonisolated(unsafe) var supplied = false

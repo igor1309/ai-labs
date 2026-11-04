@@ -464,30 +464,30 @@ async function skeletonMuseum({ theme, user, timers }: Walk) {
 // The dig game's board under all its sand, with the brush held down on
 // it among its grains, through the gust, lift and count, then the reveal with its first
 // best, and the home page with the dinosaur dug up.
-async function dig({ theme, user, timers }: Walk) {
-  await user.click(screen.getByRole("button", { name: "DIG" }));
-  placeBoard(800);
-  expectScreenIn(theme);
-  pressAt(sandBoard(), 0, { x: 200, y: 300 });
-  moveAt(10, { x: 400, y: 300 });
+// Brushes the board away, checking each state's colours when `check` is on.
+async function dugUp({ theme, user, timers }: Walk, check: boolean) {
+  const expectIn = () => check && expectScreenIn(theme);
+  await user.click(screen.getByRole("button", { name: "DIG" })); placeBoard(800);
+  expectIn();
+  pressAt(sandBoard(), 0, { x: 200, y: 300 }); moveAt(10, { x: 400, y: 300 });
   expect(sandBoard().querySelector(".dig-puff")).not.toBeNull();
-  expectScreenIn(theme);
-  releaseAt(window, 20, { x: 400, y: 300 });
-  digUp();
+  expectIn();
+  releaseAt(window, 20, { x: 400, y: 300 }); digUp();
   expect(sandBoard().getAttribute("data-blown")).toBe("true");
-  expectScreenIn(theme);
-  act(() => timers.fire(GUST.motion));
-  expect(sandBoard().hasAttribute("data-lifting")).toBe(true);
+  expectIn();
+  act(() => timers.fire(GUST.motion)); expect(sandBoard().hasAttribute("data-lifting")).toBe(true);
   expect(document.querySelector(".dig-board-star")).not.toBeNull();
-  expectScreenIn(theme);
+  expectIn();
+}
+
+async function digReveal(walk: Walk) {
+  const { theme, user, timers } = walk; await dugUp(walk, false);
   act(() => timers.fire(LIFT.motion));
   expect(screen.getByLabelText("DUG UP").textContent).toBe(`1/${SHIPPED_DIG.length}`);
   expectScreenIn(theme);
-  act(() => timers.fire(COUNT_SETTLE.motion));
-  expect(screen.getByRole("heading", { level: 2 })).toBeDefined();
+  act(() => timers.fire(COUNT_SETTLE.motion)); expect(screen.getByRole("heading", { level: 2 })).toBeDefined();
   expectScreenIn(theme);
-  act(() => timers.fire(STAR_LANDS.motion));
-  await user.click(screen.getByRole("button", { name: "HOME" }));
+  act(() => timers.fire(STAR_LANDS.motion)); await user.click(screen.getByRole("button", { name: "HOME" }));
   expect(screen.getByRole("button", { name: "DIG" }).querySelector(".dig-tile-count")).toBeNull();
   expectScreenIn(theme);
 }
@@ -552,7 +552,7 @@ const SCREEN_GROUPS: Array<[string, Array<[string, (walk: Walk) => Promise<void>
       ["the museum empty, with a skeleton on its stand, as it is knocked down, and with its stand awaiting it", skeletonMuseum]
     ]
   ],
-  ["the dig game", [["the board under its sand, brushed, blown away, the reveal and the home page with the count", dig]]]
+  ["the dig game", [["the board under its sand, brushed and blown away", walk => dugUp(walk, true)], ["the reveal and the home page with the count", digReveal]]]
 ];
 
 describe("the System theme", () => {
