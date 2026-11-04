@@ -73,8 +73,15 @@ jobs:
         working-directory: rexlab
         run: npx playwright install chromium webkit
 
+      # The contracts that open the released app share one build of it.
+      - name: Build the app
+        working-directory: rexlab
+        run: npx vite build --outDir "$RUNNER_TEMP/rexlab-app"
+
       - name: Run browser contracts
         working-directory: rexlab
+        env:
+          REXLAB_APP_BUILD: ${{ runner.temp }}/rexlab-app
         run: |
           failed=()
           for script in compareQuestion compareResult compareFlow whoseJawBoardLandscape catalogueFit \

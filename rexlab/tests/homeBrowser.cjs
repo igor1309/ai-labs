@@ -1,3 +1,4 @@
+const { appFiles } = require('./appBuild.cjs');
 const assert = require('node:assert/strict');
 const { readFile, mkdir } = require('node:fs/promises');
 const { resolve, extname, join } = require('node:path');
@@ -117,9 +118,7 @@ async function fullFlow(page, { width, height, language, theme, reduced }) {
   assert.equal(await page.locator('.featured-card').getAttribute('data-game'), featured, `${label}: returning keeps today's game`);
 }
 exports.runHome = async function(sizes) {
-  const { build } = await import('vite');
-  const bundle = await build({ root: resolve(__dirname, '..'), logLevel: 'error', build: { write: false } });
-  const files = new Map(bundle.output.map(file => [file.fileName, file.type === 'chunk' ? file.code : file.source]));
+  const files = await appFiles();
   const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || undefined, headless: true });
   let checked = 0;
   try {
