@@ -89,7 +89,7 @@ const { chromium } = require("playwright");
     assert.equal(await starts(), 0);
     // The released worker has installed the complete app before going offline.
     await page.waitForFunction(async () => (await navigator.serviceWorker.getRegistration())?.active?.state === "activated");
-    await page.reload(); await homeCount(0); await entry().press("Enter"); await gallery();
+    await page.goto(url); await homeCount(0); await entry().press("Enter"); await gallery();
     await page.waitForFunction(() => !!navigator.serviceWorker.controller);
     assert(await page.evaluate(() => !!navigator.serviceWorker.controller));
     await context.setOffline(true);
