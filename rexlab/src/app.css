@@ -1908,33 +1908,7 @@ body:has(.result) #version {
   object-fit: cover;
 }
 
-/* The question fills the screen, and the cards take what is left of it. */
-.question {
-  position: relative;
-  isolation: isolate;
-  overflow: hidden;
-  height: 100vh;
-  height: 100dvh;
-  box-sizing: border-box;
-  padding:
-    calc(40px + env(safe-area-inset-top))
-    calc(56px + var(--screen-right))
-    calc(48px + env(safe-area-inset-bottom))
-    calc(56px + var(--screen-left));
-  display: flex;
-  flex-direction: column;
-  gap: 32px;
-}
-
-.question .stratum-1 {
-  height: 40px;
-}
-
-.question-bar {
-  display: flex;
-  align-items: center;
-  gap: 24px;
-}
+/* The parts the question shares with Sort's board. */
 .home-button {
   height: 56px;
   padding: 0 20px 0 16px;
@@ -1999,171 +1973,6 @@ body:has(.result) #version {
   color: #1d2742;
 }
 
-.dinosaur-cards {
-  flex: 1 1 0;
-  min-height: 0;
-  display: flex;
-  align-items: center;
-  gap: 24px;
-}
-
-.dinosaur-card {
-  flex: 1 1 0;
-  align-self: stretch;
-  min-width: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  border: none;
-  border-radius: 28px;
-  outline: 1px solid #1d27421f;
-  outline-offset: -0.5px;
-  background: #fffdf8;
-  text-align: left;
-}
-
-/* A right answer outlines its card in green, a wrong one the tapped card
-   in terracotta; the card left out of the answer steps back. */
-.dinosaur-card[data-mark="correct"][data-chosen] {
-  outline: 4px solid #2e7d4f;
-  outline-offset: -2px;
-}
-
-.dinosaur-card[data-mark="wrong"] {
-  outline: 4px solid #b83b2b;
-  outline-offset: -2px;
-}
-
-.dinosaur-card[data-answered]:not([data-mark]) {
-  opacity: 0.7;
-}
-
-/* The tapped card gives under the finger and springs back. */
-.dinosaur-card[data-chosen] {
-  animation: squish var(--motion-standard) var(--ease-out);
-}
-
-.dinosaur-art {
-  position: relative;
-  flex: 1 1 0;
-  min-height: 0;
-  box-sizing: border-box;
-  padding: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #e6e2d9;
-}
-
-/* The pictures' own 4:3, so a picture of another shape is fitted inside
-   the same box rather than shown larger. */
-.dinosaur-picture {
-  display: block;
-  width: 560px;
-  height: 420px;
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
-}
-
-/* A mark is a badge of a symbol and a word, in a colour that keeps at
-   least 3:1 contrast with the card it sits on, so it reads without
-   telling colours apart. */
-.mark {
-  position: absolute;
-  top: 24px;
-  left: 24px;
-  height: 48px;
-  box-sizing: border-box;
-  padding: 0 18px 0 12px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  border-radius: 24px;
-  color: #ffffff;
-  font-size: 18px;
-  font-weight: 700;
-  animation: stamp-in var(--motion-standard) var(--ease-out) both;
-}
-
-.dinosaur-card[data-mark="correct"] .mark {
-  background: #2e7d4f;
-  animation-timing-function: var(--ease-overshoot);
-}
-
-.dinosaur-card[data-mark="wrong"] .mark {
-  background: #b83b2b;
-}
-
-.dinosaur-footer {
-  padding: 20px 28px;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.dinosaur-name {
-  min-width: 0;
-  font-size: 34px;
-  font-weight: 700;
-  overflow-wrap: anywhere;
-}
-
-.dinosaur-value-chip {
-  height: 48px;
-  box-sizing: border-box;
-  padding: 0 16px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  border-radius: 12px;
-  background: #e6e2d9;
-  font-size: 22px;
-  font-weight: 700;
-  white-space: nowrap;
-  animation: rise-in var(--motion-standard) var(--ease-out) both;
-}
-
-/* The values rise in one after the other. */
-.dinosaur-cards > :last-child .dinosaur-value-chip {
-  animation-delay: calc(var(--motion-stagger) * 2);
-}
-
-.dinosaur-value-chip svg {
-  color: #5c647a;
-}
-
-.dinosaur-card[data-mark="correct"] .dinosaur-value-chip {
-  background: #1f2b4d;
-  color: #f6f2e9;
-}
-
-.dinosaur-card[data-mark="correct"] .dinosaur-value-chip svg {
-  color: #f6f2e9;
-}
-
-.versus {
-  flex-shrink: 0;
-  display: grid;
-  place-items: center;
-  width: 64px;
-  height: 64px;
-  border-radius: 32px;
-  background: #1d2742;
-  color: #f2efe8;
-  font-size: 20px;
-  font-weight: 700;
-}
-
-.next-row {
-  min-height: 72px;
-  display: flex;
-  justify-content: flex-end;
-}
-
 .next-button {
   height: 72px;
   padding: 0 32px 0 36px;
@@ -2177,250 +1986,6 @@ body:has(.result) #version {
   font-size: 26px;
   font-weight: 700;
   animation: rise-in var(--motion-standard) var(--ease-out) calc(var(--motion-stagger) * 4) both;
-}
-
-/* Upright, the cards stand one above the other across the width, "VS" on
-   their seam, and share equally the height the bar, the prompt and the
-   row for NEXT leave. A card is never shorter than a 150-pixel picture
-   with its 24-pixel padding, 198 pixels, and its footer: below that the
-   whole screen scrolls. The prompt and the names take the type
-   QuestionScreen gives in --prompt-size and --name-size, one for the
-   window, and a value stands at the bottom right of its picture's area,
-   so no card grows or moves as the values show. */
-html[data-size="tall"] .question,
-html[data-size="tall-narrow"] .question {
-  --card-footer: calc(var(--name-size) * 1.25 + 40px);
-  min-height: 100vh;
-  min-height: 100dvh;
-  height: auto;
-  overflow-y: auto;
-  overscroll-behavior: none;
-}
-
-html[data-size="tall"] .prompt,
-html[data-size="tall-narrow"] .prompt {
-  font-size: var(--prompt-size);
-  line-height: 1.25;
-  white-space: nowrap;
-}
-
-html[data-size="tall"] .dinosaur-cards,
-html[data-size="tall-narrow"] .dinosaur-cards {
-  position: relative;
-  flex: 1 0 auto;
-  flex-direction: column;
-  align-items: stretch;
-}
-
-html[data-size="tall"] .dinosaur-card,
-html[data-size="tall-narrow"] .dinosaur-card {
-  position: relative;
-  flex: 1 0 0;
-  min-height: calc(198px + var(--card-footer));
-}
-
-html[data-size="tall"] .dinosaur-footer,
-html[data-size="tall-narrow"] .dinosaur-footer {
-  flex: none;
-  height: var(--card-footer);
-  box-sizing: border-box;
-  flex-wrap: nowrap;
-}
-
-html[data-size="tall"] .dinosaur-name,
-html[data-size="tall-narrow"] .dinosaur-name {
-  font-size: var(--name-size);
-  line-height: 1.25;
-  white-space: nowrap;
-  overflow-wrap: normal;
-}
-
-html[data-size="tall"] .dinosaur-value-chip,
-html[data-size="tall-narrow"] .dinosaur-value-chip {
-  position: absolute;
-  right: 24px;
-  bottom: calc(var(--card-footer) + 24px);
-}
-
-html[data-size="tall"] .versus,
-html[data-size="tall-narrow"] .versus {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  margin: auto;
-}
-
-/* In a tall-narrow window, an iPhone upright, the question stands as in
-   a tall one on 20-pixel sides and with less room between its parts:
-   "HOME" is its symbol alone, a 56-pixel square, so the steps keep their
-   room, and a card's picture may be as short as 110 pixels before the
-   screen scrolls. */
-html[data-size="tall-narrow"] .question {
-  padding:
-    calc(24px + env(safe-area-inset-top))
-    calc(20px + var(--screen-right))
-    calc(32px + env(safe-area-inset-bottom))
-    calc(20px + var(--screen-left));
-  gap: 20px;
-}
-
-html[data-size="tall-narrow"] .question-bar {
-  gap: 16px;
-}
-html[data-size="tall-narrow"] .question .home-button {
-  width: 56px;
-  padding: 0 16px;
-}
-
-html[data-size="tall-narrow"] .dinosaur-cards {
-  gap: 16px;
-}
-
-html[data-size="tall-narrow"] .dinosaur-card {
-  min-height: calc(142px + var(--card-footer));
-}
-
-html[data-size="tall-narrow"] .dinosaur-art {
-  padding: 16px;
-}
-
-html[data-size="tall-narrow"] .dinosaur-footer {
-  padding: 20px;
-}
-
-/* In a wide-short window, an iPhone on its side, the question keeps the
-   cards side by side under a 48-pixel bar, 8 under the top and 20 past
-   each side's inset, with NEXT beside the prompt rather than under the
-   cards, so they take the rest of the height. A card's value stands at
-   the bottom right of its picture's area, its name on one line in a
-   footer of its own height, so no card grows as the values show. The
-   prompt is 28 pixels, or less where the widest of either language
-   would not fit beside the widest NEXT, 210 pixels; a name is 20, or
-   less where the longest would not fit its card. */
-html[data-size="wide-short"] .question {
-  padding:
-    calc(8px + env(safe-area-inset-top))
-    calc(20px + var(--screen-right))
-    calc(12px + env(safe-area-inset-bottom))
-    calc(20px + var(--screen-left));
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-rows: auto auto minmax(0, 1fr);
-  gap: 8px 12px;
-  container-type: inline-size;
-}
-
-html[data-size="wide-short"] .question-bar {
-  grid-column: 1 / -1;
-  gap: 16px;
-}
-html[data-size="wide-short"] .question .home-button {
-  height: 48px;
-  font-size: 17px;
-}
-
-html[data-size="wide-short"] .question .progress {
-  font-size: 17px;
-}
-
-html[data-size="wide-short"] .question .prompt {
-  grid-row: 2;
-  grid-column: 1;
-  gap: 12px;
-  font-size: min(28px, calc((100cqi - 274px) / 9.97));
-  line-height: 1.25;
-  white-space: nowrap;
-}
-
-html[data-size="wide-short"] .question .prompt-symbol {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-}
-
-html[data-size="wide-short"] .question .prompt-symbol svg {
-  width: 24px;
-  height: 24px;
-}
-
-html[data-size="wide-short"] .question .next-row {
-  grid-row: 2;
-  grid-column: 2;
-  min-height: 48px;
-}
-
-html[data-size="wide-short"] .question .next-button {
-  height: 48px;
-  padding: 0 20px 0 24px;
-  gap: 10px;
-  border-radius: 16px;
-  font-size: 20px;
-}
-
-html[data-size="wide-short"] .question .next-button svg {
-  width: 22px;
-  height: 22px;
-}
-
-html[data-size="wide-short"] .dinosaur-cards {
-  grid-row: 3;
-  grid-column: 1 / -1;
-  align-items: stretch;
-  gap: 8px;
-}
-
-html[data-size="wide-short"] .dinosaur-card {
-  position: relative;
-  border-radius: 20px;
-  container-type: inline-size;
-}
-
-html[data-size="wide-short"] .dinosaur-art {
-  padding: 12px;
-}
-
-html[data-size="wide-short"] .dinosaur-footer {
-  flex: none;
-  height: 41px;
-  box-sizing: border-box;
-  padding: 8px 12px;
-  flex-wrap: nowrap;
-}
-
-html[data-size="wide-short"] .dinosaur-name {
-  font-size: min(20px, calc((100cqi - 24px) / 12.7));
-  line-height: 1.25;
-  white-space: nowrap;
-  overflow-wrap: normal;
-}
-
-html[data-size="wide-short"] .dinosaur-value-chip {
-  position: absolute;
-  right: 12px;
-  bottom: 53px;
-  height: 36px;
-  padding: 0 12px;
-  gap: 6px;
-  border-radius: 10px;
-  font-size: 17px;
-}
-
-html[data-size="wide-short"] .mark {
-  top: 12px;
-  left: 12px;
-  height: 36px;
-  padding: 0 14px 0 10px;
-  gap: 6px;
-  border-radius: 18px;
-  font-size: 15px;
-}
-
-html[data-size="wide-short"] .versus {
-  align-self: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 20px;
-  font-size: 15px;
 }
 
 /* The catalogue: its bar stays at the top while the cards, as many to a
@@ -6525,6 +6090,7 @@ html[data-size="tall"] .pairs-bar .home-button {
    page, as home's are in a wide-short one. */
 html[data-size="tall-narrow"] .narrow-hidden,
 html[data-size="wide-short"] .home .narrow-hidden,
+html[data-size="wide-short"] .question .narrow-hidden,
 html[data-size="wide-short"] .result-with-levels .narrow-hidden,
 html[data-size="wide-short"] .dig-reveal-screen .narrow-hidden,
 html[data-size="wide-short"] .pairs-result .narrow-hidden,
@@ -10918,21 +10484,15 @@ html[data-theme="dark"],
 [data-theme="dark"] .dinosaur-fact-label,
 [data-theme="dark"] .dinosaur-group,
 [data-theme="dark"] .source-note,
-[data-theme="dark"] .dinosaur-value-chip svg,
 [data-theme="dark"] #version {
   color: #9ca3b6;
 }
 [data-theme="dark"] .featured-card[data-game="sort"] .featured-card-badge,
 [data-theme="dark"] .featured-card[data-game="labyrinth"] .featured-card-badge,
-[data-theme="dark"] .catalogue-art,
-[data-theme="dark"] .step,
-[data-theme="dark"] .dinosaur-art,
-[data-theme="dark"] .dinosaur-value-chip {
+[data-theme="dark"] .catalogue-art {
   background: #222a3d;
 }
 [data-theme="dark"] .featured-card[data-game="compare"] .featured-card-symbol,
-[data-theme="dark"] .step[data-step="current"],
-[data-theme="dark"] .prompt-symbol,
 [data-theme="dark"] .confetti-amber {
   background: #f2b24b;
 }
@@ -10963,14 +10523,16 @@ html[data-theme="dark"],
 }
 
 [data-theme="dark"] .step[data-step="done"],
-[data-theme="dark"] .next-button,
 [data-theme="dark"] .dinosaur-stage,
-[data-theme="dark"] .dinosaur-card[data-mark="correct"] .dinosaur-value-chip,
-[data-theme="dark"] .result {
+[data-theme="dark"] .result:not(.compare-result) {
   background: #2c3b66;
 }
 
-[data-theme="dark"] .dinosaur-card,
+[data-theme="dark"] .step { background: #222a3d; }
+[data-theme="dark"] .step[data-step="current"] { background: #f2b24b; }
+[data-theme="dark"] .prompt-symbol { background: #f2b24b; }
+[data-theme="dark"] .next-button { background: #2c3b66; }
+
 [data-theme="dark"] .catalogue-card,
 [data-theme="dark"] .dinosaur-fact {
   outline-color: #ece8de1f;
@@ -11057,33 +10619,6 @@ html[data-theme="dark"],
 
 [data-theme="dark"] .featured-card[data-game="catalogue"] .featured-card-footer {
   background: none;
-}
-
-[data-theme="dark"] .dinosaur-card[data-mark="correct"][data-chosen] {
-  outline-color: #63c98c;
-}
-
-[data-theme="dark"] .dinosaur-card[data-mark="wrong"] {
-  outline-color: #f08a78;
-}
-
-/* The light marks' white words would fade on the dark theme's lighter
-   green and terracotta, so they take the dark page's ink. */
-[data-theme="dark"] .mark {
-  color: #0f1320;
-}
-
-[data-theme="dark"] .dinosaur-card[data-mark="correct"] .mark {
-  background: #63c98c;
-}
-
-[data-theme="dark"] .dinosaur-card[data-mark="wrong"] .mark {
-  background: #f08a78;
-}
-
-[data-theme="dark"] .versus {
-  background: #ece8de;
-  color: #0f1320;
 }
 
 [data-theme="dark"] .glow-mid,
@@ -12224,6 +11759,825 @@ html[data-size="wide-short"] .friends-dig-site .new-visitor-button svg { width: 
 html:is([data-size="tall-narrow"], [data-size="wide-short"]) .friends-dig-site .friends-sand-wave { height: 24px; }
 html[data-size="wide-short"] .friends-dig-site .friends-bedrock { display: none; }
 
+
+
+/* Each band holds six games, wrapping at the pocket size for the device. */
+.home.home-dig-site .home-ground {
+  flex: none;
+  margin-top: calc(-1 * var(--home-gap));
+  width: 100%;
+  min-width: 0;
+}
+.home-layer {
+  position: relative;
+  container-type: inline-size;
+  --home-earth: var(--ds-strata-1);
+  background: var(--ds-strata-1);
+}
+.home-layer[data-depth="2"] {
+  --home-earth: var(--ds-strata-2);
+  background: var(--ds-strata-2);
+}
+.home-layer .tiles-grid {
+  display: grid;
+  /* A layer holds six games, so a row holds six or three, never a
+     count that leaves one alone below. */
+  grid-template-columns: repeat(3, minmax(0, 200px));
+  justify-content: center;
+  gap: 18px 12px;
+  padding: 16px var(--ds-page) 18px;
+  min-height: 180px;
+  box-sizing: border-box;
+  align-content: start;
+}
+@container (min-width: 980px) {
+  .home-layer .tiles-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); justify-content: stretch; }
+}
+.home-ground .home-ground-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  outline: none;
+  box-shadow: none;
+  background: transparent;
+  color: var(--ds-on-label);
+  overflow: visible;
+  text-align: center;
+  container-type: inline-size;
+  touch-action: pan-y;
+}
+.home-ground .home-ground-tile:focus-visible { outline: 3px solid var(--ds-action); outline-offset: 3px; }
+.home-tile-pocket {
+  box-sizing: border-box;
+  width: 100%;
+  height: 96px;
+  padding: 9px 12px 3px;
+  display: flex;
+  position: relative;
+  border-radius: var(--ds-radius-pocket-top) var(--ds-radius-pocket-top) var(--ds-radius-pocket-bottom) var(--ds-radius-pocket-bottom);
+  background: var(--ds-pocket-1);
+  box-shadow: inset 0 6px 10px var(--ds-pocket-shadow);
+}
+.home-layer[data-depth="2"] .home-tile-pocket { background: var(--ds-pocket-2); }
+/* Each game has its own pocket and symbol colour, at every depth. */
+.home-ground .compare-tile { --home-tile-pocket: var(--ds-pocket-compare); --home-tile-symbol: var(--ds-game-compare); }
+.home-ground .catalogue-tile { --home-tile-pocket: var(--ds-pocket-explore); --home-tile-symbol: var(--ds-game-explore); }
+.home-ground .pairs-tile { --home-tile-pocket: var(--ds-pocket-pairs); --home-tile-symbol: var(--ds-game-pairs); }
+.home-ground .skeletons-tile { --home-tile-pocket: var(--ds-pocket-bones); --home-tile-symbol: var(--ds-game-bones); }
+.home-ground .dig-tile { --home-tile-pocket: var(--ds-pocket-dig); --home-tile-symbol: var(--ds-game-dig); }
+.home-ground .sort-tile { --home-tile-pocket: var(--ds-pocket-sort); --home-tile-symbol: var(--ds-game-sort); }
+.home-ground .care-tile { --home-tile-pocket: var(--ds-pocket-care); --home-tile-symbol: var(--ds-game-care); }
+.home-ground .sand-writing-tile { --home-tile-pocket: var(--ds-pocket-draw); --home-tile-symbol: var(--ds-game-draw); }
+.home-ground .labyrinth-tile { --home-tile-pocket: var(--ds-pocket-maze); --home-tile-symbol: var(--ds-game-maze); }
+.home-ground .picture-puzzle-tile { --home-tile-pocket: var(--ds-pocket-puzzle); --home-tile-symbol: var(--ds-game-puzzle); }
+.home-ground .whose-jaw-tile { --home-tile-pocket: var(--ds-pocket-teeth); --home-tile-symbol: var(--ds-game-teeth); }
+.home-ground .coloring-tile { --home-tile-pocket: var(--ds-pocket-color); --home-tile-symbol: var(--ds-game-color); }
+.home-ground .home-ground-tile:not(.more-coming) .home-tile-pocket { background: var(--home-tile-pocket); }
+.home-ground .more-coming .home-tile-pocket { background: var(--ds-pocket-2); }
+
+.home-tile-pocket > .picture,
+.home-tile-pocket > .face-off,
+.home-tile-pocket > .picture-puzzle-tile-art,
+.home-tile-pocket > .sand-writing-tile-art,
+.home-tile-pocket > .pairs-tile-art {
+  position: relative;
+  inset: auto;
+  flex: none;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  margin: 0;
+  object-fit: contain;
+}
+.home-tile-pocket .face-off-picture { width: 50%; height: 100%; }
+.home-tile-pocket .pairs-tile-art { container-type: size; }
+.home-tile-pocket .pairs-tile-card { height: min(65cqh, 32cqw); background: var(--ds-label); box-shadow: 0 4px 12px var(--ds-ground-shadow); }
+.home-tile-pocket .pairs-tile-back { background: var(--ds-strong); color: var(--ds-on-strong); }
+.home-ground .home-tile-footer {
+  position: static;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  box-sizing: border-box;
+  max-width: 100%;
+  width: max-content;
+  height: auto;
+  margin: 0;
+  padding: var(--ds-chip-pad-y) var(--ds-chip-pad-x) var(--ds-chip-pad-y) var(--ds-chip-pad-x-lead);
+  gap: var(--ds-chip-gap);
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-label);
+  color: var(--ds-on-label);
+}
+.home-ground .home-tile-symbol {
+  display: flex;
+  position: static;
+  flex: none;
+  width: var(--ds-size-tile-icon);
+  height: var(--ds-size-tile-icon);
+  border-radius: 0;
+  background: transparent;
+  color: var(--home-tile-symbol, var(--ds-action));
+}
+.home-ground .home-tile-symbol svg { width: 100%; height: 100%; }
+.home-ground .home-tile-title {
+  min-width: 0;
+  font-size: var(--ds-size-label);
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+.home-new {
+  position: absolute;
+  top: -8px;
+  left: 4px;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  width: 24px;
+  height: 24px;
+  padding: 5px;
+  border-radius: 12px;
+  background: var(--ds-reward);
+  color: var(--ds-on-reward);
+}
+.home-ground .more-coming { opacity: .6; }
+.home-ground .more-coming-picture { opacity: .35; }
+.home-ground .more-coming .home-tile-footer { background: transparent; color: var(--ds-ink-soft); }
+.home-ground .more-coming .home-tile-symbol { color: var(--ds-ink-soft); }
+.home-earth-wave {
+  position: absolute;
+  left: 0;
+  top: -20px;
+  width: 100%;
+  height: 30px;
+  fill: var(--home-earth);
+  pointer-events: none;
+}
+.home-bedrock {
+  position: relative;
+  --home-earth: var(--ds-strata-3);
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex: 1 0 auto;
+  min-height: 80px;
+  padding: 0 var(--ds-page) env(safe-area-inset-bottom);
+  margin-top: calc(-1 * var(--home-gap));
+  background: var(--ds-strata-3);
+  color: var(--ds-ink);
+}
+.home-parent-note { margin: 0; font-size: var(--ds-size-foot); font-weight: 400; opacity: .75; }
+.home-version { flex: none; font-size: 11px; font-weight: 400; opacity: .6; }
+body:has(.home-dig-site) #version,
+body:has(.friends-dig-site) #version,
+body:has(.whose-jaw-welcome, .whose-jaw-board) #version { display: none; }
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .home-layer .tiles-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  column-gap: 10px;
+  padding: var(--ds-space-l) 20px 24px;
+  min-height: 0;
+}
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .home-tile-pocket { height: 88px; padding: 8px 8px 2px; }
+html[data-size="tall-narrow"] .home-bedrock { flex-direction: column; align-items: flex-start; justify-content: flex-start; min-height: 110px; padding-top: 22px; }
+
+/* A COMPARE question in the dig site. The sky fills the window, the sand
+   rises behind the cards and NEXT, and the ochre layer lies under them.
+   The whole page scrolls when the pictures would fall under their least
+   height; nothing inside it scrolls of its own. Each size class below only
+   sets the measures. The shared controls above retain their other games'
+   appearance; question-specific rules use the dig-site tokens. */
+.question {
+  --sky-fade: 50%;
+  --side: 40px;
+  --bar-gap: 16px;
+  --sand-lead: 64px;
+  --sand-pad: 18px;
+  --cards-gap: 24px;
+  --versus-width: 56px;
+  --pocket-top: 22px;
+  --pocket-bottom: 14px;
+  --pocket-side: 28px;
+  --name-gap: 6px;
+  --min-picture: 150px;
+  --mark-size: 60px;
+  --mark-symbol: 34px;
+  --mark-x: -8px;
+  --mark-y: -4px;
+  --chip-right: -12px;
+  --chip-font: 22px;
+  --ochre: 60px;
+  --edge: 30px;
+  --next-lead: 6px;
+  --next-height: 67px;
+  position: relative;
+  isolation: isolate;
+  overflow-x: clip;
+  min-height: 100vh;
+  min-height: 100dvh;
+  box-sizing: border-box;
+  padding:
+    calc(36px + env(safe-area-inset-top))
+    calc(40px + var(--screen-right))
+    calc(87px + env(safe-area-inset-bottom))
+    calc(40px + var(--screen-left));
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(auto, 1fr) auto;
+  container-type: inline-size;
+  background: linear-gradient(var(--ds-sky-top), var(--ds-sky-bottom) var(--sky-fade));
+  color: var(--ds-ink);
+  font-family: var(--ds-font);
+}
+
+/* Placed on the cards' row with its other edges left to the grid's padding
+   box, so the sand runs from the window's one side to the other and down
+   to its foot whichever way the parts stand. */
+.question-sand {
+  position: absolute;
+  z-index: -1;
+  grid-row-start: 3;
+  top: calc(-1 * var(--sand-pad));
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: var(--ds-strata-1);
+  color: var(--ds-strata-1);
+}
+
+.question-ochre {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: calc(var(--ochre) + env(safe-area-inset-bottom));
+  background: var(--ds-strata-2);
+  color: var(--ds-strata-2);
+}
+
+.question-edge {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% - 10px);
+  left: 0;
+  width: 100%;
+  height: var(--edge);
+  fill: currentColor;
+}
+
+.question-bar {
+  grid-row: 1;
+  grid-column: 1 / -1;
+  min-width: 0;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-space-m);
+}
+
+.question .home-button {
+  flex: none;
+  height: 48px;
+  padding: 0 18px 0 16px;
+  gap: var(--ds-space-s);
+  border: none;
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-quiet);
+  color: var(--ds-ink);
+  font-size: var(--ds-size-label);
+  font-weight: 800;
+}
+
+.question-position {
+  flex: 0 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.question .steps {
+  flex: 0 1 auto;
+  min-width: 0;
+  gap: 6px;
+}
+
+.question .step,
+.question .step[data-step="current"] {
+  flex: 0 1 28px;
+  width: 28px;
+  min-width: 6px;
+  height: 10px;
+  border-radius: var(--ds-radius-tag);
+  background: var(--ds-outline);
+}
+
+.question .step[data-step="right"] {
+  background: var(--ds-reward);
+}
+
+.question .step[data-step="just-right"] {
+  background: var(--ds-good);
+}
+
+.question .step[data-step="wrong"] {
+  background: var(--ds-bad);
+}
+
+.question .step[data-step="current"] {
+  background: var(--ds-ink);
+}
+
+.question .progress,
+.question-best {
+  flex: none;
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: var(--ds-space-s);
+  color: var(--ds-ink);
+  font-size: var(--ds-size-label);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.question-best {
+  align-items: center;
+  gap: var(--ds-btn-gap);
+}
+
+.question-best svg {
+  flex: none;
+  color: var(--ds-reward);
+}
+
+.question-tally {
+  color: var(--ds-ink);
+  font-size: var(--ds-size-number);
+  font-weight: 800;
+}
+
+.question-of {
+  color: var(--ds-ink-soft);
+}
+
+.question-total {
+  margin-left: 0.25em;
+}
+
+.question .prompt {
+  grid-row: 2;
+  grid-column: 1 / -1;
+  min-width: 0;
+  margin: var(--bar-gap) 0 var(--sand-lead);
+  justify-content: center;
+  font-size: var(--prompt-size, 40px);
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.question .prompt-symbol {
+  width: 60px;
+  height: 60px;
+  border-radius: 30px 30px 15px 15px;
+  background: var(--ds-pocket-1);
+  box-shadow: inset 0 6px 10px var(--ds-pocket-shadow);
+  color: var(--ds-action);
+}
+
+.dinosaur-cards {
+  grid-row: 3;
+  grid-column: 1 / -1;
+  position: relative;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--versus-width) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--cards-gap);
+}
+
+.question .dinosaur-card {
+  align-self: stretch;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: var(--pocket-top) var(--pocket-side) var(--pocket-bottom);
+  display: flex;
+  flex-direction: column;
+  gap: var(--name-gap);
+  border: none;
+  border-radius: var(--ds-radius-pocket-top) var(--ds-radius-pocket-top) var(--ds-radius-pocket-bottom) var(--ds-radius-pocket-bottom);
+  outline: 6px solid transparent;
+  outline-offset: -6px;
+  background: var(--ds-pocket-1);
+  box-shadow: inset 0 6px 10px var(--ds-pocket-shadow);
+  color: var(--ds-ink);
+  text-align: center;
+}
+
+/* The ring is an outline, so it takes no room and an answer moves nothing. */
+.question .dinosaur-card[data-mark="correct"] {
+  outline-color: var(--ds-good);
+}
+
+.question .dinosaur-card[data-mark="wrong"] {
+  outline-color: var(--ds-bad);
+  animation: pocket-shake var(--motion-alive) var(--ease-out);
+}
+
+/* The tapped card gives under the finger and springs back. */
+.question .dinosaur-card[data-mark="correct"][data-chosen] {
+  animation: squish var(--motion-standard) var(--ease-out);
+}
+
+@keyframes pocket-shake {
+  25% { transform: translateX(calc(-6px * var(--motion-amount))); }
+  50% { transform: translateX(calc(5px * var(--motion-amount))); }
+  75% { transform: translateX(calc(-3px * var(--motion-amount))); }
+}
+
+.dinosaur-art {
+  position: relative;
+  flex: 1 1 var(--min-picture);
+  display: block;
+  min-height: var(--min-picture);
+}
+
+/* Taken out of the flow so a picture's own height cannot stretch the row
+   that shares the window's height. Every picture fills the same box. */
+.dinosaur-picture {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.dinosaur-name {
+  flex: none;
+  color: var(--ds-ink);
+  font-size: var(--name-size, min(34px, calc(((100cqi - var(--versus-width) - 2 * var(--cards-gap)) / 2 - 2 * var(--pocket-side)) / 12.7)));
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+/* A mark's symbol and its colour tell right from wrong without a word. */
+.mark {
+  position: absolute;
+  top: var(--mark-y);
+  left: var(--mark-x);
+  box-sizing: border-box;
+  width: var(--mark-size);
+  height: var(--mark-size);
+  display: grid;
+  place-items: center;
+  border: 4px solid var(--ds-label);
+  border-radius: 50%;
+  animation: stamp-in var(--motion-standard) var(--ease-out) both;
+}
+
+.mark svg {
+  width: var(--mark-symbol);
+  height: var(--mark-symbol);
+}
+
+.dinosaur-card[data-mark="correct"] .mark {
+  background: var(--ds-good);
+  color: var(--ds-on-good);
+  animation-timing-function: var(--ease-overshoot);
+}
+
+.dinosaur-card[data-mark="wrong"] .mark {
+  background: var(--ds-bad);
+  color: var(--ds-on-action);
+}
+
+.dinosaur-value-chip {
+  position: absolute;
+  right: var(--chip-right);
+  bottom: var(--ds-space-s);
+  box-sizing: border-box;
+  max-width: calc(100% - 2 * var(--chip-right));
+  padding: 9px 16px 9px 12px;
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-s);
+  border-radius: var(--ds-radius-tag);
+  background: var(--ds-strong);
+  color: var(--ds-on-strong);
+  font-size: var(--chip-font);
+  font-weight: 800;
+  line-height: 1.25;
+  white-space: nowrap;
+  animation: rise-in var(--motion-standard) var(--ease-out) both;
+}
+
+.dinosaur-value-chip svg {
+  flex: none;
+}
+
+/* The values rise in one after the other. */
+.dinosaur-cards > :last-child .dinosaur-value-chip {
+  animation-delay: calc(var(--motion-stagger) * 2);
+}
+
+.versus {
+  width: var(--versus-width);
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--ds-radius-tag);
+  background: var(--ds-strong);
+  color: var(--ds-on-strong);
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  animation: stamp-in var(--motion-standard) var(--ease-overshoot) both;
+}
+
+.next-row {
+  grid-row: 4;
+  grid-column: 1 / -1;
+  box-sizing: border-box;
+  min-height: calc(var(--next-lead) + var(--next-height));
+  padding-top: var(--next-lead);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.question .next-button {
+  height: var(--next-height);
+  padding: 0 var(--ds-btn-pad-x);
+  justify-content: center;
+  gap: var(--ds-btn-gap);
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-action);
+  color: var(--ds-on-action);
+  font-size: var(--ds-size-action);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+/* Upright, the pockets stand one above the other across the width, "VS" on
+   their seam, and share equally the height the bar, the prompt and NEXT's
+   row leave. QuestionScreen gives the window's one type. */
+html[data-size="tall"] .question,
+html[data-size="tall-narrow"] .question {
+  --sand-pad: 22px;
+  --sand-lead: 68px;
+  --next-lead: 20px;
+  padding:
+    calc(36px + env(safe-area-inset-top))
+    calc(56px + var(--screen-right))
+    calc(70px + env(safe-area-inset-bottom))
+    calc(56px + var(--screen-left));
+  --ochre: 50px;
+}
+
+html[data-size="tall"] .dinosaur-cards,
+html[data-size="tall-narrow"] .dinosaur-cards {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(auto, 1fr) minmax(auto, 1fr);
+  align-items: stretch;
+}
+
+html[data-size="tall"] .versus,
+html[data-size="tall-narrow"] .versus {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  margin: auto;
+}
+
+/* In a tall-narrow window, an iPhone upright, HOME is its symbol alone, a
+   56-pixel square, so the steps keep their room and the row can drop the
+   best it has no room for; a picture may be as short as 110 pixels. */
+html[data-size="tall-narrow"] .question {
+  --sky-fade: 40%;
+  --side: 20px;
+  --bar-gap: 14px;
+  --sand-lead: 44px;
+  --sand-pad: 14px;
+  --cards-gap: 16px;
+  --pocket-top: 14px;
+  --pocket-bottom: 10px;
+  --pocket-side: 20px;
+  --name-gap: 4px;
+  --min-picture: 110px;
+  --mark-size: 52px;
+  --mark-symbol: 30px;
+  --mark-x: -6px;
+  --mark-y: 0px;
+  --chip-right: -8px;
+  --ochre: 30px;
+  --edge: 24px;
+  --next-lead: 12px;
+  --next-height: 64px;
+  padding:
+    calc(24px + env(safe-area-inset-top))
+    calc(20px + var(--screen-right))
+    calc(62px + env(safe-area-inset-bottom))
+    calc(20px + var(--screen-left));
+}
+
+html[data-size="tall-narrow"] .question-bar {
+  min-height: 56px;
+}
+
+html[data-size="tall-narrow"] .question .home-button {
+  width: 56px;
+  height: 56px;
+  padding: 0;
+  justify-content: center;
+}
+
+html[data-size="tall-narrow"] .question-position {
+  flex: 1 1 0;
+  justify-content: flex-end;
+  gap: var(--ds-btn-gap);
+}
+
+html[data-size="tall-narrow"] .question .steps {
+  flex: 1 1 0;
+  gap: 4px;
+}
+
+html[data-size="tall-narrow"] .question .step,
+html[data-size="tall-narrow"] .question .step[data-step="current"] {
+  flex: 1 1 0;
+  width: auto;
+  max-width: 22px;
+}
+
+html[data-size="tall-narrow"] .question .prompt {
+  gap: var(--ds-space-m);
+  font-size: var(--prompt-size, 27px);
+}
+
+html[data-size="tall-narrow"] .question .prompt-symbol {
+  width: 46px;
+  height: 46px;
+  border-radius: 23px 23px 12px 12px;
+}
+
+html[data-size="tall-narrow"] .question .prompt-symbol svg {
+  width: 24px;
+  height: 24px;
+}
+
+html[data-size="tall-narrow"] .next-row {
+  justify-content: stretch;
+}
+
+html[data-size="tall-narrow"] .question .next-button {
+  flex: 1 1 auto;
+}
+
+/* In a wide-short window, an iPhone on its side, the pockets stay side by
+   side under a 48-pixel bar 8 under the top, with NEXT beside the prompt
+   rather than under the pockets, and no ochre: the sand takes the foot.
+   The prompt is 24 pixels, or less where the widest of either language
+   would not fit beside the widest NEXT, 210 pixels. */
+html[data-size="wide-short"] .question {
+  --bar-gap: 2px;
+  --sand-lead: 30px;
+  --sand-pad: 12px;
+  --cards-gap: 16px;
+  --pocket-top: 14px;
+  --pocket-bottom: 10px;
+  --pocket-side: 20px;
+  --name-gap: 4px;
+  --min-picture: 110px;
+  --mark-size: 52px;
+  --mark-symbol: 30px;
+  --mark-x: -6px;
+  --mark-y: 0px;
+  --chip-right: -8px;
+  --edge: 24px;
+  --next-lead: 0px;
+  --next-height: 48px;
+  padding:
+    calc(8px + env(safe-area-inset-top))
+    calc(20px + var(--screen-right))
+    calc(12px + env(safe-area-inset-bottom))
+    calc(20px + var(--screen-left));
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto minmax(auto, 1fr);
+}
+
+/* A short window's narrowest widths close the gaps before the type gives. */
+@container (max-width: 675px) {
+  html[data-size="wide-short"] .dinosaur-cards {
+    --cards-gap: 8px;
+    --versus-width: 40px;
+    --pocket-side: 12px;
+  }
+
+  html[data-size="wide-short"] .dinosaur-card {
+    --mark-x: -2px;
+    --chip-right: 0px;
+    --chip-font: 17px;
+  }
+}
+
+html[data-size="wide-short"] .question-ochre {
+  display: none;
+}
+
+html[data-size="wide-short"] .question-bar {
+  grid-column: 1 / -1;
+}
+
+html[data-size="wide-short"] .question .home-button {
+  width: 48px;
+  padding: 0;
+  justify-content: center;
+}
+
+html[data-size="wide-short"] .question-position {
+  flex: 1 1 0;
+  justify-content: flex-end;
+  gap: var(--ds-btn-gap);
+}
+
+html[data-size="wide-short"] .question .steps {
+  gap: 4px;
+}
+
+html[data-size="wide-short"] .question .step,
+html[data-size="wide-short"] .question .step[data-step="current"] {
+  flex-basis: 19px;
+  width: 19px;
+}
+
+html[data-size="wide-short"] .question .prompt {
+  grid-column: 1;
+  min-height: 48px;
+  gap: var(--ds-space-m);
+  justify-content: flex-start;
+  font-size: min(24px, calc((100cqi - 274px) / 10.12));
+}
+
+html[data-size="wide-short"] .question .prompt-symbol {
+  width: 40px;
+  height: 40px;
+  border-radius: 20px 20px 10px 10px;
+}
+
+html[data-size="wide-short"] .question .prompt-symbol svg {
+  width: 22px;
+  height: 22px;
+}
+
+html[data-size="wide-short"] .dinosaur-name {
+  font-size: min(24px, calc(((100cqi - var(--versus-width) - 2 * var(--cards-gap)) / 2 - 2 * var(--pocket-side)) / 12.7));
+}
+
+html[data-size="wide-short"] .next-row {
+  width: 210px;
+  grid-row: 2;
+  grid-column: 2;
+  margin-top: var(--bar-gap);
+}
+
+html[data-size="wide-short"] .question .next-button {
+  width: 100%;
+  padding: 0 20px 0 24px;
+  font-size: 20px;
+}
+
+html[data-size="wide-short"] .question .next-button svg {
+  width: 22px;
+  height: 22px;
+}
+
+/* The best stays off the small windows' single bar. */
+html[data-size="tall-narrow"] .question-best,
+html[data-size="wide-short"] .question-best {
+  display: none;
+}
+
+.question button:focus-visible { outline: 3px solid var(--ds-action); outline-offset: 3px; }
+
 /* The tooth game's welcome is the dig site: its title in the sky, the jaw
    beside its gummy dinosaur and the controls on the sand, the bedrock
    along the bottom. Each size takes its board's offsets; the hero keeps
@@ -13087,201 +13441,211 @@ body:has(.whose-jaw-shelf-screen) #version { display: none; }
 
   .home.home-dig-site .home-today-copy,
   .home.home-dig-site .home-today-art { animation: fade-in var(--motion-small) var(--ease-out) both; }
+
+  .question .dinosaur-card[data-mark],
+  .question .dinosaur-card[data-mark="correct"][data-chosen],
+  .question .mark,
+  .question .versus,
+  .question .dinosaur-value-chip,
+  .question .next-button {
+    animation: fade-in var(--motion-small) var(--ease-out) both;
+  }
 }
 
-/* Each band holds six games, wrapping at the pocket size for the device. */
-.home.home-dig-site .home-ground {
-  flex: none;
-  margin-top: calc(-1 * var(--home-gap));
-  width: 100%;
-  min-width: 0;
+/* COMPARE keeps the shared rewards and turn parts, on the dig site's sky
+   and sand. Minimum picture and control sizes grow the whole page. */
+html[data-size] .compare-result {
+  --result-ink: var(--ds-ink);
+  --result-ink-soft: var(--ds-ink-soft);
+  --result-side: 32px;
+  height: auto;
+  min-height: 100dvh;
+  padding: calc(32px + env(safe-area-inset-top)) calc(32px + var(--screen-right)) 0 calc(32px + var(--screen-left));
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 0;
+  overflow: hidden;
+  background-color: var(--ds-sky-bottom);
+  background-image: linear-gradient(180deg, var(--ds-sky-top), var(--ds-sky-bottom) 50%);
+  color: var(--ds-ink);
 }
-.home-layer {
+.compare-result-sky {
   position: relative;
+  isolation: isolate;
   container-type: inline-size;
-  --home-earth: var(--ds-strata-1);
-  background: var(--ds-strata-1);
+  flex: 1 0 120px;
+  min-height: 120px;
+  max-height: none;
 }
-.home-layer[data-depth="2"] {
-  --home-earth: var(--ds-strata-2);
-  background: var(--ds-strata-2);
+html[data-size] .compare-result .result-hero {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 120px;
+  max-height: min(100%, 480px, 75cqi);
+  top: auto;
+  object-fit: contain;
 }
-.home-layer .tiles-grid {
-  display: grid;
-  /* A layer holds six games, so a row holds six or three, never a
-     count that leaves one alone below. */
-  grid-template-columns: repeat(3, minmax(0, 200px));
-  justify-content: center;
-  gap: 18px 12px;
-  padding: 16px var(--ds-page) 18px;
-  min-height: 180px;
-  box-sizing: border-box;
-  align-content: start;
+.compare-result-sky::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  bottom: 0;
+  left: 35%;
+  width: 30%;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--ds-ground-shadow);
 }
-@container (min-width: 980px) {
-  .home-layer .tiles-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); justify-content: stretch; }
-}
-.home-ground .home-ground-tile {
+html[data-size] .compare-result .result-content {
   position: relative;
+  isolation: isolate;
+  container-type: inline-size;
+  flex: 0 0 auto;
+  align-self: stretch;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
-  gap: 10px;
-  min-width: 0;
-  min-height: 44px;
-  padding: 0;
-  margin: 0;
-  border: 0;
-  border-radius: 0;
-  outline: none;
-  box-shadow: none;
-  background: transparent;
-  color: var(--ds-on-label);
-  overflow: visible;
-  text-align: center;
-  container-type: inline-size;
-  touch-action: pan-y;
+  gap: 8px;
+  padding: 22px 0 calc(44px + env(safe-area-inset-bottom));
 }
-.home-ground .home-ground-tile:focus-visible { outline: 3px solid var(--ds-action); outline-offset: 3px; }
-.home-tile-pocket {
-  box-sizing: border-box;
-  width: 100%;
-  height: 96px;
-  padding: 9px 12px 3px;
-  display: flex;
-  position: relative;
-  border-radius: var(--ds-radius-pocket-top) var(--ds-radius-pocket-top) var(--ds-radius-pocket-bottom) var(--ds-radius-pocket-bottom);
-  background: var(--ds-pocket-1);
-  box-shadow: inset 0 6px 10px var(--ds-pocket-shadow);
-}
-.home-layer[data-depth="2"] .home-tile-pocket { background: var(--ds-pocket-2); }
-/* Each game has its own pocket and symbol colour, at every depth. */
-.home-ground .compare-tile { --home-tile-pocket: var(--ds-pocket-compare); --home-tile-symbol: var(--ds-game-compare); }
-.home-ground .catalogue-tile { --home-tile-pocket: var(--ds-pocket-explore); --home-tile-symbol: var(--ds-game-explore); }
-.home-ground .pairs-tile { --home-tile-pocket: var(--ds-pocket-pairs); --home-tile-symbol: var(--ds-game-pairs); }
-.home-ground .skeletons-tile { --home-tile-pocket: var(--ds-pocket-bones); --home-tile-symbol: var(--ds-game-bones); }
-.home-ground .dig-tile { --home-tile-pocket: var(--ds-pocket-dig); --home-tile-symbol: var(--ds-game-dig); }
-.home-ground .sort-tile { --home-tile-pocket: var(--ds-pocket-sort); --home-tile-symbol: var(--ds-game-sort); }
-.home-ground .care-tile { --home-tile-pocket: var(--ds-pocket-care); --home-tile-symbol: var(--ds-game-care); }
-.home-ground .sand-writing-tile { --home-tile-pocket: var(--ds-pocket-draw); --home-tile-symbol: var(--ds-game-draw); }
-.home-ground .labyrinth-tile { --home-tile-pocket: var(--ds-pocket-maze); --home-tile-symbol: var(--ds-game-maze); }
-.home-ground .picture-puzzle-tile { --home-tile-pocket: var(--ds-pocket-puzzle); --home-tile-symbol: var(--ds-game-puzzle); }
-.home-ground .whose-jaw-tile { --home-tile-pocket: var(--ds-pocket-teeth); --home-tile-symbol: var(--ds-game-teeth); }
-.home-ground .coloring-tile { --home-tile-pocket: var(--ds-pocket-color); --home-tile-symbol: var(--ds-game-color); }
-.home-ground .home-ground-tile:not(.more-coming) .home-tile-pocket { background: var(--home-tile-pocket); }
-.home-ground .more-coming .home-tile-pocket { background: var(--ds-pocket-2); }
-
-.home-tile-pocket > .picture,
-.home-tile-pocket > .face-off,
-.home-tile-pocket > .picture-puzzle-tile-art,
-.home-tile-pocket > .sand-writing-tile-art,
-.home-tile-pocket > .pairs-tile-art {
-  position: relative;
-  inset: auto;
-  flex: none;
-  width: 100%;
-  height: 100%;
-  min-height: 0;
-  padding: 0;
-  margin: 0;
-  object-fit: contain;
-}
-.home-tile-pocket .face-off-picture { width: 50%; height: 100%; }
-.home-tile-pocket .pairs-tile-art { container-type: size; }
-.home-tile-pocket .pairs-tile-card { height: min(65cqh, 32cqw); background: var(--ds-label); box-shadow: 0 4px 12px var(--ds-ground-shadow); }
-.home-tile-pocket .pairs-tile-back { background: var(--ds-strong); color: var(--ds-on-strong); }
-.home-ground .home-tile-footer {
-  position: static;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: none;
-  box-sizing: border-box;
-  max-width: 100%;
-  width: max-content;
-  height: auto;
-  margin: 0;
-  padding: var(--ds-chip-pad-y) var(--ds-chip-pad-x) var(--ds-chip-pad-y) var(--ds-chip-pad-x-lead);
-  gap: var(--ds-chip-gap);
-  border-radius: var(--ds-radius-pill);
-  background: var(--ds-label);
-  color: var(--ds-on-label);
-}
-.home-ground .home-tile-symbol {
-  display: flex;
-  position: static;
-  flex: none;
-  width: var(--ds-size-tile-icon);
-  height: var(--ds-size-tile-icon);
-  border-radius: 0;
-  background: transparent;
-  color: var(--home-tile-symbol, var(--ds-action));
-}
-.home-ground .home-tile-symbol svg { width: 100%; height: 100%; }
-.home-ground .home-tile-title {
-  min-width: 0;
-  font-size: var(--ds-size-label);
-  font-weight: 700;
-  line-height: 1.25;
-  letter-spacing: 0;
-  white-space: nowrap;
-}
-.home-new {
+.compare-result-sand {
   position: absolute;
-  top: -8px;
-  left: 4px;
-  display: grid;
-  place-items: center;
-  box-sizing: border-box;
-  width: 24px;
-  height: 24px;
-  padding: 5px;
-  border-radius: 12px;
-  background: var(--ds-reward);
-  color: var(--ds-on-reward);
-}
-.home-ground .more-coming { opacity: .6; }
-.home-ground .more-coming-picture { opacity: .35; }
-.home-ground .more-coming .home-tile-footer { background: transparent; color: var(--ds-ink-soft); }
-.home-ground .more-coming .home-tile-symbol { color: var(--ds-ink-soft); }
-.home-earth-wave {
-  position: absolute;
-  left: 0;
-  top: -20px;
-  width: 100%;
-  height: 30px;
-  fill: var(--home-earth);
+  z-index: -1;
+  inset: 0 calc(-1 * (var(--result-side) + var(--screen-right))) 0 calc(-1 * (var(--result-side) + var(--screen-left)));
+  background: var(--ds-strata-1);
   pointer-events: none;
 }
-.home-bedrock {
-  position: relative;
-  --home-earth: var(--ds-strata-3);
-  box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+.compare-result-edge {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% - 1px);
+  width: 100%;
+  height: 24px;
+  fill: var(--ds-strata-1);
+}
+.compare-result-ochre {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: calc(20px + env(safe-area-inset-bottom));
+  background: var(--ds-strata-2);
+}
+.compare-result-ochre .compare-result-edge { fill: var(--ds-strata-2); height: 16px; }
+html[data-size] .compare-result .result-score { order: 1; gap: 8px; }
+html[data-size] .compare-result .result-score-value { font-size: 64px; font-weight: 800; }
+html[data-size] .compare-result .result-score-total { font-size: 34px; color: var(--ds-ink-soft); }
+html[data-size] .compare-result .result-stars { order: 2; font-size: 44px; gap: 6px; }
+.compare-result .star { display: flex; width: 1em; height: 1em; color: var(--ds-ink-soft); }
+.compare-result .star svg { width: 100%; height: 100%; stroke: var(--ds-ink-soft); }
+.compare-result .star-won { color: var(--ds-reward); }
+html[data-size] .compare-result .result-title { order: 3; font-size: 34px; line-height: 1.2; font-weight: 800; }
+html[data-size] .compare-result .celebration {
+  order: 4;
+  height: 44px;
+  padding: 0 14px;
   gap: 8px;
-  flex: 1 0 auto;
-  min-height: 80px;
-  padding: 0 var(--ds-page) env(safe-area-inset-bottom);
-  margin-top: calc(-1 * var(--home-gap));
-  background: var(--ds-strata-3);
-  color: var(--ds-ink);
+  border-radius: var(--ds-radius-tag);
+  background: var(--ds-reward);
+  color: var(--ds-on-reward);
+  font-size: 20px;
+  font-weight: 800;
+  white-space: nowrap;
 }
-.home-parent-note { margin: 0; font-size: var(--ds-size-foot); font-weight: 400; opacity: .75; }
-.home-version { flex: none; font-size: 11px; font-weight: 400; opacity: .6; }
-body:has(.home-dig-site) #version,
-body:has(.friends-dig-site) #version,
-body:has(.whose-jaw-welcome, .whose-jaw-board) #version { display: none; }
-html:is([data-size="tall-narrow"], [data-size="wide-short"]) .home-layer .tiles-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  column-gap: 10px;
-  padding: var(--ds-space-l) 20px 24px;
-  min-height: 0;
+html[data-size] .compare-result .celebration svg { width: 24px; height: 24px; fill: currentColor; }
+html[data-size] .compare-result .best-score {
+  order: 5;
+  height: 36px;
+  padding: 0 12px;
+  gap: 8px;
+  font-size: 16px;
+  background: var(--ds-label);
+  color: var(--ds-on-label);
+  border-radius: var(--ds-radius-tag);
+  white-space: nowrap;
 }
-html:is([data-size="tall-narrow"], [data-size="wide-short"]) .home-tile-pocket { height: 88px; padding: 8px 8px 2px; }
-html[data-size="tall-narrow"] .home-bedrock { flex-direction: column; align-items: flex-start; justify-content: flex-start; min-height: 110px; padding-top: 22px; }
+.compare-result .best-score-value { font-size: 20px; }
+.compare-result .best-score-beaten { text-decoration: line-through; }
+.compare-result .level-switch { order: 6; }
+html[data-size] .compare-result .result-actions { order: 7; padding-top: 0; gap: 12px; }
+html[data-size] .compare-result .play-again-button,
+html[data-size] .compare-result .result-actions .home-button {
+  height: 64px;
+  padding: 0 24px;
+  gap: 10px;
+  font-size: 24px;
+  border: 0;
+  border-radius: var(--ds-radius-pill);
+  white-space: nowrap;
+}
+.compare-result .play-again-button { background: var(--ds-action); color: var(--ds-on-action); }
+html[data-size] .compare-result .result-actions .home-button { background: var(--ds-strong); color: var(--ds-on-strong); }
+.compare-result .festivity { z-index: -1; overflow: hidden; }
+.compare-result .glow { left: 50%; top: 55%; background: var(--ds-reward-glow); opacity: 1; }
+.compare-result .glow-outer { width: min(100%, 560px); height: 100%; }
+.compare-result .glow-mid { width: min(75%, 420px); height: 75%; }
+.compare-result .glow-inner { width: min(50%, 280px); height: 50%; }
+.compare-result .confetti { width: 16px; height: 8px; border-radius: 2px; }
+.compare-result .confetti-amber { background: var(--ds-reward); }
+.compare-result .confetti-terra { background: var(--ds-action); }
+.compare-result .confetti-sky { background: var(--ds-strong); }
+.compare-result .confetti:nth-child(3n) { background: var(--ds-good); }
+body:has(.compare-result) #version { color: var(--ds-ink); }
+
+html[data-size="tall-narrow"] .compare-result { --result-side: 20px; padding: calc(20px + env(safe-area-inset-top)) calc(20px + var(--screen-right)) 0 calc(20px + var(--screen-left)); }
+html[data-size="tall-narrow"] .compare-result .result-stars { font-size: min(31px, (100cqi - 36px) / 10); gap: 4px; }
+html[data-size="tall-narrow"] .compare-result .result-title { font-size: var(--ds-size-34); }
+html[data-size="tall-narrow"] .compare-result .celebration { font-size: 18px; height: 40px; padding: 0 12px; }
+html[data-size="tall-narrow"] .compare-result .best-score { height: 32px; font-size: 14px; }
+html[data-size="tall-narrow"] .compare-result .result-actions { flex-direction: column; align-self: stretch; gap: 12px; }
+html[data-size="tall-narrow"] .compare-result .play-again-button,
+html[data-size="tall-narrow"] .compare-result .result-actions .home-button { padding: 0 20px; font-size: 26px; justify-content: center; }
+
+/* The short landscape composition uses the same rewards beside the sky.
+   A minimum row grows the page instead of clipping either column. */
+html[data-size="wide-short"] .compare-result {
+  --result-side: 20px;
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) minmax(0, 400px);
+  grid-template-rows: minmax(120px, 1fr);
+  align-items: stretch;
+  gap: 20px;
+  padding: calc(12px + env(safe-area-inset-top)) calc(20px + var(--screen-right)) calc(12px + env(safe-area-inset-bottom)) calc(20px + var(--screen-left));
+}
+html[data-size="wide-short"] .compare-result .compare-result-sky { min-height: 120px; max-height: none; }
+html[data-size="wide-short"] .compare-result .result-content {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-content: center;
+  gap: 8px 12px;
+  padding: 12px 0 24px;
+}
+html[data-size="wide-short"] .compare-result .compare-result-sand { bottom: calc(-12px - env(safe-area-inset-bottom)); }
+html[data-size="wide-short"] .compare-result .result-score { order: 1; grid-column: 1; grid-row: span 2; }
+html[data-size="wide-short"] .compare-result .result-score-value { font-size: 48px; }
+html[data-size="wide-short"] .compare-result .result-score-total { font-size: 20px; color: var(--ds-ink); }
+html[data-size="wide-short"] .compare-result .result-title { order: 1; grid-column: 2; font-size: 20px; }
+html[data-size="wide-short"] .compare-result .result-stars { order: 2; grid-column: 2; font-size: 16px; gap: 2px; }
+html[data-size="wide-short"] .compare-result .celebration { order: 0; grid-column: 1 / -1; height: 36px; font-size: 16px; }
+html[data-size="wide-short"] .compare-result .celebration svg { width: 20px; height: 20px; }
+html[data-size="wide-short"] .compare-result .best-score { grid-column: 1 / -1; height: 32px; font-size: 14px; }
+html[data-size="wide-short"] .compare-result .result-actions { grid-column: 1 / -1; flex-direction: row; }
+html[data-size="wide-short"] .compare-result .play-again-button,
+html[data-size="wide-short"] .compare-result .result-actions .home-button { height: 48px; padding: 0 12px; gap: 8px; font-size: 17px; }
+
+html[data-size="tall"] .compare-result .result-score-value { font-size: min(150px, 15dvh); }
+html[data-size="tall-narrow"] .compare-result .result-score-value { font-size: var(--ds-size-88); }
+html[data-size="tall-narrow"] .compare-result .result-content { gap: 12px; }
+
+/* The version follows COMPARE's whole-page scroll instead of covering
+   its controls. Short landscape leaves the narrow floor to the cards. */
+body:has(.question, .compare-result) { position: relative; }
+body:has(.question, .compare-result) #version { position: absolute; }
+html[data-size="wide-short"] body:has(.question, .compare-result) #version { display: none; }
 
 /* DIG on the dig site, as its boards draw it: the sky behind the bar, the
    sand below its wavy edge and the ochre layer along the bottom; the bar's

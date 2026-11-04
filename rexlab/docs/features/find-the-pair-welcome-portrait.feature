@@ -15,11 +15,10 @@ Feature: Find the pair: the welcome in a tall window
   takes room narrows it). The column is the width, at most 648. The
   title, beside its mark, takes one type in the window, as large as lets
   the longer title in either language fit the width on one line, at
-  most 64 pixels. The level switch stands upright as on a result
-  (compare-dinosaurs-result-portrait.feature): the column's width, each
+  most 64 pixels. The level switch takes the column's width, each
   level 64 tall, its picture above its name, the names in one type as
   large as lets the longest name fit its third, at most 16. Its upright
-  form is the one level switch's, for every game that shows it upright.
+  form keeps these sizes.
   The cards, under the bar (28) and 32 above the title, keep their 3:4
   and their landscape share of the width, each 32% of it, at most 280
   wide, and shrink to the height the column leaves; they are never under

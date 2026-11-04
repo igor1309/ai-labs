@@ -133,7 +133,7 @@ export function useQuizGame({ dinosaurs, progress, bodyPicture, random }: QuizGa
             {coming && <LoadAhead urls={[bodyPicture(coming.left.id), bodyPicture(coming.right.id)]} />}
             <QuestionScreen
               language={language}
-              {...presentQuestion(question, language, bodyPicture)}
+              {...presentQuestion(question, language, bodyPicture, kept.progress === undefined ? undefined : bestForLevel(kept.progress, current.level) ?? undefined)}
               onChoose={answer}
               onNext={question.last ? () => seeResult(current) : () => goOn(current)}
               onHome={onHome}
@@ -145,6 +145,7 @@ export function useQuizGame({ dinosaurs, progress, bodyPicture, random }: QuizGa
       case "result":
         return (
           <LevelResultScreen
+            presentation="dig-site"
             language={language}
             {...presentResult(screen.result)}
             hero={bodyPicture(HERO)}
