@@ -1,88 +1,40 @@
-import protocol LiveAudio.Capture
-import Synchronization
+import Composer
+import PanelUI
 import Testing
-@testable import Composer
 
+@MainActor
 @Suite(.timeLimit(.minutes(1)))
 struct RecordedInputTests {
 
     @Test(arguments: [false, true])
     func failedStopJoinsPendingForwarding(endsInput: Bool) async throws {
-
-        let failure = StopRefusal()
-        let source = FailingCapture(failure: failure, endsInput: endsInput)
-        let forwarding = DrainGate(), returned = Mutex(false)
-        let tones: [CapturedPiece] = [
-            .init(samples: [0.1, -0.1], sampleRate: 8_000),
-            .init(samples: [0.2, 0, -0.2], sampleRate: 16_000),
-            .init(samples: [0.3, 0.1, -0.3, -0.1], sampleRate: 48_000),
-        ]
-        let task = Task {
-            let input = RecordedInput(capture: source, beforeInput: { await forwarding.wait() })
-            let stream = try await input.start()
-            source.give(tones)
-            do {
-                try await input.stop()
-                Issue.record("Expected the original stop failure")
-            } catch {
-                #expect(error as? StopRefusal === failure)
-            }
-            returned.withLock { $0 = true }
-            var heard: [CapturedPiece] = []
-            for try await piece in stream {
-                heard.append(.init(samples: piece.samples, sampleRate: piece.sampleRate))
-            }
-            #expect(heard == tones)
-        }
+        let forwarding = DrainGate()
+        let source = BoundaryCapture(stopFails: true, leavesOpen: !endsInput,
+                                     final: Array(boundaryTones.dropFirst()))
+        let track = MemoryRecording(firstWrite: forwarding)
         defer { forwarding.release(); source.finish() }
-        await forwarding.waitUntilEntered()
-        await source.waitUntilStopped()
-        #expect(source.stops == 1)
-        #expect(!returned.withLock { $0 })
-        forwarding.release()
-        try await task.value
-        #expect(returned.withLock { $0 })
+        try await withComposition(configure: { boundary in
+            boundary.microphone = FixtureMicrophone { source.start() }
+            boundary.recordings = FixtureRecordings(microphone: track, call: MemoryRecording())
+        }) { rig in
+            try await rig.start()
+            _ = try await rig.panel { if case .lines = $0.log { true } else { false } }
+            source.give([boundaryTones[0]])
+            await forwarding.waitUntilEntered()
+            let returned = Values<Bool>()
+            let stop = Task { try await rig.stop(); returned.append(true) }
+            await source.stopped.next()
+            _ = try await rig.state { $0.phase == .ending }
+            #expect(source.stops.all == [true])
+            #expect(returned.all.isEmpty)
+            #expect(track.closed.all.isEmpty)
+            forwarding.release()
+            try await stop.value
+            #expect(returned.all == [true])
+            #expect(track.pieces.all == boundaryTones)
+            #expect(await rig.mine.chunks.map { CaptureBuffer(samples: $0.samples, sampleRate: $0.sampleRate) } == boundaryTones)
+            #expect(track.closed.all == [true])
+            #expect(rig.log.entries.all.contains { $0.message == "microphoneCapture.stop failed" && $0.error == "stop" })
+        }
     }
-}
-
-private final class StopRefusal: Error {}
-
-private final class FailingCapture: Capture, Sendable {
-
-    private let input = AsyncThrowingStream<CapturedPiece, any Error>.makeStream()
-    private let stopCount = Mutex(0)
-    private let stopped = AsyncStream<Void>.makeStream()
-    private let failure: StopRefusal
-    private let endsInput: Bool
-
-    init(failure: StopRefusal, endsInput: Bool) {
-
-        self.failure = failure
-        self.endsInput = endsInput
-    }
-
-    var stops: Int { stopCount.withLock { $0 } }
-
-    func start() async throws -> AsyncThrowingStream<CapturedPiece, any Error> { input.stream }
-
-    func stop() async throws {
-
-        stopCount.withLock { $0 += 1 }
-        if endsInput { finish() }
-        stopped.continuation.yield(())
-        throw failure
-    }
-
-    func waitUntilStopped() async {
-
-        var iterator = stopped.stream.makeAsyncIterator()
-        _ = await iterator.next()
-    }
-
-    func give(_ pieces: [CapturedPiece]) {
-
-        for piece in pieces { input.continuation.yield(piece) }
-    }
-
-    func finish() { input.continuation.finish() }
 }
