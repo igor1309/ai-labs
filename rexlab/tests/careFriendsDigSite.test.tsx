@@ -21,11 +21,14 @@ for (const theme of ["light", "dark"]) for (const shape of ["wide", "tall", "tal
     document.documentElement.dataset.theme = theme;
     document.documentElement.dataset.size = shape;
     show();
+    // Each style is resolved once: resolving its variables is the slow part.
+    const root = style(document.documentElement);
     const matches = (selector: string, properties: Record<string, string>) => {
+      const shown = style(part(selector));
       for (const [property, token] of Object.entries(properties)) {
         const literal = document.createElement("span");
-        literal.style.setProperty(property, style(document.documentElement).getPropertyValue(`--ds-${token}`));
-        expect(style(part(selector)).getPropertyValue(property), `${selector} ${property}`).toBe(getComputedStyle(literal).getPropertyValue(property));
+        literal.style.setProperty(property, root.getPropertyValue(`--ds-${token}`));
+        expect(shown.getPropertyValue(property), `${selector} ${property}`).toBe(getComputedStyle(literal).getPropertyValue(property));
       }
     };
     matches('.friends', { color: 'ink' });
