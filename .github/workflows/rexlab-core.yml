@@ -104,12 +104,12 @@ jobs:
           - languagePicker
           - browserChrome
     runs-on: ubuntu-latest
-    # Playwright's image carries its browsers and their system libraries,
-    # so no job downloads them from a package mirror. Its version is the
-    # playwright version in rexlab/package.json.
-    container:
-      image: mcr.microsoft.com/playwright:v1.64.1-noble
-      options: --user 1001
+    # WebKit's system libraries take minutes to download from the package
+    # mirror, so browserChrome runs in Playwright's image, which carries
+    # them. Its version is the playwright version in rexlab/package.json.
+    # The Chromium contracts stay on the runner: their layouts are measured
+    # with the runner's fonts.
+    container: ${{ matrix.script == 'browserChrome' && 'mcr.microsoft.com/playwright:v1.64.1-noble' || '' }}
     timeout-minutes: 10
     steps:
       - name: Checkout
@@ -125,6 +125,11 @@ jobs:
       - name: Install dependencies
         working-directory: rexlab
         run: npm ci
+
+      - name: Install Chromium
+        if: matrix.script != 'browserChrome'
+        working-directory: rexlab
+        run: npx playwright install --with-deps chromium
 
       - name: Take the built app
         uses: actions/download-artifact@v4
