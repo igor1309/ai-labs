@@ -23,6 +23,8 @@ This ensures the `report` job (a required status check for branch protection) al
 
 `ci.yml` runs on `push` to `trunk` only, so a PR commit has one run, its PR's, and auto-merge waits for that run's verdict; a branch with no PR gets no CI. The `report` job is named `report` only on `pull_request` runs (`report (push)` and `report (workflow_dispatch)` otherwise), so a trunk push run or a dispatched run never satisfies a PR's required check.
 
+The `shared` filter runs every project's job. It lists only what every project's CI runs on: `ci.yml` itself, the root Node manifests, `scripts/ci/**` and `vendor/**`. A change to a project's own `<project>-core.yml` runs only that project's job, through its own filter, and every project job honours `shared`.
+
 Per-project workflows do not need their own path filters — the dispatcher's `changes` job already prevents them from running on unrelated changes.
 
 Each project's filter in the `changes` job is an **allowlist of build/test inputs** — source, tests, manifests, lockfiles, and build/deploy descriptors (e.g. `Dockerfile`, `compose`, `Caddyfile`, `wrangler.*`). It deliberately **excludes documentation** (`<project>/docs/**`, `README.md`, `TODO.md`, landing/`*.html`, research notes) so a docs-only change skips the expensive core job while the required `report` check still runs. Do **not** use a blanket `<project>/**` glob: it pulls `docs/**` into the trigger set and runs the full core pipeline (tests, and for some projects a Docker build + container smoke) on documentation edits. When adding a project, list its code paths explicitly, as `clipdeck` and `agonara` do.
