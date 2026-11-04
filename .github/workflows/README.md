@@ -54,7 +54,7 @@ Each test, what runs it, and the change that triggers it (LAB-167, LAB-220, LAB-
 | foliotell Android (`:core:test`), debug build | `foliotell-android-core` | the `foliotell-android` filter | runs |
 | notio backend (`notio/backend/Tests/`) | `notio-core` | the `notio` filter | runs |
 | notio frontend (`notio/frontend/tests/`), typecheck, build | `notio-frontend-core` | the `notio-frontend` filter | runs |
-| rexlab (`rexlab/tests/*.test.ts`, `*.test.tsx`), typecheck, build, board geometry, coloring probe/production pixels, workshop, long drawing contacts, gallery, result and full flow in Chromium (`npm run test:browser`, `node tests/coloringProbe.browser.cjs`, `node tests/coloringPainter.browser.cjs`, `node tests/coloringWorkshop.browser.cjs`, `node tests/coloringDrawing.browser.cjs`, `node tests/coloringGallery.browser.cjs`, `node tests/coloringResult.browser.cjs`, `node tests/coloringFlow.browser.cjs`, `node tests/nativeTouch.browser.cjs`, `node tests/homeTiles.browser.cjs`, `node tests/homePhone.browser.cjs`, `node tests/careFriends.browser.cjs`, `node tests/compareQuestion.browser.cjs`, `node tests/compareResult.browser.cjs`, `node tests/compareFlow.browser.cjs`, `node tests/catalogueFit.browser.cjs`, `node tests/languagePicker.browser.cjs`), theme canvas and home icon in WebKit (`node tests/browserChrome.browser.cjs`) | `rexlab-core` | the `rexlab` filter | runs; four unit shards, and the eighteen browser contracts in one job on the self-hosted `local-mac` runner, each contract with a 10-minute limit |
+| rexlab (`rexlab/tests/*.test.ts`, `*.test.tsx`), typecheck, build, board geometry, coloring probe/production pixels, workshop, long drawing contacts, gallery, result and full flow in Chromium (`npm run test:browser`, `node tests/coloringProbe.browser.cjs`, `node tests/coloringPainter.browser.cjs`, `node tests/coloringWorkshop.browser.cjs`, `node tests/coloringDrawing.browser.cjs`, `node tests/coloringGallery.browser.cjs`, `node tests/coloringResult.browser.cjs`, `node tests/coloringFlow.browser.cjs`, `node tests/nativeTouch.browser.cjs`, `node tests/homeTiles.browser.cjs`, `node tests/homePhone.browser.cjs`, `node tests/careFriends.browser.cjs`, `node tests/compareQuestion.browser.cjs`, `node tests/compareResult.browser.cjs`, `node tests/compareFlow.browser.cjs`, `node tests/catalogueFit.browser.cjs`, `node tests/languagePicker.browser.cjs`), theme canvas and home icon in WebKit (`node tests/browserChrome.browser.cjs`) | `rexlab-core` | the `rexlab` filter | runs; four unit shards, one build of the app, and eighteen independent browser jobs on it, each with a 10-minute limit |
 | dev-skills: the marketplace manifest and its skills (no tests) | `dev-skills-validation` | the `dev-skills` filter | runs |
 | session-digest (`session-digest/tests/*.test.ts`), typecheck | `session-digest-core` | the `session-digest` filter | runs |
 | loki (`loki/tests/*.test.js`) | `loki-core` | the `loki` filter, with every compose file: its label check reads those of the projects its allowlist names | runs |
@@ -70,7 +70,7 @@ Notes:
 
 - warder pins gokit at a tag (`v0.1.0`), so a gokit change cannot break warder until gokit is tagged and warder moves to it; a gokit change runs `agister-core` only.
 - `warder/cmd/warder/files_test.go`, `process_test.go` and `serve_test.go` are `//go:build unix`: they run on the `local-mac` runner and are skipped on any other OS.
-- Agister, gokit, warder and rexlab's browser contracts run on the self-hosted `local-mac` runner. When it is offline, the job waits queued; `local-wait` (`scripts/local-wait.js`) cancels the run once one has waited 15 minutes, naming it, so `report` ends red rather than pending for GitHub's 24 hours: never a silent pass.
+- Agister, gokit and warder run on the self-hosted `local-mac` runner. When it is offline, the job waits queued; `local-wait` (`scripts/local-wait.js`) cancels the run once one has waited 15 minutes, naming it, so `report` ends red rather than pending for GitHub's 24 hours: never a silent pass.
 
 ## Keeping it regular
 
@@ -92,7 +92,7 @@ There is no trunk-push Cloudflare Pages deploy path for Notio frontend.
 
 ## RexLab
 
-- `rexlab-core.yml` runs the typecheck, tests, and build from `rexlab/`; four parallel test shards keep the complete suite within each job’s ten-minute limit. Its browser contracts run one after another in a single job on the `local-mac` runner, which takes one job at a time; a job per contract would queue past the `local-wait` limit.
+- `rexlab-core.yml` runs the typecheck, tests, and build from `rexlab/`; four parallel test shards keep the complete suite within each job’s ten-minute limit. Its browser contracts each run in a job of their own on one build of the app, made by the `app` job.
 - `rexlab-deploy.yml` is release-only and reusable; `release-unit.yml` calls it for `rexlab_v<version>` tags. It deploys `rexlab/dist` to the Cloudflare Pages project `rexlab` and succeeds only after `https://rexlab.enoa.ai/` serves a page whose `rexlab-version` meta tag matches the tag's version, then sends a success message to the CI Telegram chat.
 
 There is no trunk-push deploy path for RexLab.
