@@ -83,6 +83,8 @@ cd tools/sessions-audit
 ./sessions-audit claude --since 2026-09-01 --until 2026-10-01
 ./sessions-audit all --by-project              # add a per-project table
 ./sessions-audit all --json > audit.json       # versioned JSON (schema v1)
+./sessions-audit all --days 7 --recommend      # short Markdown suggestions on stdout
+./sessions-audit all --days 7 --recommend --json > recommendations.json
 ./sessions-audit claude --claude-root /path/to/projects --large-result-chars 50000
 ```
 
@@ -99,8 +101,47 @@ Flags:
 - `--large-result-chars N`: size threshold for a "large" result (default 20,000).
 - `--by-project`: group sessions by project (see below).
 - `--json`: print JSON (schema v1) instead of text.
+- `--recommend`: print up to five ranked recommendations overall as Markdown; with `--json`, opt into additive evidence fields in schema v1. Also supported by both compatibility wrappers.
 
 For `all`, a missing root for one agent is a warning on stderr and that agent is skipped. For `claude` or `codex`, a missing root is an error (exit code 2).
+
+### Actionable recommendations
+
+`--recommend` suggests guidance for CLAUDE.md/AGENTS.md; it never edits instruction files. It aggregates both agents and all repositories before ranking, with a **global cap of five**, independent of `--top` and `--by-project`. With no evidence it emits an empty JSON list or a short no-evidence Markdown message, with no advice. Full reads alone do not trigger a recommendation.
+
+Each category's score is the sum of the following weighted counts, separate from the existing session score:
+
+| Recommendation id | Evidence metric | Weight | Suggested guidance |
+| --- | --- | --- | --- |
+| `builds` | `unfiltered_builds` | 5 | Use xcsift or -quiet, retaining failure summaries |
+| `reads` | `repeated_reads` | 4 | Read focused ranges with offset/limit; retain notes about unchanged files |
+| `skills` | `duplicate_skill_loads` | 3 | Reuse loaded instructions; trim to relevant sections; name reloaded skills |
+| `waiting` | `repeated_checks` | 3 | Use wakeups or stop waiting on CI and hand off status |
+| `waiting` | `polling_candidates` | 1 | Same guidance; this weaker signal can be legitimate waiting |
+| `results` | `large_results` | 2 | Name producing tools and bound output, queries or fields |
+| `results` | `unmatched_large_results` | 2 | Same guidance, explicitly unknown producer |
+
+Recommendation ties sort by id alphabetically. Within each recommendation, repository/agent pairs rank by descending weighted score, descending affected-session count, then ascending project and agent labels. Evidence sessions sort by project, agent and transcript path. Counts are not deduplicated across metrics: a watch command can contribute both a polling candidate and a repeated check. Affected sessions count each session once within a recommendation or breakdown row. Merged Claude subagents count as their one parent session, with independent read/skill histories.
+
+Markdown shows exact metric counts, affected-session counts and weighted scores for every recommendation and its first three repository/agent rows. Skill and tool lists show the top three identities by count, then label; labels are escaped and limited to 120 characters. Displayed lists state how many rows or identities were omitted. JSON retains all rows, identities and affected-session references, regardless of `--top`.
+
+With `--recommend --json`, the ordinary audit document retains its existing fields and gains:
+
+- `recommendations`: ranked entries with `id`, `rank`, `title`, `suggestion`, `score`, exact `metrics`, `affected_sessions`, ranked `breakdown`, and full per-session `evidence` (agent, project, path, metrics, score). Skill entries include `duplicate_skills`; result entries include `large_result_tools`, also per affected session.
+- `options.recommendation_weights` and `options.recommendation_limit`.
+- Each session's `recommendation_details`: `duplicate_skills` (extra loads per identity), `large_result_tools` (large outputs per producer), and `unmatched_large_results`.
+
+Skill identities use the parser's existing mapping: explicit Skill/load_skill names or the observed SKILL.md path. Names and paths are not inferred to be aliases; only identities recognized by the existing detectors count. Merging Claude subagents sums their extra loads without treating the first load in a different context as a duplicate.
+
+Large outputs are attributed only through a matching call id in the same transcript file. Missing or unmatched ids are labeled `(unknown)`. Codex `exec` output belongs to the `exec` wrapper, even if its source contains one or several nested tools; no nested producer is guessed. Direct calls with matching ids retain their tool names. Event-message output copies remain ignored. Claude's legacy counters exclude results with unmatched ids; recommendation details track those separately as `unmatched_large_results`, and include them under `(unknown)` in `large_result_tools`. Thus the tool-detail counts sum to `large_results + unmatched_large_results`; ordinary counters are unchanged. Id-less Claude results still count in `large_results` as before.
+
+These are transcript signals, not proof of avoidable work or savings: partial reads can be repeated, polling can be necessary, output sizes use the existing character/serialized-content measurement, and unmatched output may be system-generated. Repository grouping uses the same cwd resolution and unknown fallback as `--by-project`. Recommendations use the selected transcript-mtime window, not individual event times. JSON includes local paths; review it before sharing. Without `--recommend`, CLI output and the schema v1 JSON field set remain unchanged.
+
+```bash
+python3 audit_claude_sessions.py --root /path/to/projects --days 7 --recommend
+python3 audit_codex_sessions.py --home /path/to/codex --days 7 --recommend --json
+python3 -m unittest                        # run from tools/sessions-audit
+```
 
 ### Time window
 

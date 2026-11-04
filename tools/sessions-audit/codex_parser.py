@@ -412,7 +412,8 @@ def analyze(path: Path, large_result_threshold: int) -> SessionStats:
         elif itype in {"function_call_output", "custom_tool_call_output"}:
             # Async/system-generated outputs can legitimately have no visible call.
             # Still size them once because they enter the rollout/context path.
-            t.result(item.get("output"))
+            call_id = item.get("call_id")
+            t.result(item.get("output"), t.pending.get(call_id) if isinstance(call_id, str) else None)
 
     s.cwd = meta_cwd if meta_cwd is not None else turn_cwd
     s.extras = {"token_total": token_total, "peak_last_input_tokens": peak_last_input}
