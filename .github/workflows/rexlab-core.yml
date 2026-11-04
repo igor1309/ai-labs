@@ -55,6 +55,7 @@ jobs:
         script:
           - compareQuestion
           - compareResult
+          - compareFlow
           - whoseJawBoardLandscape
           - coloringProbe
           - coloringPainter

@@ -83,6 +83,13 @@ for (const theme of ["light", "dark"]) for (const language of ["en", "ru"] as co
         }
         expect(document.querySelectorAll(".dinosaur-value-chip")).toHaveLength(answered ? 2 : 0);
         expect(document.querySelectorAll(".mark")).toHaveLength(answered ? state === "wrong" ? 2 : 1 : 0);
+        const marks = [...document.querySelectorAll(".mark")];
+        expect(marks.map(mark => mark.getAttribute("aria-label"))).toEqual(answered ? state === "wrong" ? [TEXTS[language].marks.correct, TEXTS[language].marks.wrong] : [TEXTS[language].marks.correct] : []);
+        expect(marks.map(symbolOf)).toEqual(answered ? state === "wrong" ? ["check", "x"] : ["check"] : []);
+        for (const mark of marks) {
+          const style = getComputedStyle(mark);
+          expect(contrast(style.color, style.backgroundColor)).toBeGreaterThanOrEqual(3);
+        }
         expect(screen.queryByRole("button", { name: state === "last" ? TEXTS[language].seeResult : TEXTS[language].next }) !== null).toBe(answered);
         expect(getComputedStyle(part(".dinosaur-cards > :last-child")).opacity || "1").toBe("1");
       });

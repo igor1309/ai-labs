@@ -1,5 +1,9 @@
 # rexlab — Change Log
 
+## 2026-11-04
+
+- LAB-915: COMPARE uses the dig-site sky, sand and pocket cards, with answer-history progress and each level’s best; its rewards and level choices fit wide, upright and phone windows in light and dark.
+
 ## 2026-11-03
 
 - LAB-925: Care's FRIENDS is the dig site: HOME, BACK, the title and the heart count in the sky with NEW VISITOR under them, the friend cards in the sand, as many to a row as the window holds; with no friends, HOME and a count of 0 stay and the nest lies in a pit.

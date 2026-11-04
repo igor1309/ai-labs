@@ -4,14 +4,12 @@ import { act, render, screen, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { App } from "../src/App.tsx";
-import { LevelResultScreen } from "../src/LevelResultScreen.tsx";
-import { resultProps } from "./compareResultProps.ts";
 import type { Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { localLanguage } from "../src/localLanguage.ts";
 import { PROGRESS_KEY, localPairsProgress, localSortingProgress } from "../src/localProgress.ts";
 import { THEME_KEY, localTheme } from "../src/localTheme.ts";
-import { correctOf, type Dinosaur } from "../src/quiz/round.ts";
+import { type Dinosaur } from "../src/quiz/round.ts";
 import { COUNT_SETTLE, GUST, LIFT, STAR_LANDS } from "../src/digGame.tsx";
 import { DigFieldGuideScreen } from "../src/DigFieldGuideScreen.tsx";
 import { TREASURE_KINDS } from "../src/dig/index.ts";
@@ -205,12 +203,8 @@ async function portraitGate({ theme, viewport }: Walk) {
 // are controlled inputs so checking them does not need repeated rounds.
 async function questionTheme({ theme, user }: Walk) {
   await user.click(gameDoor("COMPARE"));
-  expectScreenIn(theme, document.querySelector(".question")!);
-}
-
-async function quizResult({ theme }: Walk) {
-  const result = render(<LevelResultScreen {...resultProps()} />, withPictures);
-  expectScreenIn(theme, result.container);
+  expectPageIn(theme);
+  expect(document.querySelector(".question")).not.toBeNull();
 }
 
 // The whole list, with every food type's card, is checked once; a food
@@ -486,10 +480,9 @@ const SCREEN_GROUPS: Array<[string, Array<[string, (walk: Walk) => Promise<void>
     ]
   ],
   [
-    "the quiz and its result",
+    "the quiz",
     [
-      ["the question opened in the System appearance", questionTheme],
-      ["the controlled result with its celebration", quizResult]
+      ["the question opened in the System appearance", questionTheme]
     ]
   ],
   [
@@ -565,12 +558,12 @@ describe("the System theme", () => {
     const { user, unmount } = openApp({ device });
     await user.click(gameDoor("COMPARE"));
     await user.click(cardOf(wrongOf(shownQuestion())));
-    expectScreenIn("light");
+    expectPageIn("light");
     const answered = document.body.innerHTML;
 
     act(() => device.switchTo("dark"));
 
-    expectScreenIn("dark");
+    expectPageIn("dark");
     expect(tint.content).toBe("#0f1320");
     expect(sameColour(getComputedStyle(document.documentElement).backgroundColor, PALETTE.dark.bg ?? "")).toBe(true);
     expect(document.body.innerHTML).toBe(answered);
@@ -578,7 +571,7 @@ describe("the System theme", () => {
 
     act(() => device.switchTo("light"));
 
-    expectScreenIn("light");
+    expectPageIn("light");
     expect(document.body.innerHTML).toBe(answered);
     expect(tint.content).toBe("#f2efe8");
     unmount();
@@ -603,7 +596,7 @@ describe("a chosen theme", () => {
     act(() => device.switchTo(appearance));
     expectScreenIn(chosen);
     await user.click(gameDoor("COMPARE"));
-    expectScreenIn(chosen);
+    expectPageIn(chosen);
   });
 
   it("gives way to the device again once System is chosen", async () => {
@@ -867,29 +860,6 @@ describe("the sorting result", () => {
       }
     } finally {
       delete document.documentElement.dataset.theme;
-    }
-  });
-});
-
-describe("marks", () => {
-  it.each(THEMES)("keep named symbols at least 3:1 against their badges in the %s theme", async (theme) => {
-    const { user } = openApp({ device: manualAppearance(theme) });
-    await user.click(gameDoor("COMPARE"));
-    const question = shownQuestion();
-
-    await user.click(cardOf(wrongOf(question)));
-
-    expectScreenIn(theme);
-    const marks = [correctOf(question), wrongOf(question)].map((dinosaur) => {
-      const mark = within(cardOf(dinosaur)).getByRole("img", { name: /^(RIGHT|WRONG)$/ });
-      return { symbol: symbolOf(mark), colour: getComputedStyle(mark).backgroundColor, card: getComputedStyle(mark).color };
-    });
-    expect(marks.map(({ symbol }) => symbol)).toEqual(["check", "x"]);
-    // The right answer in the design's green, the wrong one in its
-    // terracotta.
-    expect(marks.map(({ colour }, at) => sameColour(colour, getComputedStyle(document.documentElement).getPropertyValue(at === 0 ? "--ds-good" : "--ds-bad")))).toEqual([true, true]);
-    for (const { colour, card } of marks) {
-      expect(contrast(colour, card)).toBeGreaterThanOrEqual(3);
     }
   });
 });

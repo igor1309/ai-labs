@@ -13251,3 +13251,9 @@ html[data-size="wide-short"] .compare-result .result-actions .home-button { heig
 html[data-size="tall"] .compare-result .result-score-value { font-size: min(150px, 15dvh); }
 html[data-size="tall-narrow"] .compare-result .result-score-value { font-size: var(--ds-size-88); }
 html[data-size="tall-narrow"] .compare-result .result-content { gap: 12px; }
+
+/* The version follows COMPARE's whole-page scroll instead of covering
+   its controls. Short landscape leaves the narrow floor to the cards. */
+body:has(.question, .compare-result) { position: relative; }
+body:has(.question, .compare-result) #version { position: absolute; }
+html[data-size="wide-short"] body:has(.question, .compare-result) #version { display: none; }
