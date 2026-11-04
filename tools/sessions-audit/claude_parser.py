@@ -88,8 +88,12 @@ def normalize_tokens(usage: dict[str, int]) -> dict[str, int]:
     }
 
 
+def is_discarded(path: Path) -> bool:
+    return ".orphaned-" in path.name or ".superseded-" in path.name
+
+
 def sidechain_files(path: Path) -> list[Path]:
-    return sorted((path.with_suffix("") / "subagents").glob("*.jsonl"))
+    return sorted(p for p in (path.with_suffix("") / "subagents").glob("*.jsonl") if not is_discarded(p))
 
 
 def parent_of(path: Path) -> Path | None:
@@ -183,8 +187,7 @@ def analyze_file(path: Path, large_result_threshold: int) -> SessionStats:
 def discover(root: Path) -> list[Path]:
     out: list[Path] = []
     for p in root.rglob("*.jsonl"):
-        name = p.name
-        if ".orphaned-" in name or ".superseded-" in name:
+        if is_discarded(p):
             continue
         parent = parent_of(p)
         if parent is not None and parent.exists():

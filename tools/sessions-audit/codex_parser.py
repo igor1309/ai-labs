@@ -40,38 +40,136 @@ FULL_READ_COMMANDS = {"cat", "nl"}
 SHELL_WRAPPERS = {"bash", "sh", "zsh"}
 
 CODE_MODE_TOOL = "exec"
-CODE_MODE_CALL = re.compile(r"\btools\.(\w+)\s*\(")
-JS_STRING = r"\"(?:[^\"\\]|\\.)*\"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`"
-JS_FIRST_STRING = re.compile(JS_STRING, re.S)
+CODE_MODE_CALL = re.compile(r"tools\.(\w+)\s*\(")
 JS_ESCAPES = {"n": "\n", "t": "\t", "r": "\r", "0": "\0"}
+CODE_MODE_KEYS = ("cmd", "command", "workdir", "path", "file_path", "input", "patch")
+JS_KEY = re.compile(r"""(["']?)(\w+)\1\s*:\s*""")
+# `nl` options whose value can be the next word (`nl -w 3 file`).
+NL_VALUE_OPTIONS = {"-b", "-d", "-f", "-h", "-i", "-l", "-n", "-p", "-s", "-v", "-w"}
 
 
 def js_string(literal: str) -> str:
     return re.sub(r"\\(.)", lambda m: JS_ESCAPES.get(m.group(1), m.group(1)), literal[1:-1], flags=re.S)
 
 
-def js_property(chunk: str, key: str) -> str | None:
-    m = re.search(r"\b" + key + r"\s*:\s*(" + JS_STRING + ")", chunk, re.S)
-    return js_string(m.group(1)) if m else None
+def js_skip(source: str, i: int) -> int | None:
+    """End of the string or comment starting at `i`, or None if neither starts there."""
+    two = source[i:i + 2]
+    if two == "//":
+        end = source.find("\n", i)
+        return len(source) if end < 0 else end
+    if two == "/*":
+        end = source.find("*/", i + 2)
+        return len(source) if end < 0 else end + 2
+    quote = source[i:i + 1]
+    if quote not in {'"', "'", "`"} or not quote:
+        return None
+    j = i + 1
+    while j < len(source):
+        c = source[j]
+        if c == "\\":
+            j += 2
+        elif c == quote:
+            return j + 1
+        elif c == "\n" and quote != "`":
+            return j  # unterminated: a regex literal holding a quote, say
+        elif quote == "`" and source[j:j + 2] == "${":
+            j = js_balanced(source, j + 2, "{", "}")
+        else:
+            j += 1
+    return len(source)
+
+
+def js_balanced(source: str, i: int, opener: str, closer: str) -> int:
+    """Index just past the `closer` matching an `opener` already consumed before `i`."""
+    depth = 1
+    while i < len(source):
+        end = js_skip(source, i)
+        if end is not None:
+            i = end
+            continue
+        if source[i] == opener:
+            depth += 1
+        elif source[i] == closer:
+            depth -= 1
+            if depth == 0:
+                return i + 1
+        i += 1
+    return len(source)
+
+
+def js_literal_at(source: str, i: int) -> str | None:
+    """The value of a whole string-literal expression at `i`; None for anything else."""
+    if source[i:i + 1] not in {'"', "'", "`"}:
+        return None
+    end = js_skip(source, i)
+    literal = source[i:end]
+    if len(literal) < 2 or literal[-1] != literal[0]:
+        return None
+    if literal[0] == "`" and "${" in literal:
+        return None
+    rest = source[end:].lstrip()
+    if rest and rest[0] not in ",})":
+        return None  # `"cat " + name`
+    return js_string(literal)
+
+
+def js_arguments(args: str) -> dict[str, Any]:
+    """String-literal properties of a call's object argument, or its first string argument."""
+    start = len(args) - len(args.lstrip())
+    first = js_literal_at(args, start)
+    if first is not None:
+        return {"input": first}
+    if args[start:start + 1] != "{":
+        return {}
+    inp: dict[str, Any] = {}
+    i, depth, previous = start, 0, ""
+    while i < len(args):
+        if depth == 1 and previous in {"{", ","}:
+            m = JS_KEY.match(args, i)
+            if m:
+                previous = ":"
+                i = m.end()
+                value = js_literal_at(args, i)
+                if value is not None and m.group(2) in CODE_MODE_KEYS:
+                    inp[m.group(2)] = value
+                continue
+        end = js_skip(args, i)
+        if end is not None:
+            previous = "x"
+            i = end
+            continue
+        c = args[i]
+        if c in "([{":
+            depth += 1
+        elif c in ")]}":
+            depth -= 1
+        if not c.isspace():
+            previous = c
+        i += 1
+    return inp
 
 
 def code_mode_calls(source: str) -> list[tuple[str, dict[str, Any]]]:
-    """Nested `tools.<name>(...)` calls of a code-mode program, in order."""
-    matches = list(CODE_MODE_CALL.finditer(source))
+    """Nested `tools.<name>(...)` calls of a code-mode program, in order.
+
+    Text inside strings and comments is not code, so a patch or a grep that
+    mentions `tools.x(` adds no call, and each call reads only its own arguments.
+    """
     calls: list[tuple[str, dict[str, Any]]] = []
-    for i, m in enumerate(matches):
-        end = matches[i + 1].start() if i + 1 < len(matches) else len(source)
-        chunk = source[m.end():end]
-        inp: dict[str, Any] = {}
-        for key in ("cmd", "command", "workdir", "path", "file_path"):
-            value = js_property(chunk, key)
-            if value is not None:
-                inp[key] = value
-        if "apply_patch" in m.group(1):
-            first = JS_FIRST_STRING.search(chunk)
-            if first:
-                inp["input"] = js_string(first.group(0))
-        calls.append((m.group(1), inp))
+    i = 0
+    while i < len(source):
+        end = js_skip(source, i)
+        if end is not None:
+            i = end
+            continue
+        m = CODE_MODE_CALL.match(source, i)
+        if m and (i == 0 or not (source[i - 1].isalnum() or source[i - 1] == "_")):
+            close = js_balanced(source, m.end(), "(", ")")
+            calls.append((m.group(1), js_arguments(source[m.end():close])))
+            i = m.end()  # a call can sit inside another's arguments
+            continue
+        i += 1
     return calls
 
 
@@ -117,33 +215,49 @@ def path_of(inp: Any) -> str | None:
 def shell_reads(command: str, cwd: str | None) -> list[str]:
     """Paths printed whole by `cat`/`nl` segments of a shell command.
 
-    The command is split on `&&`, `||` and `;`; a leading `cd dir` moves the
+    The command is split on newlines, `&&`, `||` and `;`; a `cd dir` moves the
     base for later relative paths. Segments with a pipe are filtered output and
     do not count; commands with substitution or redirection are skipped whole.
     """
     if re.search(r"[<>`]|\$\(", command):
         return []
-    lexer = shlex.shlex(command, posix=True, punctuation_chars=";&|")
+    lexer = shlex.shlex(command.replace("\\\n", " "), posix=True, punctuation_chars=";&|\n")
+    lexer.whitespace = " \t\r"
     lexer.whitespace_split = True
+    lexer.commenters = ""
     try:
         tokens = list(lexer)
     except ValueError:
         return []
     segments: list[list[str]] = [[]]
     for tok in tokens:
-        if tok in {"&&", "||", ";"}:
+        operator = tok.replace("\n", "")
+        if not tok.strip(";&|\n") and operator in {"|", "|&", "&"}:
+            segments[-1].append(operator)  # a pipe may continue on the next line
+        elif not tok.strip(";&|\n"):
             segments.append([])
         else:
             segments[-1].append(tok)
     base = cwd
     out: list[str] = []
     for seg in segments:
+        comment = next((i for i, tok in enumerate(seg) if tok.startswith("#")), None)
+        if comment is not None:
+            seg = seg[:comment]
         if not seg or any(tok in {"|", "&", "|&"} for tok in seg):
             continue
         if seg[0] == "cd" and len(seg) == 2:
             base = norm_path(seg[1], base)
         elif seg[0] in FULL_READ_COMMANDS:
-            out.extend(norm_path(p, base) for p in seg[1:] if not p.startswith("-"))
+            words = seg[1:]
+            for i, word in enumerate(words):
+                if word.startswith("-"):
+                    continue
+                if seg[0] == "nl" and i > 0 and words[i - 1] in NL_VALUE_OPTIONS:
+                    continue
+                path = norm_path(word, base)
+                if "$" not in path:  # a shell variable names no known file
+                    out.append(path)
     return out
 
 

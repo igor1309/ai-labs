@@ -33,7 +33,7 @@ Neither transcript format is a stable interface. Both parsers rely only on the r
 
 | Metric | Claude Code | Codex |
 | --- | --- | --- |
-| Full reads | `Read` calls without `offset`/`limit` | `read_file`-style calls, plus each file printed by a `cat` or `nl` segment of a shell command (segments split on `&&`, `\|\|`, `;`; a segment with a pipe, and any command with redirection or `$(...)`, is not a read; `sed -n` ranges are not full reads) |
+| Full reads | `Read` calls without `offset`/`limit` | `read_file`-style calls, plus each file printed by a `cat` or `nl` segment of a shell command (segments split on newlines, `&&`, `\|\|`, `;`; a segment with a pipe, and any command with redirection or `$(...)`, is not a read; `sed -n` ranges are not full reads; a path holding a shell variable names no known file and is not counted) |
 | Repeated reads | Re-reading a file with no observed edit to it since the last read (`Edit`/`Write`/`MultiEdit`/`NotebookEdit`) | same; edits are `write`/`edit`-style calls and `apply_patch` file headers. Paths resolve against `workdir`, then a leading `cd dir`, then the session cwd |
 | Builds / unfiltered | `xcodebuild` or `swift build/test`; "unfiltered" means the output reaches the context whole: not piped through `xcsift`/`xcbeautify`/`xcpretty` or `head`/`tail`/`grep`/`rg`, not `-quiet`, and stdout not redirected to a file (`2>&1` alone does not count) | same |
 | Polling candidates | `sleep`, `watch`, `gh run watch`, `gh pr checks --watch` | same, plus calls to the dedicated `sleep` tool |
@@ -45,7 +45,7 @@ Neither transcript format is a stable interface. Both parsers rely only on the r
 
 ### Codex code mode
 
-Current Codex sends most tool calls as one `exec` custom tool call whose input is a JavaScript program; the real calls happen inside it (`tools.exec_command({cmd: "..."})`, `tools.apply_patch("...")`, `tools.write_stdin(...)`). The parser finds each nested `tools.<name>(` call and analyzes it like a direct call, taking its `cmd`/`workdir`/`path` from string literals. `tool_calls` counts the `exec` wrapper and each nested call. A nested call whose arguments are not string literals (`{cmd: someVariable}`) is counted but contributes no command. Before this, every command-based metric read 0 for Codex.
+Current Codex sends most tool calls as one `exec` custom tool call whose input is a JavaScript program; the real calls happen inside it (`tools.exec_command({cmd: "..."})`, `tools.apply_patch("...")`, `tools.write_stdin(...)`). The parser finds each nested `tools.<name>(` call and analyzes it like a direct call, taking its `cmd`/`workdir`/`path` from string literals in that call's own arguments. Text inside strings and comments is not treated as a call. `tool_calls` counts the `exec` wrapper and each nested call. A nested call whose arguments are not string literals (`{cmd: someVariable}`, `` {cmd: `cat ${f}`} ``, `{cmd: "cat " + f}`) is counted but contributes no command. Before this, every command-based metric read 0 for Codex.
 
 Legacy `shell` calls with `["bash", "-lc", "<script>"]` are analyzed as the script.
 

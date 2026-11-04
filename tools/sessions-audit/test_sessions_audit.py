@@ -828,6 +828,54 @@ class SessionsAuditTests(unittest.TestCase):
         assert codex_parser.shell_reads("cat 'unterminated", cwd) == []
         assert codex_parser.shell_reads("sed -n 1,10p a", cwd) == []
 
+    def test_codex_shell_reads_multiline_comments_variables_and_nl_options(self):
+        cwd = "/w"
+        assert codex_parser.shell_reads("cat a\nls b", cwd) == ["/w/a"]
+        assert codex_parser.shell_reads("cd sub\ncat y", cwd) == ["/w/sub/y"]
+        assert codex_parser.shell_reads("cat a \\\n  b", cwd) == ["/w/a", "/w/b"]
+        assert codex_parser.shell_reads("cat a |\n  head -5\ncat b", cwd) == ["/w/b"]
+        assert codex_parser.shell_reads("cat a # note\ncat b", cwd) == ["/w/a", "/w/b"]
+        assert codex_parser.shell_reads("cat ${f}", cwd) == []
+        assert codex_parser.shell_reads('cd "$D"; cat y', cwd) == []
+        assert codex_parser.shell_reads("nl -w 3 f", cwd) == ["/w/f"]
+
+    def test_codex_code_mode_ignores_text_in_strings_and_comments(self):
+        calls = codex_parser.code_mode_calls
+        assert calls("""await tools.exec_command({cmd: "grep 'tools.exec_command(' f.js"});""") == [
+            ("exec_command", {"cmd": "grep 'tools.exec_command(' f.js"}),
+        ]
+        assert calls('// use tools.exec_command("old")\n/* tools.sleep() */\ntext("done")') == []
+
+    def test_codex_code_mode_reads_only_the_calls_own_literal_arguments(self):
+        calls = codex_parser.code_mode_calls
+        assert calls('await tools.exec_command({cmd: v}); const o = {path: "z", cmd: "cat other"};') == [("exec_command", {})]
+        assert calls("for (const f of fs) await tools.exec_command({cmd: `cat ${f}`});") == [("exec_command", {})]
+        assert calls('await tools.exec_command({cmd: "cat " + f});') == [("exec_command", {})]
+        assert calls('await tools.exec_command({opts: {cmd: "inner"}, cmd: "outer"});') == [("exec_command", {"cmd": "outer"})]
+        assert calls('mytools.exec_command({cmd: "x"})') == []
+        assert [name for name, _ in calls('await tools.a({cmd: await tools.b({cmd: "x"})});')] == ["a", "b"]
+
+    def test_codex_code_mode_patch_mentioning_a_tool_call_still_resets_reads(self):
+        t = self.tmp_path
+        patch = '"*** Begin Patch\\n*** Update File: a.py\\n+x = tools.foo(1)\\n*** End Patch"'
+        s = codex_one(t, [
+            x_exec(js_cmd("cat a.py"), "1"),
+            x_exec(f"await tools.apply_patch({patch});", "2"),
+            x_exec(js_cmd("cat a.py"), "3"),
+        ])
+        assert s.full_reads == 2
+        assert s.repeated_reads == 0
+        assert "foo" not in s.tool_names
+
+    def test_claude_discarded_subagent_transcripts_are_not_merged(self):
+        root = self.tmp_path / "projects" / "p"
+        parent = write_jsonl(root / "sess.jsonl", [c_tool("Read", {"file_path": "/a"}, "1")])
+        for name in ("agent-1.jsonl", "agent-2.orphaned-1.jsonl", "agent-3.superseded-1.jsonl"):
+            write_jsonl(root / "sess" / "subagents" / name, [c_tool("Read", {"file_path": "/a"}, "s")])
+        s = claude_parser.analyze(parent, 100)
+        assert s.full_reads == 2
+        assert s.extras["sidechain_files"] == 1
+
     def test_codex_legacy_shell_argv_unwraps_bash_lc(self):
         s = codex_one(self.tmp_path, [
             x_call("shell", {"command": ["bash", "-lc", "cat a.txt && xcodebuild test"]}, "1"),
