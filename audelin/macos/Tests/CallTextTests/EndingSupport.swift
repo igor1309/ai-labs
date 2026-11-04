@@ -56,17 +56,17 @@ final class CueGate: Sendable {
 final class CallObservation: Sendable {
 
     private struct Observation {
-        var latest: State?
+        var latest: CallOutput?
         var ended = false
-        var waiting: [(snapshot: State, received: CheckedContinuation<Void, Never>)] = []
+        var waiting: [(snapshot: CallOutput, received: CheckedContinuation<Void, Never>)] = []
     }
 
     private let observation = Mutex(Observation())
 
-    var latest: State? { observation.withLock { $0.latest } }
+    var latest: CallOutput? { observation.withLock { $0.latest } }
     var ended: Bool { observation.withLock { $0.ended } }
 
-    func wait(for snapshot: State) async {
+    func wait(for snapshot: CallOutput) async {
 
         await withCheckedContinuation { received in
             let resume = observation.withLock { observation in
@@ -80,7 +80,8 @@ final class CallObservation: Sendable {
 
     func listen(to call: CallText) async {
 
-        for await snapshot in call.updates {
+        for await state in call.updates {
+            let snapshot = CallOutput(state)
             let received = observation.withLock { observation in
                 observation.latest = snapshot
                 let received = observation.waiting.filter { $0.snapshot == snapshot }.map(\.received)

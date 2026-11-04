@@ -265,11 +265,11 @@ struct Rig: Sendable {
     let stopRequests: AsyncStream<Void>
 
     @discardableResult
-    func listening() async -> State {
+    func listening() async -> SideOutput {
 
-        for await state in side.updates where state.status == .listening { return state }
+        for await state in side.updates where state.status == .listening { return SideOutput(state) }
         Issue.record("Text ended before listening")
-        return await side.state
+        return SideOutput(await side.state)
     }
 
     func inputQueued() async {
@@ -290,15 +290,15 @@ struct Rig: Sendable {
         _ = await iterator.next()
     }
 
-    func heldStop(_ stopping: Gate, keeps snapshot: State) async {
+    func heldStop(_ stopping: Gate, keeps snapshot: SideOutput) async {
 
         await stopping.entered()
-        #expect(await side.state == snapshot)
+        #expect(SideOutput(await side.state) == snapshot)
         #expect(await text.stopCalls == 1)
         #expect(await text.stopped == false)
     }
 
-    func result() async -> State {
+    func result() async -> SideOutput {
 
         var final: State?
         var endings = 0
@@ -309,12 +309,15 @@ struct Rig: Sendable {
             default: break
             }
         }
-        let state = await side.state
         #expect(endings == 1)
-        #expect(final == state)
         #expect(await text.stopCalls == 1)
         #expect(await text.stopped)
-        return state
+        guard let final else {
+            Issue.record("Side ended without publishing a result")
+            return SideOutput(await side.state)
+        }
+        #expect(SideOutput(final) == SideOutput(await side.state))
+        return SideOutput(final)
     }
 }
 
@@ -368,11 +371,11 @@ func tones(_ words: ClosedRange<Int>, sampleRate: Double = 1) -> Audio {
 func expected(
     _ words: ClosedRange<Int>, status: State.Status = .listening,
     later: Range<Int> = 0..<0, sampleRate: Double = 1, settled: Bool = false
-) -> State {
+) -> SideOutput {
 
-    State(status: status, entries: words.map { word in
+    SideOutput(status: status, entries: words.map { word in
         let start = Double(word - 1) / sampleRate
-        return State.Entry(
+        return SideOutput.Entry(
             text: Text(
                 id: word, start: start, end: start + 1 / sampleRate,
                 settled: settled ? "word\(word)" : "", pending: settled ? "" : "word\(word)"
@@ -380,4 +383,31 @@ func expected(
             writtenLater: later.contains(word)
         )
     })
+}
+
+struct SideOutput: Equatable, Sendable {
+
+    struct Entry: Equatable, Sendable {
+        let text: Text
+        let writtenLater: Bool
+    }
+
+    let status: State.Status
+    let entries: [Entry]
+    let finalCount: Int
+    let noTextBefore: Double?
+
+    init(status: State.Status, entries: [Entry], finalCount: Int = 0, noTextBefore: Double? = nil) {
+        self.status = status
+        self.entries = entries
+        self.finalCount = finalCount
+        self.noTextBefore = noTextBefore
+    }
+
+    init(_ snapshot: State) {
+        status = snapshot.status
+        entries = snapshot.entries.map { Entry(text: $0.text, writtenLater: $0.writtenLater) }
+        finalCount = snapshot.finalCount
+        noTextBefore = snapshot.noTextBefore
+    }
 }
