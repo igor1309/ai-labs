@@ -158,6 +158,7 @@ struct CallsWiringTests {
             let cases: [(minute: Double, made: String?, id: String, title: String)] = [
                 (0, "Zoom", "1970.01.01-0000", "Zoom"),
                 (0, "Zoom", "1970.01.01-0000-2", "Zoom"),
+                (0, "Meet", "1970.01.01-0000-3", "Meet"),
                 (1, "a/b:c", "1970.01.01-0001", "a-b-c"),
                 (2, "", "1970.01.01-0002", ""),
                 (3, nil, "1970.01.01-0003", ""),
