@@ -86,7 +86,7 @@ jobs:
           failed=()
           for script in compareQuestion compareResult compareFlow whoseJawBoardLandscape catalogueFit \
             coloringProbe coloringPainter coloringWorkshop coloringDrawing coloringGallery coloringResult \
-            coloringFlow homePhone nativeTouch homeTiles careFriends browserChrome; do
+            coloringFlow homePhone nativeTouch homeTiles careFriends languagePicker browserChrome; do
             echo "::group::$script"
             if ! perl -e 'alarm 600; exec @ARGV' node "tests/$script.browser.cjs"; then failed+=("$script"); fi
             echo "::endgroup::"
