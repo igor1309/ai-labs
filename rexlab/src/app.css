@@ -10716,56 +10716,6 @@ html[data-size="tall-narrow"] .skeleton-actions .home-button {
 [data-theme="dark"] .labyrinth-result-screen { background: #0f1320; color: #ece8de; }
 
 
-.whose-jaw-result {
-  position: relative;
-  isolation: isolate;
-  box-sizing: border-box;
-  min-height: 100dvh;
-  padding: calc(24px + env(safe-area-inset-top)) calc(24px + var(--screen-right)) calc(24px + env(safe-area-inset-bottom)) calc(24px + var(--screen-left));
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  background: #1f2b4d;
-  color: #fffdf8;
-  text-align: center;
-  overflow: hidden;
-}
-.whose-jaw-result h1 { margin: 0; font-size: clamp(28px, 4vw, 48px); animation: rise-in var(--motion-screen) var(--ease-out) both; }
-.whose-jaw-result .result-stars { margin: 0; }
-.jaw-result-record { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 12px; }
-.jaw-result-record .celebration,
-.jaw-result-record .best-score { margin: 0; }
-.jaw-result-jaws { display: flex; justify-content: center; list-style: none; padding: 0; margin: 0; width: min(100%, 850px); }
-.jaw-result-jaws li { width: 20%; min-width: 0; animation: pop-in var(--motion-screen) var(--ease-overshoot) calc(var(--jaw) * var(--motion-stagger)) both; }
-.jaw-result-jaws .picture { display: block; width: 100%; height: auto; }
-.jaw-result-collection { width: min(100%, 560px); }
-.jaw-result-collection p { display: flex; justify-content: center; align-items: center; gap: 8px; margin: 0 0 8px; font-size: clamp(16px, 2vw, 24px); font-weight: 700; }
-.jaw-result-shelf { display: flex; justify-content: center; border-bottom: 14px solid #a9774a; border-radius: 6px; background: #fffdf810; }
-.jaw-result-find { width: 20%; animation: jaw-to-shelf var(--motion-count) var(--ease-out) calc(var(--motion-screen) + var(--jaw) * var(--motion-stagger)) both; }
-.jaw-result-find .picture { display: block; width: 100%; height: auto; }
-.jaw-result-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; animation: rise-in var(--motion-screen) var(--ease-out) both; }
-.jaw-result-actions button { display: flex; align-items: center; justify-content: center; min-height: 56px; font-weight: 700; gap: 10px; padding: 14px 20px; font-size: clamp(18px, 2vw, 26px); }
-@keyframes jaw-to-shelf { from { opacity: 0; transform: translateY(calc(-60px * var(--motion-amount))) scale(calc(1 + .3 * var(--motion-amount))); } to { opacity: 1; transform: translateY(calc(0px * var(--motion-amount))) scale(calc(1 + 0 * var(--motion-amount))); } }
-@media (max-width: 540px) {
-  .whose-jaw-result { gap: 12px; }
-  .jaw-result-actions { width: 100%; }
-.jaw-result-actions button { width: 100%; }
-}
-html[data-size="tall-narrow"] .whose-jaw-result { gap: 12px; }
-html[data-size="tall-narrow"] .whose-jaw-result h1 { font-size: 28px; line-height: 1.2; }
-html[data-size="tall-narrow"] .jaw-result-record { width: 100%; }
-html[data-size="tall-narrow"] .jaw-result-record .celebration { height: 48px; padding: 0 16px; gap: 8px; font-size: 20px; }
-html[data-size="tall-narrow"] .jaw-result-collection p { line-height: 1.3; }
-html[data-size="tall-narrow"] .jaw-result-actions { flex-direction: column; width: 100%; }
-html[data-size="tall-narrow"] .jaw-result-actions button { width: 100%; font-size: 18px; }
-@media (max-height: 540px) and (min-width: 541px) {
-  .whose-jaw-result { gap: 8px; padding-top: calc(12px + env(safe-area-inset-top)); padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
-  .jaw-result-jaws { width: min(65%, 520px); }
-  .jaw-result-collection { width: min(45%, 320px); }
-}
-
 .featured-card[data-game="whoseJaw"] { background: #e39b2d; color: #1d2742; }
 
 .whose-jaw-tile-picture { width: 100%; min-height: 0; flex: 1 1 0; object-fit: contain; }
@@ -10919,7 +10869,6 @@ html[data-size="tall-narrow"] .jaw-shelf-picture { height: calc(100% - 42px); }
 .jaw-shelf-status .jaw-shelf-count { margin: 0; }
 .game-audio-button { flex-shrink: 0; min-width: 48px; min-height: 48px; gap: 8px; font-size: 16px; }
 .game-audio-button svg { animation: fade-in var(--motion-small) var(--ease-out) both; }
-.jaw-result-audio { display: flex; justify-content: flex-end; width: 100%; }
 .whose-jaw-board-bar[data-audio] { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 12px; }
 .whose-jaw-board-bar[data-audio] .jaw-teeth { justify-content: center; }
 html[data-size="tall-narrow"] .whose-jaw-board-bar[data-audio] { grid-template-columns: 48px minmax(0, 1fr) 48px 48px; gap: 6px; }
@@ -10962,7 +10911,6 @@ html[data-size="tall-narrow"] .jaw-card-controls > .home-button:first-child span
 .result-actions .home-button,
 .skeleton-build-another,
 .skeleton-actions .home-button,
-.jaw-result-actions button,
 .labyrinth-reunion-actions button,
 .picture-puzzle-result-actions .picture-puzzle-control,
 .coloring-result .coloring-result-actions button,
@@ -10979,7 +10927,6 @@ html[data-size="tall-narrow"] .jaw-card-controls > .home-button:first-child span
 
 .play-again-button:not(.no-friends-button),
 .skeleton-build-another,
-.jaw-result-actions button:first-child,
 .labyrinth-reunion-actions button:first-child,
 .picture-puzzle-result-actions .picture-puzzle-control:first-child,
 .coloring-result .coloring-result-actions button:last-child,
@@ -11103,8 +11050,7 @@ html[data-size="tall-narrow"] .jaw-card-controls > .home-button:first-child span
 /* The result screens still on their navy ground until their game moves
    onto the sky: score and best keep the ground's light words there. */
 .result,
-.dig-reveal-screen,
-.whose-jaw-result {
+.dig-reveal-screen {
   --result-ink: #f6f2e9;
   --result-ink-soft: #f6f2e9;
 }
@@ -11134,7 +11080,6 @@ html[data-size="tall-narrow"] .jaw-card-controls > .home-button:first-child span
 .parent-menu-choice:focus-visible,
 .pairs-offer-answers button:focus-visible,
 .skeleton-actions button:focus-visible,
-.jaw-result-actions button:focus-visible,
 .labyrinth-reunion-actions button:focus-visible,
 .picture-puzzle-result-actions button:focus-visible { outline: 3px solid var(--ds-action); outline-offset: 3px; }
 
@@ -12702,6 +12647,131 @@ html[data-size="wide-short"] .whose-jaw-play { flex: 0 0 auto; min-width: 160px;
 html[data-size="wide-short"] .whose-jaw-shelf { flex: 1 1 0; }
 html[data-size="wide-short"] .whose-jaw-welcome-bedrock { display: none; }
 
+/* Five returned jaws fan out beside the rewards; upright, the pile
+   rises above them and the actions share the sand. */
+.whose-jaw-result {
+  --jr-sand: 60.5dvh;
+  --jr-bedrock: 60px;
+  --jr-gap: var(--ds-space-20);
+  --result-ink: var(--ds-ink);
+  --result-ink-soft: var(--ds-ink-soft);
+  position: relative;
+  isolation: isolate;
+  box-sizing: border-box;
+  height: 100dvh;
+  padding: calc(96px + env(safe-area-inset-top)) calc(var(--ds-space-40) + var(--screen-right)) calc(144px + env(safe-area-inset-bottom)) calc(var(--ds-space-40) + var(--screen-left));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ds-space-2xl);
+  overflow: hidden;
+  text-align: center;
+  font-family: var(--ds-font);
+  color: var(--ds-ink);
+  background: linear-gradient(var(--ds-sky-top), var(--ds-sky-bottom) 50dvh) var(--ds-sky-bottom);
+  animation: fade-in var(--motion-screen) var(--ease-out) both;
+}
+body:has(.whose-jaw-result) #version { display: none; }
+.jaw-result-sand { position: absolute; z-index: -2; inset: var(--jr-sand) 0 0; background: var(--ds-strata-1); }
+.jaw-result-wave { position: absolute; top: -20px; left: 0; width: 100%; height: 30px; fill: var(--ds-strata-1); }
+.jaw-result-bedrock { position: absolute; z-index: -1; bottom: 0; left: 0; right: 0; height: calc(var(--jr-bedrock) + env(safe-area-inset-bottom)); background: var(--ds-strata-2); --home-earth: var(--ds-strata-2); }
+.jaw-result-bedrock .home-earth-wave { top: -20px; height: 30px; }
+.jaw-result-audio { position: absolute; top: calc(var(--ds-space-l) + env(safe-area-inset-top)); right: calc(var(--ds-space-20) + var(--screen-right)); }
+.jaw-result-audio .game-audio-button { height: 48px; padding-block: 0; }
+.jaw-result-body { flex: 1 1 0; min-height: 0; width: min(100%, 1060px); display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: var(--ds-space-40); }
+.jaw-result-pile { position: relative; min-width: 0; height: min(100% - 40px, 333px); width: auto; max-width: 100%; aspect-ratio: 460 / 300; align-self: center; justify-self: center; }
+.whose-jaw-result .festivity { z-index: -1; inset: -10% 0; }
+.whose-jaw-result .glow { left: 50%; top: 50%; width: 100%; height: 100%; background: var(--ds-reward); opacity: .15; }
+.whose-jaw-result .glow-mid { width: 80%; height: 80%; }
+.whose-jaw-result .glow-inner { width: 60%; height: 60%; }
+.whose-jaw-result .confetti-amber { background: var(--ds-reward); }
+.whose-jaw-result .confetti-terra { background: var(--ds-action); }
+.whose-jaw-result .confetti-sky { background: var(--ds-strong); }
+.jaw-result-jaws { position: absolute; inset: 0; list-style: none; padding: 0; margin: 0; }
+.jaw-result-jaws li { position: absolute; width: 48%; height: 40%; box-sizing: border-box; border: 2px solid var(--ds-shade-20); border-radius: var(--ds-radius-18); background: var(--ds-photo-white); box-shadow: 0 10px 18px var(--ds-shade-20); animation: pop-in var(--motion-screen) var(--ease-overshoot) calc(var(--jaw) * var(--motion-stagger)) both; }
+.jaw-result-jaws li:nth-child(1) { left: 0; top: 50%; rotate: 10deg; }
+.jaw-result-jaws li:nth-child(2) { left: 52%; top: 53%; rotate: -7deg; }
+.jaw-result-jaws li:nth-child(3) { left: 25%; top: 27%; rotate: 3deg; z-index: 1; }
+.jaw-result-jaws li:nth-child(4) { left: 4%; top: 0; rotate: -6deg; z-index: 2; }
+.jaw-result-jaws li:nth-child(5) { left: 56%; top: 3%; rotate: 8deg; z-index: 2; }
+.jaw-result-jaws .picture { display: block; width: 100%; height: 100%; object-fit: contain; border-radius: inherit; }
+.jaw-result-rewards { min-width: 0; display: flex; flex-direction: column; align-items: center; gap: var(--jr-gap); }
+.whose-jaw-result .result-stars { margin: 0; gap: var(--ds-space-m); }
+.whose-jaw-result .star { display: flex; }
+.whose-jaw-result .star svg { width: 56px; height: 56px; }
+.whose-jaw-result .star-empty svg { fill: none; }
+.whose-jaw-result h1 { width: 100%; margin: 0; min-width: 0; font-size: var(--ds-size-title); font-weight: 800; line-height: 1.25; animation: rise-in var(--motion-screen) var(--ease-out) both; }
+.jaw-result-title, .jaw-result-action-word, .jaw-result-new-label { display: block; min-width: 0; white-space: nowrap; }
+.jaw-result-record { display: flex; align-items: center; justify-content: center; max-width: 100%; box-sizing: border-box; gap: var(--ds-btn-gap); padding: var(--ds-btn-gap) var(--ds-space-l); background: var(--ds-quiet); color: var(--ds-ink); border-radius: var(--ds-radius-tag); }
+.jaw-result-record[data-celebrating] { background: var(--ds-reward); color: var(--ds-on-reward); --result-ink: var(--ds-on-reward); --result-ink-soft: var(--ds-on-reward); }
+.jaw-result-record > svg { flex: none; width: 28px; height: 28px; }
+.whose-jaw-result .jaw-result-record .celebration { height: auto; padding: 0; margin: 0; gap: 0; color: inherit; font-size: var(--ds-size-14); font-weight: 800; white-space: nowrap; }
+.jaw-result-record .celebration svg { display: none; }
+.whose-jaw-result .best-score { height: auto; padding: 0; margin: 0; gap: var(--ds-space-s); color: inherit; font-size: var(--ds-size-14); font-weight: 800; white-space: nowrap; }
+.jaw-result-record[data-celebrating] .best-score { font-size: 0; }
+.whose-jaw-result .best-score-value { font-size: var(--ds-size-action); font-weight: 800; }
+.jaw-result-record .best-score svg { color: inherit; }
+.whose-jaw-result .best-score-beaten { font-size: var(--ds-size-14); }
+.jaw-result-collection { width: min(100%, 320px); }
+.jaw-result-collection p { display: flex; align-items: center; justify-content: center; gap: var(--ds-space-s); margin: 0 0 var(--ds-space-s); font-size: var(--ds-size-14); font-weight: 800; }
+.jaw-result-collection p svg { flex: none; width: 22px; height: 22px; color: var(--ds-reward); }
+.jaw-result-shelf { display: flex; align-items: end; justify-content: center; gap: var(--ds-space-m); padding: 0 var(--ds-space-l); border-bottom: 14px solid var(--ds-plank); border-radius: var(--ds-radius-4); }
+.jaw-result-find { flex: 0 1 110px; min-width: 0; aspect-ratio: 11 / 6; border-radius: var(--ds-radius-10); background: var(--ds-photo-white); animation: jaw-to-shelf var(--motion-count) var(--ease-out) calc(var(--motion-screen) + var(--jaw) * var(--motion-stagger)) both; }
+.jaw-result-find .picture { display: block; width: 100%; height: 100%; object-fit: contain; border-radius: inherit; }
+.jaw-result-actions { display: flex; flex: none; justify-content: center; width: min(100%, 900px); gap: var(--ds-space-l); animation: rise-in var(--motion-screen) var(--ease-out) both; }
+.jaw-result-actions button { outline: none; box-shadow: none; font-family: var(--ds-font); display: flex; flex: 1 1 auto; align-items: center; justify-content: center; min-width: 0; box-sizing: border-box; height: 68px; gap: var(--ds-btn-gap); padding: 0 var(--ds-space-26); border: 0; border-radius: var(--ds-radius-pill); font-size: var(--ds-size-action); font-weight: 800; line-height: 1.25; }
+.jaw-result-actions svg { flex: none; width: var(--ds-icon-action); height: var(--ds-icon-action); }
+.jaw-result-actions .jaw-result-play { background: var(--ds-action); color: var(--ds-on-action); }
+.jaw-result-actions .jaw-result-visit { background: var(--ds-strong); color: var(--ds-on-strong); }
+.jaw-result-actions .jaw-result-home { background: transparent; border: 3px solid var(--ds-ink); color: var(--ds-ink); }
+.whose-jaw-result button:focus-visible { outline: 3px solid var(--ds-action); outline-offset: -3px; }
+@keyframes jaw-to-shelf { from { opacity: 0; transform: translateY(calc(-60px * var(--motion-amount))) scale(calc(1 + .3 * var(--motion-amount))); } to { opacity: 1; transform: translateY(calc(0px * var(--motion-amount))) scale(calc(1 + 0 * var(--motion-amount))); } }
+html:is([data-size="tall"], [data-size="tall-narrow"]) .whose-jaw-result { --jr-sand: 42%; --jr-bedrock: 50px; padding-top: calc(100px + env(safe-area-inset-top)); padding-bottom: calc(140px + env(safe-area-inset-bottom)); gap: var(--ds-space-18); }
+html:is([data-size="tall"], [data-size="tall-narrow"]) .jaw-result-body { display: flex; flex-direction: column; justify-content: center; gap: var(--ds-space-2xl); }
+html:is([data-size="tall"], [data-size="tall-narrow"]) .jaw-result-pile { flex: none; height: auto; width: min(100%, 540px); align-self: center; max-width: none; }
+html:is([data-size="tall"], [data-size="tall-narrow"]) .jaw-result-rewards { flex: none; width: 100%; }
+html:is([data-size="tall"], [data-size="tall-narrow"]) .jaw-result-actions { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); width: min(100%, 560px); }
+html:is([data-size="tall"], [data-size="tall-narrow"]) .jaw-result-play { grid-column: 1 / -1; justify-self: center; }
+html:is([data-size="tall"], [data-size="tall-narrow"]) .jaw-result-actions button { padding-inline: var(--ds-space-20); }
+html[data-size="tall-narrow"] .whose-jaw-result { --jr-sand: 302px; --jr-bedrock: 30px; --jr-gap: var(--ds-space-m); padding: calc(82px + env(safe-area-inset-top)) calc(var(--ds-space-20) + var(--screen-right)) calc(128px + env(safe-area-inset-bottom)) calc(var(--ds-space-20) + var(--screen-left)); gap: var(--ds-space-m); }
+html[data-size="tall-narrow"] .jaw-result-body { gap: var(--ds-space-22); }
+html[data-size="tall-narrow"] .jaw-result-pile { width: min(100% - 44px, 300px); }
+html[data-size="tall-narrow"] .whose-jaw-result h1 { font-size: var(--ds-size-action); }
+html[data-size="tall-narrow"] .whose-jaw-result .star svg { width: 48px; height: 48px; }
+html[data-size="tall-narrow"] .jaw-result-record { padding: var(--ds-space-s) var(--ds-space-l); }
+html[data-size="tall-narrow"] .jaw-result-actions { gap: var(--ds-space-m); grid-template-columns: auto auto; column-gap: var(--ds-space-s); }
+html[data-size="tall-narrow"] .jaw-result-actions button { height: 60px; font-size: var(--ds-size-18); gap: var(--ds-space-xs); padding-inline: var(--ds-space-6); }
+html[data-size="tall-narrow"] .jaw-result-actions .jaw-result-play { justify-self: stretch; font-size: var(--ds-size-26); }
+html[data-size="tall-narrow"] .jaw-result-actions svg { width: 26px; height: 26px; }
+@media (max-height: 700px) {
+  html[data-size="tall-narrow"] .whose-jaw-result { --jr-sand: 242px; --jr-bedrock: 14px; --jr-gap: var(--ds-space-xs); padding-top: calc(72px + env(safe-area-inset-top)); padding-bottom: calc(40px + env(safe-area-inset-bottom)); gap: var(--ds-space-s); }
+  html[data-size="tall-narrow"] .jaw-result-body { gap: var(--ds-space-m); }
+  html[data-size="tall-narrow"] .whose-jaw-result .star svg { width: 40px; height: 40px; }
+  html[data-size="tall-narrow"] .jaw-result-pile { width: 280px; max-width: calc(100% - 24px); }
+  html[data-size="tall-narrow"] .jaw-result-actions button { height: 52px; }
+  html[data-size="tall-narrow"] .jaw-result-actions { gap: var(--ds-space-s); }
+}
+/* The narrowest phones keep both lower buttons' words at 18 px in Russian. */
+@media (max-width: 380px) {
+  html[data-size="tall-narrow"] .whose-jaw-result { padding-inline: calc(var(--ds-space-m) + var(--screen-left)) calc(var(--ds-space-m) + var(--screen-right)); }
+  html[data-size="tall-narrow"] .jaw-result-actions svg { width: 22px; height: 22px; }
+}
+html[data-size="wide-short"] .whose-jaw-result { --jr-sand: 278px; --jr-bedrock: 0px; --jr-gap: var(--ds-space-s); padding: calc(24px + env(safe-area-inset-top)) calc(88px + var(--screen-right)) calc(36px + env(safe-area-inset-bottom)) calc(var(--ds-space-40) + var(--screen-left)); gap: var(--ds-space-m); }
+html[data-size="wide-short"] .jaw-result-body { gap: var(--ds-space-20); }
+html[data-size="wide-short"] .jaw-result-pile { align-self: center; height: calc(100% - 56px); }
+/* The rewards column stays left of the sound button in the top corner. */
+html[data-size="wide-short"] .jaw-result-body { box-sizing: border-box; padding-right: 96px; }
+html[data-size="wide-short"] .whose-jaw-result h1 { font-size: var(--ds-size-24); }
+html[data-size="wide-short"] .whose-jaw-result .star svg { width: 40px; height: 40px; }
+html[data-size="wide-short"] .jaw-result-record { padding: var(--ds-space-s) var(--ds-space-m); }
+html[data-size="wide-short"] .jaw-result-find { flex-basis: 84px; }
+html[data-size="wide-short"] .jaw-result-shelf { border-bottom-width: 12px; }
+html[data-size="wide-short"] .jaw-result-actions { gap: var(--ds-space-m); }
+html[data-size="wide-short"] .jaw-result-actions button { height: 56px; font-size: var(--ds-size-18); padding-inline: var(--ds-space-l); }
+html[data-size="wide-short"] .jaw-result-actions svg { width: 26px; height: 26px; }
+html[data-size="wide-short"] .jaw-result-bedrock { display: none; }
+
+
 @media (prefers-reduced-motion: reduce) {
   :root {
     --motion-standard: 160ms;
@@ -12719,10 +12789,10 @@ html[data-size="wide-short"] .whose-jaw-welcome-bedrock { display: none; }
     animation: fade-in var(--motion-small) var(--ease-out) both;
   }
 
+  .whose-jaw-result h1, .jaw-result-jaws li, .jaw-result-find, .jaw-result-actions { animation: fade-in var(--motion-small) var(--ease-out) both; }
   .jaw-shelf-row, .jaw-shelf-card, .jaw-card-chomp[data-ready] { animation: fade-in var(--motion-small) var(--ease-out) both; }
   .jaw-card-scrim[data-leaving] { animation: fade-out var(--motion-small) var(--ease-out) both; }
 
-  .whose-jaw-result h1, .jaw-result-jaws li, .jaw-result-find, .jaw-result-actions { animation: fade-in var(--motion-small) var(--ease-out) both; }
 
   .whose-jaw-chomp[data-ready] { animation: fade-in var(--motion-small) var(--ease-out) both; }
 

@@ -3,6 +3,8 @@ import { afterEach, expect, it } from "vitest";
 import { GameAudioButton } from "../src/GameAudioButton.tsx";
 import { TEXTS } from "../src/language/texts.ts";
 import { THEMES } from "../src/theme.ts";
+import { WhoseJawResultScreen, type JawResult } from "../src/WhoseJawResultScreen.tsx";
+import { JAWS } from "./whoseJaw.ts";
 import { WhoseJawWelcomeScreen } from "../src/WhoseJawWelcomeScreen.tsx";
 import { withManualPictures } from "./pictures.tsx";
 import { computedStyleWithVariables } from "./stylesheet.ts";
@@ -99,4 +101,68 @@ it("leaves out the best badge before there is a best", () => {
   showWelcome("en", null);
   expect(document.querySelectorAll(".whose-jaw-badges p")).toHaveLength(1);
   expect(document.querySelector(".whose-jaw-best")).toBeNull();
+});
+
+function showResult(language: "en" | "ru", celebration: JawResult["celebration"] = "first-best", newly = 5) {
+  const pictures = manualPictures();
+  const jaws = JAWS.slice(0, 5).map(({ id, name }, index) => ({ id, name, picture: `${id}.webp`, newly: index < newly }));
+  render(<WhoseJawResultScreen language={language} result={{ stars: 2, best: 3, beaten: celebration === "new-best" ? 1 : undefined, celebration, jaws }}
+    audioControl={<GameAudioButton language={language} muted={false} onToggle={noop} />} onPlayAgain={noop} onShelf={noop} onHome={noop} />, withManualPictures(pictures));
+  act(() => { for (const jaw of jaws) pictures.finish(jaw.picture); });
+}
+
+for (const theme of THEMES) for (const shape of SHAPES) {
+  it(`draws the result from the dig-site tokens in ${theme} ${shape}`, () => {
+    at(theme, shape);
+    showResult("en");
+    matches(".whose-jaw-result", { color: "ink", "font-family": "font" });
+    matches(".jaw-result-sand", { "background-color": "strata-1" });
+    matches(".jaw-result-wave", { fill: "strata-1" });
+    matches(".whose-jaw-result .glow", { "background-color": "reward" });
+    if (shape === "wide-short") expect(style(part(".jaw-result-bedrock")).display).toBe("none");
+    else matches(".jaw-result-bedrock", { "background-color": "strata-2" });
+    matches(".whose-jaw-result h1", { "font-size": shape === "wide-short" ? "size-24" : shape === "tall-narrow" ? "size-action" : "size-title" });
+    matches(".jaw-result-record", { "background-color": "reward", color: "on-reward", "border-radius": "radius-tag" });
+    matches(".jaw-result-record .celebration", { "font-size": "size-14" });
+    matches(".whose-jaw-result .best-score-value", { "font-size": "size-action", color: "on-reward" });
+    matches(".jaw-result-shelf", { "border-bottom-color": "plank", "border-radius": "radius-4" });
+    matches(".jaw-result-collection p", { "font-size": "size-14" });
+    matches(".jaw-result-jaws li", { "background-color": "photo-white", "border-radius": "radius-18" });
+    matches(".jaw-result-find", { "background-color": "photo-white", "border-radius": "radius-10" });
+    expect([...document.querySelectorAll(".jaw-result-jaws li")].map(card => style(card).rotate)).toEqual(["10deg", "-7deg", "3deg", "-6deg", "8deg"]);
+    for (const selector of [".whose-jaw-result h1", ".jaw-result-record .celebration", ".jaw-result-collection p"]) expect(style(part(selector)).fontWeight, selector).toBe("800");
+  });
+
+  it(`draws the result actions from the dig-site tokens in ${theme} ${shape}`, () => {
+    at(theme, shape);
+    showResult("en");
+    matches(".jaw-result-play", { "background-color": "action", color: "on-action", "border-radius": "radius-pill", "font-size": shape === "tall-narrow" ? "size-26" : shape === "wide-short" ? "size-18" : "size-action" });
+    matches(".jaw-result-visit", { "background-color": "strong", color: "on-strong" });
+    matches(".jaw-result-home", { color: "ink", "border-top-color": "ink" });
+    expect(style(part(".jaw-result-home")).backgroundColor).toBe("rgba(0, 0, 0, 0)");
+    expect(style(part(".jaw-result-actions button")).fontWeight).toBe("800");
+  });
+}
+
+it.each(THEMES)("keeps the ordinary best on a quiet chip in %s", theme => {
+  at(theme, "wide");
+  showResult("en", null, 0);
+  matches(".jaw-result-record", { "background-color": "quiet", color: "ink" });
+  matches(".whose-jaw-result .best-score-value", { color: "ink" });
+  expect(document.querySelector(".jaw-result-collection")).toBeNull();
+  expect(document.querySelector(".celebration")).toBeNull();
+});
+
+it.each(["en", "ru"] as const)("shows localized result rewards and actions with symbols in %s", language => {
+  showResult(language, "new-best", 2);
+  const text = TEXTS[language];
+  expect(part(".jaw-result-title").textContent).toBe(text.wellDone);
+  expect(part(".jaw-result-new-label").textContent).toBe(text.jawNewCollection);
+  expect(part(".jaw-result-record > svg")).not.toBeNull();
+  expect(part(".jaw-result-collection svg")).not.toBeNull();
+  expect([...document.querySelectorAll(".jaw-result-actions button")].map(button => [button.textContent, !!button.querySelector("svg")])).toEqual([
+    [text.playAgain, true], [text.jawShelf, true], [text.home, true]
+  ]);
+  expect([...document.querySelectorAll(".jaw-result-jaws img")].map(image => image.getAttribute("alt"))).toEqual(JAWS.slice(0, 5).map(jaw => jaw.name[language].toLocaleUpperCase(language)));
+  expect(document.querySelectorAll(".jaw-result-find")).toHaveLength(2);
 });
