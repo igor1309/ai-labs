@@ -26,7 +26,7 @@ async function welcome(page, width, height, label, { sandTop, bedrock, phone, be
     const box = e => { const { x, y, width, height, top, right, bottom, left } = e.getBoundingClientRect(); return { x, y, width, height, top, right, bottom, left }; };
     const fits = e => e.scrollWidth <= e.clientWidth + 1;
     const shown = e => getComputedStyle(e).position !== 'absolute';
-    const hit = e => { const b = e.getBoundingClientRect(); return e.contains(document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2)); };
+    const hit = e => { const b = e.getBoundingClientRect(); const top = document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2); return e.contains(top) || (top ? `${top.tagName}.${top.className}` : "nothing"); };
     const body = q('.whose-jaw-welcome-body');
     const levels = [...document.querySelectorAll('.whose-jaw-welcome .level-switch-level')];
     return {
@@ -68,7 +68,7 @@ async function welcome(page, width, height, label, { sandTop, bedrock, phone, be
   apart(parts.home, parts.audio, `${label} home/audio`);
   assert(parts.title.bottom <= sandTop, `${label}: title stays in the sky`);
   assert.equal(measured.chips.length, best ? 2 : 1, `${label}: best chip only with a best`);
-  for (const tap of measured.taps) assert(tap.width >= 44 && tap.height >= 44 && tap.hit, `${label}: ${tap.label} is a tap target: ${JSON.stringify(tap)}`);
+  for (const tap of measured.taps) assert(tap.width >= 44 && tap.height >= 44 && tap.hit === true, `${label}: ${tap.label} is a tap target: ${JSON.stringify(tap)}`);
   for (const word of measured.words) assert(word.fits && word.size >= 18 && word.width > 1, `${label}: ${word.text} readable: ${JSON.stringify(word)}`);
   assert.equal(measured.homeWord, !phone, `${label}: HOME's word`);
   for (const name of measured.names) {
@@ -84,7 +84,7 @@ async function measureBoard(page) {
     const all = s => [...document.querySelectorAll(s)];
     const box = e => { const { x, y, width, height, top, right, bottom, left } = e.getBoundingClientRect(); return { x, y, width, height, top, right, bottom, left }; };
     const shown = e => !!e && e.getClientRects().length > 0 && getComputedStyle(e).visibility !== 'hidden' && getComputedStyle(e).display !== 'none';
-    const hit = e => { const b = e.getBoundingClientRect(); return e.contains(document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2)); };
+    const hit = e => { const b = e.getBoundingClientRect(); const top = document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2); return e.contains(top) || (top ? `${top.tagName}.${top.className}` : "nothing"); };
     const body = q('.jaw-sand-body');
     const bar = [...q('.whose-jaw-board-bar').children].filter(shown);
     const cue = q('.jaw-feedback p');
@@ -145,7 +145,7 @@ function boardFits(measured, width, height, label, { sandTop, bedrock, phone }) 
   const tray = [measured.jaw, measured.prompt, measured.next, measured.cue && !measured.cue.wrong && measured.cue].filter(Boolean);
   for (const part of tray) assert(part.left >= measured.tray.left - .5 && part.right <= measured.tray.right + .5 && part.top >= measured.tray.top - .5 && part.bottom <= measured.tray.bottom + .5, `${label}: ${JSON.stringify(part)} in the tray`);
   for (const [i, a] of tray.entries()) for (const b of tray.slice(i + 1)) apart(a, b, `${label} tray parts`);
-  for (const tap of measured.taps) assert(tap.width >= 44 && tap.height >= 44 && tap.hit, `${label}: ${tap.label} is a tap target: ${JSON.stringify(tap)}`);
+  for (const tap of measured.taps) assert(tap.width >= 44 && tap.height >= 44 && tap.hit === true, `${label}: ${tap.label} is a tap target: ${JSON.stringify(tap)}`);
   for (const word of measured.words) {
     assert(word.fits && word.width > 1 && word.size >= (phone ? 13 : 16), `${label}: ${word.text} readable: ${JSON.stringify(word)}`);
     inside(word, width, height, `${label} ${word.text}`);
@@ -296,7 +296,7 @@ async function result(page, width, height, label, newly, pictures) {
   const measured = await page.evaluate(() => {
     const q = s => document.querySelector(s);
     const box = e => e.getBoundingClientRect().toJSON();
-    const hit = e => { const b = e.getBoundingClientRect(); return e.contains(document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2)); };
+    const hit = e => { const b = e.getBoundingClientRect(); const top = document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2); return e.contains(top) || (top ? `${top.tagName}.${top.className}` : "nothing"); };
     return {
       overflow: [document.documentElement.scrollWidth > innerWidth, document.documentElement.scrollHeight > innerHeight],
       scrolls: [...document.querySelectorAll('.whose-jaw-result, .jaw-result-body, .jaw-result-rewards')].some(e => e.scrollHeight > e.clientHeight + 1 || e.scrollWidth > e.clientWidth + 1),
@@ -331,7 +331,7 @@ async function result(page, width, height, label, newly, pictures) {
     inside(find, width, measured.bedrock, `${label} find`);
   }
   for (const [i, a] of measured.buttons.entries()) {
-    assert(a.width >= 44 && a.height >= 44 && a.hit, `${label}: reachable action ${JSON.stringify(a)}`);
+    assert(a.width >= 44 && a.height >= 44 && a.hit === true, `${label}: reachable action ${JSON.stringify(a)}`);
     for (const b of measured.buttons.slice(i + 1)) apart(a, b, `${label} buttons`);
   }
   for (const word of measured.words) assert(word.fits && word.width > 1 && word.size >= word.minimum, `${label}: readable label ${JSON.stringify(word)}`);
@@ -378,7 +378,7 @@ async function shelf(page, width, height, label, earned) {
     if (place.disabled) assert.equal(place.opacity, '0.12');
     for (const other of measured.places.slice(i + 1)) apart(place.box, other.box, `${label}: places`);
   }
-  for (const tap of measured.taps) assert(tap.width >= 44 && tap.height >= 44 && tap.hit, `${label}: shelf tap ${JSON.stringify(tap)}`);
+  for (const tap of measured.taps) assert(tap.width >= 44 && tap.height >= 44 && tap.hit === true, `${label}: shelf tap ${JSON.stringify(tap)}`);
   for (const word of measured.labels) assert(word.fits && word.size >= 11, `${label}: shelf word ${JSON.stringify(word)}`);
   if (process.env.TEETH_SCREENSHOTS) await page.screenshot({ path: join(process.env.TEETH_SCREENSHOTS, `shelf-${label.replaceAll(' ', '-')}.png`) });
   const openers = page.locator('.jaw-shelf-place:not(:disabled)');
