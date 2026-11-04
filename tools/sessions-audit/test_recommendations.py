@@ -10,7 +10,7 @@ import claude_parser
 import codex_parser
 import sessions_audit_core as core
 from test_sessions_audit import (
-    HERE, c_tool, c_result, x_call, x_exec, x_output, js_cmd,
+    NOW, HERE, c_tool, c_result, x_call, x_exec, x_output, js_cmd,
     write_jsonl, run_cli, run_json, run_script,
 )
 
@@ -50,6 +50,29 @@ class RecommendationTests(unittest.TestCase):
         self.assertEqual(row['score'], 10)
         self.assertEqual(row['affected_sessions'], 1)
         self.assertNotIn('private raw result', json.dumps(row))
+        s.project = 'repo'
+        result = core.AgentResult('claude', 'Claude', {}, [s], {}, [])
+        payload = json.loads(json.dumps(core.build_json(
+            [result], core.Window(), 100, 15, False, NOW, recommend=True)))
+        self.assertEqual(payload['agents']['claude']['sessions'][0]['recommendation_details'], {
+            'duplicate_skills': {'review': 3},
+            'large_result_tools': {'Bash': 1, 'Read': 1, '(unknown)': 3},
+            'unmatched_large_results': 2,
+        })
+        evidence = {r['id']: r['evidence'] for r in payload['recommendations']}
+        self.assertEqual(evidence, {
+            'skills': [{
+                'agent': 'claude', 'project': 'repo', 'path': str(parent),
+                'metrics': {'duplicate_skill_loads': 3}, 'score': 9,
+                'duplicate_skills': {'review': 3},
+            }],
+            'results': [{
+                'agent': 'claude', 'project': 'repo', 'path': str(parent),
+                'metrics': {'large_results': 3, 'unmatched_large_results': 2},
+                'score': 10,
+                'large_result_tools': {'Bash': 1, 'Read': 1, '(unknown)': 3},
+            }],
+        })
 
     def test_both_parsers_track_skill_identities_and_only_extra_loads(self):
         cases = [
@@ -80,7 +103,8 @@ class RecommendationTests(unittest.TestCase):
     def test_codex_attributes_actual_calls_and_keeps_exec_wrapper(self):
         records = [
             x_exec(js_cmd('ls') + ';' + js_cmd('pwd'), 'wrapper'),
-            x_output('wrapper', 'x' * 100),
+            {'type': 'response_item', 'payload': {
+                'type': 'custom_tool_call_output', 'call_id': 'wrapper', 'output': 'x' * 100}},
             x_call('exec_command', {'cmd': 'ls'}, 'direct'),
             x_output('direct', 'y' * 100),
             x_output('unmatched', 'z' * 100),
@@ -95,6 +119,19 @@ class RecommendationTests(unittest.TestCase):
         self.assertEqual(s.large_results, 5)
         self.assertEqual(s.result_chars, 599)
         self.assertEqual(s.unmatched_large_results, 0)
+        s.project = 'repo'
+        result = core.AgentResult('codex', 'Codex', {}, [s], {}, [])
+        payload = json.loads(json.dumps(core.build_json(
+            [result], core.Window(), 100, 15, False, NOW, recommend=True)))
+        tools = {'exec': 1, 'exec_command': 1, '(unknown)': 2, 'read_file': 1}
+        self.assertEqual(payload['agents']['codex']['sessions'][0]['recommendation_details'], {
+            'duplicate_skills': {}, 'large_result_tools': tools, 'unmatched_large_results': 0,
+        })
+        self.assertEqual(payload['recommendations'][0]['evidence'], [{
+            'agent': 'codex', 'project': 'repo', 'path': s.path,
+            'metrics': {'large_results': 5, 'unmatched_large_results': 0},
+            'score': 10, 'large_result_tools': tools,
+        }])
 
     def fixture(self):
         croot, xhome = self.root / 'claude', self.root / 'codex'
@@ -135,6 +172,14 @@ class RecommendationTests(unittest.TestCase):
         self.assertEqual(builds['affected_sessions'], 16)
         self.assertEqual(len(builds['breakdown']), 16)
         self.assertEqual(len(builds['evidence']), 16)
+        self.assertEqual(builds['evidence'][:2], [
+            {'agent': 'claude', 'project': str(self.root / 'repo0'),
+             'path': str(self.root / 'claude/s0.jsonl'),
+             'metrics': {'unfiltered_builds': 1}, 'score': 5},
+            {'agent': 'codex', 'project': str(self.root / 'repo0'),
+             'path': str(self.root / 'codex/sessions/rollout-0.jsonl'),
+             'metrics': {'unfiltered_builds': 1}, 'score': 5},
+        ])
         self.assertEqual([(g['project'], g['agent']) for g in builds['breakdown'][:2]],
                          [(str(self.root / 'repo0'), 'claude'), (str(self.root / 'repo0'), 'codex')])
         self.assertTrue(all(g['metrics'] == {'unfiltered_builds': 1} and g['affected_sessions'] == 1
