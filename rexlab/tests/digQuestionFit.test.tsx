@@ -28,7 +28,7 @@ function show(level: (typeof levels)[number] | "hatchling", asking: boolean, lan
   const round = asking ? brushRound(started, { from: { x: 400, y: 300 }, to: { x: 400, y: 300 }, radius: 1000 }) : started;
   render(<DigBoardScreen
     {...presentDigBoard(round, fakeBodyPicture, fakeTreasurePicture, (id) => id)} choiceCount={round.choices.length} language={language} level={level}
-    brush={BRUSH_SIZES[level]} wide={false} onWide={() => {}} menuTimer={manualTimers().startTimer} grains dugUp={0} total={SHIPPED_DIG.length} treasures={0} sandContext={() => null} onBrush={() => {}} onHome={() => {}}
+    brush={BRUSH_SIZES[level]} wide={false} onWide={() => {}} grains dugUp={0} total={SHIPPED_DIG.length} treasures={0} sandContext={() => null} onBrush={() => {}} onHome={() => {}}
   />, withPictures);
 }
 
@@ -98,14 +98,21 @@ describe.each(LANGUAGES.flatMap((language) => levels.map((level) => [language, l
       const pickerWidth = px(picker.paddingLeft) + 2 * px(style(".dig-brush-option").width) + px(picker.gap) + px(picker.paddingRight) + px(style(".dig-bar").gap);
       // The title shrinks to the room left, its letters at most 0.75 of
       // its size wide, and stays at least 30 pixels large.
-      const titleRoom = roomWidth - 180 - 110 - 48 - guideWidth - pickerWidth;
+      // DUG UP: its star, a count of up to two digits, and where the bar
+      // is wide enough its words and the total; and the bar's gap.
+      const chip = style(".dig-chip");
+      const words = style(".dig-chip-words");
+      const wordsWidth = words.display === "none" ? 0 : 6 * (0.75 * px(words.fontSize) + px(words.letterSpacing)) + px(chip.gap);
+      const count = style(".dig-chip-count");
+      const chipWidth = 26 + px(chip.gap) + wordsWidth + 2 * 0.75 * px(count.fontSize) + (words.display === "none" ? 0 : px(style(".dig-chip-of").marginLeft) + 3 * 0.75 * px(style(".dig-chip-of").fontSize)) + px(style(".dig-bar").gap);
+      const titleRoom = roomWidth - 180 - chipWidth - 48 - guideWidth - pickerWidth;
       const ems = EMS[title];
       if (ems === undefined) throw new Error(`No width for ${title}`);
-      expect(style(".dig-title-words").fontSize).toBe("min(40px, (100cqi - 66px) / (var(--letters) * 0.75))");
+      expect(style(".dig-title-words").fontSize).toBe("min(34px, (100cqi - 60px) / (var(--letters) * 0.75))");
       expect(ems).toBeLessThanOrEqual(title.length * 0.75);
-      const size = Math.min(40, (titleRoom - 66) / (title.length * 0.75));
+      const size = Math.min(34, (titleRoom - 60) / (title.length * 0.75));
       expect([style(".dig-title").whiteSpace, size >= 30]).toEqual(["nowrap", true]);
-      expect(66 + ems * size).toBeLessThanOrEqual(titleRoom);
+      expect(60 + ems * size).toBeLessThanOrEqual(titleRoom);
     }
   });
 });

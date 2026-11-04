@@ -54,7 +54,7 @@ describe("DIG's field guide upright", () => {
       expect(styleAt(button, [600, 1000]).px("width")).toBe(56);
       expect(button.querySelector(".upright-hidden")?.textContent).toBe(name);
     }
-    expect(styleAt(part(".dig-field-guide-screen .dig-title-words"), [600, 1000]).value("font-size")).toBe("min(40px, (100cqi - 66px) / (var(--letters) * 0.75))");
+    expect(styleAt(part(".dig-field-guide-screen .dig-title-words"), [600, 1000]).value("font-size")).toBe("min(34px, (100cqi - 60px) / (var(--letters) * 0.75))");
     expect([...document.querySelectorAll(".dig-guide-name")].map((name) => name.textContent)).toEqual(Object.values(text.treasures));
   });
 

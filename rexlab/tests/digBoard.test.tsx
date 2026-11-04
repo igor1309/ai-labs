@@ -184,9 +184,9 @@ describe("the dig game's tile", () => {
 
     expect(board().getAttribute("data-blown")).toBeNull();
     const title = screen.getByRole("heading", { level: 1 });
-    expect([title.textContent, symbolOf(title)]).toEqual(["DIG", "brush"]);
+    expect([title.textContent, symbolOf(title)]).toEqual(["DIG", "paintbrush-vertical"]);
     expect(screen.getByRole("button", { name: "HOME" })).toBeDefined();
-    expect(screen.getByLabelText("DUG UP").textContent).toBe(`0/${SHIPPED_DIG.length}`);
+    expect(screen.getByLabelText("DUG UP").textContent).toBe(`DUG UP0/${SHIPPED_DIG.length}`);
     expect(getComputedStyle(board()).aspectRatio).toBe("var(--frame-width) / var(--frame-height)");
   });
 
@@ -212,7 +212,7 @@ describe("the dig game's tile", () => {
 
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("РАСКОПКИ");
     expect(screen.getByRole("button", { name: "ДОМОЙ" })).toBeDefined();
-    expect(screen.getByLabelText("ОТКОПАНО").textContent).toBe(`0/${SHIPPED_DIG.length}`);
+    expect(screen.getByLabelText("ОТКОПАНО").textContent).toBe(`ОТКОПАНО0/${SHIPPED_DIG.length}`);
   });
 });
 
@@ -269,7 +269,7 @@ describe("a round's start", () => {
 
     // The same draw of 0 that dug up the first dinosaur.
     expect(roundDinosaur().id).not.toBe(first.id);
-    expect(screen.getByLabelText("DUG UP").textContent).toBe(`1/${SHIPPED_DIG.length}`);
+    expect(screen.getByLabelText("DUG UP").textContent).toBe(`DUG UP1/${SHIPPED_DIG.length}`);
   });
 });
 
@@ -620,6 +620,6 @@ describe("HOME", () => {
     fireEvent.click(homeTile("DIG"));
     placeBoard(800);
 
-    expect([clearCells(), screen.getByLabelText("DUG UP").textContent]).toEqual([[], `0/${SHIPPED_DIG.length}`]);
+    expect([clearCells(), screen.getByLabelText("DUG UP").textContent]).toEqual([[], `DUG UP0/${SHIPPED_DIG.length}`]);
   });
 });
