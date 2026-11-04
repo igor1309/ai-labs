@@ -85,12 +85,10 @@ const { chromium } = require("playwright");
     };
     await homeCount(0); await entry().press("Enter"); await gallery();
     assert.equal(await starts(), 0);
-    // The released worker has installed the complete app before going offline.
-    await page.waitForFunction(async () => (await navigator.serviceWorker.getRegistration())?.active?.state === "activated");
-    await page.reload(); await homeCount(0); await entry().press("Enter"); await gallery();
-    // Activation can come before the reloaded page is controlled.
+    // The released worker installs the complete app and, once active, takes
+    // this first launch's page, so it plays on without Wi-Fi.
     await page.waitForFunction(() => !!navigator.serviceWorker.controller).catch(async error => {
-      // Shows how the reload came to be uncontrolled: whether the worker ran
+      // Shows how the page came to stay uncontrolled: whether the worker ran
       // for the page's request and what the registration held.
       const state = await page.evaluate(async () => {
         const registration = await navigator.serviceWorker.getRegistration();

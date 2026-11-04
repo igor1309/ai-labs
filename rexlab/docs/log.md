@@ -1,5 +1,9 @@
 # rexlab — Change Log
 
+## 2026-11-05
+
+- LAB-963: The first launch works without Wi-Fi once the app has installed itself; before, only the next launch did.
+
 ## 2026-11-04
 
 - LAB-915: COMPARE uses the dig-site sky, sand and pocket cards, with answer-history progress and each level’s best; its rewards and level choices fit wide, upright and phone windows in light and dark.
