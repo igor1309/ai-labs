@@ -2,6 +2,7 @@ import AVFoundation
 import CallAudioAccess
 import Composer
 import struct CoreAudioProcessBinding.CoreAudioBinding
+import protocol CoreAudioProcesses.CallClock
 import struct CoreAudioProcesses.ContinuousCallClock
 import Foundation
 import LiveText
@@ -106,21 +107,23 @@ struct RealRecognizer: SpeechRecognizer {
     }
 }
 
-func realTime() -> ComposerTime {
+func realTime(
+    callClock: any CallClock = ContinuousCallClock(),
+    sleepUntil: @escaping @Sendable (ContinuousClock.Instant) async throws -> Void = { try await ContinuousClock().sleep(until: $0) }
+) -> ComposerTime {
     ComposerTime(now: { Date() }, timeZone: { .current },
                  monotonicNow: { ProcessInfo.processInfo.systemUptime },
                  sleep: { try await ContinuousClock().sleep(for: $0) }, after: { delay, fire in
-        let token = ContinuousCallClock().after(delay, fire)
+        let token = callClock.after(delay, fire)
         return BoundaryCancellation { token.cancel() }
     }, ticks: {
         AsyncStream { output in
             let task = Task {
-                let clock = ContinuousClock()
-                var next = clock.now
+                var next = ContinuousClock.now
                 do {
                     while true {
                         next += .seconds(1)
-                        try await clock.sleep(until: next)
+                        try await sleepUntil(next)
                         output.yield(())
                     }
                 } catch {}
