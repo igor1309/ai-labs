@@ -36,7 +36,7 @@ jobs:
       # never kept.
       - name: Cache the speech models
         id: models
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/Library/Application Support/FluidAudio/Models
           key: audelin-models-${{ hashFiles('audelin/macos/Package.resolved') }}
