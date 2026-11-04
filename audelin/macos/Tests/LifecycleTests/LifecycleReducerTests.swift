@@ -3,46 +3,46 @@ import Testing
 
 struct LifecycleReducerTests {
 
-    @Test func quitWhileRunningStopsDelivery_state() { assert(.running, .quit, reducedTo: .stoppingDelivery) }
-    @Test func quitWhileRunningStopsDelivery_effect() { assert(.running, .quit, effect: .stopDelivery) }
+    @Test func quitWhileRunningStopsDelivery_state() { assert(makeState(.running), .quit) { $0 = .stoppingDelivery } }
+    @Test func quitWhileRunningStopsDelivery_effect() { assert(makeState(.running), .quit, delivers: .stopDelivery) }
 
-    @Test func stoppedDeliveryStopsRecording_state() { assert(.stoppingDelivery, .deliveryStopped, reducedTo: .draining) }
-    @Test func stoppedDeliveryStopsRecording_effect() { assert(.stoppingDelivery, .deliveryStopped, effect: .stopRecording) }
+    @Test func stoppedDeliveryStopsRecording_state() { assert(makeState(.stoppingDelivery), .deliveryStopped) { $0 = .draining } }
+    @Test func stoppedDeliveryStopsRecording_effect() { assert(makeState(.stoppingDelivery), .deliveryStopped, delivers: .stopRecording) }
 
-    @Test func drainedRecordingWaitsForIdle_state() { assert(.draining, .drained, reducedTo: .waiting) }
-    @Test func drainedRecordingWaitsForIdle_effect() { assert(.draining, .drained, effect: .waitForIdle) }
+    @Test func drainedRecordingWaitsForIdle_state() { assert(makeState(.draining), .drained) { $0 = .waiting } }
+    @Test func drainedRecordingWaitsForIdle_effect() { assert(makeState(.draining), .drained, delivers: .waitForIdle) }
 
-    @Test func idleRecordingEnds_state() { assert(.waiting, .idle, reducedTo: .ending) }
-    @Test func idleRecordingEnds_effect() { assert(.waiting, .idle, effect: .end) }
+    @Test func idleRecordingEnds_state() { assert(makeState(.waiting), .idle) { $0 = .ending } }
+    @Test func idleRecordingEnds_effect() { assert(makeState(.waiting), .idle, delivers: .end) }
 
-    @Test func endedRecordingTerminates_state() { assert(.ending, .ended, reducedTo: .terminating) }
-    @Test func endedRecordingTerminates_effect() { assert(.ending, .ended, effect: .terminate) }
+    @Test func endedRecordingTerminates_state() { assert(makeState(.ending), .ended) { $0 = .terminating } }
+    @Test func endedRecordingTerminates_effect() { assert(makeState(.ending), .ended, delivers: .terminate) }
 
-    @Test func terminationCompletes_state() { assert(.terminating, .terminated, reducedTo: .terminated) }
-    @Test func terminationCompletes_effect() { assert(.terminating, .terminated, effect: nil) }
+    @Test func terminationCompletes_state() { assert(makeState(.terminating), .terminated) { $0 = .terminated } }
+    @Test func terminationCompletes_effect() { assert(makeState(.terminating), .terminated, delivers: nil) }
 
     /// Waiting without idle (an ended observation) neither ends nor terminates.
-    @Test func drainedWhileWaitingStays_state() { assert(.waiting, .drained, reducedTo: .waiting) }
-    @Test func drainedWhileWaitingStays_effect() { assert(.waiting, .drained, effect: nil) }
+    @Test func drainedWhileWaitingStays_state() { assert(makeState(.waiting), .drained) }
+    @Test func drainedWhileWaitingStays_effect() { assert(makeState(.waiting), .drained, delivers: nil) }
 
     @Test func repeatedQuitIsIgnored_state() {
 
-        for state in LifecycleState.all where state != .running { assert(state, .quit, reducedTo: state) }
+        for state in LifecycleState.all where state != .running { assert(makeState(state), .quit) }
     }
 
     @Test func repeatedQuitIsIgnored_effect() {
 
-        for state in LifecycleState.all where state != .running { assert(state, .quit, effect: nil) }
+        for state in LifecycleState.all where state != .running { assert(makeState(state), .quit, delivers: nil) }
     }
 
     @Test func outOfOrderEventsAreIgnored_state() {
 
-        for (state, event) in outOfOrder { assert(state, event, reducedTo: state) }
+        for (state, event) in outOfOrder { assert(makeState(state), event) }
     }
 
     @Test func outOfOrderEventsAreIgnored_effect() {
 
-        for (state, event) in outOfOrder { assert(state, event, effect: nil) }
+        for (state, event) in outOfOrder { assert(makeState(state), event, delivers: nil) }
     }
 }
 
