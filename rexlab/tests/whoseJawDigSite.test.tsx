@@ -5,13 +5,14 @@ import { TEXTS } from "../src/language/texts.ts";
 import { THEMES } from "../src/theme.ts";
 import { WhoseJawBoardScreen, type WhoseJawBoardScreenProps } from "../src/WhoseJawBoardScreen.tsx";
 import { WhoseJawResultScreen, type JawResult } from "../src/WhoseJawResultScreen.tsx";
-import { JAWS } from "./whoseJaw.ts";
+import { WhoseJawShelfScreen } from "../src/WhoseJawShelfScreen.tsx";
+import { JAWS, jawGameParts } from "./whoseJaw.ts";
 import { WhoseJawWelcomeScreen } from "../src/WhoseJawWelcomeScreen.tsx";
 import { withManualPictures, withPictures } from "./pictures.tsx";
 import { computedStyleWithVariables } from "./stylesheet.ts";
 import { manualPictures } from "./support.ts";
 
-const style = computedStyleWithVariables(window.getComputedStyle.bind(window));
+const style = window.getComputedStyle.bind(window);
 const part = (selector: string) => {
   const element = document.querySelector(selector);
   if (!element) throw new Error(`Missing ${selector}`);
@@ -358,3 +359,41 @@ it.each(["en", "ru"] as const)("shows localized result rewards and actions with 
   expect([...document.querySelectorAll(".jaw-result-jaws img")].map(image => image.getAttribute("alt"))).toEqual(JAWS.slice(0, 5).map(jaw => jaw.name[language].toLocaleUpperCase(language)));
   expect(document.querySelectorAll(".jaw-result-find")).toHaveLength(2);
 });
+for (const theme of THEMES) for (const shape of SHAPES) {
+  const language = "en";
+  it(`draws the shelf and open card from dig-site tokens in ${theme} ${shape}`, () => {
+    at(theme, shape);
+    const pictures = manualPictures();
+    const parts = jawGameParts();
+    const selected = JAWS.find(({ id }) => id === "tyrannosaurus")!;
+    render(<WhoseJawShelfScreen {...parts} language={language} earned={[selected.id]} startTimer={pictures.startTimer} onBack={noop} onHome={noop}
+      audioControl={<GameAudioButton language={language} muted={false} onToggle={noop} />} />, withManualPictures(pictures));
+    matches(".whose-jaw-shelf-screen", { "background-color": "strata-1", color: "ink", "font-family": "font" });
+    matches(".jaw-shelf-bar h1", { "font-size": phone(shape) ? "size-24" : "size-title" });
+    matches(".jaw-shelf-count", { "background-color": "quiet", "border-radius": "radius-tag" });
+    matches(".jaw-shelf-count span", { color: "ink-soft" });
+    matches(".jaw-shelf-labels > span", { "background-color": "label", color: "ink" });
+    matches('.jaw-shelf-place[data-unlocked] .jaw-shelf-pocket', { "background-color": "label" });
+    matches('.jaw-shelf-place:disabled .jaw-shelf-pocket', { "background-color": "quiet" });
+    matches(".jaw-shelf-unknown", { color: "ink-soft", "font-size": phone(shape) ? "size-34" : "size-44" });
+    matches(".jaw-shelf-name", { "font-size": phone(shape) ? "size-11" : "size-15" });
+    expect(style(part(".jaw-shelf-silhouette")).opacity).toBe("0.12");
+    expect(part(".jaw-shelf-title").textContent).toBe(TEXTS[language].jawShelf);
+    expect(document.querySelectorAll(".jaw-shelf-row")).toHaveLength(4);
+    for (const row of document.querySelectorAll(".jaw-shelf-row")) expect(row.querySelectorAll(".jaw-shelf-place")).toHaveLength(4);
+    expect(within(document.body).getByLabelText(TEXTS[language].jawCollection).textContent).toBe("1/ 16");
+    fireEvent.click(within(document.body).getByRole("button", { name: selected.name[language].toLocaleUpperCase(language) }));
+    matches(".jaw-card-scrim", { "background-color": "scrim" });
+    matches(".jaw-shelf-card", { "background-color": "label", color: "ink", "border-radius": "radius-24" });
+    matches(".jaw-card-pictures", { "background-color": "photo-white" });
+    matches(".jaw-card-chomp", { "background-color": "photo-white", "border-top-color": "outline" });
+    matches(".jaw-card-diet", { "background-color": "quiet" });
+    matches(".jaw-card-fact svg", { color: "reward" });
+    matches(".jaw-card-controls > .home-button", { "border-top-color": "ink", color: "ink", "font-size": shape === "wide-short" ? "size-20" : "size-action" });
+    for (const selector of [".jaw-shelf-bar h1", ".jaw-shelf-count", ".jaw-shelf-name", ".jaw-shelf-card h2", ".jaw-card-diet", ".jaw-card-fact"]) expect(style(part(selector)).fontWeight).toBe("800");
+    const dialog = within(document.body).getByRole("dialog", { name: selected.name[language].toLocaleUpperCase(language) });
+    expect(dialog.textContent).toContain(selected.fact[language].toLocaleUpperCase(language));
+    expect(within(dialog).getByRole("button", { name: TEXTS[language].back })).toBe(document.activeElement);
+    expect(part(".jaw-shelf-content").hasAttribute("inert")).toBe(true);
+  });
+}
