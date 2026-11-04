@@ -48,14 +48,21 @@ struct TranscriptLogTests {
         }
     }
 
-    @Test func theTimeInItsSpeakersColourIsTheOnlySpeakerMark() throws {
+    @Test func theSymbolAndTheTimeMarkTheSpeakerInItsColour() throws {
 
         let text = try #require(Offscreen.textView(in: hosted(.init(rows: [
             .entry(.init(id: 1, time: "12:44", speaker: .me, settled: "mine")),
             .entry(.init(id: 2, time: "12:45", speaker: .them, settled: "theirs")),
         ]))))
 
-        #expect(text.string == "12:44\tmine\n12:45\ttheirs")
+        #expect(text.string == "\u{FFFC}\t12:44\tmine\n\u{FFFC}\t12:45\ttheirs")
+        #expect(Transcript.text(in: NSRange(location: 0, length: text.string.utf16.count), of: text.attributedString()) == "mine\ntheirs")
+        var symbols: [String?] = []
+        let whole = NSRange(location: 0, length: text.string.utf16.count)
+        text.attributedString().enumerateAttribute(.attachment, in: whole) { value, _, _ in
+            if let value = value as? NSTextAttachment { symbols.append(value.image?.accessibilityDescription) }
+        }
+        #expect(symbols == ["я", "они"])
         #expect(attribute(.foregroundColor, of: "12:44", in: text) as? NSColor == NSColor(GlassLedger.light.me))
         #expect(attribute(.foregroundColor, of: "12:45", in: text) as? NSColor == NSColor(GlassLedger.light.them))
     }
@@ -154,9 +161,9 @@ struct TranscriptLogTests {
         let edit = rows.update(.init(entries: many(800) + [newest("по слог")]), style: style)
 
         // From the newline that opens its paragraph.
-        let start = (first.text.string as NSString).range(of: "13:10").location - 1
+        let start = (first.text.string as NSString).range(of: "13:10").location - ("\n\u{FFFC}\t" as NSString).length
         #expect(edit.range == NSRange(location: start, length: first.text.length - start))
-        #expect(edit.entries.last?.body.location == start + ("\n13:10\t" as NSString).length)
+        #expect(edit.entries.last?.body.location == start + ("\n\u{FFFC}\t13:10\t" as NSString).length)
     }
 
     @Test func anUpdateBehindUnchangedSealedRowsAppliesCleanly() {
