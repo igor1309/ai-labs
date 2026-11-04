@@ -17,14 +17,14 @@ struct FinalEntriesTests {
         await theirs.send(final: [theirFinals[0]], tail: [word(1, start: 1.5)])
         let held = await call.state
         #expect(held.finalCount == 3)
-        #expect(held.entries == ordered(Array(myFinals.prefix(3)), [theirFinals[0]], myTail: [word(3)], theirTail: [word(1, start: 1.5)]))
+        #expect(CallOutput(held).entries == ordered(Array(myFinals.prefix(3)), [theirFinals[0]], myTail: [word(3)], theirTail: [word(1, start: 1.5)]))
 
         await mine.send(final: myFinals, tail: [word(4)])
         #expect(await call.state.finalCount == held.finalCount)
         await theirs.send(final: theirFinals, tail: [word(3, start: 3.5)])
         let caughtUp = await call.state
         #expect(caughtUp.finalCount == 7)
-        #expect(caughtUp.entries == ordered(myFinals, theirFinals, myTail: [word(4)], theirTail: [word(3, start: 3.5)]))
+        #expect(CallOutput(caughtUp).entries == ordered(myFinals, theirFinals, myTail: [word(4)], theirTail: [word(3, start: 3.5)]))
         #expect(Array(caughtUp.entries.prefix(held.finalCount)) == Array(held.entries.prefix(held.finalCount)))
         await call.stop()
     }
@@ -38,12 +38,12 @@ struct FinalEntriesTests {
         await mine.send(final: [first], tail: [])
         await theirs.send(final: [first, second], tail: [word(2, start: 3)])
         let held = await call.state
-        #expect(held.entries == ordered([first], [first, second], theirTail: [word(2, start: 3)]))
+        #expect(CallOutput(held).entries == ordered([first], [first, second], theirTail: [word(2, start: 3)]))
         #expect(held.finalCount == 2, "mine can still arrive before theirs at the same start")
         await mine.send(final: [first, second], tail: [word(2, start: 3)])
         let advanced = await call.state
         #expect(advanced.finalCount == 4)
-        #expect(advanced.entries == ordered([first, second], [first, second], myTail: [word(2, start: 3)], theirTail: [word(2, start: 3)]))
+        #expect(CallOutput(advanced).entries == ordered([first, second], [first, second], myTail: [word(2, start: 3)], theirTail: [word(2, start: 3)]))
         await call.stop()
     }
 
@@ -57,7 +57,7 @@ struct FinalEntriesTests {
         await theirs.send(final: [], tail: [word(0, start: 10)])
         #expect(await call.state.finalCount == 0)
         await theirs.send(final: [], tail: [word(0, start: 1)])
-        #expect(await call.state.entries == ordered([final], [], myTail: [word(1, start: 5)], theirTail: [word(0, start: 1)]))
+        #expect(CallOutput(await call.state).entries == ordered([final], [], myTail: [word(1, start: 5)], theirTail: [word(0, start: 1)]))
         #expect(await call.state.finalCount == 0)
         await call.stop()
     }
@@ -73,7 +73,7 @@ struct FinalEntriesTests {
         #expect(await call.state.finalCount == 0)
         await theirs.send(final: [], tail: [], status: status)
         #expect(await call.state.finalCount == 2)
-        #expect(await call.state.entries == ordered(finals, [], myTail: [word(2)]))
+        #expect(CallOutput(await call.state).entries == ordered(finals, [], myTail: [word(2)]))
         #expect(await call.state.status == (status == .finished ? .listening : .failed("ended")))
         await call.stop()
     }
@@ -86,7 +86,7 @@ struct FinalEntriesTests {
         await mine.send(final: [word(0), word(1)], tail: [word(2)])
         await theirs.send(final: [], tail: [word(0, start: 0.5)], status: .failed("ended"))
         #expect(await call.state.finalCount == 1)
-        #expect(await call.state.entries == ordered([word(0), word(1)], [], myTail: [word(2)], theirTail: [word(0, start: 0.5)]))
+        #expect(CallOutput(await call.state).entries == ordered([word(0), word(1)], [], myTail: [word(2)], theirTail: [word(0, start: 0.5)]))
         await call.stop()
     }
 
@@ -103,15 +103,15 @@ struct FinalEntriesTests {
         let entries = ending == .mine
             ? ordered([], finals, theirTail: tail)
             : ordered(finals, [], myTail: tail)
-        let held = State(status: .listening, entries: entries, finalCount: 0)
-        #expect(await call.state == held)
+        let held = CallOutput(status: .listening, entries: entries, finalCount: 0)
+        #expect(CallOutput(await call.state) == held)
         var updates = call.updates.makeAsyncIterator()
-        while let snapshot = await updates.next(), snapshot != held {}
+        while let snapshot = await updates.next(), CallOutput(snapshot) != held {}
 
         await endingSide.endListening()
-        let released = State(status: .listening, entries: entries, finalCount: 2)
-        #expect(await updates.next() == released)
-        #expect(await call.state == released)
+        let released = CallOutput(status: .listening, entries: entries, finalCount: 2)
+        #expect(await updates.next().map(CallOutput.init) == released)
+        #expect(CallOutput(await call.state) == released)
         await call.stop()
     }
 
@@ -130,7 +130,7 @@ struct FinalEntriesTests {
         #expect(off.entries == before.entries)
         #expect(off.finalCount == before.finalCount)
         await call.setEnabled(true)
-        #expect(await call.state.entries == before.entries)
+        #expect(CallOutput(await call.state).entries == CallOutput(before).entries)
         #expect(await call.state.finalCount == before.finalCount)
         await mine.send(final: [word(0), word(1), word(2)], tail: [word(3)])
         #expect(await call.state.finalCount == before.finalCount)
@@ -138,7 +138,7 @@ struct FinalEntriesTests {
         await theirs.send(final: [word(0, start: 0.5), recovered], tail: [word(2, start: 2.5, later: true)])
         let after = await call.state
         #expect(after.finalCount == 5)
-        #expect(after.entries == ordered([word(0), word(1), word(2)], [word(0, start: 0.5), recovered], myTail: [word(3)], theirTail: [word(2, start: 2.5, later: true)]))
+        #expect(CallOutput(after).entries == ordered([word(0), word(1), word(2)], [word(0, start: 0.5), recovered], myTail: [word(3)], theirTail: [word(2, start: 2.5, later: true)]))
         #expect(Array(after.entries.prefix(before.finalCount)) == Array(before.entries.prefix(before.finalCount)))
         await call.stop()
     }
@@ -199,7 +199,7 @@ struct FinalEntriesTests {
         await theirs.send(final: theirFinals, tail: [word(count / 2, start: Double(count + 1))])
         let first = await call.state
         #expect(first.finalCount == count)
-        #expect(first.entries == ordered(myFinals, theirFinals, myTail: [myTail], theirTail: [word(count / 2, start: Double(count + 1))]))
+        #expect(CallOutput(first).entries == ordered(myFinals, theirFinals, myTail: [myTail], theirTail: [word(count / 2, start: Double(count + 1))]))
         _ = work.take()
 
         // Retain every snapshot, as an unread stream or a slow reader does.
@@ -231,10 +231,10 @@ private func word(_ id: Int, start: Double? = nil, end: Double? = nil, pending: 
     return .init(text: .init(id: id, start: start, end: end ?? start + 1, settled: pending.isEmpty ? "word\(id)" : "", pending: pending), writtenLater: later)
 }
 
-private func ordered(_ mine: [SideState.Entry], _ theirs: [SideState.Entry], myTail: [SideState.Entry] = [], theirTail: [SideState.Entry] = []) -> [State.Entry] {
+private func ordered(_ mine: [SideState.Entry], _ theirs: [SideState.Entry], myTail: [SideState.Entry] = [], theirTail: [SideState.Entry] = []) -> [CallOutput.Entry] {
 
-    let mine = (mine + myTail).map { State.Entry(speaker: .mine, text: $0.text, writtenLater: $0.writtenLater) }
-    let theirs = (theirs + theirTail).map { State.Entry(speaker: .theirs, text: $0.text, writtenLater: $0.writtenLater) }
+    let mine = (mine + myTail).map { CallOutput.Entry(speaker: .mine, text: $0.text, writtenLater: $0.writtenLater) }
+    let theirs = (theirs + theirTail).map { CallOutput.Entry(speaker: .theirs, text: $0.text, writtenLater: $0.writtenLater) }
     return (mine + theirs).sorted {
         $0.text.start != $1.text.start ? $0.text.start < $1.text.start : $0.speaker == .mine && $1.speaker == .theirs
     }
