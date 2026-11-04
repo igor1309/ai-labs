@@ -1,5 +1,9 @@
 # Log
 
+## 2026-11-04
+
+- Session exposes its complete audio observation state and accepts replaceable failure wording while preserving recording behavior (LAB-951).
+
 ## 2026-11-03
 
 - Parakeet omits whitespace-only model words while keeping spoken words' original timing (LAB-943).
