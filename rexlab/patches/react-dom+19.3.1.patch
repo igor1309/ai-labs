@@ -1,0 +1,56 @@
+--- a/node_modules/react-dom/cjs/react-dom-client.development.js
++++ b/node_modules/react-dom/cjs/react-dom-client.development.js
+@@ -24266,8 +24266,9 @@
+                 error.message ||
+               "Skipping view transition because viewport size changed." ===
+                 error.message ||
+-              "Transition was aborted because of invalid state" ===
+-                error.message
++              error.message.startsWith(
++                "Transition was aborted because of invalid state"
++              )
+             )
+               return null;
+         }
+--- a/node_modules/react-dom/cjs/react-dom-client.production.js
++++ b/node_modules/react-dom/cjs/react-dom-client.production.js
+@@ -15875,8 +15875,9 @@ function startViewTransition(
+                     error.message ||
+                   "Skipping view transition because viewport size changed." ===
+                     error.message ||
+-                  "Transition was aborted because of invalid state" ===
+-                    error.message
++                  error.message.startsWith(
++                    "Transition was aborted because of invalid state"
++                  )
+                 )
+                   error = null;
+             }
+--- a/node_modules/react-dom/cjs/react-dom-profiling.development.js
++++ b/node_modules/react-dom/cjs/react-dom-profiling.development.js
+@@ -24274,8 +24274,9 @@
+                 error.message ||
+               "Skipping view transition because viewport size changed." ===
+                 error.message ||
+-              "Transition was aborted because of invalid state" ===
+-                error.message
++              error.message.startsWith(
++                "Transition was aborted because of invalid state"
++              )
+             )
+               return null;
+         }
+--- a/node_modules/react-dom/cjs/react-dom-profiling.profiling.js
++++ b/node_modules/react-dom/cjs/react-dom-profiling.profiling.js
+@@ -17777,8 +17777,9 @@ function startViewTransition(
+                     error.message ||
+                   "Skipping view transition because viewport size changed." ===
+                     error.message ||
+-                  "Transition was aborted because of invalid state" ===
+-                    error.message
++                  error.message.startsWith(
++                    "Transition was aborted because of invalid state"
++                  )
+                 )
+                   error = null;
+             }

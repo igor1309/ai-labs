@@ -1,3 +1,4 @@
+import { friendsColumns } from "./FriendsScreen.tsx";
 import packageInfo from "../package.json";
 import { COLOR_PAGE, DIG_PICTURE, HOME_TILE_PICTURES, PAIRS_PICTURE } from "./homeTilePictures.ts";
 import { coloringVersionsFor } from "./coloringWorkshopRoot.ts";
@@ -436,11 +437,12 @@ export function App({
     counting("dig")
   );
 
-  // Upright, tall or tall-narrow, FRIENDS stands two cards to a row, four
-  // otherwise.
   const care = useCareGame({ ...careProps, bodyPicture, random, startTimer }, home, counting("care"), {
     keeping: turns,
-    columns: () => (viewport.sizeClass().startsWith("tall") ? 2 : 4)
+    columns: () => {
+      const { left, right } = viewport.sideInsets();
+      return friendsColumns(viewport.width(), viewport.sizeClass(), left, right);
+    }
   });
 
   // Each game's phase is its own: the gate and the turns read it as the

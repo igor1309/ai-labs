@@ -65,7 +65,7 @@ describe("the page does not pull or bounce", () => {
     const scrolling = RULES.filter(({ declarations }) => declarations.some(({ property, value }) => /^overflow(-[xy])?$/.test(property) && /\b(auto|scroll)\b/.test(value)));
 
     // Home's ground now takes part in the page scroll.
-    expect(scrolling.map(({ selector }) => selector)).toEqual(expect.arrayContaining([ ".catalogue-grid", ".friends-grid"]));
+    expect(scrolling.map(({ selector }) => selector)).toEqual(expect.arrayContaining([ ".catalogue-grid", ".friends-dig-site .friends-grid", ".friends-dig-site .no-friends"]));
     expect(scrolling.map((rule) => [rule.selector, overscrollOf(rule)])).toEqual(scrolling.map(({ selector }) => [selector, ["overscroll-behavior: none"]]));
   });
 });

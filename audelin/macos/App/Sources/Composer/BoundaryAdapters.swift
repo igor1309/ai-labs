@@ -35,6 +35,7 @@ func accessPolicy(_ access: any CallAudioAccessSource) -> AccessPolicy {
                 for await available in states {
                     var state = AccessState()
                     state.evidence = available ? .heard : .silent
+                    state.published = available
                     output.yield(state)
                 }
                 output.finish()

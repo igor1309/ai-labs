@@ -13,7 +13,7 @@ Workflows are organized into four categories:
 - **Release** — tag-triggered pipelines for per-unit and legacy Oracle releases.
 - **Scheduled & Independent** — health checks, dashboards, deployments, and housekeeping that run on cron or trunk push.
 
-`update-behind-prs.yml` runs on each trunk push. It updates every open PR that has auto-merge armed and has fallen behind trunk, so it is tested again and lands without a hand update. Branch protection requires up-to-date branches. A PR that conflicts fails the run, naming the PR. It pushes with `PR_UPDATE_TOKEN`, because an update pushed with `GITHUB_TOKEN` would start no CI.
+PR branches may merge after required checks pass without incorporating the latest trunk. Merges use merge commits; conflicts must be resolved before merging. Trunk pushes do not automatically update waiting PR branches.
 
 ## Path Filtering Policy
 
@@ -54,7 +54,7 @@ Each test, what runs it, and the change that triggers it (LAB-167, LAB-220, LAB-
 | foliotell Android (`:core:test`), debug build | `foliotell-android-core` | the `foliotell-android` filter | runs |
 | notio backend (`notio/backend/Tests/`) | `notio-core` | the `notio` filter | runs |
 | notio frontend (`notio/frontend/tests/`), typecheck, build | `notio-frontend-core` | the `notio-frontend` filter | runs |
-| rexlab (`rexlab/tests/*.test.ts`, `*.test.tsx`), typecheck, build, board geometry, coloring probe/production pixels, workshop, long drawing contacts, gallery, result and full flow in Chromium (`npm run test:browser`, `node tests/coloringProbe.browser.cjs`, `node tests/coloringPainter.browser.cjs`, `node tests/coloringWorkshop.browser.cjs`, `node tests/coloringDrawing.browser.cjs`, `node tests/coloringGallery.browser.cjs`, `node tests/coloringResult.browser.cjs`, `node tests/coloringFlow.browser.cjs`, `node tests/nativeTouch.browser.cjs`, `node tests/homeTiles.browser.cjs`, `node tests/homePhone.browser.cjs`), theme canvas and home icon in WebKit (`node tests/browserChrome.browser.cjs`) | `rexlab-core` | the `rexlab` filter | runs; four unit shards and twelve independent browser jobs, each with a 10-minute limit |
+| rexlab (`rexlab/tests/*.test.ts`, `*.test.tsx`), typecheck, build, board geometry, coloring probe/production pixels, workshop, long drawing contacts, gallery, result and full flow in Chromium (`npm run test:browser`, `node tests/coloringProbe.browser.cjs`, `node tests/coloringPainter.browser.cjs`, `node tests/coloringWorkshop.browser.cjs`, `node tests/coloringDrawing.browser.cjs`, `node tests/coloringGallery.browser.cjs`, `node tests/coloringResult.browser.cjs`, `node tests/coloringFlow.browser.cjs`, `node tests/nativeTouch.browser.cjs`, `node tests/homeTiles.browser.cjs`, `node tests/homePhone.browser.cjs`, `node tests/careFriends.browser.cjs`), theme canvas and home icon in WebKit (`node tests/browserChrome.browser.cjs`) | `rexlab-core` | the `rexlab` filter | runs; four unit shards and thirteen independent browser jobs, each with a 10-minute limit |
 | dev-skills: the marketplace manifest and its skills (no tests) | `dev-skills-validation` | the `dev-skills` filter | runs |
 | session-digest (`session-digest/tests/*.test.ts`), typecheck | `session-digest-core` | the `session-digest` filter | runs |
 | loki (`loki/tests/*.test.js`) | `loki-core` | the `loki` filter, with every compose file: its label check reads those of the projects its allowlist names | runs |

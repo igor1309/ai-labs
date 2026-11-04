@@ -64,6 +64,7 @@ jobs:
           - homePhone
           - nativeTouch
           - homeTiles
+          - careFriends
           - browserChrome
     runs-on: ubuntu-latest
     timeout-minutes: 10

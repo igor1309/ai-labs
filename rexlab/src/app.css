@@ -4598,211 +4598,6 @@ html[data-size="tall-narrow"] .care-result .result-actions .home-button {
   justify-content: center;
 }
 
-/* Friends: the bar stays at the top while the cards, four to a row,
-   scroll under it, the first row rising in one after the other. */
-.friends {
-  padding:
-    calc(40px + env(safe-area-inset-top))
-    calc(56px + var(--screen-right))
-    env(safe-area-inset-bottom)
-    calc(56px + var(--screen-left));
-  gap: 28px;
-}
-
-.friends-bar {
-  gap: 16px;
-}
-
-.friends-bar .friends-title {
-  padding-left: 12px;
-}
-
-.new-visitor-button {
-  flex-shrink: 0;
-  height: 56px;
-  padding: 0 20px 0 16px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  border: none;
-  border-radius: 16px;
-  background: #e39b2d;
-  color: #1d2742;
-  font-size: 18px;
-  font-weight: 700;
-}
-
-.friends-grid {
-  flex: 1 1 0;
-  min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: none;
-  box-sizing: border-box;
-  padding-bottom: 48px;
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  grid-auto-rows: max-content;
-  align-content: start;
-  gap: 20px;
-}
-
-.friend-card {
-  min-width: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  border: none;
-  border-radius: 24px;
-  outline: 1px solid #1d27421f;
-  outline-offset: -0.5px;
-  background: #fffdf8;
-  text-align: left;
-  animation: rise-in var(--motion-standard) var(--ease-out) both;
-  animation-delay: calc(var(--card) * var(--motion-stagger) * 0.75);
-}
-
-.friend-art {
-  flex-shrink: 0;
-  aspect-ratio: 317 / 200;
-  box-sizing: border-box;
-  padding: 16px;
-  display: flex;
-  background: #e6e2d9;
-}
-
-.friend-picture {
-  display: block;
-  width: 100%;
-  height: 100%;
-  min-height: 0;
-  object-fit: contain;
-}
-
-/* The footer holds two lines of the name, however long, so every card
-   is as tall as the others and a turn keeps the list's place by its
-   rows. */
-.friend-footer {
-  height: 74px;
-  box-sizing: border-box;
-  padding: 14px 16px 16px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.friend-footer svg {
-  flex-shrink: 0;
-  color: #c9583d;
-}
-
-.friend-name {
-  min-width: 0;
-  overflow-wrap: anywhere;
-  font-size: 18px;
-  line-height: 22px;
-  font-weight: 700;
-}
-
-.no-friends {
-  flex: 1 1 0;
-  padding-bottom: 48px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 28px;
-  animation: rise-in var(--motion-screen) var(--ease-out) both;
-}
-
-.no-friends-picture {
-  position: relative;
-  width: 420px;
-  height: min(300px, 32vh);
-  height: min(300px, 32dvh);
-}
-
-.no-friends-nest {
-  position: absolute;
-  left: 14%;
-  bottom: 0;
-  width: 72%;
-  height: 60%;
-  object-fit: contain;
-}
-
-.no-friends-bubble {
-  position: absolute;
-  left: 60%;
-  top: 0;
-  width: 120px;
-  height: 120px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  outline: 1px solid #1d27421f;
-  outline-offset: -0.5px;
-  background: #fffdf8;
-  color: #c9583d;
-  animation: pop-in var(--motion-standard) var(--ease-overshoot) var(--motion-screen) both;
-}
-
-.no-friends-text {
-  margin: 0;
-  font-size: 34px;
-  font-weight: 700;
-  text-align: center;
-}
-
-.no-friends-button {
-  gap: 14px;
-  border: none;
-  border-radius: 22px;
-  background: #e39b2d;
-  color: #1d2742;
-
-  padding: 0 36px;
-  font-size: 28px;
-}
-
-/* Upright, the friends take the narrower side padding, BACK and HOME
-   are their symbols, NEW VISITOR takes its own row across the width
-   under the bar, and the cards stand two to a row. */
-html[data-size="tall"] .friends,
-html[data-size="tall-narrow"] .friends {
-  padding-right: calc(32px + var(--screen-right));
-  padding-left: calc(32px + var(--screen-left));
-}
-
-html[data-size="tall"] .friends-bar,
-html[data-size="tall-narrow"] .friends-bar {
-  flex-wrap: wrap;
-  row-gap: 20px;
-}
-html[data-size="tall"] .friends-bar .home-button,
-html[data-size="tall-narrow"] .friends-bar .home-button {
-  width: 56px;
-  padding: 0;
-  justify-content: center;
-}
-
-html[data-size="tall"] .friends-bar .friends-title,
-html[data-size="tall-narrow"] .friends-bar .friends-title {
-  padding-left: 0;
-  font-size: 34px;
-}
-
-html[data-size="tall"] .friends-bar .new-visitor-button,
-html[data-size="tall-narrow"] .friends-bar .new-visitor-button {
-  flex-basis: 100%;
-  justify-content: center;
-}
-
-html[data-size="tall"] .friends-grid,
-html[data-size="tall-narrow"] .friends-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
 /* On a phone care's screens take 24 pixels above, 32 below and 20 at the
    sides, their parts 16 apart, HOME and BACK as 48-pixel symbols, the
    titles at 24 pixels. */
@@ -4816,80 +4611,31 @@ html[data-size="tall-narrow"] .visit {
   gap: 16px;
 }
 
-html[data-size="tall-narrow"] .friends {
-  padding:
-    calc(24px + env(safe-area-inset-top))
-    calc(20px + var(--screen-right))
-    env(safe-area-inset-bottom)
-    calc(20px + var(--screen-left));
-  gap: 16px;
-}
-
 html[data-size="tall-narrow"] .care-bar,
-html[data-size="tall-narrow"] .friends-bar,
 html[data-size="tall-narrow"] .visit-bar {
   gap: 12px 8px;
 }
 html[data-size="tall-narrow"] .care-bar .home-button,
-html[data-size="tall-narrow"] .visit-bar .home-button,
-html[data-size="tall-narrow"] .friends-bar .home-button {
+html[data-size="tall-narrow"] .visit-bar .home-button {
   width: 48px;
 }
 
-html[data-size="tall-narrow"] .care-title,
-html[data-size="tall-narrow"] .friends-bar .friends-title {
+html[data-size="tall-narrow"] .care-title {
   gap: 8px;
   font-size: 24px;
 }
 
 /* The bars' titles are their words alone, beside HOME, BACK and the
    best score. */
-html[data-size="tall-narrow"] .care-bar .care-mark,
-html[data-size="tall-narrow"] .friends-bar .friends-mark {
+html[data-size="tall-narrow"] .care-bar .care-mark {
   display: none;
 }
 
 html[data-size="tall-narrow"] .care-best,
-html[data-size="tall-narrow"] .friend-count {
+html[data-size="tall-narrow"] .care-welcome .friend-count {
   padding: 0 10px;
   gap: 6px;
   font-size: 16px;
-}
-
-/* FRIENDS' bar keeps BACK, HOME and the count of friends on its first
-   row: its title stays for screen readers alone. */
-html[data-size="tall-narrow"] .friends-bar .friends-title {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-}
-
-/* With no friends yet, the nest as wide as the screen, its words and
-   NEW VISITOR smaller. */
-html[data-size="tall-narrow"] .no-friends {
-  gap: 20px;
-}
-
-html[data-size="tall-narrow"] .no-friends-picture {
-  width: 100%;
-  height: min(200px, 28vh);
-  height: min(200px, 28dvh);
-}
-
-html[data-size="tall-narrow"] .no-friends-bubble {
-  width: 88px;
-  height: 88px;
-}
-
-html[data-size="tall-narrow"] .no-friends-text {
-  font-size: 24px;
-}
-
-html[data-size="tall-narrow"] .no-friends-button {
-  padding: 0 20px 0 16px;
-  font-size: 20px;
 }
 
 /* The welcome's NEW VISITOR over FRIENDS, their footers smaller. */
@@ -5017,28 +4763,6 @@ html[data-size="tall-narrow"] .tray-label {
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
-}
-
-/* FRIENDS keeps its cards two to a row, closer together. */
-html[data-size="tall-narrow"] .friends-grid {
-  gap: 12px;
-}
-
-html[data-size="tall-narrow"] .friend-art {
-  padding: 10px;
-}
-
-/* A name takes up to three lines of 14-pixel type, so the longest fits
-   a card half the narrowest phone's width. */
-html[data-size="tall-narrow"] .friend-footer {
-  height: 76px;
-  padding: 10px 12px 12px;
-  gap: 6px;
-}
-
-html[data-size="tall-narrow"] .friend-name {
-  font-size: 14px;
-  line-height: 18px;
 }
 
 /* A care result's visitor as wide as the column, its eight hearts at 28
@@ -11727,17 +11451,15 @@ html[data-theme="dark"],
 [data-theme="dark"] .care-mark,
 [data-theme="dark"] .new-visitor-symbol,
 [data-theme="dark"] .need[data-state="current"],
-[data-theme="dark"] .bubble-badge,
-[data-theme="dark"] .new-visitor-button {
+[data-theme="dark"] .bubble-badge {
   background: #f2b24b;
 }
 
 [data-theme="dark"] .care-best,
-[data-theme="dark"] .friend-count,
+[data-theme="dark"] .care-welcome .friend-count,
 [data-theme="dark"] .friend-face,
 [data-theme="dark"] .need,
-[data-theme="dark"] .tray-item[data-pressed],
-[data-theme="dark"] .friend-art {
+[data-theme="dark"] .tray-item[data-pressed] {
   background: #222a3d;
 }
 
@@ -11782,9 +11504,7 @@ html[data-theme="dark"],
 [data-theme="dark"] .friends-card,
 [data-theme="dark"] .needs,
 [data-theme="dark"] .hearts-counter,
-[data-theme="dark"] .tray-item,
-[data-theme="dark"] .friend-card,
-[data-theme="dark"] .no-friends-bubble {
+[data-theme="dark"] .tray-item {
   outline-color: #ece8de1f;
   background: #181e2e;
 }
@@ -11800,7 +11520,6 @@ html[data-theme="dark"],
 
 /* White would fade on the dark theme's lighter terracotta and green, so
    the marks there take the dark page's ink, as the catalogue's do. */
-[data-theme="dark"] .friends-mark,
 [data-theme="dark"] .friends-symbol {
   background: #e57a5d;
   color: #0f1320;
@@ -11810,11 +11529,9 @@ html[data-theme="dark"],
   background: #63c98c;
   color: #0f1320;
 }
-[data-theme="dark"] .friend-count svg,
+[data-theme="dark"] .care-welcome .friend-count svg,
 [data-theme="dark"] .hearts-counter svg,
-[data-theme="dark"] .friend-chip svg,
-[data-theme="dark"] .friend-footer svg,
-[data-theme="dark"] .no-friends-bubble {
+[data-theme="dark"] .friend-chip svg {
   color: #e57a5d;
 }
 
@@ -12520,7 +12237,6 @@ body:has(.picture-puzzle-board-screen) {
   background: #0f1320;
 }
 
-[data-theme="dark"] .no-friends-button { background: #f2b24b; }
 
 /* The sky opens onto the ground below. */
 html .home.home-dig-site {
@@ -12719,6 +12435,145 @@ html[data-size="wide-short"] .home.home-dig-site .home-today-art { width: 44%; r
   animation: rise-in var(--motion-screen) var(--ease-out) both;
 }
 
+/* Friends keeps its sky still while its cards scroll through the sand. */
+html .friends.friends-dig-site {
+  --friends-side: var(--ds-space-40);
+  --friends-top: 36px;
+  --friends-sky: 196px;
+  --friends-bottom: 60px;
+  --friends-gap: var(--ds-space-l);
+  --friends-pocket: 116px;
+  --friends-name: var(--ds-size-14);
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+  color: var(--ds-ink);
+  font-family: var(--ds-font);
+  background: linear-gradient(var(--ds-sky-top), var(--ds-sky-bottom) 40vh) var(--ds-sky-bottom);
+  background: linear-gradient(var(--ds-sky-top), var(--ds-sky-bottom) 40dvh) var(--ds-sky-bottom);
+}
+.friends-dig-site .friends-sky {
+  flex: none;
+  box-sizing: border-box;
+  height: calc(var(--friends-sky) + env(safe-area-inset-top));
+  padding: calc(var(--friends-top) + env(safe-area-inset-top)) calc(var(--friends-side) + var(--screen-right)) 0 calc(var(--friends-side) + var(--screen-left));
+}
+.friends-dig-site .friends-bar { display: grid; grid-template-columns: auto auto auto; justify-content: space-between; align-items: center; gap: var(--ds-space-m); }
+.friends-dig-site .friends-home,
+.friends-dig-site .friends-back {
+  display: flex; flex: none; align-items: center; justify-content: center;
+  gap: var(--ds-space-s); height: 48px; padding: 0 var(--ds-space-18) 0 var(--ds-space-l);
+  border: 0; border-radius: var(--ds-radius-pill); background: var(--ds-quiet); color: var(--ds-ink);
+  font-size: var(--ds-size-label); font-weight: 800;
+}
+.friends-dig-site .friends-home svg { width: 22px; height: 22px; }
+.friends-dig-site .friends-back { height: auto; min-height: 44px; gap: var(--ds-chip-gap); padding: var(--ds-chip-pad-y) var(--ds-chip-pad-x); font-weight: 700; }
+.friends-dig-site .friends-back svg { width: 18px; height: 18px; }
+.friends-dig-site .friends-heading { display: flex; align-items: center; justify-content: flex-end; gap: var(--ds-space-m); min-width: 0; }
+.friends-dig-site .friends-title { flex: 0 1 auto; padding: 0; gap: var(--ds-space-l); font-size: var(--ds-size-34); font-weight: 800; letter-spacing: -.5px; white-space: nowrap; }
+.friends-dig-site .friends-title-word { display: block; min-width: 0; white-space: nowrap; }
+.friends-dig-site .friends-mark { width: 48px; height: 48px; border-radius: var(--ds-radius-30) var(--ds-radius-30) var(--ds-radius-15) var(--ds-radius-15); background: var(--ds-pocket-1); color: var(--ds-action); box-shadow: inset 0 6px 10px var(--ds-pocket-shadow); }
+.friends-dig-site .friends-mark svg { width: 24px; height: 24px; }
+.friends-dig-site .friend-count { height: auto; padding: var(--ds-space-s) var(--ds-space-14) var(--ds-space-s) var(--ds-space-m); gap: var(--ds-space-6); border-radius: var(--ds-radius-pill); background: var(--ds-label); color: var(--ds-ink); font-size: var(--ds-size-number); font-weight: 800; }
+.friends-dig-site .friend-count svg { width: 22px; height: 22px; color: var(--ds-bad); }
+.friends-dig-site .new-visitor-button,
+.friends-dig-site .no-friends-button {
+  display: flex; flex: none; align-items: center; justify-content: center;
+  gap: var(--ds-btn-gap); padding: var(--ds-btn-pad-y) var(--ds-btn-pad-x);
+  border: 0; border-radius: var(--ds-radius-pill); background: var(--ds-action); color: var(--ds-on-action);
+  font-size: var(--ds-size-action); font-weight: 800; line-height: 1.25;
+}
+.friends-dig-site .friends-invite { grid-column: 1 / -1; height: 60px; margin-top: var(--ds-space-xs); display: flex; align-items: center; justify-content: center; }
+.friends-dig-site .new-visitor-button::before { content: none; }
+.friends-dig-site .new-visitor-button svg,
+.friends-dig-site .no-friends-button svg { flex: none; width: var(--ds-icon-action); height: var(--ds-icon-action); }
+.friends-dig-site .friends-sand { position: relative; flex: 1 1 0; min-height: 0; display: flex; background: var(--ds-strata-1); }
+.friends-dig-site .friends-sand-wave { position: absolute; pointer-events: none; top: -20px; left: 0; width: 100%; height: 30px; fill: var(--ds-strata-1); }
+.friends-dig-site .friends-grid {
+  flex: 1 1 0; min-height: 0; min-width: 0; overflow-y: auto; overscroll-behavior: none; box-sizing: border-box;
+  padding: var(--friends-gap) calc(var(--friends-side) + var(--screen-right)) calc(var(--friends-bottom) + 20px + env(safe-area-inset-bottom)) calc(var(--friends-side) + var(--screen-left));
+  display: grid; grid-template-columns: repeat(var(--friends-columns), minmax(0, 1fr)); grid-auto-rows: max-content; align-content: start; gap: var(--friends-gap);
+}
+.friends-dig-site .friend-card { min-width: 0; display: flex; flex-direction: column; align-items: center; gap: var(--ds-space-s); padding: var(--ds-space-m) var(--ds-space-s) var(--ds-space-14); border: 0; border-radius: var(--ds-radius-22); outline: none; background: var(--ds-label); color: var(--ds-ink); animation: rise-in var(--motion-standard) var(--ease-out) both; animation-delay: calc(var(--card) * var(--motion-stagger) * 0.75); }
+.friends-dig-site .friend-art { position: relative; display: flex; width: 100%; height: var(--friends-pocket); flex: none; box-sizing: border-box; padding: var(--ds-space-s) var(--ds-space-s) var(--ds-space-2); border-top-left-radius: var(--ds-radius-40); border-top-right-radius: var(--ds-radius-40); border-bottom-left-radius: var(--ds-radius-speech); border-bottom-right-radius: var(--ds-radius-speech); background: var(--ds-pocket-1); box-shadow: inset 0 6px 10px var(--ds-pocket-shadow); }
+.friends-dig-site .friend-picture { display: block; width: 100%; height: 100%; min-height: 0; object-fit: contain; }
+.friends-dig-site .friend-picture[data-picture="loading"] {
+  position: absolute; inset: 0; border-radius: inherit; box-shadow: inherit;
+  --shimmer-from: var(--ds-pocket-1); --shimmer-to: var(--ds-label);
+}
+.friends-dig-site .friend-failure { display: none; position: absolute; left: calc(50% - 20px); top: calc(50% - 20px); color: var(--ds-ink-soft); }
+.friends-dig-site .friend-picture[data-picture="failed"] { opacity: 0; }
+.friends-dig-site .friend-picture[data-picture="failed"] + .friend-failure { display: block; }
+.friends-dig-site .friend-footer { width: 100%; min-width: 0; height: calc(var(--friends-name) * 1.25); display: grid; align-items: center; text-align: center; }
+.friends-dig-site .friend-name { display: block; white-space: nowrap; font-size: var(--friends-name); font-weight: 700; line-height: 1.25; }
+.friends-dig-site .friends-bedrock { position: absolute; bottom: 0; left: 0; right: 0; height: calc(var(--friends-bottom) + env(safe-area-inset-bottom)); background: var(--ds-strata-2); --home-earth: var(--ds-strata-2); pointer-events: none; }
+.friends-dig-site .no-friends { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: none; display: flex; flex-direction: column; align-items: center; justify-content: safe center; gap: var(--ds-space-20); padding: var(--ds-space-l) calc(var(--friends-side) + var(--screen-right)) calc(var(--friends-bottom) + 20px + env(safe-area-inset-bottom)) calc(var(--friends-side) + var(--screen-left)); animation: rise-in var(--motion-screen) var(--ease-out) both; }
+.friends-dig-site .no-friends-picture { display: grid; place-items: center; flex: none; width: 200px; height: 200px; border-radius: 50%; background: var(--ds-pocket-1); box-shadow: inset 0 6px 10px var(--ds-pocket-shadow); }
+.friends-dig-site .no-friends-nest { width: 156px; height: 120px; object-fit: contain; }
+.friends-dig-site .no-friends-text { max-width: 480px; margin: 0; color: var(--ds-ink); font-size: var(--ds-size-action); line-height: 1.2; font-weight: 800; text-align: center; }
+.friends-dig-site button:focus-visible { outline: 3px solid var(--ds-action); outline-offset: -3px; }
+html[data-size="tall"] .friends.friends-dig-site { --friends-side: var(--ds-space-2xl); --friends-top: 40px; --friends-sky: 210px; --friends-bottom: 28px; --friends-gap: var(--ds-space-l); --friends-pocket: 220px; --friends-name: var(--ds-size-17); }
+html[data-size="tall"] .friends-dig-site .friends-bar { grid-template-columns: auto auto minmax(0, auto); margin: 0 var(--ds-space-xl); }
+html[data-size="tall"] .friends-dig-site .friends-title { font-size: var(--ds-size-32); }
+html[data-size="tall"] .friends-dig-site .friends-back { width: 56px; height: 56px; padding: 0; }
+html[data-size="tall"] .friends-dig-site .friends-back svg { width: 24px; height: 24px; }
+html[data-size="tall"] .friends-dig-site .friends-back span { display: none; }
+html[data-size="tall"] .friends-dig-site .friends-invite { width: calc(100% + 48px); height: 62px; justify-self: center; }
+html[data-size="tall"] .friends-dig-site .new-visitor-button { width: 100%; }
+html[data-size="tall-narrow"] .friends.friends-dig-site { --friends-side: var(--ds-space-20); --friends-top: 62px; --friends-sky: 216px; --friends-bottom: 10px; --friends-gap: var(--ds-space-m); --friends-pocket: 110px; --friends-name: var(--ds-size-foot); }
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .friends-dig-site .friends-home { width: 48px; height: 48px; padding: 0; }
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .friends-dig-site .friends-back { width: 56px; height: 56px; padding: 0; }
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .friends-dig-site .friends-home svg,
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .friends-dig-site .friends-back svg { width: 24px; height: 24px; }
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .friends-dig-site .friends-home span,
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .friends-dig-site .friends-back span { display: none; }
+/* A phone's bar is narrower than its parts at the board's sizes, so they
+   give way before FRIENDS does. The parts grow by their weights up to
+   their board sizes: the heading first, to its full width; then HOME and
+   BACK, from the least a finger can tap; and the gaps, at their least,
+   take what is left. Inside the heading the pocket gives way before the word.
+   The word shrinks only once every other part is at its least. */
+html[data-size="tall-narrow"] .friends-dig-site .friends-bar { display: flex; flex-wrap: wrap; justify-content: space-between; column-gap: var(--ds-space-xs); row-gap: var(--ds-space-m); }
+html[data-size="tall-narrow"] .friends-dig-site :is(.friends-home, .friends-back) { flex: 1 1 0; min-width: var(--ds-round); height: auto; aspect-ratio: 1; }
+html[data-size="tall-narrow"] .friends-dig-site .friends-home { max-width: 48px; }
+html[data-size="tall-narrow"] .friends-dig-site .friends-back { max-width: 56px; }
+html[data-size="tall-narrow"] .friends-dig-site .friends-heading { flex: 1000 1 0; max-width: max-content; min-height: var(--ds-space-56); gap: var(--ds-space-s); }
+html[data-size="tall-narrow"] .friends-dig-site .friends-title { font-size: var(--ds-size-22); gap: var(--ds-space-s); letter-spacing: -.5px; }
+html[data-size="tall-narrow"] .friends-dig-site .friends-title-word { min-width: 0; display: block; white-space: nowrap; line-height: 1.1; }
+html[data-size="tall-narrow"] .friends-dig-site .friends-mark { flex: 0 1000 36px; min-width: var(--ds-space-xl); height: auto; aspect-ratio: 1; }
+/* Narrower than any phone the boards draw, the parts at their least still
+   leave FRIENDS too little room, so the heading's own gaps and the count's
+   pill tighten too. */
+@media (max-width: 359px) {
+  html[data-size="tall-narrow"] .friends-dig-site :is(.friends-heading, .friends-title) { gap: var(--ds-space-xs); }
+  html[data-size="tall-narrow"] .friends-dig-site .friend-count { gap: var(--ds-space-xs); padding: var(--ds-space-s) var(--ds-space-s) var(--ds-space-s) var(--ds-space-6); }
+  html[data-size="tall-narrow"] .friends-dig-site .friend-count svg { width: var(--ds-space-18); height: var(--ds-space-18); }
+}
+html[data-size="tall-narrow"] .friends-dig-site .friends-mark svg { width: 20px; height: 20px; }
+html[data-size="tall-narrow"] .friends-dig-site .friends-invite { flex: 1 0 100%; height: 52px; margin-top: 0; }
+html[data-size="tall-narrow"] .friends-dig-site .new-visitor-button { width: 100%; }
+html[data-size="tall-narrow"] .friends-dig-site .friends-grid { padding-top: var(--ds-space-14); }
+html[data-size="tall-narrow"] .friends-dig-site .no-friends-picture { width: 150px; height: 150px; }
+html[data-size="tall-narrow"] .friends-dig-site .no-friends-nest { width: 117px; height: 90px; }
+html[data-size="tall-narrow"] .friends-dig-site .no-friends-text { font-size: var(--ds-size-22); }
+html[data-size="tall-narrow"] .friends-dig-site .no-friends-button { width: 100%; }
+@media (max-height: 700px) {
+  html[data-size="tall-narrow"] .friends.friends-dig-site { --friends-top: 28px; --friends-sky: 170px; --friends-pocket: 96px; --friends-name: var(--ds-size-11); }
+  html[data-size="tall-narrow"] .friends-dig-site .friends-bar { row-gap: var(--ds-space-s); }
+  html[data-size="tall-narrow"] .friends-dig-site .friends-grid { padding-top: var(--ds-space-m); }
+}
+html[data-size="wide-short"] .friends.friends-dig-site { --friends-side: var(--ds-space-79); --friends-top: 8px; --friends-sky: 130px; --friends-bottom: 0px; --friends-gap: var(--ds-space-m); --friends-pocket: 84px; }
+html[data-size="wide-short"] .friends-dig-site .friends-bar { grid-template-columns: auto auto minmax(0, auto) auto; }
+html[data-size="wide-short"] .friends-dig-site .friends-back { width: 44px; height: 44px; }
+html[data-size="wide-short"] .friends-dig-site .friends-title { font-size: var(--ds-size-24); }
+html[data-size="wide-short"] .friends-dig-site .friends-mark { width: 40px; height: 40px; }
+html[data-size="wide-short"] .friends-dig-site .friends-mark svg { width: 20px; height: 20px; }
+html[data-size="wide-short"] .friends-dig-site .friends-invite { grid-column: auto; height: auto; margin: 0; }
+html[data-size="wide-short"] .friends-dig-site .new-visitor-button { padding: var(--ds-btn-gap) var(--ds-space-20); font-size: var(--ds-size-18); }
+html[data-size="wide-short"] .friends-dig-site .new-visitor-button svg { width: 20px; height: 20px; }
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .friends-dig-site .friends-sand-wave { height: 24px; }
+html[data-size="wide-short"] .friends-dig-site .friends-bedrock { display: none; }
+
 @media (prefers-reduced-motion: reduce) {
   :root {
     --motion-standard: 160ms;
@@ -12727,6 +12582,8 @@ html[data-size="wide-short"] .home.home-dig-site .home-today-art { width: 44%; r
     --motion-stagger: 0ms;
     --motion-amount: 0;
   }
+
+  .friends-dig-site .friend-card, .friends-dig-site .no-friends { animation: fade-in var(--motion-small) var(--ease-out) both; }
 
   .home.home-dig-site .home-sky-body,
   .home.home-dig-site .home-today-art > * { translate: none; }
@@ -13026,7 +12883,8 @@ html[data-size="wide-short"] .home.home-dig-site .home-today-art { width: 44%; r
 }
 .home-parent-note { margin: 0; font-size: var(--ds-size-foot); font-weight: 400; opacity: .75; }
 .home-version { flex: none; font-size: 11px; font-weight: 400; opacity: .6; }
-body:has(.home-dig-site) #version { display: none; }
+body:has(.home-dig-site) #version,
+body:has(.friends-dig-site) #version { display: none; }
 html:is([data-size="tall-narrow"], [data-size="wide-short"]) .home-layer .tiles-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   column-gap: 10px;

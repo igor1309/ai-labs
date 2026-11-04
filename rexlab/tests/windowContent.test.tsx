@@ -1,11 +1,13 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { EDGE_PARTS, SCREEN_ROOTS, edgePart, screenRoot } from "./screenRoots.ts";
+import { EDGE_PARTS, SCREEN_ROOTS, edgePart, screenRoot, contentRoots } from "./screenRoots.ts";
+import { computedStyleWithVariables } from "./stylesheet.ts";
 import { WINDOW_SIZES, openWindow } from "./windowSizes.ts";
 
 // window-fit.feature, "A landscape window from the iPad mini to a large
 // Mac display": each screen's content at most 1440 pixels wide, centred,
 // its background filling the window.
 
+const browserStyle = computedStyleWithVariables(window.getComputedStyle.bind(window));
 const CONTENT = 1440;
 
 // The narrowest landscape window, where a screen has only its own padding.
@@ -23,8 +25,11 @@ const box = (style: CSSStyleDeclaration) => [style.margin, style.boxSizing, styl
 // made afresh: jsdom keeps a style it has worked out. Each is measured
 // against a window of the same height as the other.
 function measure(classes: string) {
-  const style = getComputedStyle(screenRoot(classes));
-  return { left: px(style.paddingLeft), right: px(style.paddingRight), box: box(style) };
+  const root = screenRoot(classes);
+  return { padding: contentRoots(root).map(part => {
+    const style = root.classList.contains("friends-dig-site") ? browserStyle(part) : getComputedStyle(part);
+    return { left: px(style.paddingLeft), right: px(style.paddingRight) };
+  }), box: box(getComputedStyle(root)) };
 }
 
 afterEach(() => {
@@ -41,9 +46,11 @@ describe("a landscape window from the iPad mini to a large Mac display", () => {
       openWindow(width, height);
       const shown = measure(classes);
 
-      const added = [shown.left - own.left, shown.right - own.right];
-      expect(added[0]).toBe(added[1]);
-      expect(width - (added[0] ?? NaN) - (added[1] ?? NaN)).toBe(Math.min(width, CONTENT));
+      for (const [index, padding] of shown.padding.entries()) {
+        const added = [padding.left - own.padding[index]!.left, padding.right - own.padding[index]!.right];
+        expect(added[0]).toBe(added[1]);
+        expect(width - (added[0] ?? NaN) - (added[1] ?? NaN)).toBe(Math.min(width, CONTENT));
+      }
       expect(shown.box).toEqual(own.box);
     }
   );

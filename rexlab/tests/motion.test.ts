@@ -432,9 +432,9 @@ describe("care's motion", () => {
   });
 
   it("fills the hearts won, and rises friends in, one after the other", () => {
-    expect([".result-heart-won", ".friend-card", ".friend-face"].map((selector) => animations.get(selector))).toEqual(["pop-in", "rise-in", "rise-in"]);
+    expect([".result-heart-won", ".friends-dig-site .friend-card", ".friend-face"].map((selector) => animations.get(selector))).toEqual(["pop-in", "rise-in", "rise-in"]);
     expect(delayOf(".result-heart-won")).toBe("calc(var(--heart) * var(--motion-stagger) * 1.5)");
-    expect(delayOf(".friend-card")).toBe("calc(var(--card) * var(--motion-stagger) * 0.75)");
+    expect(delayOf(".friends-dig-site .friend-card")).toBe("calc(var(--card) * var(--motion-stagger) * 0.75)");
   });
 
   it("only fades the need asked now in with reduced motion", () => {
