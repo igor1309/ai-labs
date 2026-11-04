@@ -1,18 +1,16 @@
 // WebKit page rendering only: native iOS status-bar sampling requires a device.
 const assert = require('node:assert/strict');
-const { mkdtemp, rm, mkdir } = require('node:fs/promises');
-const { tmpdir } = require('node:os');
-const { join, resolve } = require('node:path');
+const { mkdir } = require('node:fs/promises');
+const { join } = require('node:path');
+const { appDir, root } = require('./appBuild.cjs');
 const { webkit } = require('playwright');
 
 (async () => {
-  const output = await mkdtemp(join(tmpdir(), 'rexlab-chrome-'));
+  const app = await appDir();
   let server, browser;
   try {
-    const { build, preview } = await import('vite');
-    const root = resolve(__dirname, '..');
-    await build({ root, logLevel: 'error', build: { outDir: output } });
-    server = await preview({ root, logLevel: 'error', build: { outDir: output }, preview: { host: '127.0.0.1', port: 0, open: false } });
+    const { preview } = await import('vite');
+    server = await preview({ root, logLevel: 'error', build: { outDir: app.dir }, preview: { host: '127.0.0.1', port: 0, open: false } });
     browser = await webkit.launch();
     const sizes = [['phone-portrait', 393, 852], ['phone-landscape', 852, 393], ['tablet-portrait', 820, 1180], ['tablet-landscape', 1180, 820], ['mac', 1440, 900]];
     const screenshots = process.env.REXLAB_SCREENSHOTS;
@@ -59,6 +57,6 @@ const { webkit } = require('playwright');
   } finally {
     await browser?.close();
     await server?.httpServer.close();
-    await rm(output, { recursive: true, force: true });
+    await app.done();
   }
 })().catch(error => { console.error(error); process.exitCode = 1; });
