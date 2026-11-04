@@ -10,13 +10,12 @@ allowed-tools:
 
 Complete the current branch's PR lifecycle:
 
-1. Bring the branch up to date first: `git fetch origin`, then
-   `git merge origin/trunk` (a merge, never a rebase). If it conflicts,
-   resolve it and go on: keep what each side meant, and never drop either
-   side's work to make the conflict go away. Then run the checks that
-   cover the conflicting files before pushing. Stop and report only when
-   the two sides contradict each other and choosing between them is a
-   product call.
+1. A branch does not need to include the latest trunk to merge. Do not
+   merge trunk just because the branch is behind. If GitHub reports merge
+   conflicts, fetch origin and merge `origin/trunk` (never rebase), resolve
+   the conflicts while preserving each side's intent, and run the checks
+   covering the merge changes before pushing. Stop and report when the
+   sides contradict each other and choosing between them is a product call.
 2. Before every push, including pushes for later fixes, check for unfinished
    PR workflow runs on the current branch with `gh run list --branch
    <feature-branch> --event pull_request --limit 100 --json
@@ -26,14 +25,12 @@ Complete the current branch's PR lifecycle:
    --exit-status`, in the background, and recheck until none remain. Do not
    cancel a run to make way for the push. If a run fails or is stuck, stop
    and report it; do not push past it.
-   Then repeat step 1 to fetch and merge the latest `origin/trunk`, run the
-   checks covering any merge changes, and push if there are unpushed
-   commits. Do not rely on the branch update from the start of this workflow:
-   trunk may have advanced while CI was running.
+   Push if there are unpushed commits. Trunk advancing while CI runs does
+   not require a branch update or another CI run.
 3. Create a PR with `gh pr create` and record its number and URL.
 4. If the branch is stacked on another unmerged PR's branch, stop after
-   step 3 and report: auto-merge waits until the PR below has merged and
-   trunk is merged into this branch. Otherwise enable merge-commit
+   step 3 and report. After the PR below merges, target trunk and resolve
+   conflicts if any; do not merge trunk solely for freshness. Otherwise enable merge-commit
    auto-merge:
 
    ```sh
