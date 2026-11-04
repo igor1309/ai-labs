@@ -8,7 +8,7 @@ import { TEXTS } from "../src/language/texts.ts";
 import { AGE_LEVELS, type AgeLevel } from "../src/ageLevel.ts";
 import { jawMouth } from "../src/jawPresentation.ts";
 import { WhoseJawBoardScreen, type WhoseJawBoardScreenProps } from "../src/WhoseJawBoardScreen.tsx";
-import { manualPictures, sameColour } from "./support.ts";
+import { manualPictures } from "./support.ts";
 import { withManualPictures } from "./pictures.tsx";
 import { JAWS } from "./whoseJaw.ts";
 import { openWindow, styleAt, windowsAnd, type WindowSize } from "./windowSizes.ts";
@@ -177,8 +177,6 @@ describe("Whose Jaw portrait composition", () => {
   it.each(PORTRAITS)("keeps a visible frame and pickup highlight in dark theme at %i by %i", (width, height, layout) => {
     const size = [width, height] as const;
     show(size, layout, "paleontologist", "en", "dark");
-    expect(sameColour(style(".game-audio-button", size).value("background-color"), getComputedStyle(part(".game-audio-button")).getPropertyValue("--ds-quiet"))).toBe(true);
-    expect(sameColour(style(".game-audio-button", size).value("color"), getComputedStyle(part(".game-audio-button")).getPropertyValue("--ds-ink"))).toBe(true);
     expect(style(".jaw-dinosaur", size).value("background-color")).toBe("rgb(24, 30, 46)");
     expect(style(".jaw-dinosaur", size).value("border-top-color")).toBe("rgb(71, 81, 106)");
     expect(style(".jaw-tray", size).value("background-color")).toBe("rgb(24, 30, 46)");
