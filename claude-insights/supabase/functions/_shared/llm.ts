@@ -1,8 +1,10 @@
 /** LLM call helper for trend analysis via Nomos. */
+import { hygieneSnapshot } from "./hygiene.ts";
 
 const SYSTEM_PROMPT = [
   "You are an analyst reviewing weekly Claude Code usage snapshots.",
   "Each snapshot contains: session count, duration, messages, commits, lines changed, friction points, satisfaction scores, goals, and a narrative summary.",
+  "Context hygiene contains aggregate counters, a weighted avoidable-context score (lower is better), and normalized tokens for Claude and optionally Codex. Compare each agent across weeks; null or absent data means unavailable, not zero. Hygiene uses transcript file modification time, while usage uses session start time, so session counts can differ.",
   "Compare the weeks chronologically. Focus on what changed, what improved, what regressed.",
   "Be concise. Use plain text, no markdown — the output goes to a Telegram chat.",
 ].join("\n");
@@ -19,6 +21,7 @@ type Snapshot = {
   satisfaction: unknown;
   goals: unknown;
   narrative_summary: unknown;
+  context_hygiene: unknown;
 };
 
 function narrativeMaxChars(snapshotCount: number): number {
@@ -41,6 +44,7 @@ function projectSnapshot(row: Record<string, unknown>, maxChars: number): Snapsh
     satisfaction: row.satisfaction,
     goals: row.goals,
     narrative_summary: narrative,
+    context_hygiene: hygieneSnapshot(row.context_hygiene),
   };
 }
 

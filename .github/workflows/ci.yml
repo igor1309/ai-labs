@@ -299,6 +299,7 @@ jobs:
               - "claude-insights/claude-insights.py"
               - "claude-insights/test_claude_insights.py"
               - "claude-insights/supabase/functions/**"
+              - "tools/sessions-audit/*.py"
             claude-insights-ci:
               - ".github/workflows/claude-insights-core.yml"
             langfuse:

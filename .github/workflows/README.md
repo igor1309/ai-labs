@@ -61,7 +61,7 @@ Each test, what runs it, and the change that triggers it (LAB-167, LAB-220, LAB-
 | neris (`neris/packages/swift-neris/Tests/`) | `neris-core` | the `neris` filter | runs |
 | audelin (`audelin/macos/Tests/`, `audelin/macos/App/Tests/`, `audelin/macos/PreviewApps/Tests/`), profiling tool tests (`audelin/macos/scripts/tests/`) | `audelin-core`: component and app packages built with `-Xswiftc -O`, each test run bounded to 180 seconds; preview tests use a debug build | the `audelin` filter, with the recorded fixtures its tests read | runs |
 | mizan-ble (`mizan-ble/ios/Tests/`), Python token-generator tests, the token check, iOS and preview-app builds; screen snapshots on the self-hosted `local-mac` runner | `mizan-ble-core` | the `mizan-ble` filter, with the design file `mizan-ble.pen` its tests read | runs |
-| claude-insights: the script's pytest and the functions' Deno tests | `claude-insights-core` | the `claude-insights` filter | runs |
+| claude-insights: the script's pytest, all shared Deno tests and edge-function type checks | `claude-insights-core` | the `claude-insights` filter, including the shared sessions analyzer Python sources | runs |
 | The langfuse stack (`tests/test_langfuse_shared_stack.py`) | `langfuse-core` | the `langfuse` filter | runs |
 | mac-health (`tools/mac-health/tests/test-*.sh`) | `mac-health-core`: `tools/mac-health/tests/run-all.sh`, on `macos-latest` | the `mac-health` filter | runs |
 | sessions-audit (`tools/sessions-audit/test_sessions_audit.py`) | `sessions-audit-core` | the `sessions-audit` filter | runs |

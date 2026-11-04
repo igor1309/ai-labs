@@ -104,3 +104,38 @@ Deno.test("formatInsights right-aligns count tables and groups large counts", ()
   assertStringIncludes(out, "|---:|");
   assertStringIncludes(out, "| 12,345 |");
 });
+
+Deno.test("old rows without or with null hygiene preserve the digest", () => {
+  const old = formatInsights(makeRow());
+  assertEquals(formatInsights(makeRow({ context_hygiene: null })), old);
+  assertEquals(old.includes("Context hygiene"), false);
+});
+
+Deno.test("hygiene renders both agents with numeric deltas and ignores private fields", () => {
+  const out = formatInsights(makeRow({ context_hygiene: {
+    claude: { sessions: 10, score: 23, repeated_reads: 3, unfiltered_builds: 1,
+      tokens: { input: 12000, cached: 3000, output: 200, private: 42 }, path: "secret", project: "secret" },
+    codex: { sessions: 4, score: 5, tokens: { input: 400 } },
+    secret: { sessions: 999 },
+  } }), makeRow({ context_hygiene: {
+    claude: { sessions: 8, score: 25, repeated_reads: 3,
+      tokens: { input: 10000, cached: 4000, output: 200 } },
+    codex: { sessions: 3, score: 8, tokens: { input: 450 } },
+  } }));
+  assertStringIncludes(out, "## Context hygiene");
+  assertStringIncludes(out, "**Claude**: sessions 10 (Δ +2) · score 23 (Δ -2) · repeat reads 3 (Δ 0) · raw builds 1");
+  assertStringIncludes(out, "input tokens 12,000 (Δ +2,000) · cached tokens 3,000 (Δ -1,000)");
+  assertStringIncludes(out, "**Codex**: sessions 4 (Δ +1) · score 5 (Δ -3) · input tokens 400 (Δ -50)");
+  assertEquals(out.includes("secret"), false);
+  assertEquals(out.includes("private"), false);
+});
+
+Deno.test("missing prior hygiene or new agent does not invent zero baselines", () => {
+  const row = makeRow({ context_hygiene: { codex: { sessions: 3, score: 9 } } });
+  for (const previous of [undefined, makeRow(), makeRow({ context_hygiene: null }),
+    makeRow({ context_hygiene: { claude: { sessions: 1 } } })]) {
+    const out = formatInsights(row, previous);
+    assertStringIncludes(out, "**Codex**: sessions 3 · score 9");
+    assertEquals(out.includes("(Δ"), false);
+  }
+});

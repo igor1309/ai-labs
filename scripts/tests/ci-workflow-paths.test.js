@@ -8,6 +8,16 @@ import { parse } from "../release/lib/toml.js";
 const repoRoot = new URL("../../", import.meta.url);
 const workflow = readFileSync(new URL(".github/workflows/ci.yml", repoRoot), "utf8");
 
+test("ciPathFilters_shouldRunClaudeInsights_onSharedAnalyzerChanges", () => {
+  for (const file of [
+    "tools/sessions-audit/sessions_audit_core.py",
+    "tools/sessions-audit/claude_parser.py",
+    "tools/sessions-audit/codex_parser.py",
+  ]) {
+    assert.equal(jobRuns("claude-insights-core", [file]), true, `${file} does not run claude-insights-core`);
+  }
+});
+
 test("ciPathFilters_shouldRunAgonaraCore_onPackageLockChanges", () => {
   const agonaraFilter = filterSection("agonara", "agonara-ci");
 
@@ -156,7 +166,17 @@ const auditedTests = {
   },
   "claude-insights/supabase/functions/_shared/format.test.ts": {
     runner: ".github/workflows/claude-insights-core.yml",
-    command: "deno test format.test.ts",
+    command: "*.test.ts",
+    job: "claude-insights-core",
+  },
+  "claude-insights/supabase/functions/_shared/handlers.test.ts": {
+    runner: ".github/workflows/claude-insights-core.yml",
+    command: "*.test.ts",
+    job: "claude-insights-core",
+  },
+  "claude-insights/supabase/functions/_shared/llm.test.ts": {
+    runner: ".github/workflows/claude-insights-core.yml",
+    command: "*.test.ts",
     job: "claude-insights-core",
   },
   "tests/test_langfuse_shared_stack.py": {

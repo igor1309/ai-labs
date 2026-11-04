@@ -1,3 +1,5 @@
+import { contextHygiene } from "./hygiene.ts";
+
 /** Format an integer with thousands separators (e.g. 22454 -> "22,454"). */
 const formatNumber = (n: number): string => n.toLocaleString("en-US");
 
@@ -18,7 +20,10 @@ function countTable(
 }
 
 /** Format a claude_insights row into a Telegram message (Markdown rich message). */
-export function formatInsights(row: Record<string, unknown>): string {
+export function formatInsights(
+  row: Record<string, unknown>,
+  previous?: Record<string, unknown> | null,
+): string {
   const week = row.week as string;
   const sessions = row.total_sessions as number;
   const duration = row.total_duration_minutes as number;
@@ -49,6 +54,38 @@ export function formatInsights(row: Record<string, unknown>): string {
 
   if (goals && Object.keys(goals).length > 0) {
     lines.push(countTable("## 🎯 Top goals", goals, 5));
+  }
+
+  const hygiene = contextHygiene(row.context_hygiene);
+  const prior = contextHygiene(previous?.context_hygiene);
+  if (Object.keys(hygiene).length) {
+    lines.push("\n## Context hygiene");
+    let hasDelta = false;
+    const withDelta = (n: number, old?: number): string => {
+      if (old === undefined) return formatNumber(n);
+      hasDelta = true;
+      const delta = n - old;
+      return `${formatNumber(n)} (Δ ${delta > 0 ? "+" : ""}${formatNumber(delta)})`;
+    };
+    for (const [agent, data] of Object.entries(hygiene)) {
+      const values: string[] = [];
+      for (const [key, label] of [
+        ["sessions", "sessions"], ["score", "score"],
+        ["repeated_reads", "repeat reads"], ["unfiltered_builds", "raw builds"],
+        ["polling_candidates", "polls"], ["large_results", "large results"],
+        ["repeated_checks", "repeat checks"], ["duplicate_skill_loads", "repeat skills"],
+      ]) {
+        const n = data.counters[key];
+        if (n !== undefined) {
+          values.push(`${label} ${withDelta(n, prior[agent]?.counters[key])}`);
+        }
+      }
+      for (const [key, n] of Object.entries(data.tokens)) {
+        values.push(`${key.replace(/_/g, " ")} tokens ${withDelta(n, prior[agent]?.tokens[key])}`);
+      }
+      lines.push(`**${agent === "claude" ? "Claude" : "Codex"}**: ${values.join(" · ")}`);
+    }
+    if (hasDelta) lines.push("Δ vs previous snapshot");
   }
 
   let narrative = row.narrative_summary as string | null;
