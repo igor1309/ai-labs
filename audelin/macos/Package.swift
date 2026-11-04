@@ -15,6 +15,7 @@ let package = Package(
         .library(name: "CallAudioAccess", targets: ["CallAudioAccess"]),
         .library(name: "CallAppProcesses", targets: ["CallAppProcesses"]),
         .library(name: "CallFolder", targets: ["CallFolder"]),
+        .library(name: "CallFolderName", targets: ["CallFolderName"]),
         .library(name: "CallText", targets: ["CallText"]),
         .library(name: "CoreAudioProcesses", targets: ["CoreAudioProcesses"]),
         .library(name: "CoreAudioProcessBinding", targets: ["CoreAudioProcessBinding"]),
@@ -45,7 +46,7 @@ let package = Package(
     ],
     targets: [
         .testTarget(name: "SourceChecksTests", dependencies: ["BlockingTestWork"]),
-        .target(name: "Calls"),
+        .target(name: "Calls", dependencies: ["CallFolderName"]),
         .target(name: "Recordings"),
         .target(name: "CallsListUI", dependencies: ["GlassLedger"]),
         .testTarget(name: "CallsTests", dependencies: ["Calls", "TrackFile", "BlockingTestWork"]),
@@ -63,7 +64,11 @@ let package = Package(
             name: "CallAppProcesses"
         ),
         .target(
-            name: "CallFolder"
+            name: "CallFolder",
+            dependencies: ["CallFolderName"]
+        ),
+        .target(
+            name: "CallFolderName"
         ),
         .target(
             name: "CallText",
@@ -197,6 +202,10 @@ let package = Package(
         .testTarget(
             name: "CallFolderTests",
             dependencies: ["CallFolder", "TrackFile", "TranscriptFile", "BlockingTestWork"]
+        ),
+        .testTarget(
+            name: "CallFolderNameTests",
+            dependencies: ["CallFolderName"]
         ),
         .testTarget(
             name: "CallTextTests",

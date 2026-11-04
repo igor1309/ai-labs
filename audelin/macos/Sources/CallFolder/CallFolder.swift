@@ -1,3 +1,4 @@
+import CallFolderName
 import Darwin
 import Foundation
 
@@ -51,17 +52,12 @@ public struct CallFolder: Sendable {
     public func make(title: String? = nil) throws -> Made {
 
         guard callsURL.isFileURL else { throw POSIXError(.EINVAL) }
-        // Digits from a fixed calendar, so the user's locale and calendar never reach the name.
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = timeZone
-        let parts = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: now())
-        let base = String(format: "%04d.%02d.%02d-%02d%02d",
-                          parts.year ?? 0, parts.month ?? 0, parts.day ?? 0, parts.hour ?? 0, parts.minute ?? 0)
-        // Neither can be in a folder name; the number goes before the title so folders sort by time.
-        let suffix = title.map { " " + $0.replacingOccurrences(of: "/", with: "-").replacingOccurrences(of: ":", with: "-") } ?? ""
+        let date = now()
         var number = 1
         while true {
-            let name = (number == 1 ? base : "\(base)-\(number)") + suffix
+            // The number goes before the title so folders sort by time.
+            let id = CallFolderName.id(at: date, number: number, timeZone: timeZone)
+            let name = CallFolderName.name(id: id, title: title)
             let url = callsURL.appendingPathComponent(name, isDirectory: true)
             do {
                 try createDirectory(url)

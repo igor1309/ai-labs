@@ -2,6 +2,7 @@
 
 ## 2026-11-04
 
+- A call given an empty title gets the bare date and time as its folder name, with no trailing space (LAB-946).
 - Audio conversion refuses a zero or non-finite sample rate instead of accepting it (LAB-949).
 
 ## 2026-11-03
