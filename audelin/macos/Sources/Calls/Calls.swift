@@ -1,3 +1,4 @@
+import CallFolderName
 import Darwin
 import Foundation
 
@@ -79,8 +80,7 @@ public struct Calls: Sendable {
     public func rename(id: String, title: String) throws {
         guard !title.contains("\0") else { throw Failure(description: "Название содержит недопустимый символ.") }
         let source = try location(id: id)
-        let title = title.replacingOccurrences(of: "/", with: "-").replacingOccurrences(of: ":", with: "-")
-        let target = folder.appendingPathComponent(id + (title.isEmpty ? "" : " " + title), isDirectory: true)
+        let target = folder.appendingPathComponent(CallFolderName.name(id: id, title: title), isDirectory: true)
         guard source != target else { return }
         try rename(source, target)
     }
@@ -103,10 +103,10 @@ public struct Calls: Sendable {
         return Int64(info.fileSize ?? 0)
     }
 
-    private func folders() throws -> [(URL, Name)] {
+    private func folders() throws -> [(URL, CallFolderName)] {
         guard folder.isFileURL else { throw POSIXError(.EINVAL) }
         return try children(folder).compactMap { url in
-            guard let name = Self.parse(url.lastPathComponent, timeZone: timeZone) else { return nil }
+            guard let name = CallFolderName(url.lastPathComponent, timeZone: timeZone) else { return nil }
             let info = try values(url)
             guard info.isDirectory == true, info.isSymbolicLink != true else { return nil }
             return (url, name)
@@ -115,28 +115,7 @@ public struct Calls: Sendable {
 
     /// Extracts only names the call-folder writer can make, with a valid local timestamp.
     public static func id(in name: String, timeZone: TimeZone) -> String? {
-        parse(name, timeZone: timeZone)?.id
-    }
-
-    private struct Name {
-        let id: String
-        let title: String
-        let start: Date
-    }
-
-    private static func parse(_ name: String, timeZone: TimeZone) -> Name? {
-        guard let range = name.range(of: #"^\d{4}\.\d{2}\.\d{2}-\d{4}(?:-[2-9][0-9]*|-1[0-9]+)?(?= |$)"#, options: .regularExpression) else { return nil }
-        let id = String(name[range])
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.calendar = Calendar(identifier: .gregorian)
-        formatter.timeZone = timeZone
-        formatter.dateFormat = "yyyy.MM.dd-HHmm"
-        formatter.isLenient = false
-        let timestamp = String(id.prefix(15))
-        guard let date = formatter.date(from: timestamp), formatter.string(from: date) == timestamp else { return nil }
-        let suffix = name[range.upperBound...]
-        return Name(id: id, title: suffix.isEmpty ? "" : String(suffix.dropFirst()), start: date)
+        CallFolderName(name, timeZone: timeZone)?.id
     }
 
     private struct Failure: LocalizedError {

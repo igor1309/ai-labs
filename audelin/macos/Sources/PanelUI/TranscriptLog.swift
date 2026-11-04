@@ -43,21 +43,7 @@ struct TranscriptLog: NSViewRepresentable {
             coordinator.finishSelecting(text)
         }
 
-        scroll.contentView.postsBoundsChangedNotifications = true
-        NotificationCenter.default.addObserver(
-            coordinator,
-            selector: #selector(Coordinator.boundsChanged(_:)),
-            name: NSView.boundsDidChangeNotification,
-            object: scroll.contentView
-        )
-        text.postsFrameChangedNotifications = true
-        NotificationCenter.default.addObserver(
-            coordinator,
-            selector: #selector(Coordinator.textResized(_:)),
-            name: NSView.frameDidChangeNotification,
-            object: text
-        )
-        coordinator.scroll = scroll
+        coordinator.observeGeometry(of: scroll)
 
         return scroll
     }
@@ -90,7 +76,7 @@ struct TranscriptLog: NSViewRepresentable {
             let length = storage.length
             text.setSelectedRange(NSIntersectionRange(selection, NSRange(location: 0, length: length)))
 
-            if lines.followsLive, !coordinator.isSelecting { text.scrollToEndOfDocument(nil) }
+            if coordinator.followsLive, !coordinator.isSelecting { text.scrollToEndOfDocument(nil) }
         }
     }
 
@@ -154,17 +140,55 @@ extension TranscriptLog {
     @MainActor
     final class Coordinator: NSObject {
 
-        var parent: TranscriptLog
+        var parent: TranscriptLog {
+            didSet {
+                if let pendingScroll, parent.lines.scrollAcknowledgement == pendingScroll.id {
+                    self.pendingScroll = nil
+                }
+            }
+        }
         var entries: [Transcript.EntryRange] = []
         var rows = Transcript.Rows()
         weak var scroll: NSScrollView?
         /// A drag is selecting text: the log holds still under it.
         var isSelecting = false
         private var isQuiet = false
-        private var atBottom = true
+        private var pendingScroll: (id: UUID, atBottom: Bool)?
+        private var origin = NSPoint.zero
         private var size = NSSize.zero
+        private var documentSize = NSSize.zero
+
+        // A snapshot can authorize scrolling only after it has consumed the
+        // latest callback. An older resume must not move a newer reader pause.
+        var followsLive: Bool { parent.lines.followsLive && pendingScroll == nil }
 
         init(_ parent: TranscriptLog) { self.parent = parent }
+
+        func observeGeometry(of scroll: NSScrollView) {
+
+            self.scroll = scroll
+            scroll.contentView.postsBoundsChangedNotifications = true
+            scroll.contentView.postsFrameChangedNotifications = true
+            scroll.documentView?.postsFrameChangedNotifications = true
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(boundsChanged(_:)),
+                name: NSView.boundsDidChangeNotification,
+                object: scroll.contentView
+            )
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(boundsChanged(_:)),
+                name: NSView.frameDidChangeNotification,
+                object: scroll.contentView
+            )
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(documentFrameChanged(_:)),
+                name: NSView.frameDidChangeNotification,
+                object: scroll.documentView
+            )
+        }
 
         /// A drag ended: what it selected is held, and the selection fades
         /// from the log, which draws held text like any other. A click that
@@ -186,39 +210,66 @@ extension TranscriptLog {
         /// Moves the log without reporting a scroll: only the reader scrolls.
         func quietly(_ change: () -> Void) {
 
+            let wasQuiet = isQuiet
             isQuiet = true
             change()
-            isQuiet = false
-            size = scroll?.contentView.bounds.size ?? .zero
-            atBottom = isAtBottom
+            if !wasQuiet {
+                followDocumentBottom()
+                origin = scroll?.contentView.bounds.origin ?? .zero
+                size = scroll?.contentView.bounds.size ?? .zero
+                documentSize = scroll?.documentView?.frame.size ?? .zero
+            }
+            isQuiet = wasQuiet
         }
 
-        /// TextKit lays text out lazily, so the text grows after the update
-        /// that scrolled to its end, or before the log has its size at all.
-        @objc func textResized(_ notification: Notification) {
+        private func followDocumentBottom() {
 
-            guard !isQuiet, parent.lines.followsLive, !isSelecting, !isAtBottom, let scroll else { return }
+            guard followsLive, !isSelecting,
+                  let scroll, let document = scroll.documentView else { return }
 
-            quietly { scroll.documentView?.scrollToEndOfDocument(nil) }
+            // Layout can grow the document after the text-range scroll. Follow
+            // its current geometry without laying out the whole transcript.
+            var height: CGFloat
+            repeat {
+                height = document.frame.height
+                let clip = scroll.contentView
+                clip.scroll(to: NSPoint(x: clip.bounds.minX, y: max(0, document.frame.maxY - clip.bounds.height)))
+                scroll.reflectScrolledClipView(clip)
+            } while document.frame.height != height
+        }
+
+        @objc func documentFrameChanged(_ notification: Notification) {
+
+            guard !isQuiet else { return }
+            reportReaderScroll()
+            quietly { }
         }
 
         @objc func boundsChanged(_ notification: Notification) {
 
             guard !isQuiet, let scroll else { return }
 
-            // The log was resized, not scrolled.
-            if scroll.contentView.bounds.size != size {
-                quietly {
-                    if parent.lines.followsLive { scroll.documentView?.scrollToEndOfDocument(nil) }
-                }
-                return
+            reportReaderScroll()
+            // A document resize can move the clip before its frame observer runs.
+            if scroll.contentView.bounds.size != size || scroll.documentView?.frame.size != documentSize {
+                quietly { }
             }
+        }
+
+        private func reportReaderScroll() {
+
+            guard let clip = scroll?.contentView, clip.bounds.size == size,
+                  clip.bounds.origin != origin else { return }
+            // Growth at the same origin is layout, even if the bottom moved.
+            // Movement can precede both the bounds and document notifications.
+            origin = clip.bounds.origin
 
             let now = isAtBottom
-            guard now != atBottom else { return }
+            guard now != (pendingScroll?.atBottom ?? parent.lines.followsLive) else { return }
 
-            atBottom = now
-            parent.event(.scrolled(atBottom: now))
+            let interaction = UUID()
+            pendingScroll = (interaction, now)
+            parent.event(.scrolled(atBottom: now, interaction: interaction))
         }
 
         private var isAtBottom: Bool {

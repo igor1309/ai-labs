@@ -2,6 +2,7 @@ import AppKit
 import Foundation
 import GlassLedger
 import SwiftUI
+import RenderedText
 import Testing
 @testable import PanelUI
 

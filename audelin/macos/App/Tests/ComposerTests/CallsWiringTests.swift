@@ -1,4 +1,6 @@
 import BlockingTestWork
+import CallFolder
+import Calls
 import CallsListUI
 import Foundation
 import Observation
@@ -144,6 +146,37 @@ struct CallsWiringTests {
             await calls.send(.open("2024.01.01-0700"))
             #expect(opened.all.count == 1)
             #expect(calls.state.failure == "«2024.01.01-0700»: Звонок «2024.01.01-0700» больше не найден.")
+        }
+    }
+
+    /// What the writers really make is what protects the call being recorded.
+    @Test func madeAndRenamedNamesReadBackAsTheSameCall() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("CallsWiringTests-\(UUID())", isDirectory: true)
+        try await offPool { try FileManager.default.createDirectory(at: root, withIntermediateDirectories: false) }
+        try await withCleanup {
+            let calls = Calls(folder: root, timeZone: .gmt, duration: { _ in 0 })
+            let cases: [(minute: Double, made: String?, id: String, title: String)] = [
+                (0, "Zoom", "1970.01.01-0000", "Zoom"),
+                (0, "Zoom", "1970.01.01-0000-2", "Zoom"),
+                (1, "a/b:c", "1970.01.01-0001", "a-b-c"),
+                (2, "", "1970.01.01-0002", ""),
+                (3, nil, "1970.01.01-0003", ""),
+            ]
+            for item in cases {
+                let folder = CallFolder(callsURL: root, now: { Date(timeIntervalSince1970: item.minute * 60) }, timeZone: .gmt)
+                let name = try await offPool { try folder.make(title: item.made).url.lastPathComponent }
+                #expect(Calls.id(in: name, timeZone: .gmt) == item.id)
+                #expect(try await offPool { try calls.list() }.first { $0.id == item.id }?.title == item.title)
+            }
+            let id = "1970.01.01-0000-2"
+            for (title, shown) in [("New", "New"), ("x/y:z", "x-y-z"), ("", "")] {
+                try await offPool { try calls.rename(id: id, title: title) }
+                let name = try await offPool { try calls.location(id: id).lastPathComponent }
+                #expect(Calls.id(in: name, timeZone: .gmt) == id)
+                #expect(try await offPool { try calls.list() }.first { $0.id == id }?.title == shown)
+            }
+        } cleanup: {
+            try FileManager.default.removeItem(at: root)
         }
     }
 

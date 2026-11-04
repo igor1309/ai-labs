@@ -28,6 +28,7 @@ LANES = {
 # Target: (lane, line under its name, slot in the lane). Planned boxes have no target yet.
 TARGETS = {
     "BlockingTestWork": ("external", "test helper: dispatches blocking work", 3),
+    "RenderedText": ("external", "test helper: reads what a view draws", 4),
     "AudelinRehearsal": ("tools", "synthetic call through the shipped composition", 0),
     "SessionRehearsal": ("tools", "synthetic recogniser", 1),
     "SessionCrashWriter": ("tools", "test helper: call killed mid-save", 2),
@@ -53,6 +54,7 @@ TARGETS = {
     "TrackFileCrashWriter": ("storage", "test helper: killed mid-write", 3),
     "TranscriptFileCrashWriter": ("storage", "test helper: killed mid-write", 4),
     "TranscriptWriting": ("storage", "keeps call text's latest text\nin the transcript", 5),
+    "CallFolderName": ("storage", "the call folder name's format", 8),
     "Preferences": ("storage", "reads and writes user preferences", 6),
     "CallText": ("text", "both sides' text;\nswitches live text", 0),
     "LiveText": ("text", "cuts recognised text into\nsegments, partial or settled", 1),

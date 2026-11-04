@@ -2,10 +2,15 @@
 
 ## 2026-11-04
 
-- Session exposes its complete audio observation state and accepts replaceable failure wording while preserving recording behavior (LAB-951).
+- A call given an empty title gets the bare date and time as its folder name, with no trailing space (LAB-946).
 - Audio conversion refuses a zero or non-finite sample rate instead of accepting it (LAB-949).
+- Session exposes its complete audio observation state and accepts replaceable failure wording while preserving recording behavior (LAB-951).
 
 ## 2026-11-03
+
+- The live panel keeps the newest text visible after later layout growth,
+  while paused reading and active text selection stay in place. Delayed scroll
+  acknowledgements preserve the reader’s latest position (LAB-942).
 
 - Parakeet omits whitespace-only model words while keeping spoken words' original timing (LAB-943).
 

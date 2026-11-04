@@ -55,11 +55,11 @@ struct CallFolderTests {
             let adapter = CallFolder(callsURL: calls, now: { fixedStart.addingTimeInterval(249_540) }, timeZone: tokyo)
             let made = try await offPool { try [
                 adapter.make(title: "Zoom"), adapter.make(), adapter.make(title: "Zoom"),
-                adapter.make(title: "a/b:c"), adapter.make(title: "//::"),
+                adapter.make(title: "a/b:c"), adapter.make(title: "//::"), adapter.make(title: ""),
             ] }
             #expect(made.map(\.url.lastPathComponent) == [
                 "2026.10.27-1124 Zoom", "2026.10.27-1124", "2026.10.27-1124-2 Zoom",
-                "2026.10.27-1124 a-b-c", "2026.10.27-1124 ----",
+                "2026.10.27-1124 a-b-c", "2026.10.27-1124 ----", "2026.10.27-1124-2",
             ])
             for folder in made { try await expectDirectory(folder.url) }
         }

@@ -1,3 +1,4 @@
+import Foundation
 import SplitRows
 /// Everything the live panel shows, ready to render.
 ///
@@ -51,17 +52,21 @@ public extension PanelState {
         /// The log keeps the newest line in view; off while the reader is
         /// scrolled up.
         public var followsLive: Bool
+        /// The latest reader scroll consumed by the model.
+        public var scrollAcknowledgement: UUID?
 
         public init(
             rows: SplitRows<Row>,
             holds: [Held] = [],
             newBelow: Int = 0,
-            followsLive: Bool = true
+            followsLive: Bool = true,
+            scrollAcknowledgement: UUID? = nil
         ) {
             self.rows = rows
             self.holds = holds
             self.newBelow = newBelow
             self.followsLive = followsLive
+            self.scrollAcknowledgement = scrollAcknowledgement
         }
 
         /// Lines with no late group.
@@ -69,9 +74,10 @@ public extension PanelState {
             entries: [Entry],
             holds: [Held] = [],
             newBelow: Int = 0,
-            followsLive: Bool = true
+            followsLive: Bool = true,
+            scrollAcknowledgement: UUID? = nil
         ) {
-            self.init(rows: .init(tail: entries.map(Row.entry)), holds: holds, newBelow: newBelow, followsLive: followsLive)
+            self.init(rows: .init(tail: entries.map(Row.entry)), holds: holds, newBelow: newBelow, followsLive: followsLive, scrollAcknowledgement: scrollAcknowledgement)
         }
 
         /// Every entry, late ones included, in call order.
