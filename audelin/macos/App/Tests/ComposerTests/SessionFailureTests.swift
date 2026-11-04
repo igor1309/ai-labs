@@ -28,6 +28,9 @@ struct SessionFailureTests {
                 let state = try await rig.state { $0.phase == .idle && $0.cannotRecord != nil }
                 let expected = "folder: \(String(describing: POSIXError(.ENOENT) as NSError))"
                 #expect(state.cannotRecord == expected)
+                #expect(state.faults.isEmpty)
+                let shown = try await rig.panel { $0.recording == .off }
+                #expect(shown.banners.isEmpty)
                 #expect(rig.microphone.starts.all.isEmpty && rig.call.starts.all.isEmpty)
                 #expect(rig.log.entries.all.contains { $0.category == .recording && $0.error == expected })
                 #expect(await offPool { !isFolder(calls.path) })

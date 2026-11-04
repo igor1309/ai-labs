@@ -5,6 +5,15 @@ import protocol RecordedCapture.Track
 import struct RecordedCapture.AudioPiece
 import enum RecordedCapture.Failure
 import TrackFile
+import Foundation
+
+extension TrackFile: AudioRecording {}
+
+/// Stores recordings in audio files, with TrackFile's queued I/O.
+public struct FileRecordingStorage: RecordingStorage {
+    public init() {}
+    public func open(at url: URL) async throws -> any AudioRecording { try await TrackFile(url: url) }
+}
 
 typealias CapturedPiece = LiveAudio.AudioPiece
 typealias RecordingTrack = RecordedCapture.Track
@@ -110,9 +119,9 @@ actor CaptureAdapter<Piece: Sendable>: LiveAudio.Capture {
 
 struct CaptureTrack: RecordingTrack {
 
-    let track: TrackFile
+    let track: any AudioRecording
 
-    init(track: TrackFile) { self.track = track }
+    init(track: any AudioRecording) { self.track = track }
 
     func write(_ samples: [Float], sampleRate: Double) async throws {
 

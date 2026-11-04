@@ -1,20 +1,26 @@
 /// A dictionary kept as a sealed part and a tail, so changing a late key leaves
 /// the sealed part's storage shared with earlier copies of the state.
-struct SplitDictionary<Key: Hashable & Sendable, Value: Sendable>: Sendable, ExpressibleByDictionaryLiteral {
+public struct SplitDictionary<Key: Hashable & Sendable, Value: Sendable>: Sendable, ExpressibleByDictionaryLiteral {
 
-    private(set) var sealed: [Key: Value] = [:]
-    private(set) var tail: [Key: Value] = [:]
+    public var sealed: [Key: Value] = [:]
+    public var tail: [Key: Value] = [:]
 
-    init() {}
+    public init() {}
 
-    init(uniqueKeysWithValues pairs: some Sequence<(Key, Value)>) {
+    public init(sealed: [Key: Value], tail: [Key: Value] = [:]) {
+
+        self.sealed = sealed
+        self.tail = tail
+    }
+
+    public init(uniqueKeysWithValues pairs: some Sequence<(Key, Value)>) {
 
         tail = .init(uniqueKeysWithValues: pairs)
     }
 
-    init(dictionaryLiteral elements: (Key, Value)...) { self.init(uniqueKeysWithValues: elements) }
+    public init(dictionaryLiteral elements: (Key, Value)...) { self.init(uniqueKeysWithValues: elements) }
 
-    subscript(key: Key) -> Value? {
+    public subscript(key: Key) -> Value? {
 
         get { tail[key] ?? sealed[key] }
         set {
@@ -26,27 +32,27 @@ struct SplitDictionary<Key: Hashable & Sendable, Value: Sendable>: Sendable, Exp
         }
     }
 
-    var count: Int { sealed.count + tail.count }
+    public var count: Int { sealed.count + tail.count }
 
-    var values: [Value] { Array(sealed.values) + Array(tail.values) }
+    public var values: [Value] { Array(sealed.values) + Array(tail.values) }
 
-    func isSealed(_ key: Key) -> Bool { sealed[key] != nil }
+    public func isSealed(_ key: Key) -> Bool { sealed[key] != nil }
 
-    mutating func seal(_ key: Key) {
+    public mutating func seal(_ key: Key) {
 
         if let value = tail.removeValue(forKey: key) { sealed[key] = value }
     }
 
-    mutating func setSealed(_ key: Key, _ value: Value) { sealed[key] = value }
+    public mutating func setSealed(_ key: Key, _ value: Value) { sealed[key] = value }
 
-    mutating func removeAll() { self = .init() }
+    public mutating func removeAll() { self = .init() }
 
-    mutating func removeTail() { tail.removeAll(keepingCapacity: true) }
+    public mutating func removeTail() { tail.removeAll(keepingCapacity: true) }
 }
 
 extension SplitDictionary: Equatable where Value: Equatable {
 
-    static func == (lhs: Self, rhs: Self) -> Bool {
+    public static func == (lhs: Self, rhs: Self) -> Bool {
 
         if lhs.sealed.count == rhs.sealed.count { return lhs.tail == rhs.tail && lhs.sealed == rhs.sealed }
         return lhs.tail.count + lhs.sealed.count == rhs.tail.count + rhs.sealed.count

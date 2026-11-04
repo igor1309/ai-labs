@@ -32,30 +32,44 @@ extension NemotronRecognizer {
 }
 
 /// The model's cumulative token stream, without language tags.
-private struct NemotronDecoder: TokenDecoder {
+struct NemotronDecoder: TokenDecoder {
 
     let chunk = 1.12
 
-    private let manager: StreamingNemotronMultilingualAsrManager
+    private let feedTokens: @Sendable ([Float]) async throws -> [TokenTiming]
+    private let finishTokens: @Sendable () async throws -> [TokenTiming]
+
+    init(
+        feed: @escaping @Sendable ([Float]) async throws -> [TokenTiming],
+        finish: @escaping @Sendable () async throws -> [TokenTiming]
+    ) {
+
+        feedTokens = feed
+        finishTokens = finish
+    }
 
     init(models: SharedNemotronMultilingualModels) async throws {
 
         let manager = StreamingNemotronMultilingualAsrManager()
         try await manager.loadFromShared(models)
         await manager.setLanguage("ru")
-        self.manager = manager
+        self.init(
+            feed: { samples in
+                _ = try await manager.process(samples: samples)
+                return await manager.getTokenTimings()
+            },
+            finish: { try await manager.finishWithTokenTimings().timings }
+        )
     }
 
     func feed(_ samples: [Float]) async throws -> [DecodedToken] {
 
-        _ = try await manager.process(samples: samples)
-        return tokens(await manager.getTokenTimings())
+        tokens(try await feedTokens(samples))
     }
 
     func finish() async throws -> [DecodedToken] {
 
-        let result = try await manager.finishWithTokenTimings()
-        return tokens(result.timings)
+        tokens(try await finishTokens())
     }
 
     private func tokens(_ timings: [TokenTiming]) -> [DecodedToken] {

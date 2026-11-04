@@ -223,7 +223,7 @@ let package = Package(
         ),
         .testTarget(
             name: "MicrophoneCaptureTests",
-            dependencies: ["MicrophoneCapture"]
+            dependencies: ["MicrophoneCapture", "BlockingTestWork"]
         ),
         .testTarget(
             name: "ModelLoadingTests",
@@ -231,7 +231,7 @@ let package = Package(
         ),
         .testTarget(
             name: "NemotronRecognizerTests",
-            dependencies: ["NemotronRecognizer", "BlockingTestWork"]
+            dependencies: ["NemotronRecognizer", "BlockingTestWork", .product(name: "FluidAudio", package: "FluidAudio")]
         ),
         .testTarget(
             name: "PanelUITests",
@@ -239,7 +239,8 @@ let package = Package(
         ),
         .testTarget(
             name: "ParakeetRecognizerTests",
-            dependencies: ["ParakeetRecognizer", "BlockingTestWork", .product(name: "FluidAudio", package: "FluidAudio")]
+            dependencies: ["ParakeetRecognizer", "BlockingTestWork", .product(name: "FluidAudio", package: "FluidAudio")],
+            resources: [.copy("Fixtures")]
         ),
         .testTarget(
             name: "PreferencesTests",
