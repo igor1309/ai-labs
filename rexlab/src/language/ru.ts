@@ -167,7 +167,6 @@ export const ru: Texts = {
   treasureNew: "НОВИНКА!",
   brush: "КИСТЬ",
   wideBrush: "ШИРОКАЯ КИСТЬ",
-  brushMenu: "КИСТИ",
   treasureCards: "СОКРОВИЩА",
   kindsFound: "НАЙДЕНО ВИДОВ",
   treasures: { shell: "РАКУШКА", tooth: "ЗУБ", amber: "ЯНТАРЬ", "egg-nest": "ГНЕЗДО С ЯЙЦАМИ", "golden-fossil": "ЗОЛОТАЯ ОКАМЕНЕЛОСТЬ" },
