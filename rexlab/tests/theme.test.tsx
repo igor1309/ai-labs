@@ -209,14 +209,13 @@ async function questionTheme({ theme, user }: Walk) {
 
 // The whole list, with every food type's card, is checked once; a food
 // chosen shows only cards already on it, so then only the choice is.
-async function catalogueList({ theme, user }: Walk) {
+const catalogueList = (food?: string) => async ({ theme, user }: Walk) => {
   await user.click(gameDoor("ANCIENT REPTILES"));
-  expectScreenIn(theme);
-  for (const food of ["MEAT", "PLANTS", "BOTH", "ALL"]) {
-    const foods = screen.getByRole("group", { name: "FOOD" });
-    await user.click(within(foods).getByRole("button", { name: food }));
-    expectScreenIn(theme, foods);
-  }
+  if (!food) { expectScreenIn(theme); return; }
+  const foods = screen.getByRole("group", { name: "FOOD" });
+  if (food === "ALL") await user.click(within(foods).getByRole("button", { name: "MEAT" }));
+  await user.click(within(foods).getByRole("button", { name: food }));
+  expectScreenIn(theme, foods);
 }
 
 async function cataloguePages({ theme, user }: Walk) {
@@ -315,16 +314,16 @@ const pairsLargeBoard = (level: LargeLevel) =>
     await user.click(screen.getByRole("button", { name: "HOME" }));
   };
 
-async function pairsFound({ theme, user, timers }: Walk) {
+const pairsFound = (part: "home" | "catalogue" | "page") => async ({ theme, user, timers }: Walk) => {
   await playPairs(user, "HATCHLING");
   await playBoard(user, timers);
   endWave(timers);
   await user.click(screen.getByRole("button", { name: "HOME" }));
   // The rest of the home page is its own walk.
-  expectScreenIn(theme, gameDoor("FIND THE PAIR"));
+  if (part === "home") { expectScreenIn(theme, gameDoor("FIND THE PAIR")); return; }
   await user.click(gameDoor("ANCIENT REPTILES"));
   expect(screen.queryAllByRole("img", { name: "FOUND" })).toHaveLength(0);
-  expectScreenIn(theme);
+  if (part === "catalogue") { expectScreenIn(theme); return; }
   const grid = screen.getByRole("group", { name: "ANCIENT REPTILES" });
   await user.click(within(grid).getAllByRole("button")[0] as HTMLElement);
   expect(screen.queryByRole("img", { name: "FOUND" })).toBeNull();
@@ -437,33 +436,46 @@ async function skeletonMuseum({ theme, user, timers }: Walk) {
 }
 
 // The dig game's board under all its sand, with the brush held down on
-// it among its grains, through the gust and lift. Each part brushes from a
-// newly opened app and checks one stage: all in one test outlast CI's limit.
-const DIG_STAGES = ["under its sand", "brushed", "blown away", "lifting"];
-async function dugUp({ theme, user, timers }: Walk, at?: string) {
-  const steps = [
-    async () => { await user.click(screen.getByRole("button", { name: "DIG" })); placeBoard(800); },
-    () => { pressAt(sandBoard(), 0, { x: 200, y: 300 }); moveAt(10, { x: 400, y: 300 }); expect(sandBoard().querySelector(".dig-puff")).not.toBeNull(); },
-    () => { releaseAt(window, 20, { x: 400, y: 300 }); digUp(); expect(sandBoard().getAttribute("data-blown")).toBe("true"); },
-    () => { act(() => timers.fire(GUST.motion)); expect(sandBoard().hasAttribute("data-lifting")).toBe(true); expect(document.querySelector(".dig-board-star")).not.toBeNull(); }
-  ];
-  for (const [i, step] of steps.entries()) {
-    await step();
-    if (DIG_STAGES[i] === at) return expectScreenIn(theme);
-  }
+// it among its grains, through the gust, lift and count, then the reveal with its first
+// best, and the home page with the dinosaur dug up.
+// Each case checks one stage, keeping the computed-style walk bounded.
+async function dugUp({ theme, user, timers }: Walk, checked?: number) {
+  let stage = 0;
+  const expectIn = () => {
+    if (stage++ !== checked) return false;
+    expectScreenIn(theme);
+    return true;
+  };
+  await user.click(screen.getByRole("button", { name: "DIG" })); placeBoard(800);
+  if (expectIn()) return;
+  pressAt(sandBoard(), 0, { x: 200, y: 300 }); moveAt(10, { x: 400, y: 300 });
+  expect(sandBoard().querySelector(".dig-puff")).not.toBeNull();
+  if (expectIn()) return;
+  releaseAt(window, 20, { x: 400, y: 300 }); digUp();
+  expect(sandBoard().getAttribute("data-blown")).toBe("true");
+  if (expectIn()) return;
+  act(() => timers.fire(GUST.motion)); expect(sandBoard().hasAttribute("data-lifting")).toBe(true);
+  expect(document.querySelector(".dig-board-star")).not.toBeNull();
+  if (expectIn()) return;
 }
 
-// The reveal with its count and first best, or the home page after it.
-const digReveal = (home: boolean) => async (walk: Walk) => {
+const digReveal = (checked: number) => async (walk: Walk) => {
+  let stage = 0;
+  const expectIn = () => {
+    if (stage++ !== checked) return false;
+    expectScreenIn(theme);
+    return true;
+  };
   const { theme, user, timers } = walk; await dugUp(walk);
-  act(() => timers.fire(LIFT.motion)); expect(screen.getByLabelText("DUG UP").textContent).toBe(`DUG UP1/${SHIPPED_DIG.length}`);
-  if (!home) expectScreenIn(theme);
+  act(() => timers.fire(LIFT.motion));
+  expect(screen.getByLabelText("DUG UP").textContent).toBe(`DUG UP1/${SHIPPED_DIG.length}`);
+  if (expectIn()) return;
   act(() => timers.fire(COUNT_SETTLE.motion)); expect(screen.getByRole("heading", { level: 2 })).toBeDefined();
-  if (!home) return expectScreenIn(theme);
+  if (expectIn()) return;
   act(() => timers.fire(STAR_LANDS.motion)); await user.click(screen.getByRole("button", { name: "HOME" }));
   expect(screen.getByRole("button", { name: "DIG" }).querySelector(".dig-tile-count")).toBeNull();
-  expectScreenIn(theme);
-};
+  if (expectIn()) return;
+}
 
 // Every screen in every state, by group, each part of a group walked from
 // a newly opened app: one walk over them all outlasts a test's time limit
@@ -486,7 +498,8 @@ const SCREEN_GROUPS: Array<[string, Array<[string, (walk: Walk) => Promise<void>
   [
     "the catalogue",
     [
-      ["the list with a card of each food type, each food chosen", catalogueList],
+      ["the list with a card of each food type", catalogueList()],
+      ...["MEAT", "PLANTS", "BOTH", "ALL"].map(food => [`the ${food} food choice`, catalogueList(food)] as [string, (walk: Walk) => Promise<void>]),
       ["a page of each food type", cataloguePages]
     ]
   ],
@@ -506,7 +519,7 @@ const SCREEN_GROUPS: Array<[string, Array<[string, (walk: Walk) => Promise<void>
       ["a board of pictures with a card open, a miss, found pairs and the cards waving, and the result", pairsBoard],
       ["Explorer's board of silhouettes, a card open, every pair found, and the result", pairsLargeBoard("explorer")],
       ["Paleontologist's board of skeletons, a card open, every pair found, and the result", pairsLargeBoard("paleontologist")],
-      ["the dinosaurs found, stamped in the catalogue and on a page", pairsFound]
+      ...(["home", "catalogue", "page"] as const).map(part => [`the dinosaurs found on ${part}`, pairsFound(part)] as [string, (walk: Walk) => Promise<void>])
     ]
   ],
   [
@@ -523,8 +536,9 @@ const SCREEN_GROUPS: Array<[string, Array<[string, (walk: Walk) => Promise<void>
     ]
   ],
   ["the dig game", [
-    ...DIG_STAGES.map((stage): [string, (walk: Walk) => Promise<void>] => [`the board ${stage}`, walk => dugUp(walk, stage)]),
-    ["the reveal with the count", digReveal(false)], ["the home page with the dinosaur dug up", digReveal(true)]]]
+    ...["under sand", "brushed", "blown away", "lifting"].map((name, stage) => [`the board ${name}`, (walk: Walk) => dugUp(walk, stage)] as [string, (walk: Walk) => Promise<void>]),
+    ...["counting", "settled", "home"].map((name, stage) => [`the reveal ${name}`, digReveal(stage)] as [string, (walk: Walk) => Promise<void>])
+  ]]
 ];
 
 describe("the System theme", () => {
