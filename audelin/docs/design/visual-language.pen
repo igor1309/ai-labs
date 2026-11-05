@@ -18735,6 +18735,132 @@
                 },
                 {
                   "type": "frame",
+                  "id": "juRoH",
+                  "name": "Selecting text",
+                  "layout": "vertical",
+                  "gap": "$space-8",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "pz3HH",
+                      "name": "State",
+                      "fill": "#333333",
+                      "content": "Selecting text — mouse still down",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "T4PwOd",
+                      "name": "Note",
+                      "fill": "#777777",
+                      "textGrowth": "fixed-width",
+                      "width": 444,
+                      "content": "Native inactive selection: readable foreground and gray background in both appearances. The panel never becomes key. Gray here approximates the system color; mouse release holds the excerpt and fades this highlight.",
+                      "lineHeight": 1.45,
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "o0DJK9",
+                      "name": "Desktop",
+                      "fill": "$back",
+                      "cornerRadius": "$radius-card",
+                      "layout": "vertical",
+                      "gap": "$space-16",
+                      "padding": "$space-24",
+                      "children": [
+                        {
+                          "id": "mje07",
+                          "type": "ref",
+                          "ref": "c0qJn",
+                          "name": "Panel",
+                          "descendants": {
+                            "n5rfxu": {
+                              "type": "frame",
+                              "id": "QWgNk",
+                              "name": "Body",
+                              "width": "fill_container",
+                              "layout": "vertical",
+                              "children": [
+                                {
+                                  "id": "WvSCD",
+                                  "type": "ref",
+                                  "ref": "rVa43",
+                                  "name": "Header",
+                                  "width": "fill_container",
+                                  "descendants": {
+                                    "N7wi8l": {
+                                      "content": "REC 00:12:47"
+                                    }
+                                  }
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "xXtod",
+                                  "name": "Log",
+                                  "width": "fill_container",
+                                  "layout": "vertical",
+                                  "gap": "$space-12",
+                                  "padding": [
+                                    "$space-12",
+                                    "$space-16"
+                                  ],
+                                  "children": [
+                                    {
+                                      "id": "srnSD",
+                                      "type": "ref",
+                                      "ref": "Nescm",
+                                      "name": "Entry 12:42",
+                                      "width": "fill_container",
+                                      "descendants": {
+                                        "lCRql": {
+                                          "content": "12:42"
+                                        },
+                                        "f3tDAM": {
+                                          "children": [
+                                            {
+                                              "type": "frame",
+                                              "id": "KP74q",
+                                              "name": "Native selection",
+                                              "width": "fill_container",
+                                              "fill": "$chip",
+                                              "layout": "vertical",
+                                              "children": [
+                                                {
+                                                  "type": "text",
+                                                  "id": "tAQFM",
+                                                  "name": "Confirmed",
+                                                  "fill": "$text",
+                                                  "textGrowth": "fixed-width",
+                                                  "width": "fill_container",
+                                                  "content": "Accountable — я. По слог отвечает команда Ильи.",
+                                                  "lineHeight": 1.45,
+                                                  "fontFamily": "$font-data",
+                                                  "fontSize": "$type-body",
+                                                  "fontWeight": "normal"
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        }
+                                      }
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
                   "id": "Z5LiU",
                   "name": "Selection held",
                   "layout": "vertical",
@@ -18844,7 +18970,10 @@
                                           "stroke": "$rule",
                                           "strokeWidth": 1,
                                           "gap": "$space-8",
-                                          "padding": "$space-8",
+                                          "padding": [
+                                            "$space-2",
+                                            "$space-8"
+                                          ],
                                           "children": [
                                             {
                                               "type": "frame",
@@ -18875,6 +19004,8 @@
                                               "layout": "vertical",
                                               "padding": [
                                                 "$space-4",
+                                                0,
+                                                0,
                                                 0
                                               ],
                                               "children": [
@@ -18926,7 +19057,10 @@
                                           "stroke": "$rule",
                                           "strokeWidth": 1,
                                           "gap": "$space-8",
-                                          "padding": "$space-8",
+                                          "padding": [
+                                            "$space-2",
+                                            "$space-8"
+                                          ],
                                           "children": [
                                             {
                                               "type": "frame",
@@ -18957,6 +19091,8 @@
                                               "layout": "vertical",
                                               "padding": [
                                                 "$space-4",
+                                                0,
+                                                0,
                                                 0
                                               ],
                                               "children": [
@@ -20496,6 +20632,135 @@
                 },
                 {
                   "type": "frame",
+                  "id": "Id6VY",
+                  "name": "Selecting text",
+                  "theme": {
+                    "mode": "dark"
+                  },
+                  "layout": "vertical",
+                  "gap": "$space-8",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "HDcxW",
+                      "name": "State",
+                      "fill": "#333333",
+                      "content": "Selecting text — mouse still down",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "EqMtA",
+                      "name": "Note",
+                      "fill": "#777777",
+                      "textGrowth": "fixed-width",
+                      "width": 444,
+                      "content": "Native inactive selection: readable foreground and gray background in both appearances. The panel never becomes key. Gray here approximates the system color; mouse release holds the excerpt and fades this highlight.",
+                      "lineHeight": 1.45,
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "P35YpN",
+                      "name": "Desktop",
+                      "fill": "$back",
+                      "cornerRadius": "$radius-card",
+                      "layout": "vertical",
+                      "gap": "$space-16",
+                      "padding": "$space-24",
+                      "children": [
+                        {
+                          "id": "L48R5",
+                          "type": "ref",
+                          "ref": "c0qJn",
+                          "name": "Panel",
+                          "descendants": {
+                            "n5rfxu": {
+                              "type": "frame",
+                              "id": "P6isMb",
+                              "name": "Body",
+                              "width": "fill_container",
+                              "layout": "vertical",
+                              "children": [
+                                {
+                                  "id": "qln7X",
+                                  "type": "ref",
+                                  "ref": "rVa43",
+                                  "name": "Header",
+                                  "width": "fill_container",
+                                  "descendants": {
+                                    "N7wi8l": {
+                                      "content": "REC 00:12:47"
+                                    }
+                                  }
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "TmxzJ",
+                                  "name": "Log",
+                                  "width": "fill_container",
+                                  "layout": "vertical",
+                                  "gap": "$space-12",
+                                  "padding": [
+                                    "$space-12",
+                                    "$space-16"
+                                  ],
+                                  "children": [
+                                    {
+                                      "id": "j2ckXI",
+                                      "type": "ref",
+                                      "ref": "Nescm",
+                                      "name": "Entry 12:42",
+                                      "width": "fill_container",
+                                      "descendants": {
+                                        "lCRql": {
+                                          "content": "12:42"
+                                        },
+                                        "f3tDAM": {
+                                          "children": [
+                                            {
+                                              "type": "frame",
+                                              "id": "fRfaU",
+                                              "name": "Native selection",
+                                              "width": "fill_container",
+                                              "fill": "$chip",
+                                              "layout": "vertical",
+                                              "children": [
+                                                {
+                                                  "type": "text",
+                                                  "id": "Kv45d",
+                                                  "name": "Confirmed",
+                                                  "fill": "$text",
+                                                  "textGrowth": "fixed-width",
+                                                  "width": "fill_container",
+                                                  "content": "Accountable — я. По слог отвечает команда Ильи.",
+                                                  "lineHeight": 1.45,
+                                                  "fontFamily": "$font-data",
+                                                  "fontSize": "$type-body",
+                                                  "fontWeight": "normal"
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        }
+                                      }
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
                   "id": "v8E9co",
                   "name": "Selection held",
                   "layout": "vertical",
@@ -20605,7 +20870,10 @@
                                           "stroke": "$rule",
                                           "strokeWidth": 1,
                                           "gap": "$space-8",
-                                          "padding": "$space-8",
+                                          "padding": [
+                                            "$space-2",
+                                            "$space-8"
+                                          ],
                                           "children": [
                                             {
                                               "type": "frame",
@@ -20636,6 +20904,8 @@
                                               "layout": "vertical",
                                               "padding": [
                                                 "$space-4",
+                                                0,
+                                                0,
                                                 0
                                               ],
                                               "children": [
@@ -20687,7 +20957,10 @@
                                           "stroke": "$rule",
                                           "strokeWidth": 1,
                                           "gap": "$space-8",
-                                          "padding": "$space-8",
+                                          "padding": [
+                                            "$space-2",
+                                            "$space-8"
+                                          ],
                                           "children": [
                                             {
                                               "type": "frame",
@@ -20718,6 +20991,8 @@
                                               "layout": "vertical",
                                               "padding": [
                                                 "$space-4",
+                                                0,
+                                                0,
                                                 0
                                               ],
                                               "children": [

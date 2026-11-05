@@ -244,7 +244,7 @@ private extension PanelView {
 
             HeldTextLabel(text: held.text, tokens: tokens)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.vertical, tokens.space4)
+                .padding(.top, tokens.space4)
 
             Button { event(.letGo(held)) } label: {
 
@@ -258,7 +258,8 @@ private extension PanelView {
             .help("Отпустить")
             .accessibilityLabel("Отпустить выделенный текст")
         }
-        .padding(tokens.space8)
+        .padding(.horizontal, tokens.space8)
+        .padding(.vertical, tokens.space2)
         .background(tokens.card, in: .rect(cornerRadius: tokens.radiusCard))
         .overlay(
             RoundedRectangle(cornerRadius: tokens.radiusCard)
