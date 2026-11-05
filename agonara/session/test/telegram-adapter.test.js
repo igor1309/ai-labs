@@ -110,15 +110,23 @@ test("a name with no action is written as plain text, and an empty screen says s
     "<h2>Programs</h2><p>No programs.</p>");
 });
 
-test("lecture markdown: the top heading stays open, each lower heading collapses its section", () => {
+test("lecture markdown: headings, lists and paragraphs, with nothing collapsed", () => {
   assert.equal(markdownToRich([
     "# Lecture", "Goal: **know** it.", "1. one", "2. two", "## Part A", "Line one\nline two", "- x\n- y",
-    "---", "### Part B", "Text & <tag>.",
+    "---", "Text & <tag>.",
   ].join("\n\n")), [
     "<h3>Lecture</h3><p>Goal: <b>know</b> it.</p><ol><li>one</li><li>two</li></ol>",
-    "<details><summary>Part A</summary><p>Line one<br>line two</p><ul><li>x</li><li>y</li></ul><hr></details>",
-    "<details><summary>Part B</summary><p>Text &amp; &lt;tag&gt;.</p></details>",
+    "<h3>Part A</h3><p>Line one<br>line two</p><ul><li>x</li><li>y</li></ul><hr><p>Text &amp; &lt;tag&gt;.</p>",
   ].join(""));
+});
+
+test("a lecture section lists every section, the current one bold, the others tappable", () => {
+  const html = renderRich({
+    title: "Notes", markdown: "## B\n\nb text", page: { index: 2, count: 3 },
+    sections: [{ page: 1, label: "A", current: false }, { page: 2, label: "B", current: true }],
+  }, [{ id: "sec_1", kind: "section", label: "A" }, { id: "prev", kind: "page", label: "◀ Prev" }], 4);
+  assert.equal(html, `<h2>📖 Notes</h2><h3>B</h3><p>b text</p><h3>Sections</h3><ol><li>${link("4:sec_1", "A")}</li>`
+    + `<li><b>B</b></li></ol><tg-button-row>${button("4:prev", "◀ Prev")}</tg-button-row>`);
 });
 
 test("lecture markdown: text beside a list in one paragraph keeps its order", () => {

@@ -26,6 +26,7 @@ export function keyboard(actions, step) {
   const rows = [
     ...of("material").map((action) => [button(action, `📖 Read: ${shorten(action.label, MATERIAL_LABEL_LIMIT)}`)]),
     ...chunk(of("item").map((action) => button(action)), NUMBERS_PER_ROW),
+    ...of("section").map((action) => [button(action, `§ ${shorten(action.label, MATERIAL_LABEL_LIMIT)}`)]),
     of("page").map((action) => button(action)),
     of("nav").map((action) => button(action)),
   ];
@@ -96,9 +97,14 @@ export function renderRich(view, actions, step) {
     ? `<tg-button type="callback_data" style="link" data="${step}:${id}">${escape(label)}</tg-button>`
     : escape(label));
   const parts = [`<h2>${view.page ? "📖 " : ""}${escape(view.title)}</h2>`];
-  if (view.page && view.page.count > 1) parts.push(`<p><i>Page ${view.page.index + 1} of ${view.page.count}</i></p>`);
+  if (view.page && view.page.count > 1 && !view.sections) parts.push(`<p><i>Page ${view.page.index + 1} of ${view.page.count}</i></p>`);
   if (view.body) parts.push(paragraph(escape(view.body)));
   if (view.markdown) parts.push(markdownToRich(view.markdown));
+  if (view.sections) {
+    const items = view.sections.map((entry) =>
+      `<li>${entry.current ? `<b>${escape(entry.label)}</b>` : tap(`sec_${entry.page}`, entry.label)}</li>`).join("");
+    parts.push(`<h3>Sections</h3><ol>${items}</ol>`);
+  }
   for (const list of view.lists ?? []) {
     const materials = list.entries.every((entry) => entry.n === undefined);
     const items = list.entries.map((entry) =>
@@ -115,30 +121,21 @@ export function renderRich(view, actions, step) {
   return parts.join("");
 }
 
-// Markdown as rich HTML: each heading below the top level opens a collapsed
-// section that runs to the next heading; list runs become lists; other lines
-// of a paragraph are joined with <br>.
+// Markdown as rich HTML: headings become subheadings, list runs become
+// lists, and other lines of a paragraph are joined with <br>. Nothing is
+// collapsed: a section that opens and closes in a tall message moves the chat.
 export function markdownToRich(markdown) {
   const out = [];
-  let open = false;
-  const close = () => { if (open) out.push("</details>"); open = false; };
   // Items of one list are often parted by blank lines; keep them one list.
   const item = String.raw`[ \t]*(?:[-*+]|\d+[.)])[ \t]+`;
   const joined = markdown.trim().replace(new RegExp(`(^${item}.*)\\n{2,}(?=${item})`, "gm"), "$1\n");
   for (const block of joined.split(/\n{2,}/)) {
     const lines = block.split("\n");
     const heading = lines.length === 1 && /^(#{1,6})\s+(.*)$/.exec(lines[0]);
-    if (heading) {
-      close();
-      const text = inline(escape(heading[2].replace(/\*\*|__/g, "")));
-      if (heading[1].length === 1) out.push(`<h3>${text}</h3>`);
-      else { out.push(`<details><summary>${text}</summary>`); open = true; }
-      continue;
-    }
-    if (/^\s*([-*_])(\s*\1){2,}\s*$/.test(block)) { out.push("<hr>"); continue; }
-    out.push(richBlock(lines));
+    if (heading) out.push(`<h3>${inline(escape(heading[2].replace(/\*\*|__/g, "")))}</h3>`);
+    else if (/^\s*([-*_])(\s*\1){2,}\s*$/.test(block)) out.push("<hr>");
+    else out.push(richBlock(lines));
   }
-  close();
   return out.join("");
 }
 

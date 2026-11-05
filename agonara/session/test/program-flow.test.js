@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { createProgramFlow, initialSession, paginate } from "../src/program-flow.js";
+import { createProgramFlow, initialSession, paginate, sectionPages } from "../src/program-flow.js";
 import { keyboard } from "../src/telegram-adapter.js";
 
 function setup({ pageSize } = {}) {
@@ -243,3 +243,33 @@ test("pages break at paragraphs, then lines, then anywhere, and lose no text", (
   assert.ok(paginate("word ".repeat(2000), 2500).every((page) => page.length <= 2500));
 });
 
+
+test("a lecture with sections is read one section at a time, any section a tap away", async () => {
+  const { flow, node } = setup();
+  makeMaterial(node);
+  node.relationships = { outgoing: [] };
+  const content = "---\nx: 1\n---\n# Lecture\n\nIntro.\n\n## A\n\na text\n\n### A1\n\nsub\n\n## B\n\nb text";
+  const { client } = setup();
+  const sectioned = createProgramFlow({ client: { ...client, entity: async () => ({ navigationNode: node }),
+    materialContent: async () => ({ content }) } });
+  const first = await sectioned(entityState());
+  assert.equal(first.view.markdown, "# Lecture\n\nIntro.");
+  assert.equal(first.view.section, null);
+  assert.deepEqual(first.view.sections, [{ page: 1, label: "A", current: false }, { page: 2, label: "B", current: false }]);
+  assert.deepEqual(ids(first.actions), ["next", "sec_1", "sec_2", "programs"]);
+  const b = await sectioned(first.session, "sec_2");
+  assert.equal(b.view.markdown, "## B\n\nb text");
+  assert.equal(b.view.body, undefined);
+  assert.deepEqual(ids(b.actions), ["prev", "sec_1", "programs"]);
+  const a = await sectioned(b.session, "prev");
+  assert.equal(a.view.markdown, "## A\n\na text\n\n### A1\n\nsub");
+  assert.equal(await sectioned(a.session, "sec_9"), null);
+  const list = await sectioned(initialSession());
+  assert.equal(await sectioned(list.session, "sec_1"), null);
+});
+
+test("section pages: a section longer than a page runs on under the same title", () => {
+  assert.deepEqual(sectionPages("## A\n\naaaa\n\nbbbb\n\n## B\n\nc", 10).map((page) => [page.title, page.text]),
+    [["A", "## A\n\naaaa"], ["A", "bbbb"], ["B", "## B\n\nc"]]);
+  assert.deepEqual(sectionPages("plain\n\ntext", 100), [{ title: null, text: "plain\n\ntext" }]);
+});
