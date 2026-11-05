@@ -31,9 +31,9 @@ student.
  │   │ offset, state │           │ by chat ID   │ content  └─────────┘  │
  │   └──────┬────────┘           └──────┬───────┘ + actions             │
  │          │                           │ telegram-adapter.js:          │
- │          │ state file (mode 600)     │ buttons, 4096-char split      │
+ │          │ state file (mode 600)     │ rich message, plain fallback  │
  └──────────┼───────────────────────────┼───────────────────────────────┘
-            │ getUpdates                │ sendMessage
+            │ getUpdates                │ sendRichMessage
             ▼                           ▼
      ┌───────────────────────────────────────────┐
      │ Telegram Bot API                          │ <── the student's DM
@@ -53,14 +53,19 @@ student.
 - **Browsing:** Programs → a program's topics, concepts and materials → an
   entity's title, body and linked items. Back retraces the screens; Programs
   returns to the list. Buttons carry item indices; IDs stay in the saved state.
-- **Drawn for a phone:** the names are numbered lists in the message, in bold
-  headings by kind, and the buttons are number keys five to a row. Each
-  material is listed first as "📖 Read: <title>", matching its own button above
-  the number keys.
-  A press redraws the same message instead of adding one.
-- **Reading:** a material's text comes a page at a time (about 2,500
-  characters) with Prev and Next, its markdown shown as Telegram formatting and
-  its front matter left out. Markup Telegram refuses is sent again as plain text.
+- **One rich message per screen** (Telegram Bot API 10.1): the names of
+  programs, topics, concepts and materials are tappable where they are
+  written, materials first and marked 📖. Back and Programs, and Prev and Next,
+  are button rows at the end of the message. A press redraws the same message
+  instead of adding one.
+- **Reading:** a material's text comes in one message, up to 16,000
+  characters a page, with its front matter left out. The top heading stays
+  open and each lower heading becomes a collapsed section, so a lecture
+  arrives short and the student opens the part they want.
+- **Plain fallback:** if Telegram refuses a rich message, the screen goes out
+  as before, as HTML text with number keys five to a row and a "📖 Read" button
+  per material, split at 4,096 characters, and the refusal is logged. Markup
+  Telegram refuses there is sent again as plain text.
 - **Agonara errors** produce a short reply and a log line, keeping the previous
   session so the student can retry. An expired login is renewed once per request.
 - **State** (Telegram offset and the session) is saved after every update, so

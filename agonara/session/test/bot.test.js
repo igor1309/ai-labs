@@ -17,6 +17,15 @@ const makeApi = (fail = {}) => {
     if (fail[method]) throw new Error(fail[method]);
   } };
 };
+// A chat that refuses rich messages, as an older Telegram server would.
+const RICH_REFUSED = "400 Bad Request: rich messages are not supported";
+const makePlainApi = () => {
+  const calls = [];
+  return { calls, api: async (method, params) => {
+    calls.push({ method, params });
+    if (params.rich_message) throw new Error(`${method} failed: ${RICH_REFUSED}`);
+  } };
+};
 const press = (data, chat = CHAT, messageId = 7) => ({
   callback_query: { id: "cb", data, message: { message_id: messageId, chat: { id: chat } } },
 });
@@ -28,14 +37,24 @@ const makeFlow = (body = "Study algebra.") => async (session) => ({
 const send = (api, update, state = makeState(), flow = makeFlow(), log = () => {}) =>
   handleUpdate({ update, state, allowedChatId: CHAT, api, flow, log });
 
-test("a message from the allowed chat gets the view with buttons", async () => {
+test("a message from the allowed chat gets the screen as one rich message", async () => {
   const { calls, api } = makeApi();
   await send(api, { message: { chat: { id: CHAT }, text: "hi" } });
-  assert.deepEqual(calls.map((call) => call.method), ["sendMessage"]);
+  assert.deepEqual(calls.map((call) => call.method), ["sendRichMessage"]);
   assert.equal(calls[0].params.chat_id, CHAT);
-  assert.equal(calls[0].params.parse_mode, "HTML");
-  assert.equal(calls[0].params.text, "<b>Programs</b>\n\nStudy algebra.");
-  assert.ok(calls[0].params.reply_markup.inline_keyboard.length > 0);
+  assert.equal(calls[0].params.rich_message.html, "<h2>Programs</h2><p>Study algebra.</p>");
+});
+
+test("a chat that refuses rich messages gets the plain screen with buttons, and the refusal is logged", async () => {
+  const { calls, api } = makePlainApi();
+  const logged = [];
+  await send(api, { message: { chat: { id: CHAT }, text: "hi" } }, makeState(), makeFlow(), (line) => logged.push(line));
+  assert.deepEqual(calls.map((call) => call.method), ["sendRichMessage", "sendMessage"]);
+  assert.equal(calls[1].params.parse_mode, "HTML");
+  assert.equal(calls[1].params.text, "<b>Programs</b>\n\nStudy algebra.");
+  assert.ok(calls[1].params.reply_markup.inline_keyboard.length > 0);
+  assert.equal(logged.length, 1);
+  assert.match(logged[0], /rich messages are not supported/);
 });
 
 test("any other chat gets no reply and no state change", async () => {
@@ -59,8 +78,7 @@ test("a current button advances the session and offers next-step buttons", async
   const edited = calls[1].params;
   assert.equal(edited.chat_id, CHAT);
   assert.equal(edited.message_id, 7);
-  assert.equal(edited.parse_mode, "HTML");
-  assert.equal(edited.reply_markup.inline_keyboard[0][0].callback_data, "1:open_0");
+  assert.equal(edited.rich_message.html, "<h2>Programs</h2><p>Study algebra.</p>");
 });
 
 test("an unchanged screen is not an error and sends nothing new", async () => {
@@ -74,8 +92,17 @@ test("a message that cannot be edited gets the screen as a new message", async (
   const { calls, api } = makeApi({ editMessageText: "editMessageText failed: 400 Bad Request: message can't be edited" });
   const state = await send(api, press("0:open_0"));
   assert.equal(state.session.step, 1);
-  assert.deepEqual(calls.map((call) => call.method), ["answerCallbackQuery", "editMessageText", "sendMessage"]);
-  assert.equal(calls[2].params.reply_markup.inline_keyboard[0][0].callback_data, "1:open_0");
+  assert.deepEqual(calls.map((call) => call.method), ["answerCallbackQuery", "editMessageText", "sendRichMessage"]);
+  assert.ok(calls[2].params.rich_message.html);
+});
+
+test("without rich messages a button press edits the plain screen in place", async () => {
+  const { calls, api } = makePlainApi();
+  await send(api, press("0:open_0"));
+  assert.deepEqual(calls.map((call) => call.method),
+    ["answerCallbackQuery", "editMessageText", "sendRichMessage", "editMessageText"]);
+  assert.equal(calls[3].params.parse_mode, "HTML");
+  assert.equal(calls[3].params.reply_markup.inline_keyboard[0][0].callback_data, "1:open_0");
 });
 
 test("an old button is answered and changes nothing", async () => {
@@ -91,20 +118,22 @@ test("markup Telegram cannot parse is sent again as plain text", async () => {
   const calls = [];
   const api = async (method, params) => {
     calls.push({ method, params });
+    if (params.rich_message) throw new Error(`${method} failed: ${RICH_REFUSED}`);
     if (params.parse_mode) throw new Error("sendMessage failed: 400 Bad Request: can't parse entities");
   };
   const state = await send(api, { message: { chat: { id: CHAT }, text: "hi" } }, makeState(), makeFlow("a < b & c"));
   assert.equal(state.session.step, 1);
-  assert.deepEqual(calls.map((call) => [call.method, call.params.parse_mode]), [["sendMessage", "HTML"], ["sendMessage", undefined]]);
-  assert.equal(calls[1].params.text, "Programs\n\na < b & c");
-  assert.ok(calls[1].params.reply_markup);
+  assert.deepEqual(calls.map((call) => [call.method, call.params.parse_mode]), 
+    [["sendRichMessage", undefined], ["sendMessage", "HTML"], ["sendMessage", undefined]]);
+  assert.equal(calls[2].params.text, "Programs\n\na < b & c");
+  assert.ok(calls[2].params.reply_markup);
 });
 
-test("a screen too long for one message arrives split and whole, with buttons only on its last part", async () => {
-  const { calls, api } = makeApi();
+test("a plain screen too long for one message arrives split and whole, with buttons only on its last part", async () => {
+  const { calls, api } = makePlainApi();
   const body = [...Array.from({ length: 300 }, (_, i) => `Line ${i + 1} of the long reply.`), "END OF LONG REPLY"].join("\n");
   await send(api, press("0:open_0"), makeState(), makeFlow(body));
-  assert.ok(!calls.some((call) => call.method === "editMessageText"));
+  assert.ok(!calls.some((call) => call.method === "editMessageText" && !call.params.rich_message));
   const sent = calls.filter((call) => call.method === "sendMessage");
   assert.ok(sent.length > 1);
   assert.ok(sent.every((call) => call.params.text.length <= TELEGRAM_TEXT_LIMIT));
