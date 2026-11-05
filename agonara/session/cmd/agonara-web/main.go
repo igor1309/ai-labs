@@ -60,7 +60,14 @@ func run() error {
 		placePath = filepath.Join(filepath.Dir(os.Getenv("SESSION_STATE_PATH")), "web-place.json")
 	}
 	cache := &web.Cache{Reader: client, TTL: 5 * time.Minute}
-	server := &web.Server{Flow: flow.Flow{Reader: cache, PageSize: pageSize}, Token: token, PlacePath: placePath, Log: log}
+	palette, ok := os.LookupEnv("WEB_PALETTE") // ink-saffron or pine-lichen
+	if !ok {
+		palette = "pine-lichen"
+	}
+	if palette == "ink-saffron" {
+		palette = ""
+	}
+	server := &web.Server{Flow: flow.Flow{Reader: cache, PageSize: pageSize}, Token: token, PlacePath: placePath, Palette: palette, Log: log}
 	handler, err := server.Handler()
 	if err != nil {
 		return err

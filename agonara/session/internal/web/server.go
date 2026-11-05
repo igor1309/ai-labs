@@ -35,6 +35,7 @@ type Server struct {
 	Flow      flow.Flow
 	Token     string
 	PlacePath string
+	Palette   string // "pine-lichen" or "" for Ink & Saffron
 	Log       func(string)
 
 	pages *template.Template
@@ -87,7 +88,8 @@ func (s *Server) Handler() (http.Handler, error) {
 			}
 			return label
 		},
-		"pair": func(a, b any) map[string]any { return map[string]any{"A": a, "B": b} },
+		"palette": func() string { return s.Palette },
+		"pair":    func(a, b any) map[string]any { return map[string]any{"A": a, "B": b} },
 	}).ParseFS(templateFiles, "templates/*.html")
 	if err != nil {
 		return nil, err
