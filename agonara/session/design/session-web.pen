@@ -9203,6 +9203,33 @@
           "ref": "h9P8r"
         }
       ]
+    },
+    {
+      "type": "note",
+      "id": "zC7GZ",
+      "x": -480,
+      "y": 3000,
+      "width": 420,
+      "height": 560,
+      "content": "Adapting to screens: the window's width decides, not the device.\n\nCompact < 600 (iPhone, narrow iPad split): Back + title + Contents on top; the outline is a full-screen sheet; Prev / Next is a bar fixed at the bottom; the paragraph menu is a bottom sheet; body 17.\n\nMedium 600-1023 (iPad portrait): breadcrumb on top; the outline is a drawer from the left; the pager sits at the end of the page; the menu is a popover at the ⋯; body 19. Not drawn.\n\nWide >= 1024 (iPad landscape, desktop): as medium, with the outline as a 280 sidebar that is always shown.\n\nThe reading column is at most 680 and centred, with side margins of 16 (compact) or 32."
+    },
+    {
+      "type": "note",
+      "id": "tGxl0",
+      "x": -480,
+      "y": 3600,
+      "width": 420,
+      "height": 330,
+      "content": "Touch or mouse: the pointer decides, not the width.\nTouch: a muted ⋯ on every paragraph.\nMouse: the margin shows the paragraph number; the ⋯ appears on hover or focus.\nThe paragraph whose menu or answer is open shows a filled ⋯.\nTap target 44 x 44 everywhere. Keyboard: Enter opens the menu, Escape closes it.\niPhone: bottom bars and the sheet sit above the home indicator."
+    },
+    {
+      "type": "note",
+      "id": "i46a0",
+      "x": -480,
+      "y": 4000,
+      "width": 420,
+      "height": 200,
+      "content": "Dark frames are instances of the light screens in dark mode: edit the light screen only. Light or dark follows the system setting."
     }
   ],
   "themes": {

@@ -33,12 +33,37 @@ The menu is a popover on desktop and a bottom sheet on a phone. The chosen
 paragraph stays highlighted while the menu is open. The answer appears inline
 under the paragraph, set apart from the lecture text, with a way to close it.
 
-## Layout
+## Adapting to screens
 
-- **Phone (375 pt):** one column. Breadcrumb collapses to Back + current title.
-  Prev / Next sit in a bar at the bottom.
-- **Desktop (1280 pt):** the program's outline (courses and sections) in a left
-  sidebar; the reading column in the centre, about 680 pt wide.
+The layout follows the window's width, not the device: an iPad in Split View
+can be as narrow as a phone. Three widths:
+
+| Width | Typical | Outline | Top | Prev / Next | Paragraph menu | Body |
+| --- | --- | --- | --- | --- | --- | --- |
+| Compact, < 600 | iPhone, narrow iPad split | Full-screen sheet from Contents | Back + title + Contents | Bar fixed at the bottom | Bottom sheet | 17 (`text-body`) |
+| Medium, 600–1023 | iPad portrait, iPad landscape split | Drawer from the left, opened by Contents | Breadcrumb + Contents | Pager at the end of the page | Popover at the ⋯ | 19 (`text-lead`) |
+| Wide, ≥ 1024 | iPad landscape, desktop | Sidebar 280, always shown | Breadcrumb + Contents | Pager at the end of the page | Popover at the ⋯ | 19 (`text-lead`) |
+
+- **Reading column:** at most 680 wide and centred; side margins 16 compact,
+  32 medium and wide. Text never runs wider than the column.
+- **Program page:** one column of course cards at every width, in the same
+  680 column. Continue reading is a bar fixed at the bottom on compact and
+  a button under the program's title elsewhere.
+- **Touch or mouse,** decided by the pointer, not the width: on touch the ⋯
+  shows on every paragraph, muted; with a mouse the margin shows the
+  paragraph number and the ⋯ appears on hover or keyboard focus. The
+  paragraph whose menu or answer is open always shows its ⋯, filled. The tap
+  target is 44 × 44 either way.
+- **Keyboard:** the ⋯ is focusable; Enter or Space opens the menu, Escape
+  closes it and returns focus to the ⋯. Arrow keys move between menu items.
+- **The answer** opens inline under its paragraph at every width; the menu
+  closes when it opens.
+- **iPhone:** bars fixed at the bottom sit above the home indicator (safe
+  area), and the bottom sheet does too.
+- **Light and dark** follow the system setting.
+
+The frames show compact (375) and wide (1280); medium is described here, not
+drawn.
 
 ## Look: Ink & Saffron
 
