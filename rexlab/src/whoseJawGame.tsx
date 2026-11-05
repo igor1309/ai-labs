@@ -115,7 +115,7 @@ export function useWhoseJawGame(props: WhoseJawGameProps | undefined, setting: A
   const content = (language: Language) => !props || !audio ? null : screen.kind === "welcome"
     ? <WhoseJawWelcomeScreen audioControl={audioControl(language)} language={language} level={level} best={kept.best[level]} collected={kept.earned.length} total={props.total}
         jawPicture={props.jawPicture} gummyPicture={props.gummyPicture} onLevel={chooseLevel} onPlay={play} onShelf={shelf} onHome={home} />
-    : screen.kind === "board" ? <BoardVisit audio={audio} audioControl={audioControl(language)} props={props} round={screen.round} language={language} startTimer={startTimer} reducedMotion={reducedMotion}
+    : screen.kind === "board" ? <BoardVisit audio={audio} audioControl={audioControl(language)} best={kept.best[screen.round.level]} props={props} round={screen.round} language={language} startTimer={startTimer} reducedMotion={reducedMotion}
         onPlace={(id) => place(screen.round, id)} onAdvance={() => advance(screen.round)} onNext={() => next(screen.round)} onBack={welcome} onHome={home} />
     : screen.kind === "result" ? <WhoseJawResultScreen audioControl={audioControl(language)} language={language} result={screen.result} onPlayAgain={play} onShelf={shelf} onHome={home}
         offer={screen.offer ? { level: screen.offer, startTimer,
@@ -132,8 +132,8 @@ export const JAW_TIMING = { entering: 240, right: 1350, wrong: 1200, done: 320, 
 
 type JawAudio = ReturnType<typeof gameAudio<Parameters<WhoseJawGameProps["sounds"]["play"]>[0]>>;
 
-function BoardVisit({ props, audio, audioControl, round, language, startTimer, reducedMotion, onPlace, onAdvance, onNext, onBack, onHome }: {
-  props: WhoseJawGameProps; audio: JawAudio; audioControl: ReactNode; round: JawRound; language: Language; startTimer: StartTimer; reducedMotion(): boolean;
+function BoardVisit({ props, audio, audioControl, best, round, language, startTimer, reducedMotion, onPlace, onAdvance, onNext, onBack, onHome }: {
+  props: WhoseJawGameProps; audio: JawAudio; audioControl: ReactNode; best: number | null; round: JawRound; language: Language; startTimer: StartTimer; reducedMotion(): boolean;
   onPlace(id: string): void; onAdvance(): void; onNext(): void; onBack(): void; onHome(): void;
 }) {
   const gate = useGateShown();
@@ -171,7 +171,7 @@ function BoardVisit({ props, audio, audioControl, round, language, startTimer, r
     return () => { active = false; stops.forEach((stop) => stop()); sounds.stop(); };
   }, [round, gate, startTimer, reducedMotion, language, audio]);
 
-  return <WhoseJawBoardScreen audioControl={audioControl} key={owner.id} language={language} phase={round.phase} choices={choices.map((jaw) => ({
+  return <WhoseJawBoardScreen audioControl={audioControl} best={best} key={owner.id} language={language} phase={round.phase} choices={choices.map((jaw) => ({
     id: jaw.id, name: jaw.name[language].toLocaleUpperCase(language), picture: props.gummyFor(jaw.id), food: props.foodFor(jaw.diet), diet: jaw.diet, mouth: props.mouthFor(jaw.id)
   }))} jawPicture={props.jawFor(owner.id)} placed={round.phase === "reading" ? [...round.placed, { firstTry: round.misses === 0 }] : round.placed} target={round.target}
     hint={round.misses >= 2 ? owner.id : undefined} jawDiet={owner.diet} foodShown={round.level === "hatchling"}

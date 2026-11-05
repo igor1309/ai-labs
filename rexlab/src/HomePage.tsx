@@ -12,6 +12,7 @@ import { TEXTS } from "./language/texts.ts";
 import { ParentMenu, type ParentMenuProps } from "./ParentMenu.tsx";
 import { Picture } from "./Picture.tsx";
 import { THEME_CHOICES, type ThemeChoice } from "./theme.ts";
+import { Tooth } from "./Tooth.tsx";
 
 const THEME_SYMBOLS: Record<ThemeChoice, LucideIcon> = { system: Monitor, light: Sun, dark: Moon };
 // The age level menu's button shows the chosen level as a line symbol.
@@ -97,11 +98,6 @@ const HOME_TILE_LABELS: Record<Language, Record<HomeGame | "moreComing", string>
   en: { compare: "COMPARE", catalogue: "EXPLORE", care: "CARE", sort: "SORT", pairs: "PAIRS", skeletons: "BONES", dig: "DIG", coloring: "COLOR", whoseJaw: "TEETH", picturePuzzle: "PUZZLE", labyrinth: "MAZE", sandWriting: "DRAW", moreComing: "SOON" },
   ru: { compare: "СРАВНИ", catalogue: "ЯЩЕРЫ", care: "ЗАБОТА", sort: "СОРТИРУЙ", pairs: "ПАРЫ", skeletons: "КОСТИ", dig: "КОПАЙ", coloring: "РАСКРАСЬ", whoseJaw: "ЗУБЫ", picturePuzzle: "ПАЗЛ", labyrinth: "ЛАБИРИНТ", sandWriting: "РИСУЙ", moreComing: "СКОРО" }
 };
-
-// The tooth uses the same outline stroke as the other tile symbols.
-function Tooth() {
-  return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5C10 2 4 2 4 7c0 3 2 4 2 7 0 3 1 6 2 6s1-7 4-7 3 7 4 7 2-3 2-6c0-3 2-4 2-7 0-5-6-5-8-2Z" /></svg>;
-}
 
 type Menu = "language" | "theme" | "ageLevel";
 
@@ -263,7 +259,7 @@ export function HomePage({
         {newGames.includes(game) && <span className="home-new" role="img" aria-label={text.homeNew}><Sparkles size={14} aria-hidden="true" /></span>}
         <span className={`${prefix}-tile-row home-tile-footer`}>
           <span className={`${prefix}-tile-symbol home-tile-symbol`} aria-hidden="true">
-            {game === "whoseJaw" ? <Tooth /> : <Symbol size={20} />}
+            {game === "whoseJaw" ? <Tooth size={20} /> : <Symbol size={20} />}
           </span>
           <FitText className={`${prefix}-tile-title home-tile-title`} text={labels[game]} />
         </span>
@@ -360,7 +356,7 @@ export function HomePage({
           <span className="home-today-copy">
             <span className="featured-card-footer">
               <span className="featured-card-symbol" aria-hidden="true">
-                {featuredGame === "whoseJaw" ? <Tooth /> : <FeaturedSymbol size={36} />}
+                {featuredGame === "whoseJaw" ? <Tooth size={20} /> : <FeaturedSymbol size={36} />}
               </span>
               <FitText className="featured-card-title" text={today.name} style={{ "--title-chars": today.name.length } as CSSProperties} />
             </span>
