@@ -1,4 +1,5 @@
-// Contract test: find the pair's dig-site welcome, board and result laid out and fitted in Chromium.
+// Contract test: find the pair's dig-site welcome, board and result laid out and
+// fitted in Chromium, and one walk through them with and without motion.
 const assert = require('node:assert/strict');
 const { readFile, mkdir } = require('node:fs/promises');
 const { resolve, extname, join } = require('node:path');
@@ -206,6 +207,70 @@ async function offer(page, width, height, label) {
   for (const button of m.buttons) { inside(button, m.card.right, m.card.bottom, `${label} answer`); assert(button.fits && button.width >= 44 && button.height >= 44, `${label}: answer ${JSON.stringify(button)}`); }
 }
 
+// What travels just after a screen changes: finite animations whose keyframes
+// cover a distance. Reduced motion keeps its fades, whose moves are all zero.
+async function motionAfter(page, selector) {
+  await page.locator(selector).waitFor();
+  return page.evaluate(async () => {
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    const still = /^(none|0(px|deg|%)?( 0(px|deg|%)?)*|1( 1)*|[xyz] 0deg|matrix\(1, 0, 0, 1, 0, 0\))$/;
+    return document.getAnimations()
+      .filter(a => a.effect?.getComputedTiming().iterations !== Infinity)
+      .filter(a => a.effect.getKeyframes().some(k => ['transform', 'translate', 'scale', 'rotate'].some(p => k[p] !== undefined && !still.test(String(k[p]).trim()))))
+      .map(a => a.animationName || a.effect.pseudoElement || 'transition');
+  });
+}
+
+// One walk through the screens, split at each screen change so that a part
+// starts from stored progress and no part plays what another has played.
+async function flow(open, reducedMotion) {
+  const { page, errors, close } = await open({ width: 1133, height: 744 }, 'en', 'light', reducedMotion);
+  const seen = {};
+  const enter = async () => {
+    await page.goto('http://pairs.test/');
+    await page.evaluate(() => {
+      localStorage.setItem('rexlab-age-level', JSON.stringify({ level: 'hatchling', revision: 'pairs' }));
+      localStorage.setItem('rexlab-progress', JSON.stringify({ schemaVersion: 1, games: { 'home-featured': { featured: { game: 'compare', visit: 1 }, starts: {} } } }));
+    });
+    await page.reload();
+    await page.locator('[data-turn-part="tile-pairs"]').press('Enter');
+    seen.welcome = await motionAfter(page, '.pairs-welcome');
+    await settle(page);
+  };
+  const toBoard = async button => {
+    await page.locator(button).press('Enter');
+    seen.board = await motionAfter(page, '.pair-board');
+    await settle(page);
+  };
+  const toResult = async () => {
+    await enter();
+    await toBoard('.pairs-play-button');
+    await playOut(page);
+    seen.result = await motionAfter(page, '.pairs-result');
+    await settle(page);
+  };
+  try {
+    await enter();
+    await toBoard('.pairs-play-button');
+    await toResult();
+    await toBoard('.pairs-result-actions .play-again-button');
+    await toResult();
+    await page.locator('.pairs-result-back').press('Enter');
+    seen.back = await motionAfter(page, '.pairs-welcome');
+    await settle(page);
+    await toResult();
+    await page.locator('.pairs-result-home').press('Enter');
+    seen.home = await motionAfter(page, '[data-turn-part="tile-pairs"]');
+    await settle(page);
+    for (const [screen, moving] of Object.entries(seen)) {
+      if (reducedMotion === 'reduce') assert.deepEqual(moving, [], `${screen}: moves under reduced motion`);
+      else assert(moving.length > 0, `${screen}: arrives without moving`);
+    }
+    assert.deepEqual(Object.keys(seen).sort(), ['back', 'board', 'home', 'result', 'welcome'], 'flow: every screen change walked');
+    assert.deepEqual(errors, [], `flow, ${reducedMotion}: page errors`);
+  } finally { await close(); }
+}
+
 async function main() {
   const { build } = await import('vite');
   const bundle = await build({ root: resolve(__dirname, '..'), logLevel: 'error', build: { write: false } });
@@ -217,23 +282,27 @@ async function main() {
     // both languages and both themes.
     const shots = process.env.PAIRS_SCREENSHOTS;
     const configs = sizes.flatMap(size => (shots ? ['en', 'ru'] : ['ru']).flatMap(language => (shots ? ['light', 'dark'] : ['light']).map(theme => [size, language, theme])));
+    const open = async ({ width, height }, language, theme, reducedMotion) => {
+      const context = await browser.newContext({ viewport: { width, height }, reducedMotion, serviceWorkers: 'block' });
+      await context.route('http://pairs.test/**', async route => {
+        const file = new URL(route.request().url()).pathname.slice(1) || 'index.html';
+        const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.woff2': 'font/woff2', '.webp': 'image/webp', '.png': 'image/png', '.json': 'application/json', '.mp3': 'audio/mpeg' };
+        await route.fulfill({ body: files.get(file) ?? await readFile(resolve(__dirname, '../public', file)), contentType: types[extname(file)] });
+      });
+      await context.addInitScript(({ language, theme }) => {
+        Math.random = () => 0;
+        localStorage.setItem('rexlab-language', language);
+        localStorage.setItem('rexlab-theme', theme);
+      }, { language, theme });
+      const page = await context.newPage();
+      page.setDefaultTimeout(15000);
+      const errors = [];
+      page.on('pageerror', error => errors.push(error.message));
+      return { page, errors, close: () => context.close() };
+    };
     const run = async ([[width, height, sandTop, boardSand, bedrock], language, theme]) => {
-      const context = await browser.newContext({ viewport: { width, height }, reducedMotion: 'reduce', serviceWorkers: 'block' });
+      const { page, errors, close } = await open({ width, height }, language, theme, 'reduce');
       try {
-        await context.route('http://pairs.test/**', async route => {
-          const file = new URL(route.request().url()).pathname.slice(1) || 'index.html';
-          const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.woff2': 'font/woff2', '.webp': 'image/webp', '.png': 'image/png', '.json': 'application/json', '.mp3': 'audio/mpeg' };
-          await route.fulfill({ body: files.get(file) ?? await readFile(resolve(__dirname, '../public', file)), contentType: types[extname(file)] });
-        });
-        await context.addInitScript(({ language, theme }) => {
-          Math.random = () => 0;
-          localStorage.setItem('rexlab-language', language);
-          localStorage.setItem('rexlab-theme', theme);
-        }, { language, theme });
-        const page = await context.newPage();
-        page.setDefaultTimeout(15000);
-        const errors = [];
-        page.on('pageerror', error => errors.push(error.message));
         const phone = width < 600 || height < 600;
         for (const saved of [undefined, returning]) for (const level of LEVELS) {
           await page.goto('http://pairs.test/');
@@ -303,8 +372,9 @@ async function main() {
         await offer(page, width, height, `${width}x${height} ${language}`);
         checked += 2;
         assert.deepEqual(errors, [], `${width}x${height} ${language} ${theme}: page errors`);
-      } finally { await context.close(); }
+      } finally { await close(); }
     };
+    for (const reducedMotion of ['no-preference', 'reduce']) { await flow(open, reducedMotion); checked++; }
     const queue = [...configs];
     await Promise.all(Array.from({ length: 3 }, async () => { while (queue.length) await run(queue.shift()); }));
     console.log(`PASS ${checked} find the pair welcome, board, result and offer configurations: layout, fit, overlap, scrolling, labels and tap targets`);
