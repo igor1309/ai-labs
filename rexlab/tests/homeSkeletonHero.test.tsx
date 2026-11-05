@@ -123,6 +123,23 @@ test("plays once per visit and stops scheduling frames after the turn, including
   h.stop();
 });
 
+test.each(["offscreen", "hidden", "loading"])("reduced motion completes this visit even while %s", async reason => {
+  const h = harness(); await h.show();
+  if (reason !== "loading") { await h.ready(); h.tick(0); h.tick(1500); }
+  if (reason === "offscreen") h.intersection(false);
+  if (reason === "hidden") h.hidden(true);
+  const drawn = h.scene.draw.mock.calls.length;
+  h.motion(true); h.motion(false);
+  expect(h.scene.draw).toHaveBeenCalledTimes(drawn);
+  expect(h.frames.size).toBe(0);
+  if (reason === "offscreen") h.intersection(true);
+  if (reason === "hidden") h.hidden(false);
+  if (reason === "loading") await h.ready();
+  expect(h.scene.draw).toHaveBeenLastCalledWith(500, 200, skeletonDuration);
+  expect(h.frames.size).toBe(0);
+  h.stop();
+});
+
 test("resizing redraws the same scene and pose without replaying readiness", async () => {
   const h = harness(); await h.show(); await h.ready();
   h.tick(0); h.tick(2500);

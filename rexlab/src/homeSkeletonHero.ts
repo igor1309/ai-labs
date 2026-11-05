@@ -67,6 +67,7 @@ export function homeSkeletonHero(host: HTMLElement, environment: SkeletonHeroEnv
     if (active() && elapsed < skeletonDuration) frame = environment.requestFrame(tick);
   };
   const update = () => {
+    if (environment.reducedMotion()) elapsed = skeletonDuration;
     if (!active()) { pause(); return; }
     if (!loading) {
       loading = true;
