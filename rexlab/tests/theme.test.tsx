@@ -301,6 +301,20 @@ const pairsPlayed = (level: BoardLevel, miss: boolean) => (theme: Theme) => {
   expect(document.querySelector(".pair-board[data-finished]")).not.toBeNull();
 };
 
+// A large board with a card open, then the same board with every pair
+// found and its cards waving, each a test of its own.
+const pairsOpened = (level: BoardLevel) => (theme: Theme) => {
+  show(pairsBoard(turn(dealBoard(SHIPPED_PALS, level, seededRandom(41)), 0)));
+  expectScreenIn(theme);
+};
+const pairsAllFound = (level: BoardLevel) => (theme: Theme) => {
+  const finished = turnedAll(dealBoard(SHIPPED_PALS, level, seededRandom(41)));
+  expect(isFinished(finished)).toBe(true);
+  show(pairsBoard(finished, true));
+  expectScreenIn(theme);
+  expect(document.querySelector(".pair-board[data-finished]")).not.toBeNull();
+};
+
 // The result of a finished board, with its celebration and NEW badges.
 const pairsFinished = (level: BoardLevel) => (theme: Theme) => {
   show(pairsResult(turnedAll(dealBoard(SHIPPED_PALS, level, seededRandom(41)))));
@@ -421,9 +435,11 @@ const SCREEN_GROUPS: Array<[string, Part[]]> = [
       ["the result of a board of pictures", pairsFinished({ climbLevel: 1 })],
       ["a board's pictures loading, and one that cannot be loaded", pairsLoading],
       ["the level offer over the result", pairsOffer],
-      ["Explorer's board of silhouettes, a card open, every pair found", pairsPlayed({ large: "explorer" }, false)],
+      ["Explorer's board of silhouettes with a card open", pairsOpened({ large: "explorer" })],
+      ["Explorer's board of silhouettes with every pair found", pairsAllFound({ large: "explorer" })],
       ["the result of Explorer's board", pairsFinished({ large: "explorer" })],
-      ["Paleontologist's board of skeletons, a card open, every pair found", pairsPlayed({ large: "paleontologist" }, false)],
+      ["Paleontologist's board of skeletons with a card open", pairsOpened({ large: "paleontologist" })],
+      ["Paleontologist's board of skeletons with every pair found", pairsAllFound({ large: "paleontologist" })],
       ["the result of Paleontologist's board", pairsFinished({ large: "paleontologist" })],
       ["the dinosaurs found on home", (theme) => { renderHomePageFeaturing("compare"); expectScreenIn(theme, gameDoor("FIND THE PAIR")); }],
       ["the dinosaurs found on the catalogue", checked(catalogue("all", SHIPPED_PALS.map(({ id }) => id)))],
