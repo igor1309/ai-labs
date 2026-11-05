@@ -41,6 +41,20 @@ jobs:
           path: ~/Library/Application Support/FluidAudio/Models
           key: audelin-models-${{ hashFiles('audelin/macos/Package.resolved') }}
 
+      # All three test packages build in one scratch directory with the same
+      # flags, so each module compiles once. The cache keeps FluidAudio, most of
+      # the compile: a checkout's new timestamps still rebuild our own sources.
+      - name: Key the build cache
+        id: build-key
+        run: echo "swift=$(swift --version 2>&1 | shasum | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+
+      - name: Restore the build cache
+        id: build-cache
+        uses: actions/cache/restore@v6
+        with:
+          path: audelin/macos/.build
+          key: audelin-build-${{ steps.build-key.outputs.swift }}-${{ hashFiles('audelin/macos/Package.resolved', 'audelin/macos/App/Package.resolved', 'audelin/macos/PreviewApps/Package.resolved') }}
+
       # Compiling is bounded by the job; the main tests have a three-minute
       # limit that names unfinished tests when exceeded.
       # Optimize the debug configuration to retain testable imports while
@@ -62,20 +76,28 @@ jobs:
 
       - name: Build app tests
         working-directory: audelin/macos/App
-        run: swift build --build-tests -Xswiftc -O
+        run: swift build --build-tests -Xswiftc -O --scratch-path ../.build
 
       - name: Run app tests
         working-directory: audelin/macos/App
-        run: sh ../../scripts/swift-test-bounded.sh 180 -Xswiftc -O
+        run: sh ../../scripts/swift-test-bounded.sh 180 -Xswiftc -O --scratch-path ../.build
 
       - name: Build preview app tests
         working-directory: audelin/macos/PreviewApps
-        run: swift build --build-tests
+        run: swift build --build-tests -Xswiftc -O --scratch-path ../.build
 
       - name: Run preview app tests
         working-directory: audelin/macos/PreviewApps
-        run: sh ../../scripts/swift-test-bounded.sh 120
+        run: sh ../../scripts/swift-test-bounded.sh 120 -Xswiftc -O --scratch-path ../.build
 
       - name: Build the app bundle
         working-directory: audelin/macos
-        run: AUDELIN_SIGN_IDENTITY=- sh scripts/bundle.sh
+        run: AUDELIN_SIGN_IDENTITY=- AUDELIN_SCRATCH_PATH="$PWD/.build" sh scripts/bundle.sh
+
+      # Trunk alone saves, so pull requests do not fill the cache budget.
+      - name: Save the build cache
+        if: steps.build-cache.outputs.cache-hit != 'true' && (github.ref == 'refs/heads/trunk' || github.event_name == 'pull_request')
+        uses: actions/cache/save@v6
+        with:
+          path: audelin/macos/.build
+          key: ${{ steps.build-cache.outputs.cache-primary-key }}
