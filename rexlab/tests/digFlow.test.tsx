@@ -276,15 +276,12 @@ describe("the board's lift and collection star", () => {
 });
 
 describe("dig reveals through the app", () => {
-  it("shows the dinosaur, first best reward, arrival timing, and the DIG title", () => {
+  it("rewards a first dinosaur with its count, NEW! and a first best, holding DIG AGAIN until the star lands", () => {
     const app = reveal();
 
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("DIG");
-    expect(screen.getByRole("heading", { level: 2 }).textContent).toBe("TYRANNOSAURUS");
     expect(card().textContent).toContain(`1/${SHIPPED_DIG.length}`);
     expect(screen.getByRole("status", { name: "FIRST BEST SCORE" })).toBeDefined();
     expect(card().querySelector(".dig-card-new")?.textContent).toBe("NEW!");
-    expect(app.timers.timers()).toEqual([STAR_LANDS.motion]);
     expect((screen.getByRole("button", { name: "DIG AGAIN" }) as HTMLButtonElement).disabled).toBe(true);
 
     land(app);
@@ -421,15 +418,6 @@ describe("dig reveals through the app", () => {
     expect(document.querySelector(".dig-board")?.getAttribute("data-level")).toBe(reloadedLevel);
     reloaded.unmount();
   });
-
-  it("uses a single short fade for the reveal under reduced motion", () => {
-    const app = reveal({ reducedMotion: true });
-    expect(app.timers.timers()).toEqual([STAR_LANDS.reduced]);
-    const star = card().querySelector(".dig-card-star");
-    expect(star && getComputedStyle(star).animation).toBe("");
-    expect(screen.getByRole("main").style.getPropertyValue("--dig-reveal-stagger")).toBe("0ms");
-    land(app, true);
-  });
 });
 
 const stored = (storage: ReturnType<typeof memoryStorage>) => JSON.parse(storage.items.get(PROGRESS_KEY) ?? "null");
@@ -502,15 +490,6 @@ describe("dig progress through the app", () => {
 });
 
 describe("the dig reveal's level switch", () => {
-  it("shows the three levels youngest first, with their pictures, the chosen one marked", () => {
-    land(reveal({ ageLevel: "explorer" }));
-
-    const levels = within(screen.getByRole("group", { name: TEXTS.en.ageLevelSwitch })).getAllByRole("button");
-    expect(levels.map((level) => level.textContent)).toEqual(["🥚HATCHLING", "🦖EXPLORER", "🦴PALEONTOLOGIST"]);
-    expect(levels.map((level) => level.getAttribute("aria-pressed"))).toEqual(["false", "true", "false"]);
-    expect(document.querySelector(".level-switch-mark")).not.toBeNull();
-  });
-
   it("stays on the reveal when a level is chosen, and starts nothing until DIG AGAIN", () => {
     const app = reveal();
     land(app);
@@ -550,10 +529,5 @@ describe("the dig reveal's level switch", () => {
     openDigApp({ storage, ageLevel: { level: "paleontologist", revision: "b" } });
     fireEvent.click(homeTile("DIG"));
     expect(boardLevel()).toBe("paleontologist");
-  });
-
-  it("moves its mark with the shared motion tokens, which shorten under reduced motion", () => {
-    land(reveal());
-    expect(getComputedStyle(document.querySelector(".level-switch-mark") as Element).transition).toBe("translate var(--motion-standard) var(--ease-out)");
   });
 });

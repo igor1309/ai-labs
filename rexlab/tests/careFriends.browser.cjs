@@ -1,4 +1,5 @@
 // Contract test: Friends' rendered layout, pictures, scrolling in Chromium.
+const { appFiles } = require('./appBuild.cjs');
 const assert = require('node:assert/strict');
 const { readFile, mkdir } = require('node:fs/promises');
 const { resolve, extname, join } = require('node:path');
@@ -15,9 +16,7 @@ async function settle(page) {
   });
 }
 async function main() {
-  const { build } = await import('vite');
-  const bundle = await build({ root: resolve(__dirname, '..'), logLevel: 'error', build: { write: false } });
-  const files = new Map(bundle.output.map(f => [f.fileName, f.type === 'chunk' ? f.code : f.source]));
+  const files = await appFiles();
   const records = JSON.parse(await readFile(resolve(__dirname, '../src/data/dinosaurs.json'), 'utf8'));
   const ids = records.filter(d => d.group === 'dinosaur').map(d => d.id);
   assert.equal(ids.length, 42);

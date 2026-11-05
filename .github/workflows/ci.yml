@@ -82,8 +82,7 @@ jobs:
         with:
           filters: |
             shared:
-              - ".github/workflows/*.yml"
-              - ".github/workflows/*.yaml"
+              - ".github/workflows/ci.yml"
               - ".node-version"
               - "package-lock.json"
               - "package.json"
@@ -92,6 +91,7 @@ jobs:
               - "tsconfig.json"
               - "vendor/**"
             nomos:
+              - ".github/workflows/nomos-core.yml"
               - "nomos/src/**"
               - "nomos/tests/**"
               - "nomos/scripts/**"
@@ -101,6 +101,7 @@ jobs:
               - "nomos/Caddyfile"
               - "nomos/docker-compose*.yml"
             oracle:
+              - ".github/workflows/oracle-core.yml"
               - "oracle/apps/**"
               - "oracle/packages/**"
               - "oracle/prompts/**"
@@ -126,6 +127,7 @@ jobs:
               - "oracle/**"
               - "reinix/**"
             web-scout:
+              - ".github/workflows/web-scout-core.yml"
               - "web-scout/src/**"
               - "web-scout/tests/**"
               - "web-scout/package.json"
@@ -134,6 +136,7 @@ jobs:
               - "web-scout/conftest.py"
               - "web-scout/smoke.py"
             corpus-scout:
+              - ".github/workflows/corpus-scout-core.yml"
               - "corpus-scout/src/**"
               - "corpus-scout/tests/**"
               - "corpus-scout/scripts/**"
@@ -323,17 +326,17 @@ jobs:
 
   notio-core:
     needs: [changes]
-    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.notio == 'true' || needs.changes.outputs.notio-ci == 'true' }}
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.notio == 'true' || needs.changes.outputs.notio-ci == 'true' || needs.changes.outputs.shared == 'true' }}
     uses: ./.github/workflows/notio-core.yml
 
   notio-frontend-core:
     needs: [changes]
-    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.notio-frontend == 'true' || needs.changes.outputs.notio-frontend-ci == 'true' }}
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.notio-frontend == 'true' || needs.changes.outputs.notio-frontend-ci == 'true' || needs.changes.outputs.shared == 'true' }}
     uses: ./.github/workflows/notio-frontend-core.yml
 
   rexlab-core:
     needs: [changes]
-    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.rexlab == 'true' || needs.changes.outputs.rexlab-ci == 'true' }}
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.rexlab == 'true' || needs.changes.outputs.rexlab-ci == 'true' || needs.changes.outputs.shared == 'true' }}
     uses: ./.github/workflows/rexlab-core.yml
 
   nomos-core:
@@ -393,12 +396,12 @@ jobs:
 
   foliotell-core:
     needs: [changes]
-    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.foliotell == 'true' || needs.changes.outputs.foliotell-ci == 'true' }}
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.foliotell == 'true' || needs.changes.outputs.foliotell-ci == 'true' || needs.changes.outputs.shared == 'true' }}
     uses: ./.github/workflows/foliotell-core.yml
 
   foliotell-android-core:
     needs: [changes]
-    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.foliotell-android == 'true' || needs.changes.outputs.foliotell-android-ci == 'true' }}
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.foliotell-android == 'true' || needs.changes.outputs.foliotell-android-ci == 'true' || needs.changes.outputs.shared == 'true' }}
     uses: ./.github/workflows/foliotell-android-core.yml
 
   session-digest-core:

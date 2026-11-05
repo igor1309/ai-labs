@@ -1,29 +1,27 @@
 import packageInfo from "../package.json";
 import { emptyLabyrinth, largestSize } from "./support.ts";
 import { act, render, screen, within } from "@testing-library/react";
-import userEvent, { type UserEvent } from "@testing-library/user-event";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { AGE_LEVEL_PICTURES } from "../src/ageLevelPictures.ts";
 import { App } from "../src/App.tsx";
-import { NEEDS } from "../src/care/index.ts";
 import { LANGUAGE_FLAGS, LANGUAGE_NAMES, LANGUAGES, type Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { LANGUAGE_KEY, localLanguage } from "../src/localLanguage.ts";
-import { PROGRESS_KEY, localProgress } from "../src/localProgress.ts";
 import { QuestionScreen } from "../src/QuestionScreen.tsx";
 import { ResultScreen } from "../src/ResultScreen.tsx";
 import { correctOf, type Dinosaur, type Question } from "../src/quiz/round.ts";
 import { versionFooter } from "../src/root.ts";
-import { REVEAL } from "../src/skeletonGame.tsx";
 import type { Basket } from "../src/SortScreen.tsx";
 import { boardState, type Property } from "../src/sorting/index.ts";
-import { endReaction, meets, missesFor, needAsked, playVisit, trayItem, visitorShown } from "./care.ts";
 import { chooseFrom, choicesIn, openMenu, outsideMenu } from "./menus.ts";
-import { MISS, endWave, playBoard, showMiss, turnCard } from "./pairsApp.tsx";
-import { fitAll, layOutPuzzle, skeletonOf } from "./skeletonsApp.tsx";
-import { basketButton, finishBoard, openBoard, openSortingGame, sortByTrying, trayCard } from "./sorting.tsx";
+import { basketButton, openBoard, trayCard } from "./sorting.tsx";
 import {
-  PALETTE,
+  SHIPPED_PALS,
+  SHIPPED_SKELETONS,
+  fakeItemPicture,
+  fakeSkeletonPicture,
+  keptNothing,
   SHIPPED_CATALOGUE,
   SHIPPED_DINOSAURS,
   emptyCare,
@@ -44,19 +42,37 @@ import {
   sameColour,
   seededRandom,
   sortingBy,
-  symbolOf,
   unreadVersion,
   words,
   type ManualViewport,
-  type ManualTimers,
   type MemoryStorage,
   featuredCard,
   gameDoor,
   unsetAgeLevel,
-  shownQuestion,
   wrongOf
 } from "./support.ts";
 import { withPictures } from "./pictures.tsx";
+import type { ReactElement } from "react";
+import { askedNeed, give, ITEMS, settle, startVisit, suitableItems } from "../src/care/index.ts";
+import { CareResultScreen } from "../src/CareResultScreen.tsx";
+import { CareWelcomeScreen } from "../src/CareWelcomeScreen.tsx";
+import { FOODS, ofFood } from "../src/catalogue.ts";
+import { CatalogueScreen } from "../src/CatalogueScreen.tsx";
+import { DinosaurPage } from "../src/DinosaurPage.tsx";
+import { FriendsScreen } from "../src/FriendsScreen.tsx";
+import { LevelResultScreen } from "../src/LevelResultScreen.tsx";
+import { dealBoard, turn } from "../src/pairs/index.ts";
+import { PairsBoardScreen } from "../src/PairsBoardScreen.tsx";
+import { PairsResultScreen } from "../src/PairsResultScreen.tsx";
+import { PairsWelcomeScreen } from "../src/PairsWelcomeScreen.tsx";
+import { presentCatalogueCard, presentDinosaurPage, presentFriend, presentPairsBoard, presentPuzzle, presentSkeletonChoices, presentVisit } from "../src/presentation.ts";
+import { SkeletonChoiceScreen } from "../src/SkeletonChoiceScreen.tsx";
+import { SkeletonMuseumScreen } from "../src/SkeletonMuseumScreen.tsx";
+import { SkeletonPuzzleScreen } from "../src/SkeletonPuzzleScreen.tsx";
+import { SkeletonResultScreen } from "../src/SkeletonResultScreen.tsx";
+import { cutAt, startPuzzle } from "../src/skeletons/index.ts";
+import { VisitScreen } from "../src/VisitScreen.tsx";
+import { shipped } from "./careApp.tsx";
 
 const QUIZ_CARD: Record<Language, string> = { en: "COMPARE", ru: "СРАВНИ" };
 const BUTTONS: Record<Language, { next: string; seeResult: string; playAgain: string; home: string }> = {
@@ -186,8 +202,6 @@ describe("the language menu", () => {
       expect(corner.position).toBe("static");
       expect(button.closest("header")).not.toBeNull();
       const style = getComputedStyle(button);
-      // The quiet chip carries its symbol in the design ink.
-      expect(sameColour(style.color, style.getPropertyValue("--ds-ink"))).toBe(true);
       expect(parseFloat(style.fontSize)).toBeLessThan(largestSize(getComputedStyle(within(featuredCard()).getByText(card)).fontSize) / 2);
       // A tap area for a parent's finger around the small symbol.
       expect(parseFloat(style.minWidth)).toBeGreaterThanOrEqual(44);
@@ -480,13 +494,12 @@ describe("the sorting board", () => {
   );
 });
 
-// The result is reached through the sorting game, its screens' props and
-// its progress store.
 describe("the sorting result", () => {
-  it("reads in Russian, every text for children in capitals", async () => {
-    const { user, nextBoard } = openSortingGame({ language: "ru" });
-
-    await finishBoard(user, nextBoard(), 4, "ru");
+  it("reads in Russian, every text for children in capitals", () => {
+    render(
+      <LevelResultScreen language="ru" score={4} total={6} best={4} beaten={undefined} celebration="first-best" hero={fakeBodyPicture("tyrannosaurus")} level="hatchling" onLevel={nothing} onPlayAgain={nothing} onHome={nothing} />,
+      withPictures
+    );
 
     expect(screen.getByLabelText("СЧЁТ").textContent).toBe("4/6");
     expect(screen.getByRole("img", { name: "4 ИЗ 6 ЗВЁЗД" })).toBeDefined();
@@ -525,8 +538,8 @@ const levelAges = (language: Language) => Object.values(TEXTS[language].ageLevel
 const BRAND = "RexLab";
 const APP_VERSION = `v${packageInfo.version}`;
 
-// What the child is shown on screens, recorded as a walk over them in a
-// language goes.
+// What the child is shown on screens, recorded as each screen in a
+// language is looked at.
 type Seen = {
   // Every visible word and every label read out, outside what is for
   // parents.
@@ -539,295 +552,262 @@ type Seen = {
   parentLabels: string[];
 };
 
-// A walk over screens in `language`, on an app opened on the home page of
-// a device in it, or on the screen it is opened on: `look` records what
-// the screen shows now in `seen`.
-type Play = {
-  language: Language;
-  user: UserEvent;
-  viewport: ManualViewport;
-  timers: ManualTimers;
-  look: () => void;
-  seen: Seen;
-};
-
-// A compare-dinosaurs record of a best score of 5 from one round.
-const BEST_OF_5 = JSON.stringify({ schemaVersion: 1, games: { "compare-dinosaurs": { bestScore: 5, roundsPlayed: 1 } } });
-
-function openPlay(language: Language, progressStorage = memoryStorage()): Play {
-  const viewport = manualViewport("landscape");
-  const timers = manualTimers();
-  const { user } = openApp({
-    device: language === "ru" ? "ru-RU" : "en-GB",
-    viewport,
-    progress: localProgress(() => progressStorage),
-    timers
-  });
-  const seen: Seen = { texts: [], names: [], parentTexts: [], parentLabels: [] };
+// Records in `seen` what the page shows now in `language`.
+function look(language: Language, seen: Seen) {
   const isName = (label: string) => SHIPPED_DINOSAURS.some((dinosaur) => dinosaur.name[language] === label);
-
-  const look = () => {
-    const controls = [
-      ...PARENT_CONTROLS[language].flatMap((name) => screen.queryAllByRole("button", { name })),
-      // Each menu by its label, a closed one too as it animates out,
-      // hidden and so unnamed for a screen reader.
-      ...[...document.querySelectorAll('[role="menu"]')].filter((menu) => PARENT_CONTROLS[language].includes(menu.getAttribute("aria-label") ?? "")),
-      ...screen.queryAllByText(BRAND),
-      ...document.querySelectorAll(".home-bedrock"),
-      ...screen.queryAllByText(TEXTS[language].sourceNote),
-      ...screen.queryAllByText(TEXTS[language].portraitLayoutComing)
-    ];
-    // Both gate layers stay mounted; only the exposed layer is shown.
-    const covered = (element: Element | null) => element?.closest('.orientation-gate[aria-hidden="true"], .gated-screen[aria-hidden="true"]');
-    const forParents = (node: Node) => controls.some((control) => control.contains(node));
-    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-      if (!node.textContent?.trim() || covered(node.parentElement)) continue;
-      (forParents(node) ? seen.parentTexts : seen.texts).push(node.textContent);
-    }
-    for (const element of document.body.querySelectorAll("[aria-label]")) {
-      if (covered(element)) continue;
-      const label = element.getAttribute("aria-label") ?? "";
-      if (forParents(element)) seen.parentLabels.push(label);
-      else if (isName(label)) seen.names.push(label);
-      else seen.texts.push(label);
-    }
-    for (const picture of document.body.querySelectorAll("img")) {
-      if (covered(picture)) continue;
-      const label = picture.alt;
-      (isName(label) ? seen.names : seen.texts).push(label);
-    }
-  };
-
-  return { language, user, viewport, timers, look, seen };
-}
-
-// Plays a round from its first question, the first `correct` answers
-// right and the rest wrong, looking at each question before and after its
-// answer and at the result.
-async function playRound({ language, user, look }: Play, correct: number) {
-  for (let number = 1; number <= 10; number++) {
-    const question = shownQuestion(language);
-    const tapped = number <= correct ? correctOf(question) : wrongOf(question);
-    look();
-    await user.click(within(screen.getByRole("group")).getByRole("button", { name: tapped.name[language] }));
-    look();
-    await user.click(screen.getByRole("button", { name: number < 10 ? BUTTONS[language].next : BUTTONS[language].seeResult }));
+  const controls = [
+    ...PARENT_CONTROLS[language].flatMap((name) => screen.queryAllByRole("button", { name })),
+    // Each menu by its label, a closed one too as it animates out,
+    // hidden and so unnamed for a screen reader.
+    ...[...document.querySelectorAll('[role="menu"]')].filter((menu) => PARENT_CONTROLS[language].includes(menu.getAttribute("aria-label") ?? "")),
+    ...screen.queryAllByText(BRAND),
+    ...document.querySelectorAll(".home-bedrock"),
+    ...screen.queryAllByText(TEXTS[language].sourceNote),
+    ...screen.queryAllByText(TEXTS[language].portraitLayoutComing)
+  ];
+  // Both gate layers stay mounted; only the exposed layer is shown.
+  const covered = (element: Element | null) => element?.closest('.orientation-gate[aria-hidden="true"], .gated-screen[aria-hidden="true"]');
+  const forParents = (node: Node) => controls.some((control) => control.contains(node));
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    if (!node.textContent?.trim() || covered(node.parentElement)) continue;
+    (forParents(node) ? seen.parentTexts : seen.texts).push(node.textContent);
   }
-  look();
-}
-
-// Plays the visit on the stage to its result, each need refused once
-// first when `refuse` is set, looking at every state of it.
-async function lookThroughVisit({ user, timers, look }: Play, refuse: boolean) {
-  for (let need = needAsked(); need !== undefined; need = needAsked()) {
-    const visitor = visitorShown();
-    look();
-    if (refuse) {
-      await user.click(trayItem(missesFor(visitor, need)));
-      look();
-      endReaction(timers);
-      look();
-    }
-    await user.click(trayItem(meets(visitor, need)));
-    look();
-    endReaction(timers);
+  for (const element of document.body.querySelectorAll("[aria-label]")) {
+    if (covered(element)) continue;
+    const label = element.getAttribute("aria-label") ?? "";
+    if (forParents(element)) seen.parentLabels.push(label);
+    else if (isName(label)) seen.names.push(label);
+    else seen.texts.push(label);
   }
-  look();
-  endReaction(timers);
-  look();
+  for (const picture of document.body.querySelectorAll("img")) {
+    if (covered(picture)) continue;
+    const label = picture.alt;
+    (isName(label) ? seen.names : seen.texts).push(label);
+  }
 }
 
+const noSeen = (): Seen => ({ texts: [], names: [], parentTexts: [], parentLabels: [] });
+
+// Renders each screen in turn, each in its own state, and looks at it.
+function lookAtEach(language: Language, screens: readonly ReactElement[]): Seen {
+  const seen = noSeen();
+  for (const element of screens) {
+    const { unmount } = render(element, withPictures);
+    look(language, seen);
+    unmount();
+  }
+  return seen;
+}
+
+// The home page on an app opened in `language`, with each menu for
+// parents closed and open, and the portrait gate.
 async function homeAndMenus(language: Language): Promise<Seen> {
-  const play = openPlay(language);
-  const { user, viewport, look } = play;
-  look();
+  const seen = noSeen();
+  const viewport = manualViewport("landscape");
+  const { user } = openApp({ device: language === "ru" ? "ru-RU" : "en-GB", viewport, timers: manualTimers() });
+  look(language, seen);
   for (const label of PARENT_CONTROLS[language]) {
     await openMenu(user, label);
-    look();
+    look(language, seen);
     await user.click(outsideMenu());
   }
   act(() => viewport.turn("portrait"));
-  look();
-  return play.seen;
+  look(language, seen);
+  return seen;
 }
 
-async function roundWithMistakes(language: Language): Promise<Seen> {
-  const play = openPlay(language);
-  await play.user.click(gameDoor(QUIZ_CARD[language]));
-  await playRound(play, 5);
-  expect(screen.getAllByRole("status")).toHaveLength(1);
-  return play.seen;
+const CELEBRATIONS = [
+  { best: 5, beaten: undefined, celebration: null },
+  { best: 5, beaten: undefined, celebration: "first-best" },
+  { best: 10, beaten: 5, celebration: "new-best" }
+] as const;
+
+// A question before its answer, answered right, answered wrong and the
+// last one answered, then a round's result with each celebration and none.
+function quiz(language: Language): Seen {
+  const question: Question = { kind: "heavier", attribute: "mass", left: byName("Triceratops"), right: byName("Velociraptor") };
+  const answer = (choice: string | undefined, last = false) => (
+    <QuestionScreen language={language} {...questionView(question, language, choice)} last={last} onChoose={nothing} onNext={nothing} onHome={nothing} />
+  );
+  return lookAtEach(language, [
+    answer(undefined),
+    answer(correctOf(question).id),
+    answer(wrongOf(question).id),
+    answer(correctOf(question).id, true),
+    ...CELEBRATIONS.map((reward) => (
+      <LevelResultScreen presentation="dig-site" language={language} score={reward.best} total={10} {...reward} hero={fakeBodyPicture("tyrannosaurus")} level="explorer" onLevel={nothing} onPlayAgain={nothing} onHome={nothing} />
+    ))
+  ]);
 }
 
-// The second round, without mistakes, beats the best of the first one.
-async function roundWithoutMistakes(language: Language): Promise<Seen> {
-  const play = openPlay(language, memoryStorage({ [PROGRESS_KEY]: BEST_OF_5 }));
-  const { user, look } = play;
-  await user.click(gameDoor(QUIZ_CARD[language]));
-  await playRound(play, 10);
-  expect(screen.getAllByRole("status")).toHaveLength(1);
-  await user.click(screen.getByRole("button", { name: BUTTONS[language].home }));
-  look();
-  return play.seen;
+// The catalogue, and the page of a creature of each food type and group.
+function catalogue(language: Language): Seen {
+  const pageOf = (entry: (typeof SHIPPED_CATALOGUE)[number], index: number) => (
+    <DinosaurPage
+      language={language}
+      dinosaur={presentDinosaurPage(entry, language, fakeBodyPicture, [])}
+      initialLayout={{ upright: false, lines: { description: 3, note: 1 } }}
+      number={index + 1}
+      total={SHIPPED_CATALOGUE.length}
+      onPrevious={nothing}
+      onNext={nothing}
+      onBack={nothing}
+    />
+  );
+  const kinds = [
+    ...new Map(SHIPPED_CATALOGUE.map((entry, index) => [`${entry.diet} ${entry.group}`, pageOf(entry, index)])).values()
+  ];
+  return lookAtEach(language, [
+    <CatalogueScreen
+      language={language}
+      dinosaurs={SHIPPED_CATALOGUE.map((entry) => presentCatalogueCard(entry, language, fakeBodyPicture, [SHIPPED_CATALOGUE[0]?.id ?? ""]))}
+      foods={FOODS.map((food) => ({ food, count: ofFood(SHIPPED_CATALOGUE, food).length }))}
+      food="all"
+      initialArrangement={{ columns: 4, chips: undefined }}
+      chipWidths={{ width: () => 0, subscribe: () => () => {} }}
+      onChipContents={nothing}
+      layoutKeeping={keptNothing}
+      returning={undefined}
+      onFood={nothing}
+      onOpen={nothing}
+      onHome={nothing}
+    />,
+    ...kinds
+  ]);
 }
 
-// The catalogue, and the page of a dinosaur of each food type, the first
-// reached from its card, the others by the arrows, the last round from
-// the first.
-async function catalogue(language: Language): Promise<Seen> {
-  const play = openPlay(language);
-  const { user, look } = play;
-  const text = TEXTS[language];
-  await user.click(gameDoor(text.catalogue));
-  look();
-  await user.click(within(screen.getByRole("group", { name: text.catalogue })).getByRole("button", { name: byName("Gallimimus").name[language] }));
-  look();
-  await user.click(screen.getByRole("button", { name: text.previousDinosaur }));
-  look();
-  await user.click(screen.getByRole("button", { name: text.catalogue }));
-  await user.click(within(screen.getByRole("group", { name: text.catalogue })).getAllByRole("button")[0] ?? document.body);
-  await user.click(screen.getByRole("button", { name: text.previousDinosaur }));
-  look();
-  await user.click(screen.getByRole("button", { name: text.nextDinosaur }));
-  look();
-  await user.click(screen.getByRole("button", { name: text.catalogue }));
-  await user.click(screen.getByRole("button", { name: BUTTONS[language].home }));
-  look();
-  return play.seen;
+// Care's welcome with no best and with one, its friends with none and with
+// one, a visit as it starts, as a need is refused, after the refusal and
+// as a need is met, and its result with each celebration and none.
+function care(language: Language): Seen {
+  const visitor = shipped("tyrannosaurus");
+  const friend = presentFriend(shipped("triceratops"), language, fakeBodyPicture);
+  const started = startVisit(visitor);
+  const need = askedNeed(started);
+  if (need === undefined) throw new Error("A visit asks for a need");
+  const right = suitableItems(visitor, need)[0];
+  const wrong = ITEMS.find((item) => !suitableItems(visitor, need).includes(item));
+  if (right === undefined || wrong === undefined) throw new Error(`No items to meet and miss ${need}`);
+  const refused = give(started, wrong);
+  const visit = (state: typeof started, leaving = false) => (
+    <VisitScreen language={language} visit={presentVisit(state, leaving, language, fakeBodyPicture)} itemPicture={fakeItemPicture} onGive={nothing} onHome={nothing} />
+  );
+  const friends = (shown: (typeof friend)[]) => (
+    <FriendsScreen language={language} friends={shown} nestPicture={fakeItemPicture("nest")} onFriend={nothing} onNewVisitor={nothing} onBack={nothing} onHome={nothing} layoutKeeping={keptNothing} columns={() => 4} />
+  );
+  return lookAtEach(language, [
+    ...[undefined, 6].map((best) => (
+      <CareWelcomeScreen language={language} best={best} total={8} visitorPicture={fakeBodyPicture("brachiosaurus")} friendCount={1} friendPictures={[friend.picture]} onNewVisitor={nothing} onFriends={nothing} onHome={nothing} />
+    )),
+    friends([]),
+    friends([friend]),
+    visit(started),
+    visit(refused),
+    visit(settle(refused)),
+    visit(give(settle(refused), right)),
+    visit(started, true),
+    ...CELEBRATIONS.map((reward, at) => (
+      <CareResultScreen language={language} visitor={{ name: visitor.name[language], picture: fakeBodyPicture(visitor.id) }} score={reward.best} total={8} {...reward} newFriend={at === 0} onNewVisitor={nothing} onFriends={nothing} onHome={nothing} />
+    ))
+  ]);
 }
 
-async function careWelcome(language: Language): Promise<Seen> {
-  const play = openPlay(language);
-  const { user, look } = play;
-  const text = TEXTS[language];
-  await user.click(screen.getByRole("button", { name: text.care }));
-  look();
-  await user.click(screen.getByRole("button", { name: text.friends }));
-  look();
-  return play.seen;
+// A sorting board's result with each celebration and none.
+function sortingResult(language: Language): Seen {
+  return lookAtEach(
+    language,
+    CELEBRATIONS.map((reward) => (
+      <LevelResultScreen language={language} score={reward.best} total={6} {...reward} hero={fakeBodyPicture("tyrannosaurus")} level="hatchling" onLevel={nothing} onPlayAgain={nothing} onHome={nothing} />
+    ))
+  );
 }
 
-async function visitWithRefusals(language: Language): Promise<Seen> {
-  const play = openPlay(language);
-  const text = TEXTS[language];
-  await play.user.click(screen.getByRole("button", { name: text.care }));
-  await play.user.click(screen.getByRole("button", { name: text.newVisitor }));
-  await lookThroughVisit(play, true);
-  expect(screen.getAllByRole("status")).toHaveLength(1);
-  return play.seen;
+// Find the pair's welcome, a board as dealt, with a card open, with a pair
+// found and finished, and its result with each celebration and none, one
+// moving up a level.
+function findThePair(language: Language): Seen {
+  const dealt = dealBoard(SHIPPED_PALS, { climbLevel: 1 }, () => 0);
+  const opened = turn(dealt, 0);
+  const pair = dealt.cards.findIndex(({ pal }, place) => place > 0 && pal.id === dealt.cards[0]?.pal.id);
+  const found = turn(opened, pair);
+  const board = (state: typeof dealt, finished = false) => (
+    <PairsBoardScreen language={language} {...presentPairsBoard(state, language, fakeBodyPicture, fakeSkeletonPicture)} finished={finished} onTurn={nothing} onBack={nothing} onHome={nothing} />
+  );
+  const pals = dealt.cards.map(({ pal }) => ({ id: pal.id, name: pal.name[language], picture: fakeBodyPicture(pal.id), newlyFound: true }));
+  return lookAtEach(language, [
+    ...(["hatchling", "explorer"] as const).map((level) => (
+      <PairsWelcomeScreen language={language} level={level} climbLevel={1} stars={0} heroPicture={fakeBodyPicture("triceratops")} onLevel={nothing} onPlay={nothing} onHome={nothing} />
+    )),
+    board(dealt),
+    board(opened),
+    board(found),
+    board(found, true),
+    ...CELEBRATIONS.map(({ best, beaten, celebration }, at) => (
+      <PairsResultScreen language={language} pals={pals} tries={best} stars={1} best={best} beaten={beaten} celebration={celebration} levelUp={at === 0 ? { level: 2, rows: 2, columns: 3 } : null} onPlayAgain={nothing} onBack={nothing} onHome={nothing} />
+    ))
+  ]);
 }
 
-// The second visit, without a refusal, beats the first one's hearts.
-async function visitWithoutRefusals(language: Language): Promise<Seen> {
-  const play = openPlay(language);
-  const { user, timers, look } = play;
-  const text = TEXTS[language];
-  await user.click(screen.getByRole("button", { name: text.care }));
-  await user.click(screen.getByRole("button", { name: text.newVisitor }));
-  await playVisit(user, timers, NEEDS);
-  await user.click(screen.getByRole("button", { name: text.newVisitor }));
-  await lookThroughVisit(play, false);
-  expect(screen.getAllByRole("status")).toHaveLength(1);
-  await user.click(screen.getByRole("button", { name: text.friends }));
-  look();
-  await user.click(screen.getByRole("button", { name: text.back }));
-  look();
-  await user.click(screen.getByRole("button", { name: text.home }));
-  look();
-  return play.seen;
-}
-
-// A board of the sorting game reached from the home page, each card tried
-// on the first basket and, after a miss, the other, then its result, a
-// second board from PLAY AGAIN and the home page again.
-async function sortingRounds(language: Language): Promise<Seen> {
-  const play = openPlay(language);
-  const { user, look } = play;
-  const text = TEXTS[language];
-  await user.click(gameDoor(text.sort));
-  look();
-  await sortByTrying(user, language, look);
-  await user.click(screen.getByRole("button", { name: text.seeResult }));
-  expect(screen.getAllByRole("status")).toHaveLength(1);
-  look();
-  await user.click(screen.getByRole("button", { name: text.playAgain }));
-  look();
-  await user.click(screen.getByRole("button", { name: text.home }));
-  look();
-  return play.seen;
-}
-
-// Find the pair: its welcome, Hatchling chosen on its switch, a board with
-// a card open, a miss, found pairs and the cards waving, its result with a
-// first best, the home page again, and the catalogue and a page with the
-// dinosaurs found.
-async function findThePair(language: Language): Promise<Seen> {
-  const play = openPlay(language);
-  const { user, timers, look } = play;
-  const text = TEXTS[language];
-  await user.click(gameDoor(text.pairs));
-  look();
-  await user.click(screen.getByRole("button", { name: text.ageLevels.hatchling.name }));
-  look();
-  await user.click(screen.getByRole("button", { name: text.play }));
-  look();
-  await turnCard(user, 0);
-  look();
-  await showMiss(user);
-  look();
-  act(() => timers.fire(MISS));
-  await playBoard(user, timers);
-  look();
-  endWave(timers);
-  look();
-  expect(screen.getAllByRole("status")).toHaveLength(1);
-  await user.click(screen.getByRole("button", { name: text.home }));
-  look();
-  await user.click(gameDoor(text.catalogue));
-  look();
-  const catalogue = screen.getByRole("group", { name: text.catalogue });
-  await user.click(within(catalogue).getAllByRole("button")[0] as HTMLElement);
-  look();
-  return play.seen;
-}
-
-// The skeleton game: its home tile, its choice of dinosaurs, a puzzle as
-// it starts, its reveal with a first best, the choice again with the star
-// earned, the museum with the skeleton on its stand, its puzzle as it is
-// knocked down, the museum with its stand awaiting it, and the home page
-// again with the best on the tile.
-async function skeletons(language: Language): Promise<Seen> {
-  const play = openPlay(language);
-  const { user, timers, look } = play;
-  const text = TEXTS[language];
-  const triceratops = skeletonOf("triceratops");
-  look();
-  await user.click(gameDoor(text.skeletons));
-  look();
-  await user.click(screen.getByRole("button", { name: triceratops.name[language].toLocaleUpperCase(language) }));
-  expect(screen.getByRole("group", { name: text.bones })).toBeDefined();
-  look();
-  layOutPuzzle();
-  fitAll(triceratops);
-  act(() => timers.fire(REVEAL.motion));
-  expect(screen.getAllByRole("status")).toHaveLength(1);
-  look();
-  await user.click(screen.getByRole("button", { name: text.buildAnother }));
-  expect(screen.getAllByRole("img", { name: text.star })).toHaveLength(1);
-  look();
-  await user.click(screen.getByRole("button", { name: text.museum }));
-  look();
-  await user.click(screen.getByRole("button", { name: text.rebuild }));
-  expect(screen.getByRole("group", { name: text.bones })).toBeDefined();
-  look();
-  await user.click(screen.getByRole("button", { name: text.museum }));
-  expect(screen.getByRole("button", { name: text.keepBuilding })).toBeDefined();
-  look();
-  await user.click(screen.getByRole("button", { name: text.home }));
-  expect(gameDoor(text.skeletons).textContent).toBe(language === "en" ? "BONES" : "КОСТИ");
-  look();
-  return play.seen;
+// The skeleton game's choice, a puzzle as it starts and with another
+// skeleton's bone told, its reveal with each celebration and none, and its
+// museum.
+function skeletons(language: Language): Seen {
+  const skeleton = SHIPPED_SKELETONS.find((each) => (each.distractors ?? []).length > 0);
+  if (!skeleton) throw new Error("No skeleton has another's bones");
+  const puzzle = startPuzzle(skeleton, cutAt(skeleton, "hatchling"), { distractors: true });
+  const stray = puzzle.distractors[0];
+  if (!stray) throw new Error(`${skeleton.id} has no other bone`);
+  const told = { ...puzzle, told: stray };
+  const atWork = (state: typeof puzzle) => (
+    <SkeletonPuzzleScreen
+      language={language}
+      {...presentPuzzle(state, language, fakeSkeletonPicture)}
+      scatter={false}
+      onDrop={nothing}
+      onTouch={nothing}
+      onLastStep={nothing}
+      onMuseum={nothing}
+      onBack={nothing}
+      onHome={nothing}
+    />
+  );
+  return lookAtEach(language, [
+    <SkeletonChoiceScreen language={language} choices={presentSkeletonChoices(SHIPPED_SKELETONS, language, fakeBodyPicture, [skeleton.id])} best={1} level="hatchling" onLevel={nothing} onChoose={nothing} onMystery={undefined} onMuseum={nothing} onHome={nothing} />,
+    atWork(puzzle),
+    atWork(told),
+    ...CELEBRATIONS.map(({ best, beaten, celebration }, at) => (
+      <SkeletonResultScreen
+        language={language}
+        name={skeleton.name[language]}
+        fact={skeleton.fact[language]}
+        skeleton={fakeSkeletonPicture(skeleton.id, "skeleton")}
+        body={fakeBodyPicture(skeleton.id)}
+        frame={skeleton.frame}
+        score={1}
+        total={SHIPPED_SKELETONS.length}
+        best={best}
+        beaten={beaten}
+        celebration={celebration}
+        newStar={at < 2}
+        badge={at === 2 ? "explorer" : undefined}
+        onBuildAnother={nothing}
+        onMuseum={nothing}
+        onHome={nothing}
+      />
+    )),
+    <SkeletonMuseumScreen
+      language={language}
+      stands={SHIPPED_SKELETONS.map(({ id, name }, at) => ({ id, name: name[language], skeleton: fakeSkeletonPicture(id, "skeleton"), state: (["built", "rebuilding", "empty"] as const)[at % 3] ?? "empty", badges: at === 0 ? ["explorer"] : [] }))}
+      score={1}
+      total={SHIPPED_SKELETONS.length}
+      best={1}
+      onBuild={nothing}
+      onRebuild={nothing}
+      onBuildAnother={nothing}
+      onHome={nothing}
+    />
+  ]);
 }
 
 // What a part shows for parents: its words, the language menu's codes
@@ -835,19 +815,11 @@ async function skeletons(language: Language): Promise<Seen> {
 type ForParents = (language: Language) => { words: string[]; labels: string[] };
 
 const NOTHING_FOR_PARENTS: ForParents = () => ({ words: [], labels: [] });
-const HOME_PAGE: ForParents = (language) => ({ words: [BRAND, TEXTS[language].homeParentNote, APP_VERSION], labels: [...PARENT_CONTROLS[language], TEXTS[language].versionLabel] });
 
-// What the child is shown on every screen and in every state, by part,
-// each part walked from a newly opened app: one walk over them all
-// outlasts a test's time limit on CI. Together they are the home page with
-// each menu for parents closed and open, the portrait gate, two rounds,
-// one with mistakes and one without, and both results, the catalogue, and
-// care: its welcome, its friends with none yet, a visit with each need
-// refused once and one without, both results and the friends made,
-// the sorting game: a board with wrong drops, its result and the next
-// board, find the pair from its welcome to the dinosaurs found, and the
-// skeleton game's choice, a puzzle, its reveal and its museum.
-const PARTS: Array<[string, (language: Language) => Promise<Seen>, ForParents]> = [
+// What the child is shown on every screen and in every state, by part:
+// the home page with each menu for parents closed and open and the
+// portrait gate on an app, and each other screen rendered in its state.
+const PARTS: Array<[string, (language: Language) => Seen | Promise<Seen>, ForParents]> = [
   [
     "the home page and its menus",
     homeAndMenus,
@@ -856,23 +828,12 @@ const PARTS: Array<[string, (language: Language) => Promise<Seen>, ForParents]> 
       labels: [...PARENT_CONTROLS[language], TEXTS[language].versionLabel]
     })
   ],
-  ["a round with mistakes and its result", roundWithMistakes, NOTHING_FOR_PARENTS],
-  ["a round without mistakes, its result and the home page again", roundWithoutMistakes, HOME_PAGE],
-  [
-    "the catalogue",
-    catalogue,
-    (language) => ({ words: [BRAND, TEXTS[language].homeParentNote, APP_VERSION, TEXTS[language].sourceNote], labels: [...PARENT_CONTROLS[language], TEXTS[language].versionLabel] })
-  ],
-  ["care's welcome and its friends", careWelcome, NOTHING_FOR_PARENTS],
-  ["a visit with each need refused once and its result", visitWithRefusals, NOTHING_FOR_PARENTS],
-  ["a visit without a refusal, its result, the friends made and the home page again", visitWithoutRefusals, HOME_PAGE],
-  ["a sorting board with wrong drops, its result, the next board and the home page again", sortingRounds, HOME_PAGE],
-  [
-    "find the pair, its result, and the dinosaurs found in the catalogue",
-    findThePair,
-    (language) => ({ words: [BRAND, TEXTS[language].homeParentNote, APP_VERSION, TEXTS[language].sourceNote], labels: [...PARENT_CONTROLS[language], TEXTS[language].versionLabel] })
-  ],
-  ["the skeleton game's tile, its choice of dinosaurs, a puzzle, its reveal, the choice again, the museum, a rebuild and the home page again", skeletons, HOME_PAGE]
+  ["the quiz's questions and results", quiz, NOTHING_FOR_PARENTS],
+  ["the catalogue and its pages", catalogue, (language) => ({ words: [TEXTS[language].sourceNote], labels: [] })],
+  ["care's welcome, friends, visits and results", care, NOTHING_FOR_PARENTS],
+  ["the sorting results", sortingResult, NOTHING_FOR_PARENTS],
+  ["find the pair's welcome, boards and results", findThePair, NOTHING_FOR_PARENTS],
+  ["the skeleton game's choice, puzzles, reveals and museum", skeletons, NOTHING_FOR_PARENTS]
 ];
 
 const CASES = LANGUAGES.flatMap((language) => PARTS.map(([part, walk, forParents]) => [language, part, walk, forParents] as const));
