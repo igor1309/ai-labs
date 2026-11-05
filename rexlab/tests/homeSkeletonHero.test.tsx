@@ -56,6 +56,24 @@ test("does not import the renderer until the hero has a size and is visible on s
   h.stop();
 });
 
+test.each(["hidden", "offscreen", "zero-size"])("defers a queued load if the hero becomes inactive before it starts: %s", async reason => {
+  const h = harness();
+  h.size(500, 200); h.intersection(true);
+  if (reason === "hidden") h.hidden(true);
+  else if (reason === "offscreen") h.intersection(false);
+  else h.size(0, 0);
+  await Promise.resolve();
+  expect(h.environment.load).not.toHaveBeenCalled();
+  if (reason === "hidden") h.hidden(false);
+  else if (reason === "offscreen") h.intersection(true);
+  else h.size(500, 200);
+  await Promise.resolve();
+  expect(h.environment.load).toHaveBeenCalledTimes(1);
+  await h.ready();
+  expect(h.host.hasAttribute("data-ready")).toBe(true);
+  h.stop();
+});
+
 test.each(["hidden-first", "offscreen-first"])("pauses on either condition and resumes only with both, retaining phase: %s", async order => {
   const h = harness(); await h.show(); await h.ready();
   h.tick(100); h.tick(2600);

@@ -73,6 +73,7 @@ export function homeSkeletonHero(host: HTMLElement, environment: SkeletonHeroEnv
       // The import and asset fetch start only when this particular hero is seen.
       Promise.resolve().then(() => {
         if (ended || failed) return;
+        if (!active()) { loading = false; return; }
         return environment.load(canvas, abort.signal);
       }).then(loaded => {
         if (!loaded) return;
