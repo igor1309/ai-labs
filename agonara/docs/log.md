@@ -1,5 +1,12 @@
 # Log
 
+## 2026-11-05
+
+- A Session runner probe in `agonara/session/`: one student's session, kept apart from the learning record, returning content plus actions by meaning, so any surface can draw it. LAB-962.
+- Its first surface is a Telegram bot that answers only the owner's chat, with buttons for the session's actions; the content is canned for now. LAB-962.
+- The bot runs on the owner's Mac under launchd, starting at login and restarting on exit, and reaches Telegram by long polling. LAB-962.
+- A non-admin `session-probe` identity on production logs in and reads programs through the public API, the path the session will use. LAB-962.
+
 ## 2026-10-26
 
 - The agent skills are published to the public `igor1309/agonara-skills` repo. LAB-596.

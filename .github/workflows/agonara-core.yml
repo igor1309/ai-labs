@@ -39,6 +39,9 @@ jobs:
       - name: Run screenshot generator tests
         run: ./scripts/run_silent.sh "agonara-showcase-tests" node --test agonara/showcase/*.test.mjs
 
+      - name: Run Session runner tests
+        run: ./scripts/run_silent.sh "agonara-session-tests" node --test agonara/session/test/*.test.js
+
       - name: Build Docker image
         run: docker build -t agonara:ci agonara
 
