@@ -76090,7 +76090,8 @@
                     },
                     "t9vdr": {
                       "enabled": true,
-                      "x": 82
+                      "x": 65,
+                      "y": 4
                     }
                   }
                 }
@@ -76150,7 +76151,8 @@
                     },
                     "t9vdr": {
                       "enabled": true,
-                      "x": 82
+                      "x": 65,
+                      "y": 4
                     }
                   }
                 },
@@ -76210,7 +76212,8 @@
                     },
                     "t9vdr": {
                       "enabled": true,
-                      "x": 82
+                      "x": 65,
+                      "y": 4
                     }
                   }
                 },
@@ -76691,7 +76694,8 @@
                     },
                     "t9vdr": {
                       "enabled": true,
-                      "x": 112
+                      "x": 95,
+                      "y": 4
                     }
                   }
                 },
@@ -76717,7 +76721,8 @@
                     },
                     "t9vdr": {
                       "enabled": true,
-                      "x": 112
+                      "x": 95,
+                      "y": 4
                     }
                   }
                 },
@@ -77557,7 +77562,8 @@
                     },
                     "t9vdr": {
                       "enabled": true,
-                      "x": 68
+                      "x": 51,
+                      "y": 4
                     }
                   }
                 },
@@ -77609,7 +77615,8 @@
                     },
                     "t9vdr": {
                       "enabled": true,
-                      "x": 68
+                      "x": 51,
+                      "y": 4
                     }
                   }
                 }
@@ -78114,7 +78121,8 @@
                     },
                     "t9vdr": {
                       "enabled": true,
-                      "x": 102
+                      "x": 85,
+                      "y": 4
                     }
                   }
                 }
@@ -78855,7 +78863,7 @@
           "ref": "ZJ0qg",
           "name": "Level offer",
           "x": 306,
-          "y": 190,
+          "y": 166,
           "descendants": {
             "iPvIT": {
               "fill": [
@@ -79545,7 +79553,7 @@
           "ref": "ZJ0qg",
           "name": "Level offer",
           "x": 256,
-          "y": 200,
+          "y": 166,
           "width": 620,
           "descendants": {
             "iPvIT": {
@@ -86175,8 +86183,8 @@
                     },
                     "t9vdr": {
                       "enabled": true,
-                      "x": 82,
-                      "y": -8
+                      "x": 72,
+                      "y": 4
                     },
                     "t9vdr/BXa13": {
                       "enabled": false
@@ -86206,8 +86214,8 @@
                     },
                     "t9vdr": {
                       "enabled": true,
-                      "x": 82,
-                      "y": -8
+                      "x": 72,
+                      "y": 4
                     },
                     "t9vdr/BXa13": {
                       "enabled": false
@@ -86795,8 +86803,8 @@
                     },
                     "t9vdr": {
                       "enabled": true,
-                      "x": 120,
-                      "y": -8
+                      "x": 110,
+                      "y": 4
                     },
                     "t9vdr/BXa13": {
                       "enabled": false
@@ -87314,8 +87322,8 @@
                     },
                     "t9vdr": {
                       "enabled": true,
-                      "x": 70,
-                      "y": -8
+                      "x": 60,
+                      "y": 4
                     },
                     "t9vdr/BXa13": {
                       "enabled": false
@@ -87384,8 +87392,8 @@
                     },
                     "t9vdr": {
                       "enabled": true,
-                      "x": 70,
-                      "y": -8
+                      "x": 60,
+                      "y": 4
                     },
                     "t9vdr/BXa13": {
                       "enabled": false
@@ -87454,8 +87462,8 @@
                     },
                     "t9vdr": {
                       "enabled": true,
-                      "x": 70,
-                      "y": -8
+                      "x": 60,
+                      "y": 4
                     },
                     "t9vdr/BXa13": {
                       "enabled": false
@@ -88258,8 +88266,8 @@
                     },
                     "t9vdr": {
                       "enabled": true,
-                      "x": 52,
-                      "y": -8
+                      "x": 42,
+                      "y": 4
                     },
                     "t9vdr/BXa13": {
                       "enabled": false
@@ -88320,8 +88328,8 @@
                     },
                     "t9vdr": {
                       "enabled": true,
-                      "x": 52,
-                      "y": -8
+                      "x": 42,
+                      "y": 4
                     },
                     "t9vdr/BXa13": {
                       "enabled": false
@@ -88968,7 +88976,7 @@
           "ref": "ZJ0qg",
           "name": "Level offer",
           "x": 16,
-          "y": 200,
+          "y": 204,
           "width": 361,
           "padding": [
             "$ds-space-28",
@@ -92393,8 +92401,8 @@
                     },
                     "t9vdr": {
                       "enabled": true,
-                      "x": 132,
-                      "y": -12
+                      "x": 115,
+                      "y": 4
                     }
                   }
                 }
@@ -92457,8 +92465,8 @@
                     },
                     "t9vdr": {
                       "enabled": true,
-                      "x": 132,
-                      "y": -12
+                      "x": 115,
+                      "y": 4
                     }
                   }
                 },
@@ -92521,8 +92529,8 @@
                     },
                     "t9vdr": {
                       "enabled": true,
-                      "x": 132,
-                      "y": -12
+                      "x": 115,
+                      "y": 4
                     }
                   }
                 },
@@ -93140,8 +93148,8 @@
                     },
                     "t9vdr": {
                       "enabled": true,
-                      "x": 132,
-                      "y": -12
+                      "x": 115,
+                      "y": 4
                     }
                   }
                 },
@@ -93168,8 +93176,8 @@
                     },
                     "t9vdr": {
                       "enabled": true,
-                      "x": 132,
-                      "y": -12
+                      "x": 115,
+                      "y": 4
                     }
                   }
                 },
@@ -93680,8 +93688,8 @@
                     },
                     "t9vdr": {
                       "enabled": true,
-                      "x": 132,
-                      "y": -12
+                      "x": 115,
+                      "y": 4
                     }
                   }
                 }
@@ -93744,8 +93752,8 @@
                     },
                     "t9vdr": {
                       "enabled": true,
-                      "x": 132,
-                      "y": -12
+                      "x": 115,
+                      "y": 4
                     }
                   }
                 },
@@ -93808,8 +93816,8 @@
                     },
                     "t9vdr": {
                       "enabled": true,
-                      "x": 132,
-                      "y": -12
+                      "x": 115,
+                      "y": 4
                     }
                   }
                 },
@@ -93889,7 +93897,7 @@
           "ref": "ZJ0qg",
           "name": "Level offer",
           "x": 62,
-          "y": 380,
+          "y": 360,
           "width": 620,
           "descendants": {
             "iPvIT": {
@@ -96517,8 +96525,8 @@
                     },
                     "t9vdr": {
                       "enabled": true,
-                      "x": 88,
-                      "y": -8
+                      "x": 78,
+                      "y": 4
                     },
                     "t9vdr/BXa13": {
                       "enabled": false
@@ -96587,8 +96595,8 @@
                     },
                     "t9vdr": {
                       "enabled": true,
-                      "x": 88,
-                      "y": -8
+                      "x": 78,
+                      "y": 4
                     },
                     "t9vdr/BXa13": {
                       "enabled": false
@@ -96657,8 +96665,8 @@
                     },
                     "t9vdr": {
                       "enabled": true,
-                      "x": 88,
-                      "y": -8
+                      "x": 78,
+                      "y": 4
                     },
                     "t9vdr/BXa13": {
                       "enabled": false
@@ -97488,7 +97496,7 @@
           "ref": "ZJ0qg",
           "name": "Level offer",
           "x": 196,
-          "y": 46,
+          "y": 69,
           "width": 460,
           "padding": [
             "$ds-space-20",
@@ -100397,8 +100405,8 @@
                     },
                     "t9vdr": {
                       "enabled": true,
-                      "x": 110,
-                      "y": -8
+                      "x": 100,
+                      "y": 4
                     },
                     "t9vdr/BXa13": {
                       "enabled": false
@@ -102998,7 +103006,7 @@
           "ref": "ZJ0qg",
           "name": "Level offer",
           "x": 256,
-          "y": 200,
+          "y": 166,
           "width": 620,
           "descendants": {
             "iPvIT": {
@@ -105413,8 +105421,8 @@
                     },
                     "t9vdr": {
                       "enabled": true,
-                      "x": 120,
-                      "y": -8
+                      "x": 110,
+                      "y": 4
                     },
                     "t9vdr/BXa13": {
                       "enabled": false
@@ -105932,8 +105940,8 @@
                     },
                     "t9vdr": {
                       "enabled": true,
-                      "x": 70,
-                      "y": -8
+                      "x": 60,
+                      "y": 4
                     },
                     "t9vdr/BXa13": {
                       "enabled": false
@@ -106002,8 +106010,8 @@
                     },
                     "t9vdr": {
                       "enabled": true,
-                      "x": 70,
-                      "y": -8
+                      "x": 60,
+                      "y": 4
                     },
                     "t9vdr/BXa13": {
                       "enabled": false
@@ -106072,8 +106080,8 @@
                     },
                     "t9vdr": {
                       "enabled": true,
-                      "x": 70,
-                      "y": -8
+                      "x": 60,
+                      "y": 4
                     },
                     "t9vdr/BXa13": {
                       "enabled": false
@@ -106162,7 +106170,7 @@
           "ref": "ZJ0qg",
           "name": "Level offer",
           "x": 16,
-          "y": 200,
+          "y": 187,
           "width": 361,
           "padding": [
             "$ds-space-28",
@@ -108892,7 +108900,8 @@
                     },
                     "t9vdr": {
                       "enabled": true,
-                      "x": 67
+                      "x": 71,
+                      "y": 4
                     },
                     "t9vdr/BXa13": {
                       "content": "НОВЫЙ"
@@ -108921,7 +108930,8 @@
                     },
                     "t9vdr": {
                       "enabled": true,
-                      "x": 67
+                      "x": 71,
+                      "y": 4
                     },
                     "t9vdr/BXa13": {
                       "content": "НОВЫЙ"
@@ -109942,7 +109952,7 @@
           "ref": "ZJ0qg",
           "name": "Level offer",
           "x": 256,
-          "y": 200,
+          "y": 166,
           "width": 620,
           "descendants": {
             "jAbIA/BXa13": {
@@ -111645,8 +111655,8 @@
                     },
                     "t9vdr": {
                       "enabled": true,
-                      "x": 120,
-                      "y": -8
+                      "x": 110,
+                      "y": 4
                     },
                     "t9vdr/BXa13": {
                       "enabled": false,
@@ -112300,7 +112310,7 @@
           "ref": "ZJ0qg",
           "name": "Level offer",
           "x": 16,
-          "y": 200,
+          "y": 204,
           "width": 361,
           "padding": [
             "$ds-space-28",
@@ -112858,8 +112868,8 @@
                     },
                     "t9vdr": {
                       "enabled": true,
-                      "x": 70,
-                      "y": -8
+                      "x": 60,
+                      "y": 4
                     },
                     "t9vdr/BXa13": {
                       "enabled": false,
@@ -112930,8 +112940,8 @@
                     },
                     "t9vdr": {
                       "enabled": true,
-                      "x": 70,
-                      "y": -8
+                      "x": 60,
+                      "y": 4
                     },
                     "t9vdr/BXa13": {
                       "enabled": false,
@@ -113002,8 +113012,8 @@
                     },
                     "t9vdr": {
                       "enabled": true,
-                      "x": 70,
-                      "y": -8
+                      "x": 60,
+                      "y": 4
                     },
                     "t9vdr/BXa13": {
                       "enabled": false,
@@ -113095,7 +113105,7 @@
           "ref": "ZJ0qg",
           "name": "Level offer",
           "x": 16,
-          "y": 200,
+          "y": 204,
           "width": 361,
           "padding": [
             "$ds-space-28",

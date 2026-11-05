@@ -199,7 +199,7 @@ async function offer(page, width, height, label) {
   const m = await page.evaluate(() => {
     const box = e => { const { x, y, width, height, top, right, bottom, left } = e.getBoundingClientRect(); return { x, y, width, height, top, right, bottom, left }; };
     const q = document.querySelector('.pairs-offer-question');
-    return { card: box(document.querySelector('.pairs-offer')), lines: Math.round(q.getBoundingClientRect().height / parseFloat(getComputedStyle(q).lineHeight)), buttons: [...document.querySelectorAll('.pairs-offer-answers button')].map(e => ({ ...box(e), fits: e.scrollWidth <= e.clientWidth + 1 })), overflow: [document.documentElement.scrollWidth > innerWidth] };
+    return { card: box(document.querySelector('.pairs-offer')), lines: (() => { const text = document.createRange(); text.selectNodeContents(q); return new Set([...text.getClientRects()].map(r => Math.round(r.top))).size; })(), buttons: [...document.querySelectorAll('.pairs-offer-answers button')].map(e => ({ ...box(e), fits: e.scrollWidth <= e.clientWidth + 1 })), overflow: [document.documentElement.scrollWidth > innerWidth] };
   });
   inside(m.card, width, height, `${label} offer`);
   assert(m.lines <= 3, `${label}: the question takes ${m.lines} lines`);

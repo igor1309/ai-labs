@@ -13029,13 +13029,14 @@ html[data-size="wide-short"] .pairs-result-actions .play-again-button { flex-bas
 /* The level offer in the dig site's look, only where a game asks for it. */
 .pairs-offer-scrim[data-dig]::before { background: var(--ds-scrim); opacity: 1; }
 .pairs-offer[data-dig] { width: min(520px, 100%); gap: var(--ds-space-20); padding: 36px; border-radius: var(--ds-radius-panel); background: var(--ds-label); color: var(--ds-ink); font-family: var(--ds-font); }
-.pairs-offer-tag { display: flex; align-items: center; gap: var(--ds-space-6); margin: 0; padding: var(--ds-space-7) var(--ds-space-m) var(--ds-space-7) var(--ds-btn-gap); border-radius: var(--ds-radius-tag); background: var(--ds-reward); color: var(--ds-on-reward); font-size: var(--ds-size-tag); font-weight: 700; letter-spacing: 1.5px; line-height: 1; white-space: nowrap; }
+.pairs-offer-tag { display: flex; align-items: center; gap: var(--ds-space-6); margin: 0; padding: var(--ds-space-7) var(--ds-space-m) var(--ds-space-7) var(--ds-btn-gap); border-radius: var(--ds-radius-tag); background: var(--ds-reward); color: var(--ds-on-reward); font-size: var(--ds-size-tag); font-weight: 700; letter-spacing: 1.5px; white-space: nowrap; }
 .pairs-offer-tag svg { flex: none; width: 14px; height: 14px; }
 .pairs-offer[data-dig] .pairs-offer-picture { width: 120px; height: 96px; border-radius: 48px 48px var(--ds-radius-24) var(--ds-radius-24); background: var(--ds-pocket-1); box-shadow: inset 0 6px 12px var(--ds-pocket-shadow); font-size: 56px; }
 .pairs-offer[data-dig][data-level="paleontologist"] { width: min(620px, 100%); }
-.pairs-offer[data-dig] .pairs-offer-question { font-size: var(--ds-size-title); font-weight: 800; letter-spacing: -0.5px; }
+.pairs-offer[data-dig] .pairs-offer-question { font-size: var(--ds-size-title); font-weight: 800; letter-spacing: -0.5px; line-height: normal; }
+.pairs-offer-tag { line-height: normal; }
 .pairs-offer[data-dig] .pairs-offer-answers { width: auto; flex-direction: row; justify-content: center; gap: var(--ds-space-l); }
-.pairs-offer[data-dig] .pairs-offer-answers button { flex: 0 1 auto; height: auto; min-height: 44px; padding: var(--ds-btn-pad-y) var(--ds-btn-pad-x); gap: var(--ds-btn-gap); border: 0; border-radius: var(--ds-radius-pill); box-shadow: none; font-family: var(--ds-font); font-size: var(--ds-size-action); font-weight: 800; line-height: 1.2; }
+.pairs-offer[data-dig] .pairs-offer-answers button { flex: 0 1 auto; height: auto; min-height: 44px; padding: var(--ds-btn-pad-y) var(--ds-btn-pad-x); gap: var(--ds-btn-gap); border: 0; border-radius: var(--ds-radius-pill); box-shadow: none; font-family: var(--ds-font); font-size: var(--ds-size-action); font-weight: 800; line-height: normal; }
 .pairs-offer[data-dig] .pairs-offer-answers svg { width: 26px; height: 26px; }
 .pairs-offer[data-dig] .pairs-offer-yes { background: var(--ds-action); color: var(--ds-on-action); }
 .pairs-offer[data-dig] .pairs-offer-not-now { background: none; border: 3px solid var(--ds-ink); color: var(--ds-ink); }
