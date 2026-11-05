@@ -114,9 +114,12 @@
 
 .gallery-actions .gallery-new { min-width: 0; flex-direction: column; gap: 0; padding: 4px 8px; }
 .gallery-actions .gallery-artwork-preview { width: 100%; height: 64px; object-fit: contain; }
-.gallery-actions .gallery-new { position: relative; }
-.gallery-new > span { display: block; max-width: 100%; text-align: center; white-space: nowrap; font-size: clamp(10px, 1.1vw, 14px); }
-.gallery-new > .gallery-new-plus { position: absolute; top: 6px; left: 6px; width: 18px; height: 18px; }
+/* A creature card: the art on its own paper, the name on an amber strip,
+   and the plus as a solid badge so it never tangles with the linework. */
+.gallery-actions .gallery-new { position: relative; overflow: hidden; padding: 0; background: #fff9ec; border: 2px solid var(--fm-amber); justify-content: space-between; }
+.gallery-actions .gallery-new .gallery-artwork-preview { flex: 1 1 auto; min-height: 0; padding: 4px; box-sizing: border-box; }
+.gallery-new > span { display: block; width: 100%; padding: 4px 2px; box-sizing: border-box; background: var(--fm-amber); text-align: center; white-space: nowrap; font-size: clamp(10px, 1.1vw, 14px); }
+.gallery-new > .gallery-new-plus { position: absolute; z-index: 1; top: 4px; left: 4px; width: 22px; height: 22px; padding: 3px; box-sizing: border-box; border-radius: 50%; color: #1d2742; background: var(--fm-amber); }
 @media (max-width: 599px) and (orientation: portrait) {
   .gallery-actions .gallery-artwork-preview { height: 44px; }
 }
@@ -126,12 +129,18 @@
   .gallery-actions .gallery-artwork-preview { height: 32px; }
   .gallery-header h1 { font-size: 14px; }
 }
-/* On a phone six creatures keep one row: it scrolls sideways, and the next
-   button peeks in, so every name stays on one line at child size. */
+/* On a phone six creatures keep one row that scrolls sideways. Whole cards
+   fill the row and only a sliver of the next peeks in, so no name is cut. */
 @media (max-width: 599px) and (orientation: portrait), (max-height: 599px) and (orientation: landscape) {
-  .gallery-actions { overflow-x: auto; touch-action: pan-x; scrollbar-width: none; }
-  .gallery-actions .gallery-new { flex: 0 0 116px; min-height: 60px; padding: 4px; }
+  .gallery-actions { overflow-x: auto; touch-action: pan-x; scrollbar-width: none; scroll-snap-type: x proximity; }
+  .gallery-actions .gallery-new { flex: 0 0 calc((100% - 32px) / 3); min-height: 60px; scroll-snap-align: start; }
   .gallery-new > span { font-size: 11px; }
+}
+@media (max-width: 359px) and (orientation: portrait) {
+  .gallery-actions .gallery-new { flex-basis: calc((100% - 24px) / 2); }
+}
+@media (min-width: 700px) and (max-height: 599px) and (orientation: landscape) {
+  .gallery-actions .gallery-new { flex-basis: calc((100% - 40px) / 4); }
 }
 /* On an iPhone upright the version stands at the window's very bottom:
    the gallery ends just above it. */
