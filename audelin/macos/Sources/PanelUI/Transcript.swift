@@ -11,6 +11,10 @@ struct Transcript {
 
         let tokens: GlassLedger
         let config: PanelConfig
+
+        static func == (lhs: Self, rhs: Self) -> Bool {
+            lhs.tokens == rhs.tokens && lhs.config.lineHeight == rhs.config.lineHeight
+        }
     }
 
     struct EntryRange: Equatable {
@@ -94,6 +98,7 @@ extension Transcript {
 
         func update(_ lines: PanelState.Lines, style: Style) -> Edit {
 
+            let previousLength = length
             if builder?.style != style {
                 builder = Builder(style: style)
                 pieces = []
@@ -111,7 +116,7 @@ extension Transcript {
             while first < min(pieces.count, rows.count), pieces[first].row == rows[first] { first += 1 }
 
             let start = first == 0 ? 0 : ends[first - 1]
-            let range = NSRange(location: start, length: length - start)
+            let range = NSRange(location: start, length: previousLength - start)
             entries.removeLast(entries.count - (first == 0 ? 0 : entryEnds[first - 1]))
             pieces.removeLast(pieces.count - first)
             ends.removeLast(ends.count - first)

@@ -658,17 +658,47 @@ struct TranscriptLogTests {
         let window = try #require(host.window)
         let text = try #require(Offscreen.textView(in: host))
         let scroll = try #require(scrollView(in: host))
+        let originalText = text.string
         for width: CGFloat in [500, 320, 600, 396, 550, 340] {
             host.rootView = panel(width)
             window.setContentSize(CGSize(width: width, height: 560))
             host.layoutSubtreeIfNeeded()
             RunLoop.main.run(until: .now.addingTimeInterval(0.05))
             host.display()
+            #expect(text.string == originalText, "Resize duplicated or lost transcript text")
             let last = text.firstRect(forCharacterRange: NSRange(location: text.string.utf16.count - 1, length: 1), actualRange: nil)
             let visible = scroll.convert(scroll.contentView.bounds, from: scroll.contentView)
             let screen = window.convertToScreen(scroll.convert(visible, to: nil))
             #expect(last.intersects(screen), "last line disappeared at width \(width): \(last), viewport \(screen)")
         }
+    }
+
+    @Test func resizingDoesNotReplaceUnchangedTranscriptCharacters() {
+        let rows = Transcript.Rows()
+        var config = PanelConfig.glassLedger
+        let lines = PanelState.Lines(entries: many(120))
+        let first = rows.update(lines, style: .init(tokens: .light, config: config))
+        let storage = RecordingStorage(first.text)
+        for width: CGFloat in [500, 320, 600, 396] {
+            config.panelWidth = width
+            TranscriptLog.apply(rows.update(lines, style: .init(tokens: .light, config: config)), to: storage)
+        }
+        #expect(storage.replaced.isEmpty, "Resizing must rewrap the existing text, not replace the entire transcript")
+    }
+
+    @Test func changingTypographyReplacesTheOldTranscriptInsteadOfInsertingACopy() {
+        let rows = Transcript.Rows()
+        var config = PanelConfig.glassLedger
+        let lines = PanelState.Lines(entries: many(20))
+        let first = rows.update(lines, style: .init(tokens: .light, config: config))
+        let storage = NSTextStorage(attributedString: first.text)
+        config.lineHeight += 0.2
+        let edit = rows.update(lines, style: .init(tokens: .light, config: config))
+        #expect(edit.range == NSRange(location: 0, length: first.text.length))
+        TranscriptLog.apply(edit, to: storage)
+        #expect(storage.string == first.text.string)
+        #expect(storage.length == first.text.length)
+        #expect(storage.attribute(.paragraphStyle, at: 0, effectiveRange: nil) as? NSParagraphStyle == edit.text.attribute(.paragraphStyle, at: 0, effectiveRange: nil) as? NSParagraphStyle)
     }
 
     @Test func unchangedRowsDoNotEditTextStorage() {
