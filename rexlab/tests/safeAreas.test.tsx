@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { catalogueColumns } from "../src/catalogueColumns.ts";
 import { mediaViewport } from "../src/mediaViewport.ts";
-import { EDGE_PARTS, SCREEN_ROOTS, edgePart, screenRoot, contentRoots } from "./screenRoots.ts";
+import { EDGE_PARTS, SCREEN_ROOTS, edgePart, screenRoot, contentRoots, padsItsParts } from "./screenRoots.ts";
 import { appStylesheet, computedStyleWithVariables, type SafeArea } from "./stylesheet.ts";
 import { manualWindow, mediaQueries } from "./support.ts";
 
@@ -66,10 +66,10 @@ describe("safe areas stay clear", () => {
     const measure = () => {
       const style = getComputedStyle(root);
       const contentPadding = padding(style);
-      if (root.classList.contains("friends-dig-site")) {
+      if (padsItsParts(root)) {
         const sky = padding(browserStyle(content[0]!));
-        const grid = padding(browserStyle(content[1]!));
-        Object.assign(contentPadding, { ...grid, top: sky.top });
+        const body = padding(browserStyle(content[1]!));
+        Object.assign(contentPadding, { ...body, top: sky.top });
       }
       // Home's last band owns the bottom inset so its earth reaches the edge.
       if (bedrock) contentPadding.bottom += px(getComputedStyle(bedrock).paddingBottom);

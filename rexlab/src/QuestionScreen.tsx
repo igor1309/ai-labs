@@ -1,7 +1,8 @@
-import { ArrowDownToLine, ArrowRight, Check, Feather, House, MoveHorizontal, Ruler, Scale, Trophy, Weight, X, type LucideIcon } from "lucide-react";
+import { ArrowDownToLine, Check, Feather, House, MoveHorizontal, Play, Ruler, Scale, Trophy, Weight, X, type LucideIcon } from "lucide-react";
 import { ViewTransition, type CSSProperties } from "react";
 import { Button } from "./Button.tsx";
 import type { QuestionType } from "./compareQuestionLayout.ts";
+import { EarthEdge } from "./EarthEdge.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS, type Texts } from "./language/texts.ts";
 import { Picture } from "./Picture.tsx";
@@ -12,7 +13,7 @@ export type Prompt = keyof Texts["prompts"];
 const SYMBOLS: Record<Prompt, LucideIcon> = { mass: Scale, height: Ruler, lighter: Feather, shorter: ArrowDownToLine, longer: MoveHorizontal };
 
 // The symbol beside a revealed value, of what the value measures.
-const VALUE_SYMBOLS: Record<Prompt, LucideIcon> = { mass: Weight, height: Ruler, lighter: Weight, shorter: Ruler, longer: Ruler };
+const VALUE_SYMBOLS: Record<Prompt, LucideIcon> = { mass: Weight, height: Ruler, lighter: Weight, shorter: Ruler, longer: MoveHorizontal };
 
 export type Mark = keyof Texts["marks"];
 
@@ -35,11 +36,18 @@ export type DinosaurCardView = {
   chosen: boolean;
 };
 
+// How one question of the round stands on the progress steps.
+export type QuestionStep = "right" | "just-right" | "wrong" | "current" | "to-come";
+
 export type QuestionScreenProps = {
   language: Language;
   prompt: Prompt;
   number: number;
   total: number;
+  // One for each question of the round, in order.
+  steps: readonly QuestionStep[];
+  // The level's best score, when there is one to show.
+  best: number | undefined;
   left: DinosaurCardView;
   right: DinosaurCardView;
   answered: boolean;
@@ -56,7 +64,7 @@ export type QuestionScreenProps = {
 // prompt and the names by.
 const typeStyle = (type: QuestionType | undefined) => (type ? { "--prompt-size": `${type.prompt}px`, "--name-size": `${type.name}px` } : {});
 
-export function QuestionScreen({ language, prompt, number, total, left, right, answered, last, onChoose, onNext, onHome, type }: QuestionScreenProps) {
+export function QuestionScreen({ language, prompt, number, total, steps, best, left, right, answered, last, onChoose, onNext, onHome, type }: QuestionScreenProps) {
   const text = TEXTS[language];
   const Symbol = SYMBOLS[prompt];
   // Each question's cards are its own, so the next question's pair enters
@@ -75,25 +83,40 @@ export function QuestionScreen({ language, prompt, number, total, left, right, a
     );
   };
   // The bar, the prompt, each card, "VS" and the row for NEXT are the
-  // parts a turn glides.
+  // parts a turn glides. The sand and its ochre layer are one decoration
+  // behind them, so the parts stay the grid's own children and NEXT can
+  // stand under the cards or beside the prompt.
   return (
     <main className="question" style={typeStyle(type) as CSSProperties}>
-      <div className="stratum stratum-1" aria-hidden="true" />
+      <div className="question-sand" aria-hidden="true">
+        <EarthEdge className="question-edge" />
+        <div className="question-ochre">
+          <EarthEdge className="question-edge" />
+        </div>
+      </div>
       <header className="question-bar" data-turn-part="question-bar">
         <Button className="home-button" onClick={onHome}>
-          <House size={24} aria-hidden="true" />
+          <House size={22} aria-hidden="true" />
           <span className="narrow-hidden">{text.home}</span>
         </Button>
-        {/* One step per question: those done, the one on screen, and those
-            still to come. */}
-        <span className="steps" aria-hidden="true">
-          {Array.from({ length: total }, (_, index) => (
-            <span key={index} className="step" data-step={index + 1 < number ? "done" : index + 1 === number ? "current" : undefined} />
-          ))}
-        </span>
-        <p className="progress" aria-label={text.progress}>
-          {number}/{total}
-        </p>
+        <div className="question-position">
+          <span className="steps" aria-hidden="true">
+            {steps.map((step, index) => (
+              <span key={index} className="step" data-step={step} />
+            ))}
+          </span>
+          <p className="progress" aria-label={text.progress}>
+            <span className="question-tally">{number}</span>
+            <span className="question-of">/<span className="question-total">{total}</span></span>
+          </p>
+        </div>
+        {best !== undefined && (
+          <p className="question-best" aria-label={text.bestScore}>
+            <Trophy size={18} fill="currentColor" aria-hidden="true" />
+            <span className="question-tally">{best}</span>
+            <span className="question-of">/<span className="question-total">{total}</span></span>
+          </p>
+        )}
       </header>
       <h1 className="prompt" data-turn-part="question-prompt">
         <span className="prompt-symbol" aria-hidden="true">
@@ -103,7 +126,7 @@ export function QuestionScreen({ language, prompt, number, total, left, right, a
       </h1>
       <div className="dinosaur-cards" role="group" aria-label={text.creatures}>
         {card(left, "left")}
-        <span className="versus" data-turn-part="question-versus" aria-hidden="true">
+        <span key={number} className="versus" data-turn-part="question-versus" aria-hidden="true">
           {text.versus}
         </span>
         {card(right, "right")}
@@ -113,17 +136,8 @@ export function QuestionScreen({ language, prompt, number, total, left, right, a
       <div className="next-row" data-turn-part="question-next">
         {answered && (
           <Button className="next-button" onClick={onNext}>
-            {last ? (
-              <>
-                <Trophy size={28} aria-hidden="true" />
-                {text.seeResult}
-              </>
-            ) : (
-              <>
-                {text.next}
-                <ArrowRight size={28} aria-hidden="true" />
-              </>
-            )}
+            {last ? <Trophy size={26} aria-hidden="true" /> : <Play size={26} aria-hidden="true" />}
+            {last ? text.seeResult : text.next}
           </Button>
         )}
       </div>
@@ -164,13 +178,9 @@ function DinosaurCard({ view: { id, name, picture, value, mark, chosen }, part, 
         <Picture className="dinosaur-picture" src={picture} alt={name} width={800} height={600} />
         {mark && MarkSymbol && (
           <span className="mark" role="img" aria-label={text.marks[mark]}>
-            <MarkSymbol size={24} strokeWidth={3} />
-            {text.marks[mark]}
+            <MarkSymbol strokeWidth={3} aria-hidden="true" />
           </span>
         )}
-      </span>
-      <span className="dinosaur-footer">
-        <span className="dinosaur-name">{name.toLocaleUpperCase(language)}</span>
         {value !== undefined && (
           <span className="dinosaur-value-chip">
             <ValueSymbol size={22} aria-hidden="true" />
@@ -178,6 +188,7 @@ function DinosaurCard({ view: { id, name, picture, value, mark, chosen }, part, 
           </span>
         )}
       </span>
+      <span className="dinosaur-name">{name.toLocaleUpperCase(language)}</span>
     </Button>
   );
 }

@@ -1,5 +1,15 @@
 # rexlab — Change Log
 
+## 2026-11-05
+
+- LAB-963: The first launch works without Wi-Fi once the app has installed itself; before, only the next launch did.
+
+## 2026-11-04
+
+- LAB-917: WHOSE JAW? is the dig site on every device, light, dark and Russian: the welcome with its tooth title, dinosaur and tilted jaw cards, red PLAY and navy JAW SHELF; the board with tooth sockets and best score in the sky, dinosaur cards on the sand and the jaw in a tray, the cue on the wrong card; the result with the round's jaws fanned beside the stars and new finds on a plank; the JAW SHELF as rows of four on planks with its diet tags and a restyled jaw card. A word fitted to its room now always fits, in every game.
+- LAB-915: COMPARE uses the dig-site sky, sand and pocket cards, with answer-history progress and each level’s best; its rewards and level choices fit wide, upright and phone windows in light and dark.
+- LAB-916: DIG is the dig site: the board, the question, the reveal and the FIELD GUIDE stand on sky over sand and ochre; DUG UP in the bar with its star (its words from the iPad mini's width up), the brush pair as amber rounds, the board a dug-out groove, each dinosaur card a sand pocket with a green check or TRY ANOTHER; on phones the two brushes are labelled buttons under the sand instead of a menu; the FIELD GUIDE's cards are sand pockets with a dark count tag.
+
 ## 2026-11-03
 
 - LAB-925: Care's FRIENDS is the dig site: HOME, BACK, the title and the heart count in the sky with NEW VISITOR under them, the friend cards in the sand, as many to a row as the window holds; with no friends, HOME and a count of 0 stay and the nest lies in a pit.

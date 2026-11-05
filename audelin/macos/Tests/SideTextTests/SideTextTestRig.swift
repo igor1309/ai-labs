@@ -206,6 +206,8 @@ actor FakeFill: FillingIn {
     let plan: FillPlan
     private(set) var abandoned = false
     private(set) var starts: [Double] = []
+    private var returns = 0
+    private var returnWaiters: [CheckedContinuation<Void, Never>] = []
 
     init(audio: CueAudio, text: ToneText, plan: FillPlan) {
 
@@ -217,6 +219,11 @@ actor FakeFill: FillingIn {
     func fillIn(from: Double, receive: @escaping @Sendable (FilledText) async -> Void) async throws {
 
         starts.append(from)
+        defer {
+            returns += 1
+            for waiter in returnWaiters { waiter.resume() }
+            returnWaiters.removeAll()
+        }
         let boundary = plan.through ?? audio.capturedThrough
         await plan.before?.wait()
         guard !abandoned || plan.returnsAfterAbandon else { return }
@@ -243,6 +250,14 @@ actor FakeFill: FillingIn {
     }
 
     func abandon() { abandoned = true }
+
+    /// Returns once every started run has returned or thrown.
+    func returned() async {
+
+        while returns < starts.count {
+            await withCheckedContinuation { returnWaiters.append($0) }
+        }
+    }
 }
 
 final class FillFactory: Sendable {
@@ -356,7 +371,7 @@ func withRig(
     await hearing?.release()
     await stopping?.release()
     audio.end()
-    await side.waitForWork()
+    for fill in fills { await fill.returned() }
     await side.waitForAudioEnd()
     queued.continuation.finish()
     audioEnds.continuation.finish()

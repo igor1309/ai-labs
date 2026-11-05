@@ -313,6 +313,22 @@ test("ciTestFiles_shouldBeNamed_whenNoJobRunsThem", () => {
   assert.deepEqual(testsRunningNoJob([...unrun, "loki/tests/verify-host.test.js"]), unrun);
 });
 
+test("ciPathFilters_shouldRunOnlyItsProjectsJob_onAProjectsWorkflowChange", () => {
+  const projects = projectJobs();
+  assert.ok(projects.size > 0);
+  for (const [job, file] of projects) {
+    const running = [...projects.keys()].filter((other) => jobRuns(other, [file]));
+    assert.deepEqual(running, [...projects].filter(([, used]) => used === file).map(([name]) => name), `${file} runs ${running.join(", ")}`);
+    assert.ok(running.includes(job), `${file} does not run ${job}`);
+  }
+});
+
+test("ciPathFilters_shouldRunEveryProjectsJob_onADispatcherChange", () => {
+  for (const job of projectJobs().keys()) {
+    assert.equal(jobRuns(job, [".github/workflows/ci.yml"]), true, `ci.yml does not run ${job}`);
+  }
+});
+
 test("ciJobs_shouldEachRun_onManualDispatch", () => {
   const filtered = [...workflow.matchAll(/\n  ([\w-]+):\n(?:    .*\n)*?    if: (.*needs\.changes\.outputs\..*)\n/g)];
   assert.ok(filtered.length > 0);
@@ -368,6 +384,13 @@ function testsRunningNoJob(files) {
     }
     return !read.some(([, patterns]) => patterns.some((pattern) => matchesGlob(file, pattern)));
   });
+}
+
+// Each project's job and the workflow file it calls.
+function projectJobs() {
+  const jobs = new Map();
+  for (const [, job, file] of workflow.matchAll(/\n  ([\w-]+-core):\n(?:    .*\n)*?    uses: \.\/(\.github\/workflows\/[\w-]+\.yml)\n/g)) jobs.set(job, file);
+  return jobs;
 }
 
 function filterSection(filterName, nextFilterName) {

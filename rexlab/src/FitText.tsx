@@ -9,7 +9,10 @@ export function FitText({ className, text, style }: { className: string; text: s
     if (shown === null) return;
     const fit = () => {
       shown.style.removeProperty("font-size");
-      if (shown.scrollWidth > shown.clientWidth) shown.style.fontSize = `${parseFloat(getComputedStyle(shown).fontSize) * shown.clientWidth / shown.scrollWidth}px`;
+      // Glyph widths do not scale exactly with size, so measure again until the line fits.
+      for (let tries = 0; tries < 4 && shown.scrollWidth > shown.clientWidth; tries++) {
+        shown.style.fontSize = `${parseFloat(getComputedStyle(shown).fontSize) * shown.clientWidth / shown.scrollWidth}px`;
+      }
     };
     fit();
     const observer = typeof ResizeObserver === "undefined" ? undefined : new ResizeObserver(fit);

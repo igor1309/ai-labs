@@ -209,3 +209,11 @@ describe("the compare quiz's levels across the app", () => {
     expect(chosen()).toEqual([saved ?? "explorer"]);
   });
 });
+
+// Question composition selects the active level's saved score, including zero.
+it.each(AGE_LEVELS)("shows only %s's saved best on the question", async (level) => {
+  const best = { hatchling: 0, explorer: 6, paleontologist: 9 };
+  const { user } = openApp(recordAt(level, { bestScore: 0, explorerBest: 6, paleontologistBest: 9, roundsPlayed: 3 }));
+  await user.click(gameDoor("COMPARE"));
+  expect(screen.getByLabelText(TEXTS.en.bestScore).textContent).toBe(`${best[level]}/10`);
+});

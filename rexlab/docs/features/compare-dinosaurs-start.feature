@@ -7,7 +7,7 @@ Feature: Compare dinosaurs quiz: starting a round and asking
   home-today.feature how the sky features today's game.
 
   Background:
-    Given an iPad in landscape
+    Given a window of 1180 by 820 CSS pixels
 
   Scenario: The home page offers the quiz as a tile
     When I open the home page
@@ -49,12 +49,13 @@ Feature: Compare dinosaurs quiz: starting a round and asking
     Then one round starts, at "1/10"
     And COMPARE counts one more start
 
-  Scenario: Portrait asks to turn sideways
+  Scenario: Turning preserves the current question
     Given I am on question 3 of a round
-    When I turn the iPad to portrait
-    Then I see a picture asking to turn sideways
-    When I turn the iPad back to landscape
-    Then I am on question 3 again
+    When the window becomes portrait
+    Then the cards stack with no orientation gate
+    And I am still on question 3 with the same answer state
+    When the window becomes landscape again
+    Then the cards stand side by side and I remain on question 3
 
   Scenario Outline: A question shows its attribute and two dinosaurs
     Given a round has started
@@ -75,7 +76,7 @@ Feature: Compare dinosaurs quiz: starting a round and asking
   Scenario: Every question in a round is a fair pair
     When a round of 10 questions is generated
     Then Hatchling questions compare mass or height, and Explorer questions can also compare length
-    And a height only of two dinosaurs, as a flying or sea reptile is not measured standing
+    And a height question pairs only dinosaurs, since flying and sea reptiles are not measured standing
     And each question's two dinosaurs are different
     And in each question the larger value is at least 1.5 times the smaller
     And no two questions use the same two dinosaurs, whatever they compare

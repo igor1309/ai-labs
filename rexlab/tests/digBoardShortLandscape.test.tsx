@@ -101,7 +101,7 @@ describe("DIG's board at Hatchling in a wide-short window", () => {
     openWindow(393, 852);
     expect(document.documentElement.dataset.size).toBe("tall-narrow");
     expect(cleared()).toBe(dug);
-    expect(part(".dig-brush-menu .dig-brush-dot").hasAttribute("data-wide")).toBe(true);
+    expect(part(".dig-brush-buttons .dig-brush-dot[data-wide]").closest("button")?.getAttribute("aria-pressed")).toBe("true");
     act(() => viewport.resize("wide-short", false));
     openWindow(852, 393);
     expect(cleared()).toBe(dug);

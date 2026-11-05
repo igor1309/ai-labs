@@ -34,6 +34,9 @@ over the file system.
   kind, even a link to nothing, sends it to the next. Checking first would
   race (Apple: `fileExists` follows links), so a second call never shares
   or changes a kept one.
+- **An id is taken by any entry named by it, with or without a title,**
+  so a second call in the same minute is numbered whatever its title, and
+  two calls never share an id. The calls folder is read once per make.
 - **The name's format has one owner, `CallFolderName`,** which writes it
   here and for a rename and reads it for the calls list, so the sides
   cannot drift. An empty title leaves the bare name.

@@ -60,7 +60,7 @@ struct SideTextTests {
             #expect(SideOutput(await rig.side.state) == frozen)
             #expect(await rig.text.stopCalls == 0)
             await filling.release()
-            await rig.side.waitForWork()
+            await rig.fills[0].returned()
             #expect(SideOutput(await rig.side.state) == frozen)
             #expect(await rig.text.stopCalls == 0)
             if !failing {
@@ -91,7 +91,7 @@ struct SideTextTests {
                 #expect(SideOutput(await rig.side.state) == expected(1...1, status: .off))
                 #expect(await rig.text.stopCalls == 0)
                 await filling.release()
-                await rig.side.waitForWork()
+                await rig.fills[index].returned()
                 await rig.side.setEnabled(true)
             }
             #expect(await rig.listening() == expected(1...3, later: 2..<4))
@@ -292,7 +292,7 @@ struct SideTextTests {
             #expect(await rig.result() == final)
             await switching?.value
             await filling.release()
-            await rig.side.waitForWork()
+            await rig.fills[0].returned()
             #expect(SideOutput(await rig.side.state) == final)
             #expect(await rig.text.finishCalls == 0)
         }
@@ -386,7 +386,7 @@ struct SideTextTests {
             #expect(await filling.isHeld)
             #expect(rig.audio.isEnded == false)
             await filling.release()
-            await rig.side.waitForWork()
+            await rig.fills[0].returned()
             #expect(SideOutput(await rig.side.state) == final)
             #expect(await rig.text.finishCalls == 0)
         }

@@ -1,7 +1,28 @@
+import BlockingTestWork
 import ModelLoading
 import Testing
 
 struct SharedModelTests {
+
+    @Test(.timeLimit(.minutes(1)))
+    func blockedLoadsOutnumberingThePoolAllFinishAcrossSuspension() async throws {
+
+        let barrier = ThreadBarrier()
+        let models = (0..<barrier.count).map { _ in
+            SharedModel {
+                await Task.yield()
+                barrier.arrive()
+                return 42
+            }
+        }
+
+        try await withThrowingTaskGroup { group in
+            for model in models { group.addTask { _ = try await model.load().value } }
+            try await group.waitForAll()
+        }
+
+        #expect(barrier.met)
+    }
 
     @Test func concurrentBuildsShareOneLoad() async throws {
 

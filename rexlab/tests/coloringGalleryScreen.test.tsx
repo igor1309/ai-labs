@@ -146,28 +146,29 @@ it.each(["en", "ru"] as Language[])("offers matching original creature previews 
 });
 
 
-it.each(["en", "ru"] as Language[])("keeps saved creature names and editing across all age choices in %s", async language => {
-  for (const level of ["hatchling", "explorer", "paleontologist"] as const) for (const { geometry, names } of ARTWORKS) {
-    const version = geometry.artwork.version;
-    const works = ARTWORKS.map(({ geometry }) => {
-      const { model, dot, thumbnail } = coloringFixture(geometry.artwork);
-      return { document: model.append(model.newWork(geometry.artwork.version), dot), thumbnail: thumbnail() };
-    });
-    const source = { list: async () => ({ works, unavailable: [], completedCount: 0, recentId: null }), reset: vi.fn(), open: vi.fn(async () => ({} as ColoringWorkshopSession)), newWork: vi.fn() };
-    const session = coloringGallery({ source, identity: vi.fn(), workshop: vi.fn(), countStart: vi.fn(), navigate: vi.fn() });
-    await session.load();
-    const artworks = ARTWORKS.map(({ geometry, names }) => ({ ...galleryArtworkFixtures()[0]!, version: geometry.artwork.version, names }));
-    const view = render(<ColoringGalleryScreen artworks={artworks} offeredVersions={coloringVersionsFor(level)} session={session} language={language} home={vi.fn()} />);
-    expect(view.container.querySelectorAll(".gallery-new")).toHaveLength(5);
-    expect(screen.getAllByRole("button", { name: language === "en" ? "TRICERATOPS" : "ТРИЦЕРАТОПС" })).toHaveLength(1);
-    const name = names[language];
-    const card = view.container.querySelector(`[data-work-id="${version}"]`)! as HTMLElement;
-    const number = ARTWORKS.findIndex(entry => entry.geometry.artwork.version === version) + 1;
-    expect(within(card).getByAltText(`${name} · ${number}`)).toBeTruthy();
-    await act(async () => fireEvent.click(within(card).getByRole("button")));
-    expect(source.open).toHaveBeenCalledExactlyOnceWith(version, expect.any(Function));
-    view.unmount();
-  }
+it.each((["en", "ru"] as Language[]).flatMap(language =>
+  (["hatchling", "explorer", "paleontologist"] as const).flatMap(level =>
+    ARTWORKS.map(({ geometry, names }) => ({ language, level, geometry, names })))))
+("keeps saved creature names and editing in $language at $level for $geometry.artwork.version", async ({ language, level, geometry, names }) => {
+  const version = geometry.artwork.version;
+  const works = ARTWORKS.map(({ geometry }) => {
+    const { model, dot, thumbnail } = coloringFixture(geometry.artwork);
+    return { document: model.append(model.newWork(geometry.artwork.version), dot), thumbnail: thumbnail() };
+  });
+  const source = { list: async () => ({ works, unavailable: [], completedCount: 0, recentId: null }), reset: vi.fn(), open: vi.fn(async () => ({} as ColoringWorkshopSession)), newWork: vi.fn() };
+  const session = coloringGallery({ source, identity: vi.fn(), workshop: vi.fn(), countStart: vi.fn(), navigate: vi.fn() });
+  await session.load();
+  const artworks = ARTWORKS.map(({ geometry, names }) => ({ ...galleryArtworkFixtures()[0]!, version: geometry.artwork.version, names }));
+  const view = render(<ColoringGalleryScreen artworks={artworks} offeredVersions={coloringVersionsFor(level)} session={session} language={language} home={vi.fn()} />);
+  expect(view.container.querySelectorAll(".gallery-new")).toHaveLength(5);
+  expect(screen.getAllByRole("button", { name: language === "en" ? "TRICERATOPS" : "ТРИЦЕРАТОПС" })).toHaveLength(1);
+  const name = names[language];
+  const card = view.container.querySelector(`[data-work-id="${version}"]`)! as HTMLElement;
+  const number = ARTWORKS.findIndex(entry => entry.geometry.artwork.version === version) + 1;
+  expect(within(card).getByAltText(`${name} · ${number}`)).toBeTruthy();
+  await act(async () => fireEvent.click(within(card).getByRole("button")));
+  expect(source.open).toHaveBeenCalledExactlyOnceWith(version, expect.any(Function));
+  view.unmount();
 });
 
 it.each(["en", "ru"] as Language[])("matches Stegosaurus previews, localized labels and new-work selection at every age in %s", async language => {
