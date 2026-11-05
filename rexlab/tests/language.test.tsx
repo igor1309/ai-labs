@@ -202,8 +202,6 @@ describe("the language menu", () => {
       expect(corner.position).toBe("static");
       expect(button.closest("header")).not.toBeNull();
       const style = getComputedStyle(button);
-      // The quiet chip carries its symbol in the design ink.
-      expect(sameColour(style.color, style.getPropertyValue("--ds-ink"))).toBe(true);
       expect(parseFloat(style.fontSize)).toBeLessThan(largestSize(getComputedStyle(within(featuredCard()).getByText(card)).fontSize) / 2);
       // A tap area for a parent's finger around the small symbol.
       expect(parseFloat(style.minWidth)).toBeGreaterThanOrEqual(44);

@@ -1,5 +1,6 @@
 // Contract test: production app input, touch scrolling, Canvas and IndexedDB
 // in Chromium with iPhone/iPad emulation. Native Safari callouts need a device.
+const { appFiles } = require("./appBuild.cjs");
 const assert = require("node:assert/strict");
 const { readFile } = require("node:fs/promises");
 const { resolve } = require("node:path");
@@ -166,9 +167,7 @@ async function check(browser, files, device) {
 (async () => {
   let browser;
   try {
-    const { build } = await import("vite");
-    const bundle = await build({ root: resolve(__dirname, ".."), logLevel: "error", build: { write: false } });
-    const files = new Map(bundle.output.map(file => [file.fileName, file.type === "chunk" ? file.code : file.source]));
+    const files = await appFiles();
     browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || undefined, headless: true });
     for (const device of ["iPhone 13", "iPhone 13 landscape", "iPad Pro 11", "iPad Pro 11 landscape"]) await check(browser, files, device);
     console.log("PASS native touch browser contract: 4 emulated layouts (physical Safari not verified)");
