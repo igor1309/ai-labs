@@ -31,8 +31,9 @@
 .gallery-bedrock { position: relative; flex: none; height: calc(var(--cg-bedrock) + env(safe-area-inset-bottom)); background: var(--ds-strata-2); }
 .gallery-bedrock svg { position: absolute; top: calc(var(--cg-wave) * -2 / 3); left: 0; width: 100%; height: var(--cg-wave); fill: var(--ds-strata-2); }
 /* The starts: one row that scrolls sideways when more are offered than fit. */
+/* A start card is as wide as the strip allows or, if wider, as its name: a dinosaur name is never cut. */
 .gallery-actions { flex: none; display: flex; align-items: stretch; gap: var(--ds-space-m); overflow-x: auto; touch-action: pan-x pan-y; scrollbar-width: none; scroll-snap-type: x proximity; padding-bottom: 4px; }
-.gallery-actions .gallery-new { flex: 0 0 var(--cg-start); min-width: 0; flex-direction: column; justify-content: flex-start; gap: var(--ds-space-6); padding: var(--ds-space-s); border-radius: var(--ds-radius-speech); background: var(--ds-label); color: var(--ds-ink); box-shadow: 0 3px 8px var(--ds-pocket-shadow); scroll-snap-align: start; }
+.gallery-actions .gallery-new { flex: none; min-width: var(--cg-start); flex-direction: column; justify-content: flex-start; gap: var(--ds-space-6); padding: var(--ds-space-s); border-radius: var(--ds-radius-speech); background: var(--ds-label); color: var(--ds-ink); box-shadow: 0 3px 8px var(--ds-pocket-shadow); scroll-snap-align: start; }
 .gallery-actions .gallery-artwork-preview { display: block; box-sizing: border-box; width: 100%; height: 84px; padding: var(--ds-space-2); border-radius: var(--ds-radius-16); background: var(--ds-paper); object-fit: contain; }
 .gallery-new-name { display: flex; align-items: center; justify-content: center; gap: var(--ds-space-3); width: 100%; min-width: 0; font-size: clamp(10px, 1.2vw, 16px); white-space: nowrap; }
 .coloring-gallery .gallery-new-name svg { width: 18px; height: 18px; color: var(--ds-action); }

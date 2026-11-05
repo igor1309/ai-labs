@@ -4,12 +4,13 @@ import { Button } from "./Button.tsx";
 import { BRUSH_SIZES, COLORS, type Action, type BrushSize, type Color, type Point } from "./coloring/index.ts";
 import type { ColoringWorkshopSession, WorkshopDestination } from "./coloringWorkshop.ts";
 import type { Language } from "./language/language.ts";
+import { EarthEdge } from "./EarthEdge.tsx";
 import { InputArbitrationContext } from "./inputArbitration.ts";
 import "./coloringWorkshop.css";
 
 const words = {
-  en: { title: "WORKSHOP", home: "HOME", gallery: "GALLERY", new: "NEW WORK", done: "DONE", brush: "BRUSH", fill: "FILL", undo: "UNDO", color: "COLOR", size: "SIZE", close: "CLOSE", saving: "SAVING", saved: "SAVED", error: "COULDN’T SAVE", retry: "RETRY", edit: "KEEP EDITING", leave: "HOME WITHOUT SAVING", loss: "LEAVE AND LOSE CHANGES?", confirm: "LEAVE", cancel: "STAY", colors: ["BASE", "RED", "ORANGE", "YELLOW", "GREEN", "TEAL", "BLUE", "INDIGO", "PURPLE", "PINK", "BROWN", "CHARCOAL"], sizes: ["SMALL", "MEDIUM", "LARGE"] },
-  ru: { title: "МАСТЕРСКАЯ", home: "ДОМОЙ", gallery: "ГАЛЕРЕЯ", new: "НОВЫЙ РИСУНОК", done: "ГОТОВО", brush: "КИСТЬ", fill: "ЗАЛИВКА", undo: "ОТМЕНИТЬ", color: "ЦВЕТ", size: "РАЗМЕР", close: "ЗАКРЫТЬ", saving: "СОХРАНЯЕМ", saved: "СОХРАНЕНО", error: "НЕ УДАЛОСЬ СОХРАНИТЬ", retry: "ПОВТОРИТЬ", edit: "РИСОВАТЬ ДАЛЬШЕ", leave: "ДОМОЙ БЕЗ СОХРАНЕНИЯ", loss: "УЙТИ И ПОТЕРЯТЬ ИЗМЕНЕНИЯ?", confirm: "УЙТИ", cancel: "ОСТАТЬСЯ", colors: ["ОСНОВА", "КРАСНЫЙ", "ОРАНЖЕВЫЙ", "ЖЁЛТЫЙ", "ЗЕЛЁНЫЙ", "БИРЮЗОВЫЙ", "ГОЛУБОЙ", "СИНИЙ", "ФИОЛЕТОВЫЙ", "РОЗОВЫЙ", "КОРИЧНЕВЫЙ", "УГОЛЬНЫЙ"], sizes: ["МАЛЕНЬКИЙ", "СРЕДНИЙ", "БОЛЬШОЙ"] }
+  en: { title: "WORKSHOP", home: "HOME", gallery: "GALLERY", new: "NEW WORK", newTile: "NEW", done: "DONE", brush: "BRUSH", fill: "FILL", undo: "UNDO", color: "COLOR", size: "SIZE", close: "CLOSE", saving: "SAVING", saved: "SAVED", error: "COULDN’T SAVE", retry: "RETRY", edit: "KEEP EDITING", leave: "HOME WITHOUT SAVING", loss: "LEAVE AND LOSE CHANGES?", confirm: "LEAVE", cancel: "STAY", colors: ["BASE", "RED", "ORANGE", "YELLOW", "GREEN", "TEAL", "BLUE", "INDIGO", "PURPLE", "PINK", "BROWN", "CHARCOAL"], sizes: ["SMALL", "MEDIUM", "LARGE"] },
+  ru: { title: "МАСТЕРСКАЯ", home: "ДОМОЙ", gallery: "ГАЛЕРЕЯ", new: "НОВЫЙ РИСУНОК", newTile: "НОВЫЙ", done: "ГОТОВО", brush: "КИСТЬ", fill: "ЗАЛИВКА", undo: "ОТМЕНИТЬ", color: "ЦВЕТ", size: "РАЗМЕР", close: "ЗАКРЫТЬ", saving: "СОХРАНЯЕМ", saved: "СОХРАНЕНО", error: "НЕ УДАЛОСЬ СОХРАНИТЬ", retry: "ПОВТОРИТЬ", edit: "РИСОВАТЬ ДАЛЬШЕ", leave: "ДОМОЙ БЕЗ СОХРАНЕНИЯ", loss: "УЙТИ И ПОТЕРЯТЬ ИЗМЕНЕНИЯ?", confirm: "УЙТИ", cancel: "ОСТАТЬСЯ", colors: ["ОСНОВА", "КРАСНЫЙ", "ОРАНЖЕВЫЙ", "ЖЁЛТЫЙ", "ЗЕЛЁНЫЙ", "БИРЮЗОВЫЙ", "ГОЛУБОЙ", "СИНИЙ", "ФИОЛЕТОВЫЙ", "РОЗОВЫЙ", "КОРИЧНЕВЫЙ", "УГОЛЬНЫЙ"], sizes: ["МАЛЕНЬКИЙ", "СРЕДНИЙ", "БОЛЬШОЙ"] }
 };
 type Stroke = Extract<Action, { kind: "stroke" }>;
 type Contact = { id: number; action: Omit<Stroke, "points"> & { points: Point[] }; tool: "brush" | "fill"; surface: HTMLCanvasElement };
@@ -146,29 +147,30 @@ export function ColoringWorkshopScreen({ session, painter, language, dinosaur }:
       {tool === "brush" && size === value && <Check className="coloring-selection" aria-hidden="true" />}
     </Button>)}</div>;
   return <section className="coloring-workshop" lang={language} aria-label={text.title}>
-    <h1 className="coloring-title"><Paintbrush aria-hidden="true" />{text.title}</h1>
+    <div className="coloring-ground" aria-hidden="true"><EarthEdge className="coloring-wave" /><div className="coloring-bedrock"><EarthEdge className="coloring-wave" /></div></div>
+    <h1 className="coloring-title">{text.title}</h1>
     <div className="coloring-rail" inert={state.errorOpen || state.confirmingLoss}>
       <nav className="coloring-navigation" aria-label={text.title} inert={chooser !== null}>
-        <Button className="coloring-nav-home" aria-label={text.home} onClick={() => go("home")} disabled={blocked}><Home aria-hidden="true" /><span>{text.home}</span></Button>
-        <Button className="coloring-nav-new" aria-label={text.new} onClick={() => go("new")} disabled={blocked}><Plus aria-hidden="true" /><span>{text.new}</span></Button>
-        <Button className="coloring-nav-gallery" aria-label={text.gallery} onClick={() => go("gallery")} disabled={blocked}><Images aria-hidden="true" /><span>{text.gallery}</span></Button>
-        <Button className="coloring-done" aria-label={text.done} disabled={blocked || empty} onClick={() => go("result")}><Check aria-hidden="true" /><span>{text.done}</span></Button>
+        <Button className="coloring-nav-home" aria-label={text.home} onClick={() => go("home")} disabled={blocked}><span className="coloring-face"><Home aria-hidden="true" /></span><span className="coloring-tile-name">{text.home}</span></Button>
+        <Button className="coloring-nav-new" aria-label={text.new} onClick={() => go("new")} disabled={blocked}><span className="coloring-face"><Plus aria-hidden="true" /></span><span className="coloring-tile-name">{text.newTile}</span></Button>
+        <Button className="coloring-nav-gallery" aria-label={text.gallery} onClick={() => go("gallery")} disabled={blocked}><span className="coloring-face"><Images aria-hidden="true" /></span><span className="coloring-tile-name">{text.gallery}</span></Button>
+        <Button className="coloring-done" aria-label={text.done} disabled={blocked || empty} onClick={() => go("result")}><span className="coloring-face"><Check aria-hidden="true" /></span><span className="coloring-tile-name">{text.done}</span></Button>
       </nav>
       <div className="coloring-tools" role="group" aria-label={text.brush} inert={chooser !== null}>
+        <Button aria-label={text.brush} aria-pressed={tool === "brush"} disabled={blocked} onClick={() => { if (canAct()) setTool("brush"); }}><span className="coloring-face"><Paintbrush aria-hidden="true" /></span>{tool === "brush" && <Check className="coloring-selection" aria-hidden="true" />}<span className="coloring-tile-name">{text.brush}</span></Button>
+        <Button aria-label={text.fill} aria-pressed={tool === "fill"} disabled={blocked} onClick={() => { if (canAct()) setTool("fill"); }}><span className="coloring-face"><PaintBucket aria-hidden="true" /></span>{tool === "fill" && <Check className="coloring-selection" aria-hidden="true" />}<span className="coloring-tile-name">{text.fill}</span></Button>
         <Button ref={paletteButton} className="coloring-palette-button" aria-label={text.color} aria-haspopup="dialog" aria-expanded={chooser === "color"} disabled={blocked} onClick={() => { if (canAct()) setChooser("color"); }}>
-          <span className="coloring-swatch" style={{ background: color }}><Palette aria-hidden="true" /></span>
+          <span className="coloring-face coloring-face-color" style={{ background: color }}><Palette aria-hidden="true" /></span><span className="coloring-tile-name">{text.color}</span>
         </Button>
-        <Button aria-label={text.brush} aria-pressed={tool === "brush"} disabled={blocked} onClick={() => { if (canAct()) setTool("brush"); }}><Paintbrush aria-hidden="true" />{tool === "brush" && <Check className="coloring-selection" aria-hidden="true" />}</Button>
-        <Button aria-label={text.fill} aria-pressed={tool === "fill"} disabled={blocked} onClick={() => { if (canAct()) setTool("fill"); }}><PaintBucket aria-hidden="true" />{tool === "fill" && <Check className="coloring-selection" aria-hidden="true" />}</Button>
         <Button ref={sizeButton} className="coloring-size-button" aria-label={text.size} aria-haspopup="dialog" aria-expanded={chooser === "size"} disabled={blocked} onClick={() => { if (canAct()) setChooser("size"); }}>
-          <span className="coloring-dot" style={{ "--dot": `${size / 2 + 4}px` } as CSSProperties} />
+          <span className="coloring-face"><span className="coloring-dot" style={{ "--dot": `${size / 2 + 4}px`, color } as CSSProperties} /></span><span className="coloring-tile-name">{text.size}</span>
         </Button>
-        <Button aria-label={text.undo} disabled={blocked || !state.work.actions.length} onClick={() => { if (canAct()) session.undo(); }}><Undo2 aria-hidden="true" /></Button>
+        <Button className="coloring-undo" aria-label={text.undo} disabled={blocked || !state.work.actions.length} onClick={() => { if (canAct()) session.undo(); }}><span className="coloring-face"><Undo2 aria-hidden="true" /></span><span className="coloring-tile-name">{text.undo}</span></Button>
       </div>
     </div>
     <div className="coloring-body" inert={state.errorOpen || state.confirmingLoss}>
       <div className="coloring-paper">
-        <h2>{text.dinosaur}</h2>
+        <h2 className="coloring-hidden">{text.dinosaur}</h2>
         <div className="coloring-canvas-space" inert={chooser !== null}><canvas ref={canvas} width={WIDTH} height={HEIGHT} role="img" aria-label={text.dinosaur}
           onContextMenu={event => event.preventDefault()}
           onPointerDown={event => {
@@ -196,6 +198,14 @@ export function ColoringWorkshopScreen({ session, painter, language, dinosaur }:
           onPointerCancel={event => { if (active.current?.id === event.pointerId) cancel(); }}
           onLostPointerCapture={event => { if (active.current?.id === event.pointerId) cancel(); }}
         /></div>
+        <p className={`coloring-save${state.save === "error" || state.saveError ? " coloring-save-error" : ""}`} role="status" aria-live="polite" inert={chooser !== null || state.errorOpen || state.confirmingLoss}>
+      {state.save !== "untouched" && <>
+        {state.save === "error" ? <TriangleAlert aria-hidden="true" /> : state.save === "saved" ? <Check aria-hidden="true" /> : <Save aria-hidden="true" />}
+        {text[state.save === "error" ? "error" : state.save]}
+        {state.saveError && state.save !== "error" && <><TriangleAlert aria-hidden="true" /><span>{text.error}</span></>}
+        {state.save === "error" && !state.errorOpen && <Button onClick={() => { if (canAct()) void session.retry(); }}><RotateCcw aria-hidden="true" />{text.retry}</Button>}
+      </>}
+    </p>
       </div>
       {chooser && <div className="coloring-picker-layer">
         <div className="coloring-chooser" role="dialog" aria-modal="true" aria-label={chooser === "size" ? text.size : text.color} onKeyDown={event => {
@@ -210,14 +220,6 @@ export function ColoringWorkshopScreen({ session, painter, language, dinosaur }:
         </div>
       </div>}
     </div>
-    <p className={`coloring-save${state.save === "error" || state.saveError ? " coloring-save-error" : ""}`} role="status" aria-live="polite" inert={chooser !== null || state.errorOpen || state.confirmingLoss}>
-      {state.save !== "untouched" && <>
-        {state.save === "error" ? <TriangleAlert aria-hidden="true" /> : state.save === "saved" ? <Check aria-hidden="true" /> : <Save aria-hidden="true" />}
-        {text[state.save === "error" ? "error" : state.save]}
-        {state.saveError && state.save !== "error" && <><TriangleAlert aria-hidden="true" /><span>{text.error}</span></>}
-        {state.save === "error" && !state.errorOpen && <Button onClick={() => { if (canAct()) void session.retry(); }}><RotateCcw aria-hidden="true" />{text.retry}</Button>}
-      </>}
-    </p>
     {(state.errorOpen || state.confirmingLoss) && <div className="coloring-overlay"><div className="coloring-error" role="alertdialog" aria-modal="true" aria-label={state.confirmingLoss ? text.loss : text.error} onKeyDown={event => {
       if (event.key !== "Tab") return;
       const buttons = [...event.currentTarget.querySelectorAll("button")];

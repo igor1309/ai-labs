@@ -11,8 +11,14 @@ import { browserInput } from "../src/root.ts";
 import type { Language } from "../src/language/language.ts";
 import { InputArbitrationContext } from "../src/inputArbitration.ts";
 import "../src/app.css";
+import { mediaViewport } from "../src/mediaViewport.ts";
 
-const input = browserInput(window);
+const sizeViewport = mediaViewport(window.matchMedia.bind(window), window.screen.orientation, window, () => getComputedStyle(document.documentElement));
+const applySize = () => { document.documentElement.dataset.size = sizeViewport.sizeClass(); };
+applySize();
+sizeViewport.subscribe(applySize);
+
+let input = browserInput(window);
 let reactRoot: Root | undefined;
 let resources: ReturnType<typeof coloringWorkshopRoot> | undefined;
 let session: ColoringWorkshopSession;
@@ -26,6 +32,8 @@ export { createPainter };
 
 export async function mount(options: { id: string; resume?: boolean; language?: Language; theme?: "dark" | "light"; gate?: boolean; history?: Action[] }) {
   reactRoot?.unmount();
+  // Each mount is a fresh page: no tap from an earlier mount, on its own test clock, counts against this one.
+  input.stop(); input = browserInput(window);
   await closeGate?.();
   closeGate = undefined;
   await resources?.close();

@@ -281,7 +281,7 @@ it.each(["en", "ru"] as Language[])("overlays the mounted canvas with a color pi
   expect(f.container.querySelector("canvas")).toBe(f.canvas);
   expect(f.session.getSnapshot().work).toBe(work);
   expect(f.write).toHaveBeenCalledTimes(1);
-  expect(trigger.querySelector(".coloring-swatch")?.getAttribute("style")).toContain("rgb(66, 165, 245)");
+  expect(trigger.querySelector(".coloring-face-color")?.getAttribute("style")).toContain("rgb(66, 165, 245)");
   choose(language === "en" ? "SIZE" : "РАЗМЕР", language === "en" ? "BRUSH LARGE" : "КИСТЬ БОЛЬШОЙ");
   f.tap(2, 0); await f.settled();
   expect(f.session.getSnapshot().work.actions.at(-1)).toMatchObject({ kind: "stroke", color: "#42a5f5", size: 40 });

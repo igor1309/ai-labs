@@ -2,6 +2,7 @@
 
 ## 2026-11-05
 
+- LAB-1006: COLOR's workshop is the dig site on every device, light, dark and Russian: HOME, NEW, GALLERY and DONE with BRUSH, FILL, COLOR, SIZE and UNDO in a rail or a bar, the paper on the sand, the save pill on the paper and a failed save set clear of the art. A gallery start card now widens to fit its dinosaur's name.
 - LAB-1005: COLOR's gallery shows loading, unreadable art, view only and parent recovery as the dig site on every device, light, dark and Russian.
 - LAB-1004: COLOR's gallery is the dig site on every device, light, dark and Russian: HOME, the title and stars in the sky, every dinosaur to start on the sand, saved works in pockets.
 - LAB-918: FIND THE PAIR is the dig site from welcome to level offer, with its screens walked in a browser on every device, with and without motion.

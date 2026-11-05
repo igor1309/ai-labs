@@ -12179,7 +12179,7 @@ html[data-size="wide-short"] .pairs-welcome .level-switch-level .level-switch-na
 html[data-size="wide-short"] .pairs-play-button { align-self: stretch; height: 64px; padding-block: 0; font-size: var(--ds-size-26); }
 html[data-size="wide-short"] .pairs-welcome-bedrock { display: none; }
 body:has(.pairs-welcome) #version { display: none; }
-body:has(.coloring-gallery) #version { display: none; }
+body:has(.coloring-gallery, .coloring-workshop) #version { display: none; }
 
 /* Find the pair's board is the dig site: the bar in the sky, the cards on
    the sand, the bedrock along the bottom. Each size takes its board's
