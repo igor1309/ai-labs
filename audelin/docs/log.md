@@ -1,5 +1,9 @@
 # Log
 
+## 2026-11-05
+
+- Paused transcript reading avoids viewport-changing measurement and empty text edits during panel updates (LAB-1001).
+
 ## 2026-11-04
 
 - Calls made in the same minute with different titles get separate ids, so each can be opened, renamed and deleted (LAB-958).

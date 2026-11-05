@@ -642,6 +642,57 @@ struct TranscriptLogTests {
         #expect(scroll.contentView.bounds.origin.y == 0, "the log moved under the reader")
     }
 
+    @Test func unchangedRowsDoNotEditTextStorage() {
+
+        let rows = Transcript.Rows()
+        let style = Transcript.Style(tokens: .light, config: .glassLedger)
+        let lines = PanelState.Lines(entries: many(20))
+        let first = rows.update(lines, style: style)
+        let storage = RecordingStorage(first.text)
+        TranscriptLog.apply(rows.update(lines, style: style), to: storage)
+        #expect(storage.replaced.isEmpty)
+        #expect(storage.styled.isEmpty)
+    }
+
+    @Test func pausedWrappedLogKeepsTheVisibleLineAcrossUpdates() throws {
+
+        let history = (0..<300).map { index in
+            PanelState.Entry(id: index, time: "03:24", speaker: .them,
+                settled: String(repeating: "План работ обсуждаем вместе. ", count: 1 + index % 7))
+        }
+        func panel(_ entries: [PanelState.Entry], elapsed: String) -> AnyView {
+            AnyView(PanelView(state: .init(recording: .on(elapsed: elapsed),
+                log: .lines(.init(entries: entries, newBelow: 5, followsLive: false))), event: { _ in })
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                .frame(width: 396, height: 560))
+        }
+        let host = Offscreen.host(panel(history, elapsed: "00:07:05"), size: CGSize(width: 396, height: 560))
+        let scroll = try #require(scrollView(in: host))
+        let text = try #require(Offscreen.textView(in: host))
+        text.scrollRangeToVisible((text.string as NSString).range(of: "03:24"))
+        scroll.contentView.scroll(to: NSPoint(x: 0, y: 800))
+        host.display()
+        RunLoop.main.run(until: .now.addingTimeInterval(0.1))
+        host.display()
+        let origin = scroll.contentView.bounds.origin
+        let anchor = text.characterIndexForInsertion(at: NSPoint(x: 100, y: origin.y + 40))
+        let anchorRect = text.firstRect(forCharacterRange: NSRange(location: anchor, length: 1), actualRange: nil)
+
+        var entries = history
+        for step in 0..<10 {
+            if !step.isMultiple(of: 2) { entries = history + [newest("слово \(step)")] }
+            host.rootView = panel(entries, elapsed: "00:07:\(step + 6)")
+            host.layoutSubtreeIfNeeded()
+            _ = host.fittingSize
+            RunLoop.main.run(until: .now.addingTimeInterval(0.03))
+            host.display()
+            let rect = text.firstRect(forCharacterRange: NSRange(location: anchor, length: 1), actualRange: nil)
+            #expect(abs(rect.minY - anchorRect.minY) < 1, "visible text moved on update \(step)")
+            #expect(abs(scroll.contentView.bounds.origin.y - origin.y) < 1,
+                "paused viewport moved on update \(step): \(origin) -> \(scroll.contentView.bounds.origin)")
+        }
+    }
+
     @Test func reportsScrollingAwayFromTheNewestLineAndBack() throws {
 
         var events: [PanelEvent] = []
@@ -860,6 +911,7 @@ private final class RecordingStorage: NSTextStorage {
 
     private let backing: NSMutableAttributedString
     private(set) var styled: [NSRange] = []
+    private(set) var replaced: [NSRange] = []
 
     init(_ string: NSAttributedString) {
         backing = NSMutableAttributedString(attributedString: string)
@@ -876,6 +928,7 @@ private final class RecordingStorage: NSTextStorage {
     }
 
     override func replaceCharacters(in range: NSRange, with str: String) {
+        replaced.append(range)
         backing.replaceCharacters(in: range, with: str)
         edited(.editedCharacters, range: range, changeInLength: (str as NSString).length - range.length)
     }
