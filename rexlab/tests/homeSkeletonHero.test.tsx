@@ -175,6 +175,9 @@ describe("Home artwork and navigation", () => {
     act(() => { hero.dataset.ready = ""; });
     expect(getComputedStyle(canvas).opacity).toBe("1");
     expect(getComputedStyle(hero.querySelector(".skeletons-hero-fallback")!).opacity).toBe("0");
+    act(() => { delete hero.dataset.ready; });
+    expect(getComputedStyle(canvas).opacity).toBe("0");
+    expect(getComputedStyle(hero.querySelector(".skeletons-hero-fallback")!).opacity).toBe("1");
     expect(document.querySelector(".featured-card-badge")!.textContent).toBe("3");
   });
 });
