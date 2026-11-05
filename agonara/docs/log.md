@@ -2,6 +2,7 @@
 
 ## 2026-11-05
 
+- The Session bot draws each screen as one Telegram rich message: names tappable in the text, a lecture in one message with its sections collapsed, and Back and Programs inside the message; the old layout is the fallback. LAB-962.
 - The Session bot is laid out for a phone: numbered lists with number keys, a 📖 button per material, lectures a page at a time with formatting, and each press redrawing the same message. LAB-962.
 - The Session bot shows a material's text when you open it, such as a lecture, read through the public API. LAB-962.
 - The Session bot browses the real programs the student can see, navigation and entity bodies through Agonara's public API, with Back and Programs navigation; still no brain or writes. LAB-962.
