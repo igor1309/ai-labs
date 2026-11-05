@@ -8968,8 +8968,7 @@ html[data-size="tall-narrow"] .game-audio-button {
 .labyrinth-reunion-actions button,
 .picture-puzzle-result-actions .picture-puzzle-control,
 .coloring-result .coloring-result-actions button,
-.pairs-offer-answers button,
-.coloring-workshop .coloring-error button {
+.pairs-offer-answers button {
   border: none;
   outline: none;
   border-radius: var(--ds-radius-pill);
@@ -8984,16 +8983,14 @@ html[data-size="tall-narrow"] .game-audio-button {
 .labyrinth-reunion-actions button:first-child,
 .picture-puzzle-result-actions .picture-puzzle-control:first-child,
 .coloring-result .coloring-result-actions button:last-child,
-.pairs-offer-answers .pairs-offer-yes,
-.coloring-workshop .coloring-error button:first-of-type {
+.pairs-offer-answers .pairs-offer-yes {
   background-color: var(--ds-action);
   color: var(--ds-on-action);
 }
 
 /* An inset outline leaves the button's measured dimensions unchanged. */
 .pairs-offer-answers .pairs-offer-not-now,
-.coloring-result .coloring-result-actions .coloring-result-edit,
-.coloring-workshop .coloring-error:has(button:nth-of-type(2):last-child) button:first-of-type {
+.coloring-result .coloring-result-actions .coloring-result-edit {
   background: transparent;
   color: var(--ds-ink);
   border: 0 solid var(--ds-ink);
@@ -9079,21 +9076,16 @@ html[data-size="tall-narrow"] .game-audio-button {
 .parent-menu-tick { color: var(--ds-action); }
 
 .pairs-offer-scrim::before { background-color: var(--ds-scrim); opacity: 1; }
-.pairs-offer,
-.coloring-workshop .coloring-error {
+.pairs-offer {
   border-radius: var(--ds-radius-panel);
   background-color: var(--ds-label);
   color: var(--ds-on-label);
   font-family: var(--ds-font);
   box-shadow: none;
 }
-.pairs-offer-question,
-.coloring-workshop .coloring-error h2 { color: var(--ds-ink); }
+.pairs-offer-question { color: var(--ds-ink); }
 .pairs-offer-picture { background-color: var(--ds-pocket-1); color: var(--ds-ink); border-radius: var(--ds-radius-pocket-top) var(--ds-radius-pocket-top) var(--ds-radius-pocket-bottom) var(--ds-radius-pocket-bottom); }
 
-.coloring-overlay { background-color: var(--ds-scrim); }
-.coloring-workshop .coloring-error > svg { color: var(--ds-ink); }
-.coloring-error p { color: var(--ds-ink-soft); }
 
 .result-score { font-family: var(--ds-font); color: var(--result-ink, var(--ds-ink)); }
 

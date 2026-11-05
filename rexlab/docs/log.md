@@ -2,6 +2,7 @@
 
 ## 2026-11-05
 
+- LAB-1008: COLOR's saving and leaving are the dig site, light, dark and Russian: a failed save asks RETRY, KEEP EDITING or HOME WITHOUT SAVING on a card with its mark, leaving unsaved asks STAY before LEAVE, and the saving and failed-save pills sit on the paper.
 - LAB-1007: COLOR's colour and size pickers are the dig site, light, dark and Russian: named colours and sizes, a popover beside its button on an iPad, a sheet over the paper on a phone, and on an upright iPad the colours stay open under the paper.
 - LAB-1006: COLOR's workshop is the dig site on every device, light, dark and Russian: HOME, NEW, GALLERY and DONE with BRUSH, FILL, COLOR, SIZE and UNDO in a rail or a bar, the paper on the sand, the save pill on the paper and a failed save set clear of the art. A gallery start card now widens to fit its dinosaur's name.
 - LAB-1005: COLOR's gallery shows loading, unreadable art, view only and parent recovery as the dig site on every device, light, dark and Russian.

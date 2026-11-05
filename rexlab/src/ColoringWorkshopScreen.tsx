@@ -1,5 +1,5 @@
 import { useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
-import { ArrowLeft, Check, CircleDot, Home, Images, Paintbrush, PaintBucket, Palette, Plus, RotateCcw, Save, TriangleAlert, Undo2, X } from "lucide-react";
+import { Check, CircleDot, Home, Images, LogOut, Paintbrush, PaintBucket, Palette, Plus, RotateCcw, Save, TriangleAlert, Undo2, X } from "lucide-react";
 import { Button } from "./Button.tsx";
 import { BRUSH_SIZES, COLORS, type Action, type BrushSize, type Color, type Point } from "./coloring/index.ts";
 import type { ColoringWorkshopSession, WorkshopDestination } from "./coloringWorkshop.ts";
@@ -254,14 +254,14 @@ export function ColoringWorkshopScreen({ session, painter, language, dinosaur }:
       const edge = event.shiftKey ? buttons[0] : buttons.at(-1);
       if (document.activeElement === edge) { event.preventDefault(); (event.shiftKey ? buttons.at(-1) : buttons[0])?.focus(); }
     }}>
-      <TriangleAlert aria-hidden="true" size={36} /><h2>{state.confirmingLoss ? text.loss : text.error}</h2>
+      <span className="coloring-error-badge">{state.confirmingLoss ? <LogOut aria-hidden="true" /> : <TriangleAlert aria-hidden="true" />}</span><h2>{state.confirmingLoss ? text.loss : text.error}</h2>
       {state.confirmingLoss ? <>
-        <Button autoFocus onClick={() => session.cancelLoss()}><ArrowLeft aria-hidden="true" />{text.cancel}</Button>
-        <Button onClick={() => session.confirmLoss()}><Home aria-hidden="true" />{text.confirm}</Button>
+        <Button className="coloring-first" autoFocus onClick={() => session.cancelLoss()}><Paintbrush aria-hidden="true" />{text.cancel}</Button>
+        <Button className="coloring-way-out" onClick={() => session.confirmLoss()}><LogOut aria-hidden="true" />{text.confirm}</Button>
       </> : <>
-        <Button autoFocus onClick={() => void session.retry()}><RotateCcw aria-hidden="true" />{text.retry}</Button>
-        <Button onClick={() => session.keepEditing()}><Paintbrush aria-hidden="true" />{text.edit}</Button>
-        <Button onClick={() => session.askLoss()}><Home aria-hidden="true" />{text.leave}</Button>
+        <Button className="coloring-first" autoFocus onClick={() => void session.retry()}><RotateCcw aria-hidden="true" />{text.retry}</Button>
+        <Button className="coloring-second" onClick={() => session.keepEditing()}><Paintbrush aria-hidden="true" />{text.edit}</Button>
+        <Button className="coloring-way-out" onClick={() => session.askLoss()}><Home aria-hidden="true" />{text.leave}</Button>
       </>}
     </div></div>}
   </section>;

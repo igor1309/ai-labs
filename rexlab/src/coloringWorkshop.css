@@ -1,11 +1,5 @@
 /* The sky, the sand and the bedrock lie behind the paper and the controls. */
 .coloring-workshop {
-  --fm-surface: var(--ds-label);
-  --fm-surface-2: var(--ds-quiet);
-  --fm-ink: var(--ds-ink);
-  --fm-ink-soft: var(--ds-ink-soft);
-  --fm-line: var(--ds-outline);
-  --fm-terra: var(--ds-action);
   --cw-face: 64px; --cw-tool-radius: var(--ds-radius-19); --cw-name: var(--ds-size-13); --cw-sand: 130px; --cw-bedrock: 60px; --cw-wave: 30px;
   --cw-left: max(var(--ds-space-20), env(safe-area-inset-left)); --cw-right: max(var(--ds-space-xl), env(safe-area-inset-right));
   box-sizing: border-box; position: relative; isolation: isolate; height: 100dvh; display: grid; grid-template-columns: 164px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); gap: var(--ds-space-l);
@@ -49,8 +43,9 @@ html[data-size="wide-short"] .coloring-bedrock { display: none; }
 .coloring-canvas-space canvas { display: block; width: min(100cqw, calc(100cqh * 920 / 620)); height: min(100cqh, calc(100cqw * 620 / 920)); touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .coloring-save { position: absolute; z-index: 1; top: var(--ds-space-m); right: var(--ds-space-m); max-width: calc(100% - 2 * var(--ds-space-m)); box-sizing: border-box; flex-wrap: wrap; display: flex; align-items: center; justify-content: center; gap: var(--ds-space-6); margin: 0; padding: var(--ds-space-7) var(--ds-space-14); border: 2px solid var(--ds-outline); border-radius: var(--ds-radius-pill); background: var(--ds-label); color: var(--ds-ink-soft); font-size: var(--ds-size-13); font-weight: 800; }
 /* A failed save holds Retry, so it takes its own room: the canvas gives way and is never covered. */
-.coloring-save-error { position: static; flex: none; order: -1; align-self: flex-end; margin-bottom: var(--ds-space-xs); }
-.coloring-save-error button { min-width: 60px; min-height: 60px; padding: 0 var(--ds-space-14); }
+.coloring-save-error { border-color: var(--ds-action); color: var(--ds-ink); position: static; flex: none; order: -1; align-self: flex-end; margin-bottom: var(--ds-space-xs); }
+.coloring-save-error > svg:first-child { color: var(--ds-action); }
+.coloring-workshop .coloring-save-error button { min-width: 60px; min-height: 60px; padding: 0 var(--ds-space-14); border-radius: var(--ds-radius-pill); background: var(--ds-quiet); color: var(--ds-ink); font-weight: 800; }
 .coloring-save:empty { padding: 0; border: 0; opacity: 0; pointer-events: none; }
 .coloring-workshop .coloring-save svg { width: 18px; height: 18px; }
 
@@ -76,10 +71,17 @@ button[aria-pressed="true"] > .coloring-size-face { background: var(--ds-strong)
 .coloring-dot { display: block; width: var(--dot); height: var(--dot); border-radius: 50%; background: currentColor; box-shadow: 0 0 0 2px var(--ds-outline); }
 .coloring-workshop .coloring-size-face .coloring-selection, html[data-size="wide-short"] .coloring-workshop .coloring-size-face .coloring-selection { position: absolute; top: -5px; right: -5px; left: auto; width: 22px; height: 22px; padding: var(--ds-space-xs); background: var(--ds-good); color: var(--ds-on-good); }
 .coloring-paper:has(~ .coloring-picker-layer) { visibility: hidden; }
-.coloring-overlay { position: fixed; z-index: 100; inset: 0; padding: 12px; display: grid; place-items: center; background: #091e4080; animation: fade-in var(--motion-small) var(--ease-out) both; }
-.coloring-error { box-sizing: border-box; display: flex; flex-direction: column; align-items: stretch; gap: 10px; width: min(460px, 100%); max-height: 100%; overflow: auto; padding: 24px; border-radius: 24px; color: var(--fm-ink); background: var(--fm-surface); }
-.coloring-error > svg { align-self: center; color: var(--fm-terra); }
-.coloring-error h2 { margin: 0 0 8px; font-size: 22px; text-align: center; }
+/* Saving and leaving: a card over the dimmed workshop, its first answer the strongest. */
+.coloring-overlay { position: fixed; z-index: 100; inset: 0; padding: var(--ds-space-m); display: grid; place-items: center; background: var(--ds-scrim); animation: fade-in var(--motion-small) var(--ease-out) both; }
+.coloring-error { box-sizing: border-box; display: flex; flex-direction: column; align-items: stretch; gap: var(--ds-space-s); width: min(400px, 100%); max-height: 100%; overflow: auto; padding: var(--ds-space-l) var(--ds-space-m) var(--ds-space-m); border-radius: var(--ds-radius-28); color: var(--ds-ink); background: var(--ds-label); box-shadow: 0 8px 32px var(--ds-pocket-shadow); }
+.coloring-error-badge { align-self: center; display: grid; place-items: center; width: 56px; height: 56px; border-radius: 50%; background: var(--ds-pocket-1); color: var(--ds-action); }
+.coloring-workshop .coloring-error-badge svg { width: 26px; height: 26px; }
+.coloring-error h2 { margin: 0 0 var(--ds-space-xs); font-size: var(--ds-size-22, 22px); font-weight: 900; text-align: center; }
+.coloring-error p { margin: 0; color: var(--ds-ink-soft); text-align: center; }
+.coloring-workshop .coloring-error button { min-height: 60px; border-radius: var(--ds-radius-pill); font-size: var(--ds-size-17); font-weight: 900; }
+.coloring-workshop .coloring-error .coloring-first { background: var(--ds-action); color: var(--ds-on-action); }
+.coloring-workshop .coloring-error .coloring-second { background: var(--ds-strong); color: var(--ds-on-strong); }
+.coloring-workshop .coloring-error .coloring-way-out { background: var(--ds-quiet); color: var(--ds-ink); font-size: var(--ds-size-13); font-weight: 800; }
 .coloring-canvas-space, .coloring-selection { animation: fade-in var(--motion-small) var(--ease-out) both; }
 html:is([data-size="wide"], [data-size="tall"]) .coloring-paper:has(~ .coloring-picker-layer) { visibility: visible; }
 html:is([data-size="wide"], [data-size="tall"]) .coloring-picker-layer { pointer-events: none; }
