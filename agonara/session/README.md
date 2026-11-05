@@ -49,12 +49,17 @@ student.
 - **One chat:** it answers only `CHAT_ID`, by chat, not sender, so a group the
   owner is in is ignored too.
 - **Buttons** carry the step they were drawn for; a press on an older message
-  is refused instead of acting on a newer state. Long content is split at
-  Telegram's 4096-character limit.
-- **Browsing:** Programs → topics, ungrouped concepts and materials → an entity's
-  title, body and outgoing items. A material with content also shows its text,
-  without the file's front matter, split into Telegram-sized messages. Back retraces the screens; Programs returns
-  to the list. Buttons carry item indices; IDs stay in the saved screen state.
+  is refused instead of acting on a newer state.
+- **Browsing:** Programs → a program's topics, concepts and materials → an
+  entity's title, body and linked items. Back retraces the screens; Programs
+  returns to the list. Buttons carry item indices; IDs stay in the saved state.
+- **Drawn for a phone:** the names are numbered lists in the message, in bold
+  headings by kind, and the buttons are number keys five to a row. Each
+  material gets its own 📖 button ("Read" when it shares the screen's title).
+  A press redraws the same message instead of adding one.
+- **Reading:** a material's text comes a page at a time (about 2,500
+  characters) with Prev and Next, its markdown shown as Telegram formatting and
+  its front matter left out. Markup Telegram refuses is sent again as plain text.
 - **Agonara errors** produce a short reply and a log line, keeping the previous
   session so the student can retry. An expired login is renewed once per request.
 - **State** (Telegram offset and the session) is saved after every update, so
