@@ -2,6 +2,8 @@
 
 ## 2026-11-05
 
+- Selected text in the live panel sits in softly shaded cards with smaller controls and up to three readable lines; longer excerpts remain available in full on hover (LAB-1014).
+
 - The menu hides and restores the live transcript panel without stopping recording or transcription (LAB-1000).
 
 ## 2026-11-04

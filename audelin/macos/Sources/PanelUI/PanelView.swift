@@ -224,7 +224,7 @@ private extension PanelView {
     func holdsView(_ holds: [PanelState.Held]) -> some View {
 
         if !holds.isEmpty {
-            VStack(spacing: tokens.space4) {
+            VStack(spacing: tokens.space8) {
                 ForEach(Array(holds.enumerated()), id: \.offset) { _, held in
                     heldView(held)
                 }
@@ -234,29 +234,35 @@ private extension PanelView {
 
     func heldView(_ held: PanelState.Held) -> some View {
 
-        HStack(spacing: tokens.space6) {
+        HStack(alignment: .top, spacing: tokens.space8) {
 
             Image(systemName: "pin.fill")
-                .font(.system(size: 14))
+                .font(.system(size: tokens.typeCaption))
                 .foregroundStyle(tokens.me)
+                .frame(width: tokens.space16, height: tokens.space24)
+                .accessibilityHidden(true)
 
-            HeldTextLabel(text: "«\(held.text)»", tokens: tokens)
+            HeldTextLabel(text: held.text, tokens: tokens)
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.vertical, tokens.space4)
 
             Button { event(.letGo(held)) } label: {
 
                 Image(systemName: "xmark")
-                    .font(.system(size: 14))
-                    .foregroundStyle(tokens.gutter)
+                    .font(.system(size: tokens.typeCaption))
+                    .foregroundStyle(tokens.sub)
+                    .frame(width: tokens.space24, height: tokens.space24)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .help("Отпустить")
+            .accessibilityLabel("Отпустить выделенный текст")
         }
-        .padding(.vertical, tokens.space2)
-        .padding(.horizontal, tokens.space8)
+        .padding(tokens.space8)
+        .background(tokens.card, in: .rect(cornerRadius: tokens.radiusCard))
         .overlay(
             RoundedRectangle(cornerRadius: tokens.radiusCard)
-                .stroke(tokens.selBg, lineWidth: 1)
+                .stroke(tokens.rule, lineWidth: 1)
         )
     }
 

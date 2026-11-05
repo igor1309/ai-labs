@@ -8,6 +8,23 @@ import RenderedText
 struct PanelViewRenderTests {
 
     @Test(arguments: [ColorScheme.light, .dark])
+    func longHoldWrapsWithoutPushingOutThePanel(scheme: ColorScheme) throws {
+
+        let host = Offscreen.host(PanelPreview(state: .longSelectionHeld, scheme: scheme), scheme: scheme)
+        let labels = Offscreen.heldText(in: host)
+        #expect(labels.count == 2)
+        let short = try #require(labels.first)
+        let long = try #require(labels.last)
+        #expect(long.frame.height > short.frame.height)
+        #expect(long.frame.height <= short.frame.height * 3 + 2)
+        #expect(long.toolTip == long.stringValue)
+        #expect(long.cell?.truncatesLastVisibleLine == true)
+        #expect(long.font?.fontDescriptor.symbolicTraits.contains(.bold) == false)
+        #expect(long.accessibilityLabel() == long.stringValue)
+        #expect(long.frame.width == short.frame.width)
+    }
+
+    @Test(arguments: [ColorScheme.light, .dark])
     func rendersEveryPreviewState(scheme: ColorScheme) throws {
 
         let holds = [PanelState.Held(entryID: 3, text: "Первый фрагмент"), .init(entryID: 4, text: "Second selection")]
@@ -32,8 +49,8 @@ struct PanelViewRenderTests {
             case .empty: []
             }
             let labels = Offscreen.heldText(in: host)
-            #expect(labels.map(\.stringValue) == expectedHolds.map { "«\($0.text)»" }, "\(name)")
-            #expect(labels.map { $0.accessibilityLabel() } == expectedHolds.map { "«\($0.text)»" }, "\(name)")
+            #expect(labels.map(\.stringValue) == expectedHolds.map(\.text), "\(name)")
+            #expect(labels.map { $0.accessibilityLabel() } == expectedHolds.map(\.text), "\(name)")
             let window = try #require(host.window)
             let visible = window.convertToScreen(host.convert(host.visibleRect, to: nil))
             for label in labels {
