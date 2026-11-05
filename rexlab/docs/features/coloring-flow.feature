@@ -212,3 +212,18 @@ Feature: Coloring full flow and durable progress
       | Hatchling      | brachiosaurus-hatchling-1 |
       | Explorer       | brachiosaurus-explorer-1  |
       | Paleontologist | brachiosaurus-explorer-1  |
+
+  Scenario Outline: Pteranodon age variants and saved drawings
+    Given the global age setting is <level>
+    When I choose Pteranodon from the coloring gallery
+    Then the workshop opens <geometry> with matching preview and localized name
+    When I paint, save and reopen this work after changing the global age setting
+    Then its original geometry, paint, undo history, thumbnail and earned star are retained
+    And returning to the gallery offers the Pteranodon for the current global age level
+    And existing creatures and their saved works, including Brachiosaurus, remain unchanged
+
+    Examples:
+      | level          | geometry               |
+      | Hatchling      | pteranodon-hatchling-1 |
+      | Explorer       | pteranodon-explorer-1  |
+      | Paleontologist | pteranodon-explorer-1  |

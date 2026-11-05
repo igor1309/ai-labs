@@ -1,6 +1,6 @@
 @next
 Feature: Coloring workshop
-  Free creativity with Stegosaurus, Triceratops, Ankylosaurus, T-Rex, Mosasaurus and Brachiosaurus artwork. There is no model to
+  Free creativity with Stegosaurus, Triceratops, Ankylosaurus, T-Rex, Mosasaurus, Brachiosaurus and Pteranodon artwork. There is no model to
   copy, time limit, coverage target or judgement of artistic quality.
   An action means one accepted brush contact from press to release, or
   one fill. A work is nonempty when its current editable paint differs
@@ -269,3 +269,32 @@ Feature: Coloring workshop
       | artwork                   |
       | brachiosaurus-hatchling-1 |
       | brachiosaurus-explorer-1  |
+
+  Scenario: Simple Pteranodon for Hatchling
+    Given I start a new Pteranodon work at Hatchling
+    Then the workshop renders the original pteranodon-hatchling-1 vector scene
+    And a friendly Pteranodon soars with two wide wings, a long beak and a swept-back crest
+    And the wings, body, head, beak, crest and two legs offer broad independent coloring regions
+    And its eye, smile and toes remain protected decorative details
+    And a simple sea with one cloud leaves the Pteranodon clear and prominent
+    And the entire scene fits supported iPad and iPhone viewports without clipping
+    And the canvas has the localized uppercase accessible name PTERANODON or ПТЕРАНОДОН
+
+  Scenario: Rich Pteranodon sea cliff scene
+    Given I start a new Pteranodon work at Explorer or Paleontologist
+    Then the workshop renders the original pteranodon-explorer-1 vector scene
+    And the same recognizable Pteranodon soars through a sky with a sun and two clouds above the sea between two cliffs
+    And its wing arms, belly, crest tip and lower jaw add independent coloring regions beyond the Hatchling drawing
+    And wing fingers, skin spots, waves, rock cracks, sun rays and a far-off flier remain protected linework
+    And the entire scene fits supported iPad and iPhone viewports without clipping
+
+  Scenario Outline: Independent Pteranodon fills preserve the drawing
+    Given I open a Pteranodon work using <artwork>
+    When I fill any region
+    Then only that region changes color
+    And outlines and protected details stay visible
+
+    Examples:
+      | artwork                |
+      | pteranodon-hatchling-1 |
+      | pteranodon-explorer-1  |
