@@ -105,8 +105,6 @@ example, Ask a question. The answers are a stub until a model is chosen.
 - **Access:** every request needs `WEB_TOKEN` from `probe.env`. Open
   `http://<mac>.local:8740/?token=…` once; the page trades it for a
   cookie and drops it from the address.
-- **Theme:** Pine & Lichen by default; `WEB_PALETTE=ink-saffron` switches
-  back. Light or dark follows the device.
 - Agonara's answers are kept five minutes, so paging a lecture asks once.
 
 ## Running it on the Mac
