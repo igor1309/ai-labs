@@ -102,6 +102,8 @@ async function run() {
         });
         assert(layout.canvas.every(n => n > 0) && layout.interactive === 'none' && layout.fallback === '0' && !layout.overflow, 'canvas renders decoratively, without overflow');
         assert(layout.title.includes('SKELETON') && layout.play === 'PLAY', 'title and PLAY retained');
+        const controls = await page.locator('.featured-card-title, .home-play, .home-today-progress, .home-header').evaluateAll(elements => elements.map(element => element.getBoundingClientRect().toJSON()));
+        assert(controls.every(rect => rect.x >= 0 && rect.y >= 0 && rect.right <= width + 1 && rect.bottom <= height + 1), `${width}x${height}: title, PLAY, saved progress and top menus fit the first viewport`);
         if (output) {
           const name = `${width}x${height}-${level}-${theme}`;
           for (const tile of await page.locator('.home-ground-tile').all()) {
