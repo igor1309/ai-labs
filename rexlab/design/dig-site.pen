@@ -325609,6 +325609,7 @@
                   "type": "frame",
                   "id": "y9ObeP",
                   "name": "Starts",
+                  "clip": true,
                   "width": "fill_container",
                   "gap": "$ds-space-m",
                   "children": [
@@ -325616,7 +325617,7 @@
                       "type": "frame",
                       "id": "p8vSB2",
                       "name": "New · STEGOSAURUS",
-                      "width": "fill_container",
+                      "width": 183.9,
                       "fill": "$ds-label",
                       "cornerRadius": "$ds-radius-speech",
                       "effect": {
@@ -325687,7 +325688,7 @@
                       "type": "frame",
                       "id": "M0lRV9",
                       "name": "New · TRICERATOPS",
-                      "width": "fill_container",
+                      "width": 183.9,
                       "fill": "$ds-label",
                       "cornerRadius": "$ds-radius-speech",
                       "effect": {
@@ -325758,7 +325759,7 @@
                       "type": "frame",
                       "id": "hWMUV",
                       "name": "New · ANKYLOSAURUS",
-                      "width": "fill_container",
+                      "width": 183.9,
                       "fill": "$ds-label",
                       "cornerRadius": "$ds-radius-speech",
                       "effect": {
@@ -325829,7 +325830,7 @@
                       "type": "frame",
                       "id": "M4mzn",
                       "name": "New · T-REX",
-                      "width": "fill_container",
+                      "width": 183.9,
                       "fill": "$ds-label",
                       "cornerRadius": "$ds-radius-speech",
                       "effect": {
@@ -325900,7 +325901,7 @@
                       "type": "frame",
                       "id": "CJiMd",
                       "name": "New · MOSASAURUS",
-                      "width": "fill_container",
+                      "width": 183.9,
                       "fill": "$ds-label",
                       "cornerRadius": "$ds-radius-speech",
                       "effect": {
@@ -325959,6 +325960,77 @@
                               "name": "Name",
                               "fill": "$ds-ink",
                               "content": "MOSASAURUS",
+                              "fontFamily": "$ds-font",
+                              "fontSize": "$ds-size-16",
+                              "fontWeight": "800"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "OkzL2",
+                      "name": "New · BRACHIOSAURUS",
+                      "width": 183.9,
+                      "fill": "$ds-label",
+                      "cornerRadius": "$ds-radius-speech",
+                      "effect": {
+                        "type": "shadow",
+                        "shadowType": "outer",
+                        "color": "$ds-pocket-shadow",
+                        "offset": {
+                          "x": 0,
+                          "y": 3
+                        },
+                        "blur": 6
+                      },
+                      "layout": "vertical",
+                      "gap": "$ds-space-6",
+                      "padding": "$ds-space-s",
+                      "children": [
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": "$ds-radius-16",
+                          "id": "JiA8q",
+                          "name": "Picture · blank brachiosaurus",
+                          "fill": [
+                            "$ds-paper",
+                            {
+                              "type": "image",
+                              "enabled": true,
+                              "url": "images/color-brachiosaurus-explorer-blank.webp",
+                              "mode": "contain"
+                            }
+                          ],
+                          "width": "fill_container",
+                          "height": 104
+                        },
+                        {
+                          "type": "frame",
+                          "id": "m9nTj",
+                          "name": "Label",
+                          "width": "fill_container",
+                          "gap": "$ds-space-3",
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "GT80H",
+                              "name": "Plus",
+                              "width": 18,
+                              "height": 18,
+                              "icon": "plus",
+                              "library": "lucide",
+                              "fill": "$ds-action"
+                            },
+                            {
+                              "type": "text",
+                              "id": "Vuhas",
+                              "name": "Name",
+                              "fill": "$ds-ink",
+                              "content": "BRACHIOSAURUS",
                               "fontFamily": "$ds-font",
                               "fontSize": "$ds-size-16",
                               "fontWeight": "800"
@@ -326678,6 +326750,7 @@
                   "type": "frame",
                   "id": "DNaZj",
                   "name": "Starts",
+                  "clip": true,
                   "width": "fill_container",
                   "gap": "$ds-space-m",
                   "children": [
@@ -326685,7 +326758,7 @@
                       "type": "frame",
                       "id": "ZHxQZ",
                       "name": "New · STEGOSAURUS",
-                      "width": "fill_container",
+                      "width": 183.9,
                       "fill": "$ds-label",
                       "cornerRadius": "$ds-radius-speech",
                       "effect": {
@@ -326756,7 +326829,7 @@
                       "type": "frame",
                       "id": "u2niKW",
                       "name": "New · TRICERATOPS",
-                      "width": "fill_container",
+                      "width": 183.9,
                       "fill": "$ds-label",
                       "cornerRadius": "$ds-radius-speech",
                       "effect": {
@@ -326827,7 +326900,7 @@
                       "type": "frame",
                       "id": "kb59A",
                       "name": "New · ANKYLOSAURUS",
-                      "width": "fill_container",
+                      "width": 183.9,
                       "fill": "$ds-label",
                       "cornerRadius": "$ds-radius-speech",
                       "effect": {
@@ -326898,7 +326971,7 @@
                       "type": "frame",
                       "id": "yL8nF",
                       "name": "New · T-REX",
-                      "width": "fill_container",
+                      "width": 183.9,
                       "fill": "$ds-label",
                       "cornerRadius": "$ds-radius-speech",
                       "effect": {
@@ -326969,7 +327042,7 @@
                       "type": "frame",
                       "id": "PqPUL",
                       "name": "New · MOSASAURUS",
-                      "width": "fill_container",
+                      "width": 183.9,
                       "fill": "$ds-label",
                       "cornerRadius": "$ds-radius-speech",
                       "effect": {
@@ -327028,6 +327101,77 @@
                               "name": "Name",
                               "fill": "$ds-ink",
                               "content": "MOSASAURUS",
+                              "fontFamily": "$ds-font",
+                              "fontSize": "$ds-size-16",
+                              "fontWeight": "800"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "k556cA",
+                      "name": "New · BRACHIOSAURUS",
+                      "width": 183.9,
+                      "fill": "$ds-label",
+                      "cornerRadius": "$ds-radius-speech",
+                      "effect": {
+                        "type": "shadow",
+                        "shadowType": "outer",
+                        "color": "$ds-pocket-shadow",
+                        "offset": {
+                          "x": 0,
+                          "y": 3
+                        },
+                        "blur": 6
+                      },
+                      "layout": "vertical",
+                      "gap": "$ds-space-6",
+                      "padding": "$ds-space-s",
+                      "children": [
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": "$ds-radius-16",
+                          "id": "M7Mv0",
+                          "name": "Picture · blank brachiosaurus",
+                          "fill": [
+                            "$ds-paper",
+                            {
+                              "type": "image",
+                              "enabled": true,
+                              "url": "images/color-brachiosaurus-hatchling-blank.webp",
+                              "mode": "contain"
+                            }
+                          ],
+                          "width": "fill_container",
+                          "height": 104
+                        },
+                        {
+                          "type": "frame",
+                          "id": "Y0r7V5",
+                          "name": "Label",
+                          "width": "fill_container",
+                          "gap": "$ds-space-3",
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "Kam6c",
+                              "name": "Plus",
+                              "width": 19,
+                              "height": 19,
+                              "icon": "plus",
+                              "library": "lucide",
+                              "fill": "$ds-action"
+                            },
+                            {
+                              "type": "text",
+                              "id": "sVwYz",
+                              "name": "Name",
+                              "fill": "$ds-ink",
+                              "content": "BRACHIOSAURUS",
                               "fontFamily": "$ds-font",
                               "fontSize": "$ds-size-16",
                               "fontWeight": "800"
@@ -344043,7 +344187,229 @@
                         },
                         {
                           "type": "frame",
-                          "id": "H4sJB",
+                          "id": "XjJCD",
+                          "name": "New · BRACHIOSAURUS",
+                          "width": "fill_container",
+                          "fill": "$ds-label",
+                          "cornerRadius": "$ds-radius-18",
+                          "effect": {
+                            "type": "shadow",
+                            "shadowType": "outer",
+                            "color": "$ds-pocket-shadow",
+                            "offset": {
+                              "x": 0,
+                              "y": 3
+                            },
+                            "blur": 6
+                          },
+                          "layout": "vertical",
+                          "gap": "$ds-space-6",
+                          "padding": "$ds-space-s",
+                          "children": [
+                            {
+                              "type": "rectangle",
+                              "cornerRadius": "$ds-radius-14",
+                              "id": "o6Fmze",
+                              "name": "Picture · blank brachiosaurus",
+                              "fill": [
+                                "$ds-paper",
+                                {
+                                  "type": "image",
+                                  "enabled": true,
+                                  "url": "images/color-brachiosaurus-explorer-blank.webp",
+                                  "mode": "contain"
+                                }
+                              ],
+                              "width": "fill_container",
+                              "height": 104
+                            },
+                            {
+                              "type": "frame",
+                              "id": "i3Pfxj",
+                              "name": "Label",
+                              "width": "fill_container",
+                              "gap": "$ds-space-3",
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "xuUFx",
+                                  "name": "Plus",
+                                  "width": 19,
+                                  "height": 19,
+                                  "icon": "plus",
+                                  "library": "lucide",
+                                  "fill": "$ds-action"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "IyfqE",
+                                  "name": "Name",
+                                  "fill": "$ds-ink",
+                                  "content": "BRACHIOSAURUS",
+                                  "fontFamily": "$ds-font",
+                                  "fontSize": "$ds-size-16",
+                                  "fontWeight": "800"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "ixnNl",
+                      "name": "Row",
+                      "width": "fill_container",
+                      "gap": "$ds-space-m",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "EWCI9",
+                          "name": "New · PTERANODON",
+                          "width": "fill_container",
+                          "fill": "$ds-label",
+                          "cornerRadius": "$ds-radius-18",
+                          "effect": {
+                            "type": "shadow",
+                            "shadowType": "outer",
+                            "color": "$ds-pocket-shadow",
+                            "offset": {
+                              "x": 0,
+                              "y": 3
+                            },
+                            "blur": 6
+                          },
+                          "layout": "vertical",
+                          "gap": "$ds-space-6",
+                          "padding": "$ds-space-s",
+                          "children": [
+                            {
+                              "type": "rectangle",
+                              "cornerRadius": "$ds-radius-14",
+                              "id": "GN2qN",
+                              "name": "Picture · blank pteranodon",
+                              "fill": [
+                                "$ds-paper",
+                                {
+                                  "type": "image",
+                                  "enabled": true,
+                                  "url": "images/color-pteranodon-explorer-blank.webp",
+                                  "mode": "contain"
+                                }
+                              ],
+                              "width": "fill_container",
+                              "height": 104
+                            },
+                            {
+                              "type": "frame",
+                              "id": "nqCrc",
+                              "name": "Label",
+                              "width": "fill_container",
+                              "gap": "$ds-space-3",
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "N4azd",
+                                  "name": "Plus",
+                                  "width": 19,
+                                  "height": 19,
+                                  "icon": "plus",
+                                  "library": "lucide",
+                                  "fill": "$ds-action"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "t88p2",
+                                  "name": "Name",
+                                  "fill": "$ds-ink",
+                                  "content": "PTERANODON",
+                                  "fontFamily": "$ds-font",
+                                  "fontSize": "$ds-size-16",
+                                  "fontWeight": "800"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "p99D9",
+                          "name": "New · PARASAUROLOPHUS",
+                          "width": "fill_container",
+                          "fill": "$ds-label",
+                          "cornerRadius": "$ds-radius-18",
+                          "effect": {
+                            "type": "shadow",
+                            "shadowType": "outer",
+                            "color": "$ds-pocket-shadow",
+                            "offset": {
+                              "x": 0,
+                              "y": 3
+                            },
+                            "blur": 6
+                          },
+                          "layout": "vertical",
+                          "gap": "$ds-space-6",
+                          "padding": "$ds-space-s",
+                          "children": [
+                            {
+                              "type": "rectangle",
+                              "cornerRadius": "$ds-radius-14",
+                              "id": "yA4FR",
+                              "name": "Picture · blank parasaurolophus",
+                              "fill": [
+                                "$ds-paper",
+                                {
+                                  "type": "image",
+                                  "enabled": true,
+                                  "url": "images/color-parasaurolophus-explorer-blank.webp",
+                                  "mode": "contain"
+                                }
+                              ],
+                              "width": "fill_container",
+                              "height": 104
+                            },
+                            {
+                              "type": "frame",
+                              "id": "fzMjI",
+                              "name": "Label",
+                              "width": "fill_container",
+                              "gap": "$ds-space-3",
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "SIVFk",
+                                  "name": "Plus",
+                                  "width": 19,
+                                  "height": 19,
+                                  "icon": "plus",
+                                  "library": "lucide",
+                                  "fill": "$ds-action"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "dhgg4",
+                                  "name": "Name",
+                                  "fill": "$ds-ink",
+                                  "content": "PARASAUROLOPHUS",
+                                  "fontFamily": "$ds-font",
+                                  "fontSize": "$ds-size-16",
+                                  "fontWeight": "800"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "QrEnI",
                           "name": "Empty slot",
                           "width": "fill_container",
                           "height": 4
@@ -355498,6 +355864,7 @@
                   "type": "frame",
                   "id": "t8sdE",
                   "name": "Starts",
+                  "clip": true,
                   "width": "fill_container",
                   "gap": "$ds-space-m",
                   "children": [
@@ -355505,7 +355872,7 @@
                       "type": "frame",
                       "id": "IPcXE",
                       "name": "New · STEGOSAURUS",
-                      "width": "fill_container",
+                      "width": 117.4,
                       "fill": "$ds-label",
                       "cornerRadius": "$ds-radius-14",
                       "effect": {
@@ -355576,7 +355943,7 @@
                       "type": "frame",
                       "id": "d4nji",
                       "name": "New · TRICERATOPS",
-                      "width": "fill_container",
+                      "width": 117.4,
                       "fill": "$ds-label",
                       "cornerRadius": "$ds-radius-14",
                       "effect": {
@@ -355647,7 +356014,7 @@
                       "type": "frame",
                       "id": "S7LCPo",
                       "name": "New · ANKYLOSAURUS",
-                      "width": "fill_container",
+                      "width": 117.4,
                       "fill": "$ds-label",
                       "cornerRadius": "$ds-radius-14",
                       "effect": {
@@ -355718,7 +356085,7 @@
                       "type": "frame",
                       "id": "jcEUo",
                       "name": "New · T-REX",
-                      "width": "fill_container",
+                      "width": 117.4,
                       "fill": "$ds-label",
                       "cornerRadius": "$ds-radius-14",
                       "effect": {
@@ -355789,7 +356156,7 @@
                       "type": "frame",
                       "id": "q60KCv",
                       "name": "New · MOSASAURUS",
-                      "width": "fill_container",
+                      "width": 117.4,
                       "fill": "$ds-label",
                       "cornerRadius": "$ds-radius-14",
                       "effect": {
@@ -355848,6 +356215,77 @@
                               "name": "Name",
                               "fill": "$ds-ink",
                               "content": "MOSASAURUS",
+                              "fontFamily": "$ds-font",
+                              "fontSize": "$ds-size-11",
+                              "fontWeight": "800"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "yqHKu",
+                      "name": "New · BRACHIOSAURUS",
+                      "width": 117.4,
+                      "fill": "$ds-label",
+                      "cornerRadius": "$ds-radius-14",
+                      "effect": {
+                        "type": "shadow",
+                        "shadowType": "outer",
+                        "color": "$ds-pocket-shadow",
+                        "offset": {
+                          "x": 0,
+                          "y": 3
+                        },
+                        "blur": 6
+                      },
+                      "layout": "vertical",
+                      "gap": "$ds-space-3",
+                      "padding": "$ds-space-6",
+                      "children": [
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": "$ds-radius-10",
+                          "id": "cNKjv",
+                          "name": "Picture · blank brachiosaurus",
+                          "fill": [
+                            "$ds-paper",
+                            {
+                              "type": "image",
+                              "enabled": true,
+                              "url": "images/color-brachiosaurus-explorer-blank.webp",
+                              "mode": "contain"
+                            }
+                          ],
+                          "width": "fill_container",
+                          "height": 56
+                        },
+                        {
+                          "type": "frame",
+                          "id": "rrxbD",
+                          "name": "Label",
+                          "width": "fill_container",
+                          "gap": "$ds-space-3",
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "Y9lyn",
+                              "name": "Plus",
+                              "width": 14,
+                              "height": 14,
+                              "icon": "plus",
+                              "library": "lucide",
+                              "fill": "$ds-action"
+                            },
+                            {
+                              "type": "text",
+                              "id": "eZxHs",
+                              "name": "Name",
+                              "fill": "$ds-ink",
+                              "content": "BRACHIOSAURUS",
                               "fontFamily": "$ds-font",
                               "fontSize": "$ds-size-11",
                               "fontWeight": "800"
@@ -358869,6 +359307,7 @@
                   "type": "frame",
                   "id": "T2znoM",
                   "name": "Starts",
+                  "clip": true,
                   "width": "fill_container",
                   "gap": "$ds-space-m",
                   "children": [
@@ -358876,7 +359315,7 @@
                       "type": "frame",
                       "id": "XEqVn",
                       "name": "New · STEGOSAURUS",
-                      "width": "fill_container",
+                      "width": 183.9,
                       "fill": "$ds-label",
                       "cornerRadius": "$ds-radius-speech",
                       "effect": {
@@ -358947,7 +359386,7 @@
                       "type": "frame",
                       "id": "IVq1g",
                       "name": "New · TRICERATOPS",
-                      "width": "fill_container",
+                      "width": 183.9,
                       "fill": "$ds-label",
                       "cornerRadius": "$ds-radius-speech",
                       "effect": {
@@ -359018,7 +359457,7 @@
                       "type": "frame",
                       "id": "YByul",
                       "name": "New · ANKYLOSAURUS",
-                      "width": "fill_container",
+                      "width": 183.9,
                       "fill": "$ds-label",
                       "cornerRadius": "$ds-radius-speech",
                       "effect": {
@@ -359089,7 +359528,7 @@
                       "type": "frame",
                       "id": "BjhI0",
                       "name": "New · T-REX",
-                      "width": "fill_container",
+                      "width": 183.9,
                       "fill": "$ds-label",
                       "cornerRadius": "$ds-radius-speech",
                       "effect": {
@@ -359160,7 +359599,7 @@
                       "type": "frame",
                       "id": "k4FyD5",
                       "name": "New · MOSASAURUS",
-                      "width": "fill_container",
+                      "width": 183.9,
                       "fill": "$ds-label",
                       "cornerRadius": "$ds-radius-speech",
                       "effect": {
@@ -359219,6 +359658,77 @@
                               "name": "Name",
                               "fill": "$ds-ink",
                               "content": "MOSASAURUS",
+                              "fontFamily": "$ds-font",
+                              "fontSize": "$ds-size-16",
+                              "fontWeight": "800"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "EOPBB",
+                      "name": "New · BRACHIOSAURUS",
+                      "width": 183.9,
+                      "fill": "$ds-label",
+                      "cornerRadius": "$ds-radius-speech",
+                      "effect": {
+                        "type": "shadow",
+                        "shadowType": "outer",
+                        "color": "$ds-pocket-shadow",
+                        "offset": {
+                          "x": 0,
+                          "y": 3
+                        },
+                        "blur": 6
+                      },
+                      "layout": "vertical",
+                      "gap": "$ds-space-6",
+                      "padding": "$ds-space-s",
+                      "children": [
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": "$ds-radius-16",
+                          "id": "hRIkl",
+                          "name": "Picture · blank brachiosaurus",
+                          "fill": [
+                            "$ds-paper",
+                            {
+                              "type": "image",
+                              "enabled": true,
+                              "url": "images/color-brachiosaurus-explorer-blank.webp",
+                              "mode": "contain"
+                            }
+                          ],
+                          "width": "fill_container",
+                          "height": 104
+                        },
+                        {
+                          "type": "frame",
+                          "id": "l3zK64",
+                          "name": "Label",
+                          "width": "fill_container",
+                          "gap": "$ds-space-3",
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "gEoGM",
+                              "name": "Plus",
+                              "width": 19,
+                              "height": 19,
+                              "icon": "plus",
+                              "library": "lucide",
+                              "fill": "$ds-action"
+                            },
+                            {
+                              "type": "text",
+                              "id": "s6sLpC",
+                              "name": "Name",
+                              "fill": "$ds-ink",
+                              "content": "BRACHIOSAURUS",
                               "fontFamily": "$ds-font",
                               "fontSize": "$ds-size-16",
                               "fontWeight": "800"
@@ -362806,6 +363316,7 @@
                   "type": "frame",
                   "id": "on01Z",
                   "name": "Starts",
+                  "clip": true,
                   "width": "fill_container",
                   "gap": "$ds-space-m",
                   "children": [
@@ -362813,7 +363324,7 @@
                       "type": "frame",
                       "id": "i5AQFG",
                       "name": "New · СТЕГОЗАВР",
-                      "width": "fill_container",
+                      "width": 183.9,
                       "fill": "$ds-label",
                       "cornerRadius": "$ds-radius-speech",
                       "effect": {
@@ -362884,7 +363395,7 @@
                       "type": "frame",
                       "id": "zHPQd",
                       "name": "New · ТРИЦЕРАТОПС",
-                      "width": "fill_container",
+                      "width": 183.9,
                       "fill": "$ds-label",
                       "cornerRadius": "$ds-radius-speech",
                       "effect": {
@@ -362955,7 +363466,7 @@
                       "type": "frame",
                       "id": "UH4pU",
                       "name": "New · АНКИЛОЗАВР",
-                      "width": "fill_container",
+                      "width": 183.9,
                       "fill": "$ds-label",
                       "cornerRadius": "$ds-radius-speech",
                       "effect": {
@@ -363026,7 +363537,7 @@
                       "type": "frame",
                       "id": "HqiaY",
                       "name": "New · ТИРАННОЗАВР",
-                      "width": "fill_container",
+                      "width": 183.9,
                       "fill": "$ds-label",
                       "cornerRadius": "$ds-radius-speech",
                       "effect": {
@@ -363097,7 +363608,7 @@
                       "type": "frame",
                       "id": "X9gILs",
                       "name": "New · МОЗАЗАВР",
-                      "width": "fill_container",
+                      "width": 183.9,
                       "fill": "$ds-label",
                       "cornerRadius": "$ds-radius-speech",
                       "effect": {
@@ -363156,6 +363667,77 @@
                               "name": "Name",
                               "fill": "$ds-ink",
                               "content": "МОЗАЗАВР",
+                              "fontFamily": "$ds-font",
+                              "fontSize": "$ds-size-16",
+                              "fontWeight": "800"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "nU1Zx",
+                      "name": "New · БРАХИОЗАВР",
+                      "width": 183.9,
+                      "fill": "$ds-label",
+                      "cornerRadius": "$ds-radius-speech",
+                      "effect": {
+                        "type": "shadow",
+                        "shadowType": "outer",
+                        "color": "$ds-pocket-shadow",
+                        "offset": {
+                          "x": 0,
+                          "y": 3
+                        },
+                        "blur": 6
+                      },
+                      "layout": "vertical",
+                      "gap": "$ds-space-6",
+                      "padding": "$ds-space-s",
+                      "children": [
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": "$ds-radius-16",
+                          "id": "Q655Y",
+                          "name": "Picture · blank brachiosaurus",
+                          "fill": [
+                            "$ds-paper",
+                            {
+                              "type": "image",
+                              "enabled": true,
+                              "url": "images/color-brachiosaurus-explorer-blank.webp",
+                              "mode": "contain"
+                            }
+                          ],
+                          "width": "fill_container",
+                          "height": 104
+                        },
+                        {
+                          "type": "frame",
+                          "id": "HGKKF",
+                          "name": "Label",
+                          "width": "fill_container",
+                          "gap": "$ds-space-3",
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "LW6OK",
+                              "name": "Plus",
+                              "width": 19,
+                              "height": 19,
+                              "icon": "plus",
+                              "library": "lucide",
+                              "fill": "$ds-action"
+                            },
+                            {
+                              "type": "text",
+                              "id": "wtuN3",
+                              "name": "Name",
+                              "fill": "$ds-ink",
+                              "content": "БРАХИОЗАВР",
                               "fontFamily": "$ds-font",
                               "fontSize": "$ds-size-16",
                               "fontWeight": "800"

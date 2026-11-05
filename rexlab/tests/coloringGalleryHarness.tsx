@@ -41,9 +41,11 @@ import type { Language } from "../src/language/language.ts";
 import { browserInput } from "../src/root.ts";
 import { InputArbitrationContext } from "../src/inputArbitration.ts";
 import "../src/app.css";
+import { mediaViewport } from "../src/mediaViewport.ts";
 
 const input = browserInput(window);
 let root: Root | undefined;
+let unsubscribeSize: (() => void) | undefined;
 let resources: ReturnType<typeof coloringWorkshopRoot>;
 let starts = 0, homes = 0;
 let language: Language = "en";
@@ -71,6 +73,11 @@ export async function mount(options: { language?: Language; level?: AgeLevel; th
   level = options.level ?? "hatchling";
   language = options.language ?? "en"; denyReads = false; denyWrites = false; abortCompletion = false;
   document.documentElement.dataset.theme = options.theme ?? "light";
+  const viewport = mediaViewport(window.matchMedia.bind(window), window.screen.orientation, window, () => getComputedStyle(document.documentElement));
+  const applySize = () => { document.documentElement.dataset.size = viewport.sizeClass(); };
+  applySize();
+  unsubscribeSize?.();
+  unsubscribeSize = viewport.subscribe(applySize);
   resources = coloringWorkshopRoot(indexedDB, document);
   if (options.seed && !(await resources.list()).works.length) {
     const red = await resources.newWork("red", () => {});
