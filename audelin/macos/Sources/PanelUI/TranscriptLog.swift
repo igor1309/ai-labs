@@ -73,10 +73,12 @@ struct TranscriptLog: NSViewRepresentable {
             // AppKit moves the selection to the end on any storage edit, even
             // one below it; the edit keeps the text above in place, so put it
             // back.
-            let selection = text.selectedRange()
-            Self.apply(edit, to: storage)
-            let length = storage.length
-            text.setSelectedRange(NSIntersectionRange(selection, NSRange(location: 0, length: length)))
+            if edit.range.length > 0 || edit.text.length > 0 {
+                let selection = text.selectedRange()
+                Self.apply(edit, to: storage)
+                let length = storage.length
+                text.setSelectedRange(NSIntersectionRange(selection, NSRange(location: 0, length: length)))
+            }
 
             if coordinator.followsLive, !coordinator.isSelecting { text.scrollToEndOfDocument(nil) }
         }
@@ -85,20 +87,19 @@ struct TranscriptLog: NSViewRepresentable {
     func sizeThatFits(_ proposal: ProposedViewSize, nsView scroll: NSScrollView, context: Context) -> CGSize? {
 
         let width = proposal.width ?? config.panelWidth
+        if width <= 0 || proposal.height == 0 { return CGSize(width: width, height: 0) }
         guard let text = scroll.documentView as? NSTextView,
               let layout = text.textLayoutManager
         else { return nil }
 
-        text.frame.size.width = width
+        if text.frame.width != width { text.frame.size.width = width }
 
-        // Text that reaches the room it is given fills it: laying out what
-        // fits shows that without laying out a long call's whole log.
-        // An unbounded proposal asks for the whole height: laying out that
-        // much room would lay out a long call's whole log.
+        // SwiftUI probes several heights, including zero. Do not move
+        // TextKit's viewport to the beginning or end of a scrolling log
+        // just to measure it: its estimated fragment positions can change
+        // under the reader even when the clip origin stays the same.
         if let limit = proposal.height, limit.isFinite {
-            layout.ensureLayout(for: CGRect(x: 0, y: 0, width: width, height: limit))
-            if let below = layout.textLayoutFragment(for: CGPoint(x: 0, y: limit)),
-               below.layoutFragmentFrame.maxY > limit {
+            if layout.usageBoundsForTextContainer.maxY >= limit {
                 return CGSize(width: width, height: limit)
             }
         }
@@ -131,6 +132,7 @@ extension TranscriptLog {
     /// position stay.
     static func apply(_ edit: Transcript.Edit, to storage: NSTextStorage) {
 
+        guard edit.range.length > 0 || edit.text.length > 0 else { return }
         storage.replaceCharacters(in: edit.range, with: edit.text)
     }
 }
