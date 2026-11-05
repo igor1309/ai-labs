@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, expect, test, vi } from "vitest";
 import { BufferGeometry, Group, Material, MathUtils, Mesh, Quaternion, Vector3 } from "three";
-import { skeletonHeroScene } from "../src/skeletonHeroScene.ts";
+import { assemblyStarts, skeletonHeroScene } from "../src/skeletonHeroScene.ts";
 
 const gpu = vi.hoisted(() => ({
   setPixelRatio: vi.fn(), setSize: vi.fn(), render: vi.fn(), dispose: vi.fn(), forceContextLoss: vi.fn()
@@ -27,9 +27,9 @@ test("every bone moves from its pile transform through assembly into the complet
     world.traverse((object: Group) => { if (object.userData.assembly) bones.push(object); });
     expect(bones.length).toBe(104);
     const identity = new Quaternion();
-    const lead = Math.min(...bones.map(bone => bone.userData.assembly.at)) - .1;
-    for (const bone of bones) {
-      const { start, end, spin, at, duration } = bone.userData.assembly;
+    const starts = assemblyStarts(bones.map(bone => bone.userData.assembly.at));
+    for (const [index, bone] of bones.entries()) {
+      const { start, end, spin, duration } = bone.userData.assembly;
       const from = new Vector3().fromArray(start), to = new Vector3().fromArray(end);
       const rotation = new Quaternion().fromArray(spin);
       scene.draw(590, 300, 0);
@@ -37,7 +37,7 @@ test("every bone moves from its pile transform through assembly into the complet
       expect(bone.quaternion.angleTo(rotation)).toBeLessThan(1e-6);
       expect(from.distanceTo(to)).toBeGreaterThan(.01);
 
-      scene.draw(590, 300, (at - lead + duration / 2) / 1.2 * 1000);
+      scene.draw(590, 300, (starts[index]! + duration / 2) * 1000);
       const flat = (v: Vector3) => new Vector3(v.x, 0, v.z);
       const travelled = flat(bone.position).sub(flat(from)).dot(flat(to).sub(flat(from))) / flat(to).sub(flat(from)).lengthSq();
       if (flat(to).distanceTo(flat(from)) > .01) expect(travelled).toBeGreaterThan(.5);
@@ -53,6 +53,11 @@ test("every bone moves from its pile transform through assembly into the complet
       }
     }
   } finally { scene.dispose(); }
+});
+
+test("bones leave the pile at a steady pace in their authored order", () => {
+  expect(assemblyStarts([2.5, 1, 1.1, 1.2, 9])).toEqual([.1 + 3.4 * 3 / 4, .1, .1 + 3.4 / 4, .1 + 3.4 * 2 / 4, 3.5]);
+  expect(assemblyStarts([3])).toEqual([.1]);
 });
 
 test("the assembled asset fits the pile, assembly and full turn without stretching", async () => {
