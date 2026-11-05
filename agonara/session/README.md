@@ -4,7 +4,8 @@ A Session runner for Agonara: one student's session, reached through a control
 plane (today Telegram) and kept apart from the student's learning record.
 
 Status: reads the programs the student can see, navigation and entities from
-Agonara's public API. Still no brain and no writes to Agonara. It is one Go
+Agonara's public API, in Telegram and as a web page on the local network.
+Still no brain and no writes to Agonara. It is one Go
 module with no dependencies, and runs on the owner's Mac under launchd.
 
 ## The idea
@@ -50,6 +51,8 @@ student.
   the same screens.
 - `internal/telegram`: draws a screen as a rich message or the plain
   fallback, and handles updates.
+- `internal/web` and `cmd/agonara-web`: the same session as a web page on
+  the local network, drawn from `design/` (see "The web page").
 - `internal/agonara`: the public API as the student. `internal/store`: the
   state file. `cmd/agonara-session`: the composition root and polling loop.
 
@@ -86,11 +89,29 @@ student.
 - **State** (Telegram offset and the session) is saved after every update, so
   a restart resumes where it stopped.
 
+## The web page
+
+`agonara-web` serves the session on the local network (`WEB_ADDR`, default
+`:8740`), reading Agonara as the same student. It follows
+[the design brief](design/web-page-brief.md): programs, a program by course
+with its concepts and lectures, and a lecture a page at a time, cut exactly as
+in Telegram, with the outline as a sidebar (wide), a drawer (medium) or a sheet
+(compact). Every paragraph has a ⋯ menu: Tell me more, Explain simpler, Give an
+example, Ask a question. The answers are a stub until a model is chosen.
+
+- **Addresses:** `/`, `/p/{program}`, `/m/{entity}?page=N`, so Back,
+  refresh and links work. The last lecture page read is kept in
+  `web-place.json` beside the state file, for Continue reading.
+- **Access:** every request needs `WEB_TOKEN` from `probe.env`. Open
+  `http://<mac>.local:8740/?token=…` once; the page trades it for a
+  cookie and drops it from the address.
+- Agonara's answers are kept five minutes, so paging a lecture asks once.
+
 ## Running it on the Mac
 
 Secrets live outside the repo in `~/.config/agonara-session/probe.env`
 (mode 600): `BOT_TOKEN`, `CHAT_ID`, `SESSION_STATE_PATH`,
-`AGONARA_BASE_URL`, `AGONARA_LOGIN`, `AGONARA_PASSWORD` for the
+`AGONARA_BASE_URL`, `AGONARA_LOGIN`, `AGONARA_PASSWORD`, `WEB_TOKEN` for the
 non-admin identity `session-probe`.
 
 launchd runs the binary at `~/.local/share/agonara-session/bin/`.
@@ -101,7 +122,7 @@ fast-forwards trunk; merging on GitHub alone does nothing. `deploy/merge-hook.sh
 acts only on `trunk` with `ORIG_HEAD` set and only when `agonara/session`
 changed outside `docs/`, `design/` and `*.md`. It tests and builds the module,
 keeps the old binary as `agonara-session.prev`, swaps in the new one and
-restarts the bot. A failure leaves the old bot running and never fails the
+restarts the bot and the page. A failure leaves the old ones running and never fails the
 merge. Log: `~/Library/Logs/agonara-session/post-merge.log`.
 
 - Once per clone: `agonara/session/deploy/merge-hook.sh install`.
@@ -116,7 +137,11 @@ overlap, then deploy it by building into that folder:
     launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/ai.labs.agonara-session.plist
     tail ~/Library/Logs/agonara-session.log
 
-Remove: `launchctl bootout gui/$(id -u)/ai.labs.agonara-session`.
+The web page installs the same way with `ai.labs.agonara-web.plist`,
+building `./cmd/agonara-web` into the same folder; its log is
+`~/Library/Logs/agonara-web.log`.
+
+Remove: `launchctl bootout gui/$(id -u)/<label>`.
 
 The Mac runs it only while awake. A VPS host waits until the bot must stay up
 without it.

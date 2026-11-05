@@ -1,0 +1,12 @@
+{{template "head" "Программы"}}
+<main class="column page-programs">
+  <p class="eyebrow">Agonara</p>
+  <h1 class="display">Программы</h1>
+  {{with .Place}}<a class="continue continue-inline" href="/m/{{.EntityID}}?page={{.Page}}"><span><b>Продолжить чтение</b><small>{{.Title}} · {{.Label}}</small></span>{{template "i-arrow"}}</a>{{end}}
+  {{if .Programs}}
+  <ul class="cards">
+    {{range .Programs}}<li><a class="card" href="/p/{{.ProgramID}}"><span><b>{{.Title}}</b>{{with .Description}}<small>{{.}}</small>{{end}}</span>{{template "i-chevron"}}</a></li>{{end}}
+  </ul>
+  {{else}}<p class="muted">Программ нет.</p>{{end}}
+</main>
+{{template "foot"}}

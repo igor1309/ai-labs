@@ -1,0 +1,32 @@
+{{template "head" .Program.Title}}
+{{$place := .Place}}
+<main class="column page-program{{if .Place}} has-continue{{end}}">
+  <a class="back" href="/">{{template "i-back"}}Программы</a>
+  <p class="eyebrow">Программа · {{len .Program.Courses}} {{plural (len .Program.Courses) "курс" "курса" "курсов"}}</p>
+  <h1 class="display">{{.Program.Title}}</h1>
+  {{with .Program.Description}}<p class="lede">{{.}}</p>{{end}}
+  {{with $place}}<a class="continue continue-inline" href="/m/{{.EntityID}}?page={{.Page}}"><span><b>Продолжить чтение</b><small>{{.Title}} · {{.Label}}</small></span>{{template "i-arrow"}}</a>{{end}}
+  <hr>
+  <ol class="courses">
+    {{range $i, $c := .Program.Courses}}
+    <li class="course">
+      <span class="course-n">{{two (inc $i)}}</span>
+      <div class="course-body">
+        <h2><a href="/m/{{$c.Topic.ID}}">{{$c.Topic.Title}}</a></h2>
+        {{if $c.Concepts}}<p class="concepts">{{range $j, $k := $c.Concepts}}{{if $j}}<span class="dot">·</span>{{end}}<a href="/m/{{$k.ID}}">{{$k.Title}}</a>{{end}}</p>{{end}}
+        {{range $c.Materials}}
+        <a class="material" href="/m/{{.ID}}{{if and $place (eq $place.EntityID .ID)}}?page={{$place.Page}}{{end}}">{{template "i-book"}}<span><small>Читать{{if and $place (eq $place.EntityID .ID)}} · вы на {{$place.Label}}{{end}}</small><b>{{.Title}}</b></span>{{template "i-chevron"}}</a>
+        {{else}}<p class="none">Материалов пока нет</p>{{end}}
+      </div>
+    </li>
+    {{end}}
+  </ol>
+  {{if or .Program.Concepts .Program.Materials}}
+  <section class="ungrouped">
+    {{range .Program.Materials}}<a class="material" href="/m/{{.ID}}">{{template "i-book"}}<span><small>Читать</small><b>{{.Title}}</b></span>{{template "i-chevron"}}</a>{{end}}
+    {{if .Program.Concepts}}<p class="concepts">{{range $j, $k := .Program.Concepts}}{{if $j}}<span class="dot">·</span>{{end}}<a href="/m/{{$k.ID}}">{{$k.Title}}</a>{{end}}</p>{{end}}
+  </section>
+  {{end}}
+</main>
+{{with $place}}<a class="continue continue-bar" href="/m/{{.EntityID}}?page={{.Page}}"><span><b>Продолжить чтение</b><small>{{.Title}} · {{.Label}}</small></span>{{template "i-arrow"}}</a>{{end}}
+{{template "foot"}}

@@ -175,3 +175,9 @@ func isSpaceRune(r rune) bool {
 func escape(text string) string {
 	return strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;").Replace(text)
 }
+
+// InlineHTML escapes one line of markdown and converts its inline marks
+// (code, bold, italics, links to their text) to HTML.
+func InlineHTML(text string) string {
+	return inline(escape(text))
+}
