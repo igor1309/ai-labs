@@ -9,9 +9,8 @@ import { NO_SAFE_AREA, type SafeArea } from "./stylesheet.ts";
 import { gameDoor, manualViewport, memoryStorage, type ManualViewport } from "./support.ts";
 import { openWindow, type WindowSize } from "./windowSizes.ts";
 
-// find-the-pair-welcome-portrait.feature's behaviour upright. The turn
-// between the layouts is pairsWelcomeTurn.test.tsx's; the look
-// pairsDigSite.test.tsx's and the fit pairsDigSite.browser.cjs's.
+// Find the pair's welcome upright: what it shows and how it behaves; not
+// its look, its fit or the turn between its layouts.
 
 // The screens with a portrait layout, as the browser's app has them.
 const PORTRAIT_LAYOUTS: PortraitLayouts = {

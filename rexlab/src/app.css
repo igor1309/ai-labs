@@ -5019,7 +5019,8 @@ html[data-size="tall-narrow"] .sort[data-rows] .basket-mark .mark-question {
   opacity: 0;
   transition:
     grid-template-columns var(--motion-standard) var(--ease-out),
-    margin-right var(--motion-standard) var(--ease-out),
+    grid-template-rows var(--motion-standard) var(--ease-out),
+    margin var(--motion-standard) var(--ease-out),
     opacity var(--motion-standard) var(--ease-out);
 }
 
@@ -11969,12 +11970,6 @@ body:has(.whose-jaw-shelf-screen) #version { display: none; }
   --pw-sky-side: var(--ds-space-40);
   --pw-bottom: 60px;
   --pw-wave: 30px;
-  --pw-card-w: 150px;
-  --pw-card-h: 160px;
-  --pw-card-overlap: -14px;
-  --pw-card-radius: var(--ds-radius-16);
-  --pw-card-pad: var(--ds-space-s);
-  --pw-footprints: 56px;
   position: relative;
   isolation: isolate;
   box-sizing: border-box;
@@ -12029,7 +12024,12 @@ body:has(.whose-jaw-shelf-screen) #version { display: none; }
 .pairs-start { display: contents; }
 .pairs-welcome .level-switch,
 .pairs-play-button { grid-column: 1 / -1; }
-.pairs-hero { display: flex; align-items: center; min-width: 0; width: calc(3 * var(--pw-card-w) + 2 * var(--pw-card-overlap) + 2 * var(--pw-hero-pad)); max-width: 100%; padding: var(--pw-hero-pad); box-sizing: border-box; --pw-hero-pad: var(--ds-btn-gap); }
+/* The cards' sizes are the cards' own: a turn draws a copy of them outside
+   the welcome, which keeps them only so. */
+.pairs-hero {
+  --pw-card-w: 150px; --pw-card-h: 160px; --pw-card-overlap: -14px; --pw-card-radius: var(--ds-radius-16); --pw-card-pad: var(--ds-space-s); --pw-hero-pad: var(--ds-btn-gap);
+  display: flex; align-items: center; min-width: 0; width: calc(3 * var(--pw-card-w) + 2 * var(--pw-card-overlap) + 2 * var(--pw-hero-pad)); max-width: 100%; padding: var(--pw-hero-pad); box-sizing: border-box;
+}
 .pairs-hero-card {
   flex: 0 1 var(--pw-card-w); min-width: 0; aspect-ratio: 15 / 16; max-height: var(--pw-card-h);
   box-sizing: border-box; display: flex; padding: var(--pw-card-pad);
@@ -12061,15 +12061,9 @@ body:has(.whose-jaw-shelf-screen) #version { display: none; }
 .pairs-chip svg { flex: none; width: 32px; height: 32px; }
 .pairs-stars svg { color: var(--ds-reward); fill: var(--ds-reward); }
 .pairs-chip-number { font-size: var(--ds-size-32); }
-/* Stacked, the climb level folds away above the stars. */
-.pairs-chips .pairs-climb {
-  grid-template-rows: 0fr;
-  transition:
-    grid-template-columns var(--motion-standard) var(--ease-out),
-    grid-template-rows var(--motion-standard) var(--ease-out),
-    margin var(--motion-standard) var(--ease-out),
-    opacity var(--motion-standard) var(--ease-out);
-}
+/* Stacked, the climb level folds away above the stars. Its transition
+   stays the one-class rule's, which reduced motion cuts to the fade. */
+.pairs-chips .pairs-climb { grid-template-rows: 0fr; }
 .pairs-chips .pairs-climb:not([data-shown]) { grid-template-columns: 1fr; margin-right: 0; margin-bottom: calc(-1 * var(--ds-space-l)); }
 .pairs-chips .pairs-climb[data-shown] { grid-template-rows: 1fr; }
 .pairs-climb .pairs-chip { min-width: 0; min-height: 0; }
@@ -12097,9 +12091,9 @@ html .pairs-welcome .level-switch-picture { width: 32px; height: 32px; font-size
 
 /* Upright on an iPad the chips stand in a row under larger cards, each
    level's picture over its name, and PLAY is wider. */
-html[data-size="tall"] .pairs-welcome { --pw-sky-side: var(--ds-space-56); --pw-side: var(--ds-space-56); --pw-bottom: 50px; --pw-card-w: 180px; --pw-card-h: 192px; --pw-card-overlap: -16px; }
+html[data-size="tall"] .pairs-welcome { --pw-sky-side: var(--ds-space-56); --pw-side: var(--ds-space-56); --pw-bottom: 50px; }
 html[data-size="tall"] .pairs-welcome-body { grid-template-columns: auto; align-content: safe center; row-gap: var(--ds-space-28); padding-top: 0; }
-html[data-size="tall"] .pairs-hero { --pw-hero-pad: var(--ds-space-m); }
+html[data-size="tall"] .pairs-hero { --pw-card-w: 180px; --pw-card-h: 192px; --pw-card-overlap: -16px; --pw-hero-pad: var(--ds-space-m); }
 html[data-size="tall"] .pairs-welcome .level-switch,
 html[data-size="tall"] .pairs-play-button { grid-column: auto; }
 html[data-size="tall"] .pairs-welcome .level-switch { border-radius: var(--ds-radius-speech); }
@@ -12115,7 +12109,8 @@ html:is([data-size="tall"], [data-size="tall-narrow"], [data-size="wide-short"])
 
 /* On a phone the cards are smaller, HOME is its house, the switch names
    only the chosen level and PLAY spans the column. */
-html:is([data-size="tall-narrow"], [data-size="wide-short"]) .pairs-welcome { --pw-wave: 24px; --pw-card-radius: var(--ds-radius-12); --pw-card-pad: var(--ds-space-6); --pw-card-overlap: -12px; }
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .pairs-welcome { --pw-wave: 24px; }
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .pairs-hero { --pw-card-radius: var(--ds-radius-12); --pw-card-pad: var(--ds-space-6); --pw-card-overlap: -12px; }
 html:is([data-size="tall-narrow"], [data-size="wide-short"]) .pairs-welcome-home { width: 48px; padding: 0; }
 html:is([data-size="tall-narrow"], [data-size="wide-short"]) .pairs-welcome-home svg { width: 24px; height: 24px; }
 html:is([data-size="tall-narrow"], [data-size="wide-short"]) .pairs-welcome-home span { display: none; }
@@ -12126,13 +12121,13 @@ html[data-size="tall-narrow"] .pairs-welcome .level-switch-level[aria-pressed="t
   position: static; width: auto; height: auto; margin: 0; overflow: visible; clip-path: none;
 }
 
-html[data-size="tall-narrow"] .pairs-welcome { --pw-top: 62px; --pw-sky: 216px; --pw-side: var(--ds-space-20); --pw-sky-side: var(--ds-space-20); --pw-bottom: 30px; --pw-card-w: 113px; --pw-card-h: 120px; background: linear-gradient(var(--ds-sky-top), var(--ds-sky-bottom) 40vh) var(--ds-sky-bottom); background: linear-gradient(var(--ds-sky-top), var(--ds-sky-bottom) 40dvh) var(--ds-sky-bottom); }
+html[data-size="tall-narrow"] .pairs-welcome { --pw-top: 62px; --pw-sky: 216px; --pw-side: var(--ds-space-20); --pw-sky-side: var(--ds-space-20); --pw-bottom: 30px; background: linear-gradient(var(--ds-sky-top), var(--ds-sky-bottom) 40vh) var(--ds-sky-bottom); background: linear-gradient(var(--ds-sky-top), var(--ds-sky-bottom) 40dvh) var(--ds-sky-bottom); }
 html[data-size="tall-narrow"] .pairs-welcome-sky { gap: 14px; }
 html[data-size="tall-narrow"] .pairs-title { gap: var(--ds-space-m); font-size: var(--ds-size-title); }
 html[data-size="tall-narrow"] .pairs-mark { width: 64px; height: 64px; }
 html[data-size="tall-narrow"] .pairs-mark svg { width: 34px; height: 34px; }
 html[data-size="tall-narrow"] .pairs-welcome-body { grid-template-columns: minmax(0, 1fr); justify-content: stretch; align-content: safe center; row-gap: var(--ds-space-l); padding-top: var(--ds-space-s); }
-html[data-size="tall-narrow"] .pairs-hero { --pw-hero-pad: var(--ds-space-s); }
+html[data-size="tall-narrow"] .pairs-hero { --pw-card-w: 113px; --pw-card-h: 120px; --pw-hero-pad: var(--ds-space-s); }
 html[data-size="tall-narrow"] .pairs-chip { height: 52px; padding: 0 var(--ds-space-l); }
 html[data-size="tall-narrow"] .pairs-chip svg { width: 28px; height: 28px; }
 html[data-size="tall-narrow"] .pairs-chip-number { font-size: var(--ds-size-22); }
@@ -12144,7 +12139,8 @@ html[data-size="tall-narrow"] .pairs-play-button svg { width: 30px; height: 30px
 /* An iPhone SE's board is shorter: slightly smaller cards over the
    thinnest bedrock. */
 @media (max-height: 700px) {
-  html[data-size="tall-narrow"] .pairs-welcome { --pw-bottom: 14px; --pw-card-w: 107px; --pw-card-h: 114px; }
+  html[data-size="tall-narrow"] .pairs-welcome { --pw-bottom: 14px; }
+  html[data-size="tall-narrow"] .pairs-hero { --pw-card-w: 107px; --pw-card-h: 114px; }
   html[data-size="tall-narrow"] .pairs-welcome-body { row-gap: var(--ds-space-m); padding-top: 0; }
   html[data-size="tall-narrow"] .pairs-play-button { height: 64px; }
 }
@@ -12154,7 +12150,7 @@ html[data-size="tall-narrow"] .pairs-play-button svg { width: 30px; height: 30px
    the sand reaches the bottom. The sky and the sand give their parts to
    the screen's grid and keep only their colours. */
 html[data-size="wide-short"] .pairs-welcome {
-  --pw-card-w: 120px; --pw-card-h: 128px; --pw-bottom: 0px;
+  --pw-bottom: 0px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 320px);
   grid-template-rows: auto auto;
@@ -12169,7 +12165,7 @@ html[data-size="wide-short"] .pairs-welcome-bar { position: absolute; top: calc(
 html[data-size="wide-short"] .pairs-title { grid-column: 2; grid-row: 1; justify-content: flex-start; justify-self: start; gap: var(--ds-space-m); margin-top: var(--ds-space-xs); font-size: var(--ds-size-26); }
 html[data-size="wide-short"] .pairs-mark { width: 48px; height: 48px; border-top-left-radius: var(--ds-radius-12); border-top-right-radius: var(--ds-radius-12); border-bottom-left-radius: var(--ds-radius-12); border-bottom-right-radius: var(--ds-radius-12); background: var(--ds-action); color: var(--ds-on-action); box-shadow: none; }
 html[data-size="wide-short"] .pairs-mark svg { width: 28px; height: 28px; }
-html[data-size="wide-short"] .pairs-hero { grid-column: 1; grid-row: 1 / -1; align-self: center; justify-self: center; }
+html[data-size="wide-short"] .pairs-hero { --pw-card-w: 120px; --pw-card-h: 128px; grid-column: 1; grid-row: 1 / -1; align-self: center; justify-self: center; }
 html[data-size="wide-short"] .pairs-start { grid-column: 2; grid-row: 2; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: var(--ds-space-m); min-height: 0; padding-top: var(--ds-space-m); }
 html[data-size="wide-short"] .pairs-chips { gap: var(--ds-btn-gap); }
 html[data-size="wide-short"] .pairs-chips .pairs-climb:not([data-shown]) { margin-right: calc(-1 * var(--ds-btn-gap)); }
@@ -12872,7 +12868,7 @@ html .dig-board-screen :is(.dig-chip-words, .dig-chip-of) { display: none; }
    in the sky, the actions on the sand, over bedrock. Sand and bedrock span
    the grid; each card is as wide as the room lets every row and column be. */
 .pairs-result {
-  --pr-side: var(--ds-space-40); --pr-sand: 144px; --pr-bedrock: 60px; --pr-wave: 30px; --pr-gap: var(--ds-space-m); --pr-wave-top: -20px; --pr-card-max: 150px; --pr-art: 0.673;
+  --pr-side: var(--ds-space-40); --pr-sand: 144px; --pr-bedrock: 60px; --pr-wave: 30px; --pr-gap: var(--ds-space-m); --pr-wave-top: -20px;
   position: relative; isolation: isolate; box-sizing: border-box; min-height: 100vh; min-height: 100dvh; height: 100vh; height: 100dvh; display: grid;
   /* The root holds its content clear of the safe areas; the earth reaches back out to the window's edges. */
   padding: env(safe-area-inset-top) var(--screen-right) env(safe-area-inset-bottom) var(--screen-left);
@@ -12883,10 +12879,14 @@ html .dig-board-screen :is(.dig-chip-words, .dig-chip-of) { display: none; }
   background: linear-gradient(var(--ds-sky-top), var(--ds-sky-bottom) 40dvh) var(--ds-sky-bottom);
 }
 body:has(.pairs-result) #version { display: none; }
-.pairs-result[data-count="3"] { --pr-card-max: 180px; --pr-art: 0.683; }
-.pairs-result[data-count="4"] { --pr-card-max: 170px; --pr-art: 0.682; }
-.pairs-result[data-count="6"] { --pr-card-max: 160px; --pr-art: 0.675; }
-.pairs-result[data-count="12"] { --pr-card-max: 136px; --pr-art: 0.662; }
+/* How wide a card may be and how much of it the art takes, by the count
+   of dinosaurs. Each card carries its count and these sizes itself: a
+   turn draws a copy of it outside the result, which keeps them only so. */
+:is(.pairs-result, .pairs-found-card) { --pr-card-max: 150px; --pr-art: 0.673; }
+:is(.pairs-result, .pairs-found-card)[data-count="3"] { --pr-card-max: 180px; --pr-art: 0.683; }
+:is(.pairs-result, .pairs-found-card)[data-count="4"] { --pr-card-max: 170px; --pr-art: 0.682; }
+:is(.pairs-result, .pairs-found-card)[data-count="6"] { --pr-card-max: 160px; --pr-art: 0.675; }
+:is(.pairs-result, .pairs-found-card)[data-count="12"] { --pr-card-max: 136px; --pr-art: 0.662; }
 .pairs-result-sand { position: relative; z-index: -2; grid-area: 2 / 1 / 3 / -1; margin-inline: calc(-1 * var(--screen-left)) calc(-1 * var(--screen-right)); background: var(--ds-strata-1); }
 .pairs-result-wave { position: absolute; top: var(--pr-wave-top); left: 0; width: 100%; height: var(--pr-wave); fill: var(--ds-strata-1); }
 .pairs-result-bedrock { position: relative; z-index: -1; grid-area: 3 / 1 / 4 / -1; margin: 0 calc(-1 * var(--screen-right)) calc(-1 * env(safe-area-inset-bottom)) calc(-1 * var(--screen-left)); background: var(--ds-strata-2); --home-earth: var(--ds-strata-2); }
@@ -12897,23 +12897,26 @@ body:has(.pairs-result) #version { display: none; }
   margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(var(--columns), var(--pr-card)); gap: var(--pr-gap);
 }
 .pairs-found-card {
-  position: relative; box-sizing: border-box; min-width: 0; display: flex; flex-direction: column; gap: var(--ds-space-xs); padding: var(--ds-space-s);
-  border: 2px solid var(--ds-outline); border-radius: var(--ds-radius-12); background: var(--ds-label); color: var(--ds-ink);
+  --pr-card-pad: var(--ds-space-s); --pr-card-border: 2px;
+  /* What the card holds is sized by the card's own width, outside the
+     result too. */
+  --pr-card: calc(100cqw + 2 * (var(--pr-card-pad) + var(--pr-card-border)));
+  container-type: inline-size;
+  position: relative; box-sizing: border-box; min-width: 0; display: flex; flex-direction: column; gap: var(--ds-space-xs); padding: var(--pr-card-pad);
+  border: var(--pr-card-border) solid var(--ds-outline); border-radius: var(--ds-radius-12); background: var(--ds-label); color: var(--ds-ink);
   animation: rise-in var(--motion-standard) var(--ease-out) both; animation-delay: calc(var(--card) * var(--motion-stagger) * 1.5);
 }
 .pairs-found-art { flex: none; height: calc(var(--pr-card) * var(--pr-art)); display: flex; }
 .pairs-found-picture { display: block; width: 100%; height: 100%; min-height: 0; object-fit: contain; }
 .pairs-found-art .picture[data-picture="loading"] { --shimmer-from: var(--ds-pocket-1); --shimmer-to: var(--ds-strata-1); background-color: var(--ds-pocket-1); border-radius: var(--ds-radius-10); }
-.pairs-found-art:has(.picture[data-picture="failed"]) { display: none; }
-.pairs-found-art:has(.picture[data-picture="failed"]) + .pairs-found-name { flex: 1 1 0; display: grid; place-items: center; }
 /* A name stays on one line, as large as the card lets it, up to 13 pixels;
    where a narrow card breaks it, its longer part sets the size. */
 .pairs-found-name { flex-shrink: 0; align-self: stretch; margin-inline: calc(-1 * var(--ds-space-6)); font-size: clamp(9px, (var(--pr-card) - 28px) / (var(--name-fit, var(--name-length)) * 0.75), 13px); font-weight: 900; line-height: 1.1; text-align: center; white-space: nowrap; hyphens: manual; }
 html[data-size="wide-short"] .pairs-found-name[data-break="long"],
-html:is([data-size="wide"], [data-size="tall"]) .pairs-result[data-count="12"] .pairs-found-name[data-break="long"],
-html[data-size="tall-narrow"] .pairs-result[data-count="3"] .pairs-found-name:is([data-break="long"], [data-break="narrow"]),
-html[data-size="tall-narrow"] .pairs-result:is([data-count="6"], [data-count="9"]) .pairs-found-name:is([data-break="long"], [data-break="narrow"]),
-html:is([data-size="tall-narrow"], [data-size="wide-short"]) .pairs-result[data-count="12"] .pairs-found-name[data-break] { --name-fit: var(--name-fine-part); white-space: normal; }
+html:is([data-size="wide"], [data-size="tall"]) .pairs-found-card[data-count="12"] .pairs-found-name[data-break="long"],
+html[data-size="tall-narrow"] .pairs-found-card[data-count="3"] .pairs-found-name:is([data-break="long"], [data-break="narrow"]),
+html[data-size="tall-narrow"] .pairs-found-card:is([data-count="6"], [data-count="9"]) .pairs-found-name:is([data-break="long"], [data-break="narrow"]),
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .pairs-found-card[data-count="12"] .pairs-found-name[data-break] { --name-fit: var(--name-fine-part); white-space: normal; }
 /* NEW sits inside the card's top-right corner; on a phone, its sparkle alone. */
 .pairs-new-badge {
   position: absolute; top: var(--ds-space-xs); right: var(--ds-space-xs); display: flex; align-items: center; gap: var(--ds-space-6); padding: var(--ds-space-7) var(--ds-space-m) var(--ds-space-7) var(--ds-btn-gap);
@@ -12974,18 +12977,23 @@ html:is([data-size="tall"], [data-size="tall-narrow"]) .pairs-result-room { grid
 html:is([data-size="tall"], [data-size="tall-narrow"]) .pairs-found { --pr-card: min(var(--pr-card-max), (100cqw - (var(--columns) - 1) * var(--pr-gap)) / var(--columns)); }
 html:is([data-size="tall"], [data-size="tall-narrow"]) .pairs-result-score { margin: 0 var(--pr-side); }
 html:is([data-size="tall"], [data-size="tall-narrow"]) .pairs-result-actions { padding: 0 var(--pr-side); }
-html[data-size="tall"] .pairs-result { --pr-card-max: 200px; --pr-art: 0.55; --pr-side: 56px; --pr-top: 44px; --pr-bottom: var(--ds-space-m); --pr-bedrock: 50px; }
-html[data-size="tall"] .pairs-result:is([data-count="3"], [data-count="4"]) { --pr-card-max: 200px; --pr-art: 0.69; }
-html[data-size="tall"] .pairs-result[data-count="12"] { --pr-card-max: 147px; --pr-art: 0.612; }
+html[data-size="tall"] .pairs-result { --pr-side: 56px; --pr-top: 44px; --pr-bottom: var(--ds-space-m); --pr-bedrock: 50px; }
+html[data-size="tall"] :is(.pairs-result, .pairs-found-card) { --pr-card-max: 200px; --pr-art: 0.55; }
+html[data-size="tall"] :is(.pairs-result, .pairs-found-card):is([data-count="3"], [data-count="4"]) { --pr-card-max: 200px; --pr-art: 0.69; }
+html[data-size="tall"] :is(.pairs-result, .pairs-found-card)[data-count="12"] { --pr-card-max: 147px; --pr-art: 0.612; }
 html[data-size="tall"] .pairs-result-tries { font-size: 110px; }
 html[data-size="tall"] .pairs-result-title { font-size: var(--ds-size-48); }
-html[data-size="tall-narrow"] .pairs-result { --pr-side: var(--ds-space-20); --pr-top: 60px; --pr-bottom: var(--ds-space-20); --pr-bedrock: 30px; --pr-wave: 24px; --pr-wave-top: -16px; --pr-gap: var(--ds-space-s); --pr-card-max: 100px; --pr-art: 0.42; }
-html[data-size="tall-narrow"] .pairs-result[data-count="3"] { --pr-card-max: 112px; --pr-art: 0.688; }
-html[data-size="tall-narrow"] .pairs-result[data-count="4"] { --pr-card-max: 150px; --pr-art: 0.533; }
-@media (max-height: 700px) { html[data-size="tall-narrow"] .pairs-result[data-count="4"] { --pr-card-max: 140px; --pr-art: 0.443; } }
-html[data-size="tall-narrow"] .pairs-result[data-count="6"] { --pr-art: 0.5; }
-html[data-size="tall-narrow"] .pairs-result[data-count="12"] { --pr-card-max: 82px; --pr-art: 0.488; }
+html[data-size="tall-narrow"] .pairs-result { --pr-side: var(--ds-space-20); --pr-top: 60px; --pr-bottom: var(--ds-space-20); --pr-bedrock: 30px; --pr-wave: 24px; --pr-wave-top: -16px; --pr-gap: var(--ds-space-s); }
+html[data-size="tall-narrow"] :is(.pairs-result, .pairs-found-card) { --pr-card-max: 100px; --pr-art: 0.42; }
+html[data-size="tall-narrow"] :is(.pairs-result, .pairs-found-card)[data-count="3"] { --pr-card-max: 112px; --pr-art: 0.688; }
+html[data-size="tall-narrow"] :is(.pairs-result, .pairs-found-card)[data-count="4"] { --pr-card-max: 150px; --pr-art: 0.533; }
+@media (max-height: 700px) { html[data-size="tall-narrow"] :is(.pairs-result, .pairs-found-card)[data-count="4"] { --pr-card-max: 140px; --pr-art: 0.443; } }
+html[data-size="tall-narrow"] :is(.pairs-result, .pairs-found-card)[data-count="6"] { --pr-art: 0.5; }
+html[data-size="tall-narrow"] :is(.pairs-result, .pairs-found-card)[data-count="12"] { --pr-card-max: 82px; --pr-art: 0.488; }
 html[data-size="tall-narrow"] .pairs-result-score { gap: var(--ds-space-s); }
+/* A new level's longer Russian words take two lines on an upright phone,
+   at reading size. */
+html[data-size="tall-narrow"] .pairs-level-up { white-space: normal; }
 html[data-size="tall-narrow"] .pairs-result-tries { font-size: var(--ds-size-80); }
 html[data-size="tall-narrow"] .pairs-result-hand { width: 56px; height: 56px; }
 html[data-size="tall-narrow"] .pairs-result-title { font-size: var(--ds-size-34); }
@@ -13000,11 +13008,12 @@ html[data-size="tall"] .pairs-result-actions button { height: 72px; font-size: v
 /* On a phone on its side the dinosaurs and a 300-wide column fill the
    window over a strip of sand; there is no bedrock. */
 html[data-size="wide-short"] .pairs-result {
-  --pr-card-max: 118px; --pr-art: 0.475; --pr-wave: 24px; --pr-wave-top: -16px; --pr-side: var(--ds-space-20); --pr-gap: var(--ds-space-s); --pr-sand: 77px;
+  --pr-wave: 24px; --pr-wave-top: -16px; --pr-side: var(--ds-space-20); --pr-gap: var(--ds-space-s); --pr-sand: 77px;
   grid-template-columns: minmax(0, 1fr) calc(300px + var(--pr-side)); grid-template-rows: minmax(0, 1fr) var(--pr-sand); column-gap: var(--ds-space-14);
 }
-html[data-size="wide-short"] .pairs-result:is([data-count="3"], [data-count="4"], [data-count="6"]) { --pr-art: 0.602; }
-html[data-size="wide-short"] .pairs-result[data-count="12"] { --pr-card-max: 86px; --pr-art: 0.465; }
+html[data-size="wide-short"] :is(.pairs-result, .pairs-found-card) { --pr-card-max: 118px; --pr-art: 0.475; }
+html[data-size="wide-short"] :is(.pairs-result, .pairs-found-card):is([data-count="3"], [data-count="4"], [data-count="6"]) { --pr-art: 0.602; }
+html[data-size="wide-short"] :is(.pairs-result, .pairs-found-card)[data-count="12"] { --pr-card-max: 86px; --pr-art: 0.465; }
 html[data-size="wide-short"] .pairs-result-bedrock { display: none; }
 html[data-size="wide-short"] .pairs-result-sand { grid-area: 2 / 1 / 3 / -1; margin-bottom: calc(-1 * env(safe-area-inset-bottom)); }
 html[data-size="wide-short"] .pairs-result-room { grid-area: 1 / 1 / 3 / 2; margin: var(--ds-space-m) 0 21px var(--pr-side); }

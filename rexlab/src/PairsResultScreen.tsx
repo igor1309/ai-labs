@@ -114,7 +114,7 @@ export function PairsResultScreen({ language, pals, tries, stars, best, beaten, 
         <div className="pairs-result-room">
           <ul className="pairs-found" aria-label={text.creatures} style={motion({ "--columns": columns, "--rows": Math.ceil(pals.length / columns) })}>
             {pals.map(({ id, name, picture, newlyFound }, index) => (
-              <li key={id} className="pairs-found-card" data-turn-part={`pairs-found-${index}`} style={motion({ "--card": index })}>
+              <li key={id} className="pairs-found-card" data-count={pals.length} data-turn-part={`pairs-found-${index}`} style={motion({ "--card": index })}>
                 <span className="pairs-found-art">
                   <Picture className="pairs-found-picture" src={picture} alt="" width={800} height={600} />
                 </span>

@@ -43,9 +43,9 @@ function matches(selector: string, properties: Record<string, string>) {
     expect(shown.getPropertyValue(property), `${selector} ${property}`).toBe(getComputedStyle(literal).getPropertyValue(property));
   }
 }
-function showWelcome({ language = "en", level = "hatchling", climbLevel = 1, stars = 0 }: { language?: Language; level?: AgeLevel; climbLevel?: number; stars?: number } = {}) {
+function showWelcome({ language = "en", level = "hatchling", climbLevel = 1, stars = 0, hero = "triceratops.webp" }: { language?: Language; level?: AgeLevel; climbLevel?: number; stars?: number; hero?: string } = {}) {
   const pictures = manualPictures();
-  render(<PairsWelcomeScreen language={language} level={level} climbLevel={climbLevel} stars={stars} heroPicture="triceratops.webp" onLevel={noop} onPlay={noop} onHome={noop} />, withManualPictures(pictures));
+  render(<PairsWelcomeScreen language={language} level={level} climbLevel={climbLevel} stars={stars} heroPicture={hero} onLevel={noop} onPlay={noop} onHome={noop} />, withManualPictures(pictures));
   return pictures;
 }
 
@@ -104,6 +104,15 @@ it.each(["en", "ru"] as const)("shows the %s title, chips and PLAY each with its
   expect([climb.textContent, climb.querySelector("svg") !== null, stars.textContent, stars.querySelector("svg") !== null]).toEqual(["3", true, "14", true]);
   for (const selector of [".pairs-welcome-home", ".pairs-play-button"]) expect(part(selector).querySelector("svg"), selector).not.toBeNull();
   expect(part(".pairs-play-button").textContent).toBe(text.play);
+});
+
+// The silhouette is the ink cut by its own dinosaur's picture: without
+// its mask it would be a plain ink card.
+it.each(["triceratops.webp", "stegosaurus.webp"])("cuts the welcome's silhouette from its own picture, %s", (hero) => {
+  const pictures = showWelcome({ hero });
+  act(() => pictures.finish(hero));
+  const pictured = [...document.querySelectorAll(".pairs-hero img")].map((image) => image.getAttribute("src"));
+  expect([pictured, (part(".pairs-hero-shadow") as HTMLElement).style.maskImage]).toEqual([[hero, hero], `url("${hero}")`]);
 });
 
 it.each(["explorer", "paleontologist"] as const)("folds the climb level away at %s, its stars still shown", (level) => {
@@ -181,6 +190,16 @@ it.each(["hatchling", "explorer", "paleontologist"] as const)("draws %s's face u
   }
 });
 
+it("cuts each silhouette card from its own dinosaur's picture", () => {
+  const pictures = showBoard({ level: "explorer" });
+  act(() => pictures.finishAll());
+  const silhouettes = [...document.querySelectorAll('.pair-card:not([data-state="down"])')].map((card) => [
+    card.querySelector(".pair-silhouette")?.getAttribute("src"),
+    (card.querySelector(".pair-card-shadow") as HTMLElement).style.maskImage
+  ]);
+  expect(silhouettes).toEqual([["rex.webp", 'url("rex.webp")'], ["pachy.webp", 'url("pachy.webp")'], ["pachy.webp", 'url("pachy.webp")']]);
+});
+
 it.each(["en", "ru"] as const)("names the %s bar's buttons, title and chips, each with its symbol, HOME first", (language) => {
   const text = TEXTS[language];
   showBoard({ language });
@@ -252,6 +271,21 @@ for (const theme of THEMES) for (const shape of SHAPES) {
     matches(".pairs-offer-not-now", { "border-top-color": "ink", color: "ink" });
   });
 }
+
+// A picture that cannot be loaded keeps its place on its card, in the
+// failure look, so the card keeps its size and NEW stays clear of the
+// name.
+it.each(SHAPES)("keeps a found card's art in place when its picture cannot be loaded, in %s", (shape) => {
+  at("light", shape);
+  const pictures = showResult();
+  act(() => pictures.fail("rex.webp"));
+  act(() => pictures.finishAll());
+  const card = part(".pairs-found-card");
+  const art = card.querySelector(".pairs-found-art")!;
+  expect([card.querySelector(".pairs-new-badge") !== null, art.querySelector(".picture")?.getAttribute("data-picture"), style(art).display, card.querySelector(".pairs-found-name")?.textContent])
+    .toEqual([true, "failed", "flex", "TYRANNO\u00ADSAURUS"]);
+  expect(style(art.querySelector(".picture")!).backgroundImage).toMatch(/^url\("data:image\/svg\+xml/);
+});
 
 it.each(["en", "ru"] as const)("shows the %s rewards in words and symbols, the offer NOT NOW first", (language) => {
   const text = TEXTS[language];

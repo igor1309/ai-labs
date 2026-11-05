@@ -488,7 +488,7 @@ describe("find the pair's motion", () => {
 
   it("folds the climb level in and out beside the stars, and only fades it with reduced motion", () => {
     expect(declared(PLAIN, ".pairs-climb").transition).toBe(
-      "grid-template-columns var(--motion-standard) var(--ease-out),\n    margin-right var(--motion-standard) var(--ease-out),\n    opacity var(--motion-standard) var(--ease-out)"
+      "grid-template-columns var(--motion-standard) var(--ease-out),\n    grid-template-rows var(--motion-standard) var(--ease-out),\n    margin var(--motion-standard) var(--ease-out),\n    opacity var(--motion-standard) var(--ease-out)"
     );
     expect(declared(PLAIN, ".pairs-climb[data-shown]")).toEqual({ "grid-template-columns": "1fr", "margin-right": "0", opacity: "1" });
     expect(declared(REDUCED, ".pairs-climb")).toEqual({ "transition-property": "opacity" });
