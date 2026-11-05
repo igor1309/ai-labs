@@ -1,5 +1,6 @@
 // Contract test: production COMPARE composition, browser input, pictures,
 // responsive layout, motion and localStorage in Chromium.
+const { appFiles, root } = require('./appBuild.cjs');
 const assert = require('node:assert/strict');
 const { readFile, mkdir, writeFile } = require('node:fs/promises');
 const { join, resolve, extname } = require('node:path');
@@ -135,10 +136,7 @@ async function run() {
   const artifacts = process.env.REXLAB_COMPARE_SCREENSHOTS;
   const captures = [];
   try {
-    const { build } = await import('vite');
-    const root = resolve(__dirname, '..');
-    const bundle = await build({ root, logLevel: 'error', build: { write: false } });
-    const files = new Map(bundle.output.map(file => [file.fileName, file.type === 'chunk' ? file.code : file.source]));
+    const files = await appFiles();
     browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || undefined, headless: true });
     if (artifacts) await mkdir(artifacts, { recursive: true });
     for (const language of ['en', 'ru']) for (const level of levels) {

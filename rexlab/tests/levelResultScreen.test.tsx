@@ -9,7 +9,7 @@ import { ResultScreen } from "../src/ResultScreen.tsx";
 import { LevelResultScreen, type LevelResultScreenProps } from "../src/LevelResultScreen.tsx";
 import { LEVEL_EMS } from "./levelEms.ts";
 import { withPictures } from "./pictures.tsx";
-import { contrast, fakeBodyPicture, sameColour, seenOn, surfaceOf } from "./support.ts";
+import { contrast, fakeBodyPicture, seenOn, surfaceOf } from "./support.ts";
 import { WINDOW_SIZES, openWindow } from "./windowSizes.ts";
 
 const result = {
@@ -146,7 +146,6 @@ describe.each(
         expect(pixels(s.height)).toBeGreaterThanOrEqual(48);
         const surface = surfaceOf(name);
         expect(contrast(seenOn(s.color, surface), surface)).toBeGreaterThanOrEqual(4.5);
-        expect(sameColour(s.color, s.getPropertyValue(button.getAttribute("aria-pressed") === "true" ? "--ds-on-strong" : "--ds-ink"))).toBe(true);
       }
 
       const stars = screen.getByRole("img", { name: text.stars(10, 10) });

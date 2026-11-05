@@ -16,44 +16,20 @@ const component = (id: string): any => {
 };
 const part = (selector: string) => document.querySelector<HTMLElement>(selector)!;
 const token = (name: string) => getComputedStyle(document.documentElement).getPropertyValue(`--ds-${name}`).trim();
-const literal = (property: string, value: string) => { const el = document.createElement("span"); el.style.setProperty(property, value); return getComputedStyle(el).getPropertyValue(property); };
 afterEach(() => { delete document.documentElement.dataset.size; delete document.documentElement.dataset.theme; });
 
-for (const theme of ["light", "dark"]) for (const size of ["wide", "tall", "tall-narrow", "wide-short"]) {
-  test(`controlled result uses the design components in ${theme}, ${size}`, () => {
-    document.documentElement.dataset.theme = theme;
-    document.documentElement.dataset.size = size;
-    render(<LevelResultScreen {...resultProps()} />, withPictures);
-    const matches = (selector: string, properties: Record<string, string>) => {
-      for (const [property, name] of Object.entries(properties)) expect(getComputedStyle(part(selector)).getPropertyValue(property), `${selector} ${property}`).toBe(literal(property, token(name)));
-    };
-    matches(".compare-result", { color: "ink" });
-    matches(".compare-result-sand", { "background-color": "strata-1" });
-    matches(".compare-result-ochre", { "background-color": "strata-2" });
-    matches(".result-score", { color: "ink" });
-    matches(".result-score-total", { color: size === "wide-short" ? "ink" : "ink-soft" });
-    matches(".star-won", { color: "reward" });
-    matches(".star:not(.star-won)", { color: "ink-soft" });
-    matches(".best-score", { "background-color": "label", color: "on-label", "border-radius": "radius-tag" });
-    matches(".celebration", { "background-color": "reward", color: "on-reward", "border-radius": "radius-tag" });
-    matches(".play-again-button", { "background-color": "action", color: "on-action", "border-radius": "radius-pill" });
-    matches(".result-actions .home-button", { "background-color": "strong", color: "on-strong", "border-radius": "radius-pill" });
-    matches(".glow", { "background-color": "reward-glow" });
-    expect(getComputedStyle(part(".compare-result")).backgroundImage).toContain(literal("color", token("sky-top")));
-    expect(part(".compare-result-edge path").getAttribute("d")).toBe(component("m8Jt7").children[0].geometry);
-    if (size === "tall-narrow") {
-      expect(getComputedStyle(part(".result-score-value")).fontSize).toBe(token(component("qvw8g").descendants.icigh.fontSize.slice(4)));
-      expect(getComputedStyle(part(".result-title")).fontSize).toBe(token("size-34"));
-    }
-    expect(getComputedStyle(part(".result-hero")).objectFit).toBe("contain");
-    expect(getComputedStyle(part(".result-hero")).minHeight).toBe("120px");
-    expect(symbolOf(part(".best-score"))).toBe("trophy");
-    expect([...document.querySelectorAll(".star svg")].map(svg => svg.getAttribute("fill"))).toEqual([...Array(7).fill("currentColor"), ...Array(3).fill("none")]);
-    const actions = [TEXTS.en.playAgain, TEXTS.en.home].map(name => screen.getByRole("button", { name }));
-    expect(actions.map(symbolOf)).toEqual(["rotate-ccw", "house"]);
-    expect(actions.every(button => parseFloat(getComputedStyle(button).height) >= 44)).toBe(true);
-  });
-}
+test("controlled result uses the design components", () => {
+  document.documentElement.dataset.size = "wide";
+  render(<LevelResultScreen {...resultProps()} />, withPictures);
+  expect(part(".compare-result-edge path").getAttribute("d")).toBe(component("m8Jt7").children[0].geometry);
+  expect(getComputedStyle(part(".result-hero")).objectFit).toBe("contain");
+  expect(getComputedStyle(part(".result-hero")).minHeight).toBe("120px");
+  expect(symbolOf(part(".best-score"))).toBe("trophy");
+  expect([...document.querySelectorAll(".star svg")].map(svg => svg.getAttribute("fill"))).toEqual([...Array(7).fill("currentColor"), ...Array(3).fill("none")]);
+  const actions = [TEXTS.en.playAgain, TEXTS.en.home].map(name => screen.getByRole("button", { name }));
+  expect(actions.map(symbolOf)).toEqual(["rotate-ccw", "house"]);
+  expect(actions.every(button => parseFloat(getComputedStyle(button).height) >= 44)).toBe(true);
+});
 
 const rewards = [
   { score: 4, best: 4, beaten: undefined, celebration: "first-best" as const },

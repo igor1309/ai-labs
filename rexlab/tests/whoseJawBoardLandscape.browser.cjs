@@ -189,11 +189,12 @@ async function check(browser, url, screenshots, width, height, language, theme, 
       url = server.resolvedUrls.local[0];
     }
     browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || undefined, headless: true });
-    for (const [width, height] of sizes) for (const language of ["en", "ru"]) for (const theme of ["light", "dark"]) for (const level of [0, 1, 2]) {
-      await check(browser, url, screenshots, width, height, language, theme, level);
+    // The board checks no colour, so its layout is checked in the light theme.
+    for (const [width, height] of sizes) for (const language of ["en", "ru"]) for (const level of [0, 1, 2]) {
+      await check(browser, url, screenshots, width, height, language, "light", level);
     }
     await check(browser, url, screenshots, 1180, 820, "en", "light", 2, "no-preference");
-    console.log("PASS 61 board configurations: all geometry and interactions fit");
+    console.log("PASS 31 board configurations: all geometry and interactions fit");
   } finally {
     try {
       await browser?.close();

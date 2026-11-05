@@ -1,5 +1,9 @@
 # rexlab — Change Log
 
+## 2026-11-05
+
+- LAB-963: The first launch works without Wi-Fi once the app has installed itself; before, only the next launch did.
+
 ## 2026-11-04
 
 - LAB-917: WHOSE JAW? is the dig site on every device, light, dark and Russian: the welcome with its tooth title, dinosaur and tilted jaw cards, red PLAY and navy JAW SHELF; the board with tooth sockets and best score in the sky, dinosaur cards on the sand and the jaw in a tray, the cue on the wrong card; the result with the round's jaws fanned beside the stars and new finds on a plank; the JAW SHELF as rows of four on planks with its diet tags and a restyled jaw card. A word fitted to its room now always fits, in every game.
