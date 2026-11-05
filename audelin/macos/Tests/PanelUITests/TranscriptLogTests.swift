@@ -642,6 +642,35 @@ struct TranscriptLogTests {
         #expect(scroll.contentView.bounds.origin.y == 0, "the log moved under the reader")
     }
 
+    @Test func resizingALongLiveLogKeepsItsLastLineVisible() throws {
+        let history = (0..<120).map { index in
+            PanelState.Entry(id: index, time: "03:24", speaker: .them,
+                settled: String(repeating: "Обсуждаем план работ и следующий релиз. ", count: 1 + index % 7))
+        }
+        func panel(_ width: CGFloat) -> AnyView {
+            var config = PanelConfig.glassLedger
+            config.panelWidth = width
+            return AnyView(PanelView(state: .init(recording: .on(elapsed: "00:11:26"),
+                log: .lines(.init(entries: history))), event: { _ in }, config: config)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top))
+        }
+        let host = Offscreen.host(panel(396), size: CGSize(width: 396, height: 560))
+        let window = try #require(host.window)
+        let text = try #require(Offscreen.textView(in: host))
+        let scroll = try #require(scrollView(in: host))
+        for width: CGFloat in [500, 320, 600, 396, 550, 340] {
+            host.rootView = panel(width)
+            window.setContentSize(CGSize(width: width, height: 560))
+            host.layoutSubtreeIfNeeded()
+            RunLoop.main.run(until: .now.addingTimeInterval(0.05))
+            host.display()
+            let last = text.firstRect(forCharacterRange: NSRange(location: text.string.utf16.count - 1, length: 1), actualRange: nil)
+            let visible = scroll.convert(scroll.contentView.bounds, from: scroll.contentView)
+            let screen = window.convertToScreen(scroll.convert(visible, to: nil))
+            #expect(last.intersects(screen), "last line disappeared at width \(width): \(last), viewport \(screen)")
+        }
+    }
+
     @Test func unchangedRowsDoNotEditTextStorage() {
 
         let rows = Transcript.Rows()

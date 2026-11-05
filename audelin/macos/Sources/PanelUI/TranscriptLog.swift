@@ -289,6 +289,17 @@ extension TranscriptLog {
 /// the delegate nor an app event monitor sees the end of the drag.
 final class LogTextView: NSTextView {
 
+    override func setFrameSize(_ newSize: NSSize) {
+        let rewraps = frame.width > 0 && frame.width != newSize.width && !string.isEmpty
+        super.setFrameSize(newSize)
+        // A width change invalidates every wrapped paragraph. Estimated
+        // heights must not drive bottom-following while they are changing:
+        // finish this reflow before the next display or scroll adjustment.
+        if rewraps, let layout = textLayoutManager {
+            layout.ensureLayout(for: layout.documentRange)
+        }
+    }
+
     var selectionStarted: (() -> Void)?
     var selectionEnded: (() -> Void)?
 
