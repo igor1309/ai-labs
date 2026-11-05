@@ -60,19 +60,25 @@ struct MenuBarActionTests {
         }
     }
 
-    @Test func menuReopenPresentsTheClosedRecordingPanelAndRemovesTheOffer() async throws {
+    @Test func menuHidesAndRestoresTheRecordingPanelWithoutStoppingRecording() async throws {
         try await withComposeFolder { root in
             let visibility = Values<Bool>()
             let rig = try await ComposeFixture.make(root: root, presentPanel: visibility.append)
             do {
                 try await rig.start()
                 for await state in Observations({ rig.menu.state }) where state.phase == .recording { break }
-                rig.menu.panelClosed()
+                let recording = rig.menu.state
+                #expect(rig.menu.menu.entries.contains(.button("Скрыть панель", .hidePanel)))
+                await rig.menu.perform(.hidePanel)
+                #expect(rig.menu.state == recording)
+                #expect(rig.menu.preferences.liveText)
                 #expect(rig.menu.menu.entries.contains(.button("Показать панель", .showPanel)))
 
                 await rig.menu.perform(.showPanel)
 
                 #expect(visibility.all == [true, false, true])
+                #expect(rig.menu.state == recording)
+                #expect(rig.menu.menu.entries.contains(.button("Скрыть панель", .hidePanel)))
                 #expect(!rig.menu.menu.entries.contains(.button("Показать панель", .showPanel)))
                 #expect(rig.log.entries.all.filter { $0.category == .panel }.map(\.message) == [
                     "shown reason=recordingBegan", "hidden reason=userClosed", "shown reason=menuReopen",
