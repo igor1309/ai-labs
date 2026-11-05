@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { EDGE_PARTS, SCREEN_ROOTS, edgePart, screenRoot, contentRoots } from "./screenRoots.ts";
+import { EDGE_PARTS, SCREEN_ROOTS, edgePart, screenRoot, contentRoots, padsItsParts } from "./screenRoots.ts";
 import { computedStyleWithVariables } from "./stylesheet.ts";
 import { WINDOW_SIZES, openWindow } from "./windowSizes.ts";
 
@@ -27,7 +27,7 @@ const box = (style: CSSStyleDeclaration) => [style.margin, style.boxSizing, styl
 function measure(classes: string) {
   const root = screenRoot(classes);
   return { padding: contentRoots(root).map(part => {
-    const style = root.classList.contains("friends-dig-site") ? browserStyle(part) : getComputedStyle(part);
+    const style = padsItsParts(root) ? browserStyle(part) : getComputedStyle(part);
     return { left: px(style.paddingLeft), right: px(style.paddingRight) };
   }), box: box(getComputedStyle(root)) };
 }

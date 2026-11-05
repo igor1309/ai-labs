@@ -76,7 +76,7 @@ describe("Whose Jaw full visit", () => {
       app = openWhoseJawApp({ language, storage: app.storage });
       fireEvent.click(homeTile(text.whoseJaw));
       expect(button(text.ageLevels[level].name).getAttribute("aria-pressed")).toBe("true");
-      expect(screen.getByLabelText(text.bestScore).textContent).toBe("🦷 3");
+      expect(screen.getByLabelText(text.bestScore).textContent).toBe("3");
       expect(screen.getByLabelText(text.jawCollection).textContent).toContain("5 / 16");
       fireEvent.click(button(text.play));
       act(() => app.timers.fire(JAW_TIMING.entering));

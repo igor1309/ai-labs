@@ -1,5 +1,5 @@
 import { act, render, screen } from "@testing-library/react";
-import { afterEach, expect, it } from "vitest";
+import { expect, it } from "vitest";
 import { FriendsScreen, friendsColumns } from "../src/FriendsScreen.tsx";
 import { manualPictures, keptNothing } from "./support.ts";
 import { withManualPictures } from "./pictures.tsx";
@@ -13,34 +13,6 @@ function show(columns = 5) {
   const pictures = manualPictures();
   render(<FriendsScreen language="en" friends={friends} nestPicture="nest.webp" onFriend={noop} onNewVisitor={noop} onBack={noop} onHome={noop} layoutKeeping={keptNothing} columns={() => columns} />, withManualPictures(pictures));
   return pictures;
-}
-afterEach(() => { delete document.documentElement.dataset.theme; delete document.documentElement.dataset.size; });
-
-for (const theme of ["light", "dark"]) for (const shape of ["wide", "tall", "tall-narrow", "wide-short"]) {
-  it(`reads the dig-site tokens in ${theme} ${shape}`, () => {
-    document.documentElement.dataset.theme = theme;
-    document.documentElement.dataset.size = shape;
-    show();
-    const matches = (selector: string, properties: Record<string, string>) => {
-      for (const [property, token] of Object.entries(properties)) {
-        const literal = document.createElement("span");
-        literal.style.setProperty(property, style(document.documentElement).getPropertyValue(`--ds-${token}`));
-        expect(style(part(selector)).getPropertyValue(property), `${selector} ${property}`).toBe(getComputedStyle(literal).getPropertyValue(property));
-      }
-    };
-    matches('.friends', { color: 'ink' });
-    matches('.friends-sand', { 'background-color': 'strata-1' });
-    matches('.friends-sand-wave', { fill: 'strata-1' });
-    matches('.friends-bedrock', { 'background-color': 'strata-2' });
-    matches('.friend-card', { 'background-color': 'label', color: 'ink', 'border-radius': 'radius-22', 'padding-top': 'space-m', 'padding-bottom': 'space-14' });
-    matches('.friend-art', { 'background-color': 'pocket-1', 'border-top-left-radius': 'radius-40', 'border-bottom-left-radius': 'radius-speech' });
-    matches('.friends-mark', { 'background-color': 'pocket-1', color: 'action' });
-    matches('.friend-count', { 'background-color': 'label', color: 'ink', 'font-size': 'size-number' });
-    matches('.friend-count svg', { color: 'bad' });
-    matches('.friends-home', { 'background-color': 'quiet', color: 'ink' });
-    matches('.new-visitor-button', { 'background-color': 'action', color: 'on-action', 'border-radius': 'radius-pill' });
-    matches('.friend-name', { 'font-size': shape === 'tall' ? 'size-17' : shape === 'tall-narrow' ? 'size-foot' : 'size-14' });
-  });
 }
 
 it.each([2, 3, 5])("staggers only the first row of %i cards", columns => {

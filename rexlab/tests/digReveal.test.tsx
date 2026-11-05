@@ -100,4 +100,24 @@ describe("the dig reveal", () => {
     }
     if (card) expect(main.querySelector(".dig-card-new")?.textContent).toBe("NEW!");
   });
+
+  it("shows the three levels youngest first, with their pictures, the chosen one marked, moving its mark with the shared motion tokens", () => {
+    render(<DigRevealScreen {...props} onLevel={() => {}} onDigAgain={() => {}} onHome={() => {}} landed={true} startTimer={manualTimers().startTimer} landingWait={STAR_LANDS.motion} onLanded={() => {}} reducedMotion={false} />, withPictures);
+
+    const levels = within(screen.getByRole("group", { name: TEXTS.en.ageLevelSwitch })).getAllByRole("button");
+    expect(levels.map((level) => level.textContent)).toEqual(["🥚HATCHLING", "🦖EXPLORER", "🦴PALEONTOLOGIST"]);
+    expect(levels.map((level) => level.getAttribute("aria-pressed"))).toEqual(["false", "true", "false"]);
+    expect(getComputedStyle(document.querySelector(".level-switch-mark") as Element).transition).toBe("translate var(--motion-standard) var(--ease-out)");
+  });
+
+  it("shows the dinosaur's name under the DIG title, its count, NEW! and a first best", () => {
+    render(<DigRevealScreen {...props} name="Tyrannosaurus" dugUp={1} celebration="first-best" onLevel={() => {}} onDigAgain={() => {}} onHome={() => {}} landed={true} startTimer={manualTimers().startTimer} landingWait={STAR_LANDS.motion} onLanded={() => {}} reducedMotion={false} />, withPictures);
+
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("DIG");
+    expect(screen.getByRole("heading", { level: 2 }).textContent).toBe("TYRANNOSAURUS");
+    const card = screen.getByRole("region", { name: TEXTS.en.dugUp });
+    expect(card.textContent).toContain("1/42");
+    expect(card.querySelector(".dig-card-new")?.textContent).toBe("NEW!");
+    expect(screen.getByRole("status", { name: "FIRST BEST SCORE" })).toBeDefined();
+  });
 });
