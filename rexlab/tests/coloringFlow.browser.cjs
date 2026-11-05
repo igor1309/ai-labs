@@ -100,6 +100,7 @@ const { chromium } = require("playwright");
       console.error("UNCONTROLLED", JSON.stringify(state));
       throw error;
     });
+    assert(await page.evaluate(() => !!navigator.serviceWorker.controller));
     await context.setOffline(true);
     await press("NEW WORK"); await workshop(); await topEdge(); await paint("RED", false);
     assert.equal(await starts(), 1);
