@@ -3,8 +3,9 @@
 A Session runner for Agonara: one student's session, reached through a control
 plane (today Telegram) and kept apart from the student's learning record.
 
-Status: probe. The session content is canned; the runner does not call Agonara
-yet. It runs on the owner's Mac under launchd.
+Status: reads the programs the student can see, navigation and entities from
+Agonara's public API. Still no brain and no writes to Agonara. It runs on the
+owner's Mac under launchd.
 
 ## The idea
 
@@ -26,7 +27,7 @@ student.
  │                                                                      │
  │   ┌───────────────┐  update   ┌──────────────┐  action  ┌─────────┐  │
  │   │ main.js       │ ────────> │ bot.js       │ ───────> │ session │  │
- │   │ long polling  │           │ allowlist    │ <─────── │ (mock)  │  │
+ │   │ long polling  │           │ allowlist    │ <─────── │ flow    │  │
  │   │ offset, state │           │ by chat ID   │ content  └─────────┘  │
  │   └──────┬────────┘           └──────┬───────┘ + actions             │
  │          │                           │ telegram-adapter.js:          │
@@ -38,7 +39,7 @@ student.
      │ Telegram Bot API                          │ <── the student's DM
      └───────────────────────────────────────────┘
 
-   next:  session ──(cookie + CSRF, as the student)──> https://agonara.enoa.ai
+   session ── agonara-client.js (session cookie, as the student) ──> https://agonara.enoa.ai
 ```
 
 ## The bot
@@ -50,14 +51,19 @@ student.
 - **Buttons** carry the step they were drawn for; a press on an older message
   is refused instead of acting on a newer state. Long content is split at
   Telegram's 4096-character limit.
+- **Browsing:** Programs → topics, ungrouped concepts and materials → an entity's
+  title, body and outgoing items. Back retraces the screens; Programs returns
+  to the list. Buttons carry item indices; IDs stay in the saved screen state.
+- **Agonara errors** produce a short reply and a log line, keeping the previous
+  session so the student can retry. An expired login is renewed once per request.
 - **State** (Telegram offset and the session) is saved after every update, so
   a restart resumes where it stopped.
 
 ## Running it on the Mac
 
 Secrets live outside the repo in `~/.config/agonara-session/probe.env`
-(mode 600): `BOT_TOKEN`, `CHAT_ID`, `SESSION_STATE_PATH` and, for the coming
-Agonara calls, `AGONARA_BASE_URL`, `AGONARA_LOGIN`, `AGONARA_PASSWORD` for the
+(mode 600): `BOT_TOKEN`, `CHAT_ID`, `SESSION_STATE_PATH`,
+`AGONARA_BASE_URL`, `AGONARA_LOGIN`, `AGONARA_PASSWORD` for the
 non-admin identity `session-probe`.
 
 launchd runs it from the main checkout. Install, stopping any other copy first

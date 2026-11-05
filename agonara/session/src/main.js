@@ -1,17 +1,23 @@
 import { handleUpdate } from "./bot.js";
-import { initialSession } from "./mock-session.js";
+import { createAgonaraClient } from "./agonara-client.js";
+import { createProgramFlow, initialSession } from "./program-flow.js";
 import { createStore } from "./store.js";
 
 const token = process.env.BOT_TOKEN;
 const allowedChatId = Number(process.env.CHAT_ID);
 const statePath = process.env.SESSION_STATE_PATH;
-if (!token || !allowedChatId || !statePath) {
-  console.error("BOT_TOKEN, CHAT_ID and SESSION_STATE_PATH are required");
+const baseUrl = process.env.AGONARA_BASE_URL;
+const login = process.env.AGONARA_LOGIN;
+const password = process.env.AGONARA_PASSWORD;
+if (!token || !allowedChatId || !statePath || !baseUrl || !login || !password) {
+  console.error("BOT_TOKEN, CHAT_ID, SESSION_STATE_PATH, AGONARA_BASE_URL, AGONARA_LOGIN and AGONARA_PASSWORD are required");
   process.exit(1);
 }
 
 const log = (message) => console.log(`${new Date().toISOString()} ${message}`);
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const client = createAgonaraClient({ baseUrl, login, password, fetch: globalThis.fetch });
+const flow = createProgramFlow({ client });
 
 async function api(method, params = {}) {
   const response = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
@@ -42,7 +48,7 @@ for (;;) {
     });
     for (const update of updates) {
       log(`update ${update.update_id}`);
-      state = await handleUpdate({ update, state, allowedChatId, api });
+      state = await handleUpdate({ update, state, allowedChatId, api, flow, log });
       state = { ...state, offset: update.update_id + 1 };
       store.save(state);
     }
