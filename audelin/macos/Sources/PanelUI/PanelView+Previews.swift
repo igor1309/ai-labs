@@ -14,6 +14,7 @@ extension PanelState {
         ("settling-4s", .settling4),
         ("settling-8s", .settling8),
         ("selection-held", .selectionHeld),
+        ("long-selection-held", .longSelectionHeld),
         ("no-call-audio", .problem(.callAudio, gap: .init(speaker: .them, text: "— нет звука звонка с 12:45 —"))),
         ("no-microphone", .problem(.microphone, gap: .init(speaker: .me, text: "— нет микрофона с 12:45 —"))),
         ("disk-full", .problem(.diskFull(savedUntil: "12:45"), gap: .init(speaker: .them, text: "— диск заполнен с 12:45 —"))),
@@ -79,6 +80,14 @@ extension PanelState {
             newBelow: 2,
             followsLive: false
         ))
+    )
+
+    static let longSelectionHeld = PanelState(
+        recording: .on(elapsed: "00:12:47"),
+        log: .preparing(holds: [
+            .init(entryID: 1, text: "accountable"),
+            .init(entryID: 2, text: "Давайте зафиксируем, кто accountable за поддержку и как команда будет измерять результат на следующий квартал. " + String(repeating: "Обсудим SLA и OKR. ", count: 8)),
+        ])
     )
 
     static func problem(_ banner: Banner, gap: Gap? = nil) -> PanelState {
