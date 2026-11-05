@@ -1,69 +1,80 @@
 Feature: Animated skeleton in the home hero
-  The BONES / КОСТИ featured game has a gently turning Tyrannosaurus rex skeleton.
-  The presentation is the same for Hatchling, Explorer and Paleontologist.
-  No new child-facing words are introduced.
+  The featured game is titled SKELETONS / СКЕЛЕТЫ.
+  Its small home tile is labelled BONES / КОСТИ.
+  Hatchling, Explorer and Paleontologist share this decorative presentation.
+  No child-facing wording, progress rules or navigation changes.
 
-  Scenario: BONES is today's featured game
-    Given the home page features BONES / КОСТИ with reduced motion off
-    When its locally bundled skeleton GLB is ready and WebGL is available
-    Then a warm ivory T. rex turns within 0.1 radians either side of its central pose on a ten-second cycle
-    And light and dark screenshots show bones standing out against the sky for visual approval
-    And the picture cross-fades to the rendered skeleton using the shared motion tokens
-    And taps on the artwork reach the featured game control
+  Scenario: A visible featured skeleton becomes ready with motion enabled
+    Given SKELETONS / СКЕЛЕТЫ is featured and reduced motion is off
+    When the locally bundled T. rex GLB has rendered its first frame
+    Then the current picture, shimmer or picture error look fades to the rendered skeleton using shared motion tokens
+    And each Home visit starts from the central pose
+    And the skeleton turns within 0.1 radians either side of that pose on a ten-second cycle
+    And the ivory bones have visible shaded edges against the light and dark sky
+
+  Scenario Outline: The featured control works in every rendering state
+    Given SKELETONS / СКЕЛЕТЫ is featured with its hero <state>
+    Then a tap on the artwork reaches the featured game control
     And the renderer adds no keyboard focus stop
     And PLAY, the title and artwork open the skeleton selection screen
     And a quick double tap opens that screen once without choosing a dinosaur there
-    And saved progress remains beside PLAY
+    And the saved progress remains beside PLAY
 
-  Scenario: BONES is not featured
+    Examples:
+      | state                        |
+      | loading                      |
+      | rendered with motion enabled |
+      | showing the fallback         |
+      | frozen by reduced motion     |
+
+  Scenario: Another game is featured
     Given another game is featured
-    Then the small BONES tile keeps its existing picture
+    Then the BONES / КОСТИ tile keeps its existing picture
     And the featured game keeps its existing artwork
     And the page itself does not load the skeleton renderer or GLB
     But the release offline cache may prefetch them independently
 
   Scenario: The animated asset cannot be shown
-    Given the home page features BONES / КОСТИ
-    When the GLB is loading, fails to load, or WebGL is unavailable or lost
-    Then the existing T. rex skeleton picture occupies the hero space
-    And the fallback fades in using the shared motion tokens
-    And navigation and progress remain available
-    And an error or lost context keeps the picture for the rest of this Home visit
-    And returning from the background after context loss keeps the picture
+    Given SKELETONS / СКЕЛЕТЫ is featured
+    When loading the GLB fails or WebGL is unavailable or lost
+    Then the existing T. rex skeleton Picture remains available with its normal loading and error states
+    And that fallback fades in using the shared motion tokens
+    And an error or lost context keeps the fallback for the rest of this Home visit
+    And returning from the background after context loss keeps the fallback
     And the next Home visit tries the renderer again
 
   Scenario: Home opens with reduced motion already enabled
     Given the device requests reduced motion before Home opens
-    When the visible skeleton hero finishes loading
+    When the visible featured skeleton finishes loading
     Then it shows the central static pose without continuous rendering
-    And the picture changes to that pose with the shared short fade
+    And the current picture state changes to that pose with the shared short fade
 
   Scenario: Reduced motion changes while Home is open
     Given the skeleton hero is ready
     When the device requests reduced motion
     Then it freezes its current pose without continuous rendering or a jump
-    And artwork transitions use the shared short fade
     When the device stops requesting reduced motion
     Then turning resumes from the frozen phase without a jump only while the page is visible and the hero is in the viewport
+    And any cross-fade to the renderer or fade to the picture uses the shared short fade while reduced motion is requested
 
-  Scenario: Loading starts only when seen
-    Given the home page features BONES / КОСТИ
+  Scenario: Loading and rendering follow visibility
+    Given SKELETONS / СКЕЛЕТЫ is featured
+    Then the page does not start loading the renderer or GLB while hidden or outside the viewport
     When both the page is visible and the hero is in the viewport
     Then the page starts loading its renderer and GLB
-
-  Scenario: Rendering pauses and resumes
-    Given the skeleton hero is running
-    When the page is hidden or the hero is outside the viewport
+    When the hero leaves view during loading
+    Then loading can finish but the first rendered frame and fade wait until it is visible again
+    When a rendered hero leaves view or the page is hidden
     Then continuous rendering pauses and retains its phase
-    When the page is visible and the hero is in the viewport again
+    When both visibility conditions hold again
     Then turning resumes from its retained phase only if reduced motion is off and the renderer is healthy
 
   Scenario: Leaving Home
-    Given the skeleton hero is loading or running
+    Given the skeleton hero is loading, running, paused or frozen
     When the hero is unmounted
     Then its loading is cancelled, rendering and listeners stop and its GPU resources are released
     And a late load completion releases its resources without appearing
-    And returning Home starts a new picture-to-renderer fade once the new renderer is ready
+    And returning Home starts from the central pose and fades to the new renderer when ready
 
   Scenario: Turning the device
     Given the skeleton hero is ready
@@ -73,16 +84,20 @@ Feature: Animated skeleton in the home hero
     And the hero never stretches or replays its entrance
 
   Scenario: The installed skeleton works offline
-    Given the released app has cached its files
-    When Home features BONES with no network
-    Then its bundled GLB and renderer remain available offline
-    And the GLB is self-contained and smaller than two megabytes
+    Given the released app has cached all its files
+    When Home features SKELETONS / СКЕЛЕТЫ with no network
+    Then the locally cached renderer and GLB render the skeleton
+    And it turns when visible with reduced motion off
 
-  Scenario Outline: The skeleton fits representative supported layouts
-    Given the home page features BONES / КОСТИ
+  Scenario: The model is a small self-contained asset
+    Then the shipped GLB has no external resource references and is smaller than two megabytes
+
+  Scenario Outline: Representative supported layouts
+    Given SKELETONS / СКЕЛЕТЫ is featured
     When it is shown at <width> by <height> at any age level
     Then the whole skeleton fits inside the existing hero space at every angle of its motion
-    And the title, progress and navigation remain visible
+    And the title, PLAY, saved progress if present and top menus are in the first viewport
+    And home tiles remain reachable by scrolling
 
     Examples:
       | width | height |
