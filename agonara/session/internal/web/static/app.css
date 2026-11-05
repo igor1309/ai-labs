@@ -1,12 +1,6 @@
-/* Ink & Saffron, from design/session-web.pen (round 2 frames). Layout follows the window's
+/* Session web page, from design/session-web.pen (round 2 frames). Layout follows the window's
    width (compact < 600, medium 600–1023, wide ≥ 1024), input the pointer. */
 :root {
-  --paper: #FBF7F0; --paper-deep: #F3ECE0; --sunken: #EFE7D9;
-  --line: #E6DDCE; --line-strong: #CFC4B2;
-  --ink: #231F1A; --ink-2: #685E52; --ink-3: #968A7B;
-  --accent: #33408F; --accent-soft: #E9EBF6; --accent-line: #C3C9E8;
-  --highlight: #FAEDC6; --on-accent: #FFFFFF;
-  --raised: #FBF7F0; --raised-control: #EFE7D9;
   --serif: "Source Serif 4", Georgia, serif;
   --sans: Inter, -apple-system, system-ui, sans-serif;
   --body: 17px; --side: 16px; --column: 680px;
@@ -14,16 +8,13 @@
   --safe: env(safe-area-inset-bottom, 0px);
   color-scheme: light dark;
 }
-@media (prefers-color-scheme: dark) {
-  :root {
-    --paper: #16171B; --paper-deep: #1B1C21; --sunken: #22242A;
-    --line: #33353D; --line-strong: #6B6E78;
-    --ink: #E8E9EE; --ink-2: #B3B6BF; --ink-3: #A2A5AF;
-    --accent: #929CEB; --accent-soft: #23284A; --accent-line: #5A66A8;
-    --highlight: #403516; --on-accent: #14172E; --on-accent-muted: #2A3366;
-    --raised: #25272D; --raised-control: #31333B;
-  }
-}
+/* Palettes, generated from the colour variables in design/session-web.pen.
+   Ink & Saffron is the default; <html data-palette="pine-lichen"> switches. */
+:root { --paper: #FBF7F0; --paper-deep: #F3ECE0; --sunken: #EFE7D9; --line: #E6DDCE; --line-strong: #CFC4B2; --ink: #231F1A; --ink-2: #685E52; --ink-3: #968A7B; --accent: #33408F; --accent-soft: #E9EBF6; --accent-line: #C3C9E8; --on-accent: #FFFDF8; --on-accent-muted: #C9CFF0; --highlight: #FAEDC6; --scrim: #231F1A66; --raised: #FBF7F0; --raised-control: #EFE7D9; }
+@media (prefers-color-scheme: dark) { :root { --paper: #16171B; --paper-deep: #1B1C21; --sunken: #22242A; --line: #33353D; --line-strong: #6B6E78; --ink: #E8E9EE; --ink-2: #B3B6BF; --ink-3: #A2A5AF; --accent: #8E9BE6; --accent-soft: #242946; --accent-line: #5A66A8; --on-accent: #14182E; --on-accent-muted: #2A3366; --highlight: #403516; --scrim: #00000099; --raised: #25272D; --raised-control: #31333B; } }
+:root[data-palette="pine-lichen"] { --paper: #F6F7F2; --paper-deep: #EDF0E8; --sunken: #E6EAE1; --line: #DCE2D6; --line-strong: #BCC5B6; --ink: #17201C; --ink-2: #4B5852; --ink-3: #6A7770; --accent: #1D5E55; --accent-soft: #E0EDE8; --accent-line: #A6C9BF; --on-accent: #F6FBF9; --on-accent-muted: #B3D5CB; --highlight: #E9EEC4; --scrim: #17201C66; --raised: #FBFCF9; --raised-control: #E6EAE1; }
+@media (prefers-color-scheme: dark) { :root[data-palette="pine-lichen"] { --paper: #111614; --paper-deep: #161C19; --sunken: #1C2320; --line: #2B3430; --line-strong: #5E6B65; --ink: #E6ECE8; --ink-2: #B2BFB8; --ink-3: #97A49D; --accent: #6FCDB6; --accent-soft: #16302A; --accent-line: #2F6A5D; --on-accent: #0B1F1B; --on-accent-muted: #235347; --highlight: #30351D; --scrim: #00000099; --raised: #1D2421; --raised-control: #29322E; } }
+
 @media (min-width: 600px) { :root { --body: 19px; --side: 32px; } }
 
 * { box-sizing: border-box; }
@@ -194,7 +185,7 @@ a.row:hover { background: var(--paper-deep); }
 @media (max-width: 1023px) {
   .outline { position: fixed; z-index: 30; inset: 0 auto 0 0; width: min(360px, 88vw); transform: translateX(-100%); transition: transform .25s ease; box-shadow: 0 0 40px rgb(0 0 0 / .2); }
   .reader.outline-open .outline { transform: none; }
-  .scrim { position: fixed; inset: 0; z-index: 25; background: rgb(0 0 0 / .3); opacity: 0; pointer-events: none; transition: opacity .25s; }
+  .scrim { position: fixed; inset: 0; z-index: 25; background: var(--scrim); opacity: 0; pointer-events: none; transition: opacity .25s; }
   .reader.outline-open .scrim { opacity: 1; pointer-events: auto; }
 }
 /* Medium: no room in the margin, so the ⋯ sits inside the paragraph's padding */
@@ -237,7 +228,7 @@ a.row:hover { background: var(--paper-deep); }
   .menu-actions button { flex-direction: column; justify-content: center; text-align: center; background: var(--raised-control); border-radius: var(--r-md); padding: 14px 6px; min-height: 104px; gap: 8px; font-size: 14px; }
   .menu-actions button .icon { width: 40px; height: 40px; padding: 10px; border-radius: 20px; background: var(--raised); }
   .menu-ask { border: 1px solid var(--line-strong); border-radius: 999px; margin-top: 14px; padding: 4px 4px 4px 16px; }
-  .sheet-scrim { position: fixed; inset: 0; z-index: 15; background: rgb(0 0 0 / .3); }
+  .sheet-scrim { position: fixed; inset: 0; z-index: 15; background: var(--scrim); }
   .read { margin-left: 28px; max-width: calc(100% - 28px); }
 }
 /* Touch keeps the ⋯ visible; a mouse shows it on hover */
