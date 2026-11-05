@@ -1,6 +1,6 @@
 @next
 Feature: Coloring workshop
-  Free creativity with Stegosaurus, Triceratops, Ankylosaurus, T-Rex and Mosasaurus artwork. There is no model to
+  Free creativity with Stegosaurus, Triceratops, Ankylosaurus, T-Rex, Mosasaurus and Brachiosaurus artwork. There is no model to
   copy, time limit, coverage target or judgement of artistic quality.
   An action means one accepted brush contact from press to release, or
   one fill. A work is nonempty when its current editable paint differs
@@ -238,3 +238,34 @@ Feature: Coloring workshop
       | artwork                |
       | mosasaurus-hatchling-1 |
       | mosasaurus-explorer-1  |
+
+  Scenario: Simple Brachiosaurus for Hatchling
+    Given I start a new Brachiosaurus work at Hatchling
+    Then the workshop renders the original brachiosaurus-hatchling-1 vector scene
+    And a friendly Brachiosaurus stands with a long neck, small head, four column legs and a long tail
+    And the head, neck, body, tail and four legs offer broad independent coloring regions
+    And its eye, smile, toes and knees remain protected decorative details
+    And a simple ground with one fern leaves the dinosaur clear and prominent
+    And the entire scene fits supported iPad and iPhone viewports without clipping
+    And the canvas has the localized uppercase accessible name BRACHIOSAURUS or БРАХИОЗАВР
+
+  Scenario: Rich Brachiosaurus forest scene
+    Given I start a new Brachiosaurus work at Explorer or Paleontologist
+    Then the workshop renders the original brachiosaurus-explorer-1 vector scene
+    And the same recognizable dinosaur stands among two tall trees and ferns
+    And its belly, back and tail markings add independent coloring regions beyond the Hatchling version
+    And sun, cloud, hills, tree crowns and trunks, a rock and fern leaves offer additional broad independent coloring regions
+    And skin spots, the head crest, bark, fern veins, sun rays, toes and the smile remain protected rather than tiny fill targets
+    And the entire scene fits supported iPad and iPhone viewports without clipping
+
+  Scenario Outline: Independent Brachiosaurus fills preserve the drawing
+    Given I open a Brachiosaurus work using <artwork>
+    When I fill any enclosed dinosaur or scenery region
+    Then only that visible region changes, including when it lies inside a larger region
+    And its outline, eye highlights and decorative ink remain visible above fills and brush paint
+    And every coloring region has a broad visible interior rather than a hidden or hair-thin target
+
+    Examples:
+      | artwork                   |
+      | brachiosaurus-hatchling-1 |
+      | brachiosaurus-explorer-1  |

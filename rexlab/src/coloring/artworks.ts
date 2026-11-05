@@ -6,6 +6,7 @@ import { STEGOSAURUS } from "./geometry.ts";
 import { TRICERATOPS } from "./triceratops.ts";
 import { MOSASAURUS_HATCHLING, MOSASAURUS_EXPLORER } from "./mosasaurusScene.ts";
 import { TREX_HATCHLING, TREX_EXPLORER } from "./trexScene.ts";
+import { BRACHIOSAURUS_HATCHLING, BRACHIOSAURUS_EXPLORER } from "./brachiosaurusScene.ts";
 
 export const ARTWORKS = [
   { geometry: STEGOSAURUS, names: { en: "STEGOSAURUS", ru: "СТЕГОЗАВР" } },
@@ -19,7 +20,9 @@ export const ARTWORKS = [
   { geometry: TREX_HATCHLING, names: { en: "T-REX", ru: "ТИРАННОЗАВР" } },
   { geometry: TREX_EXPLORER, names: { en: "T-REX", ru: "ТИРАННОЗАВР" } },
   { geometry: MOSASAURUS_HATCHLING, names: { en: "MOSASAURUS", ru: "МОЗАЗАВР" } },
-  { geometry: MOSASAURUS_EXPLORER, names: { en: "MOSASAURUS", ru: "МОЗАЗАВР" } }
+  { geometry: MOSASAURUS_EXPLORER, names: { en: "MOSASAURUS", ru: "МОЗАЗАВР" } },
+  { geometry: BRACHIOSAURUS_HATCHLING, names: { en: "BRACHIOSAURUS", ru: "БРАХИОЗАВР" } },
+  { geometry: BRACHIOSAURUS_EXPLORER, names: { en: "BRACHIOSAURUS", ru: "БРАХИОЗАВР" } }
 ] as const;
 
 export function artworkFor(version: string) {

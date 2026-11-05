@@ -1,3 +1,4 @@
+export { brachiosaurusHatchlingProbes, brachiosaurusExplorerProbes } from "./brachiosaurusSceneProbes.ts";
 import type { Theme } from "../src/theme.ts";
 export { mosasaurusHatchlingProbes, mosasaurusExplorerProbes } from "./mosasaurusSceneProbes.ts";
 export { trexHatchlingProbes, trexExplorerProbes, trexProtectedProbes } from "./trexSceneProbes.ts";
