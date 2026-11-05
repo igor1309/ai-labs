@@ -8967,7 +8967,6 @@ html[data-size="tall-narrow"] .game-audio-button {
 .skeleton-actions .home-button,
 .labyrinth-reunion-actions button,
 .picture-puzzle-result-actions .picture-puzzle-control,
-.coloring-result .coloring-result-actions button,
 .pairs-offer-answers button {
   border: none;
   outline: none;
@@ -8982,15 +8981,13 @@ html[data-size="tall-narrow"] .game-audio-button {
 .skeleton-build-another,
 .labyrinth-reunion-actions button:first-child,
 .picture-puzzle-result-actions .picture-puzzle-control:first-child,
-.coloring-result .coloring-result-actions button:last-child,
 .pairs-offer-answers .pairs-offer-yes {
   background-color: var(--ds-action);
   color: var(--ds-on-action);
 }
 
 /* An inset outline leaves the button's measured dimensions unchanged. */
-.pairs-offer-answers .pairs-offer-not-now,
-.coloring-result .coloring-result-actions .coloring-result-edit {
+.pairs-offer-answers .pairs-offer-not-now {
   background: transparent;
   color: var(--ds-ink);
   border: 0 solid var(--ds-ink);

@@ -2,6 +2,8 @@ import { useLayoutEffect, useRef } from "react";
 import { Home, Images, Paintbrush, Plus, Star, TriangleAlert, Trophy } from "lucide-react";
 import { Button } from "./Button.tsx";
 import { CelebrationChip } from "./ResultParts.tsx";
+import { EarthEdge } from "./EarthEdge.tsx";
+import { Festivity } from "./Festivity.tsx";
 import type { Action, Work } from "./coloring/index.ts";
 import type { Completion } from "./coloringWorkshop.ts";
 import type { ResultAction } from "./coloringResult.ts";
@@ -29,32 +31,34 @@ export function ColoringResultScreen({ work, completion, painter, language, busy
   const text = { ...words[language], title: language === "en" ? `YOUR ${name}!` : `ТВОЙ ${name}!`,
     picture: language === "en" ? `YOUR PAINTED ${name}` : `ТВОЙ РАСКРАШЕННЫЙ ${name}` };
   useLayoutEffect(() => { if (canvas.current) painter.render(canvas.current, work.actions); }, [painter, work]);
+  // The sky holds HOME and the work; the reward sits beside the work or, upright, on the sand with the buttons.
   return <section className="coloring-result" lang={language} aria-label={text.title} aria-busy={busy}>
+    <div className="coloring-result-sand" aria-hidden="true"><EarthEdge className="coloring-result-wave" /></div>
+    <div className="coloring-result-bedrock" aria-hidden="true"><EarthEdge className="coloring-result-wave" /></div>
+    {completion.earned && <div className="coloring-result-festive"><Festivity /></div>}
     <header className="coloring-result-header">
-      <Button disabled={busy} onClick={() => choose("home")}><Home aria-hidden="true" />{text.home}</Button>
-      <h1>{text.title}</h1>
+      <Button className="coloring-result-home" aria-label={text.home} disabled={busy} onClick={() => choose("home")}><Home aria-hidden="true" /><span>{text.home}</span></Button>
     </header>
-    <div className="coloring-result-body">
-      <div className="coloring-result-paper"><div className="coloring-result-art">
-        <canvas ref={canvas} width={painter.width} height={painter.height} role="img" aria-label={text.picture} />
-      </div>
-        {error && <p className="coloring-result-error" role="alert"><TriangleAlert aria-hidden="true" />{text.error}</p>}
-      </div>
-      <div className="coloring-result-reward">
-        <p className="coloring-result-star" role="status">
-          <Star aria-hidden="true" fill="currentColor" /><span>{completion.earned ? text.earned : text.existing}</span>
-        </p>
+    <div className="coloring-result-paper"><div className="coloring-result-art">
+      <canvas ref={canvas} width={painter.width} height={painter.height} role="img" aria-label={text.picture} />
+    </div>
+      {error && <p className="coloring-result-error" role="alert"><TriangleAlert aria-hidden="true" />{text.error}</p>}
+    </div>
+    <div className="coloring-result-reward">
+      <h1>{text.title}</h1>
+      <p className="coloring-result-star" role="status">
+        <Star aria-hidden="true" fill="currentColor" /><span>{completion.earned ? text.earned : text.existing}</span>
+      </p>
+      <div className="coloring-result-chips">
         <p className={`coloring-result-count${completion.earned ? " coloring-result-earned" : ""}`} aria-label={text.collection}><Star aria-hidden="true" />{text.collection}: <strong>{completion.completedCount}</strong></p>
-        <div className="coloring-result-best">
-          {completion.earned && <CelebrationChip language={language} celebration={completion.completedCount === 1 ? "first-best" : "new-best"} />}
-          <p><Trophy aria-hidden="true" />{text.best}: <strong>{completion.completedCount}</strong></p>
-        </div>
-        <nav className="coloring-result-actions" aria-label={text.title}>
-          <Button className="coloring-result-edit" disabled={busy} onClick={() => choose("edit")}><Paintbrush aria-hidden="true" />{text.edit}</Button>
-          <Button disabled={busy} onClick={() => choose("gallery")}><Images aria-hidden="true" />{text.gallery}</Button>
-          <Button disabled={busy} onClick={() => choose("new")}><Plus aria-hidden="true" />{text.new}</Button>
-        </nav>
+        {completion.earned && <CelebrationChip language={language} celebration={completion.completedCount === 1 ? "first-best" : "new-best"} />}
+        <p className="coloring-result-best"><Trophy aria-hidden="true" />{text.best}: <strong>{completion.completedCount}</strong></p>
       </div>
     </div>
+    <nav className="coloring-result-actions" aria-label={text.title}>
+      <Button className="coloring-result-edit" disabled={busy} onClick={() => choose("edit")}><Paintbrush aria-hidden="true" />{text.edit}</Button>
+      <Button className="coloring-result-gallery" disabled={busy} onClick={() => choose("gallery")}><Images aria-hidden="true" />{text.gallery}</Button>
+      <Button className="coloring-result-new" disabled={busy} onClick={() => choose("new")}><Plus aria-hidden="true" />{text.new}</Button>
+    </nav>
   </section>;
 }

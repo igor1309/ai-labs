@@ -78,7 +78,7 @@ const { chromium } = require("playwright");
         }));
         const context = JSON.stringify({ viewport, language, theme, layout });
         assert.deepEqual(layout.scroll, [viewport.width, viewport.height], context);
-        assert.equal(layout.paper, theme === "dark" ? "rgb(24, 30, 46)" : "rgb(255, 253, 248)", context);
+        assert.equal(layout.paper, theme === "dark" ? "rgb(231, 223, 204)" : "rgb(255, 253, 248)", context);
         for (const box of layout.boxes) {
           assert(box.x >= -1 && box.y >= -1 && box.x + box.w <= viewport.width + 1 && box.y + box.h <= viewport.height + 1, context);
           if (box.tag === "BUTTON") assert(box.w >= 60 && box.h >= 60 && box.symbol, context);
