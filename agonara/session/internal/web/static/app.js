@@ -1,4 +1,4 @@
-// The paragraph menu, its stub answer and the outline drawer. Pages work
+// The paragraph menu, its answer (a card under the paragraph, a sheet on compact) and the outline drawer. Pages work
 // without this; it only adds the menu.
 (() => {
   const reader = document.querySelector(".reader");
@@ -10,6 +10,7 @@
   let active = null;
 
   const icon = (kind) => icons.querySelector(`[data-k="${kind}"]`).innerHTML;
+  const titles = { more: "Расскажи подробнее", simpler: "Объясни проще", example: "Приведи пример", ask: "Вопрос" };
   const items = () => [...menu.querySelectorAll("[role=menuitem], .menu-ask input")];
 
   function open(para, button) {
@@ -17,7 +18,6 @@
     active = para;
     para.classList.add("active");
     button.setAttribute("aria-expanded", "true");
-    menu.querySelector(".menu-quote small").textContent = `Абзац ${para.dataset.n} · ${reader.dataset.heading}`;
     menu.querySelector(".menu-quote span").textContent = para.dataset.text;
     menu.hidden = false;
     if (compact.matches) {
@@ -25,7 +25,7 @@
       menu.style.top = "";
     } else {
       const box = button.getBoundingClientRect();
-      const left = Math.min(box.right + scrollX - 320, document.documentElement.clientWidth - 336);
+      const left = Math.min(box.right + scrollX - 300, document.documentElement.clientWidth - 316);
       menu.style.left = Math.max(16, left) + "px";
       menu.style.top = box.bottom + scrollY + 4 + "px";
     }
@@ -44,19 +44,35 @@
     active = null;
   }
 
+  let answer = null;
+
+  function dismiss(refocus = true) {
+    if (!answer) return;
+    const { box, para } = answer;
+    box.remove();
+    para.classList.remove("answered");
+    scrim.hidden = true;
+    if (refocus) para.querySelector(".para-menu").focus();
+    answer = null;
+  }
+
   async function ask(kind, text) {
-    const para = active;
+    const para = active || answer?.para;
     close(false);
-    para.nextElementSibling?.classList.contains("answer") && para.nextElementSibling.remove();
+    dismiss(false);
     const box = document.createElement("section");
     box.className = "answer";
     box.setAttribute("aria-live", "polite");
-    box.innerHTML = `<header><span class="badge">${icon(kind)}</span><b></b><small>к абзацу ${para.dataset.n}</small><button type="button" aria-label="Закрыть">${icon("close")}</button></header><p class="q" hidden></p><p class="a">…</p>`;
+    box.innerHTML = `<div class="grip" aria-hidden="true"></div><header><span class="badge">${icon(kind)}</span><b></b><button type="button" aria-label="Закрыть">${icon("close")}</button></header><p class="quote"></p><p class="q" hidden></p><div class="body"><p class="a loading">Думаю</p></div>`;
+    box.querySelector("header b").textContent = titles[kind];
+    box.querySelector(".quote").textContent = para.dataset.text;
     para.after(box);
     para.classList.add("answered");
-    const done = () => { box.remove(); para.classList.remove("answered"); para.querySelector(".para-menu").focus(); };
-    box.querySelector("header button").onclick = done;
+    answer = { box, para };
+    if (compact.matches) scrim.hidden = false;
+    box.querySelector("header button").onclick = () => dismiss();
     if (text) { const q = box.querySelector(".q"); q.textContent = text; q.hidden = false; }
+    const body = box.querySelector(".body");
     try {
       const res = await fetch("/api/answer", {
         method: "POST",
@@ -64,13 +80,16 @@
         body: JSON.stringify({ kind, entityId: reader.dataset.entity, page: +reader.dataset.page, paragraph: +para.dataset.n, text: text || para.dataset.text }),
       });
       if (!res.ok) throw new Error(res.status);
-      const answer = await res.json();
-      box.querySelector("header b").textContent = answer.title;
-      box.querySelector(".a").textContent = answer.text;
+      const reply = await res.json();
+      const p = document.createElement("p");
+      p.className = "a";
+      p.textContent = reply.text;
+      body.replaceChildren(p);
     } catch {
-      box.querySelector(".a").textContent = "Не получилось. Попробуйте ещё раз.";
+      body.innerHTML = `<div class="err">${icon("alert")}<b>Не удалось получить ответ</b><span>Agonara не ответила. Абзац и вопрос сохранены, можно повторить.</span></div><button type="button" class="button">${icon("retry")}Повторить</button>`;
+      body.querySelector("button").onclick = () => { answer && (active = null); ask(kind, text); };
     }
-    box.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    if (!compact.matches) box.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }
 
   document.addEventListener("click", (e) => {
@@ -84,6 +103,7 @@
     if (item) return ask(item.dataset.kind);
     if (e.target.closest("[data-open-outline]")) return reader.classList.add("outline-open");
     if (e.target.closest("[data-close-outline]")) return reader.classList.remove("outline-open");
+    if (e.target === scrim && answer && !active) return dismiss(false);
     if (active && !menu.contains(e.target)) close(false);
   });
 
@@ -96,6 +116,7 @@
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
       if (active) close();
+      else if (answer) dismiss();
       else reader.classList.remove("outline-open");
       return;
     }

@@ -69,7 +69,7 @@ func TestGuardRefusesWithoutTokenAndTradesTheQueryTokenForACookie(t *testing.T) 
 	_, h := newServer(t)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, httptest.NewRequest("GET", "/", nil))
-	if rec.Code != http.StatusUnauthorized {
+	if rec.Code != http.StatusUnauthorized || !strings.Contains(rec.Body.String(), "Ссылка больше не действует") {
 		t.Fatalf("no token: %d", rec.Code)
 	}
 	rec = httptest.NewRecorder()
@@ -90,7 +90,7 @@ func TestProgramPageNestsMaterialsUnderTheirCourse(t *testing.T) {
 	if code != 200 {
 		t.Fatal(code)
 	}
-	contains(t, body, "Программа · 1 курс", "Агенты на практике", "От вызова до агента.", `<span class="course-n">01</span>`, `href="/m/m"`, "Лекция: агент и бот")
+	contains(t, body, "1 тема · 0 понятий · 1 с материалами", "Агенты на практике", "От вызова до агента.", `<span class="row-name">Что такое агент</span>`, `class="read" href="/m/m"`, "Лекция: агент и бот")
 }
 
 func TestReadingPageShowsSectionParagraphsPagerAndSavesThePlace(t *testing.T) {
@@ -104,7 +104,10 @@ func TestReadingPageShowsSectionParagraphsPagerAndSavesThePlace(t *testing.T) {
 		`data-n="1"`, "Агент &lt;выбирает&gt; шаг.", `data-n="2"`,
 		`href="/m/m?page=0" rel="prev"`, "<b>Введение</b>",
 		`href="/m/m?page=2" rel="next"`, "<b>§2 Инструменты</b>",
-		`class="o-section current"`, "Что такое агент")
+		`o-section current`, "Что такое агент")
+	if strings.Contains(body, "para-n") {
+		t.Error("paragraph numbers are back on the page")
+	}
 	_, programs := fetch(t, h, "/")
 	contains(t, programs, "Продолжить чтение", `href="/m/m?page=1"`)
 }

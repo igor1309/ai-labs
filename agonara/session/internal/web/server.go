@@ -47,6 +47,19 @@ type Place struct {
 	Title     string `json:"title"`
 	Page      int    `json:"page"`
 	Label     string `json:"label"`
+	Topic     string `json:"topic,omitempty"` // "Тема 3", where the lecture lives
+}
+
+// Where names the place for Continue reading: "Тема 3 · §1 · 6/10".
+func (p Place) Where() string {
+	topic := p.Topic
+	if topic == "" {
+		topic, _, _, _ = split(p.Title)
+	}
+	if topic != "" {
+		return topic + " · " + p.Label
+	}
+	return p.Title + " · " + p.Label
 }
 
 // Handler returns the routes.
@@ -59,6 +72,22 @@ func (s *Server) Handler() (http.Handler, error) {
 		"inc":    func(n int) int { return n + 1 },
 		"sub":    func(a, b int) int { return a - b },
 		"plural": plural,
+		"mark": func(label string) string {
+			if strings.HasPrefix(label, "§") {
+				mark, _, _ := strings.Cut(label, " ")
+				return mark
+			}
+			return ""
+		},
+		"rest": func(label string) string {
+			if strings.HasPrefix(label, "§") {
+				if _, rest, ok := strings.Cut(label, " "); ok {
+					return rest
+				}
+			}
+			return label
+		},
+		"pair": func(a, b any) map[string]any { return map[string]any{"A": a, "B": b} },
 	}).ParseFS(templateFiles, "templates/*.html")
 	if err != nil {
 		return nil, err
@@ -93,9 +122,8 @@ func (s *Server) guard(next http.Handler) http.Handler {
 			http.Redirect(w, r, target, http.StatusSeeOther)
 			return
 		}
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusUnauthorized)
-		fmt.Fprintln(w, "Open the link with ?token=… from probe.env (WEB_TOKEN).")
+		s.render(w, "error.html", map[string]any{"Title": "Ссылка больше не действует", "Message": "У ссылки нет ключа доступа или он неверный. Откройте ссылку с ?token=… из probe.env (WEB_TOKEN).", "Icon": "unlink"})
 	})
 }
 
@@ -129,7 +157,7 @@ func (s *Server) fail(w http.ResponseWriter, r *http.Request, err error) {
 	}
 	s.log("%s %s: %v", r.Method, path, err)
 	w.WriteHeader(http.StatusBadGateway)
-	s.render(w, "error.html", map[string]any{"Title": "Agonara не ответила", "Message": "Попробуйте обновить страницу."})
+	s.render(w, "error.html", map[string]any{"Title": "Agonara не отвечает", "Message": "Страница не загрузилась: Agonara не ответила. Попробуйте обновить страницу.", "Icon": "offline", "Retry": true})
 }
 
 func (s *Server) place() *Place {
@@ -149,7 +177,22 @@ func (s *Server) programs(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, r, err)
 		return
 	}
-	s.render(w, "programs.html", map[string]any{"Programs": programs, "Place": s.place()})
+	// Programs with topics come first; empty ones gather below, dimmed.
+	var full, empty []ProgramRow
+	for _, p := range programs {
+		navigation, err := s.Flow.Reader.Navigation(r.Context(), p.ProgramID)
+		if err != nil {
+			s.fail(w, r, err)
+			return
+		}
+		row := ProgramRow{ID: p.ProgramID, Title: p.Title, Topics: len(navigation.Topics)}
+		if row.Topics > 0 {
+			full = append(full, row)
+		} else {
+			empty = append(empty, row)
+		}
+	}
+	s.render(w, "programs.html", map[string]any{"Full": full, "Empty": empty, "Count": len(programs), "Place": s.place()})
 }
 
 func (s *Server) program(w http.ResponseWriter, r *http.Request) {
@@ -162,7 +205,13 @@ func (s *Server) program(w http.ResponseWriter, r *http.Request) {
 	if place != nil && place.ProgramID != program.ID {
 		place = nil
 	}
-	s.render(w, "program.html", map[string]any{"Program": program, "Place": place})
+	s.render(w, "program.html", map[string]any{"Program": program, "Outline": newOutline(program), "Place": place})
+}
+
+// ProgramRow is a program in the list, with how many topics it has.
+type ProgramRow struct {
+	ID, Title string
+	Topics    int
 }
 
 // linkedCourse is the first topic linking to an entity.
@@ -203,6 +252,8 @@ type Reading struct {
 	Prev, Next *Pager
 	Sections   []Section
 	Program    *flow.Program
+	Outline    Outline
+	Home       *Row // the topic the lecture lives in
 	Course     *flow.Item
 	Linked     []flow.Item
 	Intro      string
@@ -265,6 +316,9 @@ func (s *Server) entity(w http.ResponseWriter, r *http.Request) {
 	}
 	if s.PlacePath != "" && program != nil {
 		place := Place{ProgramID: program.ID, EntityID: id, Title: reading.Title, Page: reading.Page, Label: reading.short()}
+		if reading.Home != nil {
+			place.Topic = reading.Home.Label
+		}
 		if err := store.Save(s.PlacePath, place); err != nil {
 			s.log("save place: %v", err)
 		}
@@ -278,6 +332,19 @@ func (s *Server) reading(ctx context.Context, result *flow.Result, program *flow
 		EntityID: result.Session.EntityID, Title: view.Title, Heading: view.Title,
 		Page: view.Page.Index, Pages: view.Page.Count, Index: 0, Count: 1,
 		Blocks: Blocks(view.Markdown), Program: program, Course: course, Intro: view.Body,
+		Outline: newOutline(program),
+	}
+	reading.Home = reading.Outline.home(reading.EntityID)
+	defer func() {
+		// The intro of a lecture named like its topic is headed "Введение",
+		// not the topic's title a second time.
+		if reading.Own() && reading.Eyebrow == "Введение" {
+			reading.Heading, reading.Eyebrow = "Введение", ""
+		}
+	}()
+	if reading.Home == nil && course != nil {
+		label, name, module, _ := split(course.Title)
+		reading.Home = &Row{ID: course.ID, Full: course.Title, Label: label, Name: name, Module: module}
 	}
 	// The contents page lists each section by its first page, and the
 	// lecture's linked items.
@@ -363,6 +430,17 @@ func (r *Reading) pageLabel(page int) string {
 	}
 	return section.Label
 }
+
+// Here names the current page for the bottom bar: "Введение · 1/2".
+func (r *Reading) Here() string { return r.pageLabel(r.Page) }
+
+// Own says whether the lecture repeats its topic's title, so the page prints it once.
+func (r *Reading) Own() bool {
+	return r.Home != nil && (r.Title == r.Home.Full || r.Title == r.Home.Name)
+}
+
+// Short is where the reader is, for the sidebar: "§1 · 2/5".
+func (r *Reading) Short() string { return r.short() }
 
 // short is where the reader is, for Continue reading: "§1 · 2/5".
 func (r *Reading) short() string {

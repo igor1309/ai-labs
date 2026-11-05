@@ -1,7 +1,7 @@
 {{template "head" .Title}}
 <main class="column page-entity">
   {{if .Program}}<a class="back" href="/p/{{.Program.ID}}">{{template "i-back"}}{{.Program.Title}}</a>{{else}}<a class="back" href="/">{{template "i-back"}}Программы</a>{{end}}
-  <p class="eyebrow">{{if eq .Kind "topic"}}Курс{{else if eq .Kind "concept"}}Понятие{{else}}Раздел{{end}}{{with .Course}} · {{.Title}}{{end}}</p>
+  <p class="eyebrow">{{if eq .Kind "topic"}}Тема{{else if eq .Kind "concept"}}Понятие{{else}}Раздел{{end}}{{with .Course}} · {{.Title}}{{end}}</p>
   <h1 class="heading">{{.Title}}</h1>
   <div class="prose">{{range .Body}}{{if eq .Kind "p"}}<p>{{.HTML}}</p>{{end}}{{end}}</div>
   {{if .Items}}
