@@ -4,38 +4,52 @@ Feature: Animated skeleton in the home hero
   No new child-facing words are introduced.
 
   Scenario: BONES is today's featured game
-    Given the home page features BONES / КОСТИ
+    Given the home page features BONES / КОСТИ with reduced motion off
     When its locally bundled skeleton GLB is ready and WebGL is available
     Then a warm ivory T. rex turns within 0.1 radians either side of its central pose on a ten-second cycle
-    And shading makes the bones stand out against both the light and dark sky
+    And light and dark screenshots show bones standing out against the sky for visual approval
     And the picture cross-fades to the rendered skeleton using the shared motion tokens
-    And the hero artwork does not intercept pointer or keyboard input
+    And taps on the artwork reach the featured game control
+    And the renderer adds no keyboard focus stop
     And PLAY, the title and artwork open the skeleton selection screen
     And a quick double tap opens that screen once without choosing a dinosaur there
-    And progress and rewards remain beside PLAY
+    And saved progress remains beside PLAY
 
   Scenario: BONES is not featured
     Given another game is featured
     Then the small BONES tile keeps its existing picture
     And the featured game keeps its existing artwork
-    And no skeleton renderer dependency or GLB is requested for the hero
+    And the page itself does not load the skeleton renderer or GLB
+    But the release offline cache may prefetch them independently
 
   Scenario: The animated asset cannot be shown
     Given the home page features BONES / КОСТИ
     When the GLB is loading, fails to load, or WebGL is unavailable or lost
     Then the existing T. rex skeleton picture occupies the hero space
-    And a rendered skeleton fades back to the picture using the shared motion tokens
+    And the fallback fades in using the shared motion tokens
     And navigation and progress remain available
     And an error or lost context keeps the picture for the rest of this Home visit
-    And the next Home visit may try the renderer again
+    And returning from the background after context loss keeps the picture
+    And the next Home visit tries the renderer again
+
+  Scenario: Home opens with reduced motion already enabled
+    Given the device requests reduced motion before Home opens
+    When the visible skeleton hero finishes loading
+    Then it shows the central static pose without continuous rendering
+    And the picture changes to that pose with the shared short fade
 
   Scenario: Reduced motion changes while Home is open
     Given the skeleton hero is ready
     When the device requests reduced motion
-    Then it shows the central static pose without continuous rendering
+    Then it freezes its current pose without continuous rendering or a jump
     And artwork transitions use the shared short fade
     When the device stops requesting reduced motion
-    Then turning resumes only while the page is visible and the hero is in the viewport
+    Then turning resumes from the frozen phase without a jump only while the page is visible and the hero is in the viewport
+
+  Scenario: Loading starts only when seen
+    Given the home page features BONES / КОСТИ
+    When both the page is visible and the hero is in the viewport
+    Then the page starts loading its renderer and GLB
 
   Scenario: Rendering pauses and resumes
     Given the skeleton hero is running
@@ -54,7 +68,8 @@ Feature: Animated skeleton in the home hero
   Scenario: Turning the device
     Given the skeleton hero is ready
     When the window changes size or orientation
-    Then the same renderer redraws at the new size with its retained phase
+    Then the same renderer redraws at the new size when visible, or on returning to view
+    And its retained phase stays still while reduced motion is enabled
     And the hero never stretches or replays its entrance
 
   Scenario: The installed skeleton works offline
@@ -63,7 +78,7 @@ Feature: Animated skeleton in the home hero
     Then its bundled GLB and renderer remain available offline
     And the GLB is self-contained and smaller than two megabytes
 
-  Scenario Outline: The skeleton fits every supported layout
+  Scenario Outline: The skeleton fits representative supported layouts
     Given the home page features BONES / КОСТИ
     When it is shown at <width> by <height> at any age level
     Then the whole skeleton fits inside the existing hero space at every angle of its motion

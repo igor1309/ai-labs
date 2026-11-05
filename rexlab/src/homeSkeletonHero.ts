@@ -52,7 +52,7 @@ export function homeSkeletonHero(host: HTMLElement, environment: SkeletonHeroEnv
   const paint = () => {
     if (!scene || !active()) return;
     try {
-      scene.draw(width, height, environment.reducedMotion() ? 0 : skeletonYaw(elapsed));
+      scene.draw(width, height, skeletonYaw(elapsed));
       if (!failed) host.dataset.ready = "";
     } catch { fail(); }
   };

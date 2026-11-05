@@ -74,14 +74,14 @@ test.each(["hidden-first", "offscreen-first"])("pauses on either condition and r
   h.stop();
 });
 
-test("reduced motion paints only a central static pose, including a live preference change", async () => {
+test("reduced motion starts centrally and freezes the current pose on a live change", async () => {
   const h = harness({ reduced: true }); await h.show(); await h.ready();
   expect(h.frames.size).toBe(0);
   expect(h.scene.draw).toHaveBeenLastCalledWith(500, 200, 0);
   h.motion(false); h.tick(0); h.tick(2500);
   expect(h.scene.draw).toHaveBeenLastCalledWith(500, 200, .1);
   h.motion(true);
-  expect(h.scene.draw).toHaveBeenLastCalledWith(500, 200, 0);
+  expect(h.scene.draw).toHaveBeenLastCalledWith(500, 200, .1);
   expect(h.frames.size).toBe(0);
   h.hidden(true); h.motion(false);
   expect(h.frames.size).toBe(0);
