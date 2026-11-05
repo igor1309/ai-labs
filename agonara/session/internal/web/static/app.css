@@ -26,6 +26,8 @@
 
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
+html, body { overflow-x: clip; }
+.concepts, .prose, .card, .material { overflow-wrap: anywhere; }
 body { margin: 0; background: var(--paper); color: var(--ink); font: 15px/1.5 var(--sans); }
 a { color: inherit; text-decoration: none; }
 button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; padding: 0; }
@@ -75,7 +77,8 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 24px calc(-1 * var(--
 .course h2 { font: 600 30px/1.2 var(--serif); margin: 0 0 10px; }
 .concepts { color: var(--ink-2); margin: 0; font-size: 17px; }
 .concepts a:hover { color: var(--accent); }
-.dot { margin: 0 8px; }
+.dot { color: var(--ink-3); }
+.concepts .more { color: var(--accent); white-space: nowrap; }
 .ungrouped { margin-top: 8px; }
 @media (max-width: 599px) {
   .course h2 { font-size: 26px; }

@@ -57,6 +57,7 @@ func (s *Server) Handler() (http.Handler, error) {
 	pages, err := template.New("").Funcs(template.FuncMap{
 		"two":    func(n int) string { return fmt.Sprintf("%02d", n) },
 		"inc":    func(n int) int { return n + 1 },
+		"sub":    func(a, b int) int { return a - b },
 		"plural": plural,
 	}).ParseFS(templateFiles, "templates/*.html")
 	if err != nil {
