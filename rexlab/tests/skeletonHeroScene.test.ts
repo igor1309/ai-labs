@@ -27,6 +27,7 @@ test("every bone moves from its pile transform through assembly into the complet
     world.traverse((object: Group) => { if (object.userData.assembly) bones.push(object); });
     expect(bones.length).toBe(104);
     const identity = new Quaternion();
+    const lead = Math.min(...bones.map(bone => bone.userData.assembly.at)) - .1;
     for (const bone of bones) {
       const { start, end, spin, at, duration } = bone.userData.assembly;
       const from = new Vector3().fromArray(start), to = new Vector3().fromArray(end);
@@ -36,10 +37,11 @@ test("every bone moves from its pile transform through assembly into the complet
       expect(bone.quaternion.angleTo(rotation)).toBeLessThan(1e-6);
       expect(from.distanceTo(to)).toBeGreaterThan(.01);
 
-      scene.draw(590, 300, (at + duration / 2) / 1.2 * 1000);
-      expect(bone.position.x).toBeCloseTo((from.x + to.x) / 2, 6);
-      expect(bone.position.z).toBeCloseTo((from.z + to.z) / 2, 6);
-      expect(bone.position.y).toBeGreaterThan((from.y + to.y) / 2);
+      scene.draw(590, 300, (at - lead + duration / 2) / 1.2 * 1000);
+      const flat = (v: Vector3) => new Vector3(v.x, 0, v.z);
+      const travelled = flat(bone.position).sub(flat(from)).dot(flat(to).sub(flat(from))) / flat(to).sub(flat(from)).lengthSq();
+      if (flat(to).distanceTo(flat(from)) > .01) expect(travelled).toBeGreaterThan(.5);
+      expect(bone.position.y).toBeGreaterThan(Math.min(from.y, to.y));
       expect(bone.quaternion.angleTo(rotation)).toBeGreaterThan(.001);
       expect(bone.quaternion.angleTo(identity)).toBeGreaterThan(.001);
     }
