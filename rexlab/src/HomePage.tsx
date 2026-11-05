@@ -350,7 +350,7 @@ export function HomePage({
         </div>
       </header>
       <section className="home-sky" aria-label={text.today}>
-        <div className="home-sky-body" aria-hidden="true"><span /></div>
+        {featuredGame !== "skeletons" && <div className="home-sky-body" aria-hidden="true"><span /></div>}
         <Button
           className="featured-card"
           data-game={featuredGame}
