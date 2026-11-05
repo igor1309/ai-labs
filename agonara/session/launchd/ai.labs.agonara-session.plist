@@ -5,7 +5,7 @@
   <key>Label</key><string>ai.labs.agonara-session</string>
   <key>ProgramArguments</key>
   <array>
-    <string>/Users/igormalyarov/Developer/my-apps/ai-labs/ai-labs/agonara/session/bin/agonara-session</string>
+    <string>/Users/igormalyarov/.local/share/agonara-session/bin/agonara-session</string>
     <string>-env-file=/Users/igormalyarov/.config/agonara-session/probe.env</string>
   </array>
   <key>RunAtLoad</key><true/>

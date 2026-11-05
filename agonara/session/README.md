@@ -93,17 +93,29 @@ Secrets live outside the repo in `~/.config/agonara-session/probe.env`
 `AGONARA_BASE_URL`, `AGONARA_LOGIN`, `AGONARA_PASSWORD` for the
 non-admin identity `session-probe`.
 
-launchd runs the binary built in the main checkout (`bin/` is not
-committed). Build it, then install, stopping any other copy first so two
-pollers never overlap:
+launchd runs the binary at `~/.local/share/agonara-session/bin/`.
 
-    go build -o bin/agonara-session ./cmd/agonara-session
+**Redeploy on merge to trunk.** A local git `post-merge` hook redeploys it
+when trunk moves in this clone, such as when `finish-merged-pr.sh`
+fast-forwards trunk; merging on GitHub alone does nothing. `deploy/merge-hook.sh`
+acts only on `trunk` with `ORIG_HEAD` set and only when `agonara/session`
+changed outside `docs/`, `design/` and `*.md`. It tests and builds the module,
+keeps the old binary as `agonara-session.prev`, swaps in the new one and
+restarts the bot. A failure leaves the old bot running and never fails the
+merge. Log: `~/Library/Logs/agonara-session/post-merge.log`.
+
+- Once per clone: `agonara/session/deploy/merge-hook.sh install`.
+- What a range would do: `agonara/session/deploy/merge-hook.sh plan <from> <to>`.
+
+Install the bot once, stopping any other copy first so two pollers never
+overlap, then deploy it by building into that folder:
+
+    mkdir -p ~/.local/share/agonara-session/bin
+    go build -o ~/.local/share/agonara-session/bin/agonara-session ./cmd/agonara-session
     cp launchd/ai.labs.agonara-session.plist ~/Library/LaunchAgents/
     launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/ai.labs.agonara-session.plist
     tail ~/Library/Logs/agonara-session.log
 
-After a code change, build again, then
-`launchctl kickstart -k gui/$(id -u)/ai.labs.agonara-session`.
 Remove: `launchctl bootout gui/$(id -u)/ai.labs.agonara-session`.
 
 The Mac runs it only while awake. A VPS host waits until the bot must stay up
