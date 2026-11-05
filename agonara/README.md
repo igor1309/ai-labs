@@ -30,6 +30,7 @@ The `/learn` and `/admin` browser UIs and the operator CLI remain first-class cl
 - [`architecture.html`](architecture.html) — architecture deep dive (progressive disclosure from the landing): module responsibility map, ownership rules, runtime, deployment, and ADR index.
 - [`docs/positioning.md`](docs/positioning.md) — positioning baseline for scattered study, structured progress, BYOA operation, and human-owned curation.
 - [`docs/intent/user-stories.html`](docs/intent/user-stories.html) — user stories driving the product.
+- [`session/`](session/README.md) — Session runner probe: a student session reached from Telegram, run on the owner's Mac under launchd.
 
 ## API Contract
 
