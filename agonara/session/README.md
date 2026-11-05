@@ -55,7 +55,8 @@ student.
   returns to the list. Buttons carry item indices; IDs stay in the saved state.
 - **Drawn for a phone:** the names are numbered lists in the message, in bold
   headings by kind, and the buttons are number keys five to a row. Each
-  material gets its own 📖 button ("Read" when it shares the screen's title).
+  material is listed first as "📖 Read: <title>", matching its own button above
+  the number keys.
   A press redraws the same message instead of adding one.
 - **Reading:** a material's text comes a page at a time (about 2,500
   characters) with Prev and Next, its markdown shown as Telegram formatting and
