@@ -10,16 +10,20 @@ import { TELEGRAM_TEXT_LIMIT, splitText } from "../src/telegram-adapter.js";
 
 const CHAT = 1;
 const makeState = () => ({ offset: 0, session: initialSession() });
-const makeApi = () => {
+const makeApi = (fail = {}) => {
   const calls = [];
-  return { calls, api: async (method, params) => calls.push({ method, params }) };
+  return { calls, api: async (method, params) => {
+    calls.push({ method, params });
+    if (fail[method]) throw new Error(fail[method]);
+  } };
 };
-const press = (data, chat = CHAT) => ({
-  callback_query: { id: "cb", data, message: { chat: { id: chat } } },
+const press = (data, chat = CHAT, messageId = 7) => ({
+  callback_query: { id: "cb", data, message: { message_id: messageId, chat: { id: chat } } },
 });
-const makeFlow = (content = "Programs") => async (session) => ({
-  session: { ...session, step: session.step + 1 }, content,
-  actions: [{ id: "open_0", label: "Algebra" }],
+const makeFlow = (body = "Study algebra.") => async (session) => ({
+  session: { ...session, step: session.step + 1 },
+  view: { title: "Programs", body, lists: [] },
+  actions: [{ id: "open_0", kind: "item", label: "1" }],
 });
 const send = (api, update, state = makeState(), flow = makeFlow(), log = () => {}) =>
   handleUpdate({ update, state, allowedChatId: CHAT, api, flow, log });
@@ -27,8 +31,10 @@ const send = (api, update, state = makeState(), flow = makeFlow(), log = () => {
 test("a message from the allowed chat gets the view with buttons", async () => {
   const { calls, api } = makeApi();
   await send(api, { message: { chat: { id: CHAT }, text: "hi" } });
-  assert.equal(calls.length, 1);
+  assert.deepEqual(calls.map((call) => call.method), ["sendMessage"]);
   assert.equal(calls[0].params.chat_id, CHAT);
+  assert.equal(calls[0].params.parse_mode, "HTML");
+  assert.equal(calls[0].params.text, "<b>Programs</b>\n\nStudy algebra.");
   assert.ok(calls[0].params.reply_markup.inline_keyboard.length > 0);
 });
 
@@ -49,8 +55,27 @@ test("a current button advances the session and offers next-step buttons", async
   const state = await send(api, press("0:open_0"), previous, flow);
   assert.equal(state.session.step, 1);
   assert.deepEqual(flowCalls, [[previous.session, "open_0"]]);
-  const sent = calls.find((call) => call.method === "sendMessage");
-  assert.equal(sent.params.reply_markup.inline_keyboard[0][0].callback_data, "1:open_0");
+  assert.deepEqual(calls.map((call) => call.method), ["answerCallbackQuery", "editMessageText"]);
+  const edited = calls[1].params;
+  assert.equal(edited.chat_id, CHAT);
+  assert.equal(edited.message_id, 7);
+  assert.equal(edited.parse_mode, "HTML");
+  assert.equal(edited.reply_markup.inline_keyboard[0][0].callback_data, "1:open_0");
+});
+
+test("an unchanged screen is not an error and sends nothing new", async () => {
+  const { calls, api } = makeApi({ editMessageText: "editMessageText failed: 400 Bad Request: message is not modified" });
+  const state = await send(api, press("0:open_0"));
+  assert.equal(state.session.step, 1);
+  assert.deepEqual(calls.map((call) => call.method), ["answerCallbackQuery", "editMessageText"]);
+});
+
+test("a message that cannot be edited gets the screen as a new message", async () => {
+  const { calls, api } = makeApi({ editMessageText: "editMessageText failed: 400 Bad Request: message can't be edited" });
+  const state = await send(api, press("0:open_0"));
+  assert.equal(state.session.step, 1);
+  assert.deepEqual(calls.map((call) => call.method), ["answerCallbackQuery", "editMessageText", "sendMessage"]);
+  assert.equal(calls[2].params.reply_markup.inline_keyboard[0][0].callback_data, "1:open_0");
 });
 
 test("an old button is answered and changes nothing", async () => {
@@ -62,17 +87,31 @@ test("an old button is answered and changes nothing", async () => {
   assert.match(calls[0].params.text, /out of date/);
 });
 
-test("a long reply arrives split and whole, with buttons only on its last part", async () => {
+test("markup Telegram cannot parse is sent again as plain text", async () => {
+  const calls = [];
+  const api = async (method, params) => {
+    calls.push({ method, params });
+    if (params.parse_mode) throw new Error("sendMessage failed: 400 Bad Request: can't parse entities");
+  };
+  const state = await send(api, { message: { chat: { id: CHAT }, text: "hi" } }, makeState(), makeFlow("a < b & c"));
+  assert.equal(state.session.step, 1);
+  assert.deepEqual(calls.map((call) => [call.method, call.params.parse_mode]), [["sendMessage", "HTML"], ["sendMessage", undefined]]);
+  assert.equal(calls[1].params.text, "Programs\n\na < b & c");
+  assert.ok(calls[1].params.reply_markup);
+});
+
+test("a screen too long for one message arrives split and whole, with buttons only on its last part", async () => {
   const { calls, api } = makeApi();
-  const content = [...Array.from({ length: 300 }, (_, i) => `Line ${i + 1} of the long reply.`), "END OF LONG REPLY"].join("\n");
-  await send(api, press("0:open_0"), makeState(), makeFlow(content));
+  const body = [...Array.from({ length: 300 }, (_, i) => `Line ${i + 1} of the long reply.`), "END OF LONG REPLY"].join("\n");
+  await send(api, press("0:open_0"), makeState(), makeFlow(body));
+  assert.ok(!calls.some((call) => call.method === "editMessageText"));
   const sent = calls.filter((call) => call.method === "sendMessage");
   assert.ok(sent.length > 1);
   assert.ok(sent.every((call) => call.params.text.length <= TELEGRAM_TEXT_LIMIT));
   assert.match(sent.at(-1).params.text, /END OF LONG REPLY/);
   assert.ok(sent.slice(0, -1).every((call) => !call.params.reply_markup));
   assert.ok(sent.at(-1).params.reply_markup);
-  assert.equal(sent.map((call) => call.params.text).join("\n"), content);
+  assert.equal(sent.map((call) => call.params.text).join("\n"), `<b>Programs</b>\n\n${body}`);
 });
 
 test("a refreshed screen invalidates buttons from the earlier message", async () => {

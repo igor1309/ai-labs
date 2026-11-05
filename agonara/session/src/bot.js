@@ -1,4 +1,4 @@
-import { keyboard, parseCallback, splitText } from "./telegram-adapter.js";
+import { TELEGRAM_TEXT_LIMIT, parseCallback, render, splitText } from "./telegram-adapter.js";
 
 // Handles one update. `api(method, params)` is injected so tests need no network.
 export async function handleUpdate({ update, state, allowedChatId, api, flow, log }) {
@@ -32,18 +32,43 @@ export async function handleUpdate({ update, state, allowedChatId, api, flow, lo
     return state;
   }
   if (callback) await api("answerCallbackQuery", { callback_query_id: callback.id });
-  await sendView(api, chatId, result);
+  await show(api, chatId, callback?.message?.message_id, result);
   return { ...state, session: result.session };
 }
 
-async function sendView(api, chatId, { session, content, actions }) {
-  const chunks = splitText(content);
-  for (const [index, text] of chunks.entries()) {
+// A button press redraws its own message; a typed message, or a screen too
+// long for one message, gets new messages with the buttons on the last.
+async function show(api, chatId, messageId, { session, view, actions }) {
+  const { text, reply_markup } = render(view, actions, session.step);
+  if (messageId !== undefined && text.length <= TELEGRAM_TEXT_LIMIT) {
+    try {
+      await api("editMessageText", { chat_id: chatId, message_id: messageId, text, parse_mode: "HTML", reply_markup });
+      return;
+    } catch (error) {
+      // Unchanged text is not an error; any other refusal (an old message, say)
+      // falls back to a new message rather than failing the update.
+      if (/message is not modified/.test(error.message)) return;
+    }
+  }
+  try {
+    await send(api, chatId, text, reply_markup, "HTML");
+  } catch (error) {
+    // Markup Telegram cannot parse must not stall the update: send it plain.
+    if (!/can't parse entities/.test(error.message)) throw error;
+    await send(api, chatId, plain(text), reply_markup);
+  }
+}
+
+async function send(api, chatId, text, reply_markup, parse_mode) {
+  const chunks = splitText(text);
+  for (const [index, chunk] of chunks.entries()) {
     const last = index === chunks.length - 1;
     await api("sendMessage", {
-      chat_id: chatId,
-      text,
-      ...(last ? { reply_markup: keyboard(actions, session.step) } : {}),
+      chat_id: chatId, text: chunk, ...(parse_mode ? { parse_mode } : {}), ...(last ? { reply_markup } : {}),
     });
   }
+}
+
+function plain(html) {
+  return html.replace(/<[^>]+>/g, "").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
 }

@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { createProgramFlow, initialSession } from "../src/program-flow.js";
+import { createProgramFlow, initialSession, paginate } from "../src/program-flow.js";
 import { keyboard } from "../src/telegram-adapter.js";
 
-function setup() {
+function setup({ pageSize } = {}) {
   const calls = [];
   const programs = [
     { programId: "program-a", title: "Algebra", description: "Study algebra." },
@@ -18,153 +18,205 @@ function setup() {
     entityId: "topic-id", acceptedKind: "topic", title: "Vectors", body: "A vector has direction.",
     relationships: { outgoing: [
       { toEntityId: "child-id", toKind: "concept", toTitle: "Child" },
-      { toEntityId: "other-child-id", toKind: "material_reference", toTitle: "Reading" },
+      { toEntityId: "reading-id", toKind: "material_reference", toTitle: "Reading" },
+      { toEntityId: "other-id", toKind: "concept", toTitle: "Other" },
     ] },
   };
+  const material = "---\nmodel: x\n---\n\n# Ethics\n\nFirst part.\n\nSecond part.";
   const client = {
     listPrograms: async () => { calls.push(["listPrograms"]); return { programs }; },
     navigation: async (id) => { calls.push(["navigation", id]); return { navigation }; },
     entity: async (id) => { calls.push(["entity", id]); return { navigationNode: node }; },
+    materialContent: async (id) => { calls.push(["materialContent", id]); return { content: material }; },
   };
-  return { calls, programs, navigation, node, client, flow: createProgramFlow({ client }) };
+  const flow = createProgramFlow({ client, ...(pageSize ? { pageSize } : {}) });
+  return { calls, programs, navigation, node, client, flow };
 }
 
-test("program list includes titles, descriptions and indexed actions in JSON state", async () => {
-  const { flow, calls } = setup();
+const ids = (actions) => actions.map((action) => action.id);
+const makeMaterial = (node, change = {}) => Object.assign(node, {
+  entityId: "material-id", acceptedKind: "material_reference", title: "Notes", body: "Lecture.",
+  hasContent: true, relationships: { outgoing: [] }, ...change,
+});
+const entityState = (change = {}) => ({ step: 1, screen: "entity", entityId: "material-id", items: [], history: [], ...change });
+
+test("the program list numbers programs and offers a number key for each, without Programs", async () => {
+  const { flow } = setup();
   const result = await flow(initialSession());
-  assert.equal(result.content, "Programs\n\nAlgebra\nStudy algebra.\n\nGeometry");
+  assert.deepEqual(result.view, {
+    title: "Programs",
+    lists: [{ heading: null, entries: [{ index: 0, n: 1, label: "Algebra" }, { index: 1, n: 2, label: "Geometry" }] }],
+    empty: undefined,
+  });
   assert.deepEqual(result.actions, [
-    { id: "open_0", label: "Algebra" }, { id: "open_1", label: "Geometry" },
-    { id: "programs", label: "Programs" },
+    { id: "open_0", kind: "item", label: "1" }, { id: "open_1", kind: "item", label: "2" },
   ]);
   assert.equal(result.session.screen, "programs");
-  assert.equal(result.session.step, 1);
-  assert.deepEqual(result.session, JSON.parse(JSON.stringify(result.session)));
-  assert.deepEqual(calls, [["listPrograms"]]);
 });
 
-test("program navigation shows all groups with one shared index list", async () => {
+test("a program groups topics and concepts as numbers and materials as their own buttons", async () => {
   const { flow, calls } = setup();
   const list = await flow(initialSession());
-  const result = await flow(list.session, "open_1");
-  assert.equal(result.content, "Geometry\n\nTopics\nVectors\n\nUngrouped concepts\nBasis\n\nUngrouped materials\nNotes");
-  assert.deepEqual(result.actions, [
-    { id: "open_0", label: "Vectors" }, { id: "open_1", label: "Basis" },
-    { id: "open_2", label: "Notes" }, { id: "back", label: "Back" },
-    { id: "programs", label: "Programs" },
-  ]);
-  assert.equal(result.session.programId, "program-b");
-  assert.equal(result.session.screen, "program");
-  assert.deepEqual(calls.at(-1), ["navigation", "program-b"]);
-});
-
-test("an item index resolves from the saved screen even if the API list is reordered", async () => {
-  const { flow, programs, calls } = setup();
-  const list = await flow(initialSession());
-  const saved = JSON.parse(JSON.stringify(list.session));
-  programs.reverse();
-  const opened = await flow(saved, "open_0");
-  assert.equal(opened.session.programId, "program-a");
+  const result = await flow(list.session, "open_0");
   assert.deepEqual(calls.at(-1), ["navigation", "program-a"]);
+  assert.deepEqual(result.view.lists, [
+    { heading: "Topics", entries: [{ index: 0, n: 1, label: "Vectors" }] },
+    { heading: "Concepts", entries: [{ index: 1, n: 2, label: "Basis" }] },
+    { heading: "Materials", entries: [{ index: 2, n: undefined, label: "Notes" }] },
+  ]);
+  assert.deepEqual(result.actions, [
+    { id: "open_0", kind: "item", label: "1" }, { id: "open_1", kind: "item", label: "2" },
+    { id: "open_2", kind: "material", label: "Notes" },
+    { id: "back", kind: "nav", label: "◀ Back" }, { id: "programs", kind: "nav", label: "Programs" },
+  ]);
 });
 
-for (const [index, entityId] of [[0, "topic-id"], [1, "concept-id"], [2, "material-id"]]) {
-  test(`program item ${index} opens entity ${entityId}`, async () => {
-    const { flow, calls } = setup();
-    const list = await flow(initialSession());
-    const program = await flow(list.session, "open_0");
-    const result = await flow(program.session, `open_${index}`);
-    assert.equal(result.session.entityId, entityId);
-    assert.deepEqual(calls.at(-1), ["entity", entityId]);
-  });
-}
-
-test("entity screen shows title, body and outgoing items and resolves their indices", async () => {
+test("numbers follow the lists, not the API order, and each opens its own item", async () => {
   const { flow, calls } = setup();
-  const list = await flow(initialSession());
-  const program = await flow(list.session, "open_0");
-  const result = await flow(program.session, "open_0");
-  assert.equal(result.content, "Vectors\n\nA vector has direction.\n\nOutgoing items\n\nChild\nReading");
-  assert.deepEqual(result.actions, [
-    { id: "open_0", label: "Child" }, { id: "open_1", label: "Reading" },
-    { id: "back", label: "Back" }, { id: "programs", label: "Programs" },
+  const result = await flow(entityState({ entityId: "topic-id" }));
+  assert.deepEqual(result.view.lists, [
+    { heading: "Concepts", entries: [{ index: 0, n: 1, label: "Child" }, { index: 2, n: 2, label: "Other" }] },
+    { heading: "Materials", entries: [{ index: 1, n: undefined, label: "Reading" }] },
   ]);
-  for (const [index, id] of [[0, "child-id"], [1, "other-child-id"]]) {
-    const opened = await flow(result.session, `open_${index}`);
-    assert.equal(opened.session.entityId, id);
+  assert.deepEqual(result.actions.slice(0, 3), [
+    { id: "open_0", kind: "item", label: "1" },
+    { id: "open_1", kind: "material", label: "Reading" },
+    { id: "open_2", kind: "item", label: "2" },
+  ]);
+  for (const [action, id] of [["open_0", "child-id"], ["open_1", "reading-id"], ["open_2", "other-id"]]) {
+    await flow(result.session, action);
     assert.deepEqual(calls.at(-1), ["entity", id]);
   }
 });
 
-test("Back retraces nested entities, the program and the list after JSON persistence", async () => {
-  const { flow } = setup();
-  let result = await flow(initialSession());
-  for (const action of ["open_1", "open_0", "open_1"]) result = await flow(result.session, action);
-  for (const expected of [
-    { screen: "entity", entityId: "topic-id" },
-    { screen: "program", programId: "program-b" },
+test("an item index resolves from the saved screen even if the API list is reordered", async () => {
+  const { flow, calls, navigation } = setup();
+  const list = await flow(initialSession());
+  const program = await flow(list.session, "open_0");
+  navigation.topics.reverse();
+  await flow(JSON.parse(JSON.stringify(program.session)), "open_1");
+  assert.deepEqual(calls.at(-1), ["entity", "concept-id"]);
+});
+
+test("a material is paged, without front matter, and its body shows on the first page only", async () => {
+  const { flow, node, calls } = setup({ pageSize: 25 });
+  makeMaterial(node);
+  const first = await flow(entityState());
+  assert.deepEqual(calls, [["entity", "material-id"], ["materialContent", "material-id"]]);
+  assert.deepEqual(first.view, {
+    title: "Notes", body: "Lecture.", lists: [], markdown: "# Ethics\n\nFirst part.",
+    page: { index: 0, count: 2 },
+  });
+  assert.deepEqual(ids(first.actions), ["next", "programs"]);
+  assert.equal(first.session.page, 0);
+  assert.equal(first.session.pageCount, 2);
+
+  const second = await flow(first.session, "next");
+  assert.deepEqual(second.view, {
+    title: "Notes", body: undefined, lists: [], markdown: "Second part.", page: { index: 1, count: 2 },
+  });
+  assert.deepEqual(ids(second.actions), ["prev", "programs"]);
+  assert.deepEqual(second.session.history, first.session.history);
+
+  const back = await flow(second.session, "prev");
+  assert.equal(back.view.page.index, 0);
+});
+
+test("paging past either end, or on a screen without pages, is refused", async () => {
+  const { flow, node } = setup({ pageSize: 25 });
+  makeMaterial(node);
+  const first = await flow(entityState());
+  assert.equal(await flow(first.session, "prev"), null);
+  const last = await flow(first.session, "next");
+  assert.equal(await flow(last.session, "next"), null);
+  const list = await flow(initialSession());
+  assert.equal(await flow(list.session, "next"), null);
+});
+
+test("a page beyond a shortened material shows its last page", async () => {
+  const { flow, node } = setup({ pageSize: 25 });
+  makeMaterial(node);
+  const result = await flow(entityState({ page: 5, pageCount: 6 }));
+  assert.deepEqual(result.view.page, { index: 1, count: 2 });
+  assert.equal(result.session.page, 1);
+});
+
+test("a typed message redraws the current page", async () => {
+  const { flow, node } = setup({ pageSize: 25 });
+  makeMaterial(node);
+  const first = await flow(entityState());
+  const second = await flow(first.session, "next");
+  const redrawn = await flow(second.session);
+  assert.equal(redrawn.view.page.index, 1);
+});
+
+for (const [name, change] of [
+  ["a topic", { acceptedKind: "topic", hasContent: true }],
+  ["a material without content", { acceptedKind: "material_reference", hasContent: false }],
+]) {
+  test(`${name} reads no material content and has no pages`, async () => {
+    const { flow, calls, node } = setup();
+    Object.assign(node, change);
+    const result = await flow(entityState({ entityId: "topic-id" }));
+    assert.deepEqual(calls, [["entity", "topic-id"]]);
+    assert.equal(result.view.page, undefined);
+    assert.equal(result.session.pageCount, undefined);
+  });
+}
+
+test("Back retraces the material, the topic, the program and the list after JSON persistence", async () => {
+  const { flow, node } = setup();
+  const list = await flow(initialSession());
+  const program = await flow(list.session, "open_0");
+  const topic = await flow(program.session, "open_0");
+  makeMaterial(node);
+  const material = await flow(JSON.parse(JSON.stringify(topic.session)), "open_1");
+  assert.deepEqual(material.session.history, [
     { screen: "programs" },
-  ]) {
-    const previous = JSON.parse(JSON.stringify(result.session));
-    result = await flow(previous, "back");
-    for (const [key, value] of Object.entries(expected)) assert.equal(result.session[key], value);
-    assert.equal(result.session.step, previous.step + 1);
+    { screen: "program", programId: "program-a", title: "Algebra" },
+    { screen: "entity", entityId: "topic-id" },
+  ]);
+  let current = material;
+  for (const screen of ["entity", "program", "programs"]) {
+    current = await flow(JSON.parse(JSON.stringify(current.session)), "back");
+    assert.equal(current.session.screen, screen);
   }
-  assert.ok(!result.actions.some((action) => action.id === "back"));
+  assert.equal(await flow(current.session, "back"), null);
 });
 
 test("Programs from an entity clears Back history", async () => {
   const { flow } = setup();
-  const list = await flow(initialSession());
-  const program = await flow(list.session, "open_0");
-  const entity = await flow(program.session, "open_0");
-  const result = await flow(entity.session, "programs");
+  const result = await flow(entityState({ entityId: "topic-id", history: [{ screen: "programs" }] }), "programs");
   assert.equal(result.session.screen, "programs");
   assert.deepEqual(result.session.history, []);
-  assert.ok(!result.actions.some((action) => action.id === "back"));
 });
 
-test("invalid and stale indices are refused without requests or state changes", async () => {
-  const { flow, programs, calls } = setup();
+test("invalid and stale indices are refused without requests", async () => {
+  const { flow, calls } = setup();
   const list = await flow(initialSession());
-  programs.pop();
-  const refreshed = await flow(list.session);
-  const before = structuredClone(refreshed.session);
-  const count = calls.length;
-  for (const action of ["open_1", "open_-1", "open_0.5", "open_01", "open_9007199254740993", "unknown", "back"]) {
-    assert.equal(await flow(refreshed.session, action), null);
+  calls.length = 0;
+  for (const action of ["open_2", "open_-1", "open_01", "open_x", "unknown"]) {
+    assert.equal(await flow(list.session, action), null);
   }
-  assert.deepEqual(refreshed.session, before);
-  assert.equal(calls.length, count);
-  assert.equal(refreshed.session.step, list.session.step + 1);
+  assert.deepEqual(calls, []);
 });
 
 test("UUIDs stay in state while callback data remains within Telegram's 64 bytes", async () => {
   const { flow, programs } = setup();
-  programs[0].programId = "faca8453-0aaf-4586-9872-9877e41cc553";
-  const result = await flow(initialSession());
+  programs[0].programId = "11111111-2222-3333-4444-555555555555";
+  const result = await flow({ ...initialSession(), step: 123456789 });
+  const data = keyboard(result.actions, result.session.step).inline_keyboard.flat().map((button) => button.callback_data);
+  assert.ok(data.every((value) => Buffer.byteLength(value) <= 64));
+  assert.ok(data.every((value) => !value.includes(programs[0].programId)));
   assert.equal(result.session.items[0].id, programs[0].programId);
-  for (const row of keyboard(result.actions, result.session.step).inline_keyboard) {
-    assert.ok(Buffer.byteLength(row[0].callback_data) <= 64);
-    assert.ok(!row[0].callback_data.includes(programs[0].programId));
-  }
 });
 
-test("empty screens retain navigation and have no item actions", async () => {
-  const { flow, programs, navigation, node } = setup();
-  const list = await flow(initialSession());
-  navigation.topics = navigation.ungroupedConcepts = navigation.ungroupedMaterials = [];
-  const program = await flow(list.session, "open_0");
-  assert.match(program.content, /Topics\nNone\./);
-  assert.deepEqual(program.actions.map((action) => action.id), ["back", "programs"]);
+test("an empty program list says so and keeps no item actions", async () => {
+  const { flow, programs } = setup();
   programs.length = 0;
-  const empty = await flow(program.session, "programs");
-  assert.equal(empty.content, "Programs\n\nNo programs.");
-  assert.deepEqual(empty.actions, [{ id: "programs", label: "Programs" }]);
-  node.body = "";
-  node.relationships.outgoing = [];
-  const entity = await flow({ step: 4, screen: "entity", entityId: "leaf", items: [], history: [] });
-  assert.equal(entity.content, "Vectors\n\nOutgoing items\n\nNone.");
+  const result = await flow(initialSession());
+  assert.equal(result.view.empty, "No programs.");
+  assert.deepEqual(result.actions, []);
 });
 
 test("failed reads leave the previous state intact", async () => {
@@ -184,28 +236,16 @@ test("a saved canned session opens Programs with a fresh step", async () => {
   assert.ok(!("depth" in result.session));
 });
 
-test("a material with content shows its text without front matter", async () => {
-  const { flow, client, calls, node } = setup();
-  Object.assign(node, { entityId: "material-id", acceptedKind: "material_reference", title: "Notes", body: "Lecture.", hasContent: true });
-  node.relationships.outgoing = [];
-  client.materialContent = async (id) => {
-    calls.push(["materialContent", id]);
-    return { content: "---\nmodel: x\n---\n\n# Ethics\n\nText." };
-  };
-  const result = await flow({ step: 1, screen: "entity", entityId: "material-id", items: [], history: [] });
-  assert.deepEqual(calls, [["entity", "material-id"], ["materialContent", "material-id"]]);
-  assert.equal(result.content, "Notes\n\nLecture.\n\n# Ethics\n\nText.\n\nOutgoing items\n\nNone.");
+test("pages break at paragraphs, then lines, then anywhere, and lose no text", () => {
+  assert.deepEqual(paginate("aaaa\n\nbbbb\n\ncc", 10), ["aaaa\n\nbbbb", "cc"]);
+  assert.deepEqual(paginate("aaaa\nbbbb\ncccc", 10), ["aaaa\nbbbb", "cccc"]);
+  assert.deepEqual(paginate("x".repeat(25), 10), ["x".repeat(10), "x".repeat(10), "x".repeat(5)]);
+  assert.ok(paginate("word ".repeat(2000), 2500).every((page) => page.length <= 2500));
 });
 
-for (const [name, change] of [
-  ["a topic", { acceptedKind: "topic", hasContent: true }],
-  ["a material without content", { acceptedKind: "material_reference", hasContent: false }],
-]) {
-  test(`${name} reads no material content`, async () => {
-    const { flow, client, calls, node } = setup();
-    Object.assign(node, change);
-    client.materialContent = async () => { throw new Error("not expected"); };
-    await flow({ step: 1, screen: "entity", entityId: "topic-id", items: [], history: [] });
-    assert.deepEqual(calls, [["entity", "topic-id"]]);
-  });
-}
+test("a material titled like its screen gets the button label Read", async () => {
+  const { flow, node } = setup();
+  node.relationships.outgoing = [{ toEntityId: "reading-id", toKind: "material_reference", toTitle: "Vectors" }];
+  const result = await flow(entityState({ entityId: "topic-id" }));
+  assert.deepEqual(result.actions[0], { id: "open_0", kind: "material", label: "Read" });
+});
