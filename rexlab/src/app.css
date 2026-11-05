@@ -13007,6 +13007,10 @@ body:has(.whose-jaw-shelf-screen) #version { display: none; }
 .pairs-hero-back .pair-card-back-frame svg { width: 42cqi; height: 42cqi; }
 .pairs-hero-silhouette { z-index: 1; animation-delay: var(--motion-stagger); }
 .pairs-hero-picture-card { rotate: 6deg; animation-delay: calc(var(--motion-stagger) * 2); }
+.pairs-hero-silhouette { position: relative; }
+.pairs-hero-shadow { display: none; position: absolute; inset: var(--pw-card-pad); background: var(--ds-ink); mask-position: center; mask-size: contain; mask-repeat: no-repeat; }
+.pairs-hero .pair-silhouette:is([data-picture="appearing"], [data-picture="shown"]) { opacity: 0; }
+.pairs-hero .pair-silhouette:is([data-picture="appearing"], [data-picture="shown"]) + .pairs-hero-shadow { display: block; animation: fade-in var(--motion-standard) var(--ease-out) both; }
 .pairs-hero-picture { display: block; width: 100%; height: 100%; min-height: 0; object-fit: contain; }
 .pairs-hero .picture[data-picture="loading"] { --shimmer-from: var(--ds-pocket-1); --shimmer-to: var(--ds-label); }
 .pairs-chips { display: flex; flex-direction: column; align-items: flex-start; gap: var(--ds-space-l); }

@@ -1,10 +1,11 @@
-import { ChartNoAxesColumnIncreasing, Copy, Footprints, House, Play, Star } from "lucide-react";
+import { Footprints, House, Play, Star } from "lucide-react";
 import type { AgeLevel } from "./ageLevel.ts";
 import { Button } from "./Button.tsx";
 import { EarthEdge } from "./EarthEdge.tsx";
 import { FitText } from "./FitText.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
+import { CardsFill, Stairs } from "./PairsIcons.tsx";
 import { LevelSwitch } from "./LevelSwitch.tsx";
 import { Picture } from "./Picture.tsx";
 
@@ -43,7 +44,7 @@ export function PairsWelcomeScreen({ language, level, climbLevel, stars, heroPic
         </div>
         <h1 className="pairs-title" data-turn-part="pairs-title">
           <span className="pairs-mark" aria-hidden="true">
-            <Copy />
+            <CardsFill />
           </span>
           <FitText className="pairs-title-word" text={text.pairs} />
         </h1>
@@ -61,6 +62,9 @@ export function PairsWelcomeScreen({ language, level, climbLevel, stars, heroPic
             </span>
             <span className="pairs-hero-card pairs-hero-silhouette">
               <Picture className="pairs-hero-picture pair-silhouette" src={heroPicture} alt="" width={800} height={600} />
+              {/* The silhouette in the ink colour, cut from the picture
+                  once it has loaded. */}
+              <span className="pairs-hero-shadow" style={{ maskImage: `url("${heroPicture}")` }} />
             </span>
             <span className="pairs-hero-card pairs-hero-picture-card">
               <Picture className="pairs-hero-picture" src={heroPicture} alt="" width={800} height={600} />
@@ -70,7 +74,7 @@ export function PairsWelcomeScreen({ language, level, climbLevel, stars, heroPic
             <div className="pairs-chips" data-turn-part="pairs-chips">
               <div className="pairs-climb" data-shown={climbing || undefined} aria-hidden={!climbing || undefined}>
                 <p className="pairs-chip" aria-label={text.level}>
-                  <ChartNoAxesColumnIncreasing aria-hidden="true" />
+                  <Stairs className="pairs-stairs" />
                   <span className="pairs-chip-number">{climbLevel}</span>
                 </p>
               </div>

@@ -89,7 +89,7 @@ describe("the welcome screen", () => {
     expect(screen.getByRole("heading").textContent).toBe("FIND THE PAIR");
     expect(symbolOf(button("PLAY"))).toBe("play");
     const [level, stars] = [screen.getByLabelText("LEVEL"), screen.getByLabelText("STARS")];
-    expect([level.textContent, symbolOf(level), stars.textContent, symbolOf(stars)]).toEqual(["3", "chart-no-axes-column-increasing", "5", "star"]);
+    expect([level.textContent, level.querySelector("svg.pairs-stairs") !== null, stars.textContent, symbolOf(stars)]).toEqual(["3", true, "5", "star"]);
     expect(symbolOf(button("HOME"))).toBe("house");
     expect([...document.querySelectorAll(".pairs-hero img")].map((picture) => picture.getAttribute("src"))).toEqual([
       fakeBodyPicture("triceratops"),

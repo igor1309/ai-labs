@@ -54,7 +54,7 @@ async function welcome(page, width, height, label, { sandTop, bedrock, phone, sh
       words: [...document.querySelectorAll('.pairs-title-word, .pairs-play-word')].map(e => ({ text: e.textContent, fits: fits(e), size: parseFloat(getComputedStyle(e).fontSize), width: box(e).width })),
       names: [...document.querySelectorAll('.pairs-welcome .level-switch-level')].map(e => { const name = e.querySelector('.level-switch-name'); return { chosen: e.getAttribute('aria-pressed') === 'true', shown: getComputedStyle(name).position !== 'absolute', fits: fits(e) && name.getBoundingClientRect().right <= e.getBoundingClientRect().right + .5, size: parseFloat(getComputedStyle(name).fontSize) }; }),
       homeWord: getComputedStyle(q('.pairs-welcome-home span')).display !== 'none',
-      pictures: [...document.querySelectorAll('.pairs-hero img')].map(e => e.naturalWidth > 0 && parseFloat(getComputedStyle(e).opacity) >= .85),
+      pictures: [...document.querySelectorAll('.pairs-hero img')].map(e => e.naturalWidth > 0).concat(getComputedStyle(q('.pairs-hero-shadow')).display === 'block', getComputedStyle(q('.pairs-hero-picture-card img')).opacity === '1'),
       version: getComputedStyle(q('#version')).display
     };
   });

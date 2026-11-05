@@ -61,6 +61,8 @@ for (const theme of THEMES) for (const shape of SHAPES) {
     else matches(".pairs-mark", { "background-color": "pocket-1", color: "action", "border-top-left-radius": "radius-30", "border-bottom-left-radius": "radius-15" });
     matches(".pairs-title", { "font-size": { "wide": "size-40", "tall": "size-40", "tall-narrow": "size-title", "wide-short": "size-26" }[shape] });
     matches(".pairs-hero-back", { "background-color": "strong", color: "on-strong", "border-top-left-radius": phone(shape) ? "radius-12" : "radius-16" });
+    matches(".pairs-hero-shadow", { "background-color": "ink" });
+    expect([style(part(".pairs-hero .pair-silhouette")).opacity, style(part(".pairs-hero-shadow")).display]).toEqual(["0", "block"]);
     for (const card of [".pairs-hero-silhouette", ".pairs-hero-picture-card"]) matches(card, { "background-color": "label", "border-top-color": "outline" });
     matches(".pairs-climb .pairs-chip", { "background-color": "quiet", color: "ink", "border-radius": "radius-tag" });
     matches(".pairs-stars", { "background-color": "quiet", color: "ink", "border-radius": "radius-tag" });
