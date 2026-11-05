@@ -1,10 +1,10 @@
 Feature: Sort dinosaurs: the result in a tall window
   In a tall window (an iPad upright, a tall Stage Manager or Mac window)
-  sort's result shows upright, with no ask to turn sideways, and as the
-  compare quiz's result does in the same window; the rest is as
-  sort-dinosaurs-result.feature tells. A phone upright is in
-  sort-dinosaurs-result-narrow-portrait.feature. Where the parts sit and
-  their sizes are the design's call, not this spec's.
+  sort's result shows upright with no orientation gate. The dinosaur
+  stands above the score, stars, praise, best, level switch and actions.
+  The upright dinosaur remains at least 200 CSS pixels high; below the
+  minimum content height the whole page scrolls. PLAY AGAIN and HOME stand
+  side by side. Level pictures have visible names, one line each.
 
   Scenario Outline: The result shows upright
     Given a window of <width> by <height> CSS pixels, with no safe areas and scrollbars that take no room
@@ -33,5 +33,5 @@ Feature: Sort dinosaurs: the result in a tall window
   Scenario: The result glides to its other layout as the window turns
     Given a window of 1180 by 820 CSS pixels on sort's result
     When the window becomes 820 by 1180 CSS pixels
-    Then the dinosaur, the rewards, the level switch and the actions glide to their new places, as the compare quiz's result does
+    Then the dinosaur, the rewards, the level switch and the actions glide to their new places with the shared turn motion
     And PLAY AGAIN still starts a new board

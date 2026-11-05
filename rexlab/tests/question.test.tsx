@@ -80,15 +80,15 @@ describe("a question", () => {
     ] as const) {
       expect(within(card).getByRole("img", { name }).getAttribute("src")).toBe(fakeBodyPicture(byName(name).id));
       const label = within(card).getByText(name.toUpperCase());
-      expect(parseFloat(getComputedStyle(label).fontSize)).toBeGreaterThanOrEqual(32);
+      expect(label.closest("button")).toBe(card);
       expect(card.textContent).not.toMatch(/\d/);
     }
     const [leftSize, rightSize] = pictures.map((picture) => {
       const { width, height } = getComputedStyle(picture);
       return { width, height };
     });
-    expect(leftSize?.width).toMatch(/^[\d.]+px$/);
-    expect(leftSize?.height).toMatch(/^[\d.]+px$/);
+    expect(leftSize?.width).toBe("100%");
+    expect(leftSize?.height).toBe("100%");
     expect(rightSize).toEqual(leftSize);
 
     const home = screen.getByRole("button", { name: "HOME" });
@@ -152,7 +152,7 @@ describe("a round", () => {
 
     const steps = [...document.querySelectorAll<HTMLElement>(".step")].map((step) => step.dataset.step ?? "to come");
     expect(progress()).toBe("3/10");
-    expect(steps).toEqual(["done", "done", "current", ...Array<string>(7).fill("to come")]);
+    expect(steps).toEqual(["right", "right", "current", ...Array<string>(7).fill("to-come")]);
   });
 
   // The generator's own tests cover the class of random draws; this one

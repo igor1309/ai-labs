@@ -1,6 +1,6 @@
 import { BookOpen, Gem } from "lucide-react";
 import type { CSSProperties } from "react";
-import { DigBar } from "./DigBar.tsx";
+import { DigBar, DigGround } from "./DigBar.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS, type Texts } from "./language/texts.ts";
 import { Picture } from "./Picture.tsx";
@@ -25,7 +25,7 @@ export function DigFieldGuideScreen({ language, cards, onBack, onHome }: DigFiel
   const found = cards.filter(({ count }) => count > 0).length;
   return (
     <main className="dig-screen dig-field-guide-screen">
-      <div className="stratum stratum-1" aria-hidden="true" />
+      <DigGround />
       <DigBar language={language} title={text.fieldGuide} Mark={BookOpen} onHome={onHome} onBack={onBack}>
         <p className="dig-chip dig-kinds-found" aria-label={text.kindsFound}>
           <Gem size={20} aria-hidden="true" />

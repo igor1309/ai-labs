@@ -591,7 +591,7 @@ export function unsetAgeLevel(): Pick<AppProps, "ageLevelStore"> {
 // the question, presented as the app presents it.
 export function questionView(question: Question, language: Language, choice?: string) {
   const play = startPlay(Array.from({ length: ROUND_LENGTH }, () => question), "hatchling");
-  return presentQuestion(questionState(choice === undefined ? play : choose(play, choice)), language, fakeBodyPicture);
+  return presentQuestion(questionState(choice === undefined ? play : choose(play, choice)), language, fakeBodyPicture, undefined);
 }
 
 // Media query lists, one for each query given, whose matches the test

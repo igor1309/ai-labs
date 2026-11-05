@@ -113,7 +113,7 @@ describe("Whose Jaw result and rewards", () => {
     app.unmount();
     openWhoseJawApp({ storage: app.storage });
     fireEvent.click(homeTile(TEXTS.en.whoseJaw));
-    expect(screen.getByLabelText(TEXTS.en.bestScore).textContent).toBe("🦷 2");
+    expect(screen.getByLabelText(TEXTS.en.bestScore).textContent).toBe("2");
     expect(screen.getByLabelText(TEXTS.en.jawCollection).textContent).toContain("5 / 16");
   });
 

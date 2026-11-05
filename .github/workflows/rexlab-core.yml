@@ -46,26 +46,8 @@ jobs:
         working-directory: rexlab
         run: npm run build
 
-  # Each browser contract owns its server/build lifecycle. Keep their budgets
-  # independent of unit shards and of the other browser contracts.
-  browser:
-    strategy:
-      fail-fast: false
-      matrix:
-        script:
-          - whoseJawBoardLandscape
-          - coloringProbe
-          - coloringPainter
-          - coloringWorkshop
-          - coloringDrawing
-          - coloringGallery
-          - coloringResult
-          - coloringFlow
-          - homePhone
-          - nativeTouch
-          - homeTiles
-          - careFriends
-          - browserChrome
+  # The released app, built once for the browser contracts that open it.
+  app:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -83,15 +65,81 @@ jobs:
         working-directory: rexlab
         run: npm ci
 
-      - name: Install browser engine
+      - name: Build the app
         working-directory: rexlab
-        run: |
-          if [ "${{ matrix.script }}" = "browserChrome" ]; then
-            npx playwright install --with-deps webkit
-          else
-            npx playwright install --with-deps chromium
-          fi
+        run: npx vite build --outDir "$RUNNER_TEMP/rexlab-app"
+
+      - name: Keep the app for the browser contracts
+        uses: actions/upload-artifact@v4
+        with:
+          name: rexlab-app
+          path: ${{ runner.temp }}/rexlab-app
+          include-hidden-files: true
+          retention-days: 1
+
+  # Each browser contract runs in a job of its own, with its own 10-minute
+  # limit, on the app built once above.
+  browser:
+    needs: [app]
+    strategy:
+      fail-fast: false
+      matrix:
+        script:
+          - compareQuestion
+          - compareResult
+          - compareFlow
+          - whoseJawBoardLandscape
+          - whoseJawDigSite
+          - catalogueFit
+          - coloringProbe
+          - coloringPainter
+          - coloringWorkshop
+          - coloringDrawing
+          - coloringGallery
+          - coloringResult
+          - coloringFlow
+          - homePhone
+          - nativeTouch
+          - homeTiles
+          - careFriends
+          - languagePicker
+          - browserChrome
+    runs-on: ubuntu-latest
+    # WebKit's system libraries take minutes to download from the package
+    # mirror, so browserChrome runs in Playwright's image, which carries
+    # them. Its version is the playwright version in rexlab/package.json.
+    # The Chromium contracts stay on the runner: their layouts are measured
+    # with the runner's fonts.
+    container: ${{ matrix.script == 'browserChrome' && 'mcr.microsoft.com/playwright:v1.64.1-noble' || '' }}
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .node-version
+
+      - name: Install dependencies
+        working-directory: rexlab
+        run: npm ci
+
+      - name: Install Chromium
+        if: matrix.script != 'browserChrome'
+        working-directory: rexlab
+        run: npx playwright install --with-deps chromium
+
+      - name: Take the built app
+        uses: actions/download-artifact@v4
+        with:
+          name: rexlab-app
+          path: ${{ runner.temp }}/rexlab-app
 
       - name: Run browser contract
         working-directory: rexlab
+        env:
+          REXLAB_APP_BUILD: ${{ runner.temp }}/rexlab-app
         run: node tests/${{ matrix.script }}.browser.cjs

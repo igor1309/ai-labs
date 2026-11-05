@@ -2,14 +2,14 @@
   "name": "@ai-labs/rexlab",
   "private": true,
   "type": "module",
-  "version": "0.10.98",
+  "version": "0.10.100",
   "scripts": {
     "build": "vite build",
     "dev": "vite",
     "smoke": "tsx scripts/smoke-deployed-version.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:browser": "node tests/whoseJawBoardLandscape.browser.cjs",
+    "test:browser": "node tests/whoseJawBoardLandscape.browser.cjs && node tests/whoseJawDigSite.browser.cjs",
     "postinstall": "patch-package --error-on-fail"
   },
   "devDependencies": {

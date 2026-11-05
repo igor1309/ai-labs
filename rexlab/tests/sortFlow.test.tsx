@@ -12,7 +12,7 @@ import { PROGRESS_KEY, localProgress, localSortingProgress } from "../src/localP
 import type { HomeGame } from "../src/HomePage.tsx";
 import type { Random } from "../src/sorting/index.ts";
 import type { SortingProgressStore, SortingSaved } from "../src/sortingGame.tsx";
-import { basketsShown, sortingRecord, sortByTrying, storedRecord, tray } from "./sorting.tsx";
+import { basketsShown, openBoard, sortingRecord, sortByTrying, storedRecord, tray } from "./sorting.tsx";
 import {
   SHIPPED_CATALOGUE,
   SHIPPED_DINOSAURS,
@@ -34,6 +34,7 @@ import {
   memoryStorage,
   pageAtRest,
   seededRandom,
+  sortingBy,
   symbolOf,
   words,
   type ManualPictures,
@@ -99,24 +100,6 @@ async function finishShownBoard(user: UserEvent) {
 }
 
 describe("the sorting game from the home page", () => {
-  it("starts a board on SORT: the prompt, two baskets and six dinosaurs, each with its own picture and name, and HOME away from them", async () => {
-    const { user } = openApp();
-
-    await user.click(button("SORT"));
-
-    expect(onHomePage()).toBe(false);
-    expect(words(screen.getByRole("heading"))).toBe("SORT THEM ALL");
-    expect(basketsShown()).toHaveLength(2);
-    const cards = within(tray()).getAllByRole("button");
-    expect(cards).toHaveLength(6);
-    const ids = cards.map((card) => SHIPPED_SORTABLES.find(({ name }) => name.en === card.getAttribute("aria-label"))?.id);
-    expect(new Set(ids).size).toBe(6);
-    expect(picturesShown()).toEqual(ids.map((id) => fakeBodyPicture(id ?? "")));
-    expect(cards.map((card) => words(card))).toEqual(cards.map((card) => card.getAttribute("aria-label")?.toUpperCase()));
-    const home = button("HOME");
-    expect([symbolOf(home), tray().contains(home)]).toEqual(["house", false]);
-  });
-
   it("plays a board to its result, keeps its score, and goes home to a SORT tile without a badge", async () => {
     const storage = memoryStorage();
     const { user } = openApp({ storage });
@@ -194,12 +177,57 @@ const TAPS = [
 // Each card's picture on the tray, as its place looks.
 const looksShown = () => within(tray()).getAllByRole("img").map((picture) => picture.dataset.picture);
 
-// How many of the board's cards wait for their pictures, and the looks of
-// six places when that many wear `look` and the rest, loaded on the home
-// page already, show at once; in any order.
-const unloadedCards = (pictures: ManualPictures) => within(tray()).getAllByRole("button")
-  .filter((card) => pictures.loading().includes(fakeBodyPicture(SHIPPED_SORTABLES.find(({ name }) => name.en === card.getAttribute("aria-label"))?.id ?? ""))).length;
-const looksOf = (unloaded: number, look: string) => [...Array<string>(unloaded).fill(look), ...Array<string>(6 - unloaded).fill("shown")].sort();
+
+describe("a board on its own", () => {
+  const newBoard = () => sortingBy("legs");
+
+  it("shows the prompt, two baskets and six dinosaurs, each with its own picture and name, and HOME away from them", () => {
+    openBoard(newBoard());
+
+    expect(words(screen.getByRole("heading"))).toBe("SORT THEM ALL");
+    expect(basketsShown()).toHaveLength(2);
+    const cards = within(tray()).getAllByRole("button");
+    expect(cards).toHaveLength(6);
+    const ids = cards.map((card) => SHIPPED_SORTABLES.find(({ name }) => name.en === card.getAttribute("aria-label"))?.id);
+    expect(new Set(ids).size).toBe(6);
+    expect(picturesShown()).toEqual(ids.map((id) => fakeBodyPicture(id ?? "")));
+    expect(cards.map((card) => words(card))).toEqual(cards.map((card) => card.getAttribute("aria-label")?.toUpperCase()));
+    const home = button("HOME");
+    expect([symbolOf(home), tray().contains(home)]).toEqual(["house", false]);
+  });
+
+  it("is sorted to its result while its pictures load, each sorted card's place not yet loaded shimmering too", async () => {
+    const user = userEvent.setup({ delay: null });
+    const pictures = manualPictures();
+    const board = openBoard(newBoard(), "en", pictures);
+
+    await sortByTrying(user);
+
+    expect([...document.querySelectorAll<HTMLElement>(".sorted-picture")].map((picture) => picture.dataset.picture)).toEqual(Array<string>(6).fill("loading"));
+    await user.click(button("SEE RESULT"));
+    expect(board.results).toEqual([1]);
+  });
+
+  it("shows each card's failure look once its pictures are still loading after 8 seconds, named, and sorted all the same, each sorted card not yet loaded shimmering for 8 seconds of its own", async () => {
+    const user = userEvent.setup({ delay: null });
+    const pictures = manualPictures();
+    const board = openBoard(newBoard(), "en", pictures);
+
+    act(() => pictures.fire(PICTURE_LIMIT));
+
+    expect(looksShown()).toEqual(Array<string>(6).fill("failed"));
+    const cards = within(tray()).getAllByRole("button");
+    expect(cards.map((card) => words(card))).toEqual(cards.map((card) => card.getAttribute("aria-label")?.toUpperCase()));
+    await sortByTrying(user);
+    // Each sorted card is a place of its own, with 8 seconds of its own.
+    const sortedLooks = () => [...document.querySelectorAll<HTMLElement>(".sorted-picture")].map((picture) => picture.dataset.picture);
+    expect(sortedLooks()).toEqual(Array<string>(6).fill("loading"));
+    act(() => pictures.fire(PICTURE_LIMIT));
+    expect(sortedLooks()).toEqual(Array<string>(6).fill("failed"));
+    await user.click(button("SEE RESULT"));
+    expect(board.results).toEqual([1]);
+  });
+});
 
 describe("a new board", () => {
   it.each(STARTS.flatMap((start) => TAPS.map((taps) => [...start, ...taps] as const)))(
@@ -221,42 +249,6 @@ describe("a new board", () => {
       expect([looksShown(), picturesShown()]).toEqual([loading.map((still) => (still ? "appearing" : "shown")), urls]);
     }
   );
-
-  it("is sorted to its result while its pictures load, each sorted card's place not yet loaded shimmering too", async () => {
-    const pictures = manualPictures();
-    const { user } = await openOn("home", pictures);
-    await user.click(button("SORT"));
-    const unloaded = unloadedCards(pictures);
-    expect(unloaded).toBeGreaterThan(0);
-
-    await sortByTrying(user);
-
-    expect([...document.querySelectorAll<HTMLElement>(".sorted-picture")].map((picture) => picture.dataset.picture).sort()).toEqual(looksOf(unloaded, "loading"));
-    await user.click(button("SEE RESULT"));
-    expect(onResult()).toBe(true);
-  });
-
-  it("shows each card's failure look once its pictures are still loading after 8 seconds, named, and sorted all the same, each sorted card not yet loaded shimmering for 8 seconds of its own", async () => {
-    const pictures = manualPictures();
-    const { user } = await openOn("home", pictures);
-    await user.click(button("SORT"));
-    const unloaded = unloadedCards(pictures);
-    expect(unloaded).toBeGreaterThan(0);
-
-    act(() => pictures.fire(PICTURE_LIMIT));
-
-    expect([...looksShown()].sort()).toEqual(looksOf(unloaded, "failed"));
-    const cards = within(tray()).getAllByRole("button");
-    expect(cards.map((card) => words(card))).toEqual(cards.map((card) => card.getAttribute("aria-label")?.toUpperCase()));
-    await sortByTrying(user);
-    // Each sorted card is a place of its own, with 8 seconds of its own.
-    const sortedLooks = () => [...document.querySelectorAll<HTMLElement>(".sorted-picture")].map((picture) => picture.dataset.picture);
-    expect(sortedLooks().sort()).toEqual(looksOf(unloaded, "loading"));
-    act(() => pictures.fire(PICTURE_LIMIT));
-    expect(sortedLooks().sort()).toEqual(looksOf(unloaded, "failed"));
-    await user.click(button("SEE RESULT"));
-    expect(onResult()).toBe(true);
-  });
 });
 
 // A random source that always gives `value`: left to itself, it would

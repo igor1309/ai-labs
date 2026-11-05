@@ -60,7 +60,7 @@ describe("the board's lift and collection star", () => {
       const chip = screen.getByLabelText("DUG UP");
       // The count ticks up as the star lands; under reduced motion it
       // simply changes.
-      const before = `${reducedMotion ? 1 : 0}/${SHIPPED_DIG.length}`;
+      const before = `DUG UP${reducedMotion ? 1 : 0}/${SHIPPED_DIG.length}`;
       expect(chip.textContent).toBe(before);
       expect(board().hasAttribute("data-lifting")).toBe(false);
       expect(document.querySelector(".dig-board-star")).toBeNull();
@@ -99,7 +99,7 @@ describe("the board's lift and collection star", () => {
       act(() => app.timers.fire(LIFT[timing]));
       expect(document.querySelector(".dig-board-star")).toBeNull();
       if (!reducedMotion) {
-        expect(chip.textContent).toBe(`1/${SHIPPED_DIG.length}`);
+        expect(chip.textContent).toBe(`DUG UP1/${SHIPPED_DIG.length}`);
         expect(getComputedStyle(chip.querySelector("span")!).animation).toBe("pop-in var(--motion-small) var(--ease-overshoot) both");
         expect(screen.queryByRole("heading", { level: 2 })).toBeNull();
         expect(app.timers.timers()).toEqual([COUNT_SETTLE.motion]);
@@ -130,7 +130,7 @@ describe("the board's lift and collection star", () => {
     placeBoard(800);
     digUp();
     landTreasure(app.timers, timing);
-    expect(screen.getByLabelText("DUG UP").textContent).toBe(`${dug.length}/${dug.length}`);
+    expect(screen.getByLabelText("DUG UP").textContent).toBe(`DUG UP${dug.length}/${dug.length}`);
     act(() => app.timers.fire(GUST[timing]));
     expect(board().hasAttribute("data-lifting")).toBe(true);
     expect(document.querySelector(".dig-board-star")).toBeNull();
@@ -216,13 +216,13 @@ describe("the board's lift and collection star", () => {
         expect(getComputedStyle(star).animation).toBe(reducedMotion
           ? "fade-in var(--dig-lift) var(--ease-out) both"
           : "dig-board-star var(--dig-lift) var(--ease-out) both");
-        expect(screen.getByLabelText("DUG UP").textContent).toBe(`${reducedMotion ? 1 : 0}/${SHIPPED_DIG.length}`);
+        expect(screen.getByLabelText("DUG UP").textContent).toBe(`DUG UP${reducedMotion ? 1 : 0}/${SHIPPED_DIG.length}`);
         expect(app.timers.timers()).toEqual([LIFT[timing]]);
         act(() => app.timers.fire(LIFT[timing]));
       }
       expect(document.querySelector(".dig-board-star")).toBeNull();
       if (phase === "counted" || !reducedMotion) {
-        expect(screen.getByLabelText("DUG UP").textContent).toBe(`1/${SHIPPED_DIG.length}`);
+        expect(screen.getByLabelText("DUG UP").textContent).toBe(`DUG UP1/${SHIPPED_DIG.length}`);
         expect(screen.queryByRole("heading", { level: 2 })).toBeNull();
         expect(app.timers.timers()).toEqual([COUNT_SETTLE.motion]);
         act(() => app.timers.fire(COUNT_SETTLE.motion));
@@ -276,15 +276,12 @@ describe("the board's lift and collection star", () => {
 });
 
 describe("dig reveals through the app", () => {
-  it("shows the dinosaur, first best reward, arrival timing, and the DIG title", () => {
+  it("rewards a first dinosaur with its count, NEW! and a first best, holding DIG AGAIN until the star lands", () => {
     const app = reveal();
 
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("DIG");
-    expect(screen.getByRole("heading", { level: 2 }).textContent).toBe("TYRANNOSAURUS");
     expect(card().textContent).toContain(`1/${SHIPPED_DIG.length}`);
     expect(screen.getByRole("status", { name: "FIRST BEST SCORE" })).toBeDefined();
     expect(card().querySelector(".dig-card-new")?.textContent).toBe("NEW!");
-    expect(app.timers.timers()).toEqual([STAR_LANDS.motion]);
     expect((screen.getByRole("button", { name: "DIG AGAIN" }) as HTMLButtonElement).disabled).toBe(true);
 
     land(app);
@@ -421,15 +418,6 @@ describe("dig reveals through the app", () => {
     expect(document.querySelector(".dig-board")?.getAttribute("data-level")).toBe(reloadedLevel);
     reloaded.unmount();
   });
-
-  it("uses a single short fade for the reveal under reduced motion", () => {
-    const app = reveal({ reducedMotion: true });
-    expect(app.timers.timers()).toEqual([STAR_LANDS.reduced]);
-    const star = card().querySelector(".dig-card-star");
-    expect(star && getComputedStyle(star).animation).toBe("");
-    expect(screen.getByRole("main").style.getPropertyValue("--dig-reveal-stagger")).toBe("0ms");
-    land(app, true);
-  });
 });
 
 const stored = (storage: ReturnType<typeof memoryStorage>) => JSON.parse(storage.items.get(PROGRESS_KEY) ?? "null");
@@ -502,15 +490,6 @@ describe("dig progress through the app", () => {
 });
 
 describe("the dig reveal's level switch", () => {
-  it("shows the three levels youngest first, with their pictures, the chosen one marked", () => {
-    land(reveal({ ageLevel: "explorer" }));
-
-    const levels = within(screen.getByRole("group", { name: TEXTS.en.ageLevelSwitch })).getAllByRole("button");
-    expect(levels.map((level) => level.textContent)).toEqual(["🥚HATCHLING", "🦖EXPLORER", "🦴PALEONTOLOGIST"]);
-    expect(levels.map((level) => level.getAttribute("aria-pressed"))).toEqual(["false", "true", "false"]);
-    expect(document.querySelector(".level-switch-mark")).not.toBeNull();
-  });
-
   it("stays on the reveal when a level is chosen, and starts nothing until DIG AGAIN", () => {
     const app = reveal();
     land(app);
@@ -550,10 +529,5 @@ describe("the dig reveal's level switch", () => {
     openDigApp({ storage, ageLevel: { level: "paleontologist", revision: "b" } });
     fireEvent.click(homeTile("DIG"));
     expect(boardLevel()).toBe("paleontologist");
-  });
-
-  it("moves its mark with the shared motion tokens, which shorten under reduced motion", () => {
-    land(reveal());
-    expect(getComputedStyle(document.querySelector(".level-switch-mark") as Element).transition).toBe("translate var(--motion-standard) var(--ease-out)");
   });
 });

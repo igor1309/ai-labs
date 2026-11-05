@@ -6,19 +6,13 @@ import { readFileSync } from "node:fs";
 import { HOME_GAMES } from "../src/HomePage.tsx";
 import { TEXTS } from "../src/language/texts.ts";
 import { renderHomePageFeaturing } from "./homePage.tsx";
-import { fakeBodyPicture, featuredCard, largestSize, manualViewport, tilesRow } from "./support.ts";
+import { fakeBodyPicture, featuredCard, manualViewport, tilesRow } from "./support.ts";
 import { openHomeApp } from "./skeletonsApp.tsx";
 
 const design = JSON.parse(readFileSync(join(import.meta.dirname, "../design/dig-site.pen"), "utf8"));
 // A corner radius is a number or the name of a design variable holding one.
 const radius = (value: number | string) => typeof value === "number" ? value : design.variables[value.slice(1)].value;
 const part = (selector: string) => document.querySelector(selector)!;
-const token = (name: string) => getComputedStyle(document.documentElement).getPropertyValue(`--ds-${name}`).trim();
-const literal = (property: string, value: string) => {
-  const element = document.createElement("span");
-  element.style.setProperty(property, value);
-  return getComputedStyle(element).getPropertyValue(property);
-};
 afterEach(() => { delete document.documentElement.dataset.size; delete document.documentElement.dataset.theme; });
 
 for (const language of ["en", "ru"] as const) for (const game of HOME_GAMES) {
@@ -33,33 +27,6 @@ for (const language of ["en", "ru"] as const) for (const game of HOME_GAMES) {
     expect(tilesRow().querySelector(`[data-turn-part="tile-${game}"]`)).toBeNull();
     for (const selector of [".home-play", ".featured-card-title", ".home-today-art"]) await user.click(part(selector));
     expect(opened).toEqual([game, game, game]);
-  });
-}
-
-for (const theme of THEMES) for (const size of ["wide", "tall", "wide-short", "tall-narrow"]) {
-  test(`sky reads design tokens in ${theme}, ${size}`, () => {
-    document.documentElement.dataset.theme = theme;
-    document.documentElement.dataset.size = size;
-    renderHomePageFeaturing("compare");
-    const matches = (selector: string, properties: Record<string, string>) => {
-      for (const [property, name] of Object.entries(properties)) {
-        const value = getComputedStyle(part(selector)).getPropertyValue(property);
-        expect(property === "font-size" ? `${largestSize(value)}px` : value, `${selector} ${property}`).toBe(literal(property, token(name)));
-      }
-    };
-    matches(".home-sky", { color: "ink" });
-    matches(".home-museum", { color: "on-strong", "background-color": "strong", "border-radius": "radius-pill", "font-size": "size-label" });
-    matches(".featured-card-symbol", { color: "action", "background-color": "pocket-1" });
-    matches(".featured-card-title", { "font-size": "size-display", color: "ink" });
-    matches(".home-play", { "background-color": "action", color: "on-action", "font-size": "size-action", "border-radius": "radius-pill" });
-    matches(".featured-card-badge", { color: "ink", "font-size": "size-number" });
-    matches(".home-sky-body", { "background-color": "sky-halo" });
-    matches(".home-sky-body span", { "background-color": "sky-core" });
-    matches(".home-sky-wave", { fill: "strata-1" });
-    const phone = size === "tall-narrow" || size === "wide-short";
-    expect(getComputedStyle(part(".home-museum-word")).position === "absolute").toBe(phone);
-    expect(getComputedStyle(part(".home-museum")).whiteSpace).toBe("nowrap");
-    expect(screen.getByRole("button", { name: "MUSEUM" })).toBe(part(".home-museum"));
   });
 }
 

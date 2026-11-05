@@ -326,9 +326,6 @@ public actor SideText {
 
     private func publish() { continuation.yield(state) }
 
-    /// Joins queued work independently of whether capture is still open.
-    func waitForWork() async { await operation?.value }
-
     func waitForAudioEnd() async { await listener?.value }
 
     deinit {

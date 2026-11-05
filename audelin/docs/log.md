@@ -2,8 +2,10 @@
 
 ## 2026-11-04
 
+- Calls made in the same minute with different titles get separate ids, so each can be opened, renamed and deleted (LAB-958).
 - A call given an empty title gets the bare date and time as its folder name, with no trailing space (LAB-946).
 - Audio conversion refuses a zero or non-finite sample rate instead of accepting it (LAB-949).
+- Session exposes its complete audio observation state and accepts replaceable failure wording while preserving recording behavior (LAB-951).
 
 ## 2026-11-03
 

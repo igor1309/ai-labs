@@ -59,6 +59,59 @@ const cssParser = createRequire(import.meta.url)("css-tree") as {
   walk(node: unknown, options: { visit: "Rule"; enter(rule: ParsedRule): void }): void;
 };
 
+// A rule can only match an element that has its subject's class, id or
+// tag, as a browser indexes rules: each selector's last compound names one
+// of them, or the rule is weighed against every element. Skipping the
+// rest keeps a style read from growing with every screen's rules.
+const subjects = new Map<string, Set<string> | null>();
+function subjectKeys(selectorText: string): Set<string> | null {
+  if (subjects.has(selectorText)) return subjects.get(selectorText)!;
+  const keys = new Set<string>();
+  let all = false;
+  for (const selector of topLevel(selectorText, ",")) {
+    const compound = lastCompound(selector.trim());
+    const own = compound.replace(/\([^()]*(\([^()]*\)[^()]*)*\)/g, "()").replace(/\[[^\]]*\]/g, "");
+    const name = (sign: string) => new RegExp(`\\${sign}(-?[_a-zA-Z][\\w-]*)`).exec(own)?.[1];
+    const key = own.includes("\\") ? undefined : name(".") ? `.${name(".")}` : name("#") ? `#${name("#")}` : /^[a-zA-Z][\w-]*/.exec(own)?.[0].toLowerCase();
+    if (!key) { all = true; break; }
+    keys.add(key);
+  }
+  const found = all ? null : keys;
+  subjects.set(selectorText, found);
+  return found;
+}
+function topLevel(text: string, separator: string): string[] {
+  const parts: string[] = [];
+  let depth = 0, start = 0;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (c === "(" || c === "[") depth++;
+    else if (c === ")" || c === "]") depth--;
+    else if (depth === 0 && c === separator) { parts.push(text.slice(start, i)); start = i + 1; }
+  }
+  return [...parts, text.slice(start)];
+}
+function lastCompound(selector: string): string {
+  let depth = 0, start = 0;
+  for (let i = 0; i < selector.length; i++) {
+    const c = selector[i];
+    if (c === "(" || c === "[") depth++;
+    else if (c === ")" || c === "]") depth--;
+    else if (depth === 0 && (c === " " || c === ">" || c === "+" || c === "~")) start = i + 1;
+  }
+  return selector.slice(start);
+}
+function elementKeys(element: Element, into = new Set<string>()): Set<string> {
+  into.add(element.localName.toLowerCase());
+  if (element.id) into.add(`#${element.id}`);
+  for (const name of element.classList) into.add(`.${name}`);
+  return into;
+}
+function mayMatch(selectorText: string, keys: Set<string>): boolean {
+  const subject = subjectKeys(selectorText);
+  return !subject || [...subject].some((key) => keys.has(key));
+}
+
 // jsdom discards a pending shorthand when a later longhand overrides one
 // side. Keep the source declarations so substitution precedes that parse.
 function sourceDeclarations() {
@@ -119,10 +172,12 @@ function resolvedStyle(native: typeof getComputedStyle, declarations: ReturnType
       restores.push(() => write(saved));
       write(authored.map(([name, value, priority]) => [name, name.startsWith("--") ? value : substituteVariables(value, (variable) => computed.getPropertyValue(variable).trim()), priority] as const));
     };
+    const keys = new Set<string>();
+    for (const owner of ancestors) elementKeys(owner, keys);
     const walk = (rules: CSSRuleList) => {
       for (const rule of rules) {
         if (rule instanceof CSSStyleRule) {
-          if (rule.selectorText.includes("::") || !declarations(rule).some(([, value]) => value.includes("var("))) continue;
+          if (rule.selectorText.includes("::") || !mayMatch(rule.selectorText, keys) || !declarations(rule).some(([, value]) => value.includes("var("))) continue;
           const owner = ancestors.find((candidate) => candidate.matches(rule.selectorText));
           if (owner) resolve(rule.style, owner, declarations(rule));
         } else if (rule instanceof CSSMediaRule && [...rule.media].some((media) => media === "all" || media === "screen")) {
@@ -193,7 +248,7 @@ export function computedStyleWithVariables(native: typeof getComputedStyle, incl
         needsResolution = [...element.style].some((name) => affects(name) && element.style.getPropertyValue(name).includes("var(") && includes(element.style.getPropertyValue(name)));
       }
       if (!needsResolution) {
-        needsResolution = [...element.ownerDocument.styleSheets].some((sheet) => rules(sheet).some(({ rule, properties }) => properties.some((name) => affects(name) && includes(declarations(rule).find(([property]) => property === name)?.[1] ?? "")) && element.matches(rule.selectorText)));
+        needsResolution = [...element.ownerDocument.styleSheets].some((sheet) => rules(sheet).some(({ rule, properties }) => properties.some((name) => affects(name) && includes(declarations(rule).find(([property]) => property === name)?.[1] ?? "")) && mayMatch(rule.selectorText, elementKeys(element)) && element.matches(rule.selectorText)));
       }
       if (!needsResolution) return value;
       resolved ??= resolve(element, pseudo);
