@@ -2,7 +2,7 @@
 // number keys five to a row, one row per material, then paging and navigation.
 export const TELEGRAM_TEXT_LIMIT = 4096;
 export const NUMBERS_PER_ROW = 5;
-export const MATERIAL_LABEL_LIMIT = 32;
+export const MATERIAL_LABEL_LIMIT = 28;
 
 export function render(view, actions, step) {
   const header = view.page
@@ -13,7 +13,7 @@ export function render(view, actions, step) {
   if (view.markdown) parts.push(markdownToHtml(view.markdown));
   for (const list of view.lists ?? []) {
     const lines = list.entries.map((entry) =>
-      (entry.n === undefined ? `📖 ${escape(entry.label)}` : `${entry.n}. ${escape(entry.label)}`));
+      (entry.n === undefined ? `📖 Read: ${escape(entry.label)}` : `${entry.n}. ${escape(entry.label)}`));
     parts.push([list.heading && `<b>${escape(list.heading)}</b>`, ...lines].filter(Boolean).join("\n"));
   }
   if (view.empty) parts.push(escape(view.empty));
@@ -24,7 +24,7 @@ export function keyboard(actions, step) {
   const button = (action, text = action.label) => ({ text, callback_data: `${step}:${action.id}` });
   const of = (kind) => actions.filter((action) => action.kind === kind);
   const rows = [
-    ...of("material").map((action) => [button(action, `📖 ${shorten(action.label, MATERIAL_LABEL_LIMIT)}`)]),
+    ...of("material").map((action) => [button(action, `📖 Read: ${shorten(action.label, MATERIAL_LABEL_LIMIT)}`)]),
     ...chunk(of("item").map((action) => button(action)), NUMBERS_PER_ROW),
     of("page").map((action) => button(action)),
     of("nav").map((action) => button(action)),

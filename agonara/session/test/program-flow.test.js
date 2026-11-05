@@ -60,9 +60,9 @@ test("a program groups topics and concepts as numbers and materials as their own
   const result = await flow(list.session, "open_0");
   assert.deepEqual(calls.at(-1), ["navigation", "program-a"]);
   assert.deepEqual(result.view.lists, [
+    { heading: "Materials", entries: [{ index: 2, n: undefined, label: "Notes" }] },
     { heading: "Topics", entries: [{ index: 0, n: 1, label: "Vectors" }] },
     { heading: "Concepts", entries: [{ index: 1, n: 2, label: "Basis" }] },
-    { heading: "Materials", entries: [{ index: 2, n: undefined, label: "Notes" }] },
   ]);
   assert.deepEqual(result.actions, [
     { id: "open_0", kind: "item", label: "1" }, { id: "open_1", kind: "item", label: "2" },
@@ -75,8 +75,8 @@ test("numbers follow the lists, not the API order, and each opens its own item",
   const { flow, calls } = setup();
   const result = await flow(entityState({ entityId: "topic-id" }));
   assert.deepEqual(result.view.lists, [
-    { heading: "Concepts", entries: [{ index: 0, n: 1, label: "Child" }, { index: 2, n: 2, label: "Other" }] },
     { heading: "Materials", entries: [{ index: 1, n: undefined, label: "Reading" }] },
+    { heading: "Concepts", entries: [{ index: 0, n: 1, label: "Child" }, { index: 2, n: 2, label: "Other" }] },
   ]);
   assert.deepEqual(result.actions.slice(0, 3), [
     { id: "open_0", kind: "item", label: "1" },
@@ -243,9 +243,3 @@ test("pages break at paragraphs, then lines, then anywhere, and lose no text", (
   assert.ok(paginate("word ".repeat(2000), 2500).every((page) => page.length <= 2500));
 });
 
-test("a material titled like its screen gets the button label Read", async () => {
-  const { flow, node } = setup();
-  node.relationships.outgoing = [{ toEntityId: "reading-id", toKind: "material_reference", toTitle: "Vectors" }];
-  const result = await flow(entityState({ entityId: "topic-id" }));
-  assert.deepEqual(result.actions[0], { id: "open_0", kind: "material", label: "Read" });
-});

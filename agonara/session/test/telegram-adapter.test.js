@@ -4,15 +4,15 @@ import { keyboard, markdownToHtml, parseCallback, render } from "../src/telegram
 
 const labels = (markup) => markup.inline_keyboard.map((row) => row.map((button) => button.text));
 
-test("a screen renders a bold title, the body and numbered lists with bold headings", () => {
+test("a screen renders a bold title, the body and its lists, materials marked as their buttons are", () => {
   const { text } = render({
     title: "Тема 3", body: "About <ethics> & more.",
     lists: [
-      { heading: "Concepts", entries: [{ index: 0, n: 1, label: "Власть" }, { index: 2, n: 2, label: "Секреты" }] },
       { heading: "Materials", entries: [{ index: 1, label: "Лекция" }] },
+      { heading: "Concepts", entries: [{ index: 0, n: 1, label: "Власть" }, { index: 2, n: 2, label: "Секреты" }] },
     ],
   }, [], 1);
-  assert.equal(text, "<b>Тема 3</b>\n\nAbout &lt;ethics&gt; &amp; more.\n\n<b>Concepts</b>\n1. Власть\n2. Секреты\n\n<b>Materials</b>\n📖 Лекция");
+  assert.equal(text, "<b>Тема 3</b>\n\nAbout &lt;ethics&gt; &amp; more.\n\n<b>Materials</b>\n📖 Read: Лекция\n\n<b>Concepts</b>\n1. Власть\n2. Секреты");
 });
 
 test("a list without a heading and an empty screen render without blank parts", () => {
@@ -36,7 +36,7 @@ test("buttons: one row per material, numbers five to a row, then paging, then na
   ];
   const markup = keyboard(actions, 4);
   assert.deepEqual(labels(markup), [
-    ["📖 Тема 3. Этические проблемы в де…"],
+    ["📖 Read: Тема 3. Этические проблемы…"],
     ["1", "2", "3", "4", "5"], ["6", "7"],
     ["◀ Prev", "Next ▶"],
     ["◀ Back", "Programs"],

@@ -68,9 +68,7 @@ export function createProgramFlow({ client, pageSize = PAGE_SIZE }) {
 
     const actions = items.map((item, index) => ({
       id: `open_${index}`, kind: item.kind === MATERIAL ? "material" : "item",
-      label: item.kind === MATERIAL
-        ? (item.title === view.title ? "Read" : item.title)
-        : String(numberOf(view.lists, index)),
+      label: item.kind === MATERIAL ? item.title : String(numberOf(view.lists, index)),
     }));
     if (view.page) {
       if (view.page.index > 0) actions.push({ id: "prev", kind: "page", label: "◀ Prev" });
@@ -84,10 +82,10 @@ export function createProgramFlow({ client, pageSize = PAGE_SIZE }) {
   };
 }
 
-// Lists by kind: topics and concepts are numbered across the screen, in the
-// order of `items`; materials are listed by title and get their own buttons.
+// Lists by kind, materials first to match their buttons above the number keys.
+// Topics and concepts are numbered across the screen in the order of `items`.
 function grouped(items) {
-  const order = ["topic", "concept", "other", MATERIAL];
+  const order = [MATERIAL, "topic", "concept", "other"];
   const kindOf = (item) => (HEADINGS[item.kind] ? item.kind : "other");
   let n = 0;
   const numbers = new Map();
