@@ -5,7 +5,8 @@ import type { Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { LevelOfferDialog } from "../src/LevelOfferDialog.tsx";
 import { PairsBoardScreen, type PairCardView } from "../src/PairsBoardScreen.tsx";
-import { PairsResultScreen, type PairsResultScreenProps } from "../src/PairsResultScreen.tsx";
+import { PairsResultScreen, type PairsResultScreenProps, foundName } from "../src/PairsResultScreen.tsx";
+import shippedDinosaurs from "../src/data/dinosaurs.json";
 import { PairsWelcomeScreen } from "../src/PairsWelcomeScreen.tsx";
 import { THEMES } from "../src/theme.ts";
 import { withManualPictures } from "./pictures.tsx";
@@ -272,9 +273,15 @@ it("leaves the offer of the other games undressed", () => {
 
 it.each([
   ["ru", "Тираннозавр", "ТИРАННО\u00ADЗАВР"],
-  ["en", "Pachycephalosaurus", "PACHYCEPHALO\u00ADSAURUS"],
+  ["en", "Pachycephalosaurus", "PACHY\u00ADCEPHALO\u00ADSAURUS"],
   ["en", "T. rex", "T. REX"]
 ] as const)("breaks the %s name %s only between its parts", (language, name, shown) => {
   showResult({ language, pals: [{ id: "pal", name, picture: "", newlyFound: false }] });
   expect(document.querySelector(".pairs-found-name")?.textContent).toBe(shown);
+});
+
+it("every shipped name breaks into parts the narrowest card shows at reading size", () => {
+  const names = (shippedDinosaurs as unknown as readonly { name: { en: string; ru: string } }[]).flatMap(({ name }) => [["en", name.en], ["ru", name.ru]] as const);
+  expect(names.length).toBeGreaterThan(0);
+  for (const [language, name] of names) expect(foundName(name.toUpperCase(), language).finePart, name).toBeLessThanOrEqual(9);
 });

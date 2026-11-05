@@ -12908,10 +12908,12 @@ body:has(.pairs-result) #version { display: none; }
 .pairs-found-art:has(.picture[data-picture="failed"]) + .pairs-found-name { flex: 1 1 0; display: grid; place-items: center; }
 /* A name stays on one line, as large as the card lets it, up to 13 pixels;
    where a narrow card breaks it, its longer part sets the size. */
-.pairs-found-name { flex-shrink: 0; align-self: stretch; margin-inline: calc(-1 * var(--ds-space-6)); font-size: clamp(7px, (var(--pr-card) - 28px) / (var(--name-fit, var(--name-length)) * 0.75), 13px); font-weight: 900; line-height: 1.1; text-align: center; white-space: nowrap; hyphens: manual; }
+.pairs-found-name { flex-shrink: 0; align-self: stretch; margin-inline: calc(-1 * var(--ds-space-6)); font-size: clamp(9px, (var(--pr-card) - 28px) / (var(--name-fit, var(--name-length)) * 0.75), 13px); font-weight: 900; line-height: 1.1; text-align: center; white-space: nowrap; hyphens: manual; }
 html[data-size="wide-short"] .pairs-found-name[data-break="long"],
+html:is([data-size="wide"], [data-size="tall"]) .pairs-result[data-count="12"] .pairs-found-name[data-break="long"],
+html[data-size="tall-narrow"] .pairs-result[data-count="3"] .pairs-found-name:is([data-break="long"], [data-break="narrow"]),
 html[data-size="tall-narrow"] .pairs-result:is([data-count="6"], [data-count="9"]) .pairs-found-name:is([data-break="long"], [data-break="narrow"]),
-html:is([data-size="tall-narrow"], [data-size="wide-short"]) .pairs-result[data-count="12"] .pairs-found-name[data-break] { --name-fit: var(--name-part); white-space: normal; }
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .pairs-result[data-count="12"] .pairs-found-name[data-break] { --name-fit: var(--name-fine-part); white-space: normal; }
 /* NEW sits inside the card's top-right corner; on a phone, its sparkle alone. */
 .pairs-new-badge {
   position: absolute; top: var(--ds-space-xs); right: var(--ds-space-xs); display: flex; align-items: center; gap: var(--ds-space-6); padding: var(--ds-space-7) var(--ds-space-m) var(--ds-space-7) var(--ds-btn-gap);

@@ -76022,6 +76022,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · tyrannosaurus",
                   "width": 150,
+                  "height": 137,
                   "descendants": {
                     "aabmB": {
                       "height": 101,
@@ -76048,6 +76049,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · triceratops",
                   "width": 150,
+                  "height": 137,
                   "descendants": {
                     "aabmB": {
                       "height": 101,
@@ -76074,6 +76076,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · brachiosaurus · NEW",
                   "width": 150,
+                  "height": 137,
                   "descendants": {
                     "aabmB": {
                       "height": 101,
@@ -76109,6 +76112,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · stegosaurus",
                   "width": 150,
+                  "height": 137,
                   "descendants": {
                     "aabmB": {
                       "height": 101,
@@ -76135,6 +76139,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · ankylosaurus · NEW",
                   "width": 150,
+                  "height": 137,
                   "descendants": {
                     "aabmB": {
                       "height": 101,
@@ -76162,6 +76167,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · spinosaurus",
                   "width": 150,
+                  "height": 137,
                   "descendants": {
                     "aabmB": {
                       "height": 101,
@@ -76196,6 +76202,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · parasaurolophus · NEW",
                   "width": 150,
+                  "height": 136,
                   "descendants": {
                     "aabmB": {
                       "height": 101,
@@ -76223,6 +76230,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · pachycephalosaurus",
                   "width": 150,
+                  "height": 136,
                   "descendants": {
                     "aabmB": {
                       "height": 101,
@@ -76249,6 +76257,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · archaeopteryx",
                   "width": 150,
+                  "height": 136,
                   "descendants": {
                     "aabmB": {
                       "height": 101,
@@ -76678,6 +76687,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · tyrannosaurus · NEW",
                   "width": 180,
+                  "height": 159,
                   "descendants": {
                     "aabmB": {
                       "height": 123,
@@ -76705,6 +76715,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · triceratops · NEW",
                   "width": 180,
+                  "height": 159,
                   "descendants": {
                     "aabmB": {
                       "height": 123,
@@ -76732,6 +76743,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · stegosaurus",
                   "width": 180,
+                  "height": 159,
                   "descendants": {
                     "aabmB": {
                       "height": 123,
@@ -77296,6 +77308,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · tyrannosaurus",
                   "width": 136,
+                  "height": 126,
                   "descendants": {
                     "aabmB": {
                       "height": 90,
@@ -77322,6 +77335,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · triceratops",
                   "width": 136,
+                  "height": 126,
                   "descendants": {
                     "aabmB": {
                       "height": 90,
@@ -77348,6 +77362,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · velociraptor",
                   "width": 136,
+                  "height": 126,
                   "descendants": {
                     "aabmB": {
                       "height": 90,
@@ -77374,6 +77389,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · brachiosaurus",
                   "width": 136,
+                  "height": 126,
                   "descendants": {
                     "aabmB": {
                       "height": 90,
@@ -77408,6 +77424,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · stegosaurus",
                   "width": 136,
+                  "height": 126,
                   "descendants": {
                     "aabmB": {
                       "height": 90,
@@ -77434,6 +77451,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · ankylosaurus",
                   "width": 136,
+                  "height": 126,
                   "descendants": {
                     "aabmB": {
                       "height": 90,
@@ -77460,6 +77478,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · spinosaurus",
                   "width": 136,
+                  "height": 126,
                   "descendants": {
                     "aabmB": {
                       "height": 90,
@@ -77486,6 +77505,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · parasaurolophus",
                   "width": 136,
+                  "height": 126,
                   "descendants": {
                     "aabmB": {
                       "height": 90,
@@ -77520,6 +77540,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · pachycephalosaurus",
                   "width": 136,
+                  "height": 136,
                   "descendants": {
                     "aabmB": {
                       "height": 90,
@@ -77531,8 +77552,9 @@
                       }
                     },
                     "ZCImk": {
-                      "content": "PACHYCEPHALOSAURUS",
-                      "fontSize": 8
+                      "content": "PACHYCEPHALO-\nSAURUS",
+                      "fontSize": 12,
+                      "lineHeight": 1.1
                     },
                     "t9vdr": {
                       "enabled": false,
@@ -77546,6 +77568,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · compsognathus · NEW",
                   "width": 136,
+                  "height": 136,
                   "descendants": {
                     "aabmB": {
                       "height": 90,
@@ -77573,6 +77596,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · gallimimus",
                   "width": 136,
+                  "height": 136,
                   "descendants": {
                     "aabmB": {
                       "height": 90,
@@ -77599,6 +77623,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · therizinosaurus · NEW",
                   "width": 136,
+                  "height": 136,
                   "descendants": {
                     "aabmB": {
                       "height": 90,
@@ -78019,6 +78044,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · tyrannosaurus",
                   "width": 170,
+                  "height": 152,
                   "descendants": {
                     "aabmB": {
                       "height": 116,
@@ -78045,6 +78071,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · triceratops",
                   "width": 170,
+                  "height": 152,
                   "descendants": {
                     "aabmB": {
                       "height": 116,
@@ -78079,6 +78106,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · stegosaurus",
                   "width": 170,
+                  "height": 152,
                   "descendants": {
                     "aabmB": {
                       "height": 116,
@@ -78105,6 +78133,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · brachiosaurus · NEW",
                   "width": 170,
+                  "height": 152,
                   "descendants": {
                     "aabmB": {
                       "height": 116,
@@ -78535,6 +78564,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · tyrannosaurus",
                   "width": 160,
+                  "height": 144,
                   "descendants": {
                     "aabmB": {
                       "height": 108,
@@ -78561,6 +78591,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · triceratops",
                   "width": 160,
+                  "height": 144,
                   "descendants": {
                     "aabmB": {
                       "height": 108,
@@ -78587,6 +78618,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · stegosaurus",
                   "width": 160,
+                  "height": 144,
                   "descendants": {
                     "aabmB": {
                       "height": 108,
@@ -78621,6 +78653,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · brachiosaurus",
                   "width": 160,
+                  "height": 144,
                   "descendants": {
                     "aabmB": {
                       "height": 108,
@@ -78647,6 +78680,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · ankylosaurus",
                   "width": 160,
+                  "height": 144,
                   "descendants": {
                     "aabmB": {
                       "height": 108,
@@ -78673,6 +78707,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · spinosaurus",
                   "width": 160,
+                  "height": 144,
                   "descendants": {
                     "aabmB": {
                       "height": 108,
@@ -79139,6 +79174,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · tyrannosaurus",
                   "width": 150,
+                  "height": 137,
                   "descendants": {
                     "aabmB": {
                       "height": 101,
@@ -79165,6 +79201,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · triceratops",
                   "width": 150,
+                  "height": 137,
                   "descendants": {
                     "aabmB": {
                       "height": 101,
@@ -79191,6 +79228,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · brachiosaurus",
                   "width": 150,
+                  "height": 137,
                   "descendants": {
                     "aabmB": {
                       "height": 101,
@@ -79225,6 +79263,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · stegosaurus",
                   "width": 150,
+                  "height": 137,
                   "descendants": {
                     "aabmB": {
                       "height": 101,
@@ -79251,6 +79290,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · ankylosaurus",
                   "width": 150,
+                  "height": 137,
                   "descendants": {
                     "aabmB": {
                       "height": 101,
@@ -79277,6 +79317,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · spinosaurus",
                   "width": 150,
+                  "height": 137,
                   "descendants": {
                     "aabmB": {
                       "height": 101,
@@ -79311,6 +79352,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · parasaurolophus",
                   "width": 150,
+                  "height": 136,
                   "descendants": {
                     "aabmB": {
                       "height": 101,
@@ -79337,6 +79379,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · pachycephalosaurus",
                   "width": 150,
+                  "height": 136,
                   "descendants": {
                     "aabmB": {
                       "height": 101,
@@ -79363,6 +79406,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · archaeopteryx",
                   "width": 150,
+                  "height": 136,
                   "descendants": {
                     "aabmB": {
                       "height": 101,
@@ -86166,6 +86210,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · tyrannosaurus · NEW",
                   "width": 112,
+                  "height": 108,
                   "descendants": {
                     "aabmB": {
                       "height": 77,
@@ -86197,6 +86242,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · triceratops · NEW",
                   "width": 112,
+                  "height": 108,
                   "descendants": {
                     "aabmB": {
                       "height": 77,
@@ -86228,6 +86274,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · stegosaurus",
                   "width": 112,
+                  "height": 108,
                   "descendants": {
                     "aabmB": {
                       "height": 77,
@@ -86685,6 +86732,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · tyrannosaurus",
                   "width": 150,
+                  "height": 114,
                   "descendants": {
                     "aabmB": {
                       "height": 80,
@@ -86716,6 +86764,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · triceratops",
                   "width": 150,
+                  "height": 114,
                   "descendants": {
                     "aabmB": {
                       "height": 80,
@@ -86755,6 +86804,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · stegosaurus",
                   "width": 150,
+                  "height": 114,
                   "descendants": {
                     "aabmB": {
                       "height": 80,
@@ -86786,6 +86836,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · brachiosaurus · NEW",
                   "width": 150,
+                  "height": 114,
                   "descendants": {
                     "aabmB": {
                       "height": 80,
@@ -87243,6 +87294,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · tyrannosaurus",
                   "width": 100,
+                  "height": 90,
                   "descendants": {
                     "aabmB": {
                       "height": 42,
@@ -87274,6 +87326,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · triceratops",
                   "width": 100,
+                  "height": 90,
                   "descendants": {
                     "aabmB": {
                       "height": 42,
@@ -87305,6 +87358,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · brachiosaurus · NEW",
                   "width": 100,
+                  "height": 90,
                   "descendants": {
                     "aabmB": {
                       "height": 42,
@@ -87344,6 +87398,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · stegosaurus",
                   "width": 100,
+                  "height": 90,
                   "descendants": {
                     "aabmB": {
                       "height": 42,
@@ -87375,6 +87430,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · ankylosaurus · NEW",
                   "width": 100,
+                  "height": 90,
                   "descendants": {
                     "aabmB": {
                       "height": 42,
@@ -87406,6 +87462,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · spinosaurus",
                   "width": 100,
+                  "height": 90,
                   "descendants": {
                     "aabmB": {
                       "height": 42,
@@ -87445,6 +87502,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · parasaurolophus · NEW",
                   "width": 100,
+                  "height": 90,
                   "descendants": {
                     "aabmB": {
                       "height": 42,
@@ -87476,6 +87534,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · pachycephalosaurus",
                   "width": 100,
+                  "height": 90,
                   "descendants": {
                     "aabmB": {
                       "height": 42,
@@ -87488,7 +87547,7 @@
                     },
                     "ZCImk": {
                       "content": "PACHYCEPHALO-\nSAURUS",
-                      "fontSize": 8,
+                      "fontSize": 9,
                       "lineHeight": 1.1
                     },
                     "t9vdr": {
@@ -87507,6 +87566,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · archaeopteryx",
                   "width": 100,
+                  "height": 90,
                   "descendants": {
                     "aabmB": {
                       "height": 42,
@@ -87954,6 +88014,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · tyrannosaurus",
                   "width": 82,
+                  "height": 84,
                   "descendants": {
                     "aabmB": {
                       "height": 40,
@@ -87985,6 +88046,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · triceratops",
                   "width": 82,
+                  "height": 84,
                   "descendants": {
                     "aabmB": {
                       "height": 40,
@@ -88016,6 +88078,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · velociraptor",
                   "width": 82,
+                  "height": 84,
                   "descendants": {
                     "aabmB": {
                       "height": 40,
@@ -88047,6 +88110,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · brachiosaurus",
                   "width": 82,
+                  "height": 84,
                   "descendants": {
                     "aabmB": {
                       "height": 40,
@@ -88086,6 +88150,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · stegosaurus",
                   "width": 82,
+                  "height": 99,
                   "descendants": {
                     "aabmB": {
                       "height": 40,
@@ -88117,6 +88182,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · ankylosaurus",
                   "width": 82,
+                  "height": 99,
                   "descendants": {
                     "aabmB": {
                       "height": 40,
@@ -88148,6 +88214,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · spinosaurus",
                   "width": 82,
+                  "height": 99,
                   "descendants": {
                     "aabmB": {
                       "height": 40,
@@ -88179,6 +88246,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · parasaurolophus",
                   "width": 82,
+                  "height": 99,
                   "descendants": {
                     "aabmB": {
                       "height": 40,
@@ -88190,8 +88258,8 @@
                       }
                     },
                     "ZCImk": {
-                      "content": "PARASAURO-\nLOPHUS",
-                      "fontSize": 8,
+                      "content": "PARA-\nSAURO-\nLOPHUS",
+                      "fontSize": 12,
                       "lineHeight": 1.1
                     },
                     "t9vdr": {
@@ -88218,6 +88286,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · pachycephalosaurus",
                   "width": 82,
+                  "height": 99,
                   "descendants": {
                     "aabmB": {
                       "height": 40,
@@ -88229,8 +88298,8 @@
                       }
                     },
                     "ZCImk": {
-                      "content": "PACHYCEPHALO-\nSAURUS",
-                      "fontSize": 7,
+                      "content": "PACHY-\nCEPHALO-\nSAURUS",
+                      "fontSize": 10,
                       "lineHeight": 1.1
                     },
                     "t9vdr": {
@@ -88249,6 +88318,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · compsognathus · NEW",
                   "width": 82,
+                  "height": 99,
                   "descendants": {
                     "aabmB": {
                       "height": 40,
@@ -88280,6 +88350,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · gallimimus",
                   "width": 82,
+                  "height": 99,
                   "descendants": {
                     "aabmB": {
                       "height": 40,
@@ -88311,6 +88382,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · therizinosaurus · NEW",
                   "width": 82,
+                  "height": 99,
                   "descendants": {
                     "aabmB": {
                       "height": 40,
@@ -88322,8 +88394,8 @@
                       }
                     },
                     "ZCImk": {
-                      "content": "THERIZINO-\nSAURUS",
-                      "fontSize": 8,
+                      "content": "THERI-\nZINO-\nSAURUS",
+                      "fontSize": 12,
                       "lineHeight": 1.1
                     },
                     "t9vdr": {
@@ -88768,6 +88840,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · tyrannosaurus",
                   "width": 100,
+                  "height": 98,
                   "descendants": {
                     "aabmB": {
                       "height": 50,
@@ -88799,6 +88872,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · triceratops",
                   "width": 100,
+                  "height": 98,
                   "descendants": {
                     "aabmB": {
                       "height": 50,
@@ -88830,6 +88904,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · stegosaurus",
                   "width": 100,
+                  "height": 98,
                   "descendants": {
                     "aabmB": {
                       "height": 50,
@@ -88869,6 +88944,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · brachiosaurus",
                   "width": 100,
+                  "height": 98,
                   "descendants": {
                     "aabmB": {
                       "height": 50,
@@ -88900,6 +88976,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · ankylosaurus",
                   "width": 100,
+                  "height": 98,
                   "descendants": {
                     "aabmB": {
                       "height": 50,
@@ -88931,6 +89008,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · spinosaurus",
                   "width": 100,
+                  "height": 98,
                   "descendants": {
                     "aabmB": {
                       "height": 50,
@@ -92312,6 +92390,7 @@
           "y": 44,
           "name": "Dinosaurs",
           "width": 632,
+          "height": 456,
           "layout": "vertical",
           "gap": "$ds-space-m",
           "alignItems": "center",
@@ -92328,6 +92407,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · tyrannosaurus",
                   "width": 200,
+                  "height": 144,
                   "descendants": {
                     "aabmB": {
                       "height": 110,
@@ -92356,6 +92436,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · triceratops",
                   "width": 200,
+                  "height": 144,
                   "descendants": {
                     "aabmB": {
                       "height": 110,
@@ -92384,6 +92465,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · brachiosaurus · NEW",
                   "width": 200,
+                  "height": 144,
                   "descendants": {
                     "aabmB": {
                       "height": 110,
@@ -92420,6 +92502,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · stegosaurus",
                   "width": 200,
+                  "height": 144,
                   "descendants": {
                     "aabmB": {
                       "height": 110,
@@ -92448,6 +92531,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · ankylosaurus · NEW",
                   "width": 200,
+                  "height": 144,
                   "descendants": {
                     "aabmB": {
                       "height": 110,
@@ -92476,6 +92560,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · spinosaurus",
                   "width": 200,
+                  "height": 144,
                   "descendants": {
                     "aabmB": {
                       "height": 110,
@@ -92512,6 +92597,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · parasaurolophus · NEW",
                   "width": 200,
+                  "height": 144,
                   "descendants": {
                     "aabmB": {
                       "height": 110,
@@ -92540,6 +92626,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · pachycephalosaurus",
                   "width": 200,
+                  "height": 144,
                   "descendants": {
                     "aabmB": {
                       "height": 110,
@@ -92568,6 +92655,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · archaeopteryx",
                   "width": 200,
+                  "height": 144,
                   "descendants": {
                     "aabmB": {
                       "height": 110,
@@ -93115,6 +93203,7 @@
           "y": 44,
           "name": "Dinosaurs",
           "width": 632,
+          "height": 172,
           "layout": "vertical",
           "gap": "$ds-space-m",
           "alignItems": "center",
@@ -93131,6 +93220,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · tyrannosaurus · NEW",
                   "width": 200,
+                  "height": 172,
                   "descendants": {
                     "aabmB": {
                       "height": 138,
@@ -93159,6 +93249,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · triceratops · NEW",
                   "width": 200,
+                  "height": 172,
                   "descendants": {
                     "aabmB": {
                       "height": 138,
@@ -93187,6 +93278,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · stegosaurus",
                   "width": 200,
+                  "height": 172,
                   "descendants": {
                     "aabmB": {
                       "height": 138,
@@ -93599,6 +93691,7 @@
           "y": 44,
           "name": "Dinosaurs",
           "width": 632,
+          "height": 456,
           "layout": "vertical",
           "gap": "$ds-space-m",
           "alignItems": "center",
@@ -93615,6 +93708,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · tyrannosaurus",
                   "width": 200,
+                  "height": 144,
                   "descendants": {
                     "aabmB": {
                       "height": 110,
@@ -93643,6 +93737,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · triceratops",
                   "width": 200,
+                  "height": 144,
                   "descendants": {
                     "aabmB": {
                       "height": 110,
@@ -93671,6 +93766,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · brachiosaurus · NEW",
                   "width": 200,
+                  "height": 144,
                   "descendants": {
                     "aabmB": {
                       "height": 110,
@@ -93707,6 +93803,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · stegosaurus",
                   "width": 200,
+                  "height": 144,
                   "descendants": {
                     "aabmB": {
                       "height": 110,
@@ -93735,6 +93832,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · ankylosaurus · NEW",
                   "width": 200,
+                  "height": 144,
                   "descendants": {
                     "aabmB": {
                       "height": 110,
@@ -93763,6 +93861,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · spinosaurus",
                   "width": 200,
+                  "height": 144,
                   "descendants": {
                     "aabmB": {
                       "height": 110,
@@ -93799,6 +93898,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · parasaurolophus · NEW",
                   "width": 200,
+                  "height": 144,
                   "descendants": {
                     "aabmB": {
                       "height": 110,
@@ -93827,6 +93927,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · pachycephalosaurus",
                   "width": 200,
+                  "height": 144,
                   "descendants": {
                     "aabmB": {
                       "height": 110,
@@ -93855,6 +93956,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · archaeopteryx",
                   "width": 200,
+                  "height": 144,
                   "descendants": {
                     "aabmB": {
                       "height": 110,
@@ -96446,6 +96548,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · tyrannosaurus",
                   "width": 118,
+                  "height": 88,
                   "descendants": {
                     "aabmB": {
                       "height": 56,
@@ -96477,6 +96580,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · triceratops",
                   "width": 118,
+                  "height": 88,
                   "descendants": {
                     "aabmB": {
                       "height": 56,
@@ -96508,6 +96612,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · brachiosaurus · NEW",
                   "width": 118,
+                  "height": 88,
                   "descendants": {
                     "aabmB": {
                       "height": 56,
@@ -96547,6 +96652,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · stegosaurus",
                   "width": 118,
+                  "height": 88,
                   "descendants": {
                     "aabmB": {
                       "height": 56,
@@ -96578,6 +96684,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · ankylosaurus · NEW",
                   "width": 118,
+                  "height": 88,
                   "descendants": {
                     "aabmB": {
                       "height": 56,
@@ -96609,6 +96716,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · spinosaurus",
                   "width": 118,
+                  "height": 88,
                   "descendants": {
                     "aabmB": {
                       "height": 56,
@@ -96648,6 +96756,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · parasaurolophus · NEW",
                   "width": 118,
+                  "height": 102,
                   "descendants": {
                     "aabmB": {
                       "height": 56,
@@ -96679,6 +96788,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · pachycephalosaurus",
                   "width": 118,
+                  "height": 102,
                   "descendants": {
                     "aabmB": {
                       "height": 56,
@@ -96710,6 +96820,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · archaeopteryx",
                   "width": 118,
+                  "height": 102,
                   "descendants": {
                     "aabmB": {
                       "height": 56,
@@ -97071,6 +97182,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · tyrannosaurus",
                   "width": 118,
+                  "height": 103,
                   "descendants": {
                     "aabmB": {
                       "height": 71,
@@ -97102,6 +97214,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · triceratops",
                   "width": 118,
+                  "height": 103,
                   "descendants": {
                     "aabmB": {
                       "height": 71,
@@ -97133,6 +97246,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · stegosaurus",
                   "width": 118,
+                  "height": 103,
                   "descendants": {
                     "aabmB": {
                       "height": 71,
@@ -97172,6 +97286,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · brachiosaurus",
                   "width": 118,
+                  "height": 103,
                   "descendants": {
                     "aabmB": {
                       "height": 71,
@@ -97203,6 +97318,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · ankylosaurus",
                   "width": 118,
+                  "height": 103,
                   "descendants": {
                     "aabmB": {
                       "height": 71,
@@ -97234,6 +97350,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · spinosaurus",
                   "width": 118,
+                  "height": 103,
                   "descendants": {
                     "aabmB": {
                       "height": 71,
@@ -100287,6 +100404,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · tyrannosaurus",
                   "width": 140,
+                  "height": 96,
                   "descendants": {
                     "aabmB": {
                       "height": 62,
@@ -100318,6 +100436,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · triceratops",
                   "width": 140,
+                  "height": 96,
                   "descendants": {
                     "aabmB": {
                       "height": 62,
@@ -100357,6 +100476,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · stegosaurus",
                   "width": 140,
+                  "height": 96,
                   "descendants": {
                     "aabmB": {
                       "height": 62,
@@ -100388,6 +100508,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · brachiosaurus · NEW",
                   "width": 140,
+                  "height": 96,
                   "descendants": {
                     "aabmB": {
                       "height": 62,
@@ -102592,6 +102713,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · tyrannosaurus",
                   "width": 150,
+                  "height": 137,
                   "descendants": {
                     "aabmB": {
                       "height": 101,
@@ -102618,6 +102740,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · triceratops",
                   "width": 150,
+                  "height": 137,
                   "descendants": {
                     "aabmB": {
                       "height": 101,
@@ -102644,6 +102767,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · brachiosaurus",
                   "width": 150,
+                  "height": 137,
                   "descendants": {
                     "aabmB": {
                       "height": 101,
@@ -102678,6 +102802,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · stegosaurus",
                   "width": 150,
+                  "height": 137,
                   "descendants": {
                     "aabmB": {
                       "height": 101,
@@ -102704,6 +102829,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · ankylosaurus",
                   "width": 150,
+                  "height": 137,
                   "descendants": {
                     "aabmB": {
                       "height": 101,
@@ -102730,6 +102856,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · spinosaurus",
                   "width": 150,
+                  "height": 137,
                   "descendants": {
                     "aabmB": {
                       "height": 101,
@@ -102764,6 +102891,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · parasaurolophus",
                   "width": 150,
+                  "height": 136,
                   "descendants": {
                     "aabmB": {
                       "height": 101,
@@ -102790,6 +102918,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · pachycephalosaurus",
                   "width": 150,
+                  "height": 136,
                   "descendants": {
                     "aabmB": {
                       "height": 101,
@@ -102816,6 +102945,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · archaeopteryx",
                   "width": 150,
+                  "height": 136,
                   "descendants": {
                     "aabmB": {
                       "height": 101,
@@ -105303,6 +105433,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · tyrannosaurus",
                   "width": 150,
+                  "height": 114,
                   "descendants": {
                     "aabmB": {
                       "height": 80,
@@ -105334,6 +105465,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · triceratops",
                   "width": 150,
+                  "height": 114,
                   "descendants": {
                     "aabmB": {
                       "height": 80,
@@ -105373,6 +105505,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · stegosaurus",
                   "width": 150,
+                  "height": 114,
                   "descendants": {
                     "aabmB": {
                       "height": 80,
@@ -105404,6 +105537,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · brachiosaurus · NEW",
                   "width": 150,
+                  "height": 114,
                   "descendants": {
                     "aabmB": {
                       "height": 80,
@@ -105861,6 +105995,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · tyrannosaurus",
                   "width": 100,
+                  "height": 90,
                   "descendants": {
                     "aabmB": {
                       "height": 42,
@@ -105892,6 +106027,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · triceratops",
                   "width": 100,
+                  "height": 90,
                   "descendants": {
                     "aabmB": {
                       "height": 42,
@@ -105923,6 +106059,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · brachiosaurus · NEW",
                   "width": 100,
+                  "height": 90,
                   "descendants": {
                     "aabmB": {
                       "height": 42,
@@ -105962,6 +106099,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · stegosaurus",
                   "width": 100,
+                  "height": 90,
                   "descendants": {
                     "aabmB": {
                       "height": 42,
@@ -105993,6 +106131,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · ankylosaurus · NEW",
                   "width": 100,
+                  "height": 90,
                   "descendants": {
                     "aabmB": {
                       "height": 42,
@@ -106024,6 +106163,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · spinosaurus",
                   "width": 100,
+                  "height": 90,
                   "descendants": {
                     "aabmB": {
                       "height": 42,
@@ -106063,6 +106203,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · parasaurolophus · NEW",
                   "width": 100,
+                  "height": 90,
                   "descendants": {
                     "aabmB": {
                       "height": 42,
@@ -106094,6 +106235,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · pachycephalosaurus",
                   "width": 100,
+                  "height": 90,
                   "descendants": {
                     "aabmB": {
                       "height": 42,
@@ -106106,7 +106248,7 @@
                     },
                     "ZCImk": {
                       "content": "PACHYCEPHALO-\nSAURUS",
-                      "fontSize": 8,
+                      "fontSize": 9,
                       "lineHeight": 1.1
                     },
                     "t9vdr": {
@@ -106125,6 +106267,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · archaeopteryx",
                   "width": 100,
+                  "height": 90,
                   "descendants": {
                     "aabmB": {
                       "height": 42,
@@ -108884,6 +109027,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · tyrannosaurus · NEW",
                   "width": 180,
+                  "height": 159,
                   "descendants": {
                     "aabmB": {
                       "height": 123,
@@ -108914,6 +109058,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · triceratops · NEW",
                   "width": 180,
+                  "height": 159,
                   "descendants": {
                     "aabmB": {
                       "height": 123,
@@ -108944,6 +109089,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · stegosaurus",
                   "width": 180,
+                  "height": 159,
                   "descendants": {
                     "aabmB": {
                       "height": 123,
@@ -109511,6 +109657,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · tyrannosaurus",
                   "width": 150,
+                  "height": 137,
                   "descendants": {
                     "aabmB": {
                       "height": 101,
@@ -109540,6 +109687,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · triceratops",
                   "width": 150,
+                  "height": 137,
                   "descendants": {
                     "aabmB": {
                       "height": 101,
@@ -109569,6 +109717,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · brachiosaurus",
                   "width": 150,
+                  "height": 137,
                   "descendants": {
                     "aabmB": {
                       "height": 101,
@@ -109606,6 +109755,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · stegosaurus",
                   "width": 150,
+                  "height": 137,
                   "descendants": {
                     "aabmB": {
                       "height": 101,
@@ -109635,6 +109785,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · ankylosaurus",
                   "width": 150,
+                  "height": 137,
                   "descendants": {
                     "aabmB": {
                       "height": 101,
@@ -109664,6 +109815,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · spinosaurus",
                   "width": 150,
+                  "height": 137,
                   "descendants": {
                     "aabmB": {
                       "height": 101,
@@ -109701,6 +109853,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · parasaurolophus",
                   "width": 150,
+                  "height": 136,
                   "descendants": {
                     "aabmB": {
                       "height": 101,
@@ -109730,6 +109883,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · pachycephalosaurus",
                   "width": 150,
+                  "height": 136,
                   "descendants": {
                     "aabmB": {
                       "height": 101,
@@ -109759,6 +109913,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · archaeopteryx",
                   "width": 150,
+                  "height": 136,
                   "descendants": {
                     "aabmB": {
                       "height": 101,
@@ -111534,6 +111689,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · tyrannosaurus",
                   "width": 150,
+                  "height": 114,
                   "descendants": {
                     "aabmB": {
                       "height": 80,
@@ -111566,6 +111722,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · triceratops",
                   "width": 150,
+                  "height": 114,
                   "descendants": {
                     "aabmB": {
                       "height": 80,
@@ -111606,6 +111763,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · stegosaurus",
                   "width": 150,
+                  "height": 114,
                   "descendants": {
                     "aabmB": {
                       "height": 80,
@@ -111638,6 +111796,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · brachiosaurus · NEW",
                   "width": 150,
+                  "height": 114,
                   "descendants": {
                     "aabmB": {
                       "height": 80,
@@ -112096,6 +112255,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · tyrannosaurus",
                   "width": 100,
+                  "height": 98,
                   "descendants": {
                     "aabmB": {
                       "height": 50,
@@ -112128,6 +112288,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · triceratops",
                   "width": 100,
+                  "height": 98,
                   "descendants": {
                     "aabmB": {
                       "height": 50,
@@ -112160,6 +112321,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · stegosaurus",
                   "width": 100,
+                  "height": 98,
                   "descendants": {
                     "aabmB": {
                       "height": 50,
@@ -112200,6 +112362,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · brachiosaurus",
                   "width": 100,
+                  "height": 98,
                   "descendants": {
                     "aabmB": {
                       "height": 50,
@@ -112232,6 +112395,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · ankylosaurus",
                   "width": 100,
+                  "height": 98,
                   "descendants": {
                     "aabmB": {
                       "height": 50,
@@ -112264,6 +112428,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · spinosaurus",
                   "width": 100,
+                  "height": 98,
                   "descendants": {
                     "aabmB": {
                       "height": 50,
@@ -112787,6 +112952,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · tyrannosaurus",
                   "width": 100,
+                  "height": 90,
                   "descendants": {
                     "aabmB": {
                       "height": 42,
@@ -112819,6 +112985,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · triceratops",
                   "width": 100,
+                  "height": 90,
                   "descendants": {
                     "aabmB": {
                       "height": 42,
@@ -112851,6 +113018,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · brachiosaurus · NEW",
                   "width": 100,
+                  "height": 90,
                   "descendants": {
                     "aabmB": {
                       "height": 42,
@@ -112891,6 +113059,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · stegosaurus",
                   "width": 100,
+                  "height": 90,
                   "descendants": {
                     "aabmB": {
                       "height": 42,
@@ -112923,6 +113092,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · ankylosaurus · NEW",
                   "width": 100,
+                  "height": 90,
                   "descendants": {
                     "aabmB": {
                       "height": 42,
@@ -112955,6 +113125,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · spinosaurus",
                   "width": 100,
+                  "height": 90,
                   "descendants": {
                     "aabmB": {
                       "height": 42,
@@ -112995,6 +113166,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · parasaurolophus · NEW",
                   "width": 100,
+                  "height": 90,
                   "descendants": {
                     "aabmB": {
                       "height": 42,
@@ -113027,6 +113199,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · pachycephalosaurus",
                   "width": 100,
+                  "height": 90,
                   "descendants": {
                     "aabmB": {
                       "height": 42,
@@ -113039,7 +113212,7 @@
                     },
                     "ZCImk": {
                       "content": "ПАХИЦЕФАЛО-\nЗАВР",
-                      "fontSize": 8,
+                      "fontSize": 9,
                       "lineHeight": 1.1
                     },
                     "t9vdr": {
@@ -113059,6 +113232,7 @@
                   "ref": "Cw9oC",
                   "name": "Dino · archaeopteryx",
                   "width": 100,
+                  "height": 90,
                   "descendants": {
                     "aabmB": {
                       "height": 42,
@@ -548854,6 +549028,20 @@
           "height": 5
         }
       ]
+    },
+    {
+      "type": "text",
+      "id": "BmV1l",
+      "x": 0,
+      "y": 28668,
+      "name": "Note · PAIRS result",
+      "fill": "#1E2A4A",
+      "textGrowth": "fixed-width",
+      "width": 900,
+      "content": "A static board cannot show motion or focus: on screen the result adds the shared confetti and glow, and the level offer focuses YES with a ring. A name never draws below 9 px: it breaks by syllable first.",
+      "fontFamily": "$ds-font",
+      "fontSize": 28,
+      "fontWeight": "normal"
     }
   ],
   "themes": {

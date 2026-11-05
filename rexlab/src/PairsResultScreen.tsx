@@ -51,19 +51,33 @@ const foundColumns = (count: number) => (count === 4 ? 2 : count > 9 ? 4 : 3);
 // parts of the others. A name without a part here stays whole.
 const NAME_BREAK = /(?<=.)(?=SAURUS$|ЗАВР$|LOPHUS$|PTERYX$|GNATHUS$|RAPTOR$|TOPS$|MIMUS$|РОЛОФ$|ТЕРИКС$|ГНАТ$|РАПТОР$|ТОПС$|МИМ$)/;
 
-// The name's parts, the length of the longer, and how narrow
-// a card must be to break it: a long one on any phone, a shorter one in the
-// nine dinosaurs of an upright phone, and any other only on the fullest board.
-function foundName(name: string, language: Language) {
-  const [head, tail] = name.split(NAME_BREAK);
+// A part too long for the narrowest card splits again after a vowel, as near its
+// middle as a syllable allows, so no name has to shrink below reading size.
+const LONGEST_PART = 8;
+function syllableParts(part: string): string[] {
+  if (part.length <= LONGEST_PART) return [part];
+  const middle = part.length / 2;
+  const cuts = [...part.matchAll(/(?<=[AEIOUYАЕЁИОУЫЭЮЯ])(?=[^AEIOUYАЕЁИОУЫЭЮЯ])/g)].map((cut) => cut.index).filter((cut) => cut >= 3 && part.length - cut >= 3);
+  if (cuts.length === 0) return [part];
+  const cut = cuts.reduce((best, next) => (Math.abs(next - middle) < Math.abs(best - middle) ? next : best));
+  return [...syllableParts(part.slice(0, cut)), ...syllableParts(part.slice(cut))];
+}
+
+// The name's parts, the length of the longest, and how narrow a card must be to
+// break it: a long one on any phone, a shorter one in the nine dinosaurs of an
+// upright phone, and any other only on the fullest board.
+export function foundName(name: string, language: Language) {
+  const coarse = name.split(NAME_BREAK);
+  const parts = coarse.flatMap(syllableParts);
+  const longest = (of: string[]) => Math.max(...of.map((part) => part.length));
   const longEnough = language === "ru" ? name.length + (/ЗАВР$/.test(name) ? 2 : 0) >= 12 : name.length >= 12;
   const reach = name.length >= 15 ? "long" : longEnough ? "narrow" : "fullest";
-  return { text: tail ? `${head}\u00AD${tail}` : name, length: name.length, part: tail ? Math.max(head!.length, tail.length) : name.length, reach: tail ? reach : undefined };
+  return { text: parts.join("\u00AD"), length: name.length, part: longest(coarse), finePart: longest(parts), reach: parts.length > 1 ? reach : undefined };
 }
 
 function FoundName({ name, language }: { name: string; language: Language }) {
-  const { text, length, part, reach } = foundName(name, language);
-  return <span className="pairs-found-name" data-break={reach} lang={language} style={{ "--name-length": length, "--name-part": part } as CSSProperties}>{text}</span>;
+  const { text, length, part, finePart, reach } = foundName(name, language);
+  return <span className="pairs-found-name" data-break={reach} lang={language} style={{ "--name-length": length, "--name-part": part, "--name-fine-part": finePart } as CSSProperties}>{text}</span>;
 }
 
 export function PairsResultScreen({ language, pals, tries, stars, best, beaten, celebration, levelUp, offer, onPlayAgain, onBack, onHome }: PairsResultScreenProps) {
