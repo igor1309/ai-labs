@@ -96,7 +96,7 @@ jobs:
 
       # Trunk alone saves, so pull requests do not fill the cache budget.
       - name: Save the build cache
-        if: steps.build-cache.outputs.cache-hit != 'true' && (github.ref == 'refs/heads/trunk' || github.event_name == 'pull_request')
+        if: steps.build-cache.outputs.cache-hit != 'true' && github.ref == 'refs/heads/trunk'
         uses: actions/cache/save@v6
         with:
           path: audelin/macos/.build
