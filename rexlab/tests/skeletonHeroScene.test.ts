@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, expect, test, vi } from "vitest";
-import { BufferGeometry, Group, Material, MathUtils, Mesh, Vector3 } from "three";
+import { BufferGeometry, Group, Material, MathUtils, Mesh, Quaternion, Vector3 } from "three";
 import { skeletonHeroScene } from "../src/skeletonHeroScene.ts";
 
 const gpu = vi.hoisted(() => ({
@@ -16,6 +16,42 @@ function asset() {
   vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) })));
 }
 afterEach(() => { vi.restoreAllMocks(); vi.clearAllMocks(); vi.unstubAllGlobals(); });
+
+test("every bone moves from its pile transform through assembly into the completed hold", async () => {
+  asset();
+  const scene = await skeletonHeroScene({} as HTMLCanvasElement, new AbortController().signal, 1);
+  try {
+    scene.draw(590, 300, 0);
+    const [world] = gpu.render.mock.lastCall!;
+    const bones: Group[] = [];
+    world.traverse((object: Group) => { if (object.userData.assembly) bones.push(object); });
+    expect(bones.length).toBe(104);
+    const identity = new Quaternion();
+    for (const bone of bones) {
+      const { start, end, spin, at, duration } = bone.userData.assembly;
+      const from = new Vector3().fromArray(start), to = new Vector3().fromArray(end);
+      const rotation = new Quaternion().fromArray(spin);
+      scene.draw(590, 300, 0);
+      expect(bone.position.distanceTo(from)).toBeLessThan(1e-6);
+      expect(bone.quaternion.angleTo(rotation)).toBeLessThan(1e-6);
+      expect(from.distanceTo(to)).toBeGreaterThan(.01);
+
+      scene.draw(590, 300, (at + duration / 2) / 1.2 * 1000);
+      expect(bone.position.x).toBeCloseTo((from.x + to.x) / 2, 6);
+      expect(bone.position.z).toBeCloseTo((from.z + to.z) / 2, 6);
+      expect(bone.position.y).toBeGreaterThan((from.y + to.y) / 2);
+      expect(bone.quaternion.angleTo(rotation)).toBeGreaterThan(.001);
+      expect(bone.quaternion.angleTo(identity)).toBeGreaterThan(.001);
+    }
+    for (const milliseconds of [5000, 5500, 6000, 14000]) {
+      scene.draw(590, 300, milliseconds);
+      for (const bone of bones) {
+        expect(bone.position.distanceTo(new Vector3().fromArray(bone.userData.assembly.end))).toBeLessThan(1e-6);
+        expect(bone.quaternion.angleTo(identity)).toBeLessThan(1e-6);
+      }
+    }
+  } finally { scene.dispose(); }
+});
 
 test("the assembled asset fits the pile, assembly and full turn without stretching", async () => {
   asset();
