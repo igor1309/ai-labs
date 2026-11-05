@@ -62,12 +62,16 @@ const { chromium } = require("playwright");
             clipped: button.scrollHeight > button.clientHeight + 1 };
         }));
         assert.equal(bounds.length, 6);
+        // The one row may scroll sideways on a phone; its last creature must be reachable.
+        assert.equal(new Set(bounds.map(b => b.top)).size, 1);
+        const last = await page.locator(".gallery-new").last().evaluate(button => { button.scrollIntoView({ inline: "end", block: "nearest" }); const r = button.getBoundingClientRect(); button.parentElement.scrollLeft = 0; return { left: r.left, right: r.right }; });
+        assert(last.left >= 0 && last.right <= width + 1, JSON.stringify(last));
         for (const b of bounds) {
           const context = JSON.stringify({ width, height, language, bounds });
           const row = bounds.filter(other => Math.abs(other.top - b.top) < 1);
           assert(row.every(other => Math.abs(other.bottom - b.bottom) < 1), context);
           assert(b.bottom - b.top >= 60 && b.width >= 60, context);
-          assert(b.left >= 0 && b.right <= width + 1 && b.bottom <= height, context);
+          assert(b.bottom <= height, context);
           assert(!b.clipped, context);
         }
       }
@@ -140,12 +144,12 @@ const { chromium } = require("playwright");
         const layout = await page.evaluate(() => ({
           scroll: [document.documentElement.scrollWidth, document.documentElement.scrollHeight],
           background: getComputedStyle(document.querySelector(".gallery-card")).backgroundColor,
-          buttons: [...document.querySelectorAll("button")].map(b => { const r = b.getBoundingClientRect(); return { text: b.textContent, x: r.x, y: r.y, w: r.width, h: r.height }; })
+          buttons: [...document.querySelectorAll("button")].map(b => { const r = b.getBoundingClientRect(); return { row: b.matches(".gallery-new"), text: b.textContent, x: r.x, y: r.y, w: r.width, h: r.height }; })
         }));
         const context = JSON.stringify({ viewport, language, theme, layout });
         assert.deepEqual(layout.scroll, [viewport.width, viewport.height], context);
         assert.equal(layout.background, theme === "dark" ? "rgb(24, 30, 46)" : "rgb(255, 253, 248)", context);
-        for (const b of layout.buttons) assert(b.w >= 60 && b.h >= 60 && b.x >= 0 && b.y >= 0 && b.x + b.w <= viewport.width + 1 && b.y + b.h <= viewport.height + 1, context);
+        for (const b of layout.buttons) assert(b.w >= 60 && b.h >= 60 && b.x >= 0 && b.y >= 0 && (b.row || b.x + b.w <= viewport.width + 1) && b.y + b.h <= viewport.height + 1, context);
         for (const image of await page.locator(".gallery-thumbnail img").all()) {
           const box = await image.boundingBox(); assert(box && box.width > 50 && box.height > 35, context);
         }

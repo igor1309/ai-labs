@@ -114,8 +114,9 @@
 
 .gallery-actions .gallery-new { min-width: 0; flex-direction: column; gap: 0; padding: 4px 8px; }
 .gallery-actions .gallery-artwork-preview { width: 100%; height: 64px; object-fit: contain; }
-.gallery-new > span { display: flex; align-items: center; flex-wrap: wrap; justify-content: center; max-width: 100%; overflow-wrap: anywhere; text-align: center; gap: 4px; font-size: clamp(10px, 1.5vw, 14px); }
-.gallery-new > span > svg { width: 18px; height: 18px; }
+.gallery-actions .gallery-new { position: relative; }
+.gallery-new > span { display: block; max-width: 100%; text-align: center; white-space: nowrap; font-size: clamp(10px, 1.1vw, 14px); }
+.gallery-new > .gallery-new-plus { position: absolute; top: 6px; left: 6px; width: 18px; height: 18px; }
 @media (max-width: 599px) and (orientation: portrait) {
   .gallery-actions .gallery-artwork-preview { height: 44px; }
 }
@@ -125,13 +126,12 @@
   .gallery-actions .gallery-artwork-preview { height: 32px; }
   .gallery-header h1 { font-size: 14px; }
 }
-/* Six creatures no longer fit one row of child-size buttons on an upright phone: two rows of three. */
-@media (max-width: 599px) and (orientation: portrait) {
-  .gallery-actions { flex-wrap: wrap; }
-  .gallery-actions .gallery-new { flex: 1 1 calc(33% - 8px); min-height: 60px; }
-}
-@media (max-width: 359px) and (orientation: portrait) {
-  .gallery-actions .gallery-artwork-preview { display: none; }
+/* On a phone six creatures keep one row: it scrolls sideways, and the next
+   button peeks in, so every name stays on one line at child size. */
+@media (max-width: 599px) and (orientation: portrait), (max-height: 599px) and (orientation: landscape) {
+  .gallery-actions { overflow-x: auto; touch-action: pan-x; scrollbar-width: none; }
+  .gallery-actions .gallery-new { flex: 0 0 116px; min-height: 60px; padding: 4px; }
+  .gallery-new > span { font-size: 11px; }
 }
 /* On an iPhone upright the version stands at the window's very bottom:
    the gallery ends just above it. */

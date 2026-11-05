@@ -110,8 +110,8 @@ Feature: Coloring gallery
     And its friendly silhouette has a long neck reaching up, a small head, tall front legs and a sloping back to a long tail
     And choosing it starts an independent unpainted work without changing existing works
 
-  Scenario: Six creature choices stay child-size on every phone
-    When I enter the gallery on an upright phone
-    Then the six creature choices sit in two rows of three, each at least 60 by 60 points
-    When I enter the gallery on a phone on its side
-    Then the six creature choices sit in one row beside the header, each at least 60 by 60 points
+  Scenario: Six creature choices keep one row
+    When I enter the gallery at any size
+    Then the creature choices sit in one row, each showing its preview, a plus in the top leading corner and only the creature name on one line
+    When I enter the gallery on a phone, upright or on its side
+    Then the row scrolls sideways, the next choice peeks in, and every choice is at least 60 by 60 points
