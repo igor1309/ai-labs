@@ -110,10 +110,10 @@ Feature: Coloring gallery
     And its friendly silhouette has a long neck reaching up, a small head, tall front legs and a sloping back to a long tail
     And choosing it starts an independent unpainted work without changing existing works
 
-  Scenario: Seven creature choices keep one row
+  Scenario: Eight creature choices keep one row
     When I enter the gallery at any size
     Then the creature choices sit in one row, each showing its preview, a plus in the top leading corner and only the creature name on one line
-    When I enter the gallery on a phone, upright or on its side
+    When I enter the gallery on a phone, upright or on its side, or on an upright iPad
     Then the row scrolls sideways, the next choice peeks in, and every choice is at least 60 by 60 points
 
   Scenario: Choose a recognizable Pteranodon
@@ -122,4 +122,12 @@ Feature: Coloring gallery
     And Pteranodon uses pteranodon-hatchling-1 at Hatchling and pteranodon-explorer-1 at Explorer and Paleontologist
     And Stegosaurus, Triceratops, Ankylosaurus, T-Rex, Mosasaurus and Brachiosaurus remain available with their age-matched previews
     And its friendly silhouette has wide spread wings, a long beak and a swept-back crest
+    And choosing it starts an independent unpainted work without changing existing works
+
+  Scenario: Choose a recognizable Parasaurolophus
+    When I enter the gallery at any age level
+    Then exactly one Parasaurolophus choice has a matching vector preview and the uppercase localized name PARASAUROLOPHUS or ПАРАЗАУРОЛОФ
+    And Parasaurolophus uses parasaurolophus-hatchling-1 at Hatchling and parasaurolophus-explorer-1 at Explorer and Paleontologist
+    And Stegosaurus, Triceratops, Ankylosaurus, T-Rex, Mosasaurus, Brachiosaurus and Pteranodon remain available with their age-matched previews
+    And its friendly silhouette has a long tube crest sweeping back, a duck bill and a flowing tail
     And choosing it starts an independent unpainted work without changing existing works
