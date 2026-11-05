@@ -1,4 +1,6 @@
 import { artworkFor } from "../src/coloring/artworks.ts";
+import { PTERANODON_HATCHLING, PTERANODON_EXPLORER } from "../src/coloring/pteranodonScene.ts";
+import { pteranodonHatchlingProbes, pteranodonExplorerProbes } from "./pteranodonSceneProbes.ts";
 import { BRACHIOSAURUS_HATCHLING, BRACHIOSAURUS_EXPLORER } from "../src/coloring/brachiosaurusScene.ts";
 import { brachiosaurusHatchlingProbes, brachiosaurusExplorerProbes } from "./brachiosaurusSceneProbes.ts";
 import { MOSASAURUS_HATCHLING, MOSASAURUS_EXPLORER } from "../src/coloring/mosasaurusScene.ts";
@@ -125,6 +127,38 @@ describe("Mosasaurus workshop scenes", () => {
     }
     expect(MOSASAURUS_EXPLORER.regions.length).toBeGreaterThan(MOSASAURUS_HATCHLING.regions.length * 1.8);
     expect(MOSASAURUS_HATCHLING.artwork.regions).not.toContain("water");
+  });
+});
+
+describe("Pteranodon workshop scenes", () => {
+  it.each([
+    [PTERANODON_HATCHLING, "pteranodon-hatchling-1", pteranodonHatchlingProbes],
+    [PTERANODON_EXPLORER, "pteranodon-explorer-1", pteranodonExplorerProbes]
+  ] as const)("registers enclosed regions with matching parents (scene %#)", (geometry, version, probes) => {
+    expect(artworkFor(version)).toEqual({ geometry, names: { en: "PTERANODON", ru: "ПТЕРАНОДОН" } });
+    expect(geometry.artwork.regions).toEqual(probes.map(([, , id]) => id));
+    for (const region of geometry.regions) {
+      expect(region.outline).toBeGreaterThanOrEqual(1.7);
+      expect("path" in region && region.path.endsWith(" Z")).toBe(true);
+    }
+    expect(geometry.regions.filter(({ parent }) => parent).map(({ id, parent }) => [id, parent])).toEqual(
+      geometry === PTERANODON_HATCHLING ? [] : [["cliff-right-top", "cliff-right"], ["cliff-left-top", "cliff-left"], ["wing-left-arm", "wing-left"], ["wing-right-arm", "wing-right"], ["belly", "body"], ["crest-tip", "crest"], ["jaw", "beak"]]
+    );
+  });
+
+  it.each([
+    ["Hatchling", PTERANODON_HATCHLING, pteranodonHatchlingProbes],
+    ["Explorer", PTERANODON_EXPLORER, pteranodonExplorerProbes]
+  ] as const)("keeps every %s animal and scenery target independently fillable", async (_, geometry, probes) => {
+    for (const [, , id] of probes) {
+      const painted = await illustration(geometry, id);
+      for (const [px, py, other] of probes) {
+        const offset = (py * WIDTH + px) * 4;
+        expect([...painted.subarray(offset, offset + 4)], `${id} at ${other}`).toEqual(id === other ? [239, 83, 80, 255] : [255, 240, 207, 255]);
+      }
+    }
+    expect(PTERANODON_EXPLORER.regions.length).toBeGreaterThan(PTERANODON_HATCHLING.regions.length * 1.8);
+    expect(PTERANODON_HATCHLING.artwork.regions).not.toContain("sky");
   });
 });
 
