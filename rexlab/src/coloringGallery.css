@@ -1,11 +1,6 @@
 /* The sky holds HOME, the stars and the title; the sand holds the starts
    and the works, and scrolls over the bedrock. */
 .coloring-gallery {
-  --fm-surface: var(--ds-label);
-  --fm-ink: var(--ds-ink);
-  --fm-ink-soft: var(--ds-ink-soft);
-  --fm-amber: var(--ds-reward);
-  --fm-terra: var(--ds-action);
   --cg-top: var(--ds-space-xs); --cg-sky: 180px; --cg-side: var(--ds-space-40); --cg-bedrock: 60px; --cg-wave: 30px; --cg-columns: 4; --cg-gap: var(--ds-space-14); --cg-start: calc((100% - 5 * var(--ds-space-m)) / 5.4); --cg-card-pad: var(--ds-space-s);
   position: relative; isolation: isolate; box-sizing: border-box; height: 100vh; height: 100dvh; overflow: hidden; display: flex; flex-direction: column;
   color: var(--ds-ink); font-family: var(--ds-font);
@@ -41,7 +36,6 @@
 .gallery-actions .gallery-artwork-preview { display: block; box-sizing: border-box; width: 100%; height: 84px; padding: var(--ds-space-2); border-radius: var(--ds-radius-16); background: var(--ds-paper); object-fit: contain; }
 .gallery-new-name { display: flex; align-items: center; justify-content: center; gap: var(--ds-space-3); width: 100%; min-width: 0; font-size: clamp(10px, 1.2vw, 16px); white-space: nowrap; }
 .coloring-gallery .gallery-new-name svg { width: 18px; height: 18px; color: var(--ds-action); }
-.gallery-actions > span { display: flex; flex: none; align-items: center; gap: var(--ds-space-s); font-size: var(--ds-size-label); font-weight: 800; }
 /* The works, each in its pocket. */
 .gallery-works { flex: none; display: grid; grid-template-columns: repeat(var(--cg-columns), minmax(0, 1fr)); gap: var(--cg-gap); align-content: start; }
 .gallery-card { position: relative; cursor: pointer; min-width: 0; display: flex; flex-direction: column; align-items: stretch; gap: var(--ds-space-s); padding: var(--cg-card-pad); border-radius: var(--ds-radius-pocket-top) var(--ds-radius-pocket-top) var(--ds-radius-pocket-bottom) var(--ds-radius-pocket-bottom); background: var(--ds-pocket-1); box-shadow: inset 0 6px 10px var(--ds-pocket-shadow); }
@@ -51,7 +45,7 @@
 .coloring-gallery .gallery-status svg { width: 24px; height: 24px; }
 .gallery-status[data-status="draft"] { color: var(--ds-ink-soft); }
 .gallery-status[data-status="completed"] { color: var(--ds-reward); }
-.gallery-status[data-status="failed"] { color: var(--ds-action); }
+.gallery-status[data-status="failed"] { color: var(--ds-bad); }
 .gallery-card > button { width: 100%; }
 .gallery-card > button[data-recent] { background: var(--ds-action); color: var(--ds-on-action); }
 .gallery-card h2, .gallery-dialog h2 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 18px; }
@@ -94,16 +88,43 @@ html[data-size="wide-short"] .coloring-gallery { --cg-empty-mark: 64px; }
 html[data-size="wide-short"] .gallery-thumbnail { aspect-ratio: 2 / 1; }
 html[data-size="wide-short"] .gallery-status { width: 28px; height: 28px; }
 html[data-size="wide-short"] .gallery-bedrock svg { display: none; }
-/* The states still to be drawn on the sand. */
+/* VIEW ONLY over the starts, then what is loading or could not load. */
+.gallery-tag { flex: none; align-self: flex-start; display: flex; align-items: center; gap: var(--ds-space-6); padding: var(--ds-space-xs) var(--ds-space-m); border-radius: var(--ds-radius-pill); background: var(--ds-quiet); color: var(--ds-ink-soft); font-size: var(--ds-size-13); font-weight: 800; }
+.coloring-gallery .gallery-tag svg { width: 16px; height: 16px; }
+.gallery-notices { flex: none; display: flex; flex-direction: column; align-items: center; gap: var(--ds-space-s); }
 .gallery-notices:empty { display: none; }
-.gallery-notices p { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 0; }
-.gallery-warning { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; color: var(--fm-terra); font-size: 12px; font-weight: 800; }
+.gallery-loading { display: flex; align-items: center; gap: var(--ds-space-s); margin: 0; padding: var(--ds-space-s) var(--ds-space-l); border-radius: var(--ds-radius-pill); background: var(--ds-label); font-size: var(--ds-size-15); font-weight: 800; }
+.coloring-gallery .gallery-loading svg { width: 20px; height: 20px; color: var(--ds-action); animation: gallery-turn 1s linear infinite; }
+@keyframes gallery-turn { to { rotate: -360deg; } }
+.gallery-warning { box-sizing: border-box; align-self: stretch; display: flex; flex-wrap: wrap; align-items: center; gap: var(--ds-space-s) var(--ds-space-m); padding: var(--ds-space-s) var(--ds-space-s) var(--ds-space-s) var(--ds-space-l); border: 2px solid var(--ds-bad); border-radius: var(--ds-radius-16); background: var(--ds-label); }
+.gallery-warning p { flex: 1 1 220px; display: flex; align-items: center; gap: var(--ds-btn-gap); margin: 0; font-size: var(--ds-size-16); font-weight: 800; }
+.coloring-gallery .gallery-warning p svg { width: 24px; height: 24px; color: var(--ds-bad); }
+.gallery-warning-actions { display: flex; flex-wrap: wrap; gap: var(--ds-space-s); }
 .gallery-visually-hidden { position: absolute !important; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-.gallery-thumbnail > svg { width: 48px; height: 48px; color: var(--fm-terra); }
-.gallery-unavailable { color: var(--fm-ink-soft); }
-.gallery-overlay { position: fixed; z-index: 100; inset: 0; padding: 12px; display: grid; place-items: center; background: #091e4080; animation: fade-in var(--motion-small) var(--ease-out) both; }
-.gallery-dialog { box-sizing: border-box; display: flex; flex-direction: column; align-items: stretch; gap: 12px; width: min(460px, 100%); max-height: 100%; overflow: auto; padding: 20px; border-radius: 24px; background: var(--fm-surface); }
-.gallery-dialog > svg { align-self: center; color: var(--fm-terra); }
-.gallery-dialog .gallery-thumbnail { min-height: 100px; }
-.gallery-parent-note { font-size: 14px; color: var(--fm-ink-soft); margin: 0; }
-.gallery-dialog p[role="alert"] { display: flex; align-items: center; gap: 8px; color: var(--fm-terra); margin: 0; }
+.gallery-thumbnail > svg { width: 40px; height: 40px; color: var(--ds-ink-soft); }
+.gallery-thumbnail[data-failed], .gallery-unavailable .gallery-thumbnail { background: var(--ds-quiet); }
+.gallery-unavailable .gallery-thumbnail { grid-auto-flow: row; align-content: center; gap: var(--ds-space-xs); }
+.gallery-unavailable h2 { justify-content: center; color: var(--ds-ink-soft); font-size: var(--ds-size-13); font-weight: 800; }
+/* The dialogs stand over a scrim; each scrolls when a phone is too short. */
+.gallery-overlay { position: fixed; z-index: 100; inset: 0; padding: var(--ds-space-m); display: grid; place-items: center; background: var(--ds-scrim); animation: fade-in var(--motion-small) var(--ease-out) both; }
+.gallery-dialog { box-sizing: border-box; display: flex; flex-direction: column; align-items: center; gap: var(--ds-space-l); width: min(460px, 100%); max-height: 100%; overflow: auto; padding: var(--ds-space-28) var(--ds-space-2xl); border-radius: var(--ds-radius-28); background: var(--ds-label); box-shadow: 0 12px 32px var(--ds-ground-shadow); text-align: center; }
+.gallery-dialog-mark { flex: none; display: grid; place-items: center; width: 64px; height: 64px; border-radius: 50%; background: var(--ds-pocket-1); }
+.coloring-gallery .gallery-dialog-mark svg { width: 32px; height: 32px; }
+.coloring-gallery .gallery-dialog h2 { justify-content: center; font-size: var(--ds-size-24); font-weight: 800; }
+.coloring-gallery .gallery-dialog h2.gallery-dialog-title { font-size: var(--ds-size-action); }
+.gallery-dialog > button { width: 100%; }
+.coloring-gallery .gallery-dialog > .gallery-strong { background: var(--ds-strong); color: var(--ds-on-strong); font-size: var(--ds-size-action); }
+.coloring-gallery .gallery-dialog > .gallery-danger { background: var(--ds-action); color: var(--ds-on-action); font-size: var(--ds-size-action); }
+.gallery-dialog .gallery-thumbnail { align-self: stretch; }
+.gallery-parent-note { margin: 0; color: var(--ds-ink-soft); font-size: var(--ds-size-13); }
+.gallery-dialog p[role="alert"] { display: flex; align-items: center; gap: var(--ds-space-s); margin: 0; color: var(--ds-bad); font-weight: 800; }
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .gallery-dialog { padding: var(--ds-space-l); gap: var(--ds-space-m); }
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .coloring-gallery .gallery-dialog > :is(.gallery-strong, .gallery-danger) { font-size: var(--ds-size-label); }
+html[data-size="wide-short"] .gallery-dialog-mark { display: none; }
+html[data-size="wide-short"] .gallery-dialog .gallery-thumbnail { flex: none; height: 120px; aspect-ratio: auto; }
+html[data-size="wide-short"] .gallery-dialog .gallery-thumbnail img { height: 120px; }
+html[data-size="tall-narrow"] .gallery-warning { padding: var(--ds-space-s); }
+html[data-size="tall-narrow"] .gallery-warning p { flex-basis: 100%; font-size: var(--ds-size-13); }
+html[data-size="tall-narrow"] .gallery-warning-actions { flex: 1 1 100%; }
+html[data-size="tall-narrow"] .gallery-warning-actions button { flex: 1 1 auto; padding-inline: var(--ds-space-s); font-size: var(--ds-size-13); }
+@media (prefers-reduced-motion: reduce) { .coloring-gallery .gallery-loading svg { animation: none; } }

@@ -2,6 +2,7 @@
 
 ## 2026-11-05
 
+- LAB-1005: COLOR's gallery shows loading, unreadable art, view only and parent recovery as the dig site on every device, light, dark and Russian.
 - LAB-1004: COLOR's gallery is the dig site on every device, light, dark and Russian: HOME, the title and stars in the sky, every dinosaur to start on the sand, saved works in pockets.
 - LAB-918: FIND THE PAIR is the dig site from welcome to level offer, with its screens walked in a browser on every device, with and without motion.
 - LAB-992: FIND THE PAIR's result and level offer are the dig site on every device, light, dark and Russian: the found dinosaurs in the sky with NEW inside each card's corner, the tries, stars and best on the sand, and the offer's LEVEL UP tag with NOT NOW before YES. Other games keep their look.
