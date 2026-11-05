@@ -102,6 +102,7 @@ jobs:
           - homePhone
           - nativeTouch
           - homeTiles
+          - homeSkeletonHero
           - careFriends
           - languagePicker
           - browserChrome

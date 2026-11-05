@@ -10202,10 +10202,20 @@ html .home.home-dig-site {
   }
 }
 .home.home-dig-site .home-today-art > .picture,
+.home.home-dig-site .home-today-art > .home-skeleton-hero,
 .home.home-dig-site .home-today-art > .picture-puzzle-tile-art,
 .home.home-dig-site .home-today-art > .sand-writing-tile-art {
   flex: none; width: 100%; height: 100%; max-height: none; margin: 0; padding: 0; object-fit: contain;
 }
+.home-skeleton-hero, .home-skeleton-hero * { pointer-events: none; }
+.home-skeleton-hero > .skeletons-hero-fallback, .home-skeleton-hero > canvas {
+  position: absolute; inset: 0; width: 100%; height: 100%; margin: 0;
+  object-fit: contain; transition: opacity var(--motion-standard) var(--ease-out);
+}
+.skeletons-hero-fallback > .picture { width: 100%; height: 100%; object-fit: contain; }
+.home-skeleton-hero > canvas { opacity: 0; }
+.home-skeleton-hero[data-ready] > canvas { opacity: 1; }
+.home-skeleton-hero[data-ready] > .skeletons-hero-fallback { opacity: 0; }
 .home.home-dig-site .home-today-art .face-off { width: 100%; height: 100%; padding: 0; flex: none; }
 .home.home-dig-site .home-today-art .face-off-left { width: var(--face-left-w); height: var(--face-left-h); }
 .home.home-dig-site .home-today-art .face-off-right { width: var(--face-right-w); height: var(--face-right-h); }
@@ -12428,6 +12438,8 @@ html[data-size="wide-short"] .pair-card-name[data-caption] { display: none; }
     --motion-stagger: 0ms;
     --motion-amount: 0;
   }
+
+  .home-skeleton-hero > .skeletons-hero-fallback, .home-skeleton-hero > canvas { transition-duration: var(--motion-small); }
 
   .jaw-shelf-row, .jaw-shelf-card, .jaw-card-chomp[data-ready] { animation: fade-in var(--motion-small) var(--ease-out) both; }
   .jaw-card-scrim[data-leaving] { animation: fade-out var(--motion-small) var(--ease-out) both; }

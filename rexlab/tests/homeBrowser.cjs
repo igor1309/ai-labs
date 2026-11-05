@@ -200,11 +200,15 @@ exports.runHome = async function(sizes) {
               skyName: part('.home-sky').getAttribute('aria-label'),
               play: part('.home-play').textContent,
               animations: [part('.home-today-copy'), part('.home-today-art')].map(e => getComputedStyle(e).animationName),
-              skyCore: getComputedStyle(part('.home-sky-body span')).backgroundColor,
+              skyBodies: document.querySelectorAll('.home-sky-body').length,
+              skyCore: part('.home-sky-body span') ? getComputedStyle(part('.home-sky-body span')).backgroundColor : null,
               coreToken: getComputedStyle(document.documentElement).getPropertyValue('--ds-sky-core').trim()
             };
           });
           assert(!measured.overflow, `${label}: horizontal page overflow`);
+          assert.equal(measured.skyBodies, game === 'skeletons' ? 0 : 1, `${label}: sky circle only behind other games`);
+          if (game === 'skeletons') assert.equal(measured.skyCore, null, `${label}: skeleton has no bright core`);
+          else assert(measured.skyCore, `${label}: other games retain their sky core`);
           assert(measured.brand.right + 4 <= measured.corner.x, `${label}: header overlaps`);
           assert.equal(measured.museumHidden, Math.min(width, height) < 600, `${label}: museum word`);
           assert.equal(measured.museumWrap, 'nowrap', label);
