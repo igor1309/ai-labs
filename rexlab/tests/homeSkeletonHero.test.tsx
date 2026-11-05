@@ -1,6 +1,6 @@
 import { act, fireEvent } from "@testing-library/react";
 import { describe, expect, test, vi } from "vitest";
-import { homeSkeletonHero, skeletonYaw, type SkeletonHeroEnvironment, type SkeletonScene } from "../src/homeSkeletonHero.ts";
+import { homeSkeletonHero, skeletonDuration, type SkeletonHeroEnvironment, type SkeletonScene } from "../src/homeSkeletonHero.ts";
 import { renderHomePageFeaturing } from "./homePage.tsx";
 
 function harness({ reduced = false, visible = true } = {}) {
@@ -77,7 +77,7 @@ test.each(["hidden", "offscreen", "zero-size"])("defers a queued load if the her
 test.each(["hidden-first", "offscreen-first"])("pauses on either condition and resumes only with both, retaining phase: %s", async order => {
   const h = harness(); await h.show(); await h.ready();
   h.tick(100); h.tick(2600);
-  expect(h.scene.draw).toHaveBeenLastCalledWith(500, 200, .1);
+  expect(h.scene.draw).toHaveBeenLastCalledWith(500, 200, 2500);
   h.hidden(true); h.intersection(false);
   expect(h.frames.size).toBe(0);
   const before = h.scene.draw.mock.calls.length;
@@ -86,25 +86,40 @@ test.each(["hidden-first", "offscreen-first"])("pauses on either condition and r
   expect(h.scene.draw).toHaveBeenCalledTimes(before);
   if (order === "hidden-first") h.intersection(true); else h.hidden(false);
   h.tick(100_000);
-  expect(h.scene.draw).toHaveBeenLastCalledWith(500, 200, .1);
+  expect(h.scene.draw).toHaveBeenLastCalledWith(500, 200, 2500);
   h.tick(102_500);
-  expect(h.scene.draw.mock.lastCall![2]).toBeCloseTo(0);
+  expect(h.scene.draw.mock.lastCall![2]).toBe(5000);
   h.stop();
 });
 
-test("reduced motion starts centrally and freezes the current pose on a live change", async () => {
+test("reduced motion shows the completed skeleton and does not replay on preference changes", async () => {
   const h = harness({ reduced: true }); await h.show(); await h.ready();
   expect(h.frames.size).toBe(0);
-  expect(h.scene.draw).toHaveBeenLastCalledWith(500, 200, 0);
-  h.motion(false); h.tick(0); h.tick(2500);
-  expect(h.scene.draw).toHaveBeenLastCalledWith(500, 200, .1);
-  h.motion(true);
-  expect(h.scene.draw).toHaveBeenLastCalledWith(500, 200, .1);
+  expect(h.scene.draw).toHaveBeenLastCalledWith(500, 200, skeletonDuration);
+  h.motion(false);
   expect(h.frames.size).toBe(0);
-  h.hidden(true); h.motion(false);
+  h.size(300, 200);
+  expect(h.scene.draw).toHaveBeenLastCalledWith(300, 200, skeletonDuration);
+  h.stop();
+});
+
+test("requesting reduced motion during assembly completes the skeleton and cancels the turn", async () => {
+  const h = harness(); await h.show(); await h.ready();
+  h.tick(0); h.tick(1500); h.motion(true);
+  expect(h.scene.draw).toHaveBeenLastCalledWith(500, 200, skeletonDuration);
   expect(h.frames.size).toBe(0);
-  h.hidden(false); h.tick(90_000);
-  expect(h.scene.draw).toHaveBeenLastCalledWith(500, 200, .1);
+  h.motion(false); expect(h.frames.size).toBe(0);
+  h.stop();
+});
+
+test("plays once per visit and stops scheduling frames after the turn, including on resize", async () => {
+  const h = harness(); await h.show(); await h.ready();
+  h.tick(0); h.tick(20_000);
+  expect(h.scene.draw).toHaveBeenLastCalledWith(500, 200, skeletonDuration);
+  expect(h.frames.size).toBe(0);
+  h.intersection(false); h.intersection(true); h.size(600, 300);
+  expect(h.scene.draw).toHaveBeenLastCalledWith(600, 300, skeletonDuration);
+  expect(h.frames.size).toBe(0);
   h.stop();
 });
 
@@ -112,7 +127,7 @@ test("resizing redraws the same scene and pose without replaying readiness", asy
   const h = harness(); await h.show(); await h.ready();
   h.tick(0); h.tick(2500);
   h.size(200, 500);
-  expect(h.scene.draw).toHaveBeenLastCalledWith(200, 500, .1);
+  expect(h.scene.draw).toHaveBeenLastCalledWith(200, 500, 2500);
   expect(h.environment.load).toHaveBeenCalledTimes(1);
   expect(h.host.hasAttribute("data-ready")).toBe(true);
   expect(h.frames.size).toBe(1);
@@ -165,10 +180,6 @@ test("unmount cancels frames, observers and listeners, aborts loading, and relea
   expect(h.scene.dispose).toHaveBeenCalledTimes(1);
 });
 
-test("yaw stays inside the gentle range and completes its ten-second cycle", () => {
-  for (let ms = 0; ms <= 20_000; ms += 125) expect(Math.abs(skeletonYaw(ms))).toBeLessThanOrEqual(.1);
-  expect([0, 2500, 5000, 7500, 10000].map(skeletonYaw)).toEqual([0, .1, expect.closeTo(0), -.1, expect.closeTo(0)]);
-});
 
 describe("Home artwork and navigation", () => {
   test("only BONES has the decorative canvas; its picture, title and PLAY keep the same door and reward", async () => {
@@ -177,7 +188,7 @@ describe("Home artwork and navigation", () => {
     expect(hero.getAttribute("aria-hidden")).toBe("true");
     expect(getComputedStyle(hero).pointerEvents).toBe("none");
     expect(hero.querySelector("canvas")!.tabIndex).toBe(-1);
-    expect(hero.querySelector("img")!.getAttribute("src")).toContain("tyrannosaurus/skeleton.webp");
+    expect(hero.querySelector("img")!.getAttribute("src")).toContain("skeleton-hero/standing.png");
     expect(document.querySelector(".featured-card-badge")!.textContent).toBe("3");
     for (const selector of [".home-today-art", ".featured-card-title", ".home-play"]) await user.click(document.querySelector(selector)!);
     expect(opened).toEqual(["skeletons", "skeletons", "skeletons"]);

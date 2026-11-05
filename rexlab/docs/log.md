@@ -2,7 +2,7 @@
 
 ## 2026-11-05
 
-- LAB-1003: BONES on Home features a gently turning ivory T. rex skeleton, with a static pose for reduced motion and its existing picture when 3D is unavailable. The hero pauses out of view and keeps the same controls and rewards.
+- LAB-1003: The skeleton Home hero assembles from a bone pile, makes one smooth full turn, and rests; reduced motion shows its standing pose.
 
 - LAB-918: FIND THE PAIR is the dig site from welcome to level offer, with its screens walked in a browser on every device, with and without motion.
 - LAB-992: FIND THE PAIR's result and level offer are the dig site on every device, light, dark and Russian: the found dinosaurs in the sky with NEW inside each card's corner, the tries, stars and best on the sand, and the offer's LEVEL UP tag with NOT NOW before YES. Other games keep their look.

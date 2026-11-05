@@ -14,3 +14,7 @@ in Knuthenborg Safaripark, Denmark.
   no textures or external resources. The app adds a gentle whole-model yaw.
 
 The static fallback is the existing RexLab Tyrannosaurus skeleton picture.
+
+## Assembly hero
+
+`assembly.glb` contains the approved procedural standing body and an extracted head from `tyrannosaurus.glb` above. The scanned head was trimmed, scaled, rotated and recolored; its Rigsters CC BY 4.0 attribution applies. Each bone group includes assembly start, end, rotation and timing metadata. Identical geometry is shared to keep the asset below two megabytes. `standing.png` is the completed-pose fallback rendered from this scene.

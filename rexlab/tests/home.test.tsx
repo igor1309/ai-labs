@@ -543,7 +543,7 @@ describe("the large card", () => {
       // The featured skeleton has a 3D layer and a T. rex fallback; its small tile keeps its original artwork.
       else if (game === "skeletons") {
         expect(card.querySelector(".home-skeleton-hero canvas")).not.toBeNull();
-        expect(looks(card).sources).toEqual([expect.stringContaining("tyrannosaurus/skeleton.webp")]);
+        expect(looks(card).sources).toEqual([expect.stringContaining("skeleton-hero/standing.png")]);
       }
       else {
         expect(looks(card).picture).toEqual(tile.picture);

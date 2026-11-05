@@ -13,7 +13,7 @@ import { ParentMenu, type ParentMenuProps } from "./ParentMenu.tsx";
 import { Picture } from "./Picture.tsx";
 import { THEME_CHOICES, type ThemeChoice } from "./theme.ts";
 import { Tooth } from "./Tooth.tsx";
-import skeletonHeroFallback from "./assets/skeletons/tyrannosaurus/skeleton.webp";
+import skeletonHeroFallback from "./assets/home/skeleton-hero/standing.png";
 
 const THEME_SYMBOLS: Record<ThemeChoice, LucideIcon> = { system: Monitor, light: Sun, dark: Moon };
 // The age level menu's button shows the chosen level as a line symbol.

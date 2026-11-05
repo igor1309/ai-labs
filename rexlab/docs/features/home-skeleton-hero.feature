@@ -8,8 +8,10 @@ Feature: Animated skeleton in the home hero
     Given SKELETONS / СКЕЛЕТЫ is featured and reduced motion is off
     When the locally bundled T. rex GLB has rendered its first frame
     Then the current picture, shimmer or picture error look fades to the rendered skeleton using shared motion tokens
-    And each Home visit starts from the central pose
-    And the skeleton turns within 0.1 radians either side of that pose on a ten-second cycle
+    And each Home visit assembles the approved standing skeleton from a pile of bones in about five seconds
+    And after a brief hold it turns 360 degrees smoothly between seconds six and fourteen
+    And it rests in its three-quarter pose without scheduling continuous rendering
+    And it does not replay until the next Home visit
     And the ivory bones have visible shaded edges against the light and dark sky
 
   Scenario Outline: The featured control works in every rendering state
@@ -37,7 +39,7 @@ Feature: Animated skeleton in the home hero
   Scenario: The animated asset cannot be shown
     Given SKELETONS / СКЕЛЕТЫ is featured
     When loading the GLB fails or WebGL is unavailable or lost
-    Then the existing T. rex skeleton Picture remains available with its normal loading and error states
+    Then the approved standing skeleton Picture remains available with its normal loading and error states
     And that fallback fades in using the shared motion tokens
     And an error or lost context keeps the fallback for the rest of this Home visit
     And returning from the background after context loss keeps the fallback
@@ -46,15 +48,15 @@ Feature: Animated skeleton in the home hero
   Scenario: Home opens with reduced motion already enabled
     Given the device requests reduced motion before Home opens
     When the visible featured skeleton finishes loading
-    Then it shows the central static pose without continuous rendering
+    Then it shows the completed standing pose without continuous rendering
     And the current picture state changes to that pose with the shared short fade
 
   Scenario: Reduced motion changes while Home is open
     Given the skeleton hero is ready
     When the device requests reduced motion
-    Then it freezes its current pose without continuous rendering or a jump
+    Then it shows the completed standing pose without continuous rendering
     When the device stops requesting reduced motion
-    Then turning resumes from the frozen phase without a jump only while the page is visible and the hero is in the viewport
+    Then the completed pose remains still for the rest of this Home visit
     And any cross-fade to the renderer or fade to the picture uses the shared short fade while reduced motion is requested
 
   Scenario: Loading and rendering follow visibility
@@ -74,7 +76,7 @@ Feature: Animated skeleton in the home hero
     When the hero is unmounted
     Then its loading is cancelled, rendering and listeners stop and its GPU resources are released
     And a late load completion releases its resources without appearing
-    And returning Home starts from the central pose and fades to the new renderer when ready
+    And returning Home starts a new assembly animation unless reduced motion is enabled and fades to the new renderer when ready
 
   Scenario: Turning the device
     Given the skeleton hero is ready

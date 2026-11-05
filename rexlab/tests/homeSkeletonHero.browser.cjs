@@ -58,7 +58,7 @@ async function visibleFallback(page) {
 }
 async function run() {
   const files = await appFiles();
-  const glb = [...files.keys()].find(file => /tyrannosaurus.*\.glb$/.test(file));
+  const glb = [...files.keys()].find(file => /assembly.*\.glb$/.test(file));
   assert(glb && files.get(glb).length < 2_000_000, 'self-contained optimized GLB ships with the app');
   assert(files.get('sw.js').includes(Buffer.from(glb)), 'release includes GLB in its offline file list');
   if (output) await mkdir(output, { recursive: true });
@@ -96,7 +96,9 @@ async function run() {
           WebGL2RenderingContext.prototype.drawElements = function(...args) {
             window.skeletonDraws++;
             const result = draw.apply(this, args);
-            if (!window.skeletonPixels) {
+            if (!window.skeletonPixels && !window.skeletonCapturePending) {
+              window.skeletonCapturePending = true;
+              queueMicrotask(() => {
               const pixels = new Uint8Array(this.drawingBufferWidth * this.drawingBufferHeight * 4);
               this.readPixels(0, 0, this.drawingBufferWidth, this.drawingBufferHeight, this.RGBA, this.UNSIGNED_BYTE, pixels);
               let painted = 0, bright = 0, warm = 0;
@@ -106,6 +108,7 @@ async function run() {
                 if (pixels[i] >= pixels[i + 2]) warm++;
               }
               window.skeletonPixels = { painted, bright, warm, total: pixels.length / 4 };
+              });
             }
             return result;
           };
@@ -167,7 +170,13 @@ async function run() {
           assert.equal(await page.evaluate(() => window.skeletonDraws), staticDraws, 'reduced motion has no continuous GPU draws');
           await page.emulateMedia({ reducedMotion: 'no-preference' });
           await frames(page);
-          assert(await page.evaluate(() => window.skeletonDraws) > staticDraws, 'normal motion renders continuously');
+          const completedDraws = await page.evaluate(() => window.skeletonDraws);
+          await frames(page);
+          assert.equal(await page.evaluate(() => window.skeletonDraws), completedDraws, 'completed reduced-motion visit does not replay');
+          await page.reload(); await ready(page);
+          const runningDraws = await page.evaluate(() => window.skeletonDraws);
+          await frames(page);
+          assert(await page.evaluate(() => window.skeletonDraws) > runningDraws, 'new Home visit animates');
           await page.evaluate(() => {
             window.heroVisible = false;
             Object.defineProperty(document, 'visibilityState', { get: () => window.heroVisible ? 'visible' : 'hidden', configurable: true });

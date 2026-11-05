@@ -1,5 +1,5 @@
 export type SkeletonScene = {
-  draw(width: number, height: number, yaw: number): void;
+  draw(width: number, height: number, milliseconds: number): void;
   dispose(): void;
 };
 
@@ -15,7 +15,7 @@ export type SkeletonHeroEnvironment = {
   cancelFrame(id: number): void;
 };
 
-export const skeletonYaw = (milliseconds: number) => Math.sin(milliseconds * 2 * Math.PI / 10_000) * .1;
+export const skeletonDuration = 14_000;
 
 // A Home visit owns the renderer. A lost context stays on the picture until
 // the next visit, rather than repeatedly allocating a context on a tired GPU.
@@ -54,17 +54,17 @@ export function homeSkeletonHero(host: HTMLElement, environment: SkeletonHeroEnv
   const paint = () => {
     if (!scene || !active()) return;
     try {
-      scene.draw(width, height, skeletonYaw(elapsed));
+      scene.draw(width, height, environment.reducedMotion() ? skeletonDuration : elapsed);
       if (!failed) host.dataset.ready = "";
     } catch { fail(); }
   };
   const tick = (milliseconds: number) => {
     frame = undefined;
     if (!active() || environment.reducedMotion()) { previous = undefined; return; }
-    if (previous !== undefined) elapsed += Math.max(0, milliseconds - previous);
+    if (previous !== undefined) elapsed = Math.min(skeletonDuration, elapsed + Math.max(0, milliseconds - previous));
     previous = milliseconds;
     paint();
-    if (active()) frame = environment.requestFrame(tick);
+    if (active() && elapsed < skeletonDuration) frame = environment.requestFrame(tick);
   };
   const update = () => {
     if (!active()) { pause(); return; }
@@ -84,8 +84,8 @@ export function homeSkeletonHero(host: HTMLElement, environment: SkeletonHeroEnv
     }
     if (!scene) return;
     paint();
-    if (environment.reducedMotion()) pause();
-    else if (active() && frame === undefined) frame = environment.requestFrame(tick);
+    if (environment.reducedMotion()) { elapsed = skeletonDuration; pause(); }
+    else if (active() && elapsed < skeletonDuration && frame === undefined) frame = environment.requestFrame(tick);
   };
   const lost = (event: Event) => { event.preventDefault(); fail(); };
   canvas.addEventListener("webglcontextlost", lost);
