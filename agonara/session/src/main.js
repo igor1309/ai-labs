@@ -17,7 +17,9 @@ if (!token || !allowedChatId || !statePath || !baseUrl || !login || !password) {
 const log = (message) => console.log(`${new Date().toISOString()} ${message}`);
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const client = createAgonaraClient({ baseUrl, login, password, fetch: globalThis.fetch });
-const flow = createProgramFlow({ client });
+// SESSION_PAGE_SIZE tunes how much text a lecture page holds for the phone.
+const pageSize = Number(process.env.SESSION_PAGE_SIZE) || undefined;
+const flow = createProgramFlow({ client, ...(pageSize ? { pageSize } : {}) });
 
 async function api(method, params = {}) {
   const response = await fetch(`https://api.telegram.org/bot${token}/${method}`, {

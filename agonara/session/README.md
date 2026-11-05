@@ -58,12 +58,14 @@ student.
   written, materials first and marked 📖. Back and Programs, and Prev and Next,
   are button rows at the end of the message. A press redraws the same message
   instead of adding one.
-- **Reading:** a lecture is read one section at a time, cut at its
-  top-level section headings, with its front matter left out. The text before
-  the first section is a page of its own, and each page lists every section,
-  the current one in bold and the others tappable, with Prev and Next. Nothing
-  collapses: a section opening and closing in a tall message moved the chat.
-  A section longer than 16,000 characters runs on over several pages.
+- **Reading:** a lecture comes a phone screen at a time (about 1,000
+  characters, `SESSION_PAGE_SIZE` to tune), cut at paragraphs and never across
+  a section, with its front matter left out. A page that fits the screen is
+  flipped in place by Next, so nothing scrolls and the reader keeps their
+  place; a taller page left Telegram showing its end. Each page starts with
+  where it is (*§2 Section · 3/6*) and ends with Prev, Next and Contents. The
+  contents page lists the intro and each section to tap, and the lecture's
+  linked items.
 - **Plain fallback:** if Telegram refuses a rich message, the screen goes out
   as before, as HTML text with number keys five to a row and a "📖 Read" button
   per material, split at 4,096 characters, and the refusal is logged. Markup

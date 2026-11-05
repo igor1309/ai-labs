@@ -1,8 +1,9 @@
 // The session flow: given the session state and an action, it returns the
 // screen as meaning (title, text, numbered lists, actions by kind) and the
 // updated state. How a screen is drawn is the surface's business.
-// A page fits one rich message (32,768 characters) with room for its markup.
-export const PAGE_SIZE = 16000;
+// A page fits one phone screen, so Next flips it in place and nothing
+// scrolls; about 1,000 characters of rich-message text on an iPhone.
+export const PAGE_SIZE = 1000;
 
 export function initialSession() {
   return { step: 0, screen: "programs", items: [], history: [] };
@@ -28,11 +29,17 @@ export function createProgramFlow({ client, pageSize = PAGE_SIZE }) {
       if (current.screen !== "entity" || current.pageCount === undefined) return null;
       const page = (current.page ?? 0) + (actionId === "next" ? 1 : -1);
       if (page < 0 || page >= current.pageCount) return null;
-      target = { ...target, page };
+      target = { screen: "entity", entityId: current.entityId, page };
+    } else if (actionId === "contents") {
+      if (current.screen !== "entity" || current.pageCount === undefined || current.contents) return null;
+      target = { ...target, contents: true };
+    } else if (actionId === "read") {
+      if (!current.contents) return null;
+      target = { screen: "entity", entityId: current.entityId, page: current.page ?? 0 };
     } else if (/^sec_\d+$/.test(actionId ?? "")) {
       const page = Number(actionId.slice(4));
       if (current.screen !== "entity" || current.pageCount === undefined || page >= current.pageCount) return null;
-      target = { ...target, page };
+      target = { screen: "entity", entityId: current.entityId, page };
     } else if (actionId !== undefined) {
       const match = /^open_(0|[1-9]\d*)$/.exec(actionId);
       const item = match && current.items[Number(match[1])];
@@ -68,12 +75,27 @@ export function createProgramFlow({ client, pageSize = PAGE_SIZE }) {
         target = { ...target, page };
         view = { ...view, body: page === 0 ? node.body : undefined, markdown: pages[page].text,
           page: { index: page, count: pageCount } };
-        const sections = pages.flatMap((entry, index) =>
-          (entry.title && pages[index - 1]?.title !== entry.title ? [{ page: index, label: entry.title }] : []));
-        if (sections.length > 1) {
-          view.section = pages[page].title;
-          view.sections = sections.map((entry) => ({ ...entry, current: entry.label === pages[page].title }));
+        const starts = pages.flatMap((entry, index) =>
+          (index === 0 || pages[index - 1].title !== entry.title ? [index] : []));
+        const sectionOf = starts.findLastIndex((start) => start <= page);
+        const start = starts[sectionOf];
+        const end = starts[sectionOf + 1] ?? pageCount;
+        const numberOfSection = (index) => (pages[0].title === null ? index : index + 1);
+        view.position = {
+          section: pages[page].title === null ? null : numberOfSection(sectionOf),
+          label: pages[page].title, index: page - start, count: end - start,
+        };
+        const contents = starts.map((startPage, index) => ({
+          page: startPage, n: pages[startPage].title === null ? null : numberOfSection(index),
+          label: pages[startPage].title ?? "Intro", current: index === sectionOf,
+        }));
+        if (target.contents) {
+          view = { title: node.title, contents, lists: view.lists };
+        } else if (pageCount > 1) {
+          // Linked items live on the contents page, keeping each page one screen.
+          view.lists = [];
         }
+        if (contents.length > 1) view.hasContents = true;
       }
     }
 
@@ -81,13 +103,15 @@ export function createProgramFlow({ client, pageSize = PAGE_SIZE }) {
       id: `open_${index}`, kind: item.kind === MATERIAL ? "material" : "item",
       label: item.kind === MATERIAL ? item.title : String(numberOf(view.lists, index)),
     }));
-    if (view.page) {
+    if (view.contents) {
+      for (const entry of view.contents) actions.push({ id: `sec_${entry.page}`, kind: "section", label: entry.label });
+      actions.push({ id: "read", kind: "page", label: "◀ Text" });
+    } else if (view.page) {
       if (view.page.index > 0) actions.push({ id: "prev", kind: "page", label: "◀ Prev" });
       if (view.page.index < view.page.count - 1) actions.push({ id: "next", kind: "page", label: "Next ▶" });
+      if (view.hasContents) actions.push({ id: "contents", kind: "page", label: "☰ Contents" });
     }
-    for (const entry of view.sections ?? []) {
-      if (!entry.current) actions.push({ id: `sec_${entry.page}`, kind: "section", label: entry.label });
-    }
+    delete view.hasContents;
     if (history.length) actions.push({ id: "back", kind: "nav", label: "◀ Back" });
     if (target.screen !== "programs") actions.push({ id: "programs", kind: "nav", label: "Programs" });
     const next = { ...target, items, history, step: session.step + 1 };

@@ -5,12 +5,18 @@ export const NUMBERS_PER_ROW = 5;
 export const MATERIAL_LABEL_LIMIT = 28;
 
 export function render(view, actions, step) {
-  const header = view.page
+  const header = view.position && view.page.count > 1
+    ? `📖 <b>${escape(view.title)}</b>\n<i>${escape(positionLabel(view.position))}</i>`
+    : view.page
     ? `📖 <b>${escape(view.title)}</b>\n<i>Page ${view.page.index + 1} of ${view.page.count}</i>`
     : `<b>${escape(view.title)}</b>`;
   const parts = [header];
   if (view.body) parts.push(escape(view.body));
   if (view.markdown) parts.push(markdownToHtml(view.markdown));
+  if (view.contents) {
+    parts.push(["<b>Contents</b>", ...view.contents.map((entry) =>
+      `${entry.current ? "▸ " : ""}${entry.n === null ? "" : `§${entry.n} `}${escape(entry.label)}`)].join("\n"));
+  }
   for (const list of view.lists ?? []) {
     const lines = list.entries.map((entry) =>
       (entry.n === undefined ? `📖 Read: ${escape(entry.label)}` : `${entry.n}. ${escape(entry.label)}`));
@@ -87,8 +93,7 @@ function chunk(list, size) {
 }
 
 // Rich messages (Bot API 10.1): one message per screen, names tappable where
-// they are written, a lecture's sections collapsed, paging and navigation as
-// button rows at the end.
+// they are written, paging and navigation as button rows at the end.
 export const RICH_TEXT_LIMIT = 32768;
 
 export function renderRich(view, actions, step) {
@@ -96,14 +101,15 @@ export function renderRich(view, actions, step) {
   const tap = (id, label) => (ids.has(id)
     ? `<tg-button type="callback_data" style="link" data="${step}:${id}">${escape(label)}</tg-button>`
     : escape(label));
-  const parts = [`<h2>${view.page ? "📖 " : ""}${escape(view.title)}</h2>`];
-  if (view.page && view.page.count > 1 && !view.sections) parts.push(`<p><i>Page ${view.page.index + 1} of ${view.page.count}</i></p>`);
+  const parts = view.position && view.page.count > 1
+    ? [`<p><i>📖 ${escape(view.position.section === null ? `${view.title} · ` : "")}${escape(positionLabel(view.position))}</i></p>`]
+    : [`<h2>${view.page || view.contents ? "📖 " : ""}${escape(view.title)}</h2>`];
   if (view.body) parts.push(paragraph(escape(view.body)));
   if (view.markdown) parts.push(markdownToRich(view.markdown));
-  if (view.sections) {
-    const items = view.sections.map((entry) =>
-      `<li>${entry.current ? `<b>${escape(entry.label)}</b>` : tap(`sec_${entry.page}`, entry.label)}</li>`).join("");
-    parts.push(`<h3>Sections</h3><ol>${items}</ol>`);
+  if (view.contents) {
+    const items = view.contents.map((entry) =>
+      `<li>${entry.current ? "▸ " : ""}${entry.n === null ? "" : `§${entry.n} `}${tap(`sec_${entry.page}`, entry.label)}</li>`);
+    parts.push(`<h3>Contents</h3><ul>${items.join("")}</ul>`);
   }
   for (const list of view.lists ?? []) {
     const materials = list.entries.every((entry) => entry.n === undefined);
@@ -171,4 +177,10 @@ function richBlock(lines) {
 
 function paragraph(html) {
   return `<p>${html.replace(/\n/g, "<br>")}</p>`;
+}
+
+// "§2 Section · 3/6": where a page is in its lecture, shown at its top.
+export function positionLabel({ section, label, index, count }) {
+  const where = section === null ? "Intro" : `§${section} ${label}`;
+  return count > 1 ? `${where} · ${index + 1}/${count}` : where;
 }

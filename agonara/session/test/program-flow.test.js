@@ -105,7 +105,7 @@ test("a material is paged, without front matter, and its body shows on the first
   assert.deepEqual(calls, [["entity", "material-id"], ["materialContent", "material-id"]]);
   assert.deepEqual(first.view, {
     title: "Notes", body: "Lecture.", lists: [], markdown: "# Ethics\n\nFirst part.",
-    page: { index: 0, count: 2 },
+    page: { index: 0, count: 2 }, position: { section: null, label: null, index: 0, count: 2 },
   });
   assert.deepEqual(ids(first.actions), ["next", "programs"]);
   assert.equal(first.session.page, 0);
@@ -114,6 +114,7 @@ test("a material is paged, without front matter, and its body shows on the first
   const second = await flow(first.session, "next");
   assert.deepEqual(second.view, {
     title: "Notes", body: undefined, lists: [], markdown: "Second part.", page: { index: 1, count: 2 },
+    position: { section: null, label: null, index: 1, count: 2 },
   });
   assert.deepEqual(ids(second.actions), ["prev", "programs"]);
   assert.deepEqual(second.session.history, first.session.history);
@@ -244,28 +245,42 @@ test("pages break at paragraphs, then lines, then anywhere, and lose no text", (
 });
 
 
-test("a lecture with sections is read one section at a time, any section a tap away", async () => {
-  const { flow, node } = setup();
+test("a lecture is read a screen at a time, each page saying where it is, with contents a tap away", async () => {
+  const { client, node } = setup();
   makeMaterial(node);
-  node.relationships = { outgoing: [] };
-  const content = "---\nx: 1\n---\n# Lecture\n\nIntro.\n\n## A\n\na text\n\n### A1\n\nsub\n\n## B\n\nb text";
-  const { client } = setup();
-  const sectioned = createProgramFlow({ client: { ...client, entity: async () => ({ navigationNode: node }),
+  node.relationships = { outgoing: [{ toEntityId: "c", toTitle: "Concept", toKind: "concept" }] };
+  const content = "---\nx: 1\n---\n# Lecture\n\nIntro.\n\n## A\n\naaaa\n\nbbbb\n\n## B\n\nb text";
+  const flow = createProgramFlow({ pageSize: 12, client: { ...client, entity: async () => ({ navigationNode: node }),
     materialContent: async () => ({ content }) } });
-  const first = await sectioned(entityState());
-  assert.equal(first.view.markdown, "# Lecture\n\nIntro.");
-  assert.equal(first.view.section, null);
-  assert.deepEqual(first.view.sections, [{ page: 1, label: "A", current: false }, { page: 2, label: "B", current: false }]);
-  assert.deepEqual(ids(first.actions), ["next", "sec_1", "sec_2", "programs"]);
-  const b = await sectioned(first.session, "sec_2");
-  assert.equal(b.view.markdown, "## B\n\nb text");
-  assert.equal(b.view.body, undefined);
-  assert.deepEqual(ids(b.actions), ["prev", "sec_1", "programs"]);
-  const a = await sectioned(b.session, "prev");
-  assert.equal(a.view.markdown, "## A\n\na text\n\n### A1\n\nsub");
-  assert.equal(await sectioned(a.session, "sec_9"), null);
-  const list = await sectioned(initialSession());
-  assert.equal(await sectioned(list.session, "sec_1"), null);
+  const intro = await flow(entityState());
+  assert.equal(intro.view.markdown, "# Lecture");
+  assert.deepEqual(intro.view.position, { section: null, label: null, index: 0, count: 2 });
+  assert.deepEqual(intro.view.lists, []);
+  assert.deepEqual(ids(intro.actions), ["open_0", "next", "contents", "programs"]);
+
+  const a2 = await flow((await flow((await flow(intro.session, "next")).session, "next")).session, "next");
+  assert.equal(a2.view.markdown, "bbbb");
+  assert.deepEqual(a2.view.position, { section: 1, label: "A", index: 1, count: 2 });
+
+  const contents = await flow(a2.session, "contents");
+  assert.deepEqual(contents.view.contents, [
+    { page: 0, n: null, label: "Intro", current: false },
+    { page: 2, n: 1, label: "A", current: true },
+    { page: 4, n: 2, label: "B", current: false },
+  ]);
+  assert.equal(contents.view.lists[0].entries[0].label, "Concept");
+  assert.deepEqual(ids(contents.actions), ["open_0", "sec_0", "sec_2", "sec_4", "read", "programs"]);
+  assert.equal(await flow(contents.session, "contents"), null);
+  assert.equal((await flow(contents.session, "read")).view.markdown, "bbbb");
+
+  const b = await flow(contents.session, "sec_4");
+  assert.deepEqual(b.view.position, { section: 2, label: "B", index: 0, count: 1 });
+  assert.equal(b.session.contents, undefined);
+  assert.equal(await flow(b.session, "read"), null);
+  assert.equal(await flow(b.session, "sec_9"), null);
+  const list = await flow(initialSession());
+  assert.equal(await flow(list.session, "sec_1"), null);
+  assert.equal(await flow(list.session, "contents"), null);
 });
 
 test("section pages: a section longer than a page runs on under the same title", () => {

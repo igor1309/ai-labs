@@ -2,6 +2,7 @@
 
 ## 2026-11-05
 
+- The Session bot pages a lecture a phone screen at a time, flipped in place by Next, with where you are at the top and a contents page, since a taller message left Telegram showing its end. Each update logs its tap. LAB-962.
 - The Session bot reads a lecture one section at a time, each page listing the sections to jump between, instead of collapsed sections that moved the chat. LAB-962.
 - The Session bot draws each screen as one Telegram rich message: names tappable in the text, a lecture in one message with its sections collapsed, and Back and Programs inside the message; the old layout is the fallback. LAB-962.
 - The Session bot is laid out for a phone: numbered lists with number keys, a 📖 button per material, lectures a page at a time with formatting, and each press redrawing the same message. LAB-962.
