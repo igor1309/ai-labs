@@ -84,3 +84,94 @@ function chunk(list, size) {
   for (let i = 0; i < list.length; i += size) rows.push(list.slice(i, i + size));
   return rows;
 }
+
+// Rich messages (Bot API 10.1): one message per screen, names tappable where
+// they are written, a lecture's sections collapsed, paging and navigation as
+// button rows at the end.
+export const RICH_TEXT_LIMIT = 32768;
+
+export function renderRich(view, actions, step) {
+  const ids = new Set(actions.map((action) => action.id));
+  const tap = (id, label) => (ids.has(id)
+    ? `<tg-button type="callback_data" style="link" data="${step}:${id}">${escape(label)}</tg-button>`
+    : escape(label));
+  const parts = [`<h2>${view.page ? "📖 " : ""}${escape(view.title)}</h2>`];
+  if (view.page && view.page.count > 1) parts.push(`<p><i>Page ${view.page.index + 1} of ${view.page.count}</i></p>`);
+  if (view.body) parts.push(paragraph(escape(view.body)));
+  if (view.markdown) parts.push(markdownToRich(view.markdown));
+  for (const list of view.lists ?? []) {
+    const materials = list.entries.every((entry) => entry.n === undefined);
+    const items = list.entries.map((entry) =>
+      `<li>${materials ? "📖 " : ""}${tap(`open_${entry.index}`, entry.label)}</li>`).join("");
+    if (list.heading) parts.push(`<h3>${escape(list.heading)}</h3>`);
+    parts.push(materials ? `<ul>${items}</ul>` : `<ol>${items}</ol>`);
+  }
+  if (view.empty) parts.push(paragraph(escape(view.empty)));
+  for (const kind of ["page", "nav"]) {
+    const row = actions.filter((action) => action.kind === kind)
+      .map((action) => `<tg-button type="callback_data" data="${step}:${action.id}">${escape(action.label)}</tg-button>`);
+    if (row.length) parts.push(`<tg-button-row>${row.join("")}</tg-button-row>`);
+  }
+  return parts.join("");
+}
+
+// Markdown as rich HTML: each heading below the top level opens a collapsed
+// section that runs to the next heading; list runs become lists; other lines
+// of a paragraph are joined with <br>.
+export function markdownToRich(markdown) {
+  const out = [];
+  let open = false;
+  const close = () => { if (open) out.push("</details>"); open = false; };
+  // Items of one list are often parted by blank lines; keep them one list.
+  const item = String.raw`[ \t]*(?:[-*+]|\d+[.)])[ \t]+`;
+  const joined = markdown.trim().replace(new RegExp(`(^${item}.*)\\n{2,}(?=${item})`, "gm"), "$1\n");
+  for (const block of joined.split(/\n{2,}/)) {
+    const lines = block.split("\n");
+    const heading = lines.length === 1 && /^(#{1,6})\s+(.*)$/.exec(lines[0]);
+    if (heading) {
+      close();
+      const text = inline(escape(heading[2].replace(/\*\*|__/g, "")));
+      if (heading[1].length === 1) out.push(`<h3>${text}</h3>`);
+      else { out.push(`<details><summary>${text}</summary>`); open = true; }
+      continue;
+    }
+    if (/^\s*([-*_])(\s*\1){2,}\s*$/.test(block)) { out.push("<hr>"); continue; }
+    out.push(richBlock(lines));
+  }
+  close();
+  return out.join("");
+}
+
+function richBlock(lines) {
+  const out = [];
+  let list = null;
+  let text = [];
+  const flush = () => {
+    if (text.length) out.push(paragraph(text.join("<br>")));
+    text = [];
+  };
+  const end = () => { if (list) out.push(`<${list.tag}>${list.items.join("")}</${list.tag}>`); list = null; };
+  for (const raw of lines) {
+    const bullet = /^\s*[-*+]\s+(.*)$/.exec(raw);
+    const number = /^\s*(\d+)[.)]\s+(.*)$/.exec(raw);
+    const tag = bullet ? "ul" : number ? "ol" : null;
+    if (!tag) {
+      end();
+      text.push(inline(escape(raw)));
+      continue;
+    }
+    flush();
+    if (list?.tag !== tag) {
+      end();
+      list = { tag, items: [] };
+    }
+    list.items.push(`<li>${inline(escape(bullet ? bullet[1] : number[2]))}</li>`);
+  }
+  end();
+  flush();
+  return out.join("");
+}
+
+function paragraph(html) {
+  return `<p>${html.replace(/\n/g, "<br>")}</p>`;
+}

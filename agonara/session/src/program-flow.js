@@ -1,7 +1,8 @@
 // The session flow: given the session state and an action, it returns the
 // screen as meaning (title, text, numbered lists, actions by kind) and the
 // updated state. How a screen is drawn is the surface's business.
-export const PAGE_SIZE = 2500;
+// A page fits one rich message (32,768 characters) with room for its markup.
+export const PAGE_SIZE = 16000;
 
 export function initialSession() {
   return { step: 0, screen: "programs", items: [], history: [] };
