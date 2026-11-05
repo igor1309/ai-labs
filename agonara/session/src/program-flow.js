@@ -29,6 +29,10 @@ export function createProgramFlow({ client, pageSize = PAGE_SIZE }) {
       const page = (current.page ?? 0) + (actionId === "next" ? 1 : -1);
       if (page < 0 || page >= current.pageCount) return null;
       target = { ...target, page };
+    } else if (/^sec_\d+$/.test(actionId ?? "")) {
+      const page = Number(actionId.slice(4));
+      if (current.screen !== "entity" || current.pageCount === undefined || page >= current.pageCount) return null;
+      target = { ...target, page };
     } else if (actionId !== undefined) {
       const match = /^open_(0|[1-9]\d*)$/.exec(actionId);
       const item = match && current.items[Number(match[1])];
@@ -58,12 +62,18 @@ export function createProgramFlow({ client, pageSize = PAGE_SIZE }) {
       }));
       view = { title: node.title, body: node.body, lists: grouped(items) };
       if (node.acceptedKind === MATERIAL && node.hasContent) {
-        const pages = paginate(withoutFrontMatter((await client.materialContent(node.entityId)).content), pageSize);
+        const pages = sectionPages(withoutFrontMatter((await client.materialContent(node.entityId)).content), pageSize);
         pageCount = pages.length;
         const page = Math.min(target.page ?? 0, pageCount - 1);
         target = { ...target, page };
-        view = { ...view, body: page === 0 ? node.body : undefined, markdown: pages[page],
+        view = { ...view, body: page === 0 ? node.body : undefined, markdown: pages[page].text,
           page: { index: page, count: pageCount } };
+        const sections = pages.flatMap((entry, index) =>
+          (entry.title && pages[index - 1]?.title !== entry.title ? [{ page: index, label: entry.title }] : []));
+        if (sections.length > 1) {
+          view.section = pages[page].title;
+          view.sections = sections.map((entry) => ({ ...entry, current: entry.label === pages[page].title }));
+        }
       }
     }
 
@@ -74,6 +84,9 @@ export function createProgramFlow({ client, pageSize = PAGE_SIZE }) {
     if (view.page) {
       if (view.page.index > 0) actions.push({ id: "prev", kind: "page", label: "◀ Prev" });
       if (view.page.index < view.page.count - 1) actions.push({ id: "next", kind: "page", label: "Next ▶" });
+    }
+    for (const entry of view.sections ?? []) {
+      if (!entry.current) actions.push({ id: `sec_${entry.page}`, kind: "section", label: entry.label });
     }
     if (history.length) actions.push({ id: "back", kind: "nav", label: "◀ Back" });
     if (target.screen !== "programs") actions.push({ id: "programs", kind: "nav", label: "Programs" });
@@ -121,6 +134,22 @@ function descriptor({ screen, programId, entityId, title, page }) {
 // Material files start with YAML front matter about their conversion, not for the student.
 function withoutFrontMatter(text) {
   return text.replace(/^---\n[\s\S]*?\n---\n+/, "");
+}
+
+// A lecture read one section at a time: it is cut at its top-level section
+// headings (the shallowest level below the title), the text before the first
+// one is a page of its own, and a section longer than a page runs on over
+// several pages with the same title. Text with no sections is paged as is.
+export function sectionPages(text, size) {
+  const levels = [...text.matchAll(/^(#{2,6})\s+\S/gm)].map((match) => match[1].length);
+  if (!levels.length) return paginate(text, size).map((page) => ({ title: null, text: page }));
+  const level = Math.min(...levels);
+  const parts = text.trim().split(new RegExp(`^(?=#{${level}}\\s)`, "m"));
+  return parts.flatMap((part) => {
+    const heading = new RegExp(`^#{${level}}\\s+(.*)`).exec(part);
+    const title = heading ? heading[1].replace(/\*\*|__/g, "").trim() : null;
+    return part.trim() ? paginate(part, size).map((page) => ({ title, text: page })) : [];
+  });
 }
 
 // Splits text into pages of at most `size` characters, at paragraph breaks
