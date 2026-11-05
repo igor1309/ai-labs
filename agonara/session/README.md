@@ -52,7 +52,8 @@ student.
   is refused instead of acting on a newer state. Long content is split at
   Telegram's 4096-character limit.
 - **Browsing:** Programs → topics, ungrouped concepts and materials → an entity's
-  title, body and outgoing items. Back retraces the screens; Programs returns
+  title, body and outgoing items. A material with content also shows its text,
+  without the file's front matter, split into Telegram-sized messages. Back retraces the screens; Programs returns
   to the list. Buttons carry item indices; IDs stay in the saved screen state.
 - **Agonara errors** produce a short reply and a log line, keeping the previous
   session so the student can retry. An expired login is renewed once per request.

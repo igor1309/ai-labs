@@ -59,5 +59,6 @@ export function createAgonaraClient({ baseUrl, login, password, fetch }) {
     listPrograms: () => read("/programs"),
     navigation: (programId) => read(`/programs/${encodeURIComponent(programId)}/navigation`),
     entity: (entityId) => read(`/navigation/entities/${encodeURIComponent(entityId)}`),
+    materialContent: (entityId) => read(`/materials/${encodeURIComponent(entityId)}/content`),
   };
 }

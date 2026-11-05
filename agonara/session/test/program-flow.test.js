@@ -183,3 +183,29 @@ test("a saved canned session opens Programs with a fresh step", async () => {
   assert.equal(result.session.step, 10);
   assert.ok(!("depth" in result.session));
 });
+
+test("a material with content shows its text without front matter", async () => {
+  const { flow, client, calls, node } = setup();
+  Object.assign(node, { entityId: "material-id", acceptedKind: "material_reference", title: "Notes", body: "Lecture.", hasContent: true });
+  node.relationships.outgoing = [];
+  client.materialContent = async (id) => {
+    calls.push(["materialContent", id]);
+    return { content: "---\nmodel: x\n---\n\n# Ethics\n\nText." };
+  };
+  const result = await flow({ step: 1, screen: "entity", entityId: "material-id", items: [], history: [] });
+  assert.deepEqual(calls, [["entity", "material-id"], ["materialContent", "material-id"]]);
+  assert.equal(result.content, "Notes\n\nLecture.\n\n# Ethics\n\nText.\n\nOutgoing items\n\nNone.");
+});
+
+for (const [name, change] of [
+  ["a topic", { acceptedKind: "topic", hasContent: true }],
+  ["a material without content", { acceptedKind: "material_reference", hasContent: false }],
+]) {
+  test(`${name} reads no material content`, async () => {
+    const { flow, client, calls, node } = setup();
+    Object.assign(node, change);
+    client.materialContent = async () => { throw new Error("not expected"); };
+    await flow({ step: 1, screen: "entity", entityId: "topic-id", items: [], history: [] });
+    assert.deepEqual(calls, [["entity", "topic-id"]]);
+  });
+}

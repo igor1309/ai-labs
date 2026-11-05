@@ -44,6 +44,7 @@ for (const [name, route, read] of [
   ["programs", "/programs", (client) => client.listPrograms()],
   ["navigation", "/programs/p/navigation", (client) => client.navigation("p")],
   ["entity", "/navigation/entities/e", (client) => client.entity("e")],
+  ["material content", "/materials/m/content", (client) => client.materialContent("m")],
 ]) {
   test(`${name}: a 401 signs in once again and retries with the new cookie`, async () => {
     const { calls, client } = setup([signedIn(), response({}, 401), signedIn("session=new"), response({ result: "retried" })]);
