@@ -4,8 +4,8 @@ A Session runner for Agonara: one student's session, reached through a control
 plane (today Telegram) and kept apart from the student's learning record.
 
 Status: reads the programs the student can see, navigation and entities from
-Agonara's public API. Still no brain and no writes to Agonara. It runs on the
-owner's Mac under launchd.
+Agonara's public API. Still no brain and no writes to Agonara. It is one Go
+module with no dependencies, and runs on the owner's Mac under launchd.
 
 ## The idea
 
@@ -23,14 +23,14 @@ student.
  ┌──────────────────────────── owner's Mac ─────────────────────────────┐
  │                                                                      │
  │  launchd: ai.labs.agonara-session   (start at login, restart on exit)│
- │    └─ node src/main.js   --env-file ~/.config/agonara-session/...    │
+ │    └─ bin/agonara-session -env-file ~/.config/agonara-session/...    │
  │                                                                      │
  │   ┌───────────────┐  update   ┌──────────────┐  action  ┌─────────┐  │
- │   │ main.js       │ ────────> │ bot.js       │ ───────> │ session │  │
- │   │ long polling  │           │ allowlist    │ <─────── │ flow    │  │
+ │   │ cmd/agonara-  │ ────────> │ telegram     │ ───────> │ flow    │  │
+ │   │ session: poll │           │ allowlist    │ <─────── │ session │  │
  │   │ offset, state │           │ by chat ID   │ content  └─────────┘  │
  │   └──────┬────────┘           └──────┬───────┘ + actions             │
- │          │                           │ telegram-adapter.js:          │
+ │          │                           │ telegram render:              │
  │          │ state file (mode 600)     │ rich message, plain fallback  │
  └──────────┼───────────────────────────┼───────────────────────────────┘
             │ getUpdates                │ sendRichMessage
@@ -39,8 +39,19 @@ student.
      │ Telegram Bot API                          │ <── the student's DM
      └───────────────────────────────────────────┘
 
-   session ── agonara-client.js (session cookie, as the student) ──> https://agonara.enoa.ai
+   flow ── agonara client (session cookie, as the student) ──> https://agonara.enoa.ai
 ```
+
+## The code
+
+- `internal/flow`: the session. Given the saved place and an action it returns
+  the screen as meaning (title, text, lists, position, actions by kind). It
+  knows nothing of Telegram, so another surface, such as a web page, can draw
+  the same screens.
+- `internal/telegram`: draws a screen as a rich message or the plain
+  fallback, and handles updates.
+- `internal/agonara`: the public API as the student. `internal/store`: the
+  state file. `cmd/agonara-session`: the composition root and polling loop.
 
 ## The bot
 
@@ -82,18 +93,21 @@ Secrets live outside the repo in `~/.config/agonara-session/probe.env`
 `AGONARA_BASE_URL`, `AGONARA_LOGIN`, `AGONARA_PASSWORD` for the
 non-admin identity `session-probe`.
 
-launchd runs it from the main checkout. Install, stopping any other copy first
-so two pollers never overlap:
+launchd runs the binary built in the main checkout (`bin/` is not
+committed). Build it, then install, stopping any other copy first so two
+pollers never overlap:
 
+    go build -o bin/agonara-session ./cmd/agonara-session
     cp launchd/ai.labs.agonara-session.plist ~/Library/LaunchAgents/
     launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/ai.labs.agonara-session.plist
     tail ~/Library/Logs/agonara-session.log
 
-After a code change: `launchctl kickstart -k gui/$(id -u)/ai.labs.agonara-session`.
+After a code change, build again, then
+`launchctl kickstart -k gui/$(id -u)/ai.labs.agonara-session`.
 Remove: `launchctl bootout gui/$(id -u)/ai.labs.agonara-session`.
 
 The Mac runs it only while awake. A VPS host waits until the bot must stay up
 without it.
 
-By hand, for a quick run: `node --env-file=<path> src/main.js`. Tests:
-`npm test`.
+By hand, for a quick run: `go run ./cmd/agonara-session -env-file <path>`.
+Tests: `go test -race ./...`.
