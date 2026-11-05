@@ -77,3 +77,35 @@ test("variable shorthands preserve literal overrides and transparent fills acros
     ]);
   }
 });
+
+test("a shorthand's variable resolves through every kind of rule subject a style read weighs", () => {
+  const sheet = document.createElement("style");
+  sheet.dataset.seam = "";
+  sheet.textContent = `
+    :root { --seam-a: #010203; --seam-b: #040506; --seam-c: #070809; --seam-d: #0a0b0c; --seam-e: #0d0e0f; --seam-f: #101112; }
+    .other, .seam-list { border-bottom: 1px solid var(--seam-a); }
+    .seam-a\\:escaped { border-left: 1px solid var(--seam-b); }
+    .holder :is(.seam-list, .nothing) { border-top: 1px solid var(--seam-c); }
+    #seam-id { background: var(--seam-d); }
+    article.holder > section { border-right: 1px solid var(--seam-e); }
+    .seam-missing { column-rule: 1px solid var(--seam-f); }
+  `;
+  document.head.append(sheet);
+  const holder = document.createElement("article");
+  const section = document.createElement("section");
+  holder.className = "holder";
+  holder.dataset.seam = "";
+  section.id = "seam-id";
+  section.className = "seam-list seam-a:escaped";
+  holder.append(section);
+  document.body.append(holder);
+
+  const style = browserStyle(section);
+
+  expect(style.getPropertyValue("border-bottom-color")).toBe("rgb(1, 2, 3)");
+  expect(style.getPropertyValue("border-left-color")).toBe("rgb(4, 5, 6)");
+  expect(style.getPropertyValue("border-top-color")).toBe("rgb(7, 8, 9)");
+  expect(style.getPropertyValue("background-color")).toBe("rgb(10, 11, 12)");
+  expect(style.getPropertyValue("border-right-color")).toBe("rgb(13, 14, 15)");
+  expect(style.getPropertyValue("column-rule-color")).not.toBe("rgb(16, 17, 18)");
+});

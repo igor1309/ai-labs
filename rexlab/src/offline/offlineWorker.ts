@@ -5,6 +5,8 @@
 // and from the cache when there is none, with the files of the same
 // release beside it. A new release takes over the cache only once every
 // page of the old one has closed, so an open page never loses its files.
+// A release that activates takes the pages still open without a worker,
+// such as the first launch's, so they too work without Wi-Fi.
 
 // The parts of the Cache Storage API the worker uses, so a test can hand
 // it a cache of its own.
@@ -30,6 +32,9 @@ export type OfflineDeps = {
   // How long the page waits for the network before it takes the cached
   // page: a weak signal must not keep the child waiting.
   wait: (ms: number) => Promise<void>;
+  // Takes the open pages as the active worker's (the scope's
+  // `clients.claim()`).
+  claim: () => Promise<void>;
 };
 
 // The page, which every launch asks for first.
@@ -56,7 +61,7 @@ export const cacheName = (version: string) => `${PREFIX}${version}`;
 // older ones on activate, and answer requests.
 export type OfflineWorker = ReturnType<typeof offlineWorker>;
 
-export function offlineWorker({ version, files, caches, fetch, origin, wait }: OfflineDeps) {
+export function offlineWorker({ version, files, caches, fetch, origin, wait, claim }: OfflineDeps) {
   const name = cacheName(version);
 
   // Every file of the release goes in its cache before the release takes
@@ -66,11 +71,14 @@ export function offlineWorker({ version, files, caches, fetch, origin, wait }: O
     await cache.addAll([PAGE, ...files.filter((file) => file !== PAGE)]);
   };
 
-  // An older release's cache goes once this one has taken over.
+  // An older release's cache goes once this one has taken over, and the
+  // pages open without a worker are taken. A new release activates only
+  // once no page of the old one is open, so no page changes release.
   const activate = async () => {
     for (const key of await caches.keys()) {
       if (key.startsWith(PREFIX) && key !== name) await caches.delete(key);
     }
+    await claim();
   };
 
   // The page from the network; the installed page where the network fails,
