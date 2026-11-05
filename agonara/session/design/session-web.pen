@@ -1,5 +1,5 @@
 {
-  "version": "2.21",
+  "version": "2.22",
   "children": [
     {
       "type": "frame",
@@ -10191,12 +10191,210 @@
       "width": 420,
       "height": 220,
       "content": "Medium width (600-1023), iPad portrait 820 x 1180. Touch, so each paragraph shows a muted ⋯ in its margin. The paragraph menu opens as a popover under its ⋯; a tap outside closes it. Contents opens the outline as a drawer from the left over a scrim."
+    },
+    {
+      "id": "ow9lY",
+      "type": "ref",
+      "ref": "ygFPM",
+      "name": "Phone · Program v2 · Pine & Lichen · Light",
+      "x": 0,
+      "y": 7800,
+      "theme": {
+        "palette": "pine-lichen",
+        "mode": "light"
+      }
+    },
+    {
+      "id": "LdgWg",
+      "type": "ref",
+      "ref": "MpAwD",
+      "name": "Phone · Content + menu v2 · Pine & Lichen · Light",
+      "x": 435,
+      "y": 7800,
+      "theme": {
+        "palette": "pine-lichen",
+        "mode": "light"
+      }
+    },
+    {
+      "id": "EWnha",
+      "type": "ref",
+      "ref": "B29As",
+      "name": "Desktop · Content + answer v2 · Pine & Lichen · Light",
+      "x": 870,
+      "y": 7800,
+      "theme": {
+        "palette": "pine-lichen",
+        "mode": "light"
+      }
+    },
+    {
+      "id": "mrzNv",
+      "type": "ref",
+      "ref": "RPKtI",
+      "name": "Tokens · Pine & Lichen · Light",
+      "x": 2210,
+      "y": 7800,
+      "theme": {
+        "palette": "pine-lichen",
+        "mode": "light"
+      },
+      "descendants": {
+        "Psiw7": {
+          "content": "Pine & Lichen"
+        },
+        "v6A2m": {
+          "content": "Cool sage paper for long reading, pine ink for actions and the current place, lichen for the paragraph the reader is working with."
+        },
+        "VY8Ac": {
+          "content": "#F6F7F2"
+        },
+        "GZJww": {
+          "content": "#EDF0E8"
+        },
+        "FpBDu": {
+          "content": "#E6EAE1"
+        },
+        "S5zGKn": {
+          "content": "#DCE2D6"
+        },
+        "dmZri": {
+          "content": "#BCC5B6"
+        },
+        "qNS18": {
+          "content": "#17201C"
+        },
+        "msWAa": {
+          "content": "#4B5852"
+        },
+        "tz4v0": {
+          "content": "#6A7770"
+        },
+        "v1a1Kh": {
+          "content": "#1D5E55"
+        },
+        "ZePOh": {
+          "content": "#E0EDE8"
+        },
+        "hKISr": {
+          "content": "#A6C9BF"
+        },
+        "McvAv": {
+          "content": "#E9EEC4"
+        }
+      }
+    },
+    {
+      "id": "NJRJU",
+      "type": "ref",
+      "ref": "ygFPM",
+      "name": "Phone · Program v2 · Pine & Lichen · Dark",
+      "x": 0,
+      "y": 8800,
+      "theme": {
+        "palette": "pine-lichen",
+        "mode": "dark"
+      }
+    },
+    {
+      "id": "mx7J5",
+      "type": "ref",
+      "ref": "MpAwD",
+      "name": "Phone · Content + menu v2 · Pine & Lichen · Dark",
+      "x": 435,
+      "y": 8800,
+      "theme": {
+        "palette": "pine-lichen",
+        "mode": "dark"
+      }
+    },
+    {
+      "id": "n005S9",
+      "type": "ref",
+      "ref": "B29As",
+      "name": "Desktop · Content + answer v2 · Pine & Lichen · Dark",
+      "x": 870,
+      "y": 8800,
+      "theme": {
+        "palette": "pine-lichen",
+        "mode": "dark"
+      }
+    },
+    {
+      "id": "j3QM2C",
+      "type": "ref",
+      "ref": "RPKtI",
+      "name": "Tokens · Pine & Lichen · Dark",
+      "x": 2210,
+      "y": 8800,
+      "theme": {
+        "palette": "pine-lichen",
+        "mode": "dark"
+      },
+      "descendants": {
+        "Psiw7": {
+          "content": "Pine & Lichen"
+        },
+        "v6A2m": {
+          "content": "Cool sage paper for long reading, pine ink for actions and the current place, lichen for the paragraph the reader is working with."
+        },
+        "VY8Ac": {
+          "content": "#111614"
+        },
+        "GZJww": {
+          "content": "#161C19"
+        },
+        "FpBDu": {
+          "content": "#1C2320"
+        },
+        "S5zGKn": {
+          "content": "#2B3430"
+        },
+        "dmZri": {
+          "content": "#5E6B65"
+        },
+        "qNS18": {
+          "content": "#E6ECE8"
+        },
+        "msWAa": {
+          "content": "#B2BFB8"
+        },
+        "tz4v0": {
+          "content": "#97A49D"
+        },
+        "v1a1Kh": {
+          "content": "#6FCDB6"
+        },
+        "ZePOh": {
+          "content": "#16302A"
+        },
+        "hKISr": {
+          "content": "#2F6A5D"
+        },
+        "McvAv": {
+          "content": "#30351D"
+        }
+      }
+    },
+    {
+      "type": "note",
+      "id": "txeOD",
+      "x": -480,
+      "y": 7800,
+      "name": "Pine & Apricot note",
+      "width": 420,
+      "height": 240,
+      "content": "Pine & Lichen: an alternative palette on a second theme axis, palette = ink-saffron | pine-lichen. These frames are instances of the Ink & Saffron screens with theme { palette: pine-lichen, mode: light | dark } — edit the light screen only; only colors differ.\n\nExisting frames resolve to ink-saffron by default."
     }
   ],
   "themes": {
     "mode": [
       "light",
       "dark"
+    ],
+    "palette": [
+      "ink-saffron",
+      "pine-lichen"
     ]
   },
   "variables": {
@@ -10206,12 +10404,28 @@
         {
           "value": "#FBF7F0",
           "theme": {
+            "palette": "ink-saffron",
             "mode": "light"
           }
         },
         {
           "value": "#16171B",
           "theme": {
+            "palette": "ink-saffron",
+            "mode": "dark"
+          }
+        },
+        {
+          "value": "#F6F7F2",
+          "theme": {
+            "palette": "pine-lichen",
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#111614",
+          "theme": {
+            "palette": "pine-lichen",
             "mode": "dark"
           }
         }
@@ -10223,12 +10437,28 @@
         {
           "value": "#F3ECE0",
           "theme": {
+            "palette": "ink-saffron",
             "mode": "light"
           }
         },
         {
           "value": "#1B1C21",
           "theme": {
+            "palette": "ink-saffron",
+            "mode": "dark"
+          }
+        },
+        {
+          "value": "#EDF0E8",
+          "theme": {
+            "palette": "pine-lichen",
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#161C19",
+          "theme": {
+            "palette": "pine-lichen",
             "mode": "dark"
           }
         }
@@ -10240,12 +10470,28 @@
         {
           "value": "#EFE7D9",
           "theme": {
+            "palette": "ink-saffron",
             "mode": "light"
           }
         },
         {
           "value": "#22242A",
           "theme": {
+            "palette": "ink-saffron",
+            "mode": "dark"
+          }
+        },
+        {
+          "value": "#E6EAE1",
+          "theme": {
+            "palette": "pine-lichen",
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#1C2320",
+          "theme": {
+            "palette": "pine-lichen",
             "mode": "dark"
           }
         }
@@ -10257,12 +10503,28 @@
         {
           "value": "#E6DDCE",
           "theme": {
+            "palette": "ink-saffron",
             "mode": "light"
           }
         },
         {
           "value": "#33353D",
           "theme": {
+            "palette": "ink-saffron",
+            "mode": "dark"
+          }
+        },
+        {
+          "value": "#DCE2D6",
+          "theme": {
+            "palette": "pine-lichen",
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#2B3430",
+          "theme": {
+            "palette": "pine-lichen",
             "mode": "dark"
           }
         }
@@ -10274,12 +10536,28 @@
         {
           "value": "#CFC4B2",
           "theme": {
+            "palette": "ink-saffron",
             "mode": "light"
           }
         },
         {
           "value": "#6B6E78",
           "theme": {
+            "palette": "ink-saffron",
+            "mode": "dark"
+          }
+        },
+        {
+          "value": "#BCC5B6",
+          "theme": {
+            "palette": "pine-lichen",
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#5E6B65",
+          "theme": {
+            "palette": "pine-lichen",
             "mode": "dark"
           }
         }
@@ -10291,12 +10569,28 @@
         {
           "value": "#231F1A",
           "theme": {
+            "palette": "ink-saffron",
             "mode": "light"
           }
         },
         {
           "value": "#E8E9EE",
           "theme": {
+            "palette": "ink-saffron",
+            "mode": "dark"
+          }
+        },
+        {
+          "value": "#17201C",
+          "theme": {
+            "palette": "pine-lichen",
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#E6ECE8",
+          "theme": {
+            "palette": "pine-lichen",
             "mode": "dark"
           }
         }
@@ -10308,12 +10602,28 @@
         {
           "value": "#685E52",
           "theme": {
+            "palette": "ink-saffron",
             "mode": "light"
           }
         },
         {
           "value": "#B3B6BF",
           "theme": {
+            "palette": "ink-saffron",
+            "mode": "dark"
+          }
+        },
+        {
+          "value": "#4B5852",
+          "theme": {
+            "palette": "pine-lichen",
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#B2BFB8",
+          "theme": {
+            "palette": "pine-lichen",
             "mode": "dark"
           }
         }
@@ -10325,12 +10635,28 @@
         {
           "value": "#968A7B",
           "theme": {
+            "palette": "ink-saffron",
             "mode": "light"
           }
         },
         {
           "value": "#A2A5AF",
           "theme": {
+            "palette": "ink-saffron",
+            "mode": "dark"
+          }
+        },
+        {
+          "value": "#6A7770",
+          "theme": {
+            "palette": "pine-lichen",
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#97A49D",
+          "theme": {
+            "palette": "pine-lichen",
             "mode": "dark"
           }
         }
@@ -10342,12 +10668,28 @@
         {
           "value": "#33408F",
           "theme": {
+            "palette": "ink-saffron",
             "mode": "light"
           }
         },
         {
           "value": "#8E9BE6",
           "theme": {
+            "palette": "ink-saffron",
+            "mode": "dark"
+          }
+        },
+        {
+          "value": "#1D5E55",
+          "theme": {
+            "palette": "pine-lichen",
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#6FCDB6",
+          "theme": {
+            "palette": "pine-lichen",
             "mode": "dark"
           }
         }
@@ -10359,12 +10701,28 @@
         {
           "value": "#E9EBF6",
           "theme": {
+            "palette": "ink-saffron",
             "mode": "light"
           }
         },
         {
           "value": "#242946",
           "theme": {
+            "palette": "ink-saffron",
+            "mode": "dark"
+          }
+        },
+        {
+          "value": "#E0EDE8",
+          "theme": {
+            "palette": "pine-lichen",
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#16302A",
+          "theme": {
+            "palette": "pine-lichen",
             "mode": "dark"
           }
         }
@@ -10376,12 +10734,28 @@
         {
           "value": "#C3C9E8",
           "theme": {
+            "palette": "ink-saffron",
             "mode": "light"
           }
         },
         {
           "value": "#5A66A8",
           "theme": {
+            "palette": "ink-saffron",
+            "mode": "dark"
+          }
+        },
+        {
+          "value": "#A6C9BF",
+          "theme": {
+            "palette": "pine-lichen",
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#2F6A5D",
+          "theme": {
+            "palette": "pine-lichen",
             "mode": "dark"
           }
         }
@@ -10393,12 +10767,28 @@
         {
           "value": "#FFFDF8",
           "theme": {
+            "palette": "ink-saffron",
             "mode": "light"
           }
         },
         {
           "value": "#14182E",
           "theme": {
+            "palette": "ink-saffron",
+            "mode": "dark"
+          }
+        },
+        {
+          "value": "#F6FBF9",
+          "theme": {
+            "palette": "pine-lichen",
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#0B1F1B",
+          "theme": {
+            "palette": "pine-lichen",
             "mode": "dark"
           }
         }
@@ -10410,12 +10800,28 @@
         {
           "value": "#C9CFF0",
           "theme": {
+            "palette": "ink-saffron",
             "mode": "light"
           }
         },
         {
           "value": "#2A3366",
           "theme": {
+            "palette": "ink-saffron",
+            "mode": "dark"
+          }
+        },
+        {
+          "value": "#B3D5CB",
+          "theme": {
+            "palette": "pine-lichen",
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#235347",
+          "theme": {
+            "palette": "pine-lichen",
             "mode": "dark"
           }
         }
@@ -10427,12 +10833,28 @@
         {
           "value": "#FAEDC6",
           "theme": {
+            "palette": "ink-saffron",
             "mode": "light"
           }
         },
         {
           "value": "#403516",
           "theme": {
+            "palette": "ink-saffron",
+            "mode": "dark"
+          }
+        },
+        {
+          "value": "#E9EEC4",
+          "theme": {
+            "palette": "pine-lichen",
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#30351D",
+          "theme": {
+            "palette": "pine-lichen",
             "mode": "dark"
           }
         }
@@ -10444,12 +10866,28 @@
         {
           "value": "#231F1A66",
           "theme": {
+            "palette": "ink-saffron",
             "mode": "light"
           }
         },
         {
           "value": "#00000099",
           "theme": {
+            "palette": "ink-saffron",
+            "mode": "dark"
+          }
+        },
+        {
+          "value": "#17201C66",
+          "theme": {
+            "palette": "pine-lichen",
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#00000099",
+          "theme": {
+            "palette": "pine-lichen",
             "mode": "dark"
           }
         }
@@ -10557,12 +10995,28 @@
         {
           "value": "#FBF7F0",
           "theme": {
+            "palette": "ink-saffron",
             "mode": "light"
           }
         },
         {
           "value": "#25272D",
           "theme": {
+            "palette": "ink-saffron",
+            "mode": "dark"
+          }
+        },
+        {
+          "value": "#FBFCF9",
+          "theme": {
+            "palette": "pine-lichen",
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#1D2421",
+          "theme": {
+            "palette": "pine-lichen",
             "mode": "dark"
           }
         }
@@ -10574,12 +11028,28 @@
         {
           "value": "#EFE7D9",
           "theme": {
+            "palette": "ink-saffron",
             "mode": "light"
           }
         },
         {
           "value": "#31333B",
           "theme": {
+            "palette": "ink-saffron",
+            "mode": "dark"
+          }
+        },
+        {
+          "value": "#E6EAE1",
+          "theme": {
+            "palette": "pine-lichen",
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#29322E",
+          "theme": {
+            "palette": "pine-lichen",
             "mode": "dark"
           }
         }
