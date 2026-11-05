@@ -56,6 +56,19 @@ saffron for the paragraph the reader is working with. Light and dark.
 Dark values are in the palette frame of `session-web.pen`. Serif body
 (Source Serif 4) at line height 1.6; Russian text must fit.
 
+## Design system
+
+`session-web.pen` holds the system the frames are built from:
+
+- **Tokens:** the colours above (light and dark through one `mode` theme),
+  fonts (`font-serif`, `font-sans`, `font-mono`), a type scale (`text-xs` 11,
+  `text-sm` 13, `text-md` 15, `text-body` 17, `text-lead` 19, `text-title` 22,
+  `text-heading` 30, `text-display` 40), spacing (`space-2xs` 2 to `space-3xl`
+  32) and radii (`radius-xs` 2, `sm` 8, `md` 14, `lg` 20, `full`). The Tokens
+  frame shows them all.
+- **Components:** Paragraph (phone), Paragraph · wide and its active state
+  (desktop), Menu action and Course card. Frames use instances of them.
+
 ## Not in this brief
 
 Login, progress and checks, search, settings, the answer's own
