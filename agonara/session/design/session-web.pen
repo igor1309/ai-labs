@@ -5431,6 +5431,7 @@
       "x": 0,
       "y": 3000,
       "name": "Phone · Program v2 · Ink & Saffron",
+      "reusable": true,
       "clip": true,
       "width": 375,
       "height": 812,
@@ -5438,50 +5439,12 @@
       "layout": "vertical",
       "children": [
         {
-          "type": "frame",
-          "id": "aoAmK",
+          "id": "hx7TJ",
+          "type": "ref",
+          "ref": "mjq0N",
           "name": "Top bar",
           "width": "fill_container",
-          "height": 52,
-          "gap": "$space-2xs",
-          "padding": [
-            0,
-            "$space-sm"
-          ],
-          "alignItems": "center",
-          "children": [
-            {
-              "type": "frame",
-              "id": "sm0Vg",
-              "name": "Back (44pt)",
-              "width": 44,
-              "height": 44,
-              "justifyContent": "center",
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "icon",
-                  "id": "gCq5k",
-                  "name": "Chevron",
-                  "width": 22,
-                  "height": 22,
-                  "icon": "chevron-left",
-                  "library": "lucide",
-                  "fill": "$accent"
-                }
-              ]
-            },
-            {
-              "type": "text",
-              "id": "fY7j0",
-              "name": "Back label",
-              "fill": "$accent",
-              "content": "Программы",
-              "fontFamily": "$font-sans",
-              "fontSize": "$text-md",
-              "fontWeight": "normal"
-            }
-          ]
+          "height": 52
         },
         {
           "type": "frame",
@@ -5707,6 +5670,7 @@
       "x": 435,
       "y": 3000,
       "name": "Phone · Content + menu v2 · Ink & Saffron",
+      "reusable": true,
       "clip": true,
       "width": 375,
       "height": 812,
@@ -5714,91 +5678,12 @@
       "layout": "vertical",
       "children": [
         {
-          "type": "frame",
-          "id": "z5KA8",
+          "id": "GCMjz",
+          "type": "ref",
+          "ref": "HbQK3",
           "name": "Top bar",
           "width": "fill_container",
-          "height": 52,
-          "padding": [
-            0,
-            "$space-xs"
-          ],
-          "alignItems": "center",
-          "children": [
-            {
-              "type": "frame",
-              "id": "ddxXs",
-              "name": "Back (44pt)",
-              "width": 44,
-              "height": 44,
-              "justifyContent": "center",
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "icon",
-                  "id": "XElC2",
-                  "name": "Icon",
-                  "width": 22,
-                  "height": 22,
-                  "icon": "chevron-left",
-                  "library": "lucide",
-                  "fill": "$accent"
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "fn7Nb",
-              "name": "Title",
-              "width": "fill_container",
-              "layout": "vertical",
-              "gap": 1,
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "text",
-                  "id": "rxj2Q",
-                  "name": "Kicker",
-                  "fill": "$ink-2",
-                  "content": "Что такое агент",
-                  "fontFamily": "$font-sans",
-                  "fontSize": "$text-xs",
-                  "fontWeight": "normal"
-                },
-                {
-                  "type": "text",
-                  "id": "pHUbP",
-                  "name": "Current",
-                  "fill": "$ink",
-                  "content": "Лекция: агент и бот",
-                  "fontFamily": "$font-sans",
-                  "fontSize": "$text-md",
-                  "fontWeight": "600"
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "IJo5l",
-              "name": "Contents (44pt)",
-              "width": 44,
-              "height": 44,
-              "justifyContent": "center",
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "icon",
-                  "id": "kzkGy",
-                  "name": "Icon",
-                  "width": 22,
-                  "height": 22,
-                  "icon": "list",
-                  "library": "lucide",
-                  "fill": "$ink-2"
-                }
-              ]
-            }
-          ]
+          "height": 52
         },
         {
           "type": "frame",
@@ -5943,118 +5828,11 @@
           ]
         },
         {
-          "type": "frame",
-          "id": "d4JWTy",
+          "id": "A7Vaz",
+          "type": "ref",
+          "ref": "H1Tv5",
           "name": "Bottom bar",
-          "width": "fill_container",
-          "fill": "$paper",
-          "stroke": "$line",
-          "strokeWidth": {
-            "top": 1
-          },
-          "gap": "$space-sm",
-          "padding": [
-            "$space-md",
-            "$space-md",
-            "$space-2xl",
-            "$space-md"
-          ],
-          "alignItems": "center",
-          "children": [
-            {
-              "type": "frame",
-              "id": "IFvnk",
-              "name": "Prev",
-              "height": 44,
-              "gap": "$space-xs",
-              "padding": [
-                0,
-                "$space-lg",
-                0,
-                "$space-sm"
-              ],
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "icon",
-                  "id": "Aet68",
-                  "name": "Icon",
-                  "width": 18,
-                  "height": 18,
-                  "icon": "chevron-left",
-                  "library": "lucide",
-                  "fill": "$accent"
-                },
-                {
-                  "type": "text",
-                  "id": "R3RHa",
-                  "name": "Label",
-                  "fill": "$accent",
-                  "content": "Назад",
-                  "fontFamily": "$font-sans",
-                  "fontSize": "$text-md",
-                  "fontWeight": "normal"
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "k9ihpB",
-              "name": "Position",
-              "width": "fill_container",
-              "justifyContent": "center",
-              "children": [
-                {
-                  "type": "text",
-                  "id": "YLOep",
-                  "name": "Label",
-                  "fill": "$ink-2",
-                  "content": "2 / 5",
-                  "fontFamily": "$font-sans",
-                  "fontSize": "$text-sm",
-                  "fontWeight": "normal"
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "X7sjwS",
-              "name": "Next",
-              "height": 44,
-              "fill": "$accent",
-              "cornerRadius": "$radius-full",
-              "gap": "$space-xs",
-              "padding": [
-                0,
-                "$space-md",
-                0,
-                "$space-xl"
-              ],
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "text",
-                  "id": "x6JJo",
-                  "name": "Label",
-                  "fill": "$on-accent",
-                  "content": "Далее",
-                  "fontFamily": "$font-sans",
-                  "fontSize": "$text-md",
-                  "fontWeight": "600"
-                },
-                {
-                  "type": "icon",
-                  "id": "Dx1Gs",
-                  "name": "Icon",
-                  "width": 18,
-                  "height": 18,
-                  "icon": "chevron-right",
-                  "library": "lucide",
-                  "fill": "$paper"
-                }
-              ]
-            }
-          ]
+          "width": "fill_container"
         },
         {
           "type": "frame",
@@ -6134,214 +5912,11 @@
           ]
         },
         {
-          "type": "frame",
-          "id": "Z95RS",
-          "layoutPosition": "absolute",
-          "x": 0,
-          "y": 486,
+          "id": "W2vhW6",
+          "type": "ref",
+          "ref": "h7fzph",
           "name": "Bottom sheet",
-          "width": 375,
-          "fill": "$paper",
-          "cornerRadius": [
-            "$radius-lg",
-            "$radius-lg",
-            0,
-            0
-          ],
-          "effect": {
-            "type": "shadow",
-            "shadowType": "outer",
-            "color": "#1c232922",
-            "offset": {
-              "x": 0,
-              "y": -4
-            },
-            "blur": 24
-          },
-          "layout": "vertical",
-          "gap": "$space-lg",
-          "padding": [
-            "$space-md",
-            "$space-lg",
-            "$space-3xl",
-            "$space-lg"
-          ],
-          "children": [
-            {
-              "type": "frame",
-              "id": "qMIgU",
-              "name": "Handle row",
-              "width": "fill_container",
-              "justifyContent": "center",
-              "children": [
-                {
-                  "type": "rectangle",
-                  "cornerRadius": "$radius-xs",
-                  "id": "S2wKYQ",
-                  "name": "Handle",
-                  "fill": "$line",
-                  "width": 36,
-                  "height": 5
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "MjvTr",
-              "name": "Quoted paragraph",
-              "width": "fill_container",
-              "stroke": "$accent",
-              "strokeWidth": {
-                "left": 3
-              },
-              "layout": "vertical",
-              "gap": "$space-xs",
-              "padding": [
-                "$space-2xs",
-                0,
-                "$space-2xs",
-                "$space-md"
-              ],
-              "children": [
-                {
-                  "type": "text",
-                  "id": "fdyRm",
-                  "name": "Ref",
-                  "fill": "$accent",
-                  "content": "АБЗАЦ 2 · ЦИКЛ АГЕНТА",
-                  "fontFamily": "$font-sans",
-                  "fontSize": "$text-xs",
-                  "fontWeight": "600",
-                  "letterSpacing": 0.8
-                },
-                {
-                  "type": "text",
-                  "id": "Yguyy",
-                  "name": "Excerpt",
-                  "fill": "$ink-2",
-                  "textGrowth": "fixed-width",
-                  "width": "fill_container",
-                  "content": "Отличие от обычного чат-бота в цикле. Бот отвечает один раз…",
-                  "lineHeight": 1.45,
-                  "fontFamily": "$font-serif",
-                  "fontSize": "$text-md",
-                  "fontWeight": "normal",
-                  "fontStyle": "italic"
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "BLb1P",
-              "name": "Quick actions",
-              "width": "fill_container",
-              "gap": "$space-sm",
-              "children": [
-                {
-                  "id": "KQTFM",
-                  "type": "ref",
-                  "ref": "Xmxxv",
-                  "name": "Расскажи подробнее",
-                  "width": "fill_container"
-                },
-                {
-                  "id": "uYjA1",
-                  "type": "ref",
-                  "ref": "Xmxxv",
-                  "name": "Объясни проще",
-                  "width": "fill_container",
-                  "descendants": {
-                    "cDI4v": {
-                      "icon": "feather"
-                    },
-                    "TmuXy": {
-                      "content": "Объясни\nпроще"
-                    }
-                  }
-                },
-                {
-                  "id": "K7DLd",
-                  "type": "ref",
-                  "ref": "Xmxxv",
-                  "name": "Приведи пример",
-                  "width": "fill_container",
-                  "descendants": {
-                    "cDI4v": {
-                      "icon": "lightbulb"
-                    },
-                    "TmuXy": {
-                      "content": "Приведи\nпример"
-                    }
-                  }
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "K6EpB",
-              "name": "Ask a question…",
-              "width": "fill_container",
-              "height": 52,
-              "cornerRadius": "$radius-full",
-              "stroke": "$line",
-              "strokeWidth": 1,
-              "gap": "$space-md",
-              "padding": [
-                0,
-                "$space-sm",
-                0,
-                "$space-lg"
-              ],
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "icon",
-                  "id": "dtr7U",
-                  "name": "Icon",
-                  "width": 18,
-                  "height": 18,
-                  "icon": "message-circle",
-                  "library": "lucide",
-                  "fill": "$ink-2"
-                },
-                {
-                  "type": "text",
-                  "id": "jnbpZ",
-                  "name": "Placeholder",
-                  "fill": "$ink-3",
-                  "textGrowth": "fixed-width",
-                  "width": "fill_container",
-                  "content": "Спросить об этом абзаце…",
-                  "fontFamily": "$font-sans",
-                  "fontSize": "$text-md",
-                  "fontWeight": "normal"
-                },
-                {
-                  "type": "frame",
-                  "id": "QvGrB",
-                  "name": "Send",
-                  "width": 40,
-                  "height": 40,
-                  "fill": "$line",
-                  "cornerRadius": "$radius-lg",
-                  "justifyContent": "center",
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "icon",
-                      "id": "q14UYd",
-                      "name": "Icon",
-                      "width": 18,
-                      "height": 18,
-                      "icon": "arrow-up",
-                      "library": "lucide",
-                      "fill": "$paper"
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
+          "width": 375
         }
       ]
     },
@@ -6351,6 +5926,7 @@
       "x": 870,
       "y": 3000,
       "name": "Desktop · Content + answer v2 · Ink & Saffron",
+      "reusable": true,
       "clip": true,
       "width": 1280,
       "height": 860,
@@ -6444,40 +6020,11 @@
               "gap": "$space-xs",
               "children": [
                 {
-                  "type": "frame",
-                  "id": "S3Rud",
+                  "id": "Z0SPL",
+                  "type": "ref",
+                  "ref": "V4xCvu",
                   "name": "Course 01",
-                  "width": "fill_container",
-                  "gap": "$space-md",
-                  "padding": [
-                    "$space-md",
-                    "$space-sm"
-                  ],
-                  "children": [
-                    {
-                      "type": "text",
-                      "id": "B67d4P",
-                      "name": "Numeral",
-                      "fill": "$accent",
-                      "content": "01",
-                      "fontFamily": "$font-serif",
-                      "fontSize": "$text-md",
-                      "fontWeight": "600"
-                    },
-                    {
-                      "type": "text",
-                      "id": "OP4hI",
-                      "name": "Title",
-                      "fill": "$ink",
-                      "textGrowth": "fixed-width",
-                      "width": "fill_container",
-                      "content": "Что такое агент",
-                      "lineHeight": 1.3,
-                      "fontFamily": "$font-sans",
-                      "fontSize": "$text-md",
-                      "fontWeight": "600"
-                    }
-                  ]
+                  "width": "fill_container"
                 },
                 {
                   "type": "frame",
@@ -6540,202 +6087,59 @@
                       "layout": "vertical",
                       "children": [
                         {
-                          "type": "frame",
-                          "id": "tY5Ij",
+                          "id": "fl9I9",
+                          "type": "ref",
+                          "ref": "ci5uB",
                           "name": "Введение",
                           "width": "fill_container",
-                          "height": 36,
-                          "fill": "#00000000",
-                          "cornerRadius": [
-                            0,
-                            "$radius-sm",
-                            "$radius-sm",
-                            0
-                          ],
-                          "gap": "$space-sm",
-                          "padding": [
-                            0,
-                            "$space-md",
-                            0,
-                            "$space-lg"
-                          ],
-                          "alignItems": "center",
-                          "children": [
-                            {
-                              "type": "text",
-                              "id": "S2VK9m",
-                              "name": "Label",
-                              "fill": "$ink-2",
-                              "textGrowth": "fixed-width",
-                              "width": "fill_container",
-                              "content": "Введение",
-                              "fontFamily": "$font-sans",
-                              "fontSize": "$text-sm",
-                              "fontWeight": "normal"
-                            }
-                          ]
+                          "height": 36
                         },
                         {
-                          "type": "frame",
-                          "id": "WgYyq",
+                          "id": "HdIVV",
+                          "type": "ref",
+                          "ref": "h9P8r",
                           "name": "§1  Цикл агента",
                           "width": "fill_container",
-                          "height": 36,
-                          "fill": "$paper",
-                          "cornerRadius": [
-                            0,
-                            "$radius-sm",
-                            "$radius-sm",
-                            0
-                          ],
-                          "stroke": "$accent",
-                          "strokeWidth": {
-                            "left": 2
-                          },
-                          "gap": "$space-sm",
-                          "padding": [
-                            0,
-                            "$space-md",
-                            0,
-                            "$space-lg"
-                          ],
-                          "alignItems": "center",
-                          "children": [
-                            {
-                              "type": "text",
-                              "id": "QTFTY",
-                              "name": "Label",
-                              "fill": "$accent",
-                              "textGrowth": "fixed-width",
-                              "width": "fill_container",
-                              "content": "§1  Цикл агента",
-                              "fontFamily": "$font-sans",
-                              "fontSize": "$text-sm",
-                              "fontWeight": "600"
-                            },
-                            {
-                              "type": "text",
-                              "id": "n2ArNn",
-                              "name": "Page",
-                              "fill": "$ink-2",
-                              "content": "2/5",
-                              "fontFamily": "$font-sans",
-                              "fontSize": "$text-xs",
-                              "fontWeight": "normal"
-                            }
-                          ]
+                          "height": 36
                         },
                         {
-                          "type": "frame",
-                          "id": "jttV4",
+                          "id": "SyhDf",
+                          "type": "ref",
+                          "ref": "ci5uB",
                           "name": "§2  Инструменты",
                           "width": "fill_container",
                           "height": 36,
-                          "fill": "#00000000",
-                          "cornerRadius": [
-                            0,
-                            "$radius-sm",
-                            "$radius-sm",
-                            0
-                          ],
-                          "gap": "$space-sm",
-                          "padding": [
-                            0,
-                            "$space-md",
-                            0,
-                            "$space-lg"
-                          ],
-                          "alignItems": "center",
-                          "children": [
-                            {
-                              "type": "text",
-                              "id": "Qtili",
-                              "name": "Label",
-                              "fill": "$ink-2",
-                              "textGrowth": "fixed-width",
-                              "width": "fill_container",
-                              "content": "§2  Инструменты",
-                              "fontFamily": "$font-sans",
-                              "fontSize": "$text-sm",
-                              "fontWeight": "normal"
+                          "descendants": {
+                            "J3fwqL": {
+                              "content": "§2  Инструменты"
                             }
-                          ]
+                          }
                         }
                       ]
                     }
                   ]
                 },
                 {
-                  "type": "frame",
-                  "id": "IolV1",
+                  "id": "C0ujz",
+                  "type": "ref",
+                  "ref": "wOzXW",
                   "name": "Course 02",
-                  "width": "fill_container",
-                  "gap": "$space-md",
-                  "padding": [
-                    "$space-md",
-                    "$space-sm"
-                  ],
-                  "children": [
-                    {
-                      "type": "text",
-                      "id": "D7w9v",
-                      "name": "Numeral",
-                      "fill": "$ink-3",
-                      "content": "02",
-                      "fontFamily": "$font-serif",
-                      "fontSize": "$text-md",
-                      "fontWeight": "600"
-                    },
-                    {
-                      "type": "text",
-                      "id": "Oa431",
-                      "name": "Title",
-                      "fill": "$ink-2",
-                      "textGrowth": "fixed-width",
-                      "width": "fill_container",
-                      "content": "Инструменты и границы",
-                      "lineHeight": 1.3,
-                      "fontFamily": "$font-sans",
-                      "fontSize": "$text-md",
-                      "fontWeight": "600"
-                    }
-                  ]
+                  "width": "fill_container"
                 },
                 {
-                  "type": "frame",
-                  "id": "GZVBD",
+                  "id": "ASelu",
+                  "type": "ref",
+                  "ref": "wOzXW",
                   "name": "Course 03",
                   "width": "fill_container",
-                  "gap": "$space-md",
-                  "padding": [
-                    "$space-md",
-                    "$space-sm"
-                  ],
-                  "children": [
-                    {
-                      "type": "text",
-                      "id": "gFBTD",
-                      "name": "Numeral",
-                      "fill": "$ink-3",
-                      "content": "03",
-                      "fontFamily": "$font-serif",
-                      "fontSize": "$text-md",
-                      "fontWeight": "600"
+                  "descendants": {
+                    "qty1S": {
+                      "content": "03"
                     },
-                    {
-                      "type": "text",
-                      "id": "P7LdtT",
-                      "name": "Title",
-                      "fill": "$ink-2",
-                      "textGrowth": "fixed-width",
-                      "width": "fill_container",
-                      "content": "Оценка результата",
-                      "lineHeight": 1.3,
-                      "fontFamily": "$font-sans",
-                      "fontSize": "$text-md",
-                      "fontWeight": "600"
+                    "OoDIH": {
+                      "content": "Оценка результата"
                     }
-                  ]
+                  }
                 }
               ]
             }
@@ -6750,121 +6154,12 @@
           "layout": "vertical",
           "children": [
             {
-              "type": "frame",
-              "id": "TcdXs",
+              "id": "Cp8c7",
+              "type": "ref",
+              "ref": "QLtQB",
               "name": "Top bar",
               "width": "fill_container",
-              "height": 56,
-              "stroke": "$line",
-              "strokeWidth": {
-                "bottom": 1
-              },
-              "padding": [
-                0,
-                "$space-2xl",
-                0,
-                "$space-3xl"
-              ],
-              "justifyContent": "space_between",
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "frame",
-                  "id": "vdBoq",
-                  "name": "Breadcrumb",
-                  "gap": "$space-sm",
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "text",
-                      "id": "gv2Jc",
-                      "name": "Crumb",
-                      "fill": "$ink-2",
-                      "content": "Что такое агент",
-                      "fontFamily": "$font-sans",
-                      "fontSize": "$text-sm",
-                      "fontWeight": "normal"
-                    },
-                    {
-                      "type": "icon",
-                      "id": "LVx7F",
-                      "name": "Sep",
-                      "width": 14,
-                      "height": 14,
-                      "icon": "chevron-right",
-                      "library": "lucide",
-                      "fill": "$ink-3"
-                    },
-                    {
-                      "type": "text",
-                      "id": "Pfu6G",
-                      "name": "Crumb",
-                      "fill": "$ink-2",
-                      "content": "Лекция: агент и бот",
-                      "fontFamily": "$font-sans",
-                      "fontSize": "$text-sm",
-                      "fontWeight": "normal"
-                    },
-                    {
-                      "type": "icon",
-                      "id": "p7ztY",
-                      "name": "Sep",
-                      "width": 14,
-                      "height": 14,
-                      "icon": "chevron-right",
-                      "library": "lucide",
-                      "fill": "$ink-3"
-                    },
-                    {
-                      "type": "text",
-                      "id": "OysMb",
-                      "name": "Crumb",
-                      "fill": "$ink",
-                      "content": "§1 Цикл агента",
-                      "fontFamily": "$font-sans",
-                      "fontSize": "$text-sm",
-                      "fontWeight": "600"
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "h1acm",
-                  "name": "Contents button",
-                  "height": 36,
-                  "cornerRadius": "$radius-lg",
-                  "stroke": "$line",
-                  "strokeWidth": 1,
-                  "gap": "$space-sm",
-                  "padding": [
-                    0,
-                    "$space-lg"
-                  ],
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "icon",
-                      "id": "M95lpd",
-                      "name": "Icon",
-                      "width": 16,
-                      "height": 16,
-                      "icon": "list",
-                      "library": "lucide",
-                      "fill": "$ink-2"
-                    },
-                    {
-                      "type": "text",
-                      "id": "smQPY",
-                      "name": "Label",
-                      "fill": "$ink",
-                      "content": "Содержание",
-                      "fontFamily": "$font-sans",
-                      "fontSize": "$text-sm",
-                      "fontWeight": "normal"
-                    }
-                  ]
-                }
-              ]
+              "height": 56
             },
             {
               "type": "frame",
@@ -7011,162 +6306,11 @@
                       "width": "fill_container"
                     },
                     {
-                      "type": "frame",
-                      "id": "t10geF",
+                      "id": "ZRI80",
+                      "type": "ref",
+                      "ref": "TCaVe",
                       "name": "Answer row",
-                      "width": "fill_container",
-                      "padding": [
-                        "$space-xs",
-                        0,
-                        "$space-lg",
-                        0
-                      ],
-                      "children": [
-                        {
-                          "type": "frame",
-                          "id": "vhAvi",
-                          "name": "Thread",
-                          "width": 56,
-                          "height": 170,
-                          "padding": [
-                            0,
-                            0,
-                            0,
-                            "$space-3xl"
-                          ],
-                          "children": [
-                            {
-                              "type": "rectangle",
-                              "cornerRadius": "$radius-xs",
-                              "id": "a3hBeq",
-                              "name": "Line",
-                              "fill": "$accent-line",
-                              "width": 2,
-                              "height": "fill_container"
-                            }
-                          ]
-                        },
-                        {
-                          "type": "frame",
-                          "id": "fxZff",
-                          "name": "Inline answer",
-                          "width": "fill_container",
-                          "fill": "$paper",
-                          "cornerRadius": "$radius-md",
-                          "stroke": "$accent-line",
-                          "strokeWidth": 1,
-                          "effect": {
-                            "type": "shadow",
-                            "shadowType": "outer",
-                            "color": "#2f6f5e14",
-                            "offset": {
-                              "x": 0,
-                              "y": 4
-                            },
-                            "blur": 16
-                          },
-                          "layout": "vertical",
-                          "gap": "$space-md",
-                          "padding": [
-                            "$space-lg",
-                            "$space-xl",
-                            "$space-xl",
-                            "$space-xl"
-                          ],
-                          "children": [
-                            {
-                              "type": "frame",
-                              "id": "OWeSX",
-                              "name": "Header",
-                              "width": "fill_container",
-                              "gap": "$space-md",
-                              "alignItems": "center",
-                              "children": [
-                                {
-                                  "type": "frame",
-                                  "id": "nZwaX",
-                                  "name": "Icon disc",
-                                  "width": 28,
-                                  "height": 28,
-                                  "fill": "$accent-soft",
-                                  "cornerRadius": "$radius-md",
-                                  "justifyContent": "center",
-                                  "alignItems": "center",
-                                  "children": [
-                                    {
-                                      "type": "icon",
-                                      "id": "Z4o03",
-                                      "name": "Icon",
-                                      "width": 15,
-                                      "height": 15,
-                                      "icon": "feather",
-                                      "library": "lucide",
-                                      "fill": "$accent"
-                                    }
-                                  ]
-                                },
-                                {
-                                  "type": "text",
-                                  "id": "jhoJJ",
-                                  "name": "Action",
-                                  "fill": "$accent",
-                                  "content": "Объясни проще",
-                                  "fontFamily": "$font-sans",
-                                  "fontSize": "$text-sm",
-                                  "fontWeight": "600"
-                                },
-                                {
-                                  "type": "text",
-                                  "id": "op7V8",
-                                  "name": "Anchor",
-                                  "fill": "$ink-3",
-                                  "textGrowth": "fixed-width",
-                                  "width": "fill_container",
-                                  "content": "к абзацу 2",
-                                  "fontFamily": "$font-sans",
-                                  "fontSize": "$text-sm",
-                                  "fontWeight": "normal"
-                                },
-                                {
-                                  "type": "frame",
-                                  "id": "ujH9f",
-                                  "name": "Close (44pt)",
-                                  "width": 44,
-                                  "height": 44,
-                                  "cornerRadius": "$radius-full",
-                                  "justifyContent": "center",
-                                  "alignItems": "center",
-                                  "children": [
-                                    {
-                                      "type": "icon",
-                                      "id": "ZqEBv",
-                                      "name": "Icon",
-                                      "width": 18,
-                                      "height": 18,
-                                      "icon": "x",
-                                      "library": "lucide",
-                                      "fill": "$ink-2"
-                                    }
-                                  ]
-                                }
-                              ]
-                            },
-                            {
-                              "type": "text",
-                              "id": "TUz9M",
-                              "name": "Answer text",
-                              "fill": "$ink",
-                              "textGrowth": "fixed-width",
-                              "width": "fill_container",
-                              "content": "Бот — как справочная: спросил, получил ответ. Агент — как помощник с поручением: он сам делает шаги, проверяет, что вышло, и продолжает, пока дело не сделано.",
-                              "lineHeight": 1.6,
-                              "fontFamily": "$font-sans",
-                              "fontSize": "$text-md",
-                              "fontWeight": "normal"
-                            }
-                          ]
-                        }
-                      ]
+                      "width": "fill_container"
                     },
                     {
                       "id": "T34YcV",
@@ -7184,108 +6328,11 @@
                       }
                     },
                     {
-                      "type": "frame",
-                      "id": "GVwr3",
+                      "id": "gkhDG",
+                      "type": "ref",
+                      "ref": "bw5de",
                       "name": "Pager",
-                      "width": "fill_container",
-                      "padding": [
-                        36,
-                        0,
-                        0,
-                        56
-                      ],
-                      "children": [
-                        {
-                          "type": "frame",
-                          "id": "u5sFK",
-                          "name": "Pager row",
-                          "width": "fill_container",
-                          "stroke": "$line",
-                          "strokeWidth": {
-                            "top": 1
-                          },
-                          "gap": "$space-lg",
-                          "padding": [
-                            "$space-xl",
-                            0,
-                            0,
-                            0
-                          ],
-                          "children": [
-                            {
-                              "type": "frame",
-                              "id": "oa9wy",
-                              "name": "Previous",
-                              "width": "fill_container",
-                              "layout": "vertical",
-                              "gap": "$space-xs",
-                              "padding": [
-                                "$space-md",
-                                "$space-lg"
-                              ],
-                              "children": [
-                                {
-                                  "type": "text",
-                                  "id": "wcJSr",
-                                  "name": "Dir",
-                                  "fill": "$ink-2",
-                                  "content": "← Назад",
-                                  "fontFamily": "$font-sans",
-                                  "fontSize": "$text-xs",
-                                  "fontWeight": "normal"
-                                },
-                                {
-                                  "type": "text",
-                                  "id": "L5vvT",
-                                  "name": "Target",
-                                  "fill": "$ink",
-                                  "content": "Введение",
-                                  "fontFamily": "$font-serif",
-                                  "fontSize": "$text-lead",
-                                  "fontWeight": "600"
-                                }
-                              ]
-                            },
-                            {
-                              "type": "frame",
-                              "id": "H0xOs",
-                              "name": "Next",
-                              "width": "fill_container",
-                              "fill": "$accent-soft",
-                              "cornerRadius": "$radius-sm",
-                              "layout": "vertical",
-                              "gap": "$space-xs",
-                              "padding": [
-                                "$space-md",
-                                "$space-lg"
-                              ],
-                              "alignItems": "end",
-                              "children": [
-                                {
-                                  "type": "text",
-                                  "id": "MaAJ3",
-                                  "name": "Dir",
-                                  "fill": "$accent",
-                                  "content": "Далее →",
-                                  "fontFamily": "$font-sans",
-                                  "fontSize": "$text-xs",
-                                  "fontWeight": "600"
-                                },
-                                {
-                                  "type": "text",
-                                  "id": "oSQJv",
-                                  "name": "Target",
-                                  "fill": "$accent",
-                                  "content": "§2 Инструменты",
-                                  "fontFamily": "$font-serif",
-                                  "fontSize": "$text-lead",
-                                  "fontWeight": "600"
-                                }
-                              ]
-                            }
-                          ]
-                        }
-                      ]
+                      "width": "fill_container"
                     }
                   ]
                 }
@@ -7301,6 +6348,7 @@
       "x": 2210,
       "y": 3000,
       "name": "Tokens · Ink & Saffron",
+      "reusable": true,
       "clip": true,
       "width": 560,
       "fill": "$paper",
@@ -8568,1285 +7616,11 @@
     },
     {
       "type": "frame",
-      "id": "FD2yd",
-      "x": 2210,
-      "y": 4000,
-      "name": "Tokens · Ink & Saffron · Dark",
-      "theme": {
-        "mode": "dark"
-      },
-      "clip": true,
-      "width": 560,
-      "fill": "$paper",
-      "layout": "vertical",
-      "gap": "$space-3xl",
-      "padding": 48,
-      "children": [
-        {
-          "type": "frame",
-          "id": "xMoLH",
-          "name": "Header",
-          "width": "fill_container",
-          "layout": "vertical",
-          "gap": "$space-sm",
-          "children": [
-            {
-              "type": "text",
-              "id": "af8dx",
-              "name": "Eyebrow",
-              "fill": "$accent",
-              "content": "ПАЛИТРА",
-              "fontFamily": "$font-sans",
-              "fontSize": "$text-xs",
-              "fontWeight": "600",
-              "letterSpacing": 1.5
-            },
-            {
-              "type": "text",
-              "id": "k94ytG",
-              "name": "Title",
-              "fill": "$ink",
-              "content": "Ink & Saffron · Dark",
-              "fontFamily": "$font-serif",
-              "fontSize": "$text-display",
-              "fontWeight": "600"
-            },
-            {
-              "type": "text",
-              "id": "zagtq",
-              "name": "Note",
-              "fill": "$ink-2",
-              "textGrowth": "fixed-width",
-              "width": "fill_container",
-              "content": "Warm charcoal for long reading, soft indigo for actions and the current place, dimmed saffron for the paragraph the reader is working with.",
-              "lineHeight": 1.5,
-              "fontFamily": "$font-sans",
-              "fontSize": "$text-sm",
-              "fontWeight": "normal"
-            }
-          ]
-        },
-        {
-          "type": "frame",
-          "id": "WqPpV",
-          "name": "Paper",
-          "width": "fill_container",
-          "layout": "vertical",
-          "gap": "$space-md",
-          "children": [
-            {
-              "type": "text",
-              "id": "Jba1L",
-              "name": "Label",
-              "fill": "$ink",
-              "content": "Paper",
-              "fontFamily": "$font-sans",
-              "fontSize": "$text-sm",
-              "fontWeight": "600"
-            },
-            {
-              "type": "frame",
-              "id": "IpOHx",
-              "name": "Paper swatches",
-              "width": "fill_container",
-              "gap": "$space-md",
-              "children": [
-                {
-                  "type": "frame",
-                  "id": "N6MeKw",
-                  "name": "paper",
-                  "width": "fill_container",
-                  "layout": "vertical",
-                  "gap": "$space-sm",
-                  "children": [
-                    {
-                      "type": "rectangle",
-                      "cornerRadius": "$radius-sm",
-                      "id": "SoyuI",
-                      "name": "Chip",
-                      "fill": "$paper",
-                      "width": "fill_container",
-                      "height": 64,
-                      "stroke": "$line",
-                      "strokeWidth": 1
-                    },
-                    {
-                      "type": "text",
-                      "id": "Vqb3h",
-                      "name": "Name",
-                      "fill": "$ink",
-                      "content": "paper",
-                      "fontFamily": "$font-sans",
-                      "fontSize": "$text-xs",
-                      "fontWeight": "500"
-                    },
-                    {
-                      "type": "text",
-                      "id": "uj3By",
-                      "name": "Hex",
-                      "fill": "$ink-3",
-                      "content": "#1A1714",
-                      "fontFamily": "$font-mono",
-                      "fontSize": "$text-xs",
-                      "fontWeight": "normal"
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "BxeiX",
-                  "name": "paper-deep",
-                  "width": "fill_container",
-                  "layout": "vertical",
-                  "gap": "$space-sm",
-                  "children": [
-                    {
-                      "type": "rectangle",
-                      "cornerRadius": "$radius-sm",
-                      "id": "vm6uR",
-                      "name": "Chip",
-                      "fill": "$paper-deep",
-                      "width": "fill_container",
-                      "height": 64,
-                      "stroke": "$line",
-                      "strokeWidth": 1
-                    },
-                    {
-                      "type": "text",
-                      "id": "jIjgn",
-                      "name": "Name",
-                      "fill": "$ink",
-                      "content": "paper-deep",
-                      "fontFamily": "$font-sans",
-                      "fontSize": "$text-xs",
-                      "fontWeight": "500"
-                    },
-                    {
-                      "type": "text",
-                      "id": "lPRWA",
-                      "name": "Hex",
-                      "fill": "$ink-3",
-                      "content": "#211D19",
-                      "fontFamily": "$font-mono",
-                      "fontSize": "$text-xs",
-                      "fontWeight": "normal"
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "qurT8",
-                  "name": "sunken",
-                  "width": "fill_container",
-                  "layout": "vertical",
-                  "gap": "$space-sm",
-                  "children": [
-                    {
-                      "type": "rectangle",
-                      "cornerRadius": "$radius-sm",
-                      "id": "fRfIJ",
-                      "name": "Chip",
-                      "fill": "$sunken",
-                      "width": "fill_container",
-                      "height": 64,
-                      "stroke": "$line",
-                      "strokeWidth": 1
-                    },
-                    {
-                      "type": "text",
-                      "id": "IrXHX",
-                      "name": "Name",
-                      "fill": "$ink",
-                      "content": "sunken",
-                      "fontFamily": "$font-sans",
-                      "fontSize": "$text-xs",
-                      "fontWeight": "500"
-                    },
-                    {
-                      "type": "text",
-                      "id": "A0QNnK",
-                      "name": "Hex",
-                      "fill": "$ink-3",
-                      "content": "#27221D",
-                      "fontFamily": "$font-mono",
-                      "fontSize": "$text-xs",
-                      "fontWeight": "normal"
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "Vuque",
-                  "name": "line",
-                  "width": "fill_container",
-                  "layout": "vertical",
-                  "gap": "$space-sm",
-                  "children": [
-                    {
-                      "type": "rectangle",
-                      "cornerRadius": "$radius-sm",
-                      "id": "frx3e",
-                      "name": "Chip",
-                      "fill": "$line",
-                      "width": "fill_container",
-                      "height": 64,
-                      "stroke": "$line",
-                      "strokeWidth": 1
-                    },
-                    {
-                      "type": "text",
-                      "id": "P8Q8SW",
-                      "name": "Name",
-                      "fill": "$ink",
-                      "content": "line",
-                      "fontFamily": "$font-sans",
-                      "fontSize": "$text-xs",
-                      "fontWeight": "500"
-                    },
-                    {
-                      "type": "text",
-                      "id": "bLqA7",
-                      "name": "Hex",
-                      "fill": "$ink-3",
-                      "content": "#342E28",
-                      "fontFamily": "$font-mono",
-                      "fontSize": "$text-xs",
-                      "fontWeight": "normal"
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "LmkdZ",
-                  "name": "line-strong",
-                  "width": "fill_container",
-                  "layout": "vertical",
-                  "gap": "$space-sm",
-                  "children": [
-                    {
-                      "type": "rectangle",
-                      "cornerRadius": "$radius-sm",
-                      "id": "gdlSD",
-                      "name": "Chip",
-                      "fill": "$line-strong",
-                      "width": "fill_container",
-                      "height": 64,
-                      "stroke": "$line",
-                      "strokeWidth": 1
-                    },
-                    {
-                      "type": "text",
-                      "id": "ujAdj",
-                      "name": "Name",
-                      "fill": "$ink",
-                      "content": "line-strong",
-                      "fontFamily": "$font-sans",
-                      "fontSize": "$text-xs",
-                      "fontWeight": "500"
-                    },
-                    {
-                      "type": "text",
-                      "id": "Eu5cu",
-                      "name": "Hex",
-                      "fill": "$ink-3",
-                      "content": "#4A423A",
-                      "fontFamily": "$font-mono",
-                      "fontSize": "$text-xs",
-                      "fontWeight": "normal"
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "type": "frame",
-          "id": "F6fIP",
-          "name": "Ink",
-          "width": "fill_container",
-          "layout": "vertical",
-          "gap": "$space-md",
-          "children": [
-            {
-              "type": "text",
-              "id": "MoxHB",
-              "name": "Label",
-              "fill": "$ink",
-              "content": "Ink",
-              "fontFamily": "$font-sans",
-              "fontSize": "$text-sm",
-              "fontWeight": "600"
-            },
-            {
-              "type": "frame",
-              "id": "D5HhBc",
-              "name": "Ink swatches",
-              "width": "fill_container",
-              "gap": "$space-md",
-              "children": [
-                {
-                  "type": "frame",
-                  "id": "MSb2W",
-                  "name": "ink",
-                  "width": "fill_container",
-                  "layout": "vertical",
-                  "gap": "$space-sm",
-                  "children": [
-                    {
-                      "type": "rectangle",
-                      "cornerRadius": "$radius-sm",
-                      "id": "npqW2",
-                      "name": "Chip",
-                      "fill": "$ink",
-                      "width": "fill_container",
-                      "height": 64,
-                      "stroke": "$line",
-                      "strokeWidth": 1
-                    },
-                    {
-                      "type": "text",
-                      "id": "z28ymj",
-                      "name": "Name",
-                      "fill": "$ink",
-                      "content": "ink",
-                      "fontFamily": "$font-sans",
-                      "fontSize": "$text-xs",
-                      "fontWeight": "500"
-                    },
-                    {
-                      "type": "text",
-                      "id": "k1Grt",
-                      "name": "Hex",
-                      "fill": "$ink-3",
-                      "content": "#EDE6DA",
-                      "fontFamily": "$font-mono",
-                      "fontSize": "$text-xs",
-                      "fontWeight": "normal"
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "FnJ7n",
-                  "name": "ink-2",
-                  "width": "fill_container",
-                  "layout": "vertical",
-                  "gap": "$space-sm",
-                  "children": [
-                    {
-                      "type": "rectangle",
-                      "cornerRadius": "$radius-sm",
-                      "id": "GMo0l",
-                      "name": "Chip",
-                      "fill": "$ink-2",
-                      "width": "fill_container",
-                      "height": 64,
-                      "stroke": "$line",
-                      "strokeWidth": 1
-                    },
-                    {
-                      "type": "text",
-                      "id": "LSZq3",
-                      "name": "Name",
-                      "fill": "$ink",
-                      "content": "ink-2",
-                      "fontFamily": "$font-sans",
-                      "fontSize": "$text-xs",
-                      "fontWeight": "500"
-                    },
-                    {
-                      "type": "text",
-                      "id": "k493PO",
-                      "name": "Hex",
-                      "fill": "$ink-3",
-                      "content": "#B5AA9B",
-                      "fontFamily": "$font-mono",
-                      "fontSize": "$text-xs",
-                      "fontWeight": "normal"
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "N3ttI",
-                  "name": "ink-3",
-                  "width": "fill_container",
-                  "layout": "vertical",
-                  "gap": "$space-sm",
-                  "children": [
-                    {
-                      "type": "rectangle",
-                      "cornerRadius": "$radius-sm",
-                      "id": "ApAUu",
-                      "name": "Chip",
-                      "fill": "$ink-3",
-                      "width": "fill_container",
-                      "height": 64,
-                      "stroke": "$line",
-                      "strokeWidth": 1
-                    },
-                    {
-                      "type": "text",
-                      "id": "nhzBz",
-                      "name": "Name",
-                      "fill": "$ink",
-                      "content": "ink-3",
-                      "fontFamily": "$font-sans",
-                      "fontSize": "$text-xs",
-                      "fontWeight": "500"
-                    },
-                    {
-                      "type": "text",
-                      "id": "qMuLt",
-                      "name": "Hex",
-                      "fill": "$ink-3",
-                      "content": "#877C6F",
-                      "fontFamily": "$font-mono",
-                      "fontSize": "$text-xs",
-                      "fontWeight": "normal"
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "type": "frame",
-          "id": "FKjl1",
-          "name": "Accent",
-          "width": "fill_container",
-          "layout": "vertical",
-          "gap": "$space-md",
-          "children": [
-            {
-              "type": "text",
-              "id": "PZ6LX",
-              "name": "Label",
-              "fill": "$ink",
-              "content": "Accent",
-              "fontFamily": "$font-sans",
-              "fontSize": "$text-sm",
-              "fontWeight": "600"
-            },
-            {
-              "type": "frame",
-              "id": "bCvJN",
-              "name": "Accent swatches",
-              "width": "fill_container",
-              "gap": "$space-md",
-              "children": [
-                {
-                  "type": "frame",
-                  "id": "ePFJV",
-                  "name": "accent",
-                  "width": "fill_container",
-                  "layout": "vertical",
-                  "gap": "$space-sm",
-                  "children": [
-                    {
-                      "type": "rectangle",
-                      "cornerRadius": "$radius-sm",
-                      "id": "g0BZR",
-                      "name": "Chip",
-                      "fill": "$accent",
-                      "width": "fill_container",
-                      "height": 64,
-                      "stroke": "$line",
-                      "strokeWidth": 1
-                    },
-                    {
-                      "type": "text",
-                      "id": "IUVYr",
-                      "name": "Name",
-                      "fill": "$ink",
-                      "content": "accent",
-                      "fontFamily": "$font-sans",
-                      "fontSize": "$text-xs",
-                      "fontWeight": "500"
-                    },
-                    {
-                      "type": "text",
-                      "id": "eVUrv",
-                      "name": "Hex",
-                      "fill": "$ink-3",
-                      "content": "#8E9BE6",
-                      "fontFamily": "$font-mono",
-                      "fontSize": "$text-xs",
-                      "fontWeight": "normal"
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "q8anY",
-                  "name": "accent-soft",
-                  "width": "fill_container",
-                  "layout": "vertical",
-                  "gap": "$space-sm",
-                  "children": [
-                    {
-                      "type": "rectangle",
-                      "cornerRadius": "$radius-sm",
-                      "id": "f4XS4",
-                      "name": "Chip",
-                      "fill": "$accent-soft",
-                      "width": "fill_container",
-                      "height": 64,
-                      "stroke": "$line",
-                      "strokeWidth": 1
-                    },
-                    {
-                      "type": "text",
-                      "id": "WCKXb",
-                      "name": "Name",
-                      "fill": "$ink",
-                      "content": "accent-soft",
-                      "fontFamily": "$font-sans",
-                      "fontSize": "$text-xs",
-                      "fontWeight": "500"
-                    },
-                    {
-                      "type": "text",
-                      "id": "UYfT9",
-                      "name": "Hex",
-                      "fill": "$ink-3",
-                      "content": "#242946",
-                      "fontFamily": "$font-mono",
-                      "fontSize": "$text-xs",
-                      "fontWeight": "normal"
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "G7dLkl",
-                  "name": "accent-line",
-                  "width": "fill_container",
-                  "layout": "vertical",
-                  "gap": "$space-sm",
-                  "children": [
-                    {
-                      "type": "rectangle",
-                      "cornerRadius": "$radius-sm",
-                      "id": "DStNw",
-                      "name": "Chip",
-                      "fill": "$accent-line",
-                      "width": "fill_container",
-                      "height": 64,
-                      "stroke": "$line",
-                      "strokeWidth": 1
-                    },
-                    {
-                      "type": "text",
-                      "id": "okN53",
-                      "name": "Name",
-                      "fill": "$ink",
-                      "content": "accent-line",
-                      "fontFamily": "$font-sans",
-                      "fontSize": "$text-xs",
-                      "fontWeight": "500"
-                    },
-                    {
-                      "type": "text",
-                      "id": "XuOb5",
-                      "name": "Hex",
-                      "fill": "$ink-3",
-                      "content": "#3D4678",
-                      "fontFamily": "$font-mono",
-                      "fontSize": "$text-xs",
-                      "fontWeight": "normal"
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "y9zKz",
-                  "name": "highlight",
-                  "width": "fill_container",
-                  "layout": "vertical",
-                  "gap": "$space-sm",
-                  "children": [
-                    {
-                      "type": "rectangle",
-                      "cornerRadius": "$radius-sm",
-                      "id": "aVeyp",
-                      "name": "Chip",
-                      "fill": "$highlight",
-                      "width": "fill_container",
-                      "height": 64,
-                      "stroke": "$line",
-                      "strokeWidth": 1
-                    },
-                    {
-                      "type": "text",
-                      "id": "Veych",
-                      "name": "Name",
-                      "fill": "$ink",
-                      "content": "highlight",
-                      "fontFamily": "$font-sans",
-                      "fontSize": "$text-xs",
-                      "fontWeight": "500"
-                    },
-                    {
-                      "type": "text",
-                      "id": "LIQ4G",
-                      "name": "Hex",
-                      "fill": "$ink-3",
-                      "content": "#3B3020",
-                      "fontFamily": "$font-mono",
-                      "fontSize": "$text-xs",
-                      "fontWeight": "normal"
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "type": "frame",
-          "id": "rh92G",
-          "name": "Type",
-          "width": "fill_container",
-          "layout": "vertical",
-          "gap": "$space-md",
-          "children": [
-            {
-              "type": "text",
-              "id": "I2YTu",
-              "fill": "$ink-3",
-              "content": "ТИПОГРАФИКА",
-              "fontFamily": "$font-sans",
-              "fontSize": "$text-xs",
-              "fontWeight": "600",
-              "letterSpacing": 1
-            },
-            {
-              "type": "frame",
-              "id": "N6vCXa",
-              "width": "fill_container",
-              "gap": "$space-lg",
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "text",
-                  "id": "iMdMc",
-                  "fill": "$ink-3",
-                  "textGrowth": "fixed-width",
-                  "width": 130,
-                  "content": "text-xs · 11",
-                  "fontFamily": "$font-mono",
-                  "fontSize": "$text-xs",
-                  "fontWeight": "normal"
-                },
-                {
-                  "type": "text",
-                  "id": "fHV7E",
-                  "fill": "$ink",
-                  "content": "Цикл агента",
-                  "fontFamily": "$font-sans",
-                  "fontSize": "$text-xs",
-                  "fontWeight": "normal"
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "Y7Q20",
-              "width": "fill_container",
-              "gap": "$space-lg",
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "text",
-                  "id": "wmpBW",
-                  "fill": "$ink-3",
-                  "textGrowth": "fixed-width",
-                  "width": 130,
-                  "content": "text-sm · 13",
-                  "fontFamily": "$font-mono",
-                  "fontSize": "$text-xs",
-                  "fontWeight": "normal"
-                },
-                {
-                  "type": "text",
-                  "id": "B9eHL",
-                  "fill": "$ink",
-                  "content": "Цикл агента",
-                  "fontFamily": "$font-sans",
-                  "fontSize": "$text-sm",
-                  "fontWeight": "normal"
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "YxPpX",
-              "width": "fill_container",
-              "gap": "$space-lg",
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "text",
-                  "id": "o5vJO0",
-                  "fill": "$ink-3",
-                  "textGrowth": "fixed-width",
-                  "width": 130,
-                  "content": "text-md · 15",
-                  "fontFamily": "$font-mono",
-                  "fontSize": "$text-xs",
-                  "fontWeight": "normal"
-                },
-                {
-                  "type": "text",
-                  "id": "dG45Y",
-                  "fill": "$ink",
-                  "content": "Цикл агента",
-                  "fontFamily": "$font-sans",
-                  "fontSize": "$text-md",
-                  "fontWeight": "normal"
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "pKz3M",
-              "width": "fill_container",
-              "gap": "$space-lg",
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "text",
-                  "id": "T1sWDc",
-                  "fill": "$ink-3",
-                  "textGrowth": "fixed-width",
-                  "width": 130,
-                  "content": "text-body · 17",
-                  "fontFamily": "$font-mono",
-                  "fontSize": "$text-xs",
-                  "fontWeight": "normal"
-                },
-                {
-                  "type": "text",
-                  "id": "s0fti",
-                  "fill": "$ink",
-                  "content": "Цикл агента",
-                  "fontFamily": "$font-sans",
-                  "fontSize": "$text-body",
-                  "fontWeight": "normal"
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "o3Lusq",
-              "width": "fill_container",
-              "gap": "$space-lg",
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "text",
-                  "id": "j7WyHP",
-                  "fill": "$ink-3",
-                  "textGrowth": "fixed-width",
-                  "width": 130,
-                  "content": "text-lead · 19",
-                  "fontFamily": "$font-mono",
-                  "fontSize": "$text-xs",
-                  "fontWeight": "normal"
-                },
-                {
-                  "type": "text",
-                  "id": "w14kc",
-                  "fill": "$ink",
-                  "content": "Цикл агента",
-                  "fontFamily": "$font-serif",
-                  "fontSize": "$text-lead",
-                  "fontWeight": "normal"
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "u2F2q",
-              "width": "fill_container",
-              "gap": "$space-lg",
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "text",
-                  "id": "OzU4A",
-                  "fill": "$ink-3",
-                  "textGrowth": "fixed-width",
-                  "width": 130,
-                  "content": "text-title · 22",
-                  "fontFamily": "$font-mono",
-                  "fontSize": "$text-xs",
-                  "fontWeight": "normal"
-                },
-                {
-                  "type": "text",
-                  "id": "P2IlPK",
-                  "fill": "$ink",
-                  "content": "Цикл агента",
-                  "fontFamily": "$font-serif",
-                  "fontSize": "$text-title",
-                  "fontWeight": "normal"
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "Cs3Ov",
-              "width": "fill_container",
-              "gap": "$space-lg",
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "text",
-                  "id": "Qs1jn",
-                  "fill": "$ink-3",
-                  "textGrowth": "fixed-width",
-                  "width": 130,
-                  "content": "text-heading · 30",
-                  "fontFamily": "$font-mono",
-                  "fontSize": "$text-xs",
-                  "fontWeight": "normal"
-                },
-                {
-                  "type": "text",
-                  "id": "F6WCuF",
-                  "fill": "$ink",
-                  "content": "Цикл агента",
-                  "fontFamily": "$font-serif",
-                  "fontSize": "$text-heading",
-                  "fontWeight": "normal"
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "q0vPzJ",
-              "width": "fill_container",
-              "gap": "$space-lg",
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "text",
-                  "id": "bWAfK",
-                  "fill": "$ink-3",
-                  "textGrowth": "fixed-width",
-                  "width": 130,
-                  "content": "text-display · 40",
-                  "fontFamily": "$font-mono",
-                  "fontSize": "$text-xs",
-                  "fontWeight": "normal"
-                },
-                {
-                  "type": "text",
-                  "id": "qquFg",
-                  "fill": "$ink",
-                  "content": "Цикл агента",
-                  "fontFamily": "$font-serif",
-                  "fontSize": "$text-display",
-                  "fontWeight": "normal"
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "type": "frame",
-          "id": "d1QGzF",
-          "name": "Spacing & radius",
-          "width": "fill_container",
-          "layout": "vertical",
-          "gap": "$space-sm",
-          "children": [
-            {
-              "type": "text",
-              "id": "Ge1CQ",
-              "fill": "$ink-3",
-              "content": "ОТСТУПЫ И СКРУГЛЕНИЯ",
-              "fontFamily": "$font-sans",
-              "fontSize": "$text-xs",
-              "fontWeight": "600",
-              "letterSpacing": 1
-            },
-            {
-              "type": "frame",
-              "id": "c9nsE",
-              "gap": "$space-lg",
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "text",
-                  "id": "e5ESHz",
-                  "fill": "$ink-3",
-                  "textGrowth": "fixed-width",
-                  "width": 130,
-                  "content": "space-2xs · 2",
-                  "fontFamily": "$font-mono",
-                  "fontSize": "$text-xs",
-                  "fontWeight": "normal"
-                },
-                {
-                  "type": "rectangle",
-                  "id": "eM9ZT",
-                  "fill": "$accent",
-                  "width": 0,
-                  "height": 12
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "xffjV",
-              "gap": "$space-lg",
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "text",
-                  "id": "n1IZYr",
-                  "fill": "$ink-3",
-                  "textGrowth": "fixed-width",
-                  "width": 130,
-                  "content": "space-xs · 4",
-                  "fontFamily": "$font-mono",
-                  "fontSize": "$text-xs",
-                  "fontWeight": "normal"
-                },
-                {
-                  "type": "rectangle",
-                  "id": "pxqdX",
-                  "fill": "$accent",
-                  "width": 0,
-                  "height": 12
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "Uirj0",
-              "gap": "$space-lg",
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "text",
-                  "id": "pRvAr",
-                  "fill": "$ink-3",
-                  "textGrowth": "fixed-width",
-                  "width": 130,
-                  "content": "space-sm · 8",
-                  "fontFamily": "$font-mono",
-                  "fontSize": "$text-xs",
-                  "fontWeight": "normal"
-                },
-                {
-                  "type": "rectangle",
-                  "id": "AE3UR",
-                  "fill": "$accent",
-                  "width": 0,
-                  "height": 12
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "NO9DE",
-              "gap": "$space-lg",
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "text",
-                  "id": "R3nhx",
-                  "fill": "$ink-3",
-                  "textGrowth": "fixed-width",
-                  "width": 130,
-                  "content": "space-md · 12",
-                  "fontFamily": "$font-mono",
-                  "fontSize": "$text-xs",
-                  "fontWeight": "normal"
-                },
-                {
-                  "type": "rectangle",
-                  "id": "pLhXp",
-                  "fill": "$accent",
-                  "width": 0,
-                  "height": 12
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "Mf9dS",
-              "gap": "$space-lg",
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "text",
-                  "id": "aqHhT",
-                  "fill": "$ink-3",
-                  "textGrowth": "fixed-width",
-                  "width": 130,
-                  "content": "space-lg · 16",
-                  "fontFamily": "$font-mono",
-                  "fontSize": "$text-xs",
-                  "fontWeight": "normal"
-                },
-                {
-                  "type": "rectangle",
-                  "id": "V1MmPh",
-                  "fill": "$accent",
-                  "width": 0,
-                  "height": 12
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "McjK8",
-              "gap": "$space-lg",
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "text",
-                  "id": "k1v2eZ",
-                  "fill": "$ink-3",
-                  "textGrowth": "fixed-width",
-                  "width": 130,
-                  "content": "space-xl · 20",
-                  "fontFamily": "$font-mono",
-                  "fontSize": "$text-xs",
-                  "fontWeight": "normal"
-                },
-                {
-                  "type": "rectangle",
-                  "id": "GskFf",
-                  "fill": "$accent",
-                  "width": 0,
-                  "height": 12
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "xM0TS",
-              "gap": "$space-lg",
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "text",
-                  "id": "Cw616",
-                  "fill": "$ink-3",
-                  "textGrowth": "fixed-width",
-                  "width": 130,
-                  "content": "space-2xl · 24",
-                  "fontFamily": "$font-mono",
-                  "fontSize": "$text-xs",
-                  "fontWeight": "normal"
-                },
-                {
-                  "type": "rectangle",
-                  "id": "RNlRk",
-                  "fill": "$accent",
-                  "width": 0,
-                  "height": 12
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "FDEBz",
-              "gap": "$space-lg",
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "text",
-                  "id": "L2F5g9",
-                  "fill": "$ink-3",
-                  "textGrowth": "fixed-width",
-                  "width": 130,
-                  "content": "space-3xl · 32",
-                  "fontFamily": "$font-mono",
-                  "fontSize": "$text-xs",
-                  "fontWeight": "normal"
-                },
-                {
-                  "type": "rectangle",
-                  "id": "L4eMuz",
-                  "fill": "$accent",
-                  "width": 0,
-                  "height": 12
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "M0lrG",
-              "gap": "$space-lg",
-              "padding": [
-                8,
-                0,
-                0,
-                0
-              ],
-              "children": [
-                {
-                  "type": "frame",
-                  "id": "HMAdc",
-                  "layout": "vertical",
-                  "gap": "$space-xs",
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "rectangle",
-                      "cornerRadius": "$radius-xs",
-                      "id": "TP7lB",
-                      "fill": "$accent-soft",
-                      "width": 48,
-                      "height": 48,
-                      "stroke": "$accent-line",
-                      "strokeWidth": 1
-                    },
-                    {
-                      "type": "text",
-                      "id": "aeiuS",
-                      "fill": "$ink-3",
-                      "content": "xs",
-                      "fontFamily": "$font-mono",
-                      "fontSize": "$text-xs",
-                      "fontWeight": "normal"
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "jhGts",
-                  "layout": "vertical",
-                  "gap": "$space-xs",
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "rectangle",
-                      "cornerRadius": "$radius-sm",
-                      "id": "BKo0k",
-                      "fill": "$accent-soft",
-                      "width": 48,
-                      "height": 48,
-                      "stroke": "$accent-line",
-                      "strokeWidth": 1
-                    },
-                    {
-                      "type": "text",
-                      "id": "RACbY",
-                      "fill": "$ink-3",
-                      "content": "sm",
-                      "fontFamily": "$font-mono",
-                      "fontSize": "$text-xs",
-                      "fontWeight": "normal"
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "MiRye",
-                  "layout": "vertical",
-                  "gap": "$space-xs",
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "rectangle",
-                      "cornerRadius": "$radius-md",
-                      "id": "nbv88",
-                      "fill": "$accent-soft",
-                      "width": 48,
-                      "height": 48,
-                      "stroke": "$accent-line",
-                      "strokeWidth": 1
-                    },
-                    {
-                      "type": "text",
-                      "id": "o5xBwV",
-                      "fill": "$ink-3",
-                      "content": "md",
-                      "fontFamily": "$font-mono",
-                      "fontSize": "$text-xs",
-                      "fontWeight": "normal"
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "aTvU2",
-                  "layout": "vertical",
-                  "gap": "$space-xs",
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "rectangle",
-                      "cornerRadius": "$radius-lg",
-                      "id": "g7GOi",
-                      "fill": "$accent-soft",
-                      "width": 48,
-                      "height": 48,
-                      "stroke": "$accent-line",
-                      "strokeWidth": 1
-                    },
-                    {
-                      "type": "text",
-                      "id": "uM8lR",
-                      "fill": "$ink-3",
-                      "content": "lg",
-                      "fontFamily": "$font-mono",
-                      "fontSize": "$text-xs",
-                      "fontWeight": "normal"
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "LhxJc",
-                  "layout": "vertical",
-                  "gap": "$space-xs",
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "rectangle",
-                      "cornerRadius": "$radius-full",
-                      "id": "L7XrR",
-                      "fill": "$accent-soft",
-                      "width": 48,
-                      "height": 48,
-                      "stroke": "$accent-line",
-                      "strokeWidth": 1
-                    },
-                    {
-                      "type": "text",
-                      "id": "Ngb7Y",
-                      "fill": "$ink-3",
-                      "content": "full",
-                      "fontFamily": "$font-mono",
-                      "fontSize": "$text-xs",
-                      "fontWeight": "normal"
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "type": "frame",
       "id": "a0cm7",
       "x": 3000,
       "y": 3000,
       "name": "Components · Ink & Saffron",
-      "width": 760,
+      "width": 1096,
       "fill": "$paper",
       "layout": "vertical",
       "gap": "$space-3xl",
@@ -10269,29 +8043,13 @@
               ]
             }
           ]
-        }
-      ]
-    },
-    {
-      "type": "frame",
-      "id": "YgGTb",
-      "x": 0,
-      "y": 4000,
-      "name": "Phone · Program v2 · Ink & Saffron · Dark",
-      "theme": {
-        "mode": "dark"
-      },
-      "clip": true,
-      "width": 375,
-      "height": 812,
-      "fill": "$paper",
-      "layout": "vertical",
-      "children": [
+        },
         {
           "type": "frame",
-          "id": "DeW2P",
-          "name": "Top bar",
-          "width": "fill_container",
+          "id": "mjq0N",
+          "name": "Top bar · back",
+          "reusable": true,
+          "width": 375,
           "height": 52,
           "gap": "$space-2xs",
           "padding": [
@@ -10302,7 +8060,7 @@
           "children": [
             {
               "type": "frame",
-              "id": "fwsvo",
+              "id": "YMHkG",
               "name": "Back (44pt)",
               "width": 44,
               "height": 44,
@@ -10311,7 +8069,7 @@
               "children": [
                 {
                   "type": "icon",
-                  "id": "xPzsJ",
+                  "id": "kl83K",
                   "name": "Chevron",
                   "width": 22,
                   "height": 22,
@@ -10323,7 +8081,7 @@
             },
             {
               "type": "text",
-              "id": "y3DoC",
+              "id": "MI5RJ",
               "name": "Back label",
               "fill": "$accent",
               "content": "Программы",
@@ -10335,242 +8093,10 @@
         },
         {
           "type": "frame",
-          "id": "hWSAQ",
-          "name": "Masthead",
-          "width": "fill_container",
-          "layout": "vertical",
-          "gap": "$space-md",
-          "padding": [
-            "$space-md",
-            "$space-2xl",
-            "$space-2xl",
-            "$space-2xl"
-          ],
-          "children": [
-            {
-              "type": "text",
-              "id": "N9l3IU",
-              "name": "Eyebrow",
-              "fill": "$accent",
-              "content": "ПРОГРАММА · 3 КУРСА",
-              "fontFamily": "$font-sans",
-              "fontSize": "$text-xs",
-              "fontWeight": "600",
-              "letterSpacing": 1.2
-            },
-            {
-              "type": "text",
-              "id": "a6VkJP",
-              "name": "Title",
-              "fill": "$ink",
-              "content": "Агенты\nна практике",
-              "lineHeight": 1.1,
-              "fontFamily": "$font-serif",
-              "fontSize": "$text-display",
-              "fontWeight": "600",
-              "letterSpacing": -0.5
-            },
-            {
-              "type": "text",
-              "id": "PSGAv",
-              "name": "Description",
-              "fill": "$ink-2",
-              "textGrowth": "fixed-width",
-              "width": "fill_container",
-              "content": "От первого вызова модели до агента, который знает, когда остановиться.",
-              "lineHeight": 1.5,
-              "fontFamily": "$font-serif",
-              "fontSize": "$text-body",
-              "fontWeight": "normal",
-              "fontStyle": "italic"
-            }
-          ]
-        },
-        {
-          "type": "rectangle",
-          "id": "v5wvuo",
-          "name": "Rule",
-          "fill": "$line",
-          "width": "fill_container",
-          "height": 1
-        },
-        {
-          "type": "frame",
-          "id": "zBmBk",
-          "name": "Contents",
-          "width": "fill_container",
-          "height": "fill_container",
-          "layout": "vertical",
-          "padding": [
-            "$space-sm",
-            "$space-2xl",
-            "$space-2xl",
-            "$space-2xl"
-          ],
-          "children": [
-            {
-              "id": "yqEUp",
-              "type": "ref",
-              "ref": "VXZi1",
-              "name": "Course 01",
-              "width": "fill_container"
-            },
-            {
-              "id": "E2e1d",
-              "type": "ref",
-              "ref": "VXZi1",
-              "name": "Course 02",
-              "width": "fill_container",
-              "descendants": {
-                "XW67l": {
-                  "content": "02"
-                },
-                "V3s6B": {
-                  "content": "Инструменты и границы"
-                },
-                "gCID5": {
-                  "content": "Права  ·  Остановка"
-                },
-                "nMOJ6": {
-                  "content": "Читать"
-                },
-                "q4ix61": {
-                  "content": "Лекция: границы агента"
-                }
-              }
-            },
-            {
-              "id": "acygW",
-              "type": "ref",
-              "ref": "VXZi1",
-              "name": "Course 03",
-              "width": "fill_container",
-              "descendants": {
-                "XW67l": {
-                  "content": "03"
-                },
-                "p4X2Z": {
-                  "enabled": false
-                },
-                "V3s6B": {
-                  "content": "Оценка результата"
-                },
-                "gCID5": {
-                  "content": "Проверки"
-                },
-                "EtWQT": {
-                  "type": "text",
-                  "id": "u2Pev",
-                  "name": "No material",
-                  "fill": "$ink-3",
-                  "content": "Материалов пока нет",
-                  "fontFamily": "$font-sans",
-                  "fontSize": "$text-sm",
-                  "fontWeight": "normal",
-                  "fontStyle": "italic"
-                }
-              }
-            }
-          ]
-        },
-        {
-          "type": "frame",
-          "id": "QzHAK",
-          "name": "Resume dock",
-          "width": "fill_container",
-          "fill": "$paper",
-          "stroke": "$line",
-          "strokeWidth": {
-            "top": 1
-          },
-          "padding": [
-            "$space-md",
-            "$space-lg",
-            "$space-3xl",
-            "$space-lg"
-          ],
-          "children": [
-            {
-              "type": "frame",
-              "id": "Fb9sE",
-              "name": "Continue reading",
-              "width": "fill_container",
-              "height": 56,
-              "fill": "$accent",
-              "cornerRadius": "$radius-md",
-              "gap": "$space-md",
-              "padding": [
-                0,
-                "$space-xl"
-              ],
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "frame",
-                  "id": "zAS7M",
-                  "name": "Label",
-                  "width": "fill_container",
-                  "layout": "vertical",
-                  "gap": "$space-2xs",
-                  "children": [
-                    {
-                      "type": "text",
-                      "id": "K7KhjE",
-                      "name": "Action",
-                      "fill": "$on-accent",
-                      "content": "Продолжить чтение",
-                      "fontFamily": "$font-sans",
-                      "fontSize": "$text-md",
-                      "fontWeight": "600"
-                    },
-                    {
-                      "type": "text",
-                      "id": "Xhtwh",
-                      "name": "Where",
-                      "fill": "$on-accent-muted",
-                      "content": "Лекция: агент и бот · §1 · 2/5",
-                      "fontFamily": "$font-sans",
-                      "fontSize": "$text-xs",
-                      "fontWeight": "normal"
-                    }
-                  ]
-                },
-                {
-                  "type": "icon",
-                  "id": "YjG4F",
-                  "name": "Arrow",
-                  "width": 20,
-                  "height": 20,
-                  "icon": "arrow-right",
-                  "library": "lucide",
-                  "fill": "$paper"
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "type": "frame",
-      "id": "x3Dwqv",
-      "x": 435,
-      "y": 4000,
-      "name": "Phone · Content + menu v2 · Ink & Saffron · Dark",
-      "theme": {
-        "mode": "dark"
-      },
-      "clip": true,
-      "width": 375,
-      "height": 812,
-      "fill": "$paper",
-      "layout": "vertical",
-      "children": [
-        {
-          "type": "frame",
-          "id": "JmwLm",
-          "name": "Top bar",
-          "width": "fill_container",
+          "id": "HbQK3",
+          "name": "Top bar · reading",
+          "reusable": true,
+          "width": 375,
           "height": 52,
           "padding": [
             0,
@@ -10580,7 +8106,7 @@
           "children": [
             {
               "type": "frame",
-              "id": "t9Qba",
+              "id": "gq7qt",
               "name": "Back (44pt)",
               "width": 44,
               "height": 44,
@@ -10589,7 +8115,7 @@
               "children": [
                 {
                   "type": "icon",
-                  "id": "griLH",
+                  "id": "D6zvCc",
                   "name": "Icon",
                   "width": 22,
                   "height": 22,
@@ -10601,7 +8127,7 @@
             },
             {
               "type": "frame",
-              "id": "B0pQL",
+              "id": "Q1QsGY",
               "name": "Title",
               "width": "fill_container",
               "layout": "vertical",
@@ -10610,7 +8136,7 @@
               "children": [
                 {
                   "type": "text",
-                  "id": "QAgmm",
+                  "id": "wp2UE",
                   "name": "Kicker",
                   "fill": "$ink-2",
                   "content": "Что такое агент",
@@ -10620,7 +8146,7 @@
                 },
                 {
                   "type": "text",
-                  "id": "t9Z85s",
+                  "id": "kvBAq",
                   "name": "Current",
                   "fill": "$ink",
                   "content": "Лекция: агент и бот",
@@ -10632,7 +8158,7 @@
             },
             {
               "type": "frame",
-              "id": "bQqDw",
+              "id": "xtJdT",
               "name": "Contents (44pt)",
               "width": 44,
               "height": 44,
@@ -10641,7 +8167,7 @@
               "children": [
                 {
                   "type": "icon",
-                  "id": "ygj6L",
+                  "id": "DzNHt",
                   "name": "Icon",
                   "width": 22,
                   "height": 22,
@@ -10655,151 +8181,10 @@
         },
         {
           "type": "frame",
-          "id": "zU91o",
-          "name": "Page strip",
-          "width": "fill_container",
-          "gap": "$space-xs",
-          "padding": [
-            0,
-            "$space-xl"
-          ],
-          "children": [
-            {
-              "type": "rectangle",
-              "cornerRadius": "$radius-xs",
-              "id": "MPLaf",
-              "name": "Page 1",
-              "fill": "$accent",
-              "width": "fill_container",
-              "height": 3
-            },
-            {
-              "type": "rectangle",
-              "cornerRadius": "$radius-xs",
-              "id": "lqIEu",
-              "name": "Page 2",
-              "fill": "$accent",
-              "width": "fill_container",
-              "height": 3
-            },
-            {
-              "type": "rectangle",
-              "cornerRadius": "$radius-xs",
-              "id": "krmFT",
-              "name": "Page 3",
-              "fill": "$line",
-              "width": "fill_container",
-              "height": 3
-            },
-            {
-              "type": "rectangle",
-              "cornerRadius": "$radius-xs",
-              "id": "r7DAI",
-              "name": "Page 4",
-              "fill": "$line",
-              "width": "fill_container",
-              "height": 3
-            },
-            {
-              "type": "rectangle",
-              "cornerRadius": "$radius-xs",
-              "id": "e3i4C",
-              "name": "Page 5",
-              "fill": "$line",
-              "width": "fill_container",
-              "height": 3
-            }
-          ]
-        },
-        {
-          "type": "frame",
-          "id": "nqkri",
-          "name": "Reading",
-          "width": "fill_container",
-          "height": "fill_container",
-          "layout": "vertical",
-          "padding": [
-            "$space-2xl",
-            0,
-            0,
-            0
-          ],
-          "children": [
-            {
-              "type": "frame",
-              "id": "x6Igt",
-              "name": "Section head",
-              "width": "fill_container",
-              "layout": "vertical",
-              "gap": "$space-sm",
-              "padding": [
-                0,
-                "$space-xl",
-                "$space-lg",
-                "$space-xl"
-              ],
-              "children": [
-                {
-                  "type": "text",
-                  "id": "AmidE",
-                  "name": "Section",
-                  "fill": "$accent",
-                  "content": "§1  ·  СТРАНИЦА 2 ИЗ 5",
-                  "fontFamily": "$font-sans",
-                  "fontSize": "$text-xs",
-                  "fontWeight": "600",
-                  "letterSpacing": 1
-                },
-                {
-                  "type": "text",
-                  "id": "FqPtp",
-                  "name": "Heading",
-                  "fill": "$ink",
-                  "content": "Цикл агента",
-                  "fontFamily": "$font-serif",
-                  "fontSize": "$text-heading",
-                  "fontWeight": "600"
-                }
-              ]
-            },
-            {
-              "id": "a9DZDV",
-              "type": "ref",
-              "ref": "xp0WQ",
-              "name": "Paragraph 1",
-              "width": "fill_container"
-            },
-            {
-              "id": "Xpc9g",
-              "type": "ref",
-              "ref": "xp0WQ",
-              "name": "Paragraph 2",
-              "width": "fill_container",
-              "descendants": {
-                "zLVg8": {
-                  "content": "Отличие от обычного чат-бота в цикле. Бот отвечает один раз; агент повторяет «подумать — сделать — проверить», пока задача не решена."
-                }
-              }
-            },
-            {
-              "id": "pLqUn",
-              "type": "ref",
-              "ref": "xp0WQ",
-              "name": "Paragraph 3",
-              "width": "fill_container",
-              "descendants": {
-                "zLVg8": {
-                  "content": "Поэтому агенту нужны границы: какие инструменты ему доступны, сколько шагов он может сделать и когда он обязан остановиться."
-                }
-              }
-            }
-          ]
-        },
-        {
-          "type": "frame",
-          "id": "kTwJO",
-          "name": "Bottom bar",
-          "width": "fill_container",
+          "id": "H1Tv5",
+          "name": "Pager · phone",
+          "reusable": true,
+          "width": 375,
           "fill": "$paper",
           "stroke": "$line",
           "strokeWidth": {
@@ -10816,7 +8201,7 @@
           "children": [
             {
               "type": "frame",
-              "id": "B3mPl4",
+              "id": "JOLHt",
               "name": "Prev",
               "height": 44,
               "gap": "$space-xs",
@@ -10830,7 +8215,7 @@
               "children": [
                 {
                   "type": "icon",
-                  "id": "E8h4p",
+                  "id": "pwLBh",
                   "name": "Icon",
                   "width": 18,
                   "height": 18,
@@ -10840,7 +8225,7 @@
                 },
                 {
                   "type": "text",
-                  "id": "P52jK",
+                  "id": "EPtBH",
                   "name": "Label",
                   "fill": "$accent",
                   "content": "Назад",
@@ -10852,14 +8237,14 @@
             },
             {
               "type": "frame",
-              "id": "VHejo",
+              "id": "sJYwv",
               "name": "Position",
               "width": "fill_container",
               "justifyContent": "center",
               "children": [
                 {
                   "type": "text",
-                  "id": "M5hLsY",
+                  "id": "GfUpW",
                   "name": "Label",
                   "fill": "$ink-2",
                   "content": "2 / 5",
@@ -10871,7 +8256,7 @@
             },
             {
               "type": "frame",
-              "id": "jIbvP",
+              "id": "y74An",
               "name": "Next",
               "height": 44,
               "fill": "$accent",
@@ -10887,7 +8272,7 @@
               "children": [
                 {
                   "type": "text",
-                  "id": "Zx5lM",
+                  "id": "Kyp8c",
                   "name": "Label",
                   "fill": "$on-accent",
                   "content": "Далее",
@@ -10897,7 +8282,7 @@
                 },
                 {
                   "type": "icon",
-                  "id": "q7RM6e",
+                  "id": "q0Mdw",
                   "name": "Icon",
                   "width": 18,
                   "height": 18,
@@ -10911,88 +8296,12 @@
         },
         {
           "type": "frame",
-          "id": "VxoeE",
-          "layoutPosition": "absolute",
-          "x": 0,
-          "y": 0,
-          "name": "Scrim",
-          "width": 375,
-          "height": 812,
-          "fill": "$scrim"
-        },
-        {
-          "type": "frame",
-          "id": "dXvTq",
-          "layoutPosition": "absolute",
-          "x": 0,
-          "y": 271,
-          "name": "Selected paragraph (lifted)",
-          "width": 375,
-          "fill": "$highlight",
-          "stroke": "$accent",
-          "strokeWidth": {
-            "left": 3
-          },
-          "effect": {
-            "type": "shadow",
-            "shadowType": "outer",
-            "color": "#1c232933",
-            "offset": {
-              "x": 0,
-              "y": 6
-            },
-            "blur": 20
-          },
-          "padding": [
-            "$space-sm",
-            0,
-            "$space-sm",
-            "$space-xl"
-          ],
-          "children": [
-            {
-              "type": "text",
-              "id": "eO23A",
-              "name": "Text",
-              "fill": "$ink",
-              "textGrowth": "fixed-width",
-              "width": "fill_container",
-              "content": "Отличие от обычного чат-бота в цикле. Бот отвечает один раз; агент повторяет «подумать — сделать — проверить», пока задача не решена.",
-              "lineHeight": 1.6,
-              "fontFamily": "$font-serif",
-              "fontSize": "$text-body",
-              "fontWeight": "normal"
-            },
-            {
-              "type": "frame",
-              "id": "osdtB",
-              "name": "Ellipsis (44pt target)",
-              "width": 44,
-              "height": 44,
-              "justifyContent": "center",
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "icon",
-                  "id": "NoAbt",
-                  "name": "Dots",
-                  "width": 16,
-                  "height": 16,
-                  "icon": "ellipsis-vertical",
-                  "library": "lucide",
-                  "fill": "$accent"
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "type": "frame",
-          "id": "pLsJQ",
+          "id": "h7fzph",
           "layoutPosition": "absolute",
           "x": 0,
           "y": 486,
-          "name": "Bottom sheet",
+          "name": "Paragraph menu",
+          "reusable": true,
           "width": 375,
           "fill": "$paper",
           "cornerRadius": [
@@ -11022,7 +8331,7 @@
           "children": [
             {
               "type": "frame",
-              "id": "Dv33R",
+              "id": "M3j2p",
               "name": "Handle row",
               "width": "fill_container",
               "justifyContent": "center",
@@ -11030,7 +8339,7 @@
                 {
                   "type": "rectangle",
                   "cornerRadius": "$radius-xs",
-                  "id": "VEUfd",
+                  "id": "VK6iI",
                   "name": "Handle",
                   "fill": "$line",
                   "width": 36,
@@ -11040,7 +8349,7 @@
             },
             {
               "type": "frame",
-              "id": "G38Oq",
+              "id": "xnFYL",
               "name": "Quoted paragraph",
               "width": "fill_container",
               "stroke": "$accent",
@@ -11058,7 +8367,7 @@
               "children": [
                 {
                   "type": "text",
-                  "id": "jWacy",
+                  "id": "xYPEM",
                   "name": "Ref",
                   "fill": "$accent",
                   "content": "АБЗАЦ 2 · ЦИКЛ АГЕНТА",
@@ -11069,7 +8378,7 @@
                 },
                 {
                   "type": "text",
-                  "id": "iiHG0",
+                  "id": "ZBpUk",
                   "name": "Excerpt",
                   "fill": "$ink-2",
                   "textGrowth": "fixed-width",
@@ -11085,20 +8394,20 @@
             },
             {
               "type": "frame",
-              "id": "QPs0u",
+              "id": "TTVRv",
               "name": "Quick actions",
               "width": "fill_container",
               "gap": "$space-sm",
               "children": [
                 {
-                  "id": "qNQT0",
+                  "id": "uukCE",
                   "type": "ref",
                   "ref": "Xmxxv",
                   "name": "Расскажи подробнее",
                   "width": "fill_container"
                 },
                 {
-                  "id": "ldOva",
+                  "id": "BaUvT",
                   "type": "ref",
                   "ref": "Xmxxv",
                   "name": "Объясни проще",
@@ -11113,7 +8422,7 @@
                   }
                 },
                 {
-                  "id": "p3hOCq",
+                  "id": "I9ShHN",
                   "type": "ref",
                   "ref": "Xmxxv",
                   "name": "Приведи пример",
@@ -11131,7 +8440,7 @@
             },
             {
               "type": "frame",
-              "id": "q2SxDI",
+              "id": "P52l4O",
               "name": "Ask a question…",
               "width": "fill_container",
               "height": 52,
@@ -11149,7 +8458,7 @@
               "children": [
                 {
                   "type": "icon",
-                  "id": "Pnevk",
+                  "id": "J5Ux4",
                   "name": "Icon",
                   "width": 18,
                   "height": 18,
@@ -11159,7 +8468,7 @@
                 },
                 {
                   "type": "text",
-                  "id": "W0Cpkz",
+                  "id": "hSYFT",
                   "name": "Placeholder",
                   "fill": "$ink-3",
                   "textGrowth": "fixed-width",
@@ -11171,7 +8480,7 @@
                 },
                 {
                   "type": "frame",
-                  "id": "aiMpz",
+                  "id": "D7Tvr",
                   "name": "Send",
                   "width": 40,
                   "height": 40,
@@ -11182,7 +8491,7 @@
                   "children": [
                     {
                       "type": "icon",
-                      "id": "hcuJp",
+                      "id": "qOeji",
                       "name": "Icon",
                       "width": 18,
                       "height": 18,
@@ -11195,400 +8504,384 @@
               ]
             }
           ]
-        }
-      ]
-    },
-    {
-      "type": "frame",
-      "id": "c6MHq3",
-      "x": 870,
-      "y": 4000,
-      "name": "Desktop · Content + answer v2 · Ink & Saffron · Dark",
-      "theme": {
-        "mode": "dark"
-      },
-      "clip": true,
-      "width": 1280,
-      "height": 860,
-      "fill": "$paper",
-      "children": [
+        },
         {
           "type": "frame",
-          "id": "SMNZ9",
-          "name": "Outline",
-          "width": 300,
-          "height": "fill_container",
-          "fill": "$paper-deep",
+          "id": "QLtQB",
+          "name": "Top bar · desktop",
+          "reusable": true,
+          "width": 1000,
+          "height": 56,
           "stroke": "$line",
           "strokeWidth": {
-            "right": 1
+            "bottom": 1
           },
-          "layout": "vertical",
-          "gap": "$space-3xl",
-          "padding": "$space-xl",
+          "padding": [
+            0,
+            "$space-2xl",
+            0,
+            "$space-3xl"
+          ],
+          "justifyContent": "space_between",
+          "alignItems": "center",
           "children": [
             {
               "type": "frame",
-              "id": "Qru5d",
-              "name": "Programs link",
-              "height": 36,
+              "id": "E0YsXw",
+              "name": "Breadcrumb",
               "gap": "$space-sm",
               "alignItems": "center",
               "children": [
                 {
-                  "type": "icon",
-                  "id": "D9ltR",
-                  "name": "Icon",
-                  "width": 16,
-                  "height": 16,
-                  "icon": "chevron-left",
-                  "library": "lucide",
-                  "fill": "$accent"
-                },
-                {
                   "type": "text",
-                  "id": "bs1CD",
-                  "name": "Label",
-                  "fill": "$accent",
-                  "content": "Программы",
+                  "id": "A1ssEQ",
+                  "name": "Crumb",
+                  "fill": "$ink-2",
+                  "content": "Что такое агент",
                   "fontFamily": "$font-sans",
                   "fontSize": "$text-sm",
                   "fontWeight": "normal"
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "fKG62",
-              "name": "Program head",
-              "width": "fill_container",
-              "layout": "vertical",
-              "gap": "$space-sm",
-              "children": [
+                },
                 {
-                  "type": "text",
-                  "id": "IOspw",
-                  "name": "Eyebrow",
-                  "fill": "$accent",
-                  "content": "ПРОГРАММА",
-                  "fontFamily": "$font-sans",
-                  "fontSize": "$text-xs",
-                  "fontWeight": "600",
-                  "letterSpacing": 1.2
+                  "type": "icon",
+                  "id": "ugjBs",
+                  "name": "Sep",
+                  "width": 14,
+                  "height": 14,
+                  "icon": "chevron-right",
+                  "library": "lucide",
+                  "fill": "$ink-3"
                 },
                 {
                   "type": "text",
-                  "id": "CUa78",
-                  "name": "Title",
+                  "id": "lTCQj",
+                  "name": "Crumb",
+                  "fill": "$ink-2",
+                  "content": "Лекция: агент и бот",
+                  "fontFamily": "$font-sans",
+                  "fontSize": "$text-sm",
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "icon",
+                  "id": "Vyerj",
+                  "name": "Sep",
+                  "width": 14,
+                  "height": 14,
+                  "icon": "chevron-right",
+                  "library": "lucide",
+                  "fill": "$ink-3"
+                },
+                {
+                  "type": "text",
+                  "id": "CwltY",
+                  "name": "Crumb",
                   "fill": "$ink",
-                  "textGrowth": "fixed-width",
-                  "width": "fill_container",
-                  "content": "Агенты на практике",
-                  "lineHeight": 1.2,
-                  "fontFamily": "$font-serif",
-                  "fontSize": "$text-title",
+                  "content": "§1 Цикл агента",
+                  "fontFamily": "$font-sans",
+                  "fontSize": "$text-sm",
                   "fontWeight": "600"
                 }
               ]
             },
             {
               "type": "frame",
-              "id": "XT5Ip",
-              "name": "Contents",
+              "id": "tu2pm",
+              "name": "Contents button",
+              "height": 36,
+              "cornerRadius": "$radius-lg",
+              "stroke": "$line",
+              "strokeWidth": 1,
+              "gap": "$space-sm",
+              "padding": [
+                0,
+                "$space-lg"
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "sfHLO",
+                  "name": "Icon",
+                  "width": 16,
+                  "height": 16,
+                  "icon": "list",
+                  "library": "lucide",
+                  "fill": "$ink-2"
+                },
+                {
+                  "type": "text",
+                  "id": "P2m7Uw",
+                  "name": "Label",
+                  "fill": "$ink",
+                  "content": "Содержание",
+                  "fontFamily": "$font-sans",
+                  "fontSize": "$text-sm",
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "TCaVe",
+          "name": "Inline answer",
+          "reusable": true,
+          "width": 680,
+          "padding": [
+            "$space-xs",
+            0,
+            "$space-lg",
+            0
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "rr8yM",
+              "name": "Thread",
+              "width": 56,
+              "height": 1,
+              "padding": [
+                0,
+                0,
+                0,
+                "$space-3xl"
+              ],
+              "children": [
+                {
+                  "type": "rectangle",
+                  "cornerRadius": "$radius-xs",
+                  "id": "B9vwU2",
+                  "x": 32,
+                  "y": 0,
+                  "name": "Line",
+                  "enabled": false,
+                  "fill": "$accent-line",
+                  "width": 2,
+                  "height": "fill_container(164)"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "DIHk2",
+              "name": "Inline answer",
               "width": "fill_container",
+              "fill": "$paper",
+              "cornerRadius": "$radius-md",
+              "stroke": "$accent-line",
+              "strokeWidth": 1,
+              "effect": {
+                "type": "shadow",
+                "shadowType": "outer",
+                "color": "#231F1A14",
+                "offset": {
+                  "x": 0,
+                  "y": 4
+                },
+                "blur": 16
+              },
               "layout": "vertical",
-              "gap": "$space-xs",
+              "gap": "$space-md",
+              "padding": [
+                "$space-lg",
+                "$space-xl",
+                "$space-xl",
+                "$space-xl"
+              ],
               "children": [
                 {
                   "type": "frame",
-                  "id": "gVigf",
-                  "name": "Course 01",
+                  "id": "PuBuR",
+                  "name": "Header",
                   "width": "fill_container",
                   "gap": "$space-md",
-                  "padding": [
-                    "$space-md",
-                    "$space-sm"
-                  ],
-                  "children": [
-                    {
-                      "type": "text",
-                      "id": "uJuMp",
-                      "name": "Numeral",
-                      "fill": "$accent",
-                      "content": "01",
-                      "fontFamily": "$font-serif",
-                      "fontSize": "$text-md",
-                      "fontWeight": "600"
-                    },
-                    {
-                      "type": "text",
-                      "id": "o0ky5",
-                      "name": "Title",
-                      "fill": "$ink",
-                      "textGrowth": "fixed-width",
-                      "width": "fill_container",
-                      "content": "Что такое агент",
-                      "lineHeight": 1.3,
-                      "fontFamily": "$font-sans",
-                      "fontSize": "$text-md",
-                      "fontWeight": "600"
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "qKuII",
-                  "name": "Material",
-                  "width": "fill_container",
-                  "layout": "vertical",
-                  "padding": [
-                    0,
-                    0,
-                    "$space-sm",
-                    35
-                  ],
+                  "alignItems": "center",
                   "children": [
                     {
                       "type": "frame",
-                      "id": "zK5k7",
-                      "name": "Material title",
-                      "width": "fill_container",
-                      "gap": "$space-sm",
-                      "padding": [
-                        "$space-xs",
-                        "$space-sm",
-                        "$space-sm",
-                        0
-                      ],
+                      "id": "Nsd7Y",
+                      "name": "Icon disc",
+                      "width": 28,
+                      "height": 28,
+                      "fill": "$accent-soft",
+                      "cornerRadius": "$radius-md",
+                      "justifyContent": "center",
                       "alignItems": "center",
                       "children": [
                         {
                           "type": "icon",
-                          "id": "ren24",
-                          "name": "Book",
+                          "id": "IkF6O",
+                          "name": "Icon",
                           "width": 15,
                           "height": 15,
-                          "icon": "book-open",
+                          "icon": "feather",
                           "library": "lucide",
                           "fill": "$accent"
-                        },
-                        {
-                          "type": "text",
-                          "id": "X1eUP",
-                          "name": "Label",
-                          "fill": "$ink",
-                          "content": "Лекция: агент и бот",
-                          "fontFamily": "$font-sans",
-                          "fontSize": "$text-sm",
-                          "fontWeight": "500"
                         }
                       ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "y253v",
+                      "name": "Action",
+                      "fill": "$accent",
+                      "content": "Объясни проще",
+                      "fontFamily": "$font-sans",
+                      "fontSize": "$text-sm",
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "r6I35",
+                      "name": "Anchor",
+                      "fill": "$ink-3",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "к абзацу 2",
+                      "fontFamily": "$font-sans",
+                      "fontSize": "$text-sm",
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "frame",
-                      "id": "edtw2",
-                      "name": "Sections",
-                      "width": "fill_container",
-                      "stroke": "$line",
-                      "strokeWidth": {
-                        "left": 1
-                      },
-                      "layout": "vertical",
+                      "id": "PXx0o",
+                      "name": "Close (44pt)",
+                      "width": 44,
+                      "height": 44,
+                      "cornerRadius": "$radius-full",
+                      "justifyContent": "center",
+                      "alignItems": "center",
                       "children": [
                         {
-                          "type": "frame",
-                          "id": "b1NGW",
-                          "name": "Введение",
-                          "width": "fill_container",
-                          "height": 36,
-                          "fill": "#00000000",
-                          "cornerRadius": [
-                            0,
-                            "$radius-sm",
-                            "$radius-sm",
-                            0
-                          ],
-                          "gap": "$space-sm",
-                          "padding": [
-                            0,
-                            "$space-md",
-                            0,
-                            "$space-lg"
-                          ],
-                          "alignItems": "center",
-                          "children": [
-                            {
-                              "type": "text",
-                              "id": "Nd0SS",
-                              "name": "Label",
-                              "fill": "$ink-2",
-                              "textGrowth": "fixed-width",
-                              "width": "fill_container",
-                              "content": "Введение",
-                              "fontFamily": "$font-sans",
-                              "fontSize": "$text-sm",
-                              "fontWeight": "normal"
-                            }
-                          ]
-                        },
-                        {
-                          "type": "frame",
-                          "id": "O4kwyR",
-                          "name": "§1  Цикл агента",
-                          "width": "fill_container",
-                          "height": 36,
-                          "fill": "$paper",
-                          "cornerRadius": [
-                            0,
-                            "$radius-sm",
-                            "$radius-sm",
-                            0
-                          ],
-                          "stroke": "$accent",
-                          "strokeWidth": {
-                            "left": 2
-                          },
-                          "gap": "$space-sm",
-                          "padding": [
-                            0,
-                            "$space-md",
-                            0,
-                            "$space-lg"
-                          ],
-                          "alignItems": "center",
-                          "children": [
-                            {
-                              "type": "text",
-                              "id": "eaF2Z",
-                              "name": "Label",
-                              "fill": "$accent",
-                              "textGrowth": "fixed-width",
-                              "width": "fill_container",
-                              "content": "§1  Цикл агента",
-                              "fontFamily": "$font-sans",
-                              "fontSize": "$text-sm",
-                              "fontWeight": "600"
-                            },
-                            {
-                              "type": "text",
-                              "id": "GBg0h",
-                              "name": "Page",
-                              "fill": "$ink-2",
-                              "content": "2/5",
-                              "fontFamily": "$font-sans",
-                              "fontSize": "$text-xs",
-                              "fontWeight": "normal"
-                            }
-                          ]
-                        },
-                        {
-                          "type": "frame",
-                          "id": "wi5gn",
-                          "name": "§2  Инструменты",
-                          "width": "fill_container",
-                          "height": 36,
-                          "fill": "#00000000",
-                          "cornerRadius": [
-                            0,
-                            "$radius-sm",
-                            "$radius-sm",
-                            0
-                          ],
-                          "gap": "$space-sm",
-                          "padding": [
-                            0,
-                            "$space-md",
-                            0,
-                            "$space-lg"
-                          ],
-                          "alignItems": "center",
-                          "children": [
-                            {
-                              "type": "text",
-                              "id": "YDivT",
-                              "name": "Label",
-                              "fill": "$ink-2",
-                              "textGrowth": "fixed-width",
-                              "width": "fill_container",
-                              "content": "§2  Инструменты",
-                              "fontFamily": "$font-sans",
-                              "fontSize": "$text-sm",
-                              "fontWeight": "normal"
-                            }
-                          ]
+                          "type": "icon",
+                          "id": "SXBBg",
+                          "name": "Icon",
+                          "width": 18,
+                          "height": 18,
+                          "icon": "x",
+                          "library": "lucide",
+                          "fill": "$ink-2"
                         }
                       ]
                     }
                   ]
                 },
                 {
-                  "type": "frame",
-                  "id": "UtNG8",
-                  "name": "Course 02",
+                  "type": "text",
+                  "id": "NNrL2",
+                  "name": "Answer text",
+                  "fill": "$ink",
+                  "textGrowth": "fixed-width",
                   "width": "fill_container",
-                  "gap": "$space-md",
+                  "content": "Бот — как справочная: спросил, получил ответ. Агент — как помощник с поручением: он сам делает шаги, проверяет, что вышло, и продолжает, пока дело не сделано.",
+                  "lineHeight": 1.6,
+                  "fontFamily": "$font-sans",
+                  "fontSize": "$text-md",
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "bw5de",
+          "name": "Pager · desktop",
+          "reusable": true,
+          "width": 680,
+          "padding": [
+            36,
+            0,
+            0,
+            56
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "EiQGE",
+              "name": "Pager row",
+              "width": "fill_container",
+              "stroke": "$line",
+              "strokeWidth": {
+                "top": 1
+              },
+              "gap": "$space-lg",
+              "padding": [
+                "$space-xl",
+                0,
+                0,
+                0
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "PPomn",
+                  "name": "Previous",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": "$space-xs",
                   "padding": [
                     "$space-md",
-                    "$space-sm"
+                    "$space-lg"
                   ],
                   "children": [
                     {
                       "type": "text",
-                      "id": "jP8IC",
-                      "name": "Numeral",
-                      "fill": "$ink-3",
-                      "content": "02",
-                      "fontFamily": "$font-serif",
-                      "fontSize": "$text-md",
-                      "fontWeight": "600"
+                      "id": "J8Dlhb",
+                      "name": "Dir",
+                      "fill": "$ink-2",
+                      "content": "← Назад",
+                      "fontFamily": "$font-sans",
+                      "fontSize": "$text-xs",
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "text",
-                      "id": "VoqC0",
-                      "name": "Title",
-                      "fill": "$ink-2",
-                      "textGrowth": "fixed-width",
-                      "width": "fill_container",
-                      "content": "Инструменты и границы",
-                      "lineHeight": 1.3,
-                      "fontFamily": "$font-sans",
-                      "fontSize": "$text-md",
+                      "id": "svSEJ",
+                      "name": "Target",
+                      "fill": "$ink",
+                      "content": "Введение",
+                      "fontFamily": "$font-serif",
+                      "fontSize": "$text-lead",
                       "fontWeight": "600"
                     }
                   ]
                 },
                 {
                   "type": "frame",
-                  "id": "gmGeg",
-                  "name": "Course 03",
+                  "id": "bQ6V4",
+                  "name": "Next",
                   "width": "fill_container",
-                  "gap": "$space-md",
+                  "fill": "$accent-soft",
+                  "cornerRadius": "$radius-sm",
+                  "layout": "vertical",
+                  "gap": "$space-xs",
                   "padding": [
                     "$space-md",
-                    "$space-sm"
+                    "$space-lg"
                   ],
+                  "alignItems": "end",
                   "children": [
                     {
                       "type": "text",
-                      "id": "Sgrr0",
-                      "name": "Numeral",
-                      "fill": "$ink-3",
-                      "content": "03",
-                      "fontFamily": "$font-serif",
-                      "fontSize": "$text-md",
+                      "id": "WwnCw",
+                      "name": "Dir",
+                      "fill": "$accent",
+                      "content": "Далее →",
+                      "fontFamily": "$font-sans",
+                      "fontSize": "$text-xs",
                       "fontWeight": "600"
                     },
                     {
                       "type": "text",
-                      "id": "j5xGM",
-                      "name": "Title",
-                      "fill": "$ink-2",
-                      "textGrowth": "fixed-width",
-                      "width": "fill_container",
-                      "content": "Оценка результата",
-                      "lineHeight": 1.3,
-                      "fontFamily": "$font-sans",
-                      "fontSize": "$text-md",
+                      "id": "pVSWJ",
+                      "name": "Target",
+                      "fill": "$accent",
+                      "content": "§2 Инструменты",
+                      "fontFamily": "$font-serif",
+                      "fontSize": "$text-lead",
                       "fontWeight": "600"
                     }
                   ]
@@ -11599,568 +8892,222 @@
         },
         {
           "type": "frame",
-          "id": "NjloN",
-          "name": "Main",
-          "width": "fill_container",
-          "height": "fill_container",
-          "layout": "vertical",
+          "id": "wOzXW",
+          "name": "Outline course",
+          "reusable": true,
+          "width": 248,
+          "gap": "$space-md",
+          "padding": [
+            "$space-md",
+            "$space-sm"
+          ],
           "children": [
             {
-              "type": "frame",
-              "id": "XC2SI",
-              "name": "Top bar",
-              "width": "fill_container",
-              "height": 56,
-              "stroke": "$line",
-              "strokeWidth": {
-                "bottom": 1
-              },
-              "padding": [
-                0,
-                "$space-2xl",
-                0,
-                "$space-3xl"
-              ],
-              "justifyContent": "space_between",
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "frame",
-                  "id": "iIt6P",
-                  "name": "Breadcrumb",
-                  "gap": "$space-sm",
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "text",
-                      "id": "aJxpy",
-                      "name": "Crumb",
-                      "fill": "$ink-2",
-                      "content": "Что такое агент",
-                      "fontFamily": "$font-sans",
-                      "fontSize": "$text-sm",
-                      "fontWeight": "normal"
-                    },
-                    {
-                      "type": "icon",
-                      "id": "CsZxf",
-                      "name": "Sep",
-                      "width": 14,
-                      "height": 14,
-                      "icon": "chevron-right",
-                      "library": "lucide",
-                      "fill": "$ink-3"
-                    },
-                    {
-                      "type": "text",
-                      "id": "jJ10h",
-                      "name": "Crumb",
-                      "fill": "$ink-2",
-                      "content": "Лекция: агент и бот",
-                      "fontFamily": "$font-sans",
-                      "fontSize": "$text-sm",
-                      "fontWeight": "normal"
-                    },
-                    {
-                      "type": "icon",
-                      "id": "c1cxxW",
-                      "name": "Sep",
-                      "width": 14,
-                      "height": 14,
-                      "icon": "chevron-right",
-                      "library": "lucide",
-                      "fill": "$ink-3"
-                    },
-                    {
-                      "type": "text",
-                      "id": "MCkRR",
-                      "name": "Crumb",
-                      "fill": "$ink",
-                      "content": "§1 Цикл агента",
-                      "fontFamily": "$font-sans",
-                      "fontSize": "$text-sm",
-                      "fontWeight": "600"
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "jySbv",
-                  "name": "Contents button",
-                  "height": 36,
-                  "cornerRadius": "$radius-lg",
-                  "stroke": "$line",
-                  "strokeWidth": 1,
-                  "gap": "$space-sm",
-                  "padding": [
-                    0,
-                    "$space-lg"
-                  ],
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "icon",
-                      "id": "ctlQs",
-                      "name": "Icon",
-                      "width": 16,
-                      "height": 16,
-                      "icon": "list",
-                      "library": "lucide",
-                      "fill": "$ink-2"
-                    },
-                    {
-                      "type": "text",
-                      "id": "J8Ge8o",
-                      "name": "Label",
-                      "fill": "$ink",
-                      "content": "Содержание",
-                      "fontFamily": "$font-sans",
-                      "fontSize": "$text-sm",
-                      "fontWeight": "normal"
-                    }
-                  ]
-                }
-              ]
+              "type": "text",
+              "id": "qty1S",
+              "name": "Numeral",
+              "fill": "$ink-3",
+              "content": "02",
+              "fontFamily": "$font-serif",
+              "fontSize": "$text-md",
+              "fontWeight": "600"
             },
             {
-              "type": "frame",
-              "id": "jHXE8",
-              "name": "Reading area",
+              "type": "text",
+              "id": "OoDIH",
+              "name": "Title",
+              "fill": "$ink-2",
+              "textGrowth": "fixed-width",
               "width": "fill_container",
-              "height": "fill_container",
-              "layout": "vertical",
-              "padding": [
-                44,
-                0,
-                0,
-                0
-              ],
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "frame",
-                  "id": "VftSX",
-                  "name": "Column (margin + 680)",
-                  "width": 792,
-                  "layout": "vertical",
-                  "gap": "$space-xs",
-                  "padding": [
-                    0,
-                    56,
-                    0,
-                    0
-                  ],
-                  "children": [
-                    {
-                      "type": "frame",
-                      "id": "ztcqp",
-                      "name": "Section head",
-                      "width": "fill_container",
-                      "layout": "vertical",
-                      "gap": "$space-md",
-                      "padding": [
-                        0,
-                        0,
-                        "$space-xl",
-                        56
-                      ],
-                      "children": [
-                        {
-                          "type": "frame",
-                          "id": "J1A61",
-                          "name": "Position",
-                          "gap": "$space-md",
-                          "alignItems": "center",
-                          "children": [
-                            {
-                              "type": "text",
-                              "id": "il3dX",
-                              "name": "Label",
-                              "fill": "$accent",
-                              "content": "§1  ·  СТРАНИЦА 2 ИЗ 5",
-                              "fontFamily": "$font-sans",
-                              "fontSize": "$text-xs",
-                              "fontWeight": "600",
-                              "letterSpacing": 1
-                            },
-                            {
-                              "type": "frame",
-                              "id": "zcD5B",
-                              "name": "Pages",
-                              "gap": "$space-xs",
-                              "alignItems": "center",
-                              "children": [
-                                {
-                                  "type": "rectangle",
-                                  "cornerRadius": "$radius-xs",
-                                  "id": "LmYI6",
-                                  "name": "Page 1",
-                                  "fill": "$accent",
-                                  "width": 6,
-                                  "height": 6
-                                },
-                                {
-                                  "type": "rectangle",
-                                  "cornerRadius": "$radius-xs",
-                                  "id": "h0f9Xt",
-                                  "name": "Page 2",
-                                  "fill": "$accent",
-                                  "width": 20,
-                                  "height": 6
-                                },
-                                {
-                                  "type": "rectangle",
-                                  "cornerRadius": "$radius-xs",
-                                  "id": "K4u41",
-                                  "name": "Page 3",
-                                  "fill": "$line",
-                                  "width": 6,
-                                  "height": 6
-                                },
-                                {
-                                  "type": "rectangle",
-                                  "cornerRadius": "$radius-xs",
-                                  "id": "nMhOd",
-                                  "name": "Page 4",
-                                  "fill": "$line",
-                                  "width": 6,
-                                  "height": 6
-                                },
-                                {
-                                  "type": "rectangle",
-                                  "cornerRadius": "$radius-xs",
-                                  "id": "TdKY8",
-                                  "name": "Page 5",
-                                  "fill": "$line",
-                                  "width": 6,
-                                  "height": 6
-                                }
-                              ]
-                            }
-                          ]
-                        },
-                        {
-                          "type": "text",
-                          "id": "NzkeJ",
-                          "name": "Heading",
-                          "fill": "$ink",
-                          "content": "Цикл агента",
-                          "fontFamily": "$font-serif",
-                          "fontSize": "$text-display",
-                          "fontWeight": "600",
-                          "letterSpacing": -0.5
-                        }
-                      ]
-                    },
-                    {
-                      "id": "lE8Zb",
-                      "type": "ref",
-                      "ref": "s9jGry",
-                      "name": "Paragraph 1",
-                      "width": "fill_container"
-                    },
-                    {
-                      "id": "HCRb0",
-                      "type": "ref",
-                      "ref": "ykF5j",
-                      "name": "Paragraph 2",
-                      "width": "fill_container"
-                    },
-                    {
-                      "type": "frame",
-                      "id": "QgU8j",
-                      "name": "Answer row",
-                      "width": "fill_container",
-                      "padding": [
-                        "$space-xs",
-                        0,
-                        "$space-lg",
-                        0
-                      ],
-                      "children": [
-                        {
-                          "type": "frame",
-                          "id": "WlVcT",
-                          "name": "Thread",
-                          "width": 56,
-                          "height": 170,
-                          "padding": [
-                            0,
-                            0,
-                            0,
-                            "$space-3xl"
-                          ],
-                          "children": [
-                            {
-                              "type": "rectangle",
-                              "cornerRadius": "$radius-xs",
-                              "id": "d2iJp7",
-                              "name": "Line",
-                              "fill": "$accent-line",
-                              "width": 2,
-                              "height": "fill_container"
-                            }
-                          ]
-                        },
-                        {
-                          "type": "frame",
-                          "id": "lZu5J",
-                          "name": "Inline answer",
-                          "width": "fill_container",
-                          "fill": "$paper",
-                          "cornerRadius": "$radius-md",
-                          "stroke": "$accent-line",
-                          "strokeWidth": 1,
-                          "effect": {
-                            "type": "shadow",
-                            "shadowType": "outer",
-                            "color": "#2f6f5e14",
-                            "offset": {
-                              "x": 0,
-                              "y": 4
-                            },
-                            "blur": 16
-                          },
-                          "layout": "vertical",
-                          "gap": "$space-md",
-                          "padding": [
-                            "$space-lg",
-                            "$space-xl",
-                            "$space-xl",
-                            "$space-xl"
-                          ],
-                          "children": [
-                            {
-                              "type": "frame",
-                              "id": "cTdBe",
-                              "name": "Header",
-                              "width": "fill_container",
-                              "gap": "$space-md",
-                              "alignItems": "center",
-                              "children": [
-                                {
-                                  "type": "frame",
-                                  "id": "HykeY",
-                                  "name": "Icon disc",
-                                  "width": 28,
-                                  "height": 28,
-                                  "fill": "$accent-soft",
-                                  "cornerRadius": "$radius-md",
-                                  "justifyContent": "center",
-                                  "alignItems": "center",
-                                  "children": [
-                                    {
-                                      "type": "icon",
-                                      "id": "XKyCG",
-                                      "name": "Icon",
-                                      "width": 15,
-                                      "height": 15,
-                                      "icon": "feather",
-                                      "library": "lucide",
-                                      "fill": "$accent"
-                                    }
-                                  ]
-                                },
-                                {
-                                  "type": "text",
-                                  "id": "wS8gf",
-                                  "name": "Action",
-                                  "fill": "$accent",
-                                  "content": "Объясни проще",
-                                  "fontFamily": "$font-sans",
-                                  "fontSize": "$text-sm",
-                                  "fontWeight": "600"
-                                },
-                                {
-                                  "type": "text",
-                                  "id": "ZmJt8",
-                                  "name": "Anchor",
-                                  "fill": "$ink-3",
-                                  "textGrowth": "fixed-width",
-                                  "width": "fill_container",
-                                  "content": "к абзацу 2",
-                                  "fontFamily": "$font-sans",
-                                  "fontSize": "$text-sm",
-                                  "fontWeight": "normal"
-                                },
-                                {
-                                  "type": "frame",
-                                  "id": "y3JVT",
-                                  "name": "Close (44pt)",
-                                  "width": 44,
-                                  "height": 44,
-                                  "cornerRadius": "$radius-full",
-                                  "justifyContent": "center",
-                                  "alignItems": "center",
-                                  "children": [
-                                    {
-                                      "type": "icon",
-                                      "id": "DRGdx",
-                                      "name": "Icon",
-                                      "width": 18,
-                                      "height": 18,
-                                      "icon": "x",
-                                      "library": "lucide",
-                                      "fill": "$ink-2"
-                                    }
-                                  ]
-                                }
-                              ]
-                            },
-                            {
-                              "type": "text",
-                              "id": "ABeXS",
-                              "name": "Answer text",
-                              "fill": "$ink",
-                              "textGrowth": "fixed-width",
-                              "width": "fill_container",
-                              "content": "Бот — как справочная: спросил, получил ответ. Агент — как помощник с поручением: он сам делает шаги, проверяет, что вышло, и продолжает, пока дело не сделано.",
-                              "lineHeight": 1.6,
-                              "fontFamily": "$font-sans",
-                              "fontSize": "$text-md",
-                              "fontWeight": "normal"
-                            }
-                          ]
-                        }
-                      ]
-                    },
-                    {
-                      "id": "l5gXJ",
-                      "type": "ref",
-                      "ref": "s9jGry",
-                      "name": "Paragraph 3",
-                      "width": "fill_container",
-                      "descendants": {
-                        "n2m29": {
-                          "content": "3"
-                        },
-                        "LeERO": {
-                          "content": "Поэтому агенту нужны границы: какие инструменты ему доступны, сколько шагов он может сделать и когда он обязан остановиться и спросить человека."
-                        }
-                      }
-                    },
-                    {
-                      "type": "frame",
-                      "id": "HNrn0",
-                      "name": "Pager",
-                      "width": "fill_container",
-                      "padding": [
-                        36,
-                        0,
-                        0,
-                        56
-                      ],
-                      "children": [
-                        {
-                          "type": "frame",
-                          "id": "uWt1W",
-                          "name": "Pager row",
-                          "width": "fill_container",
-                          "stroke": "$line",
-                          "strokeWidth": {
-                            "top": 1
-                          },
-                          "gap": "$space-lg",
-                          "padding": [
-                            "$space-xl",
-                            0,
-                            0,
-                            0
-                          ],
-                          "children": [
-                            {
-                              "type": "frame",
-                              "id": "rNPNI",
-                              "name": "Previous",
-                              "width": "fill_container",
-                              "layout": "vertical",
-                              "gap": "$space-xs",
-                              "padding": [
-                                "$space-md",
-                                "$space-lg"
-                              ],
-                              "children": [
-                                {
-                                  "type": "text",
-                                  "id": "x70dGO",
-                                  "name": "Dir",
-                                  "fill": "$ink-2",
-                                  "content": "← Назад",
-                                  "fontFamily": "$font-sans",
-                                  "fontSize": "$text-xs",
-                                  "fontWeight": "normal"
-                                },
-                                {
-                                  "type": "text",
-                                  "id": "V3k2Uf",
-                                  "name": "Target",
-                                  "fill": "$ink",
-                                  "content": "Введение",
-                                  "fontFamily": "$font-serif",
-                                  "fontSize": "$text-lead",
-                                  "fontWeight": "600"
-                                }
-                              ]
-                            },
-                            {
-                              "type": "frame",
-                              "id": "P0Tvk",
-                              "name": "Next",
-                              "width": "fill_container",
-                              "fill": "$accent-soft",
-                              "cornerRadius": "$radius-sm",
-                              "layout": "vertical",
-                              "gap": "$space-xs",
-                              "padding": [
-                                "$space-md",
-                                "$space-lg"
-                              ],
-                              "alignItems": "end",
-                              "children": [
-                                {
-                                  "type": "text",
-                                  "id": "ORDMo",
-                                  "name": "Dir",
-                                  "fill": "$accent",
-                                  "content": "Далее →",
-                                  "fontFamily": "$font-sans",
-                                  "fontSize": "$text-xs",
-                                  "fontWeight": "600"
-                                },
-                                {
-                                  "type": "text",
-                                  "id": "riKfm",
-                                  "name": "Target",
-                                  "fill": "$accent",
-                                  "content": "§2 Инструменты",
-                                  "fontFamily": "$font-serif",
-                                  "fontSize": "$text-lead",
-                                  "fontWeight": "600"
-                                }
-                              ]
-                            }
-                          ]
-                        }
-                      ]
-                    }
-                  ]
-                }
-              ]
+              "content": "Инструменты и границы",
+              "lineHeight": 1.3,
+              "fontFamily": "$font-sans",
+              "fontSize": "$text-md",
+              "fontWeight": "600"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "V4xCvu",
+          "name": "Outline course · open",
+          "reusable": true,
+          "width": 248,
+          "gap": "$space-md",
+          "padding": [
+            "$space-md",
+            "$space-sm"
+          ],
+          "children": [
+            {
+              "type": "text",
+              "id": "j6aSRK",
+              "name": "Numeral",
+              "fill": "$accent",
+              "content": "01",
+              "fontFamily": "$font-serif",
+              "fontSize": "$text-md",
+              "fontWeight": "600"
+            },
+            {
+              "type": "text",
+              "id": "I4M5iu",
+              "name": "Title",
+              "fill": "$ink",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Что такое агент",
+              "lineHeight": 1.3,
+              "fontFamily": "$font-sans",
+              "fontSize": "$text-md",
+              "fontWeight": "600"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "ci5uB",
+          "name": "Outline section",
+          "reusable": true,
+          "width": 230,
+          "height": 36,
+          "fill": "#00000000",
+          "cornerRadius": [
+            0,
+            "$radius-sm",
+            "$radius-sm",
+            0
+          ],
+          "gap": "$space-sm",
+          "padding": [
+            0,
+            "$space-md",
+            0,
+            "$space-lg"
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "J3fwqL",
+              "name": "Label",
+              "fill": "$ink-2",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Введение",
+              "fontFamily": "$font-sans",
+              "fontSize": "$text-sm",
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "h9P8r",
+          "name": "Outline section · active",
+          "reusable": true,
+          "width": 230,
+          "height": 36,
+          "fill": "$paper",
+          "cornerRadius": [
+            0,
+            "$radius-sm",
+            "$radius-sm",
+            0
+          ],
+          "stroke": "$accent",
+          "strokeWidth": {
+            "left": 2
+          },
+          "gap": "$space-sm",
+          "padding": [
+            0,
+            "$space-md",
+            0,
+            "$space-lg"
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "o8UwdY",
+              "name": "Label",
+              "fill": "$accent",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "§1  Цикл агента",
+              "fontFamily": "$font-sans",
+              "fontSize": "$text-sm",
+              "fontWeight": "600"
+            },
+            {
+              "type": "text",
+              "id": "gSM4k",
+              "name": "Page",
+              "fill": "$ink-2",
+              "content": "2/5",
+              "fontFamily": "$font-sans",
+              "fontSize": "$text-xs",
+              "fontWeight": "normal"
             }
           ]
         }
       ]
     },
     {
+      "id": "F9MMBW",
+      "type": "ref",
+      "ref": "ygFPM",
+      "x": 0,
+      "y": 4000,
+      "name": "Phone · Program v2 · Ink & Saffron · Dark",
+      "theme": {
+        "mode": "dark"
+      }
+    },
+    {
+      "id": "TdDS0",
+      "type": "ref",
+      "ref": "MpAwD",
+      "x": 435,
+      "y": 4000,
+      "name": "Phone · Content + menu v2 · Ink & Saffron · Dark",
+      "theme": {
+        "mode": "dark"
+      }
+    },
+    {
+      "id": "Rspoc",
+      "type": "ref",
+      "ref": "B29As",
+      "x": 870,
+      "y": 4000,
+      "name": "Desktop · Content + answer v2 · Ink & Saffron · Dark",
+      "theme": {
+        "mode": "dark"
+      }
+    },
+    {
+      "id": "GiRNH",
+      "type": "ref",
+      "ref": "RPKtI",
+      "x": 2210,
+      "y": 4000,
+      "name": "Tokens · Ink & Saffron · Dark",
+      "theme": {
+        "mode": "dark"
+      }
+    },
+    {
       "type": "frame",
-      "id": "hHP0m",
+      "id": "XvwFu",
       "x": 3000,
       "y": 4000,
       "name": "Components · Ink & Saffron · Dark",
       "theme": {
         "mode": "dark"
       },
-      "width": 760,
+      "width": 1096,
       "fill": "$paper",
       "layout": "vertical",
       "gap": "$space-3xl",
@@ -12168,7 +9115,7 @@
       "children": [
         {
           "type": "text",
-          "id": "N8QIN",
+          "id": "uRaDZ",
           "fill": "$ink",
           "content": "Components",
           "fontFamily": "$font-serif",
@@ -12176,29 +9123,84 @@
           "fontWeight": "normal"
         },
         {
-          "id": "vjEBC",
+          "id": "ZCPq6",
           "type": "ref",
           "ref": "xp0WQ"
         },
         {
-          "id": "QODIl",
+          "id": "DEq9V",
           "type": "ref",
           "ref": "s9jGry"
         },
         {
-          "id": "N37StW",
+          "id": "gq8LR",
           "type": "ref",
           "ref": "ykF5j"
         },
         {
-          "id": "fiqLi",
+          "id": "tPz2M",
           "type": "ref",
           "ref": "Xmxxv"
         },
         {
-          "id": "sPeJD",
+          "id": "bXVIV",
           "type": "ref",
           "ref": "VXZi1"
+        },
+        {
+          "id": "gsw2y",
+          "type": "ref",
+          "ref": "mjq0N"
+        },
+        {
+          "id": "paUxs",
+          "type": "ref",
+          "ref": "HbQK3"
+        },
+        {
+          "id": "E8riWd",
+          "type": "ref",
+          "ref": "H1Tv5"
+        },
+        {
+          "id": "G49O0",
+          "type": "ref",
+          "ref": "h7fzph"
+        },
+        {
+          "id": "Re0IT",
+          "type": "ref",
+          "ref": "QLtQB"
+        },
+        {
+          "id": "Wntv0",
+          "type": "ref",
+          "ref": "TCaVe"
+        },
+        {
+          "id": "brOCF",
+          "type": "ref",
+          "ref": "bw5de"
+        },
+        {
+          "id": "H2eZb",
+          "type": "ref",
+          "ref": "wOzXW"
+        },
+        {
+          "id": "C3VxiU",
+          "type": "ref",
+          "ref": "V4xCvu"
+        },
+        {
+          "id": "xwPio",
+          "type": "ref",
+          "ref": "ci5uB"
+        },
+        {
+          "id": "Qixac",
+          "type": "ref",
+          "ref": "h9P8r"
         }
       ]
     }

@@ -66,8 +66,12 @@ Dark values are in the palette frame of `session-web.pen`. Serif body
   `text-heading` 30, `text-display` 40), spacing (`space-2xs` 2 to `space-3xl`
   32) and radii (`radius-xs` 2, `sm` 8, `md` 14, `lg` 20, `full`). The Tokens
   frame shows them all.
-- **Components:** Paragraph (phone), Paragraph · wide and its active state
-  (desktop), Menu action and Course card. Frames use instances of them.
+- **Components:** paragraphs (phone, wide, wide · active), Paragraph menu,
+  Menu action, Course card, Inline answer, top bars (back, reading,
+  desktop), pagers (phone, desktop) and outline rows (course, open course,
+  section, active section). Frames are built from their instances.
+- **Light and dark:** each light screen is itself a component; its dark
+  frame is an instance in dark mode, so edit the light one only.
 
 ## Not in this brief
 
