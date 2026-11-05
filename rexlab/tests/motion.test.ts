@@ -496,7 +496,7 @@ describe("find the pair's motion", () => {
 
   it("folds the climb level in and out beside the stars, and only fades it with reduced motion", () => {
     expect(declared(PLAIN, ".pairs-climb").transition).toBe(
-      "grid-template-columns var(--motion-standard) var(--ease-out),\n    margin-right var(--motion-standard) var(--ease-out),\n    opacity var(--motion-standard) var(--ease-out)"
+      "grid-template-columns var(--motion-standard) var(--ease-out),\n    grid-template-rows var(--motion-standard) var(--ease-out),\n    margin var(--motion-standard) var(--ease-out),\n    opacity var(--motion-standard) var(--ease-out)"
     );
     expect(declared(PLAIN, ".pairs-climb[data-shown]")).toEqual({ "grid-template-columns": "1fr", "margin-right": "0", opacity: "1" });
     expect(declared(REDUCED, ".pairs-climb")).toEqual({ "transition-property": "opacity" });
@@ -775,10 +775,10 @@ describe("a picture's place", () => {
   });
 
   it("is silhouetted on a pair's card only once its picture shows, its shimmer and failure look keeping their colours", () => {
-    const silhouettes = PLAIN.filter(({ prelude, body }) => prelude.includes("pair-silhouette") && declarationsOf(body).some(({ property }) => property === "filter"));
-    expect(silhouettes.map(({ prelude }) => prelude.split(",\n"))).toEqual([
-      ['.pair-silhouette[data-picture="appearing"]', '.pair-silhouette[data-picture="shown"]'],
-      ['[data-theme="dark"] .pair-silhouette[data-picture="appearing"]', '[data-theme="dark"] .pair-silhouette[data-picture="shown"]']
+    const shown = '.pair-silhouette:is([data-picture="appearing"], [data-picture="shown"])';
+    expect([bodyOf(shown), bodyOf(`${shown} + .pair-card-shadow`)]).toEqual([
+      [{ property: "opacity", value: "0" }],
+      [{ property: "display", value: "block" }, { property: "animation", value: "fade-in var(--motion-picture) var(--ease-out) both" }]
     ]);
   });
 

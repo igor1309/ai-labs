@@ -1,9 +1,11 @@
-import { ArrowLeft, ChartNoAxesColumnIncreasing, Copy, Footprints, Hand, House } from "lucide-react";
+import { ArrowLeft, Footprints, Hand, House } from "lucide-react";
 import type { CSSProperties } from "react";
 import { Button } from "./Button.tsx";
+import { EarthEdge } from "./EarthEdge.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 import { pairsBoardCardWidth, PORTRAIT_BOARD, type BoardSizes } from "./pairsBoardLayout.ts";
+import { CardsFill, Stairs } from "./PairsIcons.tsx";
 import { PictureImage, usePicture } from "./Picture.tsx";
 
 // A card on the board: face down, turned over, or one of a found pair.
@@ -52,46 +54,54 @@ const widthStyle = (width: number | undefined, rows: number, sizes: BoardSizes):
 
 export function PairsBoardScreen({ language, climbLevel, tries, rows, columns, cardFloor, cards, finished, onTurn, onBack, onHome, width, sizes = PORTRAIT_BOARD }: PairsBoardScreenProps) {
   const text = TEXTS[language];
-  // Upright, BACK and HOME show their symbols alone and the title its mark
-  // alone, each name kept for screen readers.
+  // The dig site: the bar in the sky, the board on the sand, the bedrock
+  // along the bottom. Where a size has no room for them, BACK and HOME
+  // show their symbols alone and the title its mark alone, each name kept
+  // for screen readers.
   return (
     <main className="pairs-board-screen">
-      <div className="stratum stratum-1" aria-hidden="true" />
       <header className="pairs-bar">
-        <Button className="home-button" onClick={onBack}>
-          <ArrowLeft size={24} aria-hidden="true" />
-          <span className="upright-hidden">{text.back}</span>
-        </Button>
-        <Button className="home-button" onClick={onHome}>
-          <House size={24} aria-hidden="true" />
-          <span className="upright-hidden">{text.home}</span>
-        </Button>
+        <div className="pairs-bar-buttons">
+          <Button className="home-button pairs-bar-button pairs-bar-home" onClick={onHome}>
+            <House aria-hidden="true" />
+            <span className="pairs-bar-name">{text.home}</span>
+          </Button>
+          <Button className="home-button pairs-bar-button pairs-bar-back" onClick={onBack}>
+            <ArrowLeft aria-hidden="true" />
+            <span className="pairs-bar-name">{text.back}</span>
+          </Button>
+        </div>
         <h1 className="pairs-bar-title">
           <span className="pairs-bar-mark" aria-hidden="true">
-            <Copy size={30} />
+            <CardsFill />
           </span>
-          <span className="upright-hidden">{text.pairs}</span>
+          <span className="pairs-bar-word">{text.pairs}</span>
         </h1>
-        {climbLevel !== undefined && (
-          <p className="pairs-bar-chip" aria-label={text.level}>
-            <ChartNoAxesColumnIncreasing size={26} aria-hidden="true" />
-            {climbLevel}
+        <div className="pairs-bar-chips">
+          {climbLevel !== undefined && (
+            <p className="pairs-bar-chip" aria-label={text.level}>
+              <Stairs className="pairs-stairs" />
+              <span className="pairs-bar-number">{climbLevel}</span>
+            </p>
+          )}
+          <p className="pairs-bar-chip" aria-label={text.tries}>
+            <Hand aria-hidden="true" />
+            {/* A new count bumps in. */}
+            <span key={tries} className="pairs-bar-number pairs-tries">
+              {tries}
+            </span>
           </p>
-        )}
-        <p className="pairs-bar-chip" aria-label={text.tries}>
-          <Hand size={26} aria-hidden="true" />
-          {/* A new count bumps in. */}
-          <span key={tries} className="pairs-tries">
-            {tries}
-          </span>
-        </p>
+        </div>
       </header>
+      <section className="pairs-board-sand">
+        <EarthEdge className="pairs-board-wave" />
       <div className="pair-board-room">
         <div
           className="pair-board"
           role="group"
           aria-label={text.cards}
           data-finished={finished || undefined}
+          data-cards={cards.length}
           style={{ "--rows": rows, "--columns": columns, "--card-floor": `${cardFloor}px`, ...widthStyle(width, rows, sizes) } as CSSProperties}
         >
           {cards.map((card, index) => (
@@ -106,6 +116,8 @@ export function PairsBoardScreen({ language, climbLevel, tries, rows, columns, c
           ))}
         </div>
       </div>
+      </section>
+      <div className="pairs-board-bedrock" aria-hidden="true"><EarthEdge /></div>
     </main>
   );
 }
@@ -128,9 +140,7 @@ function PairCard({ card, index, label, language, onTurn }: PairCardProps) {
     <Button className="card pair-card" data-turn-part={`pair-card-${index}`} data-state={card.state} data-face={card.face} aria-label={label} style={place(index)} onClick={onTurn}>
       {card.state === "down" ? (
         <span className="pair-card-back" aria-hidden="true">
-          <span className="pair-card-back-frame">
-            <Footprints size={72} />
-          </span>
+          <Footprints />
         </span>
       ) : (
         <span className="pair-card-face" aria-hidden="true">
@@ -151,6 +161,8 @@ function PairCardFace({ card, name }: { card: PairCardProps["card"]; name: strin
     <>
       <span className="pair-card-art">
         <PictureImage look={look} className={card.face === "silhouette" ? "pair-card-picture pair-silhouette" : "pair-card-picture"} src={card.picture} alt="" width={800} height={600} />
+        {/* A silhouette is the picture's shape in ink. */}
+        {card.face === "silhouette" && <span className="pair-card-shadow" style={{ maskImage: `url("${card.picture}")` }} />}
       </span>
       {(card.state === "found" || look !== "shown") && (
         <span className="pair-card-name" data-fading={(card.state !== "found" && look === "appearing") || undefined}
