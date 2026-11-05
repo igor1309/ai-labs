@@ -39,12 +39,12 @@ describe.each(["hatchling", "explorer", "paleontologist"] as const)("the %s resu
 
     const expected = Math.min(previous ?? Infinity, ids.length + 2);
     expect(bestShown()).toBe(`BEST${celebration === "NEW BEST SCORE" ? previous : ""}${expected}`);
-    expect(symbolOf(screen.getByLabelText("BEST SCORE"))).toBe("trophy");
-    expect([screen.getByLabelText("TRIES").textContent, symbolOf(screen.getByLabelText("TRIES")), screen.getByLabelText("STARS").textContent]).toEqual([String(ids.length + 2), "hand", "★5"]);
+    expect(symbolOf(screen.getByLabelText("BEST SCORE").parentElement!)).toBe("trophy");
+    expect([screen.getByLabelText("TRIES").textContent, symbolOf(screen.getByLabelText("TRIES")), screen.getByLabelText("STARS").textContent]).toEqual([String(ids.length + 2), "hand", "5"]);
     expect(screen.getByRole("heading").textContent).toBe("WELL DONE!");
-    expect([...document.querySelectorAll(".pairs-found-name")].map((name) => name.textContent)).toEqual(board.pals.map(({ name }) => name.en.toLocaleUpperCase("en")));
+    expect([...document.querySelectorAll(".pairs-found-name")].map((name) => name.textContent?.replaceAll("\u00AD", ""))).toEqual(board.pals.map(({ name }) => name.en.toLocaleUpperCase("en")));
     expect([symbolOf(button("PLAY AGAIN")), symbolOf(button("HOME"))]).toEqual(["rotate-ccw", "house"]);
-    expect(celebrations()).toEqual([...(celebration ? [celebration] : []), ...(level === "hatchling" ? ["NEW LEVEL 2"] : [])]);
+    expect(celebrations()).toEqual([...(level === "hatchling" ? ["NEW LEVEL 2"] : []), ...(celebration ? [celebration] : [])]);
     expect(screen.queryByLabelText("LEVEL")).toBeNull();
     expect(document.querySelectorAll(".pairs-new-badge")).toHaveLength(0);
     expect(storedPairs(app.storage)).toMatchObject({ stars: 5, best: { ...otherBests, [played]: expected }, found: ordered(ids), level: level === "hatchling" ? 2 : 1, boardsOnLevel: level === "hatchling" ? 0 : 1 });
@@ -105,6 +105,6 @@ describe.each(["hatchling", "explorer", "paleontologist"] as const)("the %s resu
     await playDealt(app.user, app.clock, names);
     endWave(app.clock);
 
-    expect([screen.getByLabelText("TRIES").textContent, screen.getByLabelText("STARS").textContent, bestShown(), celebrations()]).toEqual([String(ids.length), "★1", null, []]);
+    expect([screen.getByLabelText("TRIES").textContent, screen.getByLabelText("STARS").textContent, bestShown(), celebrations()]).toEqual([String(ids.length), "1", null, []]);
   });
 });

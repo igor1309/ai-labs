@@ -1,4 +1,6 @@
 import { artworkFor } from "../src/coloring/artworks.ts";
+import { PARASAUROLOPHUS_HATCHLING, PARASAUROLOPHUS_EXPLORER } from "../src/coloring/parasaurolophusScene.ts";
+import { parasaurolophusHatchlingProbes, parasaurolophusExplorerProbes } from "./parasaurolophusSceneProbes.ts";
 import { PTERANODON_HATCHLING, PTERANODON_EXPLORER } from "../src/coloring/pteranodonScene.ts";
 import { pteranodonHatchlingProbes, pteranodonExplorerProbes } from "./pteranodonSceneProbes.ts";
 import { BRACHIOSAURUS_HATCHLING, BRACHIOSAURUS_EXPLORER } from "../src/coloring/brachiosaurusScene.ts";
@@ -127,6 +129,38 @@ describe("Mosasaurus workshop scenes", () => {
     }
     expect(MOSASAURUS_EXPLORER.regions.length).toBeGreaterThan(MOSASAURUS_HATCHLING.regions.length * 1.8);
     expect(MOSASAURUS_HATCHLING.artwork.regions).not.toContain("water");
+  });
+});
+
+describe("Parasaurolophus workshop scenes", () => {
+  it.each([
+    [PARASAUROLOPHUS_HATCHLING, "parasaurolophus-hatchling-1", parasaurolophusHatchlingProbes],
+    [PARASAUROLOPHUS_EXPLORER, "parasaurolophus-explorer-1", parasaurolophusExplorerProbes]
+  ] as const)("registers enclosed regions with matching parents (scene %#)", (geometry, version, probes) => {
+    expect(artworkFor(version)).toEqual({ geometry, names: { en: "PARASAUROLOPHUS", ru: "ПАРАЗАУРОЛОФ" } });
+    expect(geometry.artwork.regions).toEqual(probes.map(([, , id]) => id));
+    for (const region of geometry.regions) {
+      expect(region.outline).toBeGreaterThanOrEqual(1.7);
+      expect("path" in region && region.path.endsWith(" Z")).toBe(true);
+    }
+    expect(geometry.regions.filter(({ parent }) => parent).map(({ id, parent }) => [id, parent])).toEqual(
+      geometry === PARASAUROLOPHUS_HATCHLING ? [["belly", "body"]] : [["tail-tip", "body"], ["belly", "body"], ["stripe-hip", "body"], ["stripe-back", "body"], ["stripe-shoulder", "body"], ["crest-tip", "crest"]]
+    );
+  });
+
+  it.each([
+    ["Hatchling", PARASAUROLOPHUS_HATCHLING, parasaurolophusHatchlingProbes],
+    ["Explorer", PARASAUROLOPHUS_EXPLORER, parasaurolophusExplorerProbes]
+  ] as const)("keeps every %s animal and scenery target independently fillable", async (_, geometry, probes) => {
+    for (const [, , id] of probes) {
+      const painted = await illustration(geometry, id);
+      for (const [px, py, other] of probes) {
+        const offset = (py * WIDTH + px) * 4;
+        expect([...painted.subarray(offset, offset + 4)], `${id} at ${other}`).toEqual(id === other ? [239, 83, 80, 255] : [255, 240, 207, 255]);
+      }
+    }
+    expect(PARASAUROLOPHUS_EXPLORER.regions.length).toBeGreaterThan(PARASAUROLOPHUS_HATCHLING.regions.length * 1.8);
+    expect(PARASAUROLOPHUS_HATCHLING.artwork.regions).not.toContain("sky");
   });
 });
 

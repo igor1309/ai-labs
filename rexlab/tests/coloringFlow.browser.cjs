@@ -19,7 +19,53 @@ const { chromium } = require("playwright");
     const context = await browser.newContext({ viewport: { width: 1024, height: 768 } });
     const page = await context.newPage();
     page.setDefaultTimeout(15000);
-    const errors = []; page.on("pageerror", error => { errors.push(error.message); console.error("PAGEERROR", error.message); });
+    const errors = []; page.on("pageerror", error => {
+      errors.push(error.message);
+      console.error("PAGEERROR", JSON.stringify({ name: error.name, message: error.message, stack: error.stack, chromium: browser.version() }));
+    });
+    // Keep transition context at the moment of an error, before the next
+    // screen or reload replaces it. Do not handle native transition promises:
+    // a missing rejection handler must still fail the page-error assertion.
+    await page.addInitScript(() => {
+      const transitions = [], failures = [];
+      const screen = () => document.querySelector(".coloring-gallery, .coloring-workshop, .coloring-result, .home")?.className;
+      const context = () => ({ screen: screen(), time: performance.now(), fonts: document.fonts.status,
+        navigationPending: !!window.navigation?.transition, visibility: document.visibilityState,
+        viewport: [innerWidth, innerHeight], offline: !navigator.onLine });
+      window.coloringTransitionFailures = failures;
+      const capture = (message, stack) => {
+        failures.push({ message, stack, context: context(), transitions: structuredClone(transitions) });
+        if (failures.length > 5) failures.shift();
+        console.error("TRANSITION_DIAGNOSTICS", JSON.stringify(failures.at(-1)));
+      };
+      addEventListener("error", event => capture(event.message, event.error?.stack));
+      addEventListener("unhandledrejection", event => capture(String(event.reason), event.reason?.stack));
+      const start = document.startViewTransition;
+      if (!start) return;
+      document.startViewTransition = function (options) {
+        const trace = { before: context(), caller: new Error("Transition started").stack };
+        transitions.push(trace);
+        if (transitions.length > 12) transitions.shift();
+        const update = typeof options === "function" ? options : options?.update;
+        const wrapped = function (...args) {
+          trace.updateStarted = context();
+          try {
+            const result = update?.apply(this, args);
+            trace.updateReturned = { ...context(), asynchronous: !!result?.then };
+            // Return the exact value to Chromium; observing its promises here
+            // could hide the unhandled rejection this contract detects.
+            return result;
+          } catch (error) {
+            trace.updateThrew = { message: String(error), stack: error?.stack };
+            throw error;
+          }
+        };
+        return start.call(this, typeof options === "function" ? wrapped : { ...options, update: wrapped });
+      };
+    });
+    page.on("console", message => {
+      if (message.type() === "error" && message.text().startsWith("TRANSITION_DIAGNOSTICS")) console.error(message.text());
+    });
     // Only the storage boundary fails: every screen, session and adapter is real.
     await page.addInitScript(() => {
       // Fix the calendar date without changing pointer or animation clocks.
@@ -232,7 +278,7 @@ const { chromium } = require("playwright");
             }
           };
           await checkLayout();
-          assert.equal(await p.locator(".gallery-new").count(), 7);
+          assert.equal(await p.locator(".gallery-new").count(), 8);
           await p.getByRole("button", { name: creature === "stegosaurus" ? (language === "en" ? "NEW WORK" : "НОВЫЙ РИСУНОК") : creature === "triceratops" ? (language === "en" ? "TRICERATOPS" : "ТРИЦЕРАТОПС") : creature === "ankylosaurus" ? (language === "en" ? "ANKYLOSAURUS" : "АНКИЛОЗАВР") : (language === "en" ? "T-REX" : "ТИРАННОЗАВР"), exact: true }).press("Enter");
           await p.locator(".coloring-workshop").waitFor(); await checkLayout();
           for (const [label, option, count] of language === "en" ? [["COLOR", "BLUE", 13], ["SIZE", "BRUSH LARGE", 4]] : [["ЦВЕТ", "ГОЛУБОЙ", 13], ["РАЗМЕР", "КИСТЬ БОЛЬШОЙ", 4]]) {

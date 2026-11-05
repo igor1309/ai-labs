@@ -3,6 +3,8 @@
 ## 2026-11-05
 
 - Paused transcript reading avoids viewport-changing measurement and empty text edits during panel updates (LAB-1001).
+- Drag selection in the nonactivating live panel keeps readable text against macOS's inactive highlight in both appearances. Held excerpts use compact cards with up to three readable lines and full text on hover (LAB-1014).
+
 - The menu hides and restores the live transcript panel without stopping recording or transcription (LAB-1000).
 
 ## 2026-11-04

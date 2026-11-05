@@ -54,9 +54,11 @@ struct TranscriptLog: NSViewRepresentable {
         coordinator.parent = self
 
         let text = scroll.documentView as! LogTextView
+        // The floating panel never becomes key. AppKit draws an unemphasized
+        // selection there, so its foreground must use the same color pair.
         text.selectedTextAttributes = [
-            .backgroundColor: NSColor(tokens.selBg),
-            .foregroundColor: NSColor(tokens.selText),
+            .backgroundColor: NSColor.unemphasizedSelectedTextBackgroundColor,
+            .foregroundColor: NSColor.unemphasizedSelectedTextColor,
         ]
 
         text.ruleColor = NSColor(tokens.rule)

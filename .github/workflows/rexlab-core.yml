@@ -90,6 +90,7 @@ jobs:
           - compareFlow
           - whoseJawBoardLandscape
           - whoseJawDigSite
+          - pairsDigSite
           - catalogueFit
           - coloringProbe
           - coloringPainter

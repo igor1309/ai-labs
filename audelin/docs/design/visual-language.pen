@@ -18735,6 +18735,132 @@
                 },
                 {
                   "type": "frame",
+                  "id": "juRoH",
+                  "name": "Selecting text",
+                  "layout": "vertical",
+                  "gap": "$space-8",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "pz3HH",
+                      "name": "State",
+                      "fill": "#333333",
+                      "content": "Selecting text — mouse still down",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "T4PwOd",
+                      "name": "Note",
+                      "fill": "#777777",
+                      "textGrowth": "fixed-width",
+                      "width": 444,
+                      "content": "Native inactive selection: readable foreground and gray background in both appearances. The panel never becomes key. Gray here approximates the system color; mouse release holds the excerpt and fades this highlight.",
+                      "lineHeight": 1.45,
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "o0DJK9",
+                      "name": "Desktop",
+                      "fill": "$back",
+                      "cornerRadius": "$radius-card",
+                      "layout": "vertical",
+                      "gap": "$space-16",
+                      "padding": "$space-24",
+                      "children": [
+                        {
+                          "id": "mje07",
+                          "type": "ref",
+                          "ref": "c0qJn",
+                          "name": "Panel",
+                          "descendants": {
+                            "n5rfxu": {
+                              "type": "frame",
+                              "id": "QWgNk",
+                              "name": "Body",
+                              "width": "fill_container",
+                              "layout": "vertical",
+                              "children": [
+                                {
+                                  "id": "WvSCD",
+                                  "type": "ref",
+                                  "ref": "rVa43",
+                                  "name": "Header",
+                                  "width": "fill_container",
+                                  "descendants": {
+                                    "N7wi8l": {
+                                      "content": "REC 00:12:47"
+                                    }
+                                  }
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "xXtod",
+                                  "name": "Log",
+                                  "width": "fill_container",
+                                  "layout": "vertical",
+                                  "gap": "$space-12",
+                                  "padding": [
+                                    "$space-12",
+                                    "$space-16"
+                                  ],
+                                  "children": [
+                                    {
+                                      "id": "srnSD",
+                                      "type": "ref",
+                                      "ref": "Nescm",
+                                      "name": "Entry 12:42",
+                                      "width": "fill_container",
+                                      "descendants": {
+                                        "lCRql": {
+                                          "content": "12:42"
+                                        },
+                                        "f3tDAM": {
+                                          "children": [
+                                            {
+                                              "type": "frame",
+                                              "id": "KP74q",
+                                              "name": "Native selection",
+                                              "width": "fill_container",
+                                              "fill": "$chip",
+                                              "layout": "vertical",
+                                              "children": [
+                                                {
+                                                  "type": "text",
+                                                  "id": "tAQFM",
+                                                  "name": "Confirmed",
+                                                  "fill": "$text",
+                                                  "textGrowth": "fixed-width",
+                                                  "width": "fill_container",
+                                                  "content": "Accountable — я. По слог отвечает команда Ильи.",
+                                                  "lineHeight": 1.45,
+                                                  "fontFamily": "$font-data",
+                                                  "fontSize": "$type-body",
+                                                  "fontWeight": "normal"
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        }
+                                      }
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
                   "id": "Z5LiU",
                   "name": "Selection held",
                   "layout": "vertical",
@@ -18832,54 +18958,92 @@
                                       "name": "Holds",
                                       "width": "fill_container",
                                       "layout": "vertical",
-                                      "gap": "$space-4",
+                                      "gap": "$space-8",
                                       "children": [
                                         {
                                           "type": "frame",
                                           "id": "uMS7A",
                                           "name": "Held 1",
                                           "width": "fill_container",
+                                          "fill": "$card",
                                           "cornerRadius": "$radius-card",
-                                          "stroke": "$selBg",
+                                          "stroke": "$rule",
                                           "strokeWidth": 1,
-                                          "gap": "$space-6",
+                                          "gap": "$space-8",
                                           "padding": [
                                             "$space-2",
                                             "$space-8"
                                           ],
-                                          "alignItems": "center",
                                           "children": [
                                             {
-                                              "type": "icon",
-                                              "id": "XTCQ1",
-                                              "name": "Pin",
-                                              "width": 14,
-                                              "height": 14,
-                                              "icon": "push-pin-fill",
-                                              "library": "phosphor",
-                                              "fill": "$me"
+                                              "type": "frame",
+                                              "id": "c3UpUI",
+                                              "name": "Pin slot",
+                                              "width": 16,
+                                              "height": 24,
+                                              "justifyContent": "center",
+                                              "alignItems": "center",
+                                              "children": [
+                                                {
+                                                  "type": "icon",
+                                                  "id": "uvDU0",
+                                                  "name": "Pin",
+                                                  "width": 11,
+                                                  "height": 11,
+                                                  "icon": "push-pin-fill",
+                                                  "library": "phosphor",
+                                                  "fill": "$me"
+                                                }
+                                              ]
                                             },
                                             {
-                                              "type": "text",
-                                              "id": "NMsMg",
-                                              "name": "Quote",
-                                              "fill": "$text",
-                                              "textGrowth": "fixed-width",
+                                              "type": "frame",
+                                              "id": "MVsoI",
+                                              "name": "Excerpt",
                                               "width": "fill_container",
-                                              "content": "«accountable за слог поддержки?»",
-                                              "fontFamily": "$font-data",
-                                              "fontSize": "$type-small",
-                                              "fontWeight": "normal"
+                                              "layout": "vertical",
+                                              "padding": [
+                                                "$space-4",
+                                                0,
+                                                0,
+                                                0
+                                              ],
+                                              "children": [
+                                                {
+                                                  "type": "text",
+                                                  "id": "w261q",
+                                                  "name": "Quote",
+                                                  "fill": "$text",
+                                                  "textGrowth": "fixed-width",
+                                                  "width": "fill_container",
+                                                  "content": "accountable за слог поддержки?",
+                                                  "lineHeight": 1.25,
+                                                  "fontFamily": "$font-data",
+                                                  "fontSize": "$type-small",
+                                                  "fontWeight": "normal"
+                                                }
+                                              ]
                                             },
                                             {
-                                              "type": "icon",
-                                              "id": "k5w4a",
-                                              "name": "Let go",
-                                              "width": 14,
-                                              "height": 14,
-                                              "icon": "x",
-                                              "library": "phosphor",
-                                              "fill": "$gutter"
+                                              "type": "frame",
+                                              "id": "THo4f",
+                                              "name": "Release button",
+                                              "width": 24,
+                                              "height": 24,
+                                              "justifyContent": "center",
+                                              "alignItems": "center",
+                                              "children": [
+                                                {
+                                                  "type": "icon",
+                                                  "id": "h0y3qQ",
+                                                  "name": "Let go",
+                                                  "width": 11,
+                                                  "height": 11,
+                                                  "icon": "x",
+                                                  "library": "phosphor",
+                                                  "fill": "$sub"
+                                                }
+                                              ]
                                             }
                                           ]
                                         },
@@ -18888,47 +19052,85 @@
                                           "id": "Ozc6Y",
                                           "name": "Held 2",
                                           "width": "fill_container",
+                                          "fill": "$card",
                                           "cornerRadius": "$radius-card",
-                                          "stroke": "$selBg",
+                                          "stroke": "$rule",
                                           "strokeWidth": 1,
-                                          "gap": "$space-6",
+                                          "gap": "$space-8",
                                           "padding": [
                                             "$space-2",
                                             "$space-8"
                                           ],
-                                          "alignItems": "center",
                                           "children": [
                                             {
-                                              "type": "icon",
-                                              "id": "Po95x",
-                                              "name": "Pin",
-                                              "width": 14,
-                                              "height": 14,
-                                              "icon": "push-pin-fill",
-                                              "library": "phosphor",
-                                              "fill": "$me"
+                                              "type": "frame",
+                                              "id": "vUr6x",
+                                              "name": "Pin slot",
+                                              "width": 16,
+                                              "height": 24,
+                                              "justifyContent": "center",
+                                              "alignItems": "center",
+                                              "children": [
+                                                {
+                                                  "type": "icon",
+                                                  "id": "b4NoPx",
+                                                  "name": "Pin",
+                                                  "width": 11,
+                                                  "height": 11,
+                                                  "icon": "push-pin-fill",
+                                                  "library": "phosphor",
+                                                  "fill": "$me"
+                                                }
+                                              ]
                                             },
                                             {
-                                              "type": "text",
-                                              "id": "Kthx7",
-                                              "name": "Quote",
-                                              "fill": "$text",
-                                              "textGrowth": "fixed-width",
+                                              "type": "frame",
+                                              "id": "ezH9I",
+                                              "name": "Excerpt",
                                               "width": "fill_container",
-                                              "content": "«ОКР на квартал»",
-                                              "fontFamily": "$font-data",
-                                              "fontSize": "$type-small",
-                                              "fontWeight": "normal"
+                                              "layout": "vertical",
+                                              "padding": [
+                                                "$space-4",
+                                                0,
+                                                0,
+                                                0
+                                              ],
+                                              "children": [
+                                                {
+                                                  "type": "text",
+                                                  "id": "THEYl",
+                                                  "name": "Quote",
+                                                  "fill": "$text",
+                                                  "textGrowth": "fixed-width",
+                                                  "width": "fill_container",
+                                                  "content": "ОКР на квартал",
+                                                  "lineHeight": 1.25,
+                                                  "fontFamily": "$font-data",
+                                                  "fontSize": "$type-small",
+                                                  "fontWeight": "normal"
+                                                }
+                                              ]
                                             },
                                             {
-                                              "type": "icon",
-                                              "id": "mYzQu",
-                                              "name": "Let go",
-                                              "width": 14,
-                                              "height": 14,
-                                              "icon": "x",
-                                              "library": "phosphor",
-                                              "fill": "$gutter"
+                                              "type": "frame",
+                                              "id": "x3I08b",
+                                              "name": "Release button",
+                                              "width": 24,
+                                              "height": 24,
+                                              "justifyContent": "center",
+                                              "alignItems": "center",
+                                              "children": [
+                                                {
+                                                  "type": "icon",
+                                                  "id": "NPj5w",
+                                                  "name": "Let go",
+                                                  "width": 11,
+                                                  "height": 11,
+                                                  "icon": "x",
+                                                  "library": "phosphor",
+                                                  "fill": "$sub"
+                                                }
+                                              ]
                                             }
                                           ]
                                         }
@@ -20430,6 +20632,135 @@
                 },
                 {
                   "type": "frame",
+                  "id": "Id6VY",
+                  "name": "Selecting text",
+                  "theme": {
+                    "mode": "dark"
+                  },
+                  "layout": "vertical",
+                  "gap": "$space-8",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "HDcxW",
+                      "name": "State",
+                      "fill": "#333333",
+                      "content": "Selecting text — mouse still down",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "EqMtA",
+                      "name": "Note",
+                      "fill": "#777777",
+                      "textGrowth": "fixed-width",
+                      "width": 444,
+                      "content": "Native inactive selection: readable foreground and gray background in both appearances. The panel never becomes key. Gray here approximates the system color; mouse release holds the excerpt and fades this highlight.",
+                      "lineHeight": 1.45,
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "P35YpN",
+                      "name": "Desktop",
+                      "fill": "$back",
+                      "cornerRadius": "$radius-card",
+                      "layout": "vertical",
+                      "gap": "$space-16",
+                      "padding": "$space-24",
+                      "children": [
+                        {
+                          "id": "L48R5",
+                          "type": "ref",
+                          "ref": "c0qJn",
+                          "name": "Panel",
+                          "descendants": {
+                            "n5rfxu": {
+                              "type": "frame",
+                              "id": "P6isMb",
+                              "name": "Body",
+                              "width": "fill_container",
+                              "layout": "vertical",
+                              "children": [
+                                {
+                                  "id": "qln7X",
+                                  "type": "ref",
+                                  "ref": "rVa43",
+                                  "name": "Header",
+                                  "width": "fill_container",
+                                  "descendants": {
+                                    "N7wi8l": {
+                                      "content": "REC 00:12:47"
+                                    }
+                                  }
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "TmxzJ",
+                                  "name": "Log",
+                                  "width": "fill_container",
+                                  "layout": "vertical",
+                                  "gap": "$space-12",
+                                  "padding": [
+                                    "$space-12",
+                                    "$space-16"
+                                  ],
+                                  "children": [
+                                    {
+                                      "id": "j2ckXI",
+                                      "type": "ref",
+                                      "ref": "Nescm",
+                                      "name": "Entry 12:42",
+                                      "width": "fill_container",
+                                      "descendants": {
+                                        "lCRql": {
+                                          "content": "12:42"
+                                        },
+                                        "f3tDAM": {
+                                          "children": [
+                                            {
+                                              "type": "frame",
+                                              "id": "fRfaU",
+                                              "name": "Native selection",
+                                              "width": "fill_container",
+                                              "fill": "$chip",
+                                              "layout": "vertical",
+                                              "children": [
+                                                {
+                                                  "type": "text",
+                                                  "id": "Kv45d",
+                                                  "name": "Confirmed",
+                                                  "fill": "$text",
+                                                  "textGrowth": "fixed-width",
+                                                  "width": "fill_container",
+                                                  "content": "Accountable — я. По слог отвечает команда Ильи.",
+                                                  "lineHeight": 1.45,
+                                                  "fontFamily": "$font-data",
+                                                  "fontSize": "$type-body",
+                                                  "fontWeight": "normal"
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        }
+                                      }
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
                   "id": "v8E9co",
                   "name": "Selection held",
                   "layout": "vertical",
@@ -20527,54 +20858,92 @@
                                       "name": "Holds",
                                       "width": "fill_container",
                                       "layout": "vertical",
-                                      "gap": "$space-4",
+                                      "gap": "$space-8",
                                       "children": [
                                         {
                                           "type": "frame",
                                           "id": "sgp9s",
                                           "name": "Held 1",
                                           "width": "fill_container",
+                                          "fill": "$card",
                                           "cornerRadius": "$radius-card",
-                                          "stroke": "$selBg",
+                                          "stroke": "$rule",
                                           "strokeWidth": 1,
-                                          "gap": "$space-6",
+                                          "gap": "$space-8",
                                           "padding": [
                                             "$space-2",
                                             "$space-8"
                                           ],
-                                          "alignItems": "center",
                                           "children": [
                                             {
-                                              "type": "icon",
-                                              "id": "rhZtT",
-                                              "name": "Pin",
-                                              "width": 14,
-                                              "height": 14,
-                                              "icon": "push-pin-fill",
-                                              "library": "phosphor",
-                                              "fill": "$me"
+                                              "type": "frame",
+                                              "id": "YtzXq",
+                                              "name": "Pin slot",
+                                              "width": 16,
+                                              "height": 24,
+                                              "justifyContent": "center",
+                                              "alignItems": "center",
+                                              "children": [
+                                                {
+                                                  "type": "icon",
+                                                  "id": "hjib4",
+                                                  "name": "Pin",
+                                                  "width": 11,
+                                                  "height": 11,
+                                                  "icon": "push-pin-fill",
+                                                  "library": "phosphor",
+                                                  "fill": "$me"
+                                                }
+                                              ]
                                             },
                                             {
-                                              "type": "text",
-                                              "id": "vsRJt",
-                                              "name": "Quote",
-                                              "fill": "$text",
-                                              "textGrowth": "fixed-width",
+                                              "type": "frame",
+                                              "id": "PiqQz",
+                                              "name": "Excerpt",
                                               "width": "fill_container",
-                                              "content": "«accountable за слог поддержки?»",
-                                              "fontFamily": "$font-data",
-                                              "fontSize": "$type-small",
-                                              "fontWeight": "normal"
+                                              "layout": "vertical",
+                                              "padding": [
+                                                "$space-4",
+                                                0,
+                                                0,
+                                                0
+                                              ],
+                                              "children": [
+                                                {
+                                                  "type": "text",
+                                                  "id": "Y9YsUo",
+                                                  "name": "Quote",
+                                                  "fill": "$text",
+                                                  "textGrowth": "fixed-width",
+                                                  "width": "fill_container",
+                                                  "content": "accountable за слог поддержки?",
+                                                  "lineHeight": 1.25,
+                                                  "fontFamily": "$font-data",
+                                                  "fontSize": "$type-small",
+                                                  "fontWeight": "normal"
+                                                }
+                                              ]
                                             },
                                             {
-                                              "type": "icon",
-                                              "id": "lkpo6",
-                                              "name": "Let go",
-                                              "width": 14,
-                                              "height": 14,
-                                              "icon": "x",
-                                              "library": "phosphor",
-                                              "fill": "$gutter"
+                                              "type": "frame",
+                                              "id": "HuaUG",
+                                              "name": "Release button",
+                                              "width": 24,
+                                              "height": 24,
+                                              "justifyContent": "center",
+                                              "alignItems": "center",
+                                              "children": [
+                                                {
+                                                  "type": "icon",
+                                                  "id": "zrfom",
+                                                  "name": "Let go",
+                                                  "width": 11,
+                                                  "height": 11,
+                                                  "icon": "x",
+                                                  "library": "phosphor",
+                                                  "fill": "$sub"
+                                                }
+                                              ]
                                             }
                                           ]
                                         },
@@ -20583,47 +20952,85 @@
                                           "id": "XLngg",
                                           "name": "Held 2",
                                           "width": "fill_container",
+                                          "fill": "$card",
                                           "cornerRadius": "$radius-card",
-                                          "stroke": "$selBg",
+                                          "stroke": "$rule",
                                           "strokeWidth": 1,
-                                          "gap": "$space-6",
+                                          "gap": "$space-8",
                                           "padding": [
                                             "$space-2",
                                             "$space-8"
                                           ],
-                                          "alignItems": "center",
                                           "children": [
                                             {
-                                              "type": "icon",
-                                              "id": "MBJAy",
-                                              "name": "Pin",
-                                              "width": 14,
-                                              "height": 14,
-                                              "icon": "push-pin-fill",
-                                              "library": "phosphor",
-                                              "fill": "$me"
+                                              "type": "frame",
+                                              "id": "z22p7",
+                                              "name": "Pin slot",
+                                              "width": 16,
+                                              "height": 24,
+                                              "justifyContent": "center",
+                                              "alignItems": "center",
+                                              "children": [
+                                                {
+                                                  "type": "icon",
+                                                  "id": "w6QcdC",
+                                                  "name": "Pin",
+                                                  "width": 11,
+                                                  "height": 11,
+                                                  "icon": "push-pin-fill",
+                                                  "library": "phosphor",
+                                                  "fill": "$me"
+                                                }
+                                              ]
                                             },
                                             {
-                                              "type": "text",
-                                              "id": "r7yIx",
-                                              "name": "Quote",
-                                              "fill": "$text",
-                                              "textGrowth": "fixed-width",
+                                              "type": "frame",
+                                              "id": "VBTlB",
+                                              "name": "Excerpt",
                                               "width": "fill_container",
-                                              "content": "«ОКР на квартал»",
-                                              "fontFamily": "$font-data",
-                                              "fontSize": "$type-small",
-                                              "fontWeight": "normal"
+                                              "layout": "vertical",
+                                              "padding": [
+                                                "$space-4",
+                                                0,
+                                                0,
+                                                0
+                                              ],
+                                              "children": [
+                                                {
+                                                  "type": "text",
+                                                  "id": "fwbPN",
+                                                  "name": "Quote",
+                                                  "fill": "$text",
+                                                  "textGrowth": "fixed-width",
+                                                  "width": "fill_container",
+                                                  "content": "ОКР на квартал",
+                                                  "lineHeight": 1.25,
+                                                  "fontFamily": "$font-data",
+                                                  "fontSize": "$type-small",
+                                                  "fontWeight": "normal"
+                                                }
+                                              ]
                                             },
                                             {
-                                              "type": "icon",
-                                              "id": "cYmFe",
-                                              "name": "Let go",
-                                              "width": 14,
-                                              "height": 14,
-                                              "icon": "x",
-                                              "library": "phosphor",
-                                              "fill": "$gutter"
+                                              "type": "frame",
+                                              "id": "s24Cdi",
+                                              "name": "Release button",
+                                              "width": 24,
+                                              "height": 24,
+                                              "justifyContent": "center",
+                                              "alignItems": "center",
+                                              "children": [
+                                                {
+                                                  "type": "icon",
+                                                  "id": "Ccbik",
+                                                  "name": "Let go",
+                                                  "width": 11,
+                                                  "height": 11,
+                                                  "icon": "x",
+                                                  "library": "phosphor",
+                                                  "fill": "$sub"
+                                                }
+                                              ]
                                             }
                                           ]
                                         }

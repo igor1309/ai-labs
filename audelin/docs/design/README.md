@@ -124,6 +124,21 @@ from instances.
 
 Current screens:
 
+While dragging in the live transcript, use AppKit's unemphasized selection
+background and foreground together. The panel cannot become key; an accent
+foreground paired with the system's inactive background makes text unreadable.
+The drag mockups approximate the native gray with `chip`; the rendered colors
+follow the system appearance. Mouse release still holds the excerpt and fades
+the selection out.
+
+Held selections use the `card` fill, `rule` border and `radius-card`, with
+`space-8` horizontal and `space-2` vertical padding, and `space-8` gaps.
+A `type-caption` pin sits in a 16 × 24 slot;
+the release control has a 24 × 24 target. The excerpt uses `font-data` at
+`type-small`, with `space-4` above it to align with the controls, without added quotation marks, and wraps to three lines before
+truncating at the end. Hover and accessibility expose the complete excerpt.
+Cards are separated by `space-8` in both appearances.
+
 | Screen | States |
 |---|---|
 | 1 — First-launch setup | This Mac, nothing chosen; fresh Mac, models downloading and recording blocked |

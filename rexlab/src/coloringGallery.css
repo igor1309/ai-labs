@@ -118,7 +118,7 @@
    and the plus as a solid badge so it never tangles with the linework. */
 .gallery-actions .gallery-new { position: relative; overflow: hidden; padding: 0; background: #fff9ec; border: 2px solid var(--fm-amber); justify-content: space-between; }
 .gallery-actions .gallery-new .gallery-artwork-preview { flex: 1 1 auto; min-height: 0; padding: 4px; box-sizing: border-box; }
-.gallery-new > span { display: block; width: 100%; padding: 4px 2px; box-sizing: border-box; background: var(--fm-amber); text-align: center; white-space: nowrap; font-size: clamp(10px, 1.1vw, 14px); }
+.gallery-new > span { display: block; width: 100%; padding: 4px 2px; box-sizing: border-box; background: var(--fm-amber); text-align: center; white-space: nowrap; font-size: clamp(10px, 0.95vw, 14px); }
 .gallery-new > .gallery-new-plus { position: absolute; z-index: 1; top: 4px; left: 4px; width: 22px; height: 22px; padding: 3px; box-sizing: border-box; border-radius: 50%; color: #1d2742; background: var(--fm-amber); }
 @media (max-width: 599px) and (orientation: portrait) {
   .gallery-actions .gallery-artwork-preview { height: 44px; }
@@ -129,12 +129,17 @@
   .gallery-actions .gallery-artwork-preview { height: 32px; }
   .gallery-header h1 { font-size: 14px; }
 }
+/* An upright iPad cannot fit eight readable names, so its row scrolls too. */
+@media (min-width: 600px) and (max-width: 1023px) and (min-height: 600px) {
+  .gallery-actions { overflow-x: auto; touch-action: pan-x; scrollbar-width: none; scroll-snap-type: x proximity; }
+  .gallery-actions .gallery-new { flex: 0 0 calc((100% - 40px) / 5.5); scroll-snap-align: start; }
+}
 /* On a phone the creatures keep one row that scrolls sideways. Whole cards
    fill the row and only a sliver of the next peeks in, so no name is cut. */
 @media (max-width: 599px) and (orientation: portrait), (max-height: 599px) and (orientation: landscape) {
   .gallery-actions { overflow-x: auto; touch-action: pan-x; scrollbar-width: none; scroll-snap-type: x proximity; }
   .gallery-actions .gallery-new { flex: 0 0 calc((100% - 32px) / 3); min-height: 60px; scroll-snap-align: start; }
-  .gallery-new > span { font-size: 11px; }
+  .gallery-new > span { font-size: 10px; }
 }
 @media (max-width: 359px) and (orientation: portrait) {
   .gallery-actions .gallery-new { flex-basis: calc((100% - 24px) / 2); }

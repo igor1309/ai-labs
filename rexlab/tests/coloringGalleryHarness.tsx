@@ -1,5 +1,6 @@
 export { brachiosaurusHatchlingProbes, brachiosaurusExplorerProbes } from "./brachiosaurusSceneProbes.ts";
 export { pteranodonHatchlingProbes, pteranodonExplorerProbes } from "./pteranodonSceneProbes.ts";
+export { parasaurolophusHatchlingProbes, parasaurolophusExplorerProbes } from "./parasaurolophusSceneProbes.ts";
 import type { Theme } from "../src/theme.ts";
 export { mosasaurusHatchlingProbes, mosasaurusExplorerProbes } from "./mosasaurusSceneProbes.ts";
 export { trexHatchlingProbes, trexExplorerProbes, trexProtectedProbes } from "./trexSceneProbes.ts";
