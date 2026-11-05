@@ -284,6 +284,10 @@ const { chromium } = require("playwright");
           await p.getByRole("button", { name: creature === "stegosaurus" ? (language === "en" ? "NEW WORK" : "НОВЫЙ РИСУНОК") : creature === "triceratops" ? (language === "en" ? "TRICERATOPS" : "ТРИЦЕРАТОПС") : creature === "ankylosaurus" ? (language === "en" ? "ANKYLOSAURUS" : "АНКИЛОЗАВР") : (language === "en" ? "T-REX" : "ТИРАННОЗАВР"), exact: true }).press("Enter");
           await p.locator(".coloring-workshop").waitFor(); await checkLayout();
           for (const [label, option, count] of language === "en" ? [["COLOR", "BLUE", 13], ["SIZE", "BRUSH LARGE", 4]] : [["ЦВЕТ", "ГОЛУБОЙ", 13], ["РАЗМЕР", "КИСТЬ БОЛЬШОЙ", 4]]) {
+            // An upright iPad keeps the palette open under the paper instead of behind COLOR.
+            if (count === 13 && await p.locator(".coloring-strip").count()) {
+              await checkLayout(); await p.locator(".coloring-strip").getByRole("button", { name: option, exact: true }).press("Enter"); continue;
+            }
             await p.getByRole("button", { name: label, exact: true }).press("Enter");
             assert.equal(await p.getByRole("dialog").getByRole("button").count(), count);
             await checkLayout(); await p.getByRole("dialog").getByRole("button", { name: option, exact: true }).press("Enter");
