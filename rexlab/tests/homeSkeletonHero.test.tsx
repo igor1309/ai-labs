@@ -111,11 +111,13 @@ test.each(["load", "draw", "context"])("failure stays on the picture until the n
     expect(h.scene.dispose).toHaveBeenCalledTimes(1);
   }
   expect(h.host.hasAttribute("data-ready")).toBe(false);
+  expect(h.host.hasAttribute("data-failed")).toBe(true);
   expect(h.frames.size).toBe(0);
   h.hidden(true); h.hidden(false); h.intersection(false); h.intersection(true); h.motion(true); h.motion(false); h.size(600, 200);
   expect(h.environment.load).toHaveBeenCalledTimes(1);
   expect(h.frames.size).toBe(0);
   h.stop();
+  expect(h.host.hasAttribute("data-failed")).toBe(false);
   const next = harness(); await next.show(); await next.ready();
   expect(next.host.hasAttribute("data-ready")).toBe(true);
   next.stop();

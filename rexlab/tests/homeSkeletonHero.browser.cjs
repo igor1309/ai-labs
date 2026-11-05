@@ -13,6 +13,8 @@ async function settle(page) {
     await document.fonts.ready;
     await Promise.all(document.getAnimations().filter(a => a.timeline === document.timeline && a.effect?.getComputedTiming().iterations !== Infinity).map(a => a.finished.catch(() => {})));
   });
+  await frames(page);
+  await page.waitForFunction(() => !document.documentElement.hasAttribute("data-turning"));
 }
 async function featureBones(page) {
   await page.evaluate(() => {
@@ -35,7 +37,7 @@ async function visibleFallback(page) {
   await page.waitForFunction(() => {
     const hero = document.querySelector('.home-skeleton-hero');
     const image = hero?.querySelector('img');
-    return hero && !hero.hasAttribute('data-ready') && image?.complete && image.naturalWidth > 0;
+    return hero && hero.hasAttribute('data-failed') && !hero.hasAttribute('data-ready') && image?.complete && image.naturalWidth > 0;
   });
   await settle(page);
   assert.equal(await page.locator('.skeletons-hero-fallback').evaluate(e => getComputedStyle(e).opacity), '1');
@@ -65,6 +67,16 @@ async function run() {
           localStorage.setItem('rexlab-theme', theme);
           localStorage.setItem('rexlab-age-level', JSON.stringify({ level, revision: 'home-sky' }));
           Math.random = () => 0;
+          window.heroIntersection = undefined;
+          const Observer = window.IntersectionObserver;
+          window.IntersectionObserver = class extends Observer {
+            constructor(callback, options) {
+              super((entries, observer) => {
+                for (const entry of entries) if (entry.target.matches('.home-skeleton-hero')) window.heroIntersection = entry.isIntersecting;
+                callback(entries, observer);
+              }, options);
+            }
+          };
           window.skeletonDraws = 0;
           const draw = WebGL2RenderingContext.prototype.drawElements;
           WebGL2RenderingContext.prototype.drawElements = function(...args) {
@@ -153,6 +165,18 @@ async function run() {
           });
           await frames(page);
           assert(await page.evaluate(() => window.skeletonDraws) > pausedDraws, 'visible page resumes GPU draws');
+          await page.setViewportSize({ width: 393, height: 400 });
+          await page.evaluate(() => scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' }));
+          await page.waitForFunction(() => window.heroIntersection === false);
+          await frames(page);
+          const offscreenDraws = await page.evaluate(() => window.skeletonDraws);
+          await frames(page);
+          assert.equal(await page.evaluate(() => window.skeletonDraws), offscreenDraws, 'offscreen hero pauses GPU draws');
+          await page.evaluate(() => scrollTo({ top: 0, behavior: 'instant' }));
+          await page.waitForFunction(() => window.heroIntersection === true);
+          await frames(page);
+          assert(await page.evaluate(() => window.skeletonDraws) > offscreenDraws, 'onscreen hero resumes GPU draws');
+          await page.setViewportSize({ width, height });
           await page.emulateMedia({ reducedMotion: 'reduce' });
           await settle(page);
           // The same canvas survives resizing without replaying its ready state.
@@ -168,13 +192,16 @@ async function run() {
           assert.equal(await page.locator('.home-skeleton-hero').count(), 0, 'leaving Home removes canvas');
           await page.getByRole('button', { name: 'HOME', exact: true }).press('Enter');
           await ready(page);
-          // A double tap on artwork opens once and never chooses a dinosaur.
+          const healthyContext = await page.locator('.home-skeleton-hero canvas').evaluateHandle(canvas => canvas.getContext('webgl2'));
+          // Shared root double-tap tests own timing rejection; this checks the composed door.
           await page.locator('.home-today-art').dblclick({ delay: 50 });
           await page.locator('.skeleton-choices').waitFor();
+          await page.waitForFunction(context => context.isContextLost(), healthyContext);
+          await healthyContext.dispose();
           await settle(page);
           await frames(page);
           assert.equal(await page.locator('.skeleton-choices').count(), 1);
-          assert.equal(await page.locator('.skeleton-puzzle, .skeleton-mystery-screen').count(), 0);
+          assert.equal(await page.locator('.skeleton-puzzle').count(), 0);
           await page.getByRole('button', { name: 'HOME', exact: true }).press('Enter'); await ready(page);
           // A failed asset leaves the original picture and the same working door.
           await context.route('**/*.glb', route => route.abort());

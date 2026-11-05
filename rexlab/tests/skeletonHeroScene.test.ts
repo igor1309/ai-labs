@@ -57,6 +57,7 @@ test("the real optimized GLB fits every yaw and layout without stretching, with 
       expect(vertices).toBeGreaterThan(10_000);
       expect(largest).toBeLessThan(.95);
     }
+    expect(gpu.setSize.mock.calls).toEqual([[590, 300, false], [744, 160, false], [375, 160, false], [144, 276, false]]);
     const before = gpu.setSize.mock.calls.length;
     scene.draw(144, 276, .05);
     expect(gpu.setSize).toHaveBeenCalledTimes(before);

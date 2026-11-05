@@ -33,6 +33,7 @@ export function homeSkeletonHero(host: HTMLElement, environment: SkeletonHeroEnv
   let previous: number | undefined;
   let elapsed = 0;
   delete host.dataset.ready;
+  delete host.dataset.failed;
 
   const pause = () => {
     if (frame !== undefined) environment.cancelFrame(frame);
@@ -42,6 +43,7 @@ export function homeSkeletonHero(host: HTMLElement, environment: SkeletonHeroEnv
   const fail = () => {
     if (ended || failed) return;
     failed = true;
+    host.dataset.failed = "";
     delete host.dataset.ready;
     pause();
     abort.abort();
@@ -101,5 +103,6 @@ export function homeSkeletonHero(host: HTMLElement, environment: SkeletonHeroEnv
     scene?.dispose();
     scene = undefined;
     delete host.dataset.ready;
+    delete host.dataset.failed;
   };
 }
