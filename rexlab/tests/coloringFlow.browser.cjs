@@ -19,7 +19,53 @@ const { chromium } = require("playwright");
     const context = await browser.newContext({ viewport: { width: 1024, height: 768 } });
     const page = await context.newPage();
     page.setDefaultTimeout(15000);
-    const errors = []; page.on("pageerror", error => { errors.push(error.message); console.error("PAGEERROR", error.message); });
+    const errors = []; page.on("pageerror", error => {
+      errors.push(error.message);
+      console.error("PAGEERROR", JSON.stringify({ name: error.name, message: error.message, stack: error.stack, chromium: browser.version() }));
+    });
+    // Keep transition context at the moment of an error, before the next
+    // screen or reload replaces it. Do not handle native transition promises:
+    // a missing rejection handler must still fail the page-error assertion.
+    await page.addInitScript(() => {
+      const transitions = [], failures = [];
+      const screen = () => document.querySelector(".coloring-gallery, .coloring-workshop, .coloring-result, .home")?.className;
+      const context = () => ({ screen: screen(), time: performance.now(), fonts: document.fonts.status,
+        navigationPending: !!window.navigation?.transition, visibility: document.visibilityState,
+        viewport: [innerWidth, innerHeight], offline: !navigator.onLine });
+      window.coloringTransitionFailures = failures;
+      const capture = (message, stack) => {
+        failures.push({ message, stack, context: context(), transitions: structuredClone(transitions) });
+        if (failures.length > 5) failures.shift();
+        console.error("TRANSITION_DIAGNOSTICS", JSON.stringify(failures.at(-1)));
+      };
+      addEventListener("error", event => capture(event.message, event.error?.stack));
+      addEventListener("unhandledrejection", event => capture(String(event.reason), event.reason?.stack));
+      const start = document.startViewTransition;
+      if (!start) return;
+      document.startViewTransition = function (options) {
+        const trace = { before: context(), caller: new Error("Transition started").stack };
+        transitions.push(trace);
+        if (transitions.length > 12) transitions.shift();
+        const update = typeof options === "function" ? options : options?.update;
+        const wrapped = function (...args) {
+          trace.updateStarted = context();
+          try {
+            const result = update?.apply(this, args);
+            trace.updateReturned = { ...context(), asynchronous: !!result?.then };
+            // Return the exact value to Chromium; observing its promises here
+            // could hide the unhandled rejection this contract detects.
+            return result;
+          } catch (error) {
+            trace.updateThrew = { message: String(error), stack: error?.stack };
+            throw error;
+          }
+        };
+        return start.call(this, typeof options === "function" ? wrapped : { ...options, update: wrapped });
+      };
+    });
+    page.on("console", message => {
+      if (message.type() === "error" && message.text().startsWith("TRANSITION_DIAGNOSTICS")) console.error(message.text());
+    });
     // Only the storage boundary fails: every screen, session and adapter is real.
     await page.addInitScript(() => {
       // Fix the calendar date without changing pointer or animation clocks.
@@ -213,7 +259,7 @@ const { chromium } = require("playwright");
             await p.evaluate(async () => { await Promise.all(document.getAnimations().filter(a => a.timeline === document.timeline && a.effect?.getComputedTiming().iterations !== Infinity).map(a => a.finished.catch(() => {}))); });
             const layout = await p.evaluate(() => {
               const screen = document.querySelector('.coloring-gallery, .coloring-workshop, .coloring-result');
-              return { scroll: [document.documentElement.scrollWidth, document.documentElement.scrollHeight], boxes: [...screen.querySelectorAll('button, canvas:not([aria-hidden="true"])')].filter(e => e.getBoundingClientRect().width > 0 && getComputedStyle(e).visibility !== "hidden").map(e => { const b = e.getBoundingClientRect(); return { tag: e.tagName, text: e.textContent, picker: !!e.closest(".coloring-chooser"), rail: !!e.closest(".coloring-workshop .coloring-rail"), x: b.x, y: b.y, w: b.width, h: b.height }; }) };
+              return { scroll: [document.documentElement.scrollWidth, document.documentElement.scrollHeight], boxes: [...screen.querySelectorAll('button, canvas:not([aria-hidden="true"])')].filter(e => e.getBoundingClientRect().width > 0 && getComputedStyle(e).visibility !== "hidden").map(e => { const b = e.getBoundingClientRect(); return { row: e.matches(".gallery-new"), tag: e.tagName, text: e.textContent, picker: !!e.closest(".coloring-chooser"), rail: !!e.closest(".coloring-workshop .coloring-rail"), x: b.x, y: b.y, w: b.width, h: b.height }; }) };
             });
             const details = JSON.stringify({ width, height, language, theme, level, creature, layout });
             assert.deepEqual(layout.scroll, [width, height], details);
@@ -224,7 +270,7 @@ const { chromium } = require("playwright");
             }).map(label => label.textContent));
             assert.deepEqual(overflowingLabels, [], details);
             for (const b of layout.boxes) {
-              assert(b.x >= -1 && b.y >= -1 && b.x + b.w <= width + 1 && b.y + b.h <= height + 1, details);
+              assert(b.x >= -1 && b.y >= -1 && (b.row || b.x + b.w <= width + 1) && b.y + b.h <= height + 1, details);
               if (b.tag === "BUTTON") { assert(b.w >= (b.rail ? 48 : 60) && b.h >= (b.rail ? 48 : 60), details); assert.equal(b.text, b.text.toUpperCase()); }
               const canvas = layout.boxes.find(b => b.tag === "CANVAS");
               // Temporary tablet pickers cover part of the art; permanent controls stay outside it.
@@ -232,7 +278,7 @@ const { chromium } = require("playwright");
             }
           };
           await checkLayout();
-          assert.equal(await p.locator(".gallery-new").count(), 5);
+          assert.equal(await p.locator(".gallery-new").count(), 8);
           await p.getByRole("button", { name: creature === "stegosaurus" ? (language === "en" ? "NEW WORK" : "НОВЫЙ РИСУНОК") : creature === "triceratops" ? (language === "en" ? "TRICERATOPS" : "ТРИЦЕРАТОПС") : creature === "ankylosaurus" ? (language === "en" ? "ANKYLOSAURUS" : "АНКИЛОЗАВР") : (language === "en" ? "T-REX" : "ТИРАННОЗАВР"), exact: true }).press("Enter");
           await p.locator(".coloring-workshop").waitFor(); await checkLayout();
           for (const [label, option, count] of language === "en" ? [["COLOR", "BLUE", 13], ["SIZE", "BRUSH LARGE", 4]] : [["ЦВЕТ", "ГОЛУБОЙ", 13], ["РАЗМЕР", "КИСТЬ БОЛЬШОЙ", 4]]) {

@@ -14,7 +14,7 @@ const { chromium } = require("playwright");
       load(id) {
         if (id === "\0coloring-harness") return ["index", "geometry", "painter", "stegosaurusExplorer", "artworks"]
           .map(name => `export * from ${JSON.stringify(resolve(root, `src/coloring/${name}.ts`))}`)
-          .concat(["trexSceneProbes", "mosasaurusSceneProbes"].map(name => `export * from ${JSON.stringify(resolve(root, `tests/${name}.ts`))}`)).join(";\n");
+          .concat(["trexSceneProbes", "mosasaurusSceneProbes", "brachiosaurusSceneProbes", "pteranodonSceneProbes", "parasaurolophusSceneProbes"].map(name => `export * from ${JSON.stringify(resolve(root, `tests/${name}.ts`))}`)).join(";\n");
       }
     }], build: { write: false, rolldownOptions: { preserveEntrySignatures: "strict", input: "coloring-harness", output: { entryFileNames: "harness.js" } } } });
     const files = new Map(bundle.output.map(file => [file.fileName, file.type === "chunk" ? file.code : file.source]));
@@ -246,6 +246,9 @@ const { chromium } = require("playwright");
     if (process.env.COLORING_SCREENSHOT) await page.screenshot({ path: process.env.COLORING_SCREENSHOT });
     await require("./trexSceneRaster.cjs")(page);
     await require("./mosasaurusSceneRaster.cjs")(page);
+    await require("./brachiosaurusSceneRaster.cjs")(page);
+    await require("./pteranodonSceneRaster.cjs")(page);
+    await require("./parasaurolophusSceneRaster.cjs")(page);
   } finally { if (browser) await browser.close(); }
 })().catch(error => {
   console.error(error);

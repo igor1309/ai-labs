@@ -54,7 +54,7 @@ export function ColoringGalleryScreen({ session, language, home, artworks, offer
       {artworks.filter(artwork => !offeredVersions || offeredVersions.includes(artwork.version)).map((artwork, index) => <Button className="gallery-new" key={artwork.version}
         aria-label={index === 0 ? text.new : artwork.names[language]} disabled={state.busy || readOnly}
         onClick={() => void session.enter(undefined, index === 0 && !offeredVersions ? undefined : artwork.version)}>
-        <ColoringArtworkPreview preview={artwork.preview} /><span><Plus aria-hidden="true" />{artwork.names[language]}</span>
+        <Plus className="gallery-new-plus" aria-hidden="true" /><ColoringArtworkPreview preview={artwork.preview} /><span>{artwork.names[language]}</span>
       </Button>)}
       {readOnly && collection && <span><LockKeyhole aria-hidden="true" />{text.readOnly}</span>}
     </div>

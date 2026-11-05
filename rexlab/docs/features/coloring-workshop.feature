@@ -1,6 +1,6 @@
 @next
 Feature: Coloring workshop
-  Free creativity with Stegosaurus, Triceratops, Ankylosaurus, T-Rex and Mosasaurus artwork. There is no model to
+  Free creativity with Stegosaurus, Triceratops, Ankylosaurus, T-Rex, Mosasaurus, Brachiosaurus, Pteranodon and Parasaurolophus artwork. There is no model to
   copy, time limit, coverage target or judgement of artistic quality.
   An action means one accepted brush contact from press to release, or
   one fill. A work is nonempty when its current editable paint differs
@@ -238,3 +238,80 @@ Feature: Coloring workshop
       | artwork                |
       | mosasaurus-hatchling-1 |
       | mosasaurus-explorer-1  |
+
+  Scenario: Simple Brachiosaurus for Hatchling
+    Given I start a new Brachiosaurus work at Hatchling
+    Then the workshop renders the original brachiosaurus-hatchling-1 vector scene
+    And a friendly Brachiosaurus stands with a long neck, small head, four column legs and a long tail
+    And the head, neck, body, tail and four legs offer broad independent coloring regions
+    And its eye, smile, toes and knees remain protected decorative details
+    And a simple ground with one fern leaves the dinosaur clear and prominent
+    And the entire scene fits supported iPad and iPhone viewports without clipping
+    And the canvas has the localized uppercase accessible name BRACHIOSAURUS or БРАХИОЗАВР
+
+  Scenario: Rich Brachiosaurus forest scene
+    Given I start a new Brachiosaurus work at Explorer or Paleontologist
+    Then the workshop renders the original brachiosaurus-explorer-1 vector scene
+    And the same recognizable dinosaur stands among two tall trees and ferns
+    And its belly, back and tail markings add independent coloring regions beyond the Hatchling version
+    And sun, cloud, hills, tree crowns and trunks, a rock and fern leaves offer additional broad independent coloring regions
+    And skin spots, the head crest, bark, fern veins, sun rays, toes and the smile remain protected rather than tiny fill targets
+    And the entire scene fits supported iPad and iPhone viewports without clipping
+
+  Scenario Outline: Independent Brachiosaurus fills preserve the drawing
+    Given I open a Brachiosaurus work using <artwork>
+    When I fill any enclosed dinosaur or scenery region
+    Then only that visible region changes, including when it lies inside a larger region
+    And its outline, eye highlights and decorative ink remain visible above fills and brush paint
+    And every coloring region has a broad visible interior rather than a hidden or hair-thin target
+
+    Examples:
+      | artwork                   |
+      | brachiosaurus-hatchling-1 |
+      | brachiosaurus-explorer-1  |
+
+  Scenario: Simple Pteranodon for Hatchling
+    Given I start a new Pteranodon work at Hatchling
+    Then the workshop renders the original pteranodon-hatchling-1 vector scene
+    And a friendly Pteranodon soars with two wide wings, a long beak and a swept-back crest
+    And the wings, body, head, beak, crest and two legs offer broad independent coloring regions
+    And its eye, smile and toes remain protected decorative details
+    And a simple sea with one cloud leaves the Pteranodon clear and prominent
+    And the entire scene fits supported iPad and iPhone viewports without clipping
+    And the canvas has the localized uppercase accessible name PTERANODON or ПТЕРАНОДОН
+
+  Scenario: Rich Pteranodon sea cliff scene
+    Given I start a new Pteranodon work at Explorer or Paleontologist
+    Then the workshop renders the original pteranodon-explorer-1 vector scene
+    And the same recognizable Pteranodon soars through a sky with a sun and two clouds above the sea between two cliffs
+    And its wing arms, belly, crest tip and lower jaw add independent coloring regions beyond the Hatchling drawing
+    And wing fingers, skin spots, waves, rock cracks, sun rays and a far-off flier remain protected linework
+    And the entire scene fits supported iPad and iPhone viewports without clipping
+
+  Scenario Outline: Independent Pteranodon fills preserve the drawing
+    Given I open a Pteranodon work using <artwork>
+    When I fill any region
+    Then only that region changes color
+    And outlines and protected details stay visible
+
+    Examples:
+      | artwork                |
+      | pteranodon-hatchling-1 |
+      | pteranodon-explorer-1  |
+
+  Scenario: Simple Parasaurolophus for Hatchling
+    Given I start a new Parasaurolophus work at Hatchling
+    Then the workshop renders the original parasaurolophus-hatchling-1 vector scene
+    And a friendly Parasaurolophus stands with a long tube crest, a duck bill, a flowing tail and a pale belly
+    And the body, belly, head, bill, crest, two legs and two arms offer broad independent coloring regions
+    And its eye, smile and toes remain protected decorative details
+    And simple ground with one reed clump leaves the Parasaurolophus clear and prominent
+    And the entire scene fits supported iPad and iPhone viewports without clipping
+
+  Scenario: Rich Parasaurolophus riverbank for older levels
+    Given I start a new Parasaurolophus work at Explorer or Paleontologist
+    Then the workshop renders the original parasaurolophus-explorer-1 vector scene
+    And the Parasaurolophus stands on a riverbank with sky, sun, cloud, far bank, cypress, river, lily pad, reeds, cattail and swamp fern
+    And its body adds a tail tip, belly, three back stripes and a crest tip as independent regions
+    And lily flower, skin spots, ripples, stems and leaf veins remain protected linework, never tiny targets
+    And the entire scene fits supported iPad and iPhone viewports without clipping

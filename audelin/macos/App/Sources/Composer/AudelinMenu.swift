@@ -48,7 +48,7 @@ public final class AudelinMenu {
 
     public var menu: MenuBarModel {
         MenuBarModel(recording: menuBarRecording(state), preferences: menuBarPreferences(preferences), statusLine: failure,
-                     offersPanelReopen: panelPresence.offersReopen)
+                     offersPanelReopen: panelPresence.offersReopen, panelVisible: panelPresence.visible)
     }
 
     init(
@@ -140,6 +140,7 @@ public final class AudelinMenu {
             settings.setLiveText(enabled)
         case .showCalls: calls?.show()
         case .showPanel: receivePanelPresence(.reopen)
+        case .hidePanel: receivePanelPresence(.userClosed)
         case .openCallsFolder: openFolder(settings.callsFolder)
         case .quit:
             quitting = true

@@ -1,5 +1,9 @@
 # Log
 
+## 2026-11-05
+
+- The menu hides and restores the live transcript panel without stopping recording or transcription (LAB-1000).
+
 ## 2026-11-04
 
 - Calls made in the same minute with different titles get separate ids, so each can be opened, renamed and deleted (LAB-958).

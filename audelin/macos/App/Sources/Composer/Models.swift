@@ -11,10 +11,14 @@ import Session
 func makeReading() -> ReadingInputs {
 
     let model = ObservableModel<ReadingState, ReadingEvent, Never>(
-        initialState: .init(), reduce: ReadingReducer.reduce, handleEffect: { switch $0 {} }
+        initialState: .init(), reduce: ReadingReducer.reduce, handleEffect: noEvents
     )
     return ReadingInputs(state: { model.state }, send: { model.event($0) })
 }
+
+/// The handler for a model without effects. It is generic because the compiler warns on any body
+/// taking `Never`: a closure given it "will never be executed".
+private func noEvents<Effect, Event>(_: Effect) -> AsyncStream<Event> { AsyncStream { $0.finish() } }
 
 /// Recording's model, reducing on the main actor, and the doer that makes the Session follow it.
 @MainActor

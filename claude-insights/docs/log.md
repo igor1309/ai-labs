@@ -1,5 +1,9 @@
 # claude-insights log
 
+## 2026-11-04
+
+- Weekly reports include Claude context hygiene and optional Codex aggregates; Supabase storage, Telegram digests with prior-snapshot deltas, and trend analysis carry the same numeric metrics. Deployment and Supabase push require Igor confirmation (LAB-5).
+
 ## 2026-11-02
 
 - Supabase keep-alive now writes every 4 hours instead of every 3 days, and fails unless the heartbeat row was actually updated. The project was paused on 2026-10-26 and 2026-11-02 within a day of a successful write: Supabase judges activity over a week, and two or three writes a week were too few (LAB-910).
