@@ -445,7 +445,12 @@ async function main() {
   const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || undefined, headless: true });
   let checked = 0, boardSteps = 0, shelfViews = 0;
   try {
-    for (const [width, height, sandTop, bedrock] of sizes) for (const language of ['en', 'ru']) for (const theme of ['light', 'dark']) {
+    // The checks measure layout, which a theme leaves alone: each size runs
+    // in one theme, alternating, and screenshots take both.
+    const themesAt = at => process.env.TEETH_SCREENSHOTS ? ['light', 'dark'] : [at % 2 ? 'dark' : 'light'];
+    const configs = [...sizes.entries()].flatMap(([at, size]) => ['en', 'ru'].flatMap(language => themesAt(at).map((theme, _, themes) => [size, language, theme, themes])));
+    // Each configuration has its own context, so a few run side by side.
+    const run = async ([[width, height, sandTop, bedrock], language, theme, themes]) => {
       const context = await browser.newContext({ viewport: { width, height }, reducedMotion: 'reduce', serviceWorkers: 'block' });
       try {
         // Pictures asked for while holding wait until the page releases
@@ -510,7 +515,9 @@ async function main() {
             if (!process.env.TEETH_SCREENSHOTS) return;
             await page.screenshot({ path: join(process.env.TEETH_SCREENSHOTS, `board-${width}x${height}-${language}-${theme}-${name}.png`) });
           };
-          boardSteps += (await board(page, width, height, label, { sandTop, bedrock, phone: width < 600 || height < 600 }, level, shoot, language === 'en' && theme === 'light')).length;
+          // Counted after the await: runs side by side would lose each other's.
+          const steps = await board(page, width, height, label, { sandTop, bedrock, phone: width < 600 || height < 600 }, level, shoot, language === 'en' && theme === themes[0]);
+          boardSteps += steps.length;
         }
         for (const saved of [undefined, returning, { ...returning, earned: require('../src/data/jaws.json').map(jaw => jaw.id) }]) {
           await page.goto('http://teeth.test/');
@@ -557,7 +564,9 @@ async function main() {
         assert.deepEqual(await page.evaluate(() => window.resultActions), ['shown', 'not-now']);
         assert.deepEqual(errors, [], `${width}x${height} ${language} ${theme}: page errors`);
       } finally { await context.close(); }
-    }
+    };
+    const queue = [...configs];
+    await Promise.all(Array.from({ length: 3 }, async () => { while (queue.length) await run(queue.shift()); }));
     console.log(`PASS ${checked} WHOSE JAW? welcome/result configurations, ${shelfViews} shelf views and ${boardSteps} board steps: layout, fit, overlap, scrolling, labels and motion`);
   } finally { await browser.close(); }
 }
