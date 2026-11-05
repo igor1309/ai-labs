@@ -34,6 +34,12 @@ async function frames(page) {
   });
 }
 async function bufferFits(page) {
+  await page.waitForFunction(() => {
+    const canvas = document.querySelector('.home-skeleton-hero canvas');
+    const box = canvas.getBoundingClientRect();
+    const ratio = Math.min(devicePixelRatio, 1.5);
+    return canvas.width === Math.floor(box.width * ratio) && canvas.height === Math.floor(box.height * ratio);
+  });
   const actual = await page.locator('.home-skeleton-hero canvas').evaluate(canvas => {
     const box = canvas.getBoundingClientRect();
     const ratio = Math.min(devicePixelRatio, 1.5);
