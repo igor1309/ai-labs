@@ -78,6 +78,7 @@ async function run() {
         await page.locator('.home').waitFor();
         await settle(page);
         assert(!requests.some(file => /skeletonHeroScene|\.glb$/.test(file)), 'other featured games do not load 3D dependencies');
+        assert(!requests.some(file => file.endsWith('.js') && files.get(file)?.includes(Buffer.from('WebGLRenderer'))), 'other featured games do not bundle the renderer into an eager chunk');
         await featureBones(page);
         await ready(page);
         const box = await page.locator('.home-skeleton-hero canvas').boundingBox();
@@ -156,20 +157,30 @@ async function run() {
           // A double tap on artwork opens once and never chooses a dinosaur.
           await page.locator('.home-today-art').dblclick({ delay: 50 });
           await page.locator('.skeleton-choices').waitFor();
+          await settle(page);
+          await frames(page);
           assert.equal(await page.locator('.skeleton-choices').count(), 1);
+          assert.equal(await page.locator('.skeleton-puzzle, .skeleton-mystery-screen').count(), 0);
           await page.getByRole('button', { name: 'HOME', exact: true }).press('Enter'); await ready(page);
           // A failed asset leaves the original picture and the same working door.
           await context.route('**/*.glb', route => route.abort());
-          await page.reload(); await visibleFallback(page);
+          const failedAsset = page.waitForEvent('requestfailed', request => /\.glb$/.test(request.url()));
+          await page.reload(); await failedAsset; await visibleFallback(page);
           await page.locator('.featured-card').press('Enter'); await page.locator('.skeleton-choices').waitFor();
           await context.unroute('**/*.glb');
           await page.getByRole('button', { name: 'HOME', exact: true }).press('Enter'); await ready(page);
           // No WebGL: fail renderer construction, keeping ordinary navigation.
           await context.addInitScript(() => {
+            window.webglAttempts = 0;
             const original = HTMLCanvasElement.prototype.getContext;
-            HTMLCanvasElement.prototype.getContext = function(type, ...args) { return /^webgl/.test(type) ? null : original.call(this, type, ...args); };
+            HTMLCanvasElement.prototype.getContext = function(type, ...args) {
+              if (/^webgl/.test(type)) { window.webglAttempts++; return null; }
+              return original.call(this, type, ...args);
+            };
           });
-          await page.reload(); await visibleFallback(page);
+          await page.reload();
+          await page.waitForFunction(() => window.webglAttempts > 0);
+          await visibleFallback(page);
           await page.locator('.featured-card').press('Enter'); await page.locator('.skeleton-choices').waitFor();
         }
       } finally { await context.close(); }
