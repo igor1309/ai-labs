@@ -33,6 +33,14 @@ async function frames(page) {
     for (let i = 0; i < 3; i++) await new Promise(resolve => requestAnimationFrame(resolve));
   });
 }
+async function bufferFits(page) {
+  const actual = await page.locator('.home-skeleton-hero canvas').evaluate(canvas => {
+    const box = canvas.getBoundingClientRect();
+    const ratio = Math.min(devicePixelRatio, 1.5);
+    return { buffer: [canvas.width, canvas.height], expected: [Math.floor(box.width * ratio), Math.floor(box.height * ratio)] };
+  });
+  assert.deepEqual(actual.buffer, actual.expected, 'drawing buffer follows the actual art size');
+}
 async function visibleFallback(page) {
   await page.waitForFunction(() => {
     const hero = document.querySelector('.home-skeleton-hero');
@@ -105,6 +113,7 @@ async function run() {
         assert(!requests.some(file => file.endsWith('.js') && files.get(file)?.includes(Buffer.from('WebGLRenderer'))), 'other featured games do not bundle the renderer into an eager chunk');
         await featureBones(page);
         await ready(page);
+        await bufferFits(page);
         const pixels = await page.evaluate(() => window.skeletonPixels);
         assert(pixels && pixels.painted > pixels.total * .01 && pixels.bright > pixels.painted * .75 && pixels.warm > pixels.painted * .75, `visible ivory geometry is painted in ${theme}: ${JSON.stringify(pixels)}`);
         const box = await page.locator('.home-skeleton-hero canvas').boundingBox();
@@ -129,6 +138,7 @@ async function run() {
         });
         assert(layout.canvas.every(n => n > 0) && layout.interactive === 'none' && layout.fallback === '0' && !layout.overflow, 'canvas renders decoratively, without overflow');
         assert(layout.title.includes('SKELETON') && layout.play === 'PLAY', 'title and PLAY retained');
+        for (const selector of ['.featured-card-title', '.home-play', '.home-header']) assert(await page.locator(selector).isVisible(), `${selector} stays visible`);
         const controls = await page.locator('.featured-card-title, .home-play, .home-today-progress, .home-header').evaluateAll(elements => elements.map(element => element.getBoundingClientRect().toJSON()));
         assert(controls.every(rect => rect.x >= 0 && rect.y >= 0 && rect.right <= width + 1 && rect.bottom <= height + 1), `${width}x${height}: title, PLAY, saved progress and top menus fit the first viewport`);
         if (output) {
@@ -181,9 +191,9 @@ async function run() {
           await settle(page);
           // The same canvas survives resizing without replaying its ready state.
           const canvas = await page.locator('.home-skeleton-hero canvas').elementHandle();
-          await page.setViewportSize({ width: 744, height: 1133 }); await ready(page);
+          await page.setViewportSize({ width: 744, height: 1133 }); await ready(page); await bufferFits(page);
           assert(await canvas.evaluate(e => e === document.querySelector('.home-skeleton-hero canvas')), 'resize retains renderer');
-          await page.setViewportSize({ width, height }); await ready(page);
+          await page.setViewportSize({ width, height }); await ready(page); await bufferFits(page);
           await page.evaluate(() => document.querySelector('.home-skeleton-hero canvas').getContext('webgl2').getExtension('WEBGL_lose_context').loseContext());
           await visibleFallback(page);
           if (output) await page.screenshot({ path: join(output, 'context-loss-fallback.png'), fullPage: true });
