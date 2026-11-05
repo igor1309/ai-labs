@@ -1811,7 +1811,6 @@ body:has(.result) #version {
 
 /* A pair's artwork keeps its cards together inside either picture area. */
 
-
 .pairs-tile-art {
   position: relative;
   flex: 1 1 0;
@@ -5009,9 +5008,8 @@ html[data-size="tall-narrow"] .sort[data-rows] .basket-mark .mark-question {
   font-size: 16px;
 }
 
-/* Find the pair's welcome and board fill the screen under a bar like the
+/* Find the pair's board fills the screen under a bar like the
    catalogue's. */
-.pairs-welcome,
 .pairs-board-screen {
   position: relative;
   isolation: isolate;
@@ -5042,109 +5040,16 @@ html[data-size="tall-narrow"] .sort[data-rows] .basket-mark .mark-question {
   row-gap: calc(28px - clamp(0px, 768px - 100dvh, 98px) * 16 / 98);
 }
 
-.pairs-welcome .stratum-1,
 .pairs-board-screen .stratum-1 {
   height: 40px;
 }
 
-.pairs-welcome-bar,
 .pairs-bar {
   display: flex;
   align-items: center;
   gap: 24px;
 }
 
-/* The welcome: a face-down card, and a dinosaur's picture matched to its
-   silhouette, beside the title, the climb level and stars, the level
-   switch and PLAY. The column beside the cards is as wide as the switch
-   needs for every level's name on one line, so the cards take what is
-   left. */
-.pairs-welcome-body {
-  flex: 1 1 0;
-  min-height: 0;
-  display: flex;
-  align-items: center;
-  gap: 40px;
-}
-
-.pairs-hero {
-  flex: 760 1 0;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.pairs-hero-card {
-  flex-shrink: 0;
-  width: 32%;
-  max-height: 60vh;
-  max-height: 60dvh;
-  aspect-ratio: 3 / 4;
-  margin: 0 -2%;
-  box-sizing: border-box;
-  padding: 18px;
-  display: flex;
-  border-radius: 28px;
-  background: #fffdf8;
-  box-shadow: 0 18px 40px #1d274224;
-  animation: rise-in var(--motion-screen) var(--ease-out) both;
-}
-
-/* The face-down card's footprints keep the design's share of it, 96 of
-   its 177 pixels inside at 1440 by 900, at every size of the card. */
-.pairs-hero-back {
-  padding: 14px;
-  background: #1f2b4d;
-  rotate: -8deg;
-  container-type: inline-size;
-}
-
-.pairs-hero-back .pair-card-back-frame svg {
-  width: 54cqi;
-  height: 54cqi;
-}
-
-.pairs-hero-silhouette {
-  z-index: 1;
-  translate: 0 -6%;
-  animation-delay: var(--motion-stagger);
-}
-
-.pairs-hero-picture-card {
-  rotate: 8deg;
-  animation-delay: calc(var(--motion-stagger) * 2);
-}
-
-.pairs-hero-picture {
-  display: block;
-  width: 100%;
-  height: 100%;
-  min-height: 0;
-  object-fit: contain;
-}
-
-.pairs-start {
-  flex-shrink: 0;
-  width: 648px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 28px;
-}
-
-.pairs-title {
-  margin: 0;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 20px;
-  font-size: 64px;
-  font-weight: 700;
-  line-height: 1.1;
-}
-
-.pairs-mark,
 .pairs-bar-mark {
   flex-shrink: 0;
   display: grid;
@@ -5153,18 +5058,6 @@ html[data-size="tall-narrow"] .sort[data-rows] .basket-mark .mark-question {
   color: #1d2742;
 }
 
-.pairs-mark {
-  width: 88px;
-  height: 88px;
-  border-radius: 24px;
-}
-
-.pairs-chips {
-  display: flex;
-  gap: 16px;
-}
-
-.pairs-chip,
 .pairs-bar-chip {
   flex-shrink: 0;
   margin: 0;
@@ -5173,18 +5066,6 @@ html[data-size="tall-narrow"] .sort[data-rows] .basket-mark .mark-question {
   align-items: center;
   background: #e6e2d9;
   font-weight: 700;
-}
-
-.pairs-chip {
-  height: 64px;
-  padding: 0 24px;
-  gap: 12px;
-  border-radius: 32px;
-  font-size: 30px;
-}
-
-.pairs-stars svg {
-  color: #e39b2d;
 }
 
 /* The climb level is Hatchling's alone: at the other levels its chip folds
@@ -5206,250 +5087,6 @@ html[data-size="tall-narrow"] .sort[data-rows] .basket-mark .mark-question {
   grid-template-columns: 1fr;
   margin-right: 0;
   opacity: 1;
-}
-
-.pairs-climb .pairs-chip {
-  min-width: 0;
-}
-
-/* Upright, the welcome stands in one column under the bar: the cards,
-   then 32 under them the title, the chips, the level switch and PLAY,
-   centred, the column the width, at most 648. The screen keeps its
-   landscape padding top and bottom, and 32 a side. Each card keeps its
-   3:4 and its 32% of the width, at most 280 wide, and shrinks to the
-   height the padding (88), the bar (56) and its gap (28), the cards' gap
-   (32) and the column (416) leave, 620 in all; it is never under 120
-   wide, and below that the whole screen scrolls. The title takes the one
-   type the screen gives in --pairs-title-size. */
-html[data-size="tall"] .pairs-welcome,
-html[data-size="tall-narrow"] .pairs-welcome {
-  min-height: 100vh;
-  min-height: 100dvh;
-  height: auto;
-  padding:
-    calc(40px + env(safe-area-inset-top))
-    calc(32px + var(--screen-right))
-    calc(48px + env(safe-area-inset-bottom))
-    calc(32px + var(--screen-left));
-}
-
-html[data-size="tall"] .pairs-welcome-body,
-html[data-size="tall-narrow"] .pairs-welcome-body {
-  flex: 1 0 auto;
-  flex-direction: column;
-  justify-content: center;
-  gap: 32px;
-}
-
-html[data-size="tall"] .pairs-hero,
-html[data-size="tall-narrow"] .pairs-hero {
-  flex: 0 0 auto;
-  align-self: stretch;
-}
-
-html[data-size="tall"] .pairs-hero-card,
-html[data-size="tall-narrow"] .pairs-hero-card {
-  width: max(120px, min(280px, 32%, (100vh - (620px + env(safe-area-inset-top) + env(safe-area-inset-bottom))) * 0.75));
-  width: max(120px, min(280px, 32%, (100dvh - (620px + env(safe-area-inset-top) + env(safe-area-inset-bottom))) * 0.75));
-  max-height: none;
-}
-
-html[data-size="tall"] .pairs-start,
-html[data-size="tall-narrow"] .pairs-start {
-  width: 100%;
-  max-width: 648px;
-  align-items: center;
-}
-
-html[data-size="tall"] .pairs-title,
-html[data-size="tall-narrow"] .pairs-title {
-  flex-wrap: nowrap;
-  white-space: nowrap;
-  font-size: var(--pairs-title-size);
-}
-
-/* In a tall-narrow window, an iPhone upright, the welcome stands as in a
-   tall one on 20-pixel sides, 24 at the top and 32 at the bottom, its
-   parts 20 apart and the cards 24 over the column: "HOME" is its house
-   alone, a 56-pixel square; the mark is 64, the chips 52 tall in 22-pixel
-   type and PLAY 80 tall in 30. A card keeps its 32% of the width and
-   shrinks to the height the padding (56), the bar (56) and its gap (20),
-   the cards' gap (24) and the column (332) leave, 488 in all; it is never
-   under 80 wide, and below that the whole screen scrolls. */
-html[data-size="tall-narrow"] .pairs-welcome {
-  padding:
-    calc(24px + env(safe-area-inset-top))
-    calc(20px + var(--screen-right))
-    calc(32px + env(safe-area-inset-bottom))
-    calc(20px + var(--screen-left));
-  gap: 20px;
-}
-html[data-size="tall-narrow"] .pairs-welcome-bar .home-button {
-  width: 56px;
-  padding: 0 16px;
-}
-
-html[data-size="tall-narrow"] .pairs-welcome-body {
-  gap: 24px;
-}
-
-html[data-size="tall-narrow"] .pairs-hero-card {
-  width: max(80px, min(280px, 32%, (100vh - (488px + env(safe-area-inset-top) + env(safe-area-inset-bottom))) * 0.75));
-  width: max(80px, min(280px, 32%, (100dvh - (488px + env(safe-area-inset-top) + env(safe-area-inset-bottom))) * 0.75));
-  padding: 10px;
-  border-radius: 20px;
-}
-
-html[data-size="tall-narrow"] .pairs-start {
-  gap: 20px;
-}
-
-html[data-size="tall-narrow"] .pairs-title {
-  gap: 16px;
-}
-
-html[data-size="tall-narrow"] .pairs-mark {
-  width: 64px;
-  height: 64px;
-  border-radius: 18px;
-}
-
-html[data-size="tall-narrow"] .pairs-chips {
-  gap: 8px;
-}
-
-html[data-size="tall-narrow"] .pairs-climb:not([data-shown]) {
-  margin-right: -8px;
-}
-
-html[data-size="tall-narrow"] .pairs-chip {
-  height: 52px;
-  padding: 0 16px;
-  font-size: 22px;
-}
-
-html[data-size="tall-narrow"] .pairs-play-button {
-  height: 80px;
-  padding: 0 32px 0 28px;
-  font-size: 30px;
-}
-
-/* In a wide-short window, an iPhone on its side, the welcome keeps the
-   cards beside a 320-pixel column, 12 under the top and over the bottom
-   and 20 past each side's inset. HOME is its house alone, a 48-pixel
-   square; the column holds the title in 28-pixel type by a 44 mark, the
-   chips 40 tall, the switch showing each level's picture alone, its name
-   kept for screen readers, and PLAY 56 tall, 12 apart, so it fits the
-   shortest window, 320 tall. The cards take the width left, at most the
-   body's height. */
-html[data-size="wide-short"] .pairs-welcome {
-  padding:
-    calc(12px + env(safe-area-inset-top))
-    calc(20px + var(--screen-right))
-    calc(12px + env(safe-area-inset-bottom))
-    calc(20px + var(--screen-left));
-  gap: 8px;
-}
-
-html[data-size="wide-short"] .pairs-welcome .stratum-1 {
-  height: 24px;
-}
-html[data-size="wide-short"] .pairs-welcome-bar .home-button {
-  flex-shrink: 0;
-  width: 48px;
-  height: 48px;
-  padding: 0;
-  justify-content: center;
-}
-
-html[data-size="wide-short"] .pairs-welcome-body {
-  gap: 24px;
-}
-
-html[data-size="wide-short"] .pairs-hero {
-  align-self: stretch;
-}
-
-html[data-size="wide-short"] .pairs-hero-card {
-  max-height: 100%;
-  padding: 8px;
-  border-radius: 16px;
-  box-shadow: 0 8px 20px #1d274224;
-}
-
-html[data-size="wide-short"] .pairs-hero-back {
-  padding: 6px;
-}
-
-html[data-size="wide-short"] .pairs-start {
-  width: 320px;
-  gap: 12px;
-}
-
-html[data-size="wide-short"] .pairs-title {
-  flex-wrap: nowrap;
-  gap: 12px;
-  white-space: nowrap;
-  font-size: 28px;
-}
-
-html[data-size="wide-short"] .pairs-mark {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-}
-
-html[data-size="wide-short"] .pairs-mark svg {
-  width: 26px;
-  height: 26px;
-}
-
-html[data-size="wide-short"] .pairs-chips {
-  gap: 8px;
-}
-
-html[data-size="wide-short"] .pairs-climb:not([data-shown]) {
-  margin-right: -8px;
-}
-
-html[data-size="wide-short"] .pairs-chip {
-  height: 40px;
-  padding: 0 14px;
-  gap: 8px;
-  border-radius: 20px;
-  font-size: 20px;
-}
-
-html[data-size="wide-short"] .pairs-chip svg {
-  width: 22px;
-  height: 22px;
-}
-html[data-size="wide-short"] .pairs-welcome .level-switch {
-  padding: 4px;
-}
-
-html[data-size="wide-short"] .pairs-welcome .level-switch-mark {
-  top: 4px;
-  bottom: 4px;
-  left: 4px;
-  width: calc((100% - 16px) / 3);
-}
-html[data-size="wide-short"] .pairs-welcome .level-switch-level {
-  height: 44px;
-}
-
-html[data-size="wide-short"] .pairs-play-button {
-  height: 56px;
-  padding: 0 28px 0 24px;
-  gap: 12px;
-  border-radius: 18px;
-  box-shadow: 0 8px 20px #1d274224;
-  font-size: 24px;
-}
-
-html[data-size="wide-short"] .pairs-play-button svg {
-  width: 28px;
-  height: 28px;
 }
 
 /* A game's level switch, find the pair's and the skeleton game's: the age
@@ -5685,21 +5322,6 @@ html[data-size="wide-short"] .result-with-levels .result-actions .home-button {
 html[data-size="wide-short"] .result-with-levels .result-actions svg {
   width: 22px;
   height: 22px;
-}
-
-.pairs-play-button {
-  height: 104px;
-  padding: 0 52px 0 44px;
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  border: none;
-  border-radius: 30px;
-  background: #e39b2d;
-  color: #1d2742;
-  box-shadow: 0 18px 40px #1d274224;
-  font-size: 44px;
-  font-weight: 700;
 }
 
 /* The board: its bar, as tall as HOME so the room left for the cards is
@@ -6093,8 +5715,7 @@ html[data-size="wide-short"] .home .narrow-hidden,
 html[data-size="wide-short"] .question .narrow-hidden,
 html[data-size="wide-short"] .result-with-levels .narrow-hidden,
 html[data-size="wide-short"] .dig-reveal-screen .narrow-hidden,
-html[data-size="wide-short"] .pairs-result .narrow-hidden,
-html[data-size="wide-short"] .pairs-welcome .narrow-hidden {
+html[data-size="wide-short"] .pairs-result .narrow-hidden {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -8223,7 +7844,6 @@ html[data-size="tall-narrow"] .dig-mark {
   height: 44px;
 }
 
-
 /* The board's bar is one row: HOME, the brush menu in the place of the
    title's brush, the title and the FIELD GUIDE, each 48 tall. DUG UP's
    count and the picker's pair of buttons leave it. */
@@ -10231,7 +9851,6 @@ html[data-size="tall-narrow"] .skeleton-actions .home-button {
 
 [data-theme="dark"] .labyrinth-result-screen { background: #0f1320; color: #ece8de; }
 
-
 .featured-card[data-game="whoseJaw"] { background: #e39b2d; color: #1d2742; }
 
 .whose-jaw-tile-picture { width: 100%; min-height: 0; flex: 1 1 0; object-fit: contain; }
@@ -10616,7 +10235,6 @@ html[data-theme="dark"],
   background: #e57a5d;
 }
 
-
 [data-theme="dark"] .featured-card[data-game="catalogue"] .featured-card-footer {
   background: none;
 }
@@ -10796,7 +10414,6 @@ html[data-theme="dark"],
    symbols on amber stay the light ink; a silhouette is the dark ink's
    shape. */
 [data-theme="dark"] .featured-card[data-game="pairs"],
-[data-theme="dark"] .pairs-mark,
 [data-theme="dark"] .pairs-bar-mark {
   background: #34466e;
   color: #ece8de;
@@ -10807,42 +10424,33 @@ html[data-theme="dark"],
 }
 
 [data-theme="dark"] .pairs-tile-card,
-[data-theme="dark"] .pairs-hero-card,
 [data-theme="dark"] .pair-card-face,
 [data-theme="dark"] .pairs-found-card {
   background: #181e2e;
   color: #ece8de;
 }
 
-[data-theme="dark"] .pairs-hero-card,
 [data-theme="dark"] .pair-card {
   box-shadow: 0 18px 40px #00000066;
 }
 
 [data-theme="dark"] .pairs-tile-back,
-[data-theme="dark"] .pairs-hero-back,
 [data-theme="dark"] .pair-card-back {
   background: #2c3b66;
 }
 
-[data-theme="dark"] .pairs-chip,
 [data-theme="dark"] .pairs-bar-chip,
 [data-theme="dark"] .pair-card-art,
 [data-theme="dark"] .pairs-found-art {
   background: #222a3d;
 }
 
-[data-theme="dark"] .pairs-play-button,
 [data-theme="dark"] .pairs-new-badge {
   background: #f2b24b;
 }
 
-[data-theme="dark"] .pairs-play-button {
-  box-shadow: 0 18px 40px #00000066;
-}
 [data-theme="dark"] .pairs-tile-back,
 [data-theme="dark"] .pair-card-back-frame,
-[data-theme="dark"] .pairs-stars svg,
 [data-theme="dark"] .pairs-result-hand {
   color: #f2b24b;
 }
@@ -11385,7 +10993,6 @@ body:has(.picture-puzzle-board-screen) {
 [data-theme="dark"] .picture-puzzle-result-screen { background: #0f1320; color: #ece8de; }
 [data-theme="dark"] .picture-puzzle-round-star { color: #f2b24b; }
 
-
 .picture-puzzle-tile-art { display: block; flex: 1 1 0; min-height: 0; width: 100%; overflow: hidden; }
 .picture-puzzle-tile-art > .picture-puzzle-crop { width: 100%; height: 100%; }
 .featured-card[data-game="picturePuzzle"] { background: #dceade; color: #1d2742; }
@@ -11421,7 +11028,6 @@ body:has(.picture-puzzle-board-screen) {
 [data-theme="dark"] .app-top-edge {
   background: #0f1320;
 }
-
 
 /* The sky opens onto the ground below. */
 html .home.home-dig-site {
@@ -11565,7 +11171,6 @@ html .home.home-dig-site {
 .home.home-dig-site .home-today-art .face-off-left { width: var(--face-left-w); height: var(--face-left-h); }
 .home.home-dig-site .home-today-art .face-off-right { width: var(--face-right-w); height: var(--face-right-h); }
 .home.home-dig-site .home-sky-wave { position: absolute; bottom: 0; left: 0; width: 100%; height: 30px; fill: var(--ds-strata-1); pointer-events: none; }
-
 
 @media (min-height: 800px) {
   html .home.home-dig-site { --home-gap: 14px; --home-sky-fade: 410px; }
@@ -11758,8 +11363,6 @@ html[data-size="wide-short"] .friends-dig-site .new-visitor-button { padding: va
 html[data-size="wide-short"] .friends-dig-site .new-visitor-button svg { width: 20px; height: 20px; }
 html:is([data-size="tall-narrow"], [data-size="wide-short"]) .friends-dig-site .friends-sand-wave { height: 24px; }
 html[data-size="wide-short"] .friends-dig-site .friends-bedrock { display: none; }
-
-
 
 /* Each band holds six games, wrapping at the pocket size for the device. */
 .home.home-dig-site .home-ground {
@@ -13317,6 +12920,228 @@ html[data-size="wide-short"] .jaw-card-controls > .home-button:not(.game-audio-b
 
 body:has(.whose-jaw-shelf-screen) #version { display: none; }
 
+/* Find the pair's welcome is the dig site: its title in the sky, the
+   cards beside the chips, the level switch and PLAY on the sand, the
+   bedrock along the bottom. Each size takes its board's offsets; the
+   cards keep their board's size until the sand is too narrow for them. */
+.pairs-welcome {
+  --pw-top: 36px;
+  --pw-sky: 206px;
+  --pw-side: var(--ds-space-40);
+  --pw-sky-side: var(--ds-space-40);
+  --pw-bottom: 60px;
+  --pw-wave: 30px;
+  --pw-card-w: 150px;
+  --pw-card-h: 160px;
+  --pw-card-overlap: -14px;
+  --pw-card-radius: var(--ds-radius-16);
+  --pw-card-pad: var(--ds-space-s);
+  --pw-footprints: 56px;
+  position: relative;
+  isolation: isolate;
+  box-sizing: border-box;
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  color: var(--ds-ink);
+  font-family: var(--ds-font);
+  background: linear-gradient(var(--ds-sky-top), var(--ds-sky-bottom) 50vh) var(--ds-sky-bottom);
+  background: linear-gradient(var(--ds-sky-top), var(--ds-sky-bottom) 50dvh) var(--ds-sky-bottom);
+  animation: fade-in var(--motion-screen) var(--ease-out) both;
+}
+.pairs-welcome-sky {
+  flex: none;
+  box-sizing: border-box;
+  height: calc(var(--pw-sky) + env(safe-area-inset-top));
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-l);
+  padding: calc(var(--pw-top) + env(safe-area-inset-top)) calc(var(--pw-sky-side) + var(--screen-right)) 0 calc(var(--pw-sky-side) + var(--screen-left));
+}
+.pairs-welcome-bar { display: flex; align-items: center; gap: var(--ds-space-m); min-width: 0; }
+.pairs-welcome-home {
+  display: flex; flex: none; align-items: center; justify-content: center;
+  box-sizing: border-box; height: 48px; gap: var(--ds-space-s); padding: 0 var(--ds-space-18) 0 var(--ds-space-l);
+  border: 0; border-radius: var(--ds-radius-pill); background: var(--ds-quiet); color: var(--ds-ink);
+  font-size: var(--ds-size-label); font-weight: 800;
+}
+.pairs-welcome-home svg { flex: none; width: 22px; height: 22px; }
+.pairs-title { display: flex; align-items: center; justify-content: center; gap: var(--ds-space-l); min-width: 0; margin: 0; font-size: var(--ds-size-40); font-weight: 800; letter-spacing: -.5px; line-height: 1.25; }
+.pairs-title-word { display: block; min-width: 0; white-space: nowrap; }
+.pairs-mark {
+  display: grid; place-items: center; flex: none; width: 60px; height: 60px;
+  border-top-left-radius: var(--ds-radius-30); border-top-right-radius: var(--ds-radius-30);
+  border-bottom-left-radius: var(--ds-radius-15); border-bottom-right-radius: var(--ds-radius-15);
+  background: var(--ds-pocket-1); color: var(--ds-action); box-shadow: inset 0 6px 10px var(--ds-pocket-shadow);
+}
+.pairs-mark svg { width: 30px; height: 30px; }
+.pairs-welcome-sand { position: relative; flex: 1 1 0; min-height: 0; display: flex; background: var(--ds-strata-1); }
+.pairs-welcome-wave { position: absolute; pointer-events: none; top: calc(var(--pw-wave) * -2 / 3); left: 0; width: 100%; height: var(--pw-wave); fill: var(--ds-strata-1); }
+/* Wide, the cards and the chips share a row over the switch and PLAY;
+   the column holding the chips, the switch and PLAY lays out only on a
+   short landscape. */
+.pairs-welcome-body {
+  flex: 1 1 0; min-width: 0; min-height: 0; overflow-y: auto; overscroll-behavior: none; box-sizing: border-box;
+  display: grid; grid-template-columns: auto auto; justify-content: center; align-content: start; justify-items: center; align-items: center;
+  column-gap: var(--ds-space-3xl); row-gap: var(--ds-space-22);
+  padding: var(--ds-space-xl) calc(var(--pw-side) + var(--screen-right)) calc(var(--pw-bottom) + env(safe-area-inset-bottom)) calc(var(--pw-side) + var(--screen-left));
+}
+.pairs-start { display: contents; }
+.pairs-welcome .level-switch,
+.pairs-play-button { grid-column: 1 / -1; }
+.pairs-hero { display: flex; align-items: center; min-width: 0; width: calc(3 * var(--pw-card-w) + 2 * var(--pw-card-overlap) + 2 * var(--pw-hero-pad)); max-width: 100%; padding: var(--pw-hero-pad); box-sizing: border-box; --pw-hero-pad: var(--ds-btn-gap); }
+.pairs-hero-card {
+  flex: 0 1 var(--pw-card-w); min-width: 0; aspect-ratio: 15 / 16; max-height: var(--pw-card-h);
+  box-sizing: border-box; display: flex; padding: var(--pw-card-pad);
+  border: 1px solid var(--ds-outline); border-top-left-radius: var(--pw-card-radius); border-top-right-radius: var(--pw-card-radius); border-bottom-left-radius: var(--pw-card-radius); border-bottom-right-radius: var(--pw-card-radius); background: var(--ds-label);
+  box-shadow: 0 10px 20px var(--ds-shade-15);
+  animation: rise-in var(--motion-screen) var(--ease-out) both;
+}
+.pairs-hero-card + .pairs-hero-card { margin-left: var(--pw-card-overlap); }
+/* The face-down card's footprints keep the board's share of it at every
+   size of the card. */
+.pairs-hero-back { border-width: 0; background: var(--ds-strong); color: var(--ds-on-strong); rotate: -6deg; container-type: inline-size; }
+.pairs-hero-back .pair-card-back-frame { display: grid; place-items: center; width: 100%; border: 0; background: none; color: inherit; }
+.pairs-hero-back .pair-card-back-frame svg { width: 42cqi; height: 42cqi; }
+.pairs-hero-silhouette { z-index: 1; animation-delay: var(--motion-stagger); }
+.pairs-hero-picture-card { rotate: 6deg; animation-delay: calc(var(--motion-stagger) * 2); }
+.pairs-hero-picture { display: block; width: 100%; height: 100%; min-height: 0; object-fit: contain; }
+.pairs-hero .picture[data-picture="loading"] { --shimmer-from: var(--ds-pocket-1); --shimmer-to: var(--ds-label); }
+.pairs-chips { display: flex; flex-direction: column; align-items: flex-start; gap: var(--ds-space-l); }
+.pairs-chip {
+  display: flex; align-items: center; gap: var(--ds-btn-gap); margin: 0; box-sizing: border-box;
+  padding: var(--ds-btn-gap) var(--ds-space-18); border-radius: var(--ds-radius-tag);
+  background: var(--ds-quiet); color: var(--ds-ink);
+  font-weight: 800; line-height: 1.25; white-space: nowrap;
+}
+.pairs-chip svg { flex: none; width: 32px; height: 32px; }
+.pairs-stars svg { color: var(--ds-reward); fill: var(--ds-reward); }
+.pairs-chip-number { font-size: var(--ds-size-32); }
+/* Stacked, the climb level folds away above the stars. */
+.pairs-chips .pairs-climb {
+  grid-template-rows: 0fr;
+  transition:
+    grid-template-columns var(--motion-standard) var(--ease-out),
+    grid-template-rows var(--motion-standard) var(--ease-out),
+    margin var(--motion-standard) var(--ease-out),
+    opacity var(--motion-standard) var(--ease-out);
+}
+.pairs-chips .pairs-climb:not([data-shown]) { grid-template-columns: 1fr; margin-right: 0; margin-bottom: calc(-1 * var(--ds-space-l)); }
+.pairs-chips .pairs-climb[data-shown] { grid-template-rows: 1fr; }
+.pairs-climb .pairs-chip { min-width: 0; min-height: 0; }
+/* The welcome's switch is its board's: each level as wide as its name,
+   its picture beside it, the chosen one filled where it stands. */
+html .pairs-welcome .level-switch { display: flex; align-self: center; width: auto; max-width: 100%; padding: var(--ds-space-5); gap: var(--ds-space-xs); border: 0; }
+html .pairs-welcome .level-switch-mark { display: none; }
+html .pairs-welcome .level-switch-level {
+  flex: 0 1 auto; height: auto; flex-direction: row; gap: var(--ds-space-s);
+  padding: var(--ds-btn-gap) var(--ds-space-18) var(--ds-btn-gap) var(--ds-space-m);
+  font-size: var(--ds-size-tag); font-weight: 700; letter-spacing: 0;
+}
+html .pairs-welcome .level-switch-picture { width: 32px; height: 32px; font-size: 26px; line-height: 32px; }
+.pairs-play-button {
+  display: flex; align-items: center; justify-content: center; min-width: 0; max-width: 100%;
+  box-sizing: border-box; gap: var(--ds-btn-gap); padding: var(--ds-btn-pad-y) var(--ds-btn-pad-x);
+  border: 0; border-radius: var(--ds-radius-pill); background: var(--ds-action); color: var(--ds-on-action);
+  font-size: var(--ds-size-action); font-weight: 800; line-height: 1.25;
+}
+.pairs-play-button svg { flex: none; width: var(--ds-icon-action); height: var(--ds-icon-action); }
+.pairs-play-word { display: block; min-width: 0; white-space: nowrap; }
+.pairs-welcome button:focus-visible { outline: 3px solid var(--ds-action); outline-offset: -3px; }
+.pairs-welcome-bedrock { position: absolute; bottom: 0; left: 0; right: 0; height: calc(var(--pw-bottom) + env(safe-area-inset-bottom)); background: var(--ds-strata-2); --home-earth: var(--ds-strata-2); pointer-events: none; }
+.pairs-welcome-bedrock .home-earth-wave { top: calc(var(--pw-wave) * -2 / 3); height: var(--pw-wave); }
+
+/* Upright on an iPad the chips stand in a row under larger cards, each
+   level's picture over its name, and PLAY is wider. */
+html[data-size="tall"] .pairs-welcome { --pw-sky-side: var(--ds-space-56); --pw-side: var(--ds-space-56); --pw-bottom: 50px; --pw-card-w: 180px; --pw-card-h: 192px; --pw-card-overlap: -16px; }
+html[data-size="tall"] .pairs-welcome-body { grid-template-columns: auto; align-content: safe center; row-gap: var(--ds-space-28); padding-top: 0; }
+html[data-size="tall"] .pairs-hero { --pw-hero-pad: var(--ds-space-m); }
+html[data-size="tall"] .pairs-welcome .level-switch,
+html[data-size="tall"] .pairs-play-button { grid-column: auto; }
+html[data-size="tall"] .pairs-welcome .level-switch { border-radius: var(--ds-radius-speech); }
+html[data-size="tall"] .pairs-welcome .level-switch-level { flex-direction: column; justify-content: center; gap: var(--ds-space-xs); height: 64px; padding: var(--ds-space-s) var(--ds-space-22); border-radius: var(--ds-radius-16); }
+html[data-size="tall"] .pairs-play-button { width: 360px; height: 80px; padding-block: 0; font-size: var(--ds-size-30); }
+html[data-size="tall"] .pairs-play-button svg { width: 30px; height: 30px; }
+
+/* Stacked under the cards, the chips share a row and the climb level
+   folds away beside the stars again. */
+html:is([data-size="tall"], [data-size="tall-narrow"], [data-size="wide-short"]) .pairs-chips { flex-direction: row; gap: var(--ds-space-m); }
+html:is([data-size="tall"], [data-size="tall-narrow"], [data-size="wide-short"]) .pairs-chips .pairs-climb:not([data-shown]) { grid-template-columns: 0fr; grid-template-rows: 1fr; margin-bottom: 0; margin-right: calc(-1 * var(--ds-space-m)); }
+html:is([data-size="tall"], [data-size="tall-narrow"], [data-size="wide-short"]) .pairs-chips .pairs-climb[data-shown] { grid-template-rows: 1fr; }
+
+/* On a phone the cards are smaller, HOME is its house, the switch names
+   only the chosen level and PLAY spans the column. */
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .pairs-welcome { --pw-wave: 24px; --pw-card-radius: var(--ds-radius-12); --pw-card-pad: var(--ds-space-6); --pw-card-overlap: -12px; }
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .pairs-welcome-home { width: 48px; padding: 0; }
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .pairs-welcome-home svg { width: 24px; height: 24px; }
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .pairs-welcome-home span { display: none; }
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .pairs-welcome .level-switch-level[aria-pressed="false"] .level-switch-name {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+}
+html[data-size="tall-narrow"] .pairs-welcome .level-switch-level[aria-pressed="true"] .level-switch-name {
+  position: static; width: auto; height: auto; margin: 0; overflow: visible; clip-path: none;
+}
+
+html[data-size="tall-narrow"] .pairs-welcome { --pw-top: 62px; --pw-sky: 216px; --pw-side: var(--ds-space-20); --pw-sky-side: var(--ds-space-20); --pw-bottom: 30px; --pw-card-w: 113px; --pw-card-h: 120px; background: linear-gradient(var(--ds-sky-top), var(--ds-sky-bottom) 40vh) var(--ds-sky-bottom); background: linear-gradient(var(--ds-sky-top), var(--ds-sky-bottom) 40dvh) var(--ds-sky-bottom); }
+html[data-size="tall-narrow"] .pairs-welcome-sky { gap: 14px; }
+html[data-size="tall-narrow"] .pairs-title { gap: var(--ds-space-m); font-size: var(--ds-size-title); }
+html[data-size="tall-narrow"] .pairs-mark { width: 64px; height: 64px; }
+html[data-size="tall-narrow"] .pairs-mark svg { width: 34px; height: 34px; }
+html[data-size="tall-narrow"] .pairs-welcome-body { grid-template-columns: minmax(0, 1fr); justify-content: stretch; align-content: safe center; row-gap: var(--ds-space-l); padding-top: var(--ds-space-s); }
+html[data-size="tall-narrow"] .pairs-hero { --pw-hero-pad: var(--ds-space-s); }
+html[data-size="tall-narrow"] .pairs-chip { height: 52px; padding: 0 var(--ds-space-l); }
+html[data-size="tall-narrow"] .pairs-chip svg { width: 28px; height: 28px; }
+html[data-size="tall-narrow"] .pairs-chip-number { font-size: var(--ds-size-22); }
+html[data-size="tall-narrow"] .pairs-welcome .level-switch-level { padding: var(--ds-space-m) var(--ds-space-26); }
+html[data-size="tall-narrow"] .pairs-play-button { justify-self: stretch; height: 80px; padding-block: 0; font-size: var(--ds-size-30); }
+html[data-size="tall-narrow"] .pairs-play-button svg { width: 30px; height: 30px; }
+/* The narrowest phones keep the chosen level's Russian name whole. */
+@media (max-width: 380px) { html[data-size="tall-narrow"] .pairs-welcome .level-switch-level { padding-inline: var(--ds-space-m); } }
+/* An iPhone SE's board is shorter: slightly smaller cards over the
+   thinnest bedrock. */
+@media (max-height: 700px) {
+  html[data-size="tall-narrow"] .pairs-welcome { --pw-bottom: 14px; --pw-card-w: 107px; --pw-card-h: 114px; }
+  html[data-size="tall-narrow"] .pairs-welcome-body { row-gap: var(--ds-space-m); padding-top: 0; }
+  html[data-size="tall-narrow"] .pairs-play-button { height: 64px; }
+}
+
+/* On a phone on its side the cards stand on the sand beside a column of
+   the title, the chips, the switch and PLAY, which rises into the sky;
+   the sand reaches the bottom. The sky and the sand give their parts to
+   the screen's grid and keep only their colours. */
+html[data-size="wide-short"] .pairs-welcome {
+  --pw-card-w: 120px; --pw-card-h: 128px; --pw-bottom: 0px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 320px);
+  grid-template-rows: auto auto;
+  align-content: center;
+  column-gap: var(--ds-space-20);
+  padding: calc(var(--ds-space-s) + env(safe-area-inset-top)) calc(var(--ds-space-79) + var(--screen-right)) calc(var(--ds-space-m) + env(safe-area-inset-bottom)) calc(var(--ds-space-79) + var(--screen-left));
+}
+html[data-size="wide-short"] .pairs-welcome::before { content: ""; position: absolute; z-index: -1; left: 0; right: 0; bottom: 0; top: 166px; background: var(--ds-strata-1); }
+html[data-size="wide-short"] :is(.pairs-welcome-sky, .pairs-welcome-sand, .pairs-welcome-body) { display: contents; }
+html[data-size="wide-short"] .pairs-welcome-wave { z-index: -1; top: 150px; }
+html[data-size="wide-short"] .pairs-welcome-bar { position: absolute; top: calc(var(--ds-space-s) + env(safe-area-inset-top)); left: calc(var(--ds-space-79) + var(--screen-left)); }
+html[data-size="wide-short"] .pairs-title { grid-column: 2; grid-row: 1; justify-content: flex-start; justify-self: start; gap: var(--ds-space-m); margin-top: var(--ds-space-xs); font-size: var(--ds-size-26); }
+html[data-size="wide-short"] .pairs-mark { width: 48px; height: 48px; border-top-left-radius: var(--ds-radius-12); border-top-right-radius: var(--ds-radius-12); border-bottom-left-radius: var(--ds-radius-12); border-bottom-right-radius: var(--ds-radius-12); background: var(--ds-action); color: var(--ds-on-action); box-shadow: none; }
+html[data-size="wide-short"] .pairs-mark svg { width: 28px; height: 28px; }
+html[data-size="wide-short"] .pairs-hero { grid-column: 1; grid-row: 1 / -1; align-self: center; justify-self: center; }
+html[data-size="wide-short"] .pairs-start { grid-column: 2; grid-row: 2; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: var(--ds-space-m); min-height: 0; padding-top: var(--ds-space-m); }
+html[data-size="wide-short"] .pairs-chips { gap: var(--ds-btn-gap); }
+html[data-size="wide-short"] .pairs-chips .pairs-climb:not([data-shown]) { margin-right: calc(-1 * var(--ds-btn-gap)); }
+html[data-size="wide-short"] .pairs-chip { gap: var(--ds-space-s); padding: var(--ds-space-s) var(--ds-space-14); }
+html[data-size="wide-short"] .pairs-chip svg { width: 24px; height: 24px; }
+html[data-size="wide-short"] .pairs-chip-number { font-size: var(--ds-size-22); }
+html[data-size="wide-short"] .pairs-welcome .level-switch-level { padding: var(--ds-btn-gap) var(--ds-space-26); }
+html[data-size="wide-short"] .pairs-welcome .level-switch-level .level-switch-name {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+}
+html[data-size="wide-short"] .pairs-play-button { align-self: stretch; height: 64px; padding-block: 0; font-size: var(--ds-size-26); }
+html[data-size="wide-short"] .pairs-welcome-bedrock { display: none; }
+body:has(.pairs-welcome) #version { display: none; }
+
 @media (prefers-reduced-motion: reduce) {
   :root {
     --motion-standard: 160ms;
@@ -13338,10 +13163,7 @@ body:has(.whose-jaw-shelf-screen) #version { display: none; }
     animation: fade-in var(--motion-small) var(--ease-out) both;
   }
 
-
-
   .whose-jaw-chomp[data-ready] { animation: fade-in var(--motion-small) var(--ease-out) both; }
-
 
   .labyrinth-board-screen,
   .labyrinth-step {

@@ -2,6 +2,7 @@
 
 ## 2026-11-05
 
+- LAB-990: FIND THE PAIR's welcome is the dig site on every device, light, dark and Russian: the title with its card mark in the sky, a face-down card, a silhouette and its picture tilted on the sand, the level and stars chips, the filled level switch, red PLAY and bedrock; on a phone on its side the cards stand beside a column of the title, chips, switch and PLAY.
 - LAB-963: The first launch works without Wi-Fi once the app has installed itself; before, only the next launch did.
 
 ## 2026-11-04

@@ -43,6 +43,7 @@ export function edgePart(tag: string, attributes: { id?: string; className?: str
 const DIG_SITE_CONTENT: Record<string, string[]> = {
   "friends-dig-site": ["friends-sky", "friends-grid", "no-friends"],
   "whose-jaw-welcome": ["whose-jaw-welcome-sky", "whose-jaw-welcome-body"],
+  "pairs-welcome": ["pairs-welcome-sky", "pairs-welcome-body"],
   "whose-jaw-board": ["whose-jaw-board-sky", "jaw-sand-body"]
 };
 

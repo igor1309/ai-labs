@@ -9,7 +9,7 @@
     "smoke": "tsx scripts/smoke-deployed-version.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:browser": "node tests/whoseJawBoardLandscape.browser.cjs && node tests/whoseJawDigSite.browser.cjs",
+    "test:browser": "node tests/whoseJawBoardLandscape.browser.cjs && node tests/whoseJawDigSite.browser.cjs && node tests/pairsDigSite.browser.cjs",
     "postinstall": "patch-package --error-on-fail"
   },
   "devDependencies": {

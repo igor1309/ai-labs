@@ -26,7 +26,6 @@ import { PairsResultScreen } from "./PairsResultScreen.tsx";
 import { PairsWelcomeScreen } from "./PairsWelcomeScreen.tsx";
 import { PORTRAIT_BOARD, type BoardSizes } from "./pairsBoardLayout.ts";
 import { PORTRAIT_PAIRS_RESULT, type PairsResultSizes } from "./pairsResultLayout.ts";
-import type { WelcomeType } from "./pairsWelcomeLayout.ts";
 import { LoadAhead } from "./Picture.tsx";
 import { presentPairsBoard, presentPairsResult, type SkeletonPicture } from "./presentation.ts";
 import { SCREEN_CHANGE, useScreens } from "./screens.ts";
@@ -227,17 +226,15 @@ export function usePairsGame(
     go({ kind: "welcome" });
   };
 
-  // `welcomeType` is the welcome's upright type in the window, and
-  // `boardWidth` and `resultWidth` the widths a board and its result stand
-  // in upright, and `boardSizes` and `resultSizes` their sizes for the
-  // window.
-  const content = (language: Language, welcomeType: WelcomeType, boardWidth: number, resultWidth: number, boardSizes: BoardSizes = PORTRAIT_BOARD, resultSizes: PairsResultSizes = PORTRAIT_PAIRS_RESULT) => {
+  // `boardWidth` and `resultWidth` are the widths a board and its result
+  // stand in upright, and `boardSizes` and `resultSizes` their sizes for
+  // the window.
+  const content = (language: Language, boardWidth: number, resultWidth: number, boardSizes: BoardSizes = PORTRAIT_BOARD, resultSizes: PairsResultSizes = PORTRAIT_PAIRS_RESULT) => {
     switch (screen.kind) {
       case "welcome":
         return (
           <PairsWelcomeScreen
             language={language}
-            type={welcomeType}
             level={level}
             climbLevel={kept.progress.climbLevel}
             stars={kept.progress.stars}

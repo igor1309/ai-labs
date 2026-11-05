@@ -384,7 +384,10 @@ const SCREEN_GROUPS: Array<[string, Part[]]> = [
   [
     "find the pair",
     [
-      ["the welcome", checked(<PairsWelcomeScreen language="en" level="hatchling" climbLevel={1} stars={0} heroPicture={fakeBodyPicture("stegosaurus")} onLevel={nothing} onPlay={nothing} onHome={nothing} />)],
+      ["the welcome on a first visit", checked(<PairsWelcomeScreen language="en" level="hatchling" climbLevel={1} stars={0} heroPicture={fakeBodyPicture("stegosaurus")} onLevel={nothing} onPlay={nothing} onHome={nothing} />)],
+      ["the welcome on a return, at Hatchling's climb level 4", checked(<PairsWelcomeScreen language="en" level="hatchling" climbLevel={4} stars={23} heroPicture={fakeBodyPicture("stegosaurus")} onLevel={nothing} onPlay={nothing} onHome={nothing} />)],
+      ["the welcome at Explorer", checked(<PairsWelcomeScreen language="en" level="explorer" climbLevel={2} stars={9} heroPicture={fakeBodyPicture("stegosaurus")} onLevel={nothing} onPlay={nothing} onHome={nothing} />)],
+      ["the welcome at Paleontologist", checked(<PairsWelcomeScreen language="en" level="paleontologist" climbLevel={2} stars={9} heroPicture={fakeBodyPicture("stegosaurus")} onLevel={nothing} onPlay={nothing} onHome={nothing} />)],
       ["a board of pictures with a card open, a miss, found pairs and the cards waving, and the result", pairsPlayed({ climbLevel: 1 }, true)],
       ["Explorer's board of silhouettes, a card open, every pair found, and the result", pairsPlayed({ large: "explorer" }, false)],
       ["Paleontologist's board of skeletons, a card open, every pair found, and the result", pairsPlayed({ large: "paleontologist" }, false)],

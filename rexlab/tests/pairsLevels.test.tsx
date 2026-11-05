@@ -1,24 +1,21 @@
-import { THEMES } from "../src/theme.ts";
 import { NO_LEVEL_OFFER } from "../src/levelOffer.ts";
 import { act, fireEvent, isInaccessible, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { AGE_LEVELS, type AgeLevel, type AgeLevelSetting } from "../src/ageLevel.ts";
-import { LANGUAGES, type Language } from "../src/language/language.ts";
+import type { Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { PROGRESS_KEY } from "../src/localProgress.ts";
 import { MENU_EXIT } from "../src/ParentMenu.tsx";
 import { openMenu } from "./menus.ts";
-import { LEVEL_EMS } from "./levelEms.ts";
 import { CLIMB_LEVELS } from "../src/pairs/index.ts";
 import { board, openPairsApp, pairCards, pairsRecord, playBoard, storedPairs, type PairsAppOptions, type StoredPairs } from "./pairsApp.tsx";
-import { WINDOW_SIZES, openWindow, windowsAnd } from "./windowSizes.ts";
-import { SHIPPED_PALS, contrast, fakeBodyPicture, fakeSkeletonPicture, gameDoor, manualTimers, memoryStorage, pictureClock, seededRandom, seenOn, surfaceOf, type ManualPictures, type ManualTimers } from "./support.ts";
+import { openWindow, windowsAnd } from "./windowSizes.ts";
+import { SHIPPED_PALS, fakeBodyPicture, fakeSkeletonPicture, gameDoor, manualTimers, memoryStorage, pictureClock, seededRandom, type ManualPictures, type ManualTimers } from "./support.ts";
 
 // find-the-pair-levels.feature, the welcome screen's level switch, and
 // the choice on it kept in find the pair's progress
 // (find-the-pair-level-progress.feature).
 
-const DEVICES: Record<Language, string> = { en: "en-GB", ru: "ru-RU" };
 
 
 const NAMES = AGE_LEVELS.map((level) => TEXTS.en.ageLevels[level].name);
@@ -81,14 +78,13 @@ describe("the level switch", () => {
     expect(levels).toEqual(NAMES.map((name) => within(levelSwitch()).getByRole("button", { name })));
   });
 
-  it("sets the chosen level apart by more than colour: bolder on a flat strong segment", async () => {
+  it("sets the chosen level apart by more than colour: a filled strong segment, the others bare", async () => {
     await openPairs();
 
     const [hatchling, explorer, paleontologist] = within(levelSwitch()).getAllByRole("button").map((level) => getComputedStyle(level));
     if (!hatchling || !explorer || !paleontologist) throw new Error("A level is missing");
-    expect([hatchling.fontWeight, explorer.fontWeight, paleontologist.fontWeight]).toEqual(["700", "600", "600"]);
-    expect([explorer.boxShadow, paleontologist.boxShadow]).toEqual(["none", "none"]);
-    expect(hatchling.boxShadow).toBe("none");
+    expect([hatchling.backgroundColor, explorer.backgroundColor, paleontologist.backgroundColor].map((colour) => colour === "rgba(0, 0, 0, 0)" || colour === "transparent")).toEqual([false, true, true]);
+    expect([hatchling.boxShadow, explorer.boxShadow, paleontologist.boxShadow]).toEqual(["none", "none", "none"]);
   });
 
   it.each([
@@ -96,75 +92,16 @@ describe("the level switch", () => {
     ["explorer", "paleontologist"],
     ["paleontologist", "hatchling"],
     ["explorer", "hatchling"]
-  ] as const)("slides the chosen mark from %s to %s, the level chosen", async (from, to) => {
+  ] as const)("moves the filled segment from %s to %s, the level chosen, in a colour change", async (from, to) => {
     const { user } = await openPairs({ ageLevel: picked(from) });
-    const mark = levelSwitch().querySelector(".level-switch-mark");
-    if (!mark) throw new Error("No chosen mark on the switch");
-    // The mark is as wide as a level, a third of the switch inside its
-    // padding and two gaps, and stands one level and one gap further along
-    // for each level before the chosen one.
-    const place = () => getComputedStyle(levelSwitch()).getPropertyValue("--chosen");
-    const [switchStyle, markStyle] = [getComputedStyle(levelSwitch()), getComputedStyle(mark)];
-    const width = /^calc\(0\.3333333333333333 \* \(100% - (\d+)px\)\)$/.exec(markStyle.width);
-    const step = /^calc\(var\(--chosen\) \* \(100% \+ (\d+)px\)\) 0$/.exec(markStyle.translate);
-    if (!width || !step) throw new Error(`Unknown mark: ${markStyle.width}, ${markStyle.translate}`);
-    expect([Number(width[1]), Number(step[1])]).toEqual([px(switchStyle.paddingLeft) + px(switchStyle.paddingRight) + 2 * columnGapOf(switchStyle), columnGapOf(switchStyle)]);
-    expect([markStyle.left, place()]).toEqual([switchStyle.paddingLeft, String(AGE_LEVELS.indexOf(from))]);
+    const filled = () => within(levelSwitch()).getAllByRole("button").filter((level) => level.getAttribute("aria-pressed") === "true").map((level) => level.querySelector(".level-switch-name")?.textContent);
+    expect(filled()).toEqual([TEXTS.en.ageLevels[from].name]);
+    expect(getComputedStyle(within(levelSwitch()).getAllByRole("button")[0]!).transition).toContain("background-color var(--motion-standard)");
 
     await user.click(button(TEXTS.en.ageLevels[to].name));
 
-    expect([chosen(), place()]).toEqual([[TEXTS.en.ageLevels[to].name], String(AGE_LEVELS.indexOf(to))]);
+    expect([chosen(), filled()]).toEqual([[TEXTS.en.ageLevels[to].name], [TEXTS.en.ageLevels[to].name]]);
   });
-
-  it("gives each level at least 48 by 48 to tap", async () => {
-    await openPairs();
-
-    const style = getComputedStyle(levelSwitch());
-    const room = px(getComputedStyle(levelSwitch().parentElement ?? document.body).width) - px(style.borderLeftWidth) - px(style.borderRightWidth) - px(style.paddingLeft) - px(style.paddingRight);
-    expect([style.display, style.gridTemplateColumns]).toEqual(["grid", "repeat(3, 1fr)"]);
-    const width = (room - columnGapOf(style) * 2) / 3;
-    expect(width).toBeGreaterThanOrEqual(48);
-    for (const level of within(levelSwitch()).getAllByRole("button")) expect(px(getComputedStyle(level).height)).toBeGreaterThanOrEqual(48);
-  });
-
-  it.each(WINDOW_SIZES.flatMap(([width, height]) => LANGUAGES.flatMap((language) => THEMES.map((theme) => [language, theme, width, height] as const))))(
-    "fits and reads in %s and the %s theme, in a %i by %i window",
-    async (language, theme, width, height) => {
-      openWindow(width, height);
-      const app = openPairsApp({ deviceLanguage: DEVICES[language], theme });
-      await app.user.click(gameDoor(TEXTS[language].pairs));
-
-      // The column of the switch stands beside the cards, which take what
-      // is left of the row.
-      const screenStyle = getComputedStyle(document.querySelector(".pairs-welcome") ?? document.body);
-      const body = getComputedStyle(document.querySelector(".pairs-welcome-body") ?? document.body);
-      const column = levelSwitch(language).parentElement;
-      if (!column) throw new Error("The switch stands in no column");
-      expect(getComputedStyle(column).flexShrink).toBe("0");
-      const row = width - px(screenStyle.paddingLeft) - px(screenStyle.paddingRight);
-      expect(px(getComputedStyle(column).width) + columnGapOf(body)).toBeLessThanOrEqual(row);
-
-      const style = getComputedStyle(levelSwitch(language));
-      const room = px(getComputedStyle(column).width) - px(style.borderLeftWidth) - px(style.borderRightWidth) - px(style.paddingLeft) - px(style.paddingRight);
-      const segment = (room - columnGapOf(style) * 2) / 3;
-      const levels = within(levelSwitch(language)).getAllByRole("button");
-      expect(levels.map((level) => level.querySelector(".level-switch-name")?.textContent)).toEqual(AGE_LEVELS.map((level) => TEXTS[language].ageLevels[level].name));
-      for (const level of levels) {
-        const levelStyle = getComputedStyle(level);
-        const picture = level.querySelector(".level-switch-picture");
-        const name = level.querySelector(".level-switch-name");
-        if (!picture || !name) throw new Error("A level without its picture or name");
-        const words = name.textContent ?? "";
-        // The name takes the level's face and colour.
-        const needed = (LEVEL_EMS[words] ?? Number.NaN) * px(levelStyle.fontSize) + px(levelStyle.letterSpacing) * words.length;
-        const nameRoom = segment - px(levelStyle.paddingLeft) - px(levelStyle.paddingRight) - px(getComputedStyle(picture).width) - columnGapOf(levelStyle);
-        expect(levelStyle.whiteSpace).toBe("nowrap");
-        expect([words, needed <= nameRoom]).toEqual([words, true]);
-        const surface = surfaceOf(name);
-        expect(contrast(seenOn(levelStyle.color, surface), surface)).toBeGreaterThanOrEqual(4.5);
-      }
-    }
-  );
 
   it("shows the climb level only for Hatchling, and the stars at every level", async () => {
     const { user } = await openPairs({ storage: stored({ stars: 5, level: 3 }) });
@@ -385,7 +322,7 @@ describe("a board at each level", () => {
     // it is of the screen: the card is the footprints' container.
     const card = styleOf(".pairs-hero-back");
     const footprints = styleOf(".pairs-hero-back svg");
-    expect([card.getPropertyValue("container-type"), footprints.width, footprints.height]).toEqual(["inline-size", "54cqi", "54cqi"]);
+    expect([card.getPropertyValue("container-type"), footprints.width, footprints.height]).toEqual(["inline-size", "42cqi", "42cqi"]);
 
     await user.click(button("PLAY"));
     expect([styleOf(".pair-card").getPropertyValue("container-type"), styleOf(".pair-card-back-frame svg").width]).toEqual(["inline-size", "30cqi"]);
