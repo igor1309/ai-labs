@@ -1,4 +1,6 @@
 import { artworkFor } from "../src/coloring/artworks.ts";
+import { BRACHIOSAURUS_HATCHLING, BRACHIOSAURUS_EXPLORER } from "../src/coloring/brachiosaurusScene.ts";
+import { brachiosaurusHatchlingProbes, brachiosaurusExplorerProbes } from "./brachiosaurusSceneProbes.ts";
 import { MOSASAURUS_HATCHLING, MOSASAURUS_EXPLORER } from "../src/coloring/mosasaurusScene.ts";
 import { mosasaurusHatchlingProbes, mosasaurusExplorerProbes } from "./mosasaurusSceneProbes.ts";
 import { TREX_HATCHLING, TREX_EXPLORER } from "../src/coloring/trexScene.ts";
@@ -123,6 +125,41 @@ describe("Mosasaurus workshop scenes", () => {
     }
     expect(MOSASAURUS_EXPLORER.regions.length).toBeGreaterThan(MOSASAURUS_HATCHLING.regions.length * 1.8);
     expect(MOSASAURUS_HATCHLING.artwork.regions).not.toContain("water");
+  });
+});
+
+describe("Brachiosaurus workshop scenes", () => {
+  it.each([
+    [BRACHIOSAURUS_HATCHLING, "brachiosaurus-hatchling-1", brachiosaurusHatchlingProbes],
+    [BRACHIOSAURUS_EXPLORER, "brachiosaurus-explorer-1", brachiosaurusExplorerProbes]
+  ] as const)("registers enclosed regions with matching parents (scene %#)", (geometry, version, probes) => {
+    expect(geometry.artwork.version).toBe(version);
+    expect(artworkFor(version)).toEqual({ geometry, names: { en: "BRACHIOSAURUS", ru: "БРАХИОЗАВР" } });
+    expect(geometry.artwork.regions).toEqual(probes.map(([, , id]) => id));
+    expect(geometry.regions.filter(({ id }) => id.startsWith("leg-")).map(({ id }) => id)).toEqual(
+      ["leg-far-hind", "leg-far-front", "leg-near-hind", "leg-near-front"]);
+    for (const region of geometry.regions) {
+      expect(region.outline).toBeGreaterThanOrEqual(1.7);
+      expect("path" in region && region.path.endsWith(" Z")).toBe(true);
+    }
+    expect(geometry.regions.filter(({ parent }) => parent).map(({ id, parent }) => [id, parent])).toEqual(
+      geometry === BRACHIOSAURUS_HATCHLING ? [] : [["tail-mark", "tail"], ["back-mark", "body"], ["belly", "body"], ["rock-face", "rock"]]
+    );
+  });
+
+  it.each([
+    ["Hatchling", BRACHIOSAURUS_HATCHLING, brachiosaurusHatchlingProbes],
+    ["Explorer", BRACHIOSAURUS_EXPLORER, brachiosaurusExplorerProbes]
+  ] as const)("keeps every %s animal and scenery target independently fillable", async (_, geometry, probes) => {
+    for (const [, , id] of probes) {
+      const painted = await illustration(geometry, id);
+      for (const [px, py, other] of probes) {
+        const offset = (py * WIDTH + px) * 4;
+        expect([...painted.subarray(offset, offset + 4)], `${id} at ${other}`).toEqual(id === other ? [239, 83, 80, 255] : [255, 240, 207, 255]);
+      }
+    }
+    expect(BRACHIOSAURUS_EXPLORER.regions.length).toBeGreaterThan(BRACHIOSAURUS_HATCHLING.regions.length * 1.8);
+    expect(BRACHIOSAURUS_HATCHLING.artwork.regions).not.toContain("tree-trunk");
   });
 });
 

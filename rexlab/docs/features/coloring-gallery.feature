@@ -101,3 +101,17 @@ Feature: Coloring gallery
     And Stegosaurus, Triceratops, Ankylosaurus and T-Rex remain available with their age-matched previews
     And its friendly swimming silhouette has long toothy jaws, four paddles and a crescent tail fin
     And choosing it starts an independent unpainted work without changing existing works
+
+  Scenario: Choose a recognizable Brachiosaurus
+    When I enter the gallery at any age level
+    Then exactly one Brachiosaurus choice has a matching vector preview and the uppercase localized name BRACHIOSAURUS or БРАХИОЗАВР
+    And Brachiosaurus uses brachiosaurus-hatchling-1 at Hatchling and brachiosaurus-explorer-1 at Explorer and Paleontologist
+    And Stegosaurus, Triceratops, Ankylosaurus, T-Rex and Mosasaurus remain available with their age-matched previews
+    And its friendly silhouette has a long neck reaching up, a small head, tall front legs and a sloping back to a long tail
+    And choosing it starts an independent unpainted work without changing existing works
+
+  Scenario: Six creature choices keep one row
+    When I enter the gallery at any size
+    Then the creature choices sit in one row, each showing its preview, a plus in the top leading corner and only the creature name on one line
+    When I enter the gallery on a phone, upright or on its side
+    Then the row scrolls sideways, the next choice peeks in, and every choice is at least 60 by 60 points

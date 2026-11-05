@@ -213,7 +213,7 @@ const { chromium } = require("playwright");
             await p.evaluate(async () => { await Promise.all(document.getAnimations().filter(a => a.timeline === document.timeline && a.effect?.getComputedTiming().iterations !== Infinity).map(a => a.finished.catch(() => {}))); });
             const layout = await p.evaluate(() => {
               const screen = document.querySelector('.coloring-gallery, .coloring-workshop, .coloring-result');
-              return { scroll: [document.documentElement.scrollWidth, document.documentElement.scrollHeight], boxes: [...screen.querySelectorAll('button, canvas:not([aria-hidden="true"])')].filter(e => e.getBoundingClientRect().width > 0 && getComputedStyle(e).visibility !== "hidden").map(e => { const b = e.getBoundingClientRect(); return { tag: e.tagName, text: e.textContent, picker: !!e.closest(".coloring-chooser"), rail: !!e.closest(".coloring-workshop .coloring-rail"), x: b.x, y: b.y, w: b.width, h: b.height }; }) };
+              return { scroll: [document.documentElement.scrollWidth, document.documentElement.scrollHeight], boxes: [...screen.querySelectorAll('button, canvas:not([aria-hidden="true"])')].filter(e => e.getBoundingClientRect().width > 0 && getComputedStyle(e).visibility !== "hidden").map(e => { const b = e.getBoundingClientRect(); return { row: e.matches(".gallery-new"), tag: e.tagName, text: e.textContent, picker: !!e.closest(".coloring-chooser"), rail: !!e.closest(".coloring-workshop .coloring-rail"), x: b.x, y: b.y, w: b.width, h: b.height }; }) };
             });
             const details = JSON.stringify({ width, height, language, theme, level, creature, layout });
             assert.deepEqual(layout.scroll, [width, height], details);
@@ -224,7 +224,7 @@ const { chromium } = require("playwright");
             }).map(label => label.textContent));
             assert.deepEqual(overflowingLabels, [], details);
             for (const b of layout.boxes) {
-              assert(b.x >= -1 && b.y >= -1 && b.x + b.w <= width + 1 && b.y + b.h <= height + 1, details);
+              assert(b.x >= -1 && b.y >= -1 && (b.row || b.x + b.w <= width + 1) && b.y + b.h <= height + 1, details);
               if (b.tag === "BUTTON") { assert(b.w >= (b.rail ? 48 : 60) && b.h >= (b.rail ? 48 : 60), details); assert.equal(b.text, b.text.toUpperCase()); }
               const canvas = layout.boxes.find(b => b.tag === "CANVAS");
               // Temporary tablet pickers cover part of the art; permanent controls stay outside it.
@@ -232,7 +232,7 @@ const { chromium } = require("playwright");
             }
           };
           await checkLayout();
-          assert.equal(await p.locator(".gallery-new").count(), 5);
+          assert.equal(await p.locator(".gallery-new").count(), 6);
           await p.getByRole("button", { name: creature === "stegosaurus" ? (language === "en" ? "NEW WORK" : "НОВЫЙ РИСУНОК") : creature === "triceratops" ? (language === "en" ? "TRICERATOPS" : "ТРИЦЕРАТОПС") : creature === "ankylosaurus" ? (language === "en" ? "ANKYLOSAURUS" : "АНКИЛОЗАВР") : (language === "en" ? "T-REX" : "ТИРАННОЗАВР"), exact: true }).press("Enter");
           await p.locator(".coloring-workshop").waitFor(); await checkLayout();
           for (const [label, option, count] of language === "en" ? [["COLOR", "BLUE", 13], ["SIZE", "BRUSH LARGE", 4]] : [["ЦВЕТ", "ГОЛУБОЙ", 13], ["РАЗМЕР", "КИСТЬ БОЛЬШОЙ", 4]]) {
