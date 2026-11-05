@@ -7839,7 +7839,7 @@
           "name": "Menu action",
           "reusable": true,
           "width": 112,
-          "fill": "$sunken",
+          "fill": "$raised-control",
           "cornerRadius": "$radius-md",
           "layout": "vertical",
           "gap": "$space-md",
@@ -8303,7 +8303,7 @@
           "name": "Paragraph menu",
           "reusable": true,
           "width": 375,
-          "fill": "$paper",
+          "fill": "$raised",
           "cornerRadius": [
             "$radius-lg",
             "$radius-lg",
@@ -8341,7 +8341,7 @@
                   "cornerRadius": "$radius-xs",
                   "id": "VK6iI",
                   "name": "Handle",
-                  "fill": "$line",
+                  "fill": "$line-strong",
                   "width": 36,
                   "height": 5
                 }
@@ -8445,7 +8445,7 @@
               "width": "fill_container",
               "height": 52,
               "cornerRadius": "$radius-full",
-              "stroke": "$line",
+              "stroke": "$line-strong",
               "strokeWidth": 1,
               "gap": "$space-md",
               "padding": [
@@ -8484,7 +8484,7 @@
                   "name": "Send",
                   "width": 40,
                   "height": 40,
-                  "fill": "$line",
+                  "fill": "$line-strong",
                   "cornerRadius": "$radius-lg",
                   "justifyContent": "center",
                   "alignItems": "center",
@@ -8497,7 +8497,7 @@
                       "height": 18,
                       "icon": "arrow-up",
                       "library": "lucide",
-                      "fill": "$paper"
+                      "fill": "$ink-2"
                     }
                   ]
                 }
@@ -10550,6 +10550,40 @@
     "radius-full": {
       "type": "number",
       "value": 999
+    },
+    "raised": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#FBF7F0",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#2A2520",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
+    },
+    "raised-control": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#EFE7D9",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#38312A",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
     }
   },
   "fileToken": "14b63d01-35e0-4b55-a4b3-75547b337511"
