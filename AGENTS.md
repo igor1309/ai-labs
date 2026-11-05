@@ -37,6 +37,42 @@
 - Never edit another agent's document or branch. If you did, tell that
   agent at once, with what you changed.
 
+### What a design holds
+
+- Start from a design system, not from screens. Define tokens with
+  `SetVariables` before drawing: colours themed by one `mode` axis (light
+  and dark), font families, a type scale of about eight sizes, spacing on a
+  4 pt grid and a few radii. No frame uses a raw colour, font, size, gap,
+  padding or radius; transparent (`#00000000`) is the one exception.
+- Anything drawn twice is a component on a Components board; screens are
+  built from its instances, with content as instance overrides.
+- Each light screen is itself a component, and its dark frame is an
+  instance with `theme: {mode: "dark"}`. Never copy a screen to make dark.
+- Draw every width class the product supports: compact (iPhone, < 600),
+  medium (iPad portrait, 600–1023) and wide (≥ 1024). The brief states for
+  each what moves (navigation, menus as sheet or popover, fixed bars), and
+  separately how touch, mouse and keyboard differ, and the iPhone safe area.
+- Put design notes in the file as `note` nodes beside the frames they
+  explain, and keep the brief, a Markdown file next to the `.pen`, in step.
+- Export every frame to PNG with a readable name, next to the `.pen`, and
+  look at each image before reporting. Fix what `c.problems` and the run's
+  issues list report (clipping, collapsed sizes, unknown icons).
+
+### pen interactive pitfalls
+
+- Write a long script to a file and pipe it as
+  `execute({ input: <JSON.stringify(script)> })`; hand-quoting breaks.
+- Paths in `Export` resolve against the shell's directory; `$TMPDIR`
+  differs outside the sandbox, so export into the design folder.
+- `Copy` of a reusable node makes a linked instance with no editable
+  children. To detach, `Get` the node, delete every `id`, and `Insert` it.
+- A `fit_content` parent with a `fill_container` child on the same axis
+  collapses to zero; give one of them a fixed size.
+- Check icon names (lucide has no `message-circle-question`); an unknown
+  icon renders blank and is reported only in the issues list.
+- Snapping raw values to tokens can change a shape: a radius of 22 on a
+  sheet is not "full". Look at the export after any bulk change.
+
 ## Pull request merge workflow
 
 - For the `pr-merge` workflow, use `scripts/watch-pr.sh` to monitor CI and
