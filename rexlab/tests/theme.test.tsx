@@ -15,6 +15,7 @@ import { DinosaurPage } from "../src/DinosaurPage.tsx";
 import { FriendsScreen } from "../src/FriendsScreen.tsx";
 import { OrientationGate } from "../src/OrientationGate.tsx";
 import { PairsBoardScreen } from "../src/PairsBoardScreen.tsx";
+import { LevelOfferDialog } from "../src/LevelOfferDialog.tsx";
 import { PairsResultScreen } from "../src/PairsResultScreen.tsx";
 import { PairsWelcomeScreen } from "../src/PairsWelcomeScreen.tsx";
 import { SkeletonChoiceScreen } from "../src/SkeletonChoiceScreen.tsx";
@@ -55,7 +56,7 @@ import { pairsRecord, playBoard, playPairs } from "./pairsApp.tsx";
 import { AWAY, hints, layOutPuzzle, lifted, moveTo, press, release, spotOf, spotPieces } from "./skeletonsApp.tsx";
 import { basketButton, centreOf, dragTo, finishBoard, layOutBaskets, openBoard, openSortingGame, otherBasket, trayCard } from "./sorting.tsx";
 import { moveAt, pressAt } from "./taps.ts";
-import { withPictures } from "./pictures.tsx";
+import { withManualPictures, withPictures } from "./pictures.tsx";
 import {
   OVERLAYS,
   PALETTE,
@@ -82,6 +83,7 @@ import {
   manualAppearance,
   manualViewport,
   manualTimers,
+  manualPictures,
   memoryStorage,
   pageAtRest,
   sameColour,
@@ -212,6 +214,9 @@ function expectScreenIn(theme: Theme, part: Element = document.body) {
   ).toEqual([]);
 }
 
+// A design token's value in the theme shown.
+const token = (name: string) => getComputedStyle(document.documentElement).getPropertyValue(`--ds-${name}`).trim();
+
 const nothing = () => {};
 const show = (screen: ReactElement) => render(screen, withPictures);
 
@@ -219,11 +224,14 @@ const show = (screen: ReactElement) => render(screen, withPictures);
 type Check = (theme: Theme) => void | Promise<void>;
 type Part = [string, Check];
 
-const catalogue = (food: Food, found: readonly string[] = []) => (
+// The catalogue listing a food's dinosaurs, or for "each" one dinosaur of
+// every food: each card's colours are its food's, so one of each checks
+// them all.
+const catalogue = (food: Food | "each", found: readonly string[] = []) => (
   <CatalogueScreen language="en"
-    dinosaurs={ofFood(SHIPPED_CATALOGUE, food).map((entry) => presentCatalogueCard(entry, "en", fakeBodyPicture, found))}
+    dinosaurs={(food === "each" ? (["meat", "plants", "both"] as const).map((one) => ofFood(SHIPPED_CATALOGUE, one)[0]!) : ofFood(SHIPPED_CATALOGUE, food)).map((entry) => presentCatalogueCard(entry, "en", fakeBodyPicture, found))}
     foods={FOODS.map((choice) => ({ food: choice, count: ofFood(SHIPPED_CATALOGUE, choice).length }))}
-    food={food} initialArrangement={{ columns: 4, chips: undefined }} chipWidths={{ width: () => 0, subscribe: () => nothing }}
+    food={food === "each" ? "all" : food} initialArrangement={{ columns: 4, chips: undefined }} chipWidths={{ width: () => 0, subscribe: () => nothing }}
     onChipContents={nothing} layoutKeeping={keptNothing} returning={undefined} onFood={nothing} onOpen={nothing} onHome={nothing} />
 );
 
@@ -280,23 +288,68 @@ const pairsResult = (board: Board) => (
     tries={board.tries} stars={3} best={board.tries} beaten={undefined} celebration="first-best" levelUp={null} onPlayAgain={nothing} onBack={nothing} onHome={nothing} />
 );
 
-// A board with a card open, then every pair found and its cards waving,
-// and the result with its celebration and NEW badges.
-const pairsPlayed = (level: BoardLevel, miss: boolean) => (theme: Theme) => {
-  const dealt = dealBoard(SHIPPED_PALS, level, seededRandom(41));
+// A board of pictures as it is dealt, with a card open and with a miss.
+const pairsMissed = (theme: Theme) => {
+  const dealt = dealBoard(SHIPPED_PALS, { climbLevel: 1 }, seededRandom(41));
   const opened = turn(dealt, 0);
   const { rerender } = show(pairsBoard(dealt));
   const check = (screen: ReactElement) => { rerender(screen); expectScreenIn(theme); };
   check(pairsBoard(dealt));
   check(pairsBoard(opened));
-  if (miss) check(pairsBoard(turn(opened, opened.cards.findIndex(({ pal }) => pal.id !== opened.cards[0]!.pal.id))));
-  const finished = turnedAll(dealt);
+  check(pairsBoard(turn(opened, opened.cards.findIndex(({ pal }) => pal.id !== opened.cards[0]!.pal.id))));
+};
+
+// The same board with two pairs found, then every pair and its cards
+// waving.
+const pairsWaving = (theme: Theme) => {
+  const finished = turnedAll(dealBoard(SHIPPED_PALS, { climbLevel: 1 }, seededRandom(41)));
   expect(isFinished(finished)).toBe(true);
-  if (miss) check(pairsBoard({ ...finished, found: finished.found.slice(0, 2) }));
-  check(pairsBoard(finished, true));
+  const { rerender } = show(pairsBoard({ ...finished, found: finished.found.slice(0, 2) }));
+  expectScreenIn(theme);
+  rerender(pairsBoard(finished, true));
+  expectScreenIn(theme);
   expect(document.querySelector(".pair-board[data-finished]")).not.toBeNull();
-  check(pairsResult(finished));
+};
+
+// A large board with a card open, then the same board with every pair
+// found and its cards waving, each a test of its own.
+const pairsOpened = (level: BoardLevel) => (theme: Theme) => {
+  show(pairsBoard(turn(dealBoard(SHIPPED_PALS, level, seededRandom(41)), 0)));
+  expectScreenIn(theme);
+};
+const pairsAllFound = (level: BoardLevel) => (theme: Theme) => {
+  const finished = turnedAll(dealBoard(SHIPPED_PALS, level, seededRandom(41)));
+  expect(isFinished(finished)).toBe(true);
+  show(pairsBoard(finished, true));
+  expectScreenIn(theme);
+  expect(document.querySelector(".pair-board[data-finished]")).not.toBeNull();
+};
+
+// The result of a finished board, with its celebration and NEW badges.
+const pairsFinished = (level: BoardLevel) => (theme: Theme) => {
+  show(pairsResult(turnedAll(dealBoard(SHIPPED_PALS, level, seededRandom(41)))));
+  expectScreenIn(theme);
   expect(screen.getByRole("status")).toBeDefined();
+};
+
+const pairsOffer = (theme: Theme) => {
+  show(<LevelOfferDialog digSite language="en" offer={{ level: "explorer", onYes: nothing, onNotNow: nothing, onShown: nothing, startTimer: () => nothing }} leaving={false} onShown={nothing} onAnswer={nothing} onGone={nothing} />);
+  expectScreenIn(theme);
+};
+
+// A board with a pair found and a card open while their pictures load,
+// then with one picture that cannot be loaded.
+const pairsLoading = (theme: Theme) => {
+  const pictures = manualPictures();
+  const dealt = dealBoard(SHIPPED_PALS, { climbLevel: 1 }, seededRandom(41));
+  const found = turnBack(turn(turn(dealt, 0), dealt.cards.findIndex(({ pal }, place) => place !== 0 && pal.id === dealt.cards[0]!.pal.id)));
+  const opened = turn(found, found.cards.findIndex(({ pal }) => pal.id !== found.cards[0]!.pal.id));
+  render(pairsBoard(opened), withManualPictures(pictures));
+  expect(document.querySelectorAll('.pair-card .picture[data-picture="loading"]').length).toBe(3);
+  expectScreenIn(theme);
+  act(() => pictures.fail(pictures.loading()[0]!));
+  expect(document.querySelector('.pair-card .picture[data-picture="failed"]')).not.toBeNull();
+  expectScreenIn(theme);
 };
 
 const skeleton = (id: string) => SHIPPED_SKELETONS.find((each) => each.id === id)!;
@@ -365,7 +418,7 @@ const SCREEN_GROUPS: Array<[string, Part[]]> = [
   [
     "the catalogue",
     [
-      ["the list with a card of each food type", checked(catalogue("all"))],
+      ["the list with a card of each food type", checked(catalogue("each"))],
       ...(["meat", "plants", "both", "all"] as const).map((food): Part => [`the ${food.toUpperCase()} food choice`, checked(catalogue(food), () => screen.getByRole("group", { name: "FOOD" }))]),
       ...["tyrannosaurus", "triceratops", "gallimimus"].map((id): Part => [`the page of ${id}`, checked(dinosaurPage(id))])
     ]
@@ -384,12 +437,23 @@ const SCREEN_GROUPS: Array<[string, Part[]]> = [
   [
     "find the pair",
     [
-      ["the welcome", checked(<PairsWelcomeScreen language="en" level="hatchling" climbLevel={1} stars={0} heroPicture={fakeBodyPicture("stegosaurus")} onLevel={nothing} onPlay={nothing} onHome={nothing} />)],
-      ["a board of pictures with a card open, a miss, found pairs and the cards waving, and the result", pairsPlayed({ climbLevel: 1 }, true)],
-      ["Explorer's board of silhouettes, a card open, every pair found, and the result", pairsPlayed({ large: "explorer" }, false)],
-      ["Paleontologist's board of skeletons, a card open, every pair found, and the result", pairsPlayed({ large: "paleontologist" }, false)],
+      ["the welcome on a first visit", checked(<PairsWelcomeScreen language="en" level="hatchling" climbLevel={1} stars={0} heroPicture={fakeBodyPicture("stegosaurus")} onLevel={nothing} onPlay={nothing} onHome={nothing} />)],
+      ["the welcome on a return, at Hatchling's climb level 4", checked(<PairsWelcomeScreen language="en" level="hatchling" climbLevel={4} stars={23} heroPicture={fakeBodyPicture("stegosaurus")} onLevel={nothing} onPlay={nothing} onHome={nothing} />)],
+      ["the welcome at Explorer", checked(<PairsWelcomeScreen language="en" level="explorer" climbLevel={2} stars={9} heroPicture={fakeBodyPicture("stegosaurus")} onLevel={nothing} onPlay={nothing} onHome={nothing} />)],
+      ["the welcome at Paleontologist", checked(<PairsWelcomeScreen language="en" level="paleontologist" climbLevel={2} stars={9} heroPicture={fakeBodyPicture("stegosaurus")} onLevel={nothing} onPlay={nothing} onHome={nothing} />)],
+      ["a board of pictures with a card open and a miss", pairsMissed],
+      ["a board of pictures with found pairs and the cards waving", pairsWaving],
+      ["the result of a board of pictures", pairsFinished({ climbLevel: 1 })],
+      ["a board's pictures loading, and one that cannot be loaded", pairsLoading],
+      ["the level offer over the result", pairsOffer],
+      ["Explorer's board of silhouettes with a card open", pairsOpened({ large: "explorer" })],
+      ["Explorer's board of silhouettes with every pair found", pairsAllFound({ large: "explorer" })],
+      ["the result of Explorer's board", pairsFinished({ large: "explorer" })],
+      ["Paleontologist's board of skeletons with a card open", pairsOpened({ large: "paleontologist" })],
+      ["Paleontologist's board of skeletons with every pair found", pairsAllFound({ large: "paleontologist" })],
+      ["the result of Paleontologist's board", pairsFinished({ large: "paleontologist" })],
       ["the dinosaurs found on home", (theme) => { renderHomePageFeaturing("compare"); expectScreenIn(theme, gameDoor("FIND THE PAIR")); }],
-      ["the dinosaurs found on the catalogue", checked(catalogue("all", SHIPPED_PALS.map(({ id }) => id)))],
+      ["the dinosaurs found on the catalogue", checked(catalogue("each", SHIPPED_CATALOGUE.map(({ id }) => id)))],
       ["the dinosaurs found on a page", checked(dinosaurPage(SHIPPED_PALS[0]!.id, SHIPPED_PALS.map(({ id }) => id)))]
     ]
   ],
@@ -834,8 +898,8 @@ describe("a board of skeletons", () => {
     const skeletons = [...document.querySelectorAll('.pair-card[data-face="skeleton"] img')];
     expect(skeletons).toHaveLength(12);
     expect(skeletons.map((picture) => [picture.classList.contains("pair-silhouette"), getComputedStyle(picture).filter])).toEqual(skeletons.map(() => [false, "none"]));
-    const art = skeletons[0]?.closest(".pair-card-art") ?? document.body;
-    expect(sameColour(getComputedStyle(art).backgroundColor, PALETTE[theme]["surface-2"] ?? "")).toBe(true);
+    const face = skeletons[0]?.closest(".pair-card-face") ?? document.body;
+    expect(sameColour(getComputedStyle(face).backgroundColor, token("label"))).toBe(true);
   });
 });
 
@@ -845,17 +909,18 @@ describe("a board of silhouettes", () => {
     const pairs = memoryStorage({ [PROGRESS_KEY]: pairsRecord({ stars: 6, level: 4, boardsOnLevel: 0, best: {}, found: [] }) });
     const { user } = openApp({ device: manualAppearance(theme), timers, pairs });
     await playPairs(user);
-    expectScreenIn(theme);
-
     await playBoard(user, timers);
 
+    // The welcome is checked with the screens above; here the board the
+    // climb deals.
     expectScreenIn(theme);
-    // A silhouette is black on the light art, white on the dark, and so
-    // keeps text contrast with it.
-    const art = document.querySelector(".pair-card-art") ?? document.body;
-    const silhouette = document.querySelector(".pair-silhouette") ?? document.body;
-    expect(getComputedStyle(silhouette).filter).toBe(theme === "dark" ? "brightness(0) invert(1)" : "brightness(0)");
-    expect(sameColour(getComputedStyle(art).backgroundColor, PALETTE[theme]["surface-2"] ?? "")).toBe(true);
-    expect(contrast(theme === "dark" ? "#FFFFFF" : "#000000", PALETTE[theme]["surface-2"] ?? "")).toBeGreaterThanOrEqual(TEXT_CONTRAST);
+    // A silhouette is the picture's shape in the theme's ink on the card's
+    // label, and so keeps text contrast with it.
+    const face = document.querySelector(".pair-card-face") ?? document.body;
+    const shadow = document.querySelector(".pair-silhouette + .pair-card-shadow") ?? document.body;
+    expect([getComputedStyle(document.querySelector(".pair-silhouette") ?? document.body).opacity, getComputedStyle(shadow).display]).toEqual(["0", "block"]);
+    expect(sameColour(getComputedStyle(shadow).backgroundColor, token("ink"))).toBe(true);
+    expect(sameColour(getComputedStyle(face).backgroundColor, token("label"))).toBe(true);
+    expect(contrast(token("ink"), token("label"))).toBeGreaterThanOrEqual(TEXT_CONTRAST);
   });
 });

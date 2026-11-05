@@ -4,7 +4,6 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { App, type SizeClass } from "../src/App.tsx";
 import { TEXTS } from "../src/language/texts.ts";
-import { pairsWelcomeGeometry } from "../src/pairsWelcomeLayout.ts";
 import { drawnOpacity, extendPart, turnFrame } from "../src/root.ts";
 import type { Box, TurnAnimation } from "../src/turnMotion.ts";
 import {
@@ -33,11 +32,11 @@ const px = (value: unknown) => Number.parseFloat(String(value));
 const COLUMN_PARTS = ["pairs-title", "pairs-chips", "pairs-levels", "pairs-play"];
 const WIDTHS: Record<string, number> = { "pairs-title": 540, "pairs-chips": 260, "pairs-play": 280 };
 
-// The welcome's parts as a browser would lay them out, landscape or
-// upright, from the window. Landscape, the cards stand on the left and
-// the column on the right, 648 wide, its parts at its left; upright, the
-// cards on top of the column, its parts centred, as the geometry sizes
-// them, the whole centred under the bar.
+// The welcome's parts as a browser might lay them out, landscape or
+// upright, from the window: landscape, the cards on the left and the
+// column on the right, its parts at its left; upright, the cards over the
+// column, its parts centred. jsdom lays nothing out, so the boxes only
+// need to differ between the layouts as a browser's would.
 function welcomeBox(element: Element): Box {
   const [width, height] = [window.innerWidth, window.innerHeight];
   const name = nameOf(element);
@@ -47,10 +46,9 @@ function welcomeBox(element: Element): Box {
     return { left: left + (centred ? (columnWidth - partWidth) / 2 : 0), top: top + heights.slice(0, at).reduce((sum, each) => sum + each + 28, 0), width: partWidth, height: heights[at]! };
   };
   if (document.documentElement.dataset.size === "tall") {
-    const geometry = pairsWelcomeGeometry(width, height, 0, 0);
-    const top = 40 + 56 + 28 + Math.max(0, height - 172 - geometry.card.height - 32 - geometry.stack) / 2;
-    if (name === "pairs-cards") return { left: 32, top, width: geometry.width, height: geometry.card.height };
-    return stack(32 + (geometry.width - geometry.column) / 2, geometry.column, top + geometry.card.height + 32, [88, 64, 76, 104], geometry.levelSwitch.width, true);
+    const top = 260;
+    if (name === "pairs-cards") return { left: 56, top, width: width - 112, height: 216 };
+    return stack(56, width - 112, top + 216 + 28, [60, 64, 74, 80], 560, true);
   }
   const heroWidth = width - 112 - 40 - 648;
   const heroHeight = Math.min(0.6 * height, 0.32 * heroWidth * 4 / 3);
@@ -172,12 +170,14 @@ describe("find the pair's welcome turning", () => {
       expect([copy.classList.contains("pairs-hero"), copy.style.animation, copy.querySelectorAll(".pairs-hero-card").length]).toEqual([true, "none", 3]);
       expect([...copy.querySelectorAll<HTMLElement>("*")].filter((inner) => inner.style.animation !== "none")).toEqual([]);
       expect(document.querySelector<HTMLElement>(".pairs-welcome .pairs-hero")!.style.visibility).toBe("hidden");
-      // The level switch changes height, its own background drawn under it.
+      // The level switch and PLAY change height, each with its own
+      // background drawn under it.
       const frames = live.filter(({ name }) => name.startsWith("frame of "));
       expect(frames.map(({ name, keyframes }) => [name, px(keyframes[0]?.height), px(keyframes[1]?.height)])).toEqual([
-        ["frame of pairs-levels", before.get("pairs-levels")!.height, after.get("pairs-levels")!.height]
+        ["frame of pairs-levels", before.get("pairs-levels")!.height, after.get("pairs-levels")!.height],
+        ["frame of pairs-play", before.get("pairs-play")!.height, after.get("pairs-play")!.height]
       ]);
-      expect(live.map(({ name }) => name).sort()).toEqual([...COLUMN_PARTS, "fitted-picture", "frame of pairs-levels"].sort());
+      expect(live.map(({ name }) => name).sort()).toEqual([...COLUMN_PARTS, "fitted-picture", "frame of pairs-levels", "frame of pairs-play"].sort());
       expect([app.turning(), app.fades]).toEqual([true, []]);
       // The same welcome: no card mounted or set rising in anew.
       expect(shown()).toEqual(was);
