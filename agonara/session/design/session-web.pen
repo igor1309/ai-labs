@@ -1,0 +1,1395 @@
+{
+  "version": "2.21",
+  "children": [
+    {
+      "type": "frame",
+      "id": "qXGqP",
+      "x": 0,
+      "y": 0,
+      "name": "Phone · Program",
+      "clip": true,
+      "width": 375,
+      "height": 812,
+      "fill": "#ffffff",
+      "layout": "vertical",
+      "children": [
+        {
+          "type": "frame",
+          "id": "iCdt1",
+          "name": "Top bar",
+          "width": "fill_container",
+          "stroke": "#dde4e8",
+          "strokeWidth": {
+            "bottom": 1
+          },
+          "gap": 8,
+          "padding": [
+            12,
+            16
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "icon",
+              "id": "z0XtR",
+              "width": 20,
+              "height": 20,
+              "icon": "chevron-left",
+              "library": "lucide",
+              "fill": "#1c2329"
+            },
+            {
+              "type": "text",
+              "id": "aduY1",
+              "fill": "#1c2329",
+              "content": "Программы",
+              "fontFamily": "Inter",
+              "fontSize": 16,
+              "fontWeight": "600"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "f4roa",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 6,
+          "padding": [
+            20,
+            20,
+            8,
+            20
+          ],
+          "children": [
+            {
+              "type": "text",
+              "id": "NBfDF",
+              "fill": "#5e6a72",
+              "content": "ПРОГРАММА",
+              "fontFamily": "Inter",
+              "fontSize": 12,
+              "fontWeight": "600",
+              "letterSpacing": 1
+            },
+            {
+              "type": "text",
+              "id": "oAbNx",
+              "fill": "#1c2329",
+              "content": "Агенты на практике",
+              "fontFamily": "Source Serif 4",
+              "fontSize": 26,
+              "fontWeight": "600"
+            },
+            {
+              "type": "text",
+              "id": "IBGz5",
+              "fill": "#5e6a72",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "От первого вызова модели до агента, который знает, когда остановиться.",
+              "lineHeight": 1.5,
+              "fontFamily": "Inter",
+              "fontSize": 15,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "u0hMF",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 12,
+          "padding": [
+            12,
+            16
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "rceLe",
+              "name": "Course",
+              "width": "fill_container",
+              "fill": "#eef3f6",
+              "cornerRadius": 12,
+              "layout": "vertical",
+              "gap": 10,
+              "padding": 16,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "h3Dh3",
+                  "width": "fill_container",
+                  "gap": 10,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "g1UMJq",
+                      "fill": "#2f6f5e",
+                      "content": "1",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "R00t5G",
+                      "fill": "#1c2329",
+                      "content": "Что такое агент",
+                      "fontFamily": "Inter",
+                      "fontSize": 17,
+                      "fontWeight": "600"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "e3Rr4r",
+                  "width": "fill_container",
+                  "fill": "#ffffff",
+                  "cornerRadius": 8,
+                  "gap": 8,
+                  "padding": [
+                    10,
+                    12
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "I7iRTL",
+                      "width": 16,
+                      "height": 16,
+                      "icon": "book-open",
+                      "library": "lucide",
+                      "fill": "#2f6f5e"
+                    },
+                    {
+                      "type": "text",
+                      "id": "rtFNa",
+                      "fill": "#2f6f5e",
+                      "content": "Лекция: агент и бот",
+                      "fontFamily": "Inter",
+                      "fontSize": 15,
+                      "fontWeight": "500"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "GDzgX",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "n7TE3",
+                      "fill": "#ffffff",
+                      "cornerRadius": 99,
+                      "stroke": "#dde4e8",
+                      "strokeWidth": 1,
+                      "padding": [
+                        5,
+                        10
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "z2vx9",
+                          "fill": "#5e6a72",
+                          "content": "Цикл агента",
+                          "fontFamily": "Inter",
+                          "fontSize": 13,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "k23fG3",
+                      "fill": "#ffffff",
+                      "cornerRadius": 99,
+                      "stroke": "#dde4e8",
+                      "strokeWidth": 1,
+                      "padding": [
+                        5,
+                        10
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "yVmY5",
+                          "fill": "#5e6a72",
+                          "content": "Инструменты",
+                          "fontFamily": "Inter",
+                          "fontSize": 13,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "k8eylU",
+              "name": "Course",
+              "width": "fill_container",
+              "fill": "#eef3f6",
+              "cornerRadius": 12,
+              "layout": "vertical",
+              "gap": 10,
+              "padding": 16,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "JsFRN",
+                  "width": "fill_container",
+                  "gap": 10,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "UTNOZ",
+                      "fill": "#2f6f5e",
+                      "content": "2",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "ZuEmL",
+                      "fill": "#1c2329",
+                      "content": "Инструменты и границы",
+                      "fontFamily": "Inter",
+                      "fontSize": 17,
+                      "fontWeight": "600"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "uo8Ss",
+                  "width": "fill_container",
+                  "fill": "#ffffff",
+                  "cornerRadius": 8,
+                  "gap": 8,
+                  "padding": [
+                    10,
+                    12
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "APnKH",
+                      "width": 16,
+                      "height": 16,
+                      "icon": "book-open",
+                      "library": "lucide",
+                      "fill": "#2f6f5e"
+                    },
+                    {
+                      "type": "text",
+                      "id": "X0hfCO",
+                      "fill": "#2f6f5e",
+                      "content": "Лекция: границы агента",
+                      "fontFamily": "Inter",
+                      "fontSize": 15,
+                      "fontWeight": "500"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "PCmhc",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "k4ykX9",
+                      "fill": "#ffffff",
+                      "cornerRadius": 99,
+                      "stroke": "#dde4e8",
+                      "strokeWidth": 1,
+                      "padding": [
+                        5,
+                        10
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "a8OaH",
+                          "fill": "#5e6a72",
+                          "content": "Права",
+                          "fontFamily": "Inter",
+                          "fontSize": 13,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "eP2wu",
+                      "fill": "#ffffff",
+                      "cornerRadius": 99,
+                      "stroke": "#dde4e8",
+                      "strokeWidth": 1,
+                      "padding": [
+                        5,
+                        10
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "LBW08",
+                          "fill": "#5e6a72",
+                          "content": "Остановка",
+                          "fontFamily": "Inter",
+                          "fontSize": 13,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "c0pknm",
+              "name": "Course",
+              "width": "fill_container",
+              "fill": "#eef3f6",
+              "cornerRadius": 12,
+              "layout": "vertical",
+              "gap": 10,
+              "padding": 16,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "p7l2J",
+                  "width": "fill_container",
+                  "gap": 10,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "Ma3j3",
+                      "fill": "#2f6f5e",
+                      "content": "3",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "iR6fC",
+                      "fill": "#1c2329",
+                      "content": "Оценка результата",
+                      "fontFamily": "Inter",
+                      "fontSize": 17,
+                      "fontWeight": "600"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "xmvEn",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "yuS3S",
+                      "fill": "#ffffff",
+                      "cornerRadius": 99,
+                      "stroke": "#dde4e8",
+                      "strokeWidth": 1,
+                      "padding": [
+                        5,
+                        10
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "YIaUF",
+                          "fill": "#5e6a72",
+                          "content": "Проверки",
+                          "fontFamily": "Inter",
+                          "fontSize": 13,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "hcDzs",
+      "x": 435,
+      "y": 0,
+      "name": "Phone · Content + menu",
+      "clip": true,
+      "width": 375,
+      "height": 812,
+      "fill": "#ffffff",
+      "layout": "vertical",
+      "children": [
+        {
+          "type": "frame",
+          "id": "Jy7M0",
+          "name": "Top bar",
+          "width": "fill_container",
+          "stroke": "#dde4e8",
+          "strokeWidth": {
+            "bottom": 1
+          },
+          "gap": 8,
+          "padding": [
+            12,
+            16
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "icon",
+              "id": "ZBn08",
+              "width": 20,
+              "height": 20,
+              "icon": "chevron-left",
+              "library": "lucide",
+              "fill": "#1c2329"
+            },
+            {
+              "type": "text",
+              "id": "zJshD",
+              "fill": "#1c2329",
+              "content": "Лекция: агент и бот",
+              "fontFamily": "Inter",
+              "fontSize": 16,
+              "fontWeight": "600"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "LQrH5",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 8,
+          "padding": [
+            16,
+            12
+          ],
+          "children": [
+            {
+              "type": "text",
+              "id": "khnR5",
+              "fill": "#5e6a72",
+              "content": "§1 Цикл агента · 2/5",
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "500"
+            },
+            {
+              "type": "text",
+              "id": "S9vTZ",
+              "fill": "#1c2329",
+              "content": "Цикл агента",
+              "fontFamily": "Source Serif 4",
+              "fontSize": 24,
+              "fontWeight": "600"
+            },
+            {
+              "type": "frame",
+              "id": "Akyug",
+              "name": "Paragraph",
+              "width": "fill_container",
+              "fill": "#00000000",
+              "cornerRadius": 8,
+              "gap": 4,
+              "padding": [
+                6,
+                0,
+                6,
+                8
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "cqoi6",
+                  "fill": "#1c2329",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Агент — это программа, которая сама выбирает следующий шаг: читает задачу, решает, какой инструмент вызвать, и смотрит на результат.",
+                  "lineHeight": 1.6,
+                  "fontFamily": "Source Serif 4",
+                  "fontSize": 17,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "ZAcgj",
+                  "name": "Ellipsis (44pt target)",
+                  "width": 44,
+                  "height": 44,
+                  "padding": [
+                    4,
+                    0,
+                    0,
+                    0
+                  ],
+                  "justifyContent": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "GDs90",
+                      "width": 18,
+                      "height": 18,
+                      "icon": "ellipsis",
+                      "library": "lucide",
+                      "fill": "#9aa5ad"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "aITOK",
+              "name": "Paragraph",
+              "width": "fill_container",
+              "fill": "#eef3f6",
+              "cornerRadius": 8,
+              "gap": 4,
+              "padding": [
+                6,
+                0,
+                6,
+                8
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "loiwk",
+                  "fill": "#1c2329",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Отличие от обычного чат-бота в цикле. Бот отвечает один раз; агент повторяет «подумать — сделать — проверить», пока задача не решена.",
+                  "lineHeight": 1.6,
+                  "fontFamily": "Source Serif 4",
+                  "fontSize": 17,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "aQNwM",
+                  "name": "Ellipsis (44pt target)",
+                  "width": 44,
+                  "height": 44,
+                  "padding": [
+                    4,
+                    0,
+                    0,
+                    0
+                  ],
+                  "justifyContent": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "z3sq12",
+                      "width": 18,
+                      "height": 18,
+                      "icon": "ellipsis",
+                      "library": "lucide",
+                      "fill": "#2f6f5e"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "Q5kfF",
+              "name": "Paragraph",
+              "width": "fill_container",
+              "fill": "#00000000",
+              "cornerRadius": 8,
+              "gap": 4,
+              "padding": [
+                6,
+                0,
+                6,
+                8
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "Ihc5C",
+                  "fill": "#1c2329",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Поэтому агенту нужны границы: какие инструменты ему доступны, сколько шагов он может сделать и когда он обязан остановиться и спросить человека.",
+                  "lineHeight": 1.6,
+                  "fontFamily": "Source Serif 4",
+                  "fontSize": 17,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "aejSk",
+                  "name": "Ellipsis (44pt target)",
+                  "width": 44,
+                  "height": 44,
+                  "padding": [
+                    4,
+                    0,
+                    0,
+                    0
+                  ],
+                  "justifyContent": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "O0EBTT",
+                      "width": 18,
+                      "height": 18,
+                      "icon": "ellipsis",
+                      "library": "lucide",
+                      "fill": "#9aa5ad"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "b5o4UM",
+          "name": "Bottom bar",
+          "width": "fill_container",
+          "stroke": "#dde4e8",
+          "strokeWidth": {
+            "top": 1
+          },
+          "padding": [
+            12,
+            16
+          ],
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "Yxlnk",
+              "fill": "#2f6f5e",
+              "content": "‹ Назад",
+              "fontFamily": "Inter",
+              "fontSize": 15,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "MjrBz",
+              "fill": "#5e6a72",
+              "content": "Содержание",
+              "fontFamily": "Inter",
+              "fontSize": 15,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "eeKaB",
+              "fill": "#2f6f5e",
+              "content": "Далее ›",
+              "fontFamily": "Inter",
+              "fontSize": 15,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "Yow0b",
+          "layoutPosition": "absolute",
+          "x": 0,
+          "y": 0,
+          "name": "Scrim",
+          "width": 375,
+          "height": 812,
+          "fill": "#1c232966"
+        },
+        {
+          "type": "frame",
+          "id": "PObrw",
+          "layoutPosition": "absolute",
+          "x": 0,
+          "y": 500,
+          "name": "Bottom sheet",
+          "width": 375,
+          "height": 312,
+          "fill": "#ffffff",
+          "cornerRadius": [
+            20,
+            20,
+            0,
+            0
+          ],
+          "layout": "vertical",
+          "gap": 4,
+          "padding": [
+            10,
+            16,
+            24,
+            16
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "VyfoO",
+              "width": "fill_container",
+              "padding": [
+                0,
+                0,
+                8,
+                0
+              ],
+              "justifyContent": "center",
+              "children": [
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 3,
+                  "id": "fF47i",
+                  "fill": "#dde4e8",
+                  "width": 36,
+                  "height": 5
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "G5TL0Q",
+              "fill": "#5e6a72",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "«Отличие от обычного чат-бота в цикле…»",
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "normal",
+              "fontStyle": "italic"
+            },
+            {
+              "type": "frame",
+              "id": "J72BDN",
+              "width": "fill_container",
+              "gap": 14,
+              "padding": [
+                13,
+                4
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "UkVjY",
+                  "width": 20,
+                  "height": 20,
+                  "icon": "sparkles",
+                  "library": "lucide",
+                  "fill": "#2f6f5e"
+                },
+                {
+                  "type": "text",
+                  "id": "m2SAP8",
+                  "fill": "#1c2329",
+                  "content": "Расскажи подробнее",
+                  "fontFamily": "Inter",
+                  "fontSize": 17,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "j7cVc",
+              "width": "fill_container",
+              "gap": 14,
+              "padding": [
+                13,
+                4
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "sFYni",
+                  "width": 20,
+                  "height": 20,
+                  "icon": "baby",
+                  "library": "lucide",
+                  "fill": "#2f6f5e"
+                },
+                {
+                  "type": "text",
+                  "id": "hVRyL",
+                  "fill": "#1c2329",
+                  "content": "Объясни проще",
+                  "fontFamily": "Inter",
+                  "fontSize": 17,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "wxvgM",
+              "width": "fill_container",
+              "gap": 14,
+              "padding": [
+                13,
+                4
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "JQU5C",
+                  "width": 20,
+                  "height": 20,
+                  "icon": "lightbulb",
+                  "library": "lucide",
+                  "fill": "#2f6f5e"
+                },
+                {
+                  "type": "text",
+                  "id": "OApvv",
+                  "fill": "#1c2329",
+                  "content": "Приведи пример",
+                  "fontFamily": "Inter",
+                  "fontSize": 17,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "quHGj",
+              "width": "fill_container",
+              "gap": 14,
+              "padding": [
+                13,
+                4
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "a6SkQ",
+                  "width": 20,
+                  "height": 20,
+                  "icon": "circle-help",
+                  "library": "lucide",
+                  "fill": "#2f6f5e"
+                },
+                {
+                  "type": "text",
+                  "id": "M65uP",
+                  "fill": "#1c2329",
+                  "content": "Задать вопрос…",
+                  "fontFamily": "Inter",
+                  "fontSize": 17,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "F1skI1",
+      "x": 870,
+      "y": 0,
+      "name": "Desktop · Content + answer",
+      "clip": true,
+      "width": 1280,
+      "height": 860,
+      "fill": "#ffffff",
+      "children": [
+        {
+          "type": "frame",
+          "id": "UxpIv",
+          "name": "Outline",
+          "width": 280,
+          "height": "fill_container",
+          "fill": "#eef3f6",
+          "layout": "vertical",
+          "gap": 4,
+          "padding": [
+            24,
+            16
+          ],
+          "children": [
+            {
+              "type": "text",
+              "id": "VtfgC",
+              "fill": "#5e6a72",
+              "content": "‹ Программы",
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "trUPQ",
+              "fill": "#1c2329",
+              "content": "Агенты на практике",
+              "fontFamily": "Source Serif 4",
+              "fontSize": 20,
+              "fontWeight": "600"
+            },
+            {
+              "type": "frame",
+              "id": "Y3Z2K",
+              "width": "fill_container",
+              "fill": "#00000000",
+              "cornerRadius": 6,
+              "padding": [
+                8,
+                10
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "nu4wQ",
+                  "fill": "#1c2329",
+                  "content": "1 Что такое агент",
+                  "fontFamily": "Inter",
+                  "fontSize": 15,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "uP0H8",
+              "width": "fill_container",
+              "fill": "#00000000",
+              "cornerRadius": 6,
+              "padding": [
+                8,
+                24
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "QCEyW",
+                  "fill": "#1c2329",
+                  "content": "Введение",
+                  "fontFamily": "Inter",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "NwvE3",
+              "width": "fill_container",
+              "fill": "#ffffff",
+              "cornerRadius": 6,
+              "padding": [
+                8,
+                24
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "gViU9",
+                  "fill": "#2f6f5e",
+                  "content": "§1 Цикл агента",
+                  "fontFamily": "Inter",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "UGVe1",
+              "width": "fill_container",
+              "fill": "#00000000",
+              "cornerRadius": 6,
+              "padding": [
+                8,
+                24
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "fImS9",
+                  "fill": "#1c2329",
+                  "content": "§2 Инструменты",
+                  "fontFamily": "Inter",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "XmrCX",
+              "width": "fill_container",
+              "fill": "#00000000",
+              "cornerRadius": 6,
+              "padding": [
+                8,
+                10
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "J8tSCc",
+                  "fill": "#1c2329",
+                  "content": "2 Инструменты и границы",
+                  "fontFamily": "Inter",
+                  "fontSize": 15,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "lTSGQ",
+              "width": "fill_container",
+              "fill": "#00000000",
+              "cornerRadius": 6,
+              "padding": [
+                8,
+                10
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "QonD7",
+                  "fill": "#1c2329",
+                  "content": "3 Оценка результата",
+                  "fontFamily": "Inter",
+                  "fontSize": 15,
+                  "fontWeight": "600"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "H9wDj",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "padding": [
+            40,
+            0
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "TEDxx",
+              "width": 680,
+              "layout": "vertical",
+              "gap": 10,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "NsSya",
+                  "fill": "#5e6a72",
+                  "content": "Что такое агент › Лекция: агент и бот › §1 · 2/5",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "WQgd2",
+                  "fill": "#1c2329",
+                  "content": "Цикл агента",
+                  "fontFamily": "Source Serif 4",
+                  "fontSize": 32,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "frame",
+                  "id": "I46kv",
+                  "name": "Paragraph",
+                  "width": "fill_container",
+                  "fill": "#00000000",
+                  "cornerRadius": 8,
+                  "gap": 4,
+                  "padding": [
+                    6,
+                    0,
+                    6,
+                    8
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "sg5VQ",
+                      "fill": "#1c2329",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Агент — это программа, которая сама выбирает следующий шаг: читает задачу, решает, какой инструмент вызвать, и смотрит на результат.",
+                      "lineHeight": 1.6,
+                      "fontFamily": "Source Serif 4",
+                      "fontSize": 17,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "zec5N",
+                      "name": "Ellipsis (44pt target)",
+                      "width": 44,
+                      "height": 44,
+                      "padding": [
+                        4,
+                        0,
+                        0,
+                        0
+                      ],
+                      "justifyContent": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "Jtasl",
+                          "width": 18,
+                          "height": 18,
+                          "icon": "ellipsis",
+                          "library": "lucide",
+                          "fill": "#9aa5ad"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "ypZQg",
+                  "name": "Paragraph",
+                  "width": "fill_container",
+                  "fill": "#eef3f6",
+                  "cornerRadius": 8,
+                  "gap": 4,
+                  "padding": [
+                    6,
+                    0,
+                    6,
+                    8
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "VjoW7",
+                      "fill": "#1c2329",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Отличие от обычного чат-бота в цикле. Бот отвечает один раз; агент повторяет «подумать — сделать — проверить», пока задача не решена.",
+                      "lineHeight": 1.6,
+                      "fontFamily": "Source Serif 4",
+                      "fontSize": 17,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "MitxO",
+                      "name": "Ellipsis (44pt target)",
+                      "width": 44,
+                      "height": 44,
+                      "padding": [
+                        4,
+                        0,
+                        0,
+                        0
+                      ],
+                      "justifyContent": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "KDF59",
+                          "width": 18,
+                          "height": 18,
+                          "icon": "ellipsis",
+                          "library": "lucide",
+                          "fill": "#2f6f5e"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "to9z8",
+                  "name": "Inline answer",
+                  "width": "fill_container",
+                  "fill": "#eaf4f0",
+                  "cornerRadius": 10,
+                  "stroke": "#2f6f5e",
+                  "strokeWidth": {
+                    "left": 3
+                  },
+                  "layout": "vertical",
+                  "gap": 8,
+                  "padding": [
+                    14,
+                    16
+                  ],
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "K4Zke",
+                      "width": "fill_container",
+                      "justifyContent": "space_between",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "o0qJvd",
+                          "fill": "#2f6f5e",
+                          "content": "Объясни проще",
+                          "fontFamily": "Inter",
+                          "fontSize": 13,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "icon",
+                          "id": "B22eP7",
+                          "width": 16,
+                          "height": 16,
+                          "icon": "x",
+                          "library": "lucide",
+                          "fill": "#5e6a72"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "h7nEo3",
+                      "fill": "#1c2329",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Бот — как справочная: спросил, получил ответ. Агент — как помощник с поручением: он сам делает шаги, проверяет, что вышло, и продолжает, пока дело не сделано.",
+                      "lineHeight": 1.55,
+                      "fontFamily": "Inter",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "IkqXZ",
+                  "name": "Paragraph",
+                  "width": "fill_container",
+                  "fill": "#00000000",
+                  "cornerRadius": 8,
+                  "gap": 4,
+                  "padding": [
+                    6,
+                    0,
+                    6,
+                    8
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "JkTFB",
+                      "fill": "#1c2329",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Поэтому агенту нужны границы: какие инструменты ему доступны, сколько шагов он может сделать и когда он обязан остановиться и спросить человека.",
+                      "lineHeight": 1.6,
+                      "fontFamily": "Source Serif 4",
+                      "fontSize": 17,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Kqc4z",
+                      "name": "Ellipsis (44pt target)",
+                      "width": 44,
+                      "height": 44,
+                      "padding": [
+                        4,
+                        0,
+                        0,
+                        0
+                      ],
+                      "justifyContent": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "sD6P5",
+                          "width": 18,
+                          "height": 18,
+                          "icon": "ellipsis",
+                          "library": "lucide",
+                          "fill": "#9aa5ad"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "pcCTb",
+                  "width": "fill_container",
+                  "padding": [
+                    24,
+                    0,
+                    0,
+                    0
+                  ],
+                  "justifyContent": "space_between",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "pWxQw",
+                      "fill": "#2f6f5e",
+                      "content": "‹ Введение",
+                      "fontFamily": "Inter",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "t0QS52",
+                      "fill": "#2f6f5e",
+                      "content": "§2 Инструменты ›",
+                      "fontFamily": "Inter",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "fileToken": "14b63d01-35e0-4b55-a4b3-75547b337511"
+}
