@@ -174,10 +174,8 @@ def analyze_file(path: Path, large_result_threshold: int) -> SessionStats:
                     if not isinstance(block, dict) or block.get("type") != "tool_result":
                         continue
                     cid = block.get("tool_use_id") if isinstance(block.get("tool_use_id"), str) else None
-                    # Only size results whose id matches a tool_use seen in this file.
-                    if cid and cid not in t.pending:
-                        continue
-                    t.result(block.get("content"))
+                    # Unmatched output is separate evidence, preserving legacy counters.
+                    t.result(block.get("content"), t.pending.get(cid), counted=not cid or cid in t.pending)
 
     s.extras = {"usage": dict(usage)}
     s.tokens = normalize_tokens(usage)

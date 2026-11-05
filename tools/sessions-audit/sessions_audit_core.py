@@ -125,6 +125,9 @@ class SessionStats:
     extras: dict[str, Any] = field(default_factory=dict)
     subagent_models: Counter = field(default_factory=Counter)
     tool_names: Counter = field(default_factory=Counter)
+    duplicate_skills: Counter = field(default_factory=Counter)
+    large_result_tools: Counter = field(default_factory=Counter)
+    unmatched_large_results: int = 0
 
     @property
     def score(self) -> int:
@@ -158,6 +161,9 @@ def merge_stats(dst: SessionStats, src: SessionStats) -> None:
         dst.tokens[k] = dst.tokens.get(k, 0) + src.tokens.get(k, 0)
     dst.subagent_models.update(src.subagent_models)
     dst.tool_names.update(src.tool_names)
+    dst.duplicate_skills.update(src.duplicate_skills)
+    dst.large_result_tools.update(src.large_result_tools)
+    dst.unmatched_large_results += src.unmatched_large_results
 
 
 class Tracker:
@@ -219,18 +225,24 @@ class Tracker:
         self.skill_counts[name] += 1
         if self.skill_counts[name] > 1:
             self.s.duplicate_skill_loads += 1
+            self.s.duplicate_skills[name] += 1
 
     def subagent(self, inp: Any) -> None:
         self.s.subagents += 1
         model = inp.get("model") if isinstance(inp, dict) else None
         self.s.subagent_models[str(model or "unspecified")] += 1
 
-    def result(self, content: Any) -> None:
+    def result(self, content: Any, tool: str | None = None, counted: bool = True) -> None:
         n = text_size(content)
-        self.s.result_chars += n
-        self.s.largest_result_chars = max(self.s.largest_result_chars, n)
+        if counted:
+            self.s.result_chars += n
+            self.s.largest_result_chars = max(self.s.largest_result_chars, n)
         if n >= self.threshold:
-            self.s.large_results += 1
+            self.s.large_result_tools[tool or "(unknown)"] += 1
+            if counted:
+                self.s.large_results += 1
+            else:
+                self.s.unmatched_large_results += 1
 
 
 # --------------------------------------------------------------------------
@@ -465,6 +477,118 @@ def run_agent(adapter: Any, source_arg: Any, window: Window, threshold: int, **k
 
 
 # --------------------------------------------------------------------------
+# Recommendations (opt-in; independent of the legacy session score)
+
+RECOMMENDATION_WEIGHTS = {
+    "unfiltered_builds": 5, "repeated_reads": 4, "duplicate_skill_loads": 3,
+    "repeated_checks": 3, "polling_candidates": 1, "large_results": 2,
+    "unmatched_large_results": 2,
+}
+RECOMMENDATION_RULES = (
+    ("builds", "Filter build output", ("unfiltered_builds",),
+     "Pipe xcodebuild and swift build/test output through xcsift, or use -quiet; retain the failure summary."),
+    ("reads", "Read focused ranges", ("repeated_reads",),
+     "Use offset/limit or bounded line ranges; retain notes about unchanged files to avoid repeated reads."),
+    ("skills", "Retain loaded skill instructions", ("duplicate_skill_loads",),
+     "Retain already loaded instructions and reuse them; trim instructions to the relevant sections instead of reloading skills."),
+    ("waiting", "Replace repeated waiting", ("polling_candidates", "repeated_checks"),
+     "Use a wakeup for a later status change, or stop waiting on CI and hand off its status; avoid repeated checks."),
+    ("results", "Bound large tool output", ("large_results", "unmatched_large_results"),
+     "Bound producing tools with output limits, scoped queries or head/tail; request only the needed result fields."),
+)
+RECOMMENDATION_LIMIT = 5
+BREAKDOWN_LIMIT = 3
+
+
+def recommendation_details(s: SessionStats) -> dict[str, Any]:
+    return {
+        "duplicate_skills": dict(sorted(s.duplicate_skills.items())),
+        "large_result_tools": dict(sorted(s.large_result_tools.items())),
+        "unmatched_large_results": s.unmatched_large_results,
+    }
+
+
+def recommendations(items: list[SessionStats]) -> list[dict[str, Any]]:
+    rows = []
+    ordered = sorted(items, key=lambda s: (s.project, s.agent, s.path))
+    for key, title, metrics, suggestion in RECOMMENDATION_RULES:
+        evidence = []
+        groups: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
+        skills: Counter = Counter()
+        tools: Counter = Counter()
+        for s in ordered:
+            counts = {m: getattr(s, m) for m in metrics}
+            score = score_of(counts, RECOMMENDATION_WEIGHTS)
+            if not score:
+                continue
+            e = {"agent": s.agent, "project": s.project, "path": s.path,
+                 "metrics": counts, "score": score}
+            if key == "skills":
+                e["duplicate_skills"] = dict(sorted(s.duplicate_skills.items()))
+                skills.update(s.duplicate_skills)
+            if key == "results":
+                e["large_result_tools"] = dict(sorted(s.large_result_tools.items()))
+                tools.update(s.large_result_tools)
+            evidence.append(e)
+            groups[s.project, s.agent].append(e)
+        if not evidence:
+            continue
+
+        def summary(entries: list[dict[str, Any]]) -> dict[str, Any]:
+            return {"score": sum(e["score"] for e in entries),
+                    "affected_sessions": len(entries),
+                    "metrics": {m: sum(e["metrics"][m] for e in entries) for m in metrics}}
+
+        breakdown = [{"project": project, "agent": agent, **summary(entries)}
+                     for (project, agent), entries in groups.items()]
+        breakdown.sort(key=lambda r: (-r["score"], -r["affected_sessions"], r["project"], r["agent"]))
+        for rank, row in enumerate(breakdown, 1):
+            row["rank"] = rank
+        row = {"id": key, "title": title, "suggestion": suggestion, **summary(evidence),
+               "breakdown": breakdown, "evidence": evidence}
+        if key == "skills":
+            row["duplicate_skills"] = dict(sorted(skills.items()))
+        if key == "results":
+            row["large_result_tools"] = dict(sorted(tools.items()))
+        rows.append(row)
+    rows.sort(key=lambda r: (-r["score"], r["id"]))
+    rows = rows[:RECOMMENDATION_LIMIT]
+    for rank, row in enumerate(rows, 1):
+        row["rank"] = rank
+    return rows
+
+
+def print_recommendations(rows: list[dict[str, Any]], out: TextIO) -> None:
+    def safe(value: str) -> str:
+        # Transcript labels can contain Markdown delimiters or newlines.
+        value = " ".join(value.split())
+        value = re.sub(r"([\\`*_{}\[\]()#+.!|<>-])", r"\\\1", value)
+        return value[:120] + ("…" if len(value) > 120 else "")
+
+    def counts(metrics: dict[str, int]) -> str:
+        return ", ".join(f"{k}={v}" for k, v in metrics.items())
+
+    print("# Session recommendations\n", file=out)
+    print("Suggested CLAUDE.md/AGENTS.md guidance; instruction files are never modified.\n", file=out)
+    if not rows:
+        print("No recommendation evidence found.", file=out)
+    for row in rows:
+        print(f"## {row['rank']}. {row['title']}\n", file=out)
+        print(f"{row['suggestion']}\n", file=out)
+        print(f"Evidence: {counts(row['metrics'])}; affected sessions={row['affected_sessions']}; weighted score={row['score']}.\n", file=out)
+        for field, label in (("duplicate_skills", "Reloaded skills (extra loads)"),
+                             ("large_result_tools", "Producing tools (large results)")):
+            if field in row:
+                entries = sorted(row[field].items(), key=lambda kv: (-kv[1], kv[0]))
+                names = ", ".join(f"{safe(k)}={v}" for k, v in entries[:BREAKDOWN_LIMIT])
+                print(f"{label}: {names} (showing {min(len(entries), BREAKDOWN_LIMIT)} of {len(entries)}).\n", file=out)
+        for group in row["breakdown"][:BREAKDOWN_LIMIT]:
+            print(f"- {group['rank']}. {safe(group['project'])} / {safe(group['agent'])}: "
+                  f"score={group['score']}; affected sessions={group['affected_sessions']}; {counts(group['metrics'])}", file=out)
+        print(f"\nRepository/agent rows: showing {min(BREAKDOWN_LIMIT, len(row['breakdown']))} of {len(row['breakdown'])}; JSON retains full evidence.\n", file=out)
+
+
+# --------------------------------------------------------------------------
 # Output
 
 
@@ -487,7 +611,7 @@ def session_json(s: SessionStats) -> dict[str, Any]:
 
 def build_json(
     results: list[AgentResult], window: Window, threshold: int, top: int,
-    group_by_project: bool, now: datetime,
+    group_by_project: bool, now: datetime, recommend: bool = False,
 ) -> dict[str, Any]:
     agents: dict[str, Any] = {}
     for r in results:
@@ -502,8 +626,11 @@ def build_json(
         if group_by_project:
             block["by_project"] = by_project(r.items)
         block["sessions"] = [session_json(s) for s in r.items]
+        if recommend:
+            for record, s in zip(block["sessions"], r.items):
+                record["recommendation_details"] = recommendation_details(s)
         agents[r.name] = block
-    return {
+    payload = {
         "schema_version": SCHEMA_VERSION,
         "generated_at": iso_utc(now),
         "window": window.to_json(),
@@ -511,6 +638,11 @@ def build_json(
         "agents": agents,
         "totals": sum_counters(b["totals"] for b in agents.values()),
     }
+    if recommend:
+        payload["options"]["recommendation_weights"] = dict(RECOMMENDATION_WEIGHTS)
+        payload["options"]["recommendation_limit"] = RECOMMENDATION_LIMIT
+        payload["recommendations"] = recommendations([s for r in results for s in r.items])
+    return payload
 
 
 def fmt_tokens(t: dict[str, int]) -> str:
@@ -618,6 +750,7 @@ def add_common_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--large-result-chars", type=int, default=20_000, help="Threshold for a large tool result")
     parser.add_argument("--by-project", action="store_true", help="Group sessions by git repository root of their cwd")
     parser.add_argument("--json", action="store_true", help="Emit versioned machine-readable JSON")
+    parser.add_argument("--recommend", action="store_true", help="Emit up to five ranked recommendations (Markdown, or additive JSON with --json)")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -679,9 +812,11 @@ def execute(
         parser.error("no agent transcript roots found")
 
     if args.json:
-        payload = build_json(results, window, args.large_result_chars, args.top, args.by_project, now)
+        payload = build_json(results, window, args.large_result_chars, args.top, args.by_project, now, args.recommend)
         json.dump(payload, out, indent=2)
         print(file=out)
+    elif args.recommend:
+        print_recommendations(recommendations([s for r in results for s in r.items]), out)
     else:
         print_text(results, args.large_result_chars, args.top, args.by_project, out)
     return 0

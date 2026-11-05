@@ -4,6 +4,7 @@
 import argparse
 import html.parser
 import json
+import math
 import os
 import re
 import shutil
@@ -20,6 +21,42 @@ SESSION_META_DIR = USAGE_DIR / "session-meta"
 REPORT_HTML = USAGE_DIR / "report.html"
 SCRIPT_DIR = Path(__file__).resolve().parent
 ENV_FILE = SCRIPT_DIR / ".env"
+
+sys.path.insert(0, str(SCRIPT_DIR.parent / "tools" / "sessions-audit"))
+import sessions_audit_core as sessions_audit  # noqa: E402
+import claude_parser  # noqa: E402
+import codex_parser  # noqa: E402
+
+# A fixed export contract keeps future analyzer details local by default.
+HYGIENE_COUNTERS = (
+    "sessions", "score", "tool_calls", "full_reads", "repeated_reads", "builds",
+    "unfiltered_builds", "polling_candidates", "repeated_checks", "skill_loads",
+    "duplicate_skill_loads", "subagents", "large_results", "result_chars", "parse_errors",
+)
+HYGIENE_TOKENS = ("input", "cached", "cache_creation", "output", "reasoning")
+
+
+def collect_context_hygiene(
+    after: datetime, before: datetime, claude_root: Path, codex_home: Path | None = None,
+) -> dict:
+    """Export only aggregate numbers; analyzer window membership uses file mtime."""
+    window = sessions_audit.Window(since=after, until=before)
+    agents = [(claude_parser, claude_root)]
+    if codex_home is not None:
+        agents.append((codex_parser, codex_home))
+    hygiene = {}
+    for adapter, root in agents:
+        result = sessions_audit.run_agent(adapter, root, window, threshold=20_000)
+        totals = sessions_audit.sum_counters(result.items)
+
+        def number(value):
+            return value if type(value) in (int, float) and math.isfinite(value) else 0
+
+        hygiene[adapter.NAME] = {key: number(totals.get(key, 0)) for key in HYGIENE_COUNTERS}
+        hygiene[adapter.NAME]["tokens"] = {
+            key: number(totals.get("tokens", {}).get(key, 0)) for key in HYGIENE_TOKENS
+        }
+    return hygiene
 
 
 def load_jsons(directory: Path) -> dict[str, dict]:
@@ -279,6 +316,7 @@ def push_to_supabase(summary: dict, allow_empty: bool = False) -> None:
         "projects": summary["projects"],
         "narrative_summary": summary.get("narrative_summary", ""),
         "raw_html": summary.get("raw_html", ""),
+        "context_hygiene": summary.get("context_hygiene"),
     }
 
     if not (row["narrative_summary"] or "").strip():
@@ -328,6 +366,7 @@ def main():
     parser.add_argument("--output", "-o", type=str, help="Write JSON to file instead of stdout")
     parser.add_argument("--push", action="store_true", help="Push summary to Supabase")
     parser.add_argument("--refresh", action="store_true", help="Run claude /insights to refresh cache before collecting")
+    parser.add_argument("--with-codex", action="store_true", help="Include Codex context hygiene (active and archived sessions)")
     parser.add_argument("--allow-empty-narrative", action="store_true", help="Push even when the narrative is empty (overrides the degraded-push guard)")
     args = parser.parse_args()
 
@@ -359,7 +398,6 @@ def main():
     metas = filter_by_date(all_metas, after, before)
     if not metas:
         print(f"No sessions found between {after.date()} and {before.date()}", file=sys.stderr)
-        sys.exit(0)
 
     narrative, raw_html = extract_narrative(REPORT_HTML)
 
@@ -367,6 +405,10 @@ def main():
         "period": {"from": str(after.date()), "to": str(before.date())},
         "generated_at": now.isoformat(),
         **aggregate(all_facets, metas),
+        "context_hygiene": collect_context_hygiene(
+            after, before, sessions_audit.default_claude_root(),
+            sessions_audit.default_codex_home() if args.with_codex else None,
+        ),
         "narrative_summary": narrative,
         "raw_html": raw_html,
     }
