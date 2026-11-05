@@ -1,7 +1,10 @@
 import { Box3, DirectionalLight, Group, HemisphereLight, Mesh, OrthographicCamera, Scene, Vector3, WebGLRenderer } from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import modelUrl from "./assets/home/skeleton-hero/tyrannosaurus.glb?url&no-inline";
-import type { SkeletonScene } from "./homeSkeletonHero.ts";
+type RenderedSkeleton = {
+  draw(width: number, height: number, yaw: number): void;
+  dispose(): void;
+};
 
 function disposeModel(model: Group): void {
   model.traverse(object => {
@@ -11,7 +14,7 @@ function disposeModel(model: Group): void {
   });
 }
 
-export async function skeletonHeroScene(canvas: HTMLCanvasElement, signal: AbortSignal, pixelRatio: number): Promise<SkeletonScene> {
+export async function skeletonHeroScene(canvas: HTMLCanvasElement, signal: AbortSignal, pixelRatio: number): Promise<RenderedSkeleton> {
   const renderer = new WebGLRenderer({ canvas, alpha: true, antialias: true, powerPreference: "low-power" });
   renderer.setPixelRatio(Math.min(pixelRatio, 1.5));
   const releaseRenderer = () => { renderer.dispose(); renderer.forceContextLoss(); };
