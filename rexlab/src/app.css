@@ -13195,6 +13195,8 @@ html[data-size="wide-short"] .jaw-result-actions { gap: var(--ds-space-m); }
 html[data-size="wide-short"] .jaw-result-actions button { height: 56px; font-size: var(--ds-size-18); padding-inline: var(--ds-space-l); }
 html[data-size="wide-short"] .jaw-result-actions svg { width: 26px; height: 26px; }
 html[data-size="wide-short"] .jaw-result-bedrock { display: none; }
+html[data-size="wide-short"] .jaw-result-audio .game-audio-button { width: 48px; padding: 0; }
+html[data-size="wide-short"] .jaw-result-audio .game-audio-button span { display: none; }
 
 /* Museum shelves keep the sand across the whole screen. On a short
    landscape, two columns keep all sixteen places above the bottom edge. */
