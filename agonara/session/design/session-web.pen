@@ -9230,6 +9230,967 @@
       "width": 420,
       "height": 200,
       "content": "Dark frames are instances of the light screens in dark mode: edit the light screen only. Light or dark follows the system setting."
+    },
+    {
+      "type": "frame",
+      "id": "l53yr",
+      "x": 0,
+      "y": 5000,
+      "name": "iPad · Content + menu · Ink & Saffron",
+      "reusable": true,
+      "clip": true,
+      "width": 820,
+      "height": 1180,
+      "fill": "$paper",
+      "children": [
+        {
+          "type": "frame",
+          "id": "q77HN",
+          "x": 0,
+          "y": 0,
+          "name": "Outline",
+          "enabled": false,
+          "width": 300,
+          "height": "fill_container(1180)",
+          "fill": "$paper-deep",
+          "stroke": "$line",
+          "strokeWidth": {
+            "right": 1
+          },
+          "layout": "vertical",
+          "gap": "$space-3xl",
+          "padding": "$space-xl",
+          "children": [
+            {
+              "type": "frame",
+              "id": "rvd7T",
+              "name": "Programs link",
+              "height": 36,
+              "gap": "$space-sm",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "a5Pqgo",
+                  "name": "Icon",
+                  "width": 16,
+                  "height": 16,
+                  "icon": "chevron-left",
+                  "library": "lucide",
+                  "fill": "$accent"
+                },
+                {
+                  "type": "text",
+                  "id": "xpwNb",
+                  "name": "Label",
+                  "fill": "$accent",
+                  "content": "Программы",
+                  "fontFamily": "$font-sans",
+                  "fontSize": "$text-sm",
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "r2pgfn",
+              "name": "Program head",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": "$space-sm",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "V19n2",
+                  "name": "Eyebrow",
+                  "fill": "$accent",
+                  "content": "ПРОГРАММА",
+                  "fontFamily": "$font-sans",
+                  "fontSize": "$text-xs",
+                  "fontWeight": "600",
+                  "letterSpacing": 1.2
+                },
+                {
+                  "type": "text",
+                  "id": "sQMlq",
+                  "name": "Title",
+                  "fill": "$ink",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Агенты на практике",
+                  "lineHeight": 1.2,
+                  "fontFamily": "$font-serif",
+                  "fontSize": "$text-title",
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "bQa81",
+              "name": "Contents",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": "$space-xs",
+              "children": [
+                {
+                  "id": "MExNG",
+                  "type": "ref",
+                  "ref": "V4xCvu",
+                  "name": "Course 01",
+                  "width": "fill_container"
+                },
+                {
+                  "type": "frame",
+                  "id": "t3Ksm",
+                  "name": "Material",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "padding": [
+                    0,
+                    0,
+                    "$space-sm",
+                    35
+                  ],
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "PduO1",
+                      "name": "Material title",
+                      "width": "fill_container",
+                      "gap": "$space-sm",
+                      "padding": [
+                        "$space-xs",
+                        "$space-sm",
+                        "$space-sm",
+                        0
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "G81XR",
+                          "name": "Book",
+                          "width": 15,
+                          "height": 15,
+                          "icon": "book-open",
+                          "library": "lucide",
+                          "fill": "$accent"
+                        },
+                        {
+                          "type": "text",
+                          "id": "c9dQ28",
+                          "name": "Label",
+                          "fill": "$ink",
+                          "content": "Лекция: агент и бот",
+                          "fontFamily": "$font-sans",
+                          "fontSize": "$text-sm",
+                          "fontWeight": "500"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "K8fukn",
+                      "name": "Sections",
+                      "width": "fill_container",
+                      "stroke": "$line",
+                      "strokeWidth": {
+                        "left": 1
+                      },
+                      "layout": "vertical",
+                      "children": [
+                        {
+                          "id": "WQEal",
+                          "type": "ref",
+                          "ref": "ci5uB",
+                          "name": "Введение",
+                          "width": "fill_container",
+                          "height": 36
+                        },
+                        {
+                          "id": "AasSR",
+                          "type": "ref",
+                          "ref": "h9P8r",
+                          "name": "§1  Цикл агента",
+                          "width": "fill_container",
+                          "height": 36
+                        },
+                        {
+                          "id": "R61Dt",
+                          "type": "ref",
+                          "ref": "ci5uB",
+                          "name": "§2  Инструменты",
+                          "width": "fill_container",
+                          "height": 36,
+                          "descendants": {
+                            "J3fwqL": {
+                              "content": "§2  Инструменты"
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "Mq1ah",
+                  "type": "ref",
+                  "ref": "wOzXW",
+                  "name": "Course 02",
+                  "width": "fill_container"
+                },
+                {
+                  "id": "jZoTZ",
+                  "type": "ref",
+                  "ref": "wOzXW",
+                  "name": "Course 03",
+                  "width": "fill_container",
+                  "descendants": {
+                    "qty1S": {
+                      "content": "03"
+                    },
+                    "OoDIH": {
+                      "content": "Оценка результата"
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "DLsj0",
+          "name": "Main",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "children": [
+            {
+              "id": "RtAS8",
+              "type": "ref",
+              "ref": "QLtQB",
+              "name": "Top bar",
+              "width": "fill_container",
+              "height": 56
+            },
+            {
+              "type": "frame",
+              "id": "mZSwh",
+              "name": "Reading area",
+              "width": "fill_container",
+              "height": "fill_container",
+              "layout": "vertical",
+              "padding": [
+                44,
+                0,
+                0,
+                0
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "alvoC",
+                  "name": "Column (margin + 680)",
+                  "width": 792,
+                  "layout": "vertical",
+                  "gap": "$space-xs",
+                  "padding": [
+                    0,
+                    56,
+                    0,
+                    0
+                  ],
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "oTZpJ",
+                      "name": "Section head",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": "$space-md",
+                      "padding": [
+                        0,
+                        0,
+                        "$space-xl",
+                        56
+                      ],
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "YMeJ4",
+                          "name": "Position",
+                          "gap": "$space-md",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "oIdGW",
+                              "name": "Label",
+                              "fill": "$accent",
+                              "content": "§1  ·  СТРАНИЦА 2 ИЗ 5",
+                              "fontFamily": "$font-sans",
+                              "fontSize": "$text-xs",
+                              "fontWeight": "600",
+                              "letterSpacing": 1
+                            },
+                            {
+                              "type": "frame",
+                              "id": "TJ1mt",
+                              "name": "Pages",
+                              "gap": "$space-xs",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": "$radius-xs",
+                                  "id": "TujmB",
+                                  "name": "Page 1",
+                                  "fill": "$accent",
+                                  "width": 6,
+                                  "height": 6
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": "$radius-xs",
+                                  "id": "l1iFT",
+                                  "name": "Page 2",
+                                  "fill": "$accent",
+                                  "width": 20,
+                                  "height": 6
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": "$radius-xs",
+                                  "id": "jWlVW",
+                                  "name": "Page 3",
+                                  "fill": "$line",
+                                  "width": 6,
+                                  "height": 6
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": "$radius-xs",
+                                  "id": "VLlOG",
+                                  "name": "Page 4",
+                                  "fill": "$line",
+                                  "width": 6,
+                                  "height": 6
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": "$radius-xs",
+                                  "id": "mFmob",
+                                  "name": "Page 5",
+                                  "fill": "$line",
+                                  "width": 6,
+                                  "height": 6
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "lFoYx",
+                          "name": "Heading",
+                          "fill": "$ink",
+                          "content": "Цикл агента",
+                          "fontFamily": "$font-serif",
+                          "fontSize": "$text-display",
+                          "fontWeight": "600",
+                          "letterSpacing": -0.5
+                        }
+                      ]
+                    },
+                    {
+                      "id": "d2ghQ",
+                      "type": "ref",
+                      "ref": "s9jGry",
+                      "name": "Paragraph 1",
+                      "width": "fill_container",
+                      "descendants": {
+                        "n2m29": {
+                          "content": "⋯",
+                          "fontSize": "$text-md",
+                          "fill": "$ink-3"
+                        }
+                      }
+                    },
+                    {
+                      "id": "Ob1ZU",
+                      "type": "ref",
+                      "ref": "ykF5j",
+                      "name": "Paragraph 2",
+                      "width": "fill_container"
+                    },
+                    {
+                      "id": "JwfYk",
+                      "type": "ref",
+                      "ref": "TCaVe",
+                      "name": "Answer row",
+                      "width": "fill_container(736)",
+                      "enabled": false
+                    },
+                    {
+                      "id": "nJMWD",
+                      "type": "ref",
+                      "ref": "s9jGry",
+                      "name": "Paragraph 3",
+                      "width": "fill_container",
+                      "descendants": {
+                        "n2m29": {
+                          "content": "⋯",
+                          "fontSize": "$text-md",
+                          "fill": "$ink-3"
+                        },
+                        "LeERO": {
+                          "content": "Поэтому агенту нужны границы: какие инструменты ему доступны, сколько шагов он может сделать и когда он обязан остановиться и спросить человека."
+                        }
+                      }
+                    },
+                    {
+                      "id": "fHag8",
+                      "type": "ref",
+                      "ref": "bw5de",
+                      "name": "Pager",
+                      "width": "fill_container"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "vHGX2",
+          "layoutPosition": "absolute",
+          "x": 0,
+          "y": 0,
+          "name": "Scrim (clear)",
+          "width": 820,
+          "height": 1180,
+          "fill": "#00000000"
+        },
+        {
+          "id": "SGsDw",
+          "type": "ref",
+          "ref": "h7fzph",
+          "name": "Paragraph menu · popover",
+          "layoutPosition": "absolute",
+          "x": 70,
+          "y": 427,
+          "width": 380,
+          "cornerRadius": "$radius-lg",
+          "stroke": "$line",
+          "strokeWidth": 1,
+          "effect": {
+            "type": "shadow",
+            "shadowType": "outer",
+            "color": "#231F1A29",
+            "offset": {
+              "x": 0,
+              "y": 12
+            },
+            "blur": 32
+          },
+          "padding": "$space-lg",
+          "descendants": {
+            "M3j2p": {
+              "enabled": false
+            }
+          }
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "Pp1qL",
+      "x": 880,
+      "y": 5000,
+      "name": "iPad · Outline drawer · Ink & Saffron",
+      "reusable": true,
+      "clip": true,
+      "width": 820,
+      "height": 1180,
+      "fill": "$paper",
+      "children": [
+        {
+          "type": "frame",
+          "id": "ZRaBX",
+          "name": "Main",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "children": [
+            {
+              "id": "q2LFs",
+              "type": "ref",
+              "ref": "QLtQB",
+              "name": "Top bar",
+              "width": "fill_container",
+              "height": 56
+            },
+            {
+              "type": "frame",
+              "id": "EkBGP",
+              "name": "Reading area",
+              "width": "fill_container",
+              "height": "fill_container",
+              "layout": "vertical",
+              "padding": [
+                44,
+                0,
+                0,
+                0
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "G5gkY",
+                  "name": "Column (margin + 680)",
+                  "width": 792,
+                  "layout": "vertical",
+                  "gap": "$space-xs",
+                  "padding": [
+                    0,
+                    56,
+                    0,
+                    0
+                  ],
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "SHa2w",
+                      "name": "Section head",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": "$space-md",
+                      "padding": [
+                        0,
+                        0,
+                        "$space-xl",
+                        56
+                      ],
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "TiQww",
+                          "name": "Position",
+                          "gap": "$space-md",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "VCTCc",
+                              "name": "Label",
+                              "fill": "$accent",
+                              "content": "§1  ·  СТРАНИЦА 2 ИЗ 5",
+                              "fontFamily": "$font-sans",
+                              "fontSize": "$text-xs",
+                              "fontWeight": "600",
+                              "letterSpacing": 1
+                            },
+                            {
+                              "type": "frame",
+                              "id": "LnVlV",
+                              "name": "Pages",
+                              "gap": "$space-xs",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": "$radius-xs",
+                                  "id": "lNuap",
+                                  "name": "Page 1",
+                                  "fill": "$accent",
+                                  "width": 6,
+                                  "height": 6
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": "$radius-xs",
+                                  "id": "e57pa1",
+                                  "name": "Page 2",
+                                  "fill": "$accent",
+                                  "width": 20,
+                                  "height": 6
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": "$radius-xs",
+                                  "id": "DLjYy",
+                                  "name": "Page 3",
+                                  "fill": "$line",
+                                  "width": 6,
+                                  "height": 6
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": "$radius-xs",
+                                  "id": "FLDyJ",
+                                  "name": "Page 4",
+                                  "fill": "$line",
+                                  "width": 6,
+                                  "height": 6
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": "$radius-xs",
+                                  "id": "wxT0M",
+                                  "name": "Page 5",
+                                  "fill": "$line",
+                                  "width": 6,
+                                  "height": 6
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "MMP4v",
+                          "name": "Heading",
+                          "fill": "$ink",
+                          "content": "Цикл агента",
+                          "fontFamily": "$font-serif",
+                          "fontSize": "$text-display",
+                          "fontWeight": "600",
+                          "letterSpacing": -0.5
+                        }
+                      ]
+                    },
+                    {
+                      "id": "VBBkM",
+                      "type": "ref",
+                      "ref": "s9jGry",
+                      "name": "Paragraph 1",
+                      "width": "fill_container",
+                      "descendants": {
+                        "n2m29": {
+                          "content": "⋯",
+                          "fontSize": "$text-md",
+                          "fill": "$ink-3"
+                        }
+                      }
+                    },
+                    {
+                      "id": "YNHsW",
+                      "type": "ref",
+                      "ref": "ykF5j",
+                      "name": "Paragraph 2",
+                      "width": "fill_container"
+                    },
+                    {
+                      "id": "yT9Yo",
+                      "type": "ref",
+                      "ref": "TCaVe",
+                      "name": "Answer row",
+                      "width": "fill_container"
+                    },
+                    {
+                      "id": "OG0Mv",
+                      "type": "ref",
+                      "ref": "s9jGry",
+                      "name": "Paragraph 3",
+                      "width": "fill_container",
+                      "descendants": {
+                        "n2m29": {
+                          "content": "⋯",
+                          "fontSize": "$text-md",
+                          "fill": "$ink-3"
+                        },
+                        "LeERO": {
+                          "content": "Поэтому агенту нужны границы: какие инструменты ему доступны, сколько шагов он может сделать и когда он обязан остановиться и спросить человека."
+                        }
+                      }
+                    },
+                    {
+                      "id": "Jjqrk",
+                      "type": "ref",
+                      "ref": "bw5de",
+                      "name": "Pager",
+                      "width": "fill_container"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "Nz2GF",
+          "layoutPosition": "absolute",
+          "x": 0,
+          "y": 0,
+          "name": "Scrim",
+          "width": 820,
+          "height": 1180,
+          "fill": "$scrim"
+        },
+        {
+          "type": "frame",
+          "id": "uIEq8",
+          "layoutPosition": "absolute",
+          "x": 0,
+          "y": 0,
+          "name": "Outline",
+          "width": 320,
+          "height": 1180,
+          "fill": "$paper-deep",
+          "stroke": "$line",
+          "strokeWidth": {
+            "right": 1
+          },
+          "effect": {
+            "type": "shadow",
+            "shadowType": "outer",
+            "color": "#231F1A33",
+            "offset": {
+              "x": 8,
+              "y": 0
+            },
+            "blur": 32
+          },
+          "layout": "vertical",
+          "gap": "$space-3xl",
+          "padding": "$space-xl",
+          "children": [
+            {
+              "type": "frame",
+              "id": "lAU4n",
+              "name": "Programs link",
+              "height": 36,
+              "gap": "$space-sm",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "h2qgX3",
+                  "name": "Icon",
+                  "width": 16,
+                  "height": 16,
+                  "icon": "chevron-left",
+                  "library": "lucide",
+                  "fill": "$accent"
+                },
+                {
+                  "type": "text",
+                  "id": "jU7gv",
+                  "name": "Label",
+                  "fill": "$accent",
+                  "content": "Программы",
+                  "fontFamily": "$font-sans",
+                  "fontSize": "$text-sm",
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "YhrR7",
+              "name": "Program head",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": "$space-sm",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "e9Wsw",
+                  "name": "Eyebrow",
+                  "fill": "$accent",
+                  "content": "ПРОГРАММА",
+                  "fontFamily": "$font-sans",
+                  "fontSize": "$text-xs",
+                  "fontWeight": "600",
+                  "letterSpacing": 1.2
+                },
+                {
+                  "type": "text",
+                  "id": "aYBy0",
+                  "name": "Title",
+                  "fill": "$ink",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Агенты на практике",
+                  "lineHeight": 1.2,
+                  "fontFamily": "$font-serif",
+                  "fontSize": "$text-title",
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "XEq19",
+              "name": "Contents",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": "$space-xs",
+              "children": [
+                {
+                  "id": "K3LcAA",
+                  "type": "ref",
+                  "ref": "V4xCvu",
+                  "name": "Course 01",
+                  "width": "fill_container"
+                },
+                {
+                  "type": "frame",
+                  "id": "gmNLG",
+                  "name": "Material",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "padding": [
+                    0,
+                    0,
+                    "$space-sm",
+                    35
+                  ],
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "QsvOF",
+                      "name": "Material title",
+                      "width": "fill_container",
+                      "gap": "$space-sm",
+                      "padding": [
+                        "$space-xs",
+                        "$space-sm",
+                        "$space-sm",
+                        0
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "xCqu7",
+                          "name": "Book",
+                          "width": 15,
+                          "height": 15,
+                          "icon": "book-open",
+                          "library": "lucide",
+                          "fill": "$accent"
+                        },
+                        {
+                          "type": "text",
+                          "id": "YOQLy",
+                          "name": "Label",
+                          "fill": "$ink",
+                          "content": "Лекция: агент и бот",
+                          "fontFamily": "$font-sans",
+                          "fontSize": "$text-sm",
+                          "fontWeight": "500"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "EHdFZ",
+                      "name": "Sections",
+                      "width": "fill_container",
+                      "stroke": "$line",
+                      "strokeWidth": {
+                        "left": 1
+                      },
+                      "layout": "vertical",
+                      "children": [
+                        {
+                          "id": "jq2ci",
+                          "type": "ref",
+                          "ref": "ci5uB",
+                          "name": "Введение",
+                          "width": "fill_container",
+                          "height": 36
+                        },
+                        {
+                          "id": "OPeKd",
+                          "type": "ref",
+                          "ref": "h9P8r",
+                          "name": "§1  Цикл агента",
+                          "width": "fill_container",
+                          "height": 36
+                        },
+                        {
+                          "id": "yrP5X",
+                          "type": "ref",
+                          "ref": "ci5uB",
+                          "name": "§2  Инструменты",
+                          "width": "fill_container",
+                          "height": 36,
+                          "descendants": {
+                            "J3fwqL": {
+                              "content": "§2  Инструменты"
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "hJaFr",
+                  "type": "ref",
+                  "ref": "wOzXW",
+                  "name": "Course 02",
+                  "width": "fill_container"
+                },
+                {
+                  "id": "AaIb4",
+                  "type": "ref",
+                  "ref": "wOzXW",
+                  "name": "Course 03",
+                  "width": "fill_container",
+                  "descendants": {
+                    "qty1S": {
+                      "content": "03"
+                    },
+                    "OoDIH": {
+                      "content": "Оценка результата"
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "XQXiK",
+      "type": "ref",
+      "ref": "l53yr",
+      "x": 0,
+      "y": 6300,
+      "name": "iPad · Content + menu · Ink & Saffron · Dark",
+      "theme": {
+        "mode": "dark"
+      }
+    },
+    {
+      "id": "DXJsy",
+      "type": "ref",
+      "ref": "Pp1qL",
+      "x": 880,
+      "y": 6300,
+      "name": "iPad · Outline drawer · Ink & Saffron · Dark",
+      "theme": {
+        "mode": "dark"
+      }
+    },
+    {
+      "type": "note",
+      "id": "jZB0Y",
+      "x": -480,
+      "y": 5000,
+      "width": 420,
+      "height": 220,
+      "content": "Medium width (600-1023), iPad portrait 820 x 1180. Touch, so each paragraph shows a muted ⋯ in its margin. The paragraph menu opens as a popover under its ⋯; a tap outside closes it. Contents opens the outline as a drawer from the left over a scrim."
     }
   ],
   "themes": {

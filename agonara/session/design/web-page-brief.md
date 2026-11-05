@@ -62,8 +62,9 @@ can be as narrow as a phone. Three widths:
   area), and the bottom sheet does too.
 - **Light and dark** follow the system setting.
 
-The frames show compact (375) and wide (1280); medium is described here, not
-drawn.
+The frames show all three: compact (iPhone, 375), medium (iPad portrait,
+820 × 1180, with the menu as a popover and with the outline drawer open)
+and wide (1280).
 
 ## Look: Ink & Saffron
 
