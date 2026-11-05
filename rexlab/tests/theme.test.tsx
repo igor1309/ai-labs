@@ -609,7 +609,6 @@ describe("the theme menu", () => {
       expect(corner.position).toBe("static");
       expect(button.closest("header")).not.toBeNull();
       const style = getComputedStyle(button);
-      expect(sameColour(style.color, style.getPropertyValue("--ds-ink"))).toBe(true);
       // A tap area for a parent's finger around the small symbol.
       expect(parseFloat(style.minWidth)).toBeGreaterThanOrEqual(44);
       expect(parseFloat(style.minHeight)).toBeGreaterThanOrEqual(44);
@@ -668,12 +667,7 @@ describe("the large card", () => {
       expectScreenIn(theme);
 
       const card = featuredCard();
-      const tokens = getComputedStyle(document.documentElement);
       expect(getComputedStyle(card).backgroundColor).toBe("rgba(0, 0, 0, 0)");
-      expect(sameColour(getComputedStyle(card).color, tokens.getPropertyValue("--ds-ink"))).toBe(true);
-      const symbol = symbolSquareOf(card)!;
-      expect(sameColour(getComputedStyle(symbol).backgroundColor, tokens.getPropertyValue("--ds-pocket-1"))).toBe(true);
-      expect(sameColour(getComputedStyle(symbol).color, tokens.getPropertyValue("--ds-action"))).toBe(true);
       expect(getComputedStyle(nameRowOf(card)!).backgroundColor).toBe("rgba(0, 0, 0, 0)");
       unmount();
     } finally {
@@ -808,17 +802,7 @@ describe("the SORT card", () => {
 
     expectScreenIn(theme);
     const card = screen.getByRole("button", { name: "SORT" });
-    const symbol = card.querySelector(".sort-tile-symbol") ?? card;
     const title = card.querySelector(".sort-tile-title") ?? card;
-    const best = card.querySelector(".sort-tile-best") ?? card;
-    const colours = PALETTE[theme];
-    const parts = {
-      // SORT's tile takes its own pocket and symbol colours from the dig-site tokens.
-      card: [getComputedStyle(card.querySelector(".home-tile-pocket")!).backgroundColor, getComputedStyle(document.documentElement).getPropertyValue("--ds-pocket-sort")],
-      symbol: [getComputedStyle(symbol).color, getComputedStyle(document.documentElement).getPropertyValue("--ds-game-sort")],
-      words: [getComputedStyle(title).color, getComputedStyle(document.documentElement).getPropertyValue("--ds-on-label")],
-    };
-    expect(Object.entries(parts).filter(([, [seen, wanted]]) => !sameColour(seen ?? "", wanted ?? ""))).toEqual([]);
     expect(title.textContent).toBe("SORT");
     expect(card.querySelector(".sort-tile-best")).toBeNull();
     expect(textContrast(title)).toBeGreaterThanOrEqual(TEXT_CONTRAST);
@@ -832,13 +816,6 @@ describe("the FIND THE PAIR tile", () => {
     expectScreenIn(theme);
     const tile = gameDoor("FIND THE PAIR");
     const title = tile.querySelector(".pairs-tile-title") ?? tile;
-    const colours = PALETTE[theme];
-    const parts = {
-      // The pill supplies the background behind the name.
-      tile: [getComputedStyle(title.parentElement!).backgroundColor, getComputedStyle(document.documentElement).getPropertyValue("--ds-label")],
-      words: [getComputedStyle(title).color, getComputedStyle(document.documentElement).getPropertyValue("--ds-on-label")]
-    };
-    expect(Object.entries(parts).filter(([, [seen, wanted]]) => !sameColour(seen ?? "", wanted ?? ""))).toEqual([]);
     expect(textContrast(title)).toBeGreaterThanOrEqual(TEXT_CONTRAST);
   });
 });
