@@ -2,7 +2,6 @@ import { act, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { AppProps, PortraitLayouts, SizeClass } from "../src/App.tsx";
 import { TEXTS } from "../src/language/texts.ts";
-import { pairsResultGeometry } from "../src/pairsResultLayout.ts";
 import { drawnOpacity, extendPart, turnFrame } from "../src/root.ts";
 import type { Box, TurnAnimation } from "../src/turnMotion.ts";
 import { endWave, openPairsApp, playBoard } from "./pairsApp.tsx";
@@ -31,7 +30,7 @@ const FOUND = Array.from({ length: COUNT }, (_, index) => `pairs-found-${index}`
 
 // The rewards and the actions, from the top of the column down, each with
 // the width and height it stands at in either layout.
-const COLUMN_PARTS = ["pairs-celebration", "pairs-tries", "pairs-stars", "pairs-title", "pairs-best", "pairs-actions"];
+const COLUMN_PARTS = ["pairs-tries", "pairs-stars", "pairs-title", "pairs-celebration", "pairs-best", "pairs-actions"];
 const SIZES: Record<string, [number, number]> = {
   "pairs-celebration": [240, 60], "pairs-tries": [300, 96], "pairs-stars": [120, 48], "pairs-title": [300, 48], "pairs-best": [220, 48], "pairs-actions": [560, 72]
 };
@@ -52,7 +51,7 @@ function resultBox(element: Element): Box {
   const columnHeight = COLUMN_PARTS.reduce((sum, each) => sum + SIZES[each]![1], 0) + 5 * 16;
   const index = FOUND.indexOf(name);
   if (document.documentElement.dataset.size === "tall") {
-    const geometry = pairsResultGeometry({ count: COUNT, badgeRows: 1 }, width, height, 0, 0);
+    const geometry = { rows: 3, width: width - 64, column: 500, card: { width: 200, height: 184 } };
     const cards = geometry.rows * geometry.card.height + (geometry.rows - 1) * 16;
     const top = 32 + Math.max(0, height - 84 - cards - geometry.column) / 2;
     if (index >= 0) return { left: 32 + Math.floor(index % 3) * (geometry.card.width + 16), top: top + Math.floor(index / 3) * (geometry.card.height + 16), width: geometry.card.width, height: geometry.card.height };

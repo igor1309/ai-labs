@@ -5270,8 +5270,7 @@ html[data-size="tall-narrow"] .narrow-hidden,
 html[data-size="wide-short"] .home .narrow-hidden,
 html[data-size="wide-short"] .question .narrow-hidden,
 html[data-size="wide-short"] .result-with-levels .narrow-hidden,
-html[data-size="wide-short"] .dig-reveal-screen .narrow-hidden,
-html[data-size="wide-short"] .pairs-result .narrow-hidden {
+html[data-size="wide-short"] .dig-reveal-screen .narrow-hidden {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -5314,486 +5313,6 @@ html[data-size="wide-short"] .dig-field-guide-screen .home-button .upright-hidde
     translate: 0 calc(-16px * var(--motion-amount));
     rotate: calc(-3deg * var(--motion-amount));
   }
-}
-
-/* The result: the board's dinosaurs on the left, those found for the
-   first time marked NEW, and the tries on the right. */
-.pairs-found {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
-}
-
-.pairs-found[data-count="4"] {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-/* The large results keep the design's three columns and up to four rows.
-   Rows share the screen's height; the art yields room to every name. */
-.pairs-result[data-large] .pairs-found {
-  height: 100%;
-  max-height: calc(var(--found-rows) * 162px + (var(--found-rows) - 1) * 14px);
-  grid-template-rows: repeat(var(--found-rows), minmax(0, 1fr));
-  gap: 14px;
-}
-
-.pairs-result[data-large] .pairs-found-art {
-  flex: 1 1 0;
-  min-height: 0;
-  aspect-ratio: auto;
-}
-
-.pairs-result .result-content {
-  min-width: 0;
-  gap: clamp(16px, 2vh, 24px);
-  gap: clamp(16px, 2dvh, 24px);
-}
-
-.pairs-result .result-title {
-  font-size: clamp(32px, 3.34vw, 48px);
-  line-height: 1.2;
-}
-
-/* PLAY AGAIN, BACK and HOME share the right column's width. */
-.pairs-result .result-actions {
-  gap: 10px;
-}
-
-.pairs-result .result-actions button {
-  flex-shrink: 0;
-  height: clamp(64px, 8.9vh, 80px);
-  height: clamp(64px, 8.9dvh, 80px);
-  padding: 0 clamp(12px, 1.2vw, 32px);
-  gap: 8px;
-  font-size: clamp(20px, 1.8vw, 26px);
-  white-space: nowrap;
-}
-
-.pairs-found-card {
-  position: relative;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  border-radius: 20px;
-  background: #fffdf8;
-  color: #1d2742;
-  container-type: inline-size;
-  animation: rise-in var(--motion-standard) var(--ease-out) both;
-  animation-delay: calc(var(--card) * var(--motion-stagger) * 1.5);
-}
-
-.pairs-found-art {
-  aspect-ratio: 4 / 3;
-  box-sizing: border-box;
-  padding: 10px;
-  display: flex;
-  background: #e6e2d9;
-}
-
-.pairs-found-picture {
-  display: block;
-  width: 100%;
-  height: 100%;
-  min-height: 0;
-  object-fit: contain;
-}
-
-.pairs-found-name {
-  flex-shrink: 0;
-  padding: 8px;
-  /* A name of up to 13 ems stays on one line across its card; the result's
-     fit test checks that every shipped name, in either language, is one. */
-  font-size: min(18px, calc((100cqi - 16px) / 13));
-  line-height: 1.25;
-  font-weight: 700;
-  text-align: center;
-  white-space: nowrap;
-}
-
-.pairs-new-badge {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  height: 32px;
-  box-sizing: border-box;
-  padding: 0 10px;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  border-radius: 16px;
-  background: #e39b2d;
-  color: #1d2742;
-  font-size: 16px;
-  font-weight: 700;
-  animation: pop-in var(--motion-standard) var(--ease-overshoot) both;
-  animation-delay: calc(var(--motion-screen) + var(--card) * var(--motion-stagger) * 1.5);
-}
-
-.pairs-badges {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 16px;
-}
-.pairs-level-up {
-  margin: 0;
-  height: 60px;
-  box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  font-weight: 700;
-  animation: pop-in var(--motion-screen) var(--ease-overshoot) both;
-  padding: 0 20px;
-  gap: 12px;
-  font-size: 26px;
-}
-
-.pairs-next-board {
-  display: grid;
-  grid-template-columns: repeat(var(--columns), 12px);
-  gap: 3px;
-}
-
-.pairs-next-card {
-  height: 15px;
-  border-radius: 3px;
-  background: #1f2b4d;
-}
-
-.pairs-result-tries {
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  line-height: 1;
-}
-
-.pairs-result-tries-value {
-  font-size: min(220px, 22vh);
-  font-size: min(220px, 22dvh);
-  font-weight: 700;
-}
-
-.pairs-result-hand {
-  color: #e39b2d;
-}
-.pairs-result-stars {
-  font-size: 48px;
-  gap: 12px;
-  margin: 0;
-  display: flex;
-  align-items: center;
-  font-weight: 700;
-  line-height: 1;
-}
-
-/* The board's star pops into the stars earned. */
-.pairs-result-star {
-  animation: pop-in var(--motion-standard) var(--ease-overshoot) both;
-  animation-delay: var(--motion-screen);
-}
-
-/* Upright, find the pair's result stands in one centred column as every
-   result does, its dinosaurs on top, 20 above the rewards and the
-   actions, which stand 16 apart. The dinosaurs stand three across, two
-   for four, the width wide, at most 648, and their rows share the height
-   the column leaves: each card at most its landscape shape, which the
-   screen gives in --card-maximum, and never under 90 tall, its art
-   yielding as on a large landscape result. Below that the whole screen
-   scrolls. */
-html[data-size="tall"] .pairs-result .pairs-found,
-html[data-size="tall-narrow"] .pairs-result .pairs-found {
-  flex: 1 0 0;
-  align-self: center;
-  width: 100%;
-  max-width: 648px;
-  height: auto;
-  min-height: calc(var(--found-rows) * 90px + (var(--found-rows) - 1) * 16px);
-  max-height: calc(var(--found-rows) * var(--card-maximum) + (var(--found-rows) - 1) * 16px);
-  grid-template-rows: repeat(var(--found-rows), minmax(0, 1fr));
-  gap: 16px;
-}
-
-html[data-size="tall"] .pairs-result .pairs-found-art,
-html[data-size="tall-narrow"] .pairs-result .pairs-found-art {
-  flex: 1 1 0;
-  min-height: 0;
-  aspect-ratio: auto;
-}
-
-html[data-size="tall"] .pairs-result .result-content,
-html[data-size="tall-narrow"] .pairs-result .result-content {
-  gap: 16px;
-}
-
-/* The tries are 15% of the window's height, at most 180, beside the
-   hand; "WELL DONE!" is 40 on a 48 line. */
-html[data-size="tall"] .pairs-result-tries-value,
-html[data-size="tall-narrow"] .pairs-result-tries-value {
-  font-size: min(180px, 15vh);
-  font-size: min(180px, 15dvh);
-}
-
-html[data-size="tall"] .pairs-result .result-title,
-html[data-size="tall-narrow"] .pairs-result .result-title {
-  font-size: 40px;
-  line-height: 1.2;
-}
-
-/* PLAY AGAIN, BACK and HOME stand 72 tall in one row, in the one type
-   the screen gives in --action-size, so the three fit the width in
-   either language. */
-html[data-size="tall"] .pairs-result .result-actions,
-html[data-size="tall-narrow"] .pairs-result .result-actions {
-  padding-top: 0;
-}
-
-html[data-size="tall"] .pairs-result .result-actions button,
-html[data-size="tall-narrow"] .pairs-result .result-actions button {
-  height: 72px;
-  padding: 0 12px;
-  font-size: var(--action-size);
-}
-
-/* In a tall-narrow window, an iPhone upright, the result stands on
-   20-pixel padding, the dinosaurs 16 above the column and 8 apart, never
-   under 64 tall, the column 12 apart: the tries are 12% of the window's
-   height beside a 64 hand, the stars 40 and "WELL DONE!" 34. PLAY AGAIN
-   stands across the column over BACK and HOME, which share a row, each
-   64 tall and 10 apart, in the type the screen gives in --action-size. */
-html[data-size="tall-narrow"] .pairs-result {
-  gap: 16px;
-}
-
-html[data-size="tall-narrow"] .pairs-result .pairs-found {
-  min-height: calc(var(--found-rows) * 64px + (var(--found-rows) - 1) * 8px);
-  max-height: calc(var(--found-rows) * var(--card-maximum) + (var(--found-rows) - 1) * 8px);
-  gap: 8px;
-}
-
-html[data-size="tall-narrow"] .pairs-result .result-content {
-  gap: 12px;
-}
-
-/* NEW is its sparkle alone on a card 88 wide, the word kept for screen
-   readers. */
-html[data-size="tall-narrow"] .pairs-new-badge {
-  top: 6px;
-  right: 6px;
-  padding: 0 6px;
-}
-
-html[data-size="tall-narrow"] .pairs-badges {
-  gap: 12px;
-}
-
-html[data-size="tall-narrow"] .pairs-result-tries-value {
-  font-size: min(180px, 12vh);
-  font-size: min(180px, 12dvh);
-}
-
-html[data-size="tall-narrow"] .pairs-result-hand {
-  width: 64px;
-  height: 64px;
-}
-
-html[data-size="tall-narrow"] .pairs-result-stars {
-  font-size: 40px;
-}
-
-html[data-size="tall-narrow"] .pairs-result .result-title {
-  font-size: 34px;
-}
-
-html[data-size="tall-narrow"] .pairs-result .result-actions {
-  flex-direction: row;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-html[data-size="tall-narrow"] .pairs-result .result-actions button {
-  flex: 1 1 0;
-  min-width: 0;
-  height: 64px;
-  padding: 0 12px;
-  justify-content: center;
-}
-html[data-size="tall-narrow"] .pairs-result .result-actions .play-again-button {
-  flex-basis: 100%;
-}
-
-/* In a wide-short window, an iPhone on its side, the result keeps the
-   dinosaurs beside a 300-pixel column, 12 under the top and over the
-   bottom and 20 past each side's inset. The dinosaurs stand 8 apart, the
-   rows sharing the height, NEW its sparkle alone. In the
-   column the tries stand beside "WELL DONE!" over the stars, the badges
-   above and the best under them, then PLAY AGAIN across the column over
-   BACK and HOME, each 44 tall, all 6 apart, so even both badges on two
-   rows fit the shortest window, 320 tall. */
-html[data-size="wide-short"] .pairs-result {
-  padding:
-    calc(12px + env(safe-area-inset-top))
-    calc(20px + var(--screen-right))
-    calc(12px + env(safe-area-inset-bottom))
-    calc(20px + var(--screen-left));
-  grid-template-columns: minmax(0, 1fr) 300px;
-  gap: 16px;
-}
-
-html[data-size="wide-short"] .pairs-result {
-  container-type: size;
-}
-
-/* Every board's rows share the height, each at most a card's art at 4:3
-   over its name, in the name's own type and padding, and at most 162, so
-   a small board keeps its cards' shape and a large one fits. The card's
-   width is the room the column leaves, over the columns. */
-html[data-size="wide-short"] .pairs-result .pairs-found {
-  --found-columns: 3;
-  --found-card: calc((100cqw - 316px - (var(--found-columns) - 1) * 8px) / var(--found-columns));
-  height: 100%;
-  max-height: calc(var(--found-rows) * min(162px, var(--found-card) * 0.75 + min(18px, (var(--found-card) - 16px) / 13) * 1.25 + 16px) + (var(--found-rows) - 1) * 8px);
-  grid-template-rows: repeat(var(--found-rows), minmax(0, 1fr));
-  gap: 8px;
-}
-
-html[data-size="wide-short"] .pairs-result .pairs-found[data-count="4"] {
-  --found-columns: 2;
-}
-
-html[data-size="wide-short"] .pairs-result .pairs-found-art {
-  flex: 1 1 0;
-  min-height: 0;
-  aspect-ratio: auto;
-}
-
-html[data-size="wide-short"] .pairs-found-card {
-  border-radius: 12px;
-}
-
-html[data-size="wide-short"] .pairs-result .pairs-found-art {
-  padding: 6px;
-}
-
-html[data-size="wide-short"] .pairs-new-badge {
-  top: 4px;
-  right: 4px;
-  height: 24px;
-  padding: 0 6px;
-  border-radius: 12px;
-}
-
-html[data-size="wide-short"] .pairs-result .result-content {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  gap: 6px 12px;
-}
-
-html[data-size="wide-short"] .pairs-badges {
-  grid-column: 1 / -1;
-  gap: 6px;
-}
-html[data-size="wide-short"] .pairs-result .celebration,
-html[data-size="wide-short"] .pairs-level-up {
-  height: 32px;
-  padding: 0 14px 0 10px;
-  gap: 8px;
-  font-size: 16px;
-}
-html[data-size="wide-short"] .pairs-result .celebration svg,
-html[data-size="wide-short"] .pairs-level-up svg {
-  width: 20px;
-  height: 20px;
-}
-
-html[data-size="wide-short"] .pairs-next-board {
-  grid-template-columns: repeat(var(--columns), 8px);
-  gap: 2px;
-}
-
-html[data-size="wide-short"] .pairs-next-card {
-  height: 9px;
-  border-radius: 2px;
-}
-
-html[data-size="wide-short"] .pairs-result-tries {
-  order: 1;
-  grid-column: 1;
-  grid-row: span 2;
-  gap: 8px;
-}
-
-html[data-size="wide-short"] .pairs-result-tries-value {
-  font-size: 44px;
-}
-
-html[data-size="wide-short"] .pairs-result-hand {
-  width: 36px;
-  height: 36px;
-}
-
-html[data-size="wide-short"] .pairs-result .result-title {
-  order: 2;
-  grid-column: 2;
-  font-size: 24px;
-  line-height: 1.2;
-}
-html[data-size="wide-short"] .pairs-result-stars {
-  font-size: 24px;
-  gap: 6px;
-  order: 3;
-  grid-column: 2;
-}
-html[data-size="wide-short"] .pairs-result .best-score {
-  order: 4;
-  grid-column: 1 / -1;
-  justify-self: center;
-  height: 32px;
-  padding: 0 14px;
-  gap: 8px;
-  font-size: 14px;
-}
-html[data-size="wide-short"] .pairs-result .best-score svg {
-  width: 18px;
-  height: 18px;
-}
-
-html[data-size="wide-short"] .pairs-result .best-score-value {
-  font-size: 16px;
-}
-
-html[data-size="wide-short"] .pairs-result .result-actions {
-  order: 4;
-  grid-column: 1 / -1;
-  align-self: stretch;
-  padding-top: 0;
-  flex-direction: row;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-html[data-size="wide-short"] .pairs-result .result-actions button {
-  flex: 1 1 0;
-  min-width: 0;
-  height: 44px;
-  padding: 0 10px;
-  gap: 6px;
-  justify-content: center;
-  border-radius: 14px;
-  font-size: 16px;
-}
-
-html[data-size="wide-short"] .pairs-result .result-actions svg {
-  width: 20px;
-  height: 20px;
-}
-html[data-size="wide-short"] .pairs-result .result-actions .play-again-button {
-  flex-basis: 100%;
 }
 
 /* The next level is offered over the completed result. The scrim keeps
@@ -9510,7 +9029,6 @@ html[data-size="tall-narrow"] .game-audio-button {
 .level-badge,
 .diet-tag,
 .celebration,
-.pairs-level-up,
 .skeleton-badge-earned,
 .dig-field-guide-new {
   border-radius: var(--ds-radius-tag);
@@ -9522,7 +9040,6 @@ html[data-size="tall-narrow"] .game-audio-button {
 }
 
 .celebration,
-.pairs-level-up,
 .dig-field-guide-new { background-color: var(--ds-reward); color: var(--ds-on-reward); }
 
 .diet-tag-face { background: transparent; }
@@ -9591,8 +9108,7 @@ html[data-size="tall-narrow"] .game-audio-button {
 
 .star,
 .result-heart { color: var(--ds-ink-soft); }
-.star-won,
-.pairs-result-star { color: var(--ds-reward); }
+.star-won { color: var(--ds-reward); }
 .result-heart-won { color: var(--ds-bad); }
 .best-score {
   border-radius: 0;
@@ -9977,8 +9493,7 @@ html[data-theme="dark"],
   box-shadow: 0 8px 24px #00000066;
 }
 
-[data-theme="dark"] .pairs-tile-card,
-[data-theme="dark"] .pairs-found-card {
+[data-theme="dark"] .pairs-tile-card {
   background: #181e2e;
   color: #ece8de;
 }
@@ -9987,21 +9502,8 @@ html[data-theme="dark"],
   background: #2c3b66;
 }
 
-[data-theme="dark"] .pairs-found-art {
-  background: #222a3d;
-}
-
-[data-theme="dark"] .pairs-new-badge {
-  background: #f2b24b;
-}
-
-[data-theme="dark"] .pairs-tile-back,
-[data-theme="dark"] .pairs-result-hand {
+[data-theme="dark"] .pairs-tile-back {
   color: #f2b24b;
-}
-
-[data-theme="dark"] .pairs-next-card {
-  background: #f6f2e9;
 }
 
 /* The skeleton game takes the dark values in the same shapes. */
@@ -13365,3 +12867,163 @@ html .dig-field-guide-screen .dig-guide-unknown { color: var(--ds-ink-soft); fon
    the chip is its star and the count dug up. */
 html .dig-board-screen :is(.dig-chip-words, .dig-chip-of) { display: none; }
 @media (min-width: 1100px) { html .dig-board-screen :is(.dig-chip-words, .dig-chip-of) { display: inline; } }
+
+/* Find the pair's result on the dig site: the found dinosaurs and the score
+   in the sky, the actions on the sand, over bedrock. Sand and bedrock span
+   the grid; each card is as wide as the room lets every row and column be. */
+.pairs-result {
+  --pr-side: var(--ds-space-40); --pr-sand: 144px; --pr-bedrock: 60px; --pr-wave: 30px; --pr-gap: var(--ds-space-m); --pr-card-max: 200px; --pr-ratio: 0.92;
+  position: relative; isolation: isolate; box-sizing: border-box; min-height: 100vh; min-height: 100dvh; height: 100vh; height: 100dvh; display: grid;
+  /* The root holds its content clear of the safe areas; the earth reaches back out to the window's edges. */
+  padding: env(safe-area-inset-top) var(--screen-right) env(safe-area-inset-bottom) var(--screen-left);
+  grid-template-columns: minmax(0, 620fr) minmax(0, 513fr);
+  grid-template-rows: minmax(0, 1fr) var(--pr-sand) var(--pr-bedrock);
+  overflow: hidden; color: var(--ds-ink); font-family: var(--ds-font);
+  background: linear-gradient(var(--ds-sky-top), var(--ds-sky-bottom) 40vh) var(--ds-sky-bottom);
+  background: linear-gradient(var(--ds-sky-top), var(--ds-sky-bottom) 40dvh) var(--ds-sky-bottom);
+}
+body:has(.pairs-result) #version { display: none; }
+.pairs-result[data-count="3"] { --pr-card-max: 182px; }
+.pairs-result[data-count="4"] { --pr-card-max: 172px; }
+.pairs-result-sand { position: relative; z-index: -2; grid-area: 2 / 1 / 3 / -1; margin-inline: calc(-1 * var(--screen-left)) calc(-1 * var(--screen-right)); background: var(--ds-strata-1); }
+.pairs-result-wave { position: absolute; top: -20px; left: 0; width: 100%; height: var(--pr-wave); fill: var(--ds-strata-1); }
+.pairs-result-bedrock { position: relative; z-index: -1; grid-area: 3 / 1 / 4 / -1; margin: 0 calc(-1 * var(--screen-right)) calc(-1 * env(safe-area-inset-bottom)) calc(-1 * var(--screen-left)); background: var(--ds-strata-2); --home-earth: var(--ds-strata-2); }
+.pairs-result-bedrock .home-earth-wave { top: -20px; height: var(--pr-wave); }
+.pairs-result-room { grid-area: 1 / 1; min-width: 0; min-height: 0; box-sizing: border-box; margin: var(--ds-space-40) 0 var(--ds-space-20) var(--pr-side); container-type: size; display: grid; place-items: center; }
+.pairs-found {
+  --pr-card: min(var(--pr-card-max), (100cqw - (var(--columns) - 1) * var(--pr-gap)) / var(--columns), (100cqh - (var(--rows) - 1) * var(--pr-gap)) / var(--rows) / var(--pr-ratio));
+  margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(var(--columns), var(--pr-card)); gap: var(--pr-gap);
+}
+.pairs-found-card {
+  position: relative; box-sizing: border-box; min-width: 0; min-height: calc(var(--pr-card) * var(--pr-ratio)); display: flex; flex-direction: column; gap: var(--ds-space-xs); padding: var(--ds-space-s);
+  border: 2px solid var(--ds-outline); border-radius: var(--ds-radius-12); background: var(--ds-label); color: var(--ds-ink);
+  animation: rise-in var(--motion-standard) var(--ease-out) both; animation-delay: calc(var(--card) * var(--motion-stagger) * 1.5);
+}
+.pairs-found-art { flex: 1 1 0; min-height: 0; display: flex; }
+.pairs-found-picture { display: block; width: 100%; height: 100%; min-height: 0; object-fit: contain; }
+.pairs-found-art .picture[data-picture="loading"] { --shimmer-from: var(--ds-pocket-1); --shimmer-to: var(--ds-strata-1); background-color: var(--ds-pocket-1); border-radius: var(--ds-radius-10); }
+.pairs-found-art:has(.picture[data-picture="failed"]) { display: none; }
+.pairs-found-art:has(.picture[data-picture="failed"]) + .pairs-found-name { flex: 1 1 0; display: grid; place-items: center; }
+/* On a phone a long name breaks over two lines; a wider card keeps it on one,
+   a little smaller. */
+.pairs-found-name { flex-shrink: 0; font-size: var(--ds-size-foot); font-weight: 900; line-height: 1.2; text-align: center; overflow-wrap: anywhere; hyphens: manual; }
+html:is([data-size="wide"], [data-size="tall"]) .pairs-found-name[data-long] { margin-inline: calc(-1 * var(--ds-space-6)); font-size: 12px; overflow-wrap: normal; }
+/* NEW sits inside the card's top-right corner; on a phone, its sparkle alone. */
+.pairs-new-badge {
+  position: absolute; top: var(--ds-space-xs); right: var(--ds-space-xs); display: flex; align-items: center; gap: var(--ds-space-6); padding: var(--ds-space-7) var(--ds-space-m) var(--ds-space-7) var(--ds-btn-gap);
+  border-radius: var(--ds-radius-tag); background: var(--ds-reward); color: var(--ds-on-reward); font-size: var(--ds-size-tag); font-weight: 700; letter-spacing: 1.5px; line-height: 1;
+  animation: pop-in var(--motion-standard) var(--ease-overshoot) both; animation-delay: calc(var(--motion-screen) + var(--card) * var(--motion-stagger) * 1.5);
+}
+.pairs-new-badge svg { flex: none; width: 14px; height: 14px; }
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .pairs-new-badge { padding: var(--ds-space-6); }
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .pairs-new-badge .pairs-new-word { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+
+.pairs-result-column { display: contents; }
+.pairs-result-score { grid-area: 1 / 2; align-self: center; justify-self: center; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: var(--ds-space-14); margin: var(--ds-space-40) calc(var(--ds-space-40) + var(--screen-right)) var(--ds-space-20) 0; }
+.pairs-result-score p, .pairs-result-score h1 { margin: 0; }
+.pairs-level-up { display: flex; align-items: center; gap: var(--ds-space-14); padding: var(--ds-btn-gap) var(--ds-space-18); border-radius: var(--ds-radius-12); background: var(--ds-reward); color: var(--ds-on-reward); font-size: var(--ds-size-24); font-weight: 900; white-space: nowrap; animation: pop-in var(--motion-screen) var(--ease-overshoot) both; }
+.pairs-level-up svg { flex: none; width: 34px; height: 34px; fill: currentColor; }
+.pairs-next-board { display: grid; grid-template-columns: repeat(var(--columns), 12px); gap: var(--ds-space-3); padding: var(--ds-space-6); border-radius: var(--ds-radius-6); background: var(--ds-on-reward); }
+.pairs-next-card { height: 13px; border-radius: var(--ds-radius-2); background: var(--ds-reward); }
+.pairs-result-tries { display: flex; align-items: center; gap: var(--ds-space-14); font-size: var(--ds-size-88); font-weight: 900; line-height: 1; }
+.pairs-result-hand { flex: none; width: 64px; height: 64px; }
+.pairs-result-stars { position: relative; display: flex; align-items: center; gap: var(--ds-btn-gap); padding: var(--ds-space-s) var(--ds-space-18); border-radius: var(--ds-radius-tag); background: var(--ds-quiet); font-size: var(--ds-size-40); font-weight: 900; line-height: 1; }
+.pairs-result-stars > svg { flex: none; width: 40px; height: 40px; color: var(--ds-reward); }
+/* The board's star pops in beside the stars earned. */
+.pairs-result-star { position: absolute; left: -44px; top: -22px; display: flex; color: var(--ds-reward); rotate: -14deg; animation: pop-in var(--motion-standard) var(--ease-overshoot) both; animation-delay: var(--motion-screen); }
+.pairs-result-star svg { width: 30px; height: 30px; }
+.pairs-result-title { font-size: var(--ds-size-40); font-weight: 900; line-height: 1.2; text-align: center; }
+/* The best is quiet when kept, and a reward with its words when it is new. */
+.pairs-best { display: flex; align-items: center; gap: var(--ds-btn-gap); padding: var(--ds-btn-gap) var(--ds-space-l); border-radius: var(--ds-radius-tag); background: var(--ds-quiet); color: var(--ds-ink); }
+.pairs-best[data-celebrating] { background: var(--ds-reward); color: var(--ds-on-reward); }
+.pairs-best svg { flex: none; width: 30px; height: 30px; }
+.pairs-best:not([data-celebrating]) svg { color: var(--ds-reward); }
+.pairs-result .pairs-best .celebration { height: auto; display: flex; align-items: center; gap: var(--ds-btn-gap); padding: 0; border-radius: 0; background: none; color: inherit; font-size: var(--ds-size-tag); font-weight: 800; line-height: 1.2; white-space: nowrap; }
+.pairs-best .best-score { height: auto; display: block; padding: 0; background: none; color: inherit; font-size: var(--ds-size-30); font-weight: 900; line-height: 1; }
+.pairs-best .best-score-value { color: inherit; font-size: inherit; }
+.pairs-best-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+.pairs-result-actions { grid-area: 2 / 1 / 3 / -1; align-self: center; justify-self: center; display: flex; gap: var(--ds-space-l); padding: var(--ds-space-xl) calc(var(--ds-space-40) + var(--screen-right)) 0 calc(var(--ds-space-40) + var(--screen-left)); }
+.pairs-result-actions button {
+  flex: 0 1 auto; min-width: 0; min-height: 44px; display: flex; align-items: center; justify-content: center; box-sizing: border-box; gap: var(--ds-btn-gap); padding: var(--ds-btn-pad-y) var(--ds-btn-pad-x);
+  border: 0; border-radius: var(--ds-radius-pill); box-shadow: none; font-family: var(--ds-font); font-size: var(--ds-size-action); font-weight: 800; line-height: 1.2; white-space: nowrap;
+}
+.pairs-result-actions button svg { flex: none; width: 26px; height: 26px; }
+.pairs-result-actions .play-again-button { background: var(--ds-action); color: var(--ds-on-action); }
+.pairs-result-actions .pairs-result-back { background: var(--ds-strong); color: var(--ds-on-strong); }
+.pairs-result-actions .pairs-result-home { background: none; border: 3px solid var(--ds-ink); color: var(--ds-ink); }
+.pairs-result-actions button:focus-visible { outline: 3px solid var(--ds-action); outline-offset: 2px; }
+
+/* Upright, the dinosaurs stand in the sky by the width alone; the score and
+   actions stand on sand that grows, and below the window the page scrolls. */
+html:is([data-size="tall"], [data-size="tall-narrow"]) .pairs-result {
+  height: auto; overflow: clip; grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(auto, 1fr) auto var(--pr-bedrock);
+}
+html:is([data-size="tall"], [data-size="tall-narrow"]) .pairs-result-sand { grid-area: 2 / 1 / 5 / -1; }
+html:is([data-size="tall"], [data-size="tall-narrow"]) .pairs-result-bedrock { grid-area: 5 / 1 / 6 / -1; }
+html:is([data-size="tall"], [data-size="tall-narrow"]) .pairs-result-room { grid-area: 1 / 1; margin: var(--pr-top) var(--pr-side) var(--ds-space-20); container-type: inline-size; }
+html:is([data-size="tall"], [data-size="tall-narrow"]) .pairs-found { --pr-card: min(var(--pr-card-max), (100cqw - (var(--columns) - 1) * var(--pr-gap)) / var(--columns)); }
+html:is([data-size="tall"], [data-size="tall-narrow"]) .pairs-result-score { grid-area: 3 / 1; margin: var(--ds-space-20) var(--pr-side) var(--ds-space-14); }
+html:is([data-size="tall"], [data-size="tall-narrow"]) .pairs-result-actions { grid-area: 4 / 1; padding: 0 var(--pr-side) var(--ds-space-40); }
+html[data-size="tall"] .pairs-result { --pr-ratio: 0.72; --pr-side: var(--ds-space-40); --pr-top: var(--ds-space-40); --pr-bedrock: 60px; }
+html[data-size="tall-narrow"] .pairs-result { --pr-side: var(--ds-space-20); --pr-top: 60px; --pr-bedrock: 30px; --pr-gap: var(--ds-space-s); --pr-card-max: 100px; }
+html[data-size="tall-narrow"] .pairs-result[data-count="3"] { --pr-card-max: 112px; }
+html[data-size="tall-narrow"] .pairs-result[data-count="4"] { --pr-card-max: 140px; }
+html[data-size="tall-narrow"] .pairs-result-score { gap: var(--ds-space-s); }
+html[data-size="tall-narrow"] .pairs-result-tries { font-size: var(--ds-size-80); }
+html[data-size="tall-narrow"] .pairs-result-hand { width: 56px; height: 56px; }
+html[data-size="tall-narrow"] .pairs-result-title { font-size: var(--ds-size-34); }
+/* On an upright phone PLAY AGAIN stands over BACK and HOME. */
+html[data-size="tall-narrow"] .pairs-result-actions { justify-self: stretch; flex-wrap: wrap; gap: var(--ds-btn-gap); padding-bottom: var(--ds-space-20); }
+html[data-size="tall-narrow"] .pairs-result-actions button { flex: 1 1 0; height: 64px; padding: 0 var(--ds-space-m); }
+html[data-size="tall-narrow"] .pairs-result-actions .play-again-button { flex-basis: 100%; }
+
+/* On a phone on its side the dinosaurs and a 300-wide column fill the
+   window over a strip of sand; there is no bedrock. */
+html[data-size="wide-short"] .pairs-result {
+  --pr-ratio: 0.72; --pr-card-max: 120px; --pr-side: var(--ds-space-20); --pr-gap: var(--ds-space-s); --pr-sand: 77px;
+  grid-template-columns: minmax(0, 1fr) 300px; grid-template-rows: minmax(0, 1fr) var(--pr-sand); column-gap: var(--ds-space-14);
+}
+html[data-size="wide-short"] .pairs-result-bedrock { display: none; }
+html[data-size="wide-short"] .pairs-result-sand { grid-area: 2 / 1 / 3 / -1; margin-bottom: calc(-1 * env(safe-area-inset-bottom)); }
+html[data-size="wide-short"] .pairs-result-room { grid-area: 1 / 1 / 3 / 2; margin: var(--ds-space-s) 0 var(--ds-space-s) var(--pr-side); }
+html[data-size="wide-short"] .pairs-result-column { grid-area: 1 / 2 / 3 / 3; align-self: center; display: flex; flex-direction: column; gap: var(--ds-space-s); margin-right: var(--pr-side); min-width: 0; }
+html[data-size="wide-short"] .pairs-result-score { margin: 0; flex-direction: row; flex-wrap: wrap; justify-content: center; gap: var(--ds-space-6) var(--ds-space-s); }
+html[data-size="wide-short"] .pairs-level-up { order: -1; flex-basis: 100%; justify-content: center; box-sizing: border-box; padding: var(--ds-space-xs) var(--ds-space-m); font-size: var(--ds-size-16); }
+html[data-size="wide-short"] .pairs-level-up svg { width: 22px; height: 22px; }
+html[data-size="wide-short"] .pairs-next-board { display: none; }
+html[data-size="wide-short"] .pairs-result-tries { gap: var(--ds-space-6); font-size: 52px; }
+html[data-size="wide-short"] .pairs-result-hand { width: 40px; height: 40px; }
+html[data-size="wide-short"] .pairs-result-title { order: 1; font-size: var(--ds-size-26); }
+html[data-size="wide-short"] .pairs-result-stars { order: 2; gap: var(--ds-space-6); padding: var(--ds-space-6) var(--ds-space-m); font-size: var(--ds-size-22); }
+html[data-size="wide-short"] .pairs-result-stars > svg { width: 24px; height: 24px; }
+html[data-size="wide-short"] .pairs-result-star { left: -18px; top: -14px; }
+html[data-size="wide-short"] .pairs-result-star svg { width: 18px; height: 18px; }
+html[data-size="wide-short"] .pairs-best { order: 3; gap: var(--ds-space-6); padding: var(--ds-space-6) var(--ds-space-m); }
+html[data-size="wide-short"] .pairs-best svg { width: 22px; height: 22px; }
+html[data-size="wide-short"] .pairs-best .celebration { gap: var(--ds-space-6); font-size: var(--ds-size-13); }
+html[data-size="wide-short"] .pairs-best .best-score { font-size: var(--ds-size-22); }
+html[data-size="wide-short"] .pairs-result-actions { flex-wrap: wrap; gap: var(--ds-space-s); padding: 0; justify-self: stretch; }
+html[data-size="wide-short"] .pairs-result-actions button { flex: 1 1 0; height: 52px; padding: 0 var(--ds-space-m); font-size: var(--ds-size-20); }
+html[data-size="wide-short"] .pairs-result-actions .play-again-button { flex-basis: 100%; }
+
+/* The level offer in the dig site's look, only where a game asks for it. */
+.pairs-offer-scrim[data-dig]::before { background: var(--ds-scrim); opacity: 1; }
+.pairs-offer[data-dig] { width: min(620px, 100%); gap: var(--ds-space-20); padding: 36px; border-radius: var(--ds-radius-panel); background: var(--ds-label); color: var(--ds-ink); font-family: var(--ds-font); }
+.pairs-offer-tag { display: flex; align-items: center; gap: var(--ds-space-6); margin: 0; padding: var(--ds-space-7) var(--ds-space-m) var(--ds-space-7) var(--ds-btn-gap); border-radius: var(--ds-radius-tag); background: var(--ds-reward); color: var(--ds-on-reward); font-size: var(--ds-size-tag); font-weight: 700; letter-spacing: 1.5px; line-height: 1; white-space: nowrap; }
+.pairs-offer-tag svg { flex: none; width: 14px; height: 14px; }
+.pairs-offer[data-dig] .pairs-offer-picture { width: 120px; height: 96px; border-radius: 48px 48px var(--ds-radius-24) var(--ds-radius-24); background: var(--ds-pocket-1); box-shadow: inset 0 6px 12px var(--ds-pocket-shadow); font-size: 56px; }
+.pairs-offer[data-dig] .pairs-offer-question { font-size: var(--ds-size-title); font-weight: 800; letter-spacing: -0.5px; }
+.pairs-offer[data-dig] .pairs-offer-answers { width: auto; flex-direction: row; justify-content: center; gap: var(--ds-space-l); }
+.pairs-offer[data-dig] .pairs-offer-answers button { flex: 0 1 auto; height: auto; min-height: 44px; padding: var(--ds-btn-pad-y) var(--ds-btn-pad-x); gap: var(--ds-btn-gap); border: 0; border-radius: var(--ds-radius-pill); box-shadow: none; font-family: var(--ds-font); font-size: var(--ds-size-action); font-weight: 800; }
+.pairs-offer[data-dig] .pairs-offer-answers svg { width: 26px; height: 26px; }
+.pairs-offer[data-dig] .pairs-offer-yes { background: var(--ds-action); color: var(--ds-on-action); }
+.pairs-offer[data-dig] .pairs-offer-not-now { background: none; border: 3px solid var(--ds-ink); color: var(--ds-ink); }
+html[data-size="tall-narrow"] .pairs-offer[data-dig] { padding: var(--ds-space-28) var(--ds-space-20); }
+html[data-size="tall-narrow"] .pairs-offer[data-dig] .pairs-offer-answers { width: 100%; flex-direction: column; gap: var(--ds-btn-gap); }
+html[data-size="tall-narrow"] .pairs-offer[data-dig] .pairs-offer-answers button { flex: none; width: 100%; }
+html[data-size="wide-short"] .pairs-offer[data-dig] { width: min(460px, 100%); gap: var(--ds-space-m); padding: var(--ds-space-20) var(--ds-space-28); }
+html[data-size="wide-short"] .pairs-offer[data-dig] .pairs-offer-picture { width: 84px; height: 64px; font-size: 36px; }
+html[data-size="wide-short"] .pairs-offer[data-dig] .pairs-offer-question { font-size: var(--ds-size-26); }
+html[data-size="wide-short"] .pairs-offer[data-dig] .pairs-offer-answers button { height: 52px; padding-block: 0; }

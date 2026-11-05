@@ -1,4 +1,4 @@
-import { Check, X } from "lucide-react";
+import { ArrowUp, Check, X } from "lucide-react";
 import { useEffect, useId, useRef, type ReactNode } from "react";
 import type { AgeLevel } from "./ageLevel.ts";
 import { AGE_LEVEL_PICTURES } from "./ageLevelPictures.ts";
@@ -17,8 +17,10 @@ export type LevelOfferProps = {
   startTimer: StartTimer;
 };
 
-export function LevelOfferDialog({ controls, language, offer, leaving, onShown, onAnswer, onGone }: {
+export function LevelOfferDialog({ controls, digSite = false, language, offer, leaving, onShown, onAnswer, onGone }: {
   controls?: ReactNode;
+  // The dig site's look: a tag over the picture and NOT NOW before YES.
+  digSite?: boolean;
   language: Language;
   offer: LevelOfferProps;
   leaving: boolean;
@@ -47,9 +49,19 @@ export function LevelOfferDialog({ controls, language, offer, leaving, onShown, 
       callbacks.current.onGone();
     });
   }, [leaving, offer.startTimer, gateShown]);
+  const yes = (
+    <Button className="pairs-offer-yes" disabled={leaving} onClick={() => onAnswer("yes")}>
+      <Check size={30} aria-hidden="true" />{text.levelOffer.yes}
+    </Button>
+  );
+  const notNow = (
+    <Button className="pairs-offer-not-now" disabled={leaving} onClick={() => onAnswer("not-now")}>
+      <X size={30} aria-hidden="true" />{text.levelOffer.notNow}
+    </Button>
+  );
   return (
-    <div ref={overlay} className="pairs-offer-scrim" data-leaving={leaving || undefined}>
-      <section className="pairs-offer" role="dialog" aria-modal="true" aria-labelledby={title}
+    <div ref={overlay} className="pairs-offer-scrim" data-dig={digSite || undefined} data-leaving={leaving || undefined}>
+      <section className="pairs-offer" data-dig={digSite || undefined} role="dialog" aria-modal="true" aria-labelledby={title}
         onKeyDown={(event) => {
           if (event.key !== "Tab") return;
           const buttons = overlay.current?.querySelectorAll<HTMLButtonElement>("button");
@@ -59,15 +71,11 @@ export function LevelOfferDialog({ controls, language, offer, leaving, onShown, 
           if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
         }}>
         {controls}
+        {digSite && <p className="pairs-offer-tag"><ArrowUp aria-hidden="true" />{text.levelOffer.tag}</p>}
         <span className="pairs-offer-picture" aria-hidden="true">{AGE_LEVEL_PICTURES[offer.level]}</span>
         <h2 id={title} className="pairs-offer-question">{text.levelOffer.question(text.ageLevels[offer.level].name)}</h2>
         <div className="pairs-offer-answers">
-          <Button className="pairs-offer-yes" disabled={leaving} onClick={() => onAnswer("yes")}>
-            <Check size={30} aria-hidden="true" />{text.levelOffer.yes}
-          </Button>
-          <Button className="pairs-offer-not-now" disabled={leaving} onClick={() => onAnswer("not-now")}>
-            <X size={30} aria-hidden="true" />{text.levelOffer.notNow}
-          </Button>
+          {digSite ? <>{notNow}{yes}</> : <>{yes}{notNow}</>}
         </div>
       </section>
     </div>

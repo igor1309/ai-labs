@@ -38,7 +38,7 @@ describe.each(AGE_LEVELS)("progress while playing %s", (level) => {
     await playDealt(app.user, app.clock, names);
     endWave(app.clock);
 
-    expect(screen.getByLabelText("STARS").textContent).toBe("★1");
+    expect(screen.getByLabelText("STARS").textContent).toBe("1");
     expect(storedPairs(storage)).toEqual(entry({ stars: 1, boardsOnLevel: level === "hatchling" ? 1 : 0, best: { [played]: ids.length }, found: ordered(ids), offer: { level, strong: level === "hatchling" ? 0 : 1, declined: [] } }));
     await app.user.click(button("HOME"));
     const tile = gameDoor("FIND THE PAIR").querySelector(".pairs-tile-stars");
@@ -126,7 +126,7 @@ describe.each(AGE_LEVELS)("progress while playing %s", (level) => {
     await playDealt(app.user, app.clock, names, 3);
     endWave(app.clock);
 
-    expect([screen.getByLabelText("TRIES").textContent, screen.getByLabelText("STARS").textContent, bestShown(), celebrations()]).toEqual([String(ids.length + 3), "★1", null, []]);
+    expect([screen.getByLabelText("TRIES").textContent, screen.getByLabelText("STARS").textContent, bestShown(), celebrations()]).toEqual([String(ids.length + 3), "1", null, []]);
     await app.user.click(button("HOME"));
     expect(gameDoor("FIND THE PAIR").querySelector(".pairs-tile-stars")?.textContent).toBe(undefined);
     await app.user.click(button("ANCIENT REPTILES"));

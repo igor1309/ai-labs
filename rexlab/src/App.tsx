@@ -28,7 +28,6 @@ import { OrientationGate } from "./OrientationGate.tsx";
 import type { StartTimer } from "./ownedTimers.ts";
 import { NARROW_BOARD, pairsBoardWidth, PORTRAIT_BOARD } from "./pairsBoardLayout.ts";
 import { usePairsGame, type PairsGameProps, type PairsPhase } from "./pairsGame.tsx";
-import { NARROW_PAIRS_RESULT, pairsResultWidth, PORTRAIT_PAIRS_RESULT } from "./pairsResultLayout.ts";
 import { LoadAhead, PicturesProvider, type PictureStore } from "./Picture.tsx";
 import { usePicturePuzzleGame, type PicturePuzzleGameProps, type PicturePuzzlePhase } from "./picturePuzzleGame.tsx";
 import { presentCatalogueCard, presentDinosaurPage } from "./presentation.ts";
@@ -494,12 +493,6 @@ export function App({
     const { left, right } = viewport.sideInsets();
     return sortBoardWidth(viewport.width(), left, right, viewport.scrollbarWidth?.() ?? 0, viewport.sizeClass() === "tall-narrow" ? NARROW_SORT : PORTRAIT_SORT);
   });
-  // And the width find the pair's result stands in.
-  const pairsResultRoom = useSyncExternalStore(viewport.subscribe, () => {
-    const { left, right } = viewport.sideInsets();
-    const sizes = viewport.sizeClass() === "tall-narrow" ? NARROW_PAIRS_RESULT : PORTRAIT_PAIRS_RESULT;
-    return pairsResultWidth(viewport.width(), left, right, viewport.scrollbarWidth?.() ?? 0, sizes);
-  });
 
   // A round starts at once from the tile, with no welcome screen.
   const openCompare = () => {
@@ -694,7 +687,7 @@ export function App({
       case "sorting":
         return sorting.content(language, sortWidth, compareResultType(resultWidth, size === "tall-narrow" ? NARROW_RESULT : PORTRAIT_RESULT), size === "tall-narrow" ? NARROW_SORT : PORTRAIT_SORT);
       case "pairs":
-        return pairs.content(language, boardWidth, pairsResultRoom, size === "tall-narrow" ? NARROW_BOARD : PORTRAIT_BOARD, size === "tall-narrow" ? NARROW_PAIRS_RESULT : PORTRAIT_PAIRS_RESULT);
+        return pairs.content(language, boardWidth, size === "tall-narrow" ? NARROW_BOARD : PORTRAIT_BOARD);
       case "skeletons":
         return skeletonGame.content(language, whoseJaw ? () => go({ kind: "whoseJaw" }, { also: jawGame.openShelf }) : undefined);
       case "dig":

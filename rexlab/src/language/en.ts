@@ -114,7 +114,7 @@ export const en: Texts = {
   card: (place) => `CARD ${place}`,
   newLevel: (level) => `NEW LEVEL ${level}`,
   newlyFound: "NEW",
-  levelOffer: { question: (level) => `TRY THE ${level} LEVEL?`, yes: "YES", notNow: "NOT NOW" },
+  levelOffer: { question: (level) => `TRY THE ${level} LEVEL?`, tag: "LEVEL UP", yes: "YES", notNow: "NOT NOW" },
   found: "FOUND",
   skeletons: "SKELETONS",
   skeletonTitle: "BUILD A SKELETON",

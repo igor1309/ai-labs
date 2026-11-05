@@ -118,7 +118,7 @@ export const ru: Texts = {
   card: (place) => `КАРТОЧКА ${place}`,
   newLevel: (level) => `НОВЫЙ УРОВЕНЬ ${level}`,
   newlyFound: "НОВЫЙ",
-  levelOffer: { question: (level) => `ПОПРОБУЕМ УРОВЕНЬ ${level}?`, yes: "ДА", notNow: "НЕ СЕЙЧАС" },
+  levelOffer: { question: (level) => `ПОПРОБУЕМ УРОВЕНЬ ${level}?`, tag: "НОВЫЙ УРОВЕНЬ", yes: "ДА", notNow: "НЕ СЕЙЧАС" },
   found: "НАЙДЕНО",
   skeletons: "СКЕЛЕТЫ",
   skeletonTitle: "СОБЕРИ СКЕЛЕТ",

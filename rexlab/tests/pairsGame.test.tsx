@@ -70,7 +70,7 @@ const stored = (progress: Partial<StoredPairs>, games: Record<string, unknown> =
 const celebrations = () => screen.queryAllByRole("status").map((status) => status.getAttribute("aria-label"));
 const bestShown = () => screen.queryByLabelText("BEST SCORE")?.textContent ?? null;
 // The names of the result's dinosaurs, whatever the language.
-const resultNames = () => [...document.querySelectorAll(".pairs-found-name")].map((name) => name.textContent);
+const resultNames = () => [...document.querySelectorAll(".pairs-found-name")].map((name) => name.textContent?.replaceAll("\u00AD", ""));
 
 // Plays a level 1 board of the three in `tries` tries, and lets the
 // result show.
@@ -586,7 +586,7 @@ describe("the result", () => {
 
     const tries = screen.getByLabelText("TRIES");
     expect([tries.textContent, symbolOf(tries)]).toEqual(["7", "hand"]);
-    expect(screen.getByLabelText("STARS").textContent).toBe("★5");
+    expect(screen.getByLabelText("STARS").textContent).toBe("5");
     expect(resultNames()).toEqual(["TRICERATOPS", "STEGOSAURUS", "TYRANNOSAURUS"].filter((name) => NAMES.includes(name)).sort((a, b) => NAMES.indexOf(a) - NAMES.indexOf(b)));
     expect(screen.getByRole("heading").textContent).toBe("WELL DONE!");
     expect(["PLAY AGAIN", "BACK", "HOME"].map((name) => symbolOf(button(name)))).toEqual(["rotate-ccw", "arrow-left", "house"]);
@@ -636,7 +636,7 @@ describe("the result", () => {
     endWave(app.clock);
 
     const levelUp = screen.getByRole("status", { name: "NEW LEVEL 2" });
-    expect([levelUp.textContent, levelUp.querySelectorAll(".pairs-next-card").length]).toEqual(["2", 8]);
+    expect([levelUp.textContent, levelUp.querySelectorAll(".pairs-next-card").length]).toEqual(["NEW LEVEL 2", 8]);
     await app.user.click(button("PLAY AGAIN"));
     expect([pairCards().length, screen.getByLabelText("LEVEL").textContent]).toEqual([8, "2"]);
   });
@@ -688,7 +688,7 @@ describe("dinosaurs found", () => {
   const newBadges = () =>
     within(screen.getByRole("list", { name: "ANIMALS" }))
       .getAllByRole("listitem")
-      .flatMap((item) => (item.querySelector(".pairs-new-badge") ? [[item.querySelector(".pairs-found-name")?.textContent, symbolsOf(item.querySelector(".pairs-new-badge") ?? item)]] : []));
+      .flatMap((item) => (item.querySelector(".pairs-new-badge") ? [[item.querySelector(".pairs-found-name")?.textContent?.replaceAll("\u00AD", ""), symbolsOf(item.querySelector(".pairs-new-badge") ?? item)]] : []));
 
   it("are a finished board's dinosaurs, each new one marked NEW with a sparkle", async () => {
     const app = openPairsApp({ pals: THREE });

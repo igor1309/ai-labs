@@ -3,7 +3,9 @@ import { afterEach, expect, it } from "vitest";
 import type { AgeLevel } from "../src/ageLevel.ts";
 import type { Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
+import { LevelOfferDialog } from "../src/LevelOfferDialog.tsx";
 import { PairsBoardScreen, type PairCardView } from "../src/PairsBoardScreen.tsx";
+import { PairsResultScreen, type PairsResultScreenProps } from "../src/PairsResultScreen.tsx";
 import { PairsWelcomeScreen } from "../src/PairsWelcomeScreen.tsx";
 import { THEMES } from "../src/theme.ts";
 import { withManualPictures } from "./pictures.tsx";
@@ -197,4 +199,82 @@ it("shows a card whose picture cannot be loaded by its name alone", () => {
   const open = part('.pair-card[data-state="open"]');
   expect([style(open.querySelector(".pair-card-art")!).display, open.querySelector(".pair-card-name")?.textContent]).toEqual(["none", "TYRANNOSAURUS"]);
   matches('.pair-card[data-state="open"] .pair-card-name', { "font-size": "size-16" });
+});
+
+// A result's rewards, from its props: a first best with a NEW find and a
+// new level, or the best kept.
+function showResult({ language = "en", ...props }: Partial<PairsResultScreenProps> = {}) {
+  const pictures = manualPictures();
+  const pals = [{ id: "rex", name: "Tyrannosaurus", picture: "rex.webp", newlyFound: true }, { id: "pachy", name: "Pachycephalosaurus", picture: "pachy.webp", newlyFound: false }, { id: "trike", name: "Triceratops", picture: "trike.webp", newlyFound: false }];
+  render(<PairsResultScreen language={language} pals={pals} tries={5} stars={2} best={5} beaten={undefined} celebration="first-best" levelUp={{ level: 2, rows: 2, columns: 4 }} onPlayAgain={noop} onBack={noop} onHome={noop} {...props} />, withManualPictures(pictures));
+  return pictures;
+}
+
+for (const theme of THEMES) for (const shape of SHAPES) {
+  it(`draws the result from the dig-site tokens in ${theme} ${shape}`, () => {
+    at(theme, shape);
+    const pictures = showResult();
+    matches(".pairs-found-art .picture", { "--shimmer-from": "pocket-1", "--shimmer-to": "strata-1" });
+    act(() => pictures.finishAll());
+    matches(".pairs-result", { color: "ink" });
+    matches(".pairs-result-sand", { "background-color": "strata-1" });
+    matches(".pairs-result-wave", { fill: "strata-1" });
+    if (shape === "wide-short") expect(style(part(".pairs-result-bedrock")).display).toBe("none");
+    else matches(".pairs-result-bedrock", { "background-color": "strata-2" });
+    matches(".pairs-found-card", { "background-color": "label", "border-top-color": "outline", color: "ink" });
+    matches(".pairs-new-badge", { "background-color": "reward", color: "on-reward", "font-size": "size-tag" });
+    matches(".pairs-level-up", { "background-color": "reward", color: "on-reward" });
+    matches(".pairs-next-board", { "background-color": "on-reward" });
+    matches(".pairs-next-card", { "background-color": "reward" });
+    matches(".pairs-result-stars", { "background-color": "quiet" });
+    matches(".pairs-best", { "background-color": "reward", color: "on-reward" });
+    matches(".pairs-result-title", { "font-size": shape === "wide" || shape === "tall" ? "size-40" : shape === "tall-narrow" ? "size-34" : "size-26" });
+    matches(".play-again-button", { "background-color": "action", color: "on-action", "border-radius": "radius-pill" });
+    matches(".pairs-result-back", { "background-color": "strong", color: "on-strong" });
+    matches(".pairs-result-home", { "border-top-color": "ink", color: "ink" });
+  });
+
+  it(`keeps the best quiet when no new best is set in ${theme} ${shape}`, () => {
+    at(theme, shape);
+    showResult({ celebration: null, levelUp: null });
+    matches(".pairs-best", { "background-color": "quiet", color: "ink" });
+    matches(".pairs-best svg", { color: "reward" });
+  });
+
+  it(`draws the level offer from the dig-site tokens in ${theme} ${shape}`, () => {
+    at(theme, shape);
+    render(<LevelOfferDialog digSite language="en" offer={{ level: "explorer", onYes: noop, onNotNow: noop, onShown: noop, startTimer: () => noop }} leaving={false} onShown={noop} onAnswer={noop} onGone={noop} />);
+    matches(".pairs-offer", { "background-color": "label", color: "ink", "border-radius": "radius-panel" });
+    matches(".pairs-offer-tag", { "background-color": "reward", color: "on-reward" });
+    matches(".pairs-offer-picture", { "background-color": "pocket-1" });
+    matches(".pairs-offer-yes", { "background-color": "action", color: "on-action" });
+    matches(".pairs-offer-not-now", { "border-top-color": "ink", color: "ink" });
+  });
+}
+
+it.each(["en", "ru"] as const)("shows the %s rewards in words and symbols, the offer NOT NOW first", (language) => {
+  const text = TEXTS[language];
+  showResult({ language });
+  expect(part(".pairs-level-up").textContent).toBe(text.newLevel(2));
+  expect(document.querySelectorAll(".pairs-next-card")).toHaveLength(8);
+  expect(part(".celebration-text").textContent).toBe(text.celebrations["first-best"].text);
+  expect(part(".pairs-new-word").textContent).toBe(text.newlyFound);
+  render(<LevelOfferDialog digSite language={language} offer={{ level: "explorer", onYes: noop, onNotNow: noop, onShown: noop, startTimer: () => noop }} leaving={false} onShown={noop} onAnswer={noop} onGone={noop} />);
+  expect(part(".pairs-offer-tag").textContent).toBe(text.levelOffer.tag);
+  expect([...document.querySelectorAll(".pairs-offer-answers button")].map((button) => button.textContent)).toEqual([text.levelOffer.notNow, text.levelOffer.yes]);
+});
+
+it("leaves the offer of the other games undressed", () => {
+  render(<LevelOfferDialog language="en" offer={{ level: "explorer", onYes: noop, onNotNow: noop, onShown: noop, startTimer: () => noop }} leaving={false} onShown={noop} onAnswer={noop} onGone={noop} />);
+  expect(document.querySelector(".pairs-offer-tag")).toBeNull();
+  expect([...document.querySelectorAll(".pairs-offer-answers button")].map((button) => button.textContent)).toEqual(["YES", "NOT NOW"]);
+});
+
+it.each([
+  ["ru", "Тираннозавр", "ТИ\u00ADРАННО\u00ADЗАВР"],
+  ["en", "Pachycephalosaurus", "PA\u00ADCHY\u00ADCE\u00ADPHA\u00ADLO\u00ADSAU\u00ADRUS"],
+  ["en", "T. rex", "T. REX"]
+] as const)("breaks the %s name %s only between its syllables", (language, name, shown) => {
+  showResult({ language, pals: [{ id: "pal", name, picture: "", newlyFound: false }] });
+  expect(document.querySelector(".pairs-found-name")?.textContent).toBe(shown);
 });

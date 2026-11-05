@@ -1,4 +1,4 @@
-// Contract test: find the pair's dig-site welcome and board laid out and fitted in Chromium.
+// Contract test: find the pair's dig-site welcome, board and result laid out and fitted in Chromium.
 const assert = require('node:assert/strict');
 const { readFile, mkdir } = require('node:fs/promises');
 const { resolve, extname, join } = require('node:path');
@@ -126,6 +126,86 @@ async function board(page, width, height, label, { sandTop, bedrock, phone, shor
   if (opened) assert.equal(measured.picture, true, `${label}: the open card's picture drawn inside it`);
 }
 
+// Plays a board out, turning each card and remembering its picture, or
+// by the pairs already known; returns the pairs for a perfect replay.
+async function playOut(page, known) {
+  const count = await page.locator('.pair-card').count();
+  const turn = async index => {
+    await page.locator(`.pair-card[data-turn-part="pair-card-${index}"]`).press('Enter');
+    await page.waitForFunction(i => { const c = document.querySelector(`[data-turn-part="pair-card-${i}"]`); return c.dataset.state !== 'down' && c.querySelector('img'); }, index);
+    return page.locator(`.pair-card[data-turn-part="pair-card-${index}"] img`).getAttribute('src');
+  };
+  const settled = () => page.waitForFunction(() => !document.querySelector('.pair-card[data-state="open"]') || document.querySelector('.pairs-result'));
+  if (known) {
+    for (const [a, b] of known) { await turn(a); await turn(b); await settled(); }
+    return known;
+  }
+  const seen = new Map(), pairs = [];
+  let pending = [...Array(count).keys()];
+  while (pending.length) {
+    const first = pending.shift(), picture = await turn(first);
+    if (seen.has(picture)) {
+      const other = seen.get(picture);
+      await turn(other); pairs.push([other, first]); seen.delete(picture); await settled();
+      continue;
+    }
+    seen.set(picture, first);
+    const second = pending.shift(), secondPicture = await turn(second);
+    if (secondPicture === picture) { pairs.push([first, second]); seen.delete(picture); await settled(); continue; }
+    await settled();
+    if (seen.has(secondPicture)) {
+      const other = seen.get(secondPicture);
+      await turn(other); await turn(second); pairs.push([other, second]); seen.delete(secondPicture); await settled();
+    } else seen.set(secondPicture, second);
+  }
+  return pairs;
+}
+// The result fits its window: nothing crosses a side, nothing overlaps,
+// the dinosaurs and the words readable, the actions on the sand and clear
+// of the bedrock. Only a window too short for its column scrolls.
+async function result(page, width, height, label, { scrolls }) {
+  const m = await page.evaluate(() => {
+    const box = e => { const { x, y, width, height, top, right, bottom, left } = e.getBoundingClientRect(); return { x, y, width, height, top, right, bottom, left }; };
+    const all = s => [...document.querySelectorAll(s)];
+    const hit = e => { e.scrollIntoView({ block: 'center' }); const b = e.getBoundingClientRect(); return e.contains(document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2)); };
+    const parts = all('.pairs-level-up, .pairs-result-tries, .pairs-result-stars, .pairs-result-title, .pairs-best').map(box);
+    const measured = {
+      overflowX: document.documentElement.scrollWidth > innerWidth,
+      pageHeight: document.documentElement.scrollHeight,
+      cards: all('.pairs-found-card').map(box), parts, actions: all('.pairs-result-actions button').map(box),
+      badges: all('.pairs-new-badge').map(e => ({ badge: box(e), card: box(e.parentElement) })),
+      names: all('.pairs-found-name').map(e => ({ text: e.textContent, fits: e.scrollWidth <= e.clientWidth + 1, size: parseFloat(getComputedStyle(e).fontSize) })),
+      words: all('.pairs-result-actions button, .pairs-level-up, .celebration-text').map(e => ({ text: e.textContent, fits: e.scrollWidth <= e.clientWidth + 1 })),
+      sand: box(document.querySelector('.pairs-result-sand')),
+      bedrock: getComputedStyle(document.querySelector('.pairs-result-bedrock')).display === 'none' ? null : box(document.querySelector('.pairs-result-bedrock'))
+    };
+    measured.taps = all('.pairs-result-actions button').map(e => ({ text: e.textContent, ...box(e), hit: hit(e) }));
+    scrollTo(0, 0);
+    return measured;
+  });
+  assert(!m.overflowX, `${label}: scrolls sideways`);
+  if (!scrolls) assert(m.pageHeight <= height + 1, `${label}: the result scrolls, ${m.pageHeight} tall`);
+  for (const part of [...m.cards, ...m.parts, ...m.actions]) inside(part, width, m.pageHeight, `${label} part`);
+  for (const group of [m.cards, m.parts, m.actions, [...m.cards, ...m.parts, ...m.actions]]) for (const [i, a] of group.entries()) for (const b of group.slice(i + 1)) apart(a, b, label);
+  for (const { badge, card } of m.badges) assert(badge.left >= card.left - .5 && badge.right <= card.right + .5 && badge.top >= card.top - .5, `${label}: NEW inside its card`);
+  for (const name of m.names) assert(name.fits && name.size >= 12, `${label}: ${name.text} readable: ${JSON.stringify(name)}`);
+  for (const word of m.words) assert(word.fits, `${label}: ${word.text} fits`);
+  if (m.bedrock) for (const card of m.cards) assert(card.bottom <= m.sand.top + .5, `${label}: dinosaur over the sand`);
+  if (m.bedrock) for (const action of m.actions) assert(action.top >= m.sand.top - .5 && action.bottom <= m.bedrock.top + .5, `${label}: action on the sand`);
+  for (const tap of m.taps) assert(tap.width >= 44 && tap.height >= 44 && tap.hit === true, `${label}: ${tap.text} is a tap target: ${JSON.stringify(tap)}`);
+}
+// The offer fits its window over the result, its answers tap targets.
+async function offer(page, width, height, label) {
+  const m = await page.evaluate(() => {
+    const box = e => { const { x, y, width, height, top, right, bottom, left } = e.getBoundingClientRect(); return { x, y, width, height, top, right, bottom, left }; };
+    const q = document.querySelector('.pairs-offer-question');
+    return { card: box(document.querySelector('.pairs-offer')), lines: Math.round(q.getBoundingClientRect().height / parseFloat(getComputedStyle(q).lineHeight)), buttons: [...document.querySelectorAll('.pairs-offer-answers button')].map(e => ({ ...box(e), fits: e.scrollWidth <= e.clientWidth + 1 })), overflow: [document.documentElement.scrollWidth > innerWidth] };
+  });
+  inside(m.card, width, height, `${label} offer`);
+  assert(m.lines <= 3, `${label}: the question takes ${m.lines} lines`);
+  for (const button of m.buttons) { inside(button, m.card.right, m.card.bottom, `${label} answer`); assert(button.fits && button.width >= 44 && button.height >= 44, `${label}: answer ${JSON.stringify(button)}`); }
+}
+
 async function main() {
   const { build } = await import('vite');
   const bundle = await build({ root: resolve(__dirname, '..'), logLevel: 'error', build: { write: false } });
@@ -191,12 +271,43 @@ async function main() {
           await board(page, width, height, `${label} board open`, { sandTop: boardSand, bedrock, phone, short: height < 600, opened: true });
           checked += 2;
         }
+        // The fullest result a level deals, then a perfect replay of it
+        // after two strong boards, to the offer.
+        const seed = async offered => {
+          await page.goto('http://pairs.test/');
+          await page.evaluate(({ offered }) => {
+            localStorage.setItem('rexlab-age-level', JSON.stringify({ level: 'explorer', revision: 'pairs' }));
+            localStorage.setItem('rexlab-progress', JSON.stringify({ schemaVersion: 1, games: {
+              ...(offered ? { 'find-the-pair': { stars: 2, level: 1, boardsOnLevel: 0, best: {}, found: [], offer: { level: 'explorer', strong: 2, declined: [] } } } : {}),
+              'home-featured': { featured: { game: 'compare', visit: 1 }, starts: {} }
+            } }));
+          }, { offered });
+          await page.reload();
+          await page.locator('[data-turn-part="tile-pairs"]').press('Enter');
+          await page.locator('.pairs-play-button').press('Enter');
+          await page.locator('.pair-board').waitFor();
+          await settle(page);
+        };
+        const showResult = async () => { await page.locator('.pairs-result').waitFor({ timeout: 30000 }); await settle(page); };
+        await seed(false);
+        const pairs = await playOut(page);
+        await showResult();
+        if (shots) await page.screenshot({ path: join(shots, `result-${width}x${height}-${language}-${theme}.png`), fullPage: true });
+        await result(page, width, height, `${width}x${height} ${language} result`, { scrolls: height < 900 && width < 500 });
+        await seed(true);
+        await playOut(page, pairs);
+        await showResult();
+        await page.locator('.pairs-offer').waitFor({ timeout: 15000 });
+        await settle(page);
+        if (shots) await page.screenshot({ path: join(shots, `offer-${width}x${height}-${language}-${theme}.png`) });
+        await offer(page, width, height, `${width}x${height} ${language}`);
+        checked += 2;
         assert.deepEqual(errors, [], `${width}x${height} ${language} ${theme}: page errors`);
       } finally { await context.close(); }
     };
     const queue = [...configs];
     await Promise.all(Array.from({ length: 3 }, async () => { while (queue.length) await run(queue.shift()); }));
-    console.log(`PASS ${checked} find the pair welcome and board configurations: layout, fit, overlap, scrolling, labels and tap targets`);
+    console.log(`PASS ${checked} find the pair welcome, board, result and offer configurations: layout, fit, overlap, scrolling, labels and tap targets`);
   } finally { await browser.close(); }
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

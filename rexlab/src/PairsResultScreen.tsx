@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, ChartNoAxesColumnIncreasing, Hand, House, RotateCcw, Sparkles, Star, Trophy, type LucideIcon } from "lucide-react";
+import { ArrowLeft, Hand, House, RotateCcw, Sparkles, Star, Trophy } from "lucide-react";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { Button } from "./Button.tsx";
 import { useGateShown } from "./OrientationGate.tsx";
@@ -7,12 +7,11 @@ import { afterResultAnimations } from "./resultAnimation.ts";
 import { Festivity } from "./Festivity.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS, type Texts } from "./language/texts.ts";
-import { pairsResultType, PORTRAIT_PAIRS_RESULT, type PairsResultSizes } from "./pairsResultLayout.ts";
+import { EarthEdge } from "./EarthEdge.tsx";
+import { Stairs } from "./PairsIcons.tsx";
 import { Picture } from "./Picture.tsx";
 
 export type PairsCelebration = keyof Texts["celebrations"];
-
-const CELEBRATION_SYMBOLS: Record<PairsCelebration, LucideIcon> = { "first-best": Star, "new-best": Trophy };
 
 export type FoundPal = { id: string; name: string; picture: string; newlyFound: boolean };
 
@@ -40,28 +39,22 @@ export type PairsResultScreenProps = {
   // Back to the game's welcome screen.
   onBack: () => void;
   onHome: () => void;
-  // The width the result stands in upright, one for the window; landscape
-  // sizes it itself.
-  width?: number;
-  // The sizes it stands by: an iPhone's in a tall-narrow window.
-  sizes?: PairsResultSizes;
 };
 
 // Custom properties the stylesheet staggers by.
 const motion = (properties: Record<`--${string}`, number>) => properties as CSSProperties;
 
-// The tallest a card may stand upright and the actions' type, as the
-// custom properties the stylesheet reads.
-function typeStyle(width: number | undefined, count: number, sizes: PairsResultSizes): CSSProperties {
-  if (width === undefined) return {};
-  const type = pairsResultType(width, count, sizes);
-  return { "--card-maximum": `${type.cardMaximum}px`, "--action-size": `${type.action}px` } as CSSProperties;
-}
+// Three across, two for four and four for the fullest boards.
+const foundColumns = (count: number) => (count === 4 ? 2 : count > 9 ? 4 : 3);
 
-export function PairsResultScreen({ language, pals, tries, stars, best, beaten, celebration, levelUp, offer, onPlayAgain, onBack, onHome, width, sizes = PORTRAIT_PAIRS_RESULT }: PairsResultScreenProps) {
+// Soft hyphens between a name's syllables, so that a narrow card breaks
+// it at a hyphen and never mid-sound.
+const syllabled = (name: string) => name.length < 8 ? name : name.replace(/([AEIOUYАЕЁИОУЫЭЮЯ])(?=(?:CH|PH|TH|GN|PS|ГН|ПС|[^AEIOUYАЕЁИОУЫЭЮЯ\s-])[AEIOUYАЕЁИОУЫЭЮЯ])/g, "$1\u00AD");
+
+export function PairsResultScreen({ language, pals, tries, stars, best, beaten, celebration, levelUp, offer, onPlayAgain, onBack, onHome }: PairsResultScreenProps) {
   const gateShown = useGateShown();
   const text = TEXTS[language];
-  const CelebrationSymbol = celebration && CELEBRATION_SYMBOLS[celebration];
+  const columns = foundColumns(pals.length);
   const result = useRef<HTMLElement>(null);
   const [offerPhase, setOfferPhase] = useState<"waiting" | "shown" | "leaving" | "gone">("waiting");
   const [shownOffer, setShownOffer] = useState<PairsResultScreenProps["offer"]>(null);
@@ -85,84 +78,83 @@ export function PairsResultScreen({ language, pals, tries, stars, best, beaten, 
   // glides.
   return (
     <>
-      <main ref={result} inert={blocked} className="result pairs-result" data-large={pals.length > 6 || undefined} style={typeStyle(width, pals.length, sizes)}>
+      <main ref={result} inert={blocked} className="pairs-result" data-count={pals.length}>
+        <div className="pairs-result-sand" aria-hidden="true"><EarthEdge className="pairs-result-wave" /></div>
+        <div className="pairs-result-bedrock" aria-hidden="true"><EarthEdge /></div>
         {(celebration || levelUp) && <Festivity />}
-        <div className="stratum result-stratum" aria-hidden="true" />
-        <ul className="pairs-found" aria-label={text.creatures} data-count={pals.length} style={motion({ "--found-rows": Math.ceil(pals.length / 3) })}>
-          {pals.map(({ id, name, picture, newlyFound }, index) => (
-            <li key={id} className="pairs-found-card" data-turn-part={`pairs-found-${index}`} style={motion({ "--card": index })}>
-              <span className="pairs-found-art">
-                <Picture className="pairs-found-picture" src={picture} alt="" width={800} height={600} />
-              </span>
-              <span className="pairs-found-name">{name.toLocaleUpperCase(language)}</span>
-              {newlyFound && (
-                <span className="pairs-new-badge">
-                  <Sparkles size={20} aria-hidden="true" />
-                  <span className="narrow-hidden">{text.newlyFound}</span>
+        <div className="pairs-result-room">
+          <ul className="pairs-found" aria-label={text.creatures} style={motion({ "--columns": columns, "--rows": Math.ceil(pals.length / columns) })}>
+            {pals.map(({ id, name, picture, newlyFound }, index) => (
+              <li key={id} className="pairs-found-card" data-turn-part={`pairs-found-${index}`} style={motion({ "--card": index })}>
+                <span className="pairs-found-art">
+                  <Picture className="pairs-found-picture" src={picture} alt="" width={800} height={600} />
                 </span>
-              )}
-            </li>
-          ))}
-        </ul>
-        <div className="result-content">
-          {(celebration || levelUp) && (
-            <div className="pairs-badges">
-              {celebration && CelebrationSymbol && (
-                <p className="celebration" data-turn-part="pairs-celebration" role="status" aria-label={text.celebrations[celebration].label}>
-                  <CelebrationSymbol size={30} aria-hidden="true" />
-                  <span className="celebration-text">{text.celebrations[celebration].text}</span>
-                </p>
-              )}
-              {levelUp && (
-                <p className="pairs-level-up" data-turn-part="pairs-level-up" role="status" aria-label={text.newLevel(levelUp.level)}>
-                  <ChartNoAxesColumnIncreasing size={34} aria-hidden="true" />
-                  {levelUp.level}
-                  {/* The next level's board, a small card for each card. */}
-                  <span className="pairs-next-board" aria-hidden="true" style={motion({ "--columns": levelUp.columns })}>
-                    {Array.from({ length: levelUp.rows * levelUp.columns }, (_, index) => (
-                      <span key={index} className="pairs-next-card" />
-                    ))}
+                <span className="pairs-found-name" data-long={name.length >= 14 || undefined} lang={language}>{syllabled(name.toLocaleUpperCase(language))}</span>
+                {newlyFound && (
+                  <span className="pairs-new-badge">
+                    <Sparkles aria-hidden="true" />
+                    <span className="pairs-new-word">{text.newlyFound}</span>
                   </span>
-                </p>
-              )}
-            </div>
-          )}
-          <p className="pairs-result-tries" data-turn-part="pairs-tries" aria-label={text.tries}>
-            <span className="pairs-result-tries-value">{tries}</span>
-            <Hand className="pairs-result-hand" size={96} aria-hidden="true" />
-          </p>
-          {/* The board's star flies into the stars earned. */}
-          <p className="pairs-result-stars" data-turn-part="pairs-stars" aria-label={text.starsEarned}>
-            <span className="pairs-result-star" aria-hidden="true">
-              ★
-            </span>
-            {stars}
-          </p>
-          <h1 className="result-title" data-turn-part="pairs-title">{text.wellDone}</h1>
-          {best !== undefined && (
-            <p className="best-score" data-turn-part="pairs-best" aria-label={text.bestScore}>
-              <Trophy size={22} aria-hidden="true" />
-              {text.best}
-              {beaten !== undefined && (
-                <>
-                  <span className="best-score-beaten">{beaten}</span>
-                  <ArrowRight size={20} aria-hidden="true" />
-                </>
-              )}
-              <span className="best-score-value">{best}</span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className="pairs-result-column">
+          <div className="pairs-result-score">
+            {levelUp && (
+              <p className="pairs-level-up" data-turn-part="pairs-level-up" role="status" aria-label={text.newLevel(levelUp.level)}>
+                <Stairs />
+                {text.newLevel(levelUp.level)}
+                {/* The next level's board, a small card for each card. */}
+                <span className="pairs-next-board" aria-hidden="true" style={motion({ "--columns": levelUp.columns })}>
+                  {Array.from({ length: levelUp.rows * levelUp.columns }, (_, index) => (
+                    <span key={index} className="pairs-next-card" />
+                  ))}
+                </span>
+              </p>
+            )}
+            <p className="pairs-result-tries" data-turn-part="pairs-tries" aria-label={text.tries}>
+              <Hand className="pairs-result-hand" aria-hidden="true" />
+              <span className="pairs-result-tries-value">{tries}</span>
             </p>
-          )}
-          <nav className="result-actions" data-turn-part="pairs-actions">
+            <p className="pairs-result-stars" data-turn-part="pairs-stars" aria-label={text.starsEarned}>
+              {/* The board's star, popped in beside the stars earned. */}
+              <span className="pairs-result-star" aria-hidden="true"><Star fill="currentColor" /></span>
+              <Star fill="currentColor" aria-hidden="true" />
+              {stars}
+            </p>
+            <h1 className="pairs-result-title" data-turn-part="pairs-title">{text.wellDone}</h1>
+            {(celebration || best !== undefined) && (
+              <div className="pairs-best" data-celebrating={celebration || undefined}>
+                {celebration && (
+                  <p className="celebration" data-turn-part="pairs-celebration" role="status" aria-label={text.celebrations[celebration].label}>
+                    <Trophy fill="currentColor" aria-hidden="true" />
+                    <span className="celebration-text">{text.celebrations[celebration].text}</span>
+                  </p>
+                )}
+                {best !== undefined && (
+                  <p className="best-score" data-turn-part="pairs-best" aria-label={text.bestScore}>
+                    {!celebration && <Trophy fill="currentColor" aria-hidden="true" />}
+                    {/* The word and the best beaten are read out, not drawn. */}
+                    <span className="pairs-best-hidden">{text.best}{beaten}</span>
+                    <span className="best-score-value">{best}</span>
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+          <nav className="pairs-result-actions" data-turn-part="pairs-actions">
             <Button className="play-again-button" disabled={blocked} onClick={onPlayAgain}>
-              <RotateCcw size={28} aria-hidden="true" />
+              <RotateCcw aria-hidden="true" />
               {text.playAgain}
             </Button>
-            <Button className="home-button" disabled={blocked} onClick={onBack}>
-              <ArrowLeft size={28} aria-hidden="true" />
+            <Button className="pairs-result-back" disabled={blocked} onClick={onBack}>
+              <ArrowLeft aria-hidden="true" />
               {text.back}
             </Button>
-            <Button className="home-button" disabled={blocked} onClick={onHome}>
-              <House size={28} aria-hidden="true" />
+            <Button className="pairs-result-home" disabled={blocked} onClick={onHome}>
+              <House aria-hidden="true" />
               {text.home}
             </Button>
           </nav>
@@ -170,6 +162,7 @@ export function PairsResultScreen({ language, pals, tries, stars, best, beaten, 
       </main>
       {shownOffer && blocked && (
         <LevelOfferDialog
+          digSite
           language={language}
           offer={shownOffer}
           leaving={offerPhase === "leaving"}
