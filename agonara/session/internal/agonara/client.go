@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 )
 
 // Node is a navigation entry: a topic, concept or material.
@@ -22,27 +23,33 @@ type Node struct {
 
 // Link is an outgoing relationship of an entity.
 type Link struct {
-	ToEntityID string `json:"toEntityId"`
-	ToTitle    string `json:"toTitle"`
-	ToKind     string `json:"toKind"`
+	FromEntityID string `json:"fromEntityId"`
+	FromTitle    string `json:"fromTitle"`
+	FromKind     string `json:"fromKind"`
+	ToEntityID   string `json:"toEntityId"`
+	ToTitle      string `json:"toTitle"`
+	ToKind       string `json:"toKind"`
 }
 
 // Entity is one navigation entity with its body and links.
 type Entity struct {
 	EntityID      string `json:"entityId"`
+	ProgramID     string `json:"programId"`
 	Title         string `json:"title"`
 	Body          string `json:"body"`
 	AcceptedKind  string `json:"acceptedKind"`
 	HasContent    bool   `json:"hasContent"`
 	Relationships struct {
+		Incoming []Link `json:"incoming"`
 		Outgoing []Link `json:"outgoing"`
 	} `json:"relationships"`
 }
 
 // Program is a program the student can see.
 type Program struct {
-	ProgramID string `json:"programId"`
-	Title     string `json:"title"`
+	ProgramID   string `json:"programId"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
 }
 
 // Navigation is a program's top-level entries.
@@ -56,6 +63,7 @@ type Navigation struct {
 type Client struct {
 	root, origin, login, password string
 	http                          *http.Client
+	mu                            sync.Mutex // guards cookie
 	cookie                        string
 }
 
@@ -111,6 +119,7 @@ func accepted(resp *http.Response, method, route string, out any) error {
 	return nil
 }
 
+// signIn replaces the session cookie; the caller holds mu.
 func (c *Client) signIn(ctx context.Context) error {
 	c.cookie = ""
 	const route = "/identity/sessions"
@@ -134,22 +143,34 @@ func (c *Client) signIn(ctx context.Context) error {
 	return nil
 }
 
-func (c *Client) read(ctx context.Context, route string, out any) error {
-	if c.cookie == "" {
+// session returns the cookie, signing in first when there is none, or again
+// when stale is the cookie a request was just refused with.
+func (c *Client) session(ctx context.Context, stale string) (string, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.cookie == "" || c.cookie == stale {
 		if err := c.signIn(ctx); err != nil {
-			return err
+			return "", err
 		}
 	}
-	resp, err := c.request(ctx, "GET", route, http.Header{"Cookie": {c.cookie}}, nil)
+	return c.cookie, nil
+}
+
+func (c *Client) read(ctx context.Context, route string, out any) error {
+	cookie, err := c.session(ctx, "")
+	if err != nil {
+		return err
+	}
+	resp, err := c.request(ctx, "GET", route, http.Header{"Cookie": {cookie}}, nil)
 	if err != nil {
 		return err
 	}
 	if resp.StatusCode == http.StatusUnauthorized {
 		resp.Body.Close()
-		if err := c.signIn(ctx); err != nil {
+		if cookie, err = c.session(ctx, cookie); err != nil {
 			return err
 		}
-		if resp, err = c.request(ctx, "GET", route, http.Header{"Cookie": {c.cookie}}, nil); err != nil {
+		if resp, err = c.request(ctx, "GET", route, http.Header{"Cookie": {cookie}}, nil); err != nil {
 			return err
 		}
 	}

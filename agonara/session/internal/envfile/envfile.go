@@ -1,4 +1,5 @@
-package main
+// Package envfile loads KEY=VALUE files into the environment.
+package envfile
 
 import (
 	"fmt"
@@ -6,9 +7,9 @@ import (
 	"strings"
 )
 
-// loadEnv sets each KEY=VALUE line of a file (blank lines and # comments
+// Load sets each KEY=VALUE line of a file (blank lines and # comments
 // skipped, one pair of surrounding quotes removed) unless already set.
-func loadEnv(path string) error {
+func Load(path string) error {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return fmt.Errorf("read env file: %w", err)

@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/igor1309/ai-labs/agonara/session/internal/agonara"
+	"github.com/igor1309/ai-labs/agonara/session/internal/envfile"
 	"github.com/igor1309/ai-labs/agonara/session/internal/flow"
 	"github.com/igor1309/ai-labs/agonara/session/internal/store"
 	"github.com/igor1309/ai-labs/agonara/session/internal/telegram"
@@ -37,7 +38,7 @@ func run() error {
 	envFile := flag.String("env-file", "", "file of KEY=VALUE lines to load into the environment")
 	flag.Parse()
 	if *envFile != "" {
-		if err := loadEnv(*envFile); err != nil {
+		if err := envfile.Load(*envFile); err != nil {
 			return err
 		}
 	}

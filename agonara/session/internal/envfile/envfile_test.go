@@ -1,4 +1,4 @@
-package main
+package envfile
 
 import (
 	"os"
@@ -18,7 +18,7 @@ func TestLoadEnvReadsPairsSkipsCommentsAndKeepsSetValues(t *testing.T) {
 		t.Setenv(key, "")
 		os.Unsetenv(key)
 	}
-	if err := loadEnv(path); err != nil {
+	if err := Load(path); err != nil {
 		t.Fatal(err)
 	}
 	for key, want := range map[string]string{"SESSION_A": "one", "SESSION_B": "two words", "SESSION_C": "x=y", "SESSION_D": "from-env"} {
@@ -33,7 +33,7 @@ func TestLoadEnvNamesABadLineWithoutItsContent(t *testing.T) {
 	if err := os.WriteFile(path, []byte("A=1\nsecret-without-equals\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	err := loadEnv(path)
+	err := Load(path)
 	if err == nil || !strings.Contains(err.Error(), "line 2") || strings.Contains(err.Error(), "secret") {
 		t.Fatal(err)
 	}
