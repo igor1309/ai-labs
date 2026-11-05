@@ -1,4 +1,5 @@
-import { act, startTransition, ViewTransition } from "react";
+import { startTransition, ViewTransition } from "react";
+import { act } from "@testing-library/react";
 import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -8,19 +9,25 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 describe("a view transition the browser aborts", () => {
   afterEach(() => {
     delete (document as { startViewTransition?: unknown }).startViewTransition;
+    vi.unstubAllGlobals();
   });
 
   it.each([
-    "Transition was aborted because of invalid state",
-    "Transition was aborted because of invalid state. Viewport size changed"
-  ])("is not reported when the browser says %j", async message => {
+    { message: "Transition was aborted because of invalid state", name: "InvalidStateError", reports: false },
+    { message: "Transition was aborted because of invalid state. Viewport size changed", name: "InvalidStateError", reports: false },
+    { message: "Transition was aborted because of timeout in DOM update. DOM update timed out", name: "TimeoutError", reports: true },
+    { message: "Unexpected view transition failure", name: "Error", reports: true }
+  ])("reports=$reports when the browser says $message", async ({ message, name, reports }) => {
     Object.defineProperty(document, "fonts", { value: { status: "loaded", ready: Promise.resolve() }, configurable: true });
-    (document as { startViewTransition?: unknown }).startViewTransition = ({ update }: { update: () => void }) => {
-      update();
-      const aborted = new DOMException(message, "InvalidStateError");
-      const ready = Promise.reject(aborted);
-      return { ready, finished: Promise.resolve(), updateCallbackDone: Promise.resolve(), skipTransition: () => {} };
-    };
+    // A real DOM-update timeout occurs while the callback is still pending.
+    // React waits for a pending Navigation API transition without a deadline.
+    vi.stubGlobal("navigation", { transition: { finished: new Promise(() => {}) } });
+    const start = vi.fn(({ update }: { update: () => void }) => {
+      const aborted = new DOMException(message, name);
+      const ready = Promise.resolve().then(() => { update(); throw aborted; });
+      return { ready, finished: ready.catch(() => {}), updateCallbackDone: Promise.resolve(), skipTransition: () => {} };
+    });
+    (document as { startViewTransition?: unknown }).startViewTransition = start;
     const reported = vi.fn();
     const container = document.createElement("div");
     document.body.append(container);
@@ -28,7 +35,12 @@ describe("a view transition the browser aborts", () => {
     await act(async () => root.render(<ViewTransition><p>first</p></ViewTransition>));
     await act(async () => startTransition(() => root.render(<ViewTransition><p>second</p></ViewTransition>)));
     expect(container.textContent).toBe("second");
-    expect(reported).not.toHaveBeenCalled();
+    expect(start).toHaveBeenCalledTimes(1);
+    if (reports) {
+      expect(reported).toHaveBeenCalledTimes(1);
+      const error = reported.mock.calls[0]![0];
+      expect(error.cause ?? error).toMatchObject({ name, message });
+    } else expect(reported).not.toHaveBeenCalled();
     root.unmount();
     container.remove();
   });
