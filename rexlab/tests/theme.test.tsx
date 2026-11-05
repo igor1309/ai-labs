@@ -224,11 +224,14 @@ const show = (screen: ReactElement) => render(screen, withPictures);
 type Check = (theme: Theme) => void | Promise<void>;
 type Part = [string, Check];
 
-const catalogue = (food: Food, found: readonly string[] = []) => (
+// The catalogue listing a food's dinosaurs, or for "each" one dinosaur of
+// every food: each card's colours are its food's, so one of each checks
+// them all.
+const catalogue = (food: Food | "each", found: readonly string[] = []) => (
   <CatalogueScreen language="en"
-    dinosaurs={ofFood(SHIPPED_CATALOGUE, food).map((entry) => presentCatalogueCard(entry, "en", fakeBodyPicture, found))}
+    dinosaurs={(food === "each" ? (["meat", "plants", "both"] as const).map((one) => ofFood(SHIPPED_CATALOGUE, one)[0]!) : ofFood(SHIPPED_CATALOGUE, food)).map((entry) => presentCatalogueCard(entry, "en", fakeBodyPicture, found))}
     foods={FOODS.map((choice) => ({ food: choice, count: ofFood(SHIPPED_CATALOGUE, choice).length }))}
-    food={food} initialArrangement={{ columns: 4, chips: undefined }} chipWidths={{ width: () => 0, subscribe: () => nothing }}
+    food={food === "each" ? "all" : food} initialArrangement={{ columns: 4, chips: undefined }} chipWidths={{ width: () => 0, subscribe: () => nothing }}
     onChipContents={nothing} layoutKeeping={keptNothing} returning={undefined} onFood={nothing} onOpen={nothing} onHome={nothing} />
 );
 
@@ -285,19 +288,26 @@ const pairsResult = (board: Board) => (
     tries={board.tries} stars={3} best={board.tries} beaten={undefined} celebration="first-best" levelUp={null} onPlayAgain={nothing} onBack={nothing} onHome={nothing} />
 );
 
-// A board with a card open, then every pair found and its cards waving.
-const pairsPlayed = (level: BoardLevel, miss: boolean) => (theme: Theme) => {
-  const dealt = dealBoard(SHIPPED_PALS, level, seededRandom(41));
+// A board of pictures as it is dealt, with a card open and with a miss.
+const pairsMissed = (theme: Theme) => {
+  const dealt = dealBoard(SHIPPED_PALS, { climbLevel: 1 }, seededRandom(41));
   const opened = turn(dealt, 0);
   const { rerender } = show(pairsBoard(dealt));
   const check = (screen: ReactElement) => { rerender(screen); expectScreenIn(theme); };
   check(pairsBoard(dealt));
   check(pairsBoard(opened));
-  if (miss) check(pairsBoard(turn(opened, opened.cards.findIndex(({ pal }) => pal.id !== opened.cards[0]!.pal.id))));
-  const finished = turnedAll(dealt);
+  check(pairsBoard(turn(opened, opened.cards.findIndex(({ pal }) => pal.id !== opened.cards[0]!.pal.id))));
+};
+
+// The same board with two pairs found, then every pair and its cards
+// waving.
+const pairsWaving = (theme: Theme) => {
+  const finished = turnedAll(dealBoard(SHIPPED_PALS, { climbLevel: 1 }, seededRandom(41)));
   expect(isFinished(finished)).toBe(true);
-  if (miss) check(pairsBoard({ ...finished, found: finished.found.slice(0, 2) }));
-  check(pairsBoard(finished, true));
+  const { rerender } = show(pairsBoard({ ...finished, found: finished.found.slice(0, 2) }));
+  expectScreenIn(theme);
+  rerender(pairsBoard(finished, true));
+  expectScreenIn(theme);
   expect(document.querySelector(".pair-board[data-finished]")).not.toBeNull();
 };
 
@@ -408,7 +418,7 @@ const SCREEN_GROUPS: Array<[string, Part[]]> = [
   [
     "the catalogue",
     [
-      ["the list with a card of each food type", checked(catalogue("all"))],
+      ["the list with a card of each food type", checked(catalogue("each"))],
       ...(["meat", "plants", "both", "all"] as const).map((food): Part => [`the ${food.toUpperCase()} food choice`, checked(catalogue(food), () => screen.getByRole("group", { name: "FOOD" }))]),
       ...["tyrannosaurus", "triceratops", "gallimimus"].map((id): Part => [`the page of ${id}`, checked(dinosaurPage(id))])
     ]
@@ -431,7 +441,8 @@ const SCREEN_GROUPS: Array<[string, Part[]]> = [
       ["the welcome on a return, at Hatchling's climb level 4", checked(<PairsWelcomeScreen language="en" level="hatchling" climbLevel={4} stars={23} heroPicture={fakeBodyPicture("stegosaurus")} onLevel={nothing} onPlay={nothing} onHome={nothing} />)],
       ["the welcome at Explorer", checked(<PairsWelcomeScreen language="en" level="explorer" climbLevel={2} stars={9} heroPicture={fakeBodyPicture("stegosaurus")} onLevel={nothing} onPlay={nothing} onHome={nothing} />)],
       ["the welcome at Paleontologist", checked(<PairsWelcomeScreen language="en" level="paleontologist" climbLevel={2} stars={9} heroPicture={fakeBodyPicture("stegosaurus")} onLevel={nothing} onPlay={nothing} onHome={nothing} />)],
-      ["a board of pictures with a card open, a miss, found pairs and the cards waving", pairsPlayed({ climbLevel: 1 }, true)],
+      ["a board of pictures with a card open and a miss", pairsMissed],
+      ["a board of pictures with found pairs and the cards waving", pairsWaving],
       ["the result of a board of pictures", pairsFinished({ climbLevel: 1 })],
       ["a board's pictures loading, and one that cannot be loaded", pairsLoading],
       ["the level offer over the result", pairsOffer],
@@ -442,7 +453,7 @@ const SCREEN_GROUPS: Array<[string, Part[]]> = [
       ["Paleontologist's board of skeletons with every pair found", pairsAllFound({ large: "paleontologist" })],
       ["the result of Paleontologist's board", pairsFinished({ large: "paleontologist" })],
       ["the dinosaurs found on home", (theme) => { renderHomePageFeaturing("compare"); expectScreenIn(theme, gameDoor("FIND THE PAIR")); }],
-      ["the dinosaurs found on the catalogue", checked(catalogue("all", SHIPPED_PALS.map(({ id }) => id)))],
+      ["the dinosaurs found on the catalogue", checked(catalogue("each", SHIPPED_CATALOGUE.map(({ id }) => id)))],
       ["the dinosaurs found on a page", checked(dinosaurPage(SHIPPED_PALS[0]!.id, SHIPPED_PALS.map(({ id }) => id)))]
     ]
   ],
@@ -898,10 +909,10 @@ describe("a board of silhouettes", () => {
     const pairs = memoryStorage({ [PROGRESS_KEY]: pairsRecord({ stars: 6, level: 4, boardsOnLevel: 0, best: {}, found: [] }) });
     const { user } = openApp({ device: manualAppearance(theme), timers, pairs });
     await playPairs(user);
-    expectScreenIn(theme);
-
     await playBoard(user, timers);
 
+    // The welcome is checked with the screens above; here the board the
+    // climb deals.
     expectScreenIn(theme);
     // A silhouette is the picture's shape in the theme's ink on the card's
     // label, and so keeps text contrast with it.
