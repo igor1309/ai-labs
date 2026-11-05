@@ -134,9 +134,9 @@ test("the contents page lists the intro and each section to tap, marking where t
   const html = renderRich({ title: "Notes", lists: [], contents: [
     { page: 0, n: null, label: "Intro", current: false }, { page: 2, n: 1, label: "A", current: true },
   ] }, [{ id: "sec_0", kind: "section", label: "Intro" }, { id: "sec_2", kind: "section", label: "A" },
-    { id: "read", kind: "page", label: "◀ Text" }], 4);
+    { id: "read", kind: "page", label: "📖 Continue reading" }], 4);
   assert.equal(html, `<h2>📖 Notes</h2><h3>Contents</h3><ul><li>${link("4:sec_0", "Intro")}</li>`
-    + `<li>▸ §1 ${link("4:sec_2", "A")}</li></ul><tg-button-row>${button("4:read", "◀ Text")}</tg-button-row>`);
+    + `<li>▸ §1 ${link("4:sec_2", "A")}</li></ul><tg-button-row>${button("4:read", "📖 Continue reading")}</tg-button-row>`);
 });
 
 test("lecture markdown: text beside a list in one paragraph keeps its order", () => {

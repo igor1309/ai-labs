@@ -105,7 +105,7 @@ export function createProgramFlow({ client, pageSize = PAGE_SIZE }) {
     }));
     if (view.contents) {
       for (const entry of view.contents) actions.push({ id: `sec_${entry.page}`, kind: "section", label: entry.label });
-      actions.push({ id: "read", kind: "page", label: "◀ Text" });
+      actions.push({ id: "read", kind: "page", label: "📖 Continue reading" });
     } else if (view.page) {
       if (view.page.index > 0) actions.push({ id: "prev", kind: "page", label: "◀ Prev" });
       if (view.page.index < view.page.count - 1) actions.push({ id: "next", kind: "page", label: "Next ▶" });
