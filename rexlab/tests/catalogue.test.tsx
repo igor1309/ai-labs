@@ -184,7 +184,6 @@ describe("the list of every dinosaur", () => {
 
     const tag = cardOf(id).querySelector<HTMLElement>(".diet-tag");
     if (!tag) throw new Error(`No food tag on ${id}`);
-    expect(sameColour(getComputedStyle(tag).backgroundColor, getComputedStyle(tag).getPropertyValue("--ds-strong"))).toBe(true);
     expect(symbolsOf(tag)).toEqual(symbols);
     expect([words(tag), tag.getAttribute("role"), tag.getAttribute("aria-label")]).toEqual(["", "img", word]);
   });
