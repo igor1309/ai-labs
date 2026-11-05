@@ -55,7 +55,7 @@ import { pairsRecord, playBoard, playPairs } from "./pairsApp.tsx";
 import { AWAY, hints, layOutPuzzle, lifted, moveTo, press, release, spotOf, spotPieces } from "./skeletonsApp.tsx";
 import { basketButton, centreOf, dragTo, finishBoard, layOutBaskets, openBoard, openSortingGame, otherBasket, trayCard } from "./sorting.tsx";
 import { moveAt, pressAt } from "./taps.ts";
-import { withPictures } from "./pictures.tsx";
+import { withManualPictures, withPictures } from "./pictures.tsx";
 import {
   OVERLAYS,
   PALETTE,
@@ -82,6 +82,7 @@ import {
   manualAppearance,
   manualViewport,
   manualTimers,
+  manualPictures,
   memoryStorage,
   pageAtRest,
   sameColour,
@@ -212,6 +213,9 @@ function expectScreenIn(theme: Theme, part: Element = document.body) {
   ).toEqual([]);
 }
 
+// A design token's value in the theme shown.
+const token = (name: string) => getComputedStyle(document.documentElement).getPropertyValue(`--ds-${name}`).trim();
+
 const nothing = () => {};
 const show = (screen: ReactElement) => render(screen, withPictures);
 
@@ -297,6 +301,21 @@ const pairsPlayed = (level: BoardLevel, miss: boolean) => (theme: Theme) => {
   expect(document.querySelector(".pair-board[data-finished]")).not.toBeNull();
   check(pairsResult(finished));
   expect(screen.getByRole("status")).toBeDefined();
+};
+
+// A board with a pair found and a card open while their pictures load,
+// then with one picture that cannot be loaded.
+const pairsLoading = (theme: Theme) => {
+  const pictures = manualPictures();
+  const dealt = dealBoard(SHIPPED_PALS, { climbLevel: 1 }, seededRandom(41));
+  const found = turnBack(turn(turn(dealt, 0), dealt.cards.findIndex(({ pal }, place) => place !== 0 && pal.id === dealt.cards[0]!.pal.id)));
+  const opened = turn(found, found.cards.findIndex(({ pal }) => pal.id !== found.cards[0]!.pal.id));
+  render(pairsBoard(opened), withManualPictures(pictures));
+  expect(document.querySelectorAll('.pair-card .picture[data-picture="loading"]').length).toBe(3);
+  expectScreenIn(theme);
+  act(() => pictures.fail(pictures.loading()[0]!));
+  expect(document.querySelector('.pair-card .picture[data-picture="failed"]')).not.toBeNull();
+  expectScreenIn(theme);
 };
 
 const skeleton = (id: string) => SHIPPED_SKELETONS.find((each) => each.id === id)!;
@@ -389,6 +408,7 @@ const SCREEN_GROUPS: Array<[string, Part[]]> = [
       ["the welcome at Explorer", checked(<PairsWelcomeScreen language="en" level="explorer" climbLevel={2} stars={9} heroPicture={fakeBodyPicture("stegosaurus")} onLevel={nothing} onPlay={nothing} onHome={nothing} />)],
       ["the welcome at Paleontologist", checked(<PairsWelcomeScreen language="en" level="paleontologist" climbLevel={2} stars={9} heroPicture={fakeBodyPicture("stegosaurus")} onLevel={nothing} onPlay={nothing} onHome={nothing} />)],
       ["a board of pictures with a card open, a miss, found pairs and the cards waving, and the result", pairsPlayed({ climbLevel: 1 }, true)],
+      ["a board's pictures loading, and one that cannot be loaded", pairsLoading],
       ["Explorer's board of silhouettes, a card open, every pair found, and the result", pairsPlayed({ large: "explorer" }, false)],
       ["Paleontologist's board of skeletons, a card open, every pair found, and the result", pairsPlayed({ large: "paleontologist" }, false)],
       ["the dinosaurs found on home", (theme) => { renderHomePageFeaturing("compare"); expectScreenIn(theme, gameDoor("FIND THE PAIR")); }],
@@ -837,8 +857,8 @@ describe("a board of skeletons", () => {
     const skeletons = [...document.querySelectorAll('.pair-card[data-face="skeleton"] img')];
     expect(skeletons).toHaveLength(12);
     expect(skeletons.map((picture) => [picture.classList.contains("pair-silhouette"), getComputedStyle(picture).filter])).toEqual(skeletons.map(() => [false, "none"]));
-    const art = skeletons[0]?.closest(".pair-card-art") ?? document.body;
-    expect(sameColour(getComputedStyle(art).backgroundColor, PALETTE[theme]["surface-2"] ?? "")).toBe(true);
+    const face = skeletons[0]?.closest(".pair-card-face") ?? document.body;
+    expect(sameColour(getComputedStyle(face).backgroundColor, token("label"))).toBe(true);
   });
 });
 
@@ -853,12 +873,13 @@ describe("a board of silhouettes", () => {
     await playBoard(user, timers);
 
     expectScreenIn(theme);
-    // A silhouette is black on the light art, white on the dark, and so
-    // keeps text contrast with it.
-    const art = document.querySelector(".pair-card-art") ?? document.body;
-    const silhouette = document.querySelector(".pair-silhouette") ?? document.body;
-    expect(getComputedStyle(silhouette).filter).toBe(theme === "dark" ? "brightness(0) invert(1)" : "brightness(0)");
-    expect(sameColour(getComputedStyle(art).backgroundColor, PALETTE[theme]["surface-2"] ?? "")).toBe(true);
-    expect(contrast(theme === "dark" ? "#FFFFFF" : "#000000", PALETTE[theme]["surface-2"] ?? "")).toBeGreaterThanOrEqual(TEXT_CONTRAST);
+    // A silhouette is the picture's shape in the theme's ink on the card's
+    // label, and so keeps text contrast with it.
+    const face = document.querySelector(".pair-card-face") ?? document.body;
+    const shadow = document.querySelector(".pair-silhouette + .pair-card-shadow") ?? document.body;
+    expect([getComputedStyle(document.querySelector(".pair-silhouette") ?? document.body).opacity, getComputedStyle(shadow).display]).toEqual(["0", "block"]);
+    expect(sameColour(getComputedStyle(shadow).backgroundColor, token("ink"))).toBe(true);
+    expect(sameColour(getComputedStyle(face).backgroundColor, token("label"))).toBe(true);
+    expect(contrast(token("ink"), token("label"))).toBeGreaterThanOrEqual(TEXT_CONTRAST);
   });
 });

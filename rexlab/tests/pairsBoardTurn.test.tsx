@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import type { AppProps, PortraitLayouts, SizeClass } from "../src/App.tsx";
 import { TEXTS } from "../src/language/texts.ts";
 import { LARGE_LEVELS } from "../src/pairs/index.ts";
-import { pairsBoardGeometry } from "../src/pairsBoardLayout.ts";
 import { drawnOpacity, extendPart, turnFrame } from "../src/root.ts";
 import type { Box, TurnAnimation } from "../src/turnMotion.ts";
 import { board, dealt, MISS, namesOf, openPairsApp, placesOf, triesShown, turnCard } from "./pairsApp.tsx";
@@ -32,31 +31,30 @@ const stateAt = (place: number) => pairCards()[place]?.getAttribute("data-state"
 const placeOf = (element: Element) => Number((element as HTMLElement).style.getPropertyValue("--card"));
 
 // An Explorer board's card as a browser would lay it out, landscape or
-// upright, from the window. Landscape, the board is as wide as the room
-// under the bar, or as its height allows at the board's shape, centred,
-// its cards 20 apart row by row; upright, the grid on its side as the
-// geometry sizes it, centred under the bar, its cards 16 apart down each
+// upright, from the window: each card at most 150 wide at 3:3.2, as the
+// room on the sand lets the whole board be, centred there, the cards 16
+// apart; upright, the grid on its side, the cards flowing down each
 // column.
 function cardBox(element: Element): Box {
   const [width, height] = [window.innerWidth, window.innerHeight];
   const place = placeOf(element);
-  if (document.documentElement.dataset.size === "tall") {
-    const board = pairsBoardGeometry(EXPLORER, width, height, 0, 0);
-    const across = board.columns * board.card.width + (board.columns - 1) * 16;
-    const down = board.rows * board.card.height + (board.rows - 1) * 16;
-    const [left, top] = [32 + (board.width - across) / 2, 124 + Math.max(0, height - 172 - down) / 2];
-    const [row, column] = [place % board.rows, Math.floor(place / board.rows)];
-    return { left: left + column * (board.card.width + 16), top: top + row * (board.card.height + 16), width: board.card.width, height: board.card.height };
-  }
-  const { rows, columns } = EXPLORER;
-  const room = { width: width - 112, height: height - 172 };
-  const shape = (columns * 3) / (rows * 3.2);
-  const boardWidth = Math.min(room.width, room.height * shape);
-  const card = { width: (boardWidth - (columns - 1) * 20) / columns, height: (boardWidth / shape - (rows - 1) * 20) / rows };
-  const [row, column] = [Math.floor(place / columns), place % columns];
+  const upright = document.documentElement.dataset.size === "tall";
+  // The sides, the sand's top, and the sky, the sand's padding and the
+  // bedrock taken from the height.
+  const [side, top, taken] = upright ? [56, 116 + 14, 116 + 14 + 50] : [40, 108 + 14, 108 + 14 + 30 + 60];
+  const room = { width: width - 2 * side, height: height - taken };
+  const [rows, columns] = upright ? [EXPLORER.columns, EXPLORER.rows] : [EXPLORER.rows, EXPLORER.columns];
+  const ratio = 3.2 / 3;
+  const byHeight = (room.height - (rows - 1) * 16) / rows / ratio;
+  const byWidth = (room.width - (columns - 1) * 16) / columns;
+  const cardWidth = upright ? Math.min(150, byWidth, Math.max(EXPLORER.floor, byHeight)) : Math.max(EXPLORER.floor, Math.min(150, byWidth, byHeight));
+  const card = { width: cardWidth, height: cardWidth * ratio };
+  const across = columns * card.width + (columns - 1) * 16;
+  const down = rows * card.height + (rows - 1) * 16;
+  const [row, column] = upright ? [place % rows, Math.floor(place / rows)] : [Math.floor(place / columns), place % columns];
   return {
-    left: 56 + (room.width - boardWidth) / 2 + column * (card.width + 20),
-    top: 124 + (room.height - boardWidth / shape) / 2 + row * (card.height + 20),
+    left: side + (room.width - across) / 2 + column * (card.width + 16),
+    top: top + Math.max(0, room.height - down) / 2 + row * (card.height + 16),
     width: card.width,
     height: card.height
   };

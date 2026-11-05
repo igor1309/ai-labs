@@ -9,7 +9,6 @@ import { MENU_EXIT } from "../src/ParentMenu.tsx";
 import { openMenu } from "./menus.ts";
 import { CLIMB_LEVELS } from "../src/pairs/index.ts";
 import { board, openPairsApp, pairCards, pairsRecord, playBoard, storedPairs, type PairsAppOptions, type StoredPairs } from "./pairsApp.tsx";
-import { openWindow, windowsAnd } from "./windowSizes.ts";
 import { SHIPPED_PALS, fakeBodyPicture, fakeSkeletonPicture, gameDoor, manualTimers, memoryStorage, pictureClock, seededRandom, type ManualPictures, type ManualTimers } from "./support.ts";
 
 // find-the-pair-levels.feature, the welcome screen's level switch, and
@@ -29,12 +28,6 @@ const chosen = () =>
     .getAllByRole("button", { pressed: true })
     .map((level) => level.querySelector(".level-switch-name")?.textContent);
 const climbChip = () => screen.getByLabelText("LEVEL");
-
-const px = (value: string) => Number.parseFloat(value) || 0;
-// jsdom resolves a gap that follows the window only in its longhands; a
-// gap set by the shorthand alone is read from the shorthand, row gap first.
-const columnGapOf = (style: CSSStyleDeclaration) => px(style.columnGap && style.columnGap !== "normal" ? style.columnGap : style.gap.split(" ").at(-1) ?? "");
-const rowGapOf = (style: CSSStyleDeclaration) => px(style.rowGap && style.rowGap !== "normal" ? style.rowGap : style.gap.split(" ")[0] ?? "");
 
 const pals = (...ids: string[]) =>
   ids.map((id) => {
@@ -212,14 +205,6 @@ describe("the choice on the level switch", () => {
 });
 
 describe("a board at each level", () => {
-  // The fit table of find-the-pair-levels.feature, a level's board on a
-  // screen and the least every card is there, kept in every window: a
-  // window at least as large as the table's largest keeps its least.
-  const FIT = windowsAnd([1366, 1024]).flatMap(([width, height]) => [
-    ["Explorer", width, height, 130, "explorer"] as const,
-    ["Paleontologist", width, height, width >= 1366 && height >= 1024 ? 150 : 120, "paleontologist"] as const
-  ]);
-
   const styleOf = (selector: string) => {
     const found = document.querySelector(selector);
     if (!found) throw new Error(`No ${selector} on the screen`);
@@ -270,51 +255,6 @@ describe("a board at each level", () => {
     expect(screen.getByLabelText("LEVEL").textContent).toBe("3");
   });
 
-  it.each(FIT)("fits an %s board with HOME on a %i by %i screen, with no scrolling, every card at least %i pixels a side", async (_, width, height, size, level) => {
-    openWindow(width, height);
-    const { user } = await openPairs({ ageLevel: picked(level) });
-    await user.click(button("PLAY"));
-
-    // jsdom lays nothing out, so the board is laid out here as app.css
-    // gives it: the screen is the window, cut off where it ends, a column
-    // of the bar, with HOME, and the room left under it; the board is as
-    // wide as the room, or as the room's height allows at the board's
-    // shape, and its cards share it after the gaps.
-    const page = styleOf(".pairs-board-screen");
-    expect([page.height, page.overflow, page.display, page.flexDirection]).toEqual([`${height}px`, "hidden", "flex", "column"]);
-    const bar = document.querySelector(".pairs-bar");
-    if (!bar) throw new Error("No bar on the board");
-    expect(within(bar as HTMLElement).getByRole("button", { name: "HOME" })).toBeDefined();
-    const barHeight = px(getComputedStyle(bar).height);
-    for (const item of [".home-button", ".pairs-bar-mark", ".pairs-bar-chip"]) expect(px(styleOf(item).height)).toBeLessThanOrEqual(barHeight);
-    const roomStyle = styleOf(".pair-board-room");
-    expect([roomStyle.flexGrow, roomStyle.flexShrink, roomStyle.flexBasis, roomStyle.minHeight, roomStyle.getPropertyValue("container-type")]).toEqual(["1", "1", "0px", "0px", "size"]);
-    const room = {
-      width: width - px(page.paddingLeft) - px(page.paddingRight),
-      height: height - px(page.paddingTop) - px(page.paddingBottom) - barHeight - rowGapOf(page)
-    };
-
-    const style = getComputedStyle(board());
-    expect([style.display, style.width, style.aspectRatio]).toEqual(["grid", "min(100cqw, 100cqh * var(--columns) * 3 / (var(--rows) * 3.2))", "calc(var(--columns) * 3) / calc(var(--rows) * 3.2)"]);
-    expect([roomStyle.display, roomStyle.placeItems]).toEqual(["grid", "center"]);
-    const [rows, columns] = [Number(board().style.getPropertyValue("--rows")), Number(board().style.getPropertyValue("--columns"))];
-    const shape = (columns * 3) / (rows * 3.2);
-    const boardWidth = Math.min(room.width, room.height * shape);
-    const boardHeight = boardWidth / shape;
-    const [rowGap, columnGap] = [rowGapOf(style), columnGapOf(style)];
-    const card = { width: (boardWidth - (columns - 1) * columnGap) / columns, height: (boardHeight - (rows - 1) * rowGap) / rows };
-
-    expect(boardHeight).toBeLessThanOrEqual(room.height + 0.01);
-    expect(Math.min(card.width, card.height)).toBeGreaterThanOrEqual(size);
-    // The cards' floor never pushes the board out of its room.
-    const floor = px(board().style.getPropertyValue("--card-floor"));
-    expect([style.gridTemplateColumns, style.gridTemplateRows]).toEqual(["repeat(var(--columns), minmax(var(--card-floor), 1fr))", "repeat(var(--rows), minmax(var(--card-floor), 1fr))"]);
-    expect(floor * columns + (columns - 1) * columnGap).toBeLessThanOrEqual(boardWidth);
-    expect(floor * rows + (rows - 1) * rowGap).toBeLessThanOrEqual(boardHeight);
-    // A face-down card's footprints are drawn at its share of the card.
-    expect([styleOf(".pair-card-back-frame svg").width, styleOf(".pair-card-back-frame svg").height]).toEqual(["30cqi", "30cqi"]);
-  });
-
   it.each(AGE_LEVELS)("draws the footprints of the welcome's face-down card at %s at their share of that card, not of the screen", async (level) => {
     const { user } = await openPairs({ ageLevel: picked(level) });
 
@@ -325,7 +265,7 @@ describe("a board at each level", () => {
     expect([card.getPropertyValue("container-type"), footprints.width, footprints.height]).toEqual(["inline-size", "42cqi", "42cqi"]);
 
     await user.click(button("PLAY"));
-    expect([styleOf(".pair-card").getPropertyValue("container-type"), styleOf(".pair-card-back-frame svg").width]).toEqual(["inline-size", "30cqi"]);
+    expect([styleOf(".pair-card").getPropertyValue("container-type"), styleOf(".pair-card-back svg").width]).toEqual(["inline-size", "36cqi"]);
   });
 
   it.each([

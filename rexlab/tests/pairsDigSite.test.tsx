@@ -3,6 +3,7 @@ import { afterEach, expect, it } from "vitest";
 import type { AgeLevel } from "../src/ageLevel.ts";
 import type { Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
+import { PairsBoardScreen, type PairCardView } from "../src/PairsBoardScreen.tsx";
 import { PairsWelcomeScreen } from "../src/PairsWelcomeScreen.tsx";
 import { THEMES } from "../src/theme.ts";
 import { withManualPictures } from "./pictures.tsx";
@@ -107,4 +108,93 @@ it.each(["explorer", "paleontologist"] as const)("folds the climb level away at 
   const climb = part(".pairs-climb");
   expect([climb.hasAttribute("data-shown"), climb.getAttribute("aria-hidden"), style(climb).opacity]).toEqual([false, "true", "0"]);
   expect(part(".pairs-stars").textContent).toBe("5");
+});
+
+// A board's cards, one of each step of a round: face down, open, found,
+// at the face its age level shows.
+const FACES = { hatchling: "picture", explorer: "silhouette", paleontologist: "skeleton" } as const;
+function boardCards(level: AgeLevel): PairCardView[] {
+  const face = FACES[level];
+  const card = (id: string, state: PairCardView["state"]): PairCardView => ({ id, name: id === "rex" ? "Tyrannosaurus" : "Pachycephalosaurus", picture: `${id}.webp`, face, state });
+  return [card("rex", "down"), card("rex", "open"), card("pachy", "found"), card("pachy", "found"), card("rex", "down"), card("rex", "down")];
+}
+function showBoard({ language = "en", level = "hatchling", finished = false }: { language?: Language; level?: AgeLevel; finished?: boolean } = {}) {
+  const pictures = manualPictures();
+  render(<PairsBoardScreen language={language} climbLevel={level === "hatchling" ? 3 : undefined} tries={7} rows={2} columns={3} cardFloor={150}
+    cards={boardCards(level)} finished={finished} onTurn={noop} onBack={noop} onHome={noop} />, withManualPictures(pictures));
+  return pictures;
+}
+
+for (const theme of THEMES) for (const shape of SHAPES) {
+  it(`draws the board from the dig-site tokens in ${theme} ${shape}`, () => {
+    at(theme, shape);
+    const pictures = showBoard();
+    matches('.pair-card[data-state="open"] .picture', { "background-color": "pocket-1", "--shimmer-from": "pocket-1", "--shimmer-to": "strata-1", "border-top-left-radius": "radius-10" });
+    act(() => pictures.finishAll());
+    matches(".pairs-board-screen", { color: "ink" });
+    matches(".pairs-board-sand", { "background-color": "strata-1" });
+    matches(".pairs-board-wave", { fill: "strata-1" });
+    if (shape === "wide-short") expect(style(part(".pairs-board-bedrock")).display).toBe("none");
+    else matches(".pairs-board-bedrock", { "background-color": "strata-2" });
+    for (const button of [".pairs-bar-home", ".pairs-bar-back"]) matches(button, { "background-color": "quiet", color: "ink", "border-top-left-radius": "radius-pill" });
+    matches(".pairs-bar-mark", { "background-color": "action", color: "on-action", "border-top-left-radius": shape === "wide-short" ? "radius-10" : "radius-12" });
+    for (const chip of [...document.querySelectorAll(".pairs-bar-chip")].keys()) matches(`.pairs-bar-chip:nth-child(${chip + 1})`, { "background-color": "quiet", color: "ink", "border-radius": "radius-tag" });
+    matches(".pairs-bar-number", { "font-size": phone(shape) ? "size-20" : "size-24" });
+    const radius = phone(shape) ? "radius-12" : "radius-16";
+    matches('.pair-card[data-state="down"]', { "border-top-left-radius": radius });
+    matches('.pair-card[data-state="down"] .pair-card-back', { "background-color": "strong", color: "on-strong" });
+    matches('.pair-card[data-state="open"] .pair-card-face', { "background-color": "label", "border-top-color": "outline", padding: phone(shape) ? "space-6" : "space-s" });
+    matches('.pair-card[data-state="found"] .pair-card-face', { "background-color": "label", "border-top-color": "good" });
+    expect(style(part('.pair-card[data-state="open"] .pair-card-face')).borderTopWidth).toBe("2px");
+    expect(style(part('.pair-card[data-state="found"] .pair-card-face')).borderTopWidth).toBe("4px");
+    const name = style(part('.pair-card[data-state="found"] .pair-card-name'));
+    // On a phone a found card's name is left to its label.
+    expect([name.fontWeight, name.display === "none"]).toEqual(["900", phone(shape)]);
+  });
+
+  it(`shows BACK and HOME, and the title, as its board does in ${theme} ${shape}`, () => {
+    at(theme, shape);
+    showBoard();
+    const hidden = (selector: string) => style(part(selector)).position === "absolute";
+    // HOME's word shows wide and upright on an iPad; BACK's only wide;
+    // the title's word wide and on a phone on its side; on an upright
+    // phone there is no title.
+    expect([hidden(".pairs-bar-home .pairs-bar-name"), hidden(".pairs-bar-back .pairs-bar-name"), hidden(".pairs-bar-word"), hidden(".pairs-bar-title")]).toEqual({
+      "wide": [false, false, false, false], "tall": [false, true, true, false], "tall-narrow": [true, true, true, true], "wide-short": [true, true, false, false]
+    }[shape]);
+  });
+}
+
+it.each(["hatchling", "explorer", "paleontologist"] as const)("draws %s's face up cards in its own face, a silhouette in ink", (level) => {
+  at("light", "wide");
+  const pictures = showBoard({ level });
+  act(() => pictures.finishAll());
+  const faces = [...document.querySelectorAll('.pair-card:not([data-state="down"])')].map((card) => card.getAttribute("data-face"));
+  expect(faces).toEqual([FACES[level], FACES[level], FACES[level]]);
+  expect(document.querySelectorAll(".pair-card-shadow")).toHaveLength(level === "explorer" ? 3 : 0);
+  if (level === "explorer") {
+    matches(".pair-card-shadow", { "background-color": "ink" });
+    expect([style(part(".pair-silhouette")).opacity, style(part(".pair-card-shadow")).display]).toEqual(["0", "block"]);
+  }
+});
+
+it.each(["en", "ru"] as const)("names the %s bar's buttons, title and chips, each with its symbol, HOME first", (language) => {
+  const text = TEXTS[language];
+  showBoard({ language });
+  const buttons = [...document.querySelectorAll(".pairs-bar button")];
+  expect(buttons.map((button) => [button.textContent, button.querySelector("svg") !== null])).toEqual([[text.home, true], [text.back, true]]);
+  expect([part(".pairs-bar-title").textContent, part(".pairs-bar-mark svg") !== null]).toEqual([text.pairs, true]);
+  const climb = within(document.body).getByLabelText(text.level);
+  const tries = within(document.body).getByLabelText(text.tries);
+  expect([climb.textContent, climb.querySelector("svg.pairs-stairs") !== null, tries.textContent, tries.querySelector("svg") !== null]).toEqual(["3", true, "7", true]);
+});
+
+it("shows a card whose picture cannot be loaded by its name alone", () => {
+  at("light", "wide");
+  const pictures = showBoard();
+  act(() => pictures.fail("rex.webp"));
+  act(() => pictures.finish("pachy.webp"));
+  const open = part('.pair-card[data-state="open"]');
+  expect([style(open.querySelector(".pair-card-art")!).display, open.querySelector(".pair-card-name")?.textContent]).toEqual(["none", "TYRANNOSAURUS"]);
+  matches('.pair-card[data-state="open"] .pair-card-name', { "font-size": "size-16" });
 });

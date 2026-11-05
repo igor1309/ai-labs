@@ -5008,66 +5008,6 @@ html[data-size="tall-narrow"] .sort[data-rows] .basket-mark .mark-question {
   font-size: 16px;
 }
 
-/* Find the pair's board fills the screen under a bar like the
-   catalogue's. */
-.pairs-board-screen {
-  position: relative;
-  isolation: isolate;
-  overflow: hidden;
-  height: 100vh;
-  height: 100dvh;
-  box-sizing: border-box;
-  padding:
-    calc(40px + env(safe-area-inset-top))
-    calc(56px + var(--screen-right))
-    calc(48px + env(safe-area-inset-bottom))
-    calc(56px + var(--screen-left));
-  display: flex;
-  flex-direction: column;
-  gap: 28px;
-}
-
-/* A board window shorter than 768 pixels gives up its margins, the bar's
-   gap and the cards' gaps in step, down to 20, 16, 12 and 12 pixels at 670
-   tall, so the fullest board's cards stay 120 pixels a side; at 768 and
-   taller the board keeps its margins and gaps. */
-.pairs-board-screen {
-  padding-top: calc(40px + env(safe-area-inset-top) - clamp(0px, 768px - 100vh, 98px) * 20 / 98);
-  padding-top: calc(40px + env(safe-area-inset-top) - clamp(0px, 768px - 100dvh, 98px) * 20 / 98);
-  padding-bottom: calc(48px + env(safe-area-inset-bottom) - clamp(0px, 768px - 100vh, 98px) * 32 / 98);
-  padding-bottom: calc(48px + env(safe-area-inset-bottom) - clamp(0px, 768px - 100dvh, 98px) * 32 / 98);
-  row-gap: calc(28px - clamp(0px, 768px - 100vh, 98px) * 16 / 98);
-  row-gap: calc(28px - clamp(0px, 768px - 100dvh, 98px) * 16 / 98);
-}
-
-.pairs-board-screen .stratum-1 {
-  height: 40px;
-}
-
-.pairs-bar {
-  display: flex;
-  align-items: center;
-  gap: 24px;
-}
-
-.pairs-bar-mark {
-  flex-shrink: 0;
-  display: grid;
-  place-items: center;
-  background: #a9bcd6;
-  color: #1d2742;
-}
-
-.pairs-bar-chip {
-  flex-shrink: 0;
-  margin: 0;
-  box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  background: #e6e2d9;
-  font-weight: 700;
-}
-
 /* The climb level is Hatchling's alone: at the other levels its chip folds
    away beside the stars, the gap before them with it, and unfolds again at
    Hatchling. */
@@ -5324,390 +5264,6 @@ html[data-size="wide-short"] .result-with-levels .result-actions svg {
   height: 22px;
 }
 
-/* The board: its bar, as tall as HOME so the room left for the cards is
-   known, then the cards, row by row, as big as that room lets them be,
-   each at least the board's floor. */
-.pairs-bar {
-  height: 56px;
-}
-
-.pairs-bar-title {
-  flex: 1 1 0;
-  min-width: 0;
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  font-size: 40px;
-  font-weight: 700;
-}
-
-.pairs-bar-mark {
-  width: 52px;
-  height: 52px;
-  border-radius: 14px;
-}
-
-.pairs-bar-chip {
-  height: 52px;
-  padding: 0 18px;
-  gap: 10px;
-  border-radius: 26px;
-  font-size: 26px;
-}
-
-/* A new count of tries bumps in. */
-.pairs-tries {
-  display: inline-block;
-  min-width: 1.4em;
-  animation: bump-in var(--motion-standard) var(--ease-overshoot) both;
-}
-
-/* The room under the bar holds the board centred, as wide as the room
-   or as its height allows at the board's shape, whichever is less, so a
-   board fits whole however many rows and columns it has. */
-.pair-board-room {
-  flex: 1 1 0;
-  min-height: 0;
-  container-type: size;
-  display: grid;
-  place-items: center;
-}
-
-.pair-board {
-  width: min(100cqw, 100cqh * var(--columns) * 3 / (var(--rows) * 3.2));
-  aspect-ratio: calc(var(--columns) * 3) / calc(var(--rows) * 3.2);
-  display: grid;
-  grid-template-columns: repeat(var(--columns), minmax(var(--card-floor), 1fr));
-  grid-template-rows: repeat(var(--rows), minmax(var(--card-floor), 1fr));
-  row-gap: calc(20px - clamp(0px, 768px - 100vh, 98px) * 8 / 98);
-  row-gap: calc(20px - clamp(0px, 768px - 100dvh, 98px) * 8 / 98);
-  column-gap: calc(20px - clamp(0px, 768px - 100vh, 98px) * 8 / 98);
-  column-gap: calc(20px - clamp(0px, 768px - 100dvh, 98px) * 8 / 98);
-}
-
-/* The cards rise in one after the other; each side flips in as it is
-   turned to. */
-.pair-card {
-  position: relative;
-  min-width: 0;
-  min-height: 0;
-  padding: 0;
-  display: flex;
-  overflow: hidden;
-  border: none;
-  border-radius: 24px;
-  background: none;
-  box-shadow: 0 8px 24px #1d274224;
-  perspective: 900px;
-  container-type: inline-size;
-  animation: rise-in var(--motion-standard) var(--ease-out) calc(var(--card) * var(--motion-stagger)) both;
-}
-
-.pair-card-back,
-.pair-card-face {
-  flex: 1 1 0;
-  min-width: 0;
-  display: flex;
-  border-radius: inherit;
-  animation: flip-in var(--motion-standard) var(--ease-out) both;
-}
-
-.pair-card-back {
-  box-sizing: border-box;
-  padding: 10px;
-  background: #1f2b4d;
-}
-
-.pair-card-back-frame {
-  flex: 1 1 0;
-  display: grid;
-  place-items: center;
-  border: 2px solid #f2b33d59;
-  border-radius: 16px;
-  color: #e39b2d;
-}
-
-/* The footprints keep their share of the card at every size of card. */
-.pair-card .pair-card-back-frame svg {
-  width: 30cqi;
-  height: 30cqi;
-}
-
-.pair-card-face {
-  flex-direction: column;
-  background: #fffdf8;
-  color: #1d2742;
-}
-
-.pair-card-art {
-  flex: 1 1 0;
-  min-height: 0;
-  box-sizing: border-box;
-  padding: 12px;
-  display: flex;
-  background: #e6e2d9;
-}
-
-.pair-card-picture {
-  display: block;
-  width: 100%;
-  height: 100%;
-  min-height: 0;
-  object-fit: contain;
-}
-
-/* A silhouette is the picture's shape in ink. */
-.pair-silhouette {
-  opacity: 0.85;
-}
-
-/* The silhouette is of the picture only: its shimmer and failure look
-   keep their own colours. */
-.pair-silhouette[data-picture="appearing"],
-.pair-silhouette[data-picture="shown"] {
-  filter: brightness(0);
-}
-
-/* The name's size is the card's width over the longest name's, in ems:
-   PACHYCEPHALOSAURUS's 12.7. */
-.pair-card-name {
-  flex-shrink: 0;
-  padding: 8px 10px 10px;
-  font-size: min(24px, (100cqi - 20px) / 12.7);
-  font-weight: 700;
-  text-align: center;
-  white-space: nowrap;
-}
-
-/* The name shown while the picture loaded goes as the picture fades in. */
-.pair-card-name[data-fading] {
-  animation: fade-out var(--motion-picture) var(--ease-out) forwards;
-}
-
-/* A found pair is outlined in green over the picture, and named, and
-   bounces once it has flipped. The outline is the face's: the turning
-   face would cover the card's. */
-.pair-card[data-state="found"] .pair-card-face {
-  outline: 4px solid #2e7d4f;
-  outline-offset: -4px;
-  animation:
-    flip-in var(--motion-standard) var(--ease-out) both,
-    bounce var(--motion-screen) var(--ease-overshoot) var(--motion-standard);
-}
-
-/* The last pair found, every card waves, one after the other, before the
-   result. */
-.pair-board[data-finished] .pair-card {
-  animation:
-    rise-in var(--motion-standard) var(--ease-out) calc(var(--card) * var(--motion-stagger)) both,
-    wave var(--motion-screen) var(--ease-out) calc(var(--motion-standard) + var(--card) * var(--motion-stagger));
-}
-
-/* Upright, the board stands under the bar with its grid on its side: the
-   landscape rows stand as its columns and the landscape columns as its
-   rows, the cards flowing down each column in turn, so each card keeps
-   its neighbours and the page keeps their order. The screen keeps its
-   landscape padding top and bottom and the bar's gap, and is 32 from each
-   side. The cards stand 16 apart at their 3:3.2, each as wide as the
-   board's width allows, which the screen gives in --card-by-width, and as
-   the height under the bar allows, the padding (88), the bar (56) and its
-   gap (28) taken, 172 in all; never under the board's floor, and below
-   that the whole screen scrolls. */
-html[data-size="tall"] .pairs-board-screen,
-html[data-size="tall-narrow"] .pairs-board-screen {
-  min-height: 100vh;
-  min-height: 100dvh;
-  height: auto;
-  padding:
-    calc(40px + env(safe-area-inset-top))
-    calc(32px + var(--screen-right))
-    calc(48px + env(safe-area-inset-bottom))
-    calc(32px + var(--screen-left));
-  row-gap: 28px;
-}
-
-html[data-size="tall"] .pair-board-room,
-html[data-size="tall-narrow"] .pair-board-room {
-  flex: 1 0 auto;
-  container-type: normal;
-}
-
-html[data-size="tall"] .pair-board,
-html[data-size="tall-narrow"] .pair-board {
-  width: auto;
-  aspect-ratio: auto;
-  grid-auto-flow: column;
-  grid-template-columns: repeat(var(--rows), max(var(--card-floor), min(var(--card-by-width), (100vh - (172px + env(safe-area-inset-top) + env(safe-area-inset-bottom)) - (var(--columns) - 1) * 16px) / var(--columns) * 0.9375)));
-  grid-template-columns: repeat(var(--rows), max(var(--card-floor), min(var(--card-by-width), (100dvh - (172px + env(safe-area-inset-top) + env(safe-area-inset-bottom)) - (var(--columns) - 1) * 16px) / var(--columns) * 0.9375)));
-  grid-template-rows: repeat(var(--columns), auto);
-  row-gap: 16px;
-  column-gap: 16px;
-}
-
-html[data-size="tall"] .pair-card,
-html[data-size="tall-narrow"] .pair-card {
-  aspect-ratio: 3 / 3.2;
-}
-
-/* In a tall-narrow window, an iPhone upright, the board stands as in a
-   tall one on 20-pixel sides, 24 at the top and 32 at the bottom, 20
-   under the bar, the cards 8 apart. A card is as wide as the height
-   under the bar allows, the padding (56), the bar (56) and its gap (20)
-   taken, 132 in all, and at least 56, the board's own floor set aside,
-   but never wider than the width lets the grid be: below that the whole
-   screen scrolls.
-   A found card's name, too small there, is left to its label; a name
-   shown while its picture is not keeps telling the pair apart. */
-html[data-size="tall-narrow"] .pairs-board-screen {
-  padding:
-    calc(24px + env(safe-area-inset-top))
-    calc(20px + var(--screen-right))
-    calc(32px + env(safe-area-inset-bottom))
-    calc(20px + var(--screen-left));
-  row-gap: 20px;
-}
-
-html[data-size="tall-narrow"] .pair-board {
-  grid-template-columns: repeat(var(--rows), min(var(--card-by-width), max(56px, (100vh - (132px + env(safe-area-inset-top) + env(safe-area-inset-bottom)) - (var(--columns) - 1) * 8px) / var(--columns) * 0.9375)));
-  grid-template-columns: repeat(var(--rows), min(var(--card-by-width), max(56px, (100dvh - (132px + env(safe-area-inset-top) + env(safe-area-inset-bottom)) - (var(--columns) - 1) * 8px) / var(--columns) * 0.9375)));
-  row-gap: 8px;
-  column-gap: 8px;
-}
-
-html[data-size="tall-narrow"] .pair-card-name[data-caption] {
-  display: none;
-}
-
-/* The bar keeps one row on a phone: BACK and HOME are 48 wide, the title
-   is left to screen readers, and the climb level and the tries stand at
-   the right in 20-pixel type. */
-html[data-size="tall-narrow"] .pairs-bar {
-  gap: 8px;
-}
-html[data-size="tall-narrow"] .pairs-bar .home-button {
-  flex-shrink: 0;
-  width: 48px;
-  padding: 0;
-  justify-content: center;
-}
-
-html[data-size="tall-narrow"] .pairs-bar-title {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-}
-
-html[data-size="tall-narrow"] .pairs-bar-title + .pairs-bar-chip {
-  margin-left: auto;
-}
-
-html[data-size="tall-narrow"] .pairs-bar-chip {
-  padding: 0 10px;
-  gap: 6px;
-  font-size: 20px;
-}
-
-html[data-size="tall-narrow"] .pairs-bar-chip svg {
-  width: 20px;
-  height: 20px;
-}
-
-/* In a wide-short window, an iPhone on its side, the board keeps its
-   rows and columns as dealt under a 48-pixel bar, 8 under the top, 12
-   over the bottom and 20 past each side's inset. The cards stand 8 apart,
-   about 3:2 once the gaps are taken, wider than tall like the pictures, as large as the room under
-   the bar lets the whole board be; even the fullest board's four rows
-   keep a card over 44 tall. BACK and HOME are 48 squares of their
-   symbols, the title in 24-pixel type, and a found card's name is left
-   to its label, as on an upright phone. */
-html[data-size="wide-short"] .pairs-board-screen {
-  padding:
-    calc(8px + env(safe-area-inset-top))
-    calc(20px + var(--screen-right))
-    calc(12px + env(safe-area-inset-bottom))
-    calc(20px + var(--screen-left));
-  row-gap: 8px;
-}
-
-html[data-size="wide-short"] .pairs-board-screen .pairs-bar {
-  height: 48px;
-  gap: 8px;
-}
-html[data-size="wide-short"] .pairs-bar .home-button {
-  flex-shrink: 0;
-  width: 48px;
-  height: 48px;
-  padding: 0;
-  justify-content: center;
-}
-
-html[data-size="wide-short"] .pairs-bar-title {
-  gap: 10px;
-  font-size: 24px;
-}
-
-html[data-size="wide-short"] .pairs-bar-mark {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-}
-
-html[data-size="wide-short"] .pairs-bar-chip {
-  height: 40px;
-  padding: 0 12px;
-  gap: 6px;
-  border-radius: 20px;
-  font-size: 20px;
-}
-
-html[data-size="wide-short"] .pairs-bar-chip svg {
-  width: 20px;
-  height: 20px;
-}
-
-html[data-size="wide-short"] .pair-board {
-  width: min(100cqw, 100cqh * var(--columns) * 3 / (var(--rows) * 2));
-  aspect-ratio: calc(var(--columns) * 3) / calc(var(--rows) * 2);
-  grid-template-columns: repeat(var(--columns), minmax(0, 1fr));
-  grid-template-rows: repeat(var(--rows), minmax(0, 1fr));
-  row-gap: 8px;
-  column-gap: 8px;
-}
-
-html[data-size="wide-short"] .pair-card {
-  border-radius: 14px;
-  box-shadow: 0 4px 12px #1d274224;
-}
-
-html[data-size="wide-short"] .pair-card-back {
-  padding: 5px;
-}
-
-html[data-size="wide-short"] .pair-card-back-frame {
-  border-radius: 10px;
-}
-
-html[data-size="wide-short"] .pair-card-art {
-  padding: 6px;
-}
-
-html[data-size="wide-short"] .pair-card-name[data-caption] {
-  display: none;
-}
-
-/* Upright, the bar keeps one row at the narrowest width: BACK and HOME
-   show their symbols alone, each 56 a side, and the title its mark alone. */
-html[data-size="tall"] .pairs-bar .home-button {
-  flex-shrink: 0;
-  width: 56px;
-  padding: 0;
-  justify-content: center;
-}
-
 /* A name a tall-narrow window shows to screen readers alone, kept in the
    page, as home's are in a wide-short one. */
 html[data-size="tall-narrow"] .narrow-hidden,
@@ -5729,8 +5285,7 @@ html[data-size="wide-short"] .pairs-result .narrow-hidden {
 html[data-size="tall"] .upright-hidden,
 html[data-size="tall-narrow"] .upright-hidden,
 html[data-size="wide-short"] .dig-board-screen .home-button .upright-hidden,
-html[data-size="wide-short"] .dig-field-guide-screen .home-button .upright-hidden,
-html[data-size="wide-short"] .pairs-bar .home-button .upright-hidden {
+html[data-size="wide-short"] .dig-field-guide-screen .home-button .upright-hidden {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -10413,8 +9968,7 @@ html[data-theme="dark"],
 /* Find the pair takes the dark values in the same shapes. Words and
    symbols on amber stay the light ink; a silhouette is the dark ink's
    shape. */
-[data-theme="dark"] .featured-card[data-game="pairs"],
-[data-theme="dark"] .pairs-bar-mark {
+[data-theme="dark"] .featured-card[data-game="pairs"] {
   background: #34466e;
   color: #ece8de;
 }
@@ -10424,23 +9978,15 @@ html[data-theme="dark"],
 }
 
 [data-theme="dark"] .pairs-tile-card,
-[data-theme="dark"] .pair-card-face,
 [data-theme="dark"] .pairs-found-card {
   background: #181e2e;
   color: #ece8de;
 }
 
-[data-theme="dark"] .pair-card {
-  box-shadow: 0 18px 40px #00000066;
-}
-
-[data-theme="dark"] .pairs-tile-back,
-[data-theme="dark"] .pair-card-back {
+[data-theme="dark"] .pairs-tile-back {
   background: #2c3b66;
 }
 
-[data-theme="dark"] .pairs-bar-chip,
-[data-theme="dark"] .pair-card-art,
 [data-theme="dark"] .pairs-found-art {
   background: #222a3d;
 }
@@ -10450,22 +9996,12 @@ html[data-theme="dark"],
 }
 
 [data-theme="dark"] .pairs-tile-back,
-[data-theme="dark"] .pair-card-back-frame,
 [data-theme="dark"] .pairs-result-hand {
   color: #f2b24b;
 }
 
-[data-theme="dark"] .pair-card[data-state="found"] .pair-card-face {
-  outline-color: #63c98c;
-}
-
 [data-theme="dark"] .pairs-next-card {
   background: #f6f2e9;
-}
-
-[data-theme="dark"] .pair-silhouette[data-picture="appearing"],
-[data-theme="dark"] .pair-silhouette[data-picture="shown"] {
-  filter: brightness(0) invert(1);
 }
 
 /* The skeleton game takes the dark values in the same shapes. */
@@ -13145,6 +12681,246 @@ html[data-size="wide-short"] .pairs-welcome .level-switch-level .level-switch-na
 html[data-size="wide-short"] .pairs-play-button { align-self: stretch; height: 64px; padding-block: 0; font-size: var(--ds-size-26); }
 html[data-size="wide-short"] .pairs-welcome-bedrock { display: none; }
 body:has(.pairs-welcome) #version { display: none; }
+
+/* Find the pair's board is the dig site: the bar in the sky, the cards on
+   the sand, the bedrock along the bottom. Each size takes its board's
+   offsets; a card is as big as the sand lets the whole board be, never
+   bigger than its board's, nor under the board's floor. */
+.pairs-board-screen {
+  --pb-top: 34px;
+  --pb-sky: 108px;
+  --pb-wave: 30px;
+  --pb-side: var(--ds-space-40);
+  --pb-sand-top: var(--ds-space-14);
+  --pb-sand-bottom: var(--ds-space-30);
+  --pb-bottom: 60px;
+  --pb-gap: var(--ds-space-l);
+  --pb-card-max: 200px;
+  --pb-ratio: calc(3.2 / 3);
+  position: relative;
+  isolation: isolate;
+  box-sizing: border-box;
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  color: var(--ds-ink);
+  font-family: var(--ds-font);
+  background: linear-gradient(var(--ds-sky-top), var(--ds-sky-bottom) 50vh) var(--ds-sky-bottom);
+  background: linear-gradient(var(--ds-sky-top), var(--ds-sky-bottom) 50dvh) var(--ds-sky-bottom);
+}
+.pairs-bar {
+  flex: none;
+  box-sizing: border-box;
+  height: calc(var(--pb-sky) + env(safe-area-inset-top));
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  grid-template-rows: 48px;
+  align-content: start;
+  align-items: center;
+  column-gap: var(--ds-space-m);
+  padding: calc(var(--pb-top) + env(safe-area-inset-top)) calc(var(--pb-side) + var(--screen-right)) 0 calc(var(--pb-side) + var(--screen-left));
+}
+.pairs-bar-buttons, .pairs-bar-chips { display: flex; align-items: center; gap: var(--ds-btn-gap); min-width: 0; }
+.pairs-bar-chips { justify-content: flex-end; }
+.pairs-bar .pairs-bar-button {
+  flex: none; display: flex; align-items: center; justify-content: center; box-sizing: border-box;
+  min-height: 44px; margin: 0; border-width: 0; border-top-left-radius: var(--ds-radius-pill); border-top-right-radius: var(--ds-radius-pill); border-bottom-left-radius: var(--ds-radius-pill); border-bottom-right-radius: var(--ds-radius-pill);
+  background: var(--ds-quiet); color: var(--ds-ink); box-shadow: none;
+  font-family: var(--ds-font); font-size: var(--ds-size-label); font-weight: 700; letter-spacing: 0;
+}
+.pairs-bar .pairs-bar-home { height: 48px; gap: var(--ds-space-s); padding: 0 var(--ds-space-18) 0 var(--ds-space-l); }
+.pairs-bar .pairs-bar-home svg { width: 22px; height: 22px; }
+.pairs-bar .pairs-bar-back { gap: var(--ds-chip-gap); padding: var(--ds-chip-pad-y) var(--ds-chip-pad-x); }
+.pairs-bar .pairs-bar-back svg { width: 18px; height: 18px; }
+.pairs-bar .pairs-bar-button svg { flex: none; }
+.pairs-bar-title { display: flex; align-items: center; gap: var(--ds-space-m); min-width: 0; margin: 0; font-size: var(--ds-size-22); font-weight: 900; white-space: nowrap; }
+.pairs-bar-mark {
+  flex: none; display: grid; place-items: center; width: 44px; height: 44px;
+  border-top-left-radius: var(--ds-radius-12); border-top-right-radius: var(--ds-radius-12);
+  border-bottom-left-radius: var(--ds-radius-12); border-bottom-right-radius: var(--ds-radius-12);
+  background: var(--ds-action); color: var(--ds-on-action);
+}
+.pairs-bar-mark svg { width: 26px; height: 26px; }
+.pairs-bar-chip {
+  flex: none; display: flex; align-items: center; box-sizing: border-box; margin: 0;
+  gap: var(--ds-space-s); padding: var(--ds-space-6) var(--ds-space-14);
+  border-radius: var(--ds-radius-tag); background: var(--ds-quiet); color: var(--ds-ink);
+}
+.pairs-bar-chip svg { flex: none; width: 24px; height: 24px; }
+.pairs-bar-number { font-size: var(--ds-size-24); font-weight: 900; line-height: 1.25; }
+/* A new count of tries bumps in. */
+.pairs-tries { display: inline-block; min-width: 1.4em; animation: bump-in var(--motion-standard) var(--ease-overshoot) both; }
+.pairs-bar button:focus-visible, .pair-card:focus-visible { outline: 3px solid var(--ds-action); outline-offset: 2px; }
+
+.pairs-board-sand {
+  position: relative; flex: 1 1 0; min-height: 0; display: flex; box-sizing: border-box;
+  padding: var(--pb-sand-top) calc(var(--pb-side) + var(--screen-right)) calc(var(--pb-sand-bottom) + var(--pb-bottom) + env(safe-area-inset-bottom)) calc(var(--pb-side) + var(--screen-left));
+  background: var(--ds-strata-1);
+}
+.pairs-board-wave { position: absolute; pointer-events: none; top: calc(var(--pb-wave) * -2 / 3); left: 0; width: 100%; height: var(--pb-wave); fill: var(--ds-strata-1); }
+.pairs-board-bedrock { position: absolute; z-index: 0; bottom: 0; left: 0; right: 0; height: calc(var(--pb-bottom) + env(safe-area-inset-bottom)); background: var(--ds-strata-2); --home-earth: var(--ds-strata-2); pointer-events: none; }
+.pairs-board-bedrock .home-earth-wave { top: calc(var(--pb-wave) * -2 / 3); height: var(--pb-wave); }
+body:has(.pairs-board-screen) #version { display: none; }
+
+/* The room on the sand holds the board centred, each card as wide as the
+   room's width and height let every row and column be. */
+.pair-board-room { position: relative; z-index: 1; flex: 1 1 0; min-width: 0; min-height: 0; container-type: size; display: grid; place-items: center; }
+.pair-board {
+  --pb-card: max(var(--card-floor), min(var(--pb-card-max), (100cqw - (var(--columns) - 1) * var(--pb-gap)) / var(--columns), (100cqh - (var(--rows) - 1) * var(--pb-gap)) / var(--rows) / var(--pb-ratio)));
+  display: grid;
+  grid-template-columns: repeat(var(--columns), var(--pb-card));
+  gap: var(--pb-gap);
+}
+/* The fullest board stands its cards closer, from the top of the sand. */
+/* A board of eighteen keeps its cards 150 wide. */
+.pair-board[data-cards="18"] { --pb-card-max: 150px; }
+.pair-board[data-cards="24"] { --pb-gap: var(--ds-btn-gap); }
+.pair-board-room:has(.pair-board[data-cards="24"]) { place-items: start center; }
+
+/* The cards rise in one after the other; each side flips in as it is
+   turned to. */
+.pair-card {
+  position: relative; min-width: 0; min-height: 0; aspect-ratio: 1 / var(--pb-ratio); padding: 0; display: flex; overflow: hidden;
+  border-width: 0; border-top-left-radius: var(--ds-radius-16); border-top-right-radius: var(--ds-radius-16); border-bottom-left-radius: var(--ds-radius-16); border-bottom-right-radius: var(--ds-radius-16); background: none; box-shadow: none; color: var(--ds-ink);
+  font-family: var(--ds-font); perspective: 900px; container-type: inline-size;
+  animation: rise-in var(--motion-standard) var(--ease-out) calc(var(--card) * var(--motion-stagger)) both;
+}
+.pair-card-back,
+.pair-card-face {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  border-radius: inherit;
+  animation: flip-in var(--motion-standard) var(--ease-out) both;
+}
+.pair-card-back { align-items: center; justify-content: center; background: var(--ds-strong); color: var(--ds-on-strong); }
+.pair-card-back svg { width: 36cqi; height: 36cqi; }
+/* A card being pressed lights up. */
+.pair-card[data-state="down"]:active .pair-card-back { background: var(--ds-action); color: var(--ds-on-action); }
+.pair-card-face {
+  flex-direction: column; box-sizing: border-box; gap: var(--ds-space-xs); padding: var(--ds-space-s);
+  border: 2px solid var(--ds-outline); background: var(--ds-label); color: var(--ds-ink);
+}
+.pair-card-art { position: relative; flex: 1 1 0; min-height: 0; display: flex; }
+.pair-card-picture { display: block; width: 100%; height: 100%; min-height: 0; object-fit: contain; }
+.pair-card .picture[data-picture="loading"] {
+  --shimmer-from: var(--ds-pocket-1); --shimmer-to: var(--ds-strata-1); background-color: var(--ds-pocket-1);
+  border-top-left-radius: var(--ds-radius-10); border-top-right-radius: var(--ds-radius-10);
+  border-bottom-left-radius: var(--ds-radius-10); border-bottom-right-radius: var(--ds-radius-10);
+}
+/* A silhouette is the picture's shape in ink. */
+.pair-card-shadow { display: none; position: absolute; inset: 0; background: var(--ds-ink); mask-position: center; mask-size: contain; mask-repeat: no-repeat; }
+.pair-silhouette:is([data-picture="appearing"], [data-picture="shown"]) { opacity: 0; }
+.pair-silhouette:is([data-picture="appearing"], [data-picture="shown"]) + .pair-card-shadow { display: block; animation: fade-in var(--motion-picture) var(--ease-out) both; }
+/* The name's size is the card's width, less the face's padding and
+   border at their widest, over the longest name's, in ems:
+   PACHYCEPHALOSAURUS's 12.7, no larger than the board's 15. */
+.pair-card-name { flex-shrink: 0; font-size: min(15px, (100cqi - 24px) / 12.7); font-weight: 900; line-height: 1.2; text-align: center; white-space: nowrap; }
+/* The name shown while the picture loaded goes as the picture fades in. */
+.pair-card-name[data-fading] { animation: fade-out var(--motion-picture) var(--ease-out) forwards; }
+/* A card whose picture cannot be loaded shows its name alone. */
+.pair-card-art:has(.picture[data-picture="failed"]) { display: none; }
+.pair-card-art:has(.picture[data-picture="failed"]) + .pair-card-name {
+  flex: 1 1 0; display: grid; place-items: center; font-size: var(--ds-size-16); white-space: normal; overflow-wrap: anywhere; hyphens: auto;
+}
+/* A found pair is outlined in green, named, and bounces once it has
+   flipped. */
+.pair-card[data-state="found"] .pair-card-face {
+  border-width: 4px;
+  border-color: var(--ds-good);
+  animation:
+    flip-in var(--motion-standard) var(--ease-out) both,
+    bounce var(--motion-screen) var(--ease-overshoot) var(--motion-standard);
+}
+/* The last pair found, every card waves, one after the other, before the
+   result. */
+.pair-board[data-finished] .pair-card {
+  animation:
+    rise-in var(--motion-standard) var(--ease-out) calc(var(--card) * var(--motion-stagger)) both,
+    wave var(--motion-screen) var(--ease-out) calc(var(--motion-standard) + var(--card) * var(--motion-stagger));
+}
+
+/* Upright, the board stands with its grid on its side: the landscape rows
+   stand as its columns and the landscape columns as its rows, the cards
+   flowing down each column in turn, so each card keeps its neighbours and
+   the page keeps their order. A card is as wide as the width allows, which
+   the screen gives in --card-by-width, and as the height under the sky
+   allows; below the board's floor the whole screen scrolls. */
+html:is([data-size="tall"], [data-size="tall-narrow"]) .pairs-board-screen { min-height: 100vh; min-height: 100dvh; height: auto; overflow: visible; }
+html:is([data-size="tall"], [data-size="tall-narrow"]) .pairs-board-sand { flex: 1 0 auto; }
+html:is([data-size="tall"], [data-size="tall-narrow"]) .pair-board-room { flex: 1 0 auto; container-type: normal; place-items: center; }
+html:is([data-size="tall"], [data-size="tall-narrow"]) .pair-board {
+  --pb-room: calc(100vh - var(--pb-sky) - var(--pb-sand-top) - var(--pb-sand-bottom) - var(--pb-bottom) - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  --pb-room: calc(100dvh - var(--pb-sky) - var(--pb-sand-top) - var(--pb-sand-bottom) - var(--pb-bottom) - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  --pb-by-height: calc((var(--pb-room) - (var(--columns) - 1) * var(--pb-gap)) / var(--columns) / var(--pb-ratio));
+  --pb-card: min(var(--pb-card-max), var(--card-by-width, var(--pb-card-max)), max(var(--pb-floor, var(--card-floor)), var(--pb-by-height)));
+  grid-auto-flow: column;
+  grid-template-columns: repeat(var(--rows), var(--pb-card));
+  grid-template-rows: repeat(var(--columns), auto);
+}
+html:is([data-size="tall"], [data-size="tall-narrow"]) .pair-board[data-cards="24"] { --pb-gap: var(--ds-space-s); }
+html[data-size="tall"] .pairs-board-screen {
+  --pb-top: 30px; --pb-sky: 116px; --pb-side: var(--ds-space-56); --pb-sand-bottom: 0px; --pb-bottom: 50px; --pb-card-max: 276px;
+}
+/* Upright, the title is its mark alone, between BACK and the chips. */
+html:is([data-size="tall"], [data-size="tall-narrow"], [data-size="wide-short"]) .pairs-bar .pairs-bar-back,
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .pairs-bar .pairs-bar-home { width: 48px; height: 48px; padding: 0; }
+html:is([data-size="tall"], [data-size="tall-narrow"], [data-size="wide-short"]) .pairs-bar .pairs-bar-back svg,
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .pairs-bar .pairs-bar-home svg { width: 24px; height: 24px; }
+html:is([data-size="tall"], [data-size="tall-narrow"], [data-size="wide-short"]) .pairs-bar-back .pairs-bar-name,
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .pairs-bar-home .pairs-bar-name,
+html:is([data-size="tall"], [data-size="tall-narrow"]) .pairs-bar-word {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+}
+html[data-size="tall"] .pairs-bar-mark { width: 48px; height: 48px; }
+html[data-size="tall"] .pairs-bar-mark svg { width: 28px; height: 28px; }
+html:is([data-size="tall"], [data-size="tall-narrow"], [data-size="wide-short"]) .pairs-bar-chip { padding: var(--ds-space-s) var(--ds-space-m); }
+html[data-size="tall"] .pairs-bar-chip { padding-inline: var(--ds-space-14); }
+
+/* On a phone the cards are 12-cornered and 8 apart. Upright the bar has
+   no title; its chips stand at the right, and a card may be as small as
+   56, the boards' floors, kept for names, set aside. */
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .pairs-board-screen { --pb-wave: 24px; --pb-gap: var(--ds-space-s); }
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .pair-card { border-top-left-radius: var(--ds-radius-12); border-top-right-radius: var(--ds-radius-12); border-bottom-left-radius: var(--ds-radius-12); border-bottom-right-radius: var(--ds-radius-12); }
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .pair-card-face { padding: var(--ds-space-6); }
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .pairs-bar-chip { gap: var(--ds-space-6); }
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .pairs-bar-chip svg { width: 22px; height: 22px; }
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .pairs-bar-number { font-size: var(--ds-size-20); }
+html[data-size="tall-narrow"] .pairs-board-screen {
+  --pb-floor: 56px; --pb-top: 62px; --pb-sky: 144px; --pb-side: var(--ds-space-20); --pb-sand-top: var(--ds-space-m); --pb-sand-bottom: 0px; --pb-bottom: 30px; --pb-card-max: 160px;
+}
+html[data-size="tall-narrow"] .pairs-bar { display: flex; gap: var(--ds-space-s); }
+html[data-size="tall-narrow"] .pairs-bar-buttons { gap: var(--ds-space-s); }
+html[data-size="tall-narrow"] .pairs-bar-title { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); }
+html[data-size="tall-narrow"] .pairs-bar-chips { margin-left: auto; gap: var(--ds-space-s); }
+html[data-size="tall-narrow"] .pair-card-name[data-caption] { display: none; }
+/* An iPhone SE upright takes the thinnest bedrock. */
+@media (max-height: 700px) {
+  html[data-size="tall-narrow"] .pairs-board-screen { --pb-bottom: 14px; }
+}
+
+/* On a phone on its side the board keeps its rows and columns as dealt,
+   its cards wider than tall like the pictures, and the sand reaches the
+   bottom. */
+html[data-size="wide-short"] .pairs-board-screen {
+  --pb-top: var(--ds-space-s); --pb-sky: 78px; --pb-side: var(--ds-space-79); --pb-sand-top: var(--ds-space-s); --pb-sand-bottom: var(--ds-space-22); --pb-bottom: 0px;
+  --pb-card-max: 132px; --pb-ratio: calc(124 / 132);
+}
+html[data-size="wide-short"] .pairs-bar { column-gap: var(--ds-space-s); }
+html[data-size="wide-short"] .pairs-bar-title { gap: var(--ds-btn-gap); font-size: var(--ds-size-20); }
+html[data-size="wide-short"] .pairs-bar-mark {
+  width: 40px; height: 40px;
+  border-top-left-radius: var(--ds-radius-10); border-top-right-radius: var(--ds-radius-10);
+  border-bottom-left-radius: var(--ds-radius-10); border-bottom-right-radius: var(--ds-radius-10);
+}
+html[data-size="wide-short"] .pairs-bar-mark svg { width: 24px; height: 24px; }
+html[data-size="wide-short"] .pairs-board-bedrock { display: none; }
+/* There every card fits; a name too small is left to its label. */
+html[data-size="wide-short"] .pair-board { --pb-card: min(var(--pb-card-max), (100cqw - (var(--columns) - 1) * var(--pb-gap)) / var(--columns), (100cqh - (var(--rows) - 1) * var(--pb-gap)) / var(--rows) / var(--pb-ratio)); }
+html[data-size="wide-short"] .pair-card-name[data-caption] { display: none; }
+
 
 @media (prefers-reduced-motion: reduce) {
   :root {

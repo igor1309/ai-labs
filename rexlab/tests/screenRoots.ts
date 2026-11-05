@@ -44,6 +44,7 @@ const DIG_SITE_CONTENT: Record<string, string[]> = {
   "friends-dig-site": ["friends-sky", "friends-grid", "no-friends"],
   "whose-jaw-welcome": ["whose-jaw-welcome-sky", "whose-jaw-welcome-body"],
   "pairs-welcome": ["pairs-welcome-sky", "pairs-welcome-body"],
+  "pairs-board-screen": ["pairs-bar", "pairs-board-sand"],
   "whose-jaw-board": ["whose-jaw-board-sky", "jaw-sand-body"]
 };
 

@@ -767,10 +767,10 @@ describe("a picture's place", () => {
   });
 
   it("is silhouetted on a pair's card only once its picture shows, its shimmer and failure look keeping their colours", () => {
-    const silhouettes = PLAIN.filter(({ prelude, body }) => prelude.includes("pair-silhouette") && declarationsOf(body).some(({ property }) => property === "filter"));
-    expect(silhouettes.map(({ prelude }) => prelude.split(",\n"))).toEqual([
-      ['.pair-silhouette[data-picture="appearing"]', '.pair-silhouette[data-picture="shown"]'],
-      ['[data-theme="dark"] .pair-silhouette[data-picture="appearing"]', '[data-theme="dark"] .pair-silhouette[data-picture="shown"]']
+    const shown = '.pair-silhouette:is([data-picture="appearing"], [data-picture="shown"])';
+    expect([bodyOf(shown), bodyOf(`${shown} + .pair-card-shadow`)]).toEqual([
+      [{ property: "opacity", value: "0" }],
+      [{ property: "display", value: "block" }, { property: "animation", value: "fade-in var(--motion-picture) var(--ease-out) both" }]
     ]);
   });
 

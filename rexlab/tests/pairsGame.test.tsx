@@ -119,7 +119,7 @@ describe("a board", () => {
     expect(pairCards().map((card) => [card.getAttribute("data-state"), symbolsOf(card)])).toEqual(pairCards().map(() => ["down", ["footprints"]]));
     expect([board().style.getPropertyValue("--rows"), board().style.getPropertyValue("--columns")]).toEqual([String(rows), String(columns)]);
     const style = getComputedStyle(board());
-    expect([style.gridTemplateRows, style.gridTemplateColumns].map((tracks) => tracks.includes("minmax(var(--card-floor), 1fr)"))).toEqual([true, true]);
+    expect([style.gridTemplateColumns, style.getPropertyValue("--pb-card").trim().startsWith("max(var(--card-floor),")]).toEqual(["repeat(var(--columns), var(--pb-card))", true]);
     expect(board().style.getPropertyValue("--card-floor")).toBe("150px");
     expect(screen.getByLabelText("LEVEL").textContent).toBe(String(level));
 
@@ -241,7 +241,8 @@ describe.each(LEVEL_BOARDS)("turning cards at %s", (_, options, dealtBoard) => {
       ["found", firstName]
     ]);
     expect(clock.timers()).toEqual([]);
-    expect(getComputedStyle(pair[0]?.querySelector(".pair-card-face") ?? board()).outline).toBe("4px solid #2e7d4f");
+    const face = getComputedStyle(pair[0]?.querySelector(".pair-card-face") ?? board());
+    expect([face.borderTopWidth, face.borderTopStyle, face.borderTopColor]).toEqual(["4px", "solid", "rgb(62, 142, 90)"]);
   });
 
   it("names a found card in a size its card's width keeps every dinosaur's name in, in every language", async () => {
@@ -252,12 +253,15 @@ describe.each(LEVEL_BOARDS)("turning cards at %s", (_, options, dealtBoard) => {
 
     // jsdom works out no size from a card's width, so the size is read as
     // app.css gives it: at most a cap, otherwise the card's width, less the
-    // name's sides, over a width in ems no name is wider than, which jsdom
-    // keeps as a multiplication by its inverse.
+    // face's padding and border at their widest, over a width in ems no
+    // name is wider than, which jsdom keeps as a multiplication by its
+    // inverse.
     const name = pairCards()[FIRST[0] ?? 0]?.querySelector(".pair-card-name") ?? board();
     const style = getComputedStyle(name);
     const size = /^min\((\d+)px, ([\d.]+) \* \(100cqi - (\d+)px\)\)$/.exec(style.fontSize);
-    expect([size?.[1], size?.[3]].map(Number)).toEqual([24, parseFloat(style.paddingLeft) + parseFloat(style.paddingRight)]);
+    const face = getComputedStyle(name.parentElement ?? board());
+    expect([size?.[1], size?.[3]].map(Number)).toEqual([15, 24]);
+    expect(2 * (parseFloat(face.paddingLeft) + parseFloat(face.borderLeftWidth))).toBeLessThanOrEqual(24);
     expect([style.whiteSpace, style.letterSpacing]).toEqual(["nowrap", "normal"]);
     const ems = 1 / Number(size?.[2]);
     const names = SHIPPED_PALS.flatMap(({ name: { en, ru } }) => [en.toLocaleUpperCase("en"), ru.toLocaleUpperCase("ru")]);
@@ -343,14 +347,14 @@ describe.each(LEVEL_BOARDS)("turning cards at %s", (_, options, dealtBoard) => {
     expect(screen.getByLabelText("STARS").textContent).toBe("0");
   });
 
-  it("goes back from a board to the welcome screen, BACK before HOME, without asking, and the board earns nothing", async () => {
+  it("goes back from a board to the welcome screen, HOME before BACK, without asking, and the board earns nothing", async () => {
     const { user, storage } = await open();
     await turnCard(user, FIRST[0] ?? 0);
     await turnCard(user, FIRST[1] ?? 0);
     const bar = document.querySelector(".pairs-bar");
     expect([...(bar?.querySelectorAll("button") ?? [])].map((each) => [each.textContent, symbolOf(each)])).toEqual([
-      ["BACK", "arrow-left"],
-      ["HOME", "house"]
+      ["HOME", "house"],
+      ["BACK", "arrow-left"]
     ]);
 
     await user.click(button("BACK"));
