@@ -145702,6 +145702,125 @@
         "mode": "stretch"
       },
       "layout": "none"
+    },
+    {
+      "type": "frame",
+      "id": "JK4iO",
+      "x": -1536,
+      "y": 101714,
+      "name": "Home · Skeleton hero · iPad landscape 1180x820 · light · all age levels",
+      "clip": true,
+      "width": 1180,
+      "height": 820,
+      "fill": {
+        "type": "image",
+        "enabled": true,
+        "url": "images/home-skeleton-ipad-landscape-light.webp",
+        "mode": "cover"
+      },
+      "layout": "none"
+    },
+    {
+      "type": "frame",
+      "id": "JcOkq",
+      "x": -1536,
+      "y": 102654,
+      "name": "Home · Skeleton hero · iPad portrait 744x1133 · light · all age levels",
+      "clip": true,
+      "width": 744,
+      "height": 1133,
+      "fill": {
+        "type": "image",
+        "enabled": true,
+        "url": "images/home-skeleton-ipad-portrait-light.webp",
+        "mode": "cover"
+      },
+      "layout": "none"
+    },
+    {
+      "type": "frame",
+      "id": "bFC5R",
+      "x": -1536,
+      "y": 103907,
+      "name": "Home · Skeleton hero · iPhone landscape 852x393 · light · all age levels",
+      "clip": true,
+      "width": 852,
+      "height": 393,
+      "fill": {
+        "type": "image",
+        "enabled": true,
+        "url": "images/home-skeleton-iphone-landscape-light.webp",
+        "mode": "cover"
+      },
+      "layout": "none"
+    },
+    {
+      "type": "frame",
+      "id": "QycTZ",
+      "x": -1536,
+      "y": 104420,
+      "name": "Home · Skeleton hero · iPhone portrait 393x852 · light · all age levels",
+      "clip": true,
+      "width": 393,
+      "height": 852,
+      "fill": {
+        "type": "image",
+        "enabled": true,
+        "url": "images/home-skeleton-iphone-portrait-light.webp",
+        "mode": "cover"
+      },
+      "layout": "none"
+    },
+    {
+      "type": "frame",
+      "id": "HDLhP",
+      "x": -1536,
+      "y": 105392,
+      "name": "Home · Skeleton hero · Mac 1440x900 · light · all age levels",
+      "clip": true,
+      "width": 1440,
+      "height": 900,
+      "fill": {
+        "type": "image",
+        "enabled": true,
+        "url": "images/home-skeleton-mac-light.webp",
+        "mode": "cover"
+      },
+      "layout": "none"
+    },
+    {
+      "type": "frame",
+      "id": "gLtJO",
+      "x": -1536,
+      "y": 106412,
+      "name": "Home · Skeleton hero · iPad landscape 1180x820 · dark · all age levels",
+      "clip": true,
+      "width": 1180,
+      "height": 820,
+      "fill": {
+        "type": "image",
+        "enabled": true,
+        "url": "images/home-skeleton-ipad-landscape-dark.webp",
+        "mode": "cover"
+      },
+      "layout": "none"
+    },
+    {
+      "type": "frame",
+      "id": "PcR6C",
+      "x": -1536,
+      "y": 107352,
+      "name": "Home · Skeleton hero · iPhone portrait 393x852 · dark · all age levels",
+      "clip": true,
+      "width": 393,
+      "height": 852,
+      "fill": {
+        "type": "image",
+        "enabled": true,
+        "url": "images/home-skeleton-iphone-portrait-dark.webp",
+        "mode": "cover"
+      },
+      "layout": "none"
     }
   ],
   "themes": {

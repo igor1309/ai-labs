@@ -13,6 +13,7 @@ import { ParentMenu, type ParentMenuProps } from "./ParentMenu.tsx";
 import { Picture } from "./Picture.tsx";
 import { THEME_CHOICES, type ThemeChoice } from "./theme.ts";
 import { Tooth } from "./Tooth.tsx";
+import skeletonHeroFallback from "./assets/skeletons/tyrannosaurus/skeleton.webp";
 
 const THEME_SYMBOLS: Record<ThemeChoice, LucideIcon> = { system: Monitor, light: Sun, dark: Moon };
 // The age level menu's button shows the chosen level as a line symbol.
@@ -200,6 +201,10 @@ export function HomePage({
       name: text.skeletons,
       symbol: Bone,
       picture: <Picture className="skeletons-tile-picture" src={skeletons.picture} alt="" width={800} height={600} />,
+      skyPicture: <span className="home-skeleton-hero" aria-hidden="true">
+        <span className="skeletons-hero-fallback"><Picture className="skeletons-hero-picture" src={skeletonHeroFallback} alt="" width={800} height={600} /></span>
+        <canvas aria-hidden="true" />
+      </span>,
       badge: skeletons.best === undefined ? undefined : { symbol: Trophy, value: skeletons.best },
       onOpen: onSkeletons
     },

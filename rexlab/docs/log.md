@@ -2,6 +2,8 @@
 
 ## 2026-11-05
 
+- LAB-1003: BONES on Home features a gently turning ivory T. rex skeleton, with a static pose for reduced motion and its existing picture when 3D is unavailable. The hero pauses out of view and keeps the same controls and rewards.
+
 - LAB-963: The first launch works without Wi-Fi once the app has installed itself; before, only the next launch did.
 
 ## 2026-11-04
