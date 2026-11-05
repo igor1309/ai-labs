@@ -63,6 +63,14 @@ const declared = (rules: Rule[], selector: string) =>
   Object.fromEntries(declarationsOf(rules.find(({ prelude }) => prelude === selector)?.body ?? "").map(({ property, value }) => [property, value]));
 
 describe("the motion", () => {
+  it("cross-fades both skeleton hero layers with shared normal and reduced timings", () => {
+    const layers = ".home-skeleton-hero > .skeletons-hero-fallback, .home-skeleton-hero > canvas";
+    expect(declared(PLAIN, layers).transition).toBe("opacity var(--motion-standard) var(--ease-out)");
+    expect(declared(REDUCED, layers)["transition-duration"]).toBe("var(--motion-small)");
+    expect(tokensOf(PLAIN)["--motion-standard"]).toBe("240ms");
+    expect(tokensOf(PLAIN)["--motion-small"]).toBe("160ms");
+  });
+
   it("fades the portrait gate in and out with the screen token, including the short reduced-motion fade", () => {
     expect(declared(PLAIN, ".orientation-gate").transition).toBe("opacity var(--motion-screen) var(--ease-out), visibility var(--motion-screen) var(--ease-out)");
     expect(declared(PLAIN, ".orientation-gate[data-shown]").animation).toBe("fade-in var(--motion-screen) var(--ease-out) both");

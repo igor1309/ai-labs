@@ -2,6 +2,8 @@
 
 ## 2026-11-05
 
+- LAB-1003: The skeleton Home hero assembles from a bone pile, makes one smooth full turn, and rests; reduced motion shows its standing pose.
+
 - LAB-918: FIND THE PAIR is the dig site from welcome to level offer, with its screens walked in a browser on every device, with and without motion.
 - LAB-992: FIND THE PAIR's result and level offer are the dig site on every device, light, dark and Russian: the found dinosaurs in the sky with NEW inside each card's corner, the tries, stars and best on the sand, and the offer's LEVEL UP tag with NOT NOW before YES. Other games keep their look.
 - LAB-991: FIND THE PAIR's board is the dig site on every device, light, dark and Russian: HOME, BACK, the title and the climb and tries chips in the sky, the cards on the sand over the bedrock, face down in navy with footprints, face up on a cream card with an outlined picture, silhouette in ink or skeleton, a found pair in green with its name, a picture that cannot load by its name alone.
