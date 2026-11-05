@@ -129,6 +129,10 @@ Run from `rexlab/`: `npm ci`, `npm run typecheck`, `npm test`, `npm run build`.
 
 ## Trying it locally
 
+Before modifying the Home skeleton hero, read `docs/home-skeleton-hero.md`.
+Preserve its approved standing body and fitted scanned head; make requested
+visual changes narrowly and inspect the running composition and full motion.
+
 Day to day, run `npm run dev` from `rexlab/` and open http://localhost:5173.
 Vite reloads the page on every save; nothing is deployed.
 
