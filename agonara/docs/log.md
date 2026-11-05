@@ -2,6 +2,7 @@
 
 ## 2026-11-05
 
+- The Session bot shows a material's text when you open it, such as a lecture, read through the public API. LAB-962.
 - The Session bot browses the real programs the student can see, navigation and entity bodies through Agonara's public API, with Back and Programs navigation; still no brain or writes. LAB-962.
 - A Session runner probe in `agonara/session/`: one student's session, kept apart from the learning record, returning content plus actions by meaning, so any surface can draw it. LAB-962.
 - Its first surface is a Telegram bot that answers only the owner's chat, with buttons for the session's actions; the content is canned for now. LAB-962.

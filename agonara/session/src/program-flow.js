@@ -50,7 +50,10 @@ export function createProgramFlow({ client }) {
       items = node.relationships.outgoing.map((link) => ({
         id: link.toEntityId, title: link.toTitle, kind: link.toKind,
       }));
-      content = [node.title, node.body, "Outgoing items",
+      const text = node.acceptedKind === "material_reference" && node.hasContent
+        ? withoutFrontMatter((await client.materialContent(node.entityId)).content)
+        : undefined;
+      content = [node.title, node.body, text, "Outgoing items",
         items.map((item) => item.title).join("\n") || "None."].filter(Boolean).join("\n\n");
     }
     const next = { ...target, items, history, step: session.step + 1 };
@@ -65,4 +68,9 @@ function descriptor({ screen, programId, entityId, title }) {
   if (screen === "program") return { screen, programId, title };
   if (screen === "entity") return { screen, entityId };
   return { screen: "programs" };
+}
+
+// Material files start with YAML front matter about their conversion, not for the student.
+function withoutFrontMatter(text) {
+  return text.replace(/^---\n[\s\S]*?\n---\n+/, "");
 }
