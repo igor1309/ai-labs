@@ -12872,7 +12872,7 @@ html .dig-board-screen :is(.dig-chip-words, .dig-chip-of) { display: none; }
    in the sky, the actions on the sand, over bedrock. Sand and bedrock span
    the grid; each card is as wide as the room lets every row and column be. */
 .pairs-result {
-  --pr-side: var(--ds-space-40); --pr-sand: 144px; --pr-bedrock: 60px; --pr-wave: 30px; --pr-gap: var(--ds-space-m); --pr-card-max: 200px; --pr-ratio: 0.92;
+  --pr-side: var(--ds-space-40); --pr-sand: 144px; --pr-bedrock: 60px; --pr-wave: 30px; --pr-gap: var(--ds-space-m); --pr-wave-top: -20px; --pr-card-max: 150px; --pr-art: 0.673;
   position: relative; isolation: isolate; box-sizing: border-box; min-height: 100vh; min-height: 100dvh; height: 100vh; height: 100dvh; display: grid;
   /* The root holds its content clear of the safe areas; the earth reaches back out to the window's edges. */
   padding: env(safe-area-inset-top) var(--screen-right) env(safe-area-inset-bottom) var(--screen-left);
@@ -12883,31 +12883,35 @@ html .dig-board-screen :is(.dig-chip-words, .dig-chip-of) { display: none; }
   background: linear-gradient(var(--ds-sky-top), var(--ds-sky-bottom) 40dvh) var(--ds-sky-bottom);
 }
 body:has(.pairs-result) #version { display: none; }
-.pairs-result[data-count="3"] { --pr-card-max: 182px; }
-.pairs-result[data-count="4"] { --pr-card-max: 172px; }
+.pairs-result[data-count="3"] { --pr-card-max: 180px; --pr-art: 0.683; }
+.pairs-result[data-count="4"] { --pr-card-max: 170px; --pr-art: 0.682; }
+.pairs-result[data-count="6"] { --pr-card-max: 160px; --pr-art: 0.675; }
+.pairs-result[data-count="12"] { --pr-card-max: 136px; --pr-art: 0.662; }
 .pairs-result-sand { position: relative; z-index: -2; grid-area: 2 / 1 / 3 / -1; margin-inline: calc(-1 * var(--screen-left)) calc(-1 * var(--screen-right)); background: var(--ds-strata-1); }
-.pairs-result-wave { position: absolute; top: -20px; left: 0; width: 100%; height: var(--pr-wave); fill: var(--ds-strata-1); }
+.pairs-result-wave { position: absolute; top: var(--pr-wave-top); left: 0; width: 100%; height: var(--pr-wave); fill: var(--ds-strata-1); }
 .pairs-result-bedrock { position: relative; z-index: -1; grid-area: 3 / 1 / 4 / -1; margin: 0 calc(-1 * var(--screen-right)) calc(-1 * env(safe-area-inset-bottom)) calc(-1 * var(--screen-left)); background: var(--ds-strata-2); --home-earth: var(--ds-strata-2); }
-.pairs-result-bedrock .home-earth-wave { top: -20px; height: var(--pr-wave); }
-.pairs-result-room { grid-area: 1 / 1; min-width: 0; min-height: 0; box-sizing: border-box; margin: var(--ds-space-40) 0 var(--ds-space-20) var(--pr-side); container-type: size; display: grid; place-items: center; }
+.pairs-result-bedrock .home-earth-wave { top: var(--pr-wave-top); height: var(--pr-wave); }
+.pairs-result-room { grid-area: 1 / 1; min-width: 0; min-height: 0; box-sizing: border-box; margin: var(--ds-space-40) 0 50px var(--pr-side); container-type: size; display: grid; place-items: center; }
 .pairs-found {
-  --pr-card: min(var(--pr-card-max), (100cqw - (var(--columns) - 1) * var(--pr-gap)) / var(--columns), (100cqh - (var(--rows) - 1) * var(--pr-gap)) / var(--rows) / var(--pr-ratio));
+  --pr-card: min(var(--pr-card-max), (100cqw - (var(--columns) - 1) * var(--pr-gap)) / var(--columns), ((100cqh - (var(--rows) - 1) * var(--pr-gap)) / var(--rows) - 38px) / var(--pr-art));
   margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(var(--columns), var(--pr-card)); gap: var(--pr-gap);
 }
 .pairs-found-card {
-  position: relative; box-sizing: border-box; min-width: 0; min-height: calc(var(--pr-card) * var(--pr-ratio)); display: flex; flex-direction: column; gap: var(--ds-space-xs); padding: var(--ds-space-s);
+  position: relative; box-sizing: border-box; min-width: 0; display: flex; flex-direction: column; gap: var(--ds-space-xs); padding: var(--ds-space-s);
   border: 2px solid var(--ds-outline); border-radius: var(--ds-radius-12); background: var(--ds-label); color: var(--ds-ink);
   animation: rise-in var(--motion-standard) var(--ease-out) both; animation-delay: calc(var(--card) * var(--motion-stagger) * 1.5);
 }
-.pairs-found-art { flex: 1 1 0; min-height: 0; display: flex; }
+.pairs-found-art { flex: none; height: calc(var(--pr-card) * var(--pr-art)); display: flex; }
 .pairs-found-picture { display: block; width: 100%; height: 100%; min-height: 0; object-fit: contain; }
 .pairs-found-art .picture[data-picture="loading"] { --shimmer-from: var(--ds-pocket-1); --shimmer-to: var(--ds-strata-1); background-color: var(--ds-pocket-1); border-radius: var(--ds-radius-10); }
 .pairs-found-art:has(.picture[data-picture="failed"]) { display: none; }
 .pairs-found-art:has(.picture[data-picture="failed"]) + .pairs-found-name { flex: 1 1 0; display: grid; place-items: center; }
-/* On a phone a long name breaks over two lines; a wider card keeps it on one,
-   a little smaller. */
-.pairs-found-name { flex-shrink: 0; font-size: var(--ds-size-foot); font-weight: 900; line-height: 1.2; text-align: center; overflow-wrap: anywhere; hyphens: manual; }
-html:is([data-size="wide"], [data-size="tall"]) .pairs-found-name[data-long] { margin-inline: calc(-1 * var(--ds-space-6)); font-size: 12px; overflow-wrap: normal; }
+/* A name stays on one line, as large as the card lets it, up to 13 pixels;
+   where a narrow card breaks it, its longer part sets the size. */
+.pairs-found-name { flex-shrink: 0; align-self: stretch; margin-inline: calc(-1 * var(--ds-space-6)); font-size: clamp(7px, (var(--pr-card) - 28px) / (var(--name-fit, var(--name-length)) * 0.75), 13px); font-weight: 900; line-height: 1.1; text-align: center; white-space: nowrap; hyphens: manual; }
+html[data-size="wide-short"] .pairs-found-name[data-break="long"],
+html[data-size="tall-narrow"] .pairs-result:is([data-count="6"], [data-count="9"]) .pairs-found-name:is([data-break="long"], [data-break="narrow"]),
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .pairs-result[data-count="12"] .pairs-found-name[data-break] { --name-fit: var(--name-part); white-space: normal; }
 /* NEW sits inside the card's top-right corner; on a phone, its sparkle alone. */
 .pairs-new-badge {
   position: absolute; top: var(--ds-space-xs); right: var(--ds-space-xs); display: flex; align-items: center; gap: var(--ds-space-6); padding: var(--ds-space-7) var(--ds-space-m) var(--ds-space-7) var(--ds-btn-gap);
@@ -12919,7 +12923,7 @@ html:is([data-size="tall-narrow"], [data-size="wide-short"]) .pairs-new-badge { 
 html:is([data-size="tall-narrow"], [data-size="wide-short"]) .pairs-new-badge .pairs-new-word { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 
 .pairs-result-column { display: contents; }
-.pairs-result-score { grid-area: 1 / 2; align-self: center; justify-self: center; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: var(--ds-space-14); margin: var(--ds-space-40) calc(var(--ds-space-40) + var(--screen-right)) var(--ds-space-20) 0; }
+.pairs-result-score { margin: var(--ds-space-40) var(--ds-space-40) 50px var(--ds-space-20); grid-area: 1 / 2; align-self: center; justify-self: center; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: var(--ds-space-14); margin: var(--ds-space-40) calc(var(--ds-space-40) + var(--screen-right)) var(--ds-space-20) 0; }
 .pairs-result-score p, .pairs-result-score h1 { margin: 0; }
 .pairs-level-up { display: flex; align-items: center; gap: var(--ds-space-14); padding: var(--ds-btn-gap) var(--ds-space-18); border-radius: var(--ds-radius-12); background: var(--ds-reward); color: var(--ds-on-reward); font-size: var(--ds-size-24); font-weight: 900; white-space: nowrap; animation: pop-in var(--motion-screen) var(--ease-overshoot) both; }
 .pairs-level-up svg { flex: none; width: 34px; height: 34px; fill: currentColor; }
@@ -12939,7 +12943,7 @@ html:is([data-size="tall-narrow"], [data-size="wide-short"]) .pairs-new-badge .p
 .pairs-best svg { flex: none; width: 30px; height: 30px; }
 .pairs-best:not([data-celebrating]) svg { color: var(--ds-reward); }
 .pairs-result .pairs-best .celebration { height: auto; display: flex; align-items: center; gap: var(--ds-btn-gap); padding: 0; border-radius: 0; background: none; color: inherit; font-size: var(--ds-size-tag); font-weight: 800; line-height: 1.2; white-space: nowrap; }
-.pairs-best .best-score { height: auto; display: block; padding: 0; background: none; color: inherit; font-size: var(--ds-size-30); font-weight: 900; line-height: 1; }
+.pairs-best .best-score { height: auto; display: flex; align-items: center; gap: var(--ds-btn-gap); padding: 0; background: none; color: inherit; font-size: var(--ds-size-30); font-weight: 900; line-height: 1; }
 .pairs-best .best-score-value { color: inherit; font-size: inherit; }
 .pairs-best-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
@@ -12958,36 +12962,50 @@ html:is([data-size="tall-narrow"], [data-size="wide-short"]) .pairs-new-badge .p
    actions stand on sand that grows, and below the window the page scrolls. */
 html:is([data-size="tall"], [data-size="tall-narrow"]) .pairs-result {
   height: auto; overflow: clip; grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto auto minmax(auto, 1fr) auto var(--pr-bedrock);
+  grid-template-rows: auto auto minmax(auto, 1fr) var(--pr-bedrock);
 }
-html:is([data-size="tall"], [data-size="tall-narrow"]) .pairs-result-sand { grid-area: 2 / 1 / 5 / -1; }
-html:is([data-size="tall"], [data-size="tall-narrow"]) .pairs-result-bedrock { grid-area: 5 / 1 / 6 / -1; }
-html:is([data-size="tall"], [data-size="tall-narrow"]) .pairs-result-room { grid-area: 1 / 1; margin: var(--pr-top) var(--pr-side) var(--ds-space-20); container-type: inline-size; }
+html:is([data-size="tall"], [data-size="tall-narrow"]) .pairs-result-sand { grid-area: 2 / 1 / 4 / -1; }
+html:is([data-size="tall"], [data-size="tall-narrow"]) .pairs-result-bedrock { grid-area: 4 / 1 / 5 / -1; }
+html:is([data-size="tall"], [data-size="tall-narrow"]) .pairs-result-column { grid-area: 3 / 1; display: flex; flex-direction: column; justify-content: center; gap: var(--ds-space-14); min-width: 0; padding: var(--ds-space-l) 0; }
+html[data-size="tall-narrow"] .pairs-result-column { gap: var(--ds-space-s); padding: var(--ds-btn-gap) 0; }
+html:is([data-size="tall"], [data-size="tall-narrow"]) .pairs-result-room { grid-area: 1 / 1; margin: var(--pr-top) var(--pr-side) var(--pr-bottom); container-type: inline-size; }
 html:is([data-size="tall"], [data-size="tall-narrow"]) .pairs-found { --pr-card: min(var(--pr-card-max), (100cqw - (var(--columns) - 1) * var(--pr-gap)) / var(--columns)); }
-html:is([data-size="tall"], [data-size="tall-narrow"]) .pairs-result-score { grid-area: 3 / 1; margin: var(--ds-space-20) var(--pr-side) var(--ds-space-14); }
-html:is([data-size="tall"], [data-size="tall-narrow"]) .pairs-result-actions { grid-area: 4 / 1; padding: 0 var(--pr-side) var(--ds-space-40); }
-html[data-size="tall"] .pairs-result { --pr-ratio: 0.72; --pr-side: var(--ds-space-40); --pr-top: var(--ds-space-40); --pr-bedrock: 60px; }
-html[data-size="tall-narrow"] .pairs-result { --pr-side: var(--ds-space-20); --pr-top: 60px; --pr-bedrock: 30px; --pr-gap: var(--ds-space-s); --pr-card-max: 100px; }
-html[data-size="tall-narrow"] .pairs-result[data-count="3"] { --pr-card-max: 112px; }
-html[data-size="tall-narrow"] .pairs-result[data-count="4"] { --pr-card-max: 140px; }
+html:is([data-size="tall"], [data-size="tall-narrow"]) .pairs-result-score { margin: 0 var(--pr-side); }
+html:is([data-size="tall"], [data-size="tall-narrow"]) .pairs-result-actions { padding: 0 var(--pr-side); }
+html[data-size="tall"] .pairs-result { --pr-card-max: 200px; --pr-art: 0.55; --pr-side: 56px; --pr-top: 44px; --pr-bottom: var(--ds-space-m); --pr-bedrock: 50px; }
+html[data-size="tall"] .pairs-result:is([data-count="3"], [data-count="4"]) { --pr-card-max: 200px; --pr-art: 0.69; }
+html[data-size="tall"] .pairs-result[data-count="12"] { --pr-card-max: 147px; --pr-art: 0.612; }
+html[data-size="tall"] .pairs-result-tries { font-size: 110px; }
+html[data-size="tall"] .pairs-result-title { font-size: var(--ds-size-48); }
+html[data-size="tall-narrow"] .pairs-result { --pr-side: var(--ds-space-20); --pr-top: 60px; --pr-bottom: var(--ds-space-20); --pr-bedrock: 30px; --pr-wave: 24px; --pr-wave-top: -16px; --pr-gap: var(--ds-space-s); --pr-card-max: 100px; --pr-art: 0.42; }
+html[data-size="tall-narrow"] .pairs-result[data-count="3"] { --pr-card-max: 112px; --pr-art: 0.688; }
+html[data-size="tall-narrow"] .pairs-result[data-count="4"] { --pr-card-max: 150px; --pr-art: 0.533; }
+@media (max-height: 700px) { html[data-size="tall-narrow"] .pairs-result[data-count="4"] { --pr-card-max: 140px; --pr-art: 0.443; } }
+html[data-size="tall-narrow"] .pairs-result[data-count="6"] { --pr-art: 0.5; }
+html[data-size="tall-narrow"] .pairs-result[data-count="12"] { --pr-card-max: 82px; --pr-art: 0.488; }
 html[data-size="tall-narrow"] .pairs-result-score { gap: var(--ds-space-s); }
 html[data-size="tall-narrow"] .pairs-result-tries { font-size: var(--ds-size-80); }
 html[data-size="tall-narrow"] .pairs-result-hand { width: 56px; height: 56px; }
 html[data-size="tall-narrow"] .pairs-result-title { font-size: var(--ds-size-34); }
 /* On an upright phone PLAY AGAIN stands over BACK and HOME. */
-html[data-size="tall-narrow"] .pairs-result-actions { justify-self: stretch; flex-wrap: wrap; gap: var(--ds-btn-gap); padding-bottom: var(--ds-space-20); }
+html[data-size="tall-narrow"] .pairs-result-actions { justify-self: stretch; flex-wrap: wrap; gap: var(--ds-btn-gap); }
 html[data-size="tall-narrow"] .pairs-result-actions button { flex: 1 1 0; height: 64px; padding: 0 var(--ds-space-m); }
 html[data-size="tall-narrow"] .pairs-result-actions .play-again-button { flex-basis: 100%; }
+html[data-size="tall-narrow"] .pairs-result-actions button:not(.play-again-button) { font-size: var(--ds-size-22); }
+html[data-size="tall"] .pairs-result-actions { gap: var(--ds-space-m); }
+html[data-size="tall"] .pairs-result-actions button { height: 72px; font-size: var(--ds-size-24); }
 
 /* On a phone on its side the dinosaurs and a 300-wide column fill the
    window over a strip of sand; there is no bedrock. */
 html[data-size="wide-short"] .pairs-result {
-  --pr-ratio: 0.72; --pr-card-max: 120px; --pr-side: var(--ds-space-20); --pr-gap: var(--ds-space-s); --pr-sand: 77px;
-  grid-template-columns: minmax(0, 1fr) 300px; grid-template-rows: minmax(0, 1fr) var(--pr-sand); column-gap: var(--ds-space-14);
+  --pr-card-max: 118px; --pr-art: 0.475; --pr-wave: 24px; --pr-wave-top: -16px; --pr-side: var(--ds-space-20); --pr-gap: var(--ds-space-s); --pr-sand: 77px;
+  grid-template-columns: minmax(0, 1fr) calc(300px + var(--pr-side)); grid-template-rows: minmax(0, 1fr) var(--pr-sand); column-gap: var(--ds-space-14);
 }
+html[data-size="wide-short"] .pairs-result:is([data-count="3"], [data-count="4"], [data-count="6"]) { --pr-art: 0.602; }
+html[data-size="wide-short"] .pairs-result[data-count="12"] { --pr-card-max: 86px; --pr-art: 0.465; }
 html[data-size="wide-short"] .pairs-result-bedrock { display: none; }
 html[data-size="wide-short"] .pairs-result-sand { grid-area: 2 / 1 / 3 / -1; margin-bottom: calc(-1 * env(safe-area-inset-bottom)); }
-html[data-size="wide-short"] .pairs-result-room { grid-area: 1 / 1 / 3 / 2; margin: var(--ds-space-s) 0 var(--ds-space-s) var(--pr-side); }
+html[data-size="wide-short"] .pairs-result-room { grid-area: 1 / 1 / 3 / 2; margin: var(--ds-space-m) 0 21px var(--pr-side); }
 html[data-size="wide-short"] .pairs-result-column { grid-area: 1 / 2 / 3 / 3; align-self: center; display: flex; flex-direction: column; gap: var(--ds-space-s); margin-right: var(--pr-side); min-width: 0; }
 html[data-size="wide-short"] .pairs-result-score { margin: 0; flex-direction: row; flex-wrap: wrap; justify-content: center; gap: var(--ds-space-6) var(--ds-space-s); }
 html[data-size="wide-short"] .pairs-level-up { order: -1; flex-basis: 100%; justify-content: center; box-sizing: border-box; padding: var(--ds-space-xs) var(--ds-space-m); font-size: var(--ds-size-16); }
@@ -13010,20 +13028,21 @@ html[data-size="wide-short"] .pairs-result-actions .play-again-button { flex-bas
 
 /* The level offer in the dig site's look, only where a game asks for it. */
 .pairs-offer-scrim[data-dig]::before { background: var(--ds-scrim); opacity: 1; }
-.pairs-offer[data-dig] { width: min(620px, 100%); gap: var(--ds-space-20); padding: 36px; border-radius: var(--ds-radius-panel); background: var(--ds-label); color: var(--ds-ink); font-family: var(--ds-font); }
+.pairs-offer[data-dig] { width: min(520px, 100%); gap: var(--ds-space-20); padding: 36px; border-radius: var(--ds-radius-panel); background: var(--ds-label); color: var(--ds-ink); font-family: var(--ds-font); }
 .pairs-offer-tag { display: flex; align-items: center; gap: var(--ds-space-6); margin: 0; padding: var(--ds-space-7) var(--ds-space-m) var(--ds-space-7) var(--ds-btn-gap); border-radius: var(--ds-radius-tag); background: var(--ds-reward); color: var(--ds-on-reward); font-size: var(--ds-size-tag); font-weight: 700; letter-spacing: 1.5px; line-height: 1; white-space: nowrap; }
 .pairs-offer-tag svg { flex: none; width: 14px; height: 14px; }
 .pairs-offer[data-dig] .pairs-offer-picture { width: 120px; height: 96px; border-radius: 48px 48px var(--ds-radius-24) var(--ds-radius-24); background: var(--ds-pocket-1); box-shadow: inset 0 6px 12px var(--ds-pocket-shadow); font-size: 56px; }
+.pairs-offer[data-dig][data-level="paleontologist"] { width: min(620px, 100%); }
 .pairs-offer[data-dig] .pairs-offer-question { font-size: var(--ds-size-title); font-weight: 800; letter-spacing: -0.5px; }
 .pairs-offer[data-dig] .pairs-offer-answers { width: auto; flex-direction: row; justify-content: center; gap: var(--ds-space-l); }
-.pairs-offer[data-dig] .pairs-offer-answers button { flex: 0 1 auto; height: auto; min-height: 44px; padding: var(--ds-btn-pad-y) var(--ds-btn-pad-x); gap: var(--ds-btn-gap); border: 0; border-radius: var(--ds-radius-pill); box-shadow: none; font-family: var(--ds-font); font-size: var(--ds-size-action); font-weight: 800; }
+.pairs-offer[data-dig] .pairs-offer-answers button { flex: 0 1 auto; height: auto; min-height: 44px; padding: var(--ds-btn-pad-y) var(--ds-btn-pad-x); gap: var(--ds-btn-gap); border: 0; border-radius: var(--ds-radius-pill); box-shadow: none; font-family: var(--ds-font); font-size: var(--ds-size-action); font-weight: 800; line-height: 1.2; }
 .pairs-offer[data-dig] .pairs-offer-answers svg { width: 26px; height: 26px; }
 .pairs-offer[data-dig] .pairs-offer-yes { background: var(--ds-action); color: var(--ds-on-action); }
 .pairs-offer[data-dig] .pairs-offer-not-now { background: none; border: 3px solid var(--ds-ink); color: var(--ds-ink); }
 html[data-size="tall-narrow"] .pairs-offer[data-dig] { padding: var(--ds-space-28) var(--ds-space-20); }
 html[data-size="tall-narrow"] .pairs-offer[data-dig] .pairs-offer-answers { width: 100%; flex-direction: column; gap: var(--ds-btn-gap); }
 html[data-size="tall-narrow"] .pairs-offer[data-dig] .pairs-offer-answers button { flex: none; width: 100%; }
-html[data-size="wide-short"] .pairs-offer[data-dig] { width: min(460px, 100%); gap: var(--ds-space-m); padding: var(--ds-space-20) var(--ds-space-28); }
+html[data-size="wide-short"] .pairs-offer[data-dig][data-level] { width: min(460px, 100%); gap: var(--ds-space-m); padding: var(--ds-space-20) var(--ds-space-28); }
 html[data-size="wide-short"] .pairs-offer[data-dig] .pairs-offer-picture { width: 84px; height: 64px; font-size: 36px; }
 html[data-size="wide-short"] .pairs-offer[data-dig] .pairs-offer-question { font-size: var(--ds-size-26); }
 html[data-size="wide-short"] .pairs-offer[data-dig] .pairs-offer-answers button { height: 52px; padding-block: 0; }

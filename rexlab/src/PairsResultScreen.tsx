@@ -47,9 +47,24 @@ const motion = (properties: Record<`--${string}`, number>) => properties as CSSP
 // Three across, two for four and four for the fullest boards.
 const foundColumns = (count: number) => (count === 4 ? 2 : count > 9 ? 4 : 3);
 
-// Soft hyphens between a name's syllables, so that a narrow card breaks
-// it at a hyphen and never mid-sound.
-const syllabled = (name: string) => name.length < 8 ? name : name.replace(/([AEIOUYАЕЁИОУЫЭЮЯ])(?=(?:CH|PH|TH|GN|PS|ГН|ПС|[^AEIOUYАЕЁИОУЫЭЮЯ\s-])[AEIOUYАЕЁИОУЫЭЮЯ])/g, "$1\u00AD");
+// Where a narrow card may break a name: before its -saurus, or between the
+// parts of the others. A name without a part here stays whole.
+const NAME_BREAK = /(?<=.)(?=SAURUS$|ЗАВР$|LOPHUS$|PTERYX$|GNATHUS$|RAPTOR$|TOPS$|MIMUS$|РОЛОФ$|ТЕРИКС$|ГНАТ$|РАПТОР$|ТОПС$|МИМ$)/;
+
+// The name's parts, the length of the longer, and how narrow
+// a card must be to break it: a long one on any phone, a shorter one in the
+// nine dinosaurs of an upright phone, and any other only on the fullest board.
+function foundName(name: string, language: Language) {
+  const [head, tail] = name.split(NAME_BREAK);
+  const longEnough = language === "ru" ? name.length + (/ЗАВР$/.test(name) ? 2 : 0) >= 12 : name.length >= 12;
+  const reach = name.length >= 15 ? "long" : longEnough ? "narrow" : "fullest";
+  return { text: tail ? `${head}\u00AD${tail}` : name, length: name.length, part: tail ? Math.max(head!.length, tail.length) : name.length, reach: tail ? reach : undefined };
+}
+
+function FoundName({ name, language }: { name: string; language: Language }) {
+  const { text, length, part, reach } = foundName(name, language);
+  return <span className="pairs-found-name" data-break={reach} lang={language} style={{ "--name-length": length, "--name-part": part } as CSSProperties}>{text}</span>;
+}
 
 export function PairsResultScreen({ language, pals, tries, stars, best, beaten, celebration, levelUp, offer, onPlayAgain, onBack, onHome }: PairsResultScreenProps) {
   const gateShown = useGateShown();
@@ -89,7 +104,7 @@ export function PairsResultScreen({ language, pals, tries, stars, best, beaten, 
                 <span className="pairs-found-art">
                   <Picture className="pairs-found-picture" src={picture} alt="" width={800} height={600} />
                 </span>
-                <span className="pairs-found-name" data-long={name.length >= 14 || undefined} lang={language}>{syllabled(name.toLocaleUpperCase(language))}</span>
+                <FoundName name={name.toLocaleUpperCase(language)} language={language} />
                 {newlyFound && (
                   <span className="pairs-new-badge">
                     <Sparkles aria-hidden="true" />

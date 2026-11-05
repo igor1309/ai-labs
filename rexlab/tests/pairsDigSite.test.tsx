@@ -228,7 +228,7 @@ for (const theme of THEMES) for (const shape of SHAPES) {
     matches(".pairs-next-card", { "background-color": "reward" });
     matches(".pairs-result-stars", { "background-color": "quiet" });
     matches(".pairs-best", { "background-color": "reward", color: "on-reward" });
-    matches(".pairs-result-title", { "font-size": shape === "wide" || shape === "tall" ? "size-40" : shape === "tall-narrow" ? "size-34" : "size-26" });
+    matches(".pairs-result-title", { "font-size": shape === "wide" ? "size-40" : shape === "tall" ? "size-48" : shape === "tall-narrow" ? "size-34" : "size-26" });
     matches(".play-again-button", { "background-color": "action", color: "on-action", "border-radius": "radius-pill" });
     matches(".pairs-result-back", { "background-color": "strong", color: "on-strong" });
     matches(".pairs-result-home", { "border-top-color": "ink", color: "ink" });
@@ -271,10 +271,10 @@ it("leaves the offer of the other games undressed", () => {
 });
 
 it.each([
-  ["ru", "Тираннозавр", "ТИ\u00ADРАННО\u00ADЗАВР"],
-  ["en", "Pachycephalosaurus", "PA\u00ADCHY\u00ADCE\u00ADPHA\u00ADLO\u00ADSAU\u00ADRUS"],
+  ["ru", "Тираннозавр", "ТИРАННО\u00ADЗАВР"],
+  ["en", "Pachycephalosaurus", "PACHYCEPHALO\u00ADSAURUS"],
   ["en", "T. rex", "T. REX"]
-] as const)("breaks the %s name %s only between its syllables", (language, name, shown) => {
+] as const)("breaks the %s name %s only between its parts", (language, name, shown) => {
   showResult({ language, pals: [{ id: "pal", name, picture: "", newlyFound: false }] });
   expect(document.querySelector(".pairs-found-name")?.textContent).toBe(shown);
 });

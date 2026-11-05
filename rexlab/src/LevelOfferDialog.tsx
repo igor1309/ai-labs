@@ -61,7 +61,7 @@ export function LevelOfferDialog({ controls, digSite = false, language, offer, l
   );
   return (
     <div ref={overlay} className="pairs-offer-scrim" data-dig={digSite || undefined} data-leaving={leaving || undefined}>
-      <section className="pairs-offer" data-dig={digSite || undefined} role="dialog" aria-modal="true" aria-labelledby={title}
+      <section className="pairs-offer" data-dig={digSite || undefined} data-level={offer.level} role="dialog" aria-modal="true" aria-labelledby={title}
         onKeyDown={(event) => {
           if (event.key !== "Tab") return;
           const buttons = overlay.current?.querySelectorAll<HTMLButtonElement>("button");

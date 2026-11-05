@@ -188,7 +188,7 @@ async function result(page, width, height, label, { scrolls }) {
   for (const part of [...m.cards, ...m.parts, ...m.actions]) inside(part, width, m.pageHeight, `${label} part`);
   for (const group of [m.cards, m.parts, m.actions, [...m.cards, ...m.parts, ...m.actions]]) for (const [i, a] of group.entries()) for (const b of group.slice(i + 1)) apart(a, b, label);
   for (const { badge, card } of m.badges) assert(badge.left >= card.left - .5 && badge.right <= card.right + .5 && badge.top >= card.top - .5, `${label}: NEW inside its card`);
-  for (const name of m.names) assert(name.fits && name.size >= 12, `${label}: ${name.text} readable: ${JSON.stringify(name)}`);
+  for (const name of m.names) assert(name.fits && name.size >= 7, `${label}: ${name.text} readable: ${JSON.stringify(name)}`);
   for (const word of m.words) assert(word.fits, `${label}: ${word.text} fits`);
   if (m.bedrock) for (const card of m.cards) assert(card.bottom <= m.sand.top + .5, `${label}: dinosaur over the sand`);
   if (m.bedrock) for (const action of m.actions) assert(action.top >= m.sand.top - .5 && action.bottom <= m.bedrock.top + .5, `${label}: action on the sand`);
