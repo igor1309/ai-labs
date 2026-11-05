@@ -119,6 +119,7 @@ async function run() {
         assert(!requests.some(file => file.endsWith('.js') && files.get(file)?.includes(Buffer.from('WebGLRenderer'))), 'other featured games do not bundle the renderer into an eager chunk');
         await featureBones(page);
         await ready(page);
+        assert(requests.some(file => file.endsWith('.js') && files.get(file)?.includes(Buffer.from('WebGLRenderer'))), 'featured skeleton loads the deferred renderer');
         await bufferFits(page);
         const pixels = await page.evaluate(() => window.skeletonPixels);
         assert(pixels && pixels.painted > pixels.total * .01 && pixels.bright > pixels.painted * .75 && pixels.warm > pixels.painted * .75, `visible ivory geometry is painted in ${theme}: ${JSON.stringify(pixels)}`);
@@ -181,7 +182,7 @@ async function run() {
           });
           await frames(page);
           assert(await page.evaluate(() => window.skeletonDraws) > pausedDraws, 'visible page resumes GPU draws');
-          await page.setViewportSize({ width: 393, height: 400 });
+          await page.setViewportSize({ width: 852, height: 393 });
           await page.evaluate(() => scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' }));
           await page.waitForFunction(() => window.heroIntersection === false);
           await frames(page);
