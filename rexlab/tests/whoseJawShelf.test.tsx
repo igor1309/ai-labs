@@ -91,9 +91,12 @@ describe("Whose Jaw museum shelf", () => {
     expect(rows).toHaveLength(4);
     for (const row of rows) {
       expect(row.querySelectorAll(".jaw-shelf-place")).toHaveLength(4);
-      expect(row.querySelector(".jaw-shelf-labels")!.textContent).toMatch(/🥩|🌿/u);
+      // Diet tags use the same food artwork as the approved shelf.
+      expect(row.querySelectorAll(".jaw-shelf-labels .jaw-shelf-food").length).toBeGreaterThan(0);
+      expect(row.querySelector(".jaw-shelf-labels")!.textContent).toMatch(new RegExp(`${TEXTS[language].jawFoods.meat}|${TEXTS[language].jawFoods.plants}`, "u"));
     }
-    expect(screen.getByLabelText(TEXTS[language].jawCollection).textContent).toBe("🦷 2 / 16");
+    // The outlined tooth is an SVG; the count keeps only its numbers as text.
+    expect(screen.getByLabelText(TEXTS[language].jawCollection).textContent).toBe("2/ 16");
     const places = Array.from(document.querySelectorAll<HTMLButtonElement>(".jaw-shelf-place"));
     expect(places.filter((each) => !each.disabled).map((each) => each.getAttribute("aria-label")).sort()).toEqual(earned.map((id) => JAWS.find((jaw) => jaw.id === id)!.name[language].toLocaleUpperCase(language)).sort());
     for (const locked of places.filter((each) => each.disabled)) {
@@ -116,7 +119,7 @@ describe("Whose Jaw museum shelf", () => {
       expect(within(card).getByRole("img", { name }).getAttribute("src")).toBe(`gummy-${jaw.id}.webp`);
       expect(card.textContent).toContain(jaw.fact[language].toLocaleUpperCase(language));
       expect(card.textContent).toContain(TEXTS[language].jawFoods[jaw.diet]);
-      expect(card.textContent).toContain(jaw.diet === "meat" ? "🥩" : "🌿");
+      expect(card.querySelector(".jaw-card-diet .jaw-shelf-food")!.getAttribute("src")).toContain(`${jaw.diet}.webp`);
       expect(app.spoken.at(-1)).toEqual({ words: `${jaw.name[language]}. ${jaw.fact[language]}`, language });
       const close = within(card).getByRole("button");
       expect(document.activeElement).toBe(close);
@@ -140,7 +143,8 @@ describe("Whose Jaw museum shelf", () => {
     const page = document.querySelector(".whose-jaw-shelf-screen")!;
     const style = getComputedStyle(page);
     expect(contrast(style.color, style.backgroundColor)).toBeGreaterThanOrEqual(4.5);
-    expect(style.backgroundColor).toBe(theme === "dark" ? "rgb(15, 19, 32)" : "rgb(242, 239, 232)");
+    // The museum uses the design’s sand in both themes.
+    expect(style.backgroundColor).toBe(theme === "dark" ? "rgb(91, 74, 55)" : "rgb(228, 213, 183)");
     fireEvent.click(place(JAWS[0]!.id));
     const card = getComputedStyle(screen.getByRole("dialog"));
     expect(contrast(card.color, card.backgroundColor)).toBeGreaterThanOrEqual(4.5);
@@ -168,7 +172,8 @@ describe("Whose Jaw museum shelf", () => {
     fireEvent.click(place(JAWS[0]!.id));
     if (state === "failed") act(() => { pictures.fail(`jaw-${JAWS[0]!.id}.webp`); pictures.fail(`gummy-${JAWS[0]!.id}.webp`); });
     const card = screen.getByRole("dialog");
-    expect(card.querySelectorAll(`[data-picture="${state}"]`)).toHaveLength(2);
+    // Media waits for the dinosaur and jaw; the decorative food picture does not gate it.
+    expect(card.querySelectorAll(`.jaw-card-pictures [data-picture="${state}"]`)).toHaveLength(2);
     expect(card.querySelector(".jaw-card-chomp")!.hasAttribute("data-ready")).toBe(false);
     if (state === "loading") {
       act(() => pictures.finish(`jaw-${JAWS[0]!.id}.webp`));
@@ -242,7 +247,7 @@ describe("shelf navigation and collection storage", () => {
       fireEvent.click(button(TEXTS.en.jawPick)); fireEvent.click(button(JAWS[0]!.name.en.toUpperCase()));
       fireEvent.click(button(TEXTS.en.home)); fireEvent.click(button(TEXTS.en.museum)); fireEvent.click(button(TEXTS.en.jawShelf));
       expect(place(JAWS[0]!.id).disabled).toBe(false);
-      expect(screen.getByLabelText(TEXTS.en.jawCollection).textContent).toBe("🦷 1 / 16");
+      expect(screen.getByLabelText(TEXTS.en.jawCollection).textContent).toBe("1/ 16");
     };
     putFirst(true);
     app.unmount();

@@ -48,11 +48,11 @@ async function geometry(page) {
       overflow: [document.documentElement.scrollWidth > innerWidth, document.documentElement.scrollHeight > innerHeight],
       title: get(".jaw-board-title"), choices: get(".jaw-choices"), tray: get(".jaw-tray"),
       cards: [...document.querySelectorAll(".jaw-dinosaur")].map((card) => ({
-        ...rect(card), border: parseFloat(getComputedStyle(card).borderTopWidth),
-        art: rect(card.querySelector(".jaw-gummy")),
+        ...rect(card), border: parseFloat(getComputedStyle(card.querySelector(".jaw-pocket")).borderTopWidth),
+        art: rect(card.querySelector(".jaw-window")),
         name: card.querySelector(".jaw-name") && rect(card.querySelector(".jaw-name"))
       })),
-      jaw: getComputedStyle(loose).display === "none" ? null : { ...rect(loose), paintedWidth: painted(loose.querySelector("img")) },
+      jaw: loose.getClientRects().length === 0 ? null : { ...rect(loose), paintedWidth: painted(loose.querySelector("img")) },
       feedback: feedback && rect(feedback), next: document.querySelector(".jaw-next") && get(".jaw-next"), controls,
       breathing: getComputedStyle(document.querySelector(".jaw-breath")).animationName
     };
@@ -102,14 +102,17 @@ async function check(browser, url, screenshots, width, height, language, theme, 
       if (card.name) assert(card.name.top >= card.art.bottom - .5 && card.name.bottom <= card.bottom + .5, "name fits below art");
     }
     if (width > height) {
-      assert(waiting.choices.top - waiting.title.bottom <= 20, "choices must stay near title");
-      assert(waiting.cards.every((card) => Math.abs(card.top - waiting.cards[0].top) < 1), "one landscape row");
-      assert(waiting.tray.width <= waiting.jaw.width + 24, "tray wraps artwork");
+      // The title stays in the sky above the sand, and the jaw lies on its
+      // own card in a tray beside its prompt.
+      assert(waiting.choices.top >= waiting.title.bottom, "choices below the title");
+      // Four cards on a phone on its side stand in two rows of two.
+      const rows = height < 600 && waiting.cards.length === 4 ? 2 : 1;
+      assert.equal(new Set(waiting.cards.map((card) => Math.round(card.top))).size, rows, "landscape rows");
+      assert(waiting.tray.left <= waiting.jaw.left + .5 && waiting.tray.right >= waiting.jaw.right - .5, "tray holds the jaw");
+      assert(waiting.jaw.width >= 160 && waiting.jaw.paintedWidth >= 120, "inspectable painted jaw");
       if (height >= 600) {
-        assert(waiting.jaw.paintedWidth >= 320 && waiting.jaw.paintedWidth <= 440, "inspectable painted jaw");
         assert(waiting.tray.top >= waiting.choices.bottom && waiting.tray.top - waiting.choices.bottom <= 48);
       } else {
-        assert(waiting.jaw.width >= 160);
         assert(waiting.tray.left >= waiting.choices.right, "short landscape side tray");
       }
     }
@@ -153,7 +156,9 @@ async function check(browser, url, screenshots, width, height, language, theme, 
     fits(reading, width, height);
     assert.equal(reading.jaw, null, "hidden jaw releases layout space");
     if (reading.feedback) {
-      assert(reading.feedback.top >= reading.choices.bottom, "fact below choices");
+      const { feedback, choices, tray } = reading;
+      assert(feedback.top >= choices.bottom - .5 || feedback.left >= choices.right - .5, "fact below or beside the choices");
+      assert(feedback.left >= tray.left - .5 && feedback.right <= tray.right + .5 && feedback.top >= tray.top - .5 && feedback.bottom <= tray.bottom + .5, "fact in the tray");
       assert(reading.next.right <= reading.feedback.left || reading.next.left >= reading.feedback.right || reading.next.bottom <= reading.feedback.top || reading.next.top >= reading.feedback.bottom, "fact and Next do not overlap");
     }
     await page.screenshot({ path: join(screenshots, `landscape-${tag}-reading.png`) });
