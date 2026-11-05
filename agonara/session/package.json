@@ -6,6 +6,6 @@
   "engines": { "node": ">=22" },
   "scripts": {
     "start": "node src/main.js",
-    "test": "node --test test/bot.test.js"
+    "test": "node --test test/*.test.js"
   }
 }
