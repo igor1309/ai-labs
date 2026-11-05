@@ -69,7 +69,19 @@ async function run() {
           const draw = WebGL2RenderingContext.prototype.drawElements;
           WebGL2RenderingContext.prototype.drawElements = function(...args) {
             window.skeletonDraws++;
-            return draw.apply(this, args);
+            const result = draw.apply(this, args);
+            if (!window.skeletonPixels) {
+              const pixels = new Uint8Array(this.drawingBufferWidth * this.drawingBufferHeight * 4);
+              this.readPixels(0, 0, this.drawingBufferWidth, this.drawingBufferHeight, this.RGBA, this.UNSIGNED_BYTE, pixels);
+              let painted = 0, bright = 0, warm = 0;
+              for (let i = 0; i < pixels.length; i += 4) if (pixels[i + 3] > 128) {
+                painted++;
+                if (pixels[i] > 100 && pixels[i + 1] > 100 && pixels[i + 2] > 80) bright++;
+                if (pixels[i] >= pixels[i + 2]) warm++;
+              }
+              window.skeletonPixels = { painted, bright, warm, total: pixels.length / 4 };
+            }
+            return result;
           };
         }, { level, theme });
         const page = await context.newPage();
@@ -81,6 +93,8 @@ async function run() {
         assert(!requests.some(file => file.endsWith('.js') && files.get(file)?.includes(Buffer.from('WebGLRenderer'))), 'other featured games do not bundle the renderer into an eager chunk');
         await featureBones(page);
         await ready(page);
+        const pixels = await page.evaluate(() => window.skeletonPixels);
+        assert(pixels && pixels.painted > pixels.total * .01 && pixels.bright > pixels.painted * .75 && pixels.warm > pixels.painted * .75, `visible ivory geometry is painted in ${theme}: ${JSON.stringify(pixels)}`);
         const box = await page.locator('.home-skeleton-hero canvas').boundingBox();
         const artBox = await page.locator('.home-today-art').boundingBox();
         const skyBox = await page.locator('.home-sky').boundingBox();
