@@ -40,16 +40,25 @@ under the paragraph, set apart from the lecture text, with a way to close it.
 - **Desktop (1280 pt):** the program's outline (courses and sections) in a left
   sidebar; the reading column in the centre, about 680 pt wide.
 
-## Look
+## Look: Ink & Saffron
 
-Calm and readable: a reading app, not a dashboard. Use Agonara's palette: dark
-text `#1c2329` on white `#ffffff`, muted text `#5e6a72`, muted surface
-`#eef3f6`. Generous line height (1.6) and a serif or humanist body face.
-Russian text must fit: content is mostly in Russian.
+Warm paper for long reading, indigo ink for actions and the current place,
+saffron for the paragraph the reader is working with. Light and dark.
+
+| Role | Light |
+| --- | --- |
+| paper / paper-deep / sunken | `#FBF7F0` / `#F3ECE0` / `#EFE7D9` |
+| line / line-strong | `#E6DDCE` / `#CFC4B2` |
+| ink / ink-2 / ink-3 | `#231F1A` / `#685E52` / `#968A7B` |
+| accent / accent-soft / accent-line | `#33408F` / `#E9EBF6` / `#C3C9E8` |
+| highlight (chosen paragraph) | `#FAEDC6` |
+
+Dark values are in the palette frame of `session-web.pen`. Serif body
+(Source Serif 4) at line height 1.6; Russian text must fit.
 
 ## Not in this brief
 
-Login, progress and checks, search, dark mode, settings, the answer's own
+Login, progress and checks, search, settings, the answer's own
 follow-up actions. They come later.
 
 ## Frames to draw
