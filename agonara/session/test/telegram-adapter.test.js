@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { keyboard, markdownToHtml, markdownToRich, parseCallback, render, renderRich } from "../src/telegram-adapter.js";
+import { keyboard, markdownToHtml, markdownToRich, parseCallback, positionLabel, render, renderRich } from "../src/telegram-adapter.js";
 
 const labels = (markup) => markup.inline_keyboard.map((row) => row.map((button) => button.text));
 
@@ -94,13 +94,23 @@ test("a rich screen makes each name tappable where it is written, and ends with 
   ].join(""));
 });
 
-test("a rich page shows its number only when there are several, with paging before navigation", () => {
-  const actions = [{ id: "next", kind: "page", label: "Next ▶" }, { id: "back", kind: "nav", label: "◀ Back" }];
-  assert.equal(renderRich({ title: "Notes", markdown: "Text.", page: { index: 0, count: 2 } }, actions, 1),
-    `<h2>📖 Notes</h2><p><i>Page 1 of 2</i></p><p>Text.</p><tg-button-row>${button("1:next", "Next ▶")}</tg-button-row>`
-    + `<tg-button-row>${button("1:back", "◀ Back")}</tg-button-row>`);
-  assert.equal(renderRich({ title: "Notes", markdown: "Text.", page: { index: 0, count: 1 } }, [], 1),
-    "<h2>📖 Notes</h2><p>Text.</p>");
+test("a lecture page starts with where it is and ends with paging, then navigation", () => {
+  const actions = [{ id: "next", kind: "page", label: "Next ▶" }, { id: "contents", kind: "page", label: "☰ Contents" },
+    { id: "back", kind: "nav", label: "◀ Back" }];
+  const view = { title: "Notes", markdown: "Text.", page: { index: 3, count: 9 },
+    position: { section: 2, label: "B", index: 1, count: 4 } };
+  assert.equal(renderRich(view, actions, 1),
+    `<p><i>📖 §2 B · 2/4</i></p><p>Text.</p><tg-button-row>${button("1:next", "Next ▶")}`
+    + `${button("1:contents", "☰ Contents")}</tg-button-row><tg-button-row>${button("1:back", "◀ Back")}</tg-button-row>`);
+  assert.match(render(view, actions, 1).text, /^📖 <b>Notes<\/b>\n<i>§2 B · 2\/4<\/i>/);
+  assert.equal(renderRich({ title: "Notes", markdown: "Text.", page: { index: 0, count: 1 },
+    position: { section: null, label: null, index: 0, count: 1 } }, [], 1), "<h2>📖 Notes</h2><p>Text.</p>");
+});
+
+test("where a page is: the intro, a section, and a page within it", () => {
+  assert.equal(positionLabel({ section: null, label: null, index: 0, count: 1 }), "Intro");
+  assert.equal(positionLabel({ section: 3, label: "C", index: 0, count: 1 }), "§3 C");
+  assert.equal(positionLabel({ section: 3, label: "C", index: 4, count: 6 }), "§3 C · 5/6");
 });
 
 test("a name with no action is written as plain text, and an empty screen says so", () => {
@@ -120,13 +130,13 @@ test("lecture markdown: headings, lists and paragraphs, with nothing collapsed",
   ].join(""));
 });
 
-test("a lecture section lists every section, the current one bold, the others tappable", () => {
-  const html = renderRich({
-    title: "Notes", markdown: "## B\n\nb text", page: { index: 2, count: 3 },
-    sections: [{ page: 1, label: "A", current: false }, { page: 2, label: "B", current: true }],
-  }, [{ id: "sec_1", kind: "section", label: "A" }, { id: "prev", kind: "page", label: "◀ Prev" }], 4);
-  assert.equal(html, `<h2>📖 Notes</h2><h3>B</h3><p>b text</p><h3>Sections</h3><ol><li>${link("4:sec_1", "A")}</li>`
-    + `<li><b>B</b></li></ol><tg-button-row>${button("4:prev", "◀ Prev")}</tg-button-row>`);
+test("the contents page lists the intro and each section to tap, marking where the reader is", () => {
+  const html = renderRich({ title: "Notes", lists: [], contents: [
+    { page: 0, n: null, label: "Intro", current: false }, { page: 2, n: 1, label: "A", current: true },
+  ] }, [{ id: "sec_0", kind: "section", label: "Intro" }, { id: "sec_2", kind: "section", label: "A" },
+    { id: "read", kind: "page", label: "◀ Text" }], 4);
+  assert.equal(html, `<h2>📖 Notes</h2><h3>Contents</h3><ul><li>${link("4:sec_0", "Intro")}</li>`
+    + `<li>▸ §1 ${link("4:sec_2", "A")}</li></ul><tg-button-row>${button("4:read", "◀ Text")}</tg-button-row>`);
 });
 
 test("lecture markdown: text beside a list in one paragraph keeps its order", () => {

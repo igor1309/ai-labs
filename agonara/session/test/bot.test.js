@@ -53,8 +53,7 @@ test("a chat that refuses rich messages gets the plain screen with buttons, and 
   assert.equal(calls[1].params.parse_mode, "HTML");
   assert.equal(calls[1].params.text, "<b>Programs</b>\n\nStudy algebra.");
   assert.ok(calls[1].params.reply_markup.inline_keyboard.length > 0);
-  assert.equal(logged.length, 1);
-  assert.match(logged[0], /rich messages are not supported/);
+  assert.equal(logged.filter((line) => /rich messages are not supported/.test(line)).length, 1);
 });
 
 test("any other chat gets no reply and no state change", async () => {

@@ -31,6 +31,9 @@ export async function handleUpdate({ update, state, allowedChatId, api, flow, lo
     await api("answerCallbackQuery", { callback_query_id: callback.id, text: "Unknown action." });
     return state;
   }
+  log(`${parsed ? `tap ${parsed.actionId}` : "message"} -> ${result.session.screen}`
+    + `${result.session.page === undefined ? "" : ` page ${result.session.page + 1}/${result.session.pageCount}`}`
+    + `${result.session.contents ? " contents" : ""}`);
   if (callback) await api("answerCallbackQuery", { callback_query_id: callback.id });
   await show(api, chatId, callback?.message?.message_id, result, log);
   return { ...state, session: result.session };
