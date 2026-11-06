@@ -6,7 +6,7 @@ import { NAME_EMS } from "./nameWidths.ts";
 import { SHIPPED_DINOSAURS } from "./support.ts";
 
 // Advances at weight 800, rounded up to 0.01 em: shipped Lexend for Latin
-// and the macOS system face for Cyrillic. Spaces reserve the wider advance.
+// and at least Manrope's for Cyrillic. Spaces reserve the wider advance.
 const PROMPT_EMS: Record<string, number> = {
   " ": 0.34, "?": 0.55,
   A: 0.7, E: 0.66, G: 0.79, H: 0.79, I: 0.59, L: 0.62, N: 0.82, O: 0.83, R: 0.71, S: 0.64, T: 0.7, V: 0.72, W: 1,
@@ -14,8 +14,7 @@ const PROMPT_EMS: Record<string, number> = {
 };
 
 // At weight 700, rounded up: the shipped Lexend advances for digits and
-// Latin units, and the system face's bold Cyrillic units with 10% room
-// for the iPad's face. The space reserves the wider Lexend advance.
+// Latin units, and Cyrillic units at least Manrope's. The space reserves the wider Lexend advance.
 const VALUE_EMS: Record<string, number> = {
   "0": 0.68, "1": 0.57, "2": 0.55, "3": 0.6, "4": 0.67,
   "5": 0.6, "6": 0.58, "7": 0.56, "8": 0.6, "9": 0.58,
@@ -100,7 +99,7 @@ describe("a phone question's words fit", () => {
 });
 
 // NEXT's labels at weight 700, rounded up: Lexend's advances for the
-// English ones, and the system face's for the Russian with 10% room.
+// English ones, and at least Manrope's for the Russian.
 const NEXT_EMS: Record<string, number> = { NEXT: 2.82, "SEE RESULT": 6.18, ДАЛЬШЕ: 4.91, РЕЗУЛЬТАТ: 6.61 };
 
 // NEXT in a wide-short window: 24 pixels before its label at 20, the

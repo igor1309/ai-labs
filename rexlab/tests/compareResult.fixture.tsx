@@ -1,4 +1,5 @@
 import "@fontsource-variable/lexend";
+import "@fontsource-variable/manrope";
 import "../src/app.css";
 import { createRoot } from "react-dom/client";
 import { flushSync } from "react-dom";

@@ -25,7 +25,7 @@ const { LAYOUT_VIEWPORTS, checkLayout } = require("./coloringLayout.cjs");
         const path = new URL(route.request().url()).pathname.slice(1);
         if (!path) return route.fulfill({ contentType: "text/html", body: `<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><title>Coloring layout contract</title>${css.map(name => `<link rel="stylesheet" href="/${name}">`).join("")}` });
         assert(files.has(path), `Missing browser module ${path}`);
-        return route.fulfill({ contentType: path.endsWith(".css") ? "text/css" : "text/javascript", body: files.get(path) });
+        return route.fulfill({ contentType: path.endsWith(".css") ? "text/css" : path.endsWith(".woff2") ? "font/woff2" : "text/javascript", body: files.get(path) });
       });
       await page.goto("http://layout.test/");
       const ru = language === "ru";

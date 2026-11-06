@@ -21,9 +21,9 @@ describe("a portrait dinosaur page's word bands", () => {
     [311, { description: 6, note: 6 }],
     [335, { description: 6, note: 6 }],
     [357, { description: 5, note: 6 }],
-    [403, { description: 5, note: 5 }],
+    [404, { description: 5, note: 5 }],
     [429, { description: 4, note: 5 }],
-    [448, { description: 4, note: 4 }],
+    [450, { description: 4, note: 4 }],
     [559, { description: 4, note: 4 }]
   ])("keeps %j lines at %i pixels on a narrow page", (width, expected) => {
     expect(keptLines(width, true)).toEqual(expected);

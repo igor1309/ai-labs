@@ -477,7 +477,7 @@ body:has(.sand-writing-screen) #version {
   --ds-bad: #C23B2E;
   --ds-scrim: #1D274299;
   --ds-outline: #1D274233;
-  --ds-font: "Lexend Variable", system-ui, sans-serif;
+  --ds-font: "Lexend Variable", "Manrope Variable", system-ui, sans-serif;
   --ds-size-display: 64px;
   --ds-size-title: 34px;
   --ds-size-action: 28px;
@@ -927,7 +927,7 @@ body {
   margin: 0;
   min-height: 100vh;
   min-height: 100dvh;
-  font-family: "Lexend Variable", system-ui, sans-serif;
+  font-family: "Lexend Variable", "Manrope Variable", system-ui, sans-serif;
   background: #f2efe8;
   color: #1d2742;
 }
@@ -2324,6 +2324,9 @@ html[data-size="wide-short"] .catalogue-art {
 .catalogue-name {
   font-size: min(20px, 7cqi);
   font-weight: 700;
+  /* Lexend's own line height, kept for Russian names in Manrope, whose
+     normal line is taller. */
+  line-height: 1.25;
   white-space: nowrap;
 }
 

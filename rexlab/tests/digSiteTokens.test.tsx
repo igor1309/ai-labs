@@ -29,7 +29,7 @@ for (const theme of THEMES) for (const size of ["wide", "tall", "tall-narrow", "
     const device = size === "tall-narrow" || size === "wide-short" ? "phone" : "ipad";
     for (const [name, entry] of Object.entries(design.variables) as [string, { type: string; value: string | number | { value: string | number; theme: { mode?: string; device?: string } }[] }][]) {
       const value = Array.isArray(entry.value) ? entry.value.find(({ theme: axis }) => axis.mode === theme || axis.device === device)!.value : entry.value;
-      expect(token(name.slice(3)), name).toBe(name === "ds-font" ? '"Lexend Variable",system-ui,sans-serif' : `${value}${entry.type === "number" ? "px" : ""}`);
+      expect(token(name.slice(3)), name).toBe(name === "ds-font" ? '"Lexend Variable","Manrope Variable",system-ui,sans-serif' : `${value}${entry.type === "number" ? "px" : ""}`);
     }
   });
 }

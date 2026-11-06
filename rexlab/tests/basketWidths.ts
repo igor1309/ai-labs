@@ -1,8 +1,8 @@
 // jsdom lays nothing out, so the width of each word of a basket's name, and
 // of the words in its symbol, is given here in ems of its bold face,
 // rounded up: Lexend's for the Latin words, and for the Cyrillic ones,
-// which Lexend has no letters for, the width of a system face with a tenth
-// added for the iPad's own. A word missing here fails the test that reads
+// which Lexend has no letters for, Manrope's (scripts/cyrillic-ems.cjs
+// measures them). A word missing here fails the test that reads
 // it.
 export const BASKET_EMS: Record<string, number> = {
   TWO: 2.5,
@@ -17,28 +17,28 @@ export const BASKET_EMS: Record<string, number> = {
   NOT: 2.3,
   KNOWN: 4.2,
   YET: 2.0,
-  ДВЕ: 2.2,
-  ЧЕТЫРЕ: 4.4,
-  НОГИ: 3.1,
-  ИЛИ: 2.4,
-  РАСТЕНИЯ: 5.8,
-  МЯСО: 3.4,
-  ВСЁ: 2.2,
+  ДВЕ: 2,
+  ЧЕТЫРЕ: 4.1,
+  НОГИ: 2.8,
+  ИЛИ: 2.2,
+  РАСТЕНИЯ: 5.4,
+  МЯСО: 3.1,
+  ВСЁ: 2,
   С: 0.8,
-  ПЕРЬЯМИ: 5.3,
-  БЕЗ: 2.1,
-  ПЕРЬЕВ: 4.2,
-  ПОКА: 3.2,
-  НЕИЗВЕСТНО: 7.4,
+  ПЕРЬЯМИ: 4.9,
+  БЕЗ: 1.9,
+  ПЕРЬЕВ: 3.9,
+  ПОКА: 2.9,
+  НЕИЗВЕСТНО: 6.8,
   // The two-basket words, which only an upright board needs: set from
   // the measured words' widths a letter, rounded up.
   BIG: 2.2,
   SMALL: 3.7,
   HORNS: 3.8,
-  БОЛЬШИЕ: 5.4,
-  МАЛЕНЬКИЕ: 6.9,
-  РОГАМИ: 4.7,
-  РОГОВ: 3.9
+  БОЛЬШИЕ: 5.1,
+  МАЛЕНЬКИЕ: 6.3,
+  РОГАМИ: 4.3,
+  РОГОВ: 3.4
 };
 
 // A space between two words of a name.

@@ -2,6 +2,7 @@
 // service, so the page looks the same offline and loads nothing from
 // elsewhere.
 import "@fontsource-variable/lexend";
+import "@fontsource-variable/manrope";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App.tsx";

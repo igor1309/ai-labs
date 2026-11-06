@@ -9,6 +9,7 @@
     "smoke": "tsx scripts/smoke-deployed-version.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "cyrillic-ems": "node scripts/cyrillic-ems.cjs",
     "test:browser": "node tests/whoseJawBoardLandscape.browser.cjs && node tests/whoseJawDigSite.browser.cjs && node tests/pairsDigSite.browser.cjs",
     "postinstall": "patch-package --error-on-fail"
   },
@@ -34,6 +35,7 @@
   },
   "dependencies": {
     "@fontsource-variable/lexend": "^5.3.0",
+    "@fontsource-variable/manrope": "^5.3.0",
     "lucide-react": "^1.58.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",

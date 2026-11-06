@@ -9,9 +9,8 @@ import { WINDOW_SIZES, openWindow } from "./windowSizes.ts";
 
 // jsdom lays nothing out, so the width of the words on each skeleton
 // button and chip is given here in ems of its bold face, rounded up:
-// Lexend's for the Latin words and the numbers, and the iPad's own face,
-// at its smallest optical size, for the Cyrillic words, which Lexend has
-// no letters for. Words missing here fail the test that reads them.
+// Lexend's for the Latin words and the numbers, and at least Manrope's
+// for the Cyrillic words, which Lexend has no letters for. Words missing here fail the test that reads them.
 const WORD_EMS: Record<string, number> = {
   HOME: 3.2,
   ДОМОЙ: 4.1,
