@@ -5,6 +5,7 @@ import { flushSync } from "react-dom";
 import { useState } from "react";
 import "../src/app.css";
 import { LabyrinthBoardScreen } from "../src/LabyrinthBoardScreen.tsx";
+import { LabyrinthResultScreen } from "../src/LabyrinthResultScreen.tsx";
 import { adjacentPaths, hintInMaze, isPath, mazeSolved, moveInMaze, nextMaze, startMaze, type LabyrinthRound, type MazeLevel } from "../src/labyrinth/index.ts";
 import type { Language } from "../src/language/language.ts";
 import { turnedFor, turnMaze } from "../src/labyrinthView.ts";
@@ -57,6 +58,27 @@ export function mount(options: { language?: Language; theme?: "light" | "dark"; 
   flushSync(() => root!.render(
     <PicturesProvider store={options.loading ? loading : loaded} startTimer={() => () => {}}>
       <Board language={language} level={options.level ?? "hatchling"} state={options.state ?? "start"} />
+    </PicturesProvider>
+  ));
+}
+
+// The result: a first best with its celebration, a tied best, or progress
+// that cannot be read.
+export type ResultKind = "first" | "tied" | "unreadable";
+
+export function mountResult(options: { language?: Language; theme?: "light" | "dark"; level?: MazeLevel; result?: ResultKind; loading?: boolean }) {
+  root?.unmount();
+  const language = options.language ?? "en";
+  const kind = options.result ?? "first";
+  document.documentElement.dataset.theme = options.theme ?? "light";
+  document.documentElement.lang = language;
+  const host = document.getElementById("root") ?? document.body.appendChild(Object.assign(document.createElement("div"), { id: "root" }));
+  root = createRoot(host);
+  flushSync(() => root!.render(
+    <PicturesProvider store={options.loading ? loading : loaded} startTimer={() => () => {}}>
+      <LabyrinthResultScreen language={language} level={options.level ?? "hatchling"} onLevel={() => undefined} picture={triceratops}
+        totalStars={kind === "unreadable" ? undefined : kind === "first" ? 48 : 51} best={kind === "unreadable" ? undefined : 3} beaten={undefined}
+        celebration={kind === "first" ? "first-best" : null} onPlayAgain={() => undefined} onHome={() => undefined} />
     </PicturesProvider>
   ));
 }
