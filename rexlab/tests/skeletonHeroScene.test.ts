@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, expect, test, vi } from "vitest";
 import { BufferGeometry, Group, Material, MathUtils, Mesh, Quaternion, Vector3 } from "three";
-import { skeletonHeroScene } from "../src/skeletonHeroScene.ts";
+import { assemblySchedule, skeletonHeroScene } from "../src/skeletonHeroScene.ts";
 
 const gpu = vi.hoisted(() => ({
   setPixelRatio: vi.fn(), setSize: vi.fn(), render: vi.fn(), dispose: vi.fn(), forceContextLoss: vi.fn()
@@ -27,8 +27,9 @@ test("every bone moves from its pile transform through assembly into the complet
     world.traverse((object: Group) => { if (object.userData.assembly) bones.push(object); });
     expect(bones.length).toBe(104);
     const identity = new Quaternion();
-    for (const bone of bones) {
-      const { start, end, spin, at, duration } = bone.userData.assembly;
+    const schedule = assemblySchedule(bones.map(bone => bone.userData.assembly));
+    for (const [index, bone] of bones.entries()) {
+      const { start, end, spin } = bone.userData.assembly;
       const from = new Vector3().fromArray(start), to = new Vector3().fromArray(end);
       const rotation = new Quaternion().fromArray(spin);
       scene.draw(590, 300, 0);
@@ -36,14 +37,15 @@ test("every bone moves from its pile transform through assembly into the complet
       expect(bone.quaternion.angleTo(rotation)).toBeLessThan(1e-6);
       expect(from.distanceTo(to)).toBeGreaterThan(.01);
 
-      scene.draw(590, 300, (at + duration / 2) / 1.2 * 1000);
-      expect(bone.position.x).toBeCloseTo((from.x + to.x) / 2, 6);
-      expect(bone.position.z).toBeCloseTo((from.z + to.z) / 2, 6);
-      expect(bone.position.y).toBeGreaterThan((from.y + to.y) / 2);
+      scene.draw(590, 300, (schedule[index]!.start + schedule[index]!.flight / 2) * 1000);
+      const flat = (v: Vector3) => new Vector3(v.x, 0, v.z);
+      const travelled = flat(bone.position).sub(flat(from)).dot(flat(to).sub(flat(from))) / flat(to).sub(flat(from)).lengthSq();
+      if (flat(to).distanceTo(flat(from)) > .01) expect(travelled).toBeGreaterThan(.5);
+      expect(bone.position.y).toBeGreaterThan(Math.min(from.y, to.y));
       expect(bone.quaternion.angleTo(rotation)).toBeGreaterThan(.001);
       expect(bone.quaternion.angleTo(identity)).toBeGreaterThan(.001);
     }
-    for (const milliseconds of [5000, 5500, 6000, 14000]) {
+    for (const milliseconds of [5900, 6000, 14000]) {
       scene.draw(590, 300, milliseconds);
       for (const bone of bones) {
         expect(bone.position.distanceTo(new Vector3().fromArray(bone.userData.assembly.end))).toBeLessThan(1e-6);
@@ -51,6 +53,19 @@ test("every bone moves from its pile transform through assembly into the complet
       }
     }
   } finally { scene.dispose(); }
+});
+
+test("bones leave the pile at a steady pace and three stragglers hop in late", () => {
+  const authored = Array.from({ length: 21 }, (_, i) => ({ at: 20 - i, duration: 1.3 }));
+  const schedule = assemblySchedule(authored);
+  const late = schedule.map((part, i) => part.late ? i : -1).filter(i => i >= 0);
+  expect(late).toEqual([2, 7, 13]);
+  expect(late.map(i => schedule[i]!.start).sort()).toEqual([4.4, 4.7, 5]);
+  const steady = schedule.filter(part => !part.late).sort((a, b) => a.start - b.start);
+  expect(steady[0]!.start).toBe(.1);
+  expect(steady.at(-1)!.start).toBe(4);
+  expect(Math.max(...schedule.map(part => part.start + part.flight))).toBeLessThanOrEqual(5.9);
+  expect(assemblySchedule([{ at: 3, duration: 1 }])).toEqual([{ start: .1, flight: 1, late: false }]);
 });
 
 test("the assembled asset fits the pile, assembly and full turn without stretching", async () => {

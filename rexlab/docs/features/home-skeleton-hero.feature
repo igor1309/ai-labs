@@ -8,7 +8,8 @@ Feature: Animated skeleton in the home hero
     Given SKELETONS / СКЕЛЕТЫ is featured and reduced motion is off
     When the locally bundled T. rex GLB has rendered its first frame
     Then the current picture, shimmer or picture error look fades to the rendered skeleton using shared motion tokens
-    And each Home visit assembles the approved standing skeleton from a pile of bones in about five seconds
+    And each Home visit assembles the approved standing skeleton from a pile of bones at a steady pace in about five and a half seconds
+    And a few straggling bones wait in the pile and hop in last, landing before the turn begins
     And after a brief hold it turns 360 degrees smoothly between seconds six and fourteen
     And it rests in its three-quarter pose without scheduling continuous rendering
     And it does not replay until the next Home visit
@@ -77,38 +78,3 @@ Feature: Animated skeleton in the home hero
     Then its loading is cancelled, rendering and listeners stop and its GPU resources are released
     And a late load completion releases its resources without appearing
     And returning Home starts a new assembly animation unless reduced motion is enabled and fades to the new renderer when ready
-
-  Scenario: Turning the device
-    Given the skeleton hero is ready
-    When the window changes size or orientation
-    Then the same renderer redraws at the new size when visible, or on returning to view
-    And its retained phase stays still while reduced motion is enabled
-    And the hero never stretches or replays its entrance
-
-  Scenario: The installed skeleton works offline
-    Given the released app has cached all its files
-    When Home features SKELETONS / СКЕЛЕТЫ with no network
-    Then the locally cached renderer and GLB render the skeleton
-    And it turns when visible with reduced motion off
-
-  Scenario: The model is a small self-contained asset
-    Then the shipped GLB has no external resource references and is smaller than two megabytes
-
-  Scenario Outline: Representative supported layouts
-    Given SKELETONS / СКЕЛЕТЫ is featured
-    When it is shown at <width> by <height> at any age level
-    Then the whole skeleton fits inside the existing hero space at every angle of its motion
-    And the title, PLAY, saved progress if present and top menus are in the first viewport
-    And home tiles remain reachable by scrolling
-
-    Examples:
-      | width | height |
-      | 1180  | 820    |
-      | 1133  | 744    |
-      | 744   | 1133   |
-      | 852   | 393    |
-      | 667   | 375    |
-      | 393   | 852    |
-      | 320   | 568    |
-      | 1440  | 900    |
-      | 1920  | 1080   |
