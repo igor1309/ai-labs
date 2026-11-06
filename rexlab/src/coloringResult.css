@@ -53,7 +53,7 @@
   0%, 100% { transform: rotate(-1deg) translateY(0); }
   50% { transform: rotate(1deg) translateY(-5px); }
 }
-.coloring-result-error { position: absolute; bottom: var(--ds-space-s); left: var(--ds-space-s); right: var(--ds-space-s); margin: 0; padding: var(--ds-space-s) var(--ds-space-m); display: flex; align-items: center; gap: var(--ds-space-6); border: 2px solid var(--ds-action); border-radius: var(--ds-radius-pill); background: var(--ds-label); color: var(--ds-ink); font-size: var(--ds-size-13); font-weight: 800; animation: fade-in var(--motion-small) var(--ease-out) both; }
+.coloring-result-error { position: absolute; bottom: var(--ds-space-l); left: 50%; transform: translateX(-50%); box-sizing: border-box; width: max-content; max-width: calc(100% - 2 * var(--ds-space-s)); margin: 0; padding: var(--ds-space-6) var(--ds-space-l); display: flex; align-items: center; gap: var(--ds-space-s); border: 2px solid var(--ds-action); border-radius: var(--ds-radius-pill); background: var(--ds-label); color: var(--ds-ink); font-size: var(--ds-size-13); font-weight: 900; animation: fade-in var(--motion-small) var(--ease-out) both; }
 .coloring-result-error svg { color: var(--ds-action); }
 
 .coloring-result-reward { grid-area: reward; min-width: 0; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--ds-space-m); text-align: center; }
@@ -61,6 +61,8 @@
 .coloring-result-reward p { margin: 0; font-weight: 900; }
 .coloring-result-star { display: flex; align-items: center; justify-content: center; gap: var(--ds-space-l); font-size: var(--cr-star-text); }
 .coloring-result-star > svg { width: var(--cr-star); height: var(--cr-star); color: var(--ds-reward); }
+/* A kept star has no celebration: its two chips stand one over the other. */
+.coloring-result-chips:not(:has(.celebration)) { flex-direction: column; align-items: center; }
 .coloring-result-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--ds-space-s) var(--ds-space-m); max-width: 100%; }
 .coloring-result-count, .coloring-result-best, .coloring-result .celebration {
   box-sizing: border-box; height: var(--cr-chip); max-width: 100%; display: flex; align-items: center; gap: var(--ds-space-s); padding: 0 var(--ds-space-l);
@@ -131,6 +133,7 @@ html[data-size="wide-short"] .coloring-result-count, html[data-size="wide-short"
 html[data-size="wide-short"] .coloring-result-actions { gap: var(--ds-space-m); }
 html[data-size="wide-short"] .coloring-result-actions button { padding: 0 var(--ds-space-l); }
 html[data-size="wide-short"] .coloring-result-bedrock { display: none; }
+html:is([data-size="wide-short"], [data-size="tall-narrow"]) .coloring-result-error { bottom: var(--ds-space-s); padding: var(--ds-space-xs) var(--ds-space-m); font-size: 11px; white-space: normal; }
 @media (max-height: 340px) {
   html[data-size="wide-short"] .coloring-result { --cr-title: 18px; --cr-star: 24px; --cr-star-text: 16px; --cr-chip: 28px; --cr-chip-text: 11px; --cr-button-text: 15px; }
 }
