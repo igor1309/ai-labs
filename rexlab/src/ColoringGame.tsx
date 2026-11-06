@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useSyncExternalStore, ViewTransition } from "react";
 import { ColoringGalleryScreen, type GalleryArtwork } from "./ColoringGalleryScreen.tsx";
 import { ColoringResultScreen } from "./ColoringResultScreen.tsx";
+import type { SizeClass } from "./sizeClass.ts";
 import { ColoringWorkshopScreen, type ColoringWorkshopScreenProps } from "./ColoringWorkshopScreen.tsx";
 import { coloringGallery, type GallerySource } from "./coloringGallery.ts";
 import { coloringResult } from "./coloringResult.ts";
@@ -20,6 +21,7 @@ export type ColoringGameProps = {
   countStart(): void;
   home(): void;
   language: Language;
+  layout: SizeClass;
 };
 function GalleryVisit({ source, identity, countStart, home, language, workshop, navigate, create, artworks, offeredVersions }: ColoringGameProps & {
   workshop(session: ColoringWorkshopSession): void;
@@ -62,6 +64,6 @@ export function ColoringGame(props: ColoringGameProps) {
   return <ViewTransition>{screen.kind === "gallery" ?
     <GalleryVisit {...props} create={screen.create} workshop={workshop} navigate={navigate} /> :
     screen.kind === "result" ? <ResultVisit {...props} painter={props.painterFor(screen.result.work.geometry)} result={screen.result} workshop={workshop} navigate={navigate} /> :
-    <ColoringWorkshopScreen key={screen.session.getSnapshot().work.id} session={screen.session} dinosaur={props.artworks.find(entry => entry.version === screen.session.getSnapshot().work.geometry)?.names[props.language]} painter={props.painterFor(screen.session.getSnapshot().work.geometry)} language={props.language} />}
+    <ColoringWorkshopScreen key={screen.session.getSnapshot().work.id} session={screen.session} dinosaur={props.artworks.find(entry => entry.version === screen.session.getSnapshot().work.geometry)?.names[props.language]} painter={props.painterFor(screen.session.getSnapshot().work.geometry)} language={props.language} layout={props.layout} />}
   </ViewTransition>;
 }

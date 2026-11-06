@@ -4,20 +4,10 @@ import { Button } from "./Button.tsx";
 import { BRUSH_SIZES, COLORS, type Action, type BrushSize, type Color, type Point } from "./coloring/index.ts";
 import type { ColoringWorkshopSession, WorkshopDestination } from "./coloringWorkshop.ts";
 import type { Language } from "./language/language.ts";
+import type { SizeClass } from "./sizeClass.ts";
 import { EarthEdge } from "./EarthEdge.tsx";
 import { InputArbitrationContext } from "./inputArbitration.ts";
 import "./coloringWorkshop.css";
-
-// The size class the app root sets on <html>: an upright iPad keeps the
-// palette open under the paper instead of behind a COLOR button.
-const sizeClass = {
-  subscribe(change: () => void) {
-    const observer = new MutationObserver(change);
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-size"] });
-    return () => observer.disconnect();
-  },
-  get: () => document.documentElement.dataset.size
-};
 
 const words = {
   en: { title: "WORKSHOP", home: "HOME", gallery: "GALLERY", new: "NEW WORK", newTile: "NEW", done: "DONE", brush: "BRUSH", fill: "FILL", undo: "UNDO", color: "COLOR", size: "SIZE", close: "CLOSE", saving: "SAVING", saved: "SAVED", error: "COULDN’T SAVE", retry: "RETRY", edit: "KEEP EDITING", leave: "HOME WITHOUT SAVING", loss: "LEAVE AND LOSE CHANGES?", confirm: "LEAVE", cancel: "STAY", colors: ["BASE", "RED", "ORANGE", "YELLOW", "GREEN", "TEAL", "BLUE", "INDIGO", "PURPLE", "PINK", "BROWN", "CHARCOAL"], sizes: ["SMALL", "MEDIUM", "LARGE"] },
@@ -33,9 +23,9 @@ type WorkshopPainter = {
   preview(canvas: HTMLCanvasElement, actions: readonly Action[], active: Stroke): void;
   regionAt(point: Point): string | undefined;
 };
-export type ColoringWorkshopScreenProps = { session: ColoringWorkshopSession; painter: WorkshopPainter; language: Language; dinosaur?: string | undefined };
+export type ColoringWorkshopScreenProps = { session: ColoringWorkshopSession; painter: WorkshopPainter; language: Language; layout: SizeClass; dinosaur?: string | undefined };
 
-export function ColoringWorkshopScreen({ session, painter, language, dinosaur }: ColoringWorkshopScreenProps) {
+export function ColoringWorkshopScreen({ session, painter, language, layout, dinosaur }: ColoringWorkshopScreenProps) {
   const arbitrate = useContext(InputArbitrationContext);
   if (!arbitrate) throw new Error("Coloring workshop requires input arbitration");
   const { width: WIDTH, height: HEIGHT } = painter;
@@ -51,7 +41,8 @@ export function ColoringWorkshopScreen({ session, painter, language, dinosaur }:
   const body = useRef<HTMLDivElement>(null);
   const chooserBox = useRef<HTMLDivElement>(null);
   const [anchor, setAnchor] = useState<CSSProperties>({});
-  const openPalette = useSyncExternalStore(sizeClass.subscribe, sizeClass.get) === "tall";
+  // An upright iPad keeps the palette open under the paper instead of behind a COLOR button.
+  const openPalette = layout === "tall";
   const sizeButton = useRef<HTMLButtonElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const active = useRef<Contact | undefined>(undefined);
@@ -156,14 +147,13 @@ export function ColoringWorkshopScreen({ session, painter, language, dinosaur }:
   // rail, under it beneath a bar. A phone's sheet fills the paper instead.
   useLayoutEffect(() => {
     const button = (chooser === "size" ? sizeButton : paletteButton).current, box = chooserBox.current, room = body.current;
-    const size = document.documentElement.dataset.size;
-    if (!chooser || !button || !box || !room || (size !== "wide" && size !== "tall")) { setAnchor({}); return; }
+    if (!chooser || !button || !box || !room || (layout !== "wide" && layout !== "tall")) { setAnchor({}); return; }
     const b = button.getBoundingClientRect(), r = room.getBoundingClientRect(), c = box.getBoundingClientRect();
     const clamp = (value: number, most: number) => Math.max(0, Math.min(value, most));
-    setAnchor(size === "wide"
+    setAnchor(layout === "wide"
       ? { left: 0, top: clamp(b.top + b.height / 2 - c.height / 2 - r.top, r.height - c.height) }
       : { top: 0, left: clamp(b.left + b.width / 2 - c.width / 2 - r.left, r.width - c.width) });
-  }, [chooser]);
+  }, [chooser, layout]);
   const palette = (open = false) => <div className="coloring-palette" role="group" aria-label={text.color}>{COLORS.map((value, i) =>
     <Button key={value} autoFocus={!open && color === value} aria-label={text.colors[i]} aria-pressed={color === value} disabled={blocked} onClick={() => { if (canAct()) { setColor(value); closeChooser(); } }}>
       <span className="coloring-swatch" style={{ background: value }}>{color === value && <Check aria-hidden="true" />}</span><span className="coloring-swatch-name">{text.colors[i]}</span>

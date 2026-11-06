@@ -81,7 +81,8 @@ export type PageVisibility = {
   subscribe(onChange: () => void): () => void;
 };
 
-export type SizeClass = "wide" | "wide-short" | "tall" | "tall-narrow";
+import type { SizeClass } from "./sizeClass.ts";
+export type { SizeClass };
 
 // The viewport boundary's safe-area values, kept independent of any screen's
 // geometry types.
@@ -128,7 +129,7 @@ export type AppProps = CareGameProps &
   Pick<DigGameProps, "digDinosaurs" | "digProgress" | "sandContext"> & {
     // Every dinosaur, in the order the catalogue shows them.
     catalogue: readonly CatalogueEntry[];
-    coloring?: Omit<ColoringGameProps, "language" | "home" | "countStart">;
+    coloring?: Omit<ColoringGameProps, "language" | "layout" | "home" | "countStart">;
     picturePuzzle?: PicturePuzzleGameProps;
     whoseJaw?: WhoseJawGameProps;
     // The skeleton game's sounds, silent if none.
@@ -693,7 +694,7 @@ export function App({
       case "dig":
         return dig.content(language);
       case "coloring":
-        return coloring && <ColoringGame {...coloring} offeredVersions={coloringVersionsFor(ageLevel.level)} language={language} home={home} countStart={countColoringStart} />;
+        return coloring && <ColoringGame {...coloring} offeredVersions={coloringVersionsFor(ageLevel.level)} language={language} layout={size} home={home} countStart={countColoringStart} />;
       case "whoseJaw":
         return jawGame.content(language);
       case "picturePuzzle":
