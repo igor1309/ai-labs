@@ -3,6 +3,7 @@
 ## 2026-11-05
 
 - LAB-1013: COLOR's result no longer shows the version over its buttons on a phone on its side.
+- LAB-1013: COLOR fits a small upright tablet (all eight workshop controls in one bar, ПРОДОЛЖИТЬ under its icon), and on a phone on its side a viewed work and a failed parent reset fit their dialogs.
 - LAB-1011: Every COLOR screen and state fits every device in English and Russian: CONTINUE on a small phone on its side, ПРОДОЛЖИТЬ and the long Russian colour names on the narrowest phone, and ЗАЛИВКА in the iPad rail are no longer cut.
 - LAB-1010: COLOR's result for a work finished again shows YOUR STAR with its two counts one over the other and no celebration, and a work that couldn't open says so in a pill on the paper, on every device, light, dark and Russian.
 - LAB-1009: COLOR's result is the dig site on every device, light, dark and Russian: the finished work in the sky, the title, star and COLLECTION, FIRST BEST or NEW BEST and EXPLORER BEST chips beside it under a glow and confetti, or upright on the sand, and EDIT, GALLERY and NEW WORK on the sand.

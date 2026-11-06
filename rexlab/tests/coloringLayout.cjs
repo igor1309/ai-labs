@@ -8,6 +8,7 @@ const LAYOUT_VIEWPORTS = [
   { name: "iPad mini", width: 1133, height: 744, size: "wide" },
   { name: "desktop", width: 1440, height: 900, size: "wide" },
   { name: "upright iPad", width: 744, height: 1133, size: "tall" },
+  { name: "small upright tablet", width: 600, height: 900, size: "tall" },
   { name: "iPhone", width: 393, height: 852, size: "tall-narrow" },
   { name: "iPhone SE", width: 375, height: 667, size: "tall-narrow" },
   { name: "small phone", width: 320, height: 568, size: "tall-narrow" },
@@ -16,8 +17,8 @@ const LAYOUT_VIEWPORTS = [
 ];
 
 // Returns the layout of `root` as plain data; checks run in Node.
-async function measure(page, root, scroller) {
-  return page.evaluate(({ root, scroller }) => {
+async function measure(page, root, scroller, large) {
+  return page.evaluate(({ root, scroller, large }) => {
     const screen = document.querySelector(root);
     if (!screen) return null;
     const visible = el => { const s = getComputedStyle(el); const b = el.getBoundingClientRect(); return s.visibility !== "hidden" && s.display !== "none" && b.width > 1 && b.height > 1 && !el.closest("[aria-hidden=true]"); };
@@ -55,30 +56,37 @@ async function measure(page, root, scroller) {
     return {
       size: document.documentElement.dataset.size,
       scroll: [document.documentElement.scrollWidth, document.documentElement.scrollHeight],
-      controls: controls.filter(el => !scrolled(el)).map(el => ({ name: (el.getAttribute("aria-label") || el.textContent).trim(), ...box(el) })),
+      // A control in a scroller may stand outside the screen, but keeps its name and size.
+      controls: controls.map(el => ({ name: (el.getAttribute("aria-label") || el.textContent).trim(), scrolled: scrolled(el), large: !!large && el.matches(large), ...box(el) })),
       texts: texts.filter(el => !scrolled(el)).map(el => ({ name: id(el), ...box(el) })),
-      overlaps, cut
+      overlaps, cut,
+      // A dialog shows all it holds without scrolling inside itself.
+      squeezed: [...screen.querySelectorAll("[role=dialog], [role=alertdialog]")].filter(el => el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1).map(id)
     };
-  }, { root, scroller });
+  }, { root, scroller, large });
 }
 
-// `root` is the screen; `minimum` its smallest tap target; `scroller`, if
-// given, is a region allowed to scroll, whose contents may leave the screen.
-async function checkLayout(page, { root, minimum = 60, scroller, viewport, state }) {
-  const layout = await measure(page, root, scroller);
+// `root` is the screen; `minimum` its smallest tap target; `large`, if given,
+// selects the controls that keep a 60-point target where the rest may be
+// smaller; `scroller`, if given, is a region allowed to scroll, whose
+// contents may leave the screen.
+async function checkLayout(page, { root, minimum = 60, large, scroller, viewport, state }) {
+  const layout = await measure(page, root, scroller, large);
   const context = JSON.stringify({ viewport: viewport?.name, state, layout });
   assert(layout, `${root} is not on the page: ${context}`);
   const { width, height } = page.viewportSize();
   if (viewport?.size) assert.equal(layout.size, viewport.size, context);
   assert.deepEqual(layout.scroll, [width, height], `the page scrolls: ${context}`);
-  for (const item of [...layout.controls, ...layout.texts])
+  for (const item of [...layout.controls.filter(control => !control.scrolled), ...layout.texts])
     assert(item.x >= -1 && item.y >= -1 && item.x + item.w <= width + 1 && item.y + item.h <= height + 1, `${item.name} leaves the screen: ${context}`);
   for (const control of layout.controls) {
     assert(control.name, `a control has no name: ${context}`);
-    assert(control.w >= minimum && control.h >= minimum, `${control.name} is smaller than ${minimum}: ${context}`);
+    const least = control.large ? 60 : minimum;
+    assert(control.w >= least && control.h >= least, `${control.name} is smaller than ${least}: ${context}`);
   }
   assert.deepEqual(layout.overlaps, [], `overlap: ${context}`);
   assert.deepEqual(layout.cut, [], `cut label: ${context}`);
+  assert.deepEqual(layout.squeezed, [], `a dialog scrolls: ${context}`);
   return layout;
 }
 

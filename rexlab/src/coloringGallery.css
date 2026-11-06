@@ -126,10 +126,16 @@ html[data-size="wide-short"] .gallery-bedrock svg { display: none; }
 html:is([data-size="tall-narrow"], [data-size="wide-short"]) .gallery-dialog { padding: var(--ds-space-l); gap: var(--ds-space-m); }
 html:is([data-size="tall-narrow"], [data-size="wide-short"]) .coloring-gallery .gallery-dialog > :is(.gallery-strong, .gallery-danger) { font-size: var(--ds-size-label); }
 html[data-size="wide-short"] .gallery-dialog-mark { display: none; }
-html[data-size="wide-short"] .gallery-dialog .gallery-thumbnail { flex: none; height: 120px; aspect-ratio: auto; }
-html[data-size="wide-short"] .gallery-dialog .gallery-thumbnail img { height: 120px; }
+html[data-size="wide-short"] .gallery-dialog .gallery-thumbnail { flex: 0 1 120px; min-height: 48px; height: auto; aspect-ratio: auto; }
+html[data-size="wide-short"] .gallery-dialog .gallery-thumbnail img { height: 100%; }
 html[data-size="tall-narrow"] .gallery-warning { padding: var(--ds-space-s); }
 html[data-size="tall-narrow"] .gallery-warning p { flex-basis: 100%; font-size: var(--ds-size-13); }
 html[data-size="tall-narrow"] .gallery-warning-actions { flex: 1 1 100%; }
 html[data-size="tall-narrow"] .gallery-warning-actions button { flex: 1 1 auto; padding-inline: var(--ds-space-s); font-size: var(--ds-size-13); }
 @media (prefers-reduced-motion: reduce) { .coloring-gallery .gallery-loading svg { animation: none; } }
+/* A phone on its side has room for the parent's three choices side by side, not stacked. */
+html[data-size="wide-short"] .gallery-dialog:has(> .gallery-danger) { flex-direction: row; flex-wrap: wrap; justify-content: center; width: min(560px, 100%); }
+html[data-size="wide-short"] .gallery-dialog:has(> .gallery-danger) > :not(button) { flex: 1 0 100%; }
+html[data-size="wide-short"] .gallery-dialog:has(> .gallery-danger) > button { flex: 1 1 0; width: auto; }
+/* A small upright tablet's three columns leave ПРОДОЛЖИТЬ room only under its icon. */
+@media (max-width: 680px) { html[data-size="tall"] .gallery-card > button { flex-direction: column; gap: var(--ds-space-2); padding: var(--ds-space-6) var(--ds-space-s); } }

@@ -63,6 +63,10 @@ async function walk(browser, url, viewport, language, theme) {
     await press(word.newWork); await workshop("workshop, new work");
     await paint(); await press(word.done); await result("result, first star");
     assert.equal(await page.locator(".celebration").count(), 1);
+    // A new star brings its glow and confetti; a kept star brings neither.
+    const festive = page.locator(".coloring-result-festive");
+    assert(await festive.isVisible(), "no glow and confetti for a new star");
+    assert(await festive.evaluate(el => [...el.querySelectorAll("*")].some(part => { const b = part.getBoundingClientRect(); return b.width > 0 && b.height > 0 && getComputedStyle(part).visibility !== "hidden" && Number(getComputedStyle(part).opacity) > 0; })), "the glow and confetti draw nothing");
     assert.equal(await page.locator(".coloring-result-count strong").textContent(), "1");
 
     await press(word.gallery); await gallery("gallery, returning");
@@ -70,6 +74,7 @@ async function walk(browser, url, viewport, language, theme) {
     await press(word.cont); await workshop("workshop, continuing");
     await press(word.done); await result("result, kept star");
     assert.equal(await page.locator(".celebration").count(), 0);
+    assert.equal(await page.locator(".coloring-result-festive").count(), 0);
 
     await press(word.edit); await workshop("workshop, editing");
     await press(word.done); await result("result, kept star again");
