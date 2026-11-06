@@ -1,5 +1,19 @@
 # Log
 
+## 2026-11-05
+
+- The Session runner is ported from JavaScript to Go, the repository's main language: one module with no dependencies, the flow apart from Telegram so a web page can reuse it. launchd runs the built binary, which reads the same state file and env file. LAB-962.
+- The Session bot pages a lecture a phone screen at a time, flipped in place by Next, with where you are at the top and a contents page, since a taller message left Telegram showing its end. Each update logs its tap. LAB-962.
+- The Session bot reads a lecture one section at a time, each page listing the sections to jump between, instead of collapsed sections that moved the chat. LAB-962.
+- The Session bot draws each screen as one Telegram rich message: names tappable in the text, a lecture in one message with its sections collapsed, and Back and Programs inside the message; the old layout is the fallback. LAB-962.
+- The Session bot is laid out for a phone: numbered lists with number keys, a 📖 button per material, lectures a page at a time with formatting, and each press redrawing the same message. LAB-962.
+- The Session bot shows a material's text when you open it, such as a lecture, read through the public API. LAB-962.
+- The Session bot browses the real programs the student can see, navigation and entity bodies through Agonara's public API, with Back and Programs navigation; still no brain or writes. LAB-962.
+- A Session runner probe in `agonara/session/`: one student's session, kept apart from the learning record, returning content plus actions by meaning, so any surface can draw it. LAB-962.
+- Its first surface is a Telegram bot that answers only the owner's chat, with buttons for the session's actions; the content is canned for now. LAB-962.
+- The bot runs on the owner's Mac under launchd, starting at login and restarting on exit, and reaches Telegram by long polling. LAB-962.
+- A non-admin `session-probe` identity on production logs in and reads programs through the public API, the path the session will use. LAB-962.
+
 ## 2026-10-26
 
 - The agent skills are published to the public `igor1309/agonara-skills` repo. LAB-596.

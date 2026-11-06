@@ -8,6 +8,65 @@ import RenderedText
 struct PanelViewRenderTests {
 
     @Test(arguments: [ColorScheme.light, .dark])
+    func rendersSelectionWhileDragging(scheme: ColorScheme) throws {
+
+        let host = Offscreen.host(PanelPreview(state: .recording, scheme: scheme), scheme: scheme)
+        let text = try #require(Offscreen.textView(in: host) as? LogTextView)
+        // The live panel cannot become key, even during a drag.
+        #expect(host.window?.isKeyWindow == false)
+        let range = (text.string as NSString).range(of: "Accountable — я. По слог отвечает команда Ильи.")
+        text.selectionStarted?()
+        text.setSelectedRange(range, affinity: .downstream, stillSelecting: true)
+        let image = try #require(Offscreen.snapshot(host))
+        #expect(text.selectedRange() == range)
+        let layout = try #require(text.textLayoutManager)
+        let content = try #require(layout.textContentManager)
+        let start = try #require(content.location(content.documentRange.location, offsetBy: range.location))
+        let end = try #require(content.location(start, offsetBy: range.length))
+        let selected = try #require(NSTextRange(location: start, end: end))
+        var frames: [CGRect] = []
+        layout.enumerateTextSegments(in: selected, type: .selection, options: []) { _, rect, _, _ in
+            frames.append(rect.offsetBy(dx: text.textContainerOrigin.x, dy: text.textContainerOrigin.y))
+            return true
+        }
+        let firstLine = try #require(frames.first)
+        let selectedImage = try #require(Offscreen.snapshot(text))
+        let scale = CGFloat(selectedImage.pixelsWide) / text.bounds.width
+        let pixels = firstLine.insetBy(dx: 1, dy: 1)
+        var luminances: [Double] = []
+        for y in Int(pixels.minY * scale)..<Int(pixels.maxY * scale) {
+            for x in Int(pixels.minX * scale)..<Int(pixels.maxX * scale) {
+                let color = try #require(selectedImage.colorAt(x: x, y: y)?.usingColorSpace(.sRGB))
+                func linear(_ value: CGFloat) -> Double {
+                    value <= 0.04045 ? Double(value / 12.92) : pow(Double((value + 0.055) / 1.055), 2.4)
+                }
+                luminances.append(0.2126 * linear(color.redComponent) + 0.7152 * linear(color.greenComponent) + 0.0722 * linear(color.blueComponent))
+            }
+        }
+        let darkest = try #require(luminances.min())
+        let lightest = try #require(luminances.max())
+        #expect((lightest + 0.05) / (darkest + 0.05) >= 4.5, "Selected glyphs must contrast with their rendered background")
+        try Offscreen.save(image, "drag-selection-\(scheme == .dark ? "dark" : "light")")
+    }
+
+    @Test(arguments: [ColorScheme.light, .dark])
+    func longHoldWrapsWithoutPushingOutThePanel(scheme: ColorScheme) throws {
+
+        let host = Offscreen.host(PanelPreview(state: .longSelectionHeld, scheme: scheme), scheme: scheme)
+        let labels = Offscreen.heldText(in: host)
+        #expect(labels.count == 2)
+        let short = try #require(labels.first)
+        let long = try #require(labels.last)
+        #expect(long.frame.height > short.frame.height)
+        #expect(long.frame.height <= short.frame.height * 3 + 2)
+        #expect(long.toolTip == long.stringValue)
+        #expect(long.cell?.truncatesLastVisibleLine == true)
+        #expect(long.font?.fontDescriptor.symbolicTraits.contains(.bold) == false)
+        #expect(long.accessibilityLabel() == long.stringValue)
+        #expect(long.frame.width == short.frame.width)
+    }
+
+    @Test(arguments: [ColorScheme.light, .dark])
     func rendersEveryPreviewState(scheme: ColorScheme) throws {
 
         let holds = [PanelState.Held(entryID: 3, text: "Первый фрагмент"), .init(entryID: 4, text: "Second selection")]
@@ -32,8 +91,8 @@ struct PanelViewRenderTests {
             case .empty: []
             }
             let labels = Offscreen.heldText(in: host)
-            #expect(labels.map(\.stringValue) == expectedHolds.map { "«\($0.text)»" }, "\(name)")
-            #expect(labels.map { $0.accessibilityLabel() } == expectedHolds.map { "«\($0.text)»" }, "\(name)")
+            #expect(labels.map(\.stringValue) == expectedHolds.map(\.text), "\(name)")
+            #expect(labels.map { $0.accessibilityLabel() } == expectedHolds.map(\.text), "\(name)")
             let window = try #require(host.window)
             let visible = window.convertToScreen(host.convert(host.visibleRect, to: nil))
             for label in labels {

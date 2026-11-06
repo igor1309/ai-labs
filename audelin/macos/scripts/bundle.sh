@@ -2,11 +2,13 @@
 # Run from audelin/macos to build the menu bar app.
 set -eu
 
-swift build --package-path App -c release --product Audelin
+# AUDELIN_SCRATCH_PATH, an absolute path, shares a build directory; CI uses it.
+scratch=${AUDELIN_SCRATCH_PATH:-$PWD/App/.build}
+swift build --package-path App --scratch-path "$scratch" -c release --product Audelin
 app=.build/Audelin.app
 rm -rf "$app"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
-bin=$(swift build --package-path App -c release --show-bin-path)
+bin=$(swift build --package-path App --scratch-path "$scratch" -c release --show-bin-path)
 cp "$bin/Audelin" "$app/Contents/MacOS/Audelin"
 cp -R "$bin/Audelin_GlassLedger.bundle" "$app/Contents/Resources/"
 cat > "$app/Contents/Info.plist" <<'PLIST'

@@ -241,6 +241,8 @@ jobs:
               - "agonara/compose*.yml"
               - "agonara/scripts/**"
               - "agonara/showcase/*.mjs"
+              - "agonara/session/**/*.go"
+              - "agonara/session/go.mod"
               - "agonara/docs/api/**"
               - "agonara/docs/intent/**"
               - "agonara/skills/**"

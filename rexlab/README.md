@@ -13,6 +13,8 @@ light and dark themes.
 - Behaviour: `docs/features/` (Gherkin).
 - Architecture: `docs/mvp-infrastructure.md`.
 - Dinosaur pictures: `art/style.md`.
+- [Home skeleton hero](docs/home-skeleton-hero.md): approved appearance,
+  session history, assets and lessons for future visual changes.
 - Running it locally, commands and releases: `AGENTS.md`.
 
 For the board's browser geometry checks, run `npx playwright install chromium`

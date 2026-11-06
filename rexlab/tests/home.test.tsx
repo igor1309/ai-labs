@@ -540,6 +540,11 @@ describe("the large card", () => {
       // The same picture, drawn the same way, and the same symbols; DRAW's
       // sky shows its marks in the sand in place of its tile's dinosaur.
       if (game === "sandWriting") expect(card.querySelector(".home-today-art > .sand-writing-tile-art")).not.toBeNull();
+      // The featured skeleton has a 3D layer and a T. rex fallback; its small tile keeps its original artwork.
+      else if (game === "skeletons") {
+        expect(card.querySelector(".home-skeleton-hero canvas")).not.toBeNull();
+        expect(looks(card).sources).toEqual([expect.stringContaining("skeleton-hero/standing.png")]);
+      }
       else {
         expect(looks(card).picture).toEqual(tile.picture);
         expect(looks(card).sources).toEqual(tile.sources);

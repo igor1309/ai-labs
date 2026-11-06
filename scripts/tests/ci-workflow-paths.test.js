@@ -266,6 +266,7 @@ for (const file of [
 // code runs. A new module fails here until a workflow runs it.
 const goModules = {
   agister: { runner: ".github/workflows/agister-core.yml", command: "run: agister/scripts/test.sh", job: "agister-core" },
+  "agonara/session": { runner: ".github/workflows/agonara-core.yml", command: "go test -race -count=1 ./...", job: "agonara-core" },
   gokit: { runner: "agister/scripts/test.sh", command: "../gokit/scripts/test.sh", job: "agister-core" },
   "gokit/tree": { runner: "gokit/scripts/test.sh", command: "check tree gokit/tree", job: "agister-core" },
   warder: { runner: ".github/workflows/warder-core.yml", command: "run: warder/scripts/test.sh", job: "warder-core" },

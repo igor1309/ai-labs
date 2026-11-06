@@ -18,6 +18,7 @@ import { bodyPictures, skeletonPictures, wholeSkeletons } from "./dinosaurPictur
 import { readCatalogue, readDinosaurs, readPals, readPictureDinosaurs, readSkeletons, readSortables, readVisitors } from "./dinosaurs.ts";
 import { HOME_GAMES } from "./HomePage.tsx";
 import { homeMotion } from "./homeMotion.ts";
+import { homeSkeletonHero } from "./homeSkeletonHero.ts";
 import { itemPictures } from "./itemPictures.ts";
 import { localAgeLevel } from "./localAgeLevel.ts";
 import { localLanguage } from "./localLanguage.ts";
@@ -80,7 +81,7 @@ export const TURN_TIMING = { glide: 240, easing: "cubic-bezier(0.22, 1, 0.36, 1)
 
 function browserHomeMotion(page: HTMLElement): () => void {
   const view = page.ownerDocument.defaultView!;
-  return homeMotion(page, {
+  const stopHome = homeMotion(page, {
     scrollToTop: () => view.scrollTo({ top: 0, left: 0, behavior: "instant" }),
     watchVisible: (tiles, reveal) => {
       const observer = new view.IntersectionObserver(entries => {
@@ -93,6 +94,42 @@ function browserHomeMotion(page: HTMLElement): () => void {
       return () => observer.disconnect();
     }
   });
+  const hero = page.querySelector<HTMLElement>(".home-skeleton-hero");
+  const motionQuery = hero && view.matchMedia("(prefers-reduced-motion: reduce)");
+  const stopHero = hero && motionQuery ? homeSkeletonHero(hero, {
+    load: async (canvas, signal) => {
+      const { skeletonHeroScene } = await import("./skeletonHeroScene.ts");
+      if (signal.aborted) throw new Error("Skeleton visit ended");
+      return skeletonHeroScene(canvas, signal, view.devicePixelRatio);
+    },
+    visible: () => page.ownerDocument.visibilityState === "visible",
+    reducedMotion: () => motionQuery.matches,
+    watchVisibility: change => {
+      page.ownerDocument.addEventListener("visibilitychange", change);
+      return () => page.ownerDocument.removeEventListener("visibilitychange", change);
+    },
+    watchMotion: change => {
+      motionQuery.addEventListener("change", change);
+      return () => motionQuery.removeEventListener("change", change);
+    },
+    watchIntersection: (host, change) => {
+      const observer = new view.IntersectionObserver(entries => {
+        for (const entry of entries) change(entry.isIntersecting);
+      });
+      observer.observe(host);
+      return () => observer.disconnect();
+    },
+    watchSize: (host, change) => {
+      const observer = new view.ResizeObserver(entries => {
+        for (const entry of entries) change(entry.contentRect.width, entry.contentRect.height);
+      });
+      observer.observe(host);
+      return () => observer.disconnect();
+    },
+    requestFrame: draw => view.requestAnimationFrame(draw),
+    cancelFrame: id => view.cancelAnimationFrame(id)
+  }) : undefined;
+  return () => { stopHero?.(); stopHome(); };
 }
 
 // A colour that paints nothing, as a browser gives it computed.

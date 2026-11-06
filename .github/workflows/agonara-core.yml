@@ -39,6 +39,19 @@ jobs:
       - name: Run screenshot generator tests
         run: ./scripts/run_silent.sh "agonara-showcase-tests" node --test agonara/showcase/*.test.mjs
 
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: agonara/session/go.mod
+          cache: false
+
+      - name: Run Session runner tests
+        working-directory: agonara/session
+        run: |
+          test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
+          go vet ./...
+          go test -race -count=1 ./...
+
       - name: Build Docker image
         run: docker build -t agonara:ci agonara
 
