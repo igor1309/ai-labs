@@ -129,6 +129,23 @@ jobs:
         working-directory: rexlab
         run: npm ci
 
+      # Chromium's system packages (mostly fonts) can take ten minutes from
+      # the package mirror, which ends the job before its test. Their .deb
+      # files are cached, so apt installs the same packages without the
+      # download.
+      - name: Keep Chromium's system packages
+        if: matrix.script != 'browserChrome'
+        run: |
+          mkdir -p "$HOME/apt-cache/partial"
+          printf 'Dir::Cache::Archives "%s/apt-cache/";\nAPT::Sandbox::User "root";\n' "$HOME" | sudo tee /etc/apt/apt.conf.d/90-rexlab-cache > /dev/null
+
+      - name: Restore Chromium's system packages
+        if: matrix.script != 'browserChrome'
+        uses: actions/cache@v6
+        with:
+          path: ~/apt-cache/*.deb
+          key: playwright-chromium-apt-${{ runner.os }}-${{ env.ImageOS }}-1.64.1
+
       - name: Install Chromium
         if: matrix.script != 'browserChrome'
         working-directory: rexlab
