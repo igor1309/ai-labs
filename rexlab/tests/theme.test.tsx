@@ -412,7 +412,7 @@ const SCREEN_GROUPS: Array<[string, Part[]]> = [
           await user.click(outsideMenu());
         }
       }],
-      ["the portrait gate", checked(<OrientationGate shown screenUpright language="en">{catalogue("all")}</OrientationGate>)]
+      ["the portrait gate", checked(<OrientationGate shown screenUpright language="en">{catalogue("each")}</OrientationGate>)]
     ]
   ],
   [
@@ -885,21 +885,22 @@ describe("the FIND THE PAIR tile", () => {
 });
 
 describe("a board of skeletons", () => {
-  it.each(THEMES)("shows each skeleton in its own colours on the card's art in the %s theme", async (theme) => {
-    const timers = manualTimers();
-    const { user } = openApp({ device: manualAppearance(theme), timers });
-    await playPairs(user, "PALEONTOLOGIST");
-
-    await playBoard(user, timers);
-
-    expectScreenIn(theme);
-    // Its bones keep their colours, which stand on the art as the whole
-    // skeletons' contrast test in skeletons.test.ts measures.
-    const skeletons = [...document.querySelectorAll('.pair-card[data-face="skeleton"] img')];
-    expect(skeletons).toHaveLength(12);
-    expect(skeletons.map((picture) => [picture.classList.contains("pair-silhouette"), getComputedStyle(picture).filter])).toEqual(skeletons.map(() => [false, "none"]));
-    const face = skeletons[0]?.closest(".pair-card-face") ?? document.body;
-    expect(sameColour(getComputedStyle(face).backgroundColor, token("label"))).toBe(true);
+  it.each(THEMES)("shows each skeleton in its own colours on the card's art in the %s theme", (theme) => {
+    document.documentElement.dataset.theme = theme;
+    try {
+      // Paleontologist's board with every pair found; its surfaces and texts
+      // are checked with the screens above.
+      show(pairsBoard(turnedAll(dealBoard(SHIPPED_PALS, { large: "paleontologist" }, seededRandom(41)))));
+      // Its bones keep their colours, which stand on the art as the whole
+      // skeletons' contrast test in skeletons.test.ts measures.
+      const skeletons = [...document.querySelectorAll('.pair-card[data-face="skeleton"] img')];
+      expect(skeletons).toHaveLength(12);
+      expect(skeletons.map((picture) => [picture.classList.contains("pair-silhouette"), getComputedStyle(picture).filter])).toEqual(skeletons.map(() => [false, "none"]));
+      const face = skeletons[0]?.closest(".pair-card-face") ?? document.body;
+      expect(sameColour(getComputedStyle(face).backgroundColor, token("label"))).toBe(true);
+    } finally {
+      delete document.documentElement.dataset.theme;
+    }
   });
 });
 
