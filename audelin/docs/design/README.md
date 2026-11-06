@@ -157,3 +157,34 @@ a724a1c8 and v4 at fa2dc19f. Check out one of those commits to open them;
 build only from the current file. Screens 1 and 2 keep their one-off containers (setup blocks,
 the blocker card) hand-drawn; everything repeated is a component instance.
 "Later — term chips" is the Live panel with a terms footer drawn in tokens.
+
+## Live panel recording problems
+
+The panel shows the same microphone, call-audio and failed-track faults as
+recording's menu state, plus the current silent-call warning. Under its
+header, each active problem has a banner, newest first, while captured
+text remains visible. A failed track leaves the REC header running; only
+that track stops.
+
+- Missing call audio: “Нет звука звонка”, with “Пишется только «я».
+  Проверьте разрешение «Звук звонка».”
+- Missing microphone: “Нет микрофона”, with “Пишутся только «они».
+  Проверьте устройство ввода и разрешение «Микрофон».”
+- Disk failure: “Диск заполнен — дорожка остановлена”, with “Всё до
+  <time> сохранено. Освободите место, чтобы продолжить.”
+- Silent call: “Звонок не слышен”, with “5 минут тишины со стороны «они»,
+  пока вы говорите. Проверьте разрешение «Звук звонка».”
+
+The first two banners use warning colours, disk failure uses error colours,
+and silence uses informational colours. “Открыть настройки macOS” opens
+Microphone privacy for a microphone fault, or the privacy pane containing
+System Audio Recording for call-audio faults and silence. “Открыть папку”
+on disk failure opens the current calls folder, as the menu does.
+
+Missing audio leaves a small muted log row on its side: “— нет звука звонка
+с <time> —” or “— нет микрофона с <time> —”. A disk fault leaves “— диск
+заполнен с <time> —” on the failed side. Each first-seen fault uses the
+panel's recording clock and the log's elapsed minute format, including
+when speech for that time arrives later. Faults remain until recording
+ends. Silence has no gap row and its banner disappears when the Session
+warning clears.
