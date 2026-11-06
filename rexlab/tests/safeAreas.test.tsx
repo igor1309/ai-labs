@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { catalogueColumns } from "../src/catalogueColumns.ts";
 import { mediaViewport } from "../src/mediaViewport.ts";
 import { EDGE_PARTS, SCREEN_ROOTS, edgePart, screenRoot, contentRoots, padsItsParts } from "./screenRoots.ts";
-import { appStylesheet, computedStyleWithVariables, type SafeArea } from "./stylesheet.ts";
+import { appStylesheet, computedStyleWithVariables, NO_SAFE_AREA, SCREEN_SHEETS, type SafeArea } from "./stylesheet.ts";
 import { manualWindow, mediaQueries } from "./support.ts";
 
 const browserStyle = computedStyleWithVariables(window.getComputedStyle.bind(window));
@@ -10,11 +10,16 @@ const INSETS: SafeArea = { top: 11, right: 13, bottom: 17, left: 19 };
 const SIDES = ["top", "right", "bottom", "left"] as const;
 const px = (value: string) => parseFloat(value);
 
+// The screens' own sheets are in this document too, as in the app.
+const screenSheets = document.createElement("style");
+screenSheets.textContent = appStylesheet(NO_SAFE_AREA, SCREEN_SHEETS);
+document.head.append(screenSheets);
+
 // A window with the insets is the test document with the app's
 // stylesheet read again under them, after the one without.
 function withInsets<T>(read: () => T, insets: SafeArea = INSETS): T {
   const sheet = document.createElement("style");
-  sheet.textContent = appStylesheet(insets);
+  sheet.textContent = appStylesheet(insets, ["app.css", ...SCREEN_SHEETS]);
   document.head.append(sheet);
   try {
     return read();

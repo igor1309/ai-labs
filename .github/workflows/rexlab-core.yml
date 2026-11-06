@@ -101,6 +101,7 @@ jobs:
           - coloringFlow
           - coloringLayout
           - coloringWalk
+          - labyrinthLayout
           - homePhone
           - nativeTouch
           - homeTiles

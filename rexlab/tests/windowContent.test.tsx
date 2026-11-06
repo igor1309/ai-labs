@@ -1,7 +1,12 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { EDGE_PARTS, SCREEN_ROOTS, edgePart, screenRoot, contentRoots, padsItsParts } from "./screenRoots.ts";
-import { computedStyleWithVariables } from "./stylesheet.ts";
+import { appStylesheet, computedStyleWithVariables, NO_SAFE_AREA, SCREEN_SHEETS } from "./stylesheet.ts";
 import { WINDOW_SIZES, openWindow } from "./windowSizes.ts";
+
+// The screens' own sheets are in this document too, as in the app.
+const screenSheets = document.createElement("style");
+screenSheets.textContent = appStylesheet(NO_SAFE_AREA, SCREEN_SHEETS);
+document.head.append(screenSheets);
 
 // window-fit.feature, "A landscape window from the iPad mini to a large
 // Mac display": each screen's content at most 1440 pixels wide, centred,

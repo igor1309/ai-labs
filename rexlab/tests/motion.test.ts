@@ -40,7 +40,7 @@ const declarationsOf = (body: string) =>
       return { property: declaration.slice(0, colon).trim(), value: declaration.slice(colon + 1).trim() };
     });
 
-const CSS = readFileSync(join(import.meta.dirname, "../src/app.css"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+const CSS = ["app.css", "labyrinthBoard.css"].map((file) => readFileSync(join(import.meta.dirname, "../src", file), "utf8")).join("\n").replace(/\/\*[\s\S]*?\*\//g, "");
 const RULES = rulesOf(CSS);
 const REDUCED = RULES.filter(({ prelude }) => prelude === "@media (prefers-reduced-motion: reduce)").flatMap(({ body }) => rulesOf(body));
 const PLAIN = RULES.filter(({ prelude }) => !prelude.startsWith("@"));
