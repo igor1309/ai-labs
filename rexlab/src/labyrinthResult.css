@@ -8,7 +8,9 @@
   --dig-sky: var(--lr-sky);
   --dig-ochre: var(--lr-ochre);
   --lr-side-pad: var(--ds-space-40);
-  --family-width: 440px;
+  /* The family gives way on narrower windows so each level's name fits its
+     third of the switch. */
+  --family-width: clamp(300px, 100vw - 760px, 440px);
   --result-gap: var(--ds-space-3xl);
   --reward-gap: var(--ds-space-18);
   --title-size: var(--ds-size-44);
@@ -21,7 +23,7 @@
   --chip-number: var(--ds-size-26);
   --chip-symbol: 24px;
   --chip-pad: var(--ds-space-9) var(--ds-space-18);
-  --levels-width: 560px;
+  --levels-width: 600px;
   --action-height: 72px;
   --action-size: var(--ds-size-24);
   position: relative;
@@ -257,7 +259,8 @@ html[data-size="wide-short"] .labyrinth-reward-column { flex: 1 1 auto; }
 html[data-size="wide-short"] .labyrinth-result-screen { --family-width: 210px; }
 html[data-size="wide-short"] .labyrinth-reunion-levels { width: 100%; }
 html[data-size="wide-short"] .labyrinth-reunion-levels .level-switch-level { padding-inline: var(--ds-space-xs); font-size: var(--ds-size-15); }
-/* A small phone on its side shows only the chosen level's name. */
+/* A small phone on its side shows each level's picture alone, its name
+   kept for screen readers. */
 @media (max-width: 760px) {
-  html[data-size="wide-short"] .labyrinth-reunion-levels .level-switch-level[aria-pressed="false"] .level-switch-name { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  html[data-size="wide-short"] .labyrinth-reunion-levels .level-switch-name { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 }

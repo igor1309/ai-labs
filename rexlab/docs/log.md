@@ -2,6 +2,7 @@
 
 ## 2026-11-06
 
+- LAB-1029: A browser contract checks LABYRINTH's board and result, with and without a level offer, in 12 windows from the iPhone SE to a large desktop: no page scroll, nothing off screen, no overlap, no cut label, 48-point targets and short fades without motion. On iPads and desktops each level's name now fits its part of the result's switch, and a small phone on its side shows the levels' pictures alone.
 - LAB-1028: LABYRINTH's Explorer and Paleontologist level offers use the dig site's card: the LEVEL UP tag over the level's picture on a pale pocket, NOT NOW before YES, stacked on phones, in light, dark, English and Russian.
 - LAB-1027: LABYRINTH's result is on the dig site: baby and parent together on the sand with a heart, beside or upright over HOME TOGETHER!, three stars, +3 STARS with the total, the best or its celebration, the level switch, AGAIN and HOME, on the iPad, upright and on phones.
 - LAB-1026: The LABYRINTH board plays upright and on phones: the upright iPad turns every maze on its side to fit whole, an upright phone turns HATCHLING's, and on phones every cell is 48 while the view pans to follow the baby, fades where more maze lies and shows the parent marker on the edge toward home.

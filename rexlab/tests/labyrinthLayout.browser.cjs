@@ -4,7 +4,11 @@
 // cut label, every cell and control at least 48 wide. On an iPad mini each
 // level has its own cell, 64, 52 and 48; upright, the turned maze fits
 // whole at 72, 52 and 48; a phone's cells are 48, its view keeps the baby
-// in sight and, while home is out of it, shows the parent marker.
+// in sight and, while home is out of it, shows the parent marker. Its
+// result, with a first best, a tied best or unreadable progress, and with
+// the Explorer or Paleontologist offer over it, fits the same windows the
+// same way, the family and every chip on screen; without motion, every
+// animation on the board and the result is a short fade.
 const assert = require("node:assert/strict");
 const { resolve } = require("node:path");
 const { chromium } = require("playwright");
@@ -27,6 +31,16 @@ const VIEWPORTS = [
 const LEVELS = { hatchling: 64, explorer: 52, paleontologist: 48 };
 const UPRIGHT = { hatchling: 72, explorer: 52, paleontologist: 48 };
 const TURNED = { hatchling: [7, 9], explorer: [9, 15], paleontologist: [11, 17] };
+const RESULTS = [
+  { result: "first", level: "hatchling" }, { result: "tied", level: "explorer" }, { result: "unreadable", level: "paleontologist" },
+  { result: "first", level: "hatchling", loading: true },
+  { result: "first", level: "hatchling", offer: "explorer" }, { result: "tied", level: "explorer", offer: "paleontologist" }
+];
+// Without motion, nothing on screen moves for longer than a short fade.
+const stillEnough = page => page.evaluate(() => document.getAnimations()
+  .filter(a => a.effect?.getComputedTiming().iterations !== Infinity)
+  .map(a => ({ name: a.animationName ?? "", duration: a.effect.getComputedTiming().duration }))
+  .filter(a => a.duration > 200));
 const STATES = [{ state: "start" }, { state: "hint" }, { state: "step" }, { state: "home" }, { state: "start", loading: true }];
 
 (async () => {
@@ -61,8 +75,10 @@ const STATES = [{ state: "start" }, { state: "hint" }, { state: "step" }, { stat
           const state = `${language} ${level} ${options.state}${options.loading ? " loading" : ""}`;
           await page.evaluate(async options => (await import("/harness.js")).mount(options), { language, level, ...options });
           if (!options.loading) await page.waitForFunction(() => [...document.images].every(image => image.complete && image.naturalWidth > 0));
+          const moving = motion === "reduce" ? await stillEnough(page) : [];
           await settle();
           const at = `${state} at ${viewport.name}`;
+          assert.deepEqual(moving, [], `${at}: without motion, animations are short fades`);
           assert.equal(await page.evaluate(() => document.documentElement.dataset.size), viewport.size, `${at}: the window's size class`);
           await checkLayout(page, { root: ".labyrinth-board-screen", scroller: ".labyrinth-window", minimum: 48, viewport, state });
           const seen = await page.evaluate(() => {
@@ -92,11 +108,34 @@ const STATES = [{ state: "start" }, { state: "hint" }, { state: "step" }, { stat
           if (options.state !== "home") assert.equal(seen.marker, !seen.goal, `${at}: the parent marker shows only while home is out of view`);
           checked++;
         }
+        for (const options of RESULTS) {
+          const at = `${language} ${options.level} result ${options.result}${options.offer ? ` offering ${options.offer}` : ""}${options.loading ? " loading" : ""} at ${viewport.name}`;
+          await page.evaluate(async options => (await import("/harness.js")).mountResult(options), { language, ...options });
+          if (!options.loading) await page.waitForFunction(() => [...document.images].every(image => image.complete && image.naturalWidth > 0));
+          const moving = motion === "reduce" ? await stillEnough(page) : [];
+          await settle();
+          assert.deepEqual(moving, [], `${at}: without motion, animations are short fades`);
+          await checkLayout(page, { root: ".labyrinth-result-screen", minimum: 48, viewport, state: at });
+          const seen = await page.evaluate(() => {
+            const on = element => { const b = element.getBoundingClientRect(); return b.width > 0 && b.left >= -1 && b.top >= -1 && b.right <= innerWidth + 1 && b.bottom <= innerHeight + 1; };
+            return {
+              family: [...document.querySelectorAll(".labyrinth-family, .labyrinth-reunion-parent, .labyrinth-reunion-baby")].every(on),
+              chips: [...document.querySelectorAll(".labyrinth-reward, .labyrinth-record")].map(on),
+              stars: document.querySelectorAll(".labyrinth-reunion-stars .star").length,
+              dialog: document.querySelector("[role=dialog]") ? on(document.querySelector("[role=dialog]")) : null
+            };
+          });
+          assert(seen.family, `${at}: the family is on screen`);
+          assert.deepEqual(seen.chips, options.result === "unreadable" ? [true] : [true, true], `${at}: the chips are on screen`);
+          assert.equal(seen.stars, 3, `${at}: three stars`);
+          assert.equal(seen.dialog, options.offer ? true : null, `${at}: the offer is on screen`);
+          checked++;
+        }
       }
       assert.deepEqual(errors, []);
       await page.close();
     }
-    console.log(`PASS layout: ${checked} labyrinth boards across ${VIEWPORTS.length} windows, English with motion and Russian without`);
+    console.log(`PASS layout: ${checked} labyrinth boards and results across ${VIEWPORTS.length} windows, English with motion and Russian without`);
   } catch (error) {
     console.error(error);
     process.exitCode = 1;
