@@ -33,17 +33,20 @@ export const stegosaurusHatchlingProbes: readonly (readonly [number, number, str
   [854, 148, "spike-3"], [848, 189, "spike-4"]
 ];
 import type { AgeLevel } from "../src/ageLevel.ts";
+import { useSyncExternalStore } from "react";
 import { flushSync } from "react-dom";
 import { createRoot, type Root } from "react-dom/client";
-import { ColoringGame } from "../src/ColoringGame.tsx";
+import { ColoringGame, type ColoringGameProps } from "../src/ColoringGame.tsx";
 import { coloringWorkshopRoot, coloringVersionsFor } from "../src/coloringWorkshopRoot.ts";
 import type { Language } from "../src/language/language.ts";
 import { browserInput } from "../src/root.ts";
 import { InputArbitrationContext } from "../src/inputArbitration.ts";
 import "../src/app.css";
+import { mediaViewport } from "../src/mediaViewport.ts";
 
 const input = browserInput(window);
 let root: Root | undefined;
+let unsubscribeSize: (() => void) | undefined;
 let resources: ReturnType<typeof coloringWorkshopRoot>;
 let starts = 0, homes = 0;
 let language: Language = "en";
@@ -61,16 +64,26 @@ IDBDatabase.prototype.transaction = function (...args: Parameters<IDBDatabase["t
   if (this.name === "rexlab-coloring" && (denyReads || (denyWrites && args[1] === "readwrite"))) throw new Error("Storage denied");
   return transaction.apply(this, args);
 };
+// The game takes the size class as the app gives it: from the viewport, live.
+function Game(props: Omit<ColoringGameProps, "layout">) {
+  return <ColoringGame {...props} layout={useSyncExternalStore(sizes.subscribe, sizes.sizeClass)} />;
+}
 function show() {
-  flushSync(() => root!.render(<InputArbitrationContext value={input.arbitrate}><ColoringGame source={resources} artworks={resources.artworks} offeredVersions={coloringVersionsFor(level)} painterFor={resources.painterFor} language={language}
+  flushSync(() => root!.render(<InputArbitrationContext value={input.arbitrate}><Game source={resources} artworks={resources.artworks} offeredVersions={coloringVersionsFor(level)} painterFor={resources.painterFor} language={language}
     identity={() => Array.from(crypto.getRandomValues(new Uint32Array(4)), value => value.toString(16)).join("-")} countStart={() => { starts++; }}
     home={() => { homes++; flushSync(() => root!.render(<button onClick={show}>ENTER COLORING</button>)); }} /></InputArbitrationContext>));
 }
+let sizes: ReturnType<typeof mediaViewport>;
 export async function mount(options: { language?: Language; level?: AgeLevel; theme?: Theme; seed?: boolean } = {}) {
   root?.unmount(); await resources?.close();
   level = options.level ?? "hatchling";
   language = options.language ?? "en"; denyReads = false; denyWrites = false; abortCompletion = false;
   document.documentElement.dataset.theme = options.theme ?? "light";
+  const viewport = sizes = mediaViewport(window.matchMedia.bind(window), window.screen.orientation, window, () => getComputedStyle(document.documentElement));
+  const applySize = () => { document.documentElement.dataset.size = viewport.sizeClass(); };
+  applySize();
+  unsubscribeSize?.();
+  unsubscribeSize = viewport.subscribe(applySize);
   resources = coloringWorkshopRoot(indexedDB, document);
   if (options.seed && !(await resources.list()).works.length) {
     const red = await resources.newWork("red", () => {});

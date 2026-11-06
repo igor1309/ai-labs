@@ -1,152 +1,141 @@
+/* The sky holds HOME, the stars and the title; the sand holds the starts
+   and the works, and scrolls over the bedrock. */
 .coloring-gallery {
-  --fm-bg: #f2efe8;
-  --fm-surface: #fffdf8;
-  --fm-surface-2: #e6e2d9;
-  --fm-ink: #1d2742;
-  --fm-ink-soft: #5c647a;
-  --fm-amber: #e39b2d;
-  --fm-terra: #c9583d;
-  box-sizing: border-box;
-  height: 100dvh;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: max(12px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
-  background: var(--fm-bg);
-  color: var(--fm-ink);
+  --cg-top: var(--ds-space-xs); --cg-sky: 180px; --cg-side: var(--ds-space-40); --cg-bedrock: 60px; --cg-wave: 30px; --cg-columns: 4; --cg-gap: var(--ds-space-14); --cg-start: calc((100% - 5 * var(--ds-space-m)) / 5.4); --cg-card-pad: var(--ds-space-s);
+  position: relative; isolation: isolate; box-sizing: border-box; height: 100vh; height: 100dvh; overflow: hidden; display: flex; flex-direction: column;
+  color: var(--ds-ink); font-family: var(--ds-font);
+  background: linear-gradient(var(--ds-sky-top), var(--ds-sky-bottom) 40dvh) var(--ds-sky-bottom);
   animation: rise-in var(--motion-screen) var(--ease-out) both;
 }
-[data-theme="dark"] .coloring-gallery {
-  --fm-bg: #0f1320;
-  --fm-surface: #181e2e;
-  --fm-surface-2: #222a3d;
-  --fm-ink: #ece8de;
-  --fm-ink-soft: #9ca3b6;
-  --fm-amber: #f2b24b;
-  --fm-terra: #e57a5d;
-}
 .coloring-gallery button {
-  box-sizing: border-box;
-  flex-shrink: 0;
-  min-width: 60px;
-  min-height: 60px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border: 2px solid transparent;
-  border-radius: 16px;
-  background: var(--fm-surface-2);
-  color: var(--fm-ink);
-  font: inherit;
-  font-size: 14px;
-  font-weight: 800;
-  cursor: pointer;
-  touch-action: manipulation;
+  box-sizing: border-box; flex-shrink: 0; min-width: 48px; min-height: 48px; display: inline-flex; align-items: center; justify-content: center; gap: var(--ds-space-6);
+  padding: var(--ds-space-s) var(--ds-space-14); border: 0; border-radius: var(--ds-radius-pill); background: var(--ds-quiet); color: var(--ds-ink);
+  font: inherit; font-size: var(--ds-size-label); font-weight: 800; cursor: pointer; touch-action: manipulation;
   transition: background var(--motion-small) var(--ease-out), transform var(--motion-small) var(--ease-out);
 }
-.coloring-gallery button[data-hovered="true"] { border-color: var(--fm-amber); }
 .coloring-gallery button[data-pressed="true"] { transform: scale(.97); }
 .coloring-gallery button:disabled { opacity: .5; cursor: default; }
-.coloring-gallery button:focus-visible { outline: 3px solid var(--fm-amber); outline-offset: 2px; }
-.coloring-gallery svg { flex-shrink: 0; width: 24px; height: 24px; }
-.gallery-header, .gallery-actions, .gallery-count, .gallery-actions > span { display: flex; align-items: center; gap: 8px; }
-.gallery-actions { align-items: stretch; }
-.gallery-header { flex-shrink: 0; }
-.gallery-header h1 { display: flex; align-items: center; gap: 8px; flex: 1; margin: 0; font-size: clamp(20px, 3vw, 28px); }
-.gallery-count { color: var(--fm-amber); font-size: 22px; font-weight: 800; }
-.gallery-actions .gallery-new { flex: 1; color: #1d2742; background: var(--fm-amber); }
-.gallery-actions > span { font-size: 12px; font-weight: 800; }
-.gallery-notices:empty { display: none; }
-.gallery-notices p { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 0; }
-.gallery-warning { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; color: var(--fm-terra); font-size: 12px; font-weight: 800; }
-.gallery-works { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; overflow: auto; overscroll-behavior: contain; padding: 4px; }
-.gallery-card { position: relative; cursor: pointer; min-width: 0; min-height: 180px; display: flex; flex-direction: column; align-items: stretch; gap: 8px; border-radius: 20px; padding: 12px; background: var(--fm-surface); animation: fade-in var(--motion-small) var(--ease-out) both; }
-.gallery-thumbnail { flex: 1; min-height: 40px; position: relative; display: grid; place-items: center; }
-.gallery-thumbnail img { position: absolute; width: 100%; height: 100%; object-fit: contain; }
-.gallery-status { position: absolute; z-index: 1; top: 6px; left: 6px; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: color-mix(in srgb, var(--fm-bg) 80%, transparent); pointer-events: none; }
-.gallery-status svg { width: 18px; height: 18px; }
-.gallery-status[data-status="draft"] { color: var(--fm-ink-soft); }
-.gallery-status[data-status="completed"] { color: var(--fm-amber); }
-.gallery-status[data-status="failed"] { color: var(--fm-terra); }
-.gallery-visually-hidden { position: absolute !important; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-.gallery-thumbnail > svg { width: 48px; height: 48px; color: var(--fm-terra); }
+.coloring-gallery button:focus-visible { outline: 3px solid var(--ds-reward); outline-offset: 2px; }
+.coloring-gallery svg { flex-shrink: 0; width: 22px; height: 22px; }
+.gallery-header { flex: none; box-sizing: border-box; height: calc(var(--cg-sky) + env(safe-area-inset-top)); display: flex; flex-direction: column; gap: var(--ds-space-l); padding: calc(36px + env(safe-area-inset-top)) calc(var(--cg-side) + var(--screen-right)) 0 calc(var(--cg-side) + var(--screen-left)); }
+.gallery-bar { display: flex; align-items: center; justify-content: space-between; gap: var(--ds-space-m); }
+.gallery-bar .gallery-home { padding: 0 var(--ds-space-18) 0 var(--ds-space-l); gap: var(--ds-space-s); }
+.gallery-count { display: flex; align-items: center; gap: var(--ds-space-s); padding: var(--ds-space-s) var(--ds-space-l); border-radius: var(--ds-radius-pill); background: var(--ds-label); color: var(--ds-reward); }
+.gallery-count b { color: var(--ds-ink); font-size: var(--ds-size-number); font-weight: 800; line-height: 1; }
+.gallery-header h1 { display: flex; align-items: center; justify-content: center; gap: var(--ds-space-l); margin: 0; min-width: 0; font-size: var(--ds-size-32); font-weight: 800; line-height: 1.25; }
+.gallery-mark { display: grid; place-items: center; flex: none; width: 60px; height: 60px; border-radius: var(--ds-radius-30) var(--ds-radius-30) var(--ds-radius-15) var(--ds-radius-15); background: var(--ds-pocket-1); color: var(--ds-action); box-shadow: inset 0 6px 10px var(--ds-pocket-shadow); }
+.gallery-mark svg { width: 30px; height: 30px; }
+.gallery-sand { position: relative; flex: 1 1 0; min-height: 0; display: flex; background: var(--ds-strata-1); }
+.gallery-wave { position: absolute; pointer-events: none; top: calc(var(--cg-wave) * -2 / 3); left: 0; width: 100% !important; height: var(--cg-wave) !important; fill: var(--ds-strata-1); }
+.gallery-room { flex: 1 1 0; min-width: 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain; box-sizing: border-box; display: flex; flex-direction: column; gap: var(--ds-space-l); padding: var(--ds-space-m) calc(var(--cg-side) + var(--screen-right)) calc(var(--ds-space-m) + env(safe-area-inset-bottom)) calc(var(--cg-side) + var(--screen-left)); }
+.gallery-bedrock { position: relative; flex: none; height: calc(var(--cg-bedrock) + env(safe-area-inset-bottom)); background: var(--ds-strata-2); }
+.gallery-bedrock svg { position: absolute; top: calc(var(--cg-wave) * -2 / 3); left: 0; width: 100%; height: var(--cg-wave); fill: var(--ds-strata-2); }
+/* The starts: one row that scrolls sideways when more are offered than fit. */
+/* A start card is as wide as the strip allows or, if wider, as its name: a dinosaur name is never cut. */
+.gallery-actions { flex: none; display: flex; align-items: stretch; gap: var(--ds-space-m); overflow-x: auto; touch-action: pan-x pan-y; scrollbar-width: none; scroll-snap-type: x proximity; padding-bottom: 4px; }
+.gallery-actions .gallery-new { flex: none; min-width: var(--cg-start); flex-direction: column; justify-content: flex-start; gap: var(--ds-space-6); padding: var(--ds-space-s); border-radius: var(--ds-radius-speech); background: var(--ds-label); color: var(--ds-ink); box-shadow: 0 3px 8px var(--ds-pocket-shadow); scroll-snap-align: start; }
+.gallery-actions .gallery-artwork-preview { display: block; box-sizing: border-box; width: 100%; height: 84px; padding: var(--ds-space-2); border-radius: var(--ds-radius-16); background: var(--ds-paper); object-fit: contain; }
+.gallery-new-name { display: flex; align-items: center; justify-content: center; gap: var(--ds-space-3); width: 100%; min-width: 0; font-size: clamp(10px, 1.2vw, 16px); white-space: nowrap; }
+.coloring-gallery .gallery-new-name svg { width: 18px; height: 18px; color: var(--ds-action); }
+/* The works, each in its pocket. */
+.gallery-works { flex: none; display: grid; grid-template-columns: repeat(var(--cg-columns), minmax(0, 1fr)); gap: var(--cg-gap); align-content: start; }
+.gallery-card { position: relative; cursor: pointer; min-width: 0; display: flex; flex-direction: column; align-items: stretch; gap: var(--ds-space-s); padding: var(--cg-card-pad); border-radius: var(--ds-radius-pocket-top) var(--ds-radius-pocket-top) var(--ds-radius-pocket-bottom) var(--ds-radius-pocket-bottom); background: var(--ds-pocket-1); box-shadow: inset 0 6px 10px var(--ds-pocket-shadow); }
+.gallery-thumbnail { position: relative; flex: none; aspect-ratio: 920 / 620; display: grid; place-items: center; overflow: hidden; border-radius: var(--ds-radius-16); background: var(--ds-paper); }
+.gallery-thumbnail img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.gallery-status { position: absolute; z-index: 1; top: 6px; left: 6px; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: var(--ds-label); }
+.coloring-gallery .gallery-status svg { width: 24px; height: 24px; }
+.gallery-status[data-status="draft"] { color: var(--ds-ink-soft); }
+.gallery-status[data-status="completed"] { color: var(--ds-reward); }
+.gallery-status[data-status="failed"] { color: var(--ds-bad); }
+.gallery-card > button { width: 100%; }
+.gallery-card > button[data-recent] { background: var(--ds-action); color: var(--ds-on-action); }
+/* On the narrowest phones a long name like ПРОДОЛЖИТЬ fits under its icon. */
+@media (max-width: 360px) { html[data-size="tall-narrow"] .gallery-card > button { flex-direction: column; gap: var(--ds-space-2); padding: var(--ds-space-6) var(--ds-space-s); font-size: 12px; } }
 .gallery-card h2, .gallery-dialog h2 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 18px; }
-.gallery-card h2 > svg, .gallery-earned-star { color: var(--fm-amber); }
-.gallery-unavailable { color: var(--fm-ink-soft); }
-.gallery-empty { grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; }
-.gallery-empty > svg { width: 80px; height: 80px; color: var(--fm-amber); }
-.gallery-empty h2 { margin: 0; font-size: 22px; }
-.gallery-overlay { position: fixed; z-index: 100; inset: 0; padding: 12px; display: grid; place-items: center; background: #091e4080; animation: fade-in var(--motion-small) var(--ease-out) both; }
-.gallery-dialog { box-sizing: border-box; display: flex; flex-direction: column; align-items: stretch; gap: 12px; width: min(460px, 100%); max-height: 100%; overflow: auto; padding: 20px; border-radius: 24px; background: var(--fm-surface); }
-.gallery-dialog > svg { align-self: center; color: var(--fm-terra); }
-.gallery-dialog .gallery-thumbnail { min-height: 100px; }
-.gallery-parent-note { font-size: 14px; color: var(--fm-ink-soft); margin: 0; }
-.gallery-dialog p[role="alert"] { display: flex; align-items: center; gap: 8px; color: var(--fm-terra); margin: 0; }
-@media (max-width: 599px) and (orientation: portrait) {
-  .coloring-gallery { padding-left: max(8px, env(safe-area-inset-left)); padding-right: max(8px, env(safe-area-inset-right)); gap: 8px; }
-  .gallery-header button { flex-direction: column; font-size: 10px; padding: 4px; gap: 2px; }
-  .gallery-header h1 > svg { display: none; }
-  .gallery-works { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-  .gallery-works { align-content: start; }
-  .gallery-card { min-height: 0; padding: 8px; gap: 8px; }
-  .gallery-card .gallery-thumbnail { flex: none; aspect-ratio: 920 / 620; }
-  .gallery-card > button { font-size: 12px; padding: 4px 8px; }
-  .gallery-actions > span { flex-direction: column; font-size: 10px; text-align: center; }
-}
-@media (max-height: 599px) and (orientation: landscape) {
-  .coloring-gallery { gap: 8px; padding: max(8px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); }
-  .gallery-actions { position: absolute; top: max(8px, env(safe-area-inset-top)); right: max(12px, env(safe-area-inset-right)); width: 220px; }
-  .gallery-header { padding-right: 228px; }
-  .gallery-header button { flex-direction: column; gap: 0; padding: 4px; font-size: 10px; }
-  .gallery-header h1 { font-size: 18px; }
-  .gallery-header h1 > svg { display: none; }
-  .gallery-card { min-height: 160px; padding: 8px; gap: 4px; }
-  .gallery-card h2 { font-size: 14px; }
-  .gallery-actions > span { display: none; }
-}
+.gallery-empty { grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; gap: var(--ds-space-m); padding-top: var(--ds-space-l); text-align: center; }
+.gallery-empty-arrow { width: 30px; height: 30px; color: var(--ds-ink); }
+.gallery-empty-mark { display: grid; place-items: center; width: var(--cg-empty-mark, 96px); height: var(--cg-empty-mark, 96px); border-radius: 50%; background: var(--ds-pocket-1); color: var(--ds-action); }
+.gallery-empty-mark svg { width: 50%; height: 50%; }
+.gallery-empty h2 { margin: 0; font-size: var(--ds-size-22); font-weight: 800; }
 @media (prefers-reduced-motion: reduce) {
   .coloring-gallery { animation: fade-in var(--motion-small) var(--ease-out) both; }
   .coloring-gallery button[data-pressed="true"] { transform: none; }
 }
-
-.gallery-actions .gallery-new { min-width: 0; flex-direction: column; gap: 0; padding: 4px 8px; }
-.gallery-actions .gallery-artwork-preview { width: 100%; height: 64px; object-fit: contain; }
-/* A creature card: the art on its own paper, the name on an amber strip,
-   and the plus as a solid badge so it never tangles with the linework. */
-.gallery-actions .gallery-new { position: relative; overflow: hidden; padding: 0; background: #fff9ec; border: 2px solid var(--fm-amber); justify-content: space-between; }
-.gallery-actions .gallery-new .gallery-artwork-preview { flex: 1 1 auto; min-height: 0; padding: 4px; box-sizing: border-box; }
-.gallery-new > span { display: block; width: 100%; padding: 4px 2px; box-sizing: border-box; background: var(--fm-amber); text-align: center; white-space: nowrap; font-size: clamp(10px, 0.95vw, 14px); }
-.gallery-new > .gallery-new-plus { position: absolute; z-index: 1; top: 4px; left: 4px; width: 22px; height: 22px; padding: 3px; box-sizing: border-box; border-radius: 50%; color: #1d2742; background: var(--fm-amber); }
-@media (max-width: 599px) and (orientation: portrait) {
-  .gallery-actions .gallery-artwork-preview { height: 44px; }
+/* Upright on an iPad the starts stand in rows of three over three columns. */
+html[data-size="tall"] .coloring-gallery { --cg-sky: 192px; --cg-side: var(--ds-space-56); --cg-bedrock: 28px; --cg-columns: 3; }
+html[data-size="tall"] .gallery-room { padding-left: calc(var(--ds-space-2xl) + var(--screen-left)); padding-right: calc(var(--ds-space-2xl) + var(--screen-right)); }
+html[data-size="tall"] .gallery-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); overflow: visible; }
+/* On a phone HOME is its house and the starts scroll sideways. */
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .coloring-gallery { --cg-wave: 24px; --cg-gap: var(--ds-btn-gap); --cg-card-pad: var(--ds-space-7); }
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .gallery-bar .gallery-home { width: 48px; padding: 0; }
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .gallery-home span { display: none; }
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .gallery-mark { width: 44px; height: 44px; }
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .gallery-mark svg { width: 24px; height: 24px; }
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .gallery-header h1 { gap: var(--ds-space-m); font-size: var(--ds-size-22); }
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .gallery-new-name { font-size: 11px; }
+html[data-size="tall-narrow"] .coloring-gallery { --cg-sky: 206px; --cg-side: var(--ds-space-20); --cg-bedrock: 10px; --cg-columns: 2; --cg-start: 136px; }
+html[data-size="tall-narrow"] .gallery-header { padding-top: 62px; gap: var(--ds-space-xs); }
+html[data-size="tall-narrow"] .gallery-actions { gap: var(--ds-btn-gap); }
+@media (max-height: 700px) {
+  html[data-size="tall-narrow"] .coloring-gallery { --cg-sky: 154px; --cg-start: 120px; --cg-card-pad: var(--ds-space-6); }
+  html[data-size="tall-narrow"] .gallery-header { padding-top: 28px; }
+  html[data-size="tall-narrow"] .gallery-actions .gallery-artwork-preview { height: 64px; }
 }
-@media (max-height: 599px) and (orientation: landscape) {
-  .gallery-actions { width: min(74vw, 500px); }
-  .gallery-header { padding-right: min(76vw, 512px); }
-  .gallery-actions .gallery-artwork-preview { height: 32px; }
-  .gallery-header h1 { font-size: 14px; }
-}
-/* An upright iPad cannot fit eight readable names, so its row scrolls too. */
-@media (min-width: 600px) and (max-width: 1023px) and (min-height: 600px) {
-  .gallery-actions { overflow-x: auto; touch-action: pan-x; scrollbar-width: none; scroll-snap-type: x proximity; }
-  .gallery-actions .gallery-new { flex: 0 0 calc((100% - 40px) / 5.5); scroll-snap-align: start; }
-}
-/* On a phone the creatures keep one row that scrolls sideways. Whole cards
-   fill the row and only a sliver of the next peeks in, so no name is cut. */
-@media (max-width: 599px) and (orientation: portrait), (max-height: 599px) and (orientation: landscape) {
-  .gallery-actions { overflow-x: auto; touch-action: pan-x; scrollbar-width: none; scroll-snap-type: x proximity; }
-  .gallery-actions .gallery-new { flex: 0 0 calc((100% - 32px) / 3); min-height: 60px; scroll-snap-align: start; }
-  .gallery-new > span { font-size: 10px; }
-}
-@media (max-width: 359px) and (orientation: portrait) {
-  .gallery-actions .gallery-new { flex-basis: calc((100% - 24px) / 2); }
-}
-@media (min-width: 700px) and (max-height: 599px) and (orientation: landscape) {
-  .gallery-actions .gallery-new { flex-basis: calc((100% - 40px) / 4); }
-}
-/* On an iPhone upright the version stands at the window's very bottom:
-   the gallery ends just above it. */
-[data-size="tall-narrow"] .coloring-gallery { padding-bottom: calc(20px + env(safe-area-inset-bottom) / 2); }
+/* On its side a phone puts the title in the bar. */
+html[data-size="wide-short"] .coloring-gallery { --cg-sky: 80px; --cg-side: var(--ds-space-79); --cg-bedrock: 0px; --cg-card-pad: var(--ds-space-6); }
+html[data-size="wide-short"] .gallery-header { position: relative; padding-top: calc(8px + env(safe-area-inset-top)); }
+html[data-size="wide-short"] .gallery-header h1 { position: absolute; top: calc(10px + env(safe-area-inset-top)); left: 50%; translate: -50% 0; }
+html[data-size="wide-short"] .gallery-room { gap: var(--ds-btn-gap); padding-top: var(--ds-space-s); }
+html[data-size="wide-short"] .gallery-actions .gallery-artwork-preview { height: 48px; }
+html[data-size="wide-short"] .coloring-gallery { --cg-empty-mark: 64px; }
+html[data-size="wide-short"] .gallery-thumbnail { aspect-ratio: 2 / 1; }
+html[data-size="wide-short"] .gallery-status { width: 28px; height: 28px; }
+html[data-size="wide-short"] .gallery-bedrock svg { display: none; }
+/* A small phone on its side has no notch to clear, and three works to a row fit their buttons. */
+@media (max-width: 700px) { html[data-size="wide-short"] .coloring-gallery { --cg-side: max(var(--ds-space-40), env(safe-area-inset-left), env(safe-area-inset-right)); --cg-columns: 3; } html[data-size="wide-short"] .gallery-thumbnail { aspect-ratio: 5 / 2; } html[data-size="wide-short"] .gallery-card > button { flex-direction: column; gap: var(--ds-space-2); padding: var(--ds-space-6) var(--ds-space-s); } }
+/* VIEW ONLY over the starts, then what is loading or could not load. */
+.gallery-tag { flex: none; align-self: flex-start; display: flex; align-items: center; gap: var(--ds-space-6); padding: var(--ds-space-xs) var(--ds-space-m); border-radius: var(--ds-radius-pill); background: var(--ds-quiet); color: var(--ds-ink-soft); font-size: var(--ds-size-13); font-weight: 800; }
+.coloring-gallery .gallery-tag svg { width: 16px; height: 16px; }
+.gallery-notices { flex: none; display: flex; flex-direction: column; align-items: center; gap: var(--ds-space-s); }
+.gallery-notices:empty { display: none; }
+.gallery-loading { display: flex; align-items: center; gap: var(--ds-space-s); margin: 0; padding: var(--ds-space-s) var(--ds-space-l); border-radius: var(--ds-radius-pill); background: var(--ds-label); font-size: var(--ds-size-15); font-weight: 800; }
+.coloring-gallery .gallery-loading svg { width: 20px; height: 20px; color: var(--ds-action); animation: gallery-turn 1s linear infinite; }
+@keyframes gallery-turn { to { rotate: -360deg; } }
+.gallery-warning { box-sizing: border-box; align-self: stretch; display: flex; flex-wrap: wrap; align-items: center; gap: var(--ds-space-s) var(--ds-space-m); padding: var(--ds-space-s) var(--ds-space-s) var(--ds-space-s) var(--ds-space-l); border: 2px solid var(--ds-bad); border-radius: var(--ds-radius-16); background: var(--ds-label); }
+.gallery-warning p { flex: 1 1 220px; display: flex; align-items: center; gap: var(--ds-btn-gap); margin: 0; font-size: var(--ds-size-16); font-weight: 800; }
+.coloring-gallery .gallery-warning p svg { width: 24px; height: 24px; color: var(--ds-bad); }
+.gallery-warning-actions { display: flex; flex-wrap: wrap; gap: var(--ds-space-s); }
+.gallery-visually-hidden { position: absolute !important; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.gallery-thumbnail > svg { width: 40px; height: 40px; color: var(--ds-ink-soft); }
+.gallery-thumbnail[data-failed], .gallery-unavailable .gallery-thumbnail { background: var(--ds-quiet); }
+.gallery-unavailable .gallery-thumbnail { grid-auto-flow: row; align-content: center; gap: var(--ds-space-xs); }
+.gallery-unavailable h2 { justify-content: center; color: var(--ds-ink-soft); font-size: var(--ds-size-13); font-weight: 800; }
+/* The dialogs stand over a scrim; each scrolls when a phone is too short. */
+.gallery-overlay { position: fixed; z-index: 100; inset: 0; padding: var(--ds-space-m); display: grid; place-items: center; background: var(--ds-scrim); animation: fade-in var(--motion-small) var(--ease-out) both; }
+.gallery-dialog { box-sizing: border-box; display: flex; flex-direction: column; align-items: center; gap: var(--ds-space-l); width: min(460px, 100%); max-height: 100%; overflow: auto; padding: var(--ds-space-28) var(--ds-space-2xl); border-radius: var(--ds-radius-28); background: var(--ds-label); box-shadow: 0 12px 32px var(--ds-ground-shadow); text-align: center; }
+.gallery-dialog-mark { flex: none; display: grid; place-items: center; width: 64px; height: 64px; border-radius: 50%; background: var(--ds-pocket-1); }
+.coloring-gallery .gallery-dialog-mark svg { width: 32px; height: 32px; }
+.coloring-gallery .gallery-dialog h2 { justify-content: center; font-size: var(--ds-size-24); font-weight: 800; }
+.coloring-gallery .gallery-dialog h2.gallery-dialog-title { font-size: var(--ds-size-action); }
+.gallery-dialog > button { width: 100%; }
+.coloring-gallery .gallery-dialog > .gallery-strong { background: var(--ds-strong); color: var(--ds-on-strong); font-size: var(--ds-size-action); }
+.coloring-gallery .gallery-dialog > .gallery-danger { background: var(--ds-action); color: var(--ds-on-action); font-size: var(--ds-size-action); }
+.gallery-dialog .gallery-thumbnail { align-self: stretch; }
+.gallery-parent-note { margin: 0; color: var(--ds-ink-soft); font-size: var(--ds-size-13); }
+.gallery-dialog p[role="alert"] { display: flex; align-items: center; gap: var(--ds-space-s); margin: 0; color: var(--ds-bad); font-weight: 800; }
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .gallery-dialog { padding: var(--ds-space-l); gap: var(--ds-space-m); }
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .coloring-gallery .gallery-dialog > :is(.gallery-strong, .gallery-danger) { font-size: var(--ds-size-label); }
+html[data-size="wide-short"] .gallery-dialog-mark { display: none; }
+html[data-size="wide-short"] .gallery-dialog .gallery-thumbnail { flex: 0 1 120px; min-height: 48px; height: auto; aspect-ratio: auto; }
+html[data-size="wide-short"] .gallery-dialog .gallery-thumbnail img { height: 100%; }
+html[data-size="tall-narrow"] .gallery-warning { padding: var(--ds-space-s); }
+html[data-size="tall-narrow"] .gallery-warning p { flex-basis: 100%; font-size: var(--ds-size-13); }
+html[data-size="tall-narrow"] .gallery-warning-actions { flex: 1 1 100%; }
+html[data-size="tall-narrow"] .gallery-warning-actions button { flex: 1 1 auto; padding-inline: var(--ds-space-s); font-size: var(--ds-size-13); }
+@media (prefers-reduced-motion: reduce) { .coloring-gallery .gallery-loading svg { animation: none; } }
+/* A phone on its side has room for the parent's three choices side by side, not stacked. */
+html[data-size="wide-short"] .gallery-dialog:has(> .gallery-danger) { flex-direction: row; flex-wrap: wrap; justify-content: center; width: min(560px, 100%); }
+html[data-size="wide-short"] .gallery-dialog:has(> .gallery-danger) > :not(button) { flex: 1 0 100%; }
+html[data-size="wide-short"] .gallery-dialog:has(> .gallery-danger) > button { flex: 1 1 0; width: auto; }
+/* A small upright tablet's three columns leave ПРОДОЛЖИТЬ room only under its icon. */
+@media (max-width: 680px) { html[data-size="tall"] .gallery-card > button { flex-direction: column; gap: var(--ds-space-2); padding: var(--ds-space-6) var(--ds-space-s); } }

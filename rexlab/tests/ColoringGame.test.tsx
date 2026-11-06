@@ -41,7 +41,7 @@ function fixture(strict = false) {
   const painter = { width: 920, height: 620, render: vi.fn(), preview: vi.fn(), regionAt: vi.fn(() => "body") };
   const props = { source, artworks: galleryArtworkFixtures(), identity: () => `new-${++identity}`, countStart: vi.fn(), home: vi.fn(), language: "en" as const };
   const painterFor = (geometry: string) => geometry === ARTWORKS[1].geometry.artwork.version ? tricPainter : painter;
-  const gameProps = { ...props, painterFor };
+  const gameProps = { ...props, painterFor, layout: "wide" as const };
   const input = browserInput(window);
   onTestFinished(input.stop);
   const view = render(strict ? <StrictMode><ColoringGame {...gameProps} /></StrictMode> : <ColoringGame {...gameProps} />, {

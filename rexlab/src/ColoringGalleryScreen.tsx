@@ -1,9 +1,10 @@
 import { useEffect, useState, useSyncExternalStore, type KeyboardEvent } from "react";
-import { ArrowLeft, Home, CircleDashed, Images, LockKeyhole, Paintbrush, Plus, RotateCcw, Star, TriangleAlert } from "lucide-react";
+import { ArrowLeft, ArrowUp, Home, CircleDashed, Images, LockKeyhole, Paintbrush, Plus, RotateCcw, Star, TriangleAlert } from "lucide-react";
 import { Button } from "./Button.tsx";
 import type { ColoringGallerySession, GalleryWork } from "./coloringGallery.ts";
 import type { Language } from "./language/language.ts";
 import { ColoringArtworkPreview, type ArtworkPreview } from "./ColoringArtworkPreview.tsx";
+import { EarthEdge } from "./EarthEdge.tsx";
 import "./coloringGallery.css";
 
 export type GalleryArtwork = Readonly<{
@@ -46,60 +47,68 @@ export function ColoringGalleryScreen({ session, language, home, artworks, offer
   const modal = state.recovery || state.viewing !== null;
   return <section className="coloring-gallery" lang={language} aria-label={text.title}>
     <header inert={modal} className="gallery-header">
-      <Button onClick={home}><Home aria-hidden="true" /><span>{text.home}</span></Button>
-      <h1><Images aria-hidden="true" />{text.title}</h1>
-      {collection?.completedCount !== null && collection && <span className="gallery-count" aria-label={`${text.completed}: ${collection.completedCount}`}><Star aria-hidden="true" />{collection.completedCount}</span>}
+      <div className="gallery-bar">
+        <Button className="gallery-home" aria-label={text.home} onClick={home}><Home aria-hidden="true" /><span>{text.home}</span></Button>
+        {collection?.completedCount !== null && collection && <span className="gallery-count" aria-label={`${text.completed}: ${collection.completedCount}`}><Star aria-hidden="true" fill="currentColor" /><b>{collection.completedCount}</b></span>}
+      </div>
+      <h1><span className="gallery-mark" aria-hidden="true"><Images /></span>{text.title}</h1>
     </header>
+    <div className="gallery-sand">
+    <EarthEdge className="gallery-wave" />
+    <div className="gallery-room">
+    {readOnly && collection && <span className="gallery-tag" inert={modal}><LockKeyhole aria-hidden="true" />{text.readOnly}</span>}
     <div className="gallery-actions" inert={modal}>
       {artworks.filter(artwork => !offeredVersions || offeredVersions.includes(artwork.version)).map((artwork, index) => <Button className="gallery-new" key={artwork.version}
         aria-label={index === 0 ? text.new : artwork.names[language]} disabled={state.busy || readOnly}
         onClick={() => void session.enter(undefined, index === 0 && !offeredVersions ? undefined : artwork.version)}>
-        <Plus className="gallery-new-plus" aria-hidden="true" /><ColoringArtworkPreview preview={artwork.preview} /><span>{artwork.names[language]}</span>
+        <ColoringArtworkPreview preview={artwork.preview} /><span className="gallery-new-name"><Plus aria-hidden="true" />{artwork.names[language]}</span>
       </Button>)}
-      {readOnly && collection && <span><LockKeyhole aria-hidden="true" />{text.readOnly}</span>}
     </div>
     <div className="gallery-notices" inert={modal}>
-      {state.busy && <p role="status"><RotateCcw aria-hidden="true" />{text.loading}</p>}
-      {(state.warning || failedThumbnail) && <div className="gallery-warning" role="alert"><TriangleAlert aria-hidden="true" /><span>{text.warning}</span>
-        <Button disabled={state.busy} onClick={retry}><RotateCcw aria-hidden="true" />{text.retry}</Button>
-        {readOnly && <Button disabled={state.busy} onClick={session.recover}><LockKeyhole aria-hidden="true" />{text.recovery}</Button>}
+      {state.busy && <p className="gallery-loading" role="status"><RotateCcw aria-hidden="true" />{text.loading}</p>}
+      {(state.warning || failedThumbnail) && <div className="gallery-warning" role="alert"><p><TriangleAlert aria-hidden="true" /><span>{text.warning}</span></p>
+        <div className="gallery-warning-actions"><Button disabled={state.busy} onClick={retry}><RotateCcw aria-hidden="true" />{text.retry}</Button>
+        {readOnly && <Button disabled={state.busy} onClick={session.recover}><LockKeyhole aria-hidden="true" />{text.recovery}</Button>}</div>
       </div>}
     </div>
     <div className="gallery-works" inert={modal} aria-busy={state.busy}>
-      {collection && !collection.works.length && !collection.unavailable.length && !state.warning && <div className="gallery-empty"><Paintbrush aria-hidden="true" /><h2>{text.empty}</h2></div>}
+      {collection && !collection.works.length && !collection.unavailable.length && !state.warning && <div className="gallery-empty"><ArrowUp className="gallery-empty-arrow" aria-hidden="true" /><span className="gallery-empty-mark"><Paintbrush aria-hidden="true" /></span><h2>{text.empty}</h2></div>}
       {collection?.works.map((record, index) => {
         const failed = failedImages.get(record.document.id) === record.thumbnail;
         // A tap anywhere on the card acts as its one button, so the button's own guards still apply.
         return <article className="gallery-card" key={record.document.id} data-work-id={record.document.id}
           onClick={event => { if (!(event.target as Element).closest("button")) event.currentTarget.querySelector("button")?.click(); }}>
-          <div className="gallery-thumbnail">{failed ? <TriangleAlert aria-hidden="true" /> : <SavedThumbnail record={record} label={`${dinosaurName(record.document.geometry)} · ${index + 1}`} unavailable={() => setFailedImages(current => new Map(current).set(record.document.id, record.thumbnail))} />}
+          <div className="gallery-thumbnail" data-failed={failed || undefined}>{failed ? <TriangleAlert aria-hidden="true" /> : <SavedThumbnail record={record} label={`${dinosaurName(record.document.geometry)} · ${index + 1}`} unavailable={() => setFailedImages(current => new Map(current).set(record.document.id, record.thumbnail))} />}
             <span className="gallery-status" data-status={failed ? "failed" : record.document.completed ? "completed" : "draft"} aria-hidden="true">{failed ? <TriangleAlert /> : record.document.completed ? <Star className="gallery-earned-star" fill="currentColor" /> : <CircleDashed />}</span></div>
           <h2 className="gallery-visually-hidden">{failed ? text.unavailable : record.document.completed ? text.completed : text.draft} · {index + 1}</h2>
-          <Button disabled={state.busy} onClick={() => failed ? retry() : readOnly ? session.view(record) : void session.enter(record.document.id)}>
+          <Button data-recent={collection.recentId === record.document.id && !failed && !readOnly ? "" : undefined} disabled={state.busy} onClick={() => failed ? retry() : readOnly ? session.view(record) : void session.enter(record.document.id)}>
             {failed ? <RotateCcw aria-hidden="true" /> : readOnly ? <Images aria-hidden="true" /> : <Paintbrush aria-hidden="true" />}
             {failed ? text.retry : readOnly ? text.view : collection.recentId === record.document.id ? text.continue : text.edit}
           </Button>
         </article>;
       })}
       {collection?.unavailable.map((_, index) => <article className="gallery-card gallery-unavailable" key={`unavailable-${index}`}>
-        <div className="gallery-thumbnail"><TriangleAlert aria-hidden="true" /></div><h2>{text.unavailable}</h2>
+        <div className="gallery-thumbnail"><TriangleAlert aria-hidden="true" /><h2>{text.unavailable}</h2></div>
         <Button disabled={state.busy} onClick={retry}><RotateCcw aria-hidden="true" />{text.retry}</Button>
       </article>)}
     </div>
+    </div>
+    </div>
+    <div className="gallery-bedrock" aria-hidden="true"><EarthEdge /></div>
     {modal && <div className="gallery-overlay"><div className="gallery-dialog" role="dialog" aria-modal="true" aria-label={state.recovery ? text.recovery : text.readOnly} onKeyDown={event => {
       containFocus(event);
       if (event.key === "Escape") { if (state.recovery) session.cancelRecovery(); else session.closeView(); }
     }}>
       {state.recovery ? <>
-        <LockKeyhole aria-hidden="true" /><h2>{text.recovery}</h2><p className="gallery-parent-note">{text.loss}</p>
+        <span className="gallery-dialog-mark"><LockKeyhole aria-hidden="true" /></span><h2 className="gallery-dialog-title">{text.recovery}</h2><p className="gallery-parent-note">{text.loss}</p>
         {state.recoveryError && <p role="alert"><TriangleAlert aria-hidden="true" />{text.resetError}</p>}
-        <Button autoFocus disabled={state.busy} onClick={session.cancelRecovery}><ArrowLeft aria-hidden="true" />{text.cancel}</Button>
-        <Button disabled={state.busy} onClick={() => void session.reset()}><RotateCcw aria-hidden="true" />{text.reset}</Button>
+        <Button className="gallery-strong" autoFocus disabled={state.busy} onClick={session.cancelRecovery}><ArrowLeft aria-hidden="true" />{text.cancel}</Button>
+        <Button className="gallery-danger" disabled={state.busy} onClick={() => void session.reset()}><RotateCcw aria-hidden="true" />{text.reset}</Button>
         <Button onClick={home}><Home aria-hidden="true" />{text.home}</Button>
       </> : state.viewing && <>
-        <h2><LockKeyhole aria-hidden="true" />{text.readOnly}</h2>
+        <span className="gallery-dialog-mark"><LockKeyhole aria-hidden="true" /></span><h2>{text.readOnly}</h2>
         <div className="gallery-thumbnail"><SavedThumbnail record={state.viewing} label={dinosaurName(state.viewing.document.geometry)} /></div>
-        <Button autoFocus onClick={session.closeView}><ArrowLeft aria-hidden="true" />{text.close}</Button>
+        <Button className="gallery-strong" autoFocus onClick={session.closeView}><ArrowLeft aria-hidden="true" />{text.close}</Button>
         <Button onClick={home}><Home aria-hidden="true" />{text.home}</Button>
       </>}
     </div></div>}

@@ -8,10 +8,11 @@ import { browserInput } from "../src/root.ts";
 import { InputArbitrationContext } from "../src/inputArbitration.ts";
 import type { Action } from "../src/coloring/index.ts";
 import type { Language } from "../src/language/language.ts";
+import type { SizeClass } from "../src/sizeClass.ts";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-function open(language: Language = "en", failure = false, sharedFilter = false) {
+function open(language: Language = "en", failure = false, sharedFilter = false, layout: SizeClass = "wide") {
   const { model, dot, thumbnail } = coloringFixture();
   const write = vi.fn(async () => { if (failure) throw new Error("quota"); });
   const complete = vi.fn(async () => ({ completedCount: 1, earned: true }));
@@ -20,7 +21,7 @@ function open(language: Language = "en", failure = false, sharedFilter = false) 
   const painter = { width: 920, height: 620, render: vi.fn(), preview: vi.fn(), regionAt: vi.fn((): string | undefined => "body") };
   const input = sharedFilter ? browserInput(window) : browserInput(window, () => true);
   onTestFinished(input.stop);
-  const view = render(<ColoringWorkshopScreen session={session} painter={painter} language={language} />, {
+  const view = render(<ColoringWorkshopScreen session={session} painter={painter} language={language} layout={layout} />, {
     wrapper: ({ children }) => <InputArbitrationContext value={input.arbitrate}>{children}</InputArbitrationContext>
   });
   let canvas = view.container.querySelector("canvas")!;
@@ -61,6 +62,17 @@ function animationFrames() {
     act(() => callbacks.forEach(callback => callback(0)));
   } };
 }
+
+it("keeps the palette open under the paper on an upright iPad and behind COLOR elsewhere", () => {
+  const f = open("en", false, false, "tall");
+  expect(screen.queryByRole("button", { name: "COLOR" })).toBeNull();
+  expect(f.container.querySelector(".coloring-strip")).not.toBeNull();
+  expect(screen.getByRole("button", { name: "BLUE" })).toBeTruthy();
+  f.rerender(<ColoringWorkshopScreen session={f.session} painter={f.painter} language="en" layout="wide" />);
+  expect(screen.getByRole("button", { name: "COLOR" })).toBeTruthy();
+  expect(f.container.querySelector(".coloring-strip")).toBeNull();
+  expect(screen.queryByRole("button", { name: "BLUE" })).toBeNull();
+});
 
 it("protects workshop words and controls while preserving drawing after repeated selection and menu attempts", async () => {
   // Vitest ignores component CSS imports; the shared sheet is in setup.
@@ -281,7 +293,7 @@ it.each(["en", "ru"] as Language[])("overlays the mounted canvas with a color pi
   expect(f.container.querySelector("canvas")).toBe(f.canvas);
   expect(f.session.getSnapshot().work).toBe(work);
   expect(f.write).toHaveBeenCalledTimes(1);
-  expect(trigger.querySelector(".coloring-swatch")?.getAttribute("style")).toContain("rgb(66, 165, 245)");
+  expect(trigger.querySelector(".coloring-face-color")?.getAttribute("style")).toContain("rgb(66, 165, 245)");
   choose(language === "en" ? "SIZE" : "РАЗМЕР", language === "en" ? "BRUSH LARGE" : "КИСТЬ БОЛЬШОЙ");
   f.tap(2, 0); await f.settled();
   expect(f.session.getSnapshot().work.actions.at(-1)).toMatchObject({ kind: "stroke", color: "#42a5f5", size: 40 });

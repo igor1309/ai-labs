@@ -1,6 +1,7 @@
 import { createRoot, type Root } from "react-dom/client";
 import { flushSync } from "react-dom";
-import { ColoringWorkshopScreen } from "../src/ColoringWorkshopScreen.tsx";
+import { useSyncExternalStore } from "react";
+import { ColoringWorkshopScreen, type ColoringWorkshopScreenProps } from "../src/ColoringWorkshopScreen.tsx";
 import { coloringWorkshopRoot } from "../src/coloringWorkshopRoot.ts";
 import { coloringWorkshop, type ColoringWorkshopSession, type WorkshopNavigation } from "../src/coloringWorkshop.ts";
 import { coloringModel, type Action, type Work } from "../src/coloring/index.ts";
@@ -11,8 +12,19 @@ import { browserInput } from "../src/root.ts";
 import type { Language } from "../src/language/language.ts";
 import { InputArbitrationContext } from "../src/inputArbitration.ts";
 import "../src/app.css";
+import { mediaViewport } from "../src/mediaViewport.ts";
 
-const input = browserInput(window);
+const sizeViewport = mediaViewport(window.matchMedia.bind(window), window.screen.orientation, window, () => getComputedStyle(document.documentElement));
+const applySize = () => { document.documentElement.dataset.size = sizeViewport.sizeClass(); };
+applySize();
+sizeViewport.subscribe(applySize);
+
+// The screen takes the size class as the app gives it: from the viewport, live.
+function Workshop(props: Omit<ColoringWorkshopScreenProps, "layout">) {
+  return <ColoringWorkshopScreen {...props} layout={useSyncExternalStore(sizeViewport.subscribe, sizeViewport.sizeClass)} />;
+}
+
+let input = browserInput(window);
 let reactRoot: Root | undefined;
 let resources: ReturnType<typeof coloringWorkshopRoot> | undefined;
 let session: ColoringWorkshopSession;
@@ -26,6 +38,8 @@ export { createPainter };
 
 export async function mount(options: { id: string; resume?: boolean; language?: Language; theme?: "dark" | "light"; gate?: boolean; history?: Action[] }) {
   reactRoot?.unmount();
+  // Each mount is a fresh page: no tap from an earlier mount, on its own test clock, counts against this one.
+  input.stop(); input = browserInput(window);
   await closeGate?.();
   closeGate = undefined;
   await resources?.close();
@@ -72,7 +86,7 @@ export async function mount(options: { id: string; resume?: boolean; language?: 
   }
   document.body.innerHTML = '<div id="root"></div>';
   reactRoot = createRoot(document.getElementById("root")!);
-  flushSync(() => reactRoot!.render(<InputArbitrationContext value={input.arbitrate}><ColoringWorkshopScreen session={session} painter={painter} language={options.language ?? "en"} /></InputArbitrationContext>));
+  flushSync(() => reactRoot!.render(<InputArbitrationContext value={input.arbitrate}><Workshop session={session} painter={painter} language={options.language ?? "en"} /></InputArbitrationContext>));
 }
 export const snapshot = () => session.getSnapshot();
 export const departures = () => navigations;

@@ -70,7 +70,7 @@ const { chromium } = require("playwright");
           const context = JSON.stringify({ width, height, language, bounds });
           const row = bounds.filter(other => Math.abs(other.top - b.top) < 1);
           assert(row.every(other => Math.abs(other.bottom - b.bottom) < 1), context);
-          assert(b.bottom - b.top >= 60 && b.width >= 60, context);
+          assert(b.bottom - b.top >= 48 && b.width >= 48, context);
           assert(b.bottom <= height, context);
           assert(!b.clipped, context);
         }
@@ -144,12 +144,13 @@ const { chromium } = require("playwright");
         const layout = await page.evaluate(() => ({
           scroll: [document.documentElement.scrollWidth, document.documentElement.scrollHeight],
           background: getComputedStyle(document.querySelector(".gallery-card")).backgroundColor,
+          pocket: (() => { const probe = document.body.appendChild(document.createElement("i")); probe.style.background = "var(--ds-pocket-1)"; const colour = getComputedStyle(probe).backgroundColor; probe.remove(); return colour; })(),
           buttons: [...document.querySelectorAll("button")].map(b => { const r = b.getBoundingClientRect(); return { row: b.matches(".gallery-new"), text: b.textContent, x: r.x, y: r.y, w: r.width, h: r.height }; })
         }));
         const context = JSON.stringify({ viewport, language, theme, layout });
         assert.deepEqual(layout.scroll, [viewport.width, viewport.height], context);
-        assert.equal(layout.background, theme === "dark" ? "rgb(24, 30, 46)" : "rgb(255, 253, 248)", context);
-        for (const b of layout.buttons) assert(b.w >= 60 && b.h >= 60 && b.x >= 0 && b.y >= 0 && (b.row || b.x + b.w <= viewport.width + 1) && b.y + b.h <= viewport.height + 1, context);
+        assert.equal(layout.background, layout.pocket, context);
+        for (const b of layout.buttons) assert(b.w >= 48 && b.h >= 48 && b.x >= 0 && b.y >= 0 && (b.row || b.x + b.w <= viewport.width + 1) && b.y + b.h <= viewport.height + 1, context);
         for (const image of await page.locator(".gallery-thumbnail img").all()) {
           const box = await image.boundingBox(); assert(box && box.width > 50 && box.height > 35, context);
         }
@@ -158,7 +159,7 @@ const { chromium } = require("playwright");
           const c = card.getBoundingClientRect(), t = card.querySelector(".gallery-thumbnail").getBoundingClientRect(), s = card.querySelector(".gallery-status").getBoundingClientRect();
           return { top: c.top, left: c.left, thumb: [t.left, t.top], status: [s.left, s.top, s.width] };
         }));
-        for (const card of cards) assert(card.status[0] - card.thumb[0] <= 8 && card.status[1] - card.thumb[1] <= 8 && card.status[2] === 28, context);
+        for (const card of cards) assert(card.status[0] - card.thumb[0] <= 8 && card.status[1] - card.thumb[1] <= 8 && card.status[2] >= 28, context);
         if (viewport.width < 600 && viewport.height > viewport.width) assert(Math.abs(cards[0].top - cards[1].top) < 1 && cards[1].left > cards[0].left, JSON.stringify({ viewport, cards }));
       }
     }

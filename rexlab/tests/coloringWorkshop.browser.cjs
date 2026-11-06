@@ -174,11 +174,12 @@ const { chromium } = require("playwright");
             canvas: box(document.querySelector("canvas")), body: box(document.querySelector(".coloring-body")),
             nav: box(document.querySelector(".coloring-navigation")), dock: box(document.querySelector(".coloring-tools")),
             titles: [...document.querySelectorAll("h1, h2")].filter(el => getComputedStyle(el).display !== "none").length,
-            buttons: [...document.querySelectorAll("button")].filter(b => b.getBoundingClientRect().width > 0).map(b => ({
+            buttons: [...document.querySelectorAll("button")].filter(b => b.getBoundingClientRect().width > 0 && !b.closest(".coloring-strip")).map(b => ({
               ...box(b), name: b.getAttribute("aria-label"), text: b.innerText,
               background: getComputedStyle(b).backgroundColor, dock: !!b.closest(".coloring-tools")
             })),
-            background: getComputedStyle(paper).backgroundColor, border: getComputedStyle(paper).borderTopWidth
+            background: getComputedStyle(paper).backgroundColor,
+            paper: (() => { const probe = document.body.appendChild(document.createElement("i")); probe.style.background = "var(--ds-paper)"; const colour = getComputedStyle(probe).backgroundColor; probe.remove(); return colour; })()
           };
         });
         const context = JSON.stringify({ viewport, language, theme, layout });
@@ -190,59 +191,47 @@ const { chromium } = require("playwright");
         assert.deepEqual(layout.scroll, [viewport.width, viewport.height], context);
         assert(layout.canvas.w > 80 && layout.canvas.h > 50, context);
         assert(Math.abs(layout.canvas.w / layout.canvas.h - 920 / 620) < .01, context);
-        assert.equal(layout.background, landscape ? "rgba(0, 0, 0, 0)" : theme === "dark" ? "rgb(24, 30, 46)" : "rgb(255, 253, 248)", context);
-        assert.equal(layout.buttons.length, 9, context);
-        const names = language === "en" ? ["HOME", "NEW WORK", "GALLERY", "DONE", "COLOR", "BRUSH", "FILL", "SIZE", "UNDO"] : ["ДОМОЙ", "НОВЫЙ РИСУНОК", "ГАЛЕРЕЯ", "ГОТОВО", "ЦВЕТ", "КИСТЬ", "ЗАЛИВКА", "РАЗМЕР", "ОТМЕНИТЬ"];
+        assert.equal(layout.background, layout.paper, context);
+        const sizeClass = await page.evaluate(() => document.documentElement.dataset.size);
+        // An upright iPad keeps the palette open under the paper, so it has no COLOR button.
+        const openPalette = sizeClass === "tall";
+        assert.equal(layout.buttons.length, openPalette ? 8 : 9, context);
+        const names = (language === "en" ? ["HOME", "NEW WORK", "GALLERY", "DONE", "BRUSH", "FILL", "COLOR", "SIZE", "UNDO"] : ["ДОМОЙ", "НОВЫЙ РИСУНОК", "ГАЛЕРЕЯ", "ГОТОВО", "КИСТЬ", "ЗАЛИВКА", "ЦВЕТ", "РАЗМЕР", "ОТМЕНИТЬ"]).filter((_, i) => !openPalette || i !== 6);
+        const [colorName, sizeName, fillName] = language === "en" ? ["COLOR", "SIZE", "FILL"] : ["ЦВЕТ", "РАЗМЕР", "ЗАЛИВКА"];
         assert.deepEqual(layout.buttons.map(b => b.name), names, context);
         for (const name of names) assert.equal(await page.getByRole("button", { name, exact: true }).count(), 1, context);
         for (const button of layout.buttons) {
-          assert(button.w >= (tabletRail ? 48 : 60) && button.h >= (tabletRail ? 48 : 60) && button.x >= 0 && button.y >= 0 && button.x + button.w <= viewport.width + 1 && button.y + button.h <= viewport.height + 1, context);
+          assert(button.w >= 48 && button.h >= 48 && button.x >= 0 && button.y >= 0 && button.x + button.w <= viewport.width + 1 && button.y + button.h <= viewport.height + 1, context);
           assert(separate(button, layout.canvas), context);
         }
         for (let i = 0; i < layout.buttons.length; i++) for (const b of layout.buttons.slice(i + 1)) assert(separate(layout.buttons[i], b), context);
-        const navButtons = layout.buttons.filter(b => !b.dock);
-        const dockButtons = layout.buttons.filter(b => b.dock);
-        assert.equal(new Set(navButtons.map(b => b.background)).size, 4, context);
-        const navigationColors = theme === "dark"
-          ? ["rgb(81, 69, 44)", "rgb(70, 56, 93)", "rgb(41, 71, 93)", "rgb(242, 178, 75)"]
-          : ["rgb(232, 217, 183)", "rgb(219, 208, 239)", "rgb(205, 226, 242)", "rgb(227, 155, 45)"];
-        assert.deepEqual(navButtons.map(b => b.background), navigationColors, context);
-        if (landscape) {
-          assert.equal(layout.titles, 0, context);
-          assert.equal(layout.border, "0px", context);
-          for (const b of navButtons) {
-            assert.equal(b.text, "", context);
-            assert.equal(b.w, tabletRail ? 48 : 60, context); assert.equal(b.h, tabletRail ? 48 : 60, context);
-          }
-        }
-        if (tabletRail) {
+        if (sizeClass === "wide") {
           assert(layout.nav.x + layout.nav.w < layout.canvas.x && layout.dock.x + layout.dock.w < layout.canvas.x, context);
-          assert(layout.dock.y - layout.nav.y - layout.nav.h >= 16, context);
-          const topClearance = layout.nav.y;
-          const bottomClearance = viewport.height - layout.dock.y - layout.dock.h;
-          assert(Math.abs(topClearance - bottomClearance) < 1, context);
-          assert(topClearance >= 32 && bottomClearance >= 32, context);
-          assert.equal(layout.body.y, viewport.height < 600 ? 8 : 32, context);
-          assert.equal(layout.body.h, viewport.height - (viewport.height < 600 ? 16 : 64), context);
-          assert.equal(new Set(navButtons.map(b => b.x)).size, 1, context);
-          assert.equal(new Set(dockButtons.slice(0, 4).map(b => b.x)).size, 1, context);
-          assert(layout.nav.w <= 56 && layout.dock.w <= 56, context);
-          const undo = dockButtons[4];
-          assert(Math.abs(undo.x + undo.w / 2 - layout.dock.x - layout.dock.w / 2) < 1, context);
-          assert(layout.canvas.h >= viewport.height * .75, context);
-          assert(Math.abs(layout.canvas.h - Math.min(layout.body.h, layout.body.w * 620 / 920)) < 1, context);
+          assert(layout.dock.y >= layout.nav.y + layout.nav.h, context);
+          assert(layout.canvas.w >= layout.body.w - 25 || layout.canvas.h >= layout.body.h - 25, context);
+        } else if (sizeClass === "tall") {
+          for (const b of layout.buttons) assert(b.y + b.h <= layout.canvas.y, context);
         } else {
-          assert.equal(layout.dock.h, 60, context);
-          assert(layout.dock.y >= layout.canvas.y + layout.canvas.h, context);
+          for (const b of layout.buttons) assert(b.dock ? b.y >= layout.canvas.y + layout.canvas.h : b.y + b.h <= layout.canvas.y, context);
         }
-        const trigger = page.getByRole("button", { name: names[4], exact: true });
+        const trigger = page.getByRole("button", { name: colorName, exact: true });
         const originalCanvas = await canvas.elementHandle();
         const originalBox = await canvas.boundingBox();
         if (screenshotDir && viewport.width === 1133 && viewport.height === 744 && language === "en") {
           await page.screenshot({ path: join(screenshotDir, `ipad-mini-landscape-${theme}.png`) });
         }
-        await trigger.press("Enter"); await finishAnimations();
         const dialog = page.getByRole("dialog");
+        if (openPalette) {
+          const strip = await Promise.all((await page.locator(".coloring-strip").getByRole("button").all()).map(b => b.boundingBox()));
+          assert.equal(strip.length, 12, context);
+          assert.equal(new Set(strip.map(r => r.x)).size, 6, context);
+          for (const r of strip) assert(r.width >= 60 && r.height >= 60 && r.y >= layout.canvas.y + layout.canvas.h && r.y + r.height <= viewport.height, context);
+          await page.locator(".coloring-strip").getByRole("button", { name: language === "en" ? "BLUE" : "ГОЛУБОЙ", exact: true }).press("Enter");
+          assert.equal(await dialog.count(), 0);
+          assert.equal(await page.locator(".coloring-size-button .coloring-dot").evaluate(el => el.style.color), "rgb(66, 165, 245)");
+          assert.equal((await state()).work.revision, 0);
+        } else {
+        await trigger.press("Enter"); await finishAnimations();
         assert.equal(await dialog.getByRole("button").count(), 13);
         assert.deepEqual(await canvas.boundingBox(), originalBox, context);
         assert(await page.evaluate(original => original === document.querySelector("canvas"), originalCanvas), context);
@@ -250,14 +239,15 @@ const { chromium } = require("playwright");
         for (const selector of [".coloring-navigation", ".coloring-tools", ".coloring-canvas-space"]) assert.equal(await page.locator(selector).evaluate(el => el.inert), true);
         const picker = await dialog.boundingBox();
         assert(picker.x >= 0 && picker.y >= 0 && picker.x + picker.width <= viewport.width && picker.y + picker.height <= viewport.height, context);
-        if (viewport.width >= 600 && viewport.height >= 480) {
+        // A tablet's popover leaves the drawing in view; a phone's sheet takes the paper's place.
+        if (sizeClass === "wide" || sizeClass === "tall") {
           assert.equal(await canvas.evaluate(el => getComputedStyle(el.closest(".coloring-paper")).visibility), "visible", context);
           if (tabletRail) assert(picker.x >= layout.nav.x + layout.nav.w && picker.x <= layout.body.x + 1, context);
           if (tabletRail || !landscape) assert(picker.width < originalBox.width / 2, context);
         }
         for (const button of await dialog.getByRole("button").all()) {
           const r = await button.boundingBox();
-          assert(r && r.width === 60 && r.height === 60 && r.x >= 0 && r.y >= 0 && r.x + r.width <= viewport.width + 1 && r.y + r.height <= viewport.height + 1, context);
+          assert(r && r.width >= 60 && r.height >= 60 && r.x >= 0 && r.y >= 0 && r.x + r.width <= viewport.width + 1 && r.y + r.height <= viewport.height + 1, context);
         }
         const cells = await Promise.all((await dialog.getByRole("group").getByRole("button").all()).map(b => b.boundingBox()));
         assert.equal(new Set(cells.map(r => r.x)).size, landscape && !tabletRail ? 6 : 4, context);
@@ -275,17 +265,18 @@ const { chromium } = require("playwright");
         await dialog.getByRole("button", { name: language === "en" ? "BLUE" : "ГОЛУБОЙ", exact: true }).press("Enter");
         assert.equal(await dialog.count(), 0);
         assert(await trigger.evaluate(el => el === document.activeElement));
-        assert.equal(await trigger.locator(".coloring-swatch").evaluate(el => el.style.backgroundColor), "rgb(66, 165, 245)");
+        assert.equal(await trigger.locator(".coloring-face-color").evaluate(el => el.style.backgroundColor), "rgb(66, 165, 245)");
         assert.equal((await state()).work.revision, 0);
         await trigger.press("Enter");
         await dialog.getByRole("button", { name: language === "en" ? "CLOSE" : "ЗАКРЫТЬ", exact: true }).press("Enter");
-        const sizeTrigger = page.getByRole("button", { name: names[7], exact: true });
-        await page.getByRole("button", { name: names[6], exact: true }).press("Enter");
+        }
+        const sizeTrigger = page.getByRole("button", { name: sizeName, exact: true });
+        await page.getByRole("button", { name: fillName, exact: true }).press("Enter");
         await sizeTrigger.press("Enter");
         assert.equal(await dialog.getByRole("button").count(), 4);
         for (const button of await dialog.getByRole("button").all()) {
           const r = await button.boundingBox();
-          assert(r && r.width === 60 && r.height === 60 && r.x >= 0 && r.y >= 0 && r.x + r.width <= viewport.width + 1 && r.y + r.height <= viewport.height + 1, context);
+          assert(r && r.width >= 60 && r.height >= 60 && r.x >= 0 && r.y >= 0 && r.x + r.width <= viewport.width + 1 && r.y + r.height <= viewport.height + 1, context);
         }
         if (screenshotDir && viewport.width === 1133 && viewport.height === 744 && language === "en") {
           await finishAnimations();
@@ -297,19 +288,16 @@ const { chromium } = require("playwright");
         assert.deepEqual((await state()).work.actions, []);
         assert.deepEqual(await canvas.boundingBox(), originalBox, context);
         assert(await sizeTrigger.evaluate(el => el === document.activeElement));
-        assert.equal(await page.getByRole("button", { name: names[5], exact: true }).getAttribute("aria-pressed"), "true");
-        assert.equal(await page.getByRole("button", { name: names[6], exact: true }).getAttribute("aria-pressed"), "false");
+        assert.equal(await page.getByRole("button", { name: names[4], exact: true }).getAttribute("aria-pressed"), "true");
+        assert.equal(await page.getByRole("button", { name: names[5], exact: true }).getAttribute("aria-pressed"), "false");
         // The storage gate holds saving until the test releases it.
         await tap(420, 330, 100000 + layoutId * 1000);
         await page.waitForFunction(() => window.workshop.writeCount() === 1);
         assert.equal((await state()).save, "saving", context);
         assert.equal(await status.textContent(), language === "en" ? "SAVING" : "СОХРАНЯЕМ", context);
         assert.deepEqual(await canvas.boundingBox(), originalBox, context);
-        if (landscape) {
-          const routine = await status.boundingBox();
-          assert(routine.width <= 1 && routine.height <= 1, context);
-          assert.equal(await status.evaluate(el => getComputedStyle(el).clipPath), "inset(50%)", context);
-        }
+        const routine = await status.boundingBox();
+        assert(routine.x >= layout.body.x && routine.x + routine.width <= layout.body.x + layout.body.w + 1 && routine.y >= layout.body.y, context);
         await page.evaluate(() => window.workshop.release()); await settle();
         assert.equal((await state()).save, "saved", context);
         assert.equal(await status.textContent(), language === "en" ? "SAVED" : "СОХРАНЕНО", context);
@@ -328,15 +316,13 @@ const { chromium } = require("playwright");
         const style = getComputedStyle(el);
         return [parseFloat(style.paddingTop), parseFloat(style.paddingBottom)];
       });
-      assert.deepEqual(padding, viewport.height < 600 ? [32, 28] : [56, 52]);
+      assert.deepEqual(padding, [24, 24]);
       const nav = await page.locator(".coloring-navigation").boundingBox();
       const tools = await page.locator(".coloring-tools").boundingBox();
-      const topClearance = nav.y - 24, bottomClearance = viewport.height - 20 - tools.y - tools.height;
-      const context = JSON.stringify({ viewport, nav, tools, topClearance, bottomClearance });
-      assert(Math.abs(topClearance - bottomClearance) < 1, context);
-      assert(topClearance >= 24 && bottomClearance >= 24, context);
+      const context = JSON.stringify({ viewport, nav, tools });
+      assert(nav.y >= 24 && tools.y + tools.height <= viewport.height - 20, context);
       const columns = await page.locator(".coloring-navigation button").evaluateAll(buttons => new Set(buttons.map(b => b.getBoundingClientRect().x)).size);
-      assert.equal(columns, 1, context);
+      assert.equal(columns, 2, context);
     }
     await cdp.send("Emulation.setSafeAreaInsetsOverride", { insets: { top: 0, bottom: 0, left: 0, right: 0 } });
     await cdp.detach();
@@ -345,7 +331,8 @@ const { chromium } = require("playwright");
       await page.setViewportSize(viewport);
       for (const language of ["en", "ru"]) for (const theme of ["light", "dark"]) {
         await mount({ id: `error-picker-${viewport.width}-${language}-${theme}`, gate: true, language, theme });
-        await tap(420, 330, 205000);
+        // On the real clock, a second ago: Retry can stand near this tap, and a click stamped before a tap's release would count as its double.
+        await tap(420, 330, await page.evaluate(() => performance.now() - 1000));
         await page.waitForFunction(() => window.workshop.writeCount() === 1);
         await page.evaluate(() => window.workshop.fail());
         const alert = page.getByRole("alertdialog");
@@ -386,7 +373,7 @@ const { chromium } = require("playwright");
           await page.getByRole("dialog").waitFor();
           for (const button of await page.getByRole("dialog").getByRole("button").all()) {
             const r = await withinViewport(button);
-            assert(r.width === 60 && r.height === 60);
+            assert(r.width >= 60 && r.height >= 60);
           }
           await page.keyboard.press("Escape");
         }
@@ -403,15 +390,16 @@ const { chromium } = require("playwright");
     }
     // Rotation closes a picker without replacing the canvas or saved paint.
     await page.setViewportSize({ width: 1133, height: 744 });
+    // SIZE stands in every size class; an upright iPad has no COLOR button.
     await mount({ id: "rotation" });
     await tap(420, 330, 110000); await settle();
     const saved = await state();
     const surface = await canvas.elementHandle();
     for (const viewport of [{ width: 744, height: 1133 }, { width: 1024, height: 600 }, { width: 568, height: 320 }, { width: 1133, height: 744 }]) {
-      await page.getByRole("button", { name: "COLOR", exact: true }).press("Enter");
+      await page.getByRole("button", { name: "SIZE", exact: true }).press("Enter");
       await page.setViewportSize(viewport);
       await page.getByRole("dialog").waitFor({ state: "detached" });
-      assert(await page.getByRole("button", { name: "COLOR", exact: true }).evaluate(el => el === document.activeElement));
+      assert(await page.getByRole("button", { name: "SIZE", exact: true }).evaluate(el => el === document.activeElement));
       assert(await page.evaluate(original => original === document.querySelector("canvas"), surface));
       assert.deepEqual((await state()).work, saved.work);
       assert.deepEqual(await pixel(420, 330), [239, 83, 80, 255]);

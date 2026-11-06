@@ -1,154 +1,136 @@
+/* The sky, the sand and the bedrock lie behind the paper and the controls. */
 .coloring-workshop {
-  --fm-bg: #f2efe8;
-  --fm-surface: #fffdf8;
-  --fm-surface-2: #e6e2d9;
-  --fm-ink: #1d2742;
-  --fm-ink-soft: #5c647a;
-  --fm-line: #1d27421f;
-  --fm-amber: #e39b2d;
-  --fm-terra: #c9583d;
-  --coloring-home: #e8d9b7;
-  --coloring-new: #dbd0ef;
-  --coloring-gallery: #cde2f2;
-  --coloring-brush: #cfe6df;
-  --coloring-safe-top: env(safe-area-inset-top, 0px);
-  --coloring-safe-bottom: env(safe-area-inset-bottom, 0px);
-  box-sizing: border-box;
-  position: relative;
-  height: 100dvh;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: max(12px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
-  color: var(--fm-ink);
-  background: var(--fm-bg);
-  overflow: hidden;
+  --cw-face: 64px; --cw-tool-radius: var(--ds-radius-19); --cw-name: var(--ds-size-13); --cw-sand: 130px; --cw-bedrock: 60px; --cw-wave: 30px;
+  --cw-left: max(var(--ds-space-20), env(safe-area-inset-left)); --cw-right: max(var(--ds-space-xl), env(safe-area-inset-right));
+  box-sizing: border-box; position: relative; isolation: isolate; height: 100dvh; display: grid; grid-template-columns: 164px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); gap: var(--ds-space-l);
+  padding: max(var(--ds-space-xl), env(safe-area-inset-top)) var(--cw-right) max(var(--ds-space-xl), env(safe-area-inset-bottom)) var(--cw-left);
+  color: var(--ds-ink); font-family: var(--ds-font); overflow: hidden;
+  background: linear-gradient(var(--ds-sky-top), var(--ds-sky-bottom) 40dvh) var(--ds-sky-bottom);
   animation: rise-in var(--motion-screen) var(--ease-out) both;
 }
-[data-theme="dark"] .coloring-workshop {
-  --fm-bg: #0f1320;
-  --fm-surface: #181e2e;
-  --fm-surface-2: #222a3d;
-  --fm-ink: #ece8de;
-  --fm-ink-soft: #9ca3b6;
-  --fm-line: #ece8de1f;
-  --fm-amber: #f2b24b;
-  --fm-terra: #e57a5d;
-  --coloring-home: #51452c;
-  --coloring-new: #46385d;
-  --coloring-gallery: #29475d;
-  --coloring-brush: #284d47;
-}
-.coloring-workshop button {
-  box-sizing: border-box;
-  position: relative;
-  min-width: 60px;
-  min-height: 60px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border: 2px solid transparent;
-  border-radius: 18px;
-  background: var(--fm-surface-2);
-  color: var(--fm-ink);
-  font: inherit;
-  font-size: 14px;
-  font-weight: 750;
-  cursor: pointer;
-  transition: background-color var(--motion-small) var(--ease-out), border-color var(--motion-small) var(--ease-out), opacity var(--motion-small) var(--ease-out);
-}
+.coloring-ground { position: absolute; z-index: -1; inset: auto 0 0; height: var(--cw-sand); background: var(--ds-strata-1); }
+.coloring-wave { position: absolute; left: 0; bottom: calc(100% - 1px); width: 100%; height: var(--cw-wave); fill: var(--ds-strata-1); pointer-events: none; }
+.coloring-bedrock { position: absolute; inset: auto 0 0; height: var(--cw-bedrock); background: var(--ds-strata-2); }
+.coloring-bedrock .coloring-wave { fill: var(--ds-strata-2); }
+html[data-size="wide-short"] .coloring-bedrock { display: none; }
+.coloring-title, .coloring-hidden { position: absolute !important; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* Every control is a face over its name. */
+.coloring-workshop button { box-sizing: border-box; position: relative; min-width: 48px; min-height: 48px; display: inline-flex; align-items: center; justify-content: center; gap: var(--ds-space-s); padding: var(--ds-space-s) var(--ds-space-14); border: 0; border-radius: var(--ds-radius-pill); background: var(--ds-quiet); color: var(--ds-ink); font: inherit; font-size: var(--ds-size-label); font-weight: 800; cursor: pointer; touch-action: manipulation; transition: background-color var(--motion-small) var(--ease-out), opacity var(--motion-small) var(--ease-out); }
 .coloring-workshop button svg { flex-shrink: 0; width: 22px; height: 22px; }
-.coloring-workshop button .coloring-selection { position: absolute; top: 3px; right: 3px; width: 14px; height: 14px; }
 .coloring-workshop button:disabled { opacity: .4; cursor: default; }
-.coloring-workshop button:focus-visible { outline: 3px solid var(--fm-terra); outline-offset: 2px; }
-.coloring-workshop button[aria-pressed="true"] { border-color: var(--fm-amber); background: color-mix(in srgb, var(--fm-amber) 25%, var(--fm-surface)); }
-.coloring-title { order: 0; flex-shrink: 0; display: flex; align-items: center; justify-content: center; gap: 12px; margin: 0; font-size: clamp(18px, 3vw, 30px); }
-.coloring-rail { display: contents; }
-.coloring-navigation { order: 1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; flex-shrink: 0; }
-.coloring-navigation .coloring-nav-home { background: var(--coloring-home); }
-.coloring-navigation .coloring-nav-new { background: var(--coloring-new); }
-.coloring-navigation .coloring-nav-gallery { background: var(--coloring-gallery); }
-.coloring-navigation .coloring-done { color: #1d2742; background: var(--fm-amber); }
-.coloring-body { order: 2; position: relative; flex: 1; min-height: 0; min-width: 0; display: flex; }
-.coloring-paper { min-width: 0; min-height: 0; flex: 1; position: relative; display: flex; flex-direction: column; align-items: center; padding: 12px; border: 1px solid var(--fm-line); border-radius: 28px; background: var(--fm-surface); }
-.coloring-paper h2 { flex-shrink: 0; margin: 0; font-size: clamp(18px, 2.5vw, 28px); letter-spacing: .04em; }
+.coloring-workshop button:focus-visible { outline: 3px solid var(--ds-reward); outline-offset: 2px; }
+.coloring-workshop :is(.coloring-navigation, .coloring-tools) button { flex: none; flex-direction: column; gap: var(--ds-space-xs); min-width: var(--cw-face); padding: 0; background: transparent; }
+.coloring-face { display: grid; place-items: center; width: var(--cw-face); height: var(--cw-face); border-radius: 50%; background: var(--ds-quiet); color: var(--ds-ink); box-sizing: border-box; }
+.coloring-workshop .coloring-face svg { width: 45%; height: 45%; }
+.coloring-tools .coloring-face { border-radius: var(--cw-tool-radius); }
+.coloring-tools .coloring-face.coloring-face-color { border-radius: 50%; color: var(--ds-on-reward); }
+.coloring-nav-new .coloring-face { background: var(--ds-pocket-1); color: var(--ds-action); }
+.coloring-done .coloring-face { background: var(--ds-good); color: var(--ds-on-good); }
+.coloring-tools button[aria-pressed="true"] .coloring-face { background: var(--ds-strong); color: var(--ds-on-strong); }
+.coloring-tile-name { font-size: var(--cw-name); font-weight: 800; white-space: nowrap; }
+/* Russian tool names such as ЗАЛИВКА run longer: they take the phone size to fit their tile. */
+.coloring-workshop:lang(ru) .coloring-tile-name { font-size: min(var(--cw-name), var(--ds-size-11)); }
+.coloring-workshop button .coloring-selection { position: absolute; top: -5px; left: calc(50% + var(--cw-face) / 2 - 17px); box-sizing: border-box; width: 22px; height: 22px; padding: var(--ds-space-xs); border-radius: 50%; background: var(--ds-good); color: var(--ds-on-good); }
+
+/* Beside the paper: the leave buttons, a line, the tools. */
+.coloring-rail { min-height: 0; align-self: stretch; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--ds-space-14); padding: var(--ds-space-14) var(--ds-space-m); overflow-y: auto; border-radius: var(--ds-radius-28); background: var(--ds-label); }
+.coloring-navigation, .coloring-tools { display: grid; grid-template-columns: repeat(2, var(--cw-face)); gap: var(--ds-space-m); }
+.coloring-tools { position: relative; padding-top: var(--ds-space-14); border-top: 2px solid var(--ds-outline); }
+.coloring-undo { grid-column: 1 / -1; justify-self: center; }
+
+.coloring-body { position: relative; min-height: 0; min-width: 0; display: flex; align-items: center; }
+.coloring-paper { box-sizing: border-box; position: relative; flex: 1; align-self: stretch; min-width: 0; min-height: 0; display: flex; flex-direction: column; padding: var(--ds-space-m); border-radius: var(--ds-radius-28); background: var(--ds-paper); }
 .coloring-canvas-space { flex: 1; width: 100%; min-height: 0; display: flex; align-items: center; justify-content: center; container-type: size; }
 .coloring-canvas-space canvas { display: block; width: min(100cqw, calc(100cqh * 920 / 620)); height: min(100cqh, calc(100cqw * 620 / 920)); touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
-.coloring-tools { order: 3; display: flex; align-items: center; justify-content: center; gap: 8px; flex: 0 0 60px; }
-.coloring-tools button, .coloring-chooser button { flex: 0 0 60px; min-width: 60px; min-height: 60px; width: 60px; height: 60px; padding: 4px; border-radius: 18px; }
-.coloring-palette { display: grid; grid-template-columns: repeat(4, 60px); gap: 8px; justify-content: center; }
-.coloring-palette button { padding: 0; }
-.coloring-swatch { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 50%; border: 1px solid #1d274240; color: #091e40; }
-.coloring-swatch svg { background: #fff0cf; border-radius: 50%; }
-.coloring-sizes { display: flex; gap: 8px; align-items: center; justify-content: center; }
-.coloring-dot { display: block; width: var(--dot); height: var(--dot); border-radius: 50%; background: currentColor; }
-.coloring-save { order: 4; margin: 0; min-height: 24px; display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--fm-ink-soft); font-size: 13px; font-weight: 700; }
-.coloring-save svg { width: 18px; }
-.coloring-picker-layer { position: absolute; inset: 0; z-index: 20; touch-action: none; background: var(--fm-surface); border-radius: 20px; }
-.coloring-chooser { box-sizing: border-box; position: absolute; inset: 0; display: flex; flex-direction: column; gap: 4px; padding: 4px; justify-content: center; background: var(--fm-surface); border-radius: 20px; animation: fade-in var(--motion-small) var(--ease-out) both; }
-.coloring-picker-header { display: flex; align-items: center; justify-content: space-between; height: 60px; flex-shrink: 0; }
-.coloring-chooser .coloring-palette { gap: 4px; }
+.coloring-save { position: absolute; z-index: 1; top: var(--ds-space-m); right: var(--ds-space-m); max-width: calc(100% - 2 * var(--ds-space-m)); box-sizing: border-box; flex-wrap: wrap; display: flex; align-items: center; justify-content: center; gap: var(--ds-space-6); margin: 0; padding: var(--ds-space-7) var(--ds-space-14); border: 2px solid var(--ds-outline); border-radius: var(--ds-radius-pill); background: var(--ds-label); color: var(--ds-ink-soft); font-size: var(--ds-size-13); font-weight: 800; }
+/* A failed save holds Retry, so it takes its own room: the canvas gives way and is never covered. */
+.coloring-save-error { border-color: var(--ds-action); color: var(--ds-ink); position: static; flex: none; order: -1; align-self: flex-end; margin-bottom: var(--ds-space-xs); }
+.coloring-save-error > svg:first-child { color: var(--ds-action); }
+.coloring-workshop .coloring-save-error button { min-width: 60px; min-height: 60px; padding: 0 var(--ds-space-14); border-radius: var(--ds-radius-pill); background: var(--ds-quiet); color: var(--ds-ink); font-weight: 800; }
+.coloring-save:empty { padding: 0; border: 0; opacity: 0; pointer-events: none; }
+.coloring-workshop .coloring-save svg { width: 18px; height: 18px; }
+
+/* Pickers: a popover beside its button on a tablet, a sheet over the paper on a phone. */
+.coloring-picker-layer { position: absolute; inset: 0; z-index: 20; touch-action: none; }
+.coloring-chooser { box-sizing: border-box; position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; gap: var(--ds-space-s); padding: var(--ds-space-m); border-radius: var(--ds-radius-28); background: var(--ds-label); color: var(--ds-ink); animation: fade-in var(--motion-small) var(--ease-out) both; }
+.coloring-picker-header { display: flex; align-items: center; justify-content: space-between; gap: var(--ds-space-m); }
+.coloring-picker-header strong { display: inline-flex; align-items: center; gap: var(--ds-space-6); font-size: var(--ds-size-17); font-weight: 900; }
+.coloring-workshop .coloring-picker-header strong svg { width: 22px; height: 22px; color: var(--ds-action); }
+/* CLOSE answers a child's 60-point tap around the small pill the boards draw. */
+.coloring-workshop .coloring-close { min-width: 60px; min-height: 60px; padding: 0; background: transparent; }
+.coloring-close-pill { display: inline-flex; align-items: center; gap: var(--ds-space-xs); min-height: 36px; padding: 0 var(--ds-space-14); border-radius: var(--ds-radius-pill); background: var(--ds-quiet); color: var(--ds-ink); font-size: var(--ds-size-13); font-weight: 800; }
+.coloring-workshop .coloring-close svg { width: 16px; height: 16px; }
+.coloring-palette { display: grid; grid-template-columns: repeat(4, minmax(60px, 1fr)); gap: var(--ds-space-xs) 0; }
+.coloring-sizes { display: flex; gap: var(--ds-space-s); justify-content: center; }
+.coloring-workshop :is(.coloring-palette, .coloring-sizes) button { min-width: 60px; min-height: 60px; flex-direction: column; gap: var(--ds-space-xs); padding: var(--ds-space-xs); background: transparent; color: var(--ds-ink); }
+.coloring-swatch { display: grid; place-items: center; box-sizing: border-box; width: 44px; height: 44px; border-radius: 50%; border: 2px solid var(--ds-outline); color: var(--ds-ink); }
+.coloring-workshop .coloring-swatch svg { width: 24px; height: 24px; }
+button[aria-pressed="true"] > .coloring-swatch { border: 3px solid var(--ds-strong); box-shadow: 0 0 0 3px var(--ds-label) inset; }
+.coloring-swatch-name { font-size: var(--ds-size-10); font-weight: 800; white-space: nowrap; }
+.coloring-size-face { position: relative; display: grid; place-items: center; width: 64px; height: 64px; border-radius: var(--ds-radius-17); background: var(--ds-quiet); }
+button[aria-pressed="true"] > .coloring-size-face { background: var(--ds-strong); }
+.coloring-dot { display: block; width: var(--dot); height: var(--dot); border-radius: 50%; background: currentColor; box-shadow: 0 0 0 2px var(--ds-outline); }
+.coloring-workshop .coloring-size-face .coloring-selection, html[data-size="wide-short"] .coloring-workshop .coloring-size-face .coloring-selection { position: absolute; top: -5px; right: -5px; left: auto; width: 22px; height: 22px; padding: var(--ds-space-xs); background: var(--ds-good); color: var(--ds-on-good); }
 .coloring-paper:has(~ .coloring-picker-layer) { visibility: hidden; }
-.coloring-palette-button .coloring-swatch > svg { padding: 3px; background: #fff0cf; }
-.coloring-overlay { position: fixed; z-index: 100; inset: 0; padding: 12px; display: grid; place-items: center; background: #091e4080; animation: fade-in var(--motion-small) var(--ease-out) both; }
-.coloring-error { box-sizing: border-box; display: flex; flex-direction: column; align-items: stretch; gap: 10px; width: min(460px, 100%); max-height: 100%; overflow: auto; padding: 24px; border-radius: 24px; color: var(--fm-ink); background: var(--fm-surface); }
-.coloring-error > svg { align-self: center; color: var(--fm-terra); }
-.coloring-error h2 { margin: 0 0 8px; font-size: 22px; text-align: center; }
-@media (max-width: 600px), (max-height: 599px) {
-  .coloring-workshop { gap: 8px; padding-left: max(8px, env(safe-area-inset-left)); padding-right: max(8px, env(safe-area-inset-right)); }
-  .coloring-title { font-size: 18px; }
-  .coloring-navigation button { font-size: 12px; padding: 4px 8px; }
-  .coloring-paper { padding: 8px; border-radius: 20px; }
-  .coloring-save { font-size: 11px; }
-  .coloring-save:has(button) { flex-wrap: wrap; }
+/* Saving and leaving: a card over the dimmed workshop, its first answer the strongest. */
+.coloring-overlay { position: fixed; z-index: 100; inset: 0; padding: var(--ds-space-m); display: grid; place-items: center; background: var(--ds-scrim); animation: fade-in var(--motion-small) var(--ease-out) both; }
+.coloring-error { box-sizing: border-box; display: flex; flex-direction: column; align-items: stretch; gap: var(--ds-space-s); width: min(400px, 100%); max-height: 100%; overflow: auto; padding: var(--ds-space-l) var(--ds-space-m) var(--ds-space-m); border-radius: var(--ds-radius-28); color: var(--ds-ink); background: var(--ds-label); box-shadow: 0 8px 32px var(--ds-pocket-shadow); }
+.coloring-error-badge { align-self: center; display: grid; place-items: center; width: 56px; height: 56px; border-radius: 50%; background: var(--ds-pocket-1); color: var(--ds-action); }
+.coloring-workshop .coloring-error-badge svg { width: 26px; height: 26px; }
+.coloring-error h2 { margin: 0 0 var(--ds-space-xs); font-size: var(--ds-size-22, 22px); font-weight: 900; text-align: center; }
+.coloring-error p { margin: 0; color: var(--ds-ink-soft); text-align: center; }
+.coloring-workshop .coloring-error button { min-height: 60px; border-radius: var(--ds-radius-pill); font-size: var(--ds-size-17); font-weight: 900; }
+.coloring-workshop .coloring-error .coloring-first { background: var(--ds-action); color: var(--ds-on-action); }
+.coloring-workshop .coloring-error .coloring-second { background: var(--ds-strong); color: var(--ds-on-strong); }
+.coloring-workshop .coloring-error .coloring-way-out { background: var(--ds-quiet); color: var(--ds-ink); font-size: var(--ds-size-13); font-weight: 800; }
+.coloring-canvas-space, .coloring-selection { animation: fade-in var(--motion-small) var(--ease-out) both; }
+html:is([data-size="wide"], [data-size="tall"]) .coloring-paper:has(~ .coloring-picker-layer) { visibility: visible; }
+html:is([data-size="wide"], [data-size="tall"]) .coloring-picker-layer { pointer-events: none; }
+html:is([data-size="wide"], [data-size="tall"]) .coloring-chooser { inset: auto; padding: var(--ds-space-s); width: max-content; max-width: 100%; pointer-events: auto; box-shadow: 0 8px 32px var(--ds-pocket-shadow); }
+html[data-size="wide-short"] .coloring-palette { grid-template-columns: repeat(6, minmax(60px, 1fr)); gap: 0 var(--ds-space-xs); }
+html[data-size="wide-short"] .coloring-chooser { padding: var(--ds-space-s) var(--ds-space-m); gap: 0; }
+html[data-size="wide-short"] .coloring-swatch { width: 36px; height: 36px; }
+/* An upright iPad keeps the palette open under the paper. */
+html[data-size="tall"] .coloring-body { flex-direction: column; align-items: stretch; gap: var(--ds-space-m); }
+.coloring-strip { flex: none; padding: var(--ds-space-s) var(--ds-space-m); border-radius: var(--ds-radius-28); background: var(--ds-label); }
+.coloring-strip .coloring-palette { grid-template-columns: repeat(6, minmax(60px, 1fr)); }
+
+/* Upright on an iPad one row runs over the paper. */
+html[data-size="tall"] .coloring-workshop { --cw-sand: 130px; --cw-bedrock: 28px; --cw-left: max(var(--ds-space-xl), env(safe-area-inset-left)); grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); padding-top: max(var(--ds-space-40), env(safe-area-inset-top)); padding-bottom: 130px; }
+html[data-size="tall"] .coloring-rail { flex-direction: row; justify-content: flex-start; gap: var(--ds-space-m); padding: 0; overflow: visible; border-radius: 0; background: transparent; }
+html[data-size="tall"] :is(.coloring-navigation, .coloring-tools) { display: contents; }
+html[data-size="tall"] .coloring-tools > :first-child, html[data-size="tall"] .coloring-done { margin-left: auto; }
+html[data-size="tall"] .coloring-done { order: 1; }
+/* A small upright tablet fits all eight controls in one bar. */
+@media (max-width: 680px) { html[data-size="tall"] .coloring-workshop { --cw-face: 56px; } html[data-size="tall"] .coloring-rail { gap: var(--ds-space-s); } }
+/* On a phone the leave buttons go above the paper and the tools below it. */
+html[data-size="tall-narrow"] .coloring-workshop { --cw-face: 58px; --cw-tool-radius: var(--ds-radius-17); --cw-name: var(--ds-size-11); --cw-sand: 150px; --cw-bedrock: 10px; --cw-wave: 24px; --cw-left: max(var(--ds-space-l), env(safe-area-inset-left)); --cw-right: max(var(--ds-space-l), env(safe-area-inset-right)); grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; gap: var(--ds-space-m); padding-top: max(var(--ds-space-l), env(safe-area-inset-top)); padding-bottom: calc(var(--ds-space-m) + env(safe-area-inset-bottom)); }
+html[data-size="tall-narrow"] .coloring-rail { display: contents; }
+html[data-size="tall-narrow"] .coloring-navigation { grid-row: 1; display: flex; gap: var(--ds-space-m); }
+html[data-size="tall-narrow"] .coloring-done { margin-left: auto; }
+html[data-size="tall-narrow"] .coloring-body { grid-row: 2; }
+html[data-size="tall-narrow"] .coloring-paper { flex: 1; align-self: center; aspect-ratio: 361 / 350; max-height: 100%; border-radius: var(--ds-radius-speech); }
+html[data-size="tall-narrow"] .coloring-tools { grid-row: 3; display: flex; justify-content: space-between; gap: 0; padding: var(--ds-btn-gap); border: 0; border-radius: var(--ds-radius-28); background: var(--ds-label); }
+html[data-size="tall-narrow"] .coloring-undo { grid-column: auto; }
+@media (max-width: 374px) {
+  html[data-size="tall-narrow"] .coloring-workshop { --cw-face: 48px; }
+  html[data-size="tall-narrow"] .coloring-tools { padding: var(--ds-space-xs) var(--ds-space-xs); }
 }
-@media (max-width: 360px) {
-  .coloring-tools, .coloring-sizes { gap: 2px; }
+/* A phone on its side: the leave buttons, the paper, the tools; chips with their names beside them. */
+html[data-size="wide-short"] .coloring-workshop { --cw-face: 48px; --cw-tool-radius: var(--ds-radius-14); --cw-sand: 150px; --cw-bedrock: 0px; --cw-wave: 24px; --cw-left: max(var(--ds-space-s), env(safe-area-inset-left)); --cw-right: max(var(--ds-space-s), env(safe-area-inset-right)); grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; gap: var(--ds-space-s); padding-top: var(--ds-space-s); padding-bottom: calc(var(--ds-space-s) + env(safe-area-inset-bottom)); }
+html[data-size="wide-short"] .coloring-rail { display: contents; }
+html[data-size="wide-short"] .coloring-navigation { grid-row: 1; display: flex; gap: var(--ds-btn-gap); }
+html[data-size="wide-short"] .coloring-done { margin-left: auto; }
+html[data-size="wide-short"] .coloring-body { grid-row: 2; }
+html[data-size="wide-short"] .coloring-paper { padding: var(--ds-space-xs); border-radius: var(--ds-radius-speech); }
+html[data-size="wide-short"] .coloring-tools { grid-row: 3; display: flex; justify-content: space-between; padding: 0; border: 0; }
+html[data-size="wide-short"] .coloring-undo { grid-column: auto; }
+html[data-size="wide-short"] .coloring-workshop :is(.coloring-navigation, .coloring-tools) button { flex-direction: row; gap: var(--ds-space-s); padding-right: var(--ds-space-l); background: var(--ds-label); }
+html[data-size="wide-short"] .coloring-workshop .coloring-tools button[aria-pressed="true"] { background: var(--ds-strong); color: var(--ds-on-strong); }
+html[data-size="wide-short"] .coloring-workshop button .coloring-selection { position: static; width: 16px; height: 16px; padding: 0; background: transparent; color: var(--ds-on-strong); }
+@media (max-width: 759px) {
+  html[data-size="wide-short"] .coloring-tile-name { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  html[data-size="wide-short"] .coloring-workshop :is(.coloring-navigation, .coloring-tools) button { padding-right: 0; }
 }
-@media (orientation: landscape) {
-  .coloring-title, .coloring-paper h2, .coloring-navigation span { display: none; }
-  .coloring-paper { padding: 0; border: 0; border-radius: 0; background: transparent; }
-  .coloring-save:not(.coloring-save-error) { position: absolute; width: 1px; height: 1px; min-height: 0; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
-  .coloring-save-error { position: absolute; z-index: 10; right: max(8px, env(safe-area-inset-right)); bottom: max(8px, var(--coloring-safe-bottom)); max-width: calc(100% - max(8px, env(safe-area-inset-left)) - max(8px, env(safe-area-inset-right))); box-sizing: border-box; flex-wrap: wrap; padding: 8px; border: 1px solid var(--fm-line); border-radius: 18px; background: var(--fm-surface); }
-  .coloring-navigation { grid-template-columns: repeat(4, 60px); justify-content: center; }
-}
-@media (min-width: 600px) and (min-height: 480px) {
-  .coloring-paper:has(~ .coloring-picker-layer) { visibility: visible; }
-  .coloring-picker-layer { background: transparent; border-radius: 0; }
-  .coloring-chooser { inset: auto; bottom: 0; left: 0; width: max-content; max-width: 100%; padding: 12px; border: 1px solid var(--fm-line); box-shadow: 0 8px 32px #091e4026; }
-  .coloring-chooser .coloring-palette { gap: 8px; }
-}
-@media (max-width: 599px), (max-height: 479px) {
-  .coloring-picker-layer { position: fixed; inset: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left)); }
-}
-@media (orientation: landscape) and (min-width: 900px) and (min-height: 600px) {
-  .coloring-workshop { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); column-gap: 20px; row-gap: 0; padding-top: calc(32px + var(--coloring-safe-top)); padding-bottom: calc(32px + var(--coloring-safe-bottom)); }
-  .coloring-rail { grid-column: 1; grid-row: 1; display: flex; flex-direction: column; align-self: center; gap: 16px; }
-  .coloring-navigation, .coloring-tools { box-sizing: border-box; display: grid; grid-template-columns: 48px; gap: 4px; padding: 4px; border-radius: 20px; background: color-mix(in srgb, var(--coloring-home) 28%, var(--fm-bg)); }
-  .coloring-navigation button, .coloring-tools button { width: 48px; height: 48px; min-width: 48px; min-height: 48px; padding: 4px; border-radius: 14px; }
-  .coloring-tools { position: relative; flex: none; }
-  .coloring-tools::before { content: ""; position: absolute; height: 2px; width: 40px; background: var(--fm-line); top: -9px; left: calc(50% - 20px); }
-  .coloring-tools button { background: var(--fm-surface); }
-  .coloring-tools button:last-child { grid-column: 1 / -1; justify-self: center; }
-  .coloring-tools button[aria-pressed="true"] { background: var(--coloring-brush); }
-  .coloring-body { grid-column: 2; grid-row: 1; }
-  .coloring-chooser { bottom: auto; top: 50%; transform: translateY(-50%); }
-  .coloring-workshop:has(.coloring-save-error) { grid-template-rows: minmax(0, 1fr) auto; row-gap: 8px; }
-  .coloring-workshop:has(.coloring-save-error) .coloring-rail { grid-row: 1 / -1; }
-  .coloring-save-error { position: static; grid-column: 2; grid-row: 2; justify-self: end; max-width: 100%; }
-}
-@media (max-height: 599px) and (orientation: landscape) {
-  .coloring-workshop { padding-top: calc(8px + var(--coloring-safe-top)); padding-bottom: calc(8px + var(--coloring-safe-bottom)); gap: 4px; }
-  .coloring-save { min-height: 18px; }
-}
-@media (orientation: landscape) and (max-width: 899px), (orientation: landscape) and (max-height: 599px) {
-  .coloring-save-error { position: static; flex-shrink: 0; }
-}
-@media (orientation: landscape) and (max-width: 899px), (orientation: landscape) and (max-height: 599px) {
-  .coloring-chooser { flex-direction: row; align-items: center; gap: 8px; }
-  .coloring-picker-header { flex-direction: column; height: auto; gap: 4px; }
-  .coloring-chooser .coloring-palette { grid-template-columns: repeat(6, 60px); }
-}
-.coloring-canvas-space, .coloring-selection, .coloring-swatch > svg { animation: fade-in var(--motion-small) var(--ease-out) both; }
+@media (max-width: 360px) { html[data-size="tall-narrow"] .coloring-workshop:lang(ru) .coloring-swatch-name { font-size: var(--ds-size-9); letter-spacing: -0.02em; } }
