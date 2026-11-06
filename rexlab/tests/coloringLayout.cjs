@@ -18,9 +18,6 @@ const LAYOUT_VIEWPORTS = [
 
 // Returns the layout of `root` as plain data; checks run in Node.
 async function measure(page, root, scroller, large) {
-  // A label measured before its font has loaded is measured in the
-  // fallback font, which is wider on some machines.
-  await page.evaluate(() => document.fonts.ready);
   return page.evaluate(({ root, scroller, large }) => {
     const screen = document.querySelector(root);
     if (!screen) return null;
