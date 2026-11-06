@@ -1,0 +1,75 @@
+{{template "head" .Heading}}
+{{$r := .}}
+<div class="reader" data-entity="{{.EntityID}}" data-page="{{.Page}}" data-heading="{{.Heading}}">
+<aside class="outline" id="outline" aria-label="Содержание">
+  <div class="outline-top">
+    <a class="back" href="/">{{template "i-back"}}Программы</a>
+    <button class="icon-btn outline-close" type="button" data-close-outline aria-label="Закрыть">{{template "i-close"}}</button>
+  </div>
+  {{with .Program}}<a class="o-program" href="/p/{{.ID}}" title="{{.Title}}"><span class="eyebrow">Программа</span><b class="row-name">{{.Title}}</b>{{with $r.Outline}}{{if .Rows}}<small>{{.Rows}} {{plural .Rows "тема" "темы" "тем"}} · {{.ConceptCount}} {{plural .ConceptCount "понятие" "понятия" "понятий"}} · {{.WithMaterials}} с материалами</small>{{end}}{{end}}</a>{{end}}
+  <nav class="o-nav">
+    {{range .Outline.Modules}}
+    <a class="o-module" href="/m/{{.ID}}" title="{{.Full}}"><span class="eyebrow">{{.Label}}</span><b class="row-name">{{.Name}}</b></a>
+    {{if and $r.Home (eq $r.Home.ID .ID)}}{{template "o-open" $r}}{{else}}{{range .Materials}}<a class="row o-sub" href="/m/{{.ID}}">{{template "i-book"}}<span class="row-name">Читать{{with .Title}} · {{.}}{{end}}</span></a>{{end}}{{end}}
+    {{end}}
+    {{range .Outline.Topics}}
+    {{$open := and $r.Home (eq $r.Home.ID .ID)}}
+    <a class="row{{if not .Materials}} dim{{end}}{{if $open}} open{{end}}" href="{{if .Materials}}/m/{{(index .Materials 0).ID}}{{else}}/m/{{.ID}}{{end}}" title="{{.Full}}">{{if .Materials}}{{template "i-book"}}{{else}}{{template "i-empty"}}{{end}}{{with .Label}}<span class="row-label">{{.}}</span>{{end}}<span class="row-name">{{.Name}}</span>{{if $open}}<small class="row-meta">{{$r.Short}}</small>{{end}}</a>
+    {{if $open}}{{template "o-open" $r}}{{end}}
+    {{end}}
+    {{if not .Program}}<p class="row open">{{template "i-book"}}<span class="row-name">{{.Title}}</span></p>{{template "o-open" $r}}{{end}}
+  </nav>
+  {{if .Linked}}<div class="o-linked"><p class="eyebrow">Связано</p>{{range .Linked}}<a class="row" href="/m/{{.ID}}" title="{{.Title}}"><span class="row-name">{{.Title}}</span></a>{{end}}</div>{{end}}
+</aside>
+<div class="scrim" data-close-outline></div>
+
+<div class="main">
+  <header class="topbar">
+    <a class="icon-btn top-back" href="{{if .Program}}/p/{{.Program.ID}}{{else}}/{{end}}" aria-label="Назад">{{template "i-back"}}</a>
+    <div class="top-title">{{if .Home}}{{with .Home.Label}}<small>{{.}}</small>{{end}}<b>{{if $r.Own}}{{.Home.Name}}{{else}}{{.Title}}{{end}}</b>{{else}}<b>{{.Title}}</b>{{end}}</div>
+    <nav class="crumbs" aria-label="Путь"><a href="/">Программы</a>{{with .Program}}{{template "i-chevron"}}<a href="/p/{{.ID}}" title="{{.Title}}">{{.Title}}</a>{{end}}{{with .Home}}{{template "i-chevron"}}<a href="/m/{{.ID}}" title="{{.Full}}">{{.Full}}</a>{{end}}{{if not .Own}}{{template "i-chevron"}}<b title="{{.Title}}">{{.Title}}</b>{{end}}</nav>
+    <button class="contents-btn" type="button" data-open-outline aria-controls="outline">{{template "i-list"}}<span>Содержание</span></button>
+    {{if gt .Count 1}}<div class="top-steps">{{range .Steps}}<i class="{{if .}}on{{end}}"></i>{{end}}</div>{{end}}
+  </header>
+
+  <article class="column reading">
+    {{if or (gt .Count 1) (and .Eyebrow (ne .Eyebrow .Heading))}}<p class="eyebrow">{{if and .Eyebrow (ne .Eyebrow .Heading)}}{{.Eyebrow}}{{if gt .Count 1}} · {{end}}{{end}}{{if gt .Count 1}}Страница {{inc .Index}}/{{.Count}}<span class="dots">{{range .Steps}}<i class="{{if .}}on{{end}}"></i>{{end}}</span>{{end}}</p>{{end}}
+    <h1 class="heading">{{.Heading}}</h1>
+    {{if and (eq .Page 0) .Intro}}<p class="lede">{{.Intro}}</p>{{end}}
+    <div class="prose">
+    {{range .Blocks}}{{if eq .Kind "h"}}<h3>{{.HTML}}</h3>{{else}}
+      <div class="para" data-n="{{.N}}" data-text="{{.Text}}">
+        {{if eq .Kind "p"}}<p>{{.HTML}}</p>{{else if eq .Kind "ul"}}<ul>{{range .Items}}<li>{{.}}</li>{{end}}</ul>{{else}}<ol start="{{.Start}}">{{range .Items}}<li>{{.}}</li>{{end}}</ol>{{end}}
+        <button class="para-menu" type="button" aria-haspopup="menu" aria-label="Спросить об этом абзаце">{{template "i-dots"}}</button>
+      </div>
+    {{end}}{{end}}
+    </div>
+    <nav class="pager" aria-label="Страницы">
+      {{with .Prev}}<a class="pager-prev" href="/m/{{$r.EntityID}}?page={{.Page}}" rel="prev"><small>{{template "i-arrow-left"}}Назад</small><b>{{.Label}}</b></a>{{else}}<span class="pager-prev pager-none"><small>{{template "i-arrow-left"}}Назад</small><b>Это первая страница</b></span>{{end}}
+      {{with .Next}}<a class="pager-next" href="/m/{{$r.EntityID}}?page={{.Page}}" rel="next"><small>Далее{{template "i-arrow"}}</small><b>{{.Label}}</b></a>{{else}}<span class="pager-next pager-none"><small>Далее</small><b>Это последняя страница</b></span>{{end}}
+    </nav>
+  </article>
+
+  <nav class="bottombar" aria-label="Страницы">
+    {{with .Prev}}<a class="bar-prev" href="/m/{{$r.EntityID}}?page={{.Page}}">{{template "i-back"}}Назад</a>{{else}}<span class="bar-prev off">{{template "i-back"}}Назад</span>{{end}}
+    <button class="bar-mid" type="button" data-open-outline>{{.Here}}</button>
+    {{with .Next}}<a class="bar-next" href="/m/{{$r.EntityID}}?page={{.Page}}">Далее{{template "i-chevron"}}</a>{{else}}<span class="bar-next off">Далее{{template "i-chevron"}}</span>{{end}}
+  </nav>
+</div>
+</div>
+
+<div class="menu" id="menu" role="dialog" aria-modal="false" aria-label="Абзац" hidden>
+  <div class="sheet-grip" aria-hidden="true"></div>
+  <blockquote class="menu-quote"><span></span></blockquote>
+  <div class="menu-actions" role="menu">
+    <button type="button" role="menuitem" data-kind="more">{{template "i-more"}}<span>Расскажи подробнее</span></button>
+    <button type="button" role="menuitem" data-kind="simpler">{{template "i-simpler"}}<span>Объясни проще</span></button>
+    <button type="button" role="menuitem" data-kind="example">{{template "i-example"}}<span>Приведи пример</span></button>
+  </div>
+  <form class="menu-ask">{{template "i-ask"}}<input name="q" placeholder="Спросить об этом абзаце…" autocomplete="off"><button type="submit" aria-label="Спросить">{{template "i-send"}}</button></form>
+</div>
+<div class="sheet-scrim" hidden></div>
+<template id="answer-icons"><span data-k="more">{{template "i-more"}}</span><span data-k="simpler">{{template "i-simpler"}}</span><span data-k="example">{{template "i-example"}}</span><span data-k="ask">{{template "i-ask"}}</span><span data-k="close">{{template "i-close"}}</span><span data-k="alert">{{template "i-alert"}}</span><span data-k="retry">{{template "i-retry"}}</span></template>
+{{template "foot"}}
+
+{{define "o-open"}}{{$r := .}}<div class="o-open">{{if not $r.Own}}<p class="row o-sub">{{template "i-book"}}<span class="row-name" title="{{$r.Title}}">{{$r.Title}}</span></p>{{end}}{{range $r.Sections}}<a class="row o-sub o-section{{if .Current}} current{{end}}" href="/m/{{$r.EntityID}}?page={{.Page}}" title="{{.Label}}"{{if .Current}} aria-current="page"{{end}}>{{template "i-doc"}}{{with mark .Label}}<span class="row-label">{{.}}</span>{{end}}<span class="row-name">{{rest .Label}}</span>{{if and .Current (gt $r.Count 1)}}<small class="row-meta">{{inc $r.Index}}/{{$r.Count}}</small>{{end}}</a>{{end}}</div>{{end}}

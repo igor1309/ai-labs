@@ -1,0 +1,19 @@
+{{template "head" "Программы"}}
+<main class="column page-programs">
+  <p class="eyebrow">Agonara</p>
+  <h1 class="display">Программы</h1>
+  {{if .Count}}<p class="tally">{{.Count}} {{plural .Count "программа" "программы" "программ"}} · {{len .Full}} с темами</p>{{end}}
+  {{with .Place}}<a class="continue" href="/m/{{.EntityID}}?page={{.Page}}"><span><b>Продолжить чтение</b><small>{{.Where}}</small></span>{{template "i-arrow"}}</a>{{end}}
+  {{if .Count}}
+  <ul class="rows">
+    {{range .Full}}<li><a class="row" href="/p/{{.ID}}" title="{{.Title}}">{{template "i-library"}}<span class="row-name">{{.Title}}</span><small class="row-meta">{{.Topics}} {{plural .Topics "тема" "темы" "тем"}}</small></a></li>{{end}}
+  </ul>
+  {{if .Empty}}
+  <div class="group-head"><span>Пусто</span><small>{{len .Empty}} {{plural (len .Empty) "программа" "программы" "программ"}}</small></div>
+  <ul class="rows dim">
+    {{range .Empty}}<li><a class="row" href="/p/{{.ID}}" title="{{.Title}}">{{template "i-library"}}<span class="row-name">{{.Title}}</span><small class="row-meta">пусто</small></a></li>{{end}}
+  </ul>
+  {{end}}
+  {{else}}<p class="muted">Программ нет.</p>{{end}}
+</main>
+{{template "foot"}}
