@@ -29,6 +29,8 @@ html[data-size="wide-short"] .coloring-bedrock { display: none; }
 .coloring-done .coloring-face { background: var(--ds-good); color: var(--ds-on-good); }
 .coloring-tools button[aria-pressed="true"] .coloring-face { background: var(--ds-strong); color: var(--ds-on-strong); }
 .coloring-tile-name { font-size: var(--cw-name); font-weight: 800; white-space: nowrap; }
+/* Russian tool names such as ЗАЛИВКА run longer: they take the phone size to fit their tile. */
+.coloring-workshop:lang(ru) .coloring-tile-name { font-size: min(var(--cw-name), var(--ds-size-11)); }
 .coloring-workshop button .coloring-selection { position: absolute; top: -5px; left: calc(50% + var(--cw-face) / 2 - 17px); box-sizing: border-box; width: 22px; height: 22px; padding: var(--ds-space-xs); border-radius: 50%; background: var(--ds-good); color: var(--ds-on-good); }
 
 /* Beside the paper: the leave buttons, a line, the tools. */
@@ -129,3 +131,4 @@ html[data-size="wide-short"] .coloring-workshop button .coloring-selection { pos
   html[data-size="wide-short"] .coloring-tile-name { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   html[data-size="wide-short"] .coloring-workshop :is(.coloring-navigation, .coloring-tools) button { padding-right: 0; }
 }
+@media (max-width: 360px) { html[data-size="tall-narrow"] .coloring-workshop:lang(ru) .coloring-swatch-name { font-size: var(--ds-size-9); letter-spacing: -0.02em; } }

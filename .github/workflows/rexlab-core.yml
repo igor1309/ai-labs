@@ -99,6 +99,7 @@ jobs:
           - coloringGallery
           - coloringResult
           - coloringFlow
+          - coloringLayout
           - homePhone
           - nativeTouch
           - homeTiles

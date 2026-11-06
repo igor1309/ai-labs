@@ -2,6 +2,7 @@
 
 ## 2026-11-05
 
+- LAB-1011: Every COLOR screen and state fits every device in English and Russian: CONTINUE on a small phone on its side, ПРОДОЛЖИТЬ and the long Russian colour names on the narrowest phone, and ЗАЛИВКА in the iPad rail are no longer cut.
 - LAB-1010: COLOR's result for a work finished again shows YOUR STAR with its two counts one over the other and no celebration, and a work that couldn't open says so in a pill on the paper, on every device, light, dark and Russian.
 - LAB-1009: COLOR's result is the dig site on every device, light, dark and Russian: the finished work in the sky, the title, star and COLLECTION, FIRST BEST or NEW BEST and EXPLORER BEST chips beside it under a glow and confetti, or upright on the sand, and EDIT, GALLERY and NEW WORK on the sand.
 - LAB-1008: COLOR's saving and leaving are the dig site, light, dark and Russian: a failed save asks RETRY, KEEP EDITING or HOME WITHOUT SAVING on a card with its mark, leaving unsaved asks STAY before LEAVE, and the saving and failed-save pills sit on the paper.
