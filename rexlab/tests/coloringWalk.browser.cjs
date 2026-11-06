@@ -28,6 +28,8 @@ async function walk(browser, url, viewport, language, theme) {
   const arrive = async (ready, state, options) => {
     await page.locator(ready).first().waitFor({ state: "attached" }); await animations();
     await checkLayout(page, { viewport, state: `${language} ${theme} ${state}`, ...options });
+    // The version footer is for parents; it would stand on the sand's buttons.
+    assert.equal(await page.locator("#version").evaluate(el => getComputedStyle(el).display), "none", `${state}: the version shows`);
     if (process.env.COLORING_ARTIFACT_DIR) {
       await mkdir(process.env.COLORING_ARTIFACT_DIR, { recursive: true });
       await page.screenshot({ path: join(process.env.COLORING_ARTIFACT_DIR, `${language}-${viewport.width}x${viewport.height}-${state.replace(/\W+/g, "-")}.png`) });
