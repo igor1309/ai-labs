@@ -11,4 +11,12 @@ describe("browser contracts in CI", () => {
 
     expect(images).toEqual([version]);
   });
+
+  it("cache Chromium's system packages under the playwright version the app installs", () => {
+    const { devDependencies, dependencies } = JSON.parse(read("../package.json"));
+    const version = devDependencies?.playwright ?? dependencies?.playwright;
+    const keys = [...read("../../.github/workflows/rexlab-core.yml").matchAll(/key: playwright-chromium-apt-.*-([\d.]+)$/gm)].map(match => match[1]);
+
+    expect(keys).toEqual([version]);
+  });
 });
