@@ -87,16 +87,12 @@ async function check(browser, files, device) {
     }
 
     await home(); await enter("labyrinth"); await protection(page);
-    // Labyrinth retains its landscape-only contract; the portrait gate is
-    // protected too, and rotation must leave the same board ready for input.
-    const portrait = page.viewportSize().width < page.viewportSize().height;
-    if (portrait) {
-      assert.equal(await page.locator('.orientation-gate[data-shown="true"]').count(), 1);
-      const { width, height } = page.viewportSize();
-      await page.setViewportSize({ width: height, height: width }); await settle();
-      await cdp.send("Emulation.setPageScaleFactor", { pageScaleFactor: Math.min(height / 1024, 1) });
-    }
-    assert.equal(await page.locator(".labyrinth-maze").evaluate(e => getComputedStyle(e).touchAction), "none");
+    // Labyrinth plays in every orientation, with no gate. Where the maze
+    // shows whole it takes no gesture; on a phone, where its view pans, a
+    // finger may pan it, still never zooming.
+    assert.equal(await page.locator('.orientation-gate[data-shown="true"]').count(), 0);
+    const phone = await page.evaluate(() => ["tall-narrow", "wide-short"].includes(document.documentElement.dataset.size));
+    assert.equal(await page.locator(".labyrinth-maze").evaluate(e => getComputedStyle(e).touchAction), phone ? "pan-x pan-y" : "none");
     const start = await page.locator('[aria-current="location"]').getAttribute("aria-label");
     const step = page.locator("button[data-legal]").first();
     const next = await step.getAttribute("aria-label");
@@ -130,8 +126,6 @@ async function check(browser, files, device) {
     await cancel(); await back.tap();
     assert.equal(await page.locator('[aria-current="location"]').getAttribute("aria-label"), start);
     await press("HOME"); await page.locator(".home").waitFor();
-    if (portrait) { await page.setViewportSize(devices[device].viewport); await settle(); }
-    await cdp.send("Emulation.setPageScaleFactor", { pageScaleFactor: 1 });
 
     await enter("coloring"); await page.locator('.gallery-works[aria-busy="false"]').waitFor(); await protection(page);
     await press("NEW WORK"); await page.locator(".coloring-workshop canvas").waitFor(); await protection(page);
