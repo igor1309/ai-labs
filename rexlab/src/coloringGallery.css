@@ -92,7 +92,7 @@ html[data-size="wide-short"] .gallery-thumbnail { aspect-ratio: 2 / 1; }
 html[data-size="wide-short"] .gallery-status { width: 28px; height: 28px; }
 html[data-size="wide-short"] .gallery-bedrock svg { display: none; }
 /* A small phone on its side has no notch to clear, and three works to a row fit their buttons. */
-@media (max-width: 700px) { html[data-size="wide-short"] .coloring-gallery { --cg-side: max(var(--ds-space-40), env(safe-area-inset-left), env(safe-area-inset-right)); --cg-columns: 3; } html[data-size="wide-short"] .gallery-thumbnail { aspect-ratio: 5 / 2; } }
+@media (max-width: 700px) { html[data-size="wide-short"] .coloring-gallery { --cg-side: max(var(--ds-space-40), env(safe-area-inset-left), env(safe-area-inset-right)); --cg-columns: 3; } html[data-size="wide-short"] .gallery-thumbnail { aspect-ratio: 5 / 2; } html[data-size="wide-short"] .gallery-card > button { flex-direction: column; gap: var(--ds-space-2); padding: var(--ds-space-6) var(--ds-space-s); } }
 /* VIEW ONLY over the starts, then what is loading or could not load. */
 .gallery-tag { flex: none; align-self: flex-start; display: flex; align-items: center; gap: var(--ds-space-6); padding: var(--ds-space-xs) var(--ds-space-m); border-radius: var(--ds-radius-pill); background: var(--ds-quiet); color: var(--ds-ink-soft); font-size: var(--ds-size-13); font-weight: 800; }
 .coloring-gallery .gallery-tag svg { width: 16px; height: 16px; }
