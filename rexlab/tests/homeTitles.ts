@@ -2,25 +2,25 @@ import { expect } from "vitest";
 
 // jsdom lays nothing out, so the width of each title in every language
 // is given here in ems of its bold face, rounded up: Lexend's for the
-// Latin words, and the iPad's own face for the Cyrillic ones, which
-// Lexend has no letters for. A title missing here fails the test that
+// Latin words, and Manrope's for the Cyrillic ones, which Lexend has
+// no letters for (scripts/cyrillic-ems.cjs measures them). A title missing here fails the test that
 // reads it.
 export const TITLE_EMS: Record<string, number> = {
   LABYRINTH: 6.4,
-  ЛАБИРИНТ: 6.0,
+  ЛАБИРИНТ: 5.6,
   COMPARE: 5.1,
-  СРАВНИ: 4.1,
+  СРАВНИ: 4.2,
   "ANCIENT REPTILES": 10.3,
-  "ДРЕВНИЕ ЯЩЕРЫ": 9.4,
+  "ДРЕВНИЕ ЯЩЕРЫ": 8.7,
   // Both catalogue names may wrap on the large card, so each word is here.
   ANCIENT: 4.9,
   REPTILES: 5.2,
-  ДРЕВНИЕ: 5.0,
-  ЯЩЕРЫ: 4.1,
+  ДРЕВНИЕ: 4.7,
+  ЯЩЕРЫ: 3.8,
   CARE: 2.8,
-  ЗАБОТА: 4.0,
+  ЗАБОТА: 4.1,
   SORT: 2.9,
-  РАЗЛОЖИ: 5.2,
+  РАЗЛОЖИ: 5.1,
   // FIND THE PAIR's title may wrap, so each line it may take is here.
   "FIND THE PAIR": 8.1,
   "FIND THE": 5.2,
@@ -30,22 +30,22 @@ export const TITLE_EMS: Record<string, number> = {
   PAIR: 2.7,
   "НАЙДИ ПАРУ": 6.6,
   НАЙДИ: 3.7,
-  ПАРУ: 2.7,
+  ПАРУ: 2.8,
   SKELETONS: 6.2,
-  СКЕЛЕТЫ: 4.8,
+  СКЕЛЕТЫ: 4.9,
   DIG: 2.1,
-  РАСКОПКИ: 5.8,
+  РАСКОПКИ: 5.6,
   SAND: 3.2,
   WRITING: 4.8,
   "SAND WRITING": 8.3,
-  РИСОВАНИЕ: 6.4,
-  НА: 1.6,
-  ПЕСКЕ: 3.6,
-  "РИСОВАНИЕ НА": 8.3,
-  "НА ПЕСКЕ": 5.5,
-  "РИСОВАНИЕ НА ПЕСКЕ": 12.2,
+  РИСОВАНИЕ: 6.3,
+  НА: 1.5,
+  ПЕСКЕ: 3.3,
+  "РИСОВАНИЕ НА": 7.9,
+  "НА ПЕСКЕ": 5,
+  "РИСОВАНИЕ НА ПЕСКЕ": 11.4,
   "MORE COMING": 7.9,
-  "СКОРО ЕЩЁ": 6.0
+  "СКОРО ЕЩЁ": 5.9
 };
 
 // The words each tile's title on the home page shows.

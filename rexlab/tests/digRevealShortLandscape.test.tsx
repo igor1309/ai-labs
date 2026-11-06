@@ -27,10 +27,10 @@ const EVERY = PHONES.flatMap((phone) => LANGUAGES.map((language) => [...phone, l
 const LAYOUTS: PortraitLayouts = { home: ["tall", "tall-narrow"], "dig-board": ["tall", "tall-narrow"] };
 
 // A digit or slash is at most 0.68 of its type wide, and a capital of a
-// word not measured at most 0.85, ДОМОЙ's widest, in Lexend and the
-// system face.
+// word not measured at most 0.99, Manrope's Щ, the widest in Lexend and
+// Manrope.
 const DIGIT = 0.68;
-const LETTER = 0.85;
+const LETTER = 0.99;
 // The longest of the 52 names, PACHYCEPHALOSAURUS, in ems with its spacing.
 const LONGEST_NAME = 12.7;
 // The column's width at most, and the least the dinosaur keeps beside it

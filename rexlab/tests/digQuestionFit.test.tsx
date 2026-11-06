@@ -10,7 +10,7 @@ import { SHIPPED_DIG, fakeBodyPicture, fakeTreasurePicture, manualTimers } from 
 import { openWindow, windowsAnd } from "./windowSizes.ts";
 
 // jsdom does not lay out: each board title's width in ems of its face,
-// rounded up, Lexend bold for the Latin and the iPad's own face for the
+// rounded up, Lexend bold for the Latin and at least Manrope's for the
 // Cyrillic, as digFieldGuideFit.test.tsx measures its words.
 const EMS: Record<string, number> = { DIG: 2.2, "WHO IS IT?": 6.2, РАСКОПКИ: 5.7, "КТО ЭТО?": 4.9 };
 

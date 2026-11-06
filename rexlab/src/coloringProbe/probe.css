@@ -1,4 +1,4 @@
-:root { font-family: Lexend Variable, sans-serif; color: #3c4358; background: #fff7e7; --motion-small: 160ms; --motion-standard: 240ms; --ease-out: cubic-bezier(0.22, 1, 0.36, 1); }
+:root { font-family: Lexend Variable, Manrope Variable, sans-serif; color: #3c4358; background: #fff7e7; --motion-small: 160ms; --motion-standard: 240ms; --ease-out: cubic-bezier(0.22, 1, 0.36, 1); }
 * { box-sizing: border-box; }
 body { margin: 0; overscroll-behavior: none; }
 #probe { height: 100dvh; padding: max(6px, env(safe-area-inset-top)) max(6px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left)); display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; gap: 6px; }

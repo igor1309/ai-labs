@@ -2,6 +2,7 @@
 
 ## 2026-11-06
 
+- LAB-1024: Russian text is drawn in the bundled Manrope, since Lexend has no Cyrillic, so it looks and fits the same on every device; the Coloring save-failed dialog fits a small phone on its side.
 - LAB-1003: The skeleton hero starts assembling at once and at a steady pace, a few straggling bones hop in last, bones land with a small settle, the skeleton fills more of the hero, and its bones show stronger shading.
 
 ## 2026-11-05

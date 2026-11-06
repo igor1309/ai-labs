@@ -585,7 +585,8 @@ describe("catalogue's shared turn", () => {
   it("opens the catalogue after a language switch with the new language's chips, rising in with no glide", async () => {
     // Home stands upright too, as in the app.
     const app = openCatalogue(1180, 820, { portraitLayouts: { home: ["tall"], catalogue: ["tall"] } });
-    app.resize([768, 1024, "tall"]);
+    // A width at which the English chips fit spaced and the Russian ones do not.
+    app.resize([760, 1024, "tall"]);
     app.settle();
     await app.user.click(gameDoor(TEXTS.en.catalogue));
     expect(document.querySelector<HTMLElement>(".food-chips")?.dataset.arrangement).toBe("spaced");

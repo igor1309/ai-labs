@@ -287,6 +287,7 @@ import { GameAudioButton } from './src/GameAudioButton.tsx';
 import { PicturesProvider } from './src/Picture.tsx';
 import { appProps } from './src/root.ts';
 import '@fontsource-variable/lexend';
+import '@fontsource-variable/manrope';
 import './src/app.css';
 const app = appProps(window);
 const root = createRoot(document.getElementById('root'));

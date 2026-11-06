@@ -133,4 +133,11 @@ html[data-size="wide-short"] .coloring-workshop button .coloring-selection { pos
   html[data-size="wide-short"] .coloring-tile-name { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   html[data-size="wide-short"] .coloring-workshop :is(.coloring-navigation, .coloring-tools) button { padding-right: 0; }
 }
+/* The longest Russian colour names fill a 320-wide phone's swatch, and
+   where letters are set on whole pixels, as on Linux, they overrun it. */
 @media (max-width: 360px) { html[data-size="tall-narrow"] .coloring-workshop:lang(ru) .coloring-swatch-name { font-size: var(--ds-size-9); letter-spacing: -0.02em; } }
+
+/* On a phone on its side the save-failed dialog's three buttons do not fit
+   stacked: the first stays full width and the other two share a row. */
+html[data-size="wide-short"] .coloring-error { display: grid; grid-template-columns: 1fr 1fr; }
+html[data-size="wide-short"] .coloring-error > :is(.coloring-error-badge, h2, p, .coloring-first, :nth-child(4):last-child) { grid-column: 1 / -1; }

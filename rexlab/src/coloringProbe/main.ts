@@ -1,4 +1,5 @@
 import "@fontsource-variable/lexend";
+import "@fontsource-variable/manrope";
 import "./probe.css";
 import { filterDoubleTaps } from "../root.ts";
 import { COLORS, HEIGHT, SIZES, WIDTH, type Point } from "./geometry.ts";

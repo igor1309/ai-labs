@@ -7,7 +7,7 @@ export function keptLines(width: number, narrow = false): KeptLines {
   const description = narrow
     ? width >= 429 ? 4 : width >= 357 ? 5 : width >= 311 ? 6 : width >= 295 ? 7 : 8
     : width >= 656 ? 3 : width >= 520 ? 4 : 5;
-  const note = width >= 600 ? 3 : width >= 448 ? 4 : width >= 403 ? 5 : width >= 305 ? 6 : width >= 286 ? 7 : 8;
+  const note = width >= 600 ? 3 : width >= 450 ? 4 : width >= 404 ? 5 : width >= 306 ? 6 : width >= 287 ? 7 : 8;
   return { description, note };
 }
 
