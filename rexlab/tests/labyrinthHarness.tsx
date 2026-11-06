@@ -6,6 +6,8 @@ import { useState } from "react";
 import "../src/app.css";
 import { LabyrinthBoardScreen } from "../src/LabyrinthBoardScreen.tsx";
 import { LabyrinthResultScreen } from "../src/LabyrinthResultScreen.tsx";
+import { LevelOfferDialog } from "../src/LevelOfferDialog.tsx";
+import type { AgeLevel } from "../src/ageLevel.ts";
 import { adjacentPaths, hintInMaze, isPath, mazeSolved, moveInMaze, nextMaze, startMaze, type LabyrinthRound, type MazeLevel } from "../src/labyrinth/index.ts";
 import type { Language } from "../src/language/language.ts";
 import { turnedFor, turnMaze } from "../src/labyrinthView.ts";
@@ -66,7 +68,7 @@ export function mount(options: { language?: Language; theme?: "light" | "dark"; 
 // that cannot be read.
 export type ResultKind = "first" | "tied" | "unreadable";
 
-export function mountResult(options: { language?: Language; theme?: "light" | "dark"; level?: MazeLevel; result?: ResultKind; loading?: boolean }) {
+export function mountResult(options: { language?: Language; theme?: "light" | "dark"; level?: MazeLevel; result?: ResultKind; loading?: boolean; offer?: AgeLevel }) {
   root?.unmount();
   const language = options.language ?? "en";
   const kind = options.result ?? "first";
@@ -78,7 +80,9 @@ export function mountResult(options: { language?: Language; theme?: "light" | "d
     <PicturesProvider store={options.loading ? loading : loaded} startTimer={() => () => {}}>
       <LabyrinthResultScreen language={language} level={options.level ?? "hatchling"} onLevel={() => undefined} picture={triceratops}
         totalStars={kind === "unreadable" ? undefined : kind === "first" ? 48 : 51} best={kind === "unreadable" ? undefined : 3} beaten={undefined}
-        celebration={kind === "first" ? "first-best" : null} onPlayAgain={() => undefined} onHome={() => undefined} />
+        celebration={kind === "first" ? "first-best" : null} onPlayAgain={() => undefined} onHome={() => undefined}
+        levelOffer={options.offer && <LevelOfferDialog digSite language={language} leaving={false} onShown={() => undefined} onAnswer={() => undefined} onGone={() => undefined}
+          offer={{ level: options.offer, onYes: () => undefined, onNotNow: () => undefined, onShown: () => undefined, startTimer: () => () => {} }} />} />
     </PicturesProvider>
   ));
 }

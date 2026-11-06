@@ -23,7 +23,11 @@ const SHOTS = [
   ["result-unreadable", { result: "unreadable" }],
   ["result-first-dark", { result: "first", theme: "dark" }],
   ["result-first-ru", { result: "first", language: "ru" }],
-  ["result-loading", { result: "first", loading: true }]
+  ["result-loading", { result: "first", loading: true }],
+  ["offer-explorer", { result: "first", offer: "explorer" }],
+  ["offer-paleontologist", { result: "tied", level: "explorer", offer: "paleontologist" }],
+  ["offer-explorer-dark", { result: "first", offer: "explorer", theme: "dark" }],
+  ["offer-explorer-ru", { result: "first", offer: "explorer", language: "ru" }]
 ];
 
 (async () => {
