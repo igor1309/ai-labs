@@ -103,7 +103,7 @@ const STATES = [{ state: "start" }, { state: "hint" }, { state: "step" }, { stat
           else if (viewport.name === "upright iPad mini") assert.equal(seen.cell, UPRIGHT[level], `${at}: a turned ${level} cell`);
           else if (viewport.size === "tall-narrow" || viewport.size === "wide-short") assert.equal(seen.cell, 48, `${at}: a phone's cell`);
           else assert(seen.cell >= 48, `${at}: a cell is ${seen.cell} wide`);
-          if (viewport.size === "wide" || viewport.size === "tall") assert(seen.whole, `${at}: the maze shows whole`);
+          if (viewport.size === "wide" || viewport.size === "tall" || viewport.name === "iPhone SE" && level === "hatchling") assert(seen.whole, `${at}: the maze shows whole`);
           assert(seen.baby, `${at}: the baby is in view`);
           if (options.state !== "home") assert.equal(seen.marker, !seen.goal, `${at}: the parent marker shows only while home is out of view`);
           checked++;

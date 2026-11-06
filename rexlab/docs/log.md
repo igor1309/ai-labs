@@ -2,6 +2,7 @@
 
 ## 2026-11-07
 
+- LAB-920: On an iPhone SE held upright, HATCHLING's maze fits whole: its parent waits on home, as on the larger mazes, and the sides narrow.
 - LAB-1031: On an upright phone, EXPLORER's and PALEONTOLOGIST's mazes turn on their side like HATCHLING's, so they fill the screen's height and pan less across.
 
 ## 2026-11-06

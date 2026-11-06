@@ -126,12 +126,12 @@ export function LabyrinthBoardScreen({ language, level, columns, rows, cells, ba
             <Button key={place} className="labyrinth-cell" tabIndex={-1} aria-label={`${words.cell(place % columns + 1, Math.floor(place / columns) + 1)}${place === goal ? ` · ${words.goal}` : ""}${place === baby ? ` · ${words.baby}` : ""}`}
               aria-current={place === baby ? "location" : undefined} aria-disabled={finished || !cell.legal}
               data-legal={!finished && cell.legal || undefined} data-hint={hint === place || undefined} data-goal={place === goal || undefined} onClick={() => move(place)}>
-              {place === goal && (compact || finished
-                ? <>
-                  <Picture src={picture} alt={words.parent} className="labyrinth-goal-picture" width={800} height={600} />
-                  {!finished && <span className="labyrinth-goal-badge">{home}</span>}
-                </>
-                : home)}
+              {/* The stylesheet shows the parent on home or the house alone. */}
+              {place === goal && <>
+                <Picture src={picture} alt={compact || finished ? words.parent : ""} className="labyrinth-goal-picture" width={800} height={600} />
+                {!finished && <span className="labyrinth-goal-badge">{home}</span>}
+                {!finished && <span className="labyrinth-goal-house">{home}</span>}
+              </>}
               {!finished && cell.legal && <span className="labyrinth-spot">
                 <Footprints className="labyrinth-footprint" aria-hidden="true" />
                 {hint === place && <Sparkles className="labyrinth-hint" aria-hidden="true" />}

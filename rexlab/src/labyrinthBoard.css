@@ -312,6 +312,13 @@
 
 .labyrinth-goal-badge .labyrinth-goal-symbol { width: 62%; height: 62%; }
 
+/* HATCHLING's home holds the house alone while its parent waits beside the
+   maze; the larger mazes, and every maze at its end, bring the parent onto
+   home with the house as its badge. */
+.labyrinth-goal-house { display: contents; }
+.labyrinth-board-screen:not([data-compact], [data-finished]) :is(.labyrinth-goal-picture, .labyrinth-goal-badge) { display: none; }
+.labyrinth-board-screen:is([data-compact], [data-finished]) .labyrinth-goal-house { display: none; }
+
 /* A legal step onto home keeps the house in view: the footprints take
    its corner. */
 .labyrinth-cell[data-goal] .labyrinth-spot { inset: auto auto var(--spot-pad) var(--spot-pad); width: 50%; height: 50%; }
@@ -689,3 +696,13 @@ html[data-size="wide-short"] .labyrinth-board-screen[data-compact] { --side: 190
 html[data-size="wide-short"] .labyrinth-room { justify-content: center; }
 html[data-size="wide-short"] .labyrinth-side { gap: var(--ds-space-m); }
 html[data-size="wide-short"] .labyrinth-guidance > svg { width: 18px; height: 18px; }
+
+/* A short upright phone, the iPhone SE: HATCHLING's parent waits on home,
+   as the larger mazes' does, and the sides narrow, so the maze fits whole. */
+@media (max-height: 700px) {
+  html[data-size="tall-narrow"] .labyrinth-parent { display: none; }
+  html[data-size="tall-narrow"] .labyrinth-board-screen :is(.labyrinth-goal-picture, .labyrinth-goal-badge) { display: block; }
+  html[data-size="tall-narrow"] .labyrinth-board-screen .labyrinth-goal-badge { display: grid; }
+  html[data-size="tall-narrow"] .labyrinth-board-screen .labyrinth-goal-house { display: none; }
+  html[data-size="tall-narrow"] .labyrinth-board-screen { --lb-side-pad: var(--ds-space-s); row-gap: var(--ds-space-m); }
+}
