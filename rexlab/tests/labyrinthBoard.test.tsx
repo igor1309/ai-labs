@@ -199,14 +199,17 @@ describe("a playable labyrinth board", () => {
     expect(screen.getByRole("region", { name: words.goal }).textContent).toBe(words.bringHome);
     expect(part(".labyrinth-guidance").textContent).toBe(words.tapStep);
     expect(part("[data-goal]").querySelector(".labyrinth-goal-symbol")).not.toBeNull();
-    expect(part("[data-goal]").querySelector(".labyrinth-goal-badge") !== null).toBe(compact);
+    const shown = (selector: string) => [...part("[data-goal]").querySelectorAll(selector)].some((element) => getComputedStyle(element).display !== "none");
+    expect([shown(".labyrinth-goal-badge"), shown(".labyrinth-goal-picture"), shown(".labyrinth-goal-house")]).toEqual([compact, compact, !compact]);
     expect(part("[data-legal]").querySelector(".labyrinth-spot .labyrinth-footprint")).not.toBeNull();
     for (const button of document.querySelectorAll(".labyrinth-bar button")) expect(button.querySelector("svg")).not.toBeNull();
     const main = screen.getByRole("main");
     expect(main.textContent).toBe(main.textContent!.toLocaleUpperCase(language));
     for (const element of main.querySelectorAll("[aria-label]")) expect(element.getAttribute("aria-label")).toBe(element.getAttribute("aria-label")!.toLocaleUpperCase(language));
+    // Home always holds the parent's picture; the stylesheet shows it there
+    // on the larger mazes and on a short phone.
     const pictures = [...main.querySelectorAll("img")];
-    expect(pictures).toHaveLength(compact ? 3 : 2);
+    expect(pictures).toHaveLength(3);
     expect(pictures.every((picture) => picture.getAttribute("src") === triceratops && picture.classList.contains("picture"))).toBe(true);
     // One picture is named the parent: on home where it stands there,
     // otherwise beside the maze.
