@@ -90,6 +90,7 @@ const PRESENTATION = [
   "SharedPicture.tsx",
   "SkeletonBar.tsx",
   "formatValue.ts",
+  "labyrinthView.ts",
   "layoutKeeping.ts",
   "usePointerState.ts"
 ];

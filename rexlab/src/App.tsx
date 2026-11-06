@@ -700,7 +700,7 @@ export function App({
       case "picturePuzzle":
         return pictureGame.content(language);
       case "labyrinth":
-        return labyrinth.content(language);
+        return labyrinth.content(language, size);
       case "sandWriting":
         return <SandWritingScreen language={language} sandContext={sandContext} onHome={home} />;
       case "home":

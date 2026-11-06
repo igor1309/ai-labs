@@ -2,6 +2,7 @@
 
 ## 2026-11-06
 
+- LAB-1026: The LABYRINTH board plays upright and on phones: the upright iPad turns every maze on its side to fit whole, an upright phone turns HATCHLING's, and on phones every cell is 48 while the view pans to follow the baby, fades where more maze lies and shows the parent marker on the edge toward home.
 - LAB-1025: The LABYRINTH board is on the dig site: tunnels dug in the earth, footprints on pale spots, HINT amber with only the next step glowing, the parent beside the maze at every level and on home at the larger ones, and baby and parent together on home at the end, in light, dark, English and Russian.
 - LAB-1024: Russian text is drawn in the bundled Manrope, since Lexend has no Cyrillic, so it looks and fits the same on every device; the Coloring save-failed dialog fits a small phone on its side.
 - LAB-1003: The skeleton hero starts assembling at once and at a steady pace, a few straggling bones hop in last, bones land with a small settle, the skeleton fills more of the hero, and its bones show stronger shading.

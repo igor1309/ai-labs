@@ -32,6 +32,7 @@
   box-sizing: border-box;
   display: grid;
   grid-template-rows: 48px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   /* The sand starts 76 below the bar's top: 28 under the bar. */
   row-gap: 28px;
   width: 100%;
@@ -96,7 +97,7 @@
    whose badge and footprints stand over their words. */
 @media (max-width: 1100px) {
   .labyrinth-board-screen { --lb-side-pad: var(--ds-space-xl); }
-  .labyrinth-board-screen[data-level="paleontologist"]:is(:lang(en), :lang(ru)) {
+  html:not([data-size="tall"], [data-size="tall-narrow"], [data-size="wide-short"]) .labyrinth-board-screen[data-level="paleontologist"]:is(:lang(en), :lang(ru)) {
     --side: 124px;
     --parent-width: 110px;
     --words-width: 124px;
@@ -104,7 +105,7 @@
     --guidance-width: 124px;
     --guidance-size: var(--ds-size-14);
   }
-  .labyrinth-board-screen[data-level="paleontologist"] :is(.labyrinth-parent p, .labyrinth-guidance) { flex-direction: column; text-align: center; }
+  html:not([data-size="tall"], [data-size="tall-narrow"], [data-size="wide-short"]) .labyrinth-board-screen[data-level="paleontologist"] :is(.labyrinth-parent p, .labyrinth-guidance) { flex-direction: column; text-align: center; }
 }
 
 .labyrinth-maze,
@@ -208,6 +209,7 @@
   grid-template-columns: repeat(var(--columns), var(--cell));
   grid-template-rows: repeat(var(--rows), var(--cell));
   flex: 0 0 auto;
+  width: max-content;
   padding: var(--maze-pad);
   border-radius: var(--ds-radius-speech);
   background: var(--ds-pocket-3);
@@ -497,3 +499,193 @@
    shared reduced-motion block in app.css. This sheet loads after it, but
    every keyframe here moves by --motion-amount, 0 there, on the reduced
    timings, so each is a short fade either way; the glow rests. */
+
+/* The view over the maze. Where the window has room the maze shows whole;
+   on a phone the view pans, following the baby, and fades where more maze
+   lies. While home is out of view, a parent marker on the edge toward it
+   points home. */
+.labyrinth-view {
+  position: relative;
+  display: flex;
+  flex: 0 0 auto;
+}
+
+.labyrinth-window {
+  position: relative;
+  flex: 0 0 auto;
+  border-radius: var(--ds-radius-speech);
+  scroll-behavior: var(--motion-scroll);
+  scrollbar-width: none;
+  overscroll-behavior: contain;
+}
+
+.labyrinth-window::-webkit-scrollbar { display: none; }
+
+.labyrinth-fade {
+  position: absolute;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.labyrinth-fade[data-edge="left"] { top: 0; bottom: 0; left: 0; width: 28px; background: linear-gradient(to right, var(--ds-strata-1), transparent); }
+.labyrinth-fade[data-edge="right"] { top: 0; bottom: 0; right: 0; width: 28px; background: linear-gradient(to left, var(--ds-strata-1), transparent); }
+.labyrinth-fade[data-edge="top"] { left: 0; right: 0; top: 0; height: 28px; background: linear-gradient(to bottom, var(--ds-strata-1), transparent); }
+.labyrinth-fade[data-edge="bottom"] { left: 0; right: 0; bottom: 0; height: 28px; background: linear-gradient(to top, var(--ds-strata-1), transparent); }
+
+.labyrinth-marker {
+  position: absolute;
+  z-index: 3;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-xs);
+  height: 48px;
+  padding: var(--ds-space-xs) var(--ds-space-s) var(--ds-space-xs) var(--ds-space-xs);
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-label);
+  box-shadow: inset 0 0 0 3px var(--ds-reward);
+  color: var(--ds-action);
+  pointer-events: none;
+  animation: fade-in var(--motion-small) var(--ease-out) both;
+}
+
+.labyrinth-marker-picture { width: 40px; height: 40px; object-fit: contain; }
+.labyrinth-marker-picture[data-picture="loading"] { border-radius: 50%; }
+.labyrinth-marker-arrow { flex-shrink: 0; width: 22px; height: 22px; }
+.labyrinth-marker[data-edge="left"] { flex-direction: row-reverse; padding: var(--ds-space-xs) var(--ds-space-xs) var(--ds-space-xs) var(--ds-space-s); }
+.labyrinth-marker:is([data-edge="left"], [data-edge="right"]) { top: clamp(var(--ds-space-6), calc(var(--along) - 24px), calc(100% - 54px)); }
+.labyrinth-marker[data-edge="left"] { left: var(--ds-space-6); }
+.labyrinth-marker[data-edge="right"] { right: var(--ds-space-6); }
+.labyrinth-marker:is([data-edge="top"], [data-edge="bottom"]) { left: clamp(var(--ds-space-6), calc(var(--along) - 40px), calc(100% - 86px)); }
+.labyrinth-marker[data-edge="top"] { top: var(--ds-space-6); }
+.labyrinth-marker[data-edge="bottom"] { bottom: var(--ds-space-6); }
+
+/* Upright and on phones, the window decides the layout, not the level's
+   width: the screen keeps no landscape minimum. */
+html:is([data-size="tall"], [data-size="tall-narrow"], [data-size="wide-short"]) .labyrinth-board-screen {
+  min-width: 0;
+  min-height: 0;
+}
+
+html:is([data-size="tall"], [data-size="tall-narrow"]) .labyrinth-room {
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+html:is([data-size="tall"], [data-size="tall-narrow"]) .labyrinth-side {
+  flex: 0 0 auto;
+  width: 100%;
+}
+
+/* HATCHLING's parent waits under the maze, the words beside it; the
+   larger mazes keep only the parent on home. */
+html:is([data-size="tall"], [data-size="tall-narrow"]) .labyrinth-parent { flex-direction: row; }
+html:is([data-size="tall"], [data-size="tall-narrow"]) .labyrinth-board-screen[data-compact] .labyrinth-parent { display: none; }
+
+/* The upright iPad: every maze turned on its side fits whole, 72, 52 and
+   48 points a cell. */
+html[data-size="tall"] .labyrinth-board-screen {
+  --lb-side-pad: var(--ds-space-2xl);
+  --cell-max: 72px;
+  --below: 280px;
+  --room-gap: var(--ds-space-xl);
+  --room-pad: 0px;
+  --parent-width: 200px;
+  --words-width: 300px;
+  --badge: 44px;
+  --badge-icon: 24px;
+  --guidance-width: auto;
+  --guidance-pad: var(--ds-space-m) var(--ds-space-20);
+}
+
+html[data-size="tall"] .labyrinth-board-screen[data-compact] { --below: 100px; --room-gap: var(--ds-space-2xl); }
+html[data-size="tall"] .labyrinth-board-screen[data-level="explorer"] { --cell-max: 52px; }
+html[data-size="tall"] .labyrinth-board-screen[data-level="paleontologist"] { --cell-max: 48px; }
+
+html[data-size="tall"] .labyrinth-maze {
+  --cell: max(48px, min(
+    var(--cell-max),
+    (100vw - 2 * var(--lb-side-pad) - var(--screen-left) - var(--screen-right) - 2 * var(--maze-pad)) / var(--columns),
+    (100dvh - var(--lb-sky) - var(--lb-ochre) - 20px - var(--below) - 2 * var(--maze-pad)) / var(--rows)
+  ));
+}
+
+/* Phones: every cell is 48 and the view pans over a maze too big for the
+   window. A step may pan as well as tap. */
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .labyrinth-maze { --cell: 48px; --maze-pad: var(--ds-space-s); }
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .labyrinth-view { flex: 0 1 auto; min-width: 0; min-height: 0; max-width: 100%; max-height: 100%; }
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .labyrinth-window { flex: 0 1 auto; min-width: 0; min-height: 0; overflow: auto; }
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) :is(.labyrinth-maze, .labyrinth-maze *) { touch-action: pan-x pan-y; }
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .labyrinth-maze:focus-visible { outline-offset: -5px; }
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .labyrinth-board-screen {
+  --spot-pad: var(--ds-space-3);
+  --spot-radius: var(--ds-radius-10);
+  --footprint: 22px;
+}
+
+/* An upright phone: HOME and HINT keep their symbols alone, the title
+   takes a line of its own under them. */
+html[data-size="tall-narrow"] .labyrinth-board-screen {
+  --lb-top: calc(var(--ds-space-s) + env(safe-area-inset-top));
+  --lb-sky: calc(var(--lb-top) + 128px);
+  --lb-ochre: calc(10px + env(safe-area-inset-bottom));
+  --lb-side-pad: var(--ds-space-l);
+  --room-gap: var(--ds-space-m);
+  --room-pad: 0px;
+  --parent-width: 120px;
+  --words-width: 200px;
+  --words-size: var(--ds-size-20);
+  --badge: 28px;
+  --badge-icon: 15px;
+  --guidance-width: auto;
+  --guidance-pad: var(--ds-btn-gap) var(--ds-space-14);
+  --guidance-size: var(--ds-size-15);
+  grid-template-rows: auto minmax(0, 1fr);
+  row-gap: var(--ds-space-xl);
+  padding-bottom: calc(var(--lb-ochre) + var(--ds-space-9));
+}
+
+html[data-size="tall-narrow"] .labyrinth-bar {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-areas: "home . hint" "title title title";
+  row-gap: var(--ds-space-s);
+  padding: 0 var(--ds-space-xs);
+}
+
+html[data-size="tall-narrow"] .labyrinth-bar .home-button { grid-area: home; }
+html[data-size="tall-narrow"] .labyrinth-hint-button { grid-area: hint; }
+html[data-size="tall-narrow"] .labyrinth-bar h1 { grid-area: title; min-height: 44px; font-size: var(--ds-size-title); }
+html[data-size="tall-narrow"] :is(.labyrinth-bar .home-button, .labyrinth-hint-button) { width: 48px; padding: 0; gap: 0; justify-content: center; }
+html[data-size="tall-narrow"] :is(.labyrinth-home-word, .labyrinth-hint-word) { display: none; }
+html[data-size="tall-narrow"] .labyrinth-mark { width: 36px; height: 36px; }
+html[data-size="tall-narrow"] .labyrinth-mark svg { width: 20px; height: 20px; }
+html[data-size="tall-narrow"] .labyrinth-level-picture { width: 32px; height: 32px; font-size: 26px; }
+html[data-size="tall-narrow"] .labyrinth-side { gap: var(--ds-space-m); }
+
+/* A phone on its side: the maze pans beside the parent, the words and the
+   guidance. */
+html[data-size="wide-short"] .labyrinth-board-screen {
+  --lb-top: calc(var(--ds-space-s) + env(safe-area-inset-top));
+  --lb-sky: calc(var(--lb-top) + 62px);
+  --lb-ochre: calc(10px + env(safe-area-inset-bottom));
+  --lb-side-pad: var(--ds-space-xl);
+  --side: 220px;
+  --room-gap: var(--ds-space-xl);
+  --room-pad: 0px;
+  --parent-width: 130px;
+  --words-width: 200px;
+  --words-size: var(--ds-size-18);
+  --badge: 26px;
+  --badge-icon: 14px;
+  --guidance-width: 100%;
+  --guidance-pad: var(--ds-btn-gap) var(--ds-space-m);
+  --guidance-size: var(--ds-size-15);
+  row-gap: var(--ds-space-14);
+  padding-bottom: calc(var(--lb-ochre) + var(--ds-space-6));
+}
+
+html[data-size="wide-short"] .labyrinth-board-screen[data-compact] { --side: 190px; --parent-width: 110px; --words-width: 180px; }
+html[data-size="wide-short"] .labyrinth-room { justify-content: center; }
+html[data-size="wide-short"] .labyrinth-side { gap: var(--ds-space-m); }
+html[data-size="wide-short"] .labyrinth-guidance > svg { width: 18px; height: 18px; }

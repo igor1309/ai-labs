@@ -7,6 +7,7 @@ import "../src/app.css";
 import { LabyrinthBoardScreen } from "../src/LabyrinthBoardScreen.tsx";
 import { adjacentPaths, hintInMaze, isPath, mazeSolved, moveInMaze, nextMaze, startMaze, type LabyrinthRound, type MazeLevel } from "../src/labyrinth/index.ts";
 import type { Language } from "../src/language/language.ts";
+import { turnedFor, turnMaze } from "../src/labyrinthView.ts";
 import { mediaViewport } from "../src/mediaViewport.ts";
 import { PicturesProvider, pictureStore } from "../src/Picture.tsx";
 import triceratops from "../src/assets/dinos/triceratops/body.webp";
@@ -34,12 +35,12 @@ function roundIn(level: MazeLevel, state: BoardState): LabyrinthRound {
 function Board({ language, level, state }: { language: Language; level: MazeLevel; state: BoardState }) {
   const [round, setRound] = useState(() => roundIn(level, state));
   const { maze } = round;
-  const columns = maze.rows[0]!.length;
+  const turn = turnMaze(maze.rows[0]!.length, maze.rows.length, turnedFor(level, sizeViewport.sizeClass()));
   const legal = adjacentPaths(maze, round.position);
-  return <LabyrinthBoardScreen language={language} level={level} columns={columns} rows={maze.rows.length}
-    cells={Array.from({ length: maze.rows.length * columns }, (_, place) => ({ open: isPath(maze, place), legal: legal.includes(place) }))}
-    baby={round.position} from={round.from} goal={maze.goal} hint={round.hint} finished={mazeSolved(round)} picture={triceratops}
-    onMove={(place) => setRound((current) => moveInMaze(current, place))} onHint={() => setRound(hintInMaze)} onHome={() => undefined} />;
+  return <LabyrinthBoardScreen language={language} level={level} columns={turn.columns} rows={turn.rows}
+    cells={Array.from({ length: turn.columns * turn.rows }, (_, place) => turn.toMaze(place)).map((place) => ({ open: isPath(maze, place), legal: legal.includes(place) }))}
+    baby={turn.toView(round.position)} from={turn.toView(round.from)} goal={turn.toView(maze.goal)} hint={round.hint === undefined ? undefined : turn.toView(round.hint)} finished={mazeSolved(round)} picture={triceratops}
+    onMove={(place) => setRound((current) => moveInMaze(current, turn.toMaze(place)))} onHint={() => setRound(hintInMaze)} onHome={() => undefined} />;
 }
 
 let root: Root | undefined;
