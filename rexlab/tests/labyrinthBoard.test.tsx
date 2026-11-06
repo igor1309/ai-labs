@@ -10,8 +10,14 @@ import { adjacentPaths, hintInMaze, isPath, nextMaze, mazeSolved, moveInMaze, st
 import { useScreens } from "../src/screens.ts";
 import { withPictures } from "./pictures.tsx";
 import { filterTaps, tapAt } from "./taps.ts";
-import { openWindow, styleAt, windowsAnd } from "./windowSizes.ts";
+import { openWindow } from "./windowSizes.ts";
 import triceratops from "../src/assets/dinos/triceratops/body.webp";
+import { appStylesheet, NO_SAFE_AREA } from "./stylesheet.ts";
+
+// The board brings its own sheet, as in the app.
+const boardSheet = document.createElement("style");
+boardSheet.textContent = appStylesheet(NO_SAFE_AREA, ["labyrinthBoard.css"]);
+document.head.append(boardSheet);
 
 const layoutFor = (level: AgeLevel) => nextMaze(level, undefined, 0.25);
 const defaultMaze = layoutFor("hatchling");
@@ -186,26 +192,50 @@ describe("a playable labyrinth board", () => {
     const words = TEXTS[language].labyrinthBoard;
     const compact = level !== "hatchling";
     expect(screen.getByRole("heading", { name: compact ? new RegExp(TEXTS[language].ageLevels[level].name) : words.title })).toBeDefined();
-    expect(screen.queryByRole("complementary", { name: words.goal }) !== null).toBe(!compact);
+    expect(document.querySelector(".labyrinth-mark") !== null).toBe(!compact);
+    expect(document.querySelector(".labyrinth-level-picture") !== null).toBe(compact);
+    // The parent waits beside the maze at every level, with the words and
+    // the guidance; on the larger mazes it stands on home as well.
+    expect(screen.getByRole("region", { name: words.goal }).textContent).toBe(words.bringHome);
+    expect(part(".labyrinth-guidance").textContent).toBe(words.tapStep);
     expect(part("[data-goal]").querySelector(".labyrinth-goal-symbol")).not.toBeNull();
-    expect(part("[data-legal]").querySelector(".labyrinth-footprint")).not.toBeNull();
+    expect(part("[data-goal]").querySelector(".labyrinth-goal-badge") !== null).toBe(compact);
+    expect(part("[data-legal]").querySelector(".labyrinth-spot .labyrinth-footprint")).not.toBeNull();
     for (const button of document.querySelectorAll(".labyrinth-bar button")) expect(button.querySelector("svg")).not.toBeNull();
     const main = screen.getByRole("main");
     expect(main.textContent).toBe(main.textContent!.toLocaleUpperCase(language));
     for (const element of main.querySelectorAll("[aria-label]")) expect(element.getAttribute("aria-label")).toBe(element.getAttribute("aria-label")!.toLocaleUpperCase(language));
     const pictures = [...main.querySelectorAll("img")];
-    expect(pictures).toHaveLength(2);
-    expect(pictures.map((picture) => picture.getAttribute("src"))).toEqual([triceratops, triceratops]);
-    expect(pictures.every((picture) => picture.classList.contains("picture"))).toBe(true);
+    expect(pictures).toHaveLength(compact ? 3 : 2);
+    expect(pictures.every((picture) => picture.getAttribute("src") === triceratops && picture.classList.contains("picture"))).toBe(true);
+    // One picture is named the parent: on home where it stands there,
+    // otherwise beside the maze.
     const parent = screen.getByRole("img", { name: words.parent });
-    const baby = part(".labyrinth-baby-picture");
-    const cellSize = Number.parseFloat(getComputedStyle(part(".labyrinth-maze")).getPropertyValue("--cell"));
-    const babyWidth = compact ? Number.parseFloat(getComputedStyle(baby).width) : cellSize;
-    const babyHeight = compact ? Number.parseFloat(getComputedStyle(baby).height) : cellSize;
-    expect(Number.parseFloat(getComputedStyle(parent).width)).toBeGreaterThan(babyWidth);
-    expect(Number.parseFloat(getComputedStyle(parent).height)).toBeGreaterThan(babyHeight);
-    if (compact) expect(parent.closest("[data-goal]")).toBe(part("[data-goal]"));
-    else expect(getComputedStyle(parent).width).toBe("250px");
+    expect(parent.closest(compact ? "[data-goal]" : ".labyrinth-side")).not.toBeNull();
+  });
+
+  it.each(AGE_LEVELS)("brings baby and parent together on home at %s, with nothing left to tap", (level) => {
+    const layout = layoutFor(level);
+    const props = propsFor({ ...startMaze(layout), position: layout.goal });
+    render(<LabyrinthBoardScreen {...props} />, withPictures);
+    expect(screen.getByRole("main").hasAttribute("data-finished")).toBe(true);
+    expect(part("[data-goal]").querySelector(".labyrinth-goal-picture")).not.toBeNull();
+    expect(part("[data-goal]").querySelector(".labyrinth-goal-badge")).toBeNull();
+    expect(screen.getByRole("region", { name: TEXTS.en.labyrinthBoard.goal }).textContent).toBe(TEXTS.en.labyrinthResult.title);
+    expect(getComputedStyle(part(".labyrinth-guidance")).visibility).toBe("hidden");
+    expect(screen.getByRole("button", { name: "HINT" }).hasAttribute("disabled")).toBe(true);
+  });
+
+  it("turns HINT amber while its hint shows", async () => {
+    const user = userEvent.setup({ delay: null });
+    render(<PlayableBoard />, withPictures);
+    const hint = screen.getByRole("button", { name: "HINT" });
+    expect(hint.hasAttribute("data-showing")).toBe(false);
+    await user.click(hint);
+    expect(hint.hasAttribute("data-showing")).toBe(true);
+    expect(part("[data-hint] .labyrinth-spot").querySelector(".labyrinth-hint")).not.toBeNull();
+    await user.click(part("[data-hint]"));
+    expect(hint.hasAttribute("data-showing")).toBe(false);
   });
 
   it.each(AGE_LEVELS.map(layoutFor))("indicates all legal turns equally, including the goal, without revealing a route in $id", (layout) => {
@@ -247,52 +277,41 @@ describe("a playable labyrinth board", () => {
   it.each(AGE_LEVELS.flatMap((level) => THEMES.map((theme) => ({ level, theme }))))("keeps paths, walls, hints and focus distinct in $theme at $level", ({ theme, level }) => {
     document.documentElement.dataset.theme = theme;
     try {
-      const initial = startMaze(layoutFor(level));
-      render(<LabyrinthBoardScreen {...propsFor(hintInMaze(initial))} />, withPictures);
+      const layout = layoutFor(level);
+      const junction = Array.from({ length: layout.rows.length * layout.rows[0]!.length }, (_, at) => at).find((place) => adjacentPaths(layout, place).length >= 3)!;
+      render(<LabyrinthBoardScreen {...propsFor(hintInMaze({ ...startMaze(layout), position: junction, from: junction }))} />, withPictures);
       const background = (selector: string) => getComputedStyle(part(selector)).backgroundColor;
+      // Tunnels stay lighter than the earth; a footprint's spot differs
+      // from its tunnel, and the hint's from every other spot.
       expect(background(".labyrinth-maze")).not.toBe(background(".labyrinth-cell"));
-      expect(background("[data-hint]")).not.toBe(background(".labyrinth-cell:not([data-hint])"));
-      expect(getComputedStyle(part("[data-goal]")).borderTopStyle).toBe("solid");
-      for (const selector of [".labyrinth-maze:focus-visible", ".labyrinth-bar button:focus-visible", ".labyrinth-cell:focus-visible"]) {
-        const rules = [...document.styleSheets].flatMap((sheet) => [...sheet.cssRules]).filter((rule): rule is CSSStyleRule => rule instanceof CSSStyleRule && rule.selectorText.split(",").some((part) => part.trim() === selector));
-        expect(rules.some((rule) => rule.style.outline === "3px solid #c9583d")).toBe(true);
-      }
+      expect(background("[data-legal]:not([data-hint]) .labyrinth-spot")).not.toBe(background(".labyrinth-cell"));
+      expect(background("[data-hint] .labyrinth-spot")).not.toBe(background("[data-legal]:not([data-hint]) .labyrinth-spot"));
+      expect(getComputedStyle(part("[data-goal]")).boxShadow).toMatch(/inset/);
+      const outline = (selector: string) => [...document.styleSheets].flatMap((sheet) => [...sheet.cssRules])
+        .filter((rule): rule is CSSStyleRule => rule instanceof CSSStyleRule && rule.selectorText.split(",").some((part) => part.trim() === selector))
+        .map((rule) => rule.style.outline);
+      expect(outline(".labyrinth-maze:focus-visible")).toContain("5px solid var(--ds-strong)");
+      for (const selector of [".labyrinth-bar button:focus-visible", ".labyrinth-cell:focus-visible"]) expect(outline(selector)).toContain("3px solid var(--ds-strong)");
     } finally {
       delete document.documentElement.dataset.theme;
     }
   });
 });
 
-describe.each(AGE_LEVELS)("the whole %s board fits", (level) => {
-  it.each(windowsAnd([1024, 670]))("keeps the maze, parent and controls visible at %i by %i", (width, height) => {
-    openWindow(width, height);
-    const props = propsFor(startMaze(layoutFor(level)));
-    render(<LabyrinthBoardScreen {...props} />, withPictures);
-    const size = [width, height] as const;
-    const at = (selector: string) => styleAt(part(selector), size);
-    const screenStyle = at(".labyrinth-board-screen");
-    expect([screenStyle.value("box-sizing"), screenStyle.value("height"), screenStyle.value("min-height"), screenStyle.value("min-width")]).toEqual(["border-box", `${height}px`, "670px", "1024px"]);
-    const compact = level !== "hatchling";
-    const padding = compact ? 16 : 24;
-    const gap = compact ? 12 : 16;
-    expect([screenStyle.px("padding-top"), screenStyle.px("padding-bottom"), screenStyle.rowGap()]).toEqual([padding, padding, gap]);
-    const grid = at(".labyrinth-maze");
-    const side = Number.parseFloat(grid.value("--cell"));
-    expect(side).toBeGreaterThanOrEqual(48);
-    expect([grid.value("grid-template-columns"), grid.value("grid-template-rows")]).toEqual(["repeat(var(--columns), var(--cell))", "repeat(var(--rows), var(--cell))"]);
-    expect([maze().style.getPropertyValue("--columns"), maze().style.getPropertyValue("--rows")]).toEqual([String(props.columns), String(props.rows)]);
-    // styleAt resolves the inherited cell variable to CSS pixels.
-    expect([at(".labyrinth-cell").px("width"), at(".labyrinth-cell").px("height")]).toEqual([side, side]);
-    const mazeWidth = side * props.columns + grid.px("padding-left") + grid.px("padding-right");
-    const mazeHeight = side * props.rows + grid.px("padding-top") + grid.px("padding-bottom");
-    const barHeight = 56;
-    expect(at(".labyrinth-bar").value("flex")).toBe(`0 0 ${barHeight}px`);
-    const aside = compact ? 0 : at(".labyrinth-room").columnGap() + 270;
-    expect(mazeWidth + aside + 2 * padding).toBeLessThanOrEqual(width);
-    const guidance = Math.max(at(".labyrinth-guidance").px("line-height"), at(".labyrinth-guidance > svg").px("height"));
-    expect(mazeHeight + barHeight + guidance + 2 * gap + 2 * padding).toBeLessThanOrEqual(height);
-    expect(at(".labyrinth-bar button").px("height")).toBeGreaterThanOrEqual(48);
-    expect(compact).toBe(document.querySelector(".labyrinth-parent") === null);
+// Where each board fits, and that each cell is its level's own size on an
+// iPad mini, is measured in a browser: tests/labyrinthLayout.browser.cjs.
+describe.each(AGE_LEVELS)("the %s board", (level) => {
+  const CELLS = { hatchling: "64px", explorer: "52px", paleontologist: "48px" };
+
+  it("asks for its level's cell, never under 48, with the bar's controls at least 48 tall", () => {
+    openWindow(1133, 744);
+    render(<LabyrinthBoardScreen {...propsFor(startMaze(layoutFor(level)))} />, withPictures);
+    const style = getComputedStyle(screen.getByRole("main"));
+    expect(style.getPropertyValue("--cell-max").trim()).toBe(CELLS[level]);
+    const grid = getComputedStyle(maze());
+    expect(grid.getPropertyValue("--cell").replace(/\s/g, "")).toMatch(/^max\(48px,min\(var\(--cell-max\),/);
+    expect([grid.gridTemplateColumns, grid.gridTemplateRows]).toEqual(["repeat(var(--columns), var(--cell))", "repeat(var(--rows), var(--cell))"]);
+    for (const button of document.querySelectorAll(".labyrinth-bar button")) expect(getComputedStyle(button).minHeight).toBe("48px");
   });
 
   it("keeps its minimum size and scrollable overflow below the shared minimum", () => {
@@ -300,6 +319,5 @@ describe.each(AGE_LEVELS)("the whole %s board fits", (level) => {
     render(<LabyrinthBoardScreen {...propsFor(startMaze(layoutFor(level)))} />, withPictures);
     const style = getComputedStyle(screen.getByRole("main"));
     expect([style.minWidth, style.minHeight, style.overflow || "visible"]).toEqual(["1024px", "670px", "visible"]);
-    expect(Number.parseFloat(getComputedStyle(maze()).getPropertyValue("--cell"))).toBeGreaterThanOrEqual(48);
   });
 });
