@@ -17,7 +17,13 @@ const SHOTS = [
   ["explorer-start-dark", { level: "explorer", state: "start", theme: "dark" }],
   ["paleontologist-start-dark", { level: "paleontologist", state: "start", theme: "dark" }],
   ["hatchling-start-ru", { level: "hatchling", state: "start", language: "ru" }],
-  ["explorer-hint-ru", { level: "explorer", state: "hint", language: "ru" }]
+  ["explorer-hint-ru", { level: "explorer", state: "hint", language: "ru" }],
+  ["result-first", { result: "first" }],
+  ["result-tied", { result: "tied", level: "explorer" }],
+  ["result-unreadable", { result: "unreadable" }],
+  ["result-first-dark", { result: "first", theme: "dark" }],
+  ["result-first-ru", { result: "first", language: "ru" }],
+  ["result-loading", { result: "first", loading: true }]
 ];
 
 (async () => {
@@ -41,7 +47,7 @@ const SHOTS = [
     });
     await page.goto("http://shots.test/");
     for (const [name, options] of SHOTS) {
-      await page.evaluate(async options => { (await import("/harness.js")).mount(options); await document.fonts.ready; }, options);
+      await page.evaluate(async options => { { const harness = await import("/harness.js"); options.result ? harness.mountResult(options) : harness.mount(options); } await document.fonts.ready; }, options);
       if (!options.loading) await page.waitForFunction(() => [...document.images].every(image => image.complete));
       await page.evaluate(() => Promise.all(document.getAnimations().filter(a => a.effect?.getComputedTiming().iterations !== Infinity).map(a => a.finished.catch(() => {}))));
       await page.screenshot({ path: join(out, `${name}.png`) });
