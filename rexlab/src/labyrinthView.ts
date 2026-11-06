@@ -6,10 +6,10 @@ import type { AgeLevel } from "./ageLevel.ts";
 // a view over it that follows the baby. All of it is plain arithmetic, kept
 // apart from the screen so it can be tested without a browser.
 
-// The upright iPad turns every maze; an upright phone only HATCHLING's,
-// which then fits whole. The larger mazes keep their rows there and pan.
-export function turnedFor(level: AgeLevel, size: SizeClass): boolean {
-  return size === "tall" || size === "tall-narrow" && level === "hatchling";
+// Upright, every maze turns on its side: the iPad shows it whole, a phone
+// fills its height with it and pans less across.
+export function turnedFor(_level: AgeLevel, size: SizeClass): boolean {
+  return size === "tall" || size === "tall-narrow";
 }
 
 // A maze place seen in the turned board, and back: column and row swap.

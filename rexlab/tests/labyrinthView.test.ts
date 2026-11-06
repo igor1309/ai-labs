@@ -6,7 +6,7 @@ const cell = (column: number, row: number) => ({ left: 8 + column * 48, top: 8 +
 describe("the turned maze", () => {
   it("turns every maze on an upright iPad and only HATCHLING's on an upright phone", () => {
     expect(["hatchling", "explorer", "paleontologist"].map((level) => turnedFor(level as never, "tall"))).toEqual([true, true, true]);
-    expect(["hatchling", "explorer", "paleontologist"].map((level) => turnedFor(level as never, "tall-narrow"))).toEqual([true, false, false]);
+    expect(["hatchling", "explorer", "paleontologist"].map((level) => turnedFor(level as never, "tall-narrow"))).toEqual([true, true, true]);
     for (const size of ["wide", "wide-short"] as const) expect(turnedFor("hatchling", size)).toBe(false);
   });
 

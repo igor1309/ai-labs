@@ -1,5 +1,9 @@
 # rexlab — Change Log
 
+## 2026-11-07
+
+- LAB-1031: On an upright phone, EXPLORER's and PALEONTOLOGIST's mazes turn on their side like HATCHLING's, so they fill the screen's height and pan less across.
+
 ## 2026-11-06
 
 - LAB-1030: A browser walk through the released app plays LABYRINTH from Home: three Hatchling rounds by keys and taps, each result, the Explorer offer, YES, and an Explorer round, on six devices in English and light and Russian and dark, each screen checked on arrival.

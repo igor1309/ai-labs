@@ -96,7 +96,7 @@ const STATES = [{ state: "start" }, { state: "hint" }, { state: "step" }, { stat
               baby: inside(baby), goal: inside(goal), marker: !!document.querySelector(".labyrinth-marker")
             };
           });
-          const upright = viewport.size === "tall" || viewport.size === "tall-narrow" && level === "hatchling";
+          const upright = viewport.size === "tall" || viewport.size === "tall-narrow";
           if (upright) assert.deepEqual(seen.grid, TURNED[level], `${at}: the maze is turned upright`);
           else assert(seen.grid[0] > seen.grid[1], `${at}: the maze keeps its rows`);
           if (viewport.name === "iPad mini") assert.equal(seen.cell, cell, `${state}: a ${level} cell on an iPad mini is ${cell}, not ${seen.cell}`);
