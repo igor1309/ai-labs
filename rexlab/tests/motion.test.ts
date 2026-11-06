@@ -90,6 +90,7 @@ describe("the motion", () => {
       "--motion-stagger": "40ms",
       "--motion-picture": "200ms",
       "--motion-shimmer": "1500ms",
+      "--motion-scroll": "smooth",
       "--motion-alive": "360ms",
       "--motion-amount": "1"
     });
@@ -129,7 +130,9 @@ describe("the motion", () => {
       "--motion-screen": "160ms",
       "--motion-count": "0ms",
       "--motion-stagger": "0ms",
-      "--motion-amount": "0"
+      "--motion-amount": "0",
+      // A following view jumps instead of gliding.
+      "--motion-scroll": "auto"
     });
     // Every keyframe moves by --motion-amount, so it only fades where that
     // is 0; the count-up takes no time there.

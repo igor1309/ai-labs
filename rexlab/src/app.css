@@ -639,6 +639,9 @@ html[data-size="wide-short"] {
   --motion-picture: 200ms;
   --motion-shimmer: 1500ms;
   --motion-amount: 1;
+  /* A view that follows something glides to it, or jumps under reduced
+     motion. */
+  --motion-scroll: smooth;
 }
 
 @keyframes fade-out {
@@ -12187,6 +12190,7 @@ html[data-size="wide-short"] .pair-card-name[data-caption] { display: none; }
     --motion-count: 0ms;
     --motion-stagger: 0ms;
     --motion-amount: 0;
+    --motion-scroll: auto;
   }
 
   .home-skeleton-hero > .skeletons-hero-fallback, .home-skeleton-hero > canvas { transition-duration: var(--motion-small); }
