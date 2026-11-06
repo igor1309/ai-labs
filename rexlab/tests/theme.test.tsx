@@ -412,7 +412,7 @@ const SCREEN_GROUPS: Array<[string, Part[]]> = [
           await user.click(outsideMenu());
         }
       }],
-      ["the portrait gate", checked(<OrientationGate shown screenUpright language="en">{catalogue("all")}</OrientationGate>)]
+      ["the portrait gate", checked(<OrientationGate shown screenUpright language="en">{catalogue("each")}</OrientationGate>)]
     ]
   ],
   [
