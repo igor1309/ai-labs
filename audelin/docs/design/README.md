@@ -146,7 +146,7 @@ Cards are separated by `space-8` in both appearances.
 | 3 — Live panel states | Not recording; recording; getting ready, recording while the models load; live text off; live text switched off mid-call, with the text so far kept; text filled in after live text is switched on; settling; selections held, each let go on its own; sent to bb with each card step |
 | 4 — Calls list | Hover; confirm delete; renaming inline |
 | 5 — Call after it ends | Final pass running; failed; summary pending; done; renaming the title |
-| 6 — Settings | Release build; debug build; confirm move; moving; move failed; during a recording |
+| 6 — Settings | Recording: release, debug, confirm move, moving, move failed, during recording. Call notes: off, on, local, invalid, unavailable, validating, saving, save failed, saved, loading, load failed; see [settings brief](call-notes-settings.md) and [rehearsal comparison](call-notes-rehearsal.md) |
 | 7 — Menu bar item | Waiting for a call; recording started by the call; recording without live text |
 | 8 — Errors | No call audio; no microphone; disk full; call silent (written but zeros while the user talks) |
 | 9 — App icon | Three frames: the ledger icon (not chosen); "two tracks", the chosen flat design (owner, 2026-10-26); and its Liquid Glass edition, whose Icon Composer layers (me, them, rec) are exported to `macos/AppIcon/Audelin.icon` |

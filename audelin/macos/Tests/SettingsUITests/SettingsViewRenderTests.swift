@@ -14,7 +14,7 @@ struct SettingsViewRenderTests {
 
             let host = Offscreen.host(SettingsPreview(state: state, scheme: scheme), scheme: scheme)
             let image = try #require(Offscreen.snapshot(host), "\(name) did not render")
-            #expect(host.bounds.width > SettingsConfig.glassLedger.windowWidth, "\(name)")
+            #expect(host.bounds.width == SettingsConfig.glassLedger.windowWidth + 2 * SettingsConfig.glassLedger.light.space24, "\(name)")
             #expect(host.bounds.height > 0, "\(name)")
 
             try Offscreen.save(image, "settings-\(name)-\(scheme == .dark ? "dark" : "light")")

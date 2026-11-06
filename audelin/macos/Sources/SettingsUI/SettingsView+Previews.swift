@@ -10,7 +10,7 @@ extension SettingsState {
         ("moving", .moving),
         ("move-failed", .moveFailed),
         ("during-recording", .duringRecording),
-    ]
+    ] + summaryPreviews
 
     static let release = SettingsState(
         recordsCalls: true,

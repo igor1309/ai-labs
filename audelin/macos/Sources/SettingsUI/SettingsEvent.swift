@@ -1,6 +1,13 @@
 /// What the user can do in the Settings window.
 public enum SettingsEvent: Equatable, Sendable {
 
+    case selectTab(SettingsState.Tab)
+    case setAutomaticNotes(Bool)
+    case setIdentifySpeakers(Bool)
+    case selectNotesRuntime(SettingsState.NotesRuntime.Slot, SettingsState.NotesRuntime.Kind)
+    case editNotesField(SettingsState.NotesRuntime.Slot, SettingsState.NotesField.ID, String)
+    case notesAction(SettingsState.NotesAction.ID)
+
     case setRecordsCalls(Bool)
     case setLiveText(Bool)
     /// Pick a new calls folder.
