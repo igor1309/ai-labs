@@ -66,6 +66,10 @@ flowchart LR
 
 ## The process
 
+Blog posts about these projects use the [publication checklist](blog-publication.md).
+It covers channel and language, source claims, images and final-page checks;
+repository export checks alone do not establish that an article is ready.
+
 Each public project has a `showcase/` folder:
 
 ```
