@@ -1,0 +1,20 @@
+repo = "igor1309/audelin"
+description = "A local macOS call recorder with a selectable live transcript, built with Swift."
+homepage = "https://github.com/igor1309/audelin"
+topics = ["swift", "macos", "speech-recognition", "core-audio", "on-device"]
+check = "cd macos && swift build --build-tests && swift test && cd App && swift build --build-tests && swift test"
+
+include = [
+  "macos/Package.swift",
+  "macos/Package.resolved",
+  "macos/Sources/**",
+  "macos/Tests/**",
+  "macos/App/Package.swift",
+  "macos/App/Package.resolved",
+  "macos/App/Sources/**",
+  "macos/App/Tests/**",
+  "macos/App/AppIcon/**",
+  "macos/App/Audelin.entitlements",
+  "macos/scripts/bundle.sh",
+]
+exclude = ["macos/App/Sources/**/README.md"]
