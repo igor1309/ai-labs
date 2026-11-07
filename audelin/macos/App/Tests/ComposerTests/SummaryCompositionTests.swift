@@ -9,6 +9,30 @@ import Testing
 
 @MainActor @Suite(.timeLimit(.minutes(1)))
 struct SummaryCompositionTests {
+    @Test func defaultOffFinishesTheCallWithoutClaimingOrRequestingNotes() async throws {
+        try await withComposeFolder { root in
+            let http = ControlledHTTP(hold: false)
+            let runtime = Runtime(process: NoProcess(), http: http, credential: { _ in nil }, deadline: { try await waitForCancellation() })
+            let rig = try await ComposeFixture.make(root: root,
+                preferences: Preferences(automaticRecording: false, callsFolder: root), summaryRuntime: runtime)
+            do {
+                try await rig.start(); await rig.mine.heard.next(); await rig.theirs.heard.next()
+                try await rig.stop()
+                #expect(await http.count == 0)
+                #expect(try await transcriptText(of: rig).contains("final"))
+                let folder = rig.folder()
+                #expect(await offPool {
+                    !FileManager.default.fileExists(atPath: folder.appendingPathComponent(".summary-job.json").path)
+                    && !FileManager.default.fileExists(atPath: folder.appendingPathComponent("summary.md").path)
+                })
+                for await statuses in rig.menu.summaryStates() {
+                    #expect(statuses.values.allSatisfy { $0.isEmpty })
+                    break
+                }
+                await rig.finish()
+            } catch { await rig.finish(); throw error }
+        }
+    }
     @Test(arguments: [false, true])
     func exhaustedAttemptsKeepTheCallAndExposeFailureOrSpeakerWarning(speakerWarning: Bool) async throws {
         try await withComposeFolder { root in

@@ -7,7 +7,7 @@ Ordering probes use handshakes, never sleeps. Full validation: `audelin/scripts/
 
 ## S-1 No notes without permission
 
-Automated boundary: `cd audelin/macos && swift test --filter SummaryJobsTests/ineligibleNeverClaims`. Setup fixture: I have not enabled call summaries; drive: a call finishes; read-back oracle: I keep the transcript without sending it to a summary provider. Use the scenario-specific summary boundary result and inspect rendered status plus note/transcript bytes.
+Automated boundary: `cd audelin/macos/App && swift test --filter SummaryCompositionTests/defaultOffFinishesTheCallWithoutClaimingOrRequestingNotes`. Setup fixture: I have not enabled call summaries; drive: a call finishes; read-back oracle: I keep the transcript without sending it to a summary provider. Use the scenario-specific summary boundary result and inspect rendered status plus note/transcript bytes.
 
 ## S-2 Choose where notes are made
 
