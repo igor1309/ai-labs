@@ -64,7 +64,7 @@ export function PicturePuzzleBoardScreen({ language, scene, picture, presence, o
   const tap = useRef<SlotTap>(undefined);
   const skipClick = useRef<boolean>(false);
   const layout = pictureBoardLayout(room, scene);
-  const gated = externalGate || !layout.fits || room.upright;
+  const gated = externalGate || !layout.fits;
   const blocked = useRef<boolean>(gated);
   blocked.current = gated;
   const fittedCount = scene.slots.filter((slot) => slot.filled).length;
@@ -226,7 +226,7 @@ export function PicturePuzzleBoardScreen({ language, scene, picture, presence, o
     ? { "--from-x": `${release.x}px`, "--from-y": `${release.y}px` } as CSSProperties : undefined;
 
   return (
-    <OrientationGate shown={!layout.fits || room.upright} screenUpright={room.upright} language={language}>
+    <OrientationGate shown={!layout.fits} screenUpright={room.upright} language={language}>
       <main className="skeleton-dig picture-puzzle-board-screen" onPointerDownCapture={() => {
         if (!hold.current && !tap.current) skipClick.current = false;
       }} onClickCapture={(event) => {
@@ -240,7 +240,8 @@ export function PicturePuzzleBoardScreen({ language, scene, picture, presence, o
             <Puzzle aria-hidden="true" /><span key={fittedCount}>{fittedCount}/{scene.slots.length}</span>
           </p>
         </SkeletonBar>
-        <div className="picture-puzzle-stage" ref={stage} style={{ "--board-width": `${layout.width}px`, "--board-height": `${layout.height}px` } as CSSProperties}>
+        <div className="picture-puzzle-stage" ref={stage} data-upright={layout.upright || undefined}
+          style={{ "--board-width": `${layout.width}px`, "--board-height": `${layout.height}px`, "--tools-size": `${layout.tools}px` } as CSSProperties}>
           <div className="picture-puzzle-board" ref={board} role="group" aria-label={text.pictureBoard}
             style={{ width: layout.width, height: layout.height, gridTemplateColumns: `repeat(${scene.columns}, 1fr)`, gridTemplateRows: `repeat(${scene.rows}, 1fr)` }}>
             {scene.guide && <span className="picture-puzzle-guide"><BoardPicture src={picture} /></span>}
@@ -277,8 +278,8 @@ export function PicturePuzzleBoardScreen({ language, scene, picture, presence, o
               <span>{shownPage + 1}/{pages}</span>
               <Button className="picture-puzzle-control" aria-label={text.pictureNext} disabled={shownPage === pages - 1} onClick={() => setPage(shownPage + 1)}><ChevronRight aria-hidden="true" /></Button>
             </nav>
-            <Button className="picture-puzzle-control" data-active={hint !== undefined || undefined} disabled={unplaced.length === 0} onClick={askHint}><Lightbulb aria-hidden="true" />{text.pictureHint}</Button>
-            <Button className="picture-puzzle-control" aria-pressed={preview} onClick={() => setPreview(!preview)}><Eye aria-hidden="true" />{text.picturePreview}</Button>
+            <Button className="picture-puzzle-control" data-active={hint !== undefined || undefined} disabled={unplaced.length === 0} onClick={askHint}><Lightbulb aria-hidden="true" /><span className="picture-puzzle-label">{text.pictureHint}</span></Button>
+            <Button className="picture-puzzle-control" aria-pressed={preview} onClick={() => setPreview(!preview)}><Eye aria-hidden="true" /><span className="picture-puzzle-label">{text.picturePreview}</span></Button>
             <p className="picture-puzzle-retry" role="status">{release && !release.fitted && <span key={release.count}><RotateCcw aria-hidden="true" />{text.pictureRetry}</span>}</p>
           </aside>
           <div className="picture-puzzle-preview" data-shown={preview || undefined} aria-hidden={!preview}>

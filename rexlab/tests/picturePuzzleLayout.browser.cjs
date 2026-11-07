@@ -4,7 +4,10 @@
 // in Russian without it: no page scroll, nothing off screen, no overlap, no
 // cut label, every control at least 48 wide; without motion, every animation
 // is a short fade. The board, at its start, part fitted and loading, does the
-// same in every wide window at every level.
+// same in every window at every level, beside its tools or over them; only
+// where its places would be under 48px does it wait behind the gate, which
+// fits as well: the paleontologist's on an upright phone or a small one on
+// its side.
 const assert = require("node:assert/strict");
 const { resolve } = require("node:path");
 const { chromium } = require("playwright");
@@ -66,6 +69,7 @@ const stillEnough = page => page.evaluate(() => document.getAnimations()
         const at = `${state} at ${viewport.name}`;
         assert.deepEqual(moving, [], `${at}: without motion, animations are short fades`);
         assert.equal(await page.evaluate(() => document.documentElement.dataset.size), viewport.size, `${at}: the window's size class`);
+        if (typeof root === "function") root = await root(page, viewport);
         await checkLayout(page, { root, minimum: 48, viewport, state });
         checked++;
       };
@@ -74,8 +78,14 @@ const stillEnough = page => page.evaluate(() => document.getAnimations()
         for (const level of LEVELS) for (const options of CHOICES) {
           await check("mountChoice", { language, level, ...options }, ".picture-puzzle-choice-screen", `${language} choice ${level} ${options.stars} stars${options.loading ? " loading" : ""}`, viewport);
         }
-        if (viewport.size === "wide") for (const level of LEVELS) for (const options of BOARDS) {
-          await check("mountBoard", { language, level, ...options }, ".picture-puzzle-board-screen", `${language} board ${level} ${options.fitted} fitted${options.loading ? " loading" : ""}`, viewport);
+        for (const level of LEVELS) for (const options of BOARDS) {
+          const board = async () => {
+            const gated = await page.evaluate(() => document.querySelector(".orientation-gate[data-shown]") !== null);
+            assert.equal(gated, level === "paleontologist" && ["iPhone", "iPhone SE", "iPhone SE on its side"].includes(viewport.name),
+              `${language} ${level} board at ${viewport.name}: waits behind the gate only where its places would be under 48px`);
+            return gated ? ".orientation-gate" : ".picture-puzzle-board-screen";
+          };
+          await check("mountBoard", { language, level, ...options }, board, `${language} board ${level} ${options.fitted} fitted${options.loading ? " loading" : ""}`, viewport);
         }
       }
       assert.deepEqual(errors, []);
