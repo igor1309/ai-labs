@@ -11,10 +11,6 @@ struct CallNotesAccessibilityTests {
         var state = try #require(SettingsState.summaryPreviews.first?.state)
         let host = Offscreen.host(SettingsView(state: state, event: { events.append($0) }))
         let window = try #require(host.window)
-        window.styleMask = [.titled]
-        window.setAccessibilityElement(true)
-        window.orderFront(nil)
-        defer { window.orderOut(nil) }
         _ = try #require(Offscreen.snapshot(host))
         let recording = try button("tab-recording", in: host)
         let notes = try button("tab-callNotes", in: host)

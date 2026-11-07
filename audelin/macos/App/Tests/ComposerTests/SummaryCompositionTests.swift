@@ -9,6 +9,38 @@ import Testing
 
 @MainActor @Suite(.timeLimit(.minutes(1)))
 struct SummaryCompositionTests {
+    @Test(arguments: [false, true])
+    func exhaustedAttemptsKeepTheCallAndExposeFailureOrSpeakerWarning(speakerWarning: Bool) async throws {
+        try await withComposeFolder { root in
+            let http = ControlledHTTP(hold: false, failures: 2)
+            let rig = try await fixture(root: root, storage: ControlledTranscripts(), http: http, speakers: speakerWarning)
+            do {
+                try await rig.start(); await rig.mine.heard.next(); await rig.theirs.heard.next()
+                try await rig.stop()
+                let expected = speakerWarning
+                    ? "Итоги готовы; имена не определены"
+                    : "Не удалось составить или сохранить итоги. Расшифровка и аудио сохранены."
+                _ = try await summary(rig.menu) { $0.values.contains(expected) }
+                rig.menu.calls?.show()
+                for await state in Observations({ rig.menu.calls!.state }) where !state.rows.isEmpty {
+                    #expect(state.rows[0].summaryStatus == expected)
+                    break
+                }
+                #expect(await http.count == (speakerWarning ? 3 : 2))
+                let transcript = try await transcriptText(of: rig)
+                #expect(transcript.contains("mine final") && transcript.contains("theirs final"))
+                let output = rig.folder().appendingPathComponent("summary.md")
+                if speakerWarning {
+                    #expect(try await read(output).contains("Synthetic meeting"))
+                    let body = await http.lastBody
+                    #expect(body.contains("Me:") && body.contains("Them:"))
+                } else {
+                    #expect(await offPool { !FileManager.default.fileExists(atPath: output.path) })
+                }
+                await rig.finish()
+            } catch { await rig.finish(); throw error }
+        }
+    }
     @Test func waitForFinalWriteThenPublishAndShowStatus() async throws {
         try await withComposeFolder { root in
             let storage = ControlledTranscripts(holdFinal: true), http = ControlledHTTP(hold: false)
@@ -102,9 +134,10 @@ struct SummaryCompositionTests {
     }
 }
 @MainActor private func fixture(root: URL, storage: ControlledTranscripts, http: ControlledHTTP,
+                               speakers: Bool = false,
                                terminate: @escaping @Sendable () async -> Void = {}) async throws -> ComposeFixture {
     let slot = NotesPreferences.Runtime(kind: "compatibleAPI", model: "fixture", executable: "", endpoint: "http://127.0.0.1/v1", credentialVariable: "")
-    let preferences = Preferences(notes: .init(enabled: true, speakers: false, primary: slot, fallback: slot), automaticRecording: false, callsFolder: root)
+    let preferences = Preferences(notes: .init(enabled: true, speakers: speakers, primary: slot, fallback: slot), automaticRecording: false, callsFolder: root)
     let runtime = Runtime(process: NoProcess(), http: http, credential: { _ in nil }, deadline: { try await waitForCancellation() })
     return try await ComposeFixture.make(root: root, preferences: preferences, summaryRuntime: runtime,
                                          configure: { $0.transcripts = storage }, terminate: terminate)
@@ -122,9 +155,13 @@ private actor ControlledHTTP: HTTPRequesting {
     nonisolated let started = Signal()
     var count = 0
     var cancelled = false
-    init(hold: Bool) { self.hold = hold }
+    let failures: Int
+    var lastBody = ""
+    init(hold: Bool, failures: Int = 0) { self.hold = hold; self.failures = failures }
     func request(url: URL, headers: [String: String], body: Data, loopback: Bool) async throws -> HTTPResponse {
         count += 1; started.send()
+        lastBody = String(decoding: body, as: UTF8.self)
+        if count <= failures { throw Failure.transport }
         if hold {
             do { try await waitForCancellation() }
             catch { cancelled = true; throw Failure.cancelled }

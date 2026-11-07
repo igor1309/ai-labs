@@ -35,7 +35,7 @@ Automated boundary: `cd audelin/macos/App && swift test --filter SummaryGenerati
 
 ## S-8 Keep a call when notes fail
 
-Automated boundary: `cd audelin/macos && swift test --filter SummaryJobsTests/exhaustedIdentificationWarnsAndNotesFailureIsPersisted`. Setup fixture: both runtimes fail to make notes; drive: I open the call; read-back oracle: I can read the failure and still use the transcript and recording. Use the scenario-specific summary boundary result and inspect rendered status plus note/transcript bytes.
+Automated boundary: `cd audelin/macos/App && swift test --filter SummaryCompositionTests/exhaustedAttemptsKeepTheCallAndExposeFailureOrSpeakerWarning`. Setup fixture: both runtimes fail to make notes; drive: I open the call; read-back oracle: I can read the failure and still use the transcript and recording. Use the scenario-specific summary boundary result and inspect rendered status plus note/transcript bytes.
 
 ## S-9 Avoid misleading notes
 
@@ -55,7 +55,7 @@ Automated boundary: `cd audelin/macos && swift test --filter SummaryFilesTests/f
 
 ## S-13 Read a speaker warning
 
-Automated boundary: `cd audelin/macos && swift test --filter SummaryJobsTests/exhaustedIdentificationWarnsAndNotesFailureIsPersisted`. Setup fixture: identification failed but notes succeeded; drive: I open the call; read-back oracle: I can read the notes and the speaker warning. Both identification attempts fail; notes return with original labels; OCR notes and speaker warning.
+Automated boundary: `cd audelin/macos/App && swift test --filter SummaryCompositionTests/exhaustedAttemptsKeepTheCallAndExposeFailureOrSpeakerWarning`. Setup fixture: identification failed but notes succeeded; drive: I open the call; read-back oracle: I can read the notes and the speaker warning. Both identification attempts fail; notes return with original labels; OCR notes and speaker warning.
 
 ## S-14 Read storage failure
 
