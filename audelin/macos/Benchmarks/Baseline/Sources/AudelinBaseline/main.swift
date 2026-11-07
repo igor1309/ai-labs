@@ -9,6 +9,6 @@ rehearsalMain { options in
     let clock = ContinuousClock(), loading = clock.now
     let mine = try await ParakeetRecognizer(), theirs = try await ParakeetRecognizer()
     let load = loading.duration(to: clock.now)
-    return try SpeechVoices(speech: speech, mine: mine, theirs: theirs,
+    return try SpeechVoices(speech: speech, theirSpeech: options.theirSpeech, mine: mine, theirs: theirs,
                             modelLoad: Double(load.components.seconds) + Double(load.components.attoseconds) / 1e18)
 }
