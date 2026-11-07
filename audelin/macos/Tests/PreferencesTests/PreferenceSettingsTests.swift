@@ -31,7 +31,7 @@ struct PreferenceSettingsTests {
             #expect(notices == [enabled])
 
             storage.stored.automaticRecording = !enabled
-            settings.setLiveText(!enabled)
+            await settings.setLiveText(!enabled)
             #expect(settings.snapshot == Preferences(automaticRecording: !enabled, liveText: !enabled,
                                                      callsFolder: storage.stored.callsFolder))
             #expect(notices == [enabled])
@@ -57,7 +57,7 @@ struct PreferenceSettingsTests {
             storage.stored.callsFolder = URL(fileURLWithPath: "/current-calls")
             await settings.setAutomatic(!enabled)
             #expect(settings.snapshot == initial)
-            settings.setLiveText(!enabled)
+            await settings.setLiveText(!enabled)
             #expect(settings.snapshot == initial)
             #expect(storage.writes == [
                 Preferences(automaticRecording: !enabled, liveText: enabled, callsFolder: storage.stored.callsFolder),
@@ -67,7 +67,7 @@ struct PreferenceSettingsTests {
             #expect(storage.stored.liveText == enabled)
 
             storage.fails = false
-            settings.setLiveText(!enabled)
+            await settings.setLiveText(!enabled)
             #expect(settings.snapshot == Preferences(automaticRecording: enabled, liveText: !enabled,
                                                      callsFolder: storage.stored.callsFolder))
         }

@@ -202,7 +202,7 @@ public final class AudelinMenu {
         case let .setAutomatic(enabled):
             await settings.setAutomatic(enabled)
         case let .setLiveText(enabled):
-            settings.setLiveText(enabled)
+            await settings.setLiveText(enabled)
         case .showCalls: calls?.show()
         case .showSettings: presentSettings()
         case .showPanel: receivePanelPresence(.reopen)

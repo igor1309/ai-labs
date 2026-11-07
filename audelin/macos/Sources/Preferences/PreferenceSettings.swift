@@ -4,7 +4,7 @@ import Observation
 public protocol PreferenceSettingsStorage {
 
     func read() -> Preferences
-    func updateRecording(automatic: Bool?, liveText: Bool?) throws -> Preferences
+    @MainActor func updateRecording(automatic: Bool?, liveText: Bool?) async throws -> Preferences
 }
 
 @MainActor @Observable
@@ -25,19 +25,19 @@ public final class PreferenceSettings {
 
     public func setAutomatic(_ enabled: Bool) async {
 
-        if update(automatic: enabled) {
+        if await update(automatic: enabled) {
             await automaticChanged(enabled)
         }
     }
 
-    public func setLiveText(_ enabled: Bool) {
+    public func setLiveText(_ enabled: Bool) async {
 
-        _ = update(liveText: enabled)
+        _ = await update(liveText: enabled)
     }
 
-    private func update(automatic: Bool? = nil, liveText: Bool? = nil) -> Bool {
+    private func update(automatic: Bool? = nil, liveText: Bool? = nil) async -> Bool {
         do {
-            snapshot = try storage.updateRecording(automatic: automatic, liveText: liveText)
+            snapshot = try await storage.updateRecording(automatic: automatic, liveText: liveText)
             return true
         } catch {
             return false
