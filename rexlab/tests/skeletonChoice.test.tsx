@@ -5,12 +5,6 @@ import { TEXTS } from "../src/language/texts.ts";
 import { NAME_EMS } from "./nameWidths.ts";
 import { board, choices, finishLoading, openSkeletonsApp, puzzlePictures, slots, tray } from "./skeletonsApp.tsx";
 import { SHIPPED_SKELETONS, countedStarts, fakeBodyPicture, fakeSkeletonPicture, symbolOf, gameDoor } from "./support.ts";
-import { appStylesheet, NO_SAFE_AREA } from "./stylesheet.ts";
-
-// The choice brings its own sheet, as the screen does in the app.
-const choiceSheet = document.createElement("style");
-choiceSheet.textContent = appStylesheet(NO_SAFE_AREA, ["skeletonChoice.css"]);
-document.head.append(choiceSheet);
 
 // The names of Hatchling's four pieces, in the tray's order.
 const HATCHLING_NAMES = { en: ["SKULL", "SPINE", "LEGS", "TAIL"], ru: ["ЧЕРЕП", "ПОЗВОНОЧНИК", "НОГИ", "ХВОСТ"] };

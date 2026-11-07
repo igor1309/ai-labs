@@ -1,4 +1,4 @@
-// Contract test: BONES' choice, on a first visit, on a return with stars and
+// Contract test: BONES' choice and puzzle. The choice, on a first visit, on a return with stars and
 // the mystery tile, with every star and with its pictures still loading,
 // fits every window it plays in at every level, in English with motion and
 // in Russian without it: no page scroll, nothing off screen, no overlap, no
@@ -25,10 +25,15 @@ const VIEWPORTS = [
 ];
 const LEVELS = ["hatchling", "explorer", "paleontologist"];
 const CHOICES = [{ stars: 0 }, { stars: 2 }, { stars: 5 }, { stars: 2, loading: true }];
+const PUZZLES = [{}, { fitted: 2 }, { fitted: 2, step: "glow" }, { fitted: 2, step: "ghost" }, { fitted: 2, told: true }, { fitted: 99 }, { loading: true }];
+// The finished skeleton's stomp and snap run on, but every keyframe moves by
+// --motion-amount, which reduced motion makes 0: they keep their time, still.
+const STILLED = ["stomp", "jaw-snap"];
 const stillEnough = page => page.evaluate(() => document.getAnimations()
   .filter(a => a.effect?.getComputedTiming().iterations !== Infinity)
   .map(a => ({ name: a.animationName ?? "", duration: a.effect.getComputedTiming().duration }))
-  .filter(a => a.duration > 200));
+  .filter(a => a.duration > 200))
+  .then(moving => moving.filter(a => !STILLED.includes(a.name)));
 
 (async () => {
   let browser;
@@ -69,11 +74,27 @@ const stillEnough = page => page.evaluate(() => document.getAnimations()
           await checkLayout(page, { root: ".skeleton-choice-screen", minimum: 48, viewport, state });
           checked++;
         }
+        // The puzzle: its board and tray fit, and every spot stays at least 48 wide.
+        for (const level of LEVELS) for (const options of PUZZLES) {
+          const state = `${language} puzzle ${level} ${JSON.stringify(options)}`;
+          await page.evaluate(async options => (await import("/harness.js")).mountPuzzle(options), { language, level, ...options });
+          if (!options.loading) await page.waitForFunction(() => [...document.images].every(image => image.complete && image.naturalWidth > 0));
+          const moving = motion === "reduce" ? await stillEnough(page) : [];
+          await page.evaluate(async () => {
+            await document.fonts.ready;
+            await Promise.all(document.getAnimations().filter(a => a.effect?.getComputedTiming().iterations !== Infinity).map(a => a.finished.catch(() => {})));
+          });
+          assert.deepEqual(moving, [], `${state} at ${viewport.name}: without motion, animations are short fades`);
+          await checkLayout(page, { root: ".skeleton-puzzle-screen", minimum: 48, viewport, state });
+          const spots = await page.evaluate(() => [...document.querySelectorAll(".skeleton-tray-spot")].map(spot => spot.getBoundingClientRect()).map(({ width, height }) => Math.min(width, height)));
+          assert(spots.every(side => side >= 48), `${state} at ${viewport.name}: spots ${spots}`);
+          checked++;
+        }
       }
       assert.deepEqual(errors, []);
       await page.close();
     }
-    console.log(`${checked} choice layouts fit`);
+    console.log(`${checked} skeleton layouts fit`);
   } catch (error) {
     console.error(error);
     process.exitCode = 1;

@@ -12,12 +12,6 @@ import { openMenu } from "./menus.ts";
 import { finishLoading, fitAll, keptSkeletons, layOutPuzzle, openSkeletonsApp, PIECES, savedSkeletons, skeletonOf, slots, type SkeletonsAppOptions } from "./skeletonsApp.tsx";
 import { contrast, gameDoor, memoryStorage, seenOn, SHIPPED_SKELETONS, surfaceOf } from "./support.ts";
 import { WINDOW_SIZES, openWindow } from "./windowSizes.ts";
-import { appStylesheet, NO_SAFE_AREA } from "./stylesheet.ts";
-
-// The choice brings its own sheet, as the screen does in the app.
-const choiceSheet = document.createElement("style");
-choiceSheet.textContent = appStylesheet(NO_SAFE_AREA, ["skeletonChoice.css"]);
-document.head.append(choiceSheet);
 
 // skeleton-assembly-levels.feature: the selection screen's level switch,
 // the choice on it kept in the skeleton game's progress, and the cut each

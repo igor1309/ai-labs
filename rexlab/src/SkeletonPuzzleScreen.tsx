@@ -4,7 +4,9 @@ import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 import { useGateShown } from "./OrientationGate.tsx";
 import { Picture, usePicture } from "./Picture.tsx";
+import { DigGround } from "./DigBar.tsx";
 import { SkeletonBar } from "./SkeletonBar.tsx";
+import "./skeletonPuzzle.css";
 
 // A piece, by its id in its cut.
 export type ShownPiece = string;
@@ -298,11 +300,11 @@ export function SkeletonPuzzleScreen({
   const region = shownHint?.region;
 
   return (
-    <main className="skeleton-screen" onContextMenu={(event) => event.preventDefault()}>
-      <div className="stratum stratum-1" aria-hidden="true" />
+    <main className="skeleton-screen skeleton-dig skeleton-puzzle-screen" onContextMenu={(event) => event.preventDefault()}>
+      <DigGround />
       <SkeletonBar language={language} title={name.toLocaleUpperCase(language)} onMuseum={onMuseum} onBack={onBack} onHome={onHome}>
-        <p className="skeleton-chip" aria-label={text.fitted}>
-          <Bone size={20} aria-hidden="true" />
+        <p className="skeleton-chip" aria-label={text.fitted} data-complete={complete || undefined}>
+          <Bone size={22} aria-hidden="true" />
           {fitted}/{slots.length}
         </p>
       </SkeletonBar>
@@ -400,6 +402,7 @@ export function SkeletonPuzzleScreen({
                 }}
                 className="skeleton-tray-spot"
                 data-piece={slot.piece}
+                data-empty={slot.fitted || undefined}
                 data-hint={(!slot.fitted && shownHint?.piece === slot.piece) || undefined}
                 style={{ "--piece": index } as CSSProperties}
                 onPointerDown={slot.fitted ? undefined : press(slot.piece)}

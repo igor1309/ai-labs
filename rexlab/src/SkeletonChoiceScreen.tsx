@@ -35,7 +35,7 @@ export type SkeletonChoiceScreenProps = {
 export function SkeletonChoiceScreen({ language, choices, best, level, onLevel, onChoose, onMystery, onMuseum, onHome }: SkeletonChoiceScreenProps) {
   const text = TEXTS[language];
   return (
-    <main className="skeleton-screen skeleton-choice-screen">
+    <main className="skeleton-screen skeleton-dig skeleton-choice-screen">
       <DigGround />
       <SkeletonBar language={language} title={text.skeletonTitle} onMuseum={onMuseum} onHome={onHome}>
         {best !== undefined && (

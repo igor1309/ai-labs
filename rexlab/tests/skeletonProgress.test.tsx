@@ -142,12 +142,12 @@ describe("keeping the collection", () => {
       }
     ],
     [
-      "taps BACK, before HOME, without being asked to confirm",
+      "taps BACK, after HOME, without being asked to confirm",
       async (opened) => {
         const bar = document.querySelector(".skeleton-bar");
         expect([...(bar?.querySelectorAll("button") ?? [])].slice(0, 2).map((each) => [each.textContent, symbolOf(each)])).toEqual([
-          ["BACK", "arrow-left"],
-          ["HOME", "house"]
+          ["HOME", "house"],
+          ["BACK", "arrow-left"]
         ]);
         await opened.user.click(button("BACK"));
         expect([screen.queryAllByRole("dialog"), screen.queryAllByRole("alertdialog")]).toEqual([[], []]);
