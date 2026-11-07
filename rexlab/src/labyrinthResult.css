@@ -252,6 +252,9 @@ html[data-size="wide-short"] .labyrinth-result-screen {
 
 html[data-size="wide-short"] .labyrinth-reward-column { flex: 1 1 auto; }
 
+.pairs-offer[data-dig] .pairs-offer-picture svg { width: 48px; height: 48px; color: var(--ds-ink); }
+html[data-size="wide-short"] .pairs-offer[data-dig] .pairs-offer-picture svg { width: 32px; height: 32px; }
+
 .labyrinth-result-screen button:focus-visible { outline: 3px solid var(--ds-strong); outline-offset: 3px; }
 .labyrinth-result-screen .glow { left: 50%; }
 

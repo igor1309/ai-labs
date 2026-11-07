@@ -49,6 +49,7 @@ describe("labyrinth's shared next-level offer", () => {
     const dialog = screen.getByRole("dialog", { name: TEXTS.en.levelOffer.question(TEXTS.en.ageLevels[next].name) });
     // The dig site's offer: the LEVEL UP tag over the picture, NOT NOW before YES.
     expect(dialog.hasAttribute("data-dig")).toBe(true);
+    expect(dialog.querySelector(".pairs-offer-picture svg")?.classList.contains(next === "paleontologist" ? "lucide-pickaxe" : "lucide-compass")).toBe(true);
     expect(dialog.querySelector(".pairs-offer-tag")?.textContent).toBe(TEXTS.en.levelOffer.tag);
     expect([...dialog.querySelectorAll(".pairs-offer-answers button")].map((button) => button.textContent)).toEqual([TEXTS.en.levelOffer.notNow, TEXTS.en.levelOffer.yes]);
     expect(saved(app).offer).toEqual(offerOf(level, 0, [level]));
