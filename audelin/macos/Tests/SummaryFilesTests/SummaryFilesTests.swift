@@ -66,12 +66,19 @@ import Testing
             } catch { await child.stop(); throw error }
         }
     }
-    @Test func publicationReceiptRecoversExactJobAndInputAfterTerminalSaveFailure() async throws {
+    @Test(arguments: [false, true])
+    func publicationReceiptRecoversExactJobAndInputAfterTerminalSaveFailure(unicodeBoundary: Bool) async throws {
         try await withFolder { folder, locations in
             let disk = FailingDisk(), files = Files(locations: locations, disk: disk, ownershipDirectory: folder.deletingLastPathComponent().appendingPathComponent("leases"))
             let record = record()
             _ = try await files.claim(record); _ = try await files.start(record)
             try await files.publish(record, notes: "# Complete notes")
+            if unicodeBoundary {
+                let bytes = try await offPool { try Data(contentsOf: folder.appendingPathComponent("summary.md")) }
+                let receiptLength = try #require(bytes.firstIndex(of: 10)) + 1
+                let notes = String(repeating: "x", count: 4095 - receiptLength) + "Я\n# Complete notes"
+                try await files.publish(record, notes: notes)
+            }
             disk.failure.withLock { $0 = ".summary-job.json" }
             var terminal = record; terminal.phase = "succeeded"
             await #expect(throws: (any Error).self) { try await files.progress(terminal) }

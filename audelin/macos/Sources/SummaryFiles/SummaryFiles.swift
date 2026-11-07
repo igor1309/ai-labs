@@ -187,7 +187,9 @@ private actor DiskFiles: FilesStorage {
     }
     private struct Receipt: Codable { var job: String; var input: String; var warning: Bool }
     private static func receipt(_ data: Data) -> Receipt? {
-        guard let line = String(data: data.prefix(4096), encoding: .utf8)?.split(separator: "\n").first,
+        let prefix = data.prefix(4096)
+        guard let newline = prefix.firstIndex(of: 10),
+              let line = String(data: prefix[..<newline], encoding: .utf8),
               line.hasPrefix("<!-- audelin-summary:"), line.hasSuffix(" -->"),
               let payload = Data(base64Encoded: String(line.dropFirst(21).dropLast(4))) else { return nil }
         return try? JSONDecoder().decode(Receipt.self, from: payload)
