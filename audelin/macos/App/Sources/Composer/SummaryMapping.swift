@@ -1,0 +1,112 @@
+import Foundation
+import Preferences
+import SummaryFiles
+import SummaryJobs
+import SummaryRuntime
+import SummarySettings
+
+func settingsConfiguration(_ notes: NotesPreferences) -> SummarySettings.Configuration {
+    func runtime(_ value: NotesPreferences.Runtime) -> SummarySettings.Configuration.Runtime {
+        .init(kind: .init(rawValue: value.kind) ?? .compatibleAPI, model: value.model, executable: value.executable,
+              endpoint: value.endpoint, credentialVariable: value.credentialVariable)
+    }
+    return .init(enabled: notes.enabled, speakers: notes.speakers, primary: runtime(notes.primary), fallback: runtime(notes.fallback))
+}
+func storedConfiguration(_ config: SummarySettings.Configuration) -> NotesPreferences {
+    func runtime(_ value: SummarySettings.Configuration.Runtime) -> NotesPreferences.Runtime {
+        .init(kind: value.kind.rawValue, model: value.model, executable: value.executable, endpoint: value.endpoint, credentialVariable: value.credentialVariable)
+    }
+    return .init(enabled: config.enabled, speakers: config.speakers, primary: runtime(config.primary), fallback: runtime(config.fallback))
+}
+func runtimeConfiguration(_ value: SummaryJobs.Job.Runtime) throws -> SummaryRuntime.Configuration {
+    guard let kind = SummaryRuntime.Configuration.Kind(rawValue: value.kind) else { throw SummaryRuntime.Failure.configuration }
+    return .init(kind: kind, model: value.model, program: value.program, endpoint: value.endpoint, credentialVariable: value.credentialVariable)
+}
+func summaryStatus(_ phase: SummaryJobs.State.Phase, _ warning: Bool) -> String {
+    switch phase {
+    case .idle: ""
+    case .waiting: "Итоги ждут финальную расшифровку"
+    case .pending, .claiming, .observed: "Итоги ожидают запуска"
+    case .starting, .identifying, .checkpointing, .noting, .publishing, .saving: "Готовим итоги…"
+    case .succeeded: warning ? "Итоги готовы; имена не определены" : "Итоги готовы"
+    case .failed: "Не удалось составить или сохранить итоги. Расшифровка и аудио сохранены."
+    case .interrupted: "Подготовка итогов прервана; автоматического повтора не будет."
+    case .unavailable: "Итоги недоступны: финальная расшифровка не сохранена или нет распознанной речи."
+    }
+}
+
+struct SummaryPreferences: SummarySettings.Preferences {
+    let storage: PreferencesStore
+    private let queue = DispatchQueue(label: "audelin.notes.preferences")
+    func load() async throws -> SummarySettings.Configuration {
+        try await withCheckedThrowingContinuation { done in
+            queue.async { done.resume(with: Result { settingsConfiguration(try storage.loadNotes()) }) }
+        }
+    }
+    func save(_ configuration: SummarySettings.Configuration) async throws {
+        try await withCheckedThrowingContinuation { (done: CheckedContinuation<Void, any Error>) in
+            queue.async { done.resume(with: Result { try storage.updateNotes(storedConfiguration(configuration)) }) }
+        }
+    }
+}
+struct SummaryAvailability: SummarySettings.Availability {
+    let runtime: SummaryRuntime.Runtime
+    func validate(_ configuration: SummarySettings.Configuration) async -> String? {
+        if !configuration.enabled { return nil }
+        for (name, value) in [("Основной", configuration.primary), ("Резервный", configuration.fallback)] {
+            do {
+                try await runtime.validate(.init(kind: .init(rawValue: value.kind.rawValue)!, model: value.model,
+                    program: value.executable, endpoint: value.endpoint, credentialVariable: value.credentialVariable))
+            } catch {
+                if error as? SummaryRuntime.Failure == .authentication {
+                    return name + ": переменная учётных данных недоступна запущенному приложению. Проверьте имя и окружение приложения; значение не показывается."
+                }
+                return name + ": проверьте модель, программу и безопасный URL. Программа должна поддерживать изоляцию; проверка не подтверждает квоту."
+            }
+        }
+        return nil
+    }
+}
+
+// Persistence DTOs belong to the root mapping, not to the job domain.
+private struct Snapshot: Codable {
+    struct Runtime: Codable {
+        var kind: String; var model: String; var program: String; var endpoint: String; var credentialVariable: String
+        init(_ value: Job.Runtime) { kind = value.kind; model = value.model; program = value.program; endpoint = value.endpoint; credentialVariable = value.credentialVariable }
+        var value: Job.Runtime { .init(kind: kind, model: model, program: program, endpoint: endpoint, credentialVariable: credentialVariable) }
+    }
+    struct Entry: Codable {
+        var label: String; var time: String; var text: String
+        init(_ value: Job.Entry) { label = value.label; time = value.time; text = value.text }
+        var value: Job.Entry { .init(label: label, time: time, text: text) }
+    }
+    var entries: [Entry]; var speakers: Bool; var primary: Runtime; var fallback: Runtime
+    init(_ job: Job) { entries = job.entries.map(Entry.init); speakers = job.speakers; primary = .init(job.primary); fallback = .init(job.fallback) }
+}
+struct SummaryJobStore: SummaryJobs.Store {
+    let files: SummaryFiles.Files
+    func record(_ job: Job, phase: String = "running", warning: Bool = false) throws -> Record {
+        .init(job: job.id, call: job.call, input: job.input, snapshot: try JSONEncoder().encode(Snapshot(job)), phase: phase, warning: warning)
+    }
+    func state(_ record: Record) throws -> SummaryJobs.State {
+        let saved = try JSONDecoder().decode(Snapshot.self, from: record.snapshot)
+        let job = Job(id: record.job, call: record.call, input: record.input, entries: saved.entries.map(\.value), speakers: saved.speakers,
+                      primary: saved.primary.value, fallback: saved.fallback.value)
+        let phase: SummaryJobs.State.Phase = record.phase == "running" ? .interrupted : (.init(rawValue: record.phase) ?? .failed)
+        return .init(phase: phase, job: job, warning: record.warning, status: summaryStatus(phase, record.warning))
+    }
+    func claim(_ job: Job) async throws -> (owned: Bool, state: SummaryJobs.State) {
+        let result = try await files.claim(record(job, phase: "pending"))
+        return (result.owned, try state(result.record))
+    }
+    func start(_ job: Job) async throws -> Bool { try await files.start(record(job)) }
+    func checkpoint(_ job: Job, identities: [SummaryJobs.Identity], warning: Bool) async throws {
+        var value = try record(job, warning: warning)
+        value.checkpoint = try JSONSerialization.data(withJSONObject: identities.map { ["label": $0.label, "name": $0.name, "time": $0.time, "quote": $0.quote] })
+        try await files.progress(value)
+    }
+    func publish(_ job: Job, notes: String, warning: Bool) async throws { try await files.publish(record(job, warning: warning), notes: notes) }
+    func save(_ job: Job, phase: SummaryJobs.State.Phase, warning: Bool) async throws {
+        try await files.progress(record(job, phase: phase.rawValue, warning: warning))
+    }
+}
