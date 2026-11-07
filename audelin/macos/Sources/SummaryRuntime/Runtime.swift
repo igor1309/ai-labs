@@ -115,7 +115,9 @@ public struct Runtime: Sendable {
     public static func cli(_ output: ProcessOutput) throws -> String {
         let object = (try? JSONSerialization.jsonObject(with: output.stdout)) as? [String: Any]
         let failureText = String(decoding: output.stdout, as: UTF8.self).lowercased()
-        if ["usage limit reached", "you've hit your limit", "quota exceeded", "rate limit exceeded"].contains(where: failureText.contains) { throw Failure.quota }
+        let resultText = (object?["result"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let quotaMessages = ["usage limit reached", "you've hit your limit", "quota exceeded", "rate limit exceeded"]
+        if quotaMessages.contains(where: { resultText == $0 || resultText.hasPrefix($0 + " ·") }) { throw Failure.quota }
         if output.status != 0 || object?["is_error"] as? Bool == true || object?["error"] != nil || object?["subtype"] as? String != "success" {
             if failureText.contains("quota") || failureText.contains("rate_limit") || failureText.contains("usage limit") { throw Failure.quota }
             if failureText.contains("auth") || failureText.contains("login") { throw Failure.authentication }
@@ -123,8 +125,7 @@ public struct Runtime: Sendable {
         }
         guard object?["type"] as? String == "result", let result = object?["result"] as? String,
               !result.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-              object?["stop_reason"] as? String != "max_tokens", object?["finish_reason"] as? String != "length",
-              !result.lowercased().contains("usage limit reached") else { throw Failure.invalidResponse }
+              object?["stop_reason"] as? String != "max_tokens", object?["finish_reason"] as? String != "length" else { throw Failure.invalidResponse }
         return result
     }
     public static func api(_ response: HTTPResponse) throws -> String {

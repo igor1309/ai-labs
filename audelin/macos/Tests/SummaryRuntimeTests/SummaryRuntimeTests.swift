@@ -85,6 +85,12 @@ import Testing
     @Test func nonzeroExitNeverReturnsResult() {
         #expect(throws: Failure.transport) { try Runtime.cli(.init(status: 7, stdout: Data(success.utf8), stderr: Data("private".utf8))) }
     }
+    @Test(arguments: ["quota exceeded", "usage limit reached", "you've hit your limit", "rate limit exceeded"])
+    func successfulNotesCanDiscussQuotaFailures(phrase: String) throws {
+        let notes = "{\"keyPoints\":[\"Discussed " + phrase + " errors\"]}"
+        let data = try JSONSerialization.data(withJSONObject: ["type": "result", "subtype": "success", "is_error": false, "result": notes])
+        #expect(try Runtime.cli(.init(status: 0, stdout: data, stderr: Data())) == notes)
+    }
     @Test func endToEndDeadlineCancelsAndJoinsActiveAttempt() async throws {
         let timer = Gate(), request = Gate()
         let runtime = Runtime(process: ProcessSpy(help: help), http: HeldHTTP(gate: request), credential: { _ in nil }, deadline: { try await timer.wait() })
