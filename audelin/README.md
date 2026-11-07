@@ -25,7 +25,7 @@ Endurance: `scripts/profile-rehearsal.sh endurance --minutes 180 --speed 1` runs
 Recognisers are fakes: lag is pipeline backlog, and speeds above 1× measure saturation.
 
 Optimized load tests: from each of `audelin/macos` and `audelin/macos/App`, run `swift build --build-tests -Xswiftc -O`,
-then, in the same directory, `audelin/scripts/swift-test-bounded.sh 120 -Xswiftc -O --filter LoadTests`.
+then, in the same directory, run `../scripts/swift-test-bounded.sh 120 -Xswiftc -O --filter LoadTests` or `../../scripts/swift-test-bounded.sh 120 -Xswiftc -O --filter LoadTests`, respectively.
 
 | Path | What it holds |
 |---|---|
