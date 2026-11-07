@@ -11,7 +11,7 @@ Automated boundary: `cd audelin/macos/App && swift test --filter SummaryComposit
 
 ## S-2 Choose where notes are made
 
-Automated boundary: `cd audelin/macos/App && swift test --filter SummarySettingsPresentationTests/bothSlotsDiscloseRecipientsAndCostsIncludingRemoteFallback`. Setup fixture: I open Settings; drive: I enable summaries and save my runtime choices; read-back oracle: I can see the primary, fallback, models, cost and transcript recipients. Edit distinct CLI primary/model and API fallback/model/recipient, save, reload and OCR each disclosure.
+Automated boundaries: `cd audelin/macos/App && swift test --filter SummarySettingsRoutingTests` and `swift test --filter SummarySettingsPresentationTests/bothSlotsDiscloseRecipientsAndCostsIncludingRemoteFallback`. Setup fixture: I open Settings; drive: I enable summaries and save my runtime choices; read-back oracle: I can see the primary, fallback, models, cost and transcript recipients. Edit distinct CLI primary/model and API fallback/model/recipient, save, reload and OCR each disclosure.
 
 ## S-3 Wait for the last words
 
@@ -75,4 +75,6 @@ Automated boundary: `cd audelin/macos && swift test --filter SummaryJobsTests/su
 
 ## S-18 Read reloaded waiting notes
 
-Automated boundary: `cd audelin/macos/App && swift test --filter SummaryStorageTests/pendingSnapshotRetainsConfigurationAndRunningRecoveryDoesNotReplay`. Setup fixture: a never-started pending job is loaded after restart; drive: dispatch remains held; read-back oracle: I can read that notes are waiting to start. Reload a durable pending record with dispatch held; OCR waiting and count zero invocations.
+Automated boundaries: `cd audelin/macos/App && swift test --filter SummaryStorageTests/pendingSnapshotRetainsConfigurationAndRunningRecoveryDoesNotReplay` and `swift test --filter SummaryRecoveryDispatchTests`. The dispatch proof asserts the exact saved configuration and transcript request, once. Setup fixture: a never-started pending job is loaded after restart; drive: dispatch remains held; read-back oracle: I can read that notes are waiting to start. Reload a durable pending record with dispatch held; OCR waiting and count zero invocations.
+
+Rendered per-call waiting, running, success, warning, failure and interruption statuses in both appearances: `cd audelin/macos && swift test --filter CallsListViewRenderTests/eachCallShowsItsOwnSummaryProgressAndOutcome`. Accepted speaker evidence checkpoint/read-back and notes payload: `cd audelin/macos/App && swift test --filter SummaryAcceptedEvidenceTests`.

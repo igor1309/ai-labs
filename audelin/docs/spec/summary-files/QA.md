@@ -35,7 +35,7 @@ Automated boundary: `cd audelin/macos && swift test --filter SummaryFilesTests/r
 
 ## S-8 Concurrent claim has one owner
 
-Automated boundary: `cd audelin/macos && swift test --filter SummaryFilesTests/exclusiveClaimAndRunningSaveArbitrateAcrossInstances`. Setup fixture: two submissions target the same unclaimed call; drive: both try to claim it; read-back oracle: only one can dispatch while the other observes its job. Use temporary call folders and job/input receipts; inject failure at the named claim/progress/publication/read/move operation and inspect on-disk bytes.
+Automated boundaries: `cd audelin/macos && swift test --filter SummaryFilesTests/exclusiveClaimAndRunningSaveArbitrateAcrossInstances` and `swift test --filter SummaryIndependentOwnerTests`. The latter holds the durable start write while an independent storage owner attempts to start; its Locations share no mutex. Setup fixture: two submissions target the same unclaimed call; drive: both try to claim it; read-back oracle: only one can dispatch while the other observes its job. Use temporary call folders and job/input receipts; inject failure at the named claim/progress/publication/read/move operation and inspect on-disk bytes.
 
 ## S-9 Unreadable record is not absence
 

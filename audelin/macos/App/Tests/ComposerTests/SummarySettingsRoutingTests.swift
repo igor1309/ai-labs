@@ -62,16 +62,14 @@ struct SummarySettingsRoutingTests {
                 await rig.menu.sendSettings(.editNotesField(.fallback, .model, "  "))
                 _ = try await loaded(rig.menu) { $0.runtimes.last?.fields.first?.value == "  " }
                 await rig.menu.sendSettings(.notesAction(.validate))
-                let invalid = try await loaded(rig.menu) { $0.status.contains("Резервный:") }
+                let invalid = try await loaded(rig.menu) { $0.status.contains("Резервный сервис") }
                 #expect(!invalid.save.isEnabled)
                 let host = settingsHost(rig.menu.settingsState)
                 defer { host.window?.close() }
                 let save = try #require(descendants(host).compactMap { $0 as? NSButton }.first { $0.accessibilityIdentifier() == "notes-save" })
                 #expect(!save.isEnabled)
                 let marked = invalid.runtimes.flatMap { runtime in runtime.fields.filter(\.isInvalid).map { runtime.id.rawValue + "." + $0.id.rawValue } }
-                withKnownIssue("Exact field marking awaits reconciliation with the typed validation contract") {
-                    #expect(marked == ["fallback.model"])
-                }
+                #expect(marked == ["fallback.model"])
                 #expect(await offPool { PreferencesStore(fileURL: root.appendingPathComponent("preferences.json")).read().notes } == NotesPreferences())
                 #expect(await transport.requests == 0)
                 await rig.finish()

@@ -48,7 +48,7 @@ struct SummaryAcceptedEvidenceTests {
             let job = evidenceJob(), identities = acceptedIdentities()
             let folder = root.appendingPathComponent(job.call)
             try await offPool { try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true) }
-            let files = Files(locations: SummaryStorage(folder: root, timeZone: .gmt), disk: FileDisk())
+            let files = Files(locations: SummaryStorage(folder: root, timeZone: .gmt), disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("leases"))
             let store = SummaryJobStore(files: files)
             #expect(try await store.claim(job).owned)
             #expect(try await store.start(job))
@@ -88,6 +88,7 @@ private actor EvidenceTrace {
 private struct EvidenceStore: Store {
     let trace: EvidenceTrace
     func claim(_ job: Job) throws -> (owned: Bool, state: SummaryJobs.State) { Issue.record("unexpected claim"); throw ScriptFailure.failed }
+    func release(_ job: Job) async {}
     func start(_ job: Job) throws -> Bool { Issue.record("unexpected start"); throw ScriptFailure.failed }
     func checkpoint(_ job: Job, identities: [Identity], warning: Bool) async { await trace.append(.checkpoint(job, identities, warning)) }
     func publish(_ job: Job, notes: String, warning: Bool) async { await trace.append(.publish(job, notes, warning)) }
