@@ -167,6 +167,10 @@ composes it.
 
 ## Writing docs and comments
 
+- For blog posts and showcase articles, use the [publication checklist](research/showcase/blog-publication.md)
+  before drafting and before claiming publication readiness. Record the target
+  channel, language, evidence, visual review and unresolved checks with the draft.
+
 - Do not add cross-references as traceability theater. A code comment, doc
   or log entry says what it means in its own words; it does not point at
   another document's path, decision number, invariant or scenario id

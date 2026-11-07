@@ -19,6 +19,9 @@ The usual pattern is to combine a guide with a prompt when working with a chosen
 
 `AGENTS.md` is the canonical agent instruction file, kept as a regular file (web-based agents cannot follow symlinks).
 
+Writing a blog post or showcase article? Use the [publication checklist](research/showcase/blog-publication.md)
+for language, evidence, images and the final page review.
+
 ## Structure
 
 | Path | Purpose |
