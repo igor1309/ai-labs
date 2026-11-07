@@ -20,10 +20,12 @@ struct PreferenceSettingsTests {
             })
             observedSettings = settings
             #expect(settings.snapshot == initial)
+            storage.reads = 0
 
             storage.stored.callsFolder = URL(fileURLWithPath: "/current-calls")
             storage.stored.liveText = enabled
             await settings.setAutomatic(enabled)
+            #expect(storage.reads == 0)
             #expect(settings.snapshot == Preferences(automaticRecording: enabled, liveText: enabled,
                                                      callsFolder: storage.stored.callsFolder))
             #expect(notices == [enabled])
@@ -79,15 +81,19 @@ private final class SettingsStorageSpy: PreferenceSettingsStorage {
     var stored: Preferences
     var writes: [Preferences] = []
     var fails = false
+    var reads = 0
 
     init(_ stored: Preferences) { self.stored = stored }
 
-    func read() -> Preferences { stored }
+    func read() -> Preferences { reads += 1; return stored }
 
-    func write(_ preferences: Preferences) throws {
-
+    func updateRecording(automatic: Bool?, liveText: Bool?) throws -> Preferences {
+        var preferences = stored
+        if let automatic { preferences.automaticRecording = automatic }
+        if let liveText { preferences.liveText = liveText }
         writes.append(preferences)
         if fails { throw WriteFailure() }
         stored = preferences
+        return preferences
     }
 }

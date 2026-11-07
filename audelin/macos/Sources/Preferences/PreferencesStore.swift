@@ -8,17 +8,33 @@ public final class PreferencesStore: PreferenceSettingsStorage, Sendable {
     private let snapshot: Mutex<Preferences>
     private let writing = Mutex<Void>(())
     private let loadFailure: Bool
+    private let replace: @Sendable (Data, URL) throws -> Void
 
     /// Reads the file once; later reads return what was last read or written.
-    public init(fileURL: URL) {
+    public init(fileURL: URL, replace: @escaping @Sendable (Data, URL) throws -> Void = { try $0.write(to: $1, options: .atomic) }) {
 
         self.fileURL = fileURL
+        self.replace = replace
         let result = Self.load(fileURL)
         snapshot = Mutex(result.value)
         loadFailure = result.failed
     }
 
     public func read() -> Preferences { snapshot.withLock { $0 } }
+
+    public func updateRecording(automatic: Bool?, liveText: Bool?) throws -> Preferences {
+        try writing.withLock { _ in
+            let loaded = Self.load(fileURL)
+            guard !loaded.failed else { throw CocoaError(.fileReadCorruptFile) }
+            var current = loaded.value
+            if let automatic { current.automaticRecording = automatic }
+            if let liveText { current.liveText = liveText }
+            try FileManager.default.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try replace(JSONEncoder().encode(current), fileURL)
+            snapshot.withLock { $0 = current }
+            return current
+        }
+    }
 
     public func write(_ preferences: Preferences) throws {
 
@@ -28,7 +44,7 @@ public final class PreferencesStore: PreferenceSettingsStorage, Sendable {
             try FileManager.default.createDirectory(
                 at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true
             )
-            try data.write(to: fileURL, options: .atomic)
+            try replace(data, fileURL)
             snapshot.withLock { $0 = preferences }
         }
     }
@@ -42,7 +58,7 @@ public final class PreferencesStore: PreferenceSettingsStorage, Sendable {
             current.notes = notes
             let data = try JSONEncoder().encode(current)
             try FileManager.default.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-            try data.write(to: fileURL, options: .atomic)
+            try replace(data, fileURL)
             snapshot.withLock { $0 = current }
         }
     }
@@ -53,7 +69,7 @@ public final class PreferencesStore: PreferenceSettingsStorage, Sendable {
             guard !loaded.failed else { throw CocoaError(.fileReadCorruptFile) }
             var current = loaded.value
             current.callsFolder = folder
-            try JSONEncoder().encode(current).write(to: fileURL, options: .atomic)
+            try replace(JSONEncoder().encode(current), fileURL)
             snapshot.withLock { $0 = current }
         }
     }
