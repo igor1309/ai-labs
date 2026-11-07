@@ -50,7 +50,9 @@ public struct ProcessRunner: ProcessRunning {
         var attributes: posix_spawnattr_t?
         posix_spawnattr_init(&attributes)
         defer { posix_spawnattr_destroy(&attributes) }
-        posix_spawnattr_setflags(&attributes, Int16(POSIX_SPAWN_SETPGROUP))
+        // Only the explicit standard-stream duplications cross the spawn
+        // boundary; concurrent jobs must not inherit one another's pipe ends.
+        posix_spawnattr_setflags(&attributes, Int16(POSIX_SPAWN_SETPGROUP | POSIX_SPAWN_CLOEXEC_DEFAULT))
         posix_spawnattr_setpgroup(&attributes, 0)
         let argv = ([program] + arguments).map { strdup($0) } + [nil]
         defer { for string in argv { free(string) } }

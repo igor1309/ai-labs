@@ -6,6 +6,27 @@ import Synchronization
 import Testing
 
 @Suite(.timeLimit(.minutes(1))) struct ProcessRunnerTests {
+    /// Contract test: an unrelated open descriptor cannot keep another
+    /// attempt's pipes, locks or call files alive in the spawned process.
+    @Test func unrelatedOpenDescriptorsAreNotInherited() async throws {
+        let descriptor = try await offPool {
+            let source = open("/dev/null", O_RDONLY)
+            guard source >= 0 else { throw CocoaError(.fileReadUnknown) }
+            defer { close(source) }
+            let duplicate = fcntl(source, F_DUPFD, 200)
+            guard duplicate >= 0 else { throw CocoaError(.fileReadUnknown) }
+            return duplicate
+        }
+        let runner = ProcessRunner(now: { ProcessInfo.processInfo.systemUptime }, deadline: 30, outputLimit: 4096, observe: { _ in })
+        do {
+            let result = try await runner.run(program: "/bin/cat", arguments: ["/dev/fd/\(descriptor)"], input: Data())
+            #expect(result.status != 0)
+            await offPool { _ = close(descriptor) }
+        } catch {
+            await offPool { _ = close(descriptor) }
+            throw error
+        }
+    }
     /// Contract test: real argv/stdin pipes, temporary cwd and awaited process reap.
     @Test func literalInputAndIsolatedDirectory() async throws {
         let input = Data(String(repeating: "$(touch /never) ' ; `id` \n", count: 50000).utf8)
