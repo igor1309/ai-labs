@@ -34,7 +34,7 @@ struct SettingsPressTarget: NSViewRepresentable {
         button.setAccessibilityIdentifier(identifier)
     }
 
-    final class Coordinator: NSObject {
+    @MainActor final class Coordinator: NSObject {
         var action: () -> Void
         var checked: Bool?
         init(action: @escaping () -> Void) { self.action = action }

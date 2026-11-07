@@ -49,7 +49,30 @@ public struct FileDisk: Disk {
     public func replace(_ data: Data, at url: URL) throws { try data.write(to: url, options: .atomic) }
 }
 
-public actor Files {
+/// Keeps the isolated storage implementation behind an async boundary.
+/// The concrete actor destructor must stay in its defining module.
+public struct Files: Sendable {
+    private let storage: any FilesStorage
+    @inline(never) public init(locations: any Locations, disk: any Disk, ownershipDirectory: URL) {
+        storage = DiskFiles(locations: locations, disk: disk, ownershipDirectory: ownershipDirectory)
+    }
+    public func release(job: String, call: String, input: String) async { await storage.release(job: job, call: call, input: input) }
+    public func claim(_ record: Record) async throws -> (owned: Bool, record: Record) { try await storage.claim(record) }
+    public func load(call: String) async throws -> Record? { try await storage.load(call: call) }
+    public func start(_ record: Record) async throws -> Bool { try await storage.start(record) }
+    public func progress(_ record: Record) async throws { try await storage.progress(record) }
+    public func publish(_ record: Record, notes: String) async throws { try await storage.publish(record, notes: notes) }
+}
+private protocol FilesStorage: Sendable {
+    func release(job: String, call: String, input: String) async
+    func claim(_ record: Record) async throws -> (owned: Bool, record: Record)
+    func load(call: String) async throws -> Record?
+    func start(_ record: Record) async throws -> Bool
+    func progress(_ record: Record) async throws
+    func publish(_ record: Record, notes: String) async throws
+}
+
+private actor DiskFiles: FilesStorage {
     private nonisolated let queue = DispatchSerialQueue(label: "audelin.summary.files")
     public nonisolated var unownedExecutor: UnownedSerialExecutor { queue.asUnownedSerialExecutor() }
     private let locations: any Locations

@@ -51,3 +51,5 @@ text-metric differences remain; no new layout difference was found. Additional
 native probes passed for rejected/normalized live edits, both runtime menus,
 updated callbacks, tab selection, keyboard and accessibility activation. Pixel
 probes verify error outlines and all three status tones in both appearances.
+
+Final integration repeat exported all 34 Settings states successfully. All 34 PNGs are pixel-identical to the inspected integrated rehearsal, including both appearances and the 22 call-notes design comparisons.
