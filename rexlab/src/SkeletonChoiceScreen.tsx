@@ -1,4 +1,4 @@
-import { Star, Trophy } from "lucide-react";
+import { CircleQuestionMark, Star, Trophy } from "lucide-react";
 import type { CSSProperties } from "react";
 import type { AgeLevel } from "./ageLevel.ts";
 import { Button } from "./Button.tsx";
@@ -6,7 +6,9 @@ import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 import { LevelSwitch } from "./LevelSwitch.tsx";
 import { Picture } from "./Picture.tsx";
+import { DigGround } from "./DigBar.tsx";
 import { SkeletonBar } from "./SkeletonBar.tsx";
+import "./skeletonChoice.css";
 
 // A dinosaur whose skeleton can be built: its name, its picture and
 // whether its finished skeleton has earned its star.
@@ -33,12 +35,12 @@ export type SkeletonChoiceScreenProps = {
 export function SkeletonChoiceScreen({ language, choices, best, level, onLevel, onChoose, onMystery, onMuseum, onHome }: SkeletonChoiceScreenProps) {
   const text = TEXTS[language];
   return (
-    <main className="skeleton-screen">
-      <div className="stratum stratum-1" aria-hidden="true" />
+    <main className="skeleton-screen skeleton-choice-screen">
+      <DigGround />
       <SkeletonBar language={language} title={text.skeletonTitle} onMuseum={onMuseum} onHome={onHome}>
         {best !== undefined && (
           <p className="skeleton-chip" aria-label={text.bestScore}>
-            <Trophy size={20} aria-hidden="true" />
+            <Trophy size={22} fill="currentColor" aria-hidden="true" />
             {best}/{choices.length}
           </p>
         )}
@@ -51,10 +53,11 @@ export function SkeletonChoiceScreen({ language, choices, best, level, onLevel, 
           <ChoiceCard key={choice.id} language={language} choice={choice} index={index} onChoose={onChoose} />
         ))}
         {onMystery && (
-          <Button className="card skeleton-choice skeleton-mystery" aria-label={text.mystery} data-turn-part="skeleton-mystery" style={{ "--choice": choices.length } as CSSProperties} onClick={onMystery}>
+          <Button className="skeleton-choice skeleton-mystery" aria-label={text.mystery} data-turn-part="skeleton-mystery" style={{ "--choice": choices.length } as CSSProperties} onClick={onMystery}>
             <span className="skeleton-choice-art skeleton-mystery-mark" aria-hidden="true">
-              ?
+              <CircleQuestionMark />
             </span>
+            <span className="skeleton-choice-name" aria-hidden="true">?</span>
           </Button>
         )}
       </div>
@@ -66,7 +69,7 @@ function ChoiceCard({ language, choice, index, onChoose }: { language: Language;
   const name = choice.name.toLocaleUpperCase(language);
   return (
     <Button
-      className="card skeleton-choice"
+      className="skeleton-choice"
       aria-label={name}
       data-turn-part={`skeleton-choice-${choice.id}`}
       style={{ "--choice": index } as CSSProperties}
@@ -76,7 +79,7 @@ function ChoiceCard({ language, choice, index, onChoose }: { language: Language;
         <Picture className="skeleton-choice-picture" src={choice.picture} alt="" width={800} height={600} />
         {choice.earned && (
           <span className="skeleton-choice-star" role="img" aria-label={TEXTS[language].star}>
-            <Star size={28} aria-hidden="true" />
+            <Star fill="currentColor" aria-hidden="true" />
           </span>
         )}
       </span>

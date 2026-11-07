@@ -5573,8 +5573,7 @@ html[data-size="wide-short"] .pairs-offer-answers svg {
 
 /* Every card and button keeps a touch target of at least 48 by 48 CSS
    pixels, whatever its words. */
-.skeleton-bar .home-button,
-.skeleton-choice {
+.skeleton-bar .home-button {
   min-width: 48px;
   min-height: 48px;
 }
@@ -6762,70 +6761,11 @@ html[data-size="tall-narrow"] .dig-reveal-screen .result-actions .home-button {
 
 /* The level switch, centred between the bar and the dinosaurs, as wide as
    find the pair's column so every level's name fits on one line. */
-.skeleton-levels {
-  flex-shrink: 0;
-  align-self: center;
-  width: 648px;
-  max-width: 100%;
-  display: flex;
-  flex-direction: column;
-}
 
-/* The three dinosaurs side by side, each a big card of its picture over
-   its name, rising in one after the other. */
-/* The dinosaurs in rows of three, a last row of fewer centred: each card a
-   third of the row, as wide however many there are. */
-.skeleton-choices {
-  flex: 1 1 0;
-  min-height: 0;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 20px 28px;
-}
 
-.skeleton-choice {
-  flex: 0 0 calc((100% - 2 * 28px) / 3);
-  min-width: 0;
-  box-sizing: border-box;
-  padding: 16px 24px 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  border: none;
-  border-radius: 28px;
-  outline: 1px solid #1d27421f;
-  outline-offset: -0.5px;
-  background: #fffdf8;
-  box-shadow: 0 8px 24px #1d274224;
-  container-type: inline-size;
-  animation: rise-in var(--motion-screen) var(--ease-out) calc(var(--choice) * var(--motion-stagger)) both;
-}
 
-.skeleton-choice-art {
-  flex: 1 1 0;
-  min-height: 0;
-  display: flex;
-}
 
-.skeleton-choice-picture {
-  display: block;
-  width: 100%;
-  height: 100%;
-  min-height: 0;
-  object-fit: contain;
-}
 
-/* A name is large, and its size is the card's width over the longest
-   name's, in ems: TYRANNOSAURUS's 9.4. */
-.skeleton-choice-name {
-  flex-shrink: 0;
-  padding: 0 4px;
-  font-size: min(30px, (100cqi - 8px) / 9.4);
-  font-weight: 700;
-  text-align: center;
-  white-space: nowrap;
-}
 
 /* A brush stroke on the board neither scrolls nor bounces the page, so it
    never pulls the board away or swipes back a page. */
@@ -7519,16 +7459,7 @@ html[data-size="tall-narrow"] .skeleton-bar .home-button {
   justify-content: center;
 }
 
-html[data-size="tall"] .skeleton-choices,
-html[data-size="tall-narrow"] .skeleton-choices {
-  align-content: stretch;
-  gap: 20px;
-}
 
-html[data-size="tall"] .skeleton-choice,
-html[data-size="tall-narrow"] .skeleton-choice {
-  flex-basis: calc((100% - 20px) / 2);
-}
 
 /* Upright, the museum's hall stands its stands in rows of two. */
 html[data-size="tall"] .skeleton-hall,
@@ -7917,11 +7848,7 @@ html[data-size="tall-narrow"] .skeleton-puzzle .skeleton-tray {
 }
 
 /* A dinosaur built: its star sits on its card in the choice. */
-.skeleton-choice-art {
-  position: relative;
-}
 
-.skeleton-choice-star,
 .skeleton-star {
   display: grid;
   place-items: center;
@@ -7930,14 +7857,6 @@ html[data-size="tall-narrow"] .skeleton-puzzle .skeleton-tray {
   color: #ffffff;
 }
 
-.skeleton-choice-star {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 52px;
-  height: 52px;
-  animation: pop-in var(--motion-standard) var(--ease-overshoot) calc(var(--motion-stagger) * (var(--choice) + 2)) both;
-}
 
 /* The reveal: the whole skeleton on its board, then the dinosaur's body
    fading in over it in the frame they share while the bones fade back,
@@ -8056,20 +7975,7 @@ html[data-size="tall-narrow"] .skeleton-puzzle .skeleton-tray {
 /* The mystery skeleton's tile, after the dinosaurs: a large "?" on the
    second surface, ringed in terracotta, in place of a picture and a
    name. */
-.skeleton-mystery {
-  outline: 3px solid #c9583d;
-  outline-offset: -1.5px;
-  background: #e6e2d9;
-}
 
-.skeleton-mystery-mark {
-  align-items: center;
-  justify-content: center;
-  color: #c9583d;
-  font-size: min(160px, 50cqi);
-  font-weight: 700;
-  line-height: 1;
-}
 
 /* The mystery's guess: beside its finished skeleton, a panel as wide as
    the reward's, of the three dinosaurs' cards, each its body picture over
@@ -8325,13 +8231,7 @@ html[data-size="tall-narrow"] .skeleton-museum-screen .skeleton-title {
   clip-path: inset(50%);
 }
 
-html[data-size="tall-narrow"] .skeleton-choices {
-  gap: 12px;
-}
 
-html[data-size="tall-narrow"] .skeleton-choice {
-  flex-basis: calc((100% - 12px) / 2);
-}
 
 html[data-size="tall-narrow"] .skeleton-hall {
   padding: 12px;
@@ -9185,16 +9085,12 @@ html[data-theme="dark"],
   background: #222a3d;
 }
 
-[data-theme="dark"] .skeleton-choice,
 [data-theme="dark"] .skeleton-board,
 [data-theme="dark"] .skeleton-tray-spot {
   outline-color: #ece8de1f;
   background: #181e2e;
 }
 
-[data-theme="dark"] .skeleton-choice {
-  box-shadow: 0 8px 24px #00000066;
-}
 
 [data-theme="dark"] .skeleton-lifted {
   filter: drop-shadow(0 18px 24px #00000066);
@@ -9238,18 +9134,11 @@ html[data-theme="dark"],
   background: #181e2e;
 }
 
-[data-theme="dark"] .skeleton-mystery,
 [data-theme="dark"] .skeleton-guess-card {
   background: #222a3d;
 }
 
-[data-theme="dark"] .skeleton-mystery {
-  outline-color: #e57a5d;
-}
 
-[data-theme="dark"] .skeleton-mystery-mark {
-  color: #e57a5d;
-}
 
 [data-theme="dark"] .skeleton-guess-card {
   border-color: #a4aec7;
@@ -9264,7 +9153,6 @@ html[data-theme="dark"],
   color: #9ca3b6;
 }
 
-[data-theme="dark"] .skeleton-choice-star,
 [data-theme="dark"] .skeleton-star {
   background: #f2b24b;
 }
