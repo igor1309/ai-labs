@@ -6,6 +6,55 @@ import Synchronization
 import Testing
 
 @Suite(.timeLimit(.minutes(1))) struct ProcessRunnerTests {
+    /// Contract test: both parent and descendant ignore TERM. Only escalation
+    /// directed at the owned group can finish the attempt and its exit witness.
+    @Test(arguments: [false, true])
+    func timeoutAndCancellationTerminateOwnedDescendants(cancel: Bool) async throws {
+        let fixture = try await offPool { () throws -> (URL, Int32) in
+            let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false)
+            let fifo = folder.appendingPathComponent("ready")
+            guard mkfifo(fifo.path, 0o600) == 0 else { throw CocoaError(.fileWriteUnknown) }
+            let fd = open(fifo.path, O_RDWR | O_NONBLOCK | O_CLOEXEC)
+            guard fd >= 0 else { throw CocoaError(.fileReadUnknown) }
+            return (folder, fd)
+        }
+        let events = ProcessEvents(), clock = Mutex(0.0)
+        let runner = ProcessRunner(now: { clock.withLock { $0 } }, deadline: 120, outputLimit: 4096, observe: { event in
+            events.receive(event)
+            if case .terminating = event { clock.withLock { $0 = 122 } }
+        })
+        let fifo = fixture.0.appendingPathComponent("ready").path
+        let child = "trap '' TERM; printf '%s\\n' \"$$\" > '" + fifo + "'; exec /usr/bin/tail -f /dev/null"
+        let script = "trap '' TERM; /bin/sh -c " + shellQuote(child) + " & wait"
+        let task = Task { try await runner.run(program: "/bin/sh", arguments: ["-c", script], input: Data(repeating: 65, count: 2 * 1024 * 1024)) }
+        do {
+            let descendant = try await offPool { () throws -> Int32 in
+                var ready = pollfd(fd: fixture.1, events: Int16(POLLIN), revents: 0)
+                guard poll(&ready, 1, 30000) == 1 else { throw CocoaError(.fileReadUnknown) }
+                var buffer = [UInt8](repeating: 0, count: 64)
+                let count = Darwin.read(fixture.1, &buffer, buffer.count)
+                guard count > 0, let pid = Int32(String(decoding: buffer.prefix(count), as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)) else { throw CocoaError(.fileReadCorruptFile) }
+                return pid
+            }
+            let exited = AsyncStream<Void>.makeStream()
+            let witness = DispatchSource.makeProcessSource(identifier: descendant, eventMask: .exit, queue: .global())
+            witness.setEventHandler { exited.continuation.yield(()); exited.continuation.finish() }
+            witness.activate()
+            defer { witness.cancel() }
+            if cancel { task.cancel() } else { clock.withLock { $0 = 120 } }
+            await #expect(throws: cancel ? Failure.cancelled : Failure.timeout) { try await task.value }
+            for await _ in exited.stream { break }
+            #expect(witness.data.contains(.exit))
+            #expect(events.reaped.withLock { $0 })
+        } catch {
+            task.cancel()
+            _ = await task.result
+            await offPool { _ = close(fixture.1); try? FileManager.default.removeItem(at: fixture.0) }
+            throw error
+        }
+        await offPool { _ = close(fixture.1); try? FileManager.default.removeItem(at: fixture.0) }
+    }
     /// Contract test: an unrelated open descriptor cannot keep another
     /// attempt's pipes, locks or call files alive in the spawned process.
     @Test func unrelatedOpenDescriptorsAreNotInherited() async throws {
@@ -84,6 +133,7 @@ import Testing
         #expect(String(decoding: result.stdout, as: UTF8.self) == "complete")
     }
 }
+private func shellQuote(_ value: String) -> String { "'" + value.replacingOccurrences(of: "'", with: "'\"'\"'") + "'" }
 private final class ProcessEvents: Sendable {
     let pid = Mutex<Int32>(0), reaped = Mutex(false), blocked = Mutex(false)
     private let output = AsyncStream<String>.makeStream()

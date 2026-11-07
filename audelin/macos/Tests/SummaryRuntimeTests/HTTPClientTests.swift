@@ -7,7 +7,7 @@ import Testing
 
 @Suite(.timeLimit(.minutes(1))) struct HTTPClientTests {
     /// Contract test: URLSession against an actual loopback server, including a rejected redirect.
-    @Test(arguments: ["success", "redirect", "oversized"])
+    @Test(arguments: ["success", "redirect", "oversized", "unknown-length", "chunked"])
     func loopbackCollectionAndRedirectPolicy(scenario: String) async throws {
         let server = try await LoopbackServer.make(scenario: scenario)
         do {
@@ -22,6 +22,7 @@ import Testing
             }
             #expect(server.requests.withLock { $0 }.count == 1)
             #expect(server.requests.withLock { $0.first?.contains("synthetic transcript") == true })
+            if scenario == "unknown-length" || scenario == "chunked" { await server.clientClosed() }
             await server.stop()
         } catch { await server.stop(); throw error }
     }
@@ -46,6 +47,7 @@ private final class LoopbackServer: Sendable {
     let requests = Mutex<[String]>([])
     private let connections = Mutex<[NWConnection]>([])
     private let signal = AsyncStream<Void>.makeStream()
+    private let closed = AsyncStream<Void>.makeStream()
     private let queue = DispatchQueue(label: "summary.test.http")
     var url: URL { URL(string: "http://127.0.0.1:\(listener.port!.rawValue)/v1/chat/completions")! }
     init(listener: NWListener, scenario: String) { self.listener = listener; self.scenario = scenario }
@@ -76,6 +78,13 @@ private final class LoopbackServer: Sendable {
         }
     }
     func received() async { for await _ in signal.stream { return } }
+    func clientClosed() async { for await _ in closed.stream { return } }
+    private func observeClientClose(_ connection: NWConnection) {
+        connection.receive(minimumIncompleteLength: 1, maximumLength: 1024) { [self] _, _, complete, error in
+            if complete || error != nil { closed.continuation.yield(()) }
+            else { observeClientClose(connection) }
+        }
+    }
     private func receive(_ connection: NWConnection, accumulated: Data) {
         connection.receive(minimumIncompleteLength: 1, maximumLength: 65536) { [self] data, _, complete, error in
             var bytes = accumulated
@@ -91,9 +100,18 @@ private final class LoopbackServer: Sendable {
                     switch scenario {
                     case "redirect": response = "HTTP/1.1 307 Temporary Redirect\r\nLocation: \(url)\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
                     case "oversized": response = "HTTP/1.1 200 OK\r\nContent-Length: 2048\r\n\r\n" + String(repeating: "x", count: 2048)
+                    case "unknown-length": response = "HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n" + String(repeating: "x", count: 2048)
+                    case "chunked": response = "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\nConnection: close\r\n\r\n"
+                        + "300\r\n" + String(repeating: "x", count: 768) + "\r\n"
+                        + "300\r\n" + String(repeating: "y", count: 768) + "\r\n0\r\n\r\n"
                     default: response = "HTTP/1.1 200 OK\r\nContent-Length: 8\r\nConnection: close\r\n\r\ncomplete"
                     }
-                    connection.send(content: Data(response.utf8), completion: .contentProcessed { _ in connection.cancel() })
+                    if scenario == "unknown-length" || scenario == "chunked" {
+                        connection.send(content: Data(response.utf8), isComplete: true, completion: .contentProcessed { _ in })
+                        observeClientClose(connection)
+                    } else {
+                        connection.send(content: Data(response.utf8), completion: .contentProcessed { _ in connection.cancel() })
+                    }
                     return
                 }
             }
@@ -107,6 +125,7 @@ private final class LoopbackServer: Sendable {
             listener.cancel()
         }
         signal.continuation.finish()
+        closed.continuation.finish()
     }
 }
 private func cancellation() async throws {
