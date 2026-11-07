@@ -75,7 +75,7 @@ import Testing
         }
     }
 
-    @Test func failedJournalFinalizationRetainsRootsAndRestoresTheConfiguredFolder() async throws {
+    @Test func failedJournalFinalizationReportsTheCommittedFolderAndAllowsChoosingTheOriginalFolder() async throws {
         try await withComposeFolder { root in
             let source = root.appendingPathComponent("source"), destination = root.appendingPathComponent("destination")
             let journal = root.appendingPathComponent("roots.json"), preferencesURL = root.appendingPathComponent("preferences.json")
@@ -90,10 +90,22 @@ import Testing
                 guard !record.moves.isEmpty else { throw ScriptFailure.failed }
                 try JSONEncoder().encode(record).write(to: url, options: .atomic)
             })
-            _ = try await storage.move(id: id, to: destination)
-            await #expect(throws: ScriptFailure.failed) {
-                try await storage.commitFolder(destination) { try preferences.updateCallsFolder(destination) }
+            var state = RecordingsState(callsFolder: source)
+            let handler = RecordingsEffectHandler(calls: SummaryCalls(storage: storage), reserve: { true }, release: {},
+                storeFolder: { folder in try await storage.commitFolder(folder) { try preferences.updateCallsFolder(folder) } })
+            func send(_ event: RecordingsEvent) async {
+                var next: RecordingsEvent? = event
+                while let event = next {
+                    let (changed, effect) = RecordingsReducer.reduce(state, event)
+                    state = changed; next = nil
+                    if let effect { for await result in handler.handle(effect) { next = result } }
+                }
             }
+            await send(.chooseFolder(destination))
+            await send(.confirmMove)
+            #expect(state.phase == .idle)
+            #expect(state.failure == nil)
+            #expect(state.callsFolder == preferences.read().callsFolder)
             #expect(preferences.read().callsFolder == destination)
             try await offPool { try FileManager.default.createDirectory(at: destination.appendingPathComponent(fresh), withIntermediateDirectories: true) }
             let recovered = SummaryStorage(folder: preferences.read().callsFolder, timeZone: .gmt, journal: journal)
@@ -101,6 +113,15 @@ import Testing
             #expect(try await recovered.list().map(\.id) == [fresh, id])
             #expect(try await sameDirectory(recovered.location(id: fresh), destination.appendingPathComponent(fresh)))
             try await recovered.commitFolder(destination, commit: {})
+            await send(.chooseFolder(source))
+            #expect(state.phase == .askingMove)
+            #expect(state.move?.remaining.map(\.id) == [id, fresh])
+            await send(.confirmMove)
+            #expect(state.phase == .idle)
+            #expect(state.failure == nil)
+            #expect(state.callsFolder == source)
+            #expect(state.callsFolder == preferences.read().callsFolder)
+            #expect(try await storage.list().map(\.id) == [fresh, id])
         }
     }
 

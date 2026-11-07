@@ -125,15 +125,10 @@ public struct Calls: Sendable {
             try rename(move.temporary, target)
             move.phase = .removingSource
             try record(move)
-            do { try remove(source) }
-            catch {
-                move.phase = .restoringSource
-                try record(move)
-                throw error
-            }
-            move.phase = .destination
-            // The durable removingSource phase already names the complete destination.
-            try? record(move)
+            // Retire the source atomically before any destructive cleanup. A failed
+            // rename leaves it whole; cleanup cannot change the committed owner.
+            try rename(source, move.retired)
+            _ = try? recover(move, record: record)
             return original.values.reduce(0) { $0 + max(0, $1) }
         } catch {
             let failure = error
@@ -161,6 +156,9 @@ public struct Calls: Sendable {
             default: source
             }
         }
+        public var retired: URL {
+            source.deletingLastPathComponent().appendingPathComponent(temporary.lastPathComponent + "-source", isDirectory: true)
+        }
     }
 
     /// Recovery follows the recorded owner, including a title changed in Finder.
@@ -175,8 +173,14 @@ public struct Calls: Sendable {
                     // A rename of the owning copy must survive recovery; finish its move.
                     move.phase = .removingSource
                 }
-                move.target = owner
-            } else { move.source = owner }
+                // Keep the recorded root spelling consistent with the temporary
+                // path, even when a directory listing returns a different alias.
+                if owner.lastPathComponent != move.target.lastPathComponent {
+                    move.target = move.target.deletingLastPathComponent().appendingPathComponent(owner.lastPathComponent, isDirectory: true)
+                }
+            } else if owner.lastPathComponent != move.source.lastPathComponent {
+                move.source = move.source.deletingLastPathComponent().appendingPathComponent(owner.lastPathComponent, isDirectory: true)
+            }
             if move != given { try record(move) }
         }
         switch move.phase {
@@ -190,7 +194,8 @@ public struct Calls: Sendable {
             try record(move)
             return try recover(move, record: record)
         case .removingSource:
-            try removeIfPresent(move.source)
+            if try exists(move.source) { try rename(move.source, move.retired) }
+            try removeIfPresent(move.retired)
             move.phase = .destination
             try record(move)
         case .restoringSource:

@@ -40,8 +40,11 @@ struct RecordingMoveTests {
         let pending = makeState { $0.storageReserved = true; $0.pendingStart = .call; $0.callOn = true }
         assert(pending, .callEnded) { $0.callOn = false; $0.pendingStart = nil }
         assert(pending, .automaticChanged(false)) { $0.automatic = false; $0.pendingStart = nil }
-        let recording = makeState { $0.phase = .recording; $0.session = .init(id: 1, origin: .hand); $0.lastSessionID = 1 }
-        assert(recording, .reserveStorage)
+    }
+    @Test(arguments: [RecordingState.Phase.beginning, .recording, .ending])
+    func everyActivePhaseRejectsAStorageReservation(phase: RecordingState.Phase) {
+        let active = makeState { $0.phase = phase; $0.session = .init(id: 1, origin: .hand); $0.lastSessionID = 1 }
+        assert(active, .reserveStorage)
     }
 }
 private func makeState(_ change: (inout RecordingState) -> Void = { _ in }) -> RecordingState {

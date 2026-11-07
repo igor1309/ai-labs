@@ -128,6 +128,28 @@ struct RecordingsMoveTests {
         #expect(calls.withLock { $0.count } == count)
     }
 
+    @Test func generatedTextNamesTheDestinationCountsAndBytesAtEveryStage() {
+        let zero = ByteCountFormatter.string(fromByteCount: 0, countStyle: .file)
+        let three = ByteCountFormatter.string(fromByteCount: 3, countStyle: .file)
+        let ten = ByteCountFormatter.string(fromByteCount: 10, countStyle: .file)
+        let empty = RecordingsReducer.moveText(.init(destination: destination))
+        #expect(empty == MoveText(
+            title: "Перенести звонки: 0 (\(zero))?",
+            body: "Звонков: 0, \(zero). В /destination. Во время переноса запись не начнётся.",
+            detail: "Звонков: 0 из 0 · \(zero) из \(zero)", moved: "Перенесено звонков: 0 из 0"))
+        for (completed, bytes, detail, moved) in [
+            ([MoveCall](), Int64(0), "Звонков: 0 из 2 · \(zero) из \(ten)", "Перенесено звонков: 0 из 2"),
+            ([older], Int64(3), "Звонков: 1 из 2 · \(three) из \(ten)", "Перенесено звонков: 1 из 2"),
+            ([older, newer], Int64(10), "Звонков: 2 из 2 · \(ten) из \(ten)", "Перенесено звонков: 2 из 2")
+        ] {
+            let text = RecordingsReducer.moveText(.init(destination: destination, completed: completed,
+                                                      totalCalls: 2, totalBytes: 10, movedBytes: bytes))
+            #expect(text == MoveText(title: "Перенести звонки: 2 (\(ten))?",
+                body: "Звонков: 2, \(ten). В /destination. Во время переноса запись не начнётся.",
+                detail: detail, moved: moved))
+        }
+    }
+
     @Test func stoppingDrainsAnAlreadyAcceptedMoveAndRejectsNewActions() {
         let moving = makeState { $0.phase = .moving; $0.move = plan(completed: [older]); $0.callsFolderAvailable = false }
         assert(moving, .stopActions, delivers: nil) { $0.stopping = true }

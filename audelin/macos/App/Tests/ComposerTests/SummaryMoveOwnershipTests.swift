@@ -22,6 +22,7 @@ import Testing
             let storage = SummaryStorage(folder: source, timeZone: .gmt, journal: journal)
             _ = try await storage.move(id: moved, to: target)
             try await offPool { try FileManager.default.moveItem(at: target, to: root.appendingPathComponent("offline")) }
+            await #expect(throws: (any Error).self) { _ = try await storage.move(id: remaining, to: target) }
             let recovered = SummaryStorage(folder: source, timeZone: .gmt, journal: journal)
             try await recovered.restore()
             #expect(try await offPool { try recovered.occupiedCallNames() } == [moved])
@@ -158,6 +159,11 @@ import Testing
             let recovered = SummaryStorage(folder: source, timeZone: .gmt, journal: journal)
             try await recovered.restore()
             #expect(try await recovered.list().map(\.id) == [moved, id])
+            let files = Files(locations: recovered, disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("leases"))
+            let job = Record(job: "job", call: id, input: "input", snapshot: Data(), phase: "pending")
+            _ = try await files.claim(job); _ = try await files.start(job)
+            try await files.publish(job, notes: "unmoved call")
+            #expect(try await offPool { try String(contentsOf: source.appendingPathComponent(id + "/summary.md"), encoding: .utf8) }.hasSuffix("unmoved call"))
             try await recovered.rename(id: id, title: "owned")
             #expect(try await recovered.location(id: id).lastPathComponent == id + " owned")
             #expect(try await offPool { try String(contentsOf: target.appendingPathComponent(id + " unrelated/summary.md"), encoding: .utf8) } == "foreign")
@@ -208,6 +214,11 @@ import Testing
                 try FileManager.default.createDirectory(at: source.appendingPathComponent(id), withIntermediateDirectories: true)
                 try FileManager.default.createDirectory(at: target, withIntermediateDirectories: true)
                 try Data("whole".utf8).write(to: source.appendingPathComponent(id + "/transcript.md"))
+                try FileManager.default.copyItem(at: source.appendingPathComponent(id), to: target.appendingPathComponent(id))
+                try FileManager.default.removeItem(at: source.appendingPathComponent(id + "/transcript.md"))
+                let move = Calls.Move(source: source.appendingPathComponent(id), target: target.appendingPathComponent(id),
+                                      temporary: target.appendingPathComponent(".audelin-move-test"), phase: .restoringSource)
+                try JSONEncoder().encode(SummaryStorage.Journal(moves: [id: move])).write(to: journal)
             }
             let storage = SummaryStorage(folder: source, journal: journal,
                 writeJournal: { try JSONEncoder().encode($0).write(to: $1, options: .atomic) },
@@ -226,7 +237,7 @@ import Testing
                             try FileManager.default.removeItem(at: url)
                         })
                 })
-            await #expect(throws: (any Error).self) { _ = try await storage.move(id: id, to: target) }
+            try await storage.restore()
             #expect(try await sameDirectory(storage.location(id: id).deletingLastPathComponent(), target))
             #expect(try await storage.list().map(\.id) == [id])
             let files = Files(locations: storage, disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("leases"))
@@ -301,6 +312,78 @@ import Testing
             #expect(try await storage.move(id: id, to: target) == 5)
             #expect(try await offPool { try FileManager.default.contentsOfDirectory(atPath: target.path) } == [id])
             #expect(try await sameDirectory(storage.location(id: id).deletingLastPathComponent(), target))
+        }
+    }
+
+    @Test(arguments: ["rollbackCleanup", "retiredCleanup"])
+    func atomicRetirementKeepsOneWholeOwnerWhenCleanupFails(step: String) async throws {
+        try await withComposeFolder { temporaryRoot in
+            let root = await offPool { temporaryRoot.resolvingSymlinksInPath() }
+            let id = "1970.01.01-0000", source = root.appendingPathComponent("source"), target = root.appendingPathComponent("target")
+            let original = source.appendingPathComponent(id), copied = target.appendingPathComponent(id)
+            let journal = root.appendingPathComponent("moves.json"), fail = Mutex(true), restorations = Mutex(0)
+            try await offPool {
+                try FileManager.default.createDirectory(at: original, withIntermediateDirectories: true)
+                try FileManager.default.createDirectory(at: target, withIntermediateDirectories: true)
+                try Data("whole".utf8).write(to: original.appendingPathComponent("transcript.md"))
+                try Data([1, 2, 3]).write(to: original.appendingPathComponent("audio"))
+            }
+            let storage = SummaryStorage(folder: source, journal: journal,
+                writeJournal: { try JSONEncoder().encode($0).write(to: $1, options: .atomic) },
+                makeCalls: { folder in
+                    Calls(folder: folder, timeZone: .gmt,
+                        children: { try FileManager.default.contentsOfDirectory(at: $0, includingPropertiesForKeys: nil) },
+                        values: { try $0.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey, .fileSizeKey]) },
+                        duration: { _ in 0 }, copy: { from, to in
+                            if to.pathComponents.contains("source") {
+                                restorations.withLock { $0 += 1 }
+                                throw POSIXError(.EIO)
+                            }
+                            try FileManager.default.copyItem(at: from, to: to)
+                        }, rename: { from, to in
+                            if step == "rollbackCleanup", from.lastPathComponent == id,
+                               from.deletingLastPathComponent().lastPathComponent == "source", fail.withLock({ $0 }) { throw POSIXError(.EIO) }
+                            guard renamex_np(from.path, to.path, UInt32(RENAME_EXCL)) == 0 else { throw POSIXError(.EIO) }
+                        }, remove: { url in
+                            if fail.withLock({ $0 }) {
+                                if step == "rollbackCleanup", url.lastPathComponent == id,
+                                   url.deletingLastPathComponent().lastPathComponent == "target" { throw POSIXError(.EIO) }
+                                if step == "retiredCleanup", url.lastPathComponent.hasSuffix("-source") {
+                                    let audio = url.appendingPathComponent("audio")
+                                    if FileManager.default.fileExists(atPath: audio.path) { try FileManager.default.removeItem(at: audio) }
+                                    throw POSIXError(.EIO)
+                                }
+                            }
+                            try FileManager.default.removeItem(at: url)
+                        })
+                })
+            if step == "rollbackCleanup" {
+                await #expect(throws: (any Error).self) { _ = try await storage.move(id: id, to: target) }
+            } else {
+                #expect(try await storage.move(id: id, to: target) == 8)
+            }
+            let owner = step == "rollbackCleanup" ? original : copied
+            #expect(try await sameDirectory(storage.location(id: id), owner))
+            #expect(try await storage.list().map(\.id) == [id])
+            #expect(try await offPool { try Data(contentsOf: owner.appendingPathComponent("audio")) } == Data([1, 2, 3]))
+            #expect(try await offPool { try String(contentsOf: owner.appendingPathComponent("transcript.md"), encoding: .utf8) } == "whole")
+            let saved = try await offPool { try JSONDecoder().decode(SummaryStorage.Journal.self, from: Data(contentsOf: journal)) }
+            #expect(saved.moves[id]?.phase == (step == "rollbackCleanup" ? .removingCopy : .removingSource))
+            #expect(restorations.withLock { $0 } == 0)
+            let files = Files(locations: storage, disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("leases"))
+            let job = Record(job: "job", call: id, input: "input", snapshot: Data(), phase: "pending")
+            _ = try await files.claim(job); _ = try await files.start(job)
+            try await files.publish(job, notes: "published to owner")
+            fail.withLock { $0 = false }
+            let recovered = SummaryStorage(folder: source, timeZone: .gmt, journal: journal)
+            try await recovered.restore()
+            #expect(try await sameDirectory(recovered.location(id: id), owner))
+            #expect(try await offPool { try FileManager.default.contentsOfDirectory(atPath: source.path) } == (step == "rollbackCleanup" ? [id] : []))
+            if step == "rollbackCleanup" { #expect(try await recovered.move(id: id, to: target) > 8) }
+            try await recovered.commitFolder(target, commit: {})
+            #expect(try await offPool { try Data(contentsOf: copied.appendingPathComponent("audio")) } == Data([1, 2, 3]))
+            #expect(try await offPool { try String(contentsOf: copied.appendingPathComponent("summary.md"), encoding: .utf8) }.hasSuffix("published to owner"))
+            #expect(try await offPool { try FileManager.default.contentsOfDirectory(atPath: target.path) } == [id])
         }
     }
 }

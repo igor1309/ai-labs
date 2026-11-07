@@ -198,10 +198,10 @@ final class SummaryStorage: SummaryFiles.Locations, Sendable {
                 }
                 try save(state.journal)
                 try commit()
-                // Preferences alone decide where recording resumes after finalization failure.
                 state.recordingFolder = Self.directory(destination)
-                try save(Journal())
-                state.journal = Journal()
+                // The preference commit is the result. Keeping redundant recovery
+                // records is safe when their final cleanup cannot be persisted.
+                if (try? save(Journal())) != nil { state.journal = Journal() }
             }
         }
     }
