@@ -8,6 +8,7 @@ import type { Language } from "../src/language/language.ts";
 import { mediaViewport } from "../src/mediaViewport.ts";
 import { PicturesProvider, pictureStore } from "../src/Picture.tsx";
 import { SkeletonChoiceScreen } from "../src/SkeletonChoiceScreen.tsx";
+import { SkeletonGuessScreen } from "../src/SkeletonGuessScreen.tsx";
 import { SkeletonPuzzleScreen, type ShownHelpStep } from "../src/SkeletonPuzzleScreen.tsx";
 import data from "../src/data/skeletons.json";
 import tyrannosaurus from "../src/assets/dinos/tyrannosaurus/body.webp";
@@ -79,6 +80,26 @@ export function mountPuzzle(options: { language?: Language; theme?: "light" | "d
         slots={slots} strays={strays} tray={[...slots.map((slot) => slot.piece), ...strays.map((stray) => stray.piece)].sort()} told={options.told ? (language === "ru" ? "ЧЕРЕП ТРИЦЕРАТОПСА" : "TRICERATOPS FRILL") : undefined}
         hint={options.step && { piece: target.piece, step: options.step, region: options.step === "glow" ? undefined : { left: target.left, top: target.top, width: target.width, height: target.height } }}
         complete={fitted >= slots.length} scatter={false} onDrop={() => undefined} onTouch={() => undefined} onLastStep={() => undefined} onMuseum={() => undefined} onBack={() => undefined} onHome={() => undefined} />
+    </PicturesProvider>
+  ));
+}
+
+// The mystery's guess, its first card guessed wrong and the clue given when
+// wrong, in the longest names and clue of the set when long.
+export function mountGuess(options: { language?: Language; theme?: "light" | "dark"; wrong?: boolean; loading?: boolean }) {
+  root?.unmount();
+  const language = options.language ?? "en";
+  document.documentElement.dataset.theme = options.theme ?? "light";
+  document.documentElement.lang = language;
+  const host = document.getElementById("root") ?? document.body.appendChild(Object.assign(document.createElement("div"), { id: "root" }));
+  root = createRoot(host);
+  const clues = (data.dinosaurs as unknown as Record<string, { clue: Record<Language, string> }>);
+  const clue = Object.values(clues).map((dinosaur) => dinosaur.clue[language]).sort((a, b) => b.length - a.length)[0];
+  flushSync(() => root!.render(
+    <PicturesProvider store={options.loading ? loading : loaded} startTimer={() => () => {}}>
+      <SkeletonGuessScreen language={language} skeleton={bone("triceratops", "skeleton")} frame={data.frame} clue={options.wrong ? clue : undefined}
+        choices={[0, 1, 3].map((index, at) => ({ id: IDS[index]!, name: NAMES[language][index]!, picture: PICTURES[index]!, wrong: Boolean(options.wrong) && at === 0 }))}
+        onGuess={() => undefined} onBack={() => undefined} onMuseum={() => undefined} onHome={() => undefined} />
     </PicturesProvider>
   ));
 }
