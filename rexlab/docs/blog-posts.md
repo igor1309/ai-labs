@@ -22,6 +22,9 @@ pictures of a visual change is not ready for review.
   debug state, no placeholder art.
 - Keep the pictures beside the post and give each alt text that says what it
   shows.
+- On igor1309.dev, write an HTML picture self-closed, `<img src="…" />`: the
+  blog's Markdown parser leaves everything after an unclosed `<img>` as raw
+  text, links and headings included.
 
 ## Words
 
