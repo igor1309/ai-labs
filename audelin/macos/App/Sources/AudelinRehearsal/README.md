@@ -62,6 +62,8 @@ swapped. This executable has the fake ones only and never links the model.
 `Benchmarks/Baseline` (`AudelinBaseline`, the same options plus `--speech
 FILE`) plays a speech file on both sides to real Parakeet v3 and reports how
 far live text trails; see [the baseline](../../../../docs/research/baseline/README.md).
+With `--their-speech FILE` their side hears that file instead, so a recorded
+call replays from its two tracks.
 
 ## Profile
 

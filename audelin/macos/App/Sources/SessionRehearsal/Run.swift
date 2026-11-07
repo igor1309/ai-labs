@@ -97,17 +97,21 @@ public struct FakeVoices: RehearsalVoices {
     }
 }
 
-/// One speech file on both sides, looped, heard by two measured recognisers.
+/// Speech for each side, looped, heard by two measured recognisers. One file
+/// serves both sides unless `theirs` names another, as a recorded call's tracks do.
 public struct SpeechVoices: RehearsalVoices {
 
     private let speech: Speech
+    private let theirSpeech: Speech
     private let fedSeconds = Fed()
     private let measured_: (mine: Measured, theirs: Measured)
     public let modelLoad: Double?
 
     /// `mine` and `theirs` hear each side; `modelLoad` is how long making them took.
-    public init(speech path: String, mine: any Recognizer, theirs: any Recognizer, modelLoad: Double?) throws {
+    public init(speech path: String, theirSpeech theirPath: String? = nil, mine: any Recognizer, theirs: any Recognizer, modelLoad: Double?) throws {
         speech = try Speech(path: path)
+        theirSpeech = try theirPath.map(Speech.init(path:)) ?? speech
+        guard speech.rate == theirSpeech.rate else { throw RehearsalOptions.Failure("both sides' speech must have one rate") }
         measured_ = (Measured(mine, fed: fedSeconds), Measured(theirs, fed: fedSeconds))
         self.modelLoad = modelLoad
     }
@@ -115,10 +119,10 @@ public struct SpeechVoices: RehearsalVoices {
     public var mine: any Recognizer { measured_.mine }
     public var theirs: any Recognizer { measured_.theirs }
     public var rate: Double { speech.rate }
-    public var length: Double? { speech.seconds }
+    public var length: Double? { min(speech.seconds, theirSpeech.seconds) }
     public var measured: Bool { true }
     public func mine(from start: Int, count: Int) -> CaptureBuffer { .init(samples: speech.piece(from: start, count: count), sampleRate: rate) }
-    public func theirs(from start: Int, count: Int) -> CaptureBuffer { .init(samples: speech.piece(from: start, count: count), sampleRate: rate) }
+    public func theirs(from start: Int, count: Int) -> CaptureBuffer { .init(samples: theirSpeech.piece(from: start, count: count), sampleRate: rate) }
     public func fed(_ seconds: Double) { fedSeconds.set(seconds) }
     public func heard() async -> Double { min(measured_.mine.heard, measured_.theirs.heard) }
     public func lagLine() -> String {
