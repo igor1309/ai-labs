@@ -1,3 +1,4 @@
+import "./picturePuzzleSheets.ts";
 import { THEMES } from "../src/theme.ts";
 import { shortHomeName } from "./support.ts";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
