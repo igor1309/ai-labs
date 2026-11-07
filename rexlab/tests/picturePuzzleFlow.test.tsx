@@ -36,7 +36,7 @@ function openApp(storage: MemoryStorage, language: Language, theme: Theme, featu
     dinosaurs: SHIPPED_DINOSAURS, catalogue: SHIPPED_CATALOGUE, bodyPicture: fakeBodyPicture, random: seededRandom(17),
     picturePuzzle: { dinosaurs: readPictureDinosaurs(records), bodyPicture: fakeBodyPicture, random: seededRandom(29),
       choiceStore: localPicturePuzzleChoice(() => storage), progressStore: localPicturePuzzleProgress(() => storage) },
-    viewport, portraitLayouts: { home: ["tall", "tall-narrow"], "picturePuzzle-choice": ["tall", "tall-narrow"], "picturePuzzle-puzzle": ["tall", "tall-narrow"] },
+    viewport, portraitLayouts: { home: ["tall", "tall-narrow"], "picturePuzzle-choice": ["tall", "tall-narrow"], "picturePuzzle-puzzle": ["tall", "tall-narrow"], "picturePuzzle-result": ["tall", "tall-narrow"] },
     progress: emptyProgress(), deviceLanguage: "en-GB", languageStore: localLanguage(() => storage), nameVersion: () => {},
     appearance: { isDark: () => false, subscribe: () => () => {} }, themeStore: localTheme(() => storage), ageLevelStore: localAgeLevel(() => storage),
     ...emptyLabyrinth(), ...emptyCare(), ...emptyDig(), ...emptyPairs(), ...emptySkeletons(), ...emptySorting(), ...pageAtRest(), ...featuring(featured),

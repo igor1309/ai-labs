@@ -9,6 +9,9 @@ import { mediaViewport } from "../src/mediaViewport.ts";
 import { PicturesProvider, pictureStore } from "../src/Picture.tsx";
 import { PicturePuzzleChoiceScreen } from "../src/PicturePuzzleChoiceScreen.tsx";
 import { PicturePuzzleBoardScreen } from "../src/PicturePuzzleBoardScreen.tsx";
+import { PicturePuzzleResultScreen } from "../src/PicturePuzzleResultScreen.tsx";
+import { TEXTS } from "../src/language/texts.ts";
+import type { Celebration } from "../src/ResultParts.tsx";
 import { cutPicture } from "../src/picturePuzzle/index.ts";
 import tyrannosaurus from "../src/assets/dinos/tyrannosaurus/body.webp";
 import triceratops from "../src/assets/dinos/triceratops/body.webp";
@@ -63,5 +66,19 @@ export function mountBoard(options: { language?: Language; theme?: "light" | "da
         tray: order.filter((id) => !fitted.includes(id)).map((id) => ({ id, crop: cut.pieces[id]!.home })) }}
       presence={{ isHidden: () => false, subscribe: () => () => {} }}
       onPlace={() => false} dropFits={() => false} onBack={() => undefined} onHome={() => undefined} />
+  ));
+}
+
+// The result: a first completion, a new best, a replay with nothing new, or
+// with the collection unreadable, no counts and no best.
+export function mountResult(options: { language?: Language; theme?: "light" | "dark"; level?: AgeLevel; id?: number; score?: number; shared?: number;
+  best?: number; beaten?: number; celebration?: Celebration | null; loading?: boolean }) {
+  const id = options.id ?? 0;
+  const score = options.score ?? 1;
+  mount(options, (language) => (
+    <PicturePuzzleResultScreen language={language} name={NAMES[language][id]!} fact={TEXTS[language].pictureFacts[IDS[id] as keyof typeof TEXTS.en.pictureFacts]}
+      level={options.level ?? "hatchling"} score={score} shared={options.shared ?? score} best={options.best} beaten={options.beaten}
+      celebration={options.celebration ?? null}
+      picture={PICTURES[id]!} onReplay={() => undefined} onAnother={() => undefined} onHome={() => undefined} />
   ));
 }
