@@ -2,6 +2,7 @@
 
 ## 2026-11-07
 
+- LAB-921: BONES' museum stands on the dig site: the title in the sky, and on the sand five open stands on plinths, built, awaiting rebuild or empty, with the jaw shelf.
 - LAB-921: BONES' guess stands on the dig site: the question, or the clue in its place, in the sky, the skeleton in its pocket and the name cards on the sand.
 - LAB-921: BONES' puzzle stands on the dig site: the board and tray are pockets in the sand, HOME comes before BACK, and the count turns green with the last bone.
 - LAB-921: BONES' choice stands on the dig site: the sky's bar and title over the sand's level switch and skeletons in their pockets.

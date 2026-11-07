@@ -10,7 +10,7 @@ const read = (file: string) => readFileSync(join(import.meta.dirname, "../src", 
 
 // A screen's own sheet, which it brings with it, beside app.css: every
 // test document has app.css; a test of the screen adds its sheet.
-export const SCREEN_SHEETS = ["labyrinthBoard.css", "labyrinthResult.css", "skeletonSite.css", "skeletonChoice.css", "skeletonPuzzle.css", "skeletonGuess.css"] as const;
+export const SCREEN_SHEETS = ["labyrinthBoard.css", "labyrinthResult.css", "skeletonSite.css", "skeletonChoice.css", "skeletonPuzzle.css", "skeletonGuess.css", "skeletonMuseum.css"] as const;
 
 // The app's stylesheet as a window with the given safe-area insets reads
 // it. jsdom knows no env(), so each inset is written in as the browser

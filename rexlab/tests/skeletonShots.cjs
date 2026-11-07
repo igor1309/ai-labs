@@ -25,7 +25,12 @@ const SHOTS = [
   ["guess", { guess: true }],
   ["guess-wrong", { guess: true, wrong: true }],
   ["guess-wrong-dark", { guess: true, wrong: true, theme: "dark" }],
-  ["guess-wrong-ru", { guess: true, wrong: true, language: "ru" }]
+  ["guess-wrong-ru", { guess: true, wrong: true, language: "ru" }],
+  ["museum-empty", { museum: true, state: "empty" }],
+  ["museum-mixed", { museum: true, jaw: true }],
+  ["museum-full", { museum: true, state: "full", jaw: true }],
+  ["museum-mixed-dark", { museum: true, jaw: true, theme: "dark" }],
+  ["museum-full-ru", { museum: true, state: "full", jaw: true, language: "ru" }]
 ];
 
 (async () => {
@@ -49,7 +54,7 @@ const SHOTS = [
     });
     await page.goto("http://shots.test/");
     for (const [name, options] of SHOTS.filter(([name]) => !process.env.ONLY || name.startsWith(process.env.ONLY))) {
-      await page.evaluate(async options => { { const harness = await import("/harness.js"); options.guess ? harness.mountGuess(options) : options.puzzle ? harness.mountPuzzle(options) : harness.mountChoice(options); } await document.fonts.ready; }, options);
+      await page.evaluate(async options => { { const harness = await import("/harness.js"); options.museum ? harness.mountMuseum(options) : options.guess ? harness.mountGuess(options) : options.puzzle ? harness.mountPuzzle(options) : harness.mountChoice(options); } await document.fonts.ready; }, options);
       if (!options.loading) await page.waitForFunction(() => [...document.images].every(image => image.complete));
       await page.evaluate(() => Promise.all(document.getAnimations().filter(a => a.effect?.getComputedTiming().iterations !== Infinity).map(a => a.finished.catch(() => {}))));
       await page.screenshot({ path: join(out, `${name}.png`) });
