@@ -6,7 +6,7 @@ committed code and tests cross into the public repository. Private docs,
 research, spikes, agent settings and this directory's tooling stay private.
 Keep font license files and audio test fixtures with their targets.
 
-The allowlist includes both Swift packages, their resource files, the app
+The allowlist includes both Swift packages, preview code required by source checks, their resource files, the app
 icon and entitlements, and `macos/scripts/bundle.sh`. The module checker
 mentioned in the original publication brief no longer exists; both package
 builds and test suites are the standalone export check.

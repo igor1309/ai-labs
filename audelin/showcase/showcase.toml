@@ -16,5 +16,9 @@ include = [
   "macos/App/AppIcon/**",
   "macos/App/Audelin.entitlements",
   "macos/scripts/bundle.sh",
+  "macos/PreviewApps/Package.swift",
+  "macos/PreviewApps/Package.resolved",
+  "macos/PreviewApps/Sources/**",
+  "macos/PreviewApps/Tests/**",
 ]
 exclude = ["macos/App/Sources/**/README.md"]

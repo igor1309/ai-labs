@@ -25,3 +25,7 @@ values captured from this excerpt on 2026-11-03 with FluidAudio 0.17.7:
 executor preference on an Apple M3 Max, macOS 26.6.2. Times, IDs and
 confidence values are the model's output, not hand-authored measurements.
 The unit tests' other boundary tokens and Nemotron snapshots are synthetic.
+
+`terms-shift-0.jsonl` records recognition windows for a scripted Russian
+planning conversation with English terms. It contains text and word timings,
+not call audio. The tests use it to replay pending and final word changes.

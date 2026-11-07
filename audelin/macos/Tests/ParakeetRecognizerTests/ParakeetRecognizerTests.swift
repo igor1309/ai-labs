@@ -437,10 +437,7 @@ private actor RecordedReader: WindowReader {
 
     init() async throws {
 
-        let url = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .appendingPathComponent("../../../docs/research/spike/fixtures/terms-shift-0.jsonl")
-            .standardizedFileURL
+        let url = Bundle.module.url(forResource: "terms-shift-0", withExtension: "jsonl", subdirectory: "Fixtures")!
         let windows = try await offPool { try String(contentsOf: url, encoding: .utf8) }
             .split(separator: "\n")
             .map { try JSONDecoder().decode(Window.self, from: Data($0.utf8)) }
