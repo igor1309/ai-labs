@@ -43,7 +43,7 @@ import { appStylesheet, NO_SAFE_AREA } from "./stylesheet.ts";
 // The skeleton screens bring their own sheets, as they do in the app.
 if (typeof document !== "undefined") {
   const skeletonSheets = document.createElement("style");
-  skeletonSheets.textContent = appStylesheet(NO_SAFE_AREA, ["skeletonSite.css", "skeletonChoice.css", "skeletonPuzzle.css"]);
+  skeletonSheets.textContent = appStylesheet(NO_SAFE_AREA, ["skeletonSite.css", "skeletonChoice.css", "skeletonPuzzle.css", "skeletonGuess.css"]);
   document.head.append(skeletonSheets);
 }
 

@@ -115,23 +115,21 @@ describe("the skeleton screens upright on a phone", () => {
     layOutPuzzle();
     fitAll(skeletonOf("triceratops"));
     act(() => opened.pictures.fire(REVEAL.motion));
-    phoneScreen(size);
-    expect(styleAt(part(".skeleton-reveal-board"), size).value("width")).toBe("min(100cqw, (100cqh - 16px - 300px) * var(--frame-width) / var(--frame-height))");
-    expect(styleAt(part(".skeleton-reveal"), size).value("height")).toBe(`max(436px, -(128px) + ${size[1]}px)`);
+    themedPhoneScreen();
+    expect(styleAt(part(".skeleton-reveal-board"), size).value("width")).toBe("min(100cqw - 40px, (100cqh - 12px - 250px) * var(--frame-width) / var(--frame-height))");
     expect([styleAt(part(".skeleton-guess-screen"), size).value("height"), styleAt(part(".skeleton-guess-screen"), size).px("min-height")]).toEqual(["auto", size[1]]);
     expect(styleAt(part(".skeleton-guess-choices"), size).value("flex-direction")).toBe("column");
-    const reveal = Math.max(436, size[1] - 128);
-    expect(Math.min(size[0] - 40, (reveal - 16 - 300) * 800 / 600)).toBeGreaterThanOrEqual(160);
+    expect(Math.min(size[0] - 32 - 40, (465 - 12 - 250) * 800 / 600)).toBeGreaterThanOrEqual(160);
     // Each name beside its 80-wide picture keeps at least 12 pixels: the
-    // card's content is the width less the guess's 2 × 16 padding, its own
-    // 2 × 12 padding and 2 × 2 border.
-    const content = size[0] - 40 - 32 - 24 - 4;
+    // card's content is the width less the screen's 2 × 16 sides and its own
+    // 2 × 12 padding.
+    const content = size[0] - 32 - 24;
     for (const name of document.querySelectorAll<HTMLElement>(".skeleton-guess-name")) {
       const letters = Number(name.style.getPropertyValue("--letters"));
       expect(styleAt(name, size).value("font-size")).toBe("min(20px, calc((100cqi - 88px) / (var(--letters) * 0.75)))");
       expect(Math.min(20, (content - 88) / (letters * 0.75)), name.textContent ?? "").toBeGreaterThanOrEqual(12);
     }
-    expect(styleAt(part(".skeleton-guess-picture"), size).px("width")).toBe(80);
+    expect(styleAt(part(".skeleton-guess-pocket"), size).px("width")).toBe(80);
   });
 
   it.each(PHONES.flatMap((size) => ["en-GB", "ru-RU"].map((language) => [...size, language] as const)))("stands the result upright at %i by %i in %s, both ways on one line", async (width, height, deviceLanguage) => {

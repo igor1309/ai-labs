@@ -1,10 +1,12 @@
-import { Search } from "lucide-react";
+import { CircleQuestionMark, Search } from "lucide-react";
 import type { CSSProperties } from "react";
 import { Button } from "./Button.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 import { Picture } from "./Picture.tsx";
+import { DigGround } from "./DigBar.tsx";
 import { SkeletonBar } from "./SkeletonBar.tsx";
+import "./skeletonGuess.css";
 
 // A dinosaur the mystery skeleton may be: its name, its body picture, and
 // whether it was guessed and was not the one.
@@ -27,13 +29,21 @@ export type SkeletonGuessScreenProps = {
 
 // The finished mystery skeleton asks whose it is: its bones beside three
 // dinosaurs' bodies. A wrong guess wobbles and rests aside, and the clue
-// shows below them.
+// takes the question's place.
 export function SkeletonGuessScreen({ language, skeleton, frame, choices, clue, onGuess, onBack, onMuseum, onHome }: SkeletonGuessScreenProps) {
   const text = TEXTS[language];
   return (
-    <main className="skeleton-screen skeleton-guess-screen">
-      <div className="stratum stratum-1" aria-hidden="true" />
-      <SkeletonBar language={language} title={text.whoseSkeleton} onMuseum={onMuseum} onBack={onBack} onHome={onHome} />
+    <main className="skeleton-screen skeleton-dig skeleton-guess-screen" data-clue={clue !== undefined || undefined}>
+      <DigGround />
+      <SkeletonBar language={language} title={text.whoseSkeleton} Mark={CircleQuestionMark} onMuseum={onMuseum} onBack={onBack} onHome={onHome} />
+      <p className="skeleton-clue" role="status">
+        {clue !== undefined && (
+          <span className="skeleton-clue-line">
+            <Search size={24} aria-hidden="true" />
+            {clue}
+          </span>
+        )}
+      </p>
       <div className="skeleton-reveal">
         <div
           className="skeleton-board skeleton-reveal-board"
@@ -61,7 +71,9 @@ export function SkeletonGuessScreen({ language, skeleton, frame, choices, clue, 
                   style={{ "--choice": index } as CSSProperties}
                   onClick={() => onGuess(choice.id)}
                 >
-                  <Picture className="skeleton-guess-picture" src={choice.picture} alt="" width={800} height={600} />
+                  <span className="skeleton-guess-pocket">
+                    <Picture className="skeleton-guess-picture" src={choice.picture} alt="" width={800} height={600} />
+                  </span>
                   <span className="skeleton-guess-name" style={{ "--letters": choice.name.length } as CSSProperties}>
                     {name}
                   </span>
@@ -69,14 +81,6 @@ export function SkeletonGuessScreen({ language, skeleton, frame, choices, clue, 
               );
             })}
           </div>
-          <p className="skeleton-clue" role="status">
-            {clue !== undefined && (
-              <span className="skeleton-clue-line">
-                <Search size={26} aria-hidden="true" />
-                {clue}
-              </span>
-            )}
-          </p>
         </section>
       </div>
     </main>

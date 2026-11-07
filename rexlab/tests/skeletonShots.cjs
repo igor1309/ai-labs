@@ -21,7 +21,11 @@ const SHOTS = [
   ["puzzle-loading", { puzzle: true, loading: true }],
   ["puzzle-explorer-dark", { puzzle: true, level: "explorer", id: "triceratops", fitted: 2, theme: "dark" }],
   ["puzzle-paleo-dark", { puzzle: true, level: "paleontologist", id: "stegosaurus", fitted: 7, told: true, theme: "dark" }],
-  ["puzzle-explorer-ru", { puzzle: true, level: "explorer", fitted: 2, language: "ru" }]
+  ["puzzle-explorer-ru", { puzzle: true, level: "explorer", fitted: 2, language: "ru" }],
+  ["guess", { guess: true }],
+  ["guess-wrong", { guess: true, wrong: true }],
+  ["guess-wrong-dark", { guess: true, wrong: true, theme: "dark" }],
+  ["guess-wrong-ru", { guess: true, wrong: true, language: "ru" }]
 ];
 
 (async () => {
@@ -45,7 +49,7 @@ const SHOTS = [
     });
     await page.goto("http://shots.test/");
     for (const [name, options] of SHOTS.filter(([name]) => !process.env.ONLY || name.startsWith(process.env.ONLY))) {
-      await page.evaluate(async options => { { const harness = await import("/harness.js"); options.puzzle ? harness.mountPuzzle(options) : harness.mountChoice(options); } await document.fonts.ready; }, options);
+      await page.evaluate(async options => { { const harness = await import("/harness.js"); options.guess ? harness.mountGuess(options) : options.puzzle ? harness.mountPuzzle(options) : harness.mountChoice(options); } await document.fonts.ready; }, options);
       if (!options.loading) await page.waitForFunction(() => [...document.images].every(image => image.complete));
       await page.evaluate(() => Promise.all(document.getAnimations().filter(a => a.effect?.getComputedTiming().iterations !== Infinity).map(a => a.finished.catch(() => {}))));
       await page.screenshot({ path: join(out, `${name}.png`) });
