@@ -17,8 +17,15 @@ final class ComposeCalls: RecordingsCalls, Sendable {
 
     func rename(id: String, title: String) async throws { try await perform { try $0.rename(id: id, title: title) } }
     func delete(id: String) async throws { try await perform { try $0.delete(id: id) } }
-    func prepareMove() async throws -> [MoveCall] {
-        try await perform { disk in try disk.list().map { .init(id: $0.id, title: $0.title, bytes: try disk.bytes(id: $0.id)) } }
+    func prepareMove(to destination: URL) async throws -> [MoveCall] {
+        try await perform { disk in
+            let calls = try disk.list()
+            if let first = calls.first {
+                let source = try disk.location(id: first.id).deletingLastPathComponent().resolvingSymlinksInPath().standardizedFileURL
+                if source.path == destination.resolvingSymlinksInPath().standardizedFileURL.path { return [] }
+            }
+            return try calls.map { .init(id: $0.id, title: $0.title, bytes: try disk.bytes(id: $0.id)) }
+        }
     }
     func move(id: String, to destination: URL) async throws -> Int64 { try await perform { try $0.move(id: id, to: destination) } }
     func location(id: String) async throws -> URL { try await perform { try $0.location(id: id) } }

@@ -1,6 +1,7 @@
 import BlockingTestWork
 import Darwin
 import Foundation
+import Synchronization
 import Testing
 @testable import Calls
 
@@ -22,10 +23,19 @@ struct CallsMoveTests {
     func failureRestoresTheWholeSourceAndRemovesOnlyItsCopy(step: String) async throws {
         try await withMoveFolders { (source: URL, target: URL) async throws in
             let original = source.appendingPathComponent(name)
+            let renames = Mutex(0)
+            let verificationReads = Mutex<[String]>([])
+            let finalNameVisibleDuringVerification = Mutex<[Bool]>([])
+            let readsAtRename = Mutex<[String]>([])
             try await offPool { try Data([99]).write(to: target.appendingPathComponent("unrelated")) }
             let disk = Calls(folder: source, timeZone: .gmt,
                 children: { try FileManager.default.contentsOfDirectory(at: $0, includingPropertiesForKeys: nil) },
                 values: { url in
+                    if url.path.contains("/.audelin-move-") {
+                        verificationReads.withLock { $0.append(url.lastPathComponent) }
+                        let visible = FileManager.default.fileExists(atPath: target.appendingPathComponent(name).path)
+                        finalNameVisibleDuringVerification.withLock { $0.append(visible) }
+                    }
                     if step == "read", url.path.contains("/target/"), url.lastPathComponent == "one" { throw POSIXError(.EIO) }
                     return try url.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey, .fileSizeKey])
                 }, duration: { _ in 0 },
@@ -40,6 +50,9 @@ struct CallsMoveTests {
                         if step == "missing" { try FileManager.default.removeItem(at: to.appendingPathComponent("nested/two")) }
                     }
                 }, rename: { from, to in
+                    renames.withLock { $0 += 1 }
+                    let reads = verificationReads.withLock { $0 }
+                    readsAtRename.withLock { $0 = reads }
                     if step == "rename" { throw POSIXError(.EACCES) }
                     guard renamex_np(from.path, to.path, UInt32(RENAME_EXCL)) == 0 else { throw POSIXError(.EIO) }
                 }, remove: { url in
@@ -50,6 +63,12 @@ struct CallsMoveTests {
                     try FileManager.default.removeItem(at: url)
                 })
             await #expect(throws: (any Error).self) { try await offPool { try disk.move(id: id, to: target) } }
+            #expect(renames.withLock { $0 } == (["copy", "sizes", "read", "missing"].contains(step) ? 0 : 1))
+            #expect(finalNameVisibleDuringVerification.withLock { $0.allSatisfy { !$0 } })
+            if step != "copy" { #expect(!verificationReads.withLock { $0.isEmpty }) }
+            if ["rename", "delete", "partialDelete"].contains(step) {
+                #expect(readsAtRename.withLock { $0.contains("one") && $0.contains("two") })
+            }
             #expect(try await offPool { try FileManager.default.contentsOfDirectory(atPath: source.path) } == [name])
             #expect(try await offPool { try Data(contentsOf: original.appendingPathComponent("one")) } == Data([1, 2, 3]))
             #expect(try await offPool { try Data(contentsOf: original.appendingPathComponent("nested/two")) } == Data([4, 5, 6, 7]))

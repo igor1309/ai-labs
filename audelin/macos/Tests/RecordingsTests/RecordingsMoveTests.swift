@@ -7,7 +7,7 @@ import Testing
 struct RecordingsMoveTests {
     @Test func asksWithTheFolderCountAndSizeAndCancelsWithoutMoving() {
         let idle = makeState()
-        assert(idle, .chooseFolder(destination), delivers: .prepareMove) {
+        assert(idle, .chooseFolder(destination), delivers: .prepareMove(destination)) {
             $0.phase = .countingMove; $0.move = rendered(.init(destination: destination))
         }
         let counting = makeState { $0.phase = .countingMove; $0.move = .init(destination: destination) }
@@ -22,7 +22,7 @@ struct RecordingsMoveTests {
             $0.phase = .countFailed; $0.failure = .init(id: nil, reason: "disk")
         }
         let failed = makeState { $0.phase = .countFailed; $0.move = .init(destination: destination); $0.failure = .init(id: nil, reason: "disk") }
-        assert(failed, .retryMove, delivers: .prepareMove) { $0.phase = .countingMove; $0.failure = nil }
+        assert(failed, .retryMove, delivers: .prepareMove(destination)) { $0.phase = .countingMove; $0.failure = nil }
         assert(failed, .confirmMove, delivers: nil)
         assert(failed, .cancelMove, delivers: nil) { $0.phase = .idle; $0.move = nil; $0.failure = nil }
     }
@@ -31,7 +31,7 @@ struct RecordingsMoveTests {
         let asking = makeState { $0.phase = .askingMove; $0.move = plan() }
         assert(asking, .confirmMove, delivers: .reserveMove) { $0.phase = .reservingMove; $0.callsFolderAvailable = false }
         let reserving = makeState { $0.phase = .reservingMove; $0.move = plan(); $0.callsFolderAvailable = false }
-        assert(reserving, .moveReserved(true), delivers: .prepareMove) { $0.phase = .preparingMove }
+        assert(reserving, .moveReserved(true), delivers: .prepareMove(destination)) { $0.phase = .preparingMove }
         let preparing = makeState { $0.phase = .preparingMove; $0.move = plan(); $0.callsFolderAvailable = false }
         assert(preparing, .movePrepared([newer, older]), delivers: .moveCall(id: older.id, to: destination)) { $0.phase = .moving }
         let moving = makeState { $0.phase = .moving; $0.move = plan(); $0.callsFolderAvailable = false }
@@ -107,7 +107,7 @@ struct RecordingsMoveTests {
         let idle = makeState()
         assert(idle, .cancelMove, delivers: nil, using: reducer)
         #expect(calls.withLock { $0 }.isEmpty)
-        assert(idle, .chooseFolder(destination), delivers: .prepareMove, using: reducer) {
+        assert(idle, .chooseFolder(destination), delivers: .prepareMove(destination), using: reducer) {
             $0.phase = .countingMove; $0.move = .init(destination: destination, text: stub)
         }
         #expect(calls.withLock { $0 } == [.init(destination: destination)])
@@ -184,8 +184,8 @@ private struct HandlerCase: Sendable {
     let answer: Result<Answer, any Error>
 }
 private let handlerCases: [HandlerCase] = [
-    .init(effect: .prepareMove, event: .movePrepared([older, newer]), answer: .success(.calls([older, newer]))),
-    .init(effect: .prepareMove, event: .movePreparationFailed("disk"), answer: .failure(MoveError())),
+    .init(effect: .prepareMove(destination), event: .movePrepared([older, newer]), answer: .success(.calls([older, newer]))),
+    .init(effect: .prepareMove(destination), event: .movePreparationFailed("disk"), answer: .failure(MoveError())),
     .init(effect: .reserveMove, event: .moveReserved(true), answer: .success(.reserved(true))),
     .init(effect: .reserveMove, event: .moveReserved(false), answer: .success(.reserved(false))),
     .init(effect: .releaseMove, event: .moveReleased, answer: .success(.done)),
@@ -206,7 +206,7 @@ private actor MoveSpy: RecordingsCalls {
         if answer == nil { await withCheckedContinuation { started = $0 } }
         answer?.resume(with: result); answer = nil
     }
-    func prepareMove() async throws -> [MoveCall] { if case let .calls(value) = try await request(.prepareMove) { return value }; throw MoveError() }
+    func prepareMove(to destination: URL) async throws -> [MoveCall] { if case let .calls(value) = try await request(.prepareMove(destination)) { return value }; throw MoveError() }
     func move(id: String, to destination: URL) async throws -> Int64 { if case let .bytes(value) = try await request(.moveCall(id: id, to: destination)) { return value }; throw MoveError() }
     func list() async throws -> [RecordedCall] { throw MoveError() }
     func rename(id: String, title: String) async throws { throw MoveError() }

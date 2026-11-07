@@ -2,6 +2,7 @@ import BlockingTestWork
 import Foundation
 import Darwin
 import Preferences
+import Recordings
 import SummaryFiles
 import SummaryJobs
 import Testing
@@ -24,7 +25,7 @@ import Testing
             let files = Files(locations: storage, disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("leases"))
             let record = Record(job: "job", call: latest, input: "input", snapshot: Data(), phase: "pending")
             _ = try await files.claim(record); _ = try await files.start(record)
-            #expect(try await storage.prepareMove().map(\.id) == [latest, oldest])
+            #expect(try await storage.prepareMove(to: destination).map(\.id) == [latest, oldest])
             _ = try await storage.move(id: latest, to: destination)
             await #expect(throws: (any Error).self) { _ = try await storage.move(id: oldest, to: destination) }
             try await files.publish(record, notes: "complete after partial move")
@@ -47,20 +48,145 @@ import Testing
             #expect(await offPool { !FileManager.default.fileExists(atPath: renamed.path) })
         }
     }
-    @Test func preferenceCommitFailureStillResolvesMovedCall() async throws {
+    @Test func preferenceCommitFailureRetainsSourceAcrossRestartAndALaterMove() async throws {
         try await withComposeFolder { root in
-            let canonical = await offPool { root.resolvingSymlinksInPath() }
-            let source = canonical.appendingPathComponent("source"), destination = canonical.appendingPathComponent("destination"), id = "1970.01.01-0000"
+            let source = root.appendingPathComponent("source"), destination = root.appendingPathComponent("destination")
+            let journal = root.appendingPathComponent("roots.json")
+            let id = "1970.01.01-0000", fresh = "1970.01.01-0001"
             try await offPool {
                 try FileManager.default.createDirectory(at: source.appendingPathComponent(id), withIntermediateDirectories: true)
                 try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
             }
-            let storage = SummaryStorage(folder: source, timeZone: .gmt)
+            let storage = SummaryStorage(folder: source, timeZone: .gmt, journal: journal)
             _ = try await storage.move(id: id, to: destination)
             await #expect(throws: ScriptFailure.failed) { try await storage.commitFolder(destination, commit: { throw ScriptFailure.failed }) }
-            #expect(try await sameDirectory(storage.location(id: id), destination.appendingPathComponent(id)))
-            try await storage.commitFolder(destination, commit: {})
-            #expect(try await sameDirectory(storage.location(id: id), destination.appendingPathComponent(id)))
+            try await offPool { try FileManager.default.createDirectory(at: source.appendingPathComponent(fresh), withIntermediateDirectories: true) }
+            let recovered = SummaryStorage(folder: source, timeZone: .gmt, journal: journal)
+            try await recovered.restore()
+            #expect(try await sameDirectory(recovered.location(id: id), destination.appendingPathComponent(id)))
+            #expect(try await sameDirectory(recovered.location(id: fresh), source.appendingPathComponent(fresh)))
+            #expect(try await recovered.list().map(\.id) == [fresh, id])
+            #expect(try await recovered.prepareMove(to: destination).map(\.id) == [fresh])
+            await #expect(throws: (any Error).self) { try await recovered.commitFolder(destination, commit: { Issue.record("Abandoned a source call") }) }
+            _ = try await recovered.move(id: fresh, to: destination)
+            try await recovered.commitFolder(destination, commit: {})
+            #expect(try await sameDirectory(recovered.location(id: fresh), destination.appendingPathComponent(fresh)))
+        }
+    }
+
+    @Test func failedJournalFinalizationRetainsRootsAndRestoresTheConfiguredFolder() async throws {
+        try await withComposeFolder { root in
+            let source = root.appendingPathComponent("source"), destination = root.appendingPathComponent("destination")
+            let journal = root.appendingPathComponent("roots.json"), preferencesURL = root.appendingPathComponent("preferences.json")
+            let id = "1970.01.01-0000", fresh = "1970.01.01-0001"
+            let preferences = await offPool { PreferencesStore(fileURL: preferencesURL) }
+            try await offPool {
+                try preferences.write(Preferences(automaticRecording: false, liveText: false, callsFolder: source))
+                try FileManager.default.createDirectory(at: source.appendingPathComponent(id), withIntermediateDirectories: true)
+                try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
+            }
+            let storage = SummaryStorage(folder: source, timeZone: .gmt, journal: journal, writeJournal: { roots, url in
+                guard roots.count > 1 else { throw ScriptFailure.failed }
+                try JSONEncoder().encode(roots).write(to: url, options: .atomic)
+            })
+            _ = try await storage.move(id: id, to: destination)
+            await #expect(throws: ScriptFailure.failed) {
+                try await storage.commitFolder(destination) { try preferences.updateCallsFolder(destination) }
+            }
+            #expect(preferences.read().callsFolder == destination)
+            try await offPool { try FileManager.default.createDirectory(at: destination.appendingPathComponent(fresh), withIntermediateDirectories: true) }
+            let recovered = SummaryStorage(folder: preferences.read().callsFolder, timeZone: .gmt, journal: journal)
+            try await recovered.restore()
+            #expect(try await recovered.list().map(\.id) == [fresh, id])
+            #expect(try await sameDirectory(recovered.location(id: fresh), destination.appendingPathComponent(fresh)))
+            try await recovered.commitFolder(destination, commit: {})
+        }
+    }
+
+    @Test func restoreIncludesConfiguredRecordingFolderEvenWhenJournalNamesOnlyAnotherRoot() async throws {
+        try await withComposeFolder { root in
+            let source = root.appendingPathComponent("source"), destination = root.appendingPathComponent("destination")
+            let journal = root.appendingPathComponent("roots.json"), id = "1970.01.01-0000"
+            try await offPool {
+                try FileManager.default.createDirectory(at: source.appendingPathComponent(id), withIntermediateDirectories: true)
+                try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
+                try JSONEncoder().encode([destination]).write(to: journal)
+            }
+            let storage = SummaryStorage(folder: source, timeZone: .gmt, journal: journal)
+            try await storage.restore()
+            #expect(try await storage.list().map(\.id) == [id])
+            #expect(try await sameDirectory(storage.location(id: id), source.appendingPathComponent(id)))
+        }
+    }
+
+    @Test(arguments: ["call", "nested", "symlink"])
+    func destinationInsideAnyCallIsRejectedBeforeTheFirstMove(kind: String) async throws {
+        try await withComposeFolder { root in
+            let oldest = "1970.01.01-0000", newer = "1970.01.01-0001"
+            let outer = root.appendingPathComponent(newer), nested = outer.appendingPathComponent("nested")
+            let link = root.appendingPathComponent("link")
+            try await offPool {
+                try FileManager.default.createDirectory(at: root.appendingPathComponent(oldest), withIntermediateDirectories: true)
+                try FileManager.default.createDirectory(at: nested, withIntermediateDirectories: true)
+                try Data([1, 2, 3]).write(to: root.appendingPathComponent(oldest + "/audio"))
+                try FileManager.default.createSymbolicLink(at: link, withDestinationURL: nested)
+            }
+            let storage = SummaryStorage(folder: root, timeZone: .gmt, journal: root.appendingPathComponent("roots.json"))
+            let target = kind == "call" ? outer : kind == "nested" ? nested : link
+            await #expect(throws: (any Error).self) { _ = try await storage.move(id: oldest, to: target) }
+            #expect(try await storage.list().map(\.id) == [newer, oldest])
+            #expect(try await offPool { try Data(contentsOf: root.appendingPathComponent(oldest + "/audio")) } == Data([1, 2, 3]))
+            #expect(try await offPool { try FileManager.default.contentsOfDirectory(atPath: nested.path) }.isEmpty)
+            #expect(await offPool { !FileManager.default.fileExists(atPath: root.appendingPathComponent("roots.json").path) })
+        }
+    }
+
+    @Test func retryPreparationExcludesDestinationCallsAndKeepsExactTotals() async throws {
+        try await withComposeFolder { root in
+            let source = root.appendingPathComponent("source"), destination = root.appendingPathComponent("destination")
+            let a = "1970.01.01-0000", b = "1970.01.01-0001", c = "1970.01.01-0002"
+            try await offPool {
+                for (folder, id, count) in [(source, a, 3), (source, b, 7), (destination, c, 11)] {
+                    try FileManager.default.createDirectory(at: folder.appendingPathComponent(id), withIntermediateDirectories: true)
+                    try Data(repeating: 1, count: count).write(to: folder.appendingPathComponent(id + "/audio"))
+                }
+                try Data([99]).write(to: destination.appendingPathComponent(b))
+            }
+            let storage = SummaryStorage(folder: source, timeZone: .gmt, journal: root.appendingPathComponent("roots.json"))
+            var state = RecordingsState(callsFolder: source)
+            let handler = RecordingsEffectHandler(calls: SummaryCalls(storage: storage), reserve: { true }, release: {},
+                storeFolder: { folder in try await storage.commitFolder(folder, commit: {}) })
+            var observedMoves: [CallsFolderMove] = []
+            func send(_ event: RecordingsEvent) async {
+                var next: RecordingsEvent? = event
+                while let event = next {
+                    let (changed, effect) = RecordingsReducer.reduce(state, event)
+                    state = changed; next = nil
+                    if let move = state.move { observedMoves.append(move) }
+                    if let effect { for await result in handler.handle(effect) { next = result } }
+                }
+            }
+            await send(.chooseFolder(destination))
+            #expect(state.move?.remaining.map(\.id) == [a, b])
+            #expect(state.move?.totalCalls == 2 && state.move?.totalBytes == 10)
+            await send(.confirmMove)
+            #expect(state.phase == .failedMove)
+            #expect(state.move?.completed.map(\.id) == [a])
+            #expect(try await storage.prepareMove(to: destination).map(\.id) == [b])
+            #expect(try await sameDirectory(storage.location(id: c), destination.appendingPathComponent(c)))
+            try await offPool { try FileManager.default.removeItem(at: destination.appendingPathComponent(b)) }
+            let retryStart = observedMoves.count
+            await send(.retryMove)
+            let retried = Array(observedMoves.dropFirst(retryStart))
+            #expect(!retried.isEmpty)
+            #expect(retried.allSatisfy { $0.totalCalls == 2 && $0.totalBytes == 10 })
+            #expect(Set(retried.flatMap { $0.remaining.map(\.id) }) == [b])
+            #expect(retried.last?.completed.map(\.id) == [a, b])
+            #expect(retried.last?.movedBytes == 10)
+            #expect(state.phase == .idle)
+            #expect(state.callsFolder == destination)
+            #expect(state.calls.map(\.id) == [c, b, a])
+            #expect(try await offPool { try Data(contentsOf: destination.appendingPathComponent(c + "/audio")) } == Data(repeating: 1, count: 11))
         }
     }
     @Test func summariesResolveBeforeBetweenAndAfterMovesAndCompletedRootsSurviveRestart() async throws {
@@ -87,7 +213,7 @@ import Testing
             _ = try await storage.move(id: ids[1], to: destination)
             try await storage.commitFolder(destination, commit: {})
             try await offPool { try FileManager.default.removeItem(at: source) }
-            let restored = SummaryStorage(folder: source, timeZone: .gmt, journal: journal)
+            let restored = SummaryStorage(folder: destination, timeZone: .gmt, journal: journal)
             try await restored.restore()
             #expect(try await restored.list().map(\.id) == ids.reversed())
             let recoveredFiles = Files(locations: restored, disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("leases"))

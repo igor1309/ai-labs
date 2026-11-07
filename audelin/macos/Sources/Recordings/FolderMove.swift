@@ -48,7 +48,7 @@ extension RecordingsReducer {
             state.move = move
             state.failure = nil
             state.phase = .countingMove
-            return (state, .prepareMove)
+            return (state, .prepareMove(destination))
         case let .movePrepared(calls):
             guard state.phase == .countingMove || state.phase == .preparingMove, var move = state.move else { return (state, nil) }
             let completed = Set(move.completed.map(\.id))
@@ -69,10 +69,10 @@ extension RecordingsReducer {
             }
             state.phase = .countFailed
         case .confirmMove, .retryMove:
-            if event == .retryMove, state.phase == .countFailed, !state.stopping, !state.isListing {
+            if event == .retryMove, state.phase == .countFailed, !state.stopping, !state.isListing, let move = state.move {
                 state.phase = .countingMove
                 state.failure = nil
-                return (state, .prepareMove)
+                return (state, .prepareMove(move.destination))
             }
             guard (event == .confirmMove && state.phase == .askingMove) || (event == .retryMove && state.phase == .failedMove), !state.stopping, !state.isListing, state.move != nil else { return (state, nil) }
             guard state.recordingID == nil else { state.phase = .refusedMove; return (state, nil) }
@@ -81,14 +81,14 @@ extension RecordingsReducer {
             state.callsFolderAvailable = false
             return (state, .reserveMove)
         case let .moveReserved(accepted):
-            guard state.phase == .reservingMove else { return (state, nil) }
+            guard state.phase == .reservingMove, let move = state.move else { return (state, nil) }
             if !accepted {
                 state.phase = .refusedMove
                 state.callsFolderAvailable = true
                 return (state, nil)
             }
             state.phase = .preparingMove
-            return (state, .prepareMove)
+            return (state, .prepareMove(move.destination))
         case let .callMoved(id, bytes):
             guard state.phase == .moving, var move = state.move, move.remaining.first?.id == id else { return (state, nil) }
             var call = move.remaining.removeFirst()

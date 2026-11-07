@@ -66,6 +66,7 @@ public final class AudelinMenu {
 
     init(
         storage: PreferencesStore,
+        occupiedCallNames: @escaping @Sendable () throws -> [String],
         boundary: ComposerBoundary,
         processes: CoreAudioProcesses,
         panel: AudelinPanel,
@@ -84,7 +85,7 @@ public final class AudelinMenu {
         self.sleep = sleep
         let application: MenuApplication?
         do {
-            let recording = try await AudelinRecording(preferences: storage, boundary: boundary,
+            let recording = try await AudelinRecording(preferences: storage, occupiedCallNames: occupiedCallNames, boundary: boundary,
                                                        processes: processes, panel: panel, summaries: summaries?.callbacks(timeZone: boundary.time.timeZone()) ?? .disabled)
             application = MenuApplication(
                 states: { await recording.inputs.states() }, failures: recording.detectionFailures,

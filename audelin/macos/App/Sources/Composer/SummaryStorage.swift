@@ -9,13 +9,29 @@ import TrackFile
 /// One transaction boundary for call mutations and note publication, including
 /// partially moved calls whose new root has not yet reached preferences.
 final class SummaryStorage: SummaryFiles.Locations, Sendable {
-    private struct State { var roots: [URL] }
+    private struct State {
+        var recordingFolder: URL
+        var retainedFolders: [URL] = []
+        var roots: [URL] { [recordingFolder] + retainedFolders }
+
+        mutating func retain(_ folder: URL) {
+            if !roots.contains(where: { SummaryStorage.sameRoot($0, folder) }) { retainedFolders.append(folder) }
+        }
+    }
     private let state: Mutex<State>
     private let journal: URL?
+    private let writeJournal: @Sendable ([URL], URL) throws -> Void
     private let timeZone: TimeZone
     private let queue = DispatchQueue(label: "audelin.call-storage")
-    init(folder: URL, timeZone: TimeZone, journal: URL? = nil) {
-        state = Mutex(State(roots: [Self.directory(folder)])); self.timeZone = timeZone; self.journal = journal
+    convenience init(folder: URL, timeZone: TimeZone, journal: URL? = nil) {
+        self.init(folder: folder, timeZone: timeZone, journal: journal, writeJournal: { roots, journal in
+            try FileManager.default.createDirectory(at: journal.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try JSONEncoder().encode(roots).write(to: journal, options: .atomic)
+        })
+    }
+    init(folder: URL, timeZone: TimeZone, journal: URL?, writeJournal: @escaping @Sendable ([URL], URL) throws -> Void) {
+        state = Mutex(State(recordingFolder: Self.directory(folder)))
+        self.timeZone = timeZone; self.journal = journal; self.writeJournal = writeJournal
     }
     func restore() async throws {
         try await perform { [self] in
@@ -25,17 +41,28 @@ final class SummaryStorage: SummaryFiles.Locations, Sendable {
                 guard !saved.isEmpty, saved.allSatisfy(\.isFileURL) else { throw CocoaError(.fileReadCorruptFile) }
                 let roots = saved.map(Self.directory)
                 guard Set(roots).count == roots.count else { throw CocoaError(.fileReadCorruptFile) }
-                state.withLock { $0.roots = roots }
+                state.withLock { state in
+                    // Preferences decide where recording resumes, even if journal finalization failed.
+                    for root in roots { state.retain(root) }
+                }
             } catch let error as CocoaError where error.code == .fileReadNoSuchFile { return }
         }
     }
     private func saveRoots(_ roots: [URL]) throws {
         if let journal {
-            try FileManager.default.createDirectory(at: journal.deletingLastPathComponent(), withIntermediateDirectories: true)
-            try JSONEncoder().encode(roots).write(to: journal, options: .atomic)
+            try writeJournal(roots, journal)
         }
     }
     private static func directory(_ url: URL) -> URL { URL(fileURLWithPath: url.standardizedFileURL.path, isDirectory: true) }
+    private static func sameRoot(_ left: URL, _ right: URL) -> Bool {
+        left.resolvingSymlinksInPath().standardizedFileURL.path == right.resolvingSymlinksInPath().standardizedFileURL.path
+    }
+    /// Entry names, rather than parsed IDs, keep allocation rules in CallFolder.
+    func occupiedCallNames() throws -> [String] {
+        try state.withLock { state in
+            try state.roots.flatMap { try FileManager.default.contentsOfDirectory(atPath: $0.path) }
+        }
+    }
     private func calls(_ folder: URL) -> Calls { Calls(folder: folder, timeZone: timeZone, duration: TrackFile.duration(at:)) }
     func withFolder<Value: Sendable>(call: String, _ operation: @Sendable (URL) throws -> Value) throws -> Value {
         try state.withLock { try operation(location(id: call, roots: $0.roots)) }
@@ -70,10 +97,10 @@ final class SummaryStorage: SummaryFiles.Locations, Sendable {
         try await perform { [self] in try withFolder(call: id) { try calls($0.deletingLastPathComponent()).delete(id: id) } }
     }
     func location(id: String) async throws -> URL { try await perform { [self] in try withFolder(call: id) { $0 } } }
-    func prepareMove() async throws -> [MoveCall] {
+    func prepareMove(to destination: URL) async throws -> [MoveCall] {
         try await perform { [self] in
             try state.withLock { state in
-                try state.roots.flatMap { root in
+                try state.roots.filter { !Self.sameRoot($0, destination) }.flatMap { root in
                     let disk = calls(root)
                     return try disk.list().map { call in
                         MoveCall(id: call.id, title: call.title, bytes: try disk.bytes(id: call.id))
@@ -86,23 +113,31 @@ final class SummaryStorage: SummaryFiles.Locations, Sendable {
         let folder = Self.directory(destination)
         return try await perform { [self] in
             try state.withLock { state in
+                guard destination.isFileURL else { throw CocoaError(.fileWriteInvalidFileName) }
+                // Nesting calls makes deleting the outer call delete another recording.
+                let target = folder.resolvingSymlinksInPath().standardizedFileURL.path
+                for root in state.roots {
+                    let disk = calls(root)
+                    for call in try disk.list() {
+                        let path = try disk.location(id: call.id).resolvingSymlinksInPath().standardizedFileURL.path
+                        guard target != path, !target.hasPrefix(path + "/") else { throw CocoaError(.fileWriteInvalidFileName) }
+                    }
+                }
                 let source = try location(id: id, roots: state.roots)
-                if source.deletingLastPathComponent().resolvingSymlinksInPath().path == folder.resolvingSymlinksInPath().path {
+                if Self.sameRoot(source.deletingLastPathComponent(), folder) {
                     return try calls(folder).bytes(id: id)
                 }
                 _ = try calls(folder).count()
                 guard (try? calls(folder).location(id: id)) == nil else { throw CocoaError(.fileWriteFileExists) }
-                let previous = state.roots
-                if !state.roots.contains(folder) {
-                    let roots = state.roots + [folder]
-                    try saveRoots(roots)
-                    state.roots = roots
-                }
+                let previous = state
+                state.retain(folder)
+                do { try saveRoots(state.roots) }
+                catch { state = previous; throw error }
                 do { return try calls(source.deletingLastPathComponent()).move(id: id, to: folder) }
                 catch {
                     if (try? calls(folder).location(id: id)) == nil {
-                        try saveRoots(previous)
-                        state.roots = previous
+                        try saveRoots(previous.roots)
+                        state = previous
                     }
                     throw error
                 }
@@ -115,12 +150,18 @@ final class SummaryStorage: SummaryFiles.Locations, Sendable {
             try state.withLock { state in
                 _ = try calls(folder).count()
                 // A recording may have appeared after a failed move. Never abandon it.
-                for source in state.roots where source != folder {
+                for source in state.roots where !Self.sameRoot(source, folder) {
                     guard try calls(source).count().calls == 0 else { throw CocoaError(.fileWriteUnknown) }
                 }
-                try saveRoots([folder])
+                var retained = state
+                retained.retain(folder)
+                try saveRoots(retained.roots)
+                state = retained
                 try commit()
-                state.roots = [folder]
+                // Retain recovery locations if pruning fails after preferences were stored.
+                state = State(recordingFolder: folder, retainedFolders: state.roots.filter { !Self.sameRoot($0, folder) })
+                try saveRoots([folder])
+                state = State(recordingFolder: folder)
             }
         }
     }
@@ -133,6 +174,6 @@ struct SummaryCalls: RecordingsCalls {
     }
     func rename(id: String, title: String) async throws { try await storage.rename(id: id, title: title) }
     func delete(id: String) async throws { try await storage.delete(id: id) }
-    func prepareMove() async throws -> [MoveCall] { try await storage.prepareMove() }
+    func prepareMove(to destination: URL) async throws -> [MoveCall] { try await storage.prepareMove(to: destination) }
     func move(id: String, to destination: URL) async throws -> Int64 { try await storage.move(id: id, to: destination) }
 }

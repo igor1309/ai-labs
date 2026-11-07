@@ -40,14 +40,15 @@ actor RecordingSessions: RecordingSession {
     private var endedBeforeBegin: Set<UInt64> = []
 
     init(
-        preferences: PreferencesStore, callApp: RecordingCallApp, processes: CoreAudioProcesses,
+        preferences: PreferencesStore, occupiedCallNames: @escaping @Sendable () throws -> [String],
+        callApp: RecordingCallApp, processes: CoreAudioProcesses,
         boundary: ComposerBoundary,
         report: @escaping @Sendable (UInt64, RecordingSessionReport) async -> Void,
         panel: AudelinPanel, summaries: SummaryCallbacks = .disabled
     ) {
         self.timeZone = boundary.time.timeZone
         self.panel = panel
-        self.makePieces = composeRecordingPieces(preferences: preferences, callApp: callApp,
+        self.makePieces = composeRecordingPieces(preferences: preferences, occupiedCallNames: occupiedCallNames, callApp: callApp,
                                                  processes: processes, boundary: boundary, summaries: summaries)
         self.liveText = { preferences.read().liveText }
         self.report = report

@@ -292,6 +292,6 @@ private actor CallsSpy: RecordingsCalls {
     func list() async throws -> [RecordedCall] { try await call(.list) }
     func rename(id: String, title: String) async throws { _ = try await call(.rename(id: id, title: title)) }
     func delete(id: String) async throws { _ = try await call(.delete(id)) }
-    func prepareMove() async throws -> [MoveCall] { _ = try await call(.prepareMove); return [] }
+    func prepareMove(to destination: URL) async throws -> [MoveCall] { _ = try await call(.prepareMove(destination)); return [] }
     func move(id: String, to destination: URL) async throws -> Int64 { _ = try await call(.moveCall(id: id, to: destination)); return 0 }
 }

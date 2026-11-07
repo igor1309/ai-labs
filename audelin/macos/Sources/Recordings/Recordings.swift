@@ -5,7 +5,7 @@ public protocol RecordingsCalls: Sendable {
     func list() async throws -> [RecordedCall]
     func rename(id: String, title: String) async throws
     func delete(id: String) async throws
-    func prepareMove() async throws -> [MoveCall]
+    func prepareMove(to destination: URL) async throws -> [MoveCall]
     func move(id: String, to: URL) async throws -> Int64
 }
 
@@ -64,7 +64,7 @@ public enum RecordingsEvent: Equatable, Sendable {
 }
 
 public enum RecordingsEffect: Equatable, Sendable {
-    case prepareMove, reserveMove, releaseMove, moveCall(id: String, to: URL), storeFolder(URL)
+    case prepareMove(URL), reserveMove, releaseMove, moveCall(id: String, to: URL), storeFolder(URL)
     case list, rename(id: String, title: String), delete(String)
 }
 
@@ -197,8 +197,8 @@ public struct RecordingsEffectHandler: Sendable {
         switch effect {
         case .reserveMove: return .moveReserved(await reserve())
         case .releaseMove: await release(); return .moveReleased
-        case .prepareMove:
-            do { return .movePrepared(try await calls.prepareMove()) }
+        case let .prepareMove(destination):
+            do { return .movePrepared(try await calls.prepareMove(to: destination)) }
             catch { return .movePreparationFailed(error.localizedDescription) }
         case let .moveCall(id, destination):
             do { return .callMoved(id: id, bytes: try await calls.move(id: id, to: destination)) }

@@ -1,4 +1,5 @@
 import BlockingTestWork
+import Calls
 import Foundation
 import Observation
 import Recording
@@ -9,6 +10,22 @@ import Testing
 
 @MainActor @Suite(.timeLimit(.minutes(1)))
 struct FolderMoveWiringTests {
+    @Test func singleRootPreparationExcludesTheDestinationIncludingItsSymlink() async throws {
+        try await withComposeFolder { root in
+            let source = root.appendingPathComponent("source"), alias = root.appendingPathComponent("alias")
+            let id = "1970.01.01-0000"
+            try await offPool {
+                try FileManager.default.createDirectory(at: source.appendingPathComponent(id), withIntermediateDirectories: true)
+                try Data([1, 2, 3]).write(to: source.appendingPathComponent(id + "/audio"))
+                try FileManager.default.createSymbolicLink(at: alias, withDestinationURL: source)
+            }
+            let calls = ComposeCalls(disk: Calls(folder: source, timeZone: .gmt, duration: { _ in 0 }))
+            #expect(try await calls.prepareMove(to: source).isEmpty)
+            #expect(try await calls.prepareMove(to: alias).isEmpty)
+            #expect(try await calls.prepareMove(to: root) == [.init(id: id, title: "", bytes: 3)])
+        }
+    }
+
     @Test func settingsMapsConfirmationProgressFailureAndRefusal() {
         var state = RecordingsState(callsFolder: URL(fileURLWithPath: "/old"))
         let text = MoveText(title: "Confirm title", body: "52 calls · 135 MB", detail: "31 of 52 · 100 MB of 135 MB", moved: "31 of 52")
@@ -112,6 +129,46 @@ struct FolderMoveWiringTests {
         }
     }
 
+    @Test func partialMoveReservesMovedIDsForANewRecordingInTheSameMinuteAndRetryCompletes() async throws {
+        try await withComposeFolder { root in
+            let destination = root.appendingPathComponent("new")
+            let a = "1970.01.01-0000", b = "1970.01.01-0000-2", fresh = "1970.01.01-0000-3"
+            try await offPool {
+                for path in [root.appendingPathComponent(a), root.appendingPathComponent(b), destination] {
+                    try FileManager.default.createDirectory(at: path, withIntermediateDirectories: true)
+                }
+                try Data([1, 2, 3]).write(to: root.appendingPathComponent(a + "/audio"))
+                try Data([4, 5, 6, 7]).write(to: root.appendingPathComponent(b + "/transcript.md"))
+                try Data([99]).write(to: destination.appendingPathComponent(b))
+            }
+            let rig = try await ComposeFixture.make(root: root)
+            do {
+                let calls = try #require(rig.menu.calls)
+                calls.sendRecordings(.chooseFolder(destination))
+                for await state in Observations({ calls.recordingsState }) where state.phase == .askingMove { break }
+                calls.sendRecordings(.confirmMove)
+                for await state in Observations({ calls.recordingsState }) where state.phase == .failedMove && !state.isListing { break }
+                #expect(calls.recordingsState.move?.completed.map(\.id) == [a])
+                #expect(calls.recordingsState.failure?.id == b)
+                #expect(rig.menu.preferences.callsFolder == root)
+                try await rig.start()
+                #expect(await offPool { FileManager.default.fileExists(atPath: root.appendingPathComponent(fresh).path) })
+                #expect(await offPool { !FileManager.default.fileExists(atPath: root.appendingPathComponent(a).path) })
+                try await rig.stop()
+                for await state in Observations({ calls.recordingsState }) where state.recordingID == nil { break }
+                try await offPool { try FileManager.default.removeItem(at: destination.appendingPathComponent(b)) }
+                calls.sendRecordings(.retryMove)
+                for await state in Observations({ calls.recordingsState }) where state.phase == .idle && !state.isListing { break }
+                #expect(rig.menu.preferences.callsFolder == destination)
+                #expect(calls.recordingsState.calls.map(\.id) == [fresh, b, a])
+                #expect(try await offPool { try Data(contentsOf: destination.appendingPathComponent(a + "/audio")) } == Data([1, 2, 3]))
+                #expect(try await offPool { try Data(contentsOf: destination.appendingPathComponent(b + "/transcript.md")) } == Data([4, 5, 6, 7]))
+                #expect(await offPool { FileManager.default.fileExists(atPath: destination.appendingPathComponent(fresh + "/transcript.md").path) })
+                await rig.finish()
+            } catch { await rig.finish(); throw error }
+        }
+    }
+
     @Test func pickerMovesRealCallsThenNewRecordingsUseTheStoredFolder() async throws {
         try await withComposeFolder { root in
             let destination = root.appendingPathComponent("new")
@@ -162,7 +219,7 @@ private actor CallsMoveSpy: RecordingsCalls {
     private(set) var listings = 0
     private var result: CheckedContinuation<Int64, any Error>?
     private var started: CheckedContinuation<Void, Never>?
-    func prepareMove() -> [MoveCall] { [.init(id: "B", title: "Newer", bytes: 7), .init(id: "A", title: "Older", bytes: 3)] }
+    func prepareMove(to destination: URL) -> [MoveCall] { [.init(id: "B", title: "Newer", bytes: 7), .init(id: "A", title: "Older", bytes: 3)] }
     func move(id: String, to: URL) async throws -> Int64 {
         moved.append(id)
         return try await withCheckedThrowingContinuation { result = $0; started?.resume(); started = nil }

@@ -17,14 +17,15 @@ final class AudelinRecording: Sendable {
     private let delivery: ApplicationDelivery
 
     init(
-        preferences: PreferencesStore, boundary: ComposerBoundary, processes: CoreAudioProcesses,
+        preferences: PreferencesStore, occupiedCallNames: @escaping @Sendable () throws -> [String],
+        boundary: ComposerBoundary, processes: CoreAudioProcesses,
         panel: AudelinPanel, summaries: SummaryCallbacks = .disabled
     ) async throws {
 
         let app = RecordingCallApp()
         self.panel = panel
         let (recording, conditions) = await composeRecordingWithPreferences(
-            preferences: preferences, callApp: app, processes: processes, boundary: boundary, panel: panel, summaries: summaries
+            preferences: preferences, occupiedCallNames: occupiedCallNames, callApp: app, processes: processes, boundary: boundary, panel: panel, summaries: summaries
         )
         let inputs = recording
         self.inputs = inputs
