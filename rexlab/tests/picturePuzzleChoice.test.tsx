@@ -1,3 +1,4 @@
+import "./picturePuzzleSheets.ts";
 import { THEMES } from "../src/theme.ts";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
@@ -55,7 +56,7 @@ describe.each(LANGUAGES)("picture choice in %s", (language) => {
       expect(card.hasAttribute("disabled")).toBe(false);
       expect(card.querySelector("svg")).not.toBeNull();
     }
-    expect(getComputedStyle(cards[0]!).backgroundColor).toBe(theme === "dark" ? "rgb(24, 30, 46)" : "rgb(255, 253, 248)");
+    expect(getComputedStyle(cards[0]!.querySelector(".picture-puzzle-art")!).backgroundColor).toBe(theme === "dark" ? "rgb(74, 60, 44)" : "rgb(213, 194, 159)");
     expect(view.game().puzzle).toBeUndefined();
     fireEvent.click(button(text.ageLevels.hatchling.name));
     expect(view.game().puzzle).toBeUndefined();
