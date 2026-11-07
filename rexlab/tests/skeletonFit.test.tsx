@@ -6,6 +6,12 @@ import { NAME_EMS } from "./nameWidths.ts";
 import { finishLoading, fitAll, keptSkeletons, layOutPuzzle, openSkeletonsApp, revealNow, skeletonOf } from "./skeletonsApp.tsx";
 import { SHIPPED_SKELETONS } from "./support.ts";
 import { WINDOW_SIZES, openWindow } from "./windowSizes.ts";
+import { appStylesheet, NO_SAFE_AREA } from "./stylesheet.ts";
+
+// The choice brings its own sheet, as the screen does in the app.
+const choiceSheet = document.createElement("style");
+choiceSheet.textContent = appStylesheet(NO_SAFE_AREA, ["skeletonChoice.css"]);
+document.head.append(choiceSheet);
 
 // jsdom lays nothing out, so the width of the words on each skeleton
 // button and chip is given here in ems of its bold face, rounded up:

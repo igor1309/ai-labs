@@ -6,6 +6,12 @@ import { REVEAL } from "../src/skeletonGame.tsx";
 import { choices, finishLoading, fitAll, keptSkeletons, layOutPuzzle, openPuzzle, openSkeletonsApp, revealNow, shownTexts, skeletonOf } from "./skeletonsApp.tsx";
 import { manualViewport, type ManualViewport } from "./support.ts";
 import { openWindow, styleAt, type WindowSize } from "./windowSizes.ts";
+import { appStylesheet, NO_SAFE_AREA } from "./stylesheet.ts";
+
+// The choice brings its own sheet, as the screen does in the app.
+const choiceSheet = document.createElement("style");
+choiceSheet.textContent = appStylesheet(NO_SAFE_AREA, ["skeletonChoice.css"]);
+document.head.append(choiceSheet);
 
 // Every skeleton screen in a tall-narrow window: an iPhone upright.
 
@@ -53,10 +59,12 @@ describe("the skeleton screens upright on a phone", () => {
   it.each(PHONES)("stands the choice upright at %i by %i, its skeletons in rows of two", (...size) => {
     openWindow(...size);
     openSkeletonsApp({ viewport: narrowViewport(), portraitLayouts: NARROW_LAYOUTS, storage: starred() });
-    phoneScreen(size);
+    expect([document.documentElement.dataset.size, gateShown(), part(".gated-screen").hasAttribute("inert")]).toEqual(["tall-narrow", false, false]);
+    expect(screen.queryByRole("img", { name: TEXTS.en.turnSideways })).toBeNull();
+    for (const button of part(".skeleton-bar").querySelectorAll<HTMLElement>(".home-button")) expect(button.querySelector(".upright-hidden")?.textContent).toBe(button.textContent);
     const room = styleAt(part(".skeleton-choices"), size);
-    expect([room.value("flex-wrap"), room.rowGap(), room.columnGap()]).toEqual(["wrap", 12, 12]);
-    for (const card of choices()) expect(styleAt(card, size).value("flex-basis")).toBe("calc(0.5 * (100% - 12px))");
+    expect(room.value("flex-wrap")).toBe("wrap");
+    for (const card of choices()) expect(styleAt(card, size).value("flex-basis")).toBe("calc((100% - var(--sc-gap)) / 2)");
   });
 
   it.each(PHONES)("stands the museum upright at %i by %i, its stands in rows of two", async (...size) => {

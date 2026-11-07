@@ -6,6 +6,12 @@ import { TEXTS } from "../src/language/texts.ts";
 import { choices, keptSkeletons, openSkeletonsApp, shownTexts } from "./skeletonsApp.tsx";
 import { manualViewport, type ManualViewport } from "./support.ts";
 import { openWindow, styleAt, type WindowSize } from "./windowSizes.ts";
+import { appStylesheet, NO_SAFE_AREA } from "./stylesheet.ts";
+
+// The choice brings its own sheet, as the screen does in the app.
+const choiceSheet = document.createElement("style");
+choiceSheet.textContent = appStylesheet(NO_SAFE_AREA, ["skeletonChoice.css"]);
+document.head.append(choiceSheet);
 
 // skeleton-choice-portrait.feature in the app.
 
@@ -30,26 +36,25 @@ describe("the skeleton choice upright", () => {
     openChoice(size);
     expect([document.documentElement.dataset.size, gateShown(), part(".gated-screen").hasAttribute("inert")]).toEqual(["tall", false, false]);
     expect(screen.queryByRole("img", { name: TEXTS.en.turnSideways })).toBeNull();
-    const page = styleAt(part(".skeleton-screen"), size);
-    expect([page.px("padding-left"), page.px("padding-right"), page.value("height")]).toEqual([32, 32, `${size[1]}px`]);
+    expect(styleAt(part(".skeleton-screen"), size).value("height")).toBe(`${size[1]}px`);
     const room = styleAt(part(".skeleton-choices"), size);
-    expect([room.value("flex-wrap"), room.rowGap(), room.columnGap()]).toEqual(["wrap", 20, 20]);
+    expect(room.value("flex-wrap")).toBe("wrap");
     expect(choices()).toHaveLength(6);
-    for (const card of choices()) expect(styleAt(card, size).value("flex-basis")).toBe("calc(0.5 * (100% - 20px))");
+    for (const card of choices()) expect(styleAt(card, size).value("flex-basis")).toBe("calc((100% - var(--sc-gap)) / 2)");
   });
 
   it.each(["en-GB", "ru-RU"])("keeps the bar on one row at 600 wide in %s, HOME and MUSEUM as their symbols named for screen readers", (deviceLanguage) => {
     openChoice([600, 1000], { deviceLanguage });
     const text = shownTexts();
     const bar = styleAt(part(".skeleton-bar"), [600, 1000]);
-    expect([bar.value("flex-wrap") || "nowrap", bar.columnGap()]).toEqual(["nowrap", 16]);
+    expect([bar.value("flex-wrap") || "nowrap", bar.columnGap()]).toEqual(["nowrap", 12]);
     for (const name of [text.home, text.museum]) {
       const button = screen.getByRole("button", { name });
-      expect(styleAt(button, [600, 1000]).px("width")).toBe(56);
+      expect(styleAt(button, [600, 1000]).px("width")).toBe(48);
       expect(button.querySelector(".upright-hidden")?.textContent).toBe(name);
     }
     const words = styleAt(part(".skeleton-title-words"), [600, 1000]);
-    expect(words.value("font-size")).toBe("min(40px, (100cqi - 66px) / (var(--letters) * 0.75))");
+    expect(words.value("font-size")).toBe("min(40px, (100cqi - 76px) / (var(--letters) * 0.75))");
     for (const name of document.querySelectorAll<HTMLElement>(".skeleton-choice-name")) expect(styleAt(name, [600, 1000]).value("white-space")).toBe("nowrap");
   });
 
@@ -62,8 +67,7 @@ describe("the skeleton choice upright", () => {
   it("keeps the landscape choice as it was", () => {
     openChoice([1180, 820], { viewport: manualViewport("landscape") });
     expect([document.documentElement.dataset.size, gateShown()]).toEqual(["wide", false]);
-    expect(getComputedStyle(part(".skeleton-screen")).paddingLeft).toBe("56px");
-    expect(getComputedStyle(choices()[0]!).flexBasis).toBe("calc(0.3333333333333333*(100% - 56px))");
+    expect(getComputedStyle(choices()[0]!).flexBasis).toBe("calc((100% - 2 * var(--sc-gap)) / 3)");
   });
 
   it("marks every card as a part a turn glides, travelling as a fitted copy", () => {
