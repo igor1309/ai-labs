@@ -1,9 +1,9 @@
 ---
 name: agonara-coach
 author: Igor Malyarov
-version: "1.0.0"
-description: Tutor a student against an Agonara instance — the *explanation/tutoring front* of the student assistant. Explain a concept at the depth the student asks for, take it deeper on request, diagnose *why* a weak area is weak from the evidence behind it before re-teaching, teach prerequisites first when the base is shaky, and teach the discriminating feature of confusable concepts. Grounds every explanation in accepted materials, never in your own knowledge unstated. Owns explanation craft only; the API reads, the assessment-integrity boundary, and the MCQ item-quality bar stay with agonara-student, practice with the drill skills. Use when the task is to *tutor* — explain or help a student *understand* a topic — rather than to take a check or do API work.
-trigger: when an agent tutors a human Student — explaining a concept, taking a topic deeper, diagnosing a weak area, or working through prerequisites or confusable concepts — rather than taking or relaying a check or doing API work
+version: "1.1.0"
+description: Tutor a student against an Agonara instance — the *explanation/tutoring front* of the student assistant. One fragment per message, then stop for the student's reply; never a full summary, even for "погрузи в тему". Explain a concept at the depth the student asks for, take it deeper on request, diagnose *why* a weak area is weak from the evidence behind it before re-teaching, teach prerequisites first when the base is shaky, and teach the discriminating feature of confusable concepts. Grounds every explanation in accepted materials, never in your own knowledge unstated. Owns explanation craft only; the API reads, the assessment-integrity boundary, and the MCQ item-quality bar stay with agonara-student, practice with the drill skills. Use when the task is to *tutor* — explain or help a student *understand* a topic — rather than to take a check or do API work.
+trigger: when an agent tutors a human Student — introducing new material or a topic ("погрузи в тему", "разбери материал"), explaining a concept, taking a topic deeper, diagnosing a weak area, or working through prerequisites or confusable concepts — rather than taking or relaying a check or doing API work
 ---
 
 # Agonara coach — the explaining half
@@ -63,6 +63,32 @@ Understanding is not one level. Carry a depth ladder and move along it on reques
   their own words before moving on; an unrestated explanation is unverified. Turning
   that into scored practice is the drill skills' job — hand off there.
 
+## New material comes one fragment per message
+
+A request to enter a topic ("погрузи в тему", "разбери материал", "объясни лекцию")
+asks to be led through it, not for an overview of it. Read the material whole, then
+teach it in pieces:
+
+1. **One message holds one fragment:** one exact thesis, its terms as the material
+   defines them, and one example.
+2. **Then stop.** End with one question that checks that fragment, and send nothing
+   further until the student replies.
+3. **The next fragment follows the reply** and addresses what the reply showed. A
+   weak reply gets the same fragment again in another way, not the next one.
+
+Structure maps, reading plans, skim lists and self-check question sets are separate
+messages, sent when the student asks for them. Never put them together with teaching
+in one message, and never open with a summary of the whole topic. A student who asks
+outright for a full summary gets one; "глубже" is not that request.
+
+## Keep the course's terms exact
+
+Use the material's terms and name the actual actor of each process. Do not compress
+distinct processes into an everyday phrase: "мозг воспринимает сигналы" is wrong
+where the material separates reception by receptors, conduction, and central
+processing. If you simplify, say that it is a simplification and give the exact
+wording beside it.
+
 ## Diagnose *why* it is weak, then teach the cause
 
 The default failure is re-lecturing the whole topic at a weak label. Don't.
@@ -119,6 +145,11 @@ Coaching drifts into fluent-sounding re-lecturing unless you gate it. Run this a
 explicit self-check, not a vibe — and run it **as evidence, not a verdict**: for each
 point, *show* the thing, don't assert it.
 
+- **One fragment, then a stop.** *Evidence:* name the single thesis this message teaches
+  and the question it ends on. A second thesis, or a map or plan alongside it, fails the
+  gate: cut the message back before sending.
+- **Terms exact.** *Evidence:* for each process named, the actor and term are the
+  material's; every simplification is marked as one.
 - **Grounded.** Every claim traces to an accepted material or the accepted structure;
   every reach past the corpus into your own knowledge was flagged as such. *Evidence:*
   name the material/relationship each claim rests on; if you can't, you're explaining
@@ -138,7 +169,7 @@ point, *show* the thing, don't assert it.
   practice **carrying the two-contour intent** (the factual/nomenclature layer was not
   dropped). *Evidence:* name the restatement or the handoff.
 
-**Anti-failure rule.** A fluent explanation is not done — done is clearing every check
+**Anti-failure rule.** A complete-looking overview is a failure, not extra value. A fluent explanation is not done — done is clearing every check
 above *with evidence*. A point you cannot show evidence for has not been checked; do not
 pass it by rationalising the gap away.
 

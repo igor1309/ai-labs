@@ -104,7 +104,7 @@ concern has one owner and the others point to it (no restatement):
 
 | Concern | Owner |
 |---|---|
-| Explanation craft (depth ladder, cause-diagnosis, prerequisites, confusables) | `agonara-coach` |
+| Explanation craft (one fragment per message, depth ladder, cause-diagnosis, prerequisites, confusables) | `agonara-coach` |
 | MCQ item quality | `agonara-student` |
 | Authored assess-then-advance loop + assessment boundary | `agonara-student` |
 | Button / `clarify` delivery | `button-quiz-loop` |
