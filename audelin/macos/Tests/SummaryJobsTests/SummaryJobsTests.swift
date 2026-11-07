@@ -41,6 +41,7 @@ import Testing
         #expect(send(await handler.handle(.publish(job, "notes", warning: false))) == .save(job, .succeeded, warning: false))
         #expect(send(await handler.handle(.save(job, .succeeded, warning: false))) == nil)
         #expect(state.phase == .succeeded)
+        #expect(await store.released == [job])
         #expect(await store.calls == ["claim", "start", "checkpoint", "publish", "succeeded"])
     }
     @Test(arguments: ["claim", "start", "checkpoint", "publish", "succeeded"])
@@ -53,6 +54,7 @@ import Testing
             if state.phase == .pending { (state, effect) = reducer.reduce(state, .dispatch) }
         }
         #expect(state.phase == .failed)
+        #expect(await store.released == (failure == "claim" ? [] : [job()]))
         let calls = await generation.calls
         if failure == "claim" || failure == "start" { #expect(calls.isEmpty) }
         if failure == "checkpoint" { #expect(calls == ["identify"]) }
@@ -67,17 +69,41 @@ import Testing
         #expect(saving.terminal == .failed)
         #expect(save == .save(job, .failed, warning: true))
     }
+    @Test func aLiveOwnerIsObservedWithoutDispatchOrLocalInterruption() async {
+        let saved = makeState(phase: .running, job: job())
+        let job = job()
+        let store = StoreSpy(existing: saved)
+        let handler = EffectHandler(store: store, generation: GenerationSpy(), cancelled: { false })
+        let event = await handler.handle(.claim(job))
+        #expect(event == .claimed(owned: false, saved))
+        #expect(await store.calls == ["claim"])
+        let observed = assert(makeState(phase: .claiming), event) {
+            $0.phase = .running; $0.job = job; $0.status = "running:false"
+        }
+        _ = assert(observed, .dispatch)
+        _ = assert(observed, .cancel)
+    }
     @Test func cancellationAndObserversCannotReplay() async {
         let job = job()
         let observed = reducer.reduce(.init(phase: .claiming), .claimed(owned: false, .init(phase: .pending, job: job))).0
         #expect(reducer.reduce(observed, .dispatch).1 == nil)
-        let handler = EffectHandler(store: StoreSpy(), generation: GenerationSpy(fails: true), cancelled: { true })
+        let store = StoreSpy()
+        let handler = EffectHandler(store: store, generation: GenerationSpy(fails: true), cancelled: { true })
         #expect(await handler.handle(.notes(job, [])) == .cancel)
+        #expect(await store.released == [job])
         let (cancelled, effect) = reducer.reduce(.init(phase: .noting, job: job), .cancel)
         #expect(cancelled.phase == .interrupted)
         #expect(effect == nil)
         #expect(reducer.reduce(cancelled, .noted("late")).0 == cancelled)
     }
+    @discardableResult private func assert(_ state: State, _ event: Event, changes: (inout State) -> Void = { _ in }) -> State {
+        var expected = state; changes(&expected)
+        let (result, effect) = reducer.reduce(state, event)
+        #expect(result == expected)
+        #expect(effect == nil)
+        return result
+    }
+
 }
 private func job() -> Job {
     let runtime = Job.Runtime(kind: "compatibleAPI", model: "fixture", program: "", endpoint: "http://127.0.0.1", credentialVariable: "")
@@ -87,9 +113,16 @@ private struct StubError: Error {}
 private actor StoreSpy: Store {
     var calls: [String] = []
     let failure: String?
-    init(failure: String? = nil) { self.failure = failure }
+    let existing: State?
+    init(failure: String? = nil, existing: State? = nil) { self.failure = failure; self.existing = existing }
     func call(_ name: String) throws { calls.append(name); if name == failure { throw StubError() } }
-    func claim(_ job: Job) throws -> (owned: Bool, state: State) { try call("claim"); return (true, .init(phase: .pending, job: job)) }
+    func claim(_ job: Job) throws -> (owned: Bool, state: State) {
+        try call("claim")
+        if let existing { return (false, existing) }
+        return (true, .init(phase: .pending, job: job))
+    }
+    var released: [Job] = []
+    func release(_ job: Job) { released.append(job) }
     func start(_ job: Job) throws -> Bool { try call("start"); return true }
     func checkpoint(_ job: Job, identities: [Identity], warning: Bool) throws { try call("checkpoint") }
     func publish(_ job: Job, notes: String, warning: Bool) throws { try call("publish") }
@@ -102,3 +135,5 @@ private actor GenerationSpy: Generation {
     func identify(_ job: Job) throws -> [Identity] { calls.append("identify"); if fails { throw StubError() }; return [] }
     func notes(_ job: Job, identities: [Identity]) throws -> String { calls.append("notes"); if fails { throw StubError() }; return "notes" }
 }
+
+private func makeState(phase: State.Phase, job: Job? = nil) -> State { .init(phase: phase, job: job) }

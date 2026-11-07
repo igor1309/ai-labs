@@ -9,7 +9,9 @@ final class SummaryJobModel {
     private var effects: [UInt64: Task<Void, Never>] = [:]
     private var sequence: UInt64 = 0
     private var stopping = false
+    private let handler: EffectHandler
     init(initial: State, handler: EffectHandler, changed: @escaping (State) -> Void) {
+        self.handler = handler
         let reducer = Reducer(format: summaryStatus)
         model = ObservableModel(initialState: initial, reduce: { [weak self] state, event in
             guard let self else { return (state, nil) }
@@ -41,5 +43,6 @@ final class SummaryJobModel {
         let tasks = Array(effects.values)
         for task in tasks { task.cancel() }
         for task in tasks { await task.value }
+        if let job = model.state.job { await handler.release(job) }
     }
 }

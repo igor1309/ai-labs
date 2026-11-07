@@ -37,7 +37,7 @@ public struct Identity: Equatable, Sendable {
     }
 }
 public struct State: Equatable, Sendable {
-    public enum Phase: String, Equatable, Sendable { case idle, waiting, claiming, pending, starting, identifying, checkpointing, noting, publishing, saving, succeeded, failed, interrupted, unavailable, observed }
+    public enum Phase: String, Equatable, Sendable { case idle, waiting, claiming, pending, running, starting, identifying, checkpointing, noting, publishing, saving, succeeded, failed, interrupted, unavailable, observed }
     public var phase: Phase
     public var job: Job?
     public var identities: [Identity]
@@ -110,7 +110,7 @@ public struct Reducer: Sendable {
             effect = state.job.map { .save($0, .succeeded, warning: state.warning) }
         case .saved where state.phase == .saving: next.phase = state.terminal ?? .failed
         case .storageFailed: next.phase = .failed
-        case .cancel where state.phase != .succeeded && state.phase != .failed && state.phase != .pending:
+        case .cancel where state.phase != .succeeded && state.phase != .failed && state.phase != .pending && state.phase != .running:
             next.phase = .interrupted
         default: return (state, nil)
         }
@@ -121,6 +121,8 @@ public struct Reducer: Sendable {
 
 public protocol Store: Sendable {
     func claim(_ job: Job) async throws -> (owned: Bool, state: State)
+    /// Releases this owner's lease after its request resources have ended; observers do nothing.
+    func release(_ job: Job) async
     func start(_ job: Job) async throws -> Bool
     func checkpoint(_ job: Job, identities: [Identity], warning: Bool) async throws
     func publish(_ job: Job, notes: String, warning: Bool) async throws
@@ -138,6 +140,7 @@ public struct EffectHandler: Sendable {
     public init(store: any Store, generation: any Generation, cancelled: @escaping @Sendable () -> Bool) {
         self.store = store; self.generation = generation; self.cancelled = cancelled
     }
+    public func release(_ job: Job) async { await store.release(job) }
     public func handle(_ effect: Effect) async -> Event {
         do {
             switch effect {
@@ -146,18 +149,32 @@ public struct EffectHandler: Sendable {
             case let .start(job): return .started(try await store.start(job))
             case let .identify(job):
                 do { return .identified(try await generation.identify(job)) }
-                catch { return cancelled() || Task.isCancelled ? .cancel : .identificationFailed }
+                catch {
+                    if cancelled() || Task.isCancelled { await store.release(job); return .cancel }
+                    return .identificationFailed
+                }
             case let .checkpoint(job, identities, warning):
                 try await store.checkpoint(job, identities: identities, warning: warning); return .checkpointed
             case let .notes(job, identities):
                 do { return .noted(try await generation.notes(job, identities: identities)) }
-                catch { return cancelled() || Task.isCancelled ? .cancel : .notesFailed }
+                catch {
+                    if cancelled() || Task.isCancelled { await store.release(job); return .cancel }
+                    return .notesFailed
+                }
             case let .publish(job, notes, warning):
                 try await store.publish(job, notes: notes, warning: warning); return .published
             case let .save(job, phase, warning):
-                try await store.save(job, phase: phase, warning: warning); return .saved
+                try await store.save(job, phase: phase, warning: warning)
+                await store.release(job); return .saved
             }
-        } catch { return .storageFailed }
+        } catch {
+            switch effect {
+            case .claim: break
+            case let .start(job), let .identify(job), let .checkpoint(job, _, _), let .notes(job, _), let .publish(job, _, _), let .save(job, _, _):
+                await store.release(job)
+            }
+            return .storageFailed
+        }
     }
 }
 

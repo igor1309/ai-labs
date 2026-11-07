@@ -1,3 +1,4 @@
+import CryptoKit
 import Darwin
 import Foundation
 
@@ -53,7 +54,33 @@ public actor Files {
     public nonisolated var unownedExecutor: UnownedSerialExecutor { queue.asUnownedSerialExecutor() }
     private let locations: any Locations
     private let disk: any Disk
-    public init(locations: any Locations, disk: any Disk) { self.locations = locations; self.disk = disk }
+    private let ownershipDirectory: URL
+    private struct Identity: Hashable { var call: String; var job: String; var input: String }
+    private var leases: [Identity: Int32] = [:]
+    /// All instances sharing calls must use the same ownership directory, outside movable call storage.
+    public init(locations: any Locations, disk: any Disk, ownershipDirectory: URL) {
+        self.locations = locations; self.disk = disk; self.ownershipDirectory = ownershipDirectory
+    }
+    isolated deinit { for fd in leases.values { close(fd) } }
+
+    private static func acquire(_ record: Record, directory: URL) throws -> Int32? {
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let key = SHA256.hash(data: Data(record.job.utf8)).map { String(format: "%02x", $0) }.joined()
+        let fd = open(directory.appendingPathComponent(key).path, O_CREAT | O_RDWR | O_NOFOLLOW | O_CLOEXEC, S_IRUSR | S_IWUSR)
+        guard fd >= 0 else { throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO) }
+        guard flock(fd, LOCK_EX | LOCK_NB) == 0 else {
+            let error = errno
+            close(fd)
+            if error == EWOULDBLOCK { return nil }
+            throw POSIXError(POSIXErrorCode(rawValue: error) ?? .EIO)
+        }
+        // Never unlink lease files: an observer could otherwise lock a different inode.
+        return fd
+    }
+    /// Call only after the request's resources have ended; releasing is idempotent.
+    public func release(job: String, call: String, input: String) {
+        if let fd = leases.removeValue(forKey: .init(call: call, job: job, input: input)) { close(fd) }
+    }
     public func claim(_ record: Record) throws -> (owned: Bool, record: Record) {
         try locations.withFolder(call: record.call) { [disk] folder in
             let path = folder.appendingPathComponent(".summary-job.json")
@@ -63,11 +90,17 @@ public actor Files {
         }
     }
     public func load(call: String) throws -> Record? {
-        try locations.withFolder(call: call) { [disk] folder in
+        try locations.withFolder(call: call) { [disk, ownershipDirectory] folder in
             let path = folder.appendingPathComponent(".summary-job.json")
             guard try disk.exists(path) else { return nil }
             var record = try Self.read(path, disk: disk, call: call)
             if record.phase == "running" {
+                guard let lease = try Self.acquire(record, directory: ownershipDirectory) else { return record }
+                defer { close(lease) }
+                let identity = record
+                record = try Self.read(path, disk: disk, call: call)
+                // Completion can commit and release ownership between the first read and acquisition.
+                guard record.phase == "running", record.job == identity.job, record.input == identity.input else { return record }
                 let output = folder.appendingPathComponent("summary.md")
                 if try disk.exists(output), let receipt = Self.receipt(try disk.read(output)),
                    receipt.job == record.job, receipt.input == record.input {
@@ -80,22 +113,28 @@ public actor Files {
         }
     }
     public func start(_ record: Record) throws -> Bool {
-        try locations.withFolder(call: record.call) { [disk] folder in
+        let identity = Identity(call: record.call, job: record.job, input: record.input)
+        guard leases[identity] == nil else { return false }
+        let lease: Int32? = try locations.withFolder(call: record.call) { [disk, ownershipDirectory] folder in
             let path = folder.appendingPathComponent(".summary-job.json")
-            // Cross-instance/process arbitration is held through read and durable running write.
-            let lockURL = folder.appendingPathComponent(".summary-lock")
-            let fd = open(lockURL.path, O_CREAT | O_RDWR | O_NOFOLLOW, S_IRUSR | S_IWUSR)
-            guard fd >= 0 else { throw CocoaError(.fileWriteUnknown) }
-            defer { flock(fd, LOCK_UN); close(fd) }
-            guard flock(fd, LOCK_EX | LOCK_NB) == 0 else { return false }
-            var current = try Self.read(path, disk: disk, call: record.call)
-            guard current.job == record.job, current.input == record.input, current.phase == "pending" else { return false }
-            current.phase = "running"
-            try disk.replace(JSONEncoder().encode(current), at: path)
-            return true
+            guard let fd = try Self.acquire(record, directory: ownershipDirectory) else { return nil }
+            do {
+                var current = try Self.read(path, disk: disk, call: record.call)
+                guard current.job == record.job, current.input == record.input, current.phase == "pending" else {
+                    close(fd); return nil
+                }
+                current.phase = "running"
+                try disk.replace(JSONEncoder().encode(current), at: path)
+                return fd
+            } catch { close(fd); throw error }
         }
+        guard let lease else { return false }
+        leases[identity] = lease
+        return true
     }
     public func progress(_ record: Record) throws {
+        guard leases[.init(call: record.call, job: record.job, input: record.input)] != nil else { throw CocoaError(.fileWriteUnknown) }
+        defer { if record.phase != "running" { release(job: record.job, call: record.call, input: record.input) } }
         try locations.withFolder(call: record.call) { [disk] folder in
             let path = folder.appendingPathComponent(".summary-job.json")
             let current = try Self.read(path, disk: disk, call: record.call)
@@ -106,6 +145,7 @@ public actor Files {
         }
     }
     public func publish(_ record: Record, notes: String) throws {
+        guard leases[.init(call: record.call, job: record.job, input: record.input)] != nil else { throw CocoaError(.fileWriteUnknown) }
         try locations.withFolder(call: record.call) { [disk] folder in
             let current = try Self.read(folder.appendingPathComponent(".summary-job.json"), disk: disk, call: record.call)
             guard current.job == record.job, current.input == record.input, current.phase == "running" else { throw CocoaError(.fileWriteUnknown) }

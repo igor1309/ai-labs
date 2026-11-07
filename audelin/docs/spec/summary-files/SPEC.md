@@ -5,7 +5,8 @@ Observer: the caller storing and reading a call summary job.
 ## Decided
 
 - This adapter owns job records and summary output; transcript bytes are never rewritten (architecture rule 2).
-- Exclusive claim creation and dispatch arbitration distinguish owner from observers; pending/running must persist before runtime work. Unreadable records are errors, not absence.
+- Exclusive claim creation and dispatch arbitration distinguish owner from observers; pending/running must persist before runtime work. A cross-process ownership lease stays held through terminal completion or joined cancellation/shutdown, including failed terminal saves. Its descriptor is closed on exec, and its stable location outside call folders survives rename and copied moves. Unreadable records are errors, not absence.
+- Loading running work first tries to acquire its ownership lease. A busy lease proves a live owner: return running unchanged, even if output is already published. Only an acquired lease permits reconciliation using the exact job/input receipt, or interruption without replay. Release the reconciliation lease even when saving fails.
 - Record immutable job/input identity, captured configuration and credential references, accepted evidence and sanitized outcomes; never credential values or raw runtime diagnostics.
 - Atomic replacement uses a job/input-matched publication receipt so an old summary cannot complete a new claim; preserve existing complete output on failed replacement.
 - All disk work runs on a dedicated awaited executor. Identity resolution and publication coordinate with rename, delete and whole-folder moves, including partially completed moves, through consumer-owned storage ports.
@@ -78,4 +79,16 @@ Feature: Keep notes and job records durably
     Given existing output names the current job but another input
     When I recover the current job
     Then I cannot mistake that output for current success
+
+  Scenario: S-14 Observe a live owner
+    Given another instance owns a running request
+    When I load its call before or after publication
+    Then I observe running without changing its claim
+    And its owner can finish publishing and saving success
+
+  Scenario: S-15 Recover an abandoned owner
+    Given a running request's owner has exited without output
+    When I acquire its released ownership lease and load the call
+    Then I observe interruption without permission to repeat the request
+
 ```

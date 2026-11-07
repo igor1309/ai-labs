@@ -30,7 +30,7 @@ func summaryStatus(_ phase: SummaryJobs.State.Phase, _ warning: Bool) -> String 
     case .idle: ""
     case .waiting: "Итоги ждут финальную расшифровку"
     case .pending, .claiming, .observed: "Итоги ожидают запуска"
-    case .starting, .identifying, .checkpointing, .noting, .publishing, .saving: "Готовим итоги…"
+    case .running, .starting, .identifying, .checkpointing, .noting, .publishing, .saving: "Готовим итоги…"
     case .succeeded: warning ? "Итоги готовы; имена не определены" : "Итоги готовы"
     case .failed: "Не удалось составить или сохранить итоги. Расшифровка и аудио сохранены."
     case .interrupted: "Подготовка итогов прервана; автоматического повтора не будет."
@@ -116,12 +116,15 @@ struct SummaryJobStore: SummaryJobs.Store {
         let saved = try JSONDecoder().decode(Snapshot.self, from: record.snapshot)
         let job = Job(id: record.job, call: record.call, input: record.input, entries: saved.entries.map(\.value), speakers: saved.speakers,
                       primary: saved.primary.value, fallback: saved.fallback.value)
-        let phase: SummaryJobs.State.Phase = record.phase == "running" ? .interrupted : (.init(rawValue: record.phase) ?? .failed)
+        let phase = SummaryJobs.State.Phase(rawValue: record.phase) ?? .failed
         return .init(phase: phase, job: job, warning: record.warning, status: summaryStatus(phase, record.warning))
     }
     func claim(_ job: Job) async throws -> (owned: Bool, state: SummaryJobs.State) {
         let result = try await files.claim(record(job, phase: "pending"))
         return (result.owned, try state(result.record))
+    }
+    func release(_ job: Job) async {
+        await files.release(job: job.id, call: job.call, input: job.input)
     }
     func start(_ job: Job) async throws -> Bool { try await files.start(record(job)) }
     func checkpoint(_ job: Job, identities: [SummaryJobs.Identity], warning: Bool) async throws {

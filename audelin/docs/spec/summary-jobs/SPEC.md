@@ -9,7 +9,7 @@ Observer: the composition root requesting and observing notes.
 - Eligibility requires the latest final snapshot successfully written, subsequent closure, usable recognition and actual spoken entries; placeholder Markdown is not speech. Earlier recovered writes do not disqualify a successful final write.
 - Only exclusive dispatch ownership can request generation; concurrent completion and startup recovery share arbitration. Existing records are observed, not dispatched twice.
 - Failed claim, running or speaker-checkpoint persistence prevents further requests. Corrupt records fail visibly, never become absent records.
-- Pending work retains an immutable configuration snapshot; running requests reload as interrupted. A committed output must match the claimed job and input to recover success.
+- Pending work retains an immutable configuration snapshot; running requests reload unchanged while their ownership lease is busy, and as interrupted only after abandoned ownership is acquired. A committed output must match the claimed job and input to recover success.
 - Accepted speaker evidence is checkpointed before notes; a failed notes attempt reuses that checkpoint. Speaker acceptance is owned by speaker-identification.
 - Notes prompt forbids invented facts, decisions, commitments, owners and deadlines; only transcript-supported content is allowed. Required meeting-language sections are topic, key points, decisions and actions; absent decisions/actions say localized “none recorded”, and absent open questions omit that section. Structural/refusal/truncation validation cannot mechanically prove factual faithfulness; synthetic language and hallucination fixtures challenge the prompt.
 

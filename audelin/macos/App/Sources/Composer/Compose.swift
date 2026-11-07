@@ -41,7 +41,7 @@ public func compose(
             guard let value = getenv(name) else { return nil }
             return String(cString: value)
         }, deadline: { try await boundary.time.sleep(.seconds(120)) })
-    let summaries = AudelinSummaries(files: SummaryFiles.Files(locations: storage, disk: FileDisk()),
+    let summaries = AudelinSummaries(files: SummaryFiles.Files(locations: storage, disk: FileDisk(), ownershipDirectory: preferencesURL.deletingLastPathComponent().appendingPathComponent("summary-ownership")),
                                      runtime: runtime, preferences: preferences, sink: boundary.log)
     let menu = await AudelinMenu(storage: preferences, boundary: boundary, processes: processes, panel: panel,
         openFolder: { _ = openCallsFolder($0) }, openURL: openURL, terminate: terminate,
