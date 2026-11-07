@@ -1,0 +1,63 @@
+/* PICTURE PUZZLE's result on the dig site (design/dig-site.pen, PUZZLE ·
+   result): BONES' result with the whole picture in a white frame for the
+   skeleton, WELL DONE by the star, the level's score on a label beside the
+   celebration, and PLAY AGAIN in ink beside ANOTHER PICTURE. */
+html[data-size] .picture-puzzle-result-screen .picture-puzzle-reveal {
+  box-sizing: border-box;
+  aspect-ratio: 4 / 3;
+  height: auto;
+  border: 6px solid var(--ds-label);
+  border-radius: var(--ds-radius-22);
+  overflow: hidden;
+  background: var(--ds-label);
+  box-shadow: 0 8px 24px var(--ds-pocket-shadow);
+  animation: rise-in var(--motion-screen) var(--ease-out) both;
+}
+
+html[data-size] .picture-puzzle-result-screen .picture-puzzle-reveal > * { width: 100%; height: 100%; }
+
+.picture-puzzle-result-screen .picture-puzzle-well-done { margin: 0; color: var(--ds-ink); font-size: var(--ds-size-28, 28px); font-weight: 900; letter-spacing: 0.5px; }
+
+html[data-size] .picture-puzzle-result-screen .picture-puzzle-level-score {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-s);
+  margin: 0;
+  padding: var(--ds-space-7) var(--ds-space-14) var(--ds-space-7) var(--ds-btn-gap);
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-label);
+  color: var(--ds-ink);
+  font-size: var(--ds-size-18);
+  font-weight: 800;
+}
+
+.picture-puzzle-result-screen .picture-puzzle-level-name { opacity: 0.7; font-size: 0.85em; }
+.picture-puzzle-result-screen .picture-puzzle-level-score strong { font-size: 1.2em; font-weight: 900; }
+.picture-puzzle-result-screen .picture-puzzle-level-picture { line-height: 1; }
+.picture-puzzle-result-screen .picture-puzzle-level-picture::before { content: attr(data-picture); }
+
+html[data-size] .skeleton-result.picture-puzzle-result-screen .skeleton-actions .skeleton-build-another.picture-puzzle-replay { background: var(--ds-ink); color: var(--ds-label); }
+
+html[data-size="tall-narrow"] .picture-puzzle-result-screen .picture-puzzle-well-done { font-size: 22px; }
+html[data-size="tall-narrow"] .picture-puzzle-result-screen .picture-puzzle-level-score { font-size: var(--ds-size-15); }
+html[data-size="wide-short"] .picture-puzzle-result-screen .picture-puzzle-well-done { font-size: 20px; }
+html[data-size="wide-short"] .picture-puzzle-result-screen .picture-puzzle-level-score { padding: 2px var(--ds-space-s); font-size: var(--ds-size-14); }
+
+html[data-size="wide"] .picture-puzzle-result-screen .skeleton-reward-row .celebration, html[data-size="tall"] .picture-puzzle-result-screen .skeleton-reward-row .celebration { border-radius: var(--ds-radius-pill); padding: var(--ds-space-7) var(--ds-space-l); }
+
+/* A phone keeps the best for screen readers: its reward has room for the
+   score on the label only. */
+html[data-size="tall-narrow"] .picture-puzzle-result-screen .best-score,
+html[data-size="wide-short"] .picture-puzzle-result-screen .best-score { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+html[data-size="tall-narrow"] .skeleton-result.picture-puzzle-result-screen .skeleton-reward-row { gap: var(--ds-space-xs); justify-content: center; }
+html[data-size="tall-narrow"] .skeleton-result.picture-puzzle-result-screen .skeleton-reward-row .celebration { height: 44px; white-space: nowrap; padding: 0 var(--ds-space-s); gap: var(--ds-space-xs); font-size: var(--ds-size-14); }
+html[data-size="tall-narrow"] .skeleton-result.picture-puzzle-result-screen .skeleton-reward-row .celebration svg { width: 18px; height: 18px; }
+html[data-size="tall-narrow"] .skeleton-result.picture-puzzle-result-screen .picture-puzzle-level-score { white-space: nowrap; font-size: var(--ds-size-14); padding: var(--ds-space-xs) var(--ds-space-s); gap: var(--ds-space-xs); }
+html[data-size="tall-narrow"] .skeleton-result.picture-puzzle-result-screen .skeleton-reward-row:first-child { justify-content: center; }
+
+.picture-puzzle-result-screen .skeleton-actions button { min-width: 48px; min-height: 48px; }
+
+/* Beside the picture the ways on stand centred on the sand under both: the
+   reward reaches back over the picture and the gap before it. */
+html[data-size="wide"] .skeleton-result.picture-puzzle-result-screen .skeleton-actions { left: calc(-1 * (min(48cqw, 100cqh * 4 / 3) + var(--ds-space-40))); justify-content: center; }
+html[data-size="wide-short"] .skeleton-result.picture-puzzle-result-screen .skeleton-actions { left: calc(-1 * (min(44cqw, 100cqh * 4 / 3) + var(--ds-space-xl))); justify-content: center; }

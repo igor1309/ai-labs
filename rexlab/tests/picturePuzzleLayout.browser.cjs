@@ -7,7 +7,8 @@
 // same in every window at every level, beside its tools or over them; only
 // where its places would be under 48px does it wait behind the gate, which
 // fits as well: the paleontologist's on an upright phone or a small one on
-// its side.
+// its side. The result, a first completion, a new best, a replay and with
+// the collection unreadable, fits every window at every level.
 const assert = require("node:assert/strict");
 const { resolve } = require("node:path");
 const { chromium } = require("playwright");
@@ -29,6 +30,7 @@ const VIEWPORTS = [
 ];
 const LEVELS = ["hatchling", "explorer", "paleontologist"];
 const CHOICES = [{ stars: 0 }, { stars: 2 }, { stars: 3 }, { stars: 2, loading: true }];
+const RESULTS = [{ celebration: "first-best", best: 1 }, { id: 1, score: 2, shared: 2, celebration: "new-best", best: 2, beaten: 1 }, { celebration: null, best: 1 }, { id: 2, score: 3, shared: 3, celebration: null }];
 const BOARDS = [{ fitted: 0 }, { fitted: 5, id: 1 }, { fitted: 0, loading: true }];
 const stillEnough = page => page.evaluate(() => document.getAnimations()
   .filter(a => a.effect?.getComputedTiming().iterations !== Infinity)
@@ -86,6 +88,9 @@ const stillEnough = page => page.evaluate(() => document.getAnimations()
             return gated ? ".orientation-gate" : ".picture-puzzle-board-screen";
           };
           await check("mountBoard", { language, level, ...options }, board, `${language} board ${level} ${options.fitted} fitted${options.loading ? " loading" : ""}`, viewport);
+        }
+        for (const level of LEVELS) for (const options of RESULTS) {
+          await check("mountResult", { language, level, ...options }, ".picture-puzzle-result-screen", `${language} result ${level} ${options.celebration ?? "replay"}${options.best === undefined ? " unreadable" : ""}`, viewport);
         }
       }
       assert.deepEqual(errors, []);

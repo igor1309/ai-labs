@@ -18,7 +18,13 @@ const SHOTS = [
   ["board-paleo", { board: true, level: "paleontologist", id: 2, fitted: 20 }],
   ["board-loading", { board: true, loading: true }],
   ["board-explorer-dark", { board: true, level: "explorer", id: 1, fitted: 9, theme: "dark" }],
-  ["board-explorer-ru", { board: true, level: "explorer", id: 1, fitted: 9, language: "ru" }]
+  ["board-explorer-ru", { board: true, level: "explorer", id: 1, fitted: 9, language: "ru" }],
+  ["result-first", { result: true, celebration: "first-best", best: 1 }],
+  ["result-best", { result: true, level: "explorer", id: 1, score: 2, shared: 2, celebration: "new-best", best: 2, beaten: 1 }],
+  ["result-replay", { result: true, celebration: null, best: 1 }],
+  ["result-paleo", { result: true, level: "paleontologist", id: 2, score: 2, shared: 3, celebration: "new-best", best: 2, beaten: 1 }],
+  ["result-dark", { result: true, celebration: "first-best", best: 1, theme: "dark" }],
+  ["result-ru", { result: true, level: "explorer", id: 1, score: 2, shared: 2, celebration: "new-best", best: 2, beaten: 1, language: "ru" }]
 ];
 
 (async () => {
@@ -42,7 +48,7 @@ const SHOTS = [
     });
     await page.goto("http://shots.test/");
     for (const [name, options] of SHOTS.filter(([name]) => !process.env.ONLY || name.startsWith(process.env.ONLY))) {
-      await page.evaluate(async options => { { const harness = await import("/harness.js"); options.board ? harness.mountBoard(options) : harness.mountChoice(options); } await document.fonts.ready; }, options);
+      await page.evaluate(async options => { { const harness = await import("/harness.js"); options.result ? harness.mountResult(options) : options.board ? harness.mountBoard(options) : harness.mountChoice(options); } await document.fonts.ready; }, options);
       if (!options.loading) await page.waitForFunction(() => [...document.images].every(image => image.complete));
       await page.evaluate(() => Promise.all(document.getAnimations().filter(a => a.effect?.getComputedTiming().iterations !== Infinity).map(a => a.finished.catch(() => {}))));
       await page.screenshot({ path: join(out, `${name}.png`) });

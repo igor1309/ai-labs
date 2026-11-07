@@ -2,6 +2,7 @@
 
 ## 2026-11-07
 
+- LAB-922: PICTURE PUZZLE's result stands on the dig site as BONES' does: the whole picture framed in the sky beside or over WELL DONE by its star, the celebration beside the level's score, the name and fact, and ANOTHER PICTURE and PLAY AGAIN on the sand; it plays upright too.
 - LAB-922: PICTURE PUZZLE plays upright and on a phone on its side: the board over its tools on an iPad or phone, beside them on its side with HINT and PICTURE as symbols; only where the places would be under 48px, the paleontologist's on an upright phone or a small one on its side, does the board wait for a turn. Its choice and board now leave the app's portrait gate.
 - LAB-922: PICTURE PUZZLE's board stands on the dig site in wide windows: HOME, BACK and the picture's name in the sky with the pieces fitted, and on the sand the board in its pocket beside the tools' pocket of tray, pages, HINT and PICTURE.
 - LAB-922: PICTURE PUZZLE's choice stands on the dig site: HOME and the title in the sky, and on the sand the level switch over the three pictures in their pockets, beside their names on an upright phone.
