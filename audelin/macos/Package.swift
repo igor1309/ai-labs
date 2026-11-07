@@ -5,6 +5,12 @@ let package = Package(
     name: "Audelin",
     platforms: [.macOS(.v26)],
     products: [
+        .library(name: "SummarySettings", targets: ["SummarySettings"]),
+        .library(name: "SummaryJobs", targets: ["SummaryJobs"]),
+        .library(name: "SummaryFiles", targets: ["SummaryFiles"]),
+        .library(name: "SummaryRuntime", targets: ["SummaryRuntime"]),
+        .library(name: "SpeakerIdentification", targets: ["SpeakerIdentification"]),
+
         .library(name: "BlockingTestWork", targets: ["BlockingTestWork"]),
         .library(name: "SplitRows", targets: ["SplitRows"]),
         .library(name: "Lifecycle", targets: ["Lifecycle"]),
@@ -45,6 +51,17 @@ let package = Package(
         .package(url: "https://github.com/FluidInference/FluidAudio.git", exact: "0.17.7"),
     ],
     targets: [
+        .target(name: "SummarySettings"),
+        .testTarget(name: "SummarySettingsTests", dependencies: ["SummarySettings", "BlockingTestWork"]),
+        .target(name: "SummaryJobs"),
+        .testTarget(name: "SummaryJobsTests", dependencies: ["SummaryJobs", "BlockingTestWork"]),
+        .target(name: "SummaryFiles"),
+        .testTarget(name: "SummaryFilesTests", dependencies: ["SummaryFiles", "BlockingTestWork"]),
+        .target(name: "SummaryRuntime"),
+        .testTarget(name: "SummaryRuntimeTests", dependencies: ["SummaryRuntime", "BlockingTestWork"]),
+        .target(name: "SpeakerIdentification"),
+        .testTarget(name: "SpeakerIdentificationTests", dependencies: ["SpeakerIdentification", "BlockingTestWork"]),
+
         .testTarget(name: "SourceChecksTests", dependencies: ["BlockingTestWork"]),
         .target(name: "Calls", dependencies: ["CallFolderName"]),
         .target(name: "Recordings"),

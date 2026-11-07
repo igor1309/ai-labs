@@ -2,7 +2,7 @@ public enum MenuBarAction: Equatable, Sendable {
 
     case start, stop
     case setAutomatic(Bool), setLiveText(Bool)
-    case showPanel, hidePanel, showCalls, openCallsFolder, quit
+    case showPanel, hidePanel, showCalls, showSettings, openCallsFolder, quit
 }
 
 public enum MenuBarEntry: Equatable, Sendable {
@@ -38,6 +38,7 @@ public struct MenuBarModel: Equatable, Sendable {
                     .setAutomatic(!preferences.automatic)),
             .toggle("Живой текст", checked: preferences.liveText, .setLiveText(!preferences.liveText)),
             .button("Звонки…", .showCalls),
+            .button("Настройки…", .showSettings),
             .button("Открыть папку звонков", .openCallsFolder),
             .button("Выйти", .quit),
         ]

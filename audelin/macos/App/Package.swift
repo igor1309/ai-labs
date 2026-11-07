@@ -16,6 +16,7 @@ let package = Package(
         .executableTarget(
             name: "Audelin",
             dependencies: [
+                .product(name: "SettingsUI", package: "macos"),
                 "Composer",
                 .product(name: "MicrophoneCapture", package: "macos"),
                 .product(name: "SystemAudioCapture", package: "macos"),
@@ -49,6 +50,13 @@ let package = Package(
         .target(
             name: "Composer",
             dependencies: [
+                .product(name: "SummarySettings", package: "macos"),
+                .product(name: "SummaryJobs", package: "macos"),
+                .product(name: "SummaryFiles", package: "macos"),
+                .product(name: "SummaryRuntime", package: "macos"),
+                .product(name: "SpeakerIdentification", package: "macos"),
+                .product(name: "SettingsUI", package: "macos"),
+
                 .product(name: "IMRxObservation", package: "swift-imrx"),
                 .product(name: "Calls", package: "macos"),
                 .product(name: "Recordings", package: "macos"),

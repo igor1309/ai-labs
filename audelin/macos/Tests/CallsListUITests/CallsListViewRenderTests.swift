@@ -8,6 +8,41 @@ import Testing
 struct CallsListViewRenderTests {
 
     @Test(arguments: [ColorScheme.light, .dark])
+    func eachCallShowsItsOwnSummaryProgressAndOutcome(scheme: ColorScheme) async throws {
+        let statuses = [
+            "Итоги ожидают запуска",
+            "Готовим итоги…",
+            "Итоги готовы",
+            "Итоги готовы; имена не определены",
+            "Не удалось составить или сохранить итоги. Расшифровка и аудио сохранены.",
+            "Подготовка итогов прервана; автоматического повтора не будет.",
+        ]
+        let titles = ["Ожидание", "Подготовка", "Успех", "Предупреждение", "Ошибка", "Прерывание"]
+        let rows = zip(titles, statuses).enumerated().map { index, values in
+            CallsListState.Row(id: "call-\(index)", title: values.0, start: Date(timeIntervalSince1970: Double(index) * 60),
+                              duration: 60, timeZone: .gmt, editable: true, summaryStatus: values.1)
+        }
+        // Keep each pair entirely in the viewport; lazy scroll rows outside it are not rendered.
+        for start in stride(from: 0, to: rows.count, by: 2) {
+            let pair = Array(rows[start..<min(start + 2, rows.count)])
+            let host = Offscreen.host(view(.init(rows: pair), scheme), size: CGSize(width: 920, height: 300), scheme: scheme)
+            host.window?.isReleasedWhenClosed = false
+            defer { host.window?.close() }
+            let text = try await read(host)
+            for (index, row) in pair.enumerated() {
+                #expect(text.shows(row.summaryStatus), "\(scheme): \(text)")
+                let titleLine = try #require(text.lines.firstIndex { RenderedText(lines: [$0]).shows(row.displayTitle) })
+                let end = index + 1 < pair.count
+                    ? try #require(text.lines.firstIndex { RenderedText(lines: [$0]).shows(pair[index + 1].displayTitle) })
+                    : text.lines.endIndex
+                try #require(titleLine < end)
+                let rowText = RenderedText(lines: Array(text.lines[titleLine..<end]))
+                #expect(rowText.shows(row.summaryStatus), "\(row.displayTitle): \(rowText)")
+            }
+        }
+    }
+
+    @Test(arguments: [ColorScheme.light, .dark])
     func rowsShowDateTitleAndDuration(scheme: ColorScheme) async throws {
 
         let text = try await rendered(makeState(), scheme)

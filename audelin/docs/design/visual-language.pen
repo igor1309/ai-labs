@@ -28050,6 +28050,27 @@
                               "padding": "$space-24",
                               "children": [
                                 {
+                                  "id": "w8IzT9",
+                                  "type": "ref",
+                                  "ref": "Cb0Qc",
+                                  "name": "Settings tabs",
+                                  "width": "fill_container",
+                                  "descendants": {
+                                    "nor3c": {
+                                      "fill": "$selBg"
+                                    },
+                                    "nor3c/EWsWH": {
+                                      "fill": "$selText"
+                                    },
+                                    "cUhH9": {
+                                      "fill": "$btn"
+                                    },
+                                    "cUhH9/EWsWH": {
+                                      "fill": "$text"
+                                    }
+                                  }
+                                },
+                                {
                                   "id": "vNfKa",
                                   "type": "ref",
                                   "ref": "W8h2bZ",
@@ -28422,6 +28443,27 @@
                               "gap": "$space-24",
                               "padding": "$space-24",
                               "children": [
+                                {
+                                  "id": "Zt4vR",
+                                  "type": "ref",
+                                  "ref": "Cb0Qc",
+                                  "name": "Settings tabs",
+                                  "width": "fill_container",
+                                  "descendants": {
+                                    "nor3c": {
+                                      "fill": "$selBg"
+                                    },
+                                    "nor3c/EWsWH": {
+                                      "fill": "$selText"
+                                    },
+                                    "cUhH9": {
+                                      "fill": "$btn"
+                                    },
+                                    "cUhH9/EWsWH": {
+                                      "fill": "$text"
+                                    }
+                                  }
+                                },
                                 {
                                   "id": "YjXKT",
                                   "type": "ref",
@@ -28993,6 +29035,27 @@
                               "padding": "$space-24",
                               "children": [
                                 {
+                                  "id": "XLJY2",
+                                  "type": "ref",
+                                  "ref": "Cb0Qc",
+                                  "name": "Settings tabs",
+                                  "width": "fill_container",
+                                  "descendants": {
+                                    "nor3c": {
+                                      "fill": "$selBg"
+                                    },
+                                    "nor3c/EWsWH": {
+                                      "fill": "$selText"
+                                    },
+                                    "cUhH9": {
+                                      "fill": "$btn"
+                                    },
+                                    "cUhH9/EWsWH": {
+                                      "fill": "$text"
+                                    }
+                                  }
+                                },
+                                {
                                   "id": "FsmPY",
                                   "type": "ref",
                                   "ref": "W8h2bZ",
@@ -29399,6 +29462,27 @@
                               "padding": "$space-24",
                               "children": [
                                 {
+                                  "id": "rsjfp",
+                                  "type": "ref",
+                                  "ref": "Cb0Qc",
+                                  "name": "Settings tabs",
+                                  "width": "fill_container",
+                                  "descendants": {
+                                    "nor3c": {
+                                      "fill": "$selBg"
+                                    },
+                                    "nor3c/EWsWH": {
+                                      "fill": "$selText"
+                                    },
+                                    "cUhH9": {
+                                      "fill": "$btn"
+                                    },
+                                    "cUhH9/EWsWH": {
+                                      "fill": "$text"
+                                    }
+                                  }
+                                },
+                                {
                                   "id": "NpXHM",
                                   "type": "ref",
                                   "ref": "W8h2bZ",
@@ -29791,6 +29875,27 @@
                               "gap": "$space-24",
                               "padding": "$space-24",
                               "children": [
+                                {
+                                  "id": "K2gC9H",
+                                  "type": "ref",
+                                  "ref": "Cb0Qc",
+                                  "name": "Settings tabs",
+                                  "width": "fill_container",
+                                  "descendants": {
+                                    "nor3c": {
+                                      "fill": "$selBg"
+                                    },
+                                    "nor3c/EWsWH": {
+                                      "fill": "$selText"
+                                    },
+                                    "cUhH9": {
+                                      "fill": "$btn"
+                                    },
+                                    "cUhH9/EWsWH": {
+                                      "fill": "$text"
+                                    }
+                                  }
+                                },
                                 {
                                   "id": "Y6aPG",
                                   "type": "ref",
@@ -30188,6 +30293,27 @@
                               "gap": "$space-24",
                               "padding": "$space-24",
                               "children": [
+                                {
+                                  "id": "YOBD5",
+                                  "type": "ref",
+                                  "ref": "Cb0Qc",
+                                  "name": "Settings tabs",
+                                  "width": "fill_container",
+                                  "descendants": {
+                                    "nor3c": {
+                                      "fill": "$selBg"
+                                    },
+                                    "nor3c/EWsWH": {
+                                      "fill": "$selText"
+                                    },
+                                    "cUhH9": {
+                                      "fill": "$btn"
+                                    },
+                                    "cUhH9/EWsWH": {
+                                      "fill": "$text"
+                                    }
+                                  }
+                                },
                                 {
                                   "id": "Qwo0z",
                                   "type": "ref",
@@ -30590,6 +30716,27 @@
                               "padding": "$space-24",
                               "children": [
                                 {
+                                  "id": "Zh4jG",
+                                  "type": "ref",
+                                  "ref": "Cb0Qc",
+                                  "name": "Settings tabs",
+                                  "width": "fill_container",
+                                  "descendants": {
+                                    "nor3c": {
+                                      "fill": "$selBg"
+                                    },
+                                    "nor3c/EWsWH": {
+                                      "fill": "$selText"
+                                    },
+                                    "cUhH9": {
+                                      "fill": "$btn"
+                                    },
+                                    "cUhH9/EWsWH": {
+                                      "fill": "$text"
+                                    }
+                                  }
+                                },
+                                {
                                   "id": "ylTov",
                                   "type": "ref",
                                   "ref": "W8h2bZ",
@@ -30962,6 +31109,27 @@
                               "gap": "$space-24",
                               "padding": "$space-24",
                               "children": [
+                                {
+                                  "id": "VKIo0",
+                                  "type": "ref",
+                                  "ref": "Cb0Qc",
+                                  "name": "Settings tabs",
+                                  "width": "fill_container",
+                                  "descendants": {
+                                    "nor3c": {
+                                      "fill": "$selBg"
+                                    },
+                                    "nor3c/EWsWH": {
+                                      "fill": "$selText"
+                                    },
+                                    "cUhH9": {
+                                      "fill": "$btn"
+                                    },
+                                    "cUhH9/EWsWH": {
+                                      "fill": "$text"
+                                    }
+                                  }
+                                },
                                 {
                                   "id": "UYFMf",
                                   "type": "ref",
@@ -31533,6 +31701,27 @@
                               "padding": "$space-24",
                               "children": [
                                 {
+                                  "id": "bPfy4",
+                                  "type": "ref",
+                                  "ref": "Cb0Qc",
+                                  "name": "Settings tabs",
+                                  "width": "fill_container",
+                                  "descendants": {
+                                    "nor3c": {
+                                      "fill": "$selBg"
+                                    },
+                                    "nor3c/EWsWH": {
+                                      "fill": "$selText"
+                                    },
+                                    "cUhH9": {
+                                      "fill": "$btn"
+                                    },
+                                    "cUhH9/EWsWH": {
+                                      "fill": "$text"
+                                    }
+                                  }
+                                },
+                                {
                                   "id": "JvpxR",
                                   "type": "ref",
                                   "ref": "W8h2bZ",
@@ -31939,6 +32128,27 @@
                               "padding": "$space-24",
                               "children": [
                                 {
+                                  "id": "buMPy",
+                                  "type": "ref",
+                                  "ref": "Cb0Qc",
+                                  "name": "Settings tabs",
+                                  "width": "fill_container",
+                                  "descendants": {
+                                    "nor3c": {
+                                      "fill": "$selBg"
+                                    },
+                                    "nor3c/EWsWH": {
+                                      "fill": "$selText"
+                                    },
+                                    "cUhH9": {
+                                      "fill": "$btn"
+                                    },
+                                    "cUhH9/EWsWH": {
+                                      "fill": "$text"
+                                    }
+                                  }
+                                },
+                                {
                                   "id": "hF7oQ",
                                   "type": "ref",
                                   "ref": "W8h2bZ",
@@ -32331,6 +32541,27 @@
                               "gap": "$space-24",
                               "padding": "$space-24",
                               "children": [
+                                {
+                                  "id": "w4JLog",
+                                  "type": "ref",
+                                  "ref": "Cb0Qc",
+                                  "name": "Settings tabs",
+                                  "width": "fill_container",
+                                  "descendants": {
+                                    "nor3c": {
+                                      "fill": "$selBg"
+                                    },
+                                    "nor3c/EWsWH": {
+                                      "fill": "$selText"
+                                    },
+                                    "cUhH9": {
+                                      "fill": "$btn"
+                                    },
+                                    "cUhH9/EWsWH": {
+                                      "fill": "$text"
+                                    }
+                                  }
+                                },
                                 {
                                   "id": "WKmMh",
                                   "type": "ref",
@@ -32729,6 +32960,27 @@
                               "padding": "$space-24",
                               "children": [
                                 {
+                                  "id": "JBfk2",
+                                  "type": "ref",
+                                  "ref": "Cb0Qc",
+                                  "name": "Settings tabs",
+                                  "width": "fill_container",
+                                  "descendants": {
+                                    "nor3c": {
+                                      "fill": "$selBg"
+                                    },
+                                    "nor3c/EWsWH": {
+                                      "fill": "$selText"
+                                    },
+                                    "cUhH9": {
+                                      "fill": "$btn"
+                                    },
+                                    "cUhH9/EWsWH": {
+                                      "fill": "$text"
+                                    }
+                                  }
+                                },
+                                {
                                   "id": "BDvkP",
                                   "type": "ref",
                                   "ref": "W8h2bZ",
@@ -33021,6 +33273,1696 @@
               ]
             }
           ]
+        },
+        {
+          "type": "frame",
+          "id": "xdEzc",
+          "name": "Call notes — light",
+          "theme": {
+            "mode": "light"
+          },
+          "gap": "$space-40",
+          "children": [
+            {
+              "type": "frame",
+              "id": "U6WAYZ",
+              "name": "summaries-off-light",
+              "theme": {
+                "mode": "light"
+              },
+              "reusable": true,
+              "width": 668,
+              "fill": "$back",
+              "layout": "vertical",
+              "padding": "$space-24",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "YMHgB",
+                  "name": "Settings content",
+                  "width": 620,
+                  "fill": "$win",
+                  "layout": "vertical",
+                  "gap": "$space-16",
+                  "padding": "$space-24",
+                  "children": [
+                    {
+                      "id": "ZtFmy",
+                      "type": "ref",
+                      "ref": "Cb0Qc",
+                      "name": "Settings tabs",
+                      "width": "fill_container"
+                    },
+                    {
+                      "id": "wOYiJ",
+                      "type": "ref",
+                      "ref": "k3sJwE",
+                      "name": "Summary choices",
+                      "width": "fill_container",
+                      "descendants": {
+                        "OIvU1": {
+                          "id": "GxtLp",
+                          "type": "ref",
+                          "ref": "zhXsW",
+                          "name": "Automatic notes",
+                          "width": "fill_container",
+                          "descendants": {
+                            "YTQFN": {
+                              "content": "Составлять итоги после звонка"
+                            }
+                          }
+                        },
+                        "i7UOtx": {
+                          "type": "text",
+                          "id": "q8VRQZ",
+                          "name": "Timing",
+                          "fill": "$sub",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "После финальной расшифровки; запись следующего звонка не ждёт итоги.",
+                          "lineHeight": 1.45,
+                          "fontFamily": "$font-ui",
+                          "fontSize": "$type-small",
+                          "fontWeight": "normal"
+                        },
+                        "jTNhO": {
+                          "id": "FUFbd",
+                          "type": "ref",
+                          "ref": "zhXsW",
+                          "name": "Identify speakers",
+                          "width": "fill_container",
+                          "descendants": {
+                            "YTQFN": {
+                              "content": "Пробовать определить имена участников"
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "id": "wSn5B",
+                      "type": "ref",
+                      "ref": "vBhzN",
+                      "name": "Primary runtime",
+                      "width": "fill_container"
+                    },
+                    {
+                      "id": "Vdb85",
+                      "type": "ref",
+                      "ref": "ATcM6",
+                      "name": "Fallback runtime",
+                      "width": "fill_container"
+                    },
+                    {
+                      "type": "text",
+                      "id": "Rbawk",
+                      "name": "Cost and recipients",
+                      "fill": "$sub",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Оба сервиса могут получить полный транскрипт. Определение имён — дополнительный запрос. Таймаут тоже может расходовать квоту или деньги.",
+                      "lineHeight": 1.45,
+                      "fontFamily": "$font-ui",
+                      "fontSize": "$type-small",
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "id": "was7U",
+                      "type": "ref",
+                      "ref": "YD63k",
+                      "name": "Save and validate",
+                      "width": "fill_container",
+                      "descendants": {
+                        "n9GUWN": {
+                          "type": "text",
+                          "id": "TrvNK",
+                          "name": "Save status",
+                          "fill": "$gutter",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Автосводка выключена",
+                          "lineHeight": 1.45,
+                          "fontFamily": "$font-ui",
+                          "fontSize": "$type-small",
+                          "fontWeight": "normal"
+                        },
+                        "Z4W32": {
+                          "id": "tZxhH",
+                          "type": "ref",
+                          "ref": "wmGeO",
+                          "name": "Validate runtimes",
+                          "descendants": {
+                            "EWsWH": {
+                              "content": "Проверить"
+                            }
+                          }
+                        },
+                        "KwWF3": {
+                          "id": "tm7sy",
+                          "type": "ref",
+                          "ref": "f7Y4eS",
+                          "name": "Save settings",
+                          "descendants": {
+                            "Wz52g": {
+                              "content": "Сохранить"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "W3fJ9k",
+              "name": "summaries-on-light",
+              "theme": {
+                "mode": "light"
+              },
+              "reusable": true,
+              "width": 668,
+              "fill": "$back",
+              "layout": "vertical",
+              "padding": "$space-24",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "J8T5bl",
+                  "name": "Settings content",
+                  "width": 620,
+                  "fill": "$win",
+                  "layout": "vertical",
+                  "gap": "$space-16",
+                  "padding": "$space-24",
+                  "children": [
+                    {
+                      "id": "Bvbe1",
+                      "type": "ref",
+                      "ref": "Cb0Qc",
+                      "name": "Settings tabs",
+                      "width": "fill_container"
+                    },
+                    {
+                      "id": "BjJXi",
+                      "type": "ref",
+                      "ref": "k3sJwE",
+                      "name": "Summary choices",
+                      "width": "fill_container",
+                      "descendants": {
+                        "OIvU1": {
+                          "id": "SMpG1",
+                          "type": "ref",
+                          "ref": "ufHXu",
+                          "name": "Automatic notes",
+                          "width": "fill_container",
+                          "descendants": {
+                            "eTs8B": {
+                              "content": "Составлять итоги после звонка"
+                            }
+                          }
+                        },
+                        "i7UOtx": {
+                          "type": "text",
+                          "id": "u8tutz",
+                          "name": "Timing",
+                          "fill": "$sub",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "После финальной расшифровки; запись следующего звонка не ждёт итоги.",
+                          "lineHeight": 1.45,
+                          "fontFamily": "$font-ui",
+                          "fontSize": "$type-small",
+                          "fontWeight": "normal"
+                        },
+                        "jTNhO": {
+                          "id": "IhL62",
+                          "type": "ref",
+                          "ref": "ufHXu",
+                          "name": "Identify speakers",
+                          "width": "fill_container",
+                          "descendants": {
+                            "eTs8B": {
+                              "content": "Пробовать определить имена участников"
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "id": "ngLcw",
+                      "type": "ref",
+                      "ref": "vBhzN",
+                      "name": "Primary runtime",
+                      "width": "fill_container"
+                    },
+                    {
+                      "id": "VZpK4",
+                      "type": "ref",
+                      "ref": "ATcM6",
+                      "name": "Fallback runtime",
+                      "width": "fill_container"
+                    },
+                    {
+                      "type": "text",
+                      "id": "GRWaB",
+                      "name": "Cost and recipients",
+                      "fill": "$sub",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Оба сервиса могут получить полный транскрипт. Определение имён — дополнительный запрос. Таймаут тоже может расходовать квоту или деньги.",
+                      "lineHeight": 1.45,
+                      "fontFamily": "$font-ui",
+                      "fontSize": "$type-small",
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "id": "QLCh4",
+                      "type": "ref",
+                      "ref": "YD63k",
+                      "name": "Save and validate",
+                      "width": "fill_container",
+                      "descendants": {
+                        "n9GUWN": {
+                          "type": "text",
+                          "id": "PRCyl",
+                          "name": "Save status",
+                          "fill": "$gutter",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Есть несохранённые изменения",
+                          "lineHeight": 1.45,
+                          "fontFamily": "$font-ui",
+                          "fontSize": "$type-small",
+                          "fontWeight": "normal"
+                        },
+                        "Z4W32": {
+                          "id": "lVwOl",
+                          "type": "ref",
+                          "ref": "wmGeO",
+                          "name": "Validate runtimes",
+                          "descendants": {
+                            "EWsWH": {
+                              "content": "Проверить"
+                            }
+                          }
+                        },
+                        "KwWF3": {
+                          "id": "a3JXk",
+                          "type": "ref",
+                          "ref": "f7Y4eS",
+                          "name": "Save settings",
+                          "descendants": {
+                            "Wz52g": {
+                              "content": "Сохранить"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "Slj20",
+              "name": "summaries-local-light",
+              "theme": {
+                "mode": "light"
+              },
+              "reusable": true,
+              "width": 668,
+              "fill": "$back",
+              "layout": "vertical",
+              "padding": "$space-24",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "PMdfE",
+                  "name": "Settings content",
+                  "width": 620,
+                  "fill": "$win",
+                  "layout": "vertical",
+                  "gap": "$space-16",
+                  "padding": "$space-24",
+                  "children": [
+                    {
+                      "id": "SLVw9",
+                      "type": "ref",
+                      "ref": "Cb0Qc",
+                      "name": "Settings tabs",
+                      "width": "fill_container"
+                    },
+                    {
+                      "id": "Oq2wC",
+                      "type": "ref",
+                      "ref": "k3sJwE",
+                      "name": "Summary choices",
+                      "width": "fill_container",
+                      "descendants": {
+                        "OIvU1": {
+                          "id": "FW4jT",
+                          "type": "ref",
+                          "ref": "ufHXu",
+                          "name": "Automatic notes",
+                          "width": "fill_container",
+                          "descendants": {
+                            "eTs8B": {
+                              "content": "Составлять итоги после звонка"
+                            }
+                          }
+                        },
+                        "i7UOtx": {
+                          "type": "text",
+                          "id": "W1B4q",
+                          "name": "Timing",
+                          "fill": "$sub",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "После финальной расшифровки; запись следующего звонка не ждёт итоги.",
+                          "lineHeight": 1.45,
+                          "fontFamily": "$font-ui",
+                          "fontSize": "$type-small",
+                          "fontWeight": "normal"
+                        },
+                        "jTNhO": {
+                          "id": "bRLVz",
+                          "type": "ref",
+                          "ref": "zhXsW",
+                          "name": "Identify speakers",
+                          "width": "fill_container",
+                          "descendants": {
+                            "YTQFN": {
+                              "content": "Пробовать определить имена участников"
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "id": "kyGXq",
+                      "type": "ref",
+                      "ref": "ATcM6",
+                      "name": "Primary local runtime",
+                      "width": "fill_container",
+                      "descendants": {
+                        "hGNTM": {
+                          "content": "Основной сервис"
+                        },
+                        "SvXFC/juFwS/gKt90": {
+                          "content": "local-model"
+                        },
+                        "A2wIn/juFwS/gKt90": {
+                          "content": "http://127.0.0.1:8080/v1"
+                        },
+                        "jfbBK/juFwS/gKt90": {
+                          "content": "не требуется",
+                          "fill": "$gutter"
+                        },
+                        "a874Bc": {
+                          "content": "Запрос на этот Mac · сервер под вашим управлением.\nЛокальный сервер может пересылать данные дальше."
+                        }
+                      }
+                    },
+                    {
+                      "id": "NkkIA",
+                      "type": "ref",
+                      "ref": "ATcM6",
+                      "name": "Fallback runtime",
+                      "width": "fill_container",
+                      "descendants": {
+                        "SvXFC/juFwS/gKt90": {
+                          "content": "local-model"
+                        },
+                        "A2wIn/juFwS/gKt90": {
+                          "content": "http://127.0.0.1:8080/v1"
+                        },
+                        "jfbBK/juFwS/gKt90": {
+                          "content": "не требуется",
+                          "fill": "$gutter"
+                        },
+                        "a874Bc": {
+                          "content": "Запрос на этот Mac · сервер под вашим управлением.\nЛокальный сервер может пересылать данные дальше."
+                        }
+                      }
+                    },
+                    {
+                      "type": "text",
+                      "id": "CVezK",
+                      "name": "Cost and recipients",
+                      "fill": "$sub",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Оба адреса — на этом Mac. Поведение локального сервера зависит от его настроек.",
+                      "lineHeight": 1.45,
+                      "fontFamily": "$font-ui",
+                      "fontSize": "$type-small",
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "id": "EGbxr",
+                      "type": "ref",
+                      "ref": "YD63k",
+                      "name": "Save and validate",
+                      "width": "fill_container",
+                      "descendants": {
+                        "n9GUWN": {
+                          "type": "text",
+                          "id": "pwKL4",
+                          "name": "Save status",
+                          "fill": "$gutter",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Есть несохранённые изменения",
+                          "lineHeight": 1.45,
+                          "fontFamily": "$font-ui",
+                          "fontSize": "$type-small",
+                          "fontWeight": "normal"
+                        },
+                        "Z4W32": {
+                          "id": "pHZu5",
+                          "type": "ref",
+                          "ref": "wmGeO",
+                          "name": "Validate runtimes",
+                          "descendants": {
+                            "EWsWH": {
+                              "content": "Проверить"
+                            }
+                          }
+                        },
+                        "KwWF3": {
+                          "id": "B6fns",
+                          "type": "ref",
+                          "ref": "f7Y4eS",
+                          "name": "Save settings",
+                          "descendants": {
+                            "Wz52g": {
+                              "content": "Сохранить"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "OnuoI",
+              "name": "summaries-invalid-light",
+              "theme": {
+                "mode": "light"
+              },
+              "reusable": true,
+              "width": 668,
+              "fill": "$back",
+              "layout": "vertical",
+              "padding": "$space-24",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "qfkqB",
+                  "name": "Settings content",
+                  "width": 620,
+                  "fill": "$win",
+                  "layout": "vertical",
+                  "gap": "$space-16",
+                  "padding": "$space-24",
+                  "children": [
+                    {
+                      "id": "KV1UO",
+                      "type": "ref",
+                      "ref": "Cb0Qc",
+                      "name": "Settings tabs",
+                      "width": "fill_container"
+                    },
+                    {
+                      "id": "J40Acg",
+                      "type": "ref",
+                      "ref": "k3sJwE",
+                      "name": "Summary choices",
+                      "width": "fill_container",
+                      "descendants": {
+                        "OIvU1": {
+                          "id": "eXULe",
+                          "type": "ref",
+                          "ref": "ufHXu",
+                          "name": "Automatic notes",
+                          "width": "fill_container",
+                          "descendants": {
+                            "eTs8B": {
+                              "content": "Составлять итоги после звонка"
+                            }
+                          }
+                        },
+                        "i7UOtx": {
+                          "type": "text",
+                          "id": "c0FAdc",
+                          "name": "Timing",
+                          "fill": "$sub",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "После финальной расшифровки; запись следующего звонка не ждёт итоги.",
+                          "lineHeight": 1.45,
+                          "fontFamily": "$font-ui",
+                          "fontSize": "$type-small",
+                          "fontWeight": "normal"
+                        },
+                        "jTNhO": {
+                          "id": "W8z0o",
+                          "type": "ref",
+                          "ref": "zhXsW",
+                          "name": "Identify speakers",
+                          "width": "fill_container",
+                          "descendants": {
+                            "YTQFN": {
+                              "content": "Пробовать определить имена участников"
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "id": "jPB2b",
+                      "type": "ref",
+                      "ref": "vBhzN",
+                      "name": "Primary runtime",
+                      "width": "fill_container"
+                    },
+                    {
+                      "id": "i4bjqH",
+                      "type": "ref",
+                      "ref": "ATcM6",
+                      "name": "Fallback runtime",
+                      "width": "fill_container",
+                      "descendants": {
+                        "SvXFC/juFwS": {
+                          "stroke": "$rec"
+                        },
+                        "SvXFC/juFwS/gKt90": {
+                          "content": "Название модели",
+                          "fill": "$gutter"
+                        }
+                      }
+                    },
+                    {
+                      "type": "text",
+                      "id": "akcVu",
+                      "name": "Cost and recipients",
+                      "fill": "$sub",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Оба сервиса могут получить полный транскрипт. Определение имён — дополнительный запрос. Таймаут тоже может расходовать квоту или деньги.",
+                      "lineHeight": 1.45,
+                      "fontFamily": "$font-ui",
+                      "fontSize": "$type-small",
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "id": "J9Zxl",
+                      "type": "ref",
+                      "ref": "qAImO",
+                      "name": "Summary settings error",
+                      "width": "fill_container",
+                      "descendants": {
+                        "uxXzz": {
+                          "content": "Проверьте настройки"
+                        },
+                        "q9Ta7": {
+                          "content": "Укажите модель резервного сервиса."
+                        }
+                      }
+                    },
+                    {
+                      "id": "X6lVy",
+                      "type": "ref",
+                      "ref": "YD63k",
+                      "name": "Save and validate",
+                      "width": "fill_container",
+                      "descendants": {
+                        "n9GUWN": {
+                          "type": "text",
+                          "id": "c4rAIJ",
+                          "name": "Save status",
+                          "fill": "$gutter",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Исправьте поле выше",
+                          "lineHeight": 1.45,
+                          "fontFamily": "$font-ui",
+                          "fontSize": "$type-small",
+                          "fontWeight": "normal"
+                        },
+                        "Z4W32": {
+                          "id": "FOPrt",
+                          "type": "ref",
+                          "ref": "wmGeO",
+                          "name": "Validate runtimes",
+                          "descendants": {
+                            "EWsWH": {
+                              "content": "Проверить"
+                            }
+                          }
+                        },
+                        "KwWF3": {
+                          "id": "PdPxh",
+                          "type": "ref",
+                          "ref": "f7Y4eS",
+                          "name": "Save settings",
+                          "fill": "$dis",
+                          "descendants": {
+                            "Wz52g": {
+                              "content": "Сохранить",
+                              "fill": "$disText"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "NWruK",
+              "name": "summaries-unavailable-light",
+              "theme": {
+                "mode": "light"
+              },
+              "reusable": true,
+              "width": 668,
+              "fill": "$back",
+              "layout": "vertical",
+              "padding": "$space-24",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "H944B2",
+                  "name": "Settings content",
+                  "width": 620,
+                  "fill": "$win",
+                  "layout": "vertical",
+                  "gap": "$space-16",
+                  "padding": "$space-24",
+                  "children": [
+                    {
+                      "id": "Wgn4h",
+                      "type": "ref",
+                      "ref": "Cb0Qc",
+                      "name": "Settings tabs",
+                      "width": "fill_container"
+                    },
+                    {
+                      "id": "X186Mq",
+                      "type": "ref",
+                      "ref": "k3sJwE",
+                      "name": "Summary choices",
+                      "width": "fill_container",
+                      "descendants": {
+                        "OIvU1": {
+                          "id": "F1YeQG",
+                          "type": "ref",
+                          "ref": "ufHXu",
+                          "name": "Automatic notes",
+                          "width": "fill_container",
+                          "descendants": {
+                            "eTs8B": {
+                              "content": "Составлять итоги после звонка"
+                            }
+                          }
+                        },
+                        "i7UOtx": {
+                          "type": "text",
+                          "id": "X4OmYg",
+                          "name": "Timing",
+                          "fill": "$sub",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "После финальной расшифровки; запись следующего звонка не ждёт итоги.",
+                          "lineHeight": 1.45,
+                          "fontFamily": "$font-ui",
+                          "fontSize": "$type-small",
+                          "fontWeight": "normal"
+                        },
+                        "jTNhO": {
+                          "id": "Mjmb1",
+                          "type": "ref",
+                          "ref": "zhXsW",
+                          "name": "Identify speakers",
+                          "width": "fill_container",
+                          "descendants": {
+                            "YTQFN": {
+                              "content": "Пробовать определить имена участников"
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "id": "WP3kB",
+                      "type": "ref",
+                      "ref": "vBhzN",
+                      "name": "Primary runtime",
+                      "width": "fill_container"
+                    },
+                    {
+                      "id": "hAlTA",
+                      "type": "ref",
+                      "ref": "ATcM6",
+                      "name": "Fallback runtime",
+                      "width": "fill_container"
+                    },
+                    {
+                      "type": "text",
+                      "id": "Jpznq",
+                      "name": "Cost and recipients",
+                      "fill": "$sub",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Оба сервиса могут получить полный транскрипт. Определение имён — дополнительный запрос. Таймаут тоже может расходовать квоту или деньги.",
+                      "lineHeight": 1.45,
+                      "fontFamily": "$font-ui",
+                      "fontSize": "$type-small",
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "id": "NDZea",
+                      "type": "ref",
+                      "ref": "qAImO",
+                      "name": "Summary settings error",
+                      "width": "fill_container",
+                      "descendants": {
+                        "uxXzz": {
+                          "content": "Claude Code не найден"
+                        },
+                        "q9Ta7": {
+                          "content": "Укажите путь к установленному CLI и проверьте снова."
+                        }
+                      }
+                    },
+                    {
+                      "id": "BsF6R",
+                      "type": "ref",
+                      "ref": "YD63k",
+                      "name": "Save and validate",
+                      "width": "fill_container",
+                      "descendants": {
+                        "n9GUWN": {
+                          "type": "text",
+                          "id": "h0O5Dk",
+                          "name": "Save status",
+                          "fill": "$gutter",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Сервис недоступен",
+                          "lineHeight": 1.45,
+                          "fontFamily": "$font-ui",
+                          "fontSize": "$type-small",
+                          "fontWeight": "normal"
+                        },
+                        "Z4W32": {
+                          "id": "fWAyC",
+                          "type": "ref",
+                          "ref": "wmGeO",
+                          "name": "Validate runtimes",
+                          "descendants": {
+                            "EWsWH": {
+                              "content": "Проверить"
+                            }
+                          }
+                        },
+                        "KwWF3": {
+                          "id": "t5081B",
+                          "type": "ref",
+                          "ref": "f7Y4eS",
+                          "name": "Save settings",
+                          "descendants": {
+                            "Wz52g": {
+                              "content": "Сохранить"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "xxNAo",
+              "name": "summaries-validating-light",
+              "theme": {
+                "mode": "light"
+              },
+              "reusable": true,
+              "width": 668,
+              "fill": "$back",
+              "layout": "vertical",
+              "padding": "$space-24",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "TvEgm",
+                  "name": "Settings content",
+                  "width": 620,
+                  "fill": "$win",
+                  "layout": "vertical",
+                  "gap": "$space-16",
+                  "padding": "$space-24",
+                  "children": [
+                    {
+                      "id": "dUHh8",
+                      "type": "ref",
+                      "ref": "Cb0Qc",
+                      "name": "Settings tabs",
+                      "width": "fill_container"
+                    },
+                    {
+                      "id": "a8vIl",
+                      "type": "ref",
+                      "ref": "k3sJwE",
+                      "name": "Summary choices",
+                      "width": "fill_container",
+                      "descendants": {
+                        "OIvU1": {
+                          "id": "k46zp",
+                          "type": "ref",
+                          "ref": "ufHXu",
+                          "name": "Automatic notes",
+                          "width": "fill_container",
+                          "descendants": {
+                            "eTs8B": {
+                              "content": "Составлять итоги после звонка"
+                            }
+                          }
+                        },
+                        "i7UOtx": {
+                          "type": "text",
+                          "id": "fGas3",
+                          "name": "Timing",
+                          "fill": "$sub",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "После финальной расшифровки; запись следующего звонка не ждёт итоги.",
+                          "lineHeight": 1.45,
+                          "fontFamily": "$font-ui",
+                          "fontSize": "$type-small",
+                          "fontWeight": "normal"
+                        },
+                        "jTNhO": {
+                          "id": "H7PYY5",
+                          "type": "ref",
+                          "ref": "zhXsW",
+                          "name": "Identify speakers",
+                          "width": "fill_container",
+                          "descendants": {
+                            "YTQFN": {
+                              "content": "Пробовать определить имена участников"
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "id": "fAyCa",
+                      "type": "ref",
+                      "ref": "vBhzN",
+                      "name": "Primary runtime",
+                      "width": "fill_container"
+                    },
+                    {
+                      "id": "QcCgj",
+                      "type": "ref",
+                      "ref": "ATcM6",
+                      "name": "Fallback runtime",
+                      "width": "fill_container"
+                    },
+                    {
+                      "type": "text",
+                      "id": "GrndW",
+                      "name": "Cost and recipients",
+                      "fill": "$sub",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Оба сервиса могут получить полный транскрипт. Определение имён — дополнительный запрос. Таймаут тоже может расходовать квоту или деньги.",
+                      "lineHeight": 1.45,
+                      "fontFamily": "$font-ui",
+                      "fontSize": "$type-small",
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "id": "p8L6s",
+                      "type": "ref",
+                      "ref": "YD63k",
+                      "name": "Save and validate",
+                      "width": "fill_container",
+                      "descendants": {
+                        "n9GUWN": {
+                          "type": "text",
+                          "id": "KdjF2",
+                          "name": "Save status",
+                          "fill": "$gutter",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Проверяем…",
+                          "lineHeight": 1.45,
+                          "fontFamily": "$font-ui",
+                          "fontSize": "$type-small",
+                          "fontWeight": "normal"
+                        },
+                        "Z4W32": {
+                          "id": "Ekkbo",
+                          "type": "ref",
+                          "ref": "wmGeO",
+                          "name": "Validate runtimes",
+                          "descendants": {
+                            "EWsWH": {
+                              "content": "Проверить"
+                            }
+                          }
+                        },
+                        "KwWF3": {
+                          "id": "y9W3RU",
+                          "type": "ref",
+                          "ref": "f7Y4eS",
+                          "name": "Save settings",
+                          "fill": "$dis",
+                          "descendants": {
+                            "Wz52g": {
+                              "content": "Сохранить",
+                              "fill": "$disText"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "JNXef",
+              "name": "summaries-saving-light",
+              "theme": {
+                "mode": "light"
+              },
+              "reusable": true,
+              "width": 668,
+              "fill": "$back",
+              "layout": "vertical",
+              "padding": "$space-24",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "jpzcU",
+                  "name": "Settings content",
+                  "width": 620,
+                  "fill": "$win",
+                  "layout": "vertical",
+                  "gap": "$space-16",
+                  "padding": "$space-24",
+                  "children": [
+                    {
+                      "id": "X9K38",
+                      "type": "ref",
+                      "ref": "Cb0Qc",
+                      "name": "Settings tabs",
+                      "width": "fill_container"
+                    },
+                    {
+                      "id": "gi8km",
+                      "type": "ref",
+                      "ref": "k3sJwE",
+                      "name": "Summary choices",
+                      "width": "fill_container",
+                      "descendants": {
+                        "OIvU1": {
+                          "id": "gld1Z",
+                          "type": "ref",
+                          "ref": "ufHXu",
+                          "name": "Automatic notes",
+                          "width": "fill_container",
+                          "descendants": {
+                            "eTs8B": {
+                              "content": "Составлять итоги после звонка"
+                            }
+                          }
+                        },
+                        "i7UOtx": {
+                          "type": "text",
+                          "id": "TtIxJ",
+                          "name": "Timing",
+                          "fill": "$sub",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "После финальной расшифровки; запись следующего звонка не ждёт итоги.",
+                          "lineHeight": 1.45,
+                          "fontFamily": "$font-ui",
+                          "fontSize": "$type-small",
+                          "fontWeight": "normal"
+                        },
+                        "jTNhO": {
+                          "id": "sI6jU",
+                          "type": "ref",
+                          "ref": "zhXsW",
+                          "name": "Identify speakers",
+                          "width": "fill_container",
+                          "descendants": {
+                            "YTQFN": {
+                              "content": "Пробовать определить имена участников"
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "id": "zLVVM",
+                      "type": "ref",
+                      "ref": "vBhzN",
+                      "name": "Primary runtime",
+                      "width": "fill_container"
+                    },
+                    {
+                      "id": "TmiTZ",
+                      "type": "ref",
+                      "ref": "ATcM6",
+                      "name": "Fallback runtime",
+                      "width": "fill_container"
+                    },
+                    {
+                      "type": "text",
+                      "id": "G1oia",
+                      "name": "Cost and recipients",
+                      "fill": "$sub",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Оба сервиса могут получить полный транскрипт. Определение имён — дополнительный запрос. Таймаут тоже может расходовать квоту или деньги.",
+                      "lineHeight": 1.45,
+                      "fontFamily": "$font-ui",
+                      "fontSize": "$type-small",
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "id": "WxX9C",
+                      "type": "ref",
+                      "ref": "YD63k",
+                      "name": "Save and validate",
+                      "width": "fill_container",
+                      "descendants": {
+                        "n9GUWN": {
+                          "type": "text",
+                          "id": "hTCma",
+                          "name": "Save status",
+                          "fill": "$gutter",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Сохраняем…",
+                          "lineHeight": 1.45,
+                          "fontFamily": "$font-ui",
+                          "fontSize": "$type-small",
+                          "fontWeight": "normal"
+                        },
+                        "Z4W32": {
+                          "id": "JNCU0",
+                          "type": "ref",
+                          "ref": "wmGeO",
+                          "name": "Validate runtimes",
+                          "descendants": {
+                            "EWsWH": {
+                              "content": "Проверить"
+                            }
+                          }
+                        },
+                        "KwWF3": {
+                          "id": "P6ZA9V",
+                          "type": "ref",
+                          "ref": "f7Y4eS",
+                          "name": "Save settings",
+                          "fill": "$dis",
+                          "descendants": {
+                            "Wz52g": {
+                              "content": "Сохранить",
+                              "fill": "$disText"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "u37xhM",
+              "name": "summaries-save-failed-light",
+              "theme": {
+                "mode": "light"
+              },
+              "reusable": true,
+              "width": 668,
+              "fill": "$back",
+              "layout": "vertical",
+              "padding": "$space-24",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "y7tALZ",
+                  "name": "Settings content",
+                  "width": 620,
+                  "fill": "$win",
+                  "layout": "vertical",
+                  "gap": "$space-16",
+                  "padding": "$space-24",
+                  "children": [
+                    {
+                      "id": "SQ3Xj",
+                      "type": "ref",
+                      "ref": "Cb0Qc",
+                      "name": "Settings tabs",
+                      "width": "fill_container"
+                    },
+                    {
+                      "id": "Q3gZ6H",
+                      "type": "ref",
+                      "ref": "k3sJwE",
+                      "name": "Summary choices",
+                      "width": "fill_container",
+                      "descendants": {
+                        "OIvU1": {
+                          "id": "XDKQs",
+                          "type": "ref",
+                          "ref": "ufHXu",
+                          "name": "Automatic notes",
+                          "width": "fill_container",
+                          "descendants": {
+                            "eTs8B": {
+                              "content": "Составлять итоги после звонка"
+                            }
+                          }
+                        },
+                        "i7UOtx": {
+                          "type": "text",
+                          "id": "wc0LJ",
+                          "name": "Timing",
+                          "fill": "$sub",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "После финальной расшифровки; запись следующего звонка не ждёт итоги.",
+                          "lineHeight": 1.45,
+                          "fontFamily": "$font-ui",
+                          "fontSize": "$type-small",
+                          "fontWeight": "normal"
+                        },
+                        "jTNhO": {
+                          "id": "Wsvlf",
+                          "type": "ref",
+                          "ref": "zhXsW",
+                          "name": "Identify speakers",
+                          "width": "fill_container",
+                          "descendants": {
+                            "YTQFN": {
+                              "content": "Пробовать определить имена участников"
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "id": "R8pKrU",
+                      "type": "ref",
+                      "ref": "vBhzN",
+                      "name": "Primary runtime",
+                      "width": "fill_container"
+                    },
+                    {
+                      "id": "WbQOS",
+                      "type": "ref",
+                      "ref": "ATcM6",
+                      "name": "Fallback runtime",
+                      "width": "fill_container"
+                    },
+                    {
+                      "type": "text",
+                      "id": "zRgdW",
+                      "name": "Cost and recipients",
+                      "fill": "$sub",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Оба сервиса могут получить полный транскрипт. Определение имён — дополнительный запрос. Таймаут тоже может расходовать квоту или деньги.",
+                      "lineHeight": 1.45,
+                      "fontFamily": "$font-ui",
+                      "fontSize": "$type-small",
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "id": "HxyCm",
+                      "type": "ref",
+                      "ref": "qAImO",
+                      "name": "Summary settings error",
+                      "width": "fill_container",
+                      "descendants": {
+                        "uxXzz": {
+                          "content": "Не удалось сохранить настройки"
+                        },
+                        "q9Ta7": {
+                          "content": "Изменения остались в окне. Повторите попытку."
+                        }
+                      }
+                    },
+                    {
+                      "id": "Xmu6P",
+                      "type": "ref",
+                      "ref": "YD63k",
+                      "name": "Save and validate",
+                      "width": "fill_container",
+                      "descendants": {
+                        "n9GUWN": {
+                          "type": "text",
+                          "id": "ID9H3",
+                          "name": "Save status",
+                          "fill": "$gutter",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Сохранение не завершено",
+                          "lineHeight": 1.45,
+                          "fontFamily": "$font-ui",
+                          "fontSize": "$type-small",
+                          "fontWeight": "normal"
+                        },
+                        "Z4W32": {
+                          "id": "kWH28",
+                          "type": "ref",
+                          "ref": "wmGeO",
+                          "name": "Validate runtimes",
+                          "descendants": {
+                            "EWsWH": {
+                              "content": "Проверить"
+                            }
+                          }
+                        },
+                        "KwWF3": {
+                          "id": "zf6Ni",
+                          "type": "ref",
+                          "ref": "f7Y4eS",
+                          "name": "Save settings",
+                          "descendants": {
+                            "Wz52g": {
+                              "content": "Повторить"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "u0bpd",
+              "name": "summaries-saved-light",
+              "theme": {
+                "mode": "light"
+              },
+              "reusable": true,
+              "width": 668,
+              "fill": "$back",
+              "layout": "vertical",
+              "padding": "$space-24",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "U983Ut",
+                  "name": "Settings content",
+                  "width": 620,
+                  "fill": "$win",
+                  "layout": "vertical",
+                  "gap": "$space-16",
+                  "padding": "$space-24",
+                  "children": [
+                    {
+                      "id": "N25De",
+                      "type": "ref",
+                      "ref": "Cb0Qc",
+                      "name": "Settings tabs",
+                      "width": "fill_container"
+                    },
+                    {
+                      "id": "UURN4",
+                      "type": "ref",
+                      "ref": "k3sJwE",
+                      "name": "Summary choices",
+                      "width": "fill_container",
+                      "descendants": {
+                        "OIvU1": {
+                          "id": "sepTt",
+                          "type": "ref",
+                          "ref": "ufHXu",
+                          "name": "Automatic notes",
+                          "width": "fill_container",
+                          "descendants": {
+                            "eTs8B": {
+                              "content": "Составлять итоги после звонка"
+                            }
+                          }
+                        },
+                        "i7UOtx": {
+                          "type": "text",
+                          "id": "g8nWh1",
+                          "name": "Timing",
+                          "fill": "$sub",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "После финальной расшифровки; запись следующего звонка не ждёт итоги.",
+                          "lineHeight": 1.45,
+                          "fontFamily": "$font-ui",
+                          "fontSize": "$type-small",
+                          "fontWeight": "normal"
+                        },
+                        "jTNhO": {
+                          "id": "i3mZQq",
+                          "type": "ref",
+                          "ref": "zhXsW",
+                          "name": "Identify speakers",
+                          "width": "fill_container",
+                          "descendants": {
+                            "YTQFN": {
+                              "content": "Пробовать определить имена участников"
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "id": "J2ggO",
+                      "type": "ref",
+                      "ref": "vBhzN",
+                      "name": "Primary runtime",
+                      "width": "fill_container"
+                    },
+                    {
+                      "id": "bDpBI",
+                      "type": "ref",
+                      "ref": "ATcM6",
+                      "name": "Fallback runtime",
+                      "width": "fill_container"
+                    },
+                    {
+                      "type": "text",
+                      "id": "QadWi",
+                      "name": "Cost and recipients",
+                      "fill": "$sub",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Оба сервиса могут получить полный транскрипт. Определение имён — дополнительный запрос. Таймаут тоже может расходовать квоту или деньги.",
+                      "lineHeight": 1.45,
+                      "fontFamily": "$font-ui",
+                      "fontSize": "$type-small",
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "id": "bsBRz",
+                      "type": "ref",
+                      "ref": "YD63k",
+                      "name": "Save and validate",
+                      "width": "fill_container",
+                      "descendants": {
+                        "n9GUWN": {
+                          "type": "text",
+                          "id": "E84Mm",
+                          "name": "Save status",
+                          "fill": "$me",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Настройки сохранены",
+                          "lineHeight": 1.45,
+                          "fontFamily": "$font-ui",
+                          "fontSize": "$type-small",
+                          "fontWeight": "normal"
+                        },
+                        "Z4W32": {
+                          "id": "QGoMd",
+                          "type": "ref",
+                          "ref": "wmGeO",
+                          "name": "Validate runtimes",
+                          "descendants": {
+                            "EWsWH": {
+                              "content": "Проверить"
+                            }
+                          }
+                        },
+                        "KwWF3": {
+                          "id": "ZBfzQ",
+                          "type": "ref",
+                          "ref": "f7Y4eS",
+                          "name": "Save settings",
+                          "fill": "$dis",
+                          "descendants": {
+                            "Wz52g": {
+                              "content": "Сохранить",
+                              "fill": "$disText"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "x7zWM5",
+              "name": "summaries-loading-light",
+              "theme": {
+                "mode": "light"
+              },
+              "reusable": true,
+              "width": 668,
+              "fill": "$back",
+              "layout": "vertical",
+              "padding": "$space-24",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "pGT8b",
+                  "name": "Settings content",
+                  "width": 620,
+                  "fill": "$win",
+                  "layout": "vertical",
+                  "gap": "$space-16",
+                  "padding": "$space-24",
+                  "children": [
+                    {
+                      "id": "arHXS",
+                      "type": "ref",
+                      "ref": "Cb0Qc",
+                      "name": "Settings tabs",
+                      "width": "fill_container"
+                    },
+                    {
+                      "type": "text",
+                      "id": "SOuCc",
+                      "name": "Loading",
+                      "fill": "$gutter",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Загружаем настройки…",
+                      "lineHeight": 1.45,
+                      "fontFamily": "$font-ui",
+                      "fontSize": "$type-body",
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "UdPxT",
+              "name": "summaries-load-failed-light",
+              "theme": {
+                "mode": "light"
+              },
+              "reusable": true,
+              "width": 668,
+              "fill": "$back",
+              "layout": "vertical",
+              "padding": "$space-24",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "eHPNc",
+                  "name": "Settings content",
+                  "width": 620,
+                  "fill": "$win",
+                  "layout": "vertical",
+                  "gap": "$space-16",
+                  "padding": "$space-24",
+                  "children": [
+                    {
+                      "id": "nnq16",
+                      "type": "ref",
+                      "ref": "Cb0Qc",
+                      "name": "Settings tabs",
+                      "width": "fill_container"
+                    },
+                    {
+                      "id": "EV5Qt",
+                      "type": "ref",
+                      "ref": "qAImO",
+                      "name": "Load error",
+                      "width": "fill_container",
+                      "descendants": {
+                        "uxXzz": {
+                          "content": "Не удалось загрузить настройки"
+                        },
+                        "q9Ta7": {
+                          "content": "Сохранённые значения не изменены. Попробуйте ещё раз."
+                        }
+                      }
+                    },
+                    {
+                      "id": "KJloD",
+                      "type": "ref",
+                      "ref": "wmGeO",
+                      "name": "Retry load",
+                      "descendants": {
+                        "EWsWH": {
+                          "content": "Повторить"
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "srkDU",
+          "name": "Call notes — dark",
+          "theme": {
+            "mode": "dark"
+          },
+          "gap": "$space-40",
+          "children": [
+            {
+              "id": "EPc1A",
+              "type": "ref",
+              "ref": "U6WAYZ",
+              "name": "summaries-off-dark",
+              "theme": {
+                "mode": "dark"
+              }
+            },
+            {
+              "id": "JMtUi",
+              "type": "ref",
+              "ref": "W3fJ9k",
+              "name": "summaries-on-dark",
+              "theme": {
+                "mode": "dark"
+              }
+            },
+            {
+              "id": "svWIZ",
+              "type": "ref",
+              "ref": "Slj20",
+              "name": "summaries-local-dark",
+              "theme": {
+                "mode": "dark"
+              }
+            },
+            {
+              "id": "KOHKp",
+              "type": "ref",
+              "ref": "OnuoI",
+              "name": "summaries-invalid-dark",
+              "theme": {
+                "mode": "dark"
+              }
+            },
+            {
+              "id": "QftlS",
+              "type": "ref",
+              "ref": "NWruK",
+              "name": "summaries-unavailable-dark",
+              "theme": {
+                "mode": "dark"
+              }
+            },
+            {
+              "id": "PqMbX",
+              "type": "ref",
+              "ref": "xxNAo",
+              "name": "summaries-validating-dark",
+              "theme": {
+                "mode": "dark"
+              }
+            },
+            {
+              "id": "wChXJ",
+              "type": "ref",
+              "ref": "JNXef",
+              "name": "summaries-saving-dark",
+              "theme": {
+                "mode": "dark"
+              }
+            },
+            {
+              "id": "HhRZG",
+              "type": "ref",
+              "ref": "u37xhM",
+              "name": "summaries-save-failed-dark",
+              "theme": {
+                "mode": "dark"
+              }
+            },
+            {
+              "id": "uZZmT",
+              "type": "ref",
+              "ref": "u0bpd",
+              "name": "summaries-saved-dark",
+              "theme": {
+                "mode": "dark"
+              }
+            },
+            {
+              "id": "klm0C",
+              "type": "ref",
+              "ref": "x7zWM5",
+              "name": "summaries-loading-dark",
+              "theme": {
+                "mode": "dark"
+              }
+            },
+            {
+              "id": "B0AUY",
+              "type": "ref",
+              "ref": "UdPxT",
+              "name": "summaries-load-failed-dark",
+              "theme": {
+                "mode": "dark"
+              }
+            }
+          ]
+        },
+        {
+          "type": "note",
+          "id": "E9Id4p",
+          "name": "Call notes behavior",
+          "width": 1100,
+          "height": 180,
+          "content": "LAB-1034: The new states show window content only, matching Settings rehearsal snapshots; the native title bar is excluded. Settings has Recording and Call notes tabs. Fields remain editable while automatic notes are off. Saves affect upcoming jobs; validation makes no paid prompt. API-key field stores an environment-variable name, never its value. Loading and load failure show no editable defaults. Both runtime slots and models are editable. Production content scrolls in a 620 pt-wide window when taller than the available desktop. Mouse uses buttons/menus; keyboard uses native text editing, Tab and Return. This is a macOS-only window; no phone or tablet layout."
         }
       ]
     },
@@ -33028,7 +34970,7 @@
       "type": "frame",
       "id": "GkHUo",
       "x": 0,
-      "y": 15290,
+      "y": 17341,
       "name": "Screen 7 — Menu bar item",
       "fill": "#FFFFFF",
       "layout": "vertical",
@@ -37075,7 +39017,7 @@
       "type": "frame",
       "id": "Dy7hy",
       "x": 0,
-      "y": 16675,
+      "y": 18726,
       "name": "Screen 8 — Errors",
       "fill": "#FFFFFF",
       "layout": "vertical",
@@ -39412,7 +41354,7 @@
       "type": "frame",
       "id": "JkT0q",
       "x": 0,
-      "y": 17942,
+      "y": 19993,
       "name": "Later — term chips",
       "fill": "#FFFFFF",
       "layout": "vertical",
@@ -39985,7 +41927,7 @@
       "type": "frame",
       "id": "i8ROL",
       "x": 0,
-      "y": 18800,
+      "y": 20851,
       "name": "Screen 9 — App icon",
       "width": 1500,
       "fill": "#2e2e32",
@@ -40181,7 +42123,7 @@
       "type": "frame",
       "id": "wbP8s",
       "x": 1700,
-      "y": 18800,
+      "y": 20851,
       "name": "Screen 9 — App icon, alternative: two tracks",
       "width": 1860,
       "fill": "#FFFFFF",
@@ -43531,7 +45473,7 @@
       "type": "frame",
       "id": "yliMO",
       "x": 3700,
-      "y": 18800,
+      "y": 20851,
       "name": "Screen 9 — App icon, two tracks, Liquid Glass edition",
       "fill": "#FFFFFF",
       "layout": "vertical",
@@ -43850,6 +45792,377 @@
                   "height": 104.3883495145631
                 }
               ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "eZCMO",
+      "x": 8200,
+      "y": -3100,
+      "name": "Glass Ledger — call notes components",
+      "width": 620,
+      "fill": "$back",
+      "layout": "vertical",
+      "gap": "$space-24",
+      "padding": "$space-24",
+      "children": [
+        {
+          "type": "frame",
+          "id": "raSjI",
+          "name": "Runtime field",
+          "reusable": true,
+          "width": 548,
+          "gap": "$space-12",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "xyAeL",
+              "name": "Field label",
+              "fill": "$sub",
+              "textGrowth": "fixed-width",
+              "width": 112,
+              "content": "Модель",
+              "lineHeight": 1.45,
+              "fontFamily": "$font-ui",
+              "fontSize": "$type-small",
+              "fontWeight": "normal"
+            },
+            {
+              "id": "juFwS",
+              "type": "ref",
+              "ref": "e8UQV2",
+              "name": "Field value",
+              "width": "fill_container",
+              "descendants": {
+                "gKt90": {
+                  "content": "sonnet",
+                  "fontSize": "$type-small",
+                  "fill": "$text"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "Cb0Qc",
+          "name": "Settings navigation",
+          "reusable": true,
+          "width": 572,
+          "gap": "$space-4",
+          "children": [
+            {
+              "id": "nor3c",
+              "type": "ref",
+              "ref": "wmGeO",
+              "name": "Recording tab",
+              "width": "fill_container",
+              "descendants": {
+                "EWsWH": {
+                  "content": "Запись"
+                }
+              }
+            },
+            {
+              "id": "cUhH9",
+              "type": "ref",
+              "ref": "wmGeO",
+              "name": "Summaries tab",
+              "width": "fill_container",
+              "fill": "$selBg",
+              "descendants": {
+                "EWsWH": {
+                  "content": "Итоги звонков",
+                  "fill": "$selText"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "vBhzN",
+          "name": "Runtime card — CLI",
+          "reusable": true,
+          "width": 572,
+          "fill": "$surface",
+          "cornerRadius": "$radius-card",
+          "stroke": "$rule",
+          "strokeWidth": 1,
+          "layout": "vertical",
+          "gap": "$space-8",
+          "padding": "$space-12",
+          "children": [
+            {
+              "type": "text",
+              "id": "GAe9v",
+              "name": "Runtime heading",
+              "fill": "$text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Основной сервис",
+              "lineHeight": 1.45,
+              "fontFamily": "$font-ui",
+              "fontSize": "$type-body",
+              "fontWeight": "600"
+            },
+            {
+              "id": "R28dU0",
+              "type": "ref",
+              "ref": "raSjI",
+              "name": "Сервис",
+              "width": "fill_container",
+              "descendants": {
+                "xyAeL": {
+                  "content": "Сервис"
+                },
+                "juFwS/gKt90": {
+                  "content": "Claude Code CLI ▾"
+                }
+              }
+            },
+            {
+              "id": "CnEZ7",
+              "type": "ref",
+              "ref": "raSjI",
+              "name": "Модель",
+              "width": "fill_container",
+              "descendants": {
+                "xyAeL": {
+                  "content": "Модель"
+                },
+                "juFwS/gKt90": {
+                  "content": "sonnet"
+                }
+              }
+            },
+            {
+              "id": "uowW4",
+              "type": "ref",
+              "ref": "raSjI",
+              "name": "Программа",
+              "width": "fill_container",
+              "descendants": {
+                "xyAeL": {
+                  "content": "Программа"
+                },
+                "juFwS/gKt90": {
+                  "content": "claude"
+                }
+              }
+            },
+            {
+              "type": "text",
+              "id": "rVqFQ",
+              "name": "Runtime disclosure",
+              "fill": "$sub",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Квота подписки Claude · транскрипт → Anthropic.",
+              "lineHeight": 1.45,
+              "fontFamily": "$font-ui",
+              "fontSize": "$type-small",
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "ATcM6",
+          "name": "Runtime card — API",
+          "reusable": true,
+          "width": 572,
+          "fill": "$surface",
+          "cornerRadius": "$radius-card",
+          "stroke": "$rule",
+          "strokeWidth": 1,
+          "layout": "vertical",
+          "gap": "$space-8",
+          "padding": "$space-12",
+          "children": [
+            {
+              "type": "text",
+              "id": "hGNTM",
+              "name": "Runtime heading",
+              "fill": "$text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Резервный сервис",
+              "lineHeight": 1.45,
+              "fontFamily": "$font-ui",
+              "fontSize": "$type-body",
+              "fontWeight": "600"
+            },
+            {
+              "id": "h5bmF",
+              "type": "ref",
+              "ref": "raSjI",
+              "name": "Сервис",
+              "width": "fill_container",
+              "descendants": {
+                "xyAeL": {
+                  "content": "Сервис"
+                },
+                "juFwS/gKt90": {
+                  "content": "API · OpenAI-совместимый ▾"
+                }
+              }
+            },
+            {
+              "id": "SvXFC",
+              "type": "ref",
+              "ref": "raSjI",
+              "name": "Модель",
+              "width": "fill_container",
+              "descendants": {
+                "xyAeL": {
+                  "content": "Модель"
+                },
+                "juFwS/gKt90": {
+                  "content": "gpt-4.1-mini"
+                }
+              }
+            },
+            {
+              "id": "A2wIn",
+              "type": "ref",
+              "ref": "raSjI",
+              "name": "Адрес API",
+              "width": "fill_container",
+              "descendants": {
+                "xyAeL": {
+                  "content": "Адрес API"
+                },
+                "juFwS/gKt90": {
+                  "content": "https://api.openai.com/v1"
+                }
+              }
+            },
+            {
+              "id": "jfbBK",
+              "type": "ref",
+              "ref": "raSjI",
+              "name": "API-ключ из",
+              "width": "fill_container",
+              "descendants": {
+                "xyAeL": {
+                  "content": "API-ключ из"
+                },
+                "juFwS/gKt90": {
+                  "content": "OPENAI_API_KEY"
+                }
+              }
+            },
+            {
+              "type": "text",
+              "id": "a874Bc",
+              "name": "Runtime disclosure",
+              "fill": "$sub",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Оплата API по токенам · транскрипт → OpenAI.\nAPI-ключ из переменной окружения; сохраняется только её имя.",
+              "lineHeight": 1.45,
+              "fontFamily": "$font-ui",
+              "fontSize": "$type-small",
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "k3sJwE",
+          "name": "Summary choices",
+          "reusable": true,
+          "width": 572,
+          "layout": "vertical",
+          "gap": "$space-6",
+          "children": [
+            {
+              "id": "OIvU1",
+              "type": "ref",
+              "ref": "zhXsW",
+              "name": "Automatic notes",
+              "width": "fill_container",
+              "descendants": {
+                "YTQFN": {
+                  "content": "Составлять итоги после звонка"
+                }
+              }
+            },
+            {
+              "type": "text",
+              "id": "i7UOtx",
+              "name": "Timing",
+              "fill": "$sub",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "После финальной расшифровки; запись следующего звонка не ждёт итоги.",
+              "lineHeight": 1.45,
+              "fontFamily": "$font-ui",
+              "fontSize": "$type-small",
+              "fontWeight": "normal"
+            },
+            {
+              "id": "jTNhO",
+              "type": "ref",
+              "ref": "zhXsW",
+              "name": "Identify speakers",
+              "width": "fill_container",
+              "descendants": {
+                "YTQFN": {
+                  "content": "Пробовать определить имена участников"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "YD63k",
+          "name": "Save and validate",
+          "reusable": true,
+          "width": 572,
+          "gap": "$space-8",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "n9GUWN",
+              "name": "Save status",
+              "fill": "$gutter",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Автосводка выключена",
+              "lineHeight": 1.45,
+              "fontFamily": "$font-ui",
+              "fontSize": "$type-small",
+              "fontWeight": "normal"
+            },
+            {
+              "id": "Z4W32",
+              "type": "ref",
+              "ref": "wmGeO",
+              "name": "Validate runtimes",
+              "descendants": {
+                "EWsWH": {
+                  "content": "Проверить"
+                }
+              }
+            },
+            {
+              "id": "KwWF3",
+              "type": "ref",
+              "ref": "f7Y4eS",
+              "name": "Save settings",
+              "descendants": {
+                "Wz52g": {
+                  "content": "Сохранить"
+                }
+              }
             }
           ]
         }

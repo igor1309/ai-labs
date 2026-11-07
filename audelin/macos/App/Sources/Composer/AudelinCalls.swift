@@ -18,6 +18,7 @@ struct RecordingsInputs {
 
 @MainActor @Observable
 public final class AudelinCalls {
+    private let summaryStatuses: () -> [String: String]
     private let inputs: RecordingsInputs
     private let location: (String) async throws -> URL
     private let openFolder: (URL) -> Bool
@@ -30,13 +31,16 @@ public final class AudelinCalls {
 
     init(inputs: RecordingsInputs, timeZone: TimeZone, recordingState: @escaping () -> RecordingState,
          location: @escaping (String) async throws -> URL, openFolder: @escaping (URL) -> Bool,
-         present: @escaping () -> Void) {
+         present: @escaping () -> Void, summaryStatuses: @escaping () -> [String: String] = { [:] }) {
+        self.summaryStatuses = summaryStatuses
         self.inputs = inputs; self.timeZone = timeZone; self.recordingState = recordingState
         self.location = location; self.openFolder = openFolder; self.present = present
     }
 
     public var state: CallsListState {
         var state = callsListState(inputs.state(), timeZone: timeZone)
+        let statuses = summaryStatuses()
+        for index in state.rows.indices { state.rows[index].summaryStatus = statuses[state.rows[index].id] ?? "" }
         state.editing = editing
         state.failure = openFailure ?? state.failure
         state.busy = state.busy || opening

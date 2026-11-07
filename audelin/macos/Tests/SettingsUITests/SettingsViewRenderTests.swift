@@ -7,6 +7,17 @@ import Testing
 @MainActor
 struct SettingsViewRenderTests {
 
+    @Test func exportRegistryContainsExactlyTheRequiredStates() {
+        let required: Set<String> = [
+            "release", "debug", "confirm-move", "moving", "move-failed", "during-recording",
+            "summaries-off", "summaries-on", "summaries-local", "summaries-invalid", "summaries-unavailable",
+            "summaries-validating", "summaries-saving", "summaries-save-failed", "summaries-saved",
+            "summaries-loading", "summaries-load-failed",
+        ]
+        #expect(Set(SettingsState.previews.map(\.name)) == required)
+        #expect(SettingsState.previews.count == required.count)
+    }
+
     @Test(arguments: [ColorScheme.light, .dark])
     func everyPreviewFillsTheWindow(scheme: ColorScheme) throws {
 
@@ -14,7 +25,7 @@ struct SettingsViewRenderTests {
 
             let host = Offscreen.host(SettingsPreview(state: state, scheme: scheme), scheme: scheme)
             let image = try #require(Offscreen.snapshot(host), "\(name) did not render")
-            #expect(host.bounds.width > SettingsConfig.glassLedger.windowWidth, "\(name)")
+            #expect(host.bounds.width == SettingsConfig.glassLedger.windowWidth + 2 * SettingsConfig.glassLedger.light.space24, "\(name)")
             #expect(host.bounds.height > 0, "\(name)")
 
             try Offscreen.save(image, "settings-\(name)-\(scheme == .dark ? "dark" : "light")")
