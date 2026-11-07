@@ -27,6 +27,7 @@ public struct Calls: Sendable {
     private let values: @Sendable (URL) throws -> URLResourceValues
     private let duration: @Sendable (URL) throws -> TimeInterval
     private let rename: @Sendable (URL, URL) throws -> Void
+    private let copy: @Sendable (URL, URL) throws -> Void
     private let remove: @Sendable (URL) throws -> Void
 
     /// Uses the supplied reader for track durations. Listing performs blocking disk work.
@@ -34,7 +35,7 @@ public struct Calls: Sendable {
         self.init(folder: folder, timeZone: timeZone,
                   children: { try FileManager.default.contentsOfDirectory(at: $0, includingPropertiesForKeys: nil) },
                   values: { try $0.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey, .fileSizeKey]) },
-                  duration: duration, rename: { source, target in
+                  duration: duration, copy: { try FileManager.default.copyItem(at: $0, to: $1) }, rename: { source, target in
                       guard renamex_np(source.path, target.path, UInt32(RENAME_EXCL)) == 0 else {
                           throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
                       }
@@ -45,6 +46,7 @@ public struct Calls: Sendable {
          children: @escaping @Sendable (URL) throws -> [URL],
          values: @escaping @Sendable (URL) throws -> URLResourceValues,
          duration: @escaping @Sendable (URL) throws -> TimeInterval,
+         copy: @escaping @Sendable (URL, URL) throws -> Void,
          rename: @escaping @Sendable (URL, URL) throws -> Void,
          remove: @escaping @Sendable (URL) throws -> Void) {
         self.folder = folder
@@ -54,6 +56,7 @@ public struct Calls: Sendable {
         self.duration = duration
         self.rename = rename
         self.remove = remove
+        self.copy = copy
     }
 
     public func list() throws -> [Call] {
@@ -89,6 +92,77 @@ public struct Calls: Sendable {
         let source = try location(id: id)
         do { try remove(source) }
         catch { throw Failure(description: "Не удалось удалить «\(source.lastPathComponent)» целиком; часть папки могла остаться. \(error.localizedDescription)") }
+    }
+
+    public func bytes(id: String) throws -> Int64 { try size(location(id: id)) }
+
+    /// Publishes only a verified copy. If source deletion is partial, the verified
+    /// copy restores missing entries before the destination is removed.
+    @discardableResult
+    public func move(id: String, to destination: URL) throws -> Int64 {
+        let source = try location(id: id)
+        let destination = destination.resolvingSymlinksInPath().standardizedFileURL
+        let sourcePath = source.resolvingSymlinksInPath().standardizedFileURL.path
+        guard destination.isFileURL, destination.path != sourcePath,
+              !destination.path.hasPrefix(sourcePath + "/") else { throw POSIXError(.EINVAL) }
+        let target = destination.appendingPathComponent(source.lastPathComponent, isDirectory: true)
+        guard try !children(destination).contains(where: { $0.lastPathComponent == target.lastPathComponent }) else {
+            throw CocoaError(.fileWriteFileExists)
+        }
+        let temporary = destination.appendingPathComponent(".audelin-move-" + UUID().uuidString, isDirectory: true)
+        var published = false
+        var deleting = false
+        do {
+            let original = try manifest(source)
+            try copy(source, temporary)
+            guard try manifest(temporary) == original, try manifest(source) == original else { throw Failure(description: "Размеры файлов копии не совпадают с исходными.") }
+            try rename(temporary, target)
+            published = true
+            deleting = true
+            try remove(source)
+            return original.values.reduce(0) { $0 + max(0, $1) }
+        } catch {
+            let failure = error
+            let copied = published ? target : temporary
+            if deleting {
+                // Keep the verified destination if restoration itself cannot finish.
+                do {
+                    try restoreMissing(from: copied, to: source)
+                    guard try manifest(source) == manifest(copied) else { throw CocoaError(.fileReadCorruptFile) }
+                } catch {
+                    throw Failure(description: "Не удалось восстановить исходную папку; полная копия в \(copied.path). \(error.localizedDescription)")
+                }
+            }
+            if try children(destination).contains(where: { $0.lastPathComponent == copied.lastPathComponent }) { try remove(copied) }
+            throw failure
+        }
+    }
+
+    private func manifest(_ root: URL) throws -> [String: Int64] {
+        var result: [String: Int64] = [:]
+        func visit(_ url: URL, _ path: String) throws {
+            let info = try values(url)
+            if info.isSymbolicLink == true { result[path] = -2 }
+            else if info.isDirectory == true {
+                result[path] = -1
+                for child in try children(url) { try visit(child, path + "/" + child.lastPathComponent) }
+            } else {
+                guard let size = info.fileSize else { throw CocoaError(.fileReadUnknown) }
+                result[path] = Int64(size)
+            }
+        }
+        try visit(root, "")
+        return result
+    }
+
+    private func restoreMissing(from copyURL: URL, to source: URL) throws {
+        if (try? values(source)) == nil { try copy(copyURL, source); return }
+        let info = try values(copyURL)
+        if info.isDirectory == true, info.isSymbolicLink != true {
+            for child in try children(copyURL) {
+                try restoreMissing(from: child, to: source.appendingPathComponent(child.lastPathComponent))
+            }
+        }
     }
 
     public func count() throws -> Count {

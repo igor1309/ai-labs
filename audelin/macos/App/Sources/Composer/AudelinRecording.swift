@@ -46,8 +46,16 @@ final class AudelinRecording: Sendable {
         }
     }
 
-    func reserveStorage() async -> Bool { await inputs.reserveStorage() }
-    func releaseStorage() async { await conditions.refresh(); await inputs.releaseStorage() }
+    func reserveStorage() async -> Bool {
+        guard await inputs.reserveStorage() else { return false }
+        await conditions.setStorageMoving(true)
+        return true
+    }
+    func releaseStorage() async {
+        await conditions.setStorageMoving(false)
+        await conditions.refresh()
+        await inputs.releaseStorage()
+    }
 
     func lifecycle(terminate: @escaping @Sendable () async -> Void) -> LifecycleEffectHandler {
 

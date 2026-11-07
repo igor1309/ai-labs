@@ -38,17 +38,18 @@ final class SummaryStorage: SummaryFiles.Locations, Sendable {
     private static func directory(_ url: URL) -> URL { URL(fileURLWithPath: url.standardizedFileURL.path, isDirectory: true) }
     private func calls(_ folder: URL) -> Calls { Calls(folder: folder, timeZone: timeZone, duration: TrackFile.duration(at:)) }
     func withFolder<Value: Sendable>(call: String, _ operation: @Sendable (URL) throws -> Value) throws -> Value {
-        try state.withLock { state in
-            var matches: [URL] = []
-            var firstFailure: (any Error)?
-            for root in state.roots {
-                do { matches.append(try calls(root).location(id: call)) }
-                catch { if firstFailure == nil { firstFailure = error } }
-            }
-            guard !matches.isEmpty else { throw firstFailure ?? CocoaError(.fileNoSuchFile) }
-            guard matches.count == 1, let folder = matches.first else { throw AmbiguousCall(id: call) }
-            return try operation(folder)
+        try state.withLock { try operation(location(id: call, roots: $0.roots)) }
+    }
+    private func location(id: String, roots: [URL]) throws -> URL {
+        var matches: [URL] = []
+        var firstFailure: (any Error)?
+        for root in roots {
+            do { matches.append(try calls(root).location(id: id)) }
+            catch { if firstFailure == nil { firstFailure = error } }
         }
+        guard !matches.isEmpty else { throw firstFailure ?? CocoaError(.fileNoSuchFile) }
+        guard matches.count == 1, let folder = matches.first else { throw AmbiguousCall(id: id) }
+        return folder
     }
     private struct AmbiguousCall: LocalizedError {
         let id: String
@@ -69,28 +70,61 @@ final class SummaryStorage: SummaryFiles.Locations, Sendable {
         try await perform { [self] in try withFolder(call: id) { try calls($0.deletingLastPathComponent()).delete(id: id) } }
     }
     func location(id: String) async throws -> URL { try await perform { [self] in try withFolder(call: id) { $0 } } }
-    func move(to destination: URL, commit: @escaping @Sendable () throws -> Void) async throws {
+    func prepareMove() async throws -> [MoveCall] {
+        try await perform { [self] in
+            try state.withLock { state in
+                try state.roots.flatMap { root in
+                    let disk = calls(root)
+                    return try disk.list().map { call in
+                        MoveCall(id: call.id, title: call.title, bytes: try disk.bytes(id: call.id))
+                    }
+                }
+            }
+        }
+    }
+    func move(id: String, to destination: URL) async throws -> Int64 {
+        let folder = Self.directory(destination)
+        return try await perform { [self] in
+            try state.withLock { state in
+                let source = try location(id: id, roots: state.roots)
+                if source.deletingLastPathComponent().resolvingSymlinksInPath().path == folder.resolvingSymlinksInPath().path {
+                    return try calls(folder).bytes(id: id)
+                }
+                _ = try calls(folder).count()
+                guard (try? calls(folder).location(id: id)) == nil else { throw CocoaError(.fileWriteFileExists) }
+                let previous = state.roots
+                if !state.roots.contains(folder) {
+                    let roots = state.roots + [folder]
+                    try saveRoots(roots)
+                    state.roots = roots
+                }
+                do { return try calls(source.deletingLastPathComponent()).move(id: id, to: folder) }
+                catch {
+                    if (try? calls(folder).location(id: id)) == nil {
+                        try saveRoots(previous)
+                        state.roots = previous
+                    }
+                    throw error
+                }
+            }
+        }
+    }
+    func commitFolder(_ destination: URL, commit: @escaping @Sendable () throws -> Void) async throws {
         let folder = Self.directory(destination)
         try await perform { [self] in
             try state.withLock { state in
-                guard state.roots != [folder] else { return }
-                if !state.roots.contains(folder) { state.roots.insert(folder, at: 0) }
-                try saveRoots(state.roots)
+                _ = try calls(folder).count()
+                // A recording may have appeared after a failed move. Never abandon it.
                 for source in state.roots where source != folder {
-                    for call in try calls(source).list() {
-                        let from = try calls(source).location(id: call.id)
-                        let to = folder.appendingPathComponent(from.lastPathComponent)
-                        try FileManager.default.moveItem(at: from, to: to)
-                    }
+                    guard try calls(source).count().calls == 0 else { throw CocoaError(.fileWriteUnknown) }
                 }
-                try commit()
                 try saveRoots([folder])
+                try commit()
                 state.roots = [folder]
             }
         }
     }
 }
-
 
 struct SummaryCalls: RecordingsCalls {
     let storage: SummaryStorage
@@ -99,4 +133,6 @@ struct SummaryCalls: RecordingsCalls {
     }
     func rename(id: String, title: String) async throws { try await storage.rename(id: id, title: title) }
     func delete(id: String) async throws { try await storage.delete(id: id) }
+    func prepareMove() async throws -> [MoveCall] { try await storage.prepareMove() }
+    func move(id: String, to destination: URL) async throws -> Int64 { try await storage.move(id: id, to: destination) }
 }

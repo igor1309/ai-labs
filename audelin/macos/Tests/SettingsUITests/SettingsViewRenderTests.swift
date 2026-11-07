@@ -87,6 +87,7 @@ struct SettingsViewRenderTests {
         #expect(text.shows("Перенесено 31 из 52"), "\(text)")
         #expect(text.shows("нет места на диске"), "\(text)")
         #expect(text.shows("Повторить"), "\(text)")
+        #expect(text.shows("Отмена"), "\(text)")
     }
 
     @Test func aRecordingHoldsTheFolderChange() async throws {

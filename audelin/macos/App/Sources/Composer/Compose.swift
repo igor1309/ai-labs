@@ -46,11 +46,16 @@ public func compose(
     let menu = await AudelinMenu(storage: preferences, boundary: boundary, processes: processes, panel: panel,
         openFolder: { _ = openCallsFolder($0) }, openURL: openURL, terminate: terminate,
         sink: boundary.log, presentPanel: presentPanel, sleep: boundary.time.sleep, summaries: summaries)
-    menu.installFolderSettings(storage: storage, preferences: preferences, choose: chooseCallsFolder)
+    menu.installFolderPicker(chooseCallsFolder)
     menu.installSettings(AudelinSettings(preferences: SummaryPreferences(storage: preferences),
                                         availability: SummaryAvailability(runtime: runtime)), present: presentSettings)
     let disk = SummaryCalls(storage: storage)
-    menu.installCalls(AudelinCalls(inputs: makeRecordings(handler: RecordingsEffectHandler(calls: disk)),
+    menu.installCalls(AudelinCalls(inputs: makeRecordings(handler: RecordingsEffectHandler(calls: disk,
+                                      reserve: { [weak menu] in await menu?.reserveCallsFolder() ?? false },
+                                      release: { [weak menu] in await menu?.releaseCallsFolder() },
+                                      storeFolder: { destination in
+                                          try await storage.commitFolder(destination) { try preferences.updateCallsFolder(destination) }
+                                      }), initial: .init(callsFolder: preferences.read().callsFolder)),
                                   timeZone: timeZone, recordingState: { [weak menu] in menu?.state ?? .init() },
                                   location: { try await storage.location(id: $0) }, openFolder: openCallsFolder,
                                   present: presentCalls, summaryStatuses: { summaries.statuses }))
