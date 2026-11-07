@@ -10,6 +10,7 @@ import { PicturesProvider, pictureStore } from "../src/Picture.tsx";
 import { SkeletonChoiceScreen } from "../src/SkeletonChoiceScreen.tsx";
 import { SkeletonGuessScreen } from "../src/SkeletonGuessScreen.tsx";
 import { SkeletonMuseumScreen, type ShownStand } from "../src/SkeletonMuseumScreen.tsx";
+import { SkeletonResultScreen } from "../src/SkeletonResultScreen.tsx";
 import { SkeletonPuzzleScreen, type ShownHelpStep } from "../src/SkeletonPuzzleScreen.tsx";
 import data from "../src/data/skeletons.json";
 import tyrannosaurus from "../src/assets/dinos/tyrannosaurus/body.webp";
@@ -123,6 +124,30 @@ export function mountMuseum(options: { language?: Language; theme?: "light" | "d
       <SkeletonMuseumScreen language={language} score={score} total={IDS.length} best={score > 0 ? score : undefined}
         stands={IDS.map((id, index) => ({ id, name: NAMES[language][index]!, skeleton: bone(id, "skeleton"), state: shown(index), badges: state === "full" ? ["explorer", "paleontologist"] as const : shown(index) === "rebuilding" ? ["explorer"] as const : [] }))}
         onBuild={() => undefined} onRebuild={() => undefined} onBuildAnother={() => undefined} onHome={() => undefined} onJawShelf={options.jaw ? () => undefined : undefined} />
+    </PicturesProvider>
+  ));
+}
+
+// The reveal: a first skeleton, a new best with its badge, a rebuild, or
+// every star, the body still loading when loading.
+export function mountResult(options: { language?: Language; theme?: "light" | "dark"; kind?: "first" | "best" | "rebuild" | "all"; loading?: boolean }) {
+  root?.unmount();
+  const language = options.language ?? "en";
+  const kind = options.kind ?? "first";
+  const index = kind === "best" ? 1 : 0;
+  const id = IDS[index]!;
+  const fact = (data.dinosaurs as unknown as Record<string, { fact: Record<Language, string> }>)[id]!.fact[language];
+  const score = { first: 1, best: 2, rebuild: 2, all: 5 }[kind];
+  document.documentElement.dataset.theme = options.theme ?? "light";
+  document.documentElement.lang = language;
+  const host = document.getElementById("root") ?? document.body.appendChild(Object.assign(document.createElement("div"), { id: "root" }));
+  root = createRoot(host);
+  flushSync(() => root!.render(
+    <PicturesProvider store={options.loading ? loading : loaded} startTimer={() => () => {}}>
+      <SkeletonResultScreen language={language} name={NAMES[language][index]!} fact={fact} skeleton={bone(id, "skeleton")} body={PICTURES[index]!} frame={data.frame}
+        score={score} total={IDS.length} best={score} beaten={kind === "best" || kind === "all" ? score - 1 : undefined}
+        celebration={kind === "first" ? "first-best" : kind === "rebuild" ? null : "new-best"}
+        newStar={kind !== "rebuild"} badge={kind === "best" || kind === "all" ? "explorer" : undefined} onBuildAnother={() => undefined} onMuseum={() => undefined} onHome={() => undefined} />
     </PicturesProvider>
   ));
 }
