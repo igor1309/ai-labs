@@ -106,6 +106,7 @@ jobs:
           - skeletonLayout
           - skeletonWalk
           - picturePuzzleLayout
+          - picturePuzzleWalk
           - homePhone
           - nativeTouch
           - homeTiles
