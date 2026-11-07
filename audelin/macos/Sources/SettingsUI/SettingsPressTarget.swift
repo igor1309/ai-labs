@@ -8,6 +8,7 @@ struct SettingsPressTarget: NSViewRepresentable {
     var identifier: String?
     var isEnabled: Bool
     var checked: Bool? = nil
+    var selected: Bool? = nil
     var action: () -> Void
 
     func makeCoordinator() -> Coordinator { Coordinator(action: action) }
@@ -26,6 +27,7 @@ struct SettingsPressTarget: NSViewRepresentable {
         context.coordinator.checked = checked
         button.isEnabled = isEnabled
         button.state = checked == true ? .on : .off
+        if let selected { button.setAccessibilitySelected(selected) }
         button.setAccessibilityElement(true)
         button.setAccessibilityLabel(title)
         button.setAccessibilityIdentifier(identifier)

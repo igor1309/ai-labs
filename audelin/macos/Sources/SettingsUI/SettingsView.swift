@@ -71,7 +71,7 @@ extension SettingsView {
     }
 
     func tab(_ title: String, _ tab: SettingsState.Tab) -> some View {
-        button(title, state.selectedTab == tab ? .primary : .secondary, fill: true, id: "tab-\(tab.rawValue)") {
+        button(title, state.selectedTab == tab ? .primary : .secondary, fill: true, id: "tab-\(tab.rawValue)", selected: state.selectedTab == tab) {
             event(.selectTab(tab))
         }
         .accessibilityIdentifier("tab-\(tab.rawValue)")
@@ -325,6 +325,7 @@ extension SettingsView {
         isEnabled: Bool = true,
         fill: Bool = false,
         id: String? = nil,
+        selected: Bool? = nil,
         action: @escaping () -> Void
     ) -> some View {
 
@@ -342,7 +343,7 @@ extension SettingsView {
         return Group {
             if let id {
                 content.accessibilityHidden(true).overlay {
-                    SettingsPressTarget(title: label, identifier: id, isEnabled: isEnabled, action: action)
+                    SettingsPressTarget(title: label, identifier: id, isEnabled: isEnabled, selected: selected, action: action)
                 }
             } else {
                 Button(action: action) { content }

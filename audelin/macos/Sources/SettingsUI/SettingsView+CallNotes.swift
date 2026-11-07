@@ -1,3 +1,4 @@
+import AppKit
 import GlassLedger
 import SwiftUI
 
@@ -53,36 +54,25 @@ extension SettingsView {
             .accessibilityIdentifier("notes-\(action.id.rawValue)")
     }
 
+    var notesFont: NSFont {
+        NSFont(name: tokens.fontData, size: tokens.typeSmall) ?? .monospacedSystemFont(ofSize: tokens.typeSmall, weight: .regular)
+    }
+
     func runtimeCard(_ runtime: SettingsState.NotesRuntime) -> some View {
         VStack(alignment: .leading, spacing: tokens.space8) {
             uiText(runtime.title, tokens.typeBody, tokens.text, .semibold)
             notesRow("Сервис") {
-                Picker("Сервис", selection: Binding(
-                    get: { runtime.kind },
-                    set: { event(.selectNotesRuntime(runtime.id, $0)) }
-                )) {
-                    ForEach(runtime.options) { option in
-                        Text(option.title).tag(option.id)
-                    }
+                SettingsNotesMenu(runtime: runtime, font: notesFont) {
+                    event(.selectNotesRuntime(runtime.id, $0))
                 }
-                .labelsHidden()
-                .pickerStyle(.menu)
-                .font(tokens.data(tokens.typeSmall))
-                .accessibilityIdentifier("notes-\(runtime.id.rawValue)-kind")
             }
             ForEach(runtime.fields) { field in
                 notesRow(field.label, invalid: field.isInvalid) {
-                    TextField(field.placeholder, text: Binding(
-                        get: { field.value },
-                        set: { event(.editNotesField(runtime.id, field.id, $0)) }
-                    ))
-                    .textFieldStyle(.plain)
-                    .autocorrectionDisabled()
-                    .font(tokens.data(tokens.typeSmall))
-                    .foregroundStyle(field.isEnabled ? tokens.text : tokens.disText)
+                    SettingsNotesText(field: field, slot: runtime.id, slotTitle: runtime.title,
+                                      font: notesFont, color: NSColor(field.isEnabled ? tokens.text : tokens.disText)) {
+                        event(.editNotesField(runtime.id, field.id, $0))
+                    }
                     .disabled(!field.isEnabled)
-                    .accessibilityLabel(field.label)
-                    .accessibilityIdentifier("notes-\(runtime.id.rawValue)-\(field.id.rawValue)")
                 }
             }
             uiText(runtime.disclosure, tokens.typeSmall, tokens.sub)

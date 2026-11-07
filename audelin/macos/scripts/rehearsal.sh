@@ -9,11 +9,15 @@ staging="$(mktemp -d "$out/.settings-rehearsal.XXXXXX")"
 trap 'rm -rf "$staging"' EXIT
 cd "$(dirname "$0")/.."
 status=0
-CLANG_MODULE_CACHE_PATH=/tmp/codex-swift/clang AUDELIN_SNAPSHOTS="$staging" \
-  timeout 600 swift test --disable-sandbox \
-  --cache-path /tmp/codex-swift/cache --config-path /tmp/codex-swift/config \
-  --security-path /tmp/codex-swift/security \
-  --filter SettingsViewRenderTests/everyPreviewFillsTheWindow > "$out/rehearsal.log" 2>&1 || status=$?
+swift_options=(--disable-sandbox
+  --cache-path /tmp/codex-swift/cache --config-path /tmp/codex-swift/config
+  --security-path /tmp/codex-swift/security)
+export CLANG_MODULE_CACHE_PATH=/tmp/codex-swift/clang
+swift build --build-tests "${swift_options[@]}" > "$out/rehearsal.log" 2>&1 || status=$?
+if [[ $status == 0 ]]; then
+  AUDELIN_SNAPSHOTS="$staging" ../scripts/swift-test-bounded.sh 120 "${swift_options[@]}" \
+    --filter SettingsViewRenderTests/everyPreviewFillsTheWindow >> "$out/rehearsal.log" 2>&1 || status=$?
+fi
 if [[ $status != 0 ]]; then
   echo "Settings rehearsal failed (exit $status): $out/rehearsal.log" >&2
   exit "$status"

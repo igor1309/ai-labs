@@ -94,7 +94,11 @@ struct CallNotesInteractionTests {
         let state = try preview(name)
         let host = try host(name) { events.append($0) }
         guard case let .loaded(draft) = state.callNotes else { Issue.record("Missing draft"); return }
-        let fields = Offscreen.textFields(in: host)
+        // Native popup buttons also own label text fields. Identify editable
+        // presentation fields by their public control identifiers.
+        let fields = Offscreen.textFields(in: host).filter {
+            $0.accessibilityIdentifier().hasPrefix("notes-")
+        }
         let presented = draft.runtimes.flatMap { runtime in runtime.fields.map { (runtime.id, $0) } }
         #expect(fields.map(\.stringValue) == presented.map { $0.1.value })
         for (input, (slot, field)) in zip(fields, presented) {

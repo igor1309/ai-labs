@@ -7,6 +7,17 @@ import Testing
 @MainActor
 struct SettingsViewRenderTests {
 
+    @Test func exportRegistryContainsExactlyTheRequiredStates() {
+        let required: Set<String> = [
+            "release", "debug", "confirm-move", "moving", "move-failed", "during-recording",
+            "summaries-off", "summaries-on", "summaries-local", "summaries-invalid", "summaries-unavailable",
+            "summaries-validating", "summaries-saving", "summaries-save-failed", "summaries-saved",
+            "summaries-loading", "summaries-load-failed",
+        ]
+        #expect(Set(SettingsState.previews.map(\.name)) == required)
+        #expect(SettingsState.previews.count == required.count)
+    }
+
     @Test(arguments: [ColorScheme.light, .dark])
     func everyPreviewFillsTheWindow(scheme: ColorScheme) throws {
 
