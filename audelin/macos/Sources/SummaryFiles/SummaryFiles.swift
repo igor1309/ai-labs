@@ -84,7 +84,7 @@ private actor DiskFiles: FilesStorage {
     public init(locations: any Locations, disk: any Disk, ownershipDirectory: URL) {
         self.locations = locations; self.disk = disk; self.ownershipDirectory = ownershipDirectory
     }
-    isolated deinit { for fd in leases.values { close(fd) } }
+    isolated deinit { for fd in leases.values { flock(fd, LOCK_UN); close(fd) } }
 
     private static func acquire(_ record: Record, directory: URL) throws -> Int32? {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -102,7 +102,12 @@ private actor DiskFiles: FilesStorage {
     }
     /// Call only after the request's resources have ended; releasing is idempotent.
     public func release(job: String, call: String, input: String) {
-        if let fd = leases.removeValue(forKey: .init(call: call, job: job, input: input)) { close(fd) }
+        if let fd = leases.removeValue(forKey: .init(call: call, job: job, input: input)) {
+            // A concurrently spawned child may retain a copy until exec closes it.
+            // End ownership explicitly rather than waiting for every copy to close.
+            flock(fd, LOCK_UN)
+            close(fd)
+        }
     }
     public func claim(_ record: Record) throws -> (owned: Bool, record: Record) {
         try locations.withFolder(call: record.call) { [disk] folder in
