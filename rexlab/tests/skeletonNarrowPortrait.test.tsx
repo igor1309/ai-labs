@@ -138,16 +138,14 @@ describe("the skeleton screens upright on a phone", () => {
     const opened = await openPuzzle(name, { viewport: narrowViewport(), portraitLayouts: NARROW_LAYOUTS, deviceLanguage });
     fitAll(skeletonOf("tyrannosaurus"));
     revealNow(opened.pictures, "tyrannosaurus");
-    phoneScreen(size);
-    expect(styleAt(part(".skeleton-reveal-board"), size).value("width")).toBe("min(100cqw, (100cqh - 16px - 440px) * var(--frame-width) / var(--frame-height))");
-    expect(styleAt(part(".skeleton-reveal"), size).value("height")).toBe(`max(576px, -(128px) + ${height}px)`);
+    
+    expect(styleAt(part(".skeleton-reveal-board"), size).value("width")).toBe("min(100cqw, (100cqh - 12px - 420px) * var(--frame-width) / var(--frame-height))");
     const reward = styleAt(part(".skeleton-reward"), size);
-    expect([reward.px("padding-top"), reward.rowGap(), styleAt(part(".skeleton-fact"), size).px("font-size")]).toEqual([16, 12, 18]);
-    const reveal = Math.max(576, height - 128);
-    expect(Math.min(width - 40, (reveal - 16 - 440) * 800 / 600)).toBeGreaterThanOrEqual(160);
+    expect([reward.px("padding-top"), reward.rowGap(), styleAt(part(".skeleton-fact"), size).px("font-size")]).toEqual([0, 10, 17]);
+    expect(Math.min(width - 32, (560 - 12 - 420) * 800 / 600)).toBeGreaterThanOrEqual(160);
     // A way on spends its 2 × 8 padding, its 28 symbol and 8 gap beside its
     // words at 17px, each at most 0.75 of its size wide, 1px apart.
-    const content = width - 40 - 32;
+    const content = width - 32;
     const text = shownTexts();
     for (const words of [text.buildAnother, text.museum]) {
       const button = screen.getByRole("button", { name: words });

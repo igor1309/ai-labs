@@ -7,7 +7,9 @@ import { TEXTS } from "./language/texts.ts";
 import { Picture, PictureImage, usePicture } from "./Picture.tsx";
 import { LevelBadge, type ShownBadge } from "./LevelBadge.tsx";
 import { CelebrationChip, type Celebration } from "./ResultParts.tsx";
+import { DigGround } from "./DigBar.tsx";
 import { SkeletonBar } from "./SkeletonBar.tsx";
+import "./skeletonResult.css";
 
 export type SkeletonResultScreenProps = {
   language: Language;
@@ -66,9 +68,9 @@ export function SkeletonResultScreen({
   const bodyLook = usePicture(body);
   const bodyShown = bodyLook === "appearing" || bodyLook === "shown";
   return (
-    <main className="skeleton-screen skeleton-result">
+    <main className="skeleton-screen skeleton-dig skeleton-result">
       {celebration && <Festivity />}
-      <div className="stratum stratum-1" aria-hidden="true" />
+      <DigGround />
       <SkeletonBar language={language} title={shownName} onHome={onHome}>
         <p className="skeleton-chip skeleton-stars" aria-label={text.starsEarned}>
           <Star size={20} aria-hidden="true" />
