@@ -2,6 +2,7 @@
 
 ## 2026-11-07
 
+- LAB-922: PICTURE PUZZLE plays upright and on a phone on its side: the board over its tools on an iPad or phone, beside them on its side with HINT and PICTURE as symbols; only where the places would be under 48px, the paleontologist's on an upright phone or a small one on its side, does the board wait for a turn. Its choice and board now leave the app's portrait gate.
 - LAB-922: PICTURE PUZZLE's board stands on the dig site in wide windows: HOME, BACK and the picture's name in the sky with the pieces fitted, and on the sand the board in its pocket beside the tools' pocket of tray, pages, HINT and PICTURE.
 - LAB-922: PICTURE PUZZLE's choice stands on the dig site: HOME and the title in the sky, and on the sand the level switch over the three pictures in their pockets, beside their names on an upright phone.
 - LAB-921: BONES walks whole on every size: its dig-site sheets now outweigh the older skeleton rules, so on an upright iPad the choice's level switch and the museum's stands sit under the sky, and on an iPhone the result fits without scrolling.

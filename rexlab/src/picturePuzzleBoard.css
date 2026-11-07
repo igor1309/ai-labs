@@ -25,6 +25,12 @@ html[data-size="tall"] .skeleton-dig.picture-puzzle-board-screen {
   --dig-ochre: calc(28px + env(safe-area-inset-bottom));
 }
 
+html[data-size="tall-narrow"] .skeleton-dig.picture-puzzle-board-screen {
+  --dig-sky: calc(clamp(124px, 16dvh, 144px) + env(safe-area-inset-top));
+  --dig-ochre: calc(10px + env(safe-area-inset-bottom));
+  padding-bottom: calc(var(--dig-ochre) + var(--ds-space-l));
+}
+
 html[data-size="wide-short"] .skeleton-dig.picture-puzzle-board-screen {
   --dig-sky: calc(54px + env(safe-area-inset-top));
   --dig-ochre: 0px;
@@ -37,7 +43,7 @@ html[data-size="wide-short"] .skeleton-dig.picture-puzzle-board-screen {
   html[data-size="wide-short"] .picture-puzzle-board-screen .home-button .upright-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 }
 
-.skeleton-dig.picture-puzzle-board-screen .picture-puzzle-stage { padding: 12px; gap: 36px; }
+.skeleton-dig.picture-puzzle-board-screen .picture-puzzle-stage { box-sizing: border-box; padding: 12px; gap: 36px; }
 
 .skeleton-dig.picture-puzzle-board-screen .picture-puzzle-board {
   border-radius: 6px;
@@ -96,3 +102,40 @@ html[data-size="wide-short"] .skeleton-dig.picture-puzzle-board-screen {
 .skeleton-dig.picture-puzzle-board-screen .picture-puzzle-retry { flex: none; min-height: 24px; }
 .skeleton-dig.picture-puzzle-board-screen .picture-puzzle-preview { outline-color: var(--ds-pocket-1); border-radius: 4px; }
 .skeleton-dig.picture-puzzle-board-screen .skeleton-chip span { animation: fade-in var(--motion-small) var(--ease-out) both; }
+
+/* Upright the tools' pocket lies under the board, as wide as its pocket: the
+   tray in a row of four over the pages, HINT and PICTURE beside them on a
+   tablet or under them on a phone. */
+.skeleton-dig.picture-puzzle-board-screen .picture-puzzle-stage[data-upright] { flex-direction: column; justify-content: flex-start; }
+
+.skeleton-dig.picture-puzzle-board-screen [data-upright] .picture-puzzle-tools {
+  flex: none;
+  width: calc(var(--board-width) + 24px);
+  margin-inline: -12px;
+  min-width: 0;
+  max-width: none;
+  height: var(--tools-size);
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  grid-template-rows: minmax(0, 1fr) auto auto;
+}
+
+.skeleton-dig.picture-puzzle-board-screen [data-upright] .picture-puzzle-tray {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.skeleton-dig.picture-puzzle-board-screen [data-upright] .picture-puzzle-pages { grid-column: 1; justify-content: flex-start; }
+.skeleton-dig.picture-puzzle-board-screen [data-upright] .picture-puzzle-tools > .picture-puzzle-control { padding: 0 var(--ds-space-l); }
+.skeleton-dig.picture-puzzle-board-screen [data-upright] .picture-puzzle-tools > .picture-puzzle-control:nth-of-type(1) { grid-column: 3; }
+.skeleton-dig.picture-puzzle-board-screen [data-upright] .picture-puzzle-tools > .picture-puzzle-control:nth-of-type(2) { grid-column: 4; }
+
+html[data-size="tall-narrow"] .skeleton-dig.picture-puzzle-board-screen [data-upright] .picture-puzzle-tools { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto auto auto; }
+html[data-size="tall-narrow"] .skeleton-dig.picture-puzzle-board-screen [data-upright] .picture-puzzle-pages { grid-column: 1 / -1; justify-content: center; }
+html[data-size="tall-narrow"] .skeleton-dig.picture-puzzle-board-screen [data-upright] .picture-puzzle-tools > .picture-puzzle-control:nth-of-type(n) { grid-column: auto; padding: 0 8px; }
+
+/* A phone on its side keeps HINT and PICTURE to their symbols, beside the
+   pages, named for screen readers. */
+html[data-size="wide-short"] .skeleton-dig.picture-puzzle-board-screen .picture-puzzle-tools { flex: 0 0 248px; min-width: 248px; grid-template-columns: minmax(0, 1fr) auto auto; grid-template-rows: minmax(0, 1fr) auto auto; padding: var(--ds-space-s); }
+html[data-size="wide-short"] .skeleton-dig.picture-puzzle-board-screen .picture-puzzle-pages { grid-column: 1; gap: var(--ds-space-xs); }
+html[data-size="wide-short"] .skeleton-dig.picture-puzzle-board-screen .picture-puzzle-tools > .picture-puzzle-control { width: 48px; padding: 0; }
+html[data-size="wide-short"] .picture-puzzle-board-screen .picture-puzzle-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }

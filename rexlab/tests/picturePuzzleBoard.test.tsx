@@ -302,7 +302,7 @@ it.each(["pointercancel", "lostpointercapture", "hidden", "resize", "blur", "gat
     act(() => view.presence.switchTo("visible"));
   }
   if (ending === "resize") {
-    Object.assign(window, { innerWidth: 450, innerHeight: 744 });
+    Object.assign(window, { innerWidth: 300, innerHeight: 744 });
     fireEvent(window, new Event("resize"));
     expect(view.container.querySelector('.orientation-gate[data-shown]')).not.toBeNull();
     expect(view.container.querySelector('.gated-screen[inert]')).not.toBeNull();
