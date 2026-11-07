@@ -1,27 +1,27 @@
 /* BONES' result on the dig site (design/dig-site.pen, BONES · result): the
    body over its skeleton standing in a tall sky, the reward on no card, and
    the ways on on the sand. The name shows once, in the reward. */
-html[data-size] .skeleton-result {
+html[data-size] .skeleton-dig.skeleton-result {
   --result-inset: env(safe-area-inset-top);
   --dig-sky: calc(100dvh - 250px);
   --dig-ochre: calc(80px + env(safe-area-inset-bottom));
   padding: 92px calc(var(--ds-space-40) + var(--screen-right)) calc(230px + env(safe-area-inset-bottom)) calc(var(--ds-space-40) + var(--screen-left));
 }
 
-html[data-size="tall"] .skeleton-result {
+html[data-size="tall"] .skeleton-dig.skeleton-result {
   --dig-sky: calc(88px + min((100vw - 96px) * 0.75, 100dvh - 672px) + var(--result-inset));
   --dig-ochre: calc(28px + env(safe-area-inset-bottom));
   padding: 108px calc(var(--ds-space-3xl) + var(--screen-right)) calc(var(--dig-ochre) + var(--ds-space-l)) calc(var(--ds-space-3xl) + var(--screen-left));
 }
 
-html[data-size="tall-narrow"] .skeleton-result {
+html[data-size="tall-narrow"] .skeleton-dig.skeleton-result {
   --result-top: clamp(60px, 28dvh - 110px, 124px);
   --dig-sky: calc(var(--result-top) + min((100vw - 32px) * 0.75, max(100px, 100dvh - var(--result-top) - 412px)) - 8px + var(--result-inset));
   --dig-ochre: calc(10px + env(safe-area-inset-bottom));
   padding: calc(var(--result-top) + env(safe-area-inset-top)) calc(var(--ds-space-m) + var(--screen-right)) calc(var(--dig-ochre) + var(--ds-space-20)) calc(var(--ds-space-m) + var(--screen-left));
 }
 
-html[data-size="wide-short"] .skeleton-result {
+html[data-size="wide-short"] .skeleton-dig.skeleton-result {
   --dig-sky: calc(100dvh - 93px);
   --dig-ochre: 0px;
   padding: calc(60px + env(safe-area-inset-top)) calc(var(--ds-space-20) + var(--screen-right)) calc(64px + env(safe-area-inset-bottom)) calc(var(--ds-space-20) + var(--screen-left));
@@ -158,7 +158,8 @@ html[data-size="tall-narrow"] .skeleton-result .skeleton-reward { flex: 1 1 auto
 html[data-size="tall"] .skeleton-result .skeleton-actions,
 html[data-size="tall-narrow"] .skeleton-result .skeleton-actions { margin-top: auto; }
 
-html[data-size="tall-narrow"] .skeleton-result .skeleton-reveal {
+html[data-size="tall-narrow"] .skeleton-dig.skeleton-result .skeleton-reveal {
+  flex: 0 0 auto;
   height: calc(100vh - var(--result-top) - 30px);
   height: calc(100dvh - var(--result-top) - 30px);
   gap: var(--ds-space-s);

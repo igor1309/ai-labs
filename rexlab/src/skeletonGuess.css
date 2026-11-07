@@ -1,14 +1,14 @@
 /* BONES' guess on the dig site (design/dig-site.pen, BONES · guess): the
    question, or the clue in its place, in the sky, the finished skeleton in
    its pocket and three name cards on the sand. */
-html[data-size] .skeleton-guess-screen {
+html[data-size] .skeleton-dig.skeleton-guess-screen {
   --dig-sky: calc(160px + env(safe-area-inset-top));
   --dig-ochre: calc(60px + env(safe-area-inset-bottom));
   --guess-line-top: calc(var(--dig-sky) - 80px);
   padding: calc(var(--dig-sky) + var(--ds-space-s)) calc(var(--ds-space-40) + var(--screen-right)) calc(var(--dig-ochre) + var(--ds-space-40)) calc(var(--ds-space-40) + var(--screen-left));
 }
 
-html[data-size="tall"] .skeleton-guess-screen {
+html[data-size="tall"] .skeleton-dig.skeleton-guess-screen {
   --dig-sky: calc(172px + env(safe-area-inset-top));
   --dig-ochre: calc(28px + env(safe-area-inset-bottom));
   --guess-line-top: calc(var(--dig-sky) - 92px);
@@ -17,7 +17,7 @@ html[data-size="tall"] .skeleton-guess-screen {
 
 /* A phone too short for the skeleton over its cards scrolls rather than
    lose either. */
-html[data-size="tall-narrow"] .skeleton-guess-screen {
+html[data-size="tall-narrow"] .skeleton-dig.skeleton-guess-screen {
   --dig-sky: calc(clamp(134px, 28dvh - 53px, 186px) + env(safe-area-inset-top));
   --dig-ochre: calc(10px + env(safe-area-inset-bottom));
   --guess-line-top: calc(var(--dig-sky) - 70px);
@@ -27,7 +27,7 @@ html[data-size="tall-narrow"] .skeleton-guess-screen {
   padding: calc(var(--dig-sky) + var(--ds-space-s)) calc(var(--ds-space-m) + var(--screen-right)) calc(var(--dig-ochre) + var(--ds-space-l)) calc(var(--ds-space-m) + var(--screen-left));
 }
 
-html[data-size="wide-short"] .skeleton-guess-screen {
+html[data-size="wide-short"] .skeleton-dig.skeleton-guess-screen {
   --dig-sky: calc(56px + env(safe-area-inset-top));
   --dig-ochre: 0px;
   padding: calc(var(--dig-sky) + var(--ds-space-l)) calc(var(--ds-space-20) + var(--screen-right)) max(var(--ds-space-40), env(safe-area-inset-bottom)) calc(var(--ds-space-20) + var(--screen-left));

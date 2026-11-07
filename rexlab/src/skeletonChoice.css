@@ -2,7 +2,7 @@
    the best and MUSEUM in the sky over the title, or the title between them
    on a phone; on the sand the level switch over the skeletons, each a body
    in its pocket over its name. */
-html[data-size] .skeleton-choice-screen {
+html[data-size] .skeleton-dig.skeleton-choice-screen {
   --sc-gap: var(--ds-space-14);
   --sc-name-gap: var(--ds-space-s);
   --sc-name-size: 20px;
@@ -15,7 +15,7 @@ html[data-size] .skeleton-choice-screen {
   gap: var(--ds-space-l);
 }
 
-html[data-size="tall"] .skeleton-choice-screen {
+html[data-size="tall"] .skeleton-dig.skeleton-choice-screen {
   --sc-gap: var(--ds-space-20);
   --sc-name-gap: var(--ds-space-m);
   --sc-name-size: 22px;
@@ -25,7 +25,7 @@ html[data-size="tall"] .skeleton-choice-screen {
   --dig-ochre: calc(28px + env(safe-area-inset-bottom));
 }
 
-html[data-size="tall-narrow"] .skeleton-choice-screen {
+html[data-size="tall-narrow"] .skeleton-dig.skeleton-choice-screen {
   --sc-gap: var(--ds-space-m);
   --sc-name-gap: var(--ds-space-xs);
   --sc-name-size: 18px;
@@ -38,7 +38,7 @@ html[data-size="tall-narrow"] .skeleton-choice-screen {
   gap: var(--ds-space-m);
 }
 
-html[data-size="wide-short"] .skeleton-choice-screen {
+html[data-size="wide-short"] .skeleton-dig.skeleton-choice-screen {
   --sc-gap: var(--ds-space-s);
   --sc-name-gap: 0px;
   --sc-name-size: 16px;

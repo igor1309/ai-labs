@@ -1,28 +1,28 @@
 /* BONES' museum on the dig site (design/dig-site.pen, BONES · museum): the
    title in the sky and the stands on the sand, on no cards, each exhibit on
    its plinth. */
-html[data-size] .skeleton-museum-screen {
+html[data-size] .skeleton-dig.skeleton-museum-screen {
   --dig-sky: calc(156px + env(safe-area-inset-top));
   --dig-ochre: calc(40px + env(safe-area-inset-bottom));
   --museum-line-top: calc(var(--dig-sky) - 76px);
   padding: calc(var(--dig-sky) + var(--ds-space-xs)) calc(var(--ds-space-40) + var(--screen-right)) calc(var(--dig-ochre) + var(--ds-space-s)) calc(var(--ds-space-40) + var(--screen-left));
 }
 
-html[data-size="tall"] .skeleton-museum-screen {
+html[data-size="tall"] .skeleton-dig.skeleton-museum-screen {
   --dig-sky: calc(172px + env(safe-area-inset-top));
   --dig-ochre: calc(28px + env(safe-area-inset-bottom));
   --museum-line-top: calc(var(--dig-sky) - 92px);
   padding: calc(var(--dig-sky) + var(--ds-space-s)) calc(var(--ds-space-2xl) + var(--screen-right)) calc(var(--dig-ochre) + var(--ds-space-s)) calc(var(--ds-space-2xl) + var(--screen-left));
 }
 
-html[data-size="tall-narrow"] .skeleton-museum-screen {
+html[data-size="tall-narrow"] .skeleton-dig.skeleton-museum-screen {
   --dig-sky: calc(clamp(134px, 28dvh - 53px, 186px) + env(safe-area-inset-top));
   --dig-ochre: calc(10px + env(safe-area-inset-bottom));
   --museum-line-top: calc(var(--dig-sky) - 70px);
   padding: calc(var(--dig-sky) + var(--ds-space-xs)) calc(var(--ds-space-20) + var(--screen-right)) calc(var(--dig-ochre) + var(--ds-space-s)) calc(var(--ds-space-20) + var(--screen-left));
 }
 
-html[data-size="wide-short"] .skeleton-museum-screen {
+html[data-size="wide-short"] .skeleton-dig.skeleton-museum-screen {
   --dig-sky: calc(56px + env(safe-area-inset-top));
   --dig-ochre: 0px;
   padding: calc(var(--dig-sky) + var(--ds-space-xs)) calc(var(--ds-space-40) + var(--screen-right)) max(var(--ds-space-xs), env(safe-area-inset-bottom)) calc(var(--ds-space-40) + var(--screen-left));

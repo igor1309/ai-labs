@@ -104,6 +104,7 @@ jobs:
           - labyrinthLayout
           - labyrinthWalk
           - skeletonLayout
+          - skeletonWalk
           - homePhone
           - nativeTouch
           - homeTiles
