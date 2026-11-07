@@ -8,6 +8,8 @@ import type { Language } from "../src/language/language.ts";
 import { mediaViewport } from "../src/mediaViewport.ts";
 import { PicturesProvider, pictureStore } from "../src/Picture.tsx";
 import { PicturePuzzleChoiceScreen } from "../src/PicturePuzzleChoiceScreen.tsx";
+import { PicturePuzzleBoardScreen } from "../src/PicturePuzzleBoardScreen.tsx";
+import { cutPicture } from "../src/picturePuzzle/index.ts";
 import tyrannosaurus from "../src/assets/dinos/tyrannosaurus/body.webp";
 import triceratops from "../src/assets/dinos/triceratops/body.webp";
 import stegosaurus from "../src/assets/dinos/stegosaurus/body.webp";
@@ -43,5 +45,23 @@ export function mountChoice(options: { language?: Language; theme?: "light" | "d
   mount(options, (language) => (
     <PicturePuzzleChoiceScreen language={language} level={options.level ?? "hatchling"} onLevel={() => undefined} onChoose={() => undefined} onHome={() => undefined}
       choices={IDS.map((id, index) => ({ id, name: NAMES[language][index]!, picture: PICTURES[index]!, earned: index < stars }))} />
+  ));
+}
+
+// The board at a level, some pieces fitted, the rest in the tray in a
+// fixed shuffle.
+export function mountBoard(options: { language?: Language; theme?: "light" | "dark"; level?: AgeLevel; id?: number; fitted?: number; loading?: boolean }) {
+  const level = options.level ?? "hatchling";
+  const at = options.id ?? 0;
+  const cut = cutPicture(level);
+  const fitted = cut.pieces.slice(0, options.fitted ?? 0).map(({ id }) => id);
+  const order = cut.pieces.map(({ id }) => id).sort((a, b) => (a * 7) % cut.pieces.length - (b * 7) % cut.pieces.length);
+  mount(options, (language) => (
+    <PicturePuzzleBoardScreen language={language} picture={PICTURES[at]!}
+      scene={{ name: NAMES[language][at]!, columns: cut.columns, rows: cut.rows, guide: level === "hatchling",
+        slots: cut.pieces.map(({ id, home }) => ({ id, crop: home, filled: fitted.includes(id) })),
+        tray: order.filter((id) => !fitted.includes(id)).map((id) => ({ id, crop: cut.pieces[id]!.home })) }}
+      presence={{ isHidden: () => false, subscribe: () => () => {} }}
+      onPlace={() => false} dropFits={() => false} onBack={() => undefined} onHome={() => undefined} />
   ));
 }

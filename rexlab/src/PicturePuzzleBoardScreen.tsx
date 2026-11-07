@@ -1,11 +1,14 @@
-import { ArrowLeft, ChevronLeft, ChevronRight, Eye, House, Lightbulb, Puzzle, RotateCcw } from "lucide-react";
+import { ChevronLeft, ChevronRight, Eye, Lightbulb, Puzzle, RotateCcw } from "lucide-react";
 import { memo, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { Button } from "./Button.tsx";
+import { DigGround } from "./DigBar.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 import { OrientationGate, useGateShown } from "./OrientationGate.tsx";
 import { pictureBoardLayout } from "./picturePuzzleLayout.ts";
 import { PicturePuzzlePicture, type PictureCrop } from "./PicturePuzzlePicture.tsx";
+import { SkeletonBar } from "./SkeletonBar.tsx";
+import "./picturePuzzleBoard.css";
 
 export type BoardPresence = {
   isHidden(): boolean;
@@ -224,20 +227,20 @@ export function PicturePuzzleBoardScreen({ language, scene, picture, presence, o
 
   return (
     <OrientationGate shown={!layout.fits || room.upright} screenUpright={room.upright} language={language}>
-      <main className="picture-puzzle-board-screen" onPointerDownCapture={() => {
+      <main className="skeleton-dig picture-puzzle-board-screen" onPointerDownCapture={() => {
         if (!hold.current && !tap.current) skipClick.current = false;
       }} onClickCapture={(event) => {
         if (blocked.current || hold.current || tap.current || presence.isHidden() || (event.detail > 0 && skipClick.current)) {
           event.preventDefault(); event.stopPropagation();
         }
       }}>
-        <header className="picture-puzzle-board-bar">
-          <Button className="picture-puzzle-control" onClick={() => leave(onBack)}><ArrowLeft aria-hidden="true" />{text.back}</Button>
-          <h1>{scene.name.toLocaleUpperCase(language)}</h1>
-          <p role="status" aria-label={text.pictureFitted}><Puzzle aria-hidden="true" /><span key={fittedCount}>{fittedCount}/{scene.slots.length}</span></p>
-          <Button className="picture-puzzle-control" onClick={() => leave(onHome)}><House aria-hidden="true" />{text.home}</Button>
-        </header>
-        <div className="picture-puzzle-stage" ref={stage}>
+        <DigGround />
+        <SkeletonBar language={language} title={scene.name.toLocaleUpperCase(language)} Mark={Puzzle} onBack={() => leave(onBack)} onHome={() => leave(onHome)}>
+          <p className="skeleton-chip" role="status" aria-label={text.pictureFitted} data-complete={fittedCount === scene.slots.length || undefined}>
+            <Puzzle aria-hidden="true" /><span key={fittedCount}>{fittedCount}/{scene.slots.length}</span>
+          </p>
+        </SkeletonBar>
+        <div className="picture-puzzle-stage" ref={stage} style={{ "--board-width": `${layout.width}px`, "--board-height": `${layout.height}px` } as CSSProperties}>
           <div className="picture-puzzle-board" ref={board} role="group" aria-label={text.pictureBoard}
             style={{ width: layout.width, height: layout.height, gridTemplateColumns: `repeat(${scene.columns}, 1fr)`, gridTemplateRows: `repeat(${scene.rows}, 1fr)` }}>
             {scene.guide && <span className="picture-puzzle-guide"><BoardPicture src={picture} /></span>}
@@ -274,7 +277,7 @@ export function PicturePuzzleBoardScreen({ language, scene, picture, presence, o
               <span>{shownPage + 1}/{pages}</span>
               <Button className="picture-puzzle-control" aria-label={text.pictureNext} disabled={shownPage === pages - 1} onClick={() => setPage(shownPage + 1)}><ChevronRight aria-hidden="true" /></Button>
             </nav>
-            <Button className="picture-puzzle-control" disabled={unplaced.length === 0} onClick={askHint}><Lightbulb aria-hidden="true" />{text.pictureHint}</Button>
+            <Button className="picture-puzzle-control" data-active={hint !== undefined || undefined} disabled={unplaced.length === 0} onClick={askHint}><Lightbulb aria-hidden="true" />{text.pictureHint}</Button>
             <Button className="picture-puzzle-control" aria-pressed={preview} onClick={() => setPreview(!preview)}><Eye aria-hidden="true" />{text.picturePreview}</Button>
             <p className="picture-puzzle-retry" role="status">{release && !release.fitted && <span key={release.count}><RotateCcw aria-hidden="true" />{text.pictureRetry}</span>}</p>
           </aside>

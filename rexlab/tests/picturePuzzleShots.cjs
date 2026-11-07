@@ -11,7 +11,14 @@ const SHOTS = [
   ["choice-all", { level: "paleontologist", stars: 3 }],
   ["choice-loading", { level: "explorer", stars: 2, loading: true }],
   ["choice-returning-dark", { level: "explorer", stars: 2, theme: "dark" }],
-  ["choice-returning-ru", { level: "explorer", stars: 2, language: "ru" }]
+  ["choice-returning-ru", { level: "explorer", stars: 2, language: "ru" }],
+  ["board-start", { board: true }],
+  ["board-hatchling", { board: true, fitted: 5 }],
+  ["board-explorer", { board: true, level: "explorer", id: 1, fitted: 9 }],
+  ["board-paleo", { board: true, level: "paleontologist", id: 2, fitted: 20 }],
+  ["board-loading", { board: true, loading: true }],
+  ["board-explorer-dark", { board: true, level: "explorer", id: 1, fitted: 9, theme: "dark" }],
+  ["board-explorer-ru", { board: true, level: "explorer", id: 1, fitted: 9, language: "ru" }]
 ];
 
 (async () => {
@@ -35,7 +42,7 @@ const SHOTS = [
     });
     await page.goto("http://shots.test/");
     for (const [name, options] of SHOTS.filter(([name]) => !process.env.ONLY || name.startsWith(process.env.ONLY))) {
-      await page.evaluate(async options => { { const harness = await import("/harness.js"); harness.mountChoice(options); } await document.fonts.ready; }, options);
+      await page.evaluate(async options => { { const harness = await import("/harness.js"); options.board ? harness.mountBoard(options) : harness.mountChoice(options); } await document.fonts.ready; }, options);
       if (!options.loading) await page.waitForFunction(() => [...document.images].every(image => image.complete));
       await page.evaluate(() => Promise.all(document.getAnimations().filter(a => a.effect?.getComputedTiming().iterations !== Infinity).map(a => a.finished.catch(() => {}))));
       await page.screenshot({ path: join(out, `${name}.png`) });

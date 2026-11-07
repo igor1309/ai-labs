@@ -3,7 +3,8 @@
 // fits every window it plays in at every level, in English with motion and
 // in Russian without it: no page scroll, nothing off screen, no overlap, no
 // cut label, every control at least 48 wide; without motion, every animation
-// is a short fade.
+// is a short fade. The board, at its start, part fitted and loading, does the
+// same in every wide window at every level.
 const assert = require("node:assert/strict");
 const { resolve } = require("node:path");
 const { chromium } = require("playwright");
@@ -25,6 +26,7 @@ const VIEWPORTS = [
 ];
 const LEVELS = ["hatchling", "explorer", "paleontologist"];
 const CHOICES = [{ stars: 0 }, { stars: 2 }, { stars: 3 }, { stars: 2, loading: true }];
+const BOARDS = [{ fitted: 0 }, { fitted: 5, id: 1 }, { fitted: 0, loading: true }];
 const stillEnough = page => page.evaluate(() => document.getAnimations()
   .filter(a => a.effect?.getComputedTiming().iterations !== Infinity)
   .map(a => ({ name: a.animationName ?? "", duration: a.effect.getComputedTiming().duration }))
@@ -71,6 +73,9 @@ const stillEnough = page => page.evaluate(() => document.getAnimations()
         await page.setViewportSize({ width: viewport.width, height: viewport.height });
         for (const level of LEVELS) for (const options of CHOICES) {
           await check("mountChoice", { language, level, ...options }, ".picture-puzzle-choice-screen", `${language} choice ${level} ${options.stars} stars${options.loading ? " loading" : ""}`, viewport);
+        }
+        if (viewport.size === "wide") for (const level of LEVELS) for (const options of BOARDS) {
+          await check("mountBoard", { language, level, ...options }, ".picture-puzzle-board-screen", `${language} board ${level} ${options.fitted} fitted${options.loading ? " loading" : ""}`, viewport);
         }
       }
       assert.deepEqual(errors, []);

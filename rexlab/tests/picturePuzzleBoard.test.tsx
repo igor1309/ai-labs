@@ -1,3 +1,4 @@
+import "./picturePuzzleSheets.ts";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
@@ -83,17 +84,14 @@ const place = (id: number, language: Language = "en") => {
 
 // jsdom has no layout engine; the board still receives the bounds of the
 // flex stage derived from the screen's real computed padding, bar and gap.
-function stageBudget(stage: HTMLElement): DOMRect {
-  const main = stage.closest("main")!;
-  const screen = getComputedStyle(main);
-  const bar = getComputedStyle(main.querySelector("header")!);
-  const top = parseFloat(screen.paddingTop);
-  const left = parseFloat(screen.paddingLeft);
-  const barHeight = Math.max(parseFloat(bar.flexBasis), parseFloat(bar.minHeight));
-  const gap = parseFloat(screen.gap);
-  return DOMRect.fromRect({ x: left, y: top + barHeight + gap,
-    width: window.innerWidth - left - parseFloat(screen.paddingRight),
-    height: parseFloat(screen.height) - top - parseFloat(screen.paddingBottom) - barHeight - gap });
+// The stage's room on a wide screen as picturePuzzleBoard.css leaves it: the
+// sky over it with the bar, the ochre under it and the sides (jsdom does not
+// resolve the sheet's calc() padding).
+const STAGE_ALLOWANCE = { top: 88 + 4, bottom: 48 + 16, side: 40 };
+
+function stageBudget(_stage: HTMLElement): DOMRect {
+  const { top, bottom, side } = STAGE_ALLOWANCE;
+  return DOMRect.fromRect({ x: side, y: top, width: window.innerWidth - 2 * side, height: window.innerHeight - top - bottom });
 }
 
 function assertBoardFit(view: ReturnType<typeof openBoard>) {
@@ -141,7 +139,7 @@ describe.each(LANGUAGES)("picture board in %s", (language) => {
       expect([style.minWidth, style.minHeight]).toEqual(["48px", "48px"]);
       expect(target.querySelector("svg") !== null || target.classList.contains("picture-puzzle-slot")).toBe(true);
     }
-    expect(getComputedStyle(piece(0, language)).backgroundColor).toBe("rgb(24, 30, 46)");
+    expect(getComputedStyle(piece(0, language)).backgroundColor).toBe("rgb(56, 45, 34)");
     const images = [...view.container.querySelectorAll<HTMLImageElement>("img")];
     expect(images.length).toBeGreaterThan(0);
     expect(images.every((image) => image.dataset.picture === "loading" && !image.hasAttribute("src"))).toBe(true);
@@ -380,8 +378,8 @@ describe.each(LANGUAGES)("outer puzzle screen fit in %s", (language) => {
     expect(parseFloat(getComputedStyle(main).height)).toBeLessThanOrEqual(height);
     expect(room.x).toBeGreaterThanOrEqual(0);
     expect(room.y).toBeGreaterThanOrEqual(0);
-    expect(room.right + parseFloat(getComputedStyle(main).paddingRight)).toBeLessThanOrEqual(width);
-    expect(room.bottom + parseFloat(getComputedStyle(main).paddingBottom)).toBeLessThanOrEqual(height);
+    expect(room.right + STAGE_ALLOWANCE.side).toBeLessThanOrEqual(width);
+    expect(room.bottom + STAGE_ALLOWANCE.bottom).toBeLessThanOrEqual(height);
     assertBoardFit(view);
   });
 });
