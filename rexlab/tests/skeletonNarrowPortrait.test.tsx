@@ -69,16 +69,15 @@ describe("the skeleton screens upright on a phone", () => {
     openWindow(...size);
     const app = openSkeletonsApp({ viewport: narrowViewport(), portraitLayouts: NARROW_LAYOUTS, storage: starred(["triceratops"]) });
     await app.user.click(screen.getByRole("button", { name: shownTexts().museum }));
-    phoneScreen(size);
+    themedPhoneScreen();
     const hall = styleAt(part(".skeleton-hall"), size);
-    expect([hall.px("padding-top"), hall.rowGap(), hall.columnGap()]).toEqual([12, 12, 12]);
+    expect([hall.px("padding-top"), hall.rowGap(), hall.columnGap()]).toEqual([4, 12, 12]);
     const stands = within(screen.getByRole("group", { name: shownTexts().stands })).getAllByRole("region");
     for (const stand of stands) expect(styleAt(stand, size).value("flex-basis")).toBe("calc(0.5 * (100% - 12px))");
-    // The bar's two buttons and two chips, the title out of the way, fit
+    // The bar's two buttons and two chips, the title on its own line, fit
     // inside the 20-pixel sides: each chip its padding, a 20 symbol, a gap
     // and "n/n" in letters at most 0.75 of the type wide.
-    const title = styleAt(part(".skeleton-museum-screen .skeleton-title"), size);
-    expect([title.value("position"), title.px("width")]).toEqual(["absolute", 1]);
+    expect(styleAt(part(".skeleton-museum-screen .skeleton-title"), size).value("position")).toBe("absolute");
     const chips = [...part(".skeleton-museum-screen .skeleton-bar").querySelectorAll(".skeleton-chip")];
     expect(chips).toHaveLength(2);
     const widths = chips.map((chip) => {

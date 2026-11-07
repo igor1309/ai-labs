@@ -9,6 +9,7 @@ import { mediaViewport } from "../src/mediaViewport.ts";
 import { PicturesProvider, pictureStore } from "../src/Picture.tsx";
 import { SkeletonChoiceScreen } from "../src/SkeletonChoiceScreen.tsx";
 import { SkeletonGuessScreen } from "../src/SkeletonGuessScreen.tsx";
+import { SkeletonMuseumScreen, type ShownStand } from "../src/SkeletonMuseumScreen.tsx";
 import { SkeletonPuzzleScreen, type ShownHelpStep } from "../src/SkeletonPuzzleScreen.tsx";
 import data from "../src/data/skeletons.json";
 import tyrannosaurus from "../src/assets/dinos/tyrannosaurus/body.webp";
@@ -100,6 +101,28 @@ export function mountGuess(options: { language?: Language; theme?: "light" | "da
       <SkeletonGuessScreen language={language} skeleton={bone("triceratops", "skeleton")} frame={data.frame} clue={options.wrong ? clue : undefined}
         choices={[0, 1, 3].map((index, at) => ({ id: IDS[index]!, name: NAMES[language][index]!, picture: PICTURES[index]!, wrong: Boolean(options.wrong) && at === 0 }))}
         onGuess={() => undefined} onBack={() => undefined} onMuseum={() => undefined} onHome={() => undefined} />
+    </PicturesProvider>
+  ));
+}
+
+// The museum: every stand empty, some built, one awaiting its rebuild, or
+// all built with every badge, and the jaw shelf when it shows.
+export function mountMuseum(options: { language?: Language; theme?: "light" | "dark"; state?: "empty" | "mixed" | "full"; jaw?: boolean; loading?: boolean }) {
+  root?.unmount();
+  const language = options.language ?? "en";
+  const state = options.state ?? "mixed";
+  const mixed: ShownStand[] = ["built", "rebuilding", "empty", "empty", "built"];
+  const shown = (index: number): ShownStand => state === "mixed" ? mixed[index]! : state === "full" ? "built" : "empty";
+  const score = IDS.filter((_, index) => shown(index) !== "empty").length;
+  document.documentElement.dataset.theme = options.theme ?? "light";
+  document.documentElement.lang = language;
+  const host = document.getElementById("root") ?? document.body.appendChild(Object.assign(document.createElement("div"), { id: "root" }));
+  root = createRoot(host);
+  flushSync(() => root!.render(
+    <PicturesProvider store={options.loading ? loading : loaded} startTimer={() => () => {}}>
+      <SkeletonMuseumScreen language={language} score={score} total={IDS.length} best={score > 0 ? score : undefined}
+        stands={IDS.map((id, index) => ({ id, name: NAMES[language][index]!, skeleton: bone(id, "skeleton"), state: shown(index), badges: state === "full" ? ["explorer", "paleontologist"] as const : shown(index) === "rebuilding" ? ["explorer"] as const : [] }))}
+        onBuild={() => undefined} onRebuild={() => undefined} onBuildAnother={() => undefined} onHome={() => undefined} onJawShelf={options.jaw ? () => undefined : undefined} />
     </PicturesProvider>
   ));
 }

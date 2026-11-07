@@ -8112,13 +8112,6 @@ html[data-size="tall-narrow"] .skeleton-chip {
   font-size: 17px;
 }
 
-html[data-size="tall-narrow"] .skeleton-museum-screen .skeleton-title {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-}
 
 
 

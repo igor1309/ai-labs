@@ -1,4 +1,4 @@
-// Contract test: BONES' choice, puzzle and guess. The choice, on a first visit, on a return with stars and
+// Contract test: BONES' choice, puzzle, guess and museum. The choice, on a first visit, on a return with stars and
 // the mystery tile, with every star and with its pictures still loading,
 // fits every window it plays in at every level, in English with motion and
 // in Russian without it: no page scroll, nothing off screen, no overlap, no
@@ -25,6 +25,7 @@ const VIEWPORTS = [
 ];
 const LEVELS = ["hatchling", "explorer", "paleontologist"];
 const CHOICES = [{ stars: 0 }, { stars: 2 }, { stars: 5 }, { stars: 2, loading: true }];
+const MUSEUMS = [{ state: "empty" }, { state: "mixed" }, { state: "full" }, { state: "full", jaw: true }, { state: "mixed", jaw: true, loading: true }];
 const GUESSES = [{}, { wrong: true }, { wrong: true, loading: true }];
 const PUZZLES = [{}, { fitted: 2 }, { fitted: 2, step: "glow" }, { fitted: 2, step: "ghost" }, { fitted: 2, told: true }, { fitted: 99 }, { loading: true }];
 // The finished skeleton's stomp and snap and a wrong guess's wobble run on, but every keyframe moves by
@@ -103,6 +104,20 @@ const stillEnough = page => page.evaluate(() => document.getAnimations()
           });
           assert.deepEqual(moving, [], `${state} at ${viewport.name}: without motion, animations are short fades`);
           await checkLayout(page, { root: ".skeleton-guess-screen", minimum: 48, viewport, state });
+          checked++;
+        }
+        // The museum, from an empty hall to every stand built with every badge.
+        for (const options of MUSEUMS) {
+          const state = `${language} museum ${JSON.stringify(options)}`;
+          await page.evaluate(async options => (await import("/harness.js")).mountMuseum(options), { language, ...options });
+          if (!options.loading) await page.waitForFunction(() => [...document.images].every(image => image.complete && image.naturalWidth > 0));
+          const moving = motion === "reduce" ? await stillEnough(page) : [];
+          await page.evaluate(async () => {
+            await document.fonts.ready;
+            await Promise.all(document.getAnimations().filter(a => a.effect?.getComputedTiming().iterations !== Infinity).map(a => a.finished.catch(() => {})));
+          });
+          assert.deepEqual(moving, [], `${state} at ${viewport.name}: without motion, animations are short fades`);
+          await checkLayout(page, { root: ".skeleton-museum-screen", minimum: 48, viewport, state });
           checked++;
         }
       }

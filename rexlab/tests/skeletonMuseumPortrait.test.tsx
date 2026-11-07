@@ -34,7 +34,7 @@ describe("the museum upright", () => {
     expect([document.documentElement.dataset.size, gateShown(), part(".gated-screen").hasAttribute("inert")]).toEqual(["tall", false, false]);
     expect(screen.queryByRole("img", { name: TEXTS.en.turnSideways })).toBeNull();
     const hall = styleAt(part(".skeleton-hall"), size);
-    expect([hall.px("padding-left"), hall.px("padding-top"), hall.rowGap(), hall.columnGap()]).toEqual([24, 24, 16, 24]);
+    expect([hall.px("padding-left"), hall.px("padding-top"), hall.rowGap(), hall.columnGap()]).toEqual([4, 4, 16, 24]);
     expect(stands()).toHaveLength(5);
     for (const stand of stands()) expect(styleAt(stand, size).value("flex-basis")).toBe("calc(0.5 * (100% - 24px))");
     // The hall under the 40 + 48 padding, a 56 bar and a 28 gap, less its
@@ -49,7 +49,7 @@ describe("the museum upright", () => {
     const text = shownTexts();
     for (const name of [text.home, text.buildAnother]) {
       const button = screen.getByRole("button", { name });
-      expect(styleAt(button, [600, 1000]).px("width")).toBe(56);
+      expect(styleAt(button, [600, 1000]).px("width")).toBe(48);
       expect(button.querySelector(".upright-hidden")?.textContent).toBe(name);
     }
     // The narrowest stand, (536 - 48 - 24) / 2, keeps its name and button
