@@ -1,4 +1,4 @@
-/// Presentation values for Call notes. The future Settings machine maps its
+/// Presentation values for Call notes. The Settings machine maps its
 /// domain choices into these fields, disclosures and action availability.
 public extension SettingsState {
 

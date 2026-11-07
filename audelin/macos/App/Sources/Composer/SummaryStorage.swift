@@ -39,10 +39,20 @@ final class SummaryStorage: SummaryFiles.Locations, Sendable {
     private func calls(_ folder: URL) -> Calls { Calls(folder: folder, timeZone: timeZone, duration: TrackFile.duration(at:)) }
     func withFolder<Value: Sendable>(call: String, _ operation: @Sendable (URL) throws -> Value) throws -> Value {
         try state.withLock { state in
-            let matches = state.roots.compactMap { try? calls($0).location(id: call) }
-            guard matches.count == 1, let folder = matches.first else { throw CocoaError(.fileNoSuchFile) }
+            var matches: [URL] = []
+            var firstFailure: (any Error)?
+            for root in state.roots {
+                do { matches.append(try calls(root).location(id: call)) }
+                catch { if firstFailure == nil { firstFailure = error } }
+            }
+            guard !matches.isEmpty else { throw firstFailure ?? CocoaError(.fileNoSuchFile) }
+            guard matches.count == 1, let folder = matches.first else { throw AmbiguousCall(id: call) }
             return try operation(folder)
         }
+    }
+    private struct AmbiguousCall: LocalizedError {
+        let id: String
+        var errorDescription: String? { "Несколько папок имеют префикс «\(id)»." }
     }
     func perform<Value: Sendable>(_ work: @escaping @Sendable () throws -> Value) async throws -> Value {
         try await withCheckedThrowingContinuation { done in queue.async { done.resume(with: Result(catching: work)) } }

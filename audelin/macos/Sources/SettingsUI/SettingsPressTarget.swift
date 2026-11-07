@@ -14,7 +14,8 @@ struct SettingsPressTarget: NSViewRepresentable {
     func makeCoordinator() -> Coordinator { Coordinator(action: action) }
 
     func makeNSView(context: Context) -> NSButton {
-        let button = NSButton(title: "", target: context.coordinator, action: #selector(Coordinator.press(_:)))
+        let button = AccessiblePressButton(title: "", target: context.coordinator, action: #selector(Coordinator.press(_:)))
+        button.isCheckbox = checked != nil
         button.setButtonType(checked == nil ? .momentaryPushIn : .switch)
         button.isBordered = false
         button.isTransparent = true
@@ -41,5 +42,18 @@ struct SettingsPressTarget: NSViewRepresentable {
             if let checked { sender.state = checked ? .on : .off }
             action()
         }
+    }
+}
+
+/// Transparent AppKit buttons need explicit AX semantics: their label is drawn
+/// by SwiftUI, but the native control still owns focus and activation.
+private final class AccessiblePressButton: NSButton {
+    var isCheckbox = false
+    override func accessibilityRole() -> NSAccessibility.Role? { isCheckbox ? .checkBox : .button }
+    override func accessibilityValue() -> Any? { isCheckbox ? NSNumber(value: state == .on) : super.accessibilityValue() }
+    override func accessibilityPerformPress() -> Bool {
+        guard isEnabled else { return false }
+        performClick(nil)
+        return true
     }
 }

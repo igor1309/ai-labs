@@ -17,12 +17,14 @@ struct CallNotesVisualStateTests {
         draft.runtimes[0].fields[0].isInvalid = true
         state.callNotes = .loaded(draft)
         host.rootView = SettingsPreview(state: state, scheme: scheme)
+        host.layoutSubtreeIfNeeded()
         let invalid = try #require(Offscreen.snapshot(host))
         // A field outline spans hundreds of pixels, unlike a glyph's fringe.
         #expect(pixels(red, in: invalid) > 300)
         draft.runtimes[0].fields[0].isInvalid = false
         state.callNotes = .loaded(draft)
         host.rootView = SettingsPreview(state: state, scheme: scheme)
+        host.layoutSubtreeIfNeeded()
         #expect(pixels(red, in: try #require(Offscreen.snapshot(host))) == 0)
     }
 
@@ -42,20 +44,25 @@ struct CallNotesVisualStateTests {
             draft.statusTone = tone
             state.callNotes = .loaded(draft)
             host.rootView = SettingsPreview(state: state, scheme: scheme)
+            host.layoutSubtreeIfNeeded()
             let image = try #require(Offscreen.snapshot(host))
             #expect(pixels(rgb, in: image) > pixels(rgb, in: blank) + 40, "Missing status color for \(tone), \(scheme)")
         }
     }
 
     private func pixels(_ rgb: UInt32, in image: NSBitmapImageRep) -> Int {
-        let expected = [Double((rgb >> 16) & 255), Double((rgb >> 8) & 255), Double(rgb & 255)]
+        let expected = [Int((rgb >> 16) & 255), Int((rgb >> 8) & 255), Int(rgb & 255)]
+        guard let source = image.cgImage,
+              let context = CGContext(data: nil, width: source.width, height: source.height,
+                                      bitsPerComponent: 8, bytesPerRow: source.width * 4,
+                                      space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue),
+              let data = context.data else { return 0 }
+        context.draw(source, in: CGRect(x: 0, y: 0, width: source.width, height: source.height))
+        let bytes = data.assumingMemoryBound(to: UInt8.self)
         var count = 0
-        for y in 0..<image.pixelsHigh {
-            for x in 0..<image.pixelsWide {
-                guard let color = image.colorAt(x: x, y: y)?.usingColorSpace(.sRGB) else { continue }
-                let actual = [color.redComponent * 255, color.greenComponent * 255, color.blueComponent * 255]
-                if zip(actual, expected).allSatisfy({ abs($0 - $1) < 4 }) { count += 1 }
-            }
+        for offset in stride(from: 0, to: source.width * source.height * 4, by: 4) {
+            if (0..<3).allSatisfy({ abs(Int(bytes[offset + $0]) - expected[$0]) < 4 }) { count += 1 }
         }
         return count
     }

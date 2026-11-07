@@ -42,3 +42,12 @@ them. Python rehearsal tooling tests and CI path-selection tests passed.
 
 This checkpoint approves the Settings presentation phase. Runtime, persistence,
 recording handoff and production wiring follow it in the same PR.
+
+After wiring and native-control repairs, repeated `rehearsal.sh all`: all 34
+exports passed. Inspected all 12 Recording images and all 22 Call notes images
+against the design in both appearances. Content, errors, status tones, disabled
+actions and complete disclosures remain visible. The documented native-menu and
+text-metric differences remain; no new layout difference was found. Additional
+native probes passed for rejected/normalized live edits, both runtime menus,
+updated callbacks, tab selection, keyboard and accessibility activation. Pixel
+probes verify error outlines and all three status tones in both appearances.

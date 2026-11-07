@@ -20,24 +20,14 @@ struct CallNotesAccessibilityTests {
         let notes = try button("tab-callNotes", in: host)
         let checkbox = try button("notes-automatic", in: host)
         let action = try button("notes-validate", in: host)
-        let baseline = NSButton(title: "Baseline", target: nil, action: nil)
-        baseline.frame = NSRect(x: 0, y: 0, width: 80, height: 24)
-        host.addSubview(baseline)
-        defer { baseline.removeFromSuperview() }
-        // AppKit can report AXUnknown for every NSButton in a non-AX host.
-        // Compare native contracts in the same live window instead of requiring
-        // a role that depends on the test process's AX integration.
         for control in [recording, notes, action] {
-            #expect(control.accessibilityRole() == baseline.accessibilityRole())
+            #expect(control.accessibilityRole() == .button)
             #expect(control.cell is NSButtonCell)
             #expect(control.state == .off)
             #expect(control.isAccessibilityElement())
             #expect(control.focusRingType == .exterior)
         }
-        let baselineCheckbox = NSButton(checkboxWithTitle: "Baseline checkbox", target: nil, action: nil)
-        host.addSubview(baselineCheckbox)
-        defer { baselineCheckbox.removeFromSuperview() }
-        #expect(checkbox.accessibilityRole() == baselineCheckbox.accessibilityRole())
+        #expect(checkbox.accessibilityRole() == .checkBox)
         #expect(checkbox.cell is NSButtonCell)
         #expect(checkbox.accessibilityValue() as? Int == 0)
         #expect(!recording.isAccessibilitySelected())
