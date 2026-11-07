@@ -1,3 +1,4 @@
+import SettingsUI
 import CallsListUI
 import Recordings
 import AppKit
@@ -20,6 +21,7 @@ struct AudelinApp: App {
     @NSApplicationDelegateAdaptor(AudelinAppDelegate.self) private var appDelegate
     @State private var model: AudelinMenu?
     @State private var panel: FloatingPanel?
+    @State private var settingsWindow: NSWindow?
     @State private var callsWindow: CallsWindow?
 
     @MainActor
@@ -33,6 +35,13 @@ struct AudelinApp: App {
                      styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
         }, activate: { NSApplication.shared.activate() })
         self.callsWindow = callsWindow
+        let settingsWindow = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 668, height: 700),
+                                      styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
+        settingsWindow.title = "Настройки Audelin"
+        settingsWindow.isReleasedWhenClosed = false
+        settingsWindow.minSize = NSSize(width: 668, height: 400)
+        settingsWindow.center()
+        self.settingsWindow = settingsWindow
         let boundary = await makeRealBoundary()
         let model = await compose(
             boundary: boundary,
@@ -40,9 +49,21 @@ struct AudelinApp: App {
             openCallsFolder: { NSWorkspace.shared.open($0) }, presentCalls: { callsWindow.show() },
             openURL: { NSWorkspace.shared.open($0) },
             presentPanel: { [weak panel] in panel?.setVisible($0) },
-            terminate: { await MainActor.run { NSApplication.shared.terminate(nil) } }
+            terminate: { await MainActor.run { appDelegate.terminationReady = true; NSApplication.shared.terminate(nil) } },
+            presentSettings: {
+                NSApplication.shared.activate()
+                settingsWindow.deminiaturize(nil)
+                settingsWindow.makeKeyAndOrderFront(nil)
+            }, chooseCallsFolder: {
+                let picker = NSOpenPanel()
+                picker.canChooseDirectories = true; picker.canChooseFiles = false; picker.canCreateDirectories = true
+                return await withCheckedContinuation { done in
+                    picker.begin { result in done.resume(returning: result == .OK ? picker.url : nil) }
+                }
+            }
         )
         self.model = model
+        settingsWindow.contentView = NSHostingView(rootView: SettingsContent(model: model))
         if let calls = model.calls { callsWindow.install(content: NSHostingView(rootView: CallsContent(model: calls))) }
         panel.install(model)
         appDelegate.connect(model)
@@ -99,10 +120,22 @@ final class AudelinAppDelegate: NSObject, NSApplicationDelegate {
     /// Unset while the app starts: a reopen then is the launch itself, and
     /// recording's state is not known yet to choose a window.
     var reopen: (() -> Void)?
+    var requestQuit: (() async -> Void)?
+    var terminationReady = false
+    private var quitRequested = false
 
     func connect(_ menu: AudelinMenu) {
 
+        requestQuit = { [weak menu] in await menu?.perform(.quit) }
+        if quitRequested { Task { await menu.perform(.quit) } }
         reopen = { [weak menu] in menu?.appReopened() }
+    }
+
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard !terminationReady else { return .terminateNow }
+        quitRequested = true
+        if let requestQuit { Task { await requestQuit() } }
+        return .terminateCancel
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
@@ -120,5 +153,13 @@ private struct CallsContent: View {
     let model: AudelinCalls
     var body: some View {
         CallsListView(state: model.state, event: { event in Task { await model.send(event) } })
+    }
+}
+
+private struct SettingsContent: View {
+    let model: AudelinMenu
+    var body: some View {
+        SettingsScrollView(state: model.settingsState, event: { event in Task { await model.sendSettings(event) } })
+            .disabled(model.quitting)
     }
 }

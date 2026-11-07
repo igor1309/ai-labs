@@ -18,13 +18,13 @@ final class AudelinRecording: Sendable {
 
     init(
         preferences: PreferencesStore, boundary: ComposerBoundary, processes: CoreAudioProcesses,
-        panel: AudelinPanel
+        panel: AudelinPanel, summaries: SummaryCallbacks = .disabled
     ) async throws {
 
         let app = RecordingCallApp()
         self.panel = panel
         let (recording, conditions) = await composeRecordingWithPreferences(
-            preferences: preferences, callApp: app, processes: processes, boundary: boundary, panel: panel
+            preferences: preferences, callApp: app, processes: processes, boundary: boundary, panel: panel, summaries: summaries
         )
         let inputs = recording
         self.inputs = inputs
@@ -45,6 +45,9 @@ final class AudelinRecording: Sendable {
             await conditions.refresh()
         }
     }
+
+    func reserveStorage() async -> Bool { await inputs.reserveStorage() }
+    func releaseStorage() async { await conditions.refresh(); await inputs.releaseStorage() }
 
     func lifecycle(terminate: @escaping @Sendable () async -> Void) -> LifecycleEffectHandler {
 

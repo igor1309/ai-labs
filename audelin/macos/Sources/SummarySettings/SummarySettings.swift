@@ -39,7 +39,10 @@ public struct State: Equatable, Sendable {
     }
 }
 
+public enum Slot: Sendable { case primary, fallback }
+public enum Field: Sendable { case model, executable, endpoint, credentialVariable }
 public enum Event: Equatable, Sendable {
+    case setEnabled(Bool), setSpeakers(Bool), selectKind(Slot, Configuration.Runtime.Kind), editField(Slot, Field, String)
     case load, loaded(Configuration), loadFailed
     case edit(Configuration), validate, validated(UInt64, String?), save
     case saved(UInt64, Configuration), saveFailed(UInt64)
@@ -59,6 +62,31 @@ public struct Reducer: Sendable {
         var next = state
         var effect: Effect?
         switch event {
+        case let .setEnabled(value):
+            guard var draft = state.draft else { return (state, nil) }
+            draft.enabled = value; return reduce(state, .edit(draft))
+        case let .setSpeakers(value):
+            guard var draft = state.draft else { return (state, nil) }
+            draft.speakers = value; return reduce(state, .edit(draft))
+        case let .selectKind(slot, kind):
+            guard var draft = state.draft else { return (state, nil) }
+            var runtime = slot == .primary ? draft.primary : draft.fallback
+            runtime.kind = kind
+            if kind == .claudeCLI { runtime.model = "sonnet"; runtime.executable = "/opt/homebrew/bin/claude" }
+            else { runtime.model = "gpt-4.1-mini"; runtime.endpoint = "https://api.openai.com/v1"; runtime.credentialVariable = "OPENAI_API_KEY" }
+            if slot == .primary { draft.primary = runtime } else { draft.fallback = runtime }
+            return reduce(state, .edit(draft))
+        case let .editField(slot, field, value):
+            guard var draft = state.draft else { return (state, nil) }
+            var runtime = slot == .primary ? draft.primary : draft.fallback
+            switch field {
+            case .model: runtime.model = value
+            case .executable: runtime.executable = value
+            case .endpoint: runtime.endpoint = value
+            case .credentialVariable: runtime.credentialVariable = value
+            }
+            if slot == .primary { draft.primary = runtime } else { draft.fallback = runtime }
+            return reduce(state, .edit(draft))
         case .load where state.phase == .idle || state.phase == .loadFailed:
             next.phase = .loading; effect = .load
         case let .loaded(config) where state.phase == .loading:

@@ -57,16 +57,16 @@ public actor Files {
     public func claim(_ record: Record) throws -> (owned: Bool, record: Record) {
         try locations.withFolder(call: record.call) { [disk] folder in
             let path = folder.appendingPathComponent(".summary-job.json")
-            if try disk.exists(path) { return (false, try Self.read(path, disk: disk)) }
+            if try disk.exists(path) { return (false, try Self.read(path, disk: disk, call: record.call)) }
             let owned = try disk.create(JSONEncoder().encode(record), at: path)
-            return (owned, owned ? record : try Self.read(path, disk: disk))
+            return (owned, owned ? record : try Self.read(path, disk: disk, call: record.call))
         }
     }
     public func load(call: String) throws -> Record? {
         try locations.withFolder(call: call) { [disk] folder in
             let path = folder.appendingPathComponent(".summary-job.json")
             guard try disk.exists(path) else { return nil }
-            var record = try Self.read(path, disk: disk)
+            var record = try Self.read(path, disk: disk, call: call)
             if record.phase == "running" {
                 let output = folder.appendingPathComponent("summary.md")
                 if try disk.exists(output), let receipt = Self.receipt(try disk.read(output)),
@@ -88,7 +88,7 @@ public actor Files {
             guard fd >= 0 else { throw CocoaError(.fileWriteUnknown) }
             defer { flock(fd, LOCK_UN); close(fd) }
             guard flock(fd, LOCK_EX | LOCK_NB) == 0 else { return false }
-            var current = try Self.read(path, disk: disk)
+            var current = try Self.read(path, disk: disk, call: record.call)
             guard current.job == record.job, current.input == record.input, current.phase == "pending" else { return false }
             current.phase = "running"
             try disk.replace(JSONEncoder().encode(current), at: path)
@@ -98,7 +98,7 @@ public actor Files {
     public func progress(_ record: Record) throws {
         try locations.withFolder(call: record.call) { [disk] folder in
             let path = folder.appendingPathComponent(".summary-job.json")
-            let current = try Self.read(path, disk: disk)
+            let current = try Self.read(path, disk: disk, call: record.call)
             guard current.job == record.job, current.input == record.input, current.phase == "running" else { throw CocoaError(.fileWriteUnknown) }
             var updated = record
             if updated.checkpoint == nil { updated.checkpoint = current.checkpoint }
@@ -107,7 +107,7 @@ public actor Files {
     }
     public func publish(_ record: Record, notes: String) throws {
         try locations.withFolder(call: record.call) { [disk] folder in
-            let current = try Self.read(folder.appendingPathComponent(".summary-job.json"), disk: disk)
+            let current = try Self.read(folder.appendingPathComponent(".summary-job.json"), disk: disk, call: record.call)
             guard current.job == record.job, current.input == record.input, current.phase == "running" else { throw CocoaError(.fileWriteUnknown) }
             let receipt = Receipt(job: record.job, input: record.input, warning: record.warning)
             let marker = try JSONEncoder().encode(receipt).base64EncodedString()
@@ -116,9 +116,9 @@ public actor Files {
             try disk.replace(data, at: folder.appendingPathComponent("summary.md"))
         }
     }
-    private static func read(_ url: URL, disk: any Disk) throws -> Record {
+    private static func read(_ url: URL, disk: any Disk, call: String) throws -> Record {
         let record = try JSONDecoder().decode(Record.self, from: disk.read(url))
-        guard !record.job.isEmpty, !record.call.isEmpty, !record.input.isEmpty,
+        guard !record.job.isEmpty, record.call == call, !record.input.isEmpty,
               ["pending", "running", "succeeded", "failed", "interrupted"].contains(record.phase) else { throw CocoaError(.fileReadCorruptFile) }
         return record
     }

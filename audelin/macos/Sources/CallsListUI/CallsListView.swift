@@ -78,7 +78,13 @@ public struct CallsListView: View {
                     .overlay(RoundedRectangle(cornerRadius: tokens.radiusControl).stroke(tokens.me, lineWidth: 1.5))
                 } else {
                     Button { event(.beginRename(row.id)) } label: {
-                        Text(row.displayTitle).frame(maxWidth: .infinity, alignment: .leading).contentShape(.rect)
+                        VStack(alignment: .leading, spacing: tokens.space4) {
+                            Text(row.displayTitle)
+                            if !row.summaryStatus.isEmpty {
+                                Text(row.summaryStatus).font(tokens.ui(tokens.typeCaption)).foregroundStyle(tokens.sub)
+                                    .accessibilityIdentifier("calls.summary.\(row.id)")
+                            }
+                        }.frame(maxWidth: .infinity, alignment: .leading).contentShape(.rect)
                     }
                     .buttonStyle(.plain).disabled(!row.editable || state.busy)
                 }

@@ -1,14 +1,18 @@
 import Darwin
+import Darwin.crt_externs
 import Foundation
 import Synchronization
 
 /// Uses an owned process group and nonblocking pipes on a dedicated queue. No
 /// cooperative thread waits on process I/O, blocked stdin, termination or reap.
 public struct ProcessRunner: ProcessRunning {
+    public enum Event: Sendable { case launched(Int32), inputBlocked, terminating, reaped(Int32) }
+    private let observe: @Sendable (Event) -> Void
     private let now: @Sendable () -> Double
     private let deadline: Double
     private let outputLimit: Int
-    public init(now: @escaping @Sendable () -> Double, deadline: Double, outputLimit: Int) {
+    public init(now: @escaping @Sendable () -> Double, deadline: Double, outputLimit: Int, observe: @escaping @Sendable (Event) -> Void) {
+        self.observe = observe
         self.now = now; self.deadline = deadline; self.outputLimit = outputLimit
     }
     public func run(program: String, arguments: [String], input: Data) async throws -> ProcessOutput {
@@ -42,7 +46,7 @@ public struct ProcessRunner: ProcessRunning {
         posix_spawn_file_actions_adddup2(&actions, stdout.1, STDOUT_FILENO)
         posix_spawn_file_actions_adddup2(&actions, stderr.1, STDERR_FILENO)
         for fd in descriptors { posix_spawn_file_actions_addclose(&actions, fd) }
-        posix_spawn_file_actions_addchdir_np(&actions, directory.path)
+        posix_spawn_file_actions_addchdir(&actions, directory.path)
         var attributes: posix_spawnattr_t?
         posix_spawnattr_init(&attributes)
         defer { posix_spawnattr_destroy(&attributes) }
@@ -55,16 +59,18 @@ public struct ProcessRunner: ProcessRunning {
             posix_spawn(&pid, program, &actions, &attributes, UnsafeMutablePointer(mutating: args.baseAddress!), _NSGetEnviron().pointee)
         }
         guard status == 0 else { throw Failure.unavailable }
+        observe(.launched(pid))
         for fd in [stdin.0, stdout.1, stderr.1] { Darwin.close(fd); descriptors.removeAll { $0 == fd } }
         for fd in [stdin.1, stdout.0, stderr.0] { _ = fcntl(fd, F_SETFL, O_NONBLOCK) }
         // A closed child input must fail this write, not deliver SIGPIPE to the app.
         _ = fcntl(stdin.1, F_SETNOSIGPIPE, 1)
         var offset = 0, out = Data(), err = Data(), exit: Int32 = 0
+        var reportedBlockedInput = false
         var openInput = true, openOut = true, openErr = true, reaped = false
         var failure: Failure?, terminating: Double?
         func closeInput() { if openInput { Darwin.close(stdin.1); descriptors.removeAll { $0 == stdin.1 }; openInput = false } }
         func stop(_ reason: Failure) {
-            if failure == nil { failure = reason; terminating = now(); kill(-pid, SIGTERM); closeInput() }
+            if failure == nil { failure = reason; terminating = now(); kill(-pid, SIGTERM); closeInput(); observe(.terminating) }
         }
         defer {
             kill(-pid, SIGKILL)
@@ -79,7 +85,9 @@ public struct ProcessRunner: ProcessRunning {
                 else {
                     let written = input.withUnsafeBytes { buffer in Darwin.write(stdin.1, buffer.baseAddress!.advanced(by: offset), min(65536, input.count - offset)) }
                     if written > 0 { offset += written }
-                    else if written < 0 && errno != EAGAIN && errno != EINTR { closeInput() }
+                    else if written < 0 && errno == EAGAIN && !reportedBlockedInput {
+                        reportedBlockedInput = true; observe(.inputBlocked)
+                    } else if written < 0 && errno != EAGAIN && errno != EINTR { closeInput() }
                 }
             }
             for (fd, isOut) in [(stdout.0, true), (stderr.0, false)] where isOut ? openOut : openErr {
@@ -96,7 +104,10 @@ public struct ProcessRunner: ProcessRunning {
             }
             if !reaped {
                 let result = waitpid(pid, &exit, WNOHANG)
-                if result == pid { reaped = true; closeInput(); kill(-pid, SIGTERM) }
+                if result == pid {
+                    reaped = true; observe(.reaped(pid)); closeInput(); kill(-pid, SIGTERM)
+                    if terminating == nil { terminating = now() }
+                }
             }
             if reaped && !openOut && !openErr { break }
             var pollers = [pollfd(fd: openOut ? stdout.0 : -1, events: Int16(POLLIN), revents: 0),

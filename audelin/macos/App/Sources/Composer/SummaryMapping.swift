@@ -5,12 +5,13 @@ import SummaryJobs
 import SummaryRuntime
 import SummarySettings
 
-func settingsConfiguration(_ notes: NotesPreferences) -> SummarySettings.Configuration {
-    func runtime(_ value: NotesPreferences.Runtime) -> SummarySettings.Configuration.Runtime {
-        .init(kind: .init(rawValue: value.kind) ?? .compatibleAPI, model: value.model, executable: value.executable,
+func settingsConfiguration(_ notes: NotesPreferences) throws -> SummarySettings.Configuration {
+    func runtime(_ value: NotesPreferences.Runtime) throws -> SummarySettings.Configuration.Runtime {
+        guard let kind = SummarySettings.Configuration.Runtime.Kind(rawValue: value.kind) else { throw SummaryRuntime.Failure.configuration }
+        return .init(kind: kind, model: value.model, executable: value.executable,
               endpoint: value.endpoint, credentialVariable: value.credentialVariable)
     }
-    return .init(enabled: notes.enabled, speakers: notes.speakers, primary: runtime(notes.primary), fallback: runtime(notes.fallback))
+    return .init(enabled: notes.enabled, speakers: notes.speakers, primary: try runtime(notes.primary), fallback: try runtime(notes.fallback))
 }
 func storedConfiguration(_ config: SummarySettings.Configuration) -> NotesPreferences {
     func runtime(_ value: SummarySettings.Configuration.Runtime) -> NotesPreferences.Runtime {
@@ -40,7 +41,7 @@ struct SummaryPreferences: SummarySettings.Preferences {
     private let queue = DispatchQueue(label: "audelin.notes.preferences")
     func load() async throws -> SummarySettings.Configuration {
         try await withCheckedThrowingContinuation { done in
-            queue.async { done.resume(with: Result { settingsConfiguration(try storage.loadNotes()) }) }
+            queue.async { done.resume(with: Result { try settingsConfiguration(storage.loadNotes()) }) }
         }
     }
     func save(_ configuration: SummarySettings.Configuration) async throws {

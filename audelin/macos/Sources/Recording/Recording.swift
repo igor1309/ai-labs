@@ -60,6 +60,7 @@ public struct RecordingState: Equatable, Sendable {
         }
     }
 
+    public var storageReserved = false
     public var automatic: Bool
     public var missing: Set<RecordingCondition>
     public var phase: Phase = .idle
@@ -75,9 +76,10 @@ public struct RecordingState: Equatable, Sendable {
     public var callSilent = false
 
     /// Conditions start unknown, so a start waits for each to be reported available.
-    public init(automatic: Bool = false, missing: Set<RecordingCondition> = Set(RecordingCondition.allCases)) {
+    public init(automatic: Bool = false, missing: Set<RecordingCondition> = Set(RecordingCondition.allCases), storageReserved: Bool = false) {
 
         self.automatic = automatic
+        self.storageReserved = storageReserved
         self.missing = missing
     }
 }
@@ -87,6 +89,7 @@ public enum RecordingEvent: Equatable, Sendable {
     case callStarted
     case callEnded
     case userStart
+    case reserveStorage, releaseStorage
     case userStop
     case automaticChanged(Bool)
     case conditionChanged(RecordingCondition, available: Bool)
@@ -99,6 +102,13 @@ public enum RecordingReducer {
 
         var state = state
         switch event {
+        case .reserveStorage:
+            guard state.phase == .idle else { return state }
+            state.storageReserved = true
+            return state
+        case .releaseStorage:
+            state.storageReserved = false
+            return state
         case .callStarted:
             guard !state.callOn else { return state }
             state.callOn = true
@@ -183,7 +193,7 @@ public enum RecordingReducer {
     private static func begin(_ state: inout RecordingState, origin: RecordingState.Origin) -> RecordingState {
 
         // Call-audio evidence is refreshed by the doer, including when the last reading failed.
-        guard state.phase == .idle, state.missing.subtracting([.callAudioAccess]).isEmpty else { return state }
+        guard !state.storageReserved, state.phase == .idle, state.missing.subtracting([.callAudioAccess]).isEmpty else { return state }
         state.callID = nil
         state.lastSessionID += 1
         state.session = .init(id: state.lastSessionID, origin: origin)

@@ -33314,15 +33314,14 @@
                       "width": "fill_container"
                     },
                     {
-                      "type": "frame",
-                      "id": "yo0xK",
+                      "id": "wOYiJ",
+                      "type": "ref",
+                      "ref": "k3sJwE",
                       "name": "Summary choices",
                       "width": "fill_container",
-                      "layout": "vertical",
-                      "gap": "$space-6",
-                      "children": [
-                        {
-                          "id": "FqHsZ",
+                      "descendants": {
+                        "OIvU1": {
+                          "id": "GxtLp",
                           "type": "ref",
                           "ref": "zhXsW",
                           "name": "Automatic notes",
@@ -33333,9 +33332,9 @@
                             }
                           }
                         },
-                        {
+                        "i7UOtx": {
                           "type": "text",
-                          "id": "SLOwz",
+                          "id": "q8VRQZ",
                           "name": "Timing",
                           "fill": "$sub",
                           "textGrowth": "fixed-width",
@@ -33346,8 +33345,8 @@
                           "fontSize": "$type-small",
                           "fontWeight": "normal"
                         },
-                        {
-                          "id": "EPwp8",
+                        "jTNhO": {
+                          "id": "FUFbd",
                           "type": "ref",
                           "ref": "zhXsW",
                           "name": "Identify speakers",
@@ -33358,7 +33357,7 @@
                             }
                           }
                         }
-                      ]
+                      }
                     },
                     {
                       "id": "wSn5B",
@@ -33388,16 +33387,15 @@
                       "fontWeight": "normal"
                     },
                     {
-                      "type": "frame",
-                      "id": "IrEOB",
+                      "id": "was7U",
+                      "type": "ref",
+                      "ref": "YD63k",
                       "name": "Save and validate",
                       "width": "fill_container",
-                      "gap": "$space-8",
-                      "alignItems": "center",
-                      "children": [
-                        {
+                      "descendants": {
+                        "n9GUWN": {
                           "type": "text",
-                          "id": "pl0x5",
+                          "id": "TrvNK",
                           "name": "Save status",
                           "fill": "$gutter",
                           "textGrowth": "fixed-width",
@@ -33408,8 +33406,8 @@
                           "fontSize": "$type-small",
                           "fontWeight": "normal"
                         },
-                        {
-                          "id": "ptXNZ",
+                        "Z4W32": {
+                          "id": "tZxhH",
                           "type": "ref",
                           "ref": "wmGeO",
                           "name": "Validate runtimes",
@@ -33419,8 +33417,8 @@
                             }
                           }
                         },
-                        {
-                          "id": "qDLvr",
+                        "KwWF3": {
+                          "id": "tm7sy",
                           "type": "ref",
                           "ref": "f7Y4eS",
                           "name": "Save settings",
@@ -33430,7 +33428,7 @@
                             }
                           }
                         }
-                      ]
+                      }
                     }
                   ]
                 }
@@ -33467,15 +33465,14 @@
                       "width": "fill_container"
                     },
                     {
-                      "type": "frame",
-                      "id": "p7CLe",
+                      "id": "BjJXi",
+                      "type": "ref",
+                      "ref": "k3sJwE",
                       "name": "Summary choices",
                       "width": "fill_container",
-                      "layout": "vertical",
-                      "gap": "$space-6",
-                      "children": [
-                        {
-                          "id": "WaXCt",
+                      "descendants": {
+                        "OIvU1": {
+                          "id": "SMpG1",
                           "type": "ref",
                           "ref": "ufHXu",
                           "name": "Automatic notes",
@@ -33486,9 +33483,9 @@
                             }
                           }
                         },
-                        {
+                        "i7UOtx": {
                           "type": "text",
-                          "id": "F2KTh",
+                          "id": "u8tutz",
                           "name": "Timing",
                           "fill": "$sub",
                           "textGrowth": "fixed-width",
@@ -33499,8 +33496,8 @@
                           "fontSize": "$type-small",
                           "fontWeight": "normal"
                         },
-                        {
-                          "id": "T23GiK",
+                        "jTNhO": {
+                          "id": "IhL62",
                           "type": "ref",
                           "ref": "ufHXu",
                           "name": "Identify speakers",
@@ -33511,7 +33508,7 @@
                             }
                           }
                         }
-                      ]
+                      }
                     },
                     {
                       "id": "ngLcw",
@@ -33541,16 +33538,15 @@
                       "fontWeight": "normal"
                     },
                     {
-                      "type": "frame",
-                      "id": "f6eeKr",
+                      "id": "QLCh4",
+                      "type": "ref",
+                      "ref": "YD63k",
                       "name": "Save and validate",
                       "width": "fill_container",
-                      "gap": "$space-8",
-                      "alignItems": "center",
-                      "children": [
-                        {
+                      "descendants": {
+                        "n9GUWN": {
                           "type": "text",
-                          "id": "XTRT2",
+                          "id": "PRCyl",
                           "name": "Save status",
                           "fill": "$gutter",
                           "textGrowth": "fixed-width",
@@ -33561,8 +33557,8 @@
                           "fontSize": "$type-small",
                           "fontWeight": "normal"
                         },
-                        {
-                          "id": "TMiI6",
+                        "Z4W32": {
+                          "id": "lVwOl",
                           "type": "ref",
                           "ref": "wmGeO",
                           "name": "Validate runtimes",
@@ -33572,8 +33568,8 @@
                             }
                           }
                         },
-                        {
-                          "id": "En8AW",
+                        "KwWF3": {
+                          "id": "a3JXk",
                           "type": "ref",
                           "ref": "f7Y4eS",
                           "name": "Save settings",
@@ -33583,7 +33579,7 @@
                             }
                           }
                         }
-                      ]
+                      }
                     }
                   ]
                 }
@@ -33620,15 +33616,14 @@
                       "width": "fill_container"
                     },
                     {
-                      "type": "frame",
-                      "id": "y54M5",
+                      "id": "Oq2wC",
+                      "type": "ref",
+                      "ref": "k3sJwE",
                       "name": "Summary choices",
                       "width": "fill_container",
-                      "layout": "vertical",
-                      "gap": "$space-6",
-                      "children": [
-                        {
-                          "id": "x0QVcY",
+                      "descendants": {
+                        "OIvU1": {
+                          "id": "FW4jT",
                           "type": "ref",
                           "ref": "ufHXu",
                           "name": "Automatic notes",
@@ -33639,9 +33634,9 @@
                             }
                           }
                         },
-                        {
+                        "i7UOtx": {
                           "type": "text",
-                          "id": "T0sobd",
+                          "id": "W1B4q",
                           "name": "Timing",
                           "fill": "$sub",
                           "textGrowth": "fixed-width",
@@ -33652,8 +33647,8 @@
                           "fontSize": "$type-small",
                           "fontWeight": "normal"
                         },
-                        {
-                          "id": "ntzgc",
+                        "jTNhO": {
+                          "id": "bRLVz",
                           "type": "ref",
                           "ref": "zhXsW",
                           "name": "Identify speakers",
@@ -33664,7 +33659,7 @@
                             }
                           }
                         }
-                      ]
+                      }
                     },
                     {
                       "id": "kyGXq",
@@ -33727,16 +33722,15 @@
                       "fontWeight": "normal"
                     },
                     {
-                      "type": "frame",
-                      "id": "MhCby",
+                      "id": "EGbxr",
+                      "type": "ref",
+                      "ref": "YD63k",
                       "name": "Save and validate",
                       "width": "fill_container",
-                      "gap": "$space-8",
-                      "alignItems": "center",
-                      "children": [
-                        {
+                      "descendants": {
+                        "n9GUWN": {
                           "type": "text",
-                          "id": "yaje0",
+                          "id": "pwKL4",
                           "name": "Save status",
                           "fill": "$gutter",
                           "textGrowth": "fixed-width",
@@ -33747,8 +33741,8 @@
                           "fontSize": "$type-small",
                           "fontWeight": "normal"
                         },
-                        {
-                          "id": "ZDGGi",
+                        "Z4W32": {
+                          "id": "pHZu5",
                           "type": "ref",
                           "ref": "wmGeO",
                           "name": "Validate runtimes",
@@ -33758,8 +33752,8 @@
                             }
                           }
                         },
-                        {
-                          "id": "GyOOQ",
+                        "KwWF3": {
+                          "id": "B6fns",
                           "type": "ref",
                           "ref": "f7Y4eS",
                           "name": "Save settings",
@@ -33769,7 +33763,7 @@
                             }
                           }
                         }
-                      ]
+                      }
                     }
                   ]
                 }
@@ -33806,15 +33800,14 @@
                       "width": "fill_container"
                     },
                     {
-                      "type": "frame",
-                      "id": "fNj3i",
+                      "id": "J40Acg",
+                      "type": "ref",
+                      "ref": "k3sJwE",
                       "name": "Summary choices",
                       "width": "fill_container",
-                      "layout": "vertical",
-                      "gap": "$space-6",
-                      "children": [
-                        {
-                          "id": "T8MK4",
+                      "descendants": {
+                        "OIvU1": {
+                          "id": "eXULe",
                           "type": "ref",
                           "ref": "ufHXu",
                           "name": "Automatic notes",
@@ -33825,9 +33818,9 @@
                             }
                           }
                         },
-                        {
+                        "i7UOtx": {
                           "type": "text",
-                          "id": "siEKP",
+                          "id": "c0FAdc",
                           "name": "Timing",
                           "fill": "$sub",
                           "textGrowth": "fixed-width",
@@ -33838,8 +33831,8 @@
                           "fontSize": "$type-small",
                           "fontWeight": "normal"
                         },
-                        {
-                          "id": "H3ne62",
+                        "jTNhO": {
+                          "id": "W8z0o",
                           "type": "ref",
                           "ref": "zhXsW",
                           "name": "Identify speakers",
@@ -33850,7 +33843,7 @@
                             }
                           }
                         }
-                      ]
+                      }
                     },
                     {
                       "id": "jPB2b",
@@ -33904,16 +33897,15 @@
                       }
                     },
                     {
-                      "type": "frame",
-                      "id": "fkIH0",
+                      "id": "X6lVy",
+                      "type": "ref",
+                      "ref": "YD63k",
                       "name": "Save and validate",
                       "width": "fill_container",
-                      "gap": "$space-8",
-                      "alignItems": "center",
-                      "children": [
-                        {
+                      "descendants": {
+                        "n9GUWN": {
                           "type": "text",
-                          "id": "sa04E",
+                          "id": "c4rAIJ",
                           "name": "Save status",
                           "fill": "$gutter",
                           "textGrowth": "fixed-width",
@@ -33924,8 +33916,8 @@
                           "fontSize": "$type-small",
                           "fontWeight": "normal"
                         },
-                        {
-                          "id": "XpPjt",
+                        "Z4W32": {
+                          "id": "FOPrt",
                           "type": "ref",
                           "ref": "wmGeO",
                           "name": "Validate runtimes",
@@ -33935,8 +33927,8 @@
                             }
                           }
                         },
-                        {
-                          "id": "R0Kkq",
+                        "KwWF3": {
+                          "id": "PdPxh",
                           "type": "ref",
                           "ref": "f7Y4eS",
                           "name": "Save settings",
@@ -33948,7 +33940,7 @@
                             }
                           }
                         }
-                      ]
+                      }
                     }
                   ]
                 }
@@ -33985,15 +33977,14 @@
                       "width": "fill_container"
                     },
                     {
-                      "type": "frame",
-                      "id": "BolUv",
+                      "id": "X186Mq",
+                      "type": "ref",
+                      "ref": "k3sJwE",
                       "name": "Summary choices",
                       "width": "fill_container",
-                      "layout": "vertical",
-                      "gap": "$space-6",
-                      "children": [
-                        {
-                          "id": "L7HQEQ",
+                      "descendants": {
+                        "OIvU1": {
+                          "id": "F1YeQG",
                           "type": "ref",
                           "ref": "ufHXu",
                           "name": "Automatic notes",
@@ -34004,9 +33995,9 @@
                             }
                           }
                         },
-                        {
+                        "i7UOtx": {
                           "type": "text",
-                          "id": "YmiYl",
+                          "id": "X4OmYg",
                           "name": "Timing",
                           "fill": "$sub",
                           "textGrowth": "fixed-width",
@@ -34017,8 +34008,8 @@
                           "fontSize": "$type-small",
                           "fontWeight": "normal"
                         },
-                        {
-                          "id": "D48oU",
+                        "jTNhO": {
+                          "id": "Mjmb1",
                           "type": "ref",
                           "ref": "zhXsW",
                           "name": "Identify speakers",
@@ -34029,7 +34020,7 @@
                             }
                           }
                         }
-                      ]
+                      }
                     },
                     {
                       "id": "WP3kB",
@@ -34074,16 +34065,15 @@
                       }
                     },
                     {
-                      "type": "frame",
-                      "id": "Q8vlC",
+                      "id": "BsF6R",
+                      "type": "ref",
+                      "ref": "YD63k",
                       "name": "Save and validate",
                       "width": "fill_container",
-                      "gap": "$space-8",
-                      "alignItems": "center",
-                      "children": [
-                        {
+                      "descendants": {
+                        "n9GUWN": {
                           "type": "text",
-                          "id": "f1L7Ou",
+                          "id": "h0O5Dk",
                           "name": "Save status",
                           "fill": "$gutter",
                           "textGrowth": "fixed-width",
@@ -34094,8 +34084,8 @@
                           "fontSize": "$type-small",
                           "fontWeight": "normal"
                         },
-                        {
-                          "id": "W7Atm2",
+                        "Z4W32": {
+                          "id": "fWAyC",
                           "type": "ref",
                           "ref": "wmGeO",
                           "name": "Validate runtimes",
@@ -34105,8 +34095,8 @@
                             }
                           }
                         },
-                        {
-                          "id": "cUHx5",
+                        "KwWF3": {
+                          "id": "t5081B",
                           "type": "ref",
                           "ref": "f7Y4eS",
                           "name": "Save settings",
@@ -34116,7 +34106,7 @@
                             }
                           }
                         }
-                      ]
+                      }
                     }
                   ]
                 }
@@ -34153,15 +34143,14 @@
                       "width": "fill_container"
                     },
                     {
-                      "type": "frame",
-                      "id": "P6Dvu",
+                      "id": "a8vIl",
+                      "type": "ref",
+                      "ref": "k3sJwE",
                       "name": "Summary choices",
                       "width": "fill_container",
-                      "layout": "vertical",
-                      "gap": "$space-6",
-                      "children": [
-                        {
-                          "id": "vS930",
+                      "descendants": {
+                        "OIvU1": {
+                          "id": "k46zp",
                           "type": "ref",
                           "ref": "ufHXu",
                           "name": "Automatic notes",
@@ -34172,9 +34161,9 @@
                             }
                           }
                         },
-                        {
+                        "i7UOtx": {
                           "type": "text",
-                          "id": "X1kRbX",
+                          "id": "fGas3",
                           "name": "Timing",
                           "fill": "$sub",
                           "textGrowth": "fixed-width",
@@ -34185,8 +34174,8 @@
                           "fontSize": "$type-small",
                           "fontWeight": "normal"
                         },
-                        {
-                          "id": "IHePa",
+                        "jTNhO": {
+                          "id": "H7PYY5",
                           "type": "ref",
                           "ref": "zhXsW",
                           "name": "Identify speakers",
@@ -34197,7 +34186,7 @@
                             }
                           }
                         }
-                      ]
+                      }
                     },
                     {
                       "id": "fAyCa",
@@ -34227,16 +34216,15 @@
                       "fontWeight": "normal"
                     },
                     {
-                      "type": "frame",
-                      "id": "uJtiV",
+                      "id": "p8L6s",
+                      "type": "ref",
+                      "ref": "YD63k",
                       "name": "Save and validate",
                       "width": "fill_container",
-                      "gap": "$space-8",
-                      "alignItems": "center",
-                      "children": [
-                        {
+                      "descendants": {
+                        "n9GUWN": {
                           "type": "text",
-                          "id": "rn9oV",
+                          "id": "KdjF2",
                           "name": "Save status",
                           "fill": "$gutter",
                           "textGrowth": "fixed-width",
@@ -34247,8 +34235,8 @@
                           "fontSize": "$type-small",
                           "fontWeight": "normal"
                         },
-                        {
-                          "id": "SW8Nk",
+                        "Z4W32": {
+                          "id": "Ekkbo",
                           "type": "ref",
                           "ref": "wmGeO",
                           "name": "Validate runtimes",
@@ -34258,8 +34246,8 @@
                             }
                           }
                         },
-                        {
-                          "id": "IEdhO",
+                        "KwWF3": {
+                          "id": "y9W3RU",
                           "type": "ref",
                           "ref": "f7Y4eS",
                           "name": "Save settings",
@@ -34271,7 +34259,7 @@
                             }
                           }
                         }
-                      ]
+                      }
                     }
                   ]
                 }
@@ -34308,15 +34296,14 @@
                       "width": "fill_container"
                     },
                     {
-                      "type": "frame",
-                      "id": "c1nJY0",
+                      "id": "gi8km",
+                      "type": "ref",
+                      "ref": "k3sJwE",
                       "name": "Summary choices",
                       "width": "fill_container",
-                      "layout": "vertical",
-                      "gap": "$space-6",
-                      "children": [
-                        {
-                          "id": "x8KqXc",
+                      "descendants": {
+                        "OIvU1": {
+                          "id": "gld1Z",
                           "type": "ref",
                           "ref": "ufHXu",
                           "name": "Automatic notes",
@@ -34327,9 +34314,9 @@
                             }
                           }
                         },
-                        {
+                        "i7UOtx": {
                           "type": "text",
-                          "id": "HkU4J",
+                          "id": "TtIxJ",
                           "name": "Timing",
                           "fill": "$sub",
                           "textGrowth": "fixed-width",
@@ -34340,8 +34327,8 @@
                           "fontSize": "$type-small",
                           "fontWeight": "normal"
                         },
-                        {
-                          "id": "wjmSB",
+                        "jTNhO": {
+                          "id": "sI6jU",
                           "type": "ref",
                           "ref": "zhXsW",
                           "name": "Identify speakers",
@@ -34352,7 +34339,7 @@
                             }
                           }
                         }
-                      ]
+                      }
                     },
                     {
                       "id": "zLVVM",
@@ -34382,16 +34369,15 @@
                       "fontWeight": "normal"
                     },
                     {
-                      "type": "frame",
-                      "id": "olsyM",
+                      "id": "WxX9C",
+                      "type": "ref",
+                      "ref": "YD63k",
                       "name": "Save and validate",
                       "width": "fill_container",
-                      "gap": "$space-8",
-                      "alignItems": "center",
-                      "children": [
-                        {
+                      "descendants": {
+                        "n9GUWN": {
                           "type": "text",
-                          "id": "VJlLO",
+                          "id": "hTCma",
                           "name": "Save status",
                           "fill": "$gutter",
                           "textGrowth": "fixed-width",
@@ -34402,8 +34388,8 @@
                           "fontSize": "$type-small",
                           "fontWeight": "normal"
                         },
-                        {
-                          "id": "hFtvl",
+                        "Z4W32": {
+                          "id": "JNCU0",
                           "type": "ref",
                           "ref": "wmGeO",
                           "name": "Validate runtimes",
@@ -34413,8 +34399,8 @@
                             }
                           }
                         },
-                        {
-                          "id": "G6RdgQ",
+                        "KwWF3": {
+                          "id": "P6ZA9V",
                           "type": "ref",
                           "ref": "f7Y4eS",
                           "name": "Save settings",
@@ -34426,7 +34412,7 @@
                             }
                           }
                         }
-                      ]
+                      }
                     }
                   ]
                 }
@@ -34463,15 +34449,14 @@
                       "width": "fill_container"
                     },
                     {
-                      "type": "frame",
-                      "id": "dY9Sb",
+                      "id": "Q3gZ6H",
+                      "type": "ref",
+                      "ref": "k3sJwE",
                       "name": "Summary choices",
                       "width": "fill_container",
-                      "layout": "vertical",
-                      "gap": "$space-6",
-                      "children": [
-                        {
-                          "id": "FEN60",
+                      "descendants": {
+                        "OIvU1": {
+                          "id": "XDKQs",
                           "type": "ref",
                           "ref": "ufHXu",
                           "name": "Automatic notes",
@@ -34482,9 +34467,9 @@
                             }
                           }
                         },
-                        {
+                        "i7UOtx": {
                           "type": "text",
-                          "id": "AeUuj",
+                          "id": "wc0LJ",
                           "name": "Timing",
                           "fill": "$sub",
                           "textGrowth": "fixed-width",
@@ -34495,8 +34480,8 @@
                           "fontSize": "$type-small",
                           "fontWeight": "normal"
                         },
-                        {
-                          "id": "rUtx3",
+                        "jTNhO": {
+                          "id": "Wsvlf",
                           "type": "ref",
                           "ref": "zhXsW",
                           "name": "Identify speakers",
@@ -34507,7 +34492,7 @@
                             }
                           }
                         }
-                      ]
+                      }
                     },
                     {
                       "id": "R8pKrU",
@@ -34552,16 +34537,15 @@
                       }
                     },
                     {
-                      "type": "frame",
-                      "id": "XIPaj",
+                      "id": "Xmu6P",
+                      "type": "ref",
+                      "ref": "YD63k",
                       "name": "Save and validate",
                       "width": "fill_container",
-                      "gap": "$space-8",
-                      "alignItems": "center",
-                      "children": [
-                        {
+                      "descendants": {
+                        "n9GUWN": {
                           "type": "text",
-                          "id": "HUuFV",
+                          "id": "ID9H3",
                           "name": "Save status",
                           "fill": "$gutter",
                           "textGrowth": "fixed-width",
@@ -34572,8 +34556,8 @@
                           "fontSize": "$type-small",
                           "fontWeight": "normal"
                         },
-                        {
-                          "id": "IDMV0",
+                        "Z4W32": {
+                          "id": "kWH28",
                           "type": "ref",
                           "ref": "wmGeO",
                           "name": "Validate runtimes",
@@ -34583,8 +34567,8 @@
                             }
                           }
                         },
-                        {
-                          "id": "OnGpO",
+                        "KwWF3": {
+                          "id": "zf6Ni",
                           "type": "ref",
                           "ref": "f7Y4eS",
                           "name": "Save settings",
@@ -34594,7 +34578,7 @@
                             }
                           }
                         }
-                      ]
+                      }
                     }
                   ]
                 }
@@ -34631,15 +34615,14 @@
                       "width": "fill_container"
                     },
                     {
-                      "type": "frame",
-                      "id": "t8dee",
+                      "id": "UURN4",
+                      "type": "ref",
+                      "ref": "k3sJwE",
                       "name": "Summary choices",
                       "width": "fill_container",
-                      "layout": "vertical",
-                      "gap": "$space-6",
-                      "children": [
-                        {
-                          "id": "kCiTH",
+                      "descendants": {
+                        "OIvU1": {
+                          "id": "sepTt",
                           "type": "ref",
                           "ref": "ufHXu",
                           "name": "Automatic notes",
@@ -34650,9 +34633,9 @@
                             }
                           }
                         },
-                        {
+                        "i7UOtx": {
                           "type": "text",
-                          "id": "xhRxi",
+                          "id": "g8nWh1",
                           "name": "Timing",
                           "fill": "$sub",
                           "textGrowth": "fixed-width",
@@ -34663,8 +34646,8 @@
                           "fontSize": "$type-small",
                           "fontWeight": "normal"
                         },
-                        {
-                          "id": "kNpdh",
+                        "jTNhO": {
+                          "id": "i3mZQq",
                           "type": "ref",
                           "ref": "zhXsW",
                           "name": "Identify speakers",
@@ -34675,7 +34658,7 @@
                             }
                           }
                         }
-                      ]
+                      }
                     },
                     {
                       "id": "J2ggO",
@@ -34705,16 +34688,15 @@
                       "fontWeight": "normal"
                     },
                     {
-                      "type": "frame",
-                      "id": "upjlc",
+                      "id": "bsBRz",
+                      "type": "ref",
+                      "ref": "YD63k",
                       "name": "Save and validate",
                       "width": "fill_container",
-                      "gap": "$space-8",
-                      "alignItems": "center",
-                      "children": [
-                        {
+                      "descendants": {
+                        "n9GUWN": {
                           "type": "text",
-                          "id": "iaOvU",
+                          "id": "E84Mm",
                           "name": "Save status",
                           "fill": "$me",
                           "textGrowth": "fixed-width",
@@ -34725,8 +34707,8 @@
                           "fontSize": "$type-small",
                           "fontWeight": "normal"
                         },
-                        {
-                          "id": "MUiD4",
+                        "Z4W32": {
+                          "id": "QGoMd",
                           "type": "ref",
                           "ref": "wmGeO",
                           "name": "Validate runtimes",
@@ -34736,8 +34718,8 @@
                             }
                           }
                         },
-                        {
-                          "id": "l8ksj",
+                        "KwWF3": {
+                          "id": "ZBfzQ",
                           "type": "ref",
                           "ref": "f7Y4eS",
                           "name": "Save settings",
@@ -34749,7 +34731,7 @@
                             }
                           }
                         }
-                      ]
+                      }
                     }
                   ]
                 }
@@ -46087,6 +46069,100 @@
               "fontFamily": "$font-ui",
               "fontSize": "$type-small",
               "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "k3sJwE",
+          "name": "Summary choices",
+          "reusable": true,
+          "width": 572,
+          "layout": "vertical",
+          "gap": "$space-6",
+          "children": [
+            {
+              "id": "OIvU1",
+              "type": "ref",
+              "ref": "zhXsW",
+              "name": "Automatic notes",
+              "width": "fill_container",
+              "descendants": {
+                "YTQFN": {
+                  "content": "Составлять итоги после звонка"
+                }
+              }
+            },
+            {
+              "type": "text",
+              "id": "i7UOtx",
+              "name": "Timing",
+              "fill": "$sub",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "После финальной расшифровки; запись следующего звонка не ждёт итоги.",
+              "lineHeight": 1.45,
+              "fontFamily": "$font-ui",
+              "fontSize": "$type-small",
+              "fontWeight": "normal"
+            },
+            {
+              "id": "jTNhO",
+              "type": "ref",
+              "ref": "zhXsW",
+              "name": "Identify speakers",
+              "width": "fill_container",
+              "descendants": {
+                "YTQFN": {
+                  "content": "Пробовать определить имена участников"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "YD63k",
+          "name": "Save and validate",
+          "reusable": true,
+          "width": 572,
+          "gap": "$space-8",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "n9GUWN",
+              "name": "Save status",
+              "fill": "$gutter",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Автосводка выключена",
+              "lineHeight": 1.45,
+              "fontFamily": "$font-ui",
+              "fontSize": "$type-small",
+              "fontWeight": "normal"
+            },
+            {
+              "id": "Z4W32",
+              "type": "ref",
+              "ref": "wmGeO",
+              "name": "Validate runtimes",
+              "descendants": {
+                "EWsWH": {
+                  "content": "Проверить"
+                }
+              }
+            },
+            {
+              "id": "KwWF3",
+              "type": "ref",
+              "ref": "f7Y4eS",
+              "name": "Save settings",
+              "descendants": {
+                "Wz52g": {
+                  "content": "Сохранить"
+                }
+              }
             }
           ]
         }

@@ -15,7 +15,8 @@ final class RecordingConditions: Sendable {
     // The checks read the disk and access status, which block, so they run here.
     private let checking = DispatchQueue(label: "audelin.RecordingConditions")
 
-    init(recording: RecordingInputs, callsURL: URL, boundary: ComposerBoundary) {
+    init(recording: RecordingInputs, callsURL: URL, boundary: ComposerBoundary, currentFolder: (@Sendable () -> URL)? = nil) {
+        let folder: @Sendable () -> URL = currentFolder ?? { callsURL }
         let access = accessPolicy(boundary.access)
         let send = recording.send
         let sink = boundary.log
@@ -26,8 +27,8 @@ final class RecordingConditions: Sendable {
         }
         checks = [
             (.microphoneAccess, { boundary.microphonePermission.authorized() }),
-            (.callsFolder, { isCallsDirectory(callsURL) && FileManager.default.isWritableFile(atPath: callsURL.path) }),
-            (.room, { callsFolderHasRoom(at: callsURL, availableCapacity: { boundary.capacity.available(at: $0) }) }),
+            (.callsFolder, { isCallsDirectory(folder()) && FileManager.default.isWritableFile(atPath: folder().path) }),
+            (.room, { callsFolderHasRoom(at: folder(), availableCapacity: { boundary.capacity.available(at: $0) }) }),
         ]
         observation.withLock { $0 = Task { [weak self] in
             for await _ in await access.states() {
@@ -111,9 +112,9 @@ private final class Turn: Sendable {
     }
 }
 
-func composeRecordingConditions(recording: RecordingInputs, callsURL: URL, boundary: ComposerBoundary) -> RecordingConditions {
+func composeRecordingConditions(recording: RecordingInputs, callsURL: URL, boundary: ComposerBoundary, currentFolder: (@Sendable () -> URL)? = nil) -> RecordingConditions {
 
-    RecordingConditions(recording: recording, callsURL: callsURL, boundary: boundary)
+    RecordingConditions(recording: recording, callsURL: callsURL, boundary: boundary, currentFolder: currentFolder)
 }
 
 private func callsFolderHasRoom(at url: URL, availableCapacity: @Sendable (URL) -> Int64?) -> Bool {

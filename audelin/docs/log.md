@@ -1,5 +1,10 @@
 # Log
 
+## 2026-11-07
+
+- Optional call notes can be configured in native Settings and generated after a saved final transcript; Calls displays progress, warnings and failures while recording remains independent (LAB-1034).
+- Durable notes follow call rename, deletion and folder moves; pending jobs retain their configuration and interrupted requests are not automatically repeated (LAB-1034).
+
 ## 2026-11-05
 
 - Paused transcript reading avoids viewport-changing measurement and empty text edits during panel updates (LAB-1001).

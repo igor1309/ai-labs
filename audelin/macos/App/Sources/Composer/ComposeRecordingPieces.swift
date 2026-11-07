@@ -23,11 +23,11 @@ final class RecordingCallApp: Sendable {
 /// Takes the stored folder once and the last detected app when each session is built.
 func composeRecordingPieces(
     preferences: PreferencesStore, callApp: RecordingCallApp, processes: CoreAudioProcesses,
-    boundary: ComposerBoundary
+    boundary: ComposerBoundary, summaries: SummaryCallbacks = .disabled
 ) -> @Sendable (UInt64) -> SessionPieces {
 
-    let callsURL = preferences.read().callsFolder
     return { _ in
+        let callsURL = preferences.read().callsFolder
         let app = callApp.current
         return SessionPieces(
             folder: CallFolder(callsURL: callsURL, now: boundary.time.now, timeZone: boundary.time.timeZone()),
@@ -35,7 +35,7 @@ func composeRecordingPieces(
             processes: CallAppProcesses(app: app ?? "", list: RecordingProcessList(
                 source: processes, appKnown: app != nil
             )),
-            boundary: boundary
+            boundary: boundary, summaries: summaries
         )
     }
 }

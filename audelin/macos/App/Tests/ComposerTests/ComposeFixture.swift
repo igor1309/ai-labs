@@ -8,6 +8,7 @@ import Preferences
 import Recording
 import SessionRehearsal
 import Synchronization
+import SummaryRuntime
 import Testing
 
 /// Drives the public composition with real machines, UI models and files.
@@ -24,7 +25,7 @@ struct ComposeFixture {
     let log: FixtureLog
 
     static func make(
-        root: URL, preferences: Preferences? = nil,
+        root: URL, preferences: Preferences? = nil, summaryRuntime: SummaryRuntime.Runtime? = nil,
         microphoneFails: Bool = false, stopFailure: ComposerSide? = nil, stopEndsStream: Bool = true,
         rates: [Double]? = nil, recognizers: (any Recognizer, any Recognizer)? = nil,
         configure: (inout ComposerBoundary) -> Void = { _ in },
@@ -59,7 +60,7 @@ struct ComposeFixture {
         }
         let menu = await compose(boundary: boundary, preferencesURL: preferencesURL,
             openCallsFolder: openFolder, presentCalls: presentCalls, openURL: openURL,
-            presentPanel: presentPanel, terminate: terminate)
+            presentPanel: presentPanel, terminate: terminate, summaryRuntime: summaryRuntime)
         return Self(menu: menu, root: root, microphone: microphone, call: call, mine: mine, theirs: theirs,
                     selections: selections, clock: clock, log: log)
     }

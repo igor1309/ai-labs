@@ -1,12 +1,26 @@
 # Audelin
 
-A native, fully local macOS companion for the owner's calls (Zoom, Telemost,
+A native macOS companion for the owner's calls (Zoom, Telemost,
 Meet) in Russian with English professional terms. It records both sides as
 two tracks, shows a smooth, selectable live transcript in a floating panel,
 and, from v2, explains a selected term in Russian through bb.
 
-Status: the menu bar app records detected calls using stored preferences.
-The live panel and settings UI are not connected yet.
+Status: the menu bar app records detected calls, shows the live transcript and
+opens native Settings. Recording and recognition stay local. Optional call notes
+are off by default; Settings discloses both configured destinations and their
+subscription/API/local-compute costs. Models, CLI path, API base URL and credential
+variable names are editable. Credential values are resolved only for requests and
+are never stored or displayed. A Finder-launched app may lack shell variables;
+validation reports that without sending a transcript or making a paid request.
+
+Eligible final transcripts create durable jobs without holding the next call.
+Calls shows waiting, preparation, success/warning and failure/interruption status;
+notes are saved as `summary.md` beside the original transcript and audio. Pending
+jobs resume with their saved configuration; interrupted running requests are never
+automatically replayed. Claude CLI requires supported isolation controls, preserves
+subscription authentication and remains subject to managed organization policy.
+Provider availability, quota and factual faithfulness are not guaranteed by
+configuration checks or structural validation.
 
 Build: `cd audelin/macos && sh scripts/bundle.sh`.
 Components: `macos/`; composer, app, rehearsal and their integration tests: `macos/App/`.

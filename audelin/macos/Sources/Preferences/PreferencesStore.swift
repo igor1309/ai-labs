@@ -47,6 +47,17 @@ public final class PreferencesStore: PreferenceSettingsStorage, Sendable {
         }
     }
 
+    public func updateCallsFolder(_ folder: URL) throws {
+        try writing.withLock { _ in
+            let loaded = Self.load(fileURL)
+            guard !loaded.failed else { throw CocoaError(.fileReadCorruptFile) }
+            var current = loaded.value
+            current.callsFolder = folder
+            try JSONEncoder().encode(current).write(to: fileURL, options: .atomic)
+            snapshot.withLock { $0 = current }
+        }
+    }
+
     public func loadNotes() throws -> NotesPreferences {
         try writing.withLock { _ in
             let loaded = Self.load(fileURL)
