@@ -2,6 +2,7 @@
 
 ## 2026-11-07
 
+- LAB-922: PICTURE PUZZLE's board stands on the dig site in wide windows: HOME, BACK and the picture's name in the sky with the pieces fitted, and on the sand the board in its pocket beside the tools' pocket of tray, pages, HINT and PICTURE.
 - LAB-922: PICTURE PUZZLE's choice stands on the dig site: HOME and the title in the sky, and on the sand the level switch over the three pictures in their pockets, beside their names on an upright phone.
 - LAB-921: BONES walks whole on every size: its dig-site sheets now outweigh the older skeleton rules, so on an upright iPad the choice's level switch and the museum's stands sit under the sky, and on an iPhone the result fits without scrolling.
 - LAB-921: BONES' result stands on the dig site: the skeleton and body in a tall sky beside or over the reward, the fact by its bulb and both ways on on the sand.

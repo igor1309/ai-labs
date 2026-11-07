@@ -1,0 +1,98 @@
+/* PICTURE PUZZLE's board on the dig site (design/dig-site.pen, PUZZLE ·
+   board): HOME and BACK in the sky beside the picture's name, the pieces
+   fitted counted at the far side; on the sand the board in its pocket, the
+   empty places on the deeper layer, and beside it the tools' pocket: the
+   tray of four over its pages, HINT and PICTURE. */
+.skeleton-dig.picture-puzzle-board-screen {
+  --dig-sky: calc(88px + env(safe-area-inset-top));
+  --dig-ochre: calc(48px + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+  height: 100vh;
+  height: 100dvh;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  padding: calc(var(--dig-sky) + var(--ds-space-xs)) calc(var(--sc-side) + var(--screen-right)) calc(var(--dig-ochre) + var(--ds-space-l)) calc(var(--sc-side) + var(--screen-left));
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  background: transparent;
+  color: var(--ds-ink);
+}
+
+html[data-size="tall"] .skeleton-dig.picture-puzzle-board-screen {
+  --dig-sky: calc(100px + env(safe-area-inset-top));
+  --dig-ochre: calc(28px + env(safe-area-inset-bottom));
+}
+
+html[data-size="wide-short"] .skeleton-dig.picture-puzzle-board-screen {
+  --dig-sky: calc(54px + env(safe-area-inset-top));
+  --dig-ochre: 0px;
+  padding-bottom: calc(var(--ds-space-s) + env(safe-area-inset-bottom));
+}
+
+/* The small phone on its side keeps its bar's buttons to their symbols. */
+@media (max-width: 760px) {
+  html[data-size="wide-short"] .picture-puzzle-board-screen .skeleton-bar .home-button { width: 48px; padding: 0; justify-content: center; }
+  html[data-size="wide-short"] .picture-puzzle-board-screen .home-button .upright-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+}
+
+.skeleton-dig.picture-puzzle-board-screen .picture-puzzle-stage { padding: 12px; gap: 36px; }
+
+.skeleton-dig.picture-puzzle-board-screen .picture-puzzle-board {
+  border-radius: 6px;
+  background: var(--ds-pocket-2);
+  outline: none;
+  box-shadow: 0 0 0 12px var(--ds-pocket-1), 0 0 0 13px var(--ds-pocket-shadow);
+}
+
+.skeleton-dig.picture-puzzle-board-screen .picture-puzzle-slot { box-shadow: inset 0 0 0 1px #fff8e84d; }
+.skeleton-dig.picture-puzzle-board-screen .picture-puzzle-slot[data-fitted] { box-shadow: none; }
+.skeleton-dig.picture-puzzle-board-screen .picture-puzzle-slot[data-hint] { outline-color: var(--ds-reward); }
+
+.skeleton-dig.picture-puzzle-board-screen .picture-puzzle-tools {
+  flex: 1 1 308px;
+  min-width: 308px;
+  max-width: 420px;
+  box-sizing: border-box;
+  padding: var(--ds-space-m);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto auto auto;
+  gap: var(--ds-space-s);
+  border-radius: var(--ds-radius-pocket-top) var(--ds-radius-pocket-top) var(--ds-radius-pocket-bottom) var(--ds-radius-pocket-bottom);
+  background: var(--ds-pocket-1);
+  box-shadow: inset 0 6px 10px var(--ds-pocket-shadow);
+}
+
+.skeleton-dig.picture-puzzle-board-screen .picture-puzzle-tray,
+.skeleton-dig.picture-puzzle-board-screen .picture-puzzle-pages,
+.skeleton-dig.picture-puzzle-board-screen .picture-puzzle-retry { grid-column: 1 / -1; }
+
+.skeleton-dig.picture-puzzle-board-screen .picture-puzzle-tray { gap: var(--ds-space-s); }
+
+.skeleton-dig.picture-puzzle-board-screen .picture-puzzle-tray-piece {
+  border-radius: var(--ds-radius-22) var(--ds-radius-22) var(--ds-radius-11) var(--ds-radius-11);
+  background: var(--ds-pocket-2);
+  box-shadow: inset 0 4px 8px var(--ds-pocket-shadow);
+}
+
+.skeleton-dig.picture-puzzle-board-screen .picture-puzzle-tray-piece[aria-pressed="true"] { outline-color: var(--ds-reward); }
+
+.skeleton-dig.picture-puzzle-board-screen .picture-puzzle-pages { justify-content: center; gap: var(--ds-space-l); font-weight: 800; }
+
+.skeleton-dig.picture-puzzle-board-screen .picture-puzzle-control {
+  border-radius: 24px;
+  background: var(--ds-quiet);
+  color: var(--ds-ink);
+  box-shadow: none;
+  font-weight: 800;
+}
+
+.skeleton-dig.picture-puzzle-board-screen .picture-puzzle-tools > .picture-puzzle-control { min-width: 48px; padding: 0 8px; }
+.skeleton-dig.picture-puzzle-board-screen .picture-puzzle-control[data-active] { background: var(--ds-reward); color: #1d2742; }
+.skeleton-dig.picture-puzzle-board-screen .picture-puzzle-control[aria-pressed="true"] { background: var(--ds-action); color: #fffdf8; }
+
+.skeleton-dig.picture-puzzle-board-screen .picture-puzzle-retry { flex: none; min-height: 24px; }
+.skeleton-dig.picture-puzzle-board-screen .picture-puzzle-preview { outline-color: var(--ds-pocket-1); border-radius: 4px; }
+.skeleton-dig.picture-puzzle-board-screen .skeleton-chip span { animation: fade-in var(--motion-small) var(--ease-out) both; }

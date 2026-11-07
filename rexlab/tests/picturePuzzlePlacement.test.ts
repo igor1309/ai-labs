@@ -57,7 +57,7 @@ it.each(AGE_LEVELS)("fits the %s board and four-piece tray at minimum 48px targe
     const room = { width: width! - 48, height: height! - 136 };
     const board = pictureBoardLayout(room, cut);
     expect(board.fits).toBe(true);
-    expect(board.width + 248).toBeLessThanOrEqual(room.width);
+    expect(board.width + 344).toBeLessThanOrEqual(room.width);
     expect(board.height).toBeLessThanOrEqual(room.height);
     expect(board.width / board.height).toBeCloseTo(4 / 3);
     expect(Math.min(board.width / cut.columns, board.height / cut.rows)).toBeGreaterThanOrEqual(48);
