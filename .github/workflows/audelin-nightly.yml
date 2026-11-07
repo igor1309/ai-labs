@@ -1,0 +1,71 @@
+name: Audelin Nightly
+
+# The long runs of docs/research/profiling-in-development.md, layers 3 and 4
+# (LAB-797): a 3-hour real-model call at 1x with lag and memory, and short
+# CPU-and-hangs windows at large preloaded sizes. They need a quiet, known
+# machine, so they run only on the self-hosted Mac, on a schedule, never in
+# pull request checks: their numbers mean nothing on shared hosted runners.
+# Runs at 01:43 UTC (04:43 Moscow time), after ci-weekly's Sunday 00:37 UTC
+# run has used the Mac, and finishes before the 06:17 UTC morning jobs.
+
+on:
+  schedule:
+    - cron: "43 1 * * *"   # 04:43 MSK
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One long run at a time: a second one on the same Mac spoils both.
+concurrency:
+  group: audelin-nightly
+  cancel-in-progress: false
+
+jobs:
+  long-runs:
+    runs-on: [self-hosted, local-mac]
+    timeout-minutes: 240
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: trunk
+
+      # The history stays on the Mac, outside the checkout, so each night
+      # compares with the last one that ran on the same setup.
+      - name: Run the long runs
+        working-directory: audelin/macos
+        run: |
+          history="$HOME/Library/Application Support/Audelin Nightly"
+          out="$history/runs/$(date -u +%Y-%m-%d-%H%M%S)-${GITHUB_SHA::7}"
+          echo "NIGHTLY_OUT=$out" >> "$GITHUB_ENV"
+          scripts/nightly.sh --out "$out" --history "$history"
+
+      - name: Summarize
+        if: always() && env.NIGHTLY_OUT != ''
+        run: cat "$NIGHTLY_OUT/report.md" >> "$GITHUB_STEP_SUMMARY" || true
+
+      - name: Keep the report
+        if: always() && env.NIGHTLY_OUT != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: audelin-nightly
+          path: |
+            ${{ env.NIGHTLY_OUT }}/identity.json
+            ${{ env.NIGHTLY_OUT }}/report.*
+            ${{ env.NIGHTLY_OUT }}/endurance.log
+            ${{ env.NIGHTLY_OUT }}/capture-*/summary.*
+
+  notify:
+    if: ${{ always() && !cancelled() && needs.long-runs.result == 'failure' }}
+    needs: [long-runs]
+    uses: ./.github/workflows/notify-telegram-failure.yml
+    with:
+      title: "Audelin Nightly"
+      ref_label: "branch"
+      ref_value: "trunk"
+      job_results: |
+        long-runs=${{ needs.long-runs.result }}
+    secrets:
+      CI_BOT_TOKEN: ${{ secrets.CI_BOT_TOKEN }}
+      CI_CHAT_ID: ${{ secrets.CI_CHAT_ID }}
