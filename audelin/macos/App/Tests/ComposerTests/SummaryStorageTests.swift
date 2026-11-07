@@ -1,4 +1,5 @@
 import BlockingTestWork
+import Calls
 import Foundation
 import Darwin
 import Preferences
@@ -85,9 +86,9 @@ import Testing
                 try FileManager.default.createDirectory(at: source.appendingPathComponent(id), withIntermediateDirectories: true)
                 try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
             }
-            let storage = SummaryStorage(folder: source, timeZone: .gmt, journal: journal, writeJournal: { roots, url in
-                guard roots.count > 1 else { throw ScriptFailure.failed }
-                try JSONEncoder().encode(roots).write(to: url, options: .atomic)
+            let storage = SummaryStorage(folder: source, timeZone: .gmt, journal: journal, writeJournal: { record, url in
+                guard !record.moves.isEmpty else { throw ScriptFailure.failed }
+                try JSONEncoder().encode(record).write(to: url, options: .atomic)
             })
             _ = try await storage.move(id: id, to: destination)
             await #expect(throws: ScriptFailure.failed) {
@@ -103,14 +104,17 @@ import Testing
         }
     }
 
-    @Test func restoreIncludesConfiguredRecordingFolderEvenWhenJournalNamesOnlyAnotherRoot() async throws {
+    @Test func restoreIncludesConfiguredRecordingFolderEvenWhenJournalNamesOnlyAnotherCall() async throws {
         try await withComposeFolder { root in
             let source = root.appendingPathComponent("source"), destination = root.appendingPathComponent("destination")
             let journal = root.appendingPathComponent("roots.json"), id = "1970.01.01-0000"
             try await offPool {
                 try FileManager.default.createDirectory(at: source.appendingPathComponent(id), withIntermediateDirectories: true)
                 try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
-                try JSONEncoder().encode([destination]).write(to: journal)
+                let move = Calls.Move(source: destination.appendingPathComponent("1970.01.01-0001"),
+                                      target: root.appendingPathComponent("other/1970.01.01-0001"),
+                                      temporary: root.appendingPathComponent("other/.audelin-move-test"), phase: .source)
+                try JSONEncoder().encode(SummaryStorage.Journal(moves: ["1970.01.01-0001": move])).write(to: journal)
             }
             let storage = SummaryStorage(folder: source, timeZone: .gmt, journal: journal)
             try await storage.restore()
@@ -173,7 +177,7 @@ import Testing
             #expect(state.phase == .failedMove)
             #expect(state.move?.completed.map(\.id) == [a])
             #expect(try await storage.prepareMove(to: destination).map(\.id) == [b])
-            #expect(try await sameDirectory(storage.location(id: c), destination.appendingPathComponent(c)))
+            await #expect(throws: (any Error).self) { _ = try await storage.location(id: c) }
             try await offPool { try FileManager.default.removeItem(at: destination.appendingPathComponent(b)) }
             let retryStart = observedMoves.count
             await send(.retryMove)
@@ -283,7 +287,7 @@ import Testing
     }
 }
 
-private func sameDirectory(_ left: URL, _ right: URL) async throws -> Bool {
+func sameDirectory(_ left: URL, _ right: URL) async throws -> Bool {
     try await offPool {
         var lhs = stat(), rhs = stat()
         guard stat(left.path, &lhs) == 0, stat(right.path, &rhs) == 0 else { throw CocoaError(.fileReadUnknown) }

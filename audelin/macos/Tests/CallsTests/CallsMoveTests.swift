@@ -77,6 +77,55 @@ struct CallsMoveTests {
         }
     }
 
+    @Test(arguments: [Calls.Move.Phase.copying, .publishing, .removingSource])
+    func journalFailureBeforeSourceDeletionKeepsTheWholeSource(phase: Calls.Move.Phase) async throws {
+        try await withMoveFolders { (source: URL, target: URL) async throws in
+            let disk = Calls(folder: source, timeZone: .gmt, duration: { _ in 0 })
+            await #expect(throws: (any Error).self) {
+                try await offPool {
+                    try disk.move(id: id, to: target) { record in
+                        if record.phase == phase { throw POSIXError(.ENOSPC) }
+                    }
+                }
+            }
+            #expect(try await offPool { try Data(contentsOf: source.appendingPathComponent(name + "/one")) } == Data([1, 2, 3]))
+            #expect(try await offPool { try Data(contentsOf: source.appendingPathComponent(name + "/nested/two")) } == Data([4, 5, 6, 7]))
+            #expect(try await offPool { try FileManager.default.contentsOfDirectory(atPath: target.path) }.isEmpty)
+        }
+    }
+
+    @Test func completedCopyRemainsSuccessfulWhenOnlyItsFinalJournalWriteFails() async throws {
+        try await withMoveFolders { (source: URL, target: URL) async throws in
+            let disk = Calls(folder: source, timeZone: .gmt, duration: { _ in 0 })
+            let durable = Mutex<Calls.Move?>(nil)
+            #expect(try await offPool {
+                try disk.move(id: id, to: target) { move in
+                    if move.phase == .destination { throw POSIXError(.ENOSPC) }
+                    durable.withLock { $0 = move }
+                }
+            } == 7)
+            let saved = try #require(durable.withLock { $0 })
+            #expect(saved.phase == .removingSource)
+            #expect(try await offPool { try FileManager.default.contentsOfDirectory(atPath: source.path) }.isEmpty)
+            #expect(try await offPool { try Data(contentsOf: target.appendingPathComponent(name + "/one")) } == Data([1, 2, 3]))
+            #expect(try await offPool { try disk.recover(saved, record: { move in durable.withLock { $0 = move } }).phase } == .destination)
+        }
+    }
+
+    @Test func differentlyNamedCallWithTheSameIDCannotBecomeAnotherCopy() async throws {
+        try await withMoveFolders { (source: URL, target: URL) async throws in
+            try await offPool {
+                try FileManager.default.createDirectory(at: target.appendingPathComponent(id + " other"), withIntermediateDirectories: false)
+                try Data([99]).write(to: target.appendingPathComponent(id + " other/kept"))
+            }
+            let disk = Calls(folder: source, timeZone: .gmt, duration: { _ in 0 })
+            await #expect(throws: (any Error).self) { try await offPool { try disk.move(id: id, to: target) } }
+            #expect(try await offPool { try FileManager.default.contentsOfDirectory(atPath: target.path) } == [id + " other"])
+            #expect(try await offPool { try Data(contentsOf: target.appendingPathComponent(id + " other/kept")) } == Data([99]))
+            #expect(try await offPool { try Data(contentsOf: source.appendingPathComponent(name + "/one")) } == Data([1, 2, 3]))
+        }
+    }
+
     @Test(arguments: ["file", "directory", "link"])
     func occupiedTargetIsNeverOverwritten(kind: String) async throws {
         try await withMoveFolders { (source: URL, target: URL) async throws in

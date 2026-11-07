@@ -60,7 +60,7 @@ public struct Calls: Sendable {
     }
 
     public func list() throws -> [Call] {
-        try folders().map { url, name in
+        try folders(in: folder).map { url, name in
             let lengths = ["microphone.caf", "call.caf"].compactMap { track -> TimeInterval? in
                 let trackURL = url.appendingPathComponent(track)
                 guard let info = try? values(trackURL), info.isSymbolicLink != true,
@@ -72,8 +72,10 @@ public struct Calls: Sendable {
     }
 
     /// Resolves afresh, including when the title has changed in Finder.
-    public func location(id: String) throws -> URL {
-        let matches = try folders().filter { $0.1.id == id }
+    public func location(id: String) throws -> URL { try location(id: id, in: folder) }
+
+    private func location(id: String, in root: URL) throws -> URL {
+        let matches = try folders(in: root).filter { $0.1.id == id }
         guard matches.count == 1, let match = matches.first else {
             throw Failure(description: matches.isEmpty ? "Звонок «\(id)» больше не найден." : "Несколько папок имеют префикс «\(id)».")
         }
@@ -96,46 +98,122 @@ public struct Calls: Sendable {
 
     public func bytes(id: String) throws -> Int64 { try size(location(id: id)) }
 
-    /// Publishes only a verified copy. If source deletion is partial, the verified
-    /// copy restores missing entries before the destination is removed.
+    /// The callback durably records ownership before a destructive disk step.
     @discardableResult
-    public func move(id: String, to destination: URL) throws -> Int64 {
+    public func move(id: String, to destination: URL,
+                     record: (Move) throws -> Void = { _ in }) throws -> Int64 {
         let source = try location(id: id)
         let destination = destination.resolvingSymlinksInPath().standardizedFileURL
         let sourcePath = source.resolvingSymlinksInPath().standardizedFileURL.path
         guard destination.isFileURL, destination.path != sourcePath,
               !destination.path.hasPrefix(sourcePath + "/") else { throw POSIXError(.EINVAL) }
         let target = destination.appendingPathComponent(source.lastPathComponent, isDirectory: true)
-        guard try !children(destination).contains(where: { $0.lastPathComponent == target.lastPathComponent }) else {
-            throw CocoaError(.fileWriteFileExists)
-        }
-        let temporary = destination.appendingPathComponent(".audelin-move-" + UUID().uuidString, isDirectory: true)
-        var published = false
-        var deleting = false
+        guard try !children(destination).contains(where: {
+            $0.lastPathComponent == target.lastPathComponent || CallFolderName($0.lastPathComponent, timeZone: timeZone)?.id == id
+        }) else { throw CocoaError(.fileWriteFileExists) }
+        var move = Move(source: source, target: target,
+                        temporary: destination.appendingPathComponent(".audelin-move-" + UUID().uuidString, isDirectory: true))
+        try record(move)
         do {
             let original = try manifest(source)
-            try copy(source, temporary)
-            guard try manifest(temporary) == original, try manifest(source) == original else { throw Failure(description: "Размеры файлов копии не совпадают с исходными.") }
-            try rename(temporary, target)
-            published = true
-            deleting = true
-            try remove(source)
+            try copy(source, move.temporary)
+            guard try manifest(move.temporary) == original, try manifest(source) == original else {
+                throw Failure(description: "Размеры файлов копии не совпадают с исходными.")
+            }
+            move.phase = .publishing
+            try record(move)
+            try rename(move.temporary, target)
+            move.phase = .removingSource
+            try record(move)
+            do { try remove(source) }
+            catch {
+                move.phase = .restoringSource
+                try record(move)
+                throw error
+            }
+            move.phase = .destination
+            // The durable removingSource phase already names the complete destination.
+            try? record(move)
             return original.values.reduce(0) { $0 + max(0, $1) }
         } catch {
             let failure = error
-            let copied = published ? target : temporary
-            if deleting {
-                // Keep the verified destination if restoration itself cannot finish.
-                do {
-                    try restoreMissing(from: copied, to: source)
-                    guard try manifest(source) == manifest(copied) else { throw CocoaError(.fileReadCorruptFile) }
-                } catch {
-                    throw Failure(description: "Не удалось восстановить исходную папку; полная копия в \(copied.path). \(error.localizedDescription)")
-                }
-            }
-            if try children(destination).contains(where: { $0.lastPathComponent == copied.lastPathComponent }) { try remove(copied) }
+            // A failed journal write leaves the last durable phase sufficient for recovery.
+            if move.phase == .removingSource { move.phase = .publishing }
+            _ = try recover(move, record: record)
             throw failure
         }
+    }
+
+    public struct Move: Codable, Equatable, Sendable {
+        public enum Phase: String, Codable, Sendable {
+            case copying, publishing, removingSource, restoringSource, removingCopy, source, destination
+        }
+        public var source: URL
+        public var target: URL
+        public var temporary: URL
+        public var phase: Phase
+        public init(source: URL, target: URL, temporary: URL, phase: Phase = .copying) {
+            self.source = source; self.target = target; self.temporary = temporary; self.phase = phase
+        }
+        public var owner: URL {
+            switch phase {
+            case .removingSource, .restoringSource, .destination: target
+            default: source
+            }
+        }
+    }
+
+    /// Recovery follows the recorded owner, including a title changed in Finder.
+    @discardableResult
+    public func recover(_ given: Move, record: (Move) throws -> Void) throws -> Move {
+        var move = given
+        if ![.source, .destination].contains(move.phase) {
+            guard let name = CallFolderName(move.owner.lastPathComponent, timeZone: timeZone) else { throw POSIXError(.EINVAL) }
+            let owner = try location(id: name.id, in: move.owner.deletingLastPathComponent())
+            if move.phase == .removingSource || move.phase == .restoringSource {
+                if owner.lastPathComponent != move.target.lastPathComponent, move.phase == .restoringSource {
+                    // A rename of the owning copy must survive recovery; finish its move.
+                    move.phase = .removingSource
+                }
+                move.target = owner
+            } else { move.source = owner }
+            if move != given { try record(move) }
+        }
+        switch move.phase {
+        case .copying:
+            try removeIfPresent(move.temporary)
+            move.phase = .source
+            try record(move)
+        case .publishing:
+            // Exclusive rename consumes the temporary name only when publication succeeds.
+            move.phase = try exists(move.temporary) ? .copying : .removingCopy
+            try record(move)
+            return try recover(move, record: record)
+        case .removingSource:
+            try removeIfPresent(move.source)
+            move.phase = .destination
+            try record(move)
+        case .restoringSource:
+            try restoreCopy(from: move.target, to: move.source)
+            guard try manifest(move.source) == manifest(move.target) else { throw CocoaError(.fileReadCorruptFile) }
+            move.phase = .removingCopy
+            try record(move)
+            return try recover(move, record: record)
+        case .removingCopy:
+            try removeIfPresent(move.target)
+            move.phase = .source
+            try record(move)
+        case .source, .destination: break
+        }
+        return move
+    }
+
+    private func exists(_ url: URL) throws -> Bool {
+        // Directory entries are fresh; URL resource values may cache a removed entry.
+        try children(url.deletingLastPathComponent()).contains { $0.lastPathComponent == url.lastPathComponent }
+    }
+    private func removeIfPresent(_ url: URL) throws {
+        if try exists(url) { try remove(url) }
     }
 
     private func manifest(_ root: URL) throws -> [String: Int64] {
@@ -155,18 +233,26 @@ public struct Calls: Sendable {
         return result
     }
 
-    private func restoreMissing(from copyURL: URL, to source: URL) throws {
-        if (try? values(source)) == nil { try copy(copyURL, source); return }
-        let info = try values(copyURL)
-        if info.isDirectory == true, info.isSymbolicLink != true {
-            for child in try children(copyURL) {
-                try restoreMissing(from: child, to: source.appendingPathComponent(child.lastPathComponent))
+    private func restoreCopy(from copyURL: URL, to source: URL) throws {
+        if try !exists(source) { try copy(copyURL, source); return }
+        let saved = try values(copyURL), current = try values(source)
+        if saved.isDirectory == true, saved.isSymbolicLink != true,
+           current.isDirectory == true, current.isSymbolicLink != true {
+            let savedChildren = try children(copyURL)
+            let names = Set(savedChildren.map(\.lastPathComponent))
+            for child in try children(source) where !names.contains(child.lastPathComponent) { try remove(child) }
+            for child in savedChildren {
+                try restoreCopy(from: child, to: source.appendingPathComponent(child.lastPathComponent))
             }
+        } else {
+            // Notes can change on the owning copy while restoration is pending.
+            try remove(source)
+            try copy(copyURL, source)
         }
     }
 
     public func count() throws -> Count {
-        let calls = try folders()
+        let calls = try folders(in: folder)
         return Count(calls: calls.count, bytes: try calls.reduce(0) { try $0 + size($1.0) })
     }
 
@@ -177,9 +263,9 @@ public struct Calls: Sendable {
         return Int64(info.fileSize ?? 0)
     }
 
-    private func folders() throws -> [(URL, CallFolderName)] {
-        guard folder.isFileURL else { throw POSIXError(.EINVAL) }
-        return try children(folder).compactMap { url in
+    private func folders(in root: URL) throws -> [(URL, CallFolderName)] {
+        guard root.isFileURL else { throw POSIXError(.EINVAL) }
+        return try children(root).compactMap { url in
             guard let name = CallFolderName(url.lastPathComponent, timeZone: timeZone) else { return nil }
             let info = try values(url)
             guard info.isDirectory == true, info.isSymbolicLink != true else { return nil }
