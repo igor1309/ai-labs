@@ -6,12 +6,6 @@ import { REVEAL } from "../src/skeletonGame.tsx";
 import { choices, finishLoading, fitAll, keptSkeletons, layOutPuzzle, openPuzzle, openSkeletonsApp, revealNow, shownTexts, skeletonOf } from "./skeletonsApp.tsx";
 import { manualViewport, type ManualViewport } from "./support.ts";
 import { openWindow, styleAt, type WindowSize } from "./windowSizes.ts";
-import { appStylesheet, NO_SAFE_AREA } from "./stylesheet.ts";
-
-// The choice brings its own sheet, as the screen does in the app.
-const choiceSheet = document.createElement("style");
-choiceSheet.textContent = appStylesheet(NO_SAFE_AREA, ["skeletonChoice.css"]);
-document.head.append(choiceSheet);
 
 // Every skeleton screen in a tall-narrow window: an iPhone upright.
 
@@ -37,6 +31,12 @@ const narrowViewport = () => {
 
 // The screen stands upright on a phone with its 24, 32 and 20 padding and
 // its parts 16 apart, the bar one row of 48-pixel symbols 8 apart.
+function themedPhoneScreen() {
+  expect([document.documentElement.dataset.size, gateShown(), part(".gated-screen").hasAttribute("inert")]).toEqual(["tall-narrow", false, false]);
+  expect(screen.queryByRole("img", { name: TEXTS.en.turnSideways })).toBeNull();
+  for (const button of part(".skeleton-bar").querySelectorAll<HTMLElement>(".home-button")) expect(button.querySelector(".upright-hidden")?.textContent).toBe(button.textContent);
+}
+
 function phoneScreen(size: WindowSize) {
   expect([document.documentElement.dataset.size, gateShown(), part(".gated-screen").hasAttribute("inert")]).toEqual(["tall-narrow", false, false]);
   expect(screen.queryByRole("img", { name: TEXTS.en.turnSideways })).toBeNull();
@@ -59,9 +59,7 @@ describe("the skeleton screens upright on a phone", () => {
   it.each(PHONES)("stands the choice upright at %i by %i, its skeletons in rows of two", (...size) => {
     openWindow(...size);
     openSkeletonsApp({ viewport: narrowViewport(), portraitLayouts: NARROW_LAYOUTS, storage: starred() });
-    expect([document.documentElement.dataset.size, gateShown(), part(".gated-screen").hasAttribute("inert")]).toEqual(["tall-narrow", false, false]);
-    expect(screen.queryByRole("img", { name: TEXTS.en.turnSideways })).toBeNull();
-    for (const button of part(".skeleton-bar").querySelectorAll<HTMLElement>(".home-button")) expect(button.querySelector(".upright-hidden")?.textContent).toBe(button.textContent);
+    themedPhoneScreen();
     const room = styleAt(part(".skeleton-choices"), size);
     expect(room.value("flex-wrap")).toBe("wrap");
     for (const card of choices()) expect(styleAt(card, size).value("flex-basis")).toBe("calc((100% - var(--sc-gap)) / 2)");
@@ -94,7 +92,7 @@ describe("the skeleton screens upright on a phone", () => {
   it.each(PHONES)("stands the puzzle upright at %i by %i, the board as wide as the screen over a tray of at least a third", async (...size) => {
     openWindow(...size);
     await openPuzzle("TYRANNOSAURUS", { viewport: narrowViewport(), portraitLayouts: NARROW_LAYOUTS });
-    phoneScreen(size);
+    themedPhoneScreen();
     expect([styleAt(part(".skeleton-puzzle"), size).value("flex-direction"), styleAt(part(".skeleton-puzzle"), size).columnGap()]).toEqual(["column", 16]);
     expect(styleAt(part(".skeleton-puzzle .skeleton-board"), size).value("width")).toBe("min(100cqw, (100cqh - 16px) * 0.6 * var(--frame-width) / var(--frame-height))");
     const tray = styleAt(part(".skeleton-tray"), size);
@@ -170,6 +168,6 @@ describe("the skeleton screens upright on a phone", () => {
     openWindow(393, 852);
     act(() => viewport.resize("tall-narrow", true));
     expect([document.documentElement.dataset.size, gateShown(), part(".skeleton-board")]).toEqual(["tall-narrow", false, shown]);
-    phoneScreen([393, 852]);
+    themedPhoneScreen();
   });
 });

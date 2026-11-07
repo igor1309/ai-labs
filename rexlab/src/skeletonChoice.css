@@ -3,8 +3,6 @@
    on a phone; on the sand the level switch over the skeletons, each a body
    in its pocket over its name. */
 html[data-size] .skeleton-choice-screen {
-  --sc-side: var(--ds-space-40);
-  --sc-bar-top: var(--ds-space-m);
   --sc-gap: var(--ds-space-14);
   --sc-name-gap: var(--ds-space-s);
   --sc-name-size: 20px;
@@ -15,14 +13,9 @@ html[data-size] .skeleton-choice-screen {
   padding: calc(var(--dig-sky) + var(--ds-space-s)) calc(var(--sc-side) + var(--screen-right)) calc(var(--dig-ochre) + var(--ds-space-xl)) calc(var(--sc-side) + var(--screen-left));
   align-items: center;
   gap: var(--ds-space-l);
-  color: var(--ds-ink);
-  font-family: var(--ds-font);
-  background: linear-gradient(var(--ds-sky-top), var(--ds-sky-bottom) 40dvh) var(--ds-sky-bottom);
 }
 
 html[data-size="tall"] .skeleton-choice-screen {
-  --sc-side: var(--ds-space-56);
-  --sc-bar-top: var(--ds-space-l);
   --sc-gap: var(--ds-space-20);
   --sc-name-gap: var(--ds-space-m);
   --sc-name-size: 22px;
@@ -33,8 +26,6 @@ html[data-size="tall"] .skeleton-choice-screen {
 }
 
 html[data-size="tall-narrow"] .skeleton-choice-screen {
-  --sc-side: var(--ds-space-20);
-  --sc-bar-top: var(--ds-space-s);
   --sc-gap: var(--ds-space-m);
   --sc-name-gap: var(--ds-space-xs);
   --sc-name-size: 18px;
@@ -48,8 +39,6 @@ html[data-size="tall-narrow"] .skeleton-choice-screen {
 }
 
 html[data-size="wide-short"] .skeleton-choice-screen {
-  --sc-bar-top: var(--ds-space-s);
-  --sc-side: var(--ds-space-20);
   --sc-gap: var(--ds-space-s);
   --sc-name-gap: 0px;
   --sc-name-size: 16px;
@@ -62,74 +51,17 @@ html[data-size="wide-short"] .skeleton-choice-screen {
   gap: var(--ds-space-s);
 }
 
-/* The bar, across the top of the sky. */
-html[data-size] .skeleton-choice-screen .skeleton-bar {
-  position: absolute;
-  z-index: 1;
-  top: calc(var(--sc-bar-top) + env(safe-area-inset-top));
-  left: calc(var(--sc-side) + var(--screen-left));
-  right: calc(var(--sc-side) + var(--screen-right));
-  gap: var(--ds-space-m);
-}
-
-html[data-size] .skeleton-choice-screen .skeleton-bar .home-button {
-  width: auto;
-  height: 48px;
-  min-height: 48px;
-  padding: 0 var(--ds-space-18) 0 var(--ds-space-l);
-  gap: var(--ds-space-s);
-  border: 0;
-  border-radius: var(--ds-radius-pill);
-  background: var(--ds-quiet);
-  color: var(--ds-ink);
-  font-size: var(--ds-size-label);
-  font-weight: 800;
-  letter-spacing: 0;
-  box-shadow: none;
-}
-
-html[data-size] .skeleton-choice-screen .skeleton-bar .home-button svg { width: 22px; height: 22px; }
-
-html[data-size="tall"] .skeleton-choice-screen .skeleton-bar .home-button,
-html[data-size="tall-narrow"] .skeleton-choice-screen .skeleton-bar .home-button { width: 48px; padding: 0; justify-content: center; }
-
-/* HOME first, then the best beside MUSEUM at the far side. */
-.skeleton-choice-screen .skeleton-bar > .home-button:first-child { margin-right: auto; }
-.skeleton-choice-screen .skeleton-chip { order: 1; }
-.skeleton-choice-screen .museum-button { order: 2; }
-
-html[data-size] .skeleton-choice-screen .skeleton-chip {
-  height: auto;
-  padding: var(--ds-space-s) var(--ds-space-l);
-  gap: var(--ds-space-s);
-  border-radius: var(--ds-radius-pill);
-  background: var(--ds-label);
-  color: var(--ds-ink);
-  font-size: var(--ds-size-number);
-  font-weight: 800;
-}
-
-.skeleton-choice-screen .skeleton-chip svg { color: var(--ds-reward); }
-
-html[data-size="wide-short"] .skeleton-choice-screen .skeleton-chip,
-html[data-size="tall-narrow"] .skeleton-choice-screen .skeleton-chip {
-  padding: var(--ds-space-7) var(--ds-space-m);
-  font-size: var(--ds-size-20);
-}
-
 /* On a tablet the title has a line of its own, centred under the bar. */
-html[data-size] .skeleton-choice-screen .skeleton-title {
+html[data-size="wide"] .skeleton-choice-screen .skeleton-title,
+html[data-size="tall"] .skeleton-choice-screen .skeleton-title {
   position: absolute;
   top: 64px;
   left: 0;
   right: 0;
-  justify-content: center;
   gap: var(--ds-space-l);
-  font-weight: 800;
-  letter-spacing: -0.5px;
 }
 
-.skeleton-choice-screen .skeleton-title-words { font-size: min(40px, (100cqi - 76px) / (var(--letters) * 0.75)); }
+html[data-size] .skeleton-choice-screen .skeleton-title-words { font-size: min(40px, (100cqi - 76px) / (var(--letters) * 0.75)); }
 
 html[data-size] .skeleton-choice-screen .skeleton-mark {
   width: 60px;
@@ -139,25 +71,6 @@ html[data-size] .skeleton-choice-screen .skeleton-mark {
   color: var(--ds-action);
   box-shadow: inset 0 6px 10px var(--ds-pocket-shadow);
 }
-
-/* A phone's title goes without its mark: upright on the line under the bar,
-   which keeps every language's words large; on its side between the bar's
-   buttons. */
-html[data-size="tall-narrow"] .skeleton-choice-screen .skeleton-title { top: 52px; }
-
-html[data-size="wide-short"] .skeleton-choice-screen .skeleton-title {
-  position: static;
-  order: 0;
-  flex: 1 1 0;
-}
-
-html[data-size="tall-narrow"] .skeleton-choice-screen .skeleton-mark,
-html[data-size="wide-short"] .skeleton-choice-screen .skeleton-mark { display: none; }
-
-html[data-size="wide-short"] .skeleton-choice-screen .skeleton-bar > .home-button:first-child { margin-right: 0; }
-
-html[data-size="tall-narrow"] .skeleton-choice-screen .skeleton-title-words { font-size: min(26px, 100cqi / (var(--letters) * 0.75)); }
-html[data-size="wide-short"] .skeleton-choice-screen .skeleton-title-words { font-size: min(22px, 100cqi / (var(--letters) * 0.75)); }
 
 /* The level switch on the sand. */
 .skeleton-levels {
@@ -176,9 +89,6 @@ html[data-size="wide-short"] .skeleton-levels .level-switch-level { padding-inli
 @media (max-width: 760px) {
   html[data-size="wide-short"] .skeleton-levels .level-switch-name { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 }
-
-/* On a phone on its side the sand runs to the screen's foot. */
-html[data-size="wide-short"] .skeleton-choice-screen .dig-ground-ochre { display: none; }
 
 /* The skeletons in rows of three, or two upright, a last row of fewer
    centred, sharing what the sand has left. */

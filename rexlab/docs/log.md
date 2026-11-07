@@ -2,6 +2,7 @@
 
 ## 2026-11-07
 
+- LAB-921: BONES' puzzle stands on the dig site: the board and tray are pockets in the sand, HOME comes before BACK, and the count turns green with the last bone.
 - LAB-921: BONES' choice stands on the dig site: the sky's bar and title over the sand's level switch and skeletons in their pockets.
 - LAB-920: LABYRINTH's level offers show the design's compass for Explorer and pickaxe for Paleontologist in the pocket.
 - LAB-920: On an iPhone SE held upright, HATCHLING's maze fits whole: its parent waits on home, as on the larger mazes, and the sides narrow.

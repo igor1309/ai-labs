@@ -1,0 +1,76 @@
+/* BONES' puzzle on the dig site (design/dig-site.pen, BONES · puzzle): the
+   board and the tray, pockets in the sand, side by side or one over the
+   other, the bones on spots of the deeper layer. */
+html[data-size] .skeleton-puzzle-screen {
+  --dig-sky: calc(88px + env(safe-area-inset-top));
+  --dig-ochre: calc(60px + env(safe-area-inset-bottom));
+  padding: calc(var(--dig-sky) + var(--ds-space-xs)) calc(var(--ds-space-40) + var(--screen-right)) calc(var(--dig-ochre) + var(--ds-space-40)) calc(var(--ds-space-40) + var(--screen-left));
+}
+
+html[data-size="tall"] .skeleton-puzzle-screen {
+  --dig-sky: calc(100px + env(safe-area-inset-top));
+  --dig-ochre: calc(28px + env(safe-area-inset-bottom));
+  padding: calc(var(--dig-sky) + var(--ds-space-l)) calc(var(--ds-space-2xl) + var(--screen-right)) calc(var(--dig-ochre) + var(--ds-space-28)) calc(var(--ds-space-2xl) + var(--screen-left));
+}
+
+html[data-size="tall-narrow"] .skeleton-puzzle-screen {
+  --dig-sky: calc(clamp(100px, 15dvh, 129px) + env(safe-area-inset-top));
+  --dig-ochre: calc(10px + env(safe-area-inset-bottom));
+  padding: calc(var(--dig-sky) + var(--ds-space-xs)) calc(var(--ds-space-20) + var(--screen-right)) calc(var(--dig-ochre) + var(--ds-space-22)) calc(var(--ds-space-20) + var(--screen-left));
+}
+
+html[data-size="wide-short"] .skeleton-puzzle-screen {
+  --dig-sky: calc(54px + env(safe-area-inset-top));
+  --dig-ochre: 0px;
+  padding: calc(var(--dig-sky) + var(--ds-space-s)) calc(var(--ds-space-20) + var(--screen-right)) calc(var(--ds-space-m) + env(safe-area-inset-bottom)) calc(var(--ds-space-20) + var(--screen-left));
+}
+
+/* The small phone on its side keeps its bar's buttons to their symbols, named
+   for screen readers. */
+@media (max-width: 760px) {
+  html[data-size="wide-short"] .skeleton-puzzle-screen .skeleton-bar .home-button { width: 48px; padding: 0; justify-content: center; }
+  html[data-size="wide-short"] .skeleton-puzzle-screen .home-button .upright-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+}
+
+html[data-size] .skeleton-puzzle-screen .skeleton-board,
+html[data-size] .skeleton-puzzle-screen .skeleton-tray {
+  border-radius: var(--ds-radius-pocket-top) var(--ds-radius-pocket-top) var(--ds-radius-pocket-bottom) var(--ds-radius-pocket-bottom);
+  outline: none;
+  background: var(--ds-pocket-1);
+  box-shadow: inset 0 6px 10px var(--ds-pocket-shadow);
+}
+
+html[data-size="wide"] .skeleton-puzzle-screen .skeleton-tray,
+html[data-size="tall"] .skeleton-puzzle-screen .skeleton-tray { --spot-gap: var(--ds-space-m); padding: var(--ds-space-l); }
+
+html[data-size="wide-short"] .skeleton-puzzle-screen .skeleton-tray { --spot-gap: var(--ds-space-s); padding: var(--ds-space-m); }
+
+html[data-size] .skeleton-puzzle-screen .skeleton-tray-spot {
+  border-radius: var(--ds-radius-25);
+  outline: none;
+  background: var(--ds-strata-2);
+}
+
+/* A spot whose bone is on the board stays, faint, so nothing else moves. */
+html[data-size] .skeleton-puzzle-screen .skeleton-tray-spot[data-empty] { opacity: 0.4; }
+
+html[data-size] .skeleton-puzzle-screen .skeleton-slot[data-target] { outline: 3px solid var(--ds-reward); }
+
+html[data-size] .skeleton-puzzle-screen .skeleton-glow { outline-color: var(--ds-reward); box-shadow: 0 0 24px var(--ds-reward); }
+html[data-size] .skeleton-puzzle-screen .skeleton-tray-spot .skeleton-glow { border-radius: var(--ds-radius-25); }
+html[data-size] .skeleton-puzzle-screen .skeleton-region { outline-color: var(--ds-reward); box-shadow: 0 0 32px var(--ds-reward); }
+
+/* Whose bone it was, at the top of the board. */
+html[data-size] .skeleton-puzzle-screen .skeleton-told { top: var(--ds-space-l); bottom: auto; }
+html[data-size] .skeleton-puzzle-screen .skeleton-told-line {
+  padding: var(--ds-space-s) var(--ds-space-l);
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-label);
+  color: var(--ds-ink);
+  font-size: var(--ds-size-20);
+  font-weight: 800;
+  text-align: center;
+}
+
+html[data-size="tall-narrow"] .skeleton-puzzle-screen .skeleton-told-line,
+html[data-size="wide-short"] .skeleton-puzzle-screen .skeleton-told-line { font-size: var(--ds-size-15); }

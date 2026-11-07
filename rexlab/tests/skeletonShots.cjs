@@ -11,7 +11,17 @@ const SHOTS = [
   ["choice-all", { level: "paleontologist", stars: 5 }],
   ["choice-loading", { level: "explorer", stars: 2, loading: true }],
   ["choice-returning-dark", { level: "explorer", stars: 2, theme: "dark" }],
-  ["choice-returning-ru", { level: "explorer", stars: 2, language: "ru" }]
+  ["choice-returning-ru", { level: "explorer", stars: 2, language: "ru" }],
+  ["puzzle-start", { puzzle: true }],
+  ["puzzle-explorer", { puzzle: true, level: "explorer", id: "triceratops", fitted: 2 }],
+  ["puzzle-paleo", { puzzle: true, level: "paleontologist", id: "stegosaurus", fitted: 7, told: true }],
+  ["puzzle-glow", { puzzle: true, fitted: 1, step: "glow" }],
+  ["puzzle-ghost", { puzzle: true, level: "explorer", id: "triceratops", fitted: 2, step: "ghost" }],
+  ["puzzle-done", { puzzle: true, fitted: 4 }],
+  ["puzzle-loading", { puzzle: true, loading: true }],
+  ["puzzle-explorer-dark", { puzzle: true, level: "explorer", id: "triceratops", fitted: 2, theme: "dark" }],
+  ["puzzle-paleo-dark", { puzzle: true, level: "paleontologist", id: "stegosaurus", fitted: 7, told: true, theme: "dark" }],
+  ["puzzle-explorer-ru", { puzzle: true, level: "explorer", fitted: 2, language: "ru" }]
 ];
 
 (async () => {
@@ -34,8 +44,8 @@ const SHOTS = [
       return files.has(path) ? route.fulfill({ contentType: type, body: files.get(path) }) : route.fulfill({ status: 404 });
     });
     await page.goto("http://shots.test/");
-    for (const [name, options] of SHOTS) {
-      await page.evaluate(async options => { { const harness = await import("/harness.js"); harness.mountChoice(options); } await document.fonts.ready; }, options);
+    for (const [name, options] of SHOTS.filter(([name]) => !process.env.ONLY || name.startsWith(process.env.ONLY))) {
+      await page.evaluate(async options => { { const harness = await import("/harness.js"); options.puzzle ? harness.mountPuzzle(options) : harness.mountChoice(options); } await document.fonts.ready; }, options);
       if (!options.loading) await page.waitForFunction(() => [...document.images].every(image => image.complete));
       await page.evaluate(() => Promise.all(document.getAnimations().filter(a => a.effect?.getComputedTiming().iterations !== Infinity).map(a => a.finished.catch(() => {}))));
       await page.screenshot({ path: join(out, `${name}.png`) });

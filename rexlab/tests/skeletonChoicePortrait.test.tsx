@@ -6,12 +6,6 @@ import { TEXTS } from "../src/language/texts.ts";
 import { choices, keptSkeletons, openSkeletonsApp, shownTexts } from "./skeletonsApp.tsx";
 import { manualViewport, type ManualViewport } from "./support.ts";
 import { openWindow, styleAt, type WindowSize } from "./windowSizes.ts";
-import { appStylesheet, NO_SAFE_AREA } from "./stylesheet.ts";
-
-// The choice brings its own sheet, as the screen does in the app.
-const choiceSheet = document.createElement("style");
-choiceSheet.textContent = appStylesheet(NO_SAFE_AREA, ["skeletonChoice.css"]);
-document.head.append(choiceSheet);
 
 // skeleton-choice-portrait.feature in the app.
 
