@@ -4,6 +4,20 @@ import Synchronization
 import Testing
 
 @Suite struct SummaryRuntimeTests {
+    @Test func syntaxValidationIsIndependentOfProviderAvailability() {
+        var config = cli()
+        config.program = "/missing/cli"
+        #expect(Runtime.configurationIssues(config).isEmpty)
+        config.model = " \n"
+        config.program = "relative"
+        config.endpoint = "https://user:secret@example.com/v1"
+        config.credentialVariable = "secret=value"
+        #expect(Runtime.configurationIssues(config) == [.init(field: .model), .init(field: .program), .init(field: .endpoint, hidesValue: true), .init(field: .credentialVariable, hidesValue: true)])
+    }
+    @Test(arguments: ["https://example.com/v1", "http://localhost/v1", "http://127.0.0.2/v1", "http://[::1]/v1"])
+    func syntaxAcceptsSafeEndpointsWithoutCredentials(endpoint: String) {
+        #expect(Runtime.configurationIssues(api(endpoint: endpoint)).isEmpty)
+    }
     @Test func CLIProbesBeforeLiteralInputAndUsesRequiredControls() async throws {
         let process = ProcessSpy(help: help)
         let prompt = String(repeating: "literal $(touch /no) `whoami` ; ' \n", count: 10000)
@@ -38,6 +52,7 @@ import Testing
     @Test(arguments: ["http://example.com/v1", "https://u:p@example.com", "https://example.com?q=secret", "https://example.com/#fragment", "file:///tmp/x"])
     func rejectsUnsafeEndpointBeforeNetwork(endpoint: String) async {
         let http = HTTPSpy()
+        #expect(Runtime.configurationIssues(api(endpoint: endpoint)).map(\.field) == [.endpoint])
         await #expect(throws: Failure.configuration) { try await makeRuntime(http: http).generate(api(endpoint: endpoint), prompt: "input") }
         #expect(await http.calls.isEmpty)
     }

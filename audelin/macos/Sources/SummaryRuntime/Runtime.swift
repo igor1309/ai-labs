@@ -15,6 +15,32 @@ public struct Configuration: Sendable, Equatable {
     }
 }
 public struct Runtime: Sendable {
+    public struct ConfigurationIssue: Equatable, Sendable {
+        public enum Field: Sendable { case model, program, endpoint, credentialVariable }
+        public var field: Field
+        public var hidesValue: Bool
+        public init(field: Field, hidesValue: Bool = false) { self.field = field; self.hidesValue = hidesValue }
+    }
+
+    /// Syntax checks require no process, credential lookup or network access.
+    public static func configurationIssues(_ config: Configuration) -> [ConfigurationIssue] {
+        var issues: [ConfigurationIssue] = []
+        if config.model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { issues.append(.init(field: .model)) }
+        if config.kind == .claudeCLI && (!config.program.hasPrefix("/") || config.program.contains("\0")) { issues.append(.init(field: .program)) }
+        // Inactive fields are persisted too, so they must not retain URL credentials.
+        if config.kind == .compatibleAPI || !config.endpoint.isEmpty {
+            if (try? endpoint(config.endpoint)) == nil {
+                let parts = URLComponents(string: config.endpoint)
+                let sensitive = parts?.user != nil || parts?.password != nil || parts?.query != nil || parts?.fragment != nil
+                    || config.endpoint.contains("@") || config.endpoint.contains("?") || config.endpoint.contains("#")
+                issues.append(.init(field: .endpoint, hidesValue: sensitive))
+            }
+        }
+        if !config.credentialVariable.isEmpty && config.credentialVariable.range(of: "^[A-Za-z_][A-Za-z0-9_]*$", options: .regularExpression) == nil {
+            issues.append(.init(field: .credentialVariable, hidesValue: true))
+        }
+        return issues
+    }
     private let deadline: @Sendable () async throws -> Void
     private let process: any ProcessRunning
     private let http: any HTTPRequesting
@@ -25,17 +51,14 @@ public struct Runtime: Sendable {
     }
     public static let controls = ["--safe-mode", "--restricted", "--tools", "--strict-mcp-config", "--mcp-config", "--no-session-persistence", "--output-format"]
     public func validate(_ config: Configuration) async throws {
-        guard !config.model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw Failure.configuration }
+        guard Self.configurationIssues(config).isEmpty else { throw Failure.configuration }
         switch config.kind {
         case .claudeCLI:
-            guard config.program.hasPrefix("/"), !config.program.contains("\0") else { throw Failure.configuration }
             let output = try await process.run(program: config.program, arguments: ["--help"], input: Data())
             let help = String(decoding: output.stdout, as: UTF8.self)
             guard output.status == 0, Self.supports(help) else { throw Failure.unavailable }
         case .compatibleAPI:
-            _ = try Self.endpoint(config.endpoint)
             if !config.credentialVariable.isEmpty {
-                guard config.credentialVariable.range(of: "^[A-Za-z_][A-Za-z0-9_]*$", options: .regularExpression) != nil else { throw Failure.configuration }
                 guard credential(config.credentialVariable)?.isEmpty == false else { throw Failure.authentication }
             }
         }
@@ -55,10 +78,9 @@ public struct Runtime: Sendable {
     }
     private func attempt(_ config: Configuration, prompt: String) async throws -> String {
         try Task.checkCancellation()
-        guard !config.model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw Failure.configuration }
+        guard Self.configurationIssues(config).isEmpty else { throw Failure.configuration }
         switch config.kind {
         case .claudeCLI:
-            guard config.program.hasPrefix("/"), !config.program.contains("\0") else { throw Failure.configuration }
             // Probe without input before any transcript is handed to the program.
             let help = try await process.run(program: config.program, arguments: ["--help"], input: Data())
             let text = String(decoding: help.stdout, as: UTF8.self)
@@ -71,7 +93,6 @@ public struct Runtime: Sendable {
             let url = try Self.endpoint(config.endpoint).appendingPathComponent("chat/completions")
             var headers = ["Content-Type": "application/json"]
             if !config.credentialVariable.isEmpty {
-                guard config.credentialVariable.range(of: "^[A-Za-z_][A-Za-z0-9_]*$", options: .regularExpression) != nil else { throw Failure.configuration }
                 guard let token = credential(config.credentialVariable), !token.isEmpty else { throw Failure.authentication }
                 headers["Authorization"] = "Bearer " + token
             }

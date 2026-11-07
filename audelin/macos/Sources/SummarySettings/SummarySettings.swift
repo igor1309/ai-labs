@@ -30,21 +30,61 @@ public struct State: Equatable, Sendable {
     public var savingRevision: UInt64?
     public var message: String
     public var disclosure: String
+    public var issues: [ValidationIssue]
+    public var runtimes: [RenderedRuntime]
+    public var canSave: Bool
+    public var canValidate: Bool
+    public var saveAction: SaveAction
+    public var statusTone: StatusTone
+    public var showsSaveFailure: Bool
+    public enum SaveAction: Sendable { case save, retrySave }
+    public enum StatusTone: Sendable { case secondary, success, error }
     public init(phase: Phase = .idle, draft: Configuration? = nil, saved: Configuration? = nil,
                 revision: UInt64 = 0, validatedRevision: UInt64? = nil, savingRevision: UInt64? = nil,
-                message: String = "", disclosure: String = "") {
+                message: String = "", disclosure: String = "", issues: [ValidationIssue] = [],
+                runtimes: [RenderedRuntime] = [], canSave: Bool = false, canValidate: Bool = false,
+                saveAction: SaveAction = .save, statusTone: StatusTone = .secondary, showsSaveFailure: Bool = false) {
         self.phase = phase; self.draft = draft; self.saved = saved; self.revision = revision
         self.validatedRevision = validatedRevision; self.savingRevision = savingRevision
         self.message = message; self.disclosure = disclosure
+        self.issues = issues; self.runtimes = runtimes; self.canSave = canSave; self.canValidate = canValidate
+        self.saveAction = saveAction; self.statusTone = statusTone; self.showsSaveFailure = showsSaveFailure
     }
 }
 
 public enum Slot: Sendable { case primary, fallback }
 public enum Field: Sendable { case model, executable, endpoint, credentialVariable }
+public struct ValidationIssue: Equatable, Sendable {
+    public enum Reason: Sendable { case invalid, unavailable, authentication }
+    public var slot: Slot
+    public var field: Field
+    public var reason: Reason
+    public var hidesValue: Bool
+    public init(slot: Slot, field: Field, reason: Reason = .invalid, hidesValue: Bool = false) {
+        self.slot = slot; self.field = field; self.reason = reason; self.hidesValue = hidesValue
+    }
+}
+public struct RenderedField: Equatable, Sendable {
+    public var field: Field
+    public var value: String
+    public var isInvalid: Bool
+    public init(field: Field, value: String, isInvalid: Bool) {
+        self.field = field; self.value = value; self.isInvalid = isInvalid
+    }
+}
+public struct RenderedRuntime: Equatable, Sendable {
+    public var slot: Slot
+    public var kind: Configuration.Runtime.Kind
+    public var fields: [RenderedField]
+    public var disclosure: String
+    public init(slot: Slot, kind: Configuration.Runtime.Kind, fields: [RenderedField], disclosure: String) {
+        self.slot = slot; self.kind = kind; self.fields = fields; self.disclosure = disclosure
+    }
+}
 public enum Event: Equatable, Sendable {
     case setEnabled(Bool), setSpeakers(Bool), selectKind(Slot, Configuration.Runtime.Kind), editField(Slot, Field, String)
     case load, loaded(Configuration), loadFailed
-    case edit(Configuration), validate, validated(UInt64, String?), save
+    case edit(Configuration), validate, validated(UInt64, [ValidationIssue]), save
     case saved(UInt64, Configuration), saveFailed(UInt64)
 }
 public enum Effect: Equatable, Sendable {
@@ -54,9 +94,16 @@ public enum Effect: Equatable, Sendable {
 public struct Reducer: Sendable {
     private let disclosure: @Sendable (Configuration) -> String
     private let message: @Sendable (State.Phase) -> String
+    private let safety: @Sendable (Configuration) -> [ValidationIssue]
+    private let issueMessage: @Sendable (ValidationIssue) -> String
+    private let runtimeDisclosure: @Sendable (Configuration.Runtime) -> String
     public init(disclosure: @escaping @Sendable (Configuration) -> String,
-                message: @escaping @Sendable (State.Phase) -> String) {
+                message: @escaping @Sendable (State.Phase) -> String,
+                safety: @escaping @Sendable (Configuration) -> [ValidationIssue],
+                issueMessage: @escaping @Sendable (ValidationIssue) -> String,
+                runtimeDisclosure: @escaping @Sendable (Configuration.Runtime) -> String) {
         self.disclosure = disclosure; self.message = message
+        self.safety = safety; self.issueMessage = issueMessage; self.runtimeDisclosure = runtimeDisclosure
     }
     public func reduce(_ state: State, _ event: Event) -> (State, Effect?) {
         var next = state
@@ -72,7 +119,11 @@ public struct Reducer: Sendable {
             guard var draft = state.draft else { return (state, nil) }
             var runtime = slot == .primary ? draft.primary : draft.fallback
             runtime.kind = kind
-            if kind == .claudeCLI { runtime.model = "sonnet"; runtime.executable = "/opt/homebrew/bin/claude" }
+            if kind == .claudeCLI {
+                runtime.model = "sonnet"; runtime.executable = "/opt/homebrew/bin/claude"
+                // API fields leave the editor when selecting CLI; discard their hidden secrets.
+                runtime.endpoint = ""; runtime.credentialVariable = ""
+            }
             else { runtime.model = "gpt-4.1-mini"; runtime.endpoint = "https://api.openai.com/v1"; runtime.credentialVariable = "OPENAI_API_KEY" }
             if slot == .primary { draft.primary = runtime } else { draft.fallback = runtime }
             return reduce(state, .edit(draft))
@@ -92,22 +143,30 @@ public struct Reducer: Sendable {
         case let .loaded(config) where state.phase == .loading:
             next.phase = .saved; next.draft = config; next.saved = config
             next.disclosure = disclosure(config)
+            next.issues = safety(config)
         case .loadFailed where state.phase == .loading: next.phase = .loadFailed
         case let .edit(config) where state.draft != nil:
             next.draft = config; next.revision += 1; next.validatedRevision = nil
             next.phase = state.savingRevision == nil ? .editing : .saving
             next.disclosure = disclosure(config)
+            next.issues = safety(config)
         case .validate where state.draft != nil && state.savingRevision == nil && state.phase != .validating:
-            next.phase = .validating; effect = .validate(state.revision, state.draft!)
-        case let .validated(revision, error) where revision == state.revision && state.phase == .validating:
-            next.phase = .editing; next.validatedRevision = error == nil ? revision : nil
-            next.message = error ?? message(.editing)
-            return (next, nil)
-        case .save where state.savingRevision == nil && state.draft != nil && state.draft != state.saved:
-            // The off switch never depends on an available provider.
-            guard state.draft!.enabled == false || state.validatedRevision == state.revision else { return (state, nil) }
-            next.phase = .saving; next.savingRevision = state.revision
-            effect = .save(state.revision, state.draft!)
+            next.issues = safety(state.draft!)
+            next.validatedRevision = nil
+            if next.issues.isEmpty {
+                next.phase = .validating; effect = .validate(state.revision, state.draft!)
+            }
+        case let .validated(revision, issues) where revision == state.revision && state.phase == .validating:
+            next.phase = .editing; next.validatedRevision = issues.isEmpty ? revision : nil
+            next.issues = issues
+        case .save where state.savingRevision == nil && state.phase != .validating && state.draft != nil && state.draft != state.saved:
+            guard !state.draft!.enabled || state.validatedRevision == state.revision else { return (state, nil) }
+            next.issues = safety(state.draft!)
+            // Disabling still checks persisted syntax, without needing a live provider.
+            if next.issues.isEmpty {
+                next.phase = .saving; next.savingRevision = state.revision
+                effect = .save(state.revision, state.draft!)
+            }
         case let .saved(revision, config) where state.savingRevision == revision:
             next.saved = config; next.savingRevision = nil
             next.phase = revision == state.revision ? .saved : .editing
@@ -115,7 +174,27 @@ public struct Reducer: Sendable {
             next.savingRevision = nil; next.phase = .saveFailed
         default: return (state, nil)
         }
-        next.message = message(next.phase)
+        let busy = next.savingRevision != nil || next.phase == .validating
+        next.canValidate = next.draft != nil && !busy
+        next.canSave = next.draft != nil && !busy && next.draft != next.saved
+            && next.issues.isEmpty && (next.draft?.enabled == false || next.validatedRevision == next.revision)
+        next.saveAction = next.phase == .saveFailed ? .retrySave : .save
+        next.showsSaveFailure = next.phase == .saveFailed
+        let failed = next.phase == .saveFailed || next.phase == .loadFailed
+        next.statusTone = failed ? .error : busy ? .secondary : !next.issues.isEmpty ? .error : next.phase == .saved ? .success : .secondary
+        next.message = busy || failed ? message(next.phase) : next.issues.first.map(issueMessage) ?? message(next.phase)
+        if let draft = next.draft {
+            next.runtimes = [(Slot.primary, draft.primary), (.fallback, draft.fallback)].map { slot, runtime in
+                var fields: [(Field, String)] = [(.model, runtime.model)]
+                fields += runtime.kind == .claudeCLI ? [(.executable, runtime.executable)] : [(.endpoint, runtime.endpoint), (.credentialVariable, runtime.credentialVariable)]
+                return RenderedRuntime(slot: slot, kind: runtime.kind, fields: fields.map { field, value in
+                    let invalid = next.issues.contains { $0.slot == slot && $0.field == field }
+                    // Unsafe URL and credential-reference input must not be echoed as a secret.
+                    let hidden = next.issues.contains { $0.slot == slot && $0.field == field && $0.hidesValue }
+                    return RenderedField(field: field, value: hidden ? "" : value, isInvalid: invalid)
+                }, disclosure: runtimeDisclosure(runtime))
+            }
+        }
         return (next, effect)
     }
 }
@@ -125,8 +204,8 @@ public protocol Preferences: Sendable {
     func save(_ configuration: Configuration) async throws
 }
 public protocol Availability: Sendable {
-    /// Returns a safe, user-facing error, without sending transcript or a paid prompt.
-    func validate(_ configuration: Configuration) async -> String?
+    /// Checks provider readiness without sending a transcript or paid prompt.
+    func validate(_ configuration: Configuration) async -> [ValidationIssue]
 }
 public struct EffectHandler: Sendable {
     private let preferences: any Preferences
@@ -138,7 +217,8 @@ public struct EffectHandler: Sendable {
         switch effect {
         case .load:
             do { return .loaded(try await preferences.load()) } catch { return .loadFailed }
-        case let .validate(revision, config): return .validated(revision, await availability.validate(config))
+        case let .validate(revision, config):
+            return .validated(revision, config.enabled ? await availability.validate(config) : [])
         case let .save(revision, config):
             do { try await preferences.save(config); return .saved(revision, config) }
             catch { return .saveFailed(revision) }

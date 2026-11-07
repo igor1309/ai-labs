@@ -11,7 +11,9 @@ func settingsConfiguration(_ notes: NotesPreferences) throws -> SummarySettings.
         return .init(kind: kind, model: value.model, executable: value.executable,
               endpoint: value.endpoint, credentialVariable: value.credentialVariable)
     }
-    return .init(enabled: notes.enabled, speakers: notes.speakers, primary: try runtime(notes.primary), fallback: try runtime(notes.fallback))
+    let config = SummarySettings.Configuration(enabled: notes.enabled, speakers: notes.speakers, primary: try runtime(notes.primary), fallback: try runtime(notes.fallback))
+    guard SummaryAvailability.configurationIssues(config).isEmpty else { throw SummaryRuntime.Failure.configuration }
+    return config
 }
 func storedConfiguration(_ config: SummarySettings.Configuration) -> NotesPreferences {
     func runtime(_ value: SummarySettings.Configuration.Runtime) -> NotesPreferences.Runtime {
@@ -46,26 +48,47 @@ struct SummaryPreferences: SummarySettings.Preferences {
     }
     func save(_ configuration: SummarySettings.Configuration) async throws {
         try await withCheckedThrowingContinuation { (done: CheckedContinuation<Void, any Error>) in
-            queue.async { done.resume(with: Result { try storage.updateNotes(storedConfiguration(configuration)) }) }
+            queue.async {
+                done.resume(with: Result {
+                    guard SummaryAvailability.configurationIssues(configuration).isEmpty else { throw SummaryRuntime.Failure.configuration }
+                    try storage.updateNotes(storedConfiguration(configuration))
+                })
+            }
         }
     }
 }
 struct SummaryAvailability: SummarySettings.Availability {
+    static func configurationIssues(_ configuration: SummarySettings.Configuration) -> [SummarySettings.ValidationIssue] {
+        [(SummarySettings.Slot.primary, configuration.primary), (.fallback, configuration.fallback)].flatMap { slot, value in
+            SummaryRuntime.Runtime.configurationIssues(.init(kind: .init(rawValue: value.kind.rawValue)!, model: value.model,
+                program: value.executable, endpoint: value.endpoint, credentialVariable: value.credentialVariable)).map { issue in
+                let field: SummarySettings.Field
+                switch issue.field {
+                case .model: field = .model
+                case .program: field = .executable
+                case .endpoint: field = .endpoint
+                case .credentialVariable: field = .credentialVariable
+                }
+                return .init(slot: slot, field: field, hidesValue: issue.hidesValue)
+            }
+        }
+    }
     let runtime: SummaryRuntime.Runtime
-    func validate(_ configuration: SummarySettings.Configuration) async -> String? {
-        if !configuration.enabled { return nil }
-        for (name, value) in [("Основной", configuration.primary), ("Резервный", configuration.fallback)] {
+    func validate(_ configuration: SummarySettings.Configuration) async -> [SummarySettings.ValidationIssue] {
+        let syntax = Self.configurationIssues(configuration)
+        guard syntax.isEmpty else { return syntax }
+        for (slot, value) in [(SummarySettings.Slot.primary, configuration.primary), (.fallback, configuration.fallback)] {
             do {
                 try await runtime.validate(.init(kind: .init(rawValue: value.kind.rawValue)!, model: value.model,
                     program: value.executable, endpoint: value.endpoint, credentialVariable: value.credentialVariable))
             } catch {
                 if error as? SummaryRuntime.Failure == .authentication {
-                    return name + ": переменная учётных данных недоступна запущенному приложению. Проверьте имя и окружение приложения; значение не показывается."
+                    return [.init(slot: slot, field: .credentialVariable, reason: .authentication)]
                 }
-                return name + ": проверьте модель, программу и безопасный URL. Программа должна поддерживать изоляцию; проверка не подтверждает квоту."
+                return [.init(slot: slot, field: value.kind == .claudeCLI ? .executable : .endpoint, reason: .unavailable)]
             }
         }
-        return nil
+        return []
     }
 }
 

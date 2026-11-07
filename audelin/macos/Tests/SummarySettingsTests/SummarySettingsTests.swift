@@ -1,11 +1,12 @@
 import SummarySettings
+import Synchronization
 import Testing
 
 @Suite struct SummarySettingsTests {
-    let reducer = Reducer(disclosure: { "recipients: \($0.primary.endpoint), \($0.fallback.endpoint)" }, message: { "\($0)" })
+    let reducer = makeReducer()
     @Test func loadFailurePreservesDataAndCanRetry() async {
         let preferences = PreferencesSpy(fails: true)
-        let handler = EffectHandler(preferences: preferences, availability: AvailabilitySpy(error: nil))
+        let handler = EffectHandler(preferences: preferences, availability: AvailabilitySpy(issues: []))
         let (loading, effect) = reducer.reduce(.init(), .load)
         #expect(effect == .load)
         let failed = reducer.reduce(loading, await handler.handle(.load)).0
@@ -23,13 +24,13 @@ import Testing
         let (validating, effect) = reducer.reduce(edited, .validate)
         #expect(effect == .validate(1, edit))
         let preferences = PreferencesSpy(fails: false)
-        let handler = EffectHandler(preferences: preferences, availability: AvailabilitySpy(error: nil))
-        #expect(await handler.handle(effect!) == .validated(1, nil))
+        let handler = EffectHandler(preferences: preferences, availability: AvailabilitySpy(issues: []))
+        #expect(await handler.handle(effect!) == .validated(1, []))
         var changed = edit; changed.primary.model = "newer"
         let newer = reducer.reduce(validating, .edit(changed)).0
-        #expect(reducer.reduce(newer, .validated(1, nil)).0 == newer)
+        #expect(reducer.reduce(newer, .validated(1, [])).0 == newer)
         #expect(reducer.reduce(newer, .save).1 == nil)
-        let approved = reducer.reduce(validating, .validated(1, nil)).0
+        let approved = reducer.reduce(validating, .validated(1, [])).0
         let (saving, save) = reducer.reduce(approved, .save)
         #expect(save == .save(1, edit))
         #expect(reducer.reduce(saving, .save).1 == nil)
@@ -48,7 +49,7 @@ import Testing
         let edited = reducer.reduce(initial, .edit(off)).0
         let (saving, effect) = reducer.reduce(edited, .save)
         #expect(effect == .save(1, off))
-        let handler = EffectHandler(preferences: PreferencesSpy(fails: true), availability: AvailabilitySpy(error: "unavailable"))
+        let handler = EffectHandler(preferences: PreferencesSpy(fails: true), availability: AvailabilitySpy(issues: [.init(slot: .primary, field: .executable, reason: .unavailable)]))
         let failed = reducer.reduce(saving, await handler.handle(effect!)).0
         #expect(failed.phase == .saveFailed)
         #expect(failed.draft == off)
@@ -57,10 +58,12 @@ import Testing
     }
     @Test func invalidValidationNeverApprovesSave() async {
         let config = configuration(enabled: true)
-        let handler = EffectHandler(preferences: PreferencesSpy(fails: false), availability: AvailabilitySpy(error: "primary model missing"))
+        let handler = EffectHandler(preferences: PreferencesSpy(fails: false), availability: AvailabilitySpy(issues: [.init(slot: .primary, field: .model)]))
         let state = State(phase: .validating, draft: config, revision: 3)
         let result = reducer.reduce(state, await handler.handle(.validate(3, config))).0
-        #expect(result.message == "primary model missing")
+        #expect(result.message == "issue: primary model")
+        #expect(result.runtimes[0].fields[0].isInvalid)
+        #expect(!result.canSave)
         #expect(result.validatedRevision == nil)
         #expect(reducer.reduce(result, .save).1 == nil)
     }
@@ -78,13 +81,23 @@ private actor PreferencesSpy: Preferences {
     func save(_ config: Configuration) throws { if fails { throw StubError() }; saves.append(config) }
 }
 private struct AvailabilitySpy: Availability {
-    let error: String?
-    func validate(_ config: Configuration) async -> String? { error }
+    let issues: [ValidationIssue]
+    func validate(_ config: Configuration) async -> [ValidationIssue] { issues }
 }
 
 @Suite struct SummarySettingsEditTests {
+    @Test func selectingCLIDiscardsHiddenAPIFields() {
+        var given = makeState()
+        given.draft?.fallback.endpoint = "https://user:secret@example.com/v1"
+        given.draft?.fallback.credentialVariable = "secret=value"
+        let result = makeReducer().reduce(given, .selectKind(.fallback, .claudeCLI)).0
+        #expect(result.draft?.fallback.endpoint == "")
+        #expect(result.draft?.fallback.credentialVariable == "")
+        #expect(result.runtimes[1].fields.map(\.field) == [.model, .executable])
+    }
+
     @Test func fieldEventsEditBothSlotsWithoutLosingEarlierEdits() {
-        let reducer = Reducer(disclosure: { $0.primary.endpoint + $0.fallback.endpoint }, message: { "\($0)" })
+        let reducer = makeReducer()
         let initial = State(phase: .saved, draft: configuration(enabled: false))
         var state = reducer.reduce(initial, .setEnabled(true)).0
         state = reducer.reduce(state, .setSpeakers(true)).0
@@ -102,4 +115,136 @@ private struct AvailabilitySpy: Availability {
         #expect(state.draft?.fallback.credentialVariable == "")
         #expect(state.revision == 8)
     }
+}
+
+private func makeReducer() -> Reducer {
+    Reducer(disclosure: { "recipients: \($0.primary.endpoint), \($0.fallback.endpoint)" },
+            message: { "\($0)" }, safety: { _ in [] },
+            issueMessage: { "issue: \($0.slot) \($0.field)" }, runtimeDisclosure: { "runtime: \($0.model)" })
+}
+
+@Suite struct SummarySettingsRenderedStateTests {
+    @Test func pureDependenciesReceiveExactEditsAndTheirValuesAreRendered() {
+        let disclosureCalls = Mutex<[Configuration]>([])
+        let safetyCalls = Mutex<[Configuration]>([])
+        let runtimeCalls = Mutex<[Configuration.Runtime]>([])
+        let messageCalls = Mutex<[State.Phase]>([])
+        let issueCalls = Mutex<[ValidationIssue]>([])
+        let issue = ValidationIssue(slot: .fallback, field: .endpoint, hidesValue: true)
+        let reducer = Reducer(disclosure: { config in
+            disclosureCalls.withLock { $0.append(config) }; return "disclosure stub"
+        }, message: { phase in
+            messageCalls.withLock { $0.append(phase) }; return "message stub"
+        }, safety: { config in
+            safetyCalls.withLock { $0.append(config) }; return [issue]
+        }, issueMessage: { value in
+            issueCalls.withLock { $0.append(value) }; return "correction stub"
+        }, runtimeDisclosure: { runtime in
+            runtimeCalls.withLock { $0.append(runtime) }; return "runtime stub"
+        })
+        let given = makeState()
+        assert(reducer, given, .validated(99, []), delivers: nil)
+        #expect(disclosureCalls.withLock { $0.isEmpty })
+        #expect(safetyCalls.withLock { $0.isEmpty })
+        #expect(runtimeCalls.withLock { $0.isEmpty })
+        #expect(messageCalls.withLock { $0.isEmpty })
+        #expect(issueCalls.withLock { $0.isEmpty })
+        var edited = configuration(enabled: false)
+        edited.fallback.endpoint = "https://user:secret@example.com/?secret#secret"
+        assert(reducer, given, .edit(edited), delivers: nil) {
+            $0.draft = edited; $0.revision = 1; $0.phase = .editing
+            $0.disclosure = "disclosure stub"; $0.issues = [issue]; $0.message = "correction stub"
+            $0.canValidate = true; $0.statusTone = .error
+            $0.runtimes = [.init(slot: .primary, kind: .compatibleAPI, fields: [
+                .init(field: .model, value: "fixture", isInvalid: false),
+                .init(field: .endpoint, value: "http://127.0.0.1/v1", isInvalid: false),
+                .init(field: .credentialVariable, value: "", isInvalid: false)
+            ], disclosure: "runtime stub"), .init(slot: .fallback, kind: .compatibleAPI, fields: [
+                .init(field: .model, value: "fixture", isInvalid: false),
+                .init(field: .endpoint, value: "", isInvalid: true),
+                .init(field: .credentialVariable, value: "", isInvalid: false)
+            ], disclosure: "runtime stub")]
+        }
+        #expect(disclosureCalls.withLock { $0 } == [edited])
+        #expect(safetyCalls.withLock { $0 } == [edited])
+        #expect(runtimeCalls.withLock { $0 } == [edited.primary, edited.fallback])
+        #expect(issueCalls.withLock { $0 } == [issue])
+        #expect(messageCalls.withLock { $0.isEmpty })
+        assert(reducer, makeEmptyState(), .load, delivers: .load) {
+            $0.phase = .loading; $0.message = "message stub"
+        }
+        #expect(messageCalls.withLock { $0 } == [.loading])
+    }
+
+    @Test func saveRechecksSyntaxEvenForDisabledPreviouslyApprovedDraft() {
+        let calls = Mutex<[Configuration]>([])
+        let issue = ValidationIssue(slot: .fallback, field: .endpoint, hidesValue: true)
+        let reducer = Reducer(disclosure: { _ in "" }, message: { "\($0)" }, safety: { config in
+            calls.withLock { $0.append(config) }; return [issue]
+        }, issueMessage: { _ in "correct fallback URL" }, runtimeDisclosure: { _ in "" })
+        var config = configuration(enabled: false); config.fallback.endpoint = "http://remote.example"
+        let given = State(phase: .editing, draft: config, saved: configuration(enabled: false), revision: 2, validatedRevision: 2)
+        let (result, effect) = reducer.reduce(given, .save)
+        #expect(effect == nil)
+        #expect(!result.canSave && result.issues == [issue])
+        #expect(result.runtimes[1].fields[1].isInvalid)
+        #expect(calls.withLock { $0 } == [config])
+    }
+
+    @Test func disabledValidationAndSaveDoNotConsultAvailability() async {
+        let availability = RecordingAvailability(issues: [.init(slot: .primary, field: .executable, reason: .unavailable)])
+        let preferences = PreferencesSpy(fails: false)
+        let handler = EffectHandler(preferences: preferences, availability: availability)
+        let config = configuration(enabled: false)
+        #expect(await handler.handle(.validate(4, config)) == .validated(4, []))
+        #expect(await handler.handle(.save(4, config)) == .saved(4, config))
+        #expect(await preferences.saves == [config])
+        #expect(await availability.calls.isEmpty)
+    }
+
+    @Test func enabledValidationUsesExactRevisionAndConfiguration() async {
+        let issues = [ValidationIssue(slot: .fallback, field: .credentialVariable, reason: .authentication)]
+        let availability = RecordingAvailability(issues: issues)
+        let handler = EffectHandler(preferences: PreferencesSpy(fails: false), availability: availability)
+        let config = configuration(enabled: true)
+        #expect(await handler.handle(.validate(7, config)) == .validated(7, issues))
+        #expect(await availability.calls == [config])
+    }
+
+    @Test func progressAndFailuresRemainInStateWithEditsIntact() async {
+        let reducer = makeReducer()
+        let handler = EffectHandler(preferences: PreferencesSpy(fails: true), availability: AvailabilitySpy(issues: []))
+        let given = makeState()
+        let edited = reducer.reduce(given, .setEnabled(true)).0
+        let (validating, effect) = reducer.reduce(edited, .validate)
+        #expect(!validating.canSave && !validating.canValidate && validating.message == "validating")
+        let approved = reducer.reduce(validating, await handler.handle(effect!)).0
+        #expect(approved.canSave && approved.canValidate)
+        let (saving, save) = reducer.reduce(approved, .save)
+        #expect(!saving.canSave && !saving.canValidate && saving.message == "saving")
+        let failed = reducer.reduce(saving, await handler.handle(save!)).0
+        #expect(failed.draft == approved.draft && failed.saved == given.saved)
+        #expect(failed.canSave && failed.canValidate && failed.saveAction == .retrySave)
+        #expect(failed.showsSaveFailure && failed.statusTone == .error)
+        #expect(failed.message == "saveFailed")
+    }
+}
+
+private func makeState() -> State {
+    let config = configuration(enabled: false)
+    return State(phase: .saved, draft: config, saved: config)
+}
+private func makeEmptyState() -> State { State() }
+private func assert(_ reducer: Reducer, _ state: State, _ event: Event, delivers effect: Effect?,
+                    change: (inout State) -> Void = { _ in }) {
+    var expected = state; change(&expected)
+    let actual = reducer.reduce(state, event)
+    #expect(actual.0 == expected)
+    #expect(actual.1 == effect)
+}
+private actor RecordingAvailability: Availability {
+    let issues: [ValidationIssue]
+    var calls: [Configuration] = []
+    init(issues: [ValidationIssue]) { self.issues = issues }
+    func validate(_ config: Configuration) -> [ValidationIssue] { calls.append(config); return issues }
 }

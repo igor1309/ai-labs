@@ -10,7 +10,8 @@ public final class AudelinSettings {
     private let model: ObservableModel<SummarySettings.State, SummarySettings.Event, SummarySettings.Effect>
     public var selectedTab: SettingsState.Tab = .recording
     init(preferences: any SummarySettings.Preferences, availability: any SummarySettings.Availability) {
-        let reducer = SummarySettings.Reducer(disclosure: notesDisclosure, message: settingsMessage)
+        let reducer = SummarySettings.Reducer(disclosure: notesDisclosure, message: settingsMessage, safety: SummaryAvailability.configurationIssues,
+                                              issueMessage: settingsIssueMessage, runtimeDisclosure: runtimeDisclosure)
         let handler = SummarySettings.EffectHandler(preferences: preferences, availability: availability)
         model = ObservableModel(initialState: .init(), reduce: reducer.reduce, handleEffect: { effect in
             AsyncStream { output in
@@ -79,25 +80,61 @@ func notesPresentation(_ state: SummarySettings.State) -> SettingsState.CallNote
             ? .loadFailed(.init(title: "Не удалось загрузить настройки", detail: state.message), .init(id: .retryLoad, title: "Повторить"))
             : .loading(state.message)
     }
-    func runtime(_ value: SummarySettings.Configuration.Runtime, _ slot: SettingsState.NotesRuntime.Slot) -> SettingsState.NotesRuntime {
-        var fields: [SettingsState.NotesField] = [.init(id: .model, label: "Модель", value: value.model)]
-        if value.kind == .claudeCLI { fields.append(.init(id: .executable, label: "Программа", value: value.executable)) }
-        else {
-            fields += [.init(id: .endpoint, label: "Адрес API", value: value.endpoint),
-                       .init(id: .credentialVariable, label: "API-ключ из", value: value.credentialVariable, placeholder: "не требуется")]
+    func runtime(_ value: SummarySettings.RenderedRuntime) -> SettingsState.NotesRuntime {
+        let slot: SettingsState.NotesRuntime.Slot = value.slot == .primary ? .primary : .fallback
+        let fields: [SettingsState.NotesField] = value.fields.map { field in
+            let id: SettingsState.NotesField.ID
+            switch field.field {
+            case .model: id = .model
+            case .executable: id = .executable
+            case .endpoint: id = .endpoint
+            case .credentialVariable: id = .credentialVariable
+            }
+            return .init(id: id, label: settingsFieldLabel(field.field), value: field.value,
+                         placeholder: id == .credentialVariable ? "не требуется" : "", isInvalid: field.isInvalid)
         }
         return .init(id: slot, title: slot == .primary ? "Основной сервис" : "Резервный сервис", kind: .init(rawValue: value.kind.rawValue)!,
                      options: [.init(id: .claudeCLI, title: "Claude Code CLI"), .init(id: .compatibleAPI, title: "API · OpenAI-совместимый")],
-                     fields: fields, disclosure: runtimeDisclosure(value))
+                     fields: fields, disclosure: value.disclosure)
     }
-    let busy = state.savingRevision != nil || state.phase == .validating
-    let canSave = !busy && draft != state.saved && (!draft.enabled || state.validatedRevision == state.revision)
+    let tone: SettingsState.NotesTone
+    switch state.statusTone {
+    case .secondary: tone = .secondary
+    case .success: tone = .success
+    case .error: tone = .error
+    }
     return .loaded(.init(automatic: draft.enabled, identifySpeakers: draft.speakers,
-                         runtimes: [runtime(draft.primary, .primary), runtime(draft.fallback, .fallback)],
-                         disclosure: state.disclosure, status: state.message,
-                         statusTone: state.phase == .saved ? .success : .secondary,
-                         banner: state.phase == .saveFailed ? .init(title: "Не удалось сохранить настройки", detail: state.message) : nil,
-                         validate: .init(id: .validate, title: "Проверить", isEnabled: !busy),
-                         save: .init(id: state.phase == .saveFailed ? .retrySave : .save,
-                                     title: state.phase == .saveFailed ? "Повторить" : "Сохранить", isEnabled: canSave)))
+                         runtimes: state.runtimes.map(runtime),
+                         disclosure: state.disclosure, status: state.message, statusTone: tone,
+                         banner: state.showsSaveFailure ? .init(title: "Не удалось сохранить настройки", detail: state.message) : nil,
+                         validate: .init(id: .validate, title: "Проверить", isEnabled: state.canValidate),
+                         save: .init(id: state.saveAction == .retrySave ? .retrySave : .save,
+                                     title: state.saveAction == .retrySave ? "Повторить" : "Сохранить", isEnabled: state.canSave)))
+}
+
+func settingsFieldLabel(_ field: SummarySettings.Field) -> String {
+    switch field {
+    case .model: "Модель"
+    case .executable: "Программа"
+    case .endpoint: "Адрес API"
+    case .credentialVariable: "API-ключ из"
+    }
+}
+func settingsIssueMessage(_ issue: SummarySettings.ValidationIssue) -> String {
+    let slot = issue.slot == .primary ? "Основной сервис" : "Резервный сервис"
+    let detail: String
+    switch issue.reason {
+    case .authentication:
+        detail = "переменная учётных данных недоступна приложению; проверьте имя. Значение не показывается."
+    case .unavailable:
+        detail = "сервис недоступен или не поддерживает изоляцию. Проверка не подтверждает квоту."
+    case .invalid:
+        switch issue.field {
+        case .model: detail = "укажите модель."
+        case .executable: detail = "укажите абсолютный путь к программе."
+        case .endpoint: detail = "укажите HTTPS или loopback HTTP без логина, пароля, параметров и фрагмента."
+        case .credentialVariable: detail = "укажите только имя переменной учётных данных, без её значения."
+        }
+    }
+    return slot + " · " + settingsFieldLabel(issue.field) + ": " + detail
 }
