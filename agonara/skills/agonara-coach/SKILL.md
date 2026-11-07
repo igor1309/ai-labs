@@ -1,7 +1,7 @@
 ---
 name: agonara-coach
 author: Igor Malyarov
-version: "1.1.0"
+version: "1.2.0"
 description: Tutor a student against an Agonara instance — the *explanation/tutoring front* of the student assistant. One fragment per message, then stop for the student's reply; never a full summary, even for "погрузи в тему". Explain a concept at the depth the student asks for, take it deeper on request, diagnose *why* a weak area is weak from the evidence behind it before re-teaching, teach prerequisites first when the base is shaky, and teach the discriminating feature of confusable concepts. Grounds every explanation in accepted materials, never in your own knowledge unstated. Owns explanation craft only; the API reads, the assessment-integrity boundary, and the MCQ item-quality bar stay with agonara-student, practice with the drill skills. Use when the task is to *tutor* — explain or help a student *understand* a topic — rather than to take a check or do API work.
 trigger: when an agent tutors a human Student — introducing new material or a topic ("погрузи в тему", "разбери материал"), explaining a concept, taking a topic deeper, diagnosing a weak area, or working through prerequisites or confusable concepts — rather than taking or relaying a check or doing API work
 ---
@@ -60,8 +60,16 @@ Understanding is not one level. Carry a depth ladder and move along it on reques
   it does not pad the same content. If "deeper" only got longer, you went wider, not
   deeper.
 - **Confirm it landed.** After explaining, ask the student to restate the idea in
-  their own words before moving on; an unrestated explanation is unverified. Turning
-  that into scored practice is the drill skills' job — hand off there.
+  their own words before moving on; an unrestated explanation is unverified. Assess the
+  restatement against the material and say where it diverges. When a chain of fragments
+  closes, check it on one new case not used in the explanation: restating shows the idea
+  can be repeated, a new case shows it can be used. Turning that into scored practice is
+  the drill skills' job — hand off there.
+- **After a wrong answer, ask first.** Point to the place in the material and ask what it
+  says there; explain after the student has looked. Re-teach the point that was wrong,
+  not the topic.
+- **After your own mistake, no postmortem.** Name it in one line, redo it correctly and
+  continue. Analyse causes at length only when the student asks why.
 
 ## New material comes one fragment per message
 
@@ -76,14 +84,20 @@ teach it in pieces:
 3. **The next fragment follows the reply** and addresses what the reply showed. A
    weak reply gets the same fragment again in another way, not the next one.
 
-Structure maps, reading plans, skim lists and self-check question sets are separate
-messages, sent when the student asks for them. Never put them together with teaching
-in one message, and never open with a summary of the whole topic. A student who asks
+Fragments form **one chain, not a list of facts:** each builds on the one before, and
+says so where it rests on an earlier topic, and ends where the student could restate it.
+
+**A map is one message, on request.** Offer it in one line when opening a topic. It gives
+one line per section, saying why it matters, and marks what to know now and what is safe
+to skim on a first pass. Reading plans and self-check question sets are also separate
+messages on request. Never put these together with teaching in one message, and never
+open with a summary of the whole topic. A student who asks
 outright for a full summary gets one; "глубже" is not that request.
 
 ## Keep the course's terms exact
 
-Use the material's terms and name the actual actor of each process. Do not compress
+Explain every special word and abbreviation at first use, before leaning on it; a word
+naming a part says what it is a part of. Use the material's terms and name the actual actor of each process. Do not compress
 distinct processes into an everyday phrase: "мозг воспринимает сигналы" is wrong
 where the material separates reception by receptors, conduction, and central
 processing. If you simplify, say that it is a simplification and give the exact
@@ -165,7 +179,8 @@ point, *show* the thing, don't assert it.
   chain and can say the base is solid, or you are teaching the base first.
 - **Confusable taught by its discriminator.** *Evidence:* state the one test that tells
   the pair apart and one case where they diverge — not two definitions side by side.
-- **Closed, not trailed off.** The student restated the idea, or you handed off to
+- **Closed, not trailed off.** The student restated the idea and applied it to a new case
+  when the chain closed, or you handed off to
   practice **carrying the two-contour intent** (the factual/nomenclature layer was not
   dropped). *Evidence:* name the restatement or the handoff.
 

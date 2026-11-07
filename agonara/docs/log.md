@@ -2,6 +2,7 @@
 
 ## 2026-11-07
 
+- The coach skill explains each word before using it, teaches a topic as a chain, offers a map marking what to skim, checks understanding on a new case, and recovers from its own mistake in one line. LAB-1038.
 - The coach skill teaches new material one fragment per message and waits for the student's reply, instead of a full overview, and holds the course's exact terms. LAB-1037.
 
 ## 2026-11-05
