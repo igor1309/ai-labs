@@ -25,7 +25,7 @@ struct CallsListViewRenderTests {
         // Keep each pair entirely in the viewport; lazy scroll rows outside it are not rendered.
         for start in stride(from: 0, to: rows.count, by: 2) {
             let pair = Array(rows[start..<min(start + 2, rows.count)])
-            let host = Offscreen.host(view(.init(rows: pair), scheme), size: CGSize(width: 1600, height: 300), scheme: scheme)
+            let host = Offscreen.host(view(.init(rows: pair), scheme), size: CGSize(width: 920, height: 300), scheme: scheme)
             host.window?.isReleasedWhenClosed = false
             defer { host.window?.close() }
             let text = try await read(host)

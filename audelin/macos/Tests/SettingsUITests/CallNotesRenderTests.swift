@@ -4,13 +4,15 @@ import SwiftUI
 import Testing
 @testable import SettingsUI
 
-@MainActor
+@MainActor @Suite(.serialized)
 struct CallNotesRenderTests {
 
     @Test(arguments: SettingsState.summaryPreviews.map(\.name), [ColorScheme.light, .dark])
     func everySummaryShowsItsFormattedValues(name: String, scheme: ColorScheme) async throws {
         let state = try #require(SettingsState.summaryPreviews.first { $0.name == name }?.state)
         let host = Offscreen.host(SettingsPreview(state: state, scheme: scheme), scheme: scheme)
+        host.window?.isReleasedWhenClosed = false
+        defer { host.window?.close() }
         let image = try #require(Offscreen.sharpSnapshot(host))
         let text = normalized(try await offPool { try readText(in: image) })
         #expect(!text.shows("Папка данных"), "\(name): \(text)")
@@ -53,6 +55,8 @@ struct CallNotesRenderTests {
         draft.runtimes[0].disclosure = "Другой получатель"
         state.callNotes = .loaded(draft)
         let host = Offscreen.host(SettingsPreview(state: state, scheme: .light))
+        host.window?.isReleasedWhenClosed = false
+        defer { host.window?.close() }
         let image = try #require(Offscreen.sharpSnapshot(host))
         let text = normalized(try await offPool { try readText(in: image) })
         #expect(text.shows(draft.disclosure), "\(text)")
