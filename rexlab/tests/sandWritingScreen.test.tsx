@@ -1,3 +1,4 @@
+import "./sandWritingSheets.ts";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, onTestFinished, vi } from "vitest";
@@ -8,6 +9,9 @@ import { writingCanvasSpy } from "./sandWritingCanvasSpy.ts";
 import { filterTaps, tapAt } from "./taps.ts";
 import { appStylesheet } from "./stylesheet.ts";
 import { openWindow } from "./windowSizes.ts";
+
+// The marks take the dig site's groove, ds-groove in the light theme.
+const GROOVE = "#A07D52";
 
 function openScreen(language: Language = "en", ratio = 1) {
   let rect = new DOMRect(13, 17, 800, 600);
@@ -26,7 +30,7 @@ function openScreen(language: Language = "en", ratio = 1) {
   return {
     ...view, canvas, baseCanvas: view.container.querySelector<HTMLCanvasElement>(".sand-writing-base")!, base, grooves, home, captured,
     trigger: () => screen.getByRole<HTMLButtonElement>("button", { name: TEXTS[language].sandTipPicker }),
-    marks: () => grooves.paths.filter(({ colour }) => colour === "#98723f"),
+    marks: () => grooves.paths.filter(({ colour }) => colour === GROOVE),
     resize(width: number, height: number) {
       rect = new DOMRect(13, 17, width, height);
       fireEvent(window, new Event("resize"));
@@ -55,13 +59,13 @@ describe("sand writing input", () => {
     pointer(app.canvas, "pointermove", 80, 90, 7, { pointerType });
     pointer(app.canvas, "pointerup", 120, 130, 7, { pointerType });
     expect(app.marks()).toEqual([
-      { colour: "#98723f", width: 4, points: [[20, 30, 2]], rounded: true },
-      { colour: "#98723f", width: 4, points: [[20, 30], [80, 90]], rounded: true },
-      { colour: "#98723f", width: 4, points: [[80, 90], [120, 130]], rounded: true }
+      { colour: GROOVE, width: 4, points: [[20, 30, 2]], rounded: true },
+      { colour: GROOVE, width: 4, points: [[20, 30], [80, 90]], rounded: true },
+      { colour: GROOVE, width: 4, points: [[80, 90], [120, 130]], rounded: true }
     ]);
     expect(app.canvas.releasePointerCapture).toHaveBeenCalledWith(7);
     expect(app.captured.size).toBe(0);
-    expect(app.base.rectangles.filter(({ colour }) => colour === "#d9b77e")).toHaveLength(1);
+    expect(app.base.cleared).toHaveLength(1);
   });
 
   it("uses every coalesced Pencil point, includes an uncoalesced endpoint and deduplicates it", () => {
@@ -147,7 +151,7 @@ describe("the retained drawing", () => {
       expect(app.grooves.cleared.at(-1)).toEqual([0, 0, width, height]);
     }
     stroke(app.canvas, 300, 200);
-    expect(app.marks().at(-1)).toEqual({ colour: "#98723f", width: 4, points: [[330, 240], [350, 260]], rounded: true });
+    expect(app.marks().at(-1)).toEqual({ colour: GROOVE, width: 4, points: [[330, 240], [350, 260]], rounded: true });
     app.unmount();
     const count = app.marks().length;
     app.resize(200, 100);
@@ -175,10 +179,15 @@ describe("the retained drawing", () => {
 });
 
 describe("the viewport", () => {
+  const SIZES = { "320,568": "tall-narrow", "568,320": "wide-short", "1024,690": "wide", "690,1024": "tall", "1920,1080": "wide" } as const;
   it.each([[320, 568], [568, 320], [1024, 690], [690, 1024], [1920, 1080]])("fills %i by %i with safe corner controls and no scrolling or footer", (width, height) => {
     openWindow(width, height);
+    const size = SIZES[`${width},${height}` as keyof typeof SIZES];
+    document.documentElement.dataset.size = size;
+    onTestFinished(() => { delete document.documentElement.dataset.size; });
+    const phone = size === "tall-narrow" || size === "wide-short";
     const sheet = document.createElement("style");
-    sheet.textContent = appStylesheet({ top: 11, right: 13, bottom: 17, left: 19 });
+    sheet.textContent = appStylesheet({ top: 11, right: 13, bottom: 17, left: 19 }, ["app.css", "sandWriting.css"]);
     document.head.append(sheet);
     onTestFinished(() => { sheet.remove(); });
     const footer = document.createElement("footer");
@@ -191,24 +200,29 @@ describe("the viewport", () => {
     expect([getComputedStyle(document.documentElement).overflow, getComputedStyle(document.body).overflow, getComputedStyle(footer).display]).toEqual(["hidden", "hidden", "none"]);
     const surface = getComputedStyle(app.canvas);
     expect([surface.width, surface.height, surface.inset, surface.position]).toEqual(["100%", "100%", "0px", "absolute"]);
-    const home = getComputedStyle(screen.getByRole("button", { name: "ДОМОЙ" }));
+    // HOME a pill with its word in a big window, round on a phone, its word
+    // kept for the screen reader; STICK round with its word under it.
+    const homeButton = screen.getByRole("button", { name: "ДОМОЙ" });
+    const home = getComputedStyle(homeButton);
     const picker = getComputedStyle(app.trigger().parentElement!);
-    expect([home.width, home.height, home.borderRadius, home.top, home.insetInlineStart, picker.top, picker.insetInlineEnd]).toEqual(["60px", "60px", "20px", "31px", "39px", "31px", "33px"]);
+    expect([home.width, home.height, home.borderRadius, home.top, home.insetInlineStart, picker.top, picker.insetInlineEnd])
+      .toEqual(phone ? ["48px", "48px", "999px", "27px", "39px", "27px", "33px"] : ["auto", "48px", "999px", "47px", "59px", "47px", "53px"]);
+    expect(getComputedStyle(homeButton.querySelector(".sand-writing-home-word")!).position).toBe(phone ? "absolute" : "static");
+    const face = getComputedStyle(app.trigger().querySelector(".sand-writing-stick-face")!);
+    expect([face.width, face.height, face.borderRadius]).toEqual(["64px", "64px", "50%"]);
     expect(screen.queryByRole("heading")).toBeNull();
-    expect(app.canvas.closest("section")!.textContent).toBe("248ОЧИСТИТЬ");
+    expect(app.canvas.closest("section")!.textContent).toBe("ДОМОЙПАЛОЧКАТОНКАЯСРЕДНЯЯТОЛСТАЯСТЕРЕТЬ");
     expect(getComputedStyle(app.canvas.closest("section")!.querySelector(".sand-writing-options")!).visibility).toBe("hidden");
     fireEvent.click(app.trigger());
-    const options = screen.getByRole("group", { name: "ТОЛЩИНА ЛИНИИ" });
+    const options = screen.getByRole("group", { name: "ПАЛОЧКА" });
     const style = getComputedStyle(options);
-    expect([style.visibility, style.gridTemplateColumns]).toEqual(["visible", "repeat(3, 60px)"]);
-    const clear = getComputedStyle(within(options).getByRole("button", { name: "ОЧИСТИТЬ" }));
-    expect(clear.gridColumn).toBe("1 / -1");
-    // jsdom does not lay out: budget the two rows and three columns from
-    // the delivered CSS against the safe viewport, including the clear row.
-    const panelWidth = 3 * 60 + 2 * parseFloat(style.gap) + 2 * parseFloat(style.padding);
-    const panelHeight = 2 * parseFloat(clear.minHeight) + parseFloat(style.gap) + 2 * parseFloat(style.padding);
-    expect(panelWidth).toBeLessThanOrEqual(width - 19 - 13 - 40);
-    expect(parseFloat(picker.top) + parseFloat(style.top) + panelHeight).toBeLessThanOrEqual(height - 17 - 20);
+    expect([style.visibility, style.width]).toEqual(["visible", "248px"]);
+    expect(getComputedStyle(options.querySelector(".sand-writing-tips")!).gridTemplateColumns).toBe("repeat(3, 64px)");
+    const clear = getComputedStyle(within(options).getByRole("button", { name: "СТЕРЕТЬ" }));
+    expect(clear.minHeight).toBe("54px");
+    // jsdom lays nothing out: the panel's width against the safe window;
+    // its height is the browser contract's, where it is laid out.
+    expect(parseFloat(style.width)).toBeLessThanOrEqual(width - 19 - 13 - 40);
   });
 });
 
@@ -216,8 +230,7 @@ describe("the tip picker", () => {
   it.each(["en", "ru"] as const)("localizes controls in %s and applies all three tips only to subsequent strokes", (language) => {
     const app = openScreen(language);
     const text = TEXTS[language];
-    expect(screen.getAllByRole("button").map((button) => button.getAttribute("aria-label"))).toEqual([text.home, text.sandTipPicker]);
-    expect(screen.getByRole("button", { name: text.home }).textContent).toBe("");
+    expect(screen.getAllByRole("button").map((button) => button.textContent)).toEqual([text.home, text.sandTipPicker]);
     stroke(app.canvas, 10, 20);
     expect(app.marks().every(({ width }) => width === 4)).toBe(true);
     let selected = 4;
@@ -225,7 +238,7 @@ describe("the tip picker", () => {
       fireEvent.click(app.trigger());
       const choices = screen.getByRole("group", { name: text.sandTipPicker });
       expect(document.activeElement).toBe(within(choices).getByRole("button", { name: text.sandTip(selected) }));
-      expect(within(choices).getAllByRole("button").map((button) => button.textContent)).toEqual(["2", "4", "8", text.sandClear]);
+      expect(within(choices).getAllByRole("button").map((button) => button.textContent)).toEqual([text.sandTip(2), text.sandTip(4), text.sandTip(8), text.sandClear]);
       const prior = [...app.marks()];
       fireEvent.click(within(choices).getByRole("button", { name: text.sandTip(width) }));
       expect(document.activeElement).toBe(app.trigger());
@@ -248,13 +261,13 @@ describe("the tip picker", () => {
     fireEvent.click(screen.getByRole("button", { name: TEXTS.en.sandTip(8) }));
     stroke(app.canvas, 10, 20);
     const erased = app.grooves.cleared.length;
-    const repainted = app.base.rectangles.length;
+    const repainted = app.base.cleared.length;
     fireEvent.click(app.trigger());
     fireEvent.click(screen.getByRole("button", { name: "CLEAR" }));
     expect(document.activeElement).toBe(app.trigger());
     const before = app.marks().length;
     expect(app.grooves.cleared.slice(erased)).toEqual([[0, 0, 800, 600]]);
-    expect(app.base.rectangles.slice(repainted).filter(({ colour }) => colour === "#d9b77e")).toHaveLength(1);
+    expect(app.base.cleared.slice(repainted)).toEqual([[0, 0, 800, 600]]);
     app.resize(400, 800);
     expect(app.marks()).toHaveLength(before);
     stroke(app.canvas, 100, 100);
@@ -304,5 +317,35 @@ describe("the tip picker", () => {
     tapAt(home, 2000, { x: 40, y: 40 });
     tapAt(home, 2100, { x: 40, y: 40 });
     expect(app.home).toHaveBeenCalledOnce();
+  });
+});
+
+describe("the dig site's sand", () => {
+  // Each theme's tokens, as app.css gives them.
+  const THEME = {
+    light: { groove: "#A07D52", lip: "#F8F0DF", strong: "rgb(31, 43, 77)", onStrong: "rgb(246, 242, 233)", label: "rgb(255, 253, 248)", quiet: "rgb(230, 226, 217)", action: "rgb(193, 80, 54)", good: "rgb(62, 142, 90)" },
+    dark: { groove: "#2E241A", lip: "#7C6850", strong: "rgb(237, 229, 210)", onStrong: "rgb(29, 39, 66)", label: "rgb(28, 34, 56)", quiet: "rgb(58, 69, 104)", action: "rgb(229, 122, 93)", good: "rgb(93, 178, 122)" }
+  } as const;
+  it.each(["light", "dark"] as const)("draws grooves and dresses STICK and its picker in the %s theme's tokens", (theme) => {
+    document.documentElement.dataset.theme = theme;
+    onTestFinished(() => { delete document.documentElement.dataset.theme; });
+    const colours = THEME[theme];
+    const app = openScreen();
+    stroke(app.canvas, 10, 20);
+    expect(new Set(app.grooves.paths.map(({ colour }) => colour))).toEqual(new Set([colours.groove]));
+    expect(new Set(app.base.paths.map(({ colour }) => colour))).toEqual(new Set([colours.lip]));
+    const face = app.trigger().querySelector(".sand-writing-stick-face")!;
+    expect(getComputedStyle(face).backgroundColor).toBe(colours.label);
+    fireEvent.click(app.trigger());
+    expect([getComputedStyle(face).backgroundColor, getComputedStyle(face).color]).toEqual([colours.strong, colours.onStrong]);
+    const options = screen.getByRole("group", { name: TEXTS.en.sandTipPicker });
+    expect(getComputedStyle(options).backgroundColor).toBe(colours.label);
+    const chosen = within(options).getByRole("button", { name: "MEDIUM" }).querySelector(".sand-writing-tip-face")!;
+    const other = within(options).getByRole("button", { name: "THIN" }).querySelector(".sand-writing-tip-face")!;
+    expect([getComputedStyle(chosen).backgroundColor, getComputedStyle(other).backgroundColor]).toEqual([colours.strong, colours.quiet]);
+    expect(getComputedStyle(chosen.querySelector(".sand-writing-tick")!).backgroundColor).toBe(colours.good);
+    expect(other.querySelector(".sand-writing-tick")).toBeNull();
+    const clear = getComputedStyle(within(options).getByRole("button", { name: "CLEAR" }));
+    expect([clear.color, clear.borderTopColor]).toEqual([colours.action, colours.action]);
   });
 });

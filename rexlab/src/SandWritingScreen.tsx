@@ -1,10 +1,30 @@
-import { Home, Pencil, Trash2 } from "lucide-react";
+import { Check, Eraser, Home } from "lucide-react";
 import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { Button } from "./Button.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 import { sandWriting, TIP_WIDTHS, type TipWidth } from "./sandWriting.ts";
-import { sandWritingCanvas } from "./sandWritingCanvas.ts";
+import { SAND_PALETTE, sandWritingCanvas, type SandPalette } from "./sandWritingCanvas.ts";
+import "./sandWriting.css";
+
+// The stick's line in the tray and on STICK, as wide as the tip it draws.
+const STROKE = { 2: 2, 4: 3.5, 8: 6 } as const;
+function SandStroke({ width }: { width: TipWidth }) {
+  return (
+    <svg className="sand-writing-stroke" viewBox="0 0 32 20" width={32} height={20} aria-hidden="true" fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth={STROKE[width]}>
+      <path d="M4 13 C 8 3, 13 3, 16 10 S 24 17, 28 7" />
+    </svg>
+  );
+}
+
+// The marks take the dig site's groove, lip and specks from the screen, in
+// either theme; without those tokens, the canvas keeps its own sand.
+function sandPalette(screen: Element | null): SandPalette {
+  const style = screen && getComputedStyle(screen);
+  const token = (name: string) => style?.getPropertyValue(name).trim() ?? "";
+  const groove = token("--ds-groove"), lip = token("--ds-groove-lip"), speck = token("--ds-speck");
+  return groove && lip && speck ? { bed: null, specks: [speck], every: 40, grain: 2.2, lip, groove } : SAND_PALETTE;
+}
 
 export type SandWritingScreenProps = {
   language: Language;
@@ -22,6 +42,7 @@ export function SandWritingScreen({ language, sandContext, onHome }: SandWriting
   const trigger = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLDivElement>(null);
   const panelId = useId();
+  const section = useRef<HTMLElement>(null);
   const painter = useRef<ReturnType<typeof sandWritingCanvas> | null>(null);
   const model = useRef<ReturnType<typeof sandWriting> | null>(null);
   if (!model.current) model.current = sandWriting((segment) => painter.current?.draw(segment));
@@ -41,7 +62,8 @@ export function SandWritingScreen({ language, sandContext, onHome }: SandWriting
     if (!top || !bottom) return;
     const under = sandContext(bottom);
     const over = sandContext(top);
-    painter.current = under && over ? sandWritingCanvas(under, over) : null;
+    let palette: SandPalette | undefined;
+    painter.current = under && over ? sandWritingCanvas(under, over, () => palette ??= sandPalette(section.current)) : null;
     const fit = () => {
       const { width, height } = top.getBoundingClientRect();
       // Like DIG, the soft sand caps its backing bitmap at Retina density.
@@ -111,7 +133,7 @@ export function SandWritingScreen({ language, sandContext, onHome }: SandWriting
   };
 
   return (
-    <section className="sand-writing-screen" aria-label={text.sandWriting}>
+    <section ref={section} className="sand-writing-screen" aria-label={text.sandWriting}>
       <canvas ref={base} className="sand-writing-base" aria-hidden="true" />
       <canvas
         ref={canvas}
@@ -133,31 +155,36 @@ export function SandWritingScreen({ language, sandContext, onHome }: SandWriting
         onPointerCancel={(event) => { if (drawing.pointer === event.pointerId) stop(); }}
         onLostPointerCapture={(event) => drawing.end(event.pointerId)}
       />
-      <Button className="sand-writing-home sand-writing-control" aria-label={text.home} onClick={() => { stop(); onHome(); }}>
-        <Home aria-hidden="true" size={28} />
+      <Button className="sand-writing-home" onClick={() => { stop(); onHome(); }}>
+        <Home aria-hidden="true" size={22} /><span className="sand-writing-home-word">{text.home}</span>
       </Button>
       <div ref={picker} className="sand-writing-picker" onBlur={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
       }}>
         <Button
           ref={trigger}
-          className="sand-writing-control"
-          aria-label={text.sandTipPicker}
+          className="sand-writing-stick"
           aria-expanded={open}
           aria-controls={panelId}
           onClick={() => { stop(); if (open) close(); else setOpen(true); }}
         >
-          <Pencil aria-hidden="true" size={28} />
+          <span className="sand-writing-stick-face"><SandStroke width={tip} /></span>
+          <span className="sand-writing-word">{text.sandTipPicker}</span>
         </Button>
         <div ref={panel} id={panelId} className="sand-writing-options" role="group" aria-label={text.sandTipPicker} aria-hidden={!open} inert={!open} data-open={open || undefined}>
-          {TIP_WIDTHS.map((width) => (
-            <Button key={width} aria-label={text.sandTip(width)} aria-pressed={tip === width} onClick={() => { if (open) { setTip(width); close(); } }}>
-              <span className="sand-writing-dot" style={{ "--tip": `${width}px` } as CSSProperties} aria-hidden="true" />
-              {width}
-            </Button>
-          ))}
+          <div className="sand-writing-tips">
+            {TIP_WIDTHS.map((width) => (
+              <Button key={width} className="sand-writing-tip" aria-pressed={tip === width} onClick={() => { if (open) { setTip(width); close(); } }}>
+                <span className="sand-writing-tip-face">
+                  <SandStroke width={width} />
+                  {tip === width && <span className="sand-writing-tick"><Check aria-hidden="true" size={14} strokeWidth={3} /></span>}
+                </span>
+                <span className="sand-writing-word">{text.sandTip(width)}</span>
+              </Button>
+            ))}
+          </div>
           <Button className="sand-writing-clear" onClick={() => { if (open) { stop(); drawing.clear(); cover.current(); close(); } }}>
-            <Trash2 aria-hidden="true" size={22} />{text.sandClear}
+            <Eraser aria-hidden="true" size={22} />{text.sandClear}
           </Button>
         </div>
       </div>
