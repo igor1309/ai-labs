@@ -12,6 +12,9 @@ public func readText(in image: CGImage) async throws -> RenderedText {
     request.automaticallyDetectsLanguage = false
     request.minimumTextHeightFraction = 0
     request.usesLanguageCorrection = false
+    // The same device on every Mac: a CI virtual machine has no Neural Engine.
+    let cpu = request.supportedComputeStageDevices[.main]?.first { if case .cpu = $0 { true } else { false } }
+    request.setComputeDevice(cpu, for: .main)
     let observations = try await request.perform(on: image)
 
     let lines = observations.compactMap { $0.topCandidates(1).first?.string }
