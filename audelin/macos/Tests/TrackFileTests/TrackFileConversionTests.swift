@@ -67,7 +67,7 @@ struct TrackFileConversionTests {
                 try #require(disk.count == last)
                 let written = try await track.read(from: 0, to: duration)
                 expectSamples(written, expected)
-                let bytes = try await offPool { try Data(contentsOf: url).dropFirst(68) }
+                let bytes = try Data(contentsOf: url).dropFirst(68)
                 #expect(bytes.starts(with: acknowledged))
                 acknowledged = Data(bytes)
                 expectSamples(disk, expected)
