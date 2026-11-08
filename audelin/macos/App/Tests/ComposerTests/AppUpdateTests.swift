@@ -103,17 +103,13 @@ struct AppUpdateCompositionTests {
         try await withComposeFolder { root in
             let bundleURL = root.appendingPathComponent("Audelin.app")
             let plist = bundleURL.appendingPathComponent("Contents/Info.plist")
-            try await offPool {
-                try FileManager.default.createDirectory(at: plist.deletingLastPathComponent(), withIntermediateDirectories: true)
-                try buildPlist("running").write(to: plist)
-            }
-            let running = try await offPool {
-                let bundle = try #require(Bundle(url: bundleURL))
-                return runningBuildID(in: bundle)
-            }
+            try FileManager.default.createDirectory(at: plist.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try buildPlist("running").write(to: plist)
+            let bundle = try #require(Bundle(url: bundleURL))
+            let running = runningBuildID(in: bundle)
             #expect(running == "running")
             // The boundary's asynchronous startup can overlap an installation.
-            try await offPool { try buildPlist("installed").write(to: plist, options: .atomic) }
+            try buildPlist("installed").write(to: plist, options: .atomic)
             let updates = installedUpdates(running: running, pid: 123, installedBundle: bundleURL)
             let rig = try await ComposeFixture.make(root: root, updates: updates)
             await waitForEntry(rig.menu, reason: nil)

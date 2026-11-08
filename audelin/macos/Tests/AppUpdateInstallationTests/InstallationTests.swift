@@ -38,7 +38,7 @@ struct InstallationTests {
 
     @Test func malformedPlistIsUnreadable() async throws {
         try await withBundle { bundle in
-            try await offPool {
+            do {
                 try Data("incomplete plist".utf8).write(to: bundle.appendingPathComponent("Contents/Info.plist"))
             }
             #expect(await Installation(bundle: bundle, pid: 123).readBuildID() == nil)
@@ -47,7 +47,7 @@ struct InstallationTests {
 
     @Test func nonStringBuildIDIsUnreadable() async throws {
         try await withBundle { bundle in
-            try await offPool {
+            do {
                 let data = try PropertyListSerialization.data(fromPropertyList: [
                     "CFBundleIdentifier": "dev.igor1309.audelin", "AudelinBuildID": 42,
                 ], format: .binary, options: 0)
@@ -103,7 +103,7 @@ struct InstallationTests {
 }
 
 func writePlist(_ bundle: URL, identifier: String?, build: String?) async throws {
-    try await offPool {
+    do {
         var values: [String: String] = [:]
         values["CFBundleIdentifier"] = identifier
         values["AudelinBuildID"] = build
@@ -113,11 +113,11 @@ func writePlist(_ bundle: URL, identifier: String?, build: String?) async throws
 }
 
 func withBundle(_ body: (URL) async throws -> Void) async throws {
-    let root = try await offPool {
+    let root = try {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: root.appendingPathComponent("Audelin.app/Contents"), withIntermediateDirectories: true)
         return root
-    }
+    }()
     try await withCleanup {
         try await body(root.appendingPathComponent("Audelin.app"))
     } cleanup: {

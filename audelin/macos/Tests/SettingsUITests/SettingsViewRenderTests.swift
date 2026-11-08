@@ -87,6 +87,7 @@ struct SettingsViewRenderTests {
         #expect(text.shows("Перенесено 31 из 52"), "\(text)")
         #expect(text.shows("нет места на диске"), "\(text)")
         #expect(text.shows("Повторить"), "\(text)")
+        #expect(text.shows("Отмена"), "\(text)")
     }
 
     @Test func aRecordingHoldsTheFolderChange() async throws {
@@ -109,6 +110,6 @@ struct SettingsViewRenderTests {
 
         let host = Offscreen.host(SettingsPreview(state: state, scheme: scheme), scheme: scheme)
         let image = try #require(Offscreen.sharpSnapshot(host))
-        return try await offPool { try readText(in: image) }
+        return try await readText(in: image)
     }
 }

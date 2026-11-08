@@ -8,10 +8,10 @@ import Testing
 func withComposeFolder(isolation: isolated (any Actor)? = #isolation, _ body: (URL) async throws -> Void) async throws {
 
     let folder = FileManager.default.temporaryDirectory.appendingPathComponent("compose-test-\(UUID())")
-    try await offPool { try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false) }
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false)
     let outcome: Result<Void, any Error>
     do { outcome = .success(try await body(folder)) } catch { outcome = .failure(error) }
-    do { try await offPool { try FileManager.default.removeItem(at: folder) } }
+    do { try FileManager.default.removeItem(at: folder) }
     catch { Issue.record(error) }
     try outcome.get()
 }

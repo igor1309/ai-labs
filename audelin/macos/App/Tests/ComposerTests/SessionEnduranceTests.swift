@@ -97,9 +97,9 @@ struct SessionEnduranceTests {
             // The rig's scripted captures add one piece at start and one at stop.
             #expect(try await frames(folder.appendingPathComponent("microphone.caf")) == micSent + 3)
             #expect(try await frames(folder.appendingPathComponent("call.caf")) == callSent + 3)
-            let transcript = try await offPool {
+            let transcript = try {
                 try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8)
-            }
+            }()
             let entries = transcript.components(separatedBy: "\n**").count - 1
             let longest = transcript.components(separatedBy: "\n\n").map(\.count).max() ?? 0
             log("transcript: \(transcript.utf8.count) bytes, \(entries) entries, longest entry \(longest) characters")
@@ -154,7 +154,7 @@ func waitUntil(_ what: String, seconds: Double = 20, isolation: isolated (any Ac
 
 private func frames(_ url: URL) async throws -> Int {
 
-    try await offPool { Int(try AVAudioFile(forReading: url).length) }
+    try Int(try AVAudioFile(forReading: url).length)
 }
 
 private func log(_ line: String) {

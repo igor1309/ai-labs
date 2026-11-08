@@ -47,7 +47,7 @@ struct SummaryAcceptedEvidenceTests {
         try await withComposeFolder { root in
             let job = evidenceJob(), identities = acceptedIdentities()
             let folder = root.appendingPathComponent(job.call)
-            try await offPool { try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true) }
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
             let files = Files(locations: SummaryStorage(folder: root, timeZone: .gmt), disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("leases"))
             let store = SummaryJobStore(files: files)
             #expect(try await store.claim(job).owned)
@@ -63,7 +63,7 @@ struct SummaryAcceptedEvidenceTests {
     }
 }
 private func persistedEvidence(_ folder: URL) async throws -> [Identity] {
-    let record = try await offPool { try JSONDecoder().decode(Record.self, from: Data(contentsOf: folder.appendingPathComponent(".summary-job.json"))) }
+    let record = try JSONDecoder().decode(Record.self, from: Data(contentsOf: folder.appendingPathComponent(".summary-job.json")))
     let data = try #require(record.checkpoint)
     let values = try JSONDecoder().decode([StoredEvidence].self, from: data)
     return values.map { .init(label: $0.label, name: $0.name, time: $0.time, quote: $0.quote) }

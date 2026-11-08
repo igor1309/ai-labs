@@ -10,12 +10,12 @@ struct InstallationContractTests {
         let name = UUID().uuidString
         let physicalRoot = "/private/tmp/" + name
         let root = URL(filePath: physicalRoot)
-        try await offPool {
+        do {
             try FileManager.default.createDirectory(at: root, withIntermediateDirectories: false)
         }
         try await withCleanup {
             let link = root.appendingPathComponent("linked-parent")
-            try await offPool {
+            do {
                 try FileManager.default.createSymbolicLink(at: link, withDestinationURL: root)
                 if bundleExists {
                     try FileManager.default.createDirectory(at: root.appendingPathComponent("Audelin.app"), withIntermediateDirectories: false)
@@ -23,7 +23,7 @@ struct InstallationContractTests {
             }
             for parent in [root, URL(filePath: "/tmp/" + name), link] {
                 let bundle = parent.appendingPathComponent("Audelin.app")
-                let paths = try #require(await offPool { watchPaths(for: bundle) })
+                let paths = try #require(watchPaths(for: bundle))
                 #expect(paths.root == physicalRoot)
                 #expect(paths.bundle == physicalRoot + "/Audelin.app")
                 #expect(isBundleEvent(physicalRoot + "/Audelin.app/Contents/Info.plist", flags: 0, bundlePath: paths.bundle))
@@ -40,7 +40,7 @@ struct InstallationContractTests {
             let watchedBundle: URL
             if symlinkedParent {
                 let link = bundle.deletingLastPathComponent().appendingPathComponent("linked-parent")
-                try await offPool {
+                do {
                     try FileManager.default.createSymbolicLink(at: link, withDestinationURL: bundle.deletingLastPathComponent())
                 }
                 watchedBundle = link.appendingPathComponent("Audelin.app")
@@ -77,10 +77,10 @@ struct InstallationContractTests {
             parent.standardInput = input
             parent.standardOutput = FileHandle.nullDevice
             parent.standardError = FileHandle.nullDevice
-            try await offPool { try parent.run() }
+            try parent.run()
             try await withCleanup {
                 let pid = parent.processIdentifier
-                try await offPool {
+                do {
                     let source = """
                     #!/bin/sh
                     if kill -0 \(pid) 2>/dev/null; then status=alive; else status=exited; fi
@@ -122,9 +122,10 @@ struct InstallationContractTests {
                                     if output.components(separatedBy: "/bin/sleep 0.1").count >= 3 { break }
                                 }
                                 try #require(output.components(separatedBy: "/bin/sleep 0.1").count >= 3)
-                                #expect(await offPool { parent.isRunning })
-                                #expect(await offPool { !FileManager.default.fileExists(atPath: marker.path) })
-                                await offPool { parent.terminate(); parent.waitUntilExit() }
+                                #expect(parent.isRunning)
+                                #expect(!FileManager.default.fileExists(atPath: marker.path))
+                                parent.terminate()
+                                parent.waitUntilExit()
                                 try await group.waitForAll()
                             } catch {
                                 group.cancelAll()
@@ -132,7 +133,7 @@ struct InstallationContractTests {
                             }
                         }
                     }
-                    let opened = try await offPool { try String(contentsOf: marker, encoding: .utf8) }
+                    let opened = try String(contentsOf: marker, encoding: .utf8)
                     #expect(opened == "exited\n\(bundle.path)\n")
                 } catch {
                     trace.fileHandleForReading.readabilityHandler = nil

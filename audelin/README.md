@@ -32,6 +32,10 @@ Build: `cd audelin/macos && sh scripts/bundle.sh`.
 Install: `sh audelin/macos/scripts/install.sh` builds, quits a running copy, replaces
 `/Applications/Audelin.app`, opens it, and adds the LaunchAgent
 `~/Library/LaunchAgents/dev.igor1309.audelin.login.plist` that opens it at login.
+Each trunk merge that changes the app is installed the same way by the
+`Audelin Install` workflow on this Mac's `local-mac` runner, with `--update`: it
+neither quits a running Audelin nor opens it, so the new version starts at the
+next launch or login.
 Turn start at login off by deleting that file. macOS asks for microphone and
 audio-capture access on first use; the first launch downloads and compiles the models.
 Components: `macos/`; composer, app, rehearsal and their integration tests: `macos/App/`.

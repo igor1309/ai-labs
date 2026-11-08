@@ -55,7 +55,7 @@ struct ComposeFixture {
         boundary.log = log
         configure(&boundary)
         let preferencesURL = root.appendingPathComponent("preferences.json")
-        try await offPool {
+        do {
             try PreferencesStore(fileURL: preferencesURL).write(preferences ?? Preferences(automaticRecording: false, liveText: true, callsFolder: root))
         }
         let menu = await compose(boundary: boundary, preferencesURL: preferencesURL,
@@ -95,7 +95,7 @@ struct ComposeFixture {
 
 func transcriptText(of rig: ComposeFixture, folder: String = "1970.01.01-0000") async throws -> String {
     let url = rig.folder(folder).appendingPathComponent("transcript.md")
-    return try await offPool { try String(contentsOf: url, encoding: .utf8) }
+    return try String(contentsOf: url, encoding: .utf8)
 }
 
 /// A capture the test feeds itself, with no pieces but the ones it sends.

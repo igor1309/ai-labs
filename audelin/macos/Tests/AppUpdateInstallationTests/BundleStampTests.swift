@@ -8,13 +8,13 @@ struct BundleStampTests {
     func stampsCommitDirtinessAndOneUTCInstant(dirty: Bool) async throws {
         let script = URL(filePath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
             .deletingLastPathComponent().appendingPathComponent("scripts/bundle.sh")
-        let root = try await offPool {
+        let root = try {
             let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
             try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
             return root
-        }
+        }()
         try await withCleanup {
-            let process = try await offPool {
+            let process = try {
                 let tools = root.appendingPathComponent("tools")
                 let binaries = root.appendingPathComponent("binaries")
                 try FileManager.default.createDirectory(at: tools, withIntermediateDirectories: true)
@@ -55,13 +55,13 @@ struct BundleStampTests {
                 process.standardOutput = FileHandle.nullDevice
                 process.standardError = FileHandle.nullDevice
                 return process
-            }
+            }()
             #expect(try await exitStatus(of: process) == 0)
-            let values = try await offPool {
+            let values = try {
                 let data = try Data(contentsOf: root.appendingPathComponent(".build/Audelin.app/Contents/Info.plist"))
                 let plist = try PropertyListSerialization.propertyList(from: data, format: nil) as! [String: Any]
                 return (plist["AudelinBuildID"] as? String, plist["CFBundleVersion"] as? String)
-            }
+            }()
             #expect(values.0 == "abc12345\(dirty ? "-dirty" : "")-20261108T063502Z")
             #expect(values.1 == "20261108063502")
         } cleanup: {

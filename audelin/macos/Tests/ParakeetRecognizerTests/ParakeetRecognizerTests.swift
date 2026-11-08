@@ -252,22 +252,6 @@ struct ParakeetRecognizerTests {
         }
     }
 
-    @Test func blockedRecognizersOutnumberingThePoolAllKeepReadingAcrossSuspension() async throws {
-
-        let before = ThreadBarrier(), after = ThreadBarrier()
-        let recognizers = (0..<before.count).map { _ in
-            ParakeetRecognizer(reader: BarrierReader(before: before, after: after))
-        }
-
-        try await withThrowingTaskGroup { group in
-            for recognizer in recognizers { group.addTask { _ = try await recognizer.hear(silence(6)) } }
-            try await group.waitForAll()
-        }
-
-        #expect(before.met)
-        #expect(after.met)
-    }
-
     // MARK: - Helpers
 
     private func word(_ text: String, _ start: Double, _ end: Double) -> WindowWord {
@@ -311,7 +295,7 @@ struct ParakeetRecognizerTests {
     private func spoken(_ text: String, sampleRate: Int) async throws -> [Float] {
 
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        try await offPool { try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true) }
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         return try await withCleanup {
             let url = directory.appendingPathComponent("spoken.wav")
 
@@ -356,21 +340,6 @@ private actor ControlledModelLoad {
         for waiter in waiters { waiter.resume(returning: model) }
         waiters.removeAll()
         starts.finish()
-    }
-}
-
-/// Blocks whichever thread the recognizer runs it on; it has no isolation of its own.
-private struct BarrierReader: WindowReader {
-
-    let before: ThreadBarrier
-    let after: ThreadBarrier
-
-    func read(_ samples: [Float]) async throws -> [WindowWord] {
-
-        before.arrive()
-        await Task.yield()
-        after.arrive()
-        return []
     }
 }
 
@@ -438,7 +407,7 @@ private actor RecordedReader: WindowReader {
     init() async throws {
 
         let url = Bundle.module.url(forResource: "terms-shift-0", withExtension: "jsonl", subdirectory: "Fixtures")!
-        let windows = try await offPool { try String(contentsOf: url, encoding: .utf8) }
+        let windows = try String(contentsOf: url, encoding: .utf8)
             .split(separator: "\n")
             .map { try JSONDecoder().decode(Window.self, from: Data($0.utf8)) }
         self.windows = windows

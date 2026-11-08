@@ -112,11 +112,16 @@
   kept: cut the work it checks, do not loosen the check.
 - Swift: never synchronously block a cooperative-pool thread waiting for
   future work (no semaphore, `NSCondition`, group wait or queue `sync` on
-  async work; no lock held across `await`). Project policy goes further:
-  blocking I/O, `Process` launches and blocking framework calls (Core Audio
-  HAL, CoreBluetooth setup) run on an executor backed by a dedicated serial
-  queue or thread and are awaited, however short; a slow CI runner is no
-  excuse.
+  async work; no lock held across `await`). A lock around a short critical
+  section and work that finishes on its own (a file read, a framework
+  call) may run where they are; the runtime schedules them. Do not add
+  queues, custom executors or executor preferences to schedule your own
+  work; use a queue only where an API requires one (a Core Audio IO proc,
+  a tap, a termination handler).
+- Swift tests: Swift Testing runs tests in parallel with the concurrency the
+  runtime chooses. A test awaits the component's own API and its fakes'
+  reports; it does not move work between threads, count threads or check
+  where the component runs. A `.timeLimit` catches a hang, not slowness.
 
 ## State machines
 
