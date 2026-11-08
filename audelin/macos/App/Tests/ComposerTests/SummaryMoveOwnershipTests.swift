@@ -141,16 +141,21 @@ import Testing
         }
     }
 
-    @Test func duplicateIDAtDestinationDoesNotChangeOwnershipOrPublication() async throws {
+    @Test(arguments: [1, 2])
+    func duplicateIDAtDestinationDoesNotChangeOwnershipOrPublication(copies: Int) async throws {
         try await withComposeFolder { temporaryRoot in
             let root = await offPool { temporaryRoot.resolvingSymlinksInPath() }
             let source = root.appendingPathComponent("source"), target = root.appendingPathComponent("target")
             let id = "1970.01.01-0000", moved = "1970.01.01-0001"
             try await offPool {
-                for folder in [source.appendingPathComponent(id), source.appendingPathComponent(moved), target.appendingPathComponent(id + " unrelated")] {
+                for folder in [source.appendingPathComponent(id), source.appendingPathComponent(moved), target] {
                     try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
                 }
-                try Data("foreign".utf8).write(to: target.appendingPathComponent(id + " unrelated/summary.md"))
+                for number in 1...copies {
+                    let foreign = target.appendingPathComponent(id + " unrelated\(number)")
+                    try FileManager.default.createDirectory(at: foreign, withIntermediateDirectories: false)
+                    try Data("foreign".utf8).write(to: foreign.appendingPathComponent("summary.md"))
+                }
             }
             let journal = root.appendingPathComponent("moves.json")
             let storage = SummaryStorage(folder: source, timeZone: .gmt, journal: journal)
@@ -166,7 +171,9 @@ import Testing
             #expect(try await offPool { try String(contentsOf: source.appendingPathComponent(id + "/summary.md"), encoding: .utf8) }.hasSuffix("unmoved call"))
             try await recovered.rename(id: id, title: "owned")
             #expect(try await recovered.location(id: id).lastPathComponent == id + " owned")
-            #expect(try await offPool { try String(contentsOf: target.appendingPathComponent(id + " unrelated/summary.md"), encoding: .utf8) } == "foreign")
+            for number in 1...copies {
+                #expect(try await offPool { try String(contentsOf: target.appendingPathComponent(id + " unrelated\(number)/summary.md"), encoding: .utf8) } == "foreign")
+            }
         }
     }
 
@@ -205,7 +212,8 @@ import Testing
         }
     }
 
-    @Test func failedRestorationPublishesToTheVerifiedOwnerAndRetryRestoresThatPublication() async throws {
+    @Test(arguments: ["copy", "verification"])
+    func failedRestorationPublishesToTheVerifiedOwnerAndRetryRestoresThatPublication(step: String) async throws {
         try await withComposeFolder { temporaryRoot in
             let root = await offPool { temporaryRoot.resolvingSymlinksInPath() }
             let id = "1970.01.01-0000", source = root.appendingPathComponent("source"), target = root.appendingPathComponent("target")
@@ -225,17 +233,19 @@ import Testing
                 makeCalls: { folder in
                     Calls(folder: folder, timeZone: .gmt,
                         children: { try FileManager.default.contentsOfDirectory(at: $0, includingPropertiesForKeys: nil) },
-                        values: { try $0.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey, .fileSizeKey]) },
-                        duration: { _ in 0 }, copy: { from, to in
-                            if fail.withLock({ $0 }), to.pathComponents.contains("source") { throw CocoaError(.fileWriteNoPermission) }
-                            try FileManager.default.copyItem(at: from, to: to)
-                        }, rename: { try FileManager.default.moveItem(at: $0, to: $1) }, remove: { url in
-                            if fail.withLock({ $0 }), url.deletingLastPathComponent().lastPathComponent == "source" {
-                                try FileManager.default.removeItem(at: url.appendingPathComponent("transcript.md"))
-                                throw CocoaError(.fileWriteNoPermission)
+                        values: { url in
+                            if step == "verification", fail.withLock({ $0 }),
+                               url.lastPathComponent == "transcript.md",
+                               url.deletingLastPathComponent().deletingLastPathComponent().lastPathComponent == "source" {
+                                throw POSIXError(.EIO)
                             }
-                            try FileManager.default.removeItem(at: url)
-                        })
+                            return try url.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey, .fileSizeKey])
+                        },
+                        duration: { _ in 0 }, copy: { from, to in
+                            if step == "copy", fail.withLock({ $0 }), to.pathComponents.contains("source") { throw CocoaError(.fileWriteNoPermission) }
+                            try FileManager.default.copyItem(at: from, to: to)
+                        }, rename: { try FileManager.default.moveItem(at: $0, to: $1) },
+                        remove: { try FileManager.default.removeItem(at: $0) })
                 })
             try await storage.restore()
             #expect(try await sameDirectory(storage.location(id: id).deletingLastPathComponent(), target))
@@ -245,6 +255,9 @@ import Testing
             try await #require(throws: Never.self) { _ = try await files.claim(job) }
             try await #require(throws: Never.self) { _ = try await files.start(job) }
             try await #require(throws: Never.self) { try await files.publish(job, notes: "published to owner") }
+            #expect(try await offPool { try String(contentsOf: target.appendingPathComponent(id + "/transcript.md"), encoding: .utf8) } == "whole")
+            let pending = try await offPool { try JSONDecoder().decode(SummaryStorage.Journal.self, from: Data(contentsOf: journal)) }
+            #expect(pending.moves[id]?.phase == .restoringSource)
             fail.withLock { $0 = false }
             let recovered = SummaryStorage(folder: source, timeZone: .gmt, journal: journal)
             try await #require(throws: Never.self) { try await recovered.restore() }

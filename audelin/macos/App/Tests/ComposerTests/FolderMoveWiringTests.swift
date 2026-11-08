@@ -129,7 +129,8 @@ struct FolderMoveWiringTests {
         }
     }
 
-    @Test func partialMoveReservesMovedIDsForANewRecordingInTheSameMinuteAndRetryCompletes() async throws {
+    @Test(arguments: [false, true])
+    func partialMoveReservesMovedIDsForANewRecordingInTheSameMinuteAndRetryCompletes(destinationOffline: Bool) async throws {
         try await withComposeFolder { root in
             let destination = root.appendingPathComponent("new")
             let a = "1970.01.01-0000", b = "1970.01.01-0000-2", fresh = "1970.01.01-0000-3"
@@ -151,11 +152,20 @@ struct FolderMoveWiringTests {
                 #expect(calls.recordingsState.move?.completed.map(\.id) == [a])
                 #expect(calls.recordingsState.failure?.id == b)
                 #expect(rig.menu.preferences.callsFolder == root)
+                let offline = root.appendingPathComponent("offline")
+                if destinationOffline {
+                    try await offPool { try FileManager.default.moveItem(at: destination, to: offline) }
+                }
                 try await rig.start()
                 #expect(await offPool { FileManager.default.fileExists(atPath: root.appendingPathComponent(fresh).path) })
                 #expect(await offPool { !FileManager.default.fileExists(atPath: root.appendingPathComponent(a).path) })
                 try await rig.stop()
-                for await state in Observations({ calls.recordingsState }) where state.recordingID == nil { break }
+                for await state in Observations({ calls.recordingsState }) where state.recordingID == nil && !state.isListing { break }
+                if destinationOffline {
+                    #expect(rig.menu.preferences.callsFolder == root)
+                    #expect(try await offPool { try Data(contentsOf: offline.appendingPathComponent(a + "/audio")) } == Data([1, 2, 3]))
+                    try await offPool { try FileManager.default.moveItem(at: offline, to: destination) }
+                }
                 try await offPool { try FileManager.default.removeItem(at: destination.appendingPathComponent(b)) }
                 calls.sendRecordings(.retryMove)
                 for await state in Observations({ calls.recordingsState }) where state.phase == .idle && !state.isListing { break }
