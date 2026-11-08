@@ -35,7 +35,7 @@ struct CoreAudioBindingTests {
     @Test func realCaptureCanFollowAStoppedCapture() async throws {
 
         try await withPlayer { pid in
-            let binding = CoreAudioBinding()
+            let binding = CoreAudioBinding(native: .system)
             let first = try await start(pid, binding: binding)
             defer { first.stop() }
             try await hearToneAndStop(first)
@@ -46,7 +46,7 @@ struct CoreAudioBindingTests {
     }
 
     func start(
-        _ pid: Int32, binding: CoreAudioBinding = CoreAudioBinding(),
+        _ pid: Int32, binding: CoreAudioBinding = CoreAudioBinding(native: .system),
         pause: () async throws -> Void = { try await Task.sleep(for: .milliseconds(20)) },
         now: () -> ContinuousClock.Instant = { .now }
     ) async throws -> SystemAudioCapture {

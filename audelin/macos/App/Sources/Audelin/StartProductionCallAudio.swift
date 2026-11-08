@@ -11,7 +11,7 @@ func startProductionCallAudio(_ selection: CaptureSelection) async throws -> Sta
         case let .only(pids): .only(pids)
         case let .allExcept(pids): .allExcept(pids)
         }
-        return try await SystemAudioCapture(binding: CoreAudioBinding(), processes: processes)
+        return try await SystemAudioCapture(binding: CoreAudioBinding(native: .system), processes: processes)
     }
 }
 
