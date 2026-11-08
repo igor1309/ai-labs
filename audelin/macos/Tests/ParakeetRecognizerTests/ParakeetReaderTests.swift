@@ -113,9 +113,7 @@ struct ParakeetReaderTests {
 
     private func read(_ reader: ParakeetReader, samples: [Float]) async throws -> [WindowWord] {
 
-        try await withTaskExecutorPreference(DispatchSerialQueue(label: "test.ParakeetReader")) {
-            try await reader.read(samples)
-        }
+        try await reader.read(samples)
     }
 }
 
