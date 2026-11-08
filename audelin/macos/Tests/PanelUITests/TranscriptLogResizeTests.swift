@@ -47,6 +47,34 @@ struct TranscriptLogResizeTests {
         }
     }
 
+    @Test func aLongLogWithALegacyScrollerIsLaidOutAtTheWidthItShows() throws {
+
+        let history = (0..<120).map { index in
+            PanelState.Entry(id: index, time: "03:24", speaker: .them,
+                settled: String(repeating: "Обсуждаем план работ и следующий релиз. ", count: 1 + index % 7))
+        }
+        func panel(_ width: CGFloat) -> AnyView {
+            var config = PanelConfig.glassLedger
+            config.panelWidth = width
+            return AnyView(PanelView(state: .init(recording: .on(elapsed: "00:11:26"),
+                log: .lines(.init(entries: history))), event: { _ in }, config: config)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top))
+        }
+        let host = Offscreen.host(panel(500), size: CGSize(width: 500, height: 560))
+        let window = try #require(host.window)
+        let text = try #require(Offscreen.textView(in: host))
+        let scroll = try #require(scrollView(in: host))
+        scroll.scrollerStyle = .legacy
+        for width: CGFloat in [500, 320, 600, 340] {
+            host.rootView = panel(width)
+            window.setContentSize(CGSize(width: width, height: 560))
+            host.layoutSubtreeIfNeeded()
+            let clip = scroll.contentView.bounds.width
+            #expect(clip < scroll.frame.width, "the legacy scroller takes no room at width \(width)")
+            #expect(text.frame.width == clip, "text is \(text.frame.width) wide in a \(clip) clip at width \(width)")
+        }
+    }
+
     private func scrollView(in view: NSView) -> NSScrollView? {
 
         if let scroll = view as? NSScrollView { return scroll }
