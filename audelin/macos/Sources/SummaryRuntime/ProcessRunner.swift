@@ -5,27 +5,34 @@ import Synchronization
 
 /// Spawns the child in a process group of its own, so stopping it also stops
 /// anything it started; `Process` cannot do that. Nothing blocks while the child
-/// runs: pipes are nonblocking and the task sleeps when a turn moves no bytes.
+/// runs: pipes are nonblocking, and a turn that moves no bytes suspends until the
+/// kernel reports the pipes or the child's exit, a timer fires, or the caller cancels.
 public struct ProcessRunner: ProcessRunning {
     public enum Event: Sendable { case launched(Int32), inputBlocked, terminating, reaped(Int32) }
     private let observe: @Sendable (Event) -> Void
     private let now: @Sendable () -> Double
+    private let sleepUntil: @Sendable (Double) async -> Void
     private let deadline: Double
     private let outputLimit: Int
-    public init(now: @escaping @Sendable () -> Double, deadline: Double, outputLimit: Int, observe: @escaping @Sendable (Event) -> Void) {
+    /// `sleepUntil` returns once `now()` has reached the given time, or when its task is cancelled.
+    public init(now: @escaping @Sendable () -> Double,
+                sleepUntil: (@Sendable (Double) async -> Void)? = nil,
+                deadline: Double, outputLimit: Int, observe: @escaping @Sendable (Event) -> Void) {
         self.observe = observe
         self.now = now; self.deadline = deadline; self.outputLimit = outputLimit
+        self.sleepUntil = sleepUntil ?? { time in try? await Task.sleep(for: .seconds(max(0, time - now()))) }
     }
     public func run(program: String, arguments: [String], input: Data) async throws -> ProcessOutput {
-        let cancelled = Cancelled()
-        // Its own task: stopping the child takes sleeps that the caller's cancellation would cut short.
-        let running = Task.detached { try await perform(program: program, arguments: arguments, input: input, cancelled: cancelled) }
+        let cancelled = Cancelled(), wakes = AsyncStream<Void>.makeStream(bufferingPolicy: .bufferingNewest(1))
+        // Its own task: stopping the child takes waits that the caller's cancellation would cut short.
+        let running = Task.detached { try await perform(program: program, arguments: arguments, input: input, cancelled: cancelled, wakes: wakes) }
         return try await withTaskCancellationHandler {
             try await running.value
-        } onCancel: { cancelled.flag.withLock { $0 = true } }
+        } onCancel: { cancelled.flag.withLock { $0 = true }; wakes.continuation.yield() }
     }
     private final class Cancelled: Sendable { let flag = Mutex(false) }
-    private func perform(program: String, arguments: [String], input: Data, cancelled: Cancelled) async throws -> ProcessOutput {
+    private func perform(program: String, arguments: [String], input: Data, cancelled: Cancelled,
+                         wakes: (stream: AsyncStream<Void>, continuation: AsyncStream<Void>.Continuation)) async throws -> ProcessOutput {
         let started = now()
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("audelin-summary-" + UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false)
@@ -66,13 +73,42 @@ public struct ProcessRunner: ProcessRunning {
         for fd in [stdin.1, stdout.0, stderr.0] { _ = fcntl(fd, F_SETFL, O_NONBLOCK) }
         // A closed child input must fail this write, not deliver SIGPIPE to the app.
         _ = fcntl(stdin.1, F_SETNOSIGPIPE, 1)
+        // One kqueue reports pipe readiness and the child's exit; edge-triggered, so
+        // the source drains it and the loop takes one turn per report.
+        let queue = kqueue()
+        guard queue >= 0 else { kill(-pid, SIGKILL); while waitpid(pid, nil, 0) == -1 && errno == EINTR {}; throw Failure.unavailable }
+        func watch(_ ident: Int32, _ filter: Int32, _ fflags: UInt32 = 0) {
+            var change = kevent(ident: UInt(ident), filter: Int16(filter), flags: UInt16(EV_ADD | EV_CLEAR), fflags: fflags, data: 0, udata: nil)
+            // A child already gone fails its exit watch; the first turn's waitpid reaps it.
+            _ = kevent(queue, &change, 1, nil, 0, nil)
+        }
+        watch(stdout.0, EVFILT_READ); watch(stderr.0, EVFILT_READ); watch(stdin.1, EVFILT_WRITE)
+        watch(pid, EVFILT_PROC, UInt32(NOTE_EXIT))
+        let reports = DispatchSource.makeReadSource(fileDescriptor: queue, queue: .global())
+        reports.setEventHandler {
+            var drained = Array(repeating: kevent(ident: 0, filter: 0, flags: 0, fflags: 0, data: 0, udata: nil), count: 8), zero = timespec()
+            while kevent(queue, nil, 0, &drained, Int32(drained.count), &zero) > 0 {}
+            wakes.continuation.yield()
+        }
+        reports.setCancelHandler { Darwin.close(queue) }
+        reports.activate()
+        let sleepUntil = sleepUntil
+        let deadlineWake = Task { await sleepUntil(started + deadline); wakes.continuation.yield() }
+        var graceWake: Task<Void, Never>?
+        defer { reports.cancel(); deadlineWake.cancel(); graceWake?.cancel() }
+        var wake = wakes.stream.makeAsyncIterator()
         var offset = 0, out = Data(), err = Data(), exit: Int32 = 0
         var reportedBlockedInput = false
         var openInput = true, openOut = true, openErr = true, reaped = false
         var failure: Failure?, terminating: Double?
         func closeInput() { if openInput { Darwin.close(stdin.1); descriptors.removeAll { $0 == stdin.1 }; openInput = false } }
+        func beginGrace() {
+            let since = now()
+            terminating = since
+            graceWake = Task { await sleepUntil(since + 1); wakes.continuation.yield() }
+        }
         func stop(_ reason: Failure) {
-            if failure == nil { failure = reason; terminating = now(); kill(-pid, SIGTERM); closeInput(); observe(.terminating) }
+            if failure == nil { failure = reason; beginGrace(); kill(-pid, SIGTERM); closeInput(); observe(.terminating) }
         }
         defer {
             kill(-pid, SIGKILL)
@@ -110,11 +146,11 @@ public struct ProcessRunner: ProcessRunning {
                 let result = waitpid(pid, &exit, WNOHANG)
                 if result == pid {
                     reaped = true; observe(.reaped(pid)); closeInput(); kill(-pid, SIGTERM)
-                    if terminating == nil { terminating = now() }
+                    if terminating == nil { beginGrace() }
                 }
             }
             if reaped && !openOut && !openErr { break }
-            if !moved { try? await Task.sleep(for: .milliseconds(10)) }
+            if !moved { _ = await wake.next() }
         }
         if let failure { throw failure }
         let code = (exit & 0x7f) == 0 ? (exit >> 8) & 0xff : 128 + (exit & 0x7f)
