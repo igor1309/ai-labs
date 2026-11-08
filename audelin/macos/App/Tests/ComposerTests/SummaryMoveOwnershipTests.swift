@@ -26,18 +26,21 @@ import Testing
                 writeJournal: { try JSONEncoder().encode($0).write(to: $1, options: .atomic) },
                 makeCalls: { folder in
                     Calls(folder: folder, timeZone: .gmt,
-                        children: { try FileManager.default.contentsOfDirectory(at: $0, includingPropertiesForKeys: nil) },
-                        values: { try $0.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey, .fileSizeKey]) },
-                        duration: { _ in 0 }, copy: { try FileManager.default.copyItem(at: $0, to: $1) },
-                        rename: { from, to in
+                        duration: { _ in 0 },
+                        disk: CallsDisk(
+                            children: { try FileManager.default.contentsOfDirectory(at: $0, includingPropertiesForKeys: nil) },
+                            values: { try $0.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey, .fileSizeKey]) },
+                            copy: { try FileManager.default.copyItem(at: $0, to: $1) },
+                            rename: { from, to in
                             guard renamex_np(from.path, to.path, UInt32(RENAME_EXCL)) == 0 else { throw POSIXError(.EIO) }
                             if from.lastPathComponent == ids[1], to.lastPathComponent.hasSuffix("-source") {
                                 retired.withLock { $0 = to }
                             }
-                        }, remove: { url in
+                        },
+                            remove: { url in
                             if retired.withLock({ $0 }) == url { throw POSIXError(.EIO) }
                             try FileManager.default.removeItem(at: url)
-                        })
+                        }))
                 })
             let handler = RecordingsEffectHandler(calls: SummaryCalls(storage: storage), reserve: { true }, release: {},
                 storeFolder: { _ in stored.withLock { $0 = true } })
@@ -292,8 +295,10 @@ import Testing
                 writeJournal: { try JSONEncoder().encode($0).write(to: $1, options: .atomic) },
                 makeCalls: { folder in
                     Calls(folder: folder, timeZone: .gmt,
-                        children: { try FileManager.default.contentsOfDirectory(at: $0, includingPropertiesForKeys: nil) },
-                        values: { url in
+                        duration: { _ in 0 },
+                        disk: CallsDisk(
+                            children: { try FileManager.default.contentsOfDirectory(at: $0, includingPropertiesForKeys: nil) },
+                            values: { url in
                             if step == "verification", fail.withLock({ $0 }),
                                url.lastPathComponent == "transcript.md",
                                url.deletingLastPathComponent().deletingLastPathComponent().lastPathComponent == "source" {
@@ -301,11 +306,12 @@ import Testing
                             }
                             return try url.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey, .fileSizeKey])
                         },
-                        duration: { _ in 0 }, copy: { from, to in
+                            copy: { from, to in
                             if step == "copy", fail.withLock({ $0 }), to.pathComponents.contains("source") { throw CocoaError(.fileWriteNoPermission) }
                             try FileManager.default.copyItem(at: from, to: to)
-                        }, rename: { try FileManager.default.moveItem(at: $0, to: $1) },
-                        remove: { try FileManager.default.removeItem(at: $0) })
+                        },
+                            rename: { try FileManager.default.moveItem(at: $0, to: $1) },
+                            remove: { try FileManager.default.removeItem(at: $0) }))
                 })
             try await storage.restore()
             #expect(try await sameDirectory(storage.location(id: id).deletingLastPathComponent(), target))
@@ -368,15 +374,19 @@ import Testing
                 writeJournal: { try JSONEncoder().encode($0).write(to: $1, options: .atomic) },
                 makeCalls: { folder in
                     Calls(folder: folder, timeZone: .gmt,
-                        children: { try FileManager.default.contentsOfDirectory(at: $0, includingPropertiesForKeys: nil) },
-                        values: { try $0.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey, .fileSizeKey]) },
-                        duration: { _ in 0 }, copy: { from, to in
+                        duration: { _ in 0 },
+                        disk: CallsDisk(
+                            children: { try FileManager.default.contentsOfDirectory(at: $0, includingPropertiesForKeys: nil) },
+                            values: { try $0.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey, .fileSizeKey]) },
+                            copy: { from, to in
                             try FileManager.default.copyItem(at: from, to: to)
                             if fail.withLock({ $0 }) { throw CocoaError(.fileWriteOutOfSpace) }
-                        }, rename: { try FileManager.default.moveItem(at: $0, to: $1) }, remove: {
+                        },
+                            rename: { try FileManager.default.moveItem(at: $0, to: $1) },
+                            remove: {
                             if fail.withLock({ $0 }) { throw CocoaError(.fileWriteNoPermission) }
                             try FileManager.default.removeItem(at: $0)
-                        })
+                        }))
                 })
             await #expect(throws: (any Error).self) { _ = try await storage.move(id: id, to: target) }
             #expect(try await sameDirectory(storage.location(id: id).deletingLastPathComponent(), source))
@@ -405,15 +415,19 @@ import Testing
                 writeJournal: { try JSONEncoder().encode($0).write(to: $1, options: .atomic) },
                 makeCalls: { folder in
                     Calls(folder: folder, timeZone: .gmt,
-                        children: { try FileManager.default.contentsOfDirectory(at: $0, includingPropertiesForKeys: nil) },
-                        values: { try $0.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey, .fileSizeKey]) },
-                        duration: { _ in 0 }, copy: { from, to in
+                        duration: { _ in 0 },
+                        disk: CallsDisk(
+                            children: { try FileManager.default.contentsOfDirectory(at: $0, includingPropertiesForKeys: nil) },
+                            values: { try $0.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey, .fileSizeKey]) },
+                            copy: { from, to in
                             try FileManager.default.copyItem(at: from, to: to)
-                        }, rename: { from, to in
+                        },
+                            rename: { from, to in
                             if step == "rollbackCleanup", from.lastPathComponent == id,
                                from.deletingLastPathComponent().lastPathComponent == "source", fail.withLock({ $0 }) { throw POSIXError(.EIO) }
                             guard renamex_np(from.path, to.path, UInt32(RENAME_EXCL)) == 0 else { throw POSIXError(.EIO) }
-                        }, remove: { url in
+                        },
+                            remove: { url in
                             if fail.withLock({ $0 }) {
                                 if step == "rollbackCleanup", url.lastPathComponent == id,
                                    url.deletingLastPathComponent().lastPathComponent == "target" { throw POSIXError(.EIO) }
@@ -424,7 +438,7 @@ import Testing
                                 }
                             }
                             try FileManager.default.removeItem(at: url)
-                        })
+                        }))
                 })
             await #expect(throws: POSIXError(.EIO)) { _ = try await storage.move(id: id, to: target) }
             let owner = original

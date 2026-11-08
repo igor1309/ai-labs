@@ -10,7 +10,7 @@ struct CallsMoveTests {
     @Test func moveKeepsEveryFileAndIdentityAfterAFinderRename() async throws {
         try await withMoveFolders { (source: URL, target: URL) async throws in
             try FileManager.default.moveItem(at: source.appendingPathComponent(name), to: source.appendingPathComponent(id + " Finder"))
-            let disk = Calls(folder: source, timeZone: .gmt, duration: { _ in 0 })
+            let disk = Calls(folder: source, timeZone: .gmt, duration: { _ in 0 }, disk: .system)
             #expect(try disk.move(id: id, to: target) == 7)
             #expect(try FileManager.default.contentsOfDirectory(atPath: source.path).isEmpty)
             #expect(try FileManager.default.contentsOfDirectory(atPath: target.path) == [id + " Finder"])
@@ -29,8 +29,10 @@ struct CallsMoveTests {
             let readsAtRename = Mutex<[String]>([])
             try Data([99]).write(to: target.appendingPathComponent("unrelated"))
             let disk = Calls(folder: source, timeZone: .gmt,
-                children: { try FileManager.default.contentsOfDirectory(at: $0, includingPropertiesForKeys: nil) },
-                values: { url in
+                duration: { _ in 0 },
+                disk: CallsDisk(
+                    children: { try FileManager.default.contentsOfDirectory(at: $0, includingPropertiesForKeys: nil) },
+                    values: { url in
                     if url.path.contains("/.audelin-move-") {
                         verificationReads.withLock { $0.append(url.lastPathComponent) }
                         let visible = FileManager.default.fileExists(atPath: target.appendingPathComponent(name).path)
@@ -38,8 +40,8 @@ struct CallsMoveTests {
                     }
                     if step == "read", url.path.contains("/target/"), url.lastPathComponent == "one" { throw POSIXError(.EIO) }
                     return try url.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey, .fileSizeKey])
-                }, duration: { _ in 0 },
-                copy: { from, to in
+                },
+                    copy: { from, to in
                     try FileManager.default.copyItem(at: from, to: to)
                     if from.lastPathComponent == name, from.deletingLastPathComponent().lastPathComponent == "source" {
                         if step == "copy" { throw POSIXError(.ENOSPC) }
@@ -49,7 +51,8 @@ struct CallsMoveTests {
                         }
                         if step == "missing" { try FileManager.default.removeItem(at: to.appendingPathComponent("nested/two")) }
                     }
-                }, rename: { from, to in
+                },
+                    rename: { from, to in
                     renames.withLock { $0 += 1 }
                     let reads = verificationReads.withLock { $0 }
                     readsAtRename.withLock { $0 = reads }
@@ -57,7 +60,8 @@ struct CallsMoveTests {
                     if step == "retire", from.lastPathComponent == name,
                        from.deletingLastPathComponent().lastPathComponent == "source" { throw POSIXError(.EACCES) }
                     guard renamex_np(from.path, to.path, UInt32(RENAME_EXCL)) == 0 else { throw POSIXError(.EIO) }
-                }, remove: { try FileManager.default.removeItem(at: $0) })
+                },
+                    remove: { try FileManager.default.removeItem(at: $0) }))
             await #expect(throws: (any Error).self) { try disk.move(id: id, to: target) }
             #expect(renames.withLock { $0 } == (["copy", "sizes", "read", "missing"].contains(step) ? 0 : step == "retire" ? 2 : 1))
             #expect(finalNameVisibleDuringVerification.withLock { $0.allSatisfy { !$0 } })
@@ -76,7 +80,7 @@ struct CallsMoveTests {
     @Test(arguments: [Calls.Move.Phase.copying, .publishing, .removingSource])
     func journalFailureBeforeSourceDeletionKeepsTheWholeSource(phase: Calls.Move.Phase) async throws {
         try await withMoveFolders { (source: URL, target: URL) async throws in
-            let disk = Calls(folder: source, timeZone: .gmt, duration: { _ in 0 })
+            let disk = Calls(folder: source, timeZone: .gmt, duration: { _ in 0 }, disk: .system)
             await #expect(throws: (any Error).self) {
                 do {
                     try disk.move(id: id, to: target) { record in
@@ -192,7 +196,7 @@ struct CallsMoveTests {
 
     @Test func completedCopyRemainsSuccessfulWhenOnlyItsFinalJournalWriteFails() async throws {
         try await withMoveFolders { (source: URL, target: URL) async throws in
-            let disk = Calls(folder: source, timeZone: .gmt, duration: { _ in 0 })
+            let disk = Calls(folder: source, timeZone: .gmt, duration: { _ in 0 }, disk: .system)
             let durable = Mutex<Calls.Move?>(nil)
             #expect(try {
                 try disk.move(id: id, to: target) { move in
@@ -256,7 +260,7 @@ struct CallsMoveTests {
                     try Data([99]).write(to: target.appendingPathComponent(id + " other\(number)/kept"))
                 }
             }
-            let disk = Calls(folder: source, timeZone: .gmt, duration: { _ in 0 })
+            let disk = Calls(folder: source, timeZone: .gmt, duration: { _ in 0 }, disk: .system)
             await #expect(throws: (any Error).self) { try disk.move(id: id, to: target) }
             #expect(try FileManager.default.contentsOfDirectory(atPath: target.path).sorted() == (1...count).map { id + " other\($0)" })
             for number in 1...count {
@@ -275,7 +279,7 @@ struct CallsMoveTests {
                 else if kind == "link" { try FileManager.default.createSymbolicLink(at: occupied, withDestinationURL: source) }
                 else { try Data([99]).write(to: occupied) }
             }
-            let disk = Calls(folder: source, timeZone: .gmt, duration: { _ in 0 })
+            let disk = Calls(folder: source, timeZone: .gmt, duration: { _ in 0 }, disk: .system)
             await #expect(throws: (any Error).self) { try disk.move(id: id, to: target) }
             #expect(try FileManager.default.contentsOfDirectory(atPath: target.path) == [name])
             #expect(try Data(contentsOf: source.appendingPathComponent(name + "/one")) == Data([1, 2, 3]))
@@ -285,7 +289,7 @@ struct CallsMoveTests {
 
     @Test func missingCallAndDestinationInsideTheCallFailWithoutChanges() async throws {
         try await withMoveFolders { (source: URL, target: URL) async throws in
-            let disk = Calls(folder: source, timeZone: .gmt, duration: { _ in 0 })
+            let disk = Calls(folder: source, timeZone: .gmt, duration: { _ in 0 }, disk: .system)
             await #expect(throws: (any Error).self) { try disk.move(id: "gone", to: target) }
             await #expect(throws: (any Error).self) { try disk.move(id: id, to: source.appendingPathComponent(name + "/nested")) }
             #expect(try FileManager.default.contentsOfDirectory(atPath: target.path).isEmpty)
@@ -302,11 +306,15 @@ private func testCalls(folder: URL,
                        copy: @escaping @Sendable (URL, URL) throws -> Void,
                        remove: @escaping @Sendable (URL) throws -> Void = { try FileManager.default.removeItem(at: $0) }) -> Calls {
     Calls(folder: folder, timeZone: .gmt,
-          children: children,
-          values: values, duration: { _ in 0 }, copy: copy,
-          rename: { from, to in
+          duration: { _ in 0 },
+          disk: CallsDisk(
+              children: children,
+              values: values,
+              copy: copy,
+              rename: { from, to in
               guard renamex_np(from.path, to.path, UInt32(RENAME_EXCL)) == 0 else { throw POSIXError(.EIO) }
-          }, remove: remove)
+          },
+              remove: remove))
 }
 private func withMoveFolders(_ work: @escaping @Sendable (URL, URL) async throws -> Void) async throws {
     let root = FileManager.default.temporaryDirectory.resolvingSymlinksInPath().appendingPathComponent(UUID().uuidString)
