@@ -73,8 +73,6 @@ private protocol FilesStorage: Sendable {
 }
 
 private actor DiskFiles: FilesStorage {
-    private nonisolated let queue = DispatchSerialQueue(label: "audelin.summary.files")
-    public nonisolated var unownedExecutor: UnownedSerialExecutor { queue.asUnownedSerialExecutor() }
     private let locations: any Locations
     private let disk: any Disk
     private let ownershipDirectory: URL
@@ -84,7 +82,7 @@ private actor DiskFiles: FilesStorage {
     public init(locations: any Locations, disk: any Disk, ownershipDirectory: URL) {
         self.locations = locations; self.disk = disk; self.ownershipDirectory = ownershipDirectory
     }
-    isolated deinit { for fd in leases.values { flock(fd, LOCK_UN); close(fd) } }
+    deinit { for fd in leases.values { flock(fd, LOCK_UN); close(fd) } }
 
     private static func acquire(_ record: Record, directory: URL) throws -> Int32? {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
