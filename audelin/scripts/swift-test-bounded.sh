@@ -41,7 +41,14 @@ BOUNDED_EVENTS="$events" SWIFT_BACKTRACE=enable=yes perl -e '
         local $/; my $text = <$fh>; close $fh;
         if ($text =~ /Time limit was exceeded/) {
           print STDERR "error: a test exceeded its time limit; sampling the run\n";
-          system("sample", $_, "2") for tree($pid);
+          # Sample every process at once, deepest first: the test helper
+          # holds the stuck work and may end while a parent is sampled.
+          my @samplers = map {
+            my $s = fork() // die "fork: $!";
+            if ($s == 0) { exec("sample", $_, "2") or exit 1 }
+            $s
+          } reverse tree($pid);
+          waitpid($_, 0) for @samplers;
           exit 0;
         }
       }
