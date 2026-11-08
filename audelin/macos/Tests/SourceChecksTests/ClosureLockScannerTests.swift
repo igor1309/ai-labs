@@ -89,14 +89,14 @@ struct ClosureLockScannerTests {
 
     @Test func ignoresNonSwiftFilesAndSortsFindingsByPath() async throws {
         try await withFixtureDirectory { directory in
-            let findings = try await offPool {
+            let findings = try {
                 for file in ["z.swift", "a.swift", "ignored.txt"] {
                     try "let receiver: Mutex<() -> Void>".write(
                         to: directory.appendingPathComponent(file), atomically: true, encoding: .utf8
                     )
                 }
                 return try closureLockFindings(in: directory)
-            }
+            }()
             #expect(findings == [
                 ClosureLockFinding(file: "a.swift", line: 1),
                 ClosureLockFinding(file: "z.swift", line: 1),
@@ -106,7 +106,7 @@ struct ClosureLockScannerTests {
 
     @Test func scansAppSourcesAndTestsWithoutBuildOutputs() async throws {
         try await withFixtureDirectory { directory in
-            let findings = try await offPool {
+            let findings = try {
                 for name in ["Sources", "Tests", "PreviewApps", "App/Sources", "App/Tests", "App/.build", ".build"] {
                     let folder = directory.appendingPathComponent(name)
                     try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
@@ -115,7 +115,7 @@ struct ClosureLockScannerTests {
                     )
                 }
                 return try packageClosureLockFindings(in: directory)
-            }
+            }()
             #expect(findings.map(\.file).sorted() == [
                 "App/Sources/Fixture.swift", "App/Tests/Fixture.swift", "PreviewApps/Fixture.swift",
                 "Sources/Fixture.swift", "Tests/Fixture.swift",
@@ -126,16 +126,16 @@ struct ClosureLockScannerTests {
     @Test func packageLocksStoreConcreteTypes() async throws {
         let package = URL(filePath: #filePath).deletingLastPathComponent()
             .deletingLastPathComponent().deletingLastPathComponent()
-        let findings = try await offPool {
+        let findings = try {
             try packageClosureLockFindings(in: package)
-        }
+        }()
         #expect(findings.isEmpty, "\(findings.map(\.description).joined(separator: "\n"))")
     }
 }
 
 private func scanFixture(_ source: String) async throws -> [ClosureLockFinding] {
     try await withFixtureDirectory { directory in
-        try await offPool {
+        do {
             let nested = directory.appendingPathComponent("Nested")
             try FileManager.default.createDirectory(at: nested, withIntermediateDirectories: true)
             try source.write(to: nested.appendingPathComponent("Fixture.swift"), atomically: true, encoding: .utf8)
@@ -147,11 +147,11 @@ private func scanFixture(_ source: String) async throws -> [ClosureLockFinding] 
 private func withFixtureDirectory<Value>(
     _ body: (URL) async throws -> Value
 ) async throws -> Value {
-    let directory = try await offPool {
+    let directory = try {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         return directory
-    }
+    }()
     return try await withCleanup {
         try await body(directory)
     } cleanup: {

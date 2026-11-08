@@ -200,11 +200,11 @@ private func withSessions(_ body: @Sendable (SessionsRig) async throws -> Void) 
         boundary.log = log
         boundary.processes = FixtureProcesses(binding: CallBinding(fails: false))
         let url = root.appendingPathComponent("preferences.json")
-        let preferences = try await offPool {
+        let preferences = try {
             let store = PreferencesStore(fileURL: url)
             try store.write(Preferences(liveText: false, callsFolder: root))
             return store
-        }
+        }()
         let processes = CoreAudioProcesses(binding: BoundaryProcesses(base: boundary.processes), clock: BoundaryCallClock(time: boundary.time))
         let app = RecordingCallApp()
         app.started("us.zoom.xos")

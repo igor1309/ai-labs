@@ -12,8 +12,8 @@ struct NativeMicrophoneHALTests {
 
         let calls = RecordingMicrophoneHAL(value: device)
         let binding = makeBinding(calls)
-        #expect(try await offPool { try binding.defaultInput() } == device)
-        #expect(try await offPool { try NativeMicrophoneBinding.readDefaultInput(hal: calls.hal) } == device)
+        #expect(try binding.defaultInput() == device)
+        #expect(try NativeMicrophoneBinding.readDefaultInput(hal: calls.hal) == device)
         #expect(calls.state.withLock { $0.reads } == Array(repeating: .defaultInput, count: 2))
     }
 
@@ -22,7 +22,7 @@ struct NativeMicrophoneHALTests {
         let calls = RecordingMicrophoneHAL(value: kAudioObjectUnknown)
         let binding = makeBinding(calls)
         await #expect(throws: CaptureError.noInput) {
-            try await offPool { try binding.defaultInput() }
+            try binding.defaultInput()
         }
         #expect(calls.state.withLock { $0.reads } == [.defaultInput])
     }
@@ -33,7 +33,7 @@ struct NativeMicrophoneHALTests {
         let calls = RecordingMicrophoneHAL(value: 7, readStatus: status)
         let binding = makeBinding(calls)
         let error = await #expect(throws: NativeMicrophoneError.self) {
-            try await offPool { try binding.defaultInput() }
+            try binding.defaultInput()
         }
         #expect(error?.call == "reading the default input")
         #expect(error?.status == status)
@@ -45,7 +45,7 @@ struct NativeMicrophoneHALTests {
 
         let calls = RecordingMicrophoneHAL(value: alive, readStatus: status)
         let binding = makeBinding(calls)
-        #expect(await offPool { binding.inputAvailable(41) } == (status == noErr && alive != 0))
+        #expect(binding.inputAvailable(41) == (status == noErr && alive != 0))
         #expect(calls.state.withLock { $0.reads } == [HALRead(
             object: 41, selector: kAudioDevicePropertyDeviceIsAlive
         )])
@@ -58,7 +58,7 @@ struct NativeMicrophoneHALTests {
         let delivered = Mutex<[UInt32]>([])
         let callbackQueues = Mutex<[Bool]>([])
         try await withCleanup {
-            try await offPool {
+            do {
                 try binding.watchDefaultInput { device in
                     callbackQueues.withLock { $0.append(isMicrophoneNotification) }
                     delivered.withLock { $0.append(device) }
@@ -85,7 +85,7 @@ struct NativeMicrophoneHALTests {
         let binding = makeBinding(calls)
         let delivered = Mutex<[UInt32]>([])
         try await withCleanup {
-            try await offPool {
+            do {
                 try binding.watchDefaultInput { device in delivered.withLock { $0.append(device) } }
             }
             calls.state.withLock {
@@ -108,7 +108,7 @@ struct NativeMicrophoneHALTests {
         let binding = makeBinding(calls)
         let lifetime = WeakCallbackLifetime()
         let error = await #expect(throws: NativeMicrophoneError.self) {
-            try await offPool {
+            do {
                 let token = CallbackLifetime()
                 lifetime.value = token
                 try binding.watchDefaultInput { [token] _ in withExtendedLifetime(token) {} }
@@ -117,7 +117,7 @@ struct NativeMicrophoneHALTests {
         #expect(error?.call == "watching the default input")
         #expect(error?.status == status)
         #expect(lifetime.value == nil)
-        await offPool { binding.unwatchDefaultInput() }
+        binding.unwatchDefaultInput()
         #expect(calls.state.withLock { $0.additions.count } == 1)
         #expect(calls.state.withLock { $0.listener } == nil)
         #expect(calls.state.withLock { $0.removals }.isEmpty)
@@ -129,15 +129,15 @@ struct NativeMicrophoneHALTests {
         let calls = RecordingMicrophoneHAL(value: 7, removeStatus: removeStatus)
         let binding = makeBinding(calls)
         try await withCleanup {
-            await offPool { binding.unwatchDefaultInput() }
+            binding.unwatchDefaultInput()
             #expect(calls.state.withLock { $0.removals }.isEmpty)
-            try await offPool { try binding.watchDefaultInput { _ in } }
+            try binding.watchDefaultInput { _ in }
             let registration = try #require(calls.state.withLock { $0.listener })
             #expect(registration.object == kAudioObjectSystemObject)
             #expect(registration.property == HALRead.defaultInput)
             #expect(registration.queue.label == "audelin.microphone-notifications")
-            await offPool { binding.unwatchDefaultInput() }
-            await offPool { binding.unwatchDefaultInput() }
+            binding.unwatchDefaultInput()
+            binding.unwatchDefaultInput()
             #expect(calls.state.withLock { $0.removals } == [registration.identity])
             #expect(calls.state.withLock { $0.additions } == [registration.identity])
         } cleanup: {

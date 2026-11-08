@@ -6,11 +6,9 @@ Issues are in the Multica project `Audelin`, in the `ai-labs` workspace (parent 
   from `macos/Package.swift` and `macos/App/Package.swift`. Any step that adds a target or changes a dependency reruns it in
   the same commit; a new target needs its lane and line in the script's `TARGETS`, and the
   script stops until it has one.
-- Tests await blocking work per call with `offPool { }` from `macos/Tests/BlockingTestWork`, never a
-  whole test body (`#expect` needs the task). Cleanup is awaited with `withCleanup { } cleanup:`,
-  children run through `exitStatus(of:)`, and audio files are read with `audioFile(_:)`. A
-  `deinit` that releases a blocking resource is `isolated`. Core Audio listener callbacks stay on
-  Core Audio's threads; only caller entry points hop to the queue.
+- Tests do file and process work directly; they do not hop it to a queue. Cleanup is awaited
+  with `withCleanup { } cleanup:`, children run through `exitStatus(of:)`, and audio files are
+  read with `audioFile(_:)`. Core Audio listener callbacks stay on Core Audio's threads.
 - A change meant to make the text path faster is judged by `macos/Benchmarks` (its README):
   median instructions per word against the saved `base`, not by unit or count tests.
 

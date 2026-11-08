@@ -46,7 +46,7 @@ struct SessionCrashTests {
                 var kept = parts[...last.finalCount].joined(separator: "\n\n")
                 while kept.hasSuffix("\n") { kept.removeLast() }
                 kept += "\n"
-                let text = try await offPool { try String(contentsOf: url, encoding: .utf8) }
+                let text = try String(contentsOf: url, encoding: .utf8)
                 #expect(text.hasPrefix(kept))
             } catch {
                 await command.stop()

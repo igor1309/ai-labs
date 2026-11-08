@@ -14,7 +14,7 @@ struct FolderMoveWiringTests {
         try await withComposeFolder { root in
             let source = root.appendingPathComponent("source"), alias = root.appendingPathComponent("alias")
             let id = "1970.01.01-0000"
-            try await offPool {
+            do {
                 try FileManager.default.createDirectory(at: source.appendingPathComponent(id), withIntermediateDirectories: true)
                 try Data([1, 2, 3]).write(to: source.appendingPathComponent(id + "/audio"))
                 try FileManager.default.createSymbolicLink(at: alias, withDestinationURL: source)
@@ -134,7 +134,7 @@ struct FolderMoveWiringTests {
         try await withComposeFolder { root in
             let destination = root.appendingPathComponent("new")
             let a = "1970.01.01-0000", b = "1970.01.01-0000-2", fresh = "1970.01.01-0000-3"
-            try await offPool {
+            do {
                 for path in [root.appendingPathComponent(a), root.appendingPathComponent(b), destination] {
                     try FileManager.default.createDirectory(at: path, withIntermediateDirectories: true)
                 }
@@ -154,26 +154,26 @@ struct FolderMoveWiringTests {
                 #expect(rig.menu.preferences.callsFolder == root)
                 let offline = root.appendingPathComponent("offline")
                 if destinationOffline {
-                    try await offPool { try FileManager.default.moveItem(at: destination, to: offline) }
+                    try FileManager.default.moveItem(at: destination, to: offline)
                 }
                 try await rig.start()
-                #expect(await offPool { FileManager.default.fileExists(atPath: root.appendingPathComponent(fresh).path) })
-                #expect(await offPool { !FileManager.default.fileExists(atPath: root.appendingPathComponent(a).path) })
+                #expect(FileManager.default.fileExists(atPath: root.appendingPathComponent(fresh).path))
+                #expect(!FileManager.default.fileExists(atPath: root.appendingPathComponent(a).path))
                 try await rig.stop()
                 for await state in Observations({ calls.recordingsState }) where state.recordingID == nil && !state.isListing { break }
                 if destinationOffline {
                     #expect(rig.menu.preferences.callsFolder == root)
-                    #expect(try await offPool { try Data(contentsOf: offline.appendingPathComponent(a + "/audio")) } == Data([1, 2, 3]))
-                    try await offPool { try FileManager.default.moveItem(at: offline, to: destination) }
+                    #expect(try Data(contentsOf: offline.appendingPathComponent(a + "/audio")) == Data([1, 2, 3]))
+                    try FileManager.default.moveItem(at: offline, to: destination)
                 }
-                try await offPool { try FileManager.default.removeItem(at: destination.appendingPathComponent(b)) }
+                try FileManager.default.removeItem(at: destination.appendingPathComponent(b))
                 calls.sendRecordings(.retryMove)
                 for await state in Observations({ calls.recordingsState }) where state.phase == .idle && !state.isListing { break }
                 #expect(rig.menu.preferences.callsFolder == destination)
                 #expect(calls.recordingsState.calls.map(\.id) == [fresh, b, a])
-                #expect(try await offPool { try Data(contentsOf: destination.appendingPathComponent(a + "/audio")) } == Data([1, 2, 3]))
-                #expect(try await offPool { try Data(contentsOf: destination.appendingPathComponent(b + "/transcript.md")) } == Data([4, 5, 6, 7]))
-                #expect(await offPool { FileManager.default.fileExists(atPath: destination.appendingPathComponent(fresh + "/transcript.md").path) })
+                #expect(try Data(contentsOf: destination.appendingPathComponent(a + "/audio")) == Data([1, 2, 3]))
+                #expect(try Data(contentsOf: destination.appendingPathComponent(b + "/transcript.md")) == Data([4, 5, 6, 7]))
+                #expect(FileManager.default.fileExists(atPath: destination.appendingPathComponent(fresh + "/transcript.md").path))
                 await rig.finish()
             } catch { await rig.finish(); throw error }
         }
@@ -183,7 +183,7 @@ struct FolderMoveWiringTests {
         try await withComposeFolder { root in
             let destination = root.appendingPathComponent("new")
             let a = "2026.10.24-1405 Zoom", b = "2026.10.25-1405"
-            try await offPool {
+            do {
                 for path in [root.appendingPathComponent(a), root.appendingPathComponent(b), destination] {
                     try FileManager.default.createDirectory(at: path, withIntermediateDirectories: true)
                 }
@@ -201,7 +201,7 @@ struct FolderMoveWiringTests {
                 #expect(rig.menu.settingsState.moveConfirm?.body.contains("7") == true)
                 await rig.menu.sendSettings(.cancelMove)
                 for await state in Observations({ rig.menu.settingsState }) where state.moveConfirm == nil { break }
-                #expect(await offPool { FileManager.default.fileExists(atPath: root.appendingPathComponent(a).path) })
+                #expect(FileManager.default.fileExists(atPath: root.appendingPathComponent(a).path))
                 await rig.menu.sendSettings(.changeFolder)
                 for await state in Observations({ rig.menu.settingsState }) where state.moveConfirm != nil { break }
                 await rig.menu.sendSettings(.confirmMove)
@@ -209,10 +209,10 @@ struct FolderMoveWiringTests {
                     if case .idle = state.folder.status { break }
                 }
                 #expect(rig.menu.preferences.callsFolder == destination)
-                #expect(try await offPool { try Data(contentsOf: destination.appendingPathComponent(a + "/audio")) } == Data([1, 2, 3]))
-                #expect(try await offPool { try Data(contentsOf: destination.appendingPathComponent(b + "/transcript.md")) } == Data([4, 5, 6, 7]))
+                #expect(try Data(contentsOf: destination.appendingPathComponent(a + "/audio")) == Data([1, 2, 3]))
+                #expect(try Data(contentsOf: destination.appendingPathComponent(b + "/transcript.md")) == Data([4, 5, 6, 7]))
                 try await rig.start()
-                #expect(await offPool { FileManager.default.fileExists(atPath: destination.appendingPathComponent("1970.01.01-0000").path) })
+                #expect(FileManager.default.fileExists(atPath: destination.appendingPathComponent("1970.01.01-0000").path))
                 try await rig.stop()
                 await rig.finish()
             } catch { await rig.finish(); throw error }

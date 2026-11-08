@@ -20,7 +20,7 @@ import Testing
             // a later recording then still lands in the configured source.
             let legacyRoots = completed ? [destination] : [destination, source]
             let calls = [(destination, moved), (source, remaining)]
-            try await offPool {
+            do {
                 for (folder, id) in calls {
                     try FileManager.default.createDirectory(at: folder.appendingPathComponent(id), withIntermediateDirectories: true)
                     try Data("transcript".utf8).write(to: folder.appendingPathComponent(id + "/transcript.md"))
@@ -29,7 +29,7 @@ import Testing
             }
             let storage = SummaryStorage(folder: source, timeZone: .gmt, journal: journal)
             try await storage.restore()
-            let migrated = try await offPool { try JSONDecoder().decode(SummaryStorage.Journal.self, from: Data(contentsOf: journal)) }
+            let migrated = try JSONDecoder().decode(SummaryStorage.Journal.self, from: Data(contentsOf: journal))
             #expect(migrated.retainedRoots.map(\.path) == legacyRoots.map(\.path))
             #expect(migrated.owners.mapValues(\.path) == (completed ? [moved: destination.path] : [moved: destination.path, remaining: source.path]))
             let recovered = SummaryStorage(folder: source, timeZone: .gmt, journal: journal)
@@ -41,13 +41,13 @@ import Testing
                 let job = Record(job: id, call: id, input: "input", snapshot: Data(), phase: "pending")
                 _ = try await files.claim(job); _ = try await files.start(job)
                 try await files.publish(job, notes: "summary for " + id)
-                #expect(try await offPool { try String(contentsOf: folder.appendingPathComponent(id + "/summary.md"), encoding: .utf8) }.hasSuffix("summary for " + id))
+                #expect(try String(contentsOf: folder.appendingPathComponent(id + "/summary.md"), encoding: .utf8).hasSuffix("summary for " + id))
             }
             #expect(try await recovered.prepareMove(to: destination).map(\.id) == [remaining])
             _ = try await recovered.move(id: remaining, to: destination)
             try await recovered.commitFolder(destination, commit: {})
             #expect(try await recovered.list().map(\.id) == [remaining, moved])
-            #expect(try await offPool { try String(contentsOf: destination.appendingPathComponent(remaining + "/summary.md"), encoding: .utf8) }.hasSuffix("summary for " + remaining))
+            #expect(try String(contentsOf: destination.appendingPathComponent(remaining + "/summary.md"), encoding: .utf8).hasSuffix("summary for " + remaining))
         }
     }
 
@@ -56,23 +56,23 @@ import Testing
             let source = root.appendingPathComponent("source"), destination = root.appendingPathComponent("offline")
             let journal = root.appendingPathComponent("summary-folders.json")
             let data = try JSONEncoder().encode([destination, source])
-            try await offPool {
+            do {
                 try FileManager.default.createDirectory(at: source, withIntermediateDirectories: true)
                 try data.write(to: journal)
             }
             let storage = SummaryStorage(folder: source, timeZone: .gmt, journal: journal)
             await #expect(throws: (any Error).self) { try await storage.restore() }
-            #expect(try await offPool { try Data(contentsOf: journal) } == data)
+            #expect(try Data(contentsOf: journal) == data)
         }
     }
 
     @Test func productionRenameDeleteAndPartialMoveCoordinatePublication() async throws {
         try await withComposeFolder { root in
-            let canonical = await offPool { root.resolvingSymlinksInPath() }
+            let canonical = root.resolvingSymlinksInPath()
             let source = canonical.appendingPathComponent("source"), destination = canonical.appendingPathComponent("destination")
             let latest = "1970.01.01-0001", oldest = "1970.01.01-0000"
             let journal = root.appendingPathComponent("folders.json")
-            try await offPool {
+            do {
                 for path in [source.appendingPathComponent(latest), source.appendingPathComponent(oldest), destination.appendingPathComponent(oldest)] {
                     try FileManager.default.createDirectory(at: path, withIntermediateDirectories: true)
                     try Data("original".utf8).write(to: path.appendingPathComponent("transcript.md"))
@@ -88,7 +88,7 @@ import Testing
             try await files.publish(record, notes: "complete after partial move")
             let movedLocation = try await storage.location(id: latest)
             #expect(try await sameDirectory(movedLocation, destination.appendingPathComponent(latest)))
-            #expect(await offPool { !FileManager.default.fileExists(atPath: source.appendingPathComponent(latest).path) })
+            #expect(!FileManager.default.fileExists(atPath: source.appendingPathComponent(latest).path))
             let recovered = SummaryStorage(folder: source, timeZone: .gmt, journal: journal)
             try await recovered.restore()
             let recoveredLocation = try await recovered.location(id: latest)
@@ -98,11 +98,11 @@ import Testing
             #expect(try await restoredFiles.load(call: latest)?.phase == "running")
             try await files.publish(record, notes: "complete after rename")
             let renamed = try await recovered.location(id: latest)
-            #expect(try await offPool { try String(contentsOf: renamed.appendingPathComponent("summary.md"), encoding: .utf8) }.hasSuffix("complete after rename"))
-            #expect(try await offPool { try String(contentsOf: renamed.appendingPathComponent("transcript.md"), encoding: .utf8) } == "original")
+            #expect(try String(contentsOf: renamed.appendingPathComponent("summary.md"), encoding: .utf8).hasSuffix("complete after rename"))
+            #expect(try String(contentsOf: renamed.appendingPathComponent("transcript.md"), encoding: .utf8) == "original")
             try await recovered.delete(id: latest)
             await #expect(throws: (any Error).self) { try await files.publish(record, notes: "late") }
-            #expect(await offPool { !FileManager.default.fileExists(atPath: renamed.path) })
+            #expect(!FileManager.default.fileExists(atPath: renamed.path))
         }
     }
     @Test func preferenceCommitFailureRetainsSourceAcrossRestartAndALaterMove() async throws {
@@ -110,14 +110,14 @@ import Testing
             let source = root.appendingPathComponent("source"), destination = root.appendingPathComponent("destination")
             let journal = root.appendingPathComponent("roots.json")
             let id = "1970.01.01-0000", fresh = "1970.01.01-0001"
-            try await offPool {
+            do {
                 try FileManager.default.createDirectory(at: source.appendingPathComponent(id), withIntermediateDirectories: true)
                 try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
             }
             let storage = SummaryStorage(folder: source, timeZone: .gmt, journal: journal)
             _ = try await storage.move(id: id, to: destination)
             await #expect(throws: ScriptFailure.failed) { try await storage.commitFolder(destination, commit: { throw ScriptFailure.failed }) }
-            try await offPool { try FileManager.default.createDirectory(at: source.appendingPathComponent(fresh), withIntermediateDirectories: true) }
+            try FileManager.default.createDirectory(at: source.appendingPathComponent(fresh), withIntermediateDirectories: true)
             let recovered = SummaryStorage(folder: source, timeZone: .gmt, journal: journal)
             try await recovered.restore()
             #expect(try await sameDirectory(recovered.location(id: id), destination.appendingPathComponent(id)))
@@ -136,8 +136,8 @@ import Testing
             let source = root.appendingPathComponent("source"), destination = root.appendingPathComponent("destination")
             let journal = root.appendingPathComponent("roots.json"), preferencesURL = root.appendingPathComponent("preferences.json")
             let id = "1970.01.01-0000", fresh = "1970.01.01-0001"
-            let preferences = await offPool { PreferencesStore(fileURL: preferencesURL) }
-            try await offPool {
+            let preferences = PreferencesStore(fileURL: preferencesURL)
+            do {
                 try preferences.write(Preferences(automaticRecording: false, liveText: false, callsFolder: source))
                 try FileManager.default.createDirectory(at: source.appendingPathComponent(id), withIntermediateDirectories: true)
                 try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
@@ -163,7 +163,7 @@ import Testing
             #expect(state.failure == nil)
             #expect(state.callsFolder == preferences.read().callsFolder)
             #expect(preferences.read().callsFolder == destination)
-            try await offPool { try FileManager.default.createDirectory(at: destination.appendingPathComponent(fresh), withIntermediateDirectories: true) }
+            try FileManager.default.createDirectory(at: destination.appendingPathComponent(fresh), withIntermediateDirectories: true)
             let recovered = SummaryStorage(folder: preferences.read().callsFolder, timeZone: .gmt, journal: journal)
             try await recovered.restore()
             #expect(try await recovered.list().map(\.id) == [fresh, id])
@@ -185,7 +185,7 @@ import Testing
         try await withComposeFolder { root in
             let source = root.appendingPathComponent("source"), destination = root.appendingPathComponent("destination")
             let journal = root.appendingPathComponent("roots.json"), id = "1970.01.01-0000"
-            try await offPool {
+            do {
                 try FileManager.default.createDirectory(at: source.appendingPathComponent(id), withIntermediateDirectories: true)
                 try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
                 let move = Calls.Move(source: destination.appendingPathComponent("1970.01.01-0001"),
@@ -206,7 +206,7 @@ import Testing
             let oldest = "1970.01.01-0000", newer = "1970.01.01-0001"
             let outer = root.appendingPathComponent(newer), nested = outer.appendingPathComponent("nested")
             let link = root.appendingPathComponent("link")
-            try await offPool {
+            do {
                 try FileManager.default.createDirectory(at: root.appendingPathComponent(oldest), withIntermediateDirectories: true)
                 try FileManager.default.createDirectory(at: nested, withIntermediateDirectories: true)
                 try Data([1, 2, 3]).write(to: root.appendingPathComponent(oldest + "/audio"))
@@ -216,9 +216,9 @@ import Testing
             let target = kind == "call" ? outer : kind == "nested" ? nested : link
             await #expect(throws: (any Error).self) { _ = try await storage.move(id: oldest, to: target) }
             #expect(try await storage.list().map(\.id) == [newer, oldest])
-            #expect(try await offPool { try Data(contentsOf: root.appendingPathComponent(oldest + "/audio")) } == Data([1, 2, 3]))
-            #expect(try await offPool { try FileManager.default.contentsOfDirectory(atPath: nested.path) }.isEmpty)
-            #expect(await offPool { !FileManager.default.fileExists(atPath: root.appendingPathComponent("roots.json").path) })
+            #expect(try Data(contentsOf: root.appendingPathComponent(oldest + "/audio")) == Data([1, 2, 3]))
+            #expect(try FileManager.default.contentsOfDirectory(atPath: nested.path).isEmpty)
+            #expect(!FileManager.default.fileExists(atPath: root.appendingPathComponent("roots.json").path))
         }
     }
 
@@ -226,7 +226,7 @@ import Testing
         try await withComposeFolder { root in
             let source = root.appendingPathComponent("source"), destination = root.appendingPathComponent("destination")
             let a = "1970.01.01-0000", b = "1970.01.01-0001", c = "1970.01.01-0002"
-            try await offPool {
+            do {
                 for (folder, id, count) in [(source, a, 3), (source, b, 7), (destination, c, 11)] {
                     try FileManager.default.createDirectory(at: folder.appendingPathComponent(id), withIntermediateDirectories: true)
                     try Data(repeating: 1, count: count).write(to: folder.appendingPathComponent(id + "/audio"))
@@ -255,7 +255,7 @@ import Testing
             #expect(state.move?.completed.map(\.id) == [a])
             #expect(try await storage.prepareMove(to: destination).map(\.id) == [b])
             await #expect(throws: (any Error).self) { _ = try await storage.location(id: c) }
-            try await offPool { try FileManager.default.removeItem(at: destination.appendingPathComponent(b)) }
+            try FileManager.default.removeItem(at: destination.appendingPathComponent(b))
             let retryStart = observedMoves.count
             await send(.retryMove)
             let retried = Array(observedMoves.dropFirst(retryStart))
@@ -267,7 +267,7 @@ import Testing
             #expect(state.phase == .idle)
             #expect(state.callsFolder == destination)
             #expect(state.calls.map(\.id) == [c, b, a])
-            #expect(try await offPool { try Data(contentsOf: destination.appendingPathComponent(c + "/audio")) } == Data(repeating: 1, count: 11))
+            #expect(try Data(contentsOf: destination.appendingPathComponent(c + "/audio")) == Data(repeating: 1, count: 11))
         }
     }
     @Test func summariesResolveBeforeBetweenAndAfterMovesAndCompletedRootsSurviveRestart() async throws {
@@ -275,7 +275,7 @@ import Testing
             let source = root.appendingPathComponent("source"), destination = root.appendingPathComponent("destination")
             let journal = root.appendingPathComponent("roots.json")
             let ids = ["1970.01.01-0000", "1970.01.01-0001"]
-            try await offPool {
+            do {
                 for id in ids {
                     try FileManager.default.createDirectory(at: source.appendingPathComponent(id), withIntermediateDirectories: true)
                     try Data("transcript".utf8).write(to: source.appendingPathComponent(id + "/transcript.md"))
@@ -293,15 +293,15 @@ import Testing
             #expect(try await sameDirectory(storage.location(id: ids[1]), source.appendingPathComponent(ids[1])))
             _ = try await storage.move(id: ids[1], to: destination)
             try await storage.commitFolder(destination, commit: {})
-            try await offPool { try FileManager.default.removeItem(at: source) }
+            try FileManager.default.removeItem(at: source)
             let restored = SummaryStorage(folder: destination, timeZone: .gmt, journal: journal)
             try await restored.restore()
             #expect(try await restored.list().map(\.id) == ids.reversed())
             let recoveredFiles = Files(locations: restored, disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("leases"))
             #expect(try await recoveredFiles.load(call: ids[1])?.phase == "running")
             try await files.publish(records[1], notes: "published after completion")
-            #expect(try await offPool { try String(contentsOf: destination.appendingPathComponent(ids[0] + "/summary.md"), encoding: .utf8) }.hasSuffix("published between moves"))
-            #expect(try await offPool { try String(contentsOf: destination.appendingPathComponent(ids[1] + "/summary.md"), encoding: .utf8) }.hasSuffix("published after completion"))
+            #expect(try String(contentsOf: destination.appendingPathComponent(ids[0] + "/summary.md"), encoding: .utf8).hasSuffix("published between moves"))
+            #expect(try String(contentsOf: destination.appendingPathComponent(ids[1] + "/summary.md"), encoding: .utf8).hasSuffix("published after completion"))
         }
     }
 
@@ -309,7 +309,7 @@ import Testing
         try await withComposeFolder { root in
             let source = root.appendingPathComponent("source"), destination = root.appendingPathComponent("destination")
             let id = "1970.01.01-0000", journalParent = root.appendingPathComponent("file")
-            try await offPool {
+            do {
                 try FileManager.default.createDirectory(at: source.appendingPathComponent(id), withIntermediateDirectories: true)
                 try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
                 try Data([1]).write(to: journalParent)
@@ -319,17 +319,17 @@ import Testing
             await #expect(throws: (any Error).self) { _ = try await storage.move(id: id, to: destination) }
             #expect(try await storage.list().map(\.id) == [id])
             #expect(try await sameDirectory(storage.location(id: id), source.appendingPathComponent(id)))
-            #expect(try await offPool { try FileManager.default.contentsOfDirectory(atPath: destination.path) }.isEmpty)
+            #expect(try FileManager.default.contentsOfDirectory(atPath: destination.path).isEmpty)
         }
     }
 
     @Test func summaryPreferenceSaveMergesFreshRecordingFieldsAndPreservesCorruption() async throws {
         try await withComposeFolder { root in
             let url = root.appendingPathComponent("preferences.json")
-            let storage = await offPool { PreferencesStore(fileURL: url) }
+            let storage = PreferencesStore(fileURL: url)
             let preferences = SummaryPreferences(storage: storage)
             let old = try await preferences.load()
-            try await offPool { try storage.write(Preferences(automaticRecording: false, liveText: false, callsFolder: root)) }
+            try storage.write(Preferences(automaticRecording: false, liveText: false, callsFolder: root))
             var edited = old; edited.enabled = true; edited.primary.model = "editable"
             try await preferences.save(edited)
             let current = storage.read()
@@ -337,16 +337,16 @@ import Testing
             #expect(current.callsFolder == root)
             #expect(current.notes.primary.model == "editable")
             let corrupt = Data("{corrupt preference".utf8)
-            try await offPool { try corrupt.write(to: url) }
+            try corrupt.write(to: url)
             await #expect(throws: (any Error).self) { try await preferences.load() }
             await #expect(throws: (any Error).self) { try await preferences.save(old) }
-            #expect(try await offPool { try Data(contentsOf: url) } == corrupt)
+            #expect(try Data(contentsOf: url) == corrupt)
         }
     }
     @Test func pendingSnapshotRetainsConfigurationAndRunningRecoveryDoesNotReplay() async throws {
         try await withComposeFolder { root in
             let id = "1970.01.01-0000", folder = root.appendingPathComponent("1970.01.01-0000")
-            try await offPool { try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true) }
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
             let files = Files(locations: SummaryStorage(folder: root, timeZone: .gmt), disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("leases")), store = SummaryJobStore(files: files)
             let slot = Job.Runtime(kind: "compatibleAPI", model: "saved-model", program: "", endpoint: "http://127.0.0.1", credentialVariable: "REFERENCE_ONLY")
             let job = Job(id: "job", call: id, input: "input", entries: [.init(label: "A", time: "0", text: "spoken")], speakers: false, primary: slot, fallback: slot)
@@ -365,7 +365,7 @@ import Testing
 }
 
 func sameDirectory(_ left: URL, _ right: URL) async throws -> Bool {
-    try await offPool {
+    do {
         var lhs = stat(), rhs = stat()
         guard stat(left.path, &lhs) == 0, stat(right.path, &rhs) == 0 else { throw CocoaError(.fileReadUnknown) }
         return lhs.st_dev == rhs.st_dev && lhs.st_ino == rhs.st_ino

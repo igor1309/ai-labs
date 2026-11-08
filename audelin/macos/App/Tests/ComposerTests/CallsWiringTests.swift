@@ -115,7 +115,7 @@ struct CallsWiringTests {
             await wait(calls) { $0.deleteID == id }
 
             // The listed folder goes away, so the recording's new folder takes its name.
-            try await offPool { try FileManager.default.removeItem(at: rig.folder(id)) }
+            try FileManager.default.removeItem(at: rig.folder(id))
             try await rig.start()
             _ = try await rig.state { $0.callID == id }
             await calls.send(.confirmDelete)
@@ -152,7 +152,7 @@ struct CallsWiringTests {
     /// What the writers really make is what protects the call being recorded.
     @Test func madeAndRenamedNamesReadBackAsTheSameCall() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("CallsWiringTests-\(UUID())", isDirectory: true)
-        try await offPool { try FileManager.default.createDirectory(at: root, withIntermediateDirectories: false) }
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: false)
         try await withCleanup {
             let calls = Calls(folder: root, timeZone: .gmt, duration: { _ in 0 })
             let cases: [(minute: Double, made: String?, id: String, title: String)] = [
@@ -165,16 +165,16 @@ struct CallsWiringTests {
             ]
             for item in cases {
                 let folder = CallFolder(callsURL: root, now: { Date(timeIntervalSince1970: item.minute * 60) }, timeZone: .gmt)
-                let name = try await offPool { try folder.make(title: item.made).url.lastPathComponent }
+                let name = try folder.make(title: item.made).url.lastPathComponent
                 #expect(Calls.id(in: name, timeZone: .gmt) == item.id)
-                #expect(try await offPool { try calls.list() }.first { $0.id == item.id }?.title == item.title)
+                #expect(try calls.list().first { $0.id == item.id }?.title == item.title)
             }
             let id = "1970.01.01-0000-2"
             for (title, shown) in [("New", "New"), ("x/y:z", "x-y-z"), ("", "")] {
-                try await offPool { try calls.rename(id: id, title: title) }
-                let name = try await offPool { try calls.location(id: id).lastPathComponent }
+                try calls.rename(id: id, title: title)
+                let name = try calls.location(id: id).lastPathComponent
                 #expect(Calls.id(in: name, timeZone: .gmt) == id)
-                #expect(try await offPool { try calls.list() }.first { $0.id == id }?.title == shown)
+                #expect(try calls.list().first { $0.id == id }?.title == shown)
             }
         } cleanup: {
             try FileManager.default.removeItem(at: root)
@@ -203,22 +203,20 @@ private let a = "2024.01.01-1000", b = "2024.01.01-0900", c = "2024.01.01-0800"
 
 private func make(_ name: String, in folder: URL) async throws {
     let url = folder.appendingPathComponent(name)
-    try await offPool { try FileManager.default.createDirectory(at: url, withIntermediateDirectories: false) }
+    try FileManager.default.createDirectory(at: url, withIntermediateDirectories: false)
 }
 
 private func setMode(_ mode: Int, of url: URL) async throws {
-    try await offPool { try FileManager.default.setAttributes([.posixPermissions: mode], ofItemAtPath: url.path) }
+    try FileManager.default.setAttributes([.posixPermissions: mode], ofItemAtPath: url.path)
 }
 
 /// The call folders in the calls folder, leaving out the preferences beside them.
 private func names(in folder: URL) async throws -> [String] {
-    try await offPool {
-        try FileManager.default.contentsOfDirectory(atPath: folder.path).filter { $0.hasPrefix("20") }
-    }
+    try FileManager.default.contentsOfDirectory(atPath: folder.path).filter { $0.hasPrefix("20") }
 }
 
 private func isFolder(_ url: URL) async -> Bool {
-    await offPool { var folder: ObjCBool = false; return FileManager.default.fileExists(atPath: url.path, isDirectory: &folder) && folder.boolValue }
+    var folder: ObjCBool = false; return FileManager.default.fileExists(atPath: url.path, isDirectory: &folder) && folder.boolValue
 }
 
 @MainActor
