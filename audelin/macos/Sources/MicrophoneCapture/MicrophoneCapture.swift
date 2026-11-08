@@ -9,13 +9,10 @@ public final class MicrophoneCapture: Sendable {
 
     private let lifetime: CaptureLifetime
 
-    public convenience init() async throws {
+    /// Captures through `hardware`: `.system()` in the app.
+    public init(hardware: MicrophoneHardware) async throws {
 
-        try await self.init(binding: NativeMicrophoneBinding.system())
-    }
-
-    init(binding: any MicrophoneBinding) async throws {
-
+        let binding = hardware.binding
         let stream = AsyncThrowingStream<AudioPiece, any Error>.makeStream()
         audio = stream.stream
         lifetime = CaptureLifetime(binding: binding, continuation: stream.continuation)

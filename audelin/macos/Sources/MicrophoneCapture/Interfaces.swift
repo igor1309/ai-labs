@@ -26,6 +26,23 @@ struct InputBuffer: Sendable {
     let time: Double
 }
 
+/// The input devices a capture reads.
+public struct MicrophoneHardware: Sendable {
+
+    let binding: any MicrophoneBinding
+
+    init(binding: any MicrophoneBinding) {
+
+        self.binding = binding
+    }
+
+    /// The Mac's own input devices.
+    public static func system() -> MicrophoneHardware {
+
+        MicrophoneHardware(binding: NativeMicrophoneBinding.system())
+    }
+}
+
 /// Lifecycle calls are serialized by the capture. Buffer delivery is ordered;
 /// stop removes the tap and waits for every callback already in flight, even
 /// after a partial start. Notifications never require synchronous teardown.

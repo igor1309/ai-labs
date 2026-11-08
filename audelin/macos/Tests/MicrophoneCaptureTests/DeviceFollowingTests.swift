@@ -6,7 +6,7 @@ struct DeviceFollowingTests {
 
     @Test func repeatedNotificationsKeepTheOriginalDeadline() async throws {
         let binding = FakeMicrophoneBinding()
-        let capture = try await MicrophoneCapture(binding: binding)
+        let capture = try await MicrophoneCapture(hardware: .init(binding: binding))
         defer { capture.stop() }
         binding.changeDefault(to: 2)
         await capture.synchronize()
@@ -29,7 +29,7 @@ struct DeviceFollowingTests {
 
     @Test func configurationPreservesAnAvailableInputWhileTheDefaultIsMissing() async throws {
         let binding = FakeMicrophoneBinding()
-        let capture = try await MicrophoneCapture(binding: binding)
+        let capture = try await MicrophoneCapture(hardware: .init(binding: binding))
         defer { capture.stop() }
         binding.changeDefault(to: 0)
         await capture.synchronize()
@@ -52,7 +52,7 @@ struct DeviceFollowingTests {
     @Test(arguments: [UInt32(2), 3])
     func configurationUsesTheLatestDefaultWithoutANotification(input: UInt32) async throws {
         let binding = FakeMicrophoneBinding()
-        let capture = try await MicrophoneCapture(binding: binding)
+        let capture = try await MicrophoneCapture(hardware: .init(binding: binding))
         defer { capture.stop() }
         binding.send([[1, 2]])
         binding.state.withLock { $0.unavailableInputs = [1] }
@@ -70,7 +70,7 @@ struct DeviceFollowingTests {
 
     @Test func aRefusedRebuildCannotBeRevivedByPendingCallbacks() async throws {
         let binding = FakeMicrophoneBinding()
-        let capture = try await MicrophoneCapture(binding: binding)
+        let capture = try await MicrophoneCapture(hardware: .init(binding: binding))
         defer { capture.stop() }
         binding.send([[1, 2]])
         binding.changeDefault(to: 2)
