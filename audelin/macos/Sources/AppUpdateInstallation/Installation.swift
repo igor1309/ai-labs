@@ -36,7 +36,11 @@ public actor Installation {
         stopWatching()
         let id = UUID()
         let (changes, output) = AsyncStream<Void>.makeStream()
-        let sink = WatchSink(bundlePath: bundle.path, output: output)
+        guard let paths = watchPaths(for: bundle) else {
+            output.finish()
+            return changes
+        }
+        let sink = WatchSink(bundlePath: paths.bundle, output: output)
         var context = FSEventStreamContext(
             version: 0, info: Unmanaged.passUnretained(sink).toOpaque(),
             retain: { info in
@@ -49,14 +53,16 @@ public actor Installation {
             }, copyDescription: nil
         )
         guard let stream = FSEventStreamCreate(
-            nil, { _, info, count, paths, _, _ in
+            nil, { _, info, count, paths, flags, _ in
                 guard let info else { return }
                 let sink = Unmanaged<WatchSink>.fromOpaque(info).takeUnretainedValue()
                 let paths = unsafeBitCast(paths, to: NSArray.self) as! [String]
-                if paths.prefix(count).contains(where: { isBundlePath($0, bundlePath: sink.bundlePath) }) {
+                if (0..<count).contains(where: {
+                    isBundleEvent(paths[$0], flags: flags[$0], bundlePath: sink.bundlePath)
+                }) {
                     sink.output.yield(())
                 }
-            }, &context, [bundle.deletingLastPathComponent().path] as CFArray,
+            }, &context, [paths.root] as CFArray,
             FSEventStreamEventId(kFSEventStreamEventIdSinceNow), 0,
             FSEventStreamCreateFlags(kFSEventStreamCreateFlagFileEvents | kFSEventStreamCreateFlagUseCFTypes | kFSEventStreamCreateFlagNoDefer)
         ) else {
@@ -93,13 +99,13 @@ public actor Installation {
         output = nil
     }
 
-    public func relaunch() throws {
+    public func relaunch(opener: String = "open") throws {
         guard readBuildID() != nil else { throw Failure.unreadableBundle }
         let helper = Process()
         helper.executableURL = URL(filePath: "/bin/sh")
         // Arguments carry the path and pid without interpolating shell source. The
         // helper outlives this process; no inherited pipe keeps the parent alive.
-        helper.arguments = ["-c", Self.relaunchScript, "audelin-relaunch", String(pid), bundle.path]
+        helper.arguments = ["-c", Self.relaunchScript, "audelin-relaunch", String(pid), bundle.path, opener]
         helper.standardInput = FileHandle.nullDevice
         helper.standardOutput = FileHandle.nullDevice
         helper.standardError = FileHandle.nullDevice
@@ -108,7 +114,7 @@ public actor Installation {
 
     public enum Failure: Error, Equatable { case unreadableBundle }
 
-    static let relaunchScript = "trap '' HUP; while kill -0 \"$1\" 2>/dev/null; do /bin/sleep 0.1; done; exec /usr/bin/open \"$2\""
+    static let relaunchScript = "trap '' HUP; while kill -0 \"$1\" 2>/dev/null; do /bin/sleep 0.1; done; exec \"$3\" \"$2\""
 
     isolated deinit {
         if let stream {
@@ -120,8 +126,27 @@ public actor Installation {
     }
 }
 
+func watchPaths(for bundle: URL) -> (root: String, bundle: String)? {
+    // FSEvents reports physical paths; Foundation can strip their /private
+    // prefix. Resolve only the parent so a missing bundle can still be watched.
+    guard let resolved = realpath(bundle.deletingLastPathComponent().path, nil) else { return nil }
+    defer { free(resolved) }
+    let root = String(cString: resolved)
+    return (root, (root == "/" ? "" : root) + "/" + bundle.lastPathComponent)
+}
+
 func isBundlePath(_ path: String, bundlePath: String) -> Bool {
     path == bundlePath || path.hasPrefix(bundlePath + "/")
+}
+
+func isBundleEvent(_ path: String, flags: FSEventStreamEventFlags, bundlePath: String) -> Bool {
+    if isBundlePath(path, bundlePath: bundlePath) { return true }
+    let rescan = FSEventStreamEventFlags(kFSEventStreamEventFlagMustScanSubDirs |
+        kFSEventStreamEventFlagUserDropped | kFSEventStreamEventFlagKernelDropped |
+        kFSEventStreamEventFlagRootChanged)
+    guard flags & rescan != 0 else { return false }
+    let ancestor = path.hasSuffix("/") ? String(path.dropLast()) : path
+    return bundlePath.hasPrefix(ancestor + "/")
 }
 
 private final class WatchSink {

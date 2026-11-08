@@ -1,4 +1,5 @@
 import BlockingTestWork
+import CoreServices
 import Foundation
 import Testing
 @testable import AppUpdateInstallation
@@ -72,9 +73,36 @@ struct InstallationTests {
     func filtersBundlePathAtComponentBoundary(path: String, matches: Bool) {
         #expect(isBundlePath(path, bundlePath: "/Applications/Audelin.app") == matches)
     }
+
+    @Test(arguments: [
+        kFSEventStreamEventFlagMustScanSubDirs, kFSEventStreamEventFlagUserDropped,
+        kFSEventStreamEventFlagKernelDropped, kFSEventStreamEventFlagRootChanged,
+    ])
+    func rescanFlagsDeliverBundleAndAncestorEvents(flag: Int) {
+        let bundle = "/Applications/Audelin.app"
+        for flags in [flag, flag | kFSEventStreamEventFlagItemModified] {
+            for path in ["/", "/Applications", "/Applications/", bundle, bundle + "/Contents"] {
+                #expect(isBundleEvent(path, flags: FSEventStreamEventFlags(flags), bundlePath: bundle))
+            }
+            for path in ["/Application", "/Applications/Other.app", bundle + ".new", "/Other"] {
+                #expect(!isBundleEvent(path, flags: FSEventStreamEventFlags(flags), bundlePath: bundle))
+            }
+        }
+    }
+
+    @Test(arguments: [0, kFSEventStreamEventFlagItemModified])
+    func ordinaryFlagsOnlyDeliverBundleEvents(flag: Int) {
+        let bundle = "/Applications/Audelin.app"
+        for path in [bundle, bundle + "/Contents/Info.plist"] {
+            #expect(isBundleEvent(path, flags: FSEventStreamEventFlags(flag), bundlePath: bundle))
+        }
+        for path in ["/", "/Applications", bundle + ".new"] {
+            #expect(!isBundleEvent(path, flags: FSEventStreamEventFlags(flag), bundlePath: bundle))
+        }
+    }
 }
 
-private func writePlist(_ bundle: URL, identifier: String?, build: String?) async throws {
+func writePlist(_ bundle: URL, identifier: String?, build: String?) async throws {
     try await offPool {
         var values: [String: String] = [:]
         values["CFBundleIdentifier"] = identifier
@@ -84,7 +112,7 @@ private func writePlist(_ bundle: URL, identifier: String?, build: String?) asyn
     }
 }
 
-private func withBundle(_ body: (URL) async throws -> Void) async throws {
+func withBundle(_ body: (URL) async throws -> Void) async throws {
     let root = try await offPool {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: root.appendingPathComponent("Audelin.app/Contents"), withIntermediateDirectories: true)
@@ -110,7 +138,7 @@ struct RelaunchTests {
             var iterator = launched.stream.makeAsyncIterator()
             let launch = try #require(await iterator.next())
             #expect(launch.executable == "/bin/sh")
-            #expect(launch.arguments == ["-c", Installation.relaunchScript, "audelin-relaunch", "456", bundle.path])
+            #expect(launch.arguments == ["-c", Installation.relaunchScript, "audelin-relaunch", "456", bundle.path, "open"])
             #expect(launch.inputIsNull && launch.outputIsNull && launch.errorIsNull)
         }
     }

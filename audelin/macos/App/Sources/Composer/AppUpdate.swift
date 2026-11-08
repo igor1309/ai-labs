@@ -19,10 +19,15 @@ public struct InstalledUpdates: Sendable {
     }
 }
 
-public func installedUpdates(runningBundle: URL, pid: Int32) async -> InstalledUpdates {
-    let running = Installation(bundle: runningBundle, pid: pid)
-    let installed = Installation(bundle: URL(filePath: "/Applications/Audelin.app"), pid: pid)
-    return InstalledUpdates(running: await running.readBuildID() ?? "unknown", watch: { await installed.watch() },
+public func runningBuildID(in bundle: Bundle) -> String {
+    guard let id = bundle.object(forInfoDictionaryKey: "AudelinBuildID") as? String, !id.isEmpty else { return "unknown" }
+    return id
+}
+
+public func installedUpdates(running: String, pid: Int32,
+                             installedBundle: URL = URL(filePath: "/Applications/Audelin.app")) -> InstalledUpdates {
+    let installed = Installation(bundle: installedBundle, pid: pid)
+    return InstalledUpdates(running: running, watch: { await installed.watch() },
                             read: { await installed.readBuildID() }, relaunch: { try await installed.relaunch() })
 }
 

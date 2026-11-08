@@ -29,6 +29,7 @@ struct AudelinApp: App {
     private func start() async {
 
         guard model == nil else { return }
+        let running = runningBuildID(in: .main)
         let panel = FloatingPanel.onScreen()
         self.panel = panel
         let callsWindow = CallsWindow(makeWindow: {
@@ -61,7 +62,7 @@ struct AudelinApp: App {
                 return await withCheckedContinuation { done in
                     picker.begin { result in done.resume(returning: result == .OK ? picker.url : nil) }
                 }
-            }, updates: await installedUpdates(runningBundle: Bundle.main.bundleURL, pid: ProcessInfo.processInfo.processIdentifier)
+            }, updates: installedUpdates(running: running, pid: ProcessInfo.processInfo.processIdentifier)
         )
         self.model = model
         settingsWindow.contentView = NSHostingView(rootView: SettingsContent(model: model))
