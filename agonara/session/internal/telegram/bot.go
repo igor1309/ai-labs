@@ -3,11 +3,10 @@ package telegram
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
-
-	"github.com/igor1309/ai-labs/agonara/session/internal/flow"
 )
 
 // API calls one Bot API method; injected so tests need no network.
@@ -40,21 +39,29 @@ type Update struct {
 	CallbackQuery *CallbackQuery `json:"callback_query"`
 }
 
-// State is everything the bot saves: the polling offset and the session.
+// State holds only polling and displayed-message bookkeeping.
 type State struct {
-	Offset  int64        `json:"offset"`
-	Session flow.Session `json:"session"`
+	Offset   int64 `json:"offset"`
+	Revision int   `json:"revision"`
 }
 
-// Actor applies an action to a session; flow.Flow.Act satisfies it.
-type Actor func(ctx context.Context, session flow.Session, actionID string) (*flow.Result, error)
+type Session interface {
+	Show(context.Context, Request) (*Result, error)
+}
 
 // Bot answers one chat.
 type Bot struct {
 	API           API
-	Act           Actor
+	Session       Session
 	AllowedChatID int64
 	Log           func(string)
+}
+
+func NewBot(api API, session Session, chatID int64, log func(string)) (Bot, error) {
+	if api == nil || session == nil || chatID == 0 || log == nil {
+		return Bot{}, errors.New("bot API, session, allowed chat and logger are required")
+	}
+	return Bot{API: api, Session: session, AllowedChatID: chatID, Log: log}, nil
 }
 
 var (
@@ -80,14 +87,19 @@ func (b Bot) Handle(ctx context.Context, update Update, state State) (State, err
 		return state, nil
 	}
 	actionID := ""
+	var revision *int
 	if callback != nil {
 		step, action, ok := ParseCallback(callback.Data)
-		if !ok || step != state.Session.Step {
+		if !ok || step != state.Revision {
 			return state, b.answer(ctx, callback, "That button is out of date. Use the latest message.")
 		}
 		actionID = action
+		revision = &step
 	}
-	result, err := b.Act(ctx, state.Session, actionID)
+	result, err := b.Session.Show(ctx, Request{Action: actionID, Revision: revision})
+	if errors.Is(err, ErrStale) {
+		return state, b.answer(ctx, callback, "That button is out of date. Use the latest message.")
+	}
 	if err != nil {
 		b.Log("ERROR: " + err.Error())
 		if callback != nil {
@@ -101,7 +113,7 @@ func (b Bot) Handle(ctx context.Context, update Update, state State) (State, err
 	if result == nil {
 		return state, b.answer(ctx, callback, "Unknown action.")
 	}
-	b.Log(describe(actionID, result.Session))
+	b.Log(describe(actionID, result))
 	if callback != nil {
 		if err := b.answer(ctx, callback, ""); err != nil {
 			return state, err
@@ -110,18 +122,18 @@ func (b Bot) Handle(ctx context.Context, update Update, state State) (State, err
 	if err := b.show(ctx, chatID, messageID, result); err != nil {
 		return state, err
 	}
-	state.Session = result.Session
+	state.Revision = result.Revision
 	return state, nil
 }
 
-func describe(actionID string, session flow.Session) string {
+func describe(actionID string, session *Result) string {
 	line := "message"
 	if actionID != "" {
 		line = "tap " + actionID
 	}
 	line += " -> " + session.Screen
-	if session.Page != nil && session.PageCount != nil {
-		line += fmt.Sprintf(" page %d/%d", *session.Page+1, *session.PageCount)
+	if session.Page != nil {
+		line += fmt.Sprintf(" page %d/%d", session.Page.Index+1, session.Page.Count)
 	}
 	if session.Contents {
 		line += " contents"
@@ -144,8 +156,8 @@ func (b Bot) answer(ctx context.Context, callback *CallbackQuery, text string) e
 // show sends a screen as one rich message: a button press redraws its own
 // message, a typed message gets a new one. If Telegram refuses the rich
 // message, the screen goes out in the plain format instead.
-func (b Bot) show(ctx context.Context, chatID int64, messageID *int64, result *flow.Result) error {
-	html := RenderRich(result.View, result.Actions, result.Session.Step)
+func (b Bot) show(ctx context.Context, chatID int64, messageID *int64, result *Result) error {
+	html := RenderRich(result.View, result.Actions, result.Revision)
 	if len([]rune(html)) <= RichTextLimit {
 		rich := map[string]any{"html": html}
 		if messageID != nil {
@@ -165,8 +177,8 @@ func (b Bot) show(ctx context.Context, chatID int64, messageID *int64, result *f
 }
 
 // showPlain is the format before rich messages: HTML text with an inline keyboard.
-func (b Bot) showPlain(ctx context.Context, chatID int64, messageID *int64, result *flow.Result) error {
-	text, keyboard := Render(result.View, result.Actions, result.Session.Step)
+func (b Bot) showPlain(ctx context.Context, chatID int64, messageID *int64, result *Result) error {
+	text, keyboard := Render(result.View, result.Actions, result.Revision)
 	if messageID != nil && len([]rune(text)) <= TextLimit {
 		_, err := b.API.Call(ctx, "editMessageText", map[string]any{
 			"chat_id": chatID, "message_id": *messageID, "text": text, "parse_mode": "HTML", "reply_markup": keyboard,

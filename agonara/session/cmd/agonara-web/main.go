@@ -1,30 +1,19 @@
-// Command agonara-web serves the session as a web page on the local network,
-// reading Agonara as the same student as the bot.
+// Command agonara-web runs an explicitly isolated standalone web session.
 package main
 
 import (
 	"context"
-	"errors"
 	"flag"
 	"fmt"
-	"net"
 	"net/http"
 	"os"
 	"os/signal"
-	"path/filepath"
-	"strconv"
 	"syscall"
 	"time"
 
-	"github.com/igor1309/ai-labs/agonara/session/internal/agonara"
+	"github.com/igor1309/ai-labs/agonara/session/internal/composition"
 	"github.com/igor1309/ai-labs/agonara/session/internal/envfile"
-	"github.com/igor1309/ai-labs/agonara/session/internal/flow"
-	"github.com/igor1309/ai-labs/agonara/session/internal/web"
 )
-
-func log(message string) {
-	fmt.Printf("%s %s\n", time.Now().UTC().Format("2006-01-02T15:04:05.000Z"), message)
-}
 
 func main() {
 	if err := run(); err != nil {
@@ -32,55 +21,28 @@ func main() {
 		os.Exit(1)
 	}
 }
-
 func run() error {
-	envFile := flag.String("env-file", "", "file of KEY=VALUE lines to load into the environment")
+	envFile := flag.String("env-file", "", "file of KEY=VALUE lines")
+	probe := flag.Bool("check-running", false, "check local reading HTTP availability without contacting Telegram")
+	check := flag.Bool("check-config", false, "validate configuration without starting services")
 	flag.Parse()
 	if *envFile != "" {
 		if err := envfile.Load(*envFile); err != nil {
 			return err
 		}
 	}
-	token := os.Getenv("WEB_TOKEN")
-	baseURL, login, password := os.Getenv("AGONARA_BASE_URL"), os.Getenv("AGONARA_LOGIN"), os.Getenv("AGONARA_PASSWORD")
-	if token == "" || baseURL == "" || login == "" || password == "" {
-		return errors.New("WEB_TOKEN, AGONARA_BASE_URL, AGONARA_LOGIN and AGONARA_PASSWORD are required")
-	}
-	addr := os.Getenv("WEB_ADDR")
-	if addr == "" {
-		addr = ":8740"
-	}
-	client, err := agonara.New(baseURL, login, password, nil)
+	config, err := composition.Configuration(os.Getenv, true)
 	if err != nil {
 		return err
 	}
-	pageSize, _ := strconv.Atoi(os.Getenv("SESSION_PAGE_SIZE"))
-	placePath := os.Getenv("WEB_PLACE_PATH")
-	if placePath == "" && os.Getenv("SESSION_STATE_PATH") != "" {
-		placePath = filepath.Join(filepath.Dir(os.Getenv("SESSION_STATE_PATH")), "web-place.json")
+	if *probe {
+		return composition.CheckRunning(config, &http.Client{Timeout: 2 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }})
 	}
-	cache := &web.Cache{Reader: client, TTL: 5 * time.Minute}
-	server := &web.Server{Flow: flow.Flow{Reader: cache, PageSize: pageSize}, Token: token, PlacePath: placePath, Log: log}
-	handler, err := server.Handler()
-	if err != nil {
-		return err
+	if *check {
+		fmt.Println("configuration valid")
+		return nil
 	}
-	listener, err := net.Listen("tcp", addr)
-	if err != nil {
-		return err
-	}
-	httpServer := &http.Server{Handler: handler, ReadHeaderTimeout: 10 * time.Second}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	go func() {
-		<-ctx.Done()
-		shutdown, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		httpServer.Shutdown(shutdown)
-	}()
-	log("serving on " + listener.Addr().String())
-	if err := httpServer.Serve(listener); !errors.Is(err, http.ErrServerClosed) {
-		return err
-	}
-	return nil
+	return composition.Run(ctx, config, true, func(message string) { fmt.Printf("%s %s\n", time.Now().UTC().Format(time.RFC3339Nano), message) })
 }

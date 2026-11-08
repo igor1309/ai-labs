@@ -1,6 +1,6 @@
 {{template "head" .Heading}}
 {{$r := .}}
-<div class="reader" data-entity="{{.EntityID}}" data-page="{{.Page}}" data-heading="{{.Heading}}">
+<div class="reader" data-entity="{{.EntityID}}" data-revision="{{.Revision}}" data-material-revision="{{.MaterialRevision}}" data-page="{{.Page}}" data-heading="{{.Heading}}">
 <aside class="outline" id="outline" aria-label="Содержание">
   <div class="outline-top">
     <a class="back" href="/">{{template "i-back"}}Программы</a>
@@ -38,7 +38,7 @@
     {{if and (eq .Page 0) .Intro}}<p class="lede">{{.Intro}}</p>{{end}}
     <div class="prose">
     {{range .Blocks}}{{if eq .Kind "h"}}<h3>{{.HTML}}</h3>{{else}}
-      <div class="para" data-n="{{.N}}" data-text="{{.Text}}">
+      <div class="para" data-n="{{.N}}" data-reference="{{.Reference}}" data-text="{{.Text}}">
         {{if eq .Kind "p"}}<p>{{.HTML}}</p>{{else if eq .Kind "ul"}}<ul>{{range .Items}}<li>{{.}}</li>{{end}}</ul>{{else}}<ol start="{{.Start}}">{{range .Items}}<li>{{.}}</li>{{end}}</ol>{{end}}
         <button class="para-menu" type="button" aria-haspopup="menu" aria-label="Спросить об этом абзаце">{{template "i-dots"}}</button>
       </div>

@@ -1,5 +1,4 @@
-// Package store keeps the bot's state in one JSON file; a rename keeps it
-// whole on a crash.
+// Package store writes private JSON files by atomic replacement.
 package store
 
 import (
@@ -32,9 +31,22 @@ func Save[T any](path string, state T) error {
 	if err != nil {
 		return err
 	}
-	temp := path + ".tmp"
-	if err := os.WriteFile(temp, data, 0o600); err != nil {
+	f, err := os.CreateTemp(filepath.Dir(path), ".state-*")
+	if err != nil {
 		return err
 	}
-	return os.Rename(temp, path)
+	name := f.Name()
+	defer os.Remove(name)
+	if _, err = f.Write(data); err != nil {
+		f.Close()
+		return err
+	}
+	if err = f.Sync(); err != nil {
+		f.Close()
+		return err
+	}
+	if err = f.Close(); err != nil {
+		return err
+	}
+	return os.Rename(name, path)
 }

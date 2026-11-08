@@ -8,30 +8,28 @@ import (
 	"slices"
 	"strings"
 	"testing"
-
-	"github.com/igor1309/ai-labs/agonara/session/internal/agonara"
 )
 
 type fakeReader struct {
 	calls      []string
-	programs   []agonara.Program
-	navigation agonara.Navigation
-	node       agonara.Entity
+	programs   []CatalogEntry
+	navigation Navigation
+	node       Entity
 	content    string
 	err        error
 }
 
-func (r *fakeReader) ListPrograms(context.Context) ([]agonara.Program, error) {
+func (r *fakeReader) ListPrograms(context.Context) ([]CatalogEntry, error) {
 	r.calls = append(r.calls, "listPrograms")
 	return r.programs, r.err
 }
 
-func (r *fakeReader) Navigation(_ context.Context, id string) (agonara.Navigation, error) {
+func (r *fakeReader) Navigation(_ context.Context, id string) (Navigation, error) {
 	r.calls = append(r.calls, "navigation "+id)
 	return r.navigation, r.err
 }
 
-func (r *fakeReader) Entity(_ context.Context, id string) (agonara.Entity, error) {
+func (r *fakeReader) Entity(_ context.Context, id string) (Entity, error) {
 	r.calls = append(r.calls, "entity "+id)
 	return r.node, r.err
 }
@@ -41,31 +39,31 @@ func (r *fakeReader) MaterialContent(_ context.Context, id string) (string, erro
 	return r.content, r.err
 }
 
-func links(pairs ...string) []agonara.Link {
-	var out []agonara.Link
+func links(pairs ...string) []Item {
+	var out []Item
 	for i := 0; i < len(pairs); i += 3 {
-		out = append(out, agonara.Link{ToEntityID: pairs[i], ToKind: pairs[i+1], ToTitle: pairs[i+2]})
+		out = append(out, Item{ID: pairs[i], Kind: pairs[i+1], Title: pairs[i+2]})
 	}
 	return out
 }
 
 func setup() *fakeReader {
 	r := &fakeReader{
-		programs: []agonara.Program{{ProgramID: "program-a", Title: "Algebra"}, {ProgramID: "program-b", Title: "Geometry"}},
-		navigation: agonara.Navigation{
-			Topics:             []agonara.Node{{EntityID: "topic-id", AcceptedKind: "topic", Title: "Vectors"}},
-			UngroupedConcepts:  []agonara.Node{{EntityID: "concept-id", AcceptedKind: "concept", Title: "Basis"}},
-			UngroupedMaterials: []agonara.Node{{EntityID: "material-id", AcceptedKind: "material_reference", Title: "Notes"}},
+		programs: []CatalogEntry{{ID: "program-a", Title: "Algebra"}, {ID: "program-b", Title: "Geometry"}},
+		navigation: Navigation{
+			Topics:    []Item{{ID: "topic-id", Kind: "topic", Title: "Vectors"}},
+			Concepts:  []Item{{ID: "concept-id", Kind: "concept", Title: "Basis"}},
+			Materials: []Item{{ID: "material-id", Kind: "material_reference", Title: "Notes"}},
 		},
-		node:    agonara.Entity{EntityID: "topic-id", AcceptedKind: "topic", Title: "Vectors", Body: "A vector has direction."},
+		node:    Entity{ID: "topic-id", Kind: "topic", Title: "Vectors", Body: "A vector has direction."},
 		content: "---\nmodel: x\n---\n\n# Ethics\n\nFirst part.\n\nSecond part.",
 	}
-	r.node.Relationships.Outgoing = links("child-id", "concept", "Child", "reading-id", "material_reference", "Reading", "other-id", "concept", "Other")
+	r.node.Children = links("child-id", "concept", "Child", "reading-id", "material_reference", "Reading", "other-id", "concept", "Other")
 	return r
 }
 
 func makeMaterial(r *fakeReader) {
-	r.node = agonara.Entity{EntityID: "material-id", AcceptedKind: "material_reference", Title: "Notes", Body: "Lecture.", HasContent: true}
+	r.node = Entity{ID: "material-id", Kind: "material_reference", Title: "Notes", Body: "Lecture.", Readable: true}
 }
 
 func entityState(id string) Session {
@@ -109,6 +107,7 @@ func equal(t *testing.T, got, want any) {
 }
 
 func TestProgramListNumbersProgramsWithoutProgramsButton(t *testing.T) {
+	t.Parallel()
 	f := Flow{Reader: setup()}
 	result := act(t, f, InitialSession(), "")
 	equal(t, result.View, View{Title: "Programs", Lists: []List{{Entries: []Entry{{0, n(1), "Algebra"}, {1, n(2), "Geometry"}}}}})
@@ -117,6 +116,7 @@ func TestProgramListNumbersProgramsWithoutProgramsButton(t *testing.T) {
 }
 
 func TestProgramGroupsMaterialsFirstAndNumbersTheRest(t *testing.T) {
+	t.Parallel()
 	r := setup()
 	f := Flow{Reader: r}
 	list := act(t, f, InitialSession(), "")
@@ -129,11 +129,12 @@ func TestProgramGroupsMaterialsFirstAndNumbersTheRest(t *testing.T) {
 	})
 	equal(t, result.Actions, []Action{
 		{"open_0", "item", "1"}, {"open_1", "item", "2"}, {"open_2", "material", "Notes"},
-		{"back", "nav", "◀ Back"}, {"programs", "nav", "Programs"},
+		{"back", "nav", "Back"}, {"programs", "nav", "Programs"},
 	})
 }
 
 func TestNumbersFollowTheListsAndEachOpensItsItem(t *testing.T) {
+	t.Parallel()
 	r := setup()
 	f := Flow{Reader: r}
 	result := act(t, f, entityState("topic-id"), "")
@@ -149,6 +150,7 @@ func TestNumbersFollowTheListsAndEachOpensItsItem(t *testing.T) {
 }
 
 func TestItemIndexResolvesFromTheSavedScreen(t *testing.T) {
+	t.Parallel()
 	r := setup()
 	f := Flow{Reader: r}
 	program := act(t, f, act(t, f, InitialSession(), "").Session, "open_0")
@@ -163,6 +165,7 @@ func TestItemIndexResolvesFromTheSavedScreen(t *testing.T) {
 }
 
 func TestBackRetracesAndProgramsResets(t *testing.T) {
+	t.Parallel()
 	f := Flow{Reader: setup()}
 	list := act(t, f, InitialSession(), "")
 	program := act(t, f, list.Session, "open_0")
@@ -175,6 +178,7 @@ func TestBackRetracesAndProgramsResets(t *testing.T) {
 }
 
 func TestUnknownActionsAndIndicesAreRefused(t *testing.T) {
+	t.Parallel()
 	f := Flow{Reader: setup()}
 	list := act(t, f, InitialSession(), "")
 	for _, action := range []string{"open_9", "open_01", "open_x", "dance"} {
@@ -183,6 +187,7 @@ func TestUnknownActionsAndIndicesAreRefused(t *testing.T) {
 }
 
 func TestOldStateWithoutScreenOpensProgramList(t *testing.T) {
+	t.Parallel()
 	f := Flow{Reader: setup()}
 	result := act(t, f, Session{Step: 4}, "")
 	equal(t, result.Session.Screen, "programs")
@@ -190,6 +195,7 @@ func TestOldStateWithoutScreenOpensProgramList(t *testing.T) {
 }
 
 func TestAgonaraErrorsPassThrough(t *testing.T) {
+	t.Parallel()
 	r := setup()
 	r.err = errors.New("GET /programs failed (HTTP 503): request rejected")
 	if _, err := (Flow{Reader: r}).Act(context.Background(), InitialSession(), ""); err == nil {
@@ -198,6 +204,7 @@ func TestAgonaraErrorsPassThrough(t *testing.T) {
 }
 
 func TestMaterialIsPagedWithoutFrontMatterBodyOnFirstPage(t *testing.T) {
+	t.Parallel()
 	r := setup()
 	makeMaterial(r)
 	f := Flow{Reader: r, PageSize: 25}
@@ -218,6 +225,7 @@ func TestMaterialIsPagedWithoutFrontMatterBodyOnFirstPage(t *testing.T) {
 }
 
 func TestPageBeyondAShortenedMaterialShowsItsLastPage(t *testing.T) {
+	t.Parallel()
 	r := setup()
 	makeMaterial(r)
 	s := entityState("material-id")
@@ -228,6 +236,7 @@ func TestPageBeyondAShortenedMaterialShowsItsLastPage(t *testing.T) {
 }
 
 func TestTopicOrMaterialWithoutContentHasNoPages(t *testing.T) {
+	t.Parallel()
 	r := setup()
 	result := act(t, Flow{Reader: r}, entityState("topic-id"), "")
 	equal(t, r.calls, []string{"entity topic-id"})
@@ -237,9 +246,10 @@ func TestTopicOrMaterialWithoutContentHasNoPages(t *testing.T) {
 }
 
 func TestLectureReadAScreenAtATimeWithContents(t *testing.T) {
+	t.Parallel()
 	r := setup()
 	makeMaterial(r)
-	r.node.Relationships.Outgoing = links("c", "concept", "Concept")
+	r.node.Children = links("c", "concept", "Concept")
 	r.content = "---\nx: 1\n---\n# Lecture\n\nIntro.\n\n## A\n\naaaa\n\nbbbb\n\n## B\n\nb text"
 	f := Flow{Reader: r, PageSize: 12}
 	intro := act(t, f, entityState("material-id"), "")
@@ -254,7 +264,7 @@ func TestLectureReadAScreenAtATimeWithContents(t *testing.T) {
 
 	contents := act(t, f, a2.Session, "contents")
 	equal(t, contents.View.Contents, []ContentsEntry{
-		{0, nil, "Intro", false}, {2, n(1), "A", true}, {4, n(2), "B", false},
+		{Count: 2, Page: 0, Label: "Intro"}, {Count: 2, Page: 2, N: n(1), Label: "A", Current: true}, {Count: 1, Page: 4, N: n(2), Label: "B"},
 	})
 	equal(t, contents.View.Lists[0].Entries[0].Label, "Concept")
 	equal(t, ids(contents.Actions), []string{"open_0", "sec_0", "sec_2", "sec_4", "read", "programs"})
@@ -272,6 +282,7 @@ func TestLectureReadAScreenAtATimeWithContents(t *testing.T) {
 }
 
 func TestStateSavedByTheJavaScriptBotStillLoads(t *testing.T) {
+	t.Parallel()
 	r := setup()
 	makeMaterial(r)
 	r.content = "# L\n\n## A\n\na\n\n## B\n\nb"
@@ -290,6 +301,7 @@ func TestStateSavedByTheJavaScriptBotStillLoads(t *testing.T) {
 }
 
 func TestSectionPagesRunOnUnderTheSameTitle(t *testing.T) {
+	t.Parallel()
 	var got [][2]string
 	for _, page := range SectionPages("## A\n\naaaa\n\nbbbb\n\n## B\n\nc", 10) {
 		got = append(got, [2]string{*page.Title, page.Text})
@@ -299,6 +311,7 @@ func TestSectionPagesRunOnUnderTheSameTitle(t *testing.T) {
 }
 
 func TestPagesBreakAtParagraphsThenLinesThenAnywhere(t *testing.T) {
+	t.Parallel()
 	equal(t, Paginate("aaaa\n\nbbbb\n\ncc", 10), []string{"aaaa\n\nbbbb", "cc"})
 	equal(t, Paginate("aaaa\nbbbb\ncccc", 10), []string{"aaaa\nbbbb", "cccc"})
 	equal(t, Paginate(strings.Repeat("x", 25), 10), []string{strings.Repeat("x", 10), strings.Repeat("x", 10), "xxxxx"})

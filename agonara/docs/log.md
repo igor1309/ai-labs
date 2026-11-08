@@ -1,5 +1,9 @@
 # Log
 
+## 2026-11-08
+
+- Web and Telegram continue one persisted reading session, with stale-action protection across surfaces and honest unavailable paragraph explanations until a Brain exists. LAB-1058.
+
 ## 2026-11-05
 
 - The Session runner is ported from JavaScript to Go, the repository's main language: one module with no dependencies, the flow apart from Telegram so a web page can reuse it. launchd runs the built binary, which reads the same state file and env file. LAB-962.

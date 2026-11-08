@@ -8,8 +8,6 @@ import (
 	"strconv"
 	"strings"
 	"unicode/utf8"
-
-	"github.com/igor1309/ai-labs/agonara/session/internal/flow"
 )
 
 const (
@@ -33,22 +31,22 @@ type Keyboard struct {
 }
 
 // PositionLabel says where a page is in its lecture: "§2 Section · 3/6".
-func PositionLabel(position flow.Position) string {
+func PositionLabel(position ReadingPosition) string {
 	where := "Intro"
 	if position.Section != nil {
-		where = fmt.Sprintf("§%d %s", *position.Section, position.Label)
+		where = fmt.Sprintf("§%d %s", *position.Section, position.Heading)
 	}
-	if position.Count > 1 {
-		return fmt.Sprintf("%s · %d/%d", where, position.Index+1, position.Count)
+	if position.Length > 1 {
+		return fmt.Sprintf("%s · %d/%d", where, position.Offset+1, position.Length)
 	}
 	return where
 }
 
-func paged(view flow.View) bool {
-	return view.Position != nil && view.Page != nil && view.Page.Count > 1
+func paged(view View) bool {
+	return view.Reading != nil && view.Reading.Pages > 1
 }
 
-func contentsLine(entry flow.ContentsEntry, label string) string {
+func contentsLine(entry ContentsEntry, label string) string {
 	line := ""
 	if entry.Current {
 		line = "▸ "
@@ -60,13 +58,13 @@ func contentsLine(entry flow.ContentsEntry, label string) string {
 }
 
 // Render draws a screen in the plain format: HTML text with an inline keyboard.
-func Render(view flow.View, actions []flow.Action, step int) (string, Keyboard) {
+func Render(view View, actions []Action, step int) (string, Keyboard) {
 	var header string
 	switch {
 	case paged(view):
-		header = "📖 <b>" + escape(view.Title) + "</b>\n<i>" + escape(PositionLabel(*view.Position)) + "</i>"
-	case view.Page != nil:
-		header = fmt.Sprintf("📖 <b>%s</b>\n<i>Page %d of %d</i>", escape(view.Title), view.Page.Index+1, view.Page.Count)
+		header = "📖 <b>" + escape(view.Title) + "</b>\n<i>" + escape(PositionLabel(*view.Reading)) + "</i>"
+	case view.Reading != nil:
+		header = fmt.Sprintf("📖 <b>%s</b>\n<i>Page %d of %d</i>", escape(view.Title), view.Reading.Page+1, view.Reading.Pages)
 	default:
 		header = "<b>" + escape(view.Title) + "</b>"
 	}
@@ -106,12 +104,13 @@ func Render(view flow.View, actions []flow.Action, step int) (string, Keyboard) 
 
 // MakeKeyboard lays out buttons: one row per material, numbers five to a row,
 // one row per section, then paging, then navigation.
-func MakeKeyboard(actions []flow.Action, step int) Keyboard {
-	button := func(action flow.Action, text string) Button {
+func MakeKeyboard(actions []Action, step int) Keyboard {
+	actions = labelActions(actions)
+	button := func(action Action, text string) Button {
 		return Button{Text: text, CallbackData: fmt.Sprintf("%d:%s", step, action.ID)}
 	}
-	of := func(kind string) []flow.Action {
-		var out []flow.Action
+	of := func(kind string) []Action {
+		var out []Action
 		for _, action := range actions {
 			if action.Kind == kind {
 				out = append(out, action)
@@ -149,7 +148,8 @@ func MakeKeyboard(actions []flow.Action, step int) Keyboard {
 // RenderRich draws a screen as one rich message (Bot API 10.1): names
 // tappable where they are written, paging and navigation as button rows at
 // the end.
-func RenderRich(view flow.View, actions []flow.Action, step int) string {
+func RenderRich(view View, actions []Action, step int) string {
+	actions = labelActions(actions)
 	ids := map[string]bool{}
 	for _, action := range actions {
 		ids[action.ID] = true
@@ -163,13 +163,13 @@ func RenderRich(view flow.View, actions []flow.Action, step int) string {
 	var parts []string
 	if paged(view) {
 		lead := ""
-		if view.Position.Section == nil {
+		if view.Reading.Section == nil {
 			lead = view.Title + " · "
 		}
-		parts = append(parts, "<p><i>📖 "+escape(lead)+escape(PositionLabel(*view.Position))+"</i></p>")
+		parts = append(parts, "<p><i>📖 "+escape(lead)+escape(PositionLabel(*view.Reading))+"</i></p>")
 	} else {
 		mark := ""
-		if view.Page != nil || view.Contents != nil {
+		if view.Reading != nil || view.Contents != nil {
 			mark = "📖 "
 		}
 		parts = append(parts, "<h2>"+mark+escape(view.Title)+"</h2>")
@@ -198,7 +198,7 @@ func RenderRich(view flow.View, actions []flow.Action, step int) string {
 			if materials {
 				mark = "📖 "
 			}
-			items.WriteString("<li>" + mark + tap("open_"+strconv.Itoa(entry.Index), entry.Label) + "</li>")
+			items.WriteString("<li>" + mark + tap(entry.ID, entry.Label) + "</li>")
 		}
 		if list.Heading != "" {
 			parts = append(parts, "<h3>"+escape(list.Heading)+"</h3>")
@@ -266,4 +266,23 @@ func shorten(text string, limit int) string {
 		return text
 	}
 	return strings.TrimRight(string([]rune(text)[:limit-1]), " \t\n") + "…"
+}
+
+func labelActions(in []Action) []Action {
+	out := append([]Action{}, in...)
+	for i := range out {
+		switch out[i].ID {
+		case "read":
+			out[i].Label = "📖 Continue reading"
+		case "prev":
+			out[i].Label = "◀ Prev"
+		case "next":
+			out[i].Label = "Next ▶"
+		case "contents":
+			out[i].Label = "☰ Contents"
+		case "back":
+			out[i].Label = "◀ Back"
+		}
+	}
+	return out
 }

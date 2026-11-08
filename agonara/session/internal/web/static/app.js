@@ -77,7 +77,7 @@
       const res = await fetch("/api/answer", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kind, entityId: reader.dataset.entity, page: +reader.dataset.page, paragraph: +para.dataset.n, text: text || para.dataset.text }),
+        body: JSON.stringify({ revision: +reader.dataset.revision, materialRevision: reader.dataset.materialRevision, reference: para.dataset.reference, kind, entityId: reader.dataset.entity, page: +reader.dataset.page, paragraph: +para.dataset.n, text: text || para.dataset.text }),
       });
       if (!res.ok) throw new Error(res.status);
       const reply = await res.json();
