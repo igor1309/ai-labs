@@ -25,11 +25,18 @@ public struct CallFolder: Sendable {
     private let now: @Sendable () -> Date
     private let timeZone: TimeZone
     private let createDirectory: @Sendable (URL) throws -> Void
+    private let occupiedNames: @Sendable () throws -> [String]
     private let names: @Sendable (URL) throws -> [String]
 
     public init(callsURL: URL, now: @escaping @Sendable () -> Date, timeZone: TimeZone) {
 
-        self.init(callsURL: callsURL, now: now, timeZone: timeZone, createDirectory: { url in
+        self.init(callsURL: callsURL, now: now, timeZone: timeZone, occupiedNames: { [] })
+    }
+
+    /// Also reserves names in retained locations when calls span folders during a move.
+    public init(callsURL: URL, now: @escaping @Sendable () -> Date, timeZone: TimeZone,
+                occupiedNames: @escaping @Sendable () throws -> [String]) {
+        self.init(callsURL: callsURL, now: now, timeZone: timeZone, occupiedNames: occupiedNames, createDirectory: { url in
             guard mkdir(url.path, 0o700) == 0 else {
                 throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
             }
@@ -50,6 +57,7 @@ public struct CallFolder: Sendable {
         callsURL: URL,
         now: @escaping @Sendable () -> Date,
         timeZone: TimeZone,
+        occupiedNames: @escaping @Sendable () throws -> [String],
         createDirectory: @escaping @Sendable (URL) throws -> Void,
         names: @escaping @Sendable (URL) throws -> [String]
     ) {
@@ -59,6 +67,7 @@ public struct CallFolder: Sendable {
         self.timeZone = timeZone
         self.createDirectory = createDirectory
         self.names = names
+        self.occupiedNames = occupiedNames
     }
 
     /// Names the folder `<id> <title>`, or the bare id without a title, with an id no entry there has.
@@ -67,7 +76,7 @@ public struct CallFolder: Sendable {
         guard callsURL.isFileURL else { throw POSIXError(.EINVAL) }
         let date = now()
         // An id is taken by any entry named by it, whatever its title, so no two calls share one.
-        let taken = try names(callsURL)
+        let taken = try names(callsURL) + occupiedNames()
         var number = 1
         while true {
             // The number goes before the title so folders sort by time.

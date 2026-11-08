@@ -8,6 +8,7 @@
 
 ## 2026-11-07
 
+- Changing the calls folder confirms the count and size, moves verified copies with progress, and retries the remaining calls after a failure; recordings wait until the move ends (LAB-747).
 - Optional call notes can be configured in native Settings and generated after a saved final transcript; Calls displays progress, warnings and failures while recording remains independent (LAB-1034).
 - Durable notes follow call rename, deletion and folder moves; pending jobs retain their configuration and interrupted requests are not automatically repeated (LAB-1034).
 

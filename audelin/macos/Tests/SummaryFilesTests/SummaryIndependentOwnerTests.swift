@@ -7,8 +7,8 @@ import Testing
 @Suite(.timeLimit(.minutes(1))) struct SummaryIndependentOwnerTests {
     @Test func aHeldDurableStartExcludesAnIndependentStorageOwner() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        try await offPool { try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true) }
-        let disk = await offPool { HeldStartDisk() }
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        let disk = HeldStartDisk()
         try await withCleanup {
             let leases = root.appendingPathComponent("leases")
             let owner = Files(locations: IndependentLocation(folder: root), disk: disk, ownershipDirectory: leases)
@@ -20,7 +20,7 @@ import Testing
             do {
                 // The two Locations have no shared mutex. The first write is still held.
                 #expect(try await observer.start(job) == false)
-                await offPool { disk.release() }
+                disk.release()
                 #expect(try await starting.value)
                 #expect(try await observer.load(call: "call")?.phase == "running")
                 try await owner.publish(job, notes: "complete")
@@ -28,7 +28,7 @@ import Testing
                 try await owner.progress(terminal)
                 #expect(try await observer.load(call: "call") == terminal)
             } catch {
-                await offPool { disk.release() }
+                disk.release()
                 _ = try? await starting.value
                 throw error
             }

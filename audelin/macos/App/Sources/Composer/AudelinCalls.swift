@@ -47,6 +47,16 @@ public final class AudelinCalls {
         return state
     }
 
+    var recordingsState: RecordingsState { inputs.state() }
+    func sendRecordings(_ event: RecordingsEvent) {
+        recordingChanged(recordingState())
+        inputs.send(event)
+    }
+    func drainMove() async {
+        inputs.send(.stopActions)
+        for await state in Observations({ self.inputs.state() }) where state.stopping && state.callsFolderAvailable { return }
+    }
+
     public func show() {
         openFailure = nil
         editing = nil
@@ -101,7 +111,7 @@ public final class AudelinCalls {
 }
 
 func recordedCallID(_ state: RecordingState) -> String? {
-    state.phase == .idle ? nil : state.callID
+    state.phase == .idle ? nil : (state.callID ?? "")
 }
 
 func callsListState(_ state: RecordingsState, timeZone: TimeZone) -> CallsListState {

@@ -20,18 +20,18 @@ struct ParakeetModelFilesTests {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("parakeet-models-\(UUID())")
         try await withCleanup {
             let directory = root.appendingPathComponent(Repo.parakeetV3.folderName, isDirectory: true)
-            try await offPool { try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true) }
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
             if download != .none {
                 for bundle in ModelNames.ASR.requiredModelsV3() {
                     let weights = directory.appendingPathComponent(bundle).appendingPathComponent("weights")
-                    try await offPool { try FileManager.default.createDirectory(at: weights, withIntermediateDirectories: true) }
+                    try FileManager.default.createDirectory(at: weights, withIntermediateDirectories: true)
                     let file = download == .finished ? "weight.bin" : "weight.bin.partial"
-                    try await offPool { try Data([1]).write(to: weights.appendingPathComponent(file)) }
+                    try Data([1]).write(to: weights.appendingPathComponent(file))
                     if download == .finished {
-                        try await offPool { try Data([1]).write(to: directory.appendingPathComponent(bundle).appendingPathComponent("coremldata.bin")) }
+                        try Data([1]).write(to: directory.appendingPathComponent(bundle).appendingPathComponent("coremldata.bin"))
                     }
                 }
-                try await offPool { try Data("{}".utf8).write(to: directory.appendingPathComponent(ModelNames.ASR.vocabularyFile)) }
+                try Data("{}".utf8).write(to: directory.appendingPathComponent(ModelNames.ASR.vocabularyFile))
             }
 
             #expect(ParakeetRecognizer.missingModels(in: directory) == (download == .finished ? [] : ["Parakeet v3"]))

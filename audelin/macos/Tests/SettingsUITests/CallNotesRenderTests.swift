@@ -14,7 +14,7 @@ struct CallNotesRenderTests {
         host.window?.isReleasedWhenClosed = false
         defer { host.window?.close() }
         let image = try #require(Offscreen.sharpSnapshot(host))
-        let text = normalized(try await offPool { try readText(in: image) })
+        let text = normalized(try await readText(in: image))
         #expect(!text.shows("Папка данных"), "\(name): \(text)")
         switch state.callNotes {
         case let .loading(message):
@@ -58,7 +58,7 @@ struct CallNotesRenderTests {
         host.window?.isReleasedWhenClosed = false
         defer { host.window?.close() }
         let image = try #require(Offscreen.sharpSnapshot(host))
-        let text = normalized(try await offPool { try readText(in: image) })
+        let text = normalized(try await readText(in: image))
         #expect(text.shows(draft.disclosure), "\(text)")
         #expect(text.shows(draft.status), "\(text)")
         #expect(text.shows(draft.runtimes[0].disclosure), "\(text)")

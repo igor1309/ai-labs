@@ -28,12 +28,15 @@ public final class AudelinMenu {
 
     public private(set) var calls: AudelinCalls?
     public private(set) var state = RecordingState()
-    public var preferences: Preferences { settings.snapshot }
+    public var preferences: Preferences {
+        var value = settings.snapshot
+        value.callsFolder = settings.callsFolder
+        return value
+    }
     public private(set) var quitting = false
     public private(set) var panelState = PanelState(recording: .off, log: .empty)
     private(set) var panelPresence = PanelPresence()
     public private(set) var summarySettings: AudelinSettings?
-    private var folderSettings: AudelinFolderSettings?
     private var chooseFolder: () async -> URL? = { nil }
     private var summaries: AudelinSummaries?
     private var presentSettings: () -> Void = {}
@@ -63,6 +66,7 @@ public final class AudelinMenu {
 
     init(
         storage: PreferencesStore,
+        occupiedCallNames: @escaping @Sendable () throws -> [String],
         boundary: ComposerBoundary,
         processes: CoreAudioProcesses,
         panel: AudelinPanel,
@@ -81,7 +85,7 @@ public final class AudelinMenu {
         self.sleep = sleep
         let application: MenuApplication?
         do {
-            let recording = try await AudelinRecording(preferences: storage, boundary: boundary,
+            let recording = try await AudelinRecording(preferences: storage, occupiedCallNames: occupiedCallNames, boundary: boundary,
                                                        processes: processes, panel: panel, summaries: summaries?.callbacks(timeZone: boundary.time.timeZone()) ?? .disabled)
             application = MenuApplication(
                 states: { await recording.inputs.states() }, failures: recording.detectionFailures,
@@ -136,14 +140,9 @@ public final class AudelinMenu {
         }
     }
 
-    func installFolderSettings(storage: SummaryStorage, preferences: PreferencesStore, choose: @escaping () async -> URL?) {
-        chooseFolder = choose
-        folderSettings = AudelinFolderSettings(handler: .init(reserve: { [weak self] in await self?.reserveStorage() ?? false }, release: { [weak self] in await self?.releaseStorage() },
-            move: { [weak self] destination in
-                try await storage.move(to: destination, commit: { try preferences.updateCallsFolder(destination) })
-                self?.calls?.show()
-            }))
-    }
+    func installFolderPicker(_ choose: @escaping () async -> URL?) { chooseFolder = choose }
+    func reserveCallsFolder() async -> Bool { await reserveStorage() }
+    func releaseCallsFolder() async { await releaseStorage() }
 
     func installSettings(_ model: AudelinSettings, present: @escaping () -> Void) {
         summarySettings = model; presentSettings = present
@@ -155,24 +154,17 @@ public final class AudelinMenu {
                       engines: [.init(id: "parakeet", name: "Parakeet v3", note: "Локальное распознавание", availability: "", size: "")],
                       selectedEngine: "parakeet", explainKeys: "", selectedTab: summarySettings?.selectedTab ?? .recording,
                       callNotes: summarySettings?.notes ?? .loading("Загружаем настройки…"))
-        if let move = folderSettings?.state {
-            switch move.phase {
-            case .confirming:
-                result.moveConfirm = .init(title: "Перенести звонки?", body: "В \(move.destination?.path ?? ""). Во время переноса запись не начнётся.")
-            case .moving: result.folder.status = .moving(done: 0, detail: "Переносим звонки…")
-            case .failed: result.folder.status = .failed(moved: "Перенос не завершён", reason: "Часть звонков могла переехать. Проверьте папку и повторите; готовые итоги сохраняются по текущему адресу звонка.")
-            case .idle: break
-            }
-        }
+        if let recordings = calls?.recordingsState { applyFolderMove(recordings, to: &result) }
         return result
     }
     public func sendSettings(_ event: SettingsEvent) async {
         guard !quitting else { return }
         switch event {
         case .changeFolder:
-            if state.phase == .idle, let destination = await chooseFolder() { folderSettings?.send(.choose(destination)) }
-        case .confirmMove, .retryMove: folderSettings?.send(.confirm)
-        case .cancelMove: folderSettings?.send(.cancel)
+            if let destination = await chooseFolder() { calls?.sendRecordings(.chooseFolder(destination)) }
+        case .confirmMove: calls?.sendRecordings(.confirmMove)
+        case .retryMove: calls?.sendRecordings(.retryMove)
+        case .cancelMove: calls?.sendRecordings(.cancelMove)
         case let .setRecordsCalls(value): await perform(.setAutomatic(value))
         case let .setLiveText(value): await perform(.setLiveText(value))
         default: summarySettings?.send(event)
@@ -211,7 +203,7 @@ public final class AudelinMenu {
         case .quit:
             quitting = true
             summaries?.stopDispatch()
-            await folderSettings?.drain()
+            await calls?.drainMove()
             await quit()
         }
     }

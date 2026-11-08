@@ -38,7 +38,7 @@ struct BoundaryRecognizerTests {
             #expect(try await recordedSamples(folder.appendingPathComponent("call.caf")) == [-0.25, 0.5, -0.125])
             #expect(await mine.chunks.flatMap(\.samples) == [0.25, -0.5, 0.125])
             #expect(await theirs.chunks.flatMap(\.samples) == [-0.25, 0.5, -0.125])
-            #expect(try await offPool { try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8) }
+            #expect(try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8)
                 == "# Transcript\n\n**Me** 00:00:00\nmine final\n\n**Them** 00:00:00\ntheirs final\n")
         }
     }

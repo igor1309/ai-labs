@@ -45,10 +45,10 @@ struct RealRecordingTranscriptTests {
     @Test func spokenCallAudioReachesTheTranscript() async throws {
 
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        try await offPool { try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true) }
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         try await withCleanup {
             let calls = directory.appendingPathComponent("Calls", isDirectory: true)
-            try await offPool { try FileManager.default.createDirectory(at: calls, withIntermediateDirectories: true) }
+            try FileManager.default.createDirectory(at: calls, withIntermediateDirectories: true)
             let preferences = PreferencesStore(fileURL: directory.appendingPathComponent("preferences.json"))
             try preferences.write(Preferences(automaticRecording: false, liveText: true, callsFolder: calls))
             let speech = try await synthesize(Self.spoken, in: directory)
@@ -79,9 +79,9 @@ struct RealRecordingTranscriptTests {
             }
             await composition.perform(.quit)
 
-            let folders = try await offPool { try FileManager.default.contentsOfDirectory(at: calls, includingPropertiesForKeys: nil) }
+            let folders = try FileManager.default.contentsOfDirectory(at: calls, includingPropertiesForKeys: nil)
             let folder = try #require(folders.first)
-            let transcript = try await offPool { try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8) }
+            let transcript = try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8)
             #expect(!transcript.contains("No text was heard."), "transcript.md: \(transcript)")
             #expect(Self.containsSpokenWord(transcript), "transcript.md: \(transcript)")
             #expect(transcript.lowercased().contains("weather"), "The first words must be heard: \(transcript)")
@@ -114,7 +114,7 @@ struct RealRecordingTranscriptTests {
         say.executableURL = URL(fileURLWithPath: "/usr/bin/say")
         say.arguments = ["-o", speech.path, text]
         try #require(try await exitStatus(of: say) == 0, "say must synthesize the speech")
-        let size = try await offPool { (try FileManager.default.attributesOfItem(atPath: speech.path)[.size] as? NSNumber)?.intValue }
+        let size = try (try FileManager.default.attributesOfItem(atPath: speech.path)[.size] as? NSNumber)?.intValue
         try #require((size ?? 0) > 0, "The speech file must contain audio")
         return speech
     }
@@ -125,7 +125,7 @@ struct RealRecordingTranscriptTests {
         let player = Process()
         player.executableURL = URL(fileURLWithPath: "/usr/bin/afplay")
         player.arguments = [sound.path]
-        try await offPool { try player.run() }
+        try player.run()
         return player.processIdentifier
     }
 }
