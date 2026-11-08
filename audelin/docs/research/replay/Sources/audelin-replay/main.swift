@@ -47,9 +47,9 @@ struct Model: Sendable {
 }
 
 let models = [
-    Model(name: "parakeet") { try await ParakeetRecognizer() },
+    Model(name: "parakeet") { try await ParakeetRecognizer(readers: .shared) },
     Model(name: "nemotron") { try await NemotronRecognizer(decoders: .shared) },
-    Model(name: "two-pass") { TwoPassRecognizer(draft: try await NemotronRecognizer(decoders: .shared), final: try await ParakeetRecognizer()) },
+    Model(name: "two-pass") { TwoPassRecognizer(draft: try await NemotronRecognizer(decoders: .shared), final: try await ParakeetRecognizer(readers: .shared)) },
 ].filter { only == nil || $0.name == only }
 
 /// The words a recogniser's reports add up to: each report replaces the

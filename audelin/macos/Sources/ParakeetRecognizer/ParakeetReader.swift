@@ -2,21 +2,24 @@ import FluidAudio
 import LiveText
 import ModelLoading
 
-extension ParakeetRecognizer {
+/// Where a recognizer gets its reader.
+public struct ParakeetReaders: Sendable {
 
-    /// Every recognizer this process builds reads with the one model load.
-    static let readers = sharedReaders(
-        load: { try await AsrModels.downloadAndLoad(version: .v3) },
-        makeReader: { try await ParakeetReader(models: $0) }
-    )
+    let make: @Sendable () async throws -> any WindowReader
 
-    /// Loads Parakeet v3, downloading it the first time.
-    public init() async throws {
+    init(make: @escaping @Sendable () async throws -> any WindowReader) {
 
-        self.init(reader: try await Self.readers())
+        self.make = make
     }
 
-    /// Builds readers that all take their model from one load.
+    /// Parakeet v3, downloaded the first time and loaded once for
+    /// every recognizer this process builds.
+    public static let shared = ParakeetReaders(make: sharedReaders(
+        load: { try await AsrModels.downloadAndLoad(version: .v3) },
+        makeReader: { try await ParakeetReader(models: $0) }
+    ))
+
+    /// Builds readers that all take their models from one load.
     static func sharedReaders<Model: Sendable>(
         load: @escaping @Sendable () async throws -> Model,
         makeReader: @escaping @Sendable (Model) async throws -> any WindowReader
@@ -27,8 +30,6 @@ extension ParakeetRecognizer {
     }
 }
 
-/// Parakeet v3 through FluidAudio, reading each window from a fresh decoder
-/// state.
 final class ParakeetReader: WindowReader {
 
     private let transcribe: @Sendable ([Float], inout TdtDecoderState) async throws -> [TokenTiming]

@@ -33,12 +33,12 @@ final class LiveCall {
         func load() async throws -> any Recognizer {
 
             switch self {
-            case .parakeet: try await timed("Parakeet") { try await ParakeetRecognizer() }
+            case .parakeet: try await timed("Parakeet") { try await ParakeetRecognizer(readers: .shared) }
             case .nemotron: try await timed("Nemotron") { try await NemotronRecognizer(decoders: .shared) }
             case .twoPass:
                 TwoPassRecognizer(
                     draft: try await timed("Nemotron") { try await NemotronRecognizer(decoders: .shared) },
-                    final: try await timed("Parakeet") { try await ParakeetRecognizer() }
+                    final: try await timed("Parakeet") { try await ParakeetRecognizer(readers: .shared) }
                 )
             }
         }
