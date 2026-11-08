@@ -1,0 +1,61 @@
+#!/bin/sh
+# Build Audelin, install it into /Applications, start it at login and open it.
+# Run from anywhere; a second run replaces the installed copy.
+set -eu
+
+here=$(cd "$(dirname "$0")/.." && pwd)
+apps=${AUDELIN_INSTALL_DIR:-/Applications}
+agents=${AUDELIN_LAUNCH_AGENTS_DIR:-$HOME/Library/LaunchAgents}
+label=dev.igor1309.audelin.login
+target="$apps/Audelin.app"
+plist="$agents/$label.plist"
+
+cd "$here"
+sh scripts/bundle.sh
+
+# Quit a running copy so its bundle can be replaced; give it 10 s to save.
+if pgrep -x Audelin >/dev/null; then
+    pkill -TERM -x Audelin || true
+    tries=0
+    while pgrep -x Audelin >/dev/null; do
+        tries=$((tries + 1))
+        if [ "$tries" -gt 20 ]; then
+            echo "Audelin did not quit; quit it and run again" >&2
+            exit 1
+        fi
+        sleep 0.5
+    done
+fi
+
+mkdir -p "$apps"
+rm -rf "$target"
+ditto .build/Audelin.app "$target"
+
+# A per-user LaunchAgent opens the app at login through Launch Services,
+# so macOS attributes microphone and audio-capture access to Audelin.
+mkdir -p "$agents"
+cat > "$plist" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key><string>$label</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/bin/open</string>
+        <string>$target</string>
+    </array>
+    <key>RunAtLoad</key><true/>
+</dict>
+</plist>
+PLIST
+plutil -lint "$plist" >/dev/null
+
+# Registering the agent with RunAtLoad would open the app now; open it once
+# ourselves instead, and only load the agent for the next login.
+domain="gui/$(id -u)"
+launchctl bootout "$domain/$label" 2>/dev/null || true
+launchctl enable "$domain/$label"
+
+open "$target"
+echo "$target"
