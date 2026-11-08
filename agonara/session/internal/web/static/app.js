@@ -79,12 +79,17 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ revision: +reader.dataset.revision, materialRevision: reader.dataset.materialRevision, reference: para.dataset.reference, kind, entityId: reader.dataset.entity, page: +reader.dataset.page, paragraph: +para.dataset.n, text: text || para.dataset.text }),
       });
-      if (!res.ok) throw new Error(res.status);
-      const reply = await res.json();
-      const p = document.createElement("p");
-      p.className = "a";
-      p.textContent = reply.text;
-      body.replaceChildren(p);
+      if (res.status === 409) {
+        body.innerHTML = `<div class="err">${icon("alert")}<b>Страница устарела</b><span>Место чтения изменилось в другой вкладке или в Telegram. Открытие этой страницы снова вернёт общее место чтения к ней, а уже показанные кнопки Telegram устареют.</span></div><button type="button" class="button">Открыть эту страницу снова</button>`;
+        body.querySelector("button").onclick = () => location.assign(`/m/${encodeURIComponent(reader.dataset.entity)}?page=${encodeURIComponent(reader.dataset.page)}`);
+      } else {
+        if (!res.ok) throw new Error(res.status);
+        const reply = await res.json();
+        const p = document.createElement("p");
+        p.className = "a";
+        p.textContent = reply.text;
+        body.replaceChildren(p);
+      }
     } catch {
       body.innerHTML = `<div class="err">${icon("alert")}<b>Не удалось получить ответ</b><span>Agonara не ответила. Абзац и вопрос сохранены, можно повторить.</span></div><button type="button" class="button">${icon("retry")}Повторить</button>`;
       body.querySelector("button").onclick = () => { answer && (active = null); ask(kind, text); };

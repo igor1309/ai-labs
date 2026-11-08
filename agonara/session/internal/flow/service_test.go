@@ -302,6 +302,40 @@ func TestCanceledActionsNeverPublishOrPersistWork(t *testing.T) {
 	}
 }
 
+func TestValidateStateOwnsReadingSemantics(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name   string
+		change func(*State)
+		want   string
+	}{
+		{"initial", func(*State) {}, ""},
+		{"revision", func(s *State) { s.Current.Step = -1 }, "invalid reading revision"},
+		{"screen", func(s *State) { s.Current.Screen = "unknown" }, "invalid reading place"},
+		{"program identity", func(s *State) { s.Current.Screen = "program" }, "invalid reading place"},
+		{"entity identity", func(s *State) { s.Current.Screen = "entity" }, "invalid reading place"},
+		{"negative page", func(s *State) { s.Current.Page = n(-1) }, "invalid reading place"},
+		{"history identity", func(s *State) { s.Current.History = []Place{{Screen: "program"}} }, "invalid reading history"},
+		{"history page", func(s *State) { s.Current.History = []Place{{Screen: "entity", EntityID: "m", Page: n(-1)}} }, "invalid reading history"},
+		{"bookmark identity", func(s *State) { s.Resume = &Bookmark{} }, "invalid reading bookmark"},
+		{"bookmark page", func(s *State) { s.Resume = &Bookmark{EntityID: "m", Page: -1} }, "invalid reading bookmark"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			state := InitialState()
+			tc.change(&state)
+			err := ValidateState(state)
+			if tc.want == "" {
+				if err != nil {
+					t.Fatal(err)
+				}
+			} else if err == nil || err.Error() != tc.want {
+				t.Fatalf("validation: %v, want %s", err, tc.want)
+			}
+		})
+	}
+}
+
 func TestStoredPageCountsMustContainTheSavedPage(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {

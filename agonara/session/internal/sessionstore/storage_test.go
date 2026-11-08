@@ -2,6 +2,7 @@ package sessionstore
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -15,7 +16,7 @@ func TestMigrationPrefersSharedThenWebThenBotAndPreservesLegacyBytes(t *testing.
 		t.Run(source, func(t *testing.T) {
 			t.Parallel()
 			dir := t.TempDir()
-			f := ReadingFile{Path: filepath.Join(dir, "shared.json"), LegacyWeb: filepath.Join(dir, "web-place.json"), LegacyBot: filepath.Join(dir, "bot.json")}
+			f := readingFile(t, filepath.Join(dir, "shared.json"), filepath.Join(dir, "web-place.json"), filepath.Join(dir, "bot.json"), func(ReadingRecord) error { return nil })
 			oldWeb := []byte(`{"programId":"p","entityId":"web-material","title":"Web","page":3}`)
 			oldBot := []byte(`{"offset":71,"session":{"screen":"entity","entityId":"bot-material","page":2,"step":13,"items":[],"history":[]}}`)
 			created := map[string][]byte{}
@@ -73,13 +74,14 @@ func writeFile(t *testing.T, path string, data []byte) {
 }
 
 // Contract test: corrupt files and unavailable filesystem locations fail without replacement.
+// Reading semantics belong to core tests; these cases supply the validator decision.
 func TestReadingFileRejectsCorruptionAndStorageFailures(t *testing.T) {
 	t.Parallel()
-	for _, source := range []string{"shared", "web", "bot", "read-error", "write-error", "bad-version", "bad-place"} {
+	for _, source := range []string{"shared", "web", "bot", "read-error", "write-error", "bad-version"} {
 		t.Run(source, func(t *testing.T) {
 			t.Parallel()
 			dir := t.TempDir()
-			f := ReadingFile{Path: filepath.Join(dir, "shared.json"), LegacyWeb: filepath.Join(dir, "web.json"), LegacyBot: filepath.Join(dir, "bot.json")}
+			f := readingFile(t, filepath.Join(dir, "shared.json"), filepath.Join(dir, "web.json"), filepath.Join(dir, "bot.json"), func(ReadingRecord) error { return nil })
 			switch source {
 			case "shared":
 				writeFile(t, f.Path, []byte("{"))
@@ -89,8 +91,6 @@ func TestReadingFileRejectsCorruptionAndStorageFailures(t *testing.T) {
 				writeFile(t, f.LegacyBot, []byte("{"))
 			case "bad-version":
 				writeFile(t, f.Path, []byte(`{"version":8}`))
-			case "bad-place":
-				writeFile(t, f.LegacyWeb, []byte(`{"page":-1,"entityId":"m"}`))
 			case "read-error":
 				if err := os.Mkdir(f.Path, 0o700); err != nil {
 					t.Fatal(err)
@@ -143,7 +143,7 @@ func TestHigherPriorityStateIgnoresCorruptLowerPriorityFiles(t *testing.T) {
 	t.Parallel()
 	for _, shared := range []bool{false, true} {
 		dir := t.TempDir()
-		f := ReadingFile{Path: filepath.Join(dir, "reading.json"), LegacyWeb: filepath.Join(dir, "web.json"), LegacyBot: filepath.Join(dir, "bot.json")}
+		f := readingFile(t, filepath.Join(dir, "reading.json"), filepath.Join(dir, "web.json"), filepath.Join(dir, "bot.json"), func(ReadingRecord) error { return nil })
 		writeFile(t, f.LegacyBot, []byte("{"))
 		if shared {
 			if err := f.Save(initialReading()); err != nil {
@@ -166,7 +166,7 @@ func TestHigherPriorityStateIgnoresCorruptLowerPriorityFiles(t *testing.T) {
 // Contract test: existing version-one JSON is translated and written without a format change.
 func TestReadingRecordRetainsAllSemanticFieldsAndExistingJSONShape(t *testing.T) {
 	t.Parallel()
-	f := ReadingFile{Path: filepath.Join(t.TempDir(), "shared.json")}
+	f := readingFile(t, filepath.Join(t.TempDir(), "shared.json"), "", "", func(ReadingRecord) error { return nil })
 	fixture := []byte(`{"version":1,"current":{"materialRevision":"rev","screen":"entity","programId":"p","entityId":"m","title":"Lecture","page":1,"contents":true,"pageCount":3,"items":[{"id":"c","title":"Concept","kind":"concept"}],"history":[{"screen":"programs"},{"screen":"program","programId":"p","title":"Program"}],"step":9},"resume":{"ProgramID":"p","EntityID":"m","Title":"Lecture","Page":1,"Position":{"Section":2,"Label":"Section","Index":1,"Count":3},"Course":{"id":"t","title":"Topic","kind":"topic"},"Courses":[{"id":"t","title":"Topic","kind":"topic"}]}}`)
 	writeFile(t, f.Path, fixture)
 	s, err := f.Load()
@@ -200,7 +200,7 @@ func TestReadingRecordRetainsAllSemanticFieldsAndExistingJSONShape(t *testing.T)
 func TestStateSavedByJavaScriptBotStillLoads(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	f := ReadingFile{Path: filepath.Join(dir, "shared.json"), LegacyBot: filepath.Join(dir, "bot.json")}
+	f := readingFile(t, filepath.Join(dir, "shared.json"), "", filepath.Join(dir, "bot.json"), func(ReadingRecord) error { return nil })
 	raw := []byte(`{"offset":7,"session":{"screen":"entity","entityId":"material-id","page":2,"items":[{"id":"linked","title":"Linked","kind":"concept"}],"history":[{"screen":"programs"},{"screen":"program","programId":"p","title":"Course"},{"screen":"entity","entityId":"topic-id"}],"step":72,"pageCount":23}}`)
 	writeFile(t, f.LegacyBot, raw)
 	state, err := f.Load()
@@ -216,37 +216,98 @@ func TestStateSavedByJavaScriptBotStillLoads(t *testing.T) {
 }
 func intPointer(n int) *int { return &n }
 
-// Contract test: invalid version-one records remain authoritative failures without filesystem replacement or legacy fallback.
-func TestInvalidReadingRecordsArePreservedWithoutLegacyFallback(t *testing.T) {
+// Contract test: validator decisions gate shared records and migrations before any replacement.
+func TestReadingFileDelegatesValidationAndPreservesRejectedSources(t *testing.T) {
 	t.Parallel()
-	for _, tc := range []struct{ name, fields string }{
-		{"revision", `"current":{"screen":"programs","step":-1}`},
-		{"screen", `"current":{"screen":"unknown"}`},
-		{"program identity", `"current":{"screen":"program"}`},
-		{"material identity", `"current":{"screen":"entity"}`},
-		{"negative page", `"current":{"screen":"entity","entityId":"m","page":-1}`},
-		{"page count", `"current":{"screen":"entity","entityId":"m","page":0,"pageCount":0}`},
-		{"missing page", `"current":{"screen":"entity","entityId":"m","pageCount":1}`},
-		{"page outside count", `"current":{"screen":"entity","entityId":"m","page":2,"pageCount":2}`},
-		{"history identity", `"current":{"screen":"programs","history":[{"screen":"program"}]}`},
-		{"history page", `"current":{"screen":"programs","history":[{"screen":"entity","entityId":"m","page":-1}]}`},
-		{"bookmark identity", `"current":{"screen":"programs"},"resume":{"Page":0}`},
-		{"bookmark page", `"current":{"screen":"programs"},"resume":{"EntityID":"m","Page":-1}`},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-			dir := t.TempDir()
-			f := ReadingFile{Path: filepath.Join(dir, "reading.json"), LegacyWeb: filepath.Join(dir, "web.json")}
-			raw := []byte(`{"version":1,` + tc.fields + `}`)
-			writeFile(t, f.Path, raw)
-			writeFile(t, f.LegacyWeb, []byte(`{"entityId":"legacy","page":1}`))
-			if _, err := f.Load(); err == nil {
-				t.Fatal("invalid shared record replaced with legacy state")
-			}
-			got, err := os.ReadFile(f.Path)
-			if err != nil || string(got) != string(raw) {
-				t.Fatalf("invalid record changed: %s %v", got, err)
-			}
-		})
+	for _, source := range []string{"shared", "web", "bot", "fresh"} {
+		for _, rejected := range []bool{false, true} {
+			t.Run(source+map[bool]string{false: "/accepted", true: "/rejected"}[rejected], func(t *testing.T) {
+				t.Parallel()
+				dir := t.TempDir()
+				candidate := initialReading()
+				candidate.Current.Step = 8
+				candidate.Current.PlaceRecord = PlaceRecord{Screen: "entity", EntityID: "m", Page: intPointer(2)}
+				candidate.Resume = &BookmarkRecord{EntityID: "m", Page: 2}
+				var wantErr error
+				if rejected {
+					wantErr = errors.New("validator rejected candidate")
+				}
+				var calls []ReadingRecord
+				f, err := NewReadingFile(filepath.Join(dir, "shared.json"), filepath.Join(dir, "web.json"), filepath.Join(dir, "bot.json"), func(r ReadingRecord) error {
+					calls = append(calls, r)
+					if source != "shared" {
+						if _, err := os.Stat(filepath.Join(dir, "shared.json")); !os.IsNotExist(err) {
+							t.Errorf("migration wrote before validation: %v", err)
+						}
+					}
+					return wantErr
+				})
+				if err != nil {
+					t.Fatal(err)
+				}
+				original := map[string][]byte{}
+				if source != "fresh" {
+					original[f.LegacyWeb] = []byte(`{"entityId":"m","page":2}`)
+					original[f.LegacyBot] = []byte(`{"session":{"screen":"entity","entityId":"m","page":2,"step":7,"items":[],"history":[]}}`)
+				}
+				switch source {
+				case "shared":
+					data, err := json.Marshal(readingFileRecord{Version: 1, ReadingRecord: candidate})
+					if err != nil {
+						t.Fatal(err)
+					}
+					original[f.Path] = data
+				case "bot":
+					delete(original, f.LegacyWeb)
+				case "fresh":
+					candidate = initialReading()
+				}
+				for path, data := range original {
+					writeFile(t, path, data)
+				}
+				got, err := f.Load()
+				if !errors.Is(err, wantErr) || !reflect.DeepEqual(got, candidate) || !reflect.DeepEqual(calls, []ReadingRecord{candidate}) {
+					t.Fatalf("state=%+v err=%v calls=%+v want=%+v", got, err, calls, candidate)
+				}
+				for path, data := range original {
+					got, err := os.ReadFile(path)
+					if err != nil || string(got) != string(data) {
+						t.Fatalf("source changed: %s %v", path, err)
+					}
+				}
+				if source != "shared" {
+					data, err := os.ReadFile(f.Path)
+					if rejected {
+						if !os.IsNotExist(err) {
+							t.Fatalf("rejected migration became authoritative: %s %v", data, err)
+						}
+					} else {
+						var record readingFileRecord
+						if err != nil {
+							t.Fatal(err)
+						}
+						if err := json.Unmarshal(data, &record); err != nil || record.Version != 1 || !reflect.DeepEqual(record.ReadingRecord, candidate) {
+							t.Fatalf("saved migration: %s %v", data, err)
+						}
+					}
+				}
+			})
+		}
 	}
+}
+
+func TestReadingFileRequiresValidator(t *testing.T) {
+	t.Parallel()
+	if f, err := NewReadingFile("reading.json", "", "", nil); err == nil || f != nil {
+		t.Fatalf("missing validator accepted: %v %v", f, err)
+	}
+}
+
+func readingFile(t *testing.T, path, web, bot string, validate func(ReadingRecord) error) *ReadingFile {
+	t.Helper()
+	f, err := NewReadingFile(path, web, bot, validate)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return f
 }

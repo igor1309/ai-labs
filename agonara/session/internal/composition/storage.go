@@ -13,6 +13,13 @@ type ReadingRecords interface {
 }
 type ReadingPersistence struct{ Records ReadingRecords }
 
+func newReadingPersistence(c Config) (ReadingPersistence, error) {
+	records, err := sessionstore.NewReadingFile(c.StatePath, c.LegacyWeb, c.LegacyBot, func(r sessionstore.ReadingRecord) error {
+		return flow.ValidateState(stateFromRecord(r))
+	})
+	return ReadingPersistence{Records: records}, err
+}
+
 func (a ReadingPersistence) Load() (flow.State, error) {
 	r, err := a.Records.Load()
 	return stateFromRecord(r), err

@@ -12,7 +12,17 @@ import (
 )
 
 // ReadingFile is the only reader of the legacy reading formats. Migration never writes them.
-type ReadingFile struct{ Path, LegacyWeb, LegacyBot string }
+type ReadingFile struct {
+	Path, LegacyWeb, LegacyBot string
+	validate                   func(ReadingRecord) error
+}
+
+func NewReadingFile(path, legacyWeb, legacyBot string, validate func(ReadingRecord) error) (*ReadingFile, error) {
+	if validate == nil {
+		return nil, errors.New("reading validator is required")
+	}
+	return &ReadingFile{Path: path, LegacyWeb: legacyWeb, LegacyBot: legacyBot, validate: validate}, nil
+}
 
 func (f ReadingFile) Save(s ReadingRecord) error {
 	return store.Save(f.Path, readingFileRecord{Version: 1, ReadingRecord: s})
@@ -28,7 +38,7 @@ func (f ReadingFile) Load() (ReadingRecord, error) {
 			return ReadingRecord{}, errors.New("invalid reading file version")
 		}
 		s := record.ReadingRecord
-		return s, validReading(s)
+		return s, f.validate(s)
 	}
 	if !errors.Is(err, fs.ErrNotExist) {
 		return ReadingRecord{}, err
@@ -57,9 +67,6 @@ func (f ReadingFile) Load() (ReadingRecord, error) {
 		if err = json.Unmarshal(webData, &p); err != nil {
 			return s, err
 		}
-		if p.EntityID == "" || p.Page < 0 {
-			return s, errors.New("invalid legacy web place")
-		}
 		s.Current.PlaceRecord = PlaceRecord{Screen: "entity", EntityID: p.EntityID, Page: &p.Page}
 		s.Resume = &BookmarkRecord{ProgramID: p.ProgramID, EntityID: p.EntityID, Title: p.Title, Page: p.Page}
 	} else if botFound {
@@ -84,7 +91,7 @@ func (f ReadingFile) Load() (ReadingRecord, error) {
 		}
 		s.Current.Step = max(s.Current.Step, bot.Session.Step+1)
 	}
-	if err = validReading(s); err != nil {
+	if err = f.validate(s); err != nil {
 		return s, err
 	}
 	if err = f.Save(s); err != nil {
@@ -147,40 +154,4 @@ func validTransport(s TransportRecord) error {
 
 func initialReading() ReadingRecord {
 	return ReadingRecord{Current: SessionRecord{PlaceRecord: PlaceRecord{Screen: "programs"}, Items: []ItemRecord{}, History: []PlaceRecord{}}}
-}
-
-// Reject malformed persisted positions before migration can make them authoritative.
-func validReading(s ReadingRecord) error {
-	if s.Current.Step < 0 {
-		return errors.New("invalid reading revision")
-	}
-	validPlace := func(p PlaceRecord) bool {
-		if p.Page != nil && *p.Page < 0 {
-			return false
-		}
-		switch p.Screen {
-		case "programs":
-			return true
-		case "program":
-			return p.ProgramID != ""
-		case "entity":
-			return p.EntityID != ""
-		}
-		return false
-	}
-	if s.Current.PageCount != nil && (*s.Current.PageCount <= 0 || s.Current.Page == nil || *s.Current.Page >= *s.Current.PageCount) {
-		return errors.New("invalid reading page count")
-	}
-	if !validPlace(s.Current.PlaceRecord) {
-		return errors.New("invalid reading place")
-	}
-	for _, p := range s.Current.History {
-		if !validPlace(p) {
-			return errors.New("invalid reading history")
-		}
-	}
-	if s.Resume != nil && (s.Resume.EntityID == "" || s.Resume.Page < 0) {
-		return errors.New("invalid reading bookmark")
-	}
-	return nil
 }

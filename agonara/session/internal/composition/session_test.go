@@ -64,7 +64,10 @@ func request(t *testing.T, h http.Handler, path string) *httptest.ResponseRecord
 // Contract test: integrates reading, service, surface adapters, HTTP rendering and filesystem restart; Telegram is a spy.
 func TestBothSurfacesResumeOneReadingSessionAfterSwitchingAndRestart(t *testing.T) {
 	t.Parallel()
-	disk := ReadingPersistence{Records: sessionstore.ReadingFile{Path: filepath.Join(t.TempDir(), "reading.json")}}
+	disk, err := newReadingPersistence(Config{StatePath: filepath.Join(t.TempDir(), "reading.json")})
+	if err != nil {
+		t.Fatal(err)
+	}
 	api := &messageAPI{}
 	assembled, err := Assemble(context.Background(), Config{PageSize: 1000, WebToken: "access", ChatID: 1}, false, Dependencies{
 		Content: readingSpy{}, Reading: disk, API: api, Transport: &transportSpy{}, Wait: func(context.Context, time.Duration) error { t.Fatal("unexpected wait"); return nil }, Log: func(string) {},
@@ -166,7 +169,10 @@ func TestLegacyCallbackNeverBecomesCurrentAfterWebMigrationAndNavigation(t *test
 	oldWeb := filepath.Join(dir, "web.json")
 	writeFile(t, oldBot, []byte(`{"offset":41,"session":{"screen":"entity","entityId":"old-material","page":0,"step":3}}`))
 	writeFile(t, oldWeb, []byte(`{"entityId":"m","programId":"p","page":0}`))
-	disk := ReadingPersistence{Records: sessionstore.ReadingFile{Path: filepath.Join(dir, "reading.json"), LegacyWeb: oldWeb, LegacyBot: oldBot}}
+	disk, err := newReadingPersistence(Config{StatePath: filepath.Join(dir, "reading.json"), LegacyWeb: oldWeb, LegacyBot: oldBot})
+	if err != nil {
+		t.Fatal(err)
+	}
 	transport := TransportPersistence{Records: sessionstore.TransportFile{Path: filepath.Join(dir, "transport.json"), Legacy: oldBot}}
 	api := &messageAPI{}
 	a, err := Assemble(context.Background(), Config{PageSize: 1000, WebToken: "access", ChatID: 1}, false, Dependencies{Content: readingSpy{}, Reading: disk, API: api, Transport: transport, Wait: func(context.Context, time.Duration) error { return nil }, Log: func(string) {}})

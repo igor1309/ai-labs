@@ -2,6 +2,8 @@ package composition
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 
@@ -105,5 +107,57 @@ func TestTransportPersistenceTranslatesRecordsAndPreservesErrors(t *testing.T) {
 				t.Fatalf("save: %v spy=%+v", err, spy)
 			}
 		})
+	}
+}
+
+// Contract test: production persistence wires core validation to real shared and migrated files.
+func TestReadingPersistenceValidatesRecordsBeforeMigration(t *testing.T) {
+	t.Parallel()
+	for _, source := range []string{"shared", "web", "bot"} {
+		for _, valid := range []bool{false, true} {
+			t.Run(source+map[bool]string{false: "/rejected", true: "/accepted"}[valid], func(t *testing.T) {
+				t.Parallel()
+				dir := t.TempDir()
+				c := Config{StatePath: filepath.Join(dir, "shared.json"), LegacyWeb: filepath.Join(dir, "web.json"), LegacyBot: filepath.Join(dir, "bot.json")}
+				entity := ""
+				if valid {
+					entity = "m"
+				}
+				path, raw := c.StatePath, `{"version":1,"current":{"screen":"entity","entityId":"`+entity+`","page":0,"step":2}}`
+				if source == "web" {
+					path, raw = c.LegacyWeb, `{"entityId":"`+entity+`","page":0}`
+				}
+				if source == "bot" {
+					path, raw = c.LegacyBot, `{"session":{"screen":"entity","entityId":"`+entity+`","page":0,"step":1}}`
+				}
+				writeFile(t, path, []byte(raw))
+				disk, err := newReadingPersistence(c)
+				if err != nil {
+					t.Fatal(err)
+				}
+				got, err := disk.Load()
+				if valid {
+					if err != nil || got.Current.EntityID != "m" || got.Current.Page == nil || *got.Current.Page != 0 {
+						t.Fatalf("loaded: %+v %v", got, err)
+					}
+					if _, err := os.Stat(c.StatePath); err != nil {
+						t.Fatal(err)
+					}
+				} else {
+					if err == nil || err.Error() != "invalid reading place" {
+						t.Fatalf("core validation missing: %v", err)
+					}
+					if source != "shared" {
+						if _, err := os.Stat(c.StatePath); !os.IsNotExist(err) {
+							t.Fatalf("rejected migration saved: %v", err)
+						}
+					}
+				}
+				data, err := os.ReadFile(path)
+				if err != nil || string(data) != raw {
+					t.Fatalf("source changed: %s %v", data, err)
+				}
+			})
+		}
 	}
 }

@@ -304,8 +304,12 @@ func RunProduction(ctx context.Context, c Config, standalone bool, log func(stri
 	if err != nil {
 		return err
 	}
+	reading, err := newReadingPersistence(c)
+	if err != nil {
+		return err
+	}
 	return Run(ctx, c, standalone, RunnerDependencies{
-		Assembly:            Dependencies{Content: Content{Source: cache}, Reading: ReadingPersistence{Records: sessionstore.ReadingFile{Path: c.StatePath, LegacyWeb: c.LegacyWeb, LegacyBot: c.LegacyBot}}, API: telegram.Client{Token: c.BotToken, HTTP: &http.Client{Timeout: 40 * time.Second}}, Transport: TransportPersistence{Records: sessionstore.TransportFile{Path: c.TransportPath, Legacy: c.LegacyBot}}, Wait: wait, Log: log},
+		Assembly:            Dependencies{Content: Content{Source: cache}, Reading: reading, API: telegram.Client{Token: c.BotToken, HTTP: &http.Client{Timeout: 40 * time.Second}}, Transport: TransportPersistence{Records: sessionstore.TransportFile{Path: c.TransportPath, Legacy: c.LegacyBot}}, Wait: wait, Log: log},
 		EnsureDirectory:     func(path string) error { return os.MkdirAll(path, 0o700) },
 		Acquire:             func(path string) (io.Closer, error) { return ownerlock.Acquire(path) },
 		PollerLockDirectory: "/tmp",
