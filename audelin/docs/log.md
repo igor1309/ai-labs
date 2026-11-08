@@ -2,6 +2,8 @@
 
 ## 2026-11-08
 
+- Install works from a shell whose temp folder no longer exists (LAB-1056).
+
 - One command installs the app into /Applications, replaces an older copy, opens it and starts it at login (LAB-1054).
 
 ## 2026-11-07

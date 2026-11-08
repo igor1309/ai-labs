@@ -3,6 +3,13 @@
 # Run from anywhere; a second run replaces the installed copy.
 set -eu
 
+# A shell left by an agent task can export TMPDIR as a folder since deleted;
+# swift build then fails. Use the user's default temp folder instead.
+if [ -n "${TMPDIR:-}" ] && [ ! -d "$TMPDIR" ]; then
+    TMPDIR=$(getconf DARWIN_USER_TEMP_DIR 2>/dev/null || echo /tmp)
+    export TMPDIR
+fi
+
 here=$(cd "$(dirname "$0")/.." && pwd)
 apps=${AUDELIN_INSTALL_DIR:-/Applications}
 agents=${AUDELIN_LAUNCH_AGENTS_DIR:-$HOME/Library/LaunchAgents}
