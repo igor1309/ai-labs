@@ -108,7 +108,7 @@ struct RealRecognizer: SpeechRecognizer {
 }
 
 func realTime(
-    callClock: any CallClock = ContinuousCallClock(),
+    callClock: any CallClock = ContinuousCallClock(now: { ContinuousClock.now }, sleep: { try await Task.sleep(until: $0, clock: .continuous) }),
     sleepUntil: @escaping @Sendable (ContinuousClock.Instant) async throws -> Void = { try await ContinuousClock().sleep(until: $0) }
 ) -> ComposerTime {
     ComposerTime(now: { Date() }, timeZone: { .current },
