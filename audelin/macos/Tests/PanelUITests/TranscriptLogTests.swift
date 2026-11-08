@@ -728,6 +728,10 @@ struct TranscriptLogTests {
         let host = Offscreen.host(panel(history, elapsed: "00:07:05"), size: CGSize(width: 396, height: 560))
         let scroll = try #require(scrollView(in: host))
         let text = try #require(Offscreen.textView(in: host))
+        let window = try #require(host.window)
+        // Run the same sizing probe before and after the baseline. Otherwise
+        // the first update also measures the initial, still-estimated layout.
+        _ = host.fittingSize
         text.scrollRangeToVisible((text.string as NSString).range(of: "03:24"))
         scroll.contentView.scroll(to: NSPoint(x: 0, y: 800))
         host.display()
@@ -735,18 +739,29 @@ struct TranscriptLogTests {
         host.display()
         let origin = scroll.contentView.bounds.origin
         let anchor = text.characterIndexForInsertion(at: NSPoint(x: 100, y: origin.y + 40))
-        let anchorRect = text.firstRect(forCharacterRange: NSRange(location: anchor, length: 1), actualRange: nil)
+        func anchorInViewport() -> NSRect {
+            let screen = text.firstRect(forCharacterRange: NSRange(location: anchor, length: 1), actualRange: nil)
+            return scroll.convert(window.convertFromScreen(screen), from: nil)
+        }
+        // firstRect returns screen coordinates. Window placement is independent
+        // of whether text stays under the reader inside the scroll viewport.
+        let anchorRect = anchorInViewport()
+        #expect(!anchorRect.isEmpty)
 
         var entries = history
         for step in 0..<10 {
+            if step == 0 {
+                window.setFrameOrigin(NSPoint(x: window.frame.minX + 20, y: window.frame.minY + 40))
+            }
             if !step.isMultiple(of: 2) { entries = history + [newest("слово \(step)")] }
             host.rootView = panel(entries, elapsed: "00:07:\(step + 6)")
             host.layoutSubtreeIfNeeded()
             _ = host.fittingSize
             RunLoop.main.run(until: .now.addingTimeInterval(0.03))
             host.display()
-            let rect = text.firstRect(forCharacterRange: NSRange(location: anchor, length: 1), actualRange: nil)
-            #expect(abs(rect.minY - anchorRect.minY) < 1, "visible text moved on update \(step)")
+            let rect = anchorInViewport()
+            #expect(abs(rect.minY - anchorRect.minY) < 1,
+                "visible text moved on update \(step): \(anchorRect) -> \(rect); window \(window.frame), scroll \(scroll.frame)")
             #expect(abs(scroll.contentView.bounds.origin.y - origin.y) < 1,
                 "paused viewport moved on update \(step): \(origin) -> \(scroll.contentView.bounds.origin)")
         }
