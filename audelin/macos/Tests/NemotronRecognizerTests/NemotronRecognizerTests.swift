@@ -344,7 +344,7 @@ struct NemotronRecognizerTests {
     private func spoken(_ text: String) async throws -> [Float] {
 
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        try await offPool { try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true) }
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         return try await withCleanup {
             let url = directory.appendingPathComponent("spoken.wav")
             let say = Process()
