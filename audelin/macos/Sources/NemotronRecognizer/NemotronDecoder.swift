@@ -1,22 +1,25 @@
 import FluidAudio
 import ModelLoading
 
-extension NemotronRecognizer {
+/// Where a recognizer gets its decoder.
+public struct NemotronDecoders: Sendable {
 
-    /// Every recognizer this process builds decodes with the one model load.
-    static let decoders = sharedDecoders(
+    let make: @Sendable () async throws -> any TokenDecoder
+
+    init(make: @escaping @Sendable () async throws -> any TokenDecoder) {
+
+        self.make = make
+    }
+
+    /// Multilingual Nemotron in 1120 ms chunks for Russian speech,
+    /// downloaded the first time and loaded once for every recognizer this
+    /// process builds.
+    public static let shared = NemotronDecoders(make: sharedDecoders(
         load: {
             try await StreamingNemotronMultilingualAsrManager.downloadAndPreloadShared(languageCode: "auto", chunkMs: 1120)
         },
         makeDecoder: { try await NemotronDecoder(models: $0) }
-    )
-
-    /// Loads multilingual Nemotron in 1120 ms chunks for Russian speech,
-    /// downloading it the first time.
-    public init() async throws {
-
-        self.init(decoder: try await Self.decoders())
-    }
+    ))
 
     /// Builds decoders that all take their models from one load.
     static func sharedDecoders<Model: Sendable>(
