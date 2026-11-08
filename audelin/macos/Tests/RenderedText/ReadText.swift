@@ -1,5 +1,19 @@
 import CoreGraphics
+import Dispatch
 import Vision
+
+// Recognition takes seconds of CPU per image. It runs on a lane of its own,
+// not on the shared blocking-work queues, so the many short file and process
+// hops of other suites in the same test process never wait behind it.
+private let recognition = DispatchQueue(label: "audelin.tests.recognition")
+
+/// Reads an image's words off the cooperative pool, on recognition's own lane.
+public func recognizedText(in image: CGImage) async throws -> RenderedText {
+
+    try await withCheckedThrowingContinuation { (done: CheckedContinuation<RenderedText, any Error>) in
+        recognition.async { done.resume(with: Result { try readText(in: image) }) }
+    }
+}
 
 /// The words an image shows, read by Vision: SwiftUI's `Text` has no view and,
 /// in a window that is never shown, no accessibility element to read.
