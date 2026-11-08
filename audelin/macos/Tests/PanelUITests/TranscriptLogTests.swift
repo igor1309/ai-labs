@@ -663,10 +663,18 @@ struct TranscriptLogTests {
             host.rootView = panel(width)
             window.setContentSize(CGSize(width: width, height: 560))
             host.layoutSubtreeIfNeeded()
-            RunLoop.main.run(until: .now.addingTimeInterval(0.05))
-            host.display()
+            // TextKit can temporarily return no segment while the resized
+            // viewport is being laid out. Wait for geometry, not a fixed
+            // runner-speed-dependent delay; never scroll the view in the test.
+            let deadline = Date.now.addingTimeInterval(2)
+            var last = NSRect.zero
+            repeat {
+                RunLoop.main.run(until: .now.addingTimeInterval(0.01))
+                host.layoutSubtreeIfNeeded()
+                host.display()
+                last = text.firstRect(forCharacterRange: NSRange(location: text.string.utf16.count - 1, length: 1), actualRange: nil)
+            } while last.isEmpty && Date.now < deadline
             #expect(text.string == originalText, "Resize duplicated or lost transcript text")
-            let last = text.firstRect(forCharacterRange: NSRange(location: text.string.utf16.count - 1, length: 1), actualRange: nil)
             let visible = scroll.convert(scroll.contentView.bounds, from: scroll.contentView)
             let screen = window.convertToScreen(scroll.convert(visible, to: nil))
             #expect(last.intersects(screen), "last line disappeared at width \(width): \(last), viewport \(screen)")
