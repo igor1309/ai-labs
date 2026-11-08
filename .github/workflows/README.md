@@ -99,6 +99,10 @@ There is no trunk-push Cloudflare Pages deploy path for Notio frontend.
 
 There is no trunk-push deploy path for RexLab.
 
+## Audelin
+
+- `audelin-install.yml` runs on a trunk push that changes Audelin's app code, `bundle.sh` or `install.sh`, and on manual dispatch. On the self-hosted `local-mac` runner it builds the app and replaces `/Applications/Audelin.app` with `install.sh --update`: a running Audelin is not quit and the app is not opened, so the new version starts at the next launch or login. A failure arrives in the CI Telegram chat. It is no required check, so while the runner is offline the run waits queued and nothing else is held.
+
 ## Shared Infrastructure
 
 - **Path detection**: `dorny/paths-filter@v4` in the `changes` job

@@ -1,0 +1,50 @@
+name: Audelin Install
+
+# Installs each trunk build of Audelin on the owner's Mac through the
+# self-hosted local-mac runner. A running Audelin is not quit and the app is
+# not opened: the new version starts at the next launch or login.
+
+on:
+  push:
+    branches: [trunk]
+    paths:
+      - "audelin/macos/App/**"
+      - "audelin/macos/Sources/**"
+      - "audelin/macos/Package.swift"
+      - "audelin/macos/Package.resolved"
+      - "audelin/macos/scripts/bundle.sh"
+      - "audelin/macos/scripts/install.sh"
+      - ".github/workflows/audelin-install.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: audelin-install
+  cancel-in-progress: false
+
+jobs:
+  install:
+    runs-on: [self-hosted, local-mac]
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Build and install into /Applications
+        run: sh audelin/macos/scripts/install.sh --update
+
+  notify:
+    if: ${{ always() && !cancelled() && needs.install.result == 'failure' }}
+    needs: [install]
+    uses: ./.github/workflows/notify-telegram-failure.yml
+    with:
+      title: "Audelin Install"
+      ref_label: "branch"
+      ref_value: "trunk"
+      job_results: |
+        install=${{ needs.install.result }}
+    secrets:
+      CI_BOT_TOKEN: ${{ secrets.CI_BOT_TOKEN }}
+      CI_CHAT_ID: ${{ secrets.CI_CHAT_ID }}
