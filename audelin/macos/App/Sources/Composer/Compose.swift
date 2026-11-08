@@ -21,11 +21,7 @@ public func compose(
     chooseCallsFolder: @escaping () async -> URL? = { nil },
     summaryRuntime: SummaryRuntime.Runtime? = nil
 ) async -> AudelinMenu {
-    let preferences = await withCheckedContinuation { done in
-        DispatchQueue(label: "audelin.preferences.load").async {
-            done.resume(returning: PreferencesStore(fileURL: preferencesURL))
-        }
-    }
+    let preferences = PreferencesStore(fileURL: preferencesURL)
     await createDefaultCallsFolder(preferences.read().callsFolder, default: Preferences().callsFolder)
     let panel = AudelinPanel(now: boundary.time.monotonicNow,
                              ticks: boundary.time.ticks, sink: boundary.log, intervals: boundary.intervals)

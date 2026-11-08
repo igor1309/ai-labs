@@ -17,7 +17,7 @@ public struct Record: Codable, Equatable, Sendable {
 }
 public protocol Locations: Sendable {
     /// The operation and rename/delete/move share one storage transaction boundary.
-    func withFolder<Value: Sendable>(call: String, _ operation: @Sendable (URL) throws -> Value) throws -> Value
+    func withFolder<Value: Sendable>(call: String, _ operation: @Sendable (URL) throws -> Value) async throws -> Value
 }
 public protocol Disk: Sendable {
     func read(_ url: URL) throws -> Data
@@ -107,16 +107,16 @@ private actor DiskFiles: FilesStorage {
             close(fd)
         }
     }
-    public func claim(_ record: Record) throws -> (owned: Bool, record: Record) {
-        try locations.withFolder(call: record.call) { [disk] folder in
+    public func claim(_ record: Record) async throws -> (owned: Bool, record: Record) {
+        try await locations.withFolder(call: record.call) { [disk] folder in
             let path = folder.appendingPathComponent(".summary-job.json")
             if try disk.exists(path) { return (false, try Self.read(path, disk: disk, call: record.call)) }
             let owned = try disk.create(JSONEncoder().encode(record), at: path)
             return (owned, owned ? record : try Self.read(path, disk: disk, call: record.call))
         }
     }
-    public func load(call: String) throws -> Record? {
-        try locations.withFolder(call: call) { [disk, ownershipDirectory] folder in
+    public func load(call: String) async throws -> Record? {
+        try await locations.withFolder(call: call) { [disk, ownershipDirectory] folder in
             let path = folder.appendingPathComponent(".summary-job.json")
             guard try disk.exists(path) else { return nil }
             var record = try Self.read(path, disk: disk, call: call)
@@ -138,10 +138,10 @@ private actor DiskFiles: FilesStorage {
             return record
         }
     }
-    public func start(_ record: Record) throws -> Bool {
+    public func start(_ record: Record) async throws -> Bool {
         let identity = Identity(call: record.call, job: record.job, input: record.input)
         guard leases[identity] == nil else { return false }
-        let lease: Int32? = try locations.withFolder(call: record.call) { [disk, ownershipDirectory] folder in
+        let lease: Int32? = try await locations.withFolder(call: record.call) { [disk, ownershipDirectory] folder in
             let path = folder.appendingPathComponent(".summary-job.json")
             guard let fd = try Self.acquire(record, directory: ownershipDirectory) else { return nil }
             do {
@@ -158,10 +158,10 @@ private actor DiskFiles: FilesStorage {
         leases[identity] = lease
         return true
     }
-    public func progress(_ record: Record) throws {
+    public func progress(_ record: Record) async throws {
         guard leases[.init(call: record.call, job: record.job, input: record.input)] != nil else { throw CocoaError(.fileWriteUnknown) }
         defer { if record.phase != "running" { release(job: record.job, call: record.call, input: record.input) } }
-        try locations.withFolder(call: record.call) { [disk] folder in
+        try await locations.withFolder(call: record.call) { [disk] folder in
             let path = folder.appendingPathComponent(".summary-job.json")
             let current = try Self.read(path, disk: disk, call: record.call)
             guard current.job == record.job, current.input == record.input, current.phase == "running" else { throw CocoaError(.fileWriteUnknown) }
@@ -170,9 +170,9 @@ private actor DiskFiles: FilesStorage {
             try disk.replace(JSONEncoder().encode(updated), at: path)
         }
     }
-    public func publish(_ record: Record, notes: String) throws {
+    public func publish(_ record: Record, notes: String) async throws {
         guard leases[.init(call: record.call, job: record.job, input: record.input)] != nil else { throw CocoaError(.fileWriteUnknown) }
-        try locations.withFolder(call: record.call) { [disk] folder in
+        try await locations.withFolder(call: record.call) { [disk] folder in
             let current = try Self.read(folder.appendingPathComponent(".summary-job.json"), disk: disk, call: record.call)
             guard current.job == record.job, current.input == record.input, current.phase == "running" else { throw CocoaError(.fileWriteUnknown) }
             let receipt = Receipt(job: record.job, input: record.input, warning: record.warning)

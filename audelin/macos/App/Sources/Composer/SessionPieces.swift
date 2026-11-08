@@ -1,7 +1,6 @@
 import class CallAppProcesses.CallAppProcesses
 import CallFolder
 import struct CallText.State
-import Dispatch
 import Foundation
 import Session
 import TrackFile
@@ -9,10 +8,6 @@ import TranscriptFile
 
 /// Owns one recording's concrete pieces and exposes their distinct Session roles.
 actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCallText {
-
-    // Folder creation and synchronous file initializers perform blocking disk I/O.
-    private nonisolated let queue = DispatchSerialQueue(label: "audelin.SessionPieces")
-    nonisolated var unownedExecutor: UnownedSerialExecutor { queue.asUnownedSerialExecutor() }
 
     enum Failure: Error, Equatable {
 

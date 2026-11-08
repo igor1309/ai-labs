@@ -91,13 +91,7 @@ private struct RehearsalProcesses: CallProcessSource {
 public func startRehearsal(boundary: ComposerBoundary, root: URL, call: RehearsalCallApp? = nil,
                            presentPanel: @escaping (Bool) -> Void = { _ in }) async throws -> AudelinMenu {
     let url = root.appendingPathComponent("preferences.json")
-    try await withCheckedThrowingContinuation { (done: CheckedContinuation<Void, any Error>) in
-        DispatchQueue(label: "audelin.rehearsal.preferences").async {
-            done.resume(with: Result {
-                try PreferencesStore(fileURL: url).write(Preferences(automaticRecording: call != nil, liveText: true, callsFolder: root))
-            })
-        }
-    }
+    try PreferencesStore(fileURL: url).write(Preferences(automaticRecording: call != nil, liveText: true, callsFolder: root))
     let composition = await compose(boundary: boundary, preferencesURL: url,
         openCallsFolder: { _ in false }, presentCalls: {}, openURL: { _ in }, presentPanel: presentPanel, terminate: {})
     if let call { call.join() } else { await composition.perform(.start) }

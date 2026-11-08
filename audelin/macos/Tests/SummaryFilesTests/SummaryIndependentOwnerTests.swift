@@ -33,7 +33,7 @@ import Testing
 }
 private struct IndependentLocation: Locations {
     let folder: URL
-    func withFolder<Value: Sendable>(call: String, _ operation: @Sendable (URL) throws -> Value) throws -> Value { try operation(folder) }
+    func withFolder<Value: Sendable>(call: String, _ operation: @Sendable (URL) throws -> Value) async throws -> Value { try operation(folder) }
 }
 private final class LeaseProbingDisk: Disk, Sendable {
     private let disk = FileDisk()

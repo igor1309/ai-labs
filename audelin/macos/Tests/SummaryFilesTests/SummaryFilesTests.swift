@@ -251,7 +251,7 @@ private func record(job: String = "job") -> Record {
 private final class Location: Locations, Sendable {
     let folder: Mutex<URL>
     init(_ folder: URL) { self.folder = Mutex(folder) }
-    func withFolder<Value: Sendable>(call: String, _ work: @Sendable (URL) throws -> Value) throws -> Value {
+    func withFolder<Value: Sendable>(call: String, _ work: @Sendable (URL) throws -> Value) async throws -> Value {
         try folder.withLock { url in
             guard FileManager.default.fileExists(atPath: url.path) else { throw CocoaError(.fileNoSuchFile) }
             return try work(url)

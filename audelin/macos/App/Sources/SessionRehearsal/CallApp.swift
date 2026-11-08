@@ -1,5 +1,4 @@
 import Composer
-import Dispatch
 import Synchronization
 
 /// One call app as Core Audio shows it: Zoom, whose microphone input the
@@ -50,6 +49,6 @@ public final class RehearsalCallApp: CallProcessSource, Sendable {
             return Array(state.listeners.values)
         }
         // Core Audio tells changes on its own threads, never the caller's.
-        DispatchQueue.global().async { listeners.forEach { $0() } }
+        Task { listeners.forEach { $0() } }
     }
 }
