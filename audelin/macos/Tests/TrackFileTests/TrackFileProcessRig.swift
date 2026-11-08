@@ -122,8 +122,10 @@ func withDiskImage(
     } catch { outcome = .failure(error) }
     // Attach may mount before reporting cancellation. Detach must finish before
     // the caller removes the folder, independently of that caller's cancellation.
+    // The image is discarded, so detach forcibly: a plain detach waits for
+    // system services to let go of the volume, about 11 s on CI runners.
     let cleanup = await Task.detached {
-        do { return Result<CommandResult, any Error>.success(try await run("/usr/bin/hdiutil", ["detach", mount.path])) }
+        do { return Result<CommandResult, any Error>.success(try await run("/usr/bin/hdiutil", ["detach", "-force", mount.path])) }
         catch { return .failure(error) }
     }.value
     switch cleanup {
