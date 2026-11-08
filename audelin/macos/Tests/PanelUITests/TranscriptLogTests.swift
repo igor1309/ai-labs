@@ -662,9 +662,7 @@ struct TranscriptLogTests {
         for width: CGFloat in [500, 320, 600, 396, 550, 340] {
             host.rootView = panel(width)
             window.setContentSize(CGSize(width: width, height: 560))
-            host.layoutSubtreeIfNeeded()
-            RunLoop.main.run(until: .now.addingTimeInterval(0.05))
-            host.display()
+            #expect(settlesLayout(of: host, scroll: scroll), "layout did not settle at width \(width)")
             #expect(text.string == originalText, "Resize duplicated or lost transcript text")
             let last = text.firstRect(forCharacterRange: NSRange(location: text.string.utf16.count - 1, length: 1), actualRange: nil)
             let visible = scroll.convert(scroll.contentView.bounds, from: scroll.contentView)
@@ -730,9 +728,7 @@ struct TranscriptLogTests {
         let text = try #require(Offscreen.textView(in: host))
         text.scrollRangeToVisible((text.string as NSString).range(of: "03:24"))
         scroll.contentView.scroll(to: NSPoint(x: 0, y: 800))
-        host.display()
-        RunLoop.main.run(until: .now.addingTimeInterval(0.1))
-        host.display()
+        #expect(settlesLayout(of: host, scroll: scroll), "the paused log did not settle before its anchor was taken")
         let origin = scroll.contentView.bounds.origin
         let anchor = text.characterIndexForInsertion(at: NSPoint(x: 100, y: origin.y + 40))
         let anchorRect = text.firstRect(forCharacterRange: NSRange(location: anchor, length: 1), actualRange: nil)
@@ -741,10 +737,8 @@ struct TranscriptLogTests {
         for step in 0..<10 {
             if !step.isMultiple(of: 2) { entries = history + [newest("слово \(step)")] }
             host.rootView = panel(entries, elapsed: "00:07:\(step + 6)")
-            host.layoutSubtreeIfNeeded()
             _ = host.fittingSize
-            RunLoop.main.run(until: .now.addingTimeInterval(0.03))
-            host.display()
+            #expect(settlesLayout(of: host, scroll: scroll), "layout did not settle on update \(step)")
             let rect = text.firstRect(forCharacterRange: NSRange(location: anchor, length: 1), actualRange: nil)
             #expect(abs(rect.minY - anchorRect.minY) < 1, "visible text moved on update \(step)")
             #expect(abs(scroll.contentView.bounds.origin.y - origin.y) < 1,
@@ -938,6 +932,30 @@ struct TranscriptLogTests {
         while !condition() {
             guard Date.now < deadline else { return false }
             RunLoop.main.run(until: .now.addingTimeInterval(0.01))
+        }
+        return true
+    }
+
+    /// Waits until SwiftUI's deferred update and AppKit's layout have run:
+    /// a fixed run-loop wait measures half-done layout on a slow runner.
+    /// The log is settled when nothing needs layout and its geometry holds
+    /// across several run-loop turns.
+    private func settlesLayout(of host: NSView, scroll: NSScrollView) -> Bool {
+
+        func geometry() -> [NSRect] {
+            [scroll.contentView.bounds, scroll.documentView?.frame ?? .zero, scroll.frame]
+        }
+        let deadline = Date.now.addingTimeInterval(10)
+        var last = geometry()
+        var quiet = 0
+        while quiet < 3 {
+            guard Date.now < deadline else { return false }
+            host.layoutSubtreeIfNeeded()
+            host.display()
+            RunLoop.main.run(until: .now.addingTimeInterval(0.01))
+            let now = geometry()
+            quiet = now == last && !host.needsLayout && !(host.window?.viewsNeedDisplay ?? false) ? quiet + 1 : 0
+            last = now
         }
         return true
     }
