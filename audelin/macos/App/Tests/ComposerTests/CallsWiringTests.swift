@@ -154,7 +154,7 @@ struct CallsWiringTests {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("CallsWiringTests-\(UUID())", isDirectory: true)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: false)
         try await withCleanup {
-            let calls = Calls(folder: root, timeZone: .gmt, duration: { _ in 0 })
+            let calls = Calls(folder: root, timeZone: .gmt, duration: { _ in 0 }, disk: .system)
             let cases: [(minute: Double, made: String?, id: String, title: String)] = [
                 (0, "Zoom", "1970.01.01-0000", "Zoom"),
                 (0, "Zoom", "1970.01.01-0000-2", "Zoom"),

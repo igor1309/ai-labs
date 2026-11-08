@@ -35,14 +35,17 @@ struct CallsTests {
             }()
             let received = Mutex<[URL]>([])
             let sut = Calls(folder: root, timeZone: tokyo,
-                            children: { _ in [folder] },
-                            values: { try $0.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey]) },
                             duration: { url in
                                 received.withLock { $0.append(url) }
                                 if failing == "*" || failing == url.lastPathComponent { throw POSIXError(.EACCES) }
                                 return url.lastPathComponent == "microphone.caf" ? 12.5 : 3.25
-                            }, copy: { try FileManager.default.copyItem(at: $0, to: $1) }, rename: { _, _ in throw POSIXError(.EIO) },
-                            remove: { _ in throw POSIXError(.EIO) })
+                            },
+                            disk: CallsDisk(
+                                children: { _ in [folder] },
+                                values: { try $0.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey]) },
+                                copy: { try FileManager.default.copyItem(at: $0, to: $1) },
+                                rename: { _, _ in throw POSIXError(.EIO) },
+                                remove: { _ in throw POSIXError(.EIO) }))
             #expect(received.withLock { $0.isEmpty })
             let calls = try sut.list()
             #expect(received.withLock { $0 } == [folder.appendingPathComponent("microphone.caf"), folder.appendingPathComponent("call.caf")])
@@ -61,7 +64,7 @@ struct CallsTests {
             }
             let sut = Calls(folder: root, timeZone: tokyo, duration: { url in
                 url.lastPathComponent == "microphone.caf" ? length : 2.25
-            })
+            }, disk: .system)
             let calls = try sut.list()
             #expect(calls == [.init(id: "2026.10.24-1405", title: "Zoom", start: utc("2026-10-24T05:05:00Z"), duration: length.isFinite && length >= 0 ? max(length, 2.25) : 2.25)])
         }
@@ -210,12 +213,13 @@ struct CallsTests {
                 return call
             }()
             let sut = Calls(folder: root, timeZone: tokyo,
-                            children: { try FileManager.default.contentsOfDirectory(at: $0, includingPropertiesForKeys: nil) },
-                            values: { try $0.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey, .fileSizeKey]) },
                             duration: { _ in throw POSIXError(.EIO) },
-                            copy: { try FileManager.default.copyItem(at: $0, to: $1) },
-                            rename: { _, _ in throw POSIXError(.EACCES) },
-                            remove: { url in try FileManager.default.removeItem(at: url.appendingPathComponent("kept")); throw POSIXError(.EACCES) })
+                            disk: CallsDisk(
+                                children: { try FileManager.default.contentsOfDirectory(at: $0, includingPropertiesForKeys: nil) },
+                                values: { try $0.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey, .fileSizeKey]) },
+                                copy: { try FileManager.default.copyItem(at: $0, to: $1) },
+                                rename: { _, _ in throw POSIXError(.EACCES) },
+                                remove: { url in try FileManager.default.removeItem(at: url.appendingPathComponent("kept")); throw POSIXError(.EACCES) }))
             await #expect(throws: POSIXError(.EACCES)) { try sut.rename(id: "2026.10.24-1405", title: "New") }
             do { try sut.delete(id: "2026.10.24-1405"); Issue.record("Deletion should fail") }
             catch { #expect(error.localizedDescription.contains("часть папки могла остаться")) }
@@ -227,7 +231,7 @@ struct CallsTests {
 
 private let tokyo = TimeZone(identifier: "Asia/Tokyo")!
 private func utc(_ value: String) -> Date { ISO8601DateFormatter().date(from: value)! }
-private func adapter(_ root: URL) -> Calls { Calls(folder: root, timeZone: tokyo, duration: TrackFile.duration(at:)) }
+private func adapter(_ root: URL) -> Calls { Calls(folder: root, timeZone: tokyo, duration: TrackFile.duration(at:), disk: .system) }
 private func bytes(_ url: URL) async throws -> Data { try Data(contentsOf: url) }
 private func exists(_ url: URL) async -> Bool { FileManager.default.fileExists(atPath: url.path) }
 private func names(_ url: URL) async throws -> [String] { try FileManager.default.contentsOfDirectory(atPath: url.path).sorted() }

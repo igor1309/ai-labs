@@ -23,41 +23,25 @@ public struct Calls: Sendable {
 
     private let folder: URL
     private let timeZone: TimeZone
-    private let children: @Sendable (URL) throws -> [URL]
-    private let values: @Sendable (URL) throws -> URLResourceValues
     private let duration: @Sendable (URL) throws -> TimeInterval
-    private let rename: @Sendable (URL, URL) throws -> Void
-    private let copy: @Sendable (URL, URL) throws -> Void
-    private let remove: @Sendable (URL) throws -> Void
+    private let disk: CallsDisk
 
-    /// Uses the supplied reader for track durations. Listing performs blocking disk work.
-    public init(folder: URL, timeZone: TimeZone, duration: @escaping @Sendable (URL) throws -> TimeInterval) {
-        self.init(folder: folder, timeZone: timeZone,
-                  children: { try FileManager.default.contentsOfDirectory(at: $0, includingPropertiesForKeys: nil) },
-                  values: { try $0.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey, .fileSizeKey]) },
-                  duration: duration, copy: { try FileManager.default.copyItem(at: $0, to: $1) }, rename: { source, target in
-                      guard renamex_np(source.path, target.path, UInt32(RENAME_EXCL)) == 0 else {
-                          throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
-                      }
-                  }, remove: { try FileManager.default.removeItem(at: $0) })
-    }
-
-    init(folder: URL, timeZone: TimeZone,
-         children: @escaping @Sendable (URL) throws -> [URL],
-         values: @escaping @Sendable (URL) throws -> URLResourceValues,
-         duration: @escaping @Sendable (URL) throws -> TimeInterval,
-         copy: @escaping @Sendable (URL, URL) throws -> Void,
-         rename: @escaping @Sendable (URL, URL) throws -> Void,
-         remove: @escaping @Sendable (URL) throws -> Void) {
+    /// Reads track durations with `duration` and touches folders through
+    /// `disk`. Listing performs blocking disk work.
+    public init(folder: URL, timeZone: TimeZone,
+                duration: @escaping @Sendable (URL) throws -> TimeInterval,
+                disk: CallsDisk) {
         self.folder = folder
         self.timeZone = timeZone
-        self.children = children
-        self.values = values
         self.duration = duration
-        self.rename = rename
-        self.remove = remove
-        self.copy = copy
+        self.disk = disk
     }
+
+    private func children(_ url: URL) throws -> [URL] { try disk.children(url) }
+    private func values(_ url: URL) throws -> URLResourceValues { try disk.values(url) }
+    private func rename(_ source: URL, _ target: URL) throws { try disk.rename(source, target) }
+    private func copy(_ source: URL, _ target: URL) throws { try disk.copy(source, target) }
+    private func remove(_ url: URL) throws { try disk.remove(url) }
 
     public func list() throws -> [Call] {
         try folders(in: folder).map { url, name in
@@ -304,4 +288,27 @@ public struct Calls: Sendable {
         let description: String
         var errorDescription: String? { description }
     }
+}
+
+/// The file system as `Calls` lists, renames, copies and removes folders.
+public struct CallsDisk: Sendable {
+
+    var children: @Sendable (URL) throws -> [URL]
+    var values: @Sendable (URL) throws -> URLResourceValues
+    var copy: @Sendable (URL, URL) throws -> Void
+    var rename: @Sendable (URL, URL) throws -> Void
+    var remove: @Sendable (URL) throws -> Void
+
+    /// The local file system; a rename never replaces an existing folder.
+    public static let system = CallsDisk(
+        children: { try FileManager.default.contentsOfDirectory(at: $0, includingPropertiesForKeys: nil) },
+        values: { try $0.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey, .fileSizeKey]) },
+        copy: { try FileManager.default.copyItem(at: $0, to: $1) },
+        rename: { source, target in
+            guard renamex_np(source.path, target.path, UInt32(RENAME_EXCL)) == 0 else {
+                throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
+            }
+        },
+        remove: { try FileManager.default.removeItem(at: $0) }
+    )
 }

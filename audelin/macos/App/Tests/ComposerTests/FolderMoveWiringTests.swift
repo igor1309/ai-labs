@@ -19,7 +19,7 @@ struct FolderMoveWiringTests {
                 try Data([1, 2, 3]).write(to: source.appendingPathComponent(id + "/audio"))
                 try FileManager.default.createSymbolicLink(at: alias, withDestinationURL: source)
             }
-            let calls = ComposeCalls(disk: Calls(folder: source, timeZone: .gmt, duration: { _ in 0 }))
+            let calls = ComposeCalls(disk: Calls(folder: source, timeZone: .gmt, duration: { _ in 0 }, disk: .system))
             #expect(try await calls.prepareMove(to: source).isEmpty)
             #expect(try await calls.prepareMove(to: alias).isEmpty)
             #expect(try await calls.prepareMove(to: root) == [.init(id: id, title: "", bytes: 3)])

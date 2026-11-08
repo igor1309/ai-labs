@@ -45,7 +45,7 @@ final class SummaryStorage: SummaryFiles.Locations, Sendable {
     convenience init(folder: URL, timeZone: TimeZone, journal: URL?,
                      writeJournal: @escaping @Sendable (Journal, URL) throws -> Void) {
         self.init(folder: folder, journal: journal, writeJournal: writeJournal,
-                  makeCalls: { Calls(folder: $0, timeZone: timeZone, duration: TrackFile.duration(at:)) })
+                  makeCalls: { Calls(folder: $0, timeZone: timeZone, duration: TrackFile.duration(at:), disk: .system) })
     }
     init(folder: URL, journal: URL?, writeJournal: @escaping @Sendable (Journal, URL) throws -> Void,
          makeCalls: @escaping @Sendable (URL) -> Calls) {
