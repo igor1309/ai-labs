@@ -62,40 +62,66 @@ func contextFor(node Entity, content string, pages []Page, page int) *ReadingCon
 	return out
 }
 
-// describe supplies the semantic reading context; surfaces never fetch around it.
-func (f Flow) describe(ctx context.Context, result *Result) error {
-	if result.Session.Screen != "entity" {
-		return nil
+// locateParents uses only the opened entity to preserve a return path without
+// making reading depend on other topics being available.
+func (f Flow) locateParents(result *Result) {
+	if result.entity == nil {
+		return
 	}
-	entity := result.entity
-	var err error
 	if result.Context == nil {
 		result.Context = &ReadingContext{}
 	}
 	c := result.Context
-	for _, parent := range entity.Parents {
+	if result.entity.ProgramID != "" {
+		c.Program = &Program{ID: result.entity.ProgramID}
+	}
+	for _, parent := range result.entity.Parents {
 		if parent.Kind == "topic" {
-			p := parent
-			c.Course = &p
-			break
+			c.Courses = append(c.Courses, parent)
+			if c.Course == nil {
+				p := parent
+				c.Course = &p
+			}
 		}
 	}
-	if entity.ProgramID != "" {
-		c.Program, err = f.Program(ctx, entity.ProgramID)
-		if err != nil {
-			return err
-		}
-		for _, course := range c.Program.Courses {
-			for _, m := range course.Materials {
-				if m.ID == entity.ID {
-					p := course.Topic
-					if len(c.Courses) == 0 {
-						c.Course = &p
-					}
-					c.Courses = append(c.Courses, p)
+}
+
+// describe supplies a complete outline only when explicitly requested.
+func (f Flow) describe(ctx context.Context, result *Result) error {
+	if result.entity == nil || result.entity.ProgramID == "" {
+		return nil
+	}
+	c := result.Context
+	program, err := f.Program(ctx, result.entity.ProgramID)
+	if err != nil {
+		return err
+	}
+	c.Program = program
+	c.Courses = nil
+	for _, course := range program.Courses {
+		for _, m := range course.Materials {
+			if m.ID == result.entity.ID {
+				p := course.Topic
+				if len(c.Courses) == 0 {
+					c.Course = &p
 				}
+				c.Courses = append(c.Courses, p)
 			}
 		}
 	}
 	return nil
+}
+
+func directHistory(result *Result) {
+	result.Session.History = []Place{{Screen: "programs"}}
+	c := result.Context
+	if c == nil {
+		return
+	}
+	if c.Program != nil {
+		result.Session.History = append(result.Session.History, Place{Screen: "program", ProgramID: c.Program.ID, Title: c.Program.Title})
+	}
+	if c.Course != nil {
+		result.Session.History = append(result.Session.History, Place{Screen: "entity", EntityID: c.Course.ID})
+	}
 }

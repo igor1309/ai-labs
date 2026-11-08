@@ -2,7 +2,6 @@ package flow
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"reflect"
 	"slices"
@@ -155,11 +154,7 @@ func TestItemIndexResolvesFromTheSavedScreen(t *testing.T) {
 	f := Flow{Reader: r}
 	program := act(t, f, act(t, f, InitialSession(), "").Session, "open_0")
 	slices.Reverse(r.navigation.Topics)
-	data, _ := json.Marshal(program.Session)
-	var saved Session
-	if err := json.Unmarshal(data, &saved); err != nil {
-		t.Fatal(err)
-	}
+	saved := cloneSession(program.Session)
 	act(t, f, saved, "open_1")
 	equal(t, r.calls[len(r.calls)-1], "entity concept-id")
 }
@@ -281,17 +276,12 @@ func TestLectureReadAScreenAtATimeWithContents(t *testing.T) {
 	refused(t, f, list.Session, "contents")
 }
 
-func TestStateSavedByTheJavaScriptBotStillLoads(t *testing.T) {
+func TestRestoredReadingPositionAndHistoryStillNavigate(t *testing.T) {
 	t.Parallel()
 	r := setup()
 	makeMaterial(r)
 	r.content = "# L\n\n## A\n\na\n\n## B\n\nb"
-	raw := `{"screen":"entity","entityId":"material-id","page":2,"items":[],"history":[{"screen":"programs"},` +
-		`{"screen":"program","programId":"p","title":"Course"},{"screen":"entity","entityId":"topic-id"}],"step":72,"pageCount":23}`
-	var s Session
-	if err := json.Unmarshal([]byte(raw), &s); err != nil {
-		t.Fatal(err)
-	}
+	s := Session{Place: Place{Screen: "entity", EntityID: "material-id", Page: n(2)}, Items: []Item{}, History: []Place{{Screen: "programs"}, {Screen: "program", ProgramID: "p", Title: "Course"}, {Screen: "entity", EntityID: "topic-id"}}, Step: 72, PageCount: n(23)}
 	result := act(t, Flow{Reader: r}, s, "")
 	equal(t, result.View.Markdown, "## B\n\nb")
 	equal(t, result.Session.Step, 73)

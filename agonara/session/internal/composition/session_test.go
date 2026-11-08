@@ -7,9 +7,11 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/igor1309/ai-labs/agonara/session/internal/flow"
 	"github.com/igor1309/ai-labs/agonara/session/internal/sessionstore"
@@ -26,7 +28,7 @@ func (readingSpy) Navigation(context.Context, string) (flow.Navigation, error) {
 	return flow.Navigation{Topics: []flow.Item{{ID: "t", Title: "Topic", Kind: "topic"}}}, nil
 }
 func (readingSpy) Entity(_ context.Context, id string) (flow.Entity, error) {
-	e := flow.Entity{ID: id, Title: "Lecture", ProgramID: "p", Kind: "material_reference", Readable: true}
+	e := flow.Entity{ID: id, Title: "Lecture", ProgramID: "p", Kind: "material_reference", Readable: true, Parents: []flow.Item{{ID: "t", Title: "Topic", Kind: "topic"}}}
 	if id == "t" {
 		e.Kind = "topic"
 		e.Readable = false
@@ -40,6 +42,7 @@ func (readingSpy) MaterialContent(context.Context, string) (string, error) {
 }
 
 type messageAPI struct {
+	err     error
 	methods []string
 	params  []map[string]any
 }
@@ -47,7 +50,7 @@ type messageAPI struct {
 func (a *messageAPI) Call(_ context.Context, m string, p map[string]any) (json.RawMessage, error) {
 	a.methods = append(a.methods, m)
 	a.params = append(a.params, p)
-	return nil, nil
+	return nil, a.err
 }
 func request(t *testing.T, h http.Handler, path string) *httptest.ResponseRecorder {
 	t.Helper()
@@ -61,23 +64,21 @@ func request(t *testing.T, h http.Handler, path string) *httptest.ResponseRecord
 // Contract test: integrates reading, service, surface adapters, HTTP rendering and filesystem restart; Telegram is a spy.
 func TestBothSurfacesResumeOneReadingSessionAfterSwitchingAndRestart(t *testing.T) {
 	t.Parallel()
-	activity := flow.Flow{Reader: readingSpy{}, PageSize: 1000}
 	disk := sessionstore.ReadingFile{Path: filepath.Join(t.TempDir(), "reading.json")}
-	service, err := flow.NewService(activity, disk)
+	api := &messageAPI{}
+	assembled, err := Assemble(context.Background(), Config{PageSize: 1000, WebToken: "access", ChatID: 1}, false, Dependencies{
+		Content: readingSpy{}, Reading: disk, API: api, Transport: &transportSpy{}, Wait: func(context.Context, time.Duration) error { t.Fatal("unexpected wait"); return nil }, Log: func(string) {},
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	server := &web.Server{Session: Web{service}, Token: "access"}
-	handler, err := server.Handler()
-	if err != nil {
-		t.Fatal(err)
-	}
+	handler := assembled.Handler
 	page := request(t, handler, "/m/m?page=1")
 	if page.Code != 200 || !strings.Contains(page.Body.String(), `<h1 class="heading">First</h1>`) || !strings.Contains(page.Body.String(), "First &lt;text&gt;.") {
 		t.Fatalf("%d %s", page.Code, page.Body.String())
 	}
-	api := &messageAPI{}
-	bot := telegram.Bot{API: api, Session: Telegram{service}, AllowedChatID: 1, Log: func(string) {}}
+	api.methods, api.params = nil, nil
+	bot := assembled.Bot
 	state, err := bot.Handle(context.Background(), telegram.Update{Message: &telegram.Message{Chat: telegram.Chat{ID: 1}}}, telegram.State{})
 	if err != nil || state.Revision != 2 || !strings.Contains(api.params[0]["rich_message"].(map[string]any)["html"].(string), "First &lt;text&gt;.") {
 		t.Fatalf("%+v %v %+v", state, err, api.params)
@@ -92,24 +93,24 @@ func TestBothSurfacesResumeOneReadingSessionAfterSwitchingAndRestart(t *testing.
 	if err != nil || api.methods[len(api.methods)-1] != "answerCallbackQuery" || !strings.Contains(api.params[len(api.params)-1]["text"].(string), "out of date") {
 		t.Fatalf("%v %+v", err, api.params)
 	}
-	service, err = flow.NewService(activity, disk)
+	assembled, err = Assemble(context.Background(), Config{PageSize: 1000, WebToken: "access", ChatID: 1}, false, Dependencies{Content: readingSpy{}, Reading: disk, API: api, Transport: &transportSpy{}, Wait: func(context.Context, time.Duration) error { return nil }, Log: func(string) {}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := (Telegram{service}).Show(context.Background(), telegram.Request{})
+	result, err := assembled.Telegram.Show(context.Background(), telegram.Request{})
 	if err != nil || result.View.Reading.Page != 2 || result.View.Markdown != "## Second\n\nSecond text." {
 		t.Fatalf("%+v %v", result, err)
 	}
-	result, err = (Telegram{service}).Show(context.Background(), telegram.Request{Action: "prev", Revision: number(result.Revision)})
+	result, err = assembled.Telegram.Show(context.Background(), telegram.Request{Action: "prev", Revision: number(result.Revision)})
 	if err != nil || result.View.Reading.Page != 1 {
 		t.Fatalf("%+v %v", result, err)
 	}
-	pageView, err := (Web{service}).Open(context.Background(), web.Request{Route: "entity", ID: "m"})
+	pageView, err := assembled.Web.Open(context.Background(), web.Request{Route: "entity", ID: "m"})
 	if err != nil || pageView.Document.Page.Index != 1 {
 		t.Fatalf("%+v %v", pageView, err)
 	}
 	doc := pageView.Document
-	explanation, err := (Web{service}).Explain(context.Background(), web.Question{Kind: "simpler", EntityID: "m", Reference: doc.References[0], MaterialRevision: doc.MaterialRevision, Revision: doc.Revision})
+	explanation, err := assembled.Web.Explain(context.Background(), web.Question{Kind: "simpler", EntityID: "m", Reference: doc.References[0], MaterialRevision: doc.MaterialRevision, Revision: doc.Revision})
 	if err != nil || explanation.Available {
 		t.Fatalf("%+v %v", explanation, err)
 	}
@@ -121,11 +122,11 @@ func (s *memoryStorage) Load() (flow.State, error) { return s.state, nil }
 func (s *memoryStorage) Save(v flow.State) error   { s.state = v; return nil }
 func TestConcurrentWebAndTelegramActionsAcceptExactlyOneRevision(t *testing.T) {
 	t.Parallel()
-	service, err := flow.NewService(flow.Flow{Reader: readingSpy{}, PageSize: 1000}, &memoryStorage{state: flow.InitialState()})
+	assembled, err := Assemble(context.Background(), Config{PageSize: 1000, WebToken: "access", ChatID: 1}, false, Dependencies{Content: readingSpy{}, Reading: &memoryStorage{state: flow.InitialState()}, API: &messageAPI{}, Transport: &transportSpy{}, Wait: func(context.Context, time.Duration) error { return nil }, Log: func(string) {}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := (Web{service}).Open(context.Background(), web.Request{Route: "entity", ID: "m", Page: number(0)}); err != nil {
+	if _, err := assembled.Web.Open(context.Background(), web.Request{Route: "entity", ID: "m", Page: number(0)}); err != nil {
 		t.Fatal(err)
 	}
 	start := make(chan struct{})
@@ -135,13 +136,13 @@ func TestConcurrentWebAndTelegramActionsAcceptExactlyOneRevision(t *testing.T) {
 	go func() {
 		defer wg.Done()
 		<-start
-		_, e := (Web{service}).Open(context.Background(), web.Request{Route: "entity", ID: "m", Page: number(1), Revision: number(1)})
+		_, e := assembled.Web.Open(context.Background(), web.Request{Route: "entity", ID: "m", Page: number(1), Revision: number(1)})
 		out <- e
 	}()
 	go func() {
 		defer wg.Done()
 		<-start
-		_, e := (Telegram{service}).Show(context.Background(), telegram.Request{Action: "next", Revision: number(1)})
+		_, e := assembled.Telegram.Show(context.Background(), telegram.Request{Action: "next", Revision: number(1)})
 		out <- e
 	}()
 	close(start)
@@ -151,8 +152,45 @@ func TestConcurrentWebAndTelegramActionsAcceptExactlyOneRevision(t *testing.T) {
 	if !((a == nil && stale(b)) || (b == nil && stale(a))) {
 		t.Fatalf("%v %v", a, b)
 	}
-	final, err := (Telegram{service}).Show(context.Background(), telegram.Request{})
+	final, err := assembled.Telegram.Show(context.Background(), telegram.Request{})
 	if err != nil || final.View.Reading.Page != 1 || final.Revision != 3 {
 		t.Fatalf("%+v %v", final, err)
+	}
+}
+
+// Contract test: production assembly migrates real legacy files; API delivery is an injected spy.
+func TestLegacyCallbackNeverBecomesCurrentAfterWebMigrationAndNavigation(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	oldBot := filepath.Join(dir, "bot.json")
+	oldWeb := filepath.Join(dir, "web.json")
+	writeFile(t, oldBot, []byte(`{"offset":41,"session":{"screen":"entity","entityId":"old-material","page":0,"step":3}}`))
+	writeFile(t, oldWeb, []byte(`{"entityId":"m","programId":"p","page":0}`))
+	disk := sessionstore.ReadingFile{Path: filepath.Join(dir, "reading.json"), LegacyWeb: oldWeb, LegacyBot: oldBot}
+	transport := sessionstore.TransportFile{Path: filepath.Join(dir, "transport.json"), Legacy: oldBot}
+	api := &messageAPI{}
+	a, err := Assemble(context.Background(), Config{PageSize: 1000, WebToken: "access", ChatID: 1}, false, Dependencies{Content: readingSpy{}, Reading: disk, API: api, Transport: transport, Wait: func(context.Context, time.Duration) error { return nil }, Log: func(string) {}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	state, err := transport.Load()
+	if err != nil || state.Revision != 3 || state.Offset != 41 {
+		t.Fatalf("transport: %+v %v", state, err)
+	}
+	for _, page := range []int{0, 1, 1} {
+		out, err := a.Web.Open(context.Background(), web.Request{Route: "entity", ID: "m", Page: number(page)})
+		if err != nil || out.Document.Revision <= state.Revision {
+			t.Fatalf("web revision: %+v %v", out, err)
+		}
+	}
+	before, err := disk.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	api.methods, api.params = nil, nil
+	got, err := a.Bot.Handle(context.Background(), telegram.Update{CallbackQuery: &telegram.CallbackQuery{ID: "old", Data: "3:next", Message: &telegram.Message{Chat: telegram.Chat{ID: 1}, MessageID: 7}}}, state)
+	after, loadErr := disk.Load()
+	if err != nil || loadErr != nil || got != state || !reflect.DeepEqual(before, after) || !reflect.DeepEqual(api.methods, []string{"answerCallbackQuery"}) || !strings.Contains(api.params[0]["text"].(string), "out of date") {
+		t.Fatalf("legacy callback applied: state=%+v err=%v calls=%v", after, err, api.params)
 	}
 }

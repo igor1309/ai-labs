@@ -28,21 +28,26 @@ type Poller struct {
 	storage PollStorage
 	wait    Wait
 	log     func(string)
+	state   State
 }
 
 func NewPoller(api PollAPI, handler UpdateHandler, storage PollStorage, wait Wait, log func(string)) (*Poller, error) {
 	if api == nil || handler == nil || storage == nil || wait == nil || log == nil {
 		return nil, errors.New("poll API, handler, storage, wait and log are required")
 	}
-	return &Poller{api, handler, storage, wait, log}, nil
+	state, err := storage.Load()
+	if err != nil {
+		return nil, err
+	}
+	if state.Offset < 0 || state.Revision < 0 {
+		return nil, errors.New("invalid transport offset or revision")
+	}
+	return &Poller{api: api, handler: handler, storage: storage, wait: wait, log: log, state: state}, nil
 }
 
 // Run returns after cancellation or an unrecoverable storage/poller conflict.
 func (p *Poller) Run(ctx context.Context) error {
-	state, err := p.storage.Load()
-	if err != nil {
-		return err
-	}
+	state := p.state
 	for ctx.Err() == nil {
 		raw, err := p.api.Call(ctx, "getUpdates", map[string]any{"offset": state.Offset, "timeout": 25, "allowed_updates": []string{"message", "callback_query"}})
 		if ctx.Err() != nil {
@@ -69,6 +74,7 @@ func (p *Poller) Run(ctx context.Context) error {
 				return err
 			}
 			state = next
+			p.state = next
 		}
 		if err != nil {
 			var apiErr *Error

@@ -5,6 +5,8 @@ runnerHome=${AGONARA_SESSION_HOME:-$HOME/.local/share/agonara-session}
 launchDir=${AGONARA_SESSION_LAUNCH_DIR:-$HOME/Library/LaunchAgents}
 envFile=${AGONARA_SESSION_ENV_FILE:-$HOME/.config/agonara-session/probe.env}
 launchctlBin=${AGONARA_SESSION_LAUNCHCTL:-launchctl}
+curlBin=${AGONARA_SESSION_CURL:-curl}
+sleepBin=${AGONARA_SESSION_SLEEP:-sleep}
 domain=gui/$(id -u)
 sessionLabel=$domain/ai.labs.agonara-session
 webLabel=$domain/ai.labs.agonara-web
@@ -24,16 +26,24 @@ restore() {
   stop "$sessionLabel" || return 1
   stop "$webLabel" || return 1
   cp -p "$record/agonara-session" "$bin" || return 1
+  if [[ -f "$record/single-owner" ]]; then
+    cp -p "$record/single-owner" "$runnerHome/single-owner" || return 1
+  else
+    rm -f "$runnerHome/single-owner" || return 1
+  fi
   if [[ -f "$record/web-loaded" ]]; then bootstrap ai.labs.agonara-web || return 1; fi
   if [[ -f "$record/session-loaded" ]]; then bootstrap ai.labs.agonara-session || return 1; fi
+  restored_available
+}
+restored_available() {
   # Rollback gates on availability of the restored jobs, never the failed version's identity.
   if [[ -f "$record/web-loaded" ]]; then loaded "$webLabel" || return 1; fi
   if [[ -f "$record/session-loaded" ]]; then loaded "$sessionLabel" || return 1; fi
-  if [[ -f "$record/web-loaded" ]]; then
+  if [[ -f "$record/web-loaded" || ( -f "$record/single-owner" && -f "$record/session-loaded" ) ]]; then
     local available=false
     for attempt in {1..10}; do
-      if [[ "$(curl -s --max-time 2 -o /dev/null -w '%{http_code}' "${AGONARA_SESSION_HEALTH_URL:-http://127.0.0.1:8740/}")" == 401 ]]; then available=true; break; fi
-      sleep 1
+      if [[ "$("$curlBin" -s --max-time 2 -o /dev/null -w '%{http_code}' "${AGONARA_SESSION_HEALTH_URL:-http://127.0.0.1:8740/}")" == 401 ]]; then available=true; break; fi
+      "$sleepBin" 1
     done
     [[ "$available" == true ]] || return 1
   fi
@@ -48,7 +58,8 @@ activate)
   [[ -f "$bin" && -f "$launchDir/ai.labs.agonara-session.plist" ]] || { echo "existing runner and launchd configuration required" >&2; exit 1; }
   mkdir -p "$record"
   cp -p "$bin" "$record/agonara-session"
-  rm -f "$record/web-loaded" "$record/session-loaded"
+  rm -f "$record/web-loaded" "$record/session-loaded" "$record/single-owner"
+  if [[ -f "$runnerHome/single-owner" ]]; then cp -p "$runnerHome/single-owner" "$record/single-owner"; fi
   swapped=false
   if loaded "$webLabel"; then touch "$record/web-loaded"; fi
   if loaded "$sessionLabel"; then touch "$record/session-loaded"; fi
@@ -60,6 +71,7 @@ activate)
     else
       if [[ -f "$record/web-loaded" ]] && ! loaded "$webLabel"; then bootstrap ai.labs.agonara-web || echo "web restore failed" >&2; fi
       if [[ -f "$record/session-loaded" ]] && ! loaded "$sessionLabel"; then bootstrap ai.labs.agonara-session || echo "session restore failed" >&2; fi
+      restored_available || echo "restored services unavailable; operator attention required" >&2
     fi
     exit 1
   }
@@ -73,7 +85,7 @@ activate)
   ready=false
   for attempt in {1..10}; do
     if "$bin" -env-file="$envFile" -check-running; then ready=true; break; fi
-    sleep 1
+    "$sleepBin" 1
   done
   [[ "$ready" == true ]]
   trap - ERR
@@ -83,7 +95,6 @@ activate)
 rollback)
   [[ -f "$record/agonara-session" ]] || { echo "no rollback binary" >&2; exit 1; }
   restore
-  rm -f "$runnerHome/single-owner"
   echo "previous services restored; legacy files retained"
   ;;
 *) echo "usage: $0 check | activate | rollback" >&2; exit 2 ;;

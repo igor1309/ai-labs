@@ -3,6 +3,7 @@ package composition
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -18,6 +19,85 @@ import (
 	"github.com/igor1309/ai-labs/agonara/session/internal/telegram"
 	"github.com/igor1309/ai-labs/agonara/session/internal/web"
 )
+
+// AssemblyAPI is the initialization and transport capability the runner connects.
+type AssemblyAPI interface {
+	Call(context.Context, string, map[string]any) (json.RawMessage, error)
+}
+type ReadingStorage interface {
+	Load() (flow.State, error)
+	Save(flow.State) error
+}
+type TransportStorage interface {
+	Load() (telegram.State, error)
+	Save(telegram.State) error
+}
+type ReadingContent interface {
+	ListPrograms(context.Context) ([]flow.CatalogEntry, error)
+	Navigation(context.Context, string) (flow.Navigation, error)
+	Entity(context.Context, string) (flow.Entity, error)
+	MaterialContent(context.Context, string) (string, error)
+}
+type Dependencies struct {
+	Content   ReadingContent
+	Reading   ReadingStorage
+	API       AssemblyAPI
+	Transport TransportStorage
+	Wait      func(context.Context, time.Duration) error
+	Log       func(string)
+}
+type Assembly struct {
+	Handler  http.Handler
+	Bot      *telegram.Bot
+	Poller   *telegram.Poller
+	Web      Web
+	Telegram Telegram
+}
+
+// Assemble is used before opening the HTTP listener. All fallible initialization,
+// including authentication and transport loading, precedes a publishable handler.
+func Assemble(ctx context.Context, c Config, standalone bool, d Dependencies) (*Assembly, error) {
+	if d.Content == nil || d.Reading == nil || d.Log == nil {
+		return nil, errors.New("content, reading storage and log are required")
+	}
+	if !standalone && (d.API == nil || d.Transport == nil || d.Wait == nil) {
+		return nil, errors.New("API, transport storage and wait are required")
+	}
+	activity, err := flow.New(d.Content, c.PageSize)
+	if err != nil {
+		return nil, err
+	}
+	service, err := flow.NewService(activity, d.Reading)
+	if err != nil {
+		return nil, err
+	}
+	out := &Assembly{Web: Web{Session: service}}
+	if !standalone {
+		if _, err := d.API.Call(ctx, "getMe", nil); err != nil {
+			return nil, fmt.Errorf("authenticate Telegram: %w", err)
+		}
+		out.Telegram = Telegram{Session: service}
+		bot, err := telegram.NewBot(d.API, out.Telegram, c.ChatID, d.Log)
+		if err != nil {
+			return nil, err
+		}
+		poller, err := telegram.NewPoller(d.API, bot, d.Transport, d.Wait, d.Log)
+		if err != nil {
+			return nil, err
+		}
+		out.Bot, out.Poller = &bot, poller
+	}
+	server := &web.Server{Session: out.Web, Token: c.WebToken, Log: d.Log}
+	pageHandler, err := server.Handler()
+	if err != nil {
+		return nil, err
+	}
+	out.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Agonara-Session", "shared")
+		pageHandler.ServeHTTP(w, r)
+	})
+	return out, nil
+}
 
 // Run attaches real infrastructure at the process boundary and joins all work before returning.
 func Run(parent context.Context, c Config, standalone bool, log func(string)) error {
@@ -44,23 +124,14 @@ func Run(parent context.Context, c Config, standalone bool, log func(string)) er
 	if err != nil {
 		return err
 	}
-	activity, err := flow.New(Content{Source: cache}, c.PageSize)
-	if err != nil {
-		return err
-	}
-	service, err := flow.NewService(activity, sessionstore.ReadingFile{Path: c.StatePath, LegacyWeb: c.LegacyWeb, LegacyBot: c.LegacyBot})
-	if err != nil {
-		return err
-	}
-	server := &web.Server{Session: Web{Session: service}, Token: c.WebToken, Log: log}
-	pageHandler, err := server.Handler()
-	if err != nil {
-		return err
-	}
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("X-Agonara-Session", "shared")
-		pageHandler.ServeHTTP(w, r)
+	assembled, err := Assemble(parent, c, standalone, Dependencies{
+		Content: Content{Source: cache}, Reading: sessionstore.ReadingFile{Path: c.StatePath, LegacyWeb: c.LegacyWeb, LegacyBot: c.LegacyBot},
+		API:       telegram.Client{Token: c.BotToken, HTTP: &http.Client{Timeout: 40 * time.Second}},
+		Transport: sessionstore.TransportFile{Path: c.TransportPath, Legacy: c.LegacyBot}, Wait: wait, Log: log,
 	})
+	if err != nil {
+		return err
+	}
 	listener, err := net.Listen("tcp", c.WebAddr)
 	if err != nil {
 		return err
@@ -68,26 +139,13 @@ func Run(parent context.Context, c Config, standalone bool, log func(string)) er
 	defer listener.Close()
 	ctx, cancel := context.WithCancel(parent)
 	defer cancel()
-	httpServer := &http.Server{Handler: handler, ReadHeaderTimeout: 10 * time.Second}
+	httpServer := &http.Server{Handler: assembled.Handler, ReadHeaderTimeout: 10 * time.Second}
 	httpDone := make(chan error, 1)
 	go func() { httpDone <- httpServer.Serve(listener) }()
 	var pollDone chan error
-	if !standalone {
-		api := telegram.Client{Token: c.BotToken, HTTP: &http.Client{Timeout: 40 * time.Second}}
-		bot, err := telegram.NewBot(api, Telegram{Session: service}, c.ChatID, log)
-		if err != nil {
-			httpServer.Close()
-			<-httpDone
-			return err
-		}
-		poller, err := telegram.NewPoller(api, bot, sessionstore.TransportFile{Path: c.TransportPath, Legacy: c.LegacyBot}, wait, log)
-		if err != nil {
-			httpServer.Close()
-			<-httpDone
-			return err
-		}
+	if assembled.Poller != nil {
 		pollDone = make(chan error, 1)
-		go func() { pollDone <- poller.Run(ctx) }()
+		go func() { pollDone <- assembled.Poller.Run(ctx) }()
 	}
 	log("serving on " + listener.Addr().String())
 	var result error

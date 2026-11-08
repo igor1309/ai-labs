@@ -20,12 +20,12 @@ type Storage interface {
 type Activity interface {
 	Apply(context.Context, Session, Command) (*Snapshot, error)
 	Explain(context.Context, Session, Question) (Explanation, error)
+	Enrich(context.Context, *Snapshot) error
 }
 
 type State struct {
-	Version int       `json:"version"`
-	Current Session   `json:"current"`
-	Resume  *Bookmark `json:"resume,omitempty"`
+	Current Session
+	Resume  *Bookmark
 }
 type Bookmark struct {
 	ProgramID, EntityID, Title string
@@ -45,10 +45,11 @@ type ProgramSummary struct {
 	Topics    int
 }
 type Snapshot struct {
-	Result   *Result
-	Programs []ProgramSummary
-	Program  *Program
-	Resume   *Bookmark
+	directEntity bool
+	Result       *Result
+	Programs     []ProgramSummary
+	Program      *Program
+	Resume       *Bookmark
 }
 type Question struct {
 	Kind, MaterialID, MaterialRevision, Reference, Text string
@@ -81,10 +82,10 @@ func NewService(activity Activity, storage Storage) (*Service, error) {
 	}
 	return &Service{activity: activity, storage: storage, state: cloneState(state)}, nil
 }
-func InitialState() State { return State{Version: 1, Current: InitialSession()} }
+func InitialState() State { return State{Current: InitialSession()} }
 func ValidateState(s State) error {
-	if s.Version != 1 || s.Current.Step < 0 {
-		return errors.New("invalid reading state version or revision")
+	if s.Current.Step < 0 {
+		return errors.New("invalid reading revision")
 	}
 	validPlace := func(p Place) bool {
 		if p.Page != nil && *p.Page < 0 {
@@ -116,7 +117,20 @@ func ValidateState(s State) error {
 	}
 	return nil
 }
-func (s *Service) Apply(ctx context.Context, command Command) (*Snapshot, error) {
+func (s *Service) Apply(ctx context.Context, command Command) (*Result, error) {
+	snapshot, err := s.apply(ctx, command, false)
+	if err != nil || snapshot == nil {
+		return nil, err
+	}
+	return snapshot.Result, nil
+}
+
+// Open includes catalog counts and the complete outline before committing the action.
+// Supplementary read failures therefore leave the committed reading position intact.
+func (s *Service) Open(ctx context.Context, command Command) (*Snapshot, error) {
+	return s.apply(ctx, command, true)
+}
+func (s *Service) apply(ctx context.Context, command Command, enriched bool) (*Snapshot, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if err := ctx.Err(); err != nil {
@@ -136,6 +150,11 @@ func (s *Service) Apply(ctx context.Context, command Command) (*Snapshot, error)
 	}
 	if command.Revision != nil && current.EntityID == next.Result.Session.EntityID && current.MaterialRevision != "" && current.MaterialRevision != next.Result.Session.MaterialRevision {
 		return nil, ErrStale
+	}
+	if enriched {
+		if err := s.activity.Enrich(ctx, next); err != nil {
+			return nil, err
+		}
 	}
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -241,38 +260,45 @@ func (f Flow) Apply(ctx context.Context, session Session, command Command) (*Sna
 	if err != nil || result == nil {
 		return nil, err
 	}
-	if err := f.describe(ctx, result); err != nil {
-		return nil, err
+	f.locateParents(result)
+	if command.Target == "entity" {
+		directHistory(result)
 	}
-	if command.Target == "entity" && result.Context != nil {
-		c := result.Context
-		if c.Program != nil {
-			result.Session.History = append(result.Session.History, Place{Screen: "program", ProgramID: c.Program.ID, Title: c.Program.Title})
-		}
-		if c.Course != nil {
-			result.Session.History = append(result.Session.History, Place{Screen: "entity", EntityID: c.Course.ID})
-		}
-	}
-	out := &Snapshot{Result: result}
+	out := &Snapshot{Result: result, directEntity: command.Target == "entity"}
+	return out, nil
+}
+
+// Enrich queries supplementary catalog data for surfaces that render it.
+func (f Flow) Enrich(ctx context.Context, out *Snapshot) error {
+	result := out.Result
+	var err error
 	switch result.Session.Screen {
 	case "programs":
 		for _, p := range result.Session.Items {
 			nav, err := f.Reader.Navigation(ctx, p.ID)
 			if err != nil {
-				return nil, err
+				return err
 			}
 			out.Programs = append(out.Programs, ProgramSummary{ID: p.ID, Title: p.Title, Topics: len(nav.Topics)})
 		}
 	case "program":
 		out.Program, err = f.Program(ctx, result.Session.ProgramID)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		result.View.Title = out.Program.Title
 		result.Session.Title = out.Program.Title
+	case "entity":
+		if err := f.describe(ctx, result); err != nil {
+			return err
+		}
+		if out.directEntity {
+			directHistory(result)
+		}
 	}
-	return out, nil
+	return nil
 }
+
 func (f Flow) Explain(ctx context.Context, session Session, q Question) (Explanation, error) {
 	switch q.Kind {
 	case "more", "simpler", "example", "ask":

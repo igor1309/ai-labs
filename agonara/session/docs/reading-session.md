@@ -22,7 +22,9 @@ source paragraph references. It resolves explanation context without trusting a
 browser's quoted text.
 
 The session service takes an activity and a storage port at construction.
-`Apply(context, command)` returns a snapshot after persistence;
+`Apply(context, command)` returns the essential reading result after persistence.
+`Open(context, command)` additionally queries catalog counts and the full program
+outline, then commits the action only if all requested reads succeed;
 `Explain(context, question)` returns capability availability and resolved source
 context. A command optionally carries the revision it was rendered against. An
 explanation requires a session revision, material ID, material revision and
@@ -62,24 +64,37 @@ Neither surface imports the activity, HTTP content client or reading storage.
   file. Corrupt or unreadable selected state fails startup. Migration chooses an
   existing shared file first, otherwise the web place, otherwise the bot session,
   otherwise the program list. Legacy files are never overwritten or deleted.
+  The shared revision starts above the legacy bot's latest callback revision,
+  including when the web place wins, so old buttons cannot become current again.
   Telegram offset and displayed-message revision migrate to a separate file.
+  Schema versions and JSON records belong to the file adapter; the service only
+  validates semantic reading state.
 - The normal runner owns one service instance and one poller. Required settings
   and distinct absolute state paths are checked before startup. Kernel locks
   prevent overlapping owners and local pollers. Standalone web requires its own
-  explicit state path and does not poll Telegram.
+  explicit state path and does not poll Telegram. Combined startup authenticates
+  Telegram and loads and validates transport state before exposing HTTP readiness.
 - URLs, cookie-token exchange, escaped content, existing assets, long titles,
   sections, topic/module placement, rich-message rendering and plain fallback
   remain surface behavior. Paragraph actions and Telegram callbacks carry session revisions; direct page
   URLs express an absolute position and remain refreshable. Stale web actions
   return 409 and stale Telegram buttons are
   acknowledged without applying an action.
+- Essential reading actions require only their own content: catalog listing does
+  not require per-program navigation, and paging does not load unrelated topics.
+  Full catalog counts and outlines are supplementary semantic queries requested
+  by web through the service, never by fetching around it. A failed supplementary
+  query leaves the complete committed state and bookmark unchanged.
 - The content gateway caches successful reads for five minutes, using an
   injected clock; it never caches errors. Both surfaces share that instance.
 - Deployment stages and validates the binary before stopping services. The first
   handoff is explicit. Legacy web and bot jobs stop before the combined runner
   starts; standalone web is disabled for normal deployment. Failed activation
-  restores the previous binary and services. Rollback uses legacy files and
-  checks restored availability rather than the failed runner's version.
+  restores the previous binary, services and deployment mode. Rollback to either
+  legacy web or an established combined runner checks restored HTTP availability
+  rather than the failed runner's version. A failed recovery retains its rollback
+  record and the restored deployment mode; it never reports successful recovery.
+  Rolling back an established combined runner preserves automatic updates.
 
 ## Tests
 

@@ -14,17 +14,20 @@ export PATH=/opt/homebrew/bin:$PATH
 
 module=agonara/session
 runnerHome=${AGONARA_SESSION_HOME:-$HOME/.local/share/agonara-session}
-logfile=$HOME/Library/Logs/agonara-session/post-merge.log
+logfile=${AGONARA_SESSION_MERGE_LOG:-$HOME/Library/Logs/agonara-session/post-merge.log}
+gitBin=${AGONARA_SESSION_GIT:-git}
+goBin=${AGONARA_SESSION_GO:-go}
+migrateBin=${AGONARA_SESSION_MIGRATE:-deploy/migrate.sh}
 
 changed() { # from to: exit 0 if the range touches the bot's code
-  git diff --name-only "$1" "$2" -- "$module" \
+  "$gitBin" diff --name-only "$1" "$2" -- "$module" \
     ':(exclude)'"$module"'/docs' ':(exclude)'"$module"'/design' ':(exclude)*.md' |
     grep -q .
 }
 
 case "${1:-}" in
 install)
-  hooks=$(git rev-parse --git-common-dir)/hooks
+  hooks=$("$gitBin" rev-parse --git-common-dir)/hooks
   hook=$hooks/post-merge
   line='[ -x agonara/session/deploy/merge-hook.sh ] && agonara/session/deploy/merge-hook.sh run'
   if [[ -e "$hook" ]] && grep -qF "$line" "$hook"; then echo "already installed in $hook"; exit 0; fi
@@ -38,20 +41,20 @@ plan)
   if changed "$2" "$3"; then echo "would stage the single reading runner; activation requires migrated configuration"; else echo "nothing to deploy"; fi
   ;;
 run)
-  [[ "$(git rev-parse --abbrev-ref HEAD)" == trunk ]] || exit 0
-  git rev-parse -q --verify ORIG_HEAD >/dev/null || exit 0
+  [[ "$("$gitBin" rev-parse --abbrev-ref HEAD)" == trunk ]] || exit 0
+  "$gitBin" rev-parse -q --verify ORIG_HEAD >/dev/null || exit 0
   changed ORIG_HEAD HEAD || exit 0
   mkdir -p "$(dirname "$logfile")" "$runnerHome/bin"
   exec >>"$logfile" 2>&1
-  echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) deploying $(git rev-parse --short HEAD)"
+  echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) deploying $("$gitBin" rev-parse --short HEAD)"
   cd "$module" || exit 0
   export GOCACHE="$runnerHome/gocache"
-  if ! go test -count=1 ./...; then
+  if ! "$goBin" test -count=1 -timeout 1m ./...; then
     echo "tests FAILED; the old bot and page still run"
     exit 0
   fi
   new=$runnerHome/bin/agonara-session.new
-  if ! go build -o "$new" ./cmd/agonara-session; then
+  if ! "$goBin" build -o "$new" ./cmd/agonara-session; then
     echo "build FAILED; existing services still run"
     exit 0
   fi
@@ -59,7 +62,7 @@ run)
     echo "single-owner runner staged; configure distinct state paths and run deploy/migrate.sh activate explicitly"
     exit 0
   fi
-  if ! deploy/migrate.sh activate; then
+  if ! "$migrateBin" activate; then
     echo "deployment FAILED; inspect rollback result"
   fi
   exit 0

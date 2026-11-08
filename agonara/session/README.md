@@ -48,13 +48,17 @@ without it, migration chooses the existing web place, then the bot session.
 Corruption fails startup rather than silently losing the student's place. Neither
 legacy file is changed. Telegram offset and message revision are copied into the
 new transport file. Callback revisions are validated against the shared session,
-so a web move invalidates old Telegram buttons.
+so a web move invalidates old Telegram buttons. Migration starts the shared
+revision above the legacy bot's callback revision even when the web place wins.
 
 URLs remain `/`, `/p/{program}` and `/m/{entity}?page=N`. Open
 `http://<mac>.local:8740/?token=…` once. Paragraph actions carry a session revision; stale actions return 409.
 Pagination keeps canonical URLs so refresh and browser history remain usable. A direct current-material link without a page
 resumes that material. Browsing preserves the last reading bookmark for Continue
-reading. A failed content read or save preserves the last committed state.
+reading. A failed content read or save preserves the last committed state. Telegram
+reading needs only the content it renders. Web requests catalog counts and a
+complete outline through the service; those reads must succeed before its action
+commits.
 
 ## Run and verify
 
@@ -68,6 +72,8 @@ go run ./cmd/agonara-web -env-file <standalone-env-path>
 
 Standalone web creates its own service, has no Telegram poller and never writes
 normal shared state. Only the combined runner is installed for normal use.
+Combined startup validates Telegram credentials with `getMe` and loads transport
+state before opening the HTTP listener.
 
 ```sh
 test -z "$(gofmt -l .)" && go vet ./... && go test -race -count=1 -timeout 1m ./...
@@ -101,8 +107,11 @@ deploy/migrate.sh rollback
 Activation validates first, saves the current runner, stops both old jobs,
 disables standalone web, starts one combined runner and checks its local HTTP
 identity and access guard. A failed activation restores the saved binary/jobs.
-Rollback checks job availability and the restored web guard, independent of the
-failed version. If `WEB_ADDR` uses another port, set
+Rollback restores the saved deployment mode and checks job availability and the
+restored HTTP guard for both legacy web and combined runners, independent of the
+failed version. Rolling back a subsequent combined-runner update keeps the
+`single-owner` marker so future trunk merges still update the running service.
+Failed recovery retains the rollback record and reports failure. If `WEB_ADDR` uses another port, set
 `AGONARA_SESSION_HEALTH_URL` for the rollback HTTP check. The rollback directory
 is under the runtime home, and is replaced on each activation. Shared and
 transport files remain available when rolling back; legacy services continue
@@ -113,6 +122,10 @@ the newer legacy position and offset.
 `AGONARA_SESSION_HOME`, `AGONARA_SESSION_LAUNCH_DIR`,
 `AGONARA_SESSION_ENV_FILE` and `AGONARA_SESSION_LAUNCHCTL` override local deployment
 locations and launchctl for an explicit environment or contract test.
+`AGONARA_SESSION_CURL` and `AGONARA_SESSION_SLEEP` select recovery probe and wait
+tools. The merge hook accepts `AGONARA_SESSION_GIT`, `AGONARA_SESSION_GO`,
+`AGONARA_SESSION_MIGRATE` and `AGONARA_SESSION_MERGE_LOG` for explicit tool and log
+paths; their defaults retain the installed deployment behavior.
 
 `deploy/merge-hook.sh install` installs the local post-merge hook. Its `plan
 <from> <to>` is read-only. Before the first explicit handoff it only tests and

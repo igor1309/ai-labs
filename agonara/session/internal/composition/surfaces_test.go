@@ -19,7 +19,14 @@ type sessionSpy struct {
 	err      error
 }
 
-func (s *sessionSpy) Apply(_ context.Context, q flow.Command) (*flow.Snapshot, error) {
+func (s *sessionSpy) Apply(_ context.Context, q flow.Command) (*flow.Result, error) {
+	s.command = q
+	if s.snapshot == nil {
+		return nil, s.err
+	}
+	return s.snapshot.Result, s.err
+}
+func (s *sessionSpy) Open(ctx context.Context, q flow.Command) (*flow.Snapshot, error) {
 	s.command = q
 	return s.snapshot, s.err
 }

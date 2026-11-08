@@ -25,29 +25,29 @@ type Reader interface {
 
 // Place is a screen the session can return to.
 type Place struct {
-	Screen    string `json:"screen"`
-	ProgramID string `json:"programId,omitempty"`
-	EntityID  string `json:"entityId,omitempty"`
-	Title     string `json:"title,omitempty"`
-	Page      *int   `json:"page,omitempty"`
-	Contents  bool   `json:"contents,omitempty"`
+	Screen    string
+	ProgramID string
+	EntityID  string
+	Title     string
+	Page      *int
+	Contents  bool
 }
 
 // Item is a listed name the student can open; IDs stay in the saved state.
 type Item struct {
-	ID    string `json:"id"`
-	Title string `json:"title"`
-	Kind  string `json:"kind"`
+	ID    string
+	Title string
+	Kind  string
 }
 
 // Session is one student's place, saved after every update.
 type Session struct {
-	MaterialRevision string `json:"materialRevision,omitempty"`
+	MaterialRevision string
 	Place
-	PageCount *int    `json:"pageCount,omitempty"`
-	Items     []Item  `json:"items"`
-	History   []Place `json:"history"`
-	Step      int     `json:"step"`
+	PageCount *int
+	Items     []Item
+	History   []Place
+	Step      int
 }
 
 // Entry is a listed name: Index is its item, N its number (nil for a material).

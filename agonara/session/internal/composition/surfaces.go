@@ -11,7 +11,7 @@ import (
 )
 
 type WebSession interface {
-	Apply(context.Context, flow.Command) (*flow.Snapshot, error)
+	Open(context.Context, flow.Command) (*flow.Snapshot, error)
 	Explain(context.Context, flow.Question) (flow.Explanation, error)
 }
 type Web struct{ Session WebSession }
@@ -50,7 +50,7 @@ func webError(err error) error {
 	return err
 }
 func (a Web) Open(ctx context.Context, q web.Request) (*web.Page, error) {
-	in, err := a.Session.Apply(ctx, flow.Command{Target: q.Route, ID: q.ID, Page: q.Page, Revision: q.Revision})
+	in, err := a.Session.Open(ctx, flow.Command{Target: q.Route, ID: q.ID, Page: q.Page, Revision: q.Revision})
 	if err != nil {
 		return nil, webError(err)
 	}
@@ -97,7 +97,7 @@ func (a Web) Explain(ctx context.Context, q web.Question) (web.Answer, error) {
 }
 
 type TelegramSession interface {
-	Apply(context.Context, flow.Command) (*flow.Snapshot, error)
+	Apply(context.Context, flow.Command) (*flow.Result, error)
 }
 type Telegram struct{ Session TelegramSession }
 
@@ -109,7 +109,7 @@ func (a Telegram) Show(ctx context.Context, q telegram.Request) (*telegram.Resul
 	if err != nil || in == nil {
 		return nil, err
 	}
-	r := in.Result
+	r := in
 	v := r.View
 	out := &telegram.Result{Revision: r.Session.Step, Screen: r.Session.Screen, Contents: r.Session.Contents}
 	out.View = telegram.View{Title: v.Title, Body: v.Body, Markdown: v.Markdown, Empty: v.Empty}

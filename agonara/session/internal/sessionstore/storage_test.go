@@ -1,7 +1,7 @@
 package sessionstore
 
 import (
-	"errors"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -20,10 +20,13 @@ func TestMigrationPrefersSharedThenWebThenBotAndPreservesLegacyBytes(t *testing.
 			f := ReadingFile{Path: filepath.Join(dir, "shared.json"), LegacyWeb: filepath.Join(dir, "web-place.json"), LegacyBot: filepath.Join(dir, "bot.json")}
 			oldWeb := []byte(`{"programId":"p","entityId":"web-material","title":"Web","page":3}`)
 			oldBot := []byte(`{"offset":71,"session":{"screen":"entity","entityId":"bot-material","page":2,"step":13,"items":[],"history":[]}}`)
+			created := map[string][]byte{}
 			if source != "fresh" {
+				created[f.LegacyBot] = oldBot
 				writeFile(t, f.LegacyBot, oldBot)
 			}
 			if source == "web" || source == "shared" {
+				created[f.LegacyWeb] = oldWeb
 				writeFile(t, f.LegacyWeb, oldWeb)
 			}
 			if source == "shared" {
@@ -45,21 +48,22 @@ func TestMigrationPrefersSharedThenWebThenBotAndPreservesLegacyBytes(t *testing.
 			if source == "web" && (*got.Current.Page != 3 || got.Resume.ProgramID != "p") {
 				t.Fatalf("web migration %+v", got)
 			}
-			if source == "bot" && (*got.Current.Page != 2 || got.Current.Step != 13) {
+			if source == "bot" && (*got.Current.Page != 2 || got.Current.Step != 14) {
 				t.Fatalf("bot migration %+v", got)
 			}
-			for path, data := range map[string][]byte{f.LegacyWeb: oldWeb, f.LegacyBot: oldBot} {
-				b, err := os.ReadFile(path)
-				if errors.Is(err, os.ErrNotExist) {
-					continue
-				}
-				if err != nil || !reflect.DeepEqual(b, data) {
-					t.Fatalf("legacy changed %s", path)
+			assertLegacy := func() {
+				for path, data := range created {
+					b, err := os.ReadFile(path)
+					if err != nil || !reflect.DeepEqual(b, data) {
+						t.Fatalf("legacy changed or missing %s: %v", path, err)
+					}
 				}
 			}
+			assertLegacy()
 			if again, err := f.Load(); err != nil || !reflect.DeepEqual(got, again) {
 				t.Fatalf("restart %+v %v", again, err)
 			}
+			assertLegacy()
 		})
 	}
 }
@@ -160,3 +164,56 @@ func TestHigherPriorityStateIgnoresCorruptLowerPriorityFiles(t *testing.T) {
 		}
 	}
 }
+
+// Contract test: existing version-one JSON is translated and written without a format change.
+func TestReadingRecordRetainsAllSemanticFieldsAndExistingJSONShape(t *testing.T) {
+	t.Parallel()
+	f := ReadingFile{Path: filepath.Join(t.TempDir(), "shared.json")}
+	fixture := []byte(`{"version":1,"current":{"materialRevision":"rev","screen":"entity","programId":"p","entityId":"m","title":"Lecture","page":1,"contents":true,"pageCount":3,"items":[{"id":"c","title":"Concept","kind":"concept"}],"history":[{"screen":"programs"},{"screen":"program","programId":"p","title":"Program"}],"step":9},"resume":{"ProgramID":"p","EntityID":"m","Title":"Lecture","Page":1,"Position":{"Section":2,"Label":"Section","Index":1,"Count":3},"Course":{"id":"t","title":"Topic","kind":"topic"},"Courses":[{"id":"t","title":"Topic","kind":"topic"}]}}`)
+	writeFile(t, f.Path, fixture)
+	s, err := f.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.Current.Step != 9 || s.Current.MaterialRevision != "rev" || *s.Current.Page != 1 || *s.Current.PageCount != 3 || !s.Current.Contents || s.Current.Items[0].ID != "c" || s.Current.History[1].Title != "Program" || s.Resume.Course.ID != "t" || s.Resume.Courses[0].Title != "Topic" || *s.Resume.Position.Section != 2 {
+		t.Fatalf("lost fields: %+v", s)
+	}
+	if err = f.Save(s); err != nil {
+		t.Fatal(err)
+	}
+	written, err := os.ReadFile(f.Path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var want, got any
+	if err = json.Unmarshal(fixture, &want); err != nil {
+		t.Fatal(err)
+	}
+	if err = json.Unmarshal(written, &got); err != nil || !reflect.DeepEqual(got, want) {
+		t.Fatalf("format changed: %s %v", written, err)
+	}
+	again, err := f.Load()
+	if err != nil || !reflect.DeepEqual(s, again) {
+		t.Fatalf("restart: %+v %v", again, err)
+	}
+}
+
+// Contract test: the JavaScript bot's JSON retains page bounds, item indices and return history during migration.
+func TestStateSavedByJavaScriptBotStillLoads(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	f := ReadingFile{Path: filepath.Join(dir, "shared.json"), LegacyBot: filepath.Join(dir, "bot.json")}
+	raw := []byte(`{"offset":7,"session":{"screen":"entity","entityId":"material-id","page":2,"items":[{"id":"linked","title":"Linked","kind":"concept"}],"history":[{"screen":"programs"},{"screen":"program","programId":"p","title":"Course"},{"screen":"entity","entityId":"topic-id"}],"step":72,"pageCount":23}}`)
+	writeFile(t, f.LegacyBot, raw)
+	state, err := f.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected := flow.InitialState()
+	expected.Current = flow.Session{Place: flow.Place{Screen: "entity", EntityID: "material-id", Page: intPointer(2)}, Items: []flow.Item{{ID: "linked", Title: "Linked", Kind: "concept"}}, History: []flow.Place{{Screen: "programs"}, {Screen: "program", ProgramID: "p", Title: "Course"}, {Screen: "entity", EntityID: "topic-id"}}, Step: 73, PageCount: intPointer(23)}
+	expected.Resume = &flow.Bookmark{EntityID: "material-id", Page: 2}
+	if !reflect.DeepEqual(state, expected) {
+		t.Fatalf("legacy translation: %+v", state)
+	}
+}
+func intPointer(n int) *int { return &n }

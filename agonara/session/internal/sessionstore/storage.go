@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"math"
 	"os"
 
 	"github.com/igor1309/ai-labs/agonara/session/internal/flow"
@@ -15,14 +16,18 @@ import (
 // ReadingFile is the only reader of the legacy reading formats. Migration never writes them.
 type ReadingFile struct{ Path, LegacyWeb, LegacyBot string }
 
-func (f ReadingFile) Save(s flow.State) error { return store.Save(f.Path, s) }
+func (f ReadingFile) Save(s flow.State) error { return store.Save(f.Path, toRecord(s)) }
 func (f ReadingFile) Load() (flow.State, error) {
 	data, err := os.ReadFile(f.Path)
 	if err == nil {
-		var s flow.State
-		if err = json.Unmarshal(data, &s); err != nil {
-			return s, err
+		var record readingRecord
+		if err = json.Unmarshal(data, &record); err != nil {
+			return flow.State{}, err
 		}
+		if record.Version != 1 {
+			return flow.State{}, errors.New("invalid reading file version")
+		}
+		s := record.state()
 		return s, flow.ValidateState(s)
 	}
 	if !errors.Is(err, fs.ErrNotExist) {
@@ -33,6 +38,14 @@ func (f ReadingFile) Load() (flow.State, error) {
 	webData, found, err := legacy(f.LegacyWeb)
 	if err != nil {
 		return s, err
+	}
+	botData, botFound, botErr := legacy(f.LegacyBot)
+	if botErr != nil {
+		return s, botErr
+	}
+	var bot legacyBotRecord
+	if botFound {
+		botErr = json.Unmarshal(botData, &bot)
 	}
 	if found {
 		var p struct {
@@ -49,27 +62,27 @@ func (f ReadingFile) Load() (flow.State, error) {
 		}
 		s.Current.Place = flow.Place{Screen: "entity", EntityID: p.EntityID, Page: &p.Page}
 		s.Resume = &flow.Bookmark{ProgramID: p.ProgramID, EntityID: p.EntityID, Title: p.Title, Page: p.Page}
-	} else {
-		botData, found, err := legacy(f.LegacyBot)
-		if err != nil {
-			return s, err
+	} else if botFound {
+		if botErr != nil {
+			return s, botErr
 		}
-		if found {
-			var bot struct {
-				Session flow.Session `json:"session"`
-			}
-			if err = json.Unmarshal(botData, &bot); err != nil {
-				return s, err
-			}
-			s.Current = bot.Session
-			if s.Current.Screen == "" {
-				s.Current = flow.InitialSession()
-				s.Current.Step = bot.Session.Step
-			}
-			if s.Current.Screen == "entity" && s.Current.Page != nil {
-				s.Resume = &flow.Bookmark{EntityID: s.Current.EntityID, Title: s.Current.Title, Page: *s.Current.Page}
-			}
+		s.Current = bot.Session.state()
+		if s.Current.Screen == "" {
+			s.Current = flow.InitialSession()
+			s.Current.Step = bot.Session.Step
 		}
+		if s.Current.Screen == "entity" && s.Current.Page != nil {
+			s.Resume = &flow.Bookmark{EntityID: s.Current.EntityID, Title: s.Current.Title, Page: *s.Current.Page}
+		}
+	}
+
+	// Revisions never revisit a callback issued by the previous polling owner,
+	// including when the web place takes precedence over its reading position.
+	if botFound && botErr == nil {
+		if bot.Session.Step < 0 || bot.Session.Step == math.MaxInt {
+			return s, errors.New("invalid legacy callback revision")
+		}
+		s.Current.Step = max(s.Current.Step, bot.Session.Step+1)
 	}
 	if err = flow.ValidateState(s); err != nil {
 		return s, err
@@ -112,12 +125,7 @@ func (f TransportFile) Load() (telegram.State, error) {
 	}
 	var s telegram.State
 	if found {
-		var old struct {
-			Offset  int64 `json:"offset"`
-			Session struct {
-				Step int `json:"step"`
-			} `json:"session"`
-		}
+		var old legacyBotRecord
 		if err = json.Unmarshal(data, &old); err != nil {
 			return s, err
 		}
