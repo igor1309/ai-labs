@@ -23,7 +23,7 @@ struct MicrophoneEnduranceTests {
         let buffers = Int(Self.minutes * 60 * rate) / frames
         let engine = EnduranceEngine(rate: rate)
         let clock = EnduranceClock()
-        let capture = try await MicrophoneCapture(binding: EnduranceBinding(engine: engine, clock: clock))
+        let capture = try await MicrophoneCapture(hardware: .init(binding: EnduranceBinding(engine: engine, clock: clock)))
         let received = Received()
         let consumer = Task {
             for try await piece in capture.audio { received.add(piece.samples) }
@@ -52,7 +52,7 @@ struct MicrophoneEnduranceTests {
         let engine = EnduranceEngine(rate: rate)
         let clock = EnduranceClock()
         let depths = Depths()
-        let capture = try await MicrophoneCapture(binding: EnduranceBinding(engine: engine, clock: clock, receiving: depths.record))
+        let capture = try await MicrophoneCapture(hardware: .init(binding: EnduranceBinding(engine: engine, clock: clock, receiving: depths.record)))
         let received = Received()
         let consumer = Task {
             for try await piece in capture.audio { received.add(piece.samples) }
@@ -113,7 +113,7 @@ struct MicrophoneEnduranceTests {
         let buffers = 50
         let engine = EnduranceEngine(rate: rate)
         let clock = EnduranceClock()
-        var capture: MicrophoneCapture? = try await MicrophoneCapture(binding: EnduranceBinding(engine: engine, clock: clock))
+        var capture: MicrophoneCapture? = try await MicrophoneCapture(hardware: .init(binding: EnduranceBinding(engine: engine, clock: clock)))
         let audio = capture!.audio
         let received = Received()
         let consumer = Task {
