@@ -10,6 +10,62 @@ import Testing
 @testable import Composer
 
 @Suite struct SummaryStorageTests {
+    @Test(arguments: [false, true])
+    func legacyJournalMigratesSplitCallsAndPublishesTheirSummaries(completed: Bool) async throws {
+        try await withComposeFolder { root in
+            let source = root.appendingPathComponent("source"), destination = root.appendingPathComponent("destination")
+            let moved = "1970.01.01-0000", remaining = "1970.01.01-0001"
+            let journal = root.appendingPathComponent("summary-folders.json")
+            // A completed legacy move can persist its roots before preferences;
+            // a later recording then still lands in the configured source.
+            let legacyRoots = completed ? [destination] : [destination, source]
+            let calls = [(destination, moved), (source, remaining)]
+            try await offPool {
+                for (folder, id) in calls {
+                    try FileManager.default.createDirectory(at: folder.appendingPathComponent(id), withIntermediateDirectories: true)
+                    try Data("transcript".utf8).write(to: folder.appendingPathComponent(id + "/transcript.md"))
+                }
+                try JSONEncoder().encode(legacyRoots).write(to: journal)
+            }
+            let storage = SummaryStorage(folder: source, timeZone: .gmt, journal: journal)
+            try await storage.restore()
+            let migrated = try await offPool { try JSONDecoder().decode(SummaryStorage.Journal.self, from: Data(contentsOf: journal)) }
+            #expect(migrated.retainedRoots.map(\.path) == legacyRoots.map(\.path))
+            #expect(migrated.owners.mapValues(\.path) == (completed ? [moved: destination.path] : [moved: destination.path, remaining: source.path]))
+            let recovered = SummaryStorage(folder: source, timeZone: .gmt, journal: journal)
+            try await recovered.restore()
+            #expect(try await recovered.list().map(\.id) == [remaining, moved])
+            let files = Files(locations: recovered, disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("leases"))
+            for (folder, id) in calls {
+                #expect(try await sameDirectory(recovered.location(id: id), folder.appendingPathComponent(id)))
+                let job = Record(job: id, call: id, input: "input", snapshot: Data(), phase: "pending")
+                _ = try await files.claim(job); _ = try await files.start(job)
+                try await files.publish(job, notes: "summary for " + id)
+                #expect(try await offPool { try String(contentsOf: folder.appendingPathComponent(id + "/summary.md"), encoding: .utf8) }.hasSuffix("summary for " + id))
+            }
+            #expect(try await recovered.prepareMove(to: destination).map(\.id) == [remaining])
+            _ = try await recovered.move(id: remaining, to: destination)
+            try await recovered.commitFolder(destination, commit: {})
+            #expect(try await recovered.list().map(\.id) == [remaining, moved])
+            #expect(try await offPool { try String(contentsOf: destination.appendingPathComponent(remaining + "/summary.md"), encoding: .utf8) }.hasSuffix("summary for " + remaining))
+        }
+    }
+
+    @Test func unavailableLegacyRootDoesNotReplaceItsJournal() async throws {
+        try await withComposeFolder { root in
+            let source = root.appendingPathComponent("source"), destination = root.appendingPathComponent("offline")
+            let journal = root.appendingPathComponent("summary-folders.json")
+            let data = try JSONEncoder().encode([destination, source])
+            try await offPool {
+                try FileManager.default.createDirectory(at: source, withIntermediateDirectories: true)
+                try data.write(to: journal)
+            }
+            let storage = SummaryStorage(folder: source, timeZone: .gmt, journal: journal)
+            await #expect(throws: (any Error).self) { try await storage.restore() }
+            #expect(try await offPool { try Data(contentsOf: journal) } == data)
+        }
+    }
+
     @Test func productionRenameDeleteAndPartialMoveCoordinatePublication() async throws {
         try await withComposeFolder { root in
             let canonical = await offPool { root.resolvingSymlinksInPath() }

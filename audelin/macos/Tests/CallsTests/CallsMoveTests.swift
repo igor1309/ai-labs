@@ -151,17 +151,11 @@ struct CallsMoveTests {
         }
     }
 
-    @Test(arguments: [false, true])
-    func cleanupFailureAfterAtomicRetirementKeepsTheDestinationWhole(partial: Bool) async throws {
+    @Test(arguments: [false, true], [false, true])
+    func cleanupFailureRestoresTheWholeSourceAndRemovesTheDestination(partial: Bool, restarting: Bool) async throws {
         try await withMoveFolders { (source: URL, target: URL) async throws in
-            let fail = Mutex(true), saved = Mutex<Calls.Move?>(nil), restorationCopies = Mutex(0)
-            let disk = testCalls(folder: source, copy: { from, to in
-                if to.deletingLastPathComponent().lastPathComponent == "source" {
-                    restorationCopies.withLock { $0 += 1 }
-                    throw POSIXError(.EIO)
-                }
-                try FileManager.default.copyItem(at: from, to: to)
-            }, remove: { url in
+            let fail = Mutex(true), saved = Mutex<Calls.Move?>(nil)
+            let disk = testCalls(folder: source, copy: { try FileManager.default.copyItem(at: $0, to: $1) }, remove: { url in
                 if fail.withLock({ $0 }), url.lastPathComponent.hasSuffix("-source") {
                     let one = url.appendingPathComponent("one")
                     if partial, FileManager.default.fileExists(atPath: one.path) { try FileManager.default.removeItem(at: one) }
@@ -169,16 +163,28 @@ struct CallsMoveTests {
                 }
                 try FileManager.default.removeItem(at: url)
             })
-            #expect(try await offPool { try disk.move(id: id, to: target) { next in saved.withLock { $0 = next } } } == 7)
+            if restarting {
+                let interrupted = Calls.Move(source: source.appendingPathComponent(name), target: target.appendingPathComponent(name),
+                                             temporary: target.appendingPathComponent(".audelin-move-test"), phase: .removingSource)
+                try await offPool { try FileManager.default.copyItem(at: interrupted.source, to: interrupted.target) }
+                await #expect(throws: POSIXError(.EIO)) {
+                    try await offPool { try disk.recover(interrupted) { next in saved.withLock { $0 = next } } }
+                }
+            } else {
+                await #expect(throws: POSIXError(.EIO)) {
+                    try await offPool { try disk.move(id: id, to: target) { next in saved.withLock { $0 = next } } }
+                }
+            }
             let pending = try #require(saved.withLock { $0 })
-            #expect(pending.phase == .removingSource)
-            #expect(try await offPool { try sameMoveDirectory(pending.owner, target.appendingPathComponent(name)) })
-            #expect(await offPool { !FileManager.default.fileExists(atPath: source.appendingPathComponent(name).path) })
+            #expect(pending.phase == .removingCopy)
+            #expect(try await offPool { try sameMoveDirectory(pending.owner, source.appendingPathComponent(name)) })
             #expect(try await offPool { try Data(contentsOf: pending.owner.appendingPathComponent("one")) } == Data([1, 2, 3]))
             #expect(try await offPool { try Data(contentsOf: pending.owner.appendingPathComponent("nested/two")) } == Data([4, 5, 6, 7]))
-            #expect(restorationCopies.withLock { $0 } == 0)
+            #expect(try await offPool { try FileManager.default.contentsOfDirectory(atPath: target.path) }.isEmpty)
             fail.withLock { $0 = false }
-            #expect(try await offPool { try disk.recover(pending) { next in saved.withLock { $0 = next } }.phase } == .destination)
+            #expect(try await offPool { try disk.recover(pending) { next in saved.withLock { $0 = next } }.phase } == .source)
+            #expect(try await offPool { try FileManager.default.contentsOfDirectory(atPath: source.path) } == [name])
+            #expect(try await offPool { try disk.move(id: id, to: target) } == 7)
             #expect(try await offPool { try FileManager.default.contentsOfDirectory(atPath: source.path) }.isEmpty)
             #expect(try await offPool { try FileManager.default.contentsOfDirectory(atPath: target.path) } == [name])
         }

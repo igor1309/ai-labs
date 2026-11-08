@@ -125,10 +125,19 @@ public struct Calls: Sendable {
             try rename(move.temporary, target)
             move.phase = .removingSource
             try record(move)
-            // Retire the source atomically before any destructive cleanup. A failed
-            // rename leaves it whole; cleanup cannot change the committed owner.
+            // Retirement keeps a partially deleted source out of call lookup.
+            // The verified destination can rebuild it if deletion fails.
             try rename(source, move.retired)
-            _ = try? recover(move, record: record)
+            do { try removeIfPresent(move.retired) }
+            catch {
+                move.phase = .restoringSource
+                try record(move)
+                throw error
+            }
+            move.phase = .destination
+            // Source deletion completed; the durable removingSource record can
+            // finish recovery if only this final journal write fails.
+            try? record(move)
             return original.values.reduce(0) { $0 + max(0, $1) }
         } catch {
             let failure = error
@@ -195,7 +204,14 @@ public struct Calls: Sendable {
             return try recover(move, record: record)
         case .removingSource:
             if try exists(move.source) { try rename(move.source, move.retired) }
-            try removeIfPresent(move.retired)
+            do { try removeIfPresent(move.retired) }
+            catch {
+                let failure = error
+                move.phase = .restoringSource
+                try record(move)
+                _ = try recover(move, record: record)
+                throw failure
+            }
             move.phase = .destination
             try record(move)
         case .restoringSource:
@@ -206,6 +222,7 @@ public struct Calls: Sendable {
             return try recover(move, record: record)
         case .removingCopy:
             try removeIfPresent(move.target)
+            try removeIfPresent(move.retired)
             move.phase = .source
             try record(move)
         case .source, .destination: break

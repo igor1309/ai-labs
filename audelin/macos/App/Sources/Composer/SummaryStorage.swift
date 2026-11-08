@@ -10,6 +10,19 @@ import TrackFile
 final class SummaryStorage: SummaryFiles.Locations, Sendable {
     struct Journal: Codable, Sendable {
         var moves: [String: Calls.Move] = [:]
+        var retainedRoots: [URL] = []
+        var owners: [String: URL] = [:]
+
+        init(moves: [String: Calls.Move] = [:], retainedRoots: [URL] = [], owners: [String: URL] = [:]) {
+            self.moves = moves; self.retainedRoots = retainedRoots; self.owners = owners
+        }
+        private enum CodingKeys: CodingKey { case moves, retainedRoots, owners }
+        init(from decoder: any Decoder) throws {
+            let saved = try decoder.container(keyedBy: CodingKeys.self)
+            moves = try saved.decode([String: Calls.Move].self, forKey: .moves)
+            retainedRoots = try saved.decodeIfPresent([URL].self, forKey: .retainedRoots) ?? []
+            owners = try saved.decodeIfPresent([String: URL].self, forKey: .owners) ?? [:]
+        }
     }
     private struct State {
         var recordingFolder: URL
@@ -41,8 +54,31 @@ final class SummaryStorage: SummaryFiles.Locations, Sendable {
     func restore() async throws {
         try await perform { [self] in
             guard let journal else { return }
+            let data: Data
+            do { data = try Data(contentsOf: journal) }
+            catch let error as CocoaError where error.code == .fileReadNoSuchFile { return }
             do {
-                let saved = try JSONDecoder().decode(Journal.self, from: Data(contentsOf: journal))
+                let saved: Journal
+                if let roots = try? JSONDecoder().decode([URL].self, from: data) {
+                    guard !roots.isEmpty, roots.allSatisfy(\.isFileURL),
+                          Set(roots.map(Self.directory)).count == roots.count else { throw CocoaError(.fileReadCorruptFile) }
+                    var migrated = Journal(retainedRoots: roots.map(Self.directory))
+                    // Read every retained root before replacing the legacy journal.
+                    // An unavailable volume must not lose its ownership information.
+                    for root in migrated.retainedRoots {
+                        for call in try makeCalls(root).list() {
+                            guard migrated.owners[call.id] == nil else { throw CocoaError(.fileReadCorruptFile) }
+                            migrated.owners[call.id] = root
+                        }
+                    }
+                    try save(migrated)
+                    saved = migrated
+                } else {
+                    saved = try JSONDecoder().decode(Journal.self, from: data)
+                }
+                guard saved.retainedRoots.allSatisfy(\.isFileURL), saved.owners.values.allSatisfy(\.isFileURL) else {
+                    throw CocoaError(.fileReadCorruptFile)
+                }
                 guard saved.moves.allSatisfy({ id, move in
                     let source = move.source.resolvingSymlinksInPath().standardizedFileURL.path
                     let target = move.target.resolvingSymlinksInPath().standardizedFileURL.path
@@ -58,7 +94,7 @@ final class SummaryStorage: SummaryFiles.Locations, Sendable {
                     state.journal = saved
                     recover(&state)
                 }
-            } catch let error as CocoaError where error.code == .fileReadNoSuchFile { return }
+            }
         }
     }
     private func save(_ record: Journal) throws {
@@ -67,6 +103,7 @@ final class SummaryStorage: SummaryFiles.Locations, Sendable {
     private func record(_ move: Calls.Move, id: String, state: inout State) throws {
         var next = state.journal
         next.moves[id] = move
+        next.owners.removeValue(forKey: id)
         try save(next)
         state.journal = next
     }
@@ -77,7 +114,7 @@ final class SummaryStorage: SummaryFiles.Locations, Sendable {
 
     /// Retained volumes need not be mounted to reserve the calls they own.
     func occupiedCallNames() throws -> [String] {
-        state.withLock { Array($0.journal.moves.keys) }
+        state.withLock { Array(Set($0.journal.moves.keys).union($0.journal.owners.keys)) }
     }
     private func recover(_ state: inout State, id: String? = nil) {
         let ids = id.map { [$0] } ?? Array(state.journal.moves.keys)
@@ -90,8 +127,11 @@ final class SummaryStorage: SummaryFiles.Locations, Sendable {
         }
     }
     private func location(id: String, state: State) throws -> URL {
-        let root = state.journal.moves[id]?.owner.deletingLastPathComponent() ?? state.recordingFolder
+        let root = ownerRoot(id: id, state: state) ?? state.recordingFolder
         return try makeCalls(root).location(id: id)
+    }
+    private func ownerRoot(id: String, state: State) -> URL? {
+        state.journal.moves[id]?.owner.deletingLastPathComponent() ?? state.journal.owners[id]
     }
     func withFolder<Value: Sendable>(call: String, _ operation: @Sendable (URL) throws -> Value) throws -> Value {
         try state.withLock { state in
@@ -104,16 +144,16 @@ final class SummaryStorage: SummaryFiles.Locations, Sendable {
     }
     private func list(_ state: State) throws -> [Calls.Call] {
         var result = try makeCalls(state.recordingFolder).list().filter {
-            guard let move = state.journal.moves[$0.id] else { return true }
-            return Self.sameRoot(move.owner.deletingLastPathComponent(), state.recordingFolder)
+            guard let owner = ownerRoot(id: $0.id, state: state) else { return true }
+            return Self.sameRoot(owner, state.recordingFolder)
         }
-        let otherRoots = Set(state.journal.moves.values.map {
-            Self.directory($0.owner.deletingLastPathComponent().resolvingSymlinksInPath())
+        let otherRoots = Set((Array(state.journal.owners.values) + state.journal.moves.values.map { $0.owner.deletingLastPathComponent() }).map {
+            Self.directory($0.resolvingSymlinksInPath())
         })
             .filter { !Self.sameRoot($0, state.recordingFolder) }
         for root in otherRoots {
             result += try makeCalls(root).list().filter { call in
-                state.journal.moves[call.id].map { Self.sameRoot($0.owner.deletingLastPathComponent(), root) } == true
+                ownerRoot(id: call.id, state: state).map { Self.sameRoot($0, root) } == true
             }
         }
         return result.sorted { $0.id > $1.id }
@@ -139,6 +179,7 @@ final class SummaryStorage: SummaryFiles.Locations, Sendable {
                 try makeCalls(folder).delete(id: id)
                 var next = state.journal
                 next.moves.removeValue(forKey: id)
+                next.owners.removeValue(forKey: id)
                 try save(next)
                 state.journal = next
             }

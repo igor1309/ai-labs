@@ -2,12 +2,72 @@ import BlockingTestWork
 import CallFolder
 @testable import Calls
 import Foundation
+import Recordings
 import SummaryFiles
 import Synchronization
 import Testing
 @testable import Composer
 
 @Suite struct SummaryMoveOwnershipTests {
+    @Test func recordingsStopsAtTheCallWhoseSourceDeletionFails() async throws {
+        try await withComposeFolder { temporaryRoot in
+            let root = await offPool { temporaryRoot.resolvingSymlinksInPath() }
+            let source = root.appendingPathComponent("source"), target = root.appendingPathComponent("target")
+            let ids = ["1970.01.01-0000", "1970.01.01-0001", "1970.01.01-0002"]
+            let retired = Mutex<URL?>(nil), stored = Mutex(false)
+            try await offPool {
+                for id in ids {
+                    try FileManager.default.createDirectory(at: source.appendingPathComponent(id), withIntermediateDirectories: true)
+                    try Data(id.utf8).write(to: source.appendingPathComponent(id + "/audio"))
+                }
+                try FileManager.default.createDirectory(at: target, withIntermediateDirectories: true)
+            }
+            let storage = SummaryStorage(folder: source, journal: root.appendingPathComponent("moves.json"),
+                writeJournal: { try JSONEncoder().encode($0).write(to: $1, options: .atomic) },
+                makeCalls: { folder in
+                    Calls(folder: folder, timeZone: .gmt,
+                        children: { try FileManager.default.contentsOfDirectory(at: $0, includingPropertiesForKeys: nil) },
+                        values: { try $0.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey, .fileSizeKey]) },
+                        duration: { _ in 0 }, copy: { try FileManager.default.copyItem(at: $0, to: $1) },
+                        rename: { from, to in
+                            guard renamex_np(from.path, to.path, UInt32(RENAME_EXCL)) == 0 else { throw POSIXError(.EIO) }
+                            if from.lastPathComponent == ids[1], to.lastPathComponent.hasSuffix("-source") {
+                                retired.withLock { $0 = to }
+                            }
+                        }, remove: { url in
+                            if retired.withLock({ $0 }) == url { throw POSIXError(.EIO) }
+                            try FileManager.default.removeItem(at: url)
+                        })
+                })
+            let handler = RecordingsEffectHandler(calls: SummaryCalls(storage: storage), reserve: { true }, release: {},
+                storeFolder: { _ in stored.withLock { $0 = true } })
+            var state = RecordingsState(callsFolder: source)
+            var events: [RecordingsEvent] = []
+            func send(_ event: RecordingsEvent) async {
+                var next: RecordingsEvent? = event
+                while let event = next {
+                    events.append(event)
+                    let (changed, effect) = RecordingsReducer.reduce(state, event)
+                    state = changed; next = nil
+                    if let effect { for await result in handler.handle(effect) { next = result } }
+                }
+            }
+            await send(.chooseFolder(target))
+            await send(.confirmMove)
+            #expect(events.contains(.callMoveFailed(id: ids[1], reason: POSIXError(.EIO).localizedDescription)))
+            #expect(state.phase == .failedMove)
+            #expect(state.failure == .init(id: ids[1], reason: POSIXError(.EIO).localizedDescription))
+            #expect(state.move?.completed.map(\.id) == [ids[0]])
+            #expect(state.move?.remaining.map(\.id) == Array(ids.dropFirst()))
+            #expect(state.callsFolder == source)
+            #expect(!stored.withLock { $0 })
+            #expect(try await offPool { try FileManager.default.contentsOfDirectory(atPath: target.path) } == [ids[0]])
+            for id in ids.dropFirst() {
+                #expect(try await offPool { try Data(contentsOf: source.appendingPathComponent(id + "/audio")) } == Data(id.utf8))
+            }
+        }
+    }
+
     @Test func offlineDestinationDoesNotBlockRecordingOrAnUnmovedSummary() async throws {
         try await withComposeFolder { temporaryRoot in
             let root = await offPool { temporaryRoot.resolvingSymlinksInPath() }
@@ -329,12 +389,12 @@ import Testing
     }
 
     @Test(arguments: ["rollbackCleanup", "retiredCleanup"])
-    func atomicRetirementKeepsOneWholeOwnerWhenCleanupFails(step: String) async throws {
+    func cleanupFailureKeepsTheRestoredSourceAsOwner(step: String) async throws {
         try await withComposeFolder { temporaryRoot in
             let root = await offPool { temporaryRoot.resolvingSymlinksInPath() }
             let id = "1970.01.01-0000", source = root.appendingPathComponent("source"), target = root.appendingPathComponent("target")
             let original = source.appendingPathComponent(id), copied = target.appendingPathComponent(id)
-            let journal = root.appendingPathComponent("moves.json"), fail = Mutex(true), restorations = Mutex(0)
+            let journal = root.appendingPathComponent("moves.json"), fail = Mutex(true)
             try await offPool {
                 try FileManager.default.createDirectory(at: original, withIntermediateDirectories: true)
                 try FileManager.default.createDirectory(at: target, withIntermediateDirectories: true)
@@ -348,10 +408,6 @@ import Testing
                         children: { try FileManager.default.contentsOfDirectory(at: $0, includingPropertiesForKeys: nil) },
                         values: { try $0.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey, .fileSizeKey]) },
                         duration: { _ in 0 }, copy: { from, to in
-                            if to.pathComponents.contains("source") {
-                                restorations.withLock { $0 += 1 }
-                                throw POSIXError(.EIO)
-                            }
                             try FileManager.default.copyItem(at: from, to: to)
                         }, rename: { from, to in
                             if step == "rollbackCleanup", from.lastPathComponent == id,
@@ -370,19 +426,17 @@ import Testing
                             try FileManager.default.removeItem(at: url)
                         })
                 })
-            if step == "rollbackCleanup" {
-                await #expect(throws: (any Error).self) { _ = try await storage.move(id: id, to: target) }
-            } else {
-                #expect(try await storage.move(id: id, to: target) == 8)
-            }
-            let owner = step == "rollbackCleanup" ? original : copied
+            await #expect(throws: POSIXError(.EIO)) { _ = try await storage.move(id: id, to: target) }
+            let owner = original
             #expect(try await sameDirectory(storage.location(id: id), owner))
             #expect(try await storage.list().map(\.id) == [id])
             #expect(try await offPool { try Data(contentsOf: owner.appendingPathComponent("audio")) } == Data([1, 2, 3]))
             #expect(try await offPool { try String(contentsOf: owner.appendingPathComponent("transcript.md"), encoding: .utf8) } == "whole")
             let saved = try await offPool { try JSONDecoder().decode(SummaryStorage.Journal.self, from: Data(contentsOf: journal)) }
-            #expect(saved.moves[id]?.phase == (step == "rollbackCleanup" ? .removingCopy : .removingSource))
-            #expect(restorations.withLock { $0 } == 0)
+            #expect(saved.moves[id]?.phase == .removingCopy)
+            if step == "retiredCleanup" {
+                #expect(try await offPool { try FileManager.default.contentsOfDirectory(atPath: target.path) }.isEmpty)
+            }
             let files = Files(locations: storage, disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("leases"))
             let job = Record(job: "job", call: id, input: "input", snapshot: Data(), phase: "pending")
             _ = try await files.claim(job); _ = try await files.start(job)
@@ -391,8 +445,8 @@ import Testing
             let recovered = SummaryStorage(folder: source, timeZone: .gmt, journal: journal)
             try await recovered.restore()
             #expect(try await sameDirectory(recovered.location(id: id), owner))
-            #expect(try await offPool { try FileManager.default.contentsOfDirectory(atPath: source.path) } == (step == "rollbackCleanup" ? [id] : []))
-            if step == "rollbackCleanup" { #expect(try await recovered.move(id: id, to: target) > 8) }
+            #expect(try await offPool { try FileManager.default.contentsOfDirectory(atPath: source.path) } == [id])
+            #expect(try await recovered.move(id: id, to: target) > 8)
             try await recovered.commitFolder(target, commit: {})
             #expect(try await offPool { try Data(contentsOf: copied.appendingPathComponent("audio")) } == Data([1, 2, 3]))
             #expect(try await offPool { try String(contentsOf: copied.appendingPathComponent("summary.md"), encoding: .utf8) }.hasSuffix("published to owner"))
