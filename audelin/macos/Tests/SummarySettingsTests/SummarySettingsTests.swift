@@ -29,7 +29,7 @@ import Testing
         var changed = edit; changed.primary.model = "newer"
         let newer = reducer.reduce(validating, .edit(changed)).0
         #expect(reducer.reduce(newer, .validated(1, [])).0 == newer)
-        #expect(reducer.reduce(newer, .save).1 == nil)
+        #expect(reducer.reduce(newer, .save).1 == .validate(2, changed))
         let approved = reducer.reduce(validating, .validated(1, [])).0
         let (saving, save) = reducer.reduce(approved, .save)
         #expect(save == .save(1, edit))
@@ -41,6 +41,48 @@ import Testing
         #expect(saved.draft == changed)
         #expect(saved.phase == .editing)
         #expect(await preferences.saves == [edit])
+    }
+    @Test func saveValidatesAndPersistsWithoutSeparateValidateClick() async {
+        let config = configuration(enabled: true)
+        let loaded = reducer.reduce(.init(phase: .loading), .loaded(config)).0
+        let edited = reducer.reduce(loaded, .setSpeakers(true)).0
+        #expect(edited.canSave)
+        let preferences = PreferencesSpy(fails: false)
+        let availability = RecordingAvailability(issues: [])
+        let handler = EffectHandler(preferences: preferences, availability: availability)
+        let (checking, check) = reducer.reduce(edited, .save)
+        #expect(check == .validate(1, edited.draft!))
+        #expect(!checking.canSave && !checking.canValidate)
+        #expect(reducer.reduce(checking, .save).1 == nil)
+        let (saving, save) = reducer.reduce(checking, await handler.handle(check!))
+        #expect(save == .save(1, edited.draft!))
+        #expect(await preferences.saves.isEmpty)
+        let saved = reducer.reduce(saving, await handler.handle(save!)).0
+        #expect(saved.saved == edited.draft && !saved.canSave)
+        #expect(await preferences.saves == [edited.draft!])
+        #expect(await availability.calls == [edited.draft!])
+    }
+    @Test func editDuringSaveValidationCancelsAutomaticSave() {
+        let edited = reducer.reduce(makeState(), .setEnabled(true)).0
+        let checking = reducer.reduce(edited, .save).0
+        let newer = reducer.reduce(checking, .setSpeakers(true)).0
+        #expect(newer.canSave && !newer.saveAfterValidation)
+        #expect(reducer.reduce(newer, .validated(checking.revision, [])).0 == newer)
+        let (checkingNewer, check) = reducer.reduce(newer, .validate)
+        #expect(check == .validate(newer.revision, newer.draft!))
+        #expect(reducer.reduce(checkingNewer, .validated(newer.revision, [])).1 == nil)
+    }
+    @Test func failedSaveValidationRetainsDraftWithoutPersisting() async {
+        let edited = reducer.reduce(makeState(), .setEnabled(true)).0
+        let preferences = PreferencesSpy(fails: false)
+        let issue = ValidationIssue(slot: .primary, field: .executable, reason: .unavailable)
+        let handler = EffectHandler(preferences: preferences, availability: AvailabilitySpy(issues: [issue]))
+        let (checking, check) = reducer.reduce(edited, .save)
+        let (failed, effect) = reducer.reduce(checking, await handler.handle(check!))
+        #expect(effect == nil && failed.issues == [issue])
+        #expect(failed.draft == edited.draft && failed.saved == edited.saved)
+        #expect(!failed.canSave && !failed.saveAfterValidation)
+        #expect(await preferences.saves.isEmpty)
     }
     @Test func failedSaveRetainsEditsAndOffSwitchNeedsNoValidation() async {
         let config = configuration(enabled: true)
