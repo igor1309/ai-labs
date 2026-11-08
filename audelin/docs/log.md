@@ -2,6 +2,7 @@
 
 ## 2026-11-08
 
+- With scroll bars set to always show, the live transcript keeps its newest line in view after the panel is resized (LAB-1084).
 - Settings section navigation stays visible while scrolling call notes (LAB-1063).
 
 - Each trunk build is installed on the owner's Mac without interrupting a running Audelin; the new version starts at the next launch or login (LAB-1057).
