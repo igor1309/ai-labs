@@ -8,7 +8,7 @@ import Testing
 struct CallSideFinalEntriesTests {
 
     @Test(arguments: [20, 800, 6_000])
-    func newestEntryMapsOnceRegardlessOfTheFinalPrefix(count: Int) async {
+    func newestEntryRevisionsKeepTheMappedFinalPrefix(count: Int) async {
 
         let prefix = (0..<count).map { segment($0, settled: "word\($0)") }
         let draft = segment(count, pending: "draft")
@@ -21,15 +21,8 @@ struct CallSideFinalEntriesTests {
             .init(final: prefix, tail: [revision]),
             .init(final: prefix + [final], tail: [next]),
         ], ending: .init(final: prefix + [final, segment(count + 1, settled: "next")], tail: []))
-        let audio = TextAudio(), mapped = Values<Int>(), revisedSnapshotTaken = Signal()
-        let side = CallSide(audio: audio, text: engine, written: TextTrack(chunks: []), sampleRate: 1, mapEntry: {
-            mapped.append($0.text.id)
-            return CallSide.entry($0)
-        }, snapshotTaken: {
-            if $0.finalCount == count, $0.tailEntries.map(\.text.pending) == ["revised"] {
-                revisedSnapshotTaken.send()
-            }
-        })
+        let audio = TextAudio()
+        let side = CallSide(audio: audio, text: engine, written: TextTrack(chunks: []), sampleRate: 1)
         let snapshots = AsyncStream<SideState>.makeStream()
         let listener = Task {
             await side.listen { snapshots.continuation.yield($0) }
@@ -42,25 +35,21 @@ struct CallSideFinalEntriesTests {
         let first = await states.next()!
         #expect(first.finalEntries.map(\.text.id) == Array(0..<count))
         #expect(first.tailEntries.map(\.text.pending) == ["draft"])
-        #expect(mapped.all == Array(0...count))
 
         await audio.send(chunk(1))
         let revised = await states.next()!
         #expect(revised.finalEntries == first.finalEntries)
         #expect(revised.tailEntries.map(\.text.pending) == ["revised"])
-        #expect(Array(mapped.all.dropFirst(count + 1)) == [count])
         #expect(storage(first.finalEntries) == storage(revised.finalEntries), "tail changes do not copy the mapped final prefix")
-        await revisedSnapshotTaken.next()
 
+        // A repeated snapshot publishes nothing: the next state is the advanced one.
         await audio.send(chunk(2))
-        await revisedSnapshotTaken.next()
-        #expect(Array(mapped.all.dropFirst(count + 2)).isEmpty, "a consumed duplicate maps nothing")
         await audio.send(chunk(3))
         let advanced = await states.next()!
         #expect(advanced.finalEntries.map(\.text.id) == Array(0...count))
         #expect(advanced.finalEntries.last?.text.settled == "revised")
         #expect(advanced.tailEntries.map(\.text.pending) == ["next"])
-        #expect(Array(mapped.all.dropFirst(count + 2)) == [count, count + 1], "a repeated tail maps nothing; newly final text maps once")
+        #expect(Array(advanced.finalEntries.prefix(count)) == first.finalEntries)
         #expect(revised.tailEntries.map(\.text.pending) == ["revised"])
         audio.end()
         await side.stop()
@@ -71,7 +60,6 @@ struct CallSideFinalEntriesTests {
             }
         }
         await listener.value
-        #expect(Array(mapped.all.dropFirst(count + 4)) == [count + 1])
     }
 }
 

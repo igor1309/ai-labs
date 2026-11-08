@@ -33,18 +33,9 @@ extension TrackText: TextEngine {}
 struct CallSide: CallText.Side {
 
     private let side: SideReader
-    private let mapEntry: @Sendable (SideText.State.Entry) -> SideState.Entry
-    private let snapshotTaken: @Sendable (SideText.State) -> Void
 
-    init(
-        audio: any SideText.LiveAudio, text: any TextEngine,
-        written: (any FillIn.WrittenTrack)?, sampleRate: Double,
-        mapEntry: @escaping @Sendable (SideText.State.Entry) -> SideState.Entry = CallSide.entry,
-        snapshotTaken: @escaping @Sendable (SideText.State) -> Void = { _ in }
-    ) {
+    init(audio: any SideText.LiveAudio, text: any TextEngine, written: (any FillIn.WrittenTrack)?, sampleRate: Double) {
 
-        self.mapEntry = mapEntry
-        self.snapshotTaken = snapshotTaken
         let audio = SideAudio(source: audio)
         let hearing = SideHearing(text: text)
         side = SideReader(audio: audio, text: hearing, fillIn: {
@@ -66,8 +57,6 @@ struct CallSide: CallText.Side {
         var lastTail: [SideText.State.Entry] = []
         var lastNoTextBefore: Double?
         for await snapshot in side.updates {
-            // A suppressed snapshot still acknowledges completed processing.
-            defer { snapshotTaken(snapshot) }
             guard snapshot.status != lastStatus || snapshot.finalCount != finalEntries.count
                 || snapshot.tailEntries != lastTail || snapshot.noTextBefore != lastNoTextBefore else { continue }
             lastNoTextBefore = snapshot.noTextBefore
@@ -81,16 +70,16 @@ struct CallSide: CallText.Side {
             case .failed(let failure): .failed(Self.message(failure))
             }
             if snapshot.finalCount > finalEntries.count {
-                finalEntries.append(contentsOf: snapshot.finalEntries.dropFirst(finalEntries.count).map(mapEntry))
+                finalEntries.append(contentsOf: snapshot.finalEntries.dropFirst(finalEntries.count).map(Self.entry))
             }
             await receive(SideState(
-                status: status, finalEntries: finalEntries, tailEntries: snapshot.tailEntries.map(mapEntry),
+                status: status, finalEntries: finalEntries, tailEntries: snapshot.tailEntries.map(Self.entry),
                 noTextBefore: snapshot.noTextBefore
             ))
         }
     }
 
-    static func entry(_ entry: SideText.State.Entry) -> SideState.Entry {
+    private static func entry(_ entry: SideText.State.Entry) -> SideState.Entry {
 
         .init(text: .init(
             id: entry.text.id, start: entry.text.start, end: entry.text.end,
