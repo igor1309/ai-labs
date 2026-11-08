@@ -43,7 +43,7 @@ import Testing
             state = reducer.reduce(state, .editField(.fallback, .endpoint, proposed)).0
             let view = try loadedPresentation(state)
             #expect(view.runtimes[1].fields.first { $0.id == .endpoint }?.value == proposed)
-            #expect(!view.save.isEnabled)
+            #expect(view.save.isEnabled == (state.issues.isEmpty && state.draft != state.saved))
         }
         let invalid = reducer.reduce(state, .editField(.fallback, .endpoint, "http://remote.example/v1")).0
         let field = try #require(loadedPresentation(invalid).runtimes[1].fields.first { $0.id == .endpoint })
@@ -149,7 +149,7 @@ import Testing
         #expect(corrected.issues.isEmpty && corrected.validatedRevision == nil)
         #expect(correction.runtimes.flatMap(\.fields).allSatisfy { !$0.isInvalid })
         #expect(correction.status == settingsMessage(.editing))
-        #expect(!correction.save.isEnabled && correction.validate.isEnabled)
+        #expect(correction.save.isEnabled && correction.validate.isEnabled)
         #expect(provider.calls.withLock { $0.isEmpty })
     }
 
@@ -165,11 +165,12 @@ import Testing
             let oldResult = await handler.handle(try #require(validate))
             let newer = reducer.reduce(validating, .editField(.fallback, .model, "latest-model")).0
             #expect(reducer.reduce(newer, oldResult).0 == newer)
-            #expect(!newer.canSave && reducer.reduce(newer, .save).1 == nil)
-            let (checking, latest) = reducer.reduce(newer, .validate)
-            let approved = reducer.reduce(checking, await handler.handle(try #require(latest))).0
-            #expect(approved.canSave)
-            let (saving, save) = reducer.reduce(approved, .save)
+            #expect(newer.canSave)
+            #expect(try loadedPresentation(newer).save.isEnabled)
+            let (checking, latest) = reducer.reduce(newer, .save)
+            #expect(latest == .validate(newer.revision, newer.draft!))
+            let (saving, save) = reducer.reduce(checking, await handler.handle(try #require(latest)))
+            #expect(save == .save(newer.revision, newer.draft!))
             #expect(reducer.reduce(saving, .save).1 == nil)
             let saved = reducer.reduce(saving, await handler.handle(try #require(save))).0
             let view = try loadedPresentation(saved)
