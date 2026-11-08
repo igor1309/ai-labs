@@ -104,7 +104,7 @@ func withDiskImage(
 ) async throws {
 
     let clock = ContinuousClock(); let t0 = clock.now
-    func mark(_ s: String) { print("LAB1078 \(s) \(clock.now - t0)") }
+    func mark(_ s: String) { print("LAB1078 \(s) \(clock.now - t0) at \(Date().timeIntervalSince1970)") }
     let image = folder.appendingPathComponent("small.dmg")
     let mount = folder.appendingPathComponent("volume", isDirectory: true)
     try FileManager.default.createDirectory(at: mount, withIntermediateDirectories: false)

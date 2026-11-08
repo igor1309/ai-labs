@@ -70,6 +70,8 @@ struct TrackFileFailureTests {
     @Test(.enabled(if: FileManager.default.isExecutableFile(atPath: "/usr/bin/hdiutil"),
                    "hdiutil is unavailable; the disk-full contract requires a mounted disk image"))
     func diskFullEndsWritingAndPreservesAcknowledgedTones() async throws {
+        print("LAB1078 TEST START at \(Date().timeIntervalSince1970)")
+        defer { print("LAB1078 TEST END at \(Date().timeIntervalSince1970)") }
 
         try await withTrackFolder { folder in
             try await withDiskImage(in: folder) { volume in

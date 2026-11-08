@@ -8,8 +8,10 @@ import Testing
 func withTrackFolder(_ body: (URL) async throws -> Void) async throws {
 
     let folder = FileManager.default.temporaryDirectory.appendingPathComponent("track-test-\(UUID())", isDirectory: true)
+    print("LAB1078W enter \(Date().timeIntervalSince1970)")
     try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false)
-    do { try await body(folder) }
+    print("LAB1078W made \(Date().timeIntervalSince1970)")
+    do { try await body(folder); print("LAB1078W bodydone \(Date().timeIntervalSince1970)") }
     catch let error as DiskImageDetachFailure {
         // The image may still be mounted, so its containing folder must survive.
         throw error
@@ -19,6 +21,7 @@ func withTrackFolder(_ body: (URL) async throws -> Void) async throws {
         throw error
     }
     try FileManager.default.removeItem(at: folder)
+    print("LAB1078W removed \(Date().timeIntervalSince1970)")
 }
 
 func tone(_ number: Int, rate: Int = 48_000, frames: Int? = nil) -> [Float] {
