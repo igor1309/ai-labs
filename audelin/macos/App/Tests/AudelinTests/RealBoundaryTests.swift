@@ -19,7 +19,7 @@ struct RealBoundaryTests {
         #expect(boundary.capacity is DiskCapacity)
         #expect(boundary.time is RealClock)
         #expect(boundary.log is SystemLogSink)
-        await offPool {
+        do {
             #expect((boundary.capacity.available(at: FileManager.default.temporaryDirectory) ?? 0) > 0)
             #expect(boundary.capacity.available(at: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)) == nil)
         }
