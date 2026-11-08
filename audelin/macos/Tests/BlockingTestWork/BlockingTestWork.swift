@@ -1,35 +1,11 @@
 import AVFoundation
-import Dispatch
 import Foundation
-import Synchronization
 
-// Test fixtures read and write files and launch processes, which block; the
-// cooperative pool must not run them, so tests await them on a few serial
-// queues taken in turn, which bounds the threads without queueing every test
-// behind one.
-private let blockingQueues = (0..<4).map { DispatchQueue(label: "audelin.tests.blocking.\($0)") }
-private let nextQueue = Atomic<UInt>(0)
+/// Runs test work where the caller is. Call sites are being inlined.
+public func offPool<Value: Sendable>(_ work: @Sendable () throws -> Value) async throws -> Value { try work() }
 
-private var blockingWork: DispatchQueue {
-
-    blockingQueues[Int(nextQueue.wrappingAdd(1, ordering: .relaxed).oldValue % UInt(blockingQueues.count))]
-}
-
-/// Runs blocking test work outside the cooperative pool and awaits its result.
-public func offPool<Value: Sendable>(_ work: @escaping @Sendable () throws -> Value) async throws -> Value {
-
-    try await withCheckedThrowingContinuation { (done: CheckedContinuation<Value, any Error>) in
-        blockingWork.async { done.resume(with: Result { try work() }) }
-    }
-}
-
-/// Runs blocking test work that cannot fail outside the cooperative pool.
-public func offPool<Value: Sendable>(_ work: @escaping @Sendable () -> Value) async -> Value {
-
-    await withCheckedContinuation { (done: CheckedContinuation<Value, Never>) in
-        blockingWork.async { done.resume(returning: work()) }
-    }
-}
+/// Runs test work that cannot fail where the caller is.
+public func offPool<Value: Sendable>(_ work: @Sendable () -> Value) async -> Value { work() }
 
 /// Runs the body, then awaits blocking cleanup whether or not the body threw.
 /// The body's error wins over a cleanup error.
