@@ -36,7 +36,7 @@ First review — no earlier version of this document existed. Baseline set again
 - Swift 6 language mode makes data-race checking an error. Swift 5 mode with `-strict-concurrency=complete` gives the same diagnostics as warnings — the recommended migration path, module by module.
 - Value types with Sendable members are implicitly Sendable (non-public). Final classes with only immutable Sendable stored properties can conform to `Sendable` without `@unchecked`.
 - Region-based isolation (SE-0414) and `sending` (SE-0430) let non-Sendable values cross isolation boundaries when the compiler can prove no aliasing remains — prefer these over `@unchecked Sendable`.
-- `Mutex` (SE-0433, `Synchronization`, macOS 15 / iOS 18) is `Sendable` and non-copyable; a `final class` whose mutable state lives inside a `let` `Mutex` is `Sendable` with no `@unchecked`. `Atomic` covers single values.
+- `Mutex` (SE-0433, `Synchronization`, macOS 15 / iOS 18) is `Sendable` and non-copyable; a `final class` whose mutable state lives inside a `let` `Mutex` is `Sendable` with no `@unchecked`. `Atomic` covers single values. Never hold a lock across a suspension (`withLock` takes a synchronous closure, so it can't `await`); don't block inside tasks waiting on a lock another task holds long; for owning task lifecycles prefer an actor over a lock-guarded `Task?`.
 - `NSLock.lock()/unlock()` are unavailable from async contexts (`noasync`); use `withLock {}`, or `Mutex`.
 - `@preconcurrency import` silences Sendable diagnostics from modules not yet audited; use it narrowly and remove it once the dependency is annotated. `@unchecked Sendable` and `nonisolated(unsafe)` are last-resort escape hatches — document why each is safe.
 
@@ -64,4 +64,4 @@ First review — no earlier version of this document existed. Baseline set again
 | File | Claim | Correction |
 |---|---|---|
 | `dev-skills/public/swift-package-manifest/SKILL.md`, `references/pattern-details.md` | Swift 6 manifests should use `@preconcurrency import PackageDescription` | Not needed: manifest top-level code is main-actor isolated and `swift package init` (tools 6.x) emits a plain `import PackageDescription`. `@preconcurrency` is only for unaudited dependencies. |
-| `neris/packages/swift-neris/Tests/Core/SessionLoop/findings.md` | Using `Mutex` requires `@unchecked Sendable` on the owning class | `Mutex` is `Sendable`; keep the mutable `Task?` inside the `Mutex` (`let state = Mutex<Task<…>?>(nil)`) and the class is plainly `Sendable`. `@unchecked` was only needed because state lived outside the mutex. |
+| `neris/packages/swift-neris/Tests/Core/SessionLoop/findings.md` | Using `Mutex` requires `@unchecked Sendable` on the owning class | `Mutex` is `Sendable`, so state inside a `let` `Mutex` doesn't force `@unchecked`. For managing a `Task?` lifecycle, an actor is usually the clearer design. |
