@@ -1,8 +1,18 @@
 name: Audelin Core
 
 on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: Collect fresh-build compiler statistics in a supplemental job.
+        type: boolean
+        default: true
   workflow_call:
     inputs:
+      profile:
+        description: Collect fresh-build compiler statistics in a supplemental job.
+        type: boolean
+        default: false
       ref:
         description: "Git ref to checkout."
         required: false
@@ -12,6 +22,77 @@ permissions:
   contents: read
 
 jobs:
+  # Supplemental measurement only: normal callers still run every check below.
+  # No build cache is restored, so this measures fresh compilation rather than
+  # timestamp or cache reuse. Compiler statistics include per-module frontend
+  # and optimization timers; summed job times are not pipeline wall time.
+  profile:
+    if: inputs.profile
+    runs-on: macos-latest
+    timeout-minutes: 30
+    env:
+      STATS: ${{ github.workspace }}/build-profile/statistics
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+      - name: Select newest Xcode
+        run: sudo xcode-select -s "$(ls -d /Applications/Xcode_*.app | sort -V | tail -n 1)/Contents/Developer"
+      - name: Record machine and compiler
+        run: |
+          mkdir -p "$STATS/debug" "$STATS/release"
+          {
+            git rev-parse HEAD
+            swift --version
+            sw_vers
+            sysctl hw.ncpu hw.memsize
+          } | tee build-profile/environment.txt
+      - name: Resolve dependencies separately
+        working-directory: audelin/macos
+        run: |
+          swift package resolve
+          swift package --package-path App --scratch-path "$PWD/.build" resolve
+          swift package --package-path PreviewApps --scratch-path "$PWD/.build" resolve
+      - name: Profile fresh core test build
+        working-directory: audelin/macos
+        run: |
+          set -o pipefail
+          /usr/bin/time -lp swift build --build-tests -Xswiftc -O \
+            -Xswiftc -stats-output-dir -Xswiftc "$STATS/debug" \
+            2>&1 | tee "$GITHUB_WORKSPACE/build-profile/core.log"
+      - name: Profile app test build
+        working-directory: audelin/macos/App
+        run: |
+          set -o pipefail
+          /usr/bin/time -lp swift build --build-tests -Xswiftc -O --scratch-path ../.build \
+            -Xswiftc -stats-output-dir -Xswiftc "$STATS/debug" \
+            2>&1 | tee "$GITHUB_WORKSPACE/build-profile/app.log"
+      - name: Profile preview test build
+        working-directory: audelin/macos/PreviewApps
+        run: |
+          set -o pipefail
+          /usr/bin/time -lp swift build --build-tests -Xswiftc -O --scratch-path ../.build \
+            -Xswiftc -stats-output-dir -Xswiftc "$STATS/debug" \
+            2>&1 | tee "$GITHUB_WORKSPACE/build-profile/preview.log"
+      # This is a diagnostic compilation, not a replacement for bundling,
+      # signing or testing in the core job. Release retains its existing flags.
+      - name: Profile fresh release compilation
+        working-directory: audelin/macos
+        run: |
+          set -o pipefail
+          /usr/bin/time -lp swift build --package-path App --scratch-path "$PWD/.build" \
+            -c release --product Audelin \
+            -Xswiftc -stats-output-dir -Xswiftc "$STATS/release" \
+            2>&1 | tee "$GITHUB_WORKSPACE/build-profile/release.log"
+      - name: Upload compiler statistics and timings
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: audelin-fresh-build-profile
+          path: build-profile
+          if-no-files-found: error
+
   core:
     runs-on: macos-latest
     timeout-minutes: 30
