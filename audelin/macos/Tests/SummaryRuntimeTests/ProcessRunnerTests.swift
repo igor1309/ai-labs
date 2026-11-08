@@ -5,6 +5,21 @@ import SummaryRuntime
 import Synchronization
 import Testing
 
+/// Suspends between reads of the nonblocking descriptor, so a slow child never
+/// holds a thread the child's own runner may need.
+private func readPID(from fd: Int32) async throws -> Int32 {
+    var buffer = [UInt8](repeating: 0, count: 64)
+    while true {
+        let count = Darwin.read(fd, &buffer, buffer.count)
+        if count > 0 {
+            guard let pid = Int32(String(decoding: buffer.prefix(count), as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)) else { throw CocoaError(.fileReadCorruptFile) }
+            return pid
+        }
+        guard count < 0, errno == EAGAIN else { throw CocoaError(.fileReadUnknown) }
+        try await Task.sleep(for: .milliseconds(10))
+    }
+}
+
 @Suite(.timeLimit(.minutes(1))) struct ProcessRunnerTests {
     /// Contract test: both parent and descendant ignore TERM. Only escalation
     /// directed at the owned group can finish the attempt and its exit witness.
@@ -29,14 +44,7 @@ import Testing
         let script = "trap '' TERM; /bin/sh -c " + shellQuote(child) + " & wait"
         let task = Task { try await runner.run(program: "/bin/sh", arguments: ["-c", script], input: Data(repeating: 65, count: 2 * 1024 * 1024)) }
         do {
-            let descendant = try { () throws -> Int32 in
-                var ready = pollfd(fd: fixture.1, events: Int16(POLLIN), revents: 0)
-                guard poll(&ready, 1, 30000) == 1 else { throw CocoaError(.fileReadUnknown) }
-                var buffer = [UInt8](repeating: 0, count: 64)
-                let count = Darwin.read(fixture.1, &buffer, buffer.count)
-                guard count > 0, let pid = Int32(String(decoding: buffer.prefix(count), as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)) else { throw CocoaError(.fileReadCorruptFile) }
-                return pid
-            }()
+            let descendant = try await readPID(from: fixture.1)
             let exited = AsyncStream<Void>.makeStream()
             let witness = DispatchSource.makeProcessSource(identifier: descendant, eventMask: .exit, queue: .global())
             witness.setEventHandler { exited.continuation.yield(()); exited.continuation.finish() }
