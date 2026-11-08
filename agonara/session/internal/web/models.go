@@ -48,8 +48,14 @@ type Document struct {
 	Program                         *Program
 	Course                          *Item
 	Previous, Next                  *int
-	References                      []string
+	Fragments                       []SourceBlock
 	Revision                        int
 	MaterialRevision                string
 }
 type Answer struct{ Available bool }
+
+// SourceBlock is one activity-selected Markdown fragment, with its action identity.
+// An empty reference denotes a heading.
+type SourceBlock struct {
+	Markdown, Reference string
+}

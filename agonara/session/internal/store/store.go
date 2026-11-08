@@ -22,8 +22,29 @@ func Load[T any](path string, empty func() T) (T, error) {
 	return state, json.Unmarshal(data, &state)
 }
 
+type replacementFile interface {
+	Name() string
+	Write([]byte) (int, error)
+	Sync() error
+	Close() error
+}
+
+type fileOps struct {
+	createTemp func(string, string) (replacementFile, error)
+	rename     func(string, string) error
+	remove     func(string) error
+}
+
 // Save writes the state readable by its owner only.
 func Save[T any](path string, state T) error {
+	return save(path, state, fileOps{
+		createTemp: func(dir, pattern string) (replacementFile, error) { return os.CreateTemp(dir, pattern) },
+		rename:     os.Rename,
+		remove:     os.Remove,
+	})
+}
+
+func save[T any](path string, state T, ops fileOps) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return err
 	}
@@ -31,12 +52,12 @@ func Save[T any](path string, state T) error {
 	if err != nil {
 		return err
 	}
-	f, err := os.CreateTemp(filepath.Dir(path), ".state-*")
+	f, err := ops.createTemp(filepath.Dir(path), ".state-*")
 	if err != nil {
 		return err
 	}
 	name := f.Name()
-	defer os.Remove(name)
+	defer ops.remove(name)
 	if _, err = f.Write(data); err != nil {
 		f.Close()
 		return err
@@ -48,5 +69,5 @@ func Save[T any](path string, state T) error {
 	if err = f.Close(); err != nil {
 		return err
 	}
-	return os.Rename(name, path)
+	return ops.rename(name, path)
 }

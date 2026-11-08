@@ -187,7 +187,7 @@ func TestParagraphContextBelongsToRevisionAndExplanationsAreUnavailable(t *testi
 	f := Flow{Reader: r, PageSize: 1000}
 	first := act(t, f, entityState("material-id"), "")
 	c := first.Context
-	if len(c.Paragraphs) != 2 || c.Paragraphs[0].Text != "Same." || c.Paragraphs[0].Reference == c.Paragraphs[1].Reference {
+	if len(c.Fragments) != 3 || c.Fragments[1].Source != "Same." || c.Fragments[1].Reference == c.Fragments[2].Reference {
 		t.Fatalf("context %+v", c)
 	}
 	repeat := act(t, f, first.Session, "")
@@ -195,18 +195,20 @@ func TestParagraphContextBelongsToRevisionAndExplanationsAreUnavailable(t *testi
 		t.Fatal("references changed within revision")
 	}
 	for _, kind := range []string{"more", "simpler", "example", "ask"} {
-		q := Question{Kind: kind, MaterialID: "material-id", MaterialRevision: c.Revision, Reference: c.Paragraphs[1].Reference, Text: "untrusted browser quote"}
+		q := Question{Kind: kind, MaterialID: "material-id", MaterialRevision: c.Revision, Reference: c.Fragments[2].Reference, Text: "untrusted browser quote"}
 		got, err := f.Explain(context.Background(), first.Session, q)
 		if err != nil || got.Available || got.Paragraph.Text != "Same." || got.MaterialRevision != c.Revision {
 			t.Fatalf("%+v %v", got, err)
 		}
-		q.Reference = "invented"
-		if _, err = f.Explain(context.Background(), first.Session, q); !errors.Is(err, ErrInvalid) {
-			t.Fatalf("bad ref: %v", err)
+		for _, reference := range []string{"invented", ""} {
+			q.Reference = reference
+			if _, err = f.Explain(context.Background(), first.Session, q); !errors.Is(err, ErrInvalid) {
+				t.Fatalf("bad ref %q: %v", reference, err)
+			}
 		}
 	}
 	r.content += "\n\nChanged."
-	q := Question{Kind: "more", MaterialID: "material-id", MaterialRevision: c.Revision, Reference: c.Paragraphs[0].Reference}
+	q := Question{Kind: "more", MaterialID: "material-id", MaterialRevision: c.Revision, Reference: c.Fragments[1].Reference}
 	if _, err := f.Explain(context.Background(), first.Session, q); !errors.Is(err, ErrStale) {
 		t.Fatalf("changed revision: %v", err)
 	}
@@ -222,7 +224,7 @@ func TestReferencesNameSourceFragmentsAfterMetadataAndRepeatedHeadingText(t *tes
 	makeMaterial(r)
 	r.content = "---\nquote: Same.\n---\n\n# Same.\n\nSame.\n\nSame."
 	result := act(t, Flow{Reader: r, PageSize: 1000}, entityState("material-id"), "")
-	paragraphs := result.Context.Paragraphs
+	paragraphs := result.Context.Fragments[1:]
 	for i, want := range []int{strings.Index(r.content, "\n\nSame.") + 2, strings.LastIndex(r.content, "Same.")} {
 		expected := fmt.Sprintf("%s:%d", result.Context.Revision, want)
 		if paragraphs[i].Reference != expected {
@@ -231,7 +233,7 @@ func TestReferencesNameSourceFragmentsAfterMetadataAndRepeatedHeadingText(t *tes
 	}
 	// A paragraph that stays whole keeps its identity when the page budget changes.
 	smaller := act(t, Flow{Reader: r, PageSize: 10}, Session{Place: Place{Screen: "entity", EntityID: "material-id", Page: n(1)}}, "")
-	if smaller.Context.Paragraphs[0].Reference != paragraphs[0].Reference {
+	if smaller.Context.Fragments[0].Reference != paragraphs[0].Reference {
 		t.Fatalf("page budget changed source reference: %+v", smaller.Context)
 	}
 }

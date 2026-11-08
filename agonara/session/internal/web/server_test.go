@@ -36,7 +36,7 @@ func newServer(t *testing.T) (*Server, http.Handler) {
 			}
 			prev, next := 0, 2
 			n := 1
-			return &Page{Document: &Document{ID: "m", Title: "Лекция: агент и бот", Markdown: "## Цикл агента\n\nАгент <выбирает> шаг.\n\nОтличие от бота.", Page: &PageInfo{Index: 1, Count: 3}, Position: &Position{Section: &n, Label: "Цикл агента", Count: 1}, Sections: []ContentsEntry{{Page: 0, Label: "Intro", Count: 1}, {Page: 1, N: &n, Label: "Цикл агента", Current: true, Count: 1}, {Page: 2, N: intPtr(2), Label: "Инструменты", Count: 1}}, Program: program, Course: &Item{ID: "t", Title: "Что такое агент"}, Previous: &prev, Next: &next, References: []string{"ref-a", "ref-b"}, Revision: 7, MaterialRevision: "material-revision"}}, nil
+			return &Page{Document: &Document{ID: "m", Title: "Лекция: агент и бот", Markdown: "## Цикл агента\n\nАгент <выбирает> шаг.\n\nОтличие от бота.", Page: &PageInfo{Index: 1, Count: 3}, Position: &Position{Section: &n, Label: "Цикл агента", Count: 1}, Sections: []ContentsEntry{{Page: 0, Label: "Intro", Count: 1}, {Page: 1, N: &n, Label: "Цикл агента", Current: true, Count: 1}, {Page: 2, N: intPtr(2), Label: "Инструменты", Count: 1}}, Program: program, Course: &Item{ID: "t", Title: "Что такое агент"}, Previous: &prev, Next: &next, Fragments: []SourceBlock{{Markdown: "## Цикл агента"}, {Markdown: "Агент <выбирает> шаг.", Reference: "ref-a"}, {Markdown: "Отличие от бота.", Reference: "ref-b"}}, Revision: 7, MaterialRevision: "material-revision"}}, nil
 		}
 	}}
 	s := &Server{Session: spy, Token: "secret"}
@@ -160,7 +160,7 @@ func TestLongTitlesAndParagraphReferencesStayEscapedInMarkup(t *testing.T) {
 	t.Parallel()
 	title := strings.Repeat("Длинное название ", 30) + `<script>"&`
 	s := &Server{Token: "secret", Session: &sessionSpy{open: func(Request) (*Page, error) {
-		return &Page{Document: &Document{ID: "m", Title: title, Markdown: "Text <unsafe> & **bold**.", Page: &PageInfo{Count: 1}, Position: &Position{Count: 1}, Sections: []ContentsEntry{{Page: 0, Label: title, Count: 1, Current: true}}, References: []string{`ref"<&`}, Revision: 4, MaterialRevision: `material"<&`}}, nil
+		return &Page{Document: &Document{ID: "m", Title: title, Markdown: "Text <unsafe> & **bold**.", Page: &PageInfo{Count: 1}, Position: &Position{Count: 1}, Sections: []ContentsEntry{{Page: 0, Label: title, Count: 1, Current: true}}, Fragments: []SourceBlock{{Markdown: "Text <unsafe> & **bold**.", Reference: `ref"<&`}}, Revision: 4, MaterialRevision: `material"<&`}}, nil
 	}}}
 	h, err := s.Handler()
 	if err != nil {

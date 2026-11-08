@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"reflect"
 	"testing"
 	"time"
@@ -23,10 +24,17 @@ type pollStore struct {
 	state   State
 	saveErr error
 	saves   []State
+	onSave  func(State)
 }
 
 func (s *pollStore) Load() (State, error) { return s.state, nil }
-func (s *pollStore) Save(v State) error   { s.saves = append(s.saves, v); return s.saveErr }
+func (s *pollStore) Save(v State) error {
+	s.saves = append(s.saves, v)
+	if s.onSave != nil {
+		s.onSave(v)
+	}
+	return s.saveErr
+}
 func TestPollerCommitsOffsetAfterHandlingAndStopsOnStorageError(t *testing.T) {
 	t.Parallel()
 	failure := errors.New("storage failed")
@@ -167,5 +175,97 @@ func TestPollerAdvancesSuccessfulUpdatesAcrossBatchesAndIgnoresPriorUpdates(t *t
 		!reflect.DeepEqual(inputs, []State{{Offset: 5, Revision: 20}, {Offset: 6, Revision: 21}, {Offset: 9, Revision: 22}, {Offset: 10, Revision: 23}}) ||
 		!reflect.DeepEqual(store.saves, []State{{Offset: 6, Revision: 21}, {Offset: 9, Revision: 22}, {Offset: 10, Revision: 23}, {Offset: 13, Revision: 24}}) {
 		t.Fatalf("offsets=%v handled=%v inputs=%+v saves=%+v", offsets, handled, inputs, store.saves)
+	}
+}
+
+func TestPollerRetriesFailedHandlingFromLastCommittedState(t *testing.T) {
+	t.Parallel()
+	for _, failedID := range []int64{5, 8, 9} {
+		t.Run(fmt.Sprint(failedID), func(t *testing.T) {
+			t.Parallel()
+			failure := errors.New("delivery failed")
+			initial := State{Offset: 5, Revision: 20}
+			store := &pollStore{state: initial}
+			var calls []string
+			store.onSave = func(s State) { calls = append(calls, fmt.Sprintf("save:%d:%d", s.Offset, s.Revision)) }
+			ids := []int64{5, 8, 9}
+			committed := initial
+			var prefix []State
+			var want []string
+			want = append(want, "poll:5")
+			for _, id := range ids {
+				want = append(want, fmt.Sprintf("handle:%d:%d:%d", id, committed.Offset, committed.Revision))
+				if id == failedID {
+					break
+				}
+				committed = State{Offset: id + 1, Revision: committed.Revision + 1}
+				prefix = append(prefix, committed)
+				want = append(want, fmt.Sprintf("save:%d:%d", committed.Offset, committed.Revision))
+			}
+			want = append(want, "log:ERROR: delivery failed", "wait", fmt.Sprintf("poll:%d", committed.Offset))
+			final := committed
+			expectedSaves := append([]State(nil), prefix...)
+			for _, id := range ids {
+				if id < failedID {
+					continue
+				}
+				want = append(want, fmt.Sprintf("handle:%d:%d:%d", id, final.Offset, final.Revision))
+				final = State{Offset: id + 1, Revision: final.Revision + 1}
+				expectedSaves = append(expectedSaves, final)
+				want = append(want, fmt.Sprintf("save:%d:%d", final.Offset, final.Revision))
+			}
+			want = append(want, "poll:10")
+			polls, waits := 0, 0
+			api := pollAPI(func(_ context.Context, method string, params map[string]any) (json.RawMessage, error) {
+				polls++
+				expectedOffset := initial.Offset
+				if polls == 2 {
+					expectedOffset = committed.Offset
+				}
+				if polls == 3 {
+					expectedOffset = final.Offset
+				}
+				if polls > 3 || method != "getUpdates" || !reflect.DeepEqual(params, map[string]any{"offset": expectedOffset, "timeout": 25, "allowed_updates": []string{"message", "callback_query"}}) {
+					t.Fatalf("poll %d %s %+v", polls, method, params)
+				}
+				calls = append(calls, fmt.Sprintf("poll:%d", expectedOffset))
+				if polls == 3 {
+					return nil, &Error{Code: 409}
+				}
+				return json.RawMessage(`[{"update_id":4},{"update_id":5},{"update_id":8},{"update_id":9}]`), nil
+			})
+			handler := pollHandler(func(_ context.Context, u Update, s State) (State, error) {
+				if !reflect.DeepEqual(u, Update{UpdateID: u.UpdateID}) {
+					t.Fatalf("update %+v", u)
+				}
+				calls = append(calls, fmt.Sprintf("handle:%d:%d:%d", u.UpdateID, s.Offset, s.Revision))
+				if polls == 1 && u.UpdateID == failedID {
+					return State{Offset: 999, Revision: 999}, failure
+				}
+				s.Revision++
+				return s, nil
+			})
+			var poller *Poller
+			wait := func(_ context.Context, d time.Duration) error {
+				waits++
+				calls = append(calls, "wait")
+				if waits != 1 || d != 5*time.Second || poller.state != committed || !reflect.DeepEqual(store.saves, prefix) {
+					t.Fatalf("failed update committed: waits=%d duration=%v state=%+v saves=%+v", waits, d, poller.state, store.saves)
+				}
+				return nil
+			}
+			var err error
+			poller, err = NewPoller(api, handler, store, wait, func(s string) { calls = append(calls, "log:"+s) })
+			if err != nil {
+				t.Fatal(err)
+			}
+			var conflict *Error
+			if err = poller.Run(context.Background()); !errors.As(err, &conflict) || conflict.Code != 409 {
+				t.Fatalf("run: %v", err)
+			}
+			if waits != 1 || poller.state != final || !reflect.DeepEqual(store.saves, expectedSaves) || !reflect.DeepEqual(calls, want) {
+				t.Fatalf("state=%+v saves=%+v calls=%v want=%v", poller.state, store.saves, calls, want)
+			}
+		})
 	}
 }

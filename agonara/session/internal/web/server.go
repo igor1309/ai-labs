@@ -316,14 +316,8 @@ func reading(doc *Document) *Reading {
 	reading := &Reading{
 		EntityID: doc.ID, Title: doc.Title, Heading: doc.Title,
 		Page: doc.Page.Index, Pages: doc.Page.Count, Index: 0, Count: 1,
-		Blocks: Blocks(doc.Markdown), Program: doc.Program, Course: doc.Course, Intro: doc.Body,
+		Blocks: sourceBlocks(doc.Fragments), Program: doc.Program, Course: doc.Course, Intro: doc.Body,
 		Outline: newOutline(doc.Program), Revision: doc.Revision, MaterialRevision: doc.MaterialRevision,
-	}
-	for i := range reading.Blocks {
-		block := &reading.Blocks[i]
-		if block.N > 0 && block.N <= len(doc.References) {
-			block.Reference = doc.References[block.N-1]
-		}
 	}
 	course := doc.Course
 	reading.Home = reading.Outline.home(reading.EntityID)

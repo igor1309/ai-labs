@@ -1,13 +1,19 @@
 package composition
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"html"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
 	"reflect"
+	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -113,7 +119,7 @@ func TestBothSurfacesResumeOneReadingSessionAfterSwitchingAndRestart(t *testing.
 		t.Fatalf("%+v %v", pageView, err)
 	}
 	doc := pageView.Document
-	explanation, err := assembled.Web.Explain(context.Background(), web.Question{Kind: "simpler", EntityID: "m", Reference: doc.References[0], MaterialRevision: doc.MaterialRevision, Revision: doc.Revision})
+	explanation, err := assembled.Web.Explain(context.Background(), web.Question{Kind: "simpler", EntityID: "m", Reference: doc.Fragments[1].Reference, MaterialRevision: doc.MaterialRevision, Revision: doc.Revision})
 	if err != nil || explanation.Available {
 		t.Fatalf("%+v %v", explanation, err)
 	}
@@ -198,5 +204,114 @@ func TestLegacyCallbackNeverBecomesCurrentAfterWebMigrationAndNavigation(t *test
 	after, loadErr := disk.Load()
 	if err != nil || loadErr != nil || got != state || !reflect.DeepEqual(before, after) || !reflect.DeepEqual(api.methods, []string{"answerCallbackQuery"}) || !strings.Contains(api.params[0]["text"].(string), "out of date") {
 		t.Fatalf("legacy callback applied: state=%+v err=%v calls=%v", after, err, api.params)
+	}
+}
+
+type fragmentReader struct {
+	readingSpy
+	content string
+}
+
+func (r fragmentReader) MaterialContent(context.Context, string) (string, error) {
+	return r.content, nil
+}
+
+type explanationObserver struct {
+	WebSession
+	result flow.Explanation
+}
+
+func (s *explanationObserver) Explain(ctx context.Context, q flow.Question) (flow.Explanation, error) {
+	result, err := s.WebSession.Explain(ctx, q)
+	s.result = result
+	return result, err
+}
+
+// Integrates activity fragments, the service, composition and web rendering/actions with in-memory collaborators.
+func TestDisplayedParagraphActionsResolveTheirOwnSourceFragments(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name, content string
+		size          int
+		pages         [][]string
+		html          []string
+	}{
+		{"empty heading", "# \nFirst.\n\nSecond.", 3500, [][]string{{"First.", "Second."}}, []string{"<p>First.</p>", "<p>Second.</p>"}},
+		{"heading repeats adjacent paragraph", "# Same.\nSame.\n\nSame.", 3500, [][]string{{"Same.", "Same."}}, []string{"<p>Same.</p>"}},
+		{"headings repeated text and lists", "# Title\n\nSame **bold** <x>.\n\nSame **bold** <x>.\n\n## Section\nLead.\n\n### Detail\nDetail text.\n\n- one\n  wrapped\n- two\n\n3. later", 3500,
+			[][]string{{"Same **bold** <x>.", "Same **bold** <x>."}, {"Lead.", "Detail text.", "- one\n  wrapped\n- two", "3. later"}},
+			[]string{"<p>Same <b>bold</b> &lt;x&gt;.</p>", "<h3>Detail</h3>", "<p>Detail text.</p>", "<ul><li>one wrapped</li><li>two</li></ul>", `<ol start="3"><li>later</li></ol>`}},
+		{"pagination", "# Title\n\nAlpha.\n\nBeta.\n\nGamma.", 14, [][]string{{}, {"Alpha.", "Beta."}, {"Gamma."}}, []string{"<p>Alpha.</p>", "<p>Beta.</p>", "<p>Gamma.</p>"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			service, err := flow.NewService(flow.Flow{Reader: fragmentReader{content: tc.content}, PageSize: tc.size}, &memoryStorage{state: flow.InitialState()})
+			if err != nil {
+				t.Fatal(err)
+			}
+			observer := &explanationObserver{WebSession: service}
+			server := &web.Server{Token: "access", Session: Web{Session: observer}}
+			handler, err := server.Handler()
+			if err != nil {
+				t.Fatal(err)
+			}
+			paragraphMarkup := regexp.MustCompile(`<div class="para" data-n="(\d+)" data-reference="([^"]*)" data-text="([^"]*)">`)
+			readerMarkup := regexp.MustCompile(`data-revision="(\d+)" data-material-revision="([^"]+)"`)
+			seen := map[string]bool{}
+			var rendered strings.Builder
+			cursor := 0
+			for page, sources := range tc.pages {
+				response := request(t, handler, fmt.Sprintf("/m/m?page=%d", page))
+				body := response.Body.String()
+				if response.Code != 200 {
+					t.Fatalf("page %d: %d %s", page, response.Code, body)
+				}
+				rendered.WriteString(body)
+				blocks := paragraphMarkup.FindAllStringSubmatch(body, -1)
+				if len(blocks) != len(sources) || strings.Count(body, `class="para-menu"`) != len(sources) {
+					t.Fatalf("page %d: blocks=%v want=%v", page, blocks, sources)
+				}
+				reader := readerMarkup.FindStringSubmatch(body)
+				if reader == nil {
+					t.Fatal("missing reader identity")
+				}
+				revision, err := strconv.Atoi(reader[1])
+				if err != nil {
+					t.Fatal(err)
+				}
+				for i, block := range blocks {
+					reference := html.UnescapeString(block[2])
+					offset := strings.Index(tc.content[cursor:], "\n"+sources[i])
+					if offset < 0 {
+						t.Fatalf("source %q missing", sources[i])
+					}
+					offset += cursor + 1
+					cursor = offset + len(sources[i])
+					wantReference := fmt.Sprintf("%x:%d", sha256.Sum256([]byte(tc.content)), offset)
+					if block[1] != strconv.Itoa(i+1) || reference != wantReference || seen[reference] {
+						t.Fatalf("block %v want reference %q", block, wantReference)
+					}
+					seen[reference] = true
+					for _, kind := range []string{"more", "simpler", "example", "ask"} {
+						payload, err := json.Marshal(web.Question{Kind: kind, EntityID: "m", Page: page, Paragraph: i + 1, Revision: revision, MaterialRevision: reader[2], Reference: reference, Text: "untrusted quote"})
+						if err != nil {
+							t.Fatal(err)
+						}
+						req := httptest.NewRequest("POST", "/api/answer", bytes.NewReader(payload))
+						req.AddCookie(&http.Cookie{Name: "agonara_web", Value: "access"})
+						answer := httptest.NewRecorder()
+						handler.ServeHTTP(answer, req)
+						if answer.Code != 200 || !strings.Contains(answer.Body.String(), `"available":false`) || !strings.Contains(answer.Body.String(), "Объяснения пока недоступны.") || observer.result.Paragraph != (flow.Paragraph{Reference: reference, Text: sources[i]}) || observer.result.MaterialRevision != reader[2] || observer.result.MaterialID != "m" {
+							t.Fatalf("%s page %d paragraph %d: %d %s source=%+v", kind, page, i, answer.Code, answer.Body.String(), observer.result)
+						}
+					}
+				}
+			}
+			for _, markup := range tc.html {
+				if !strings.Contains(rendered.String(), markup) {
+					t.Errorf("missing rendered %q", markup)
+				}
+			}
+		})
 	}
 }

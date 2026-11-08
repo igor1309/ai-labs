@@ -41,7 +41,7 @@ func TestSurfaceAdaptersTranslateTheirOwnRequestsAndViews(t *testing.T) {
 		Session: flow.Session{Place: flow.Place{Screen: "entity", EntityID: "m"}, Step: 8, Items: []flow.Item{{ID: "child", Title: "Linked", Kind: "concept"}}}, Kind: "material_reference",
 		View:    flow.View{Contents: []flow.ContentsEntry{{ActionID: "jump-unrelated", Page: 2, Label: "Jump"}}, Title: "Lecture", Markdown: "Exact **text**.", Page: &flow.PageInfo{Index: 2, Count: 4}, Position: &flow.Position{Section: number(1), Label: "Section", Index: 1, Count: 3}, Lists: []flow.List{{Heading: "Materials", Entries: []flow.Entry{{ActionID: "choose-reading", Index: 0, Label: "Reading"}}}}},
 		Actions: []flow.Action{{ID: "next", Kind: "page", Label: "Next"}},
-		Context: &flow.ReadingContext{Revision: "source-rev", MaterialID: "m", Paragraphs: []flow.Paragraph{{Reference: "source-ref", Text: "Exact **text**."}}, Sections: []flow.ContentsEntry{{Page: 1, N: number(1), Label: "Section", Count: 3, Current: true}}, Next: number(3), Program: &flow.Program{ID: "p", Courses: []flow.Course{{Topic: flow.Item{ID: "t"}, Concepts: []flow.Item{{ID: "c"}}, Materials: []flow.Item{{ID: "m"}}}}}},
+		Context: &flow.ReadingContext{Revision: "source-rev", MaterialID: "m", Fragments: []flow.Fragment{{Reference: "source-ref", Source: "Exact **text**."}}, Sections: []flow.ContentsEntry{{Page: 1, N: number(1), Label: "Section", Count: 3, Current: true}}, Next: number(3), Program: &flow.Program{ID: "p", Courses: []flow.Course{{Topic: flow.Item{ID: "t"}, Concepts: []flow.Item{{ID: "c"}}, Materials: []flow.Item{{ID: "m"}}}}}},
 	}, Resume: &flow.Bookmark{EntityID: "m", Page: 2, Position: &flow.Position{Count: 3}}}}
 	page, err := (Web{spy}).Open(context.Background(), web.Request{Route: "entity", ID: "m", Page: number(2), Revision: number(7)})
 	if err != nil {
@@ -51,7 +51,7 @@ func TestSurfaceAdaptersTranslateTheirOwnRequestsAndViews(t *testing.T) {
 		t.Fatalf("command %+v", spy.command)
 	}
 	d := page.Document
-	if d.MaterialRevision != "source-rev" || d.References[0] != "source-ref" || d.Markdown != "Exact **text**." || d.Program.Courses[0].ConceptCount != 1 || *d.Next != 3 || d.Sections[0].Count != 3 || page.Resume.Page != 2 {
+	if d.MaterialRevision != "source-rev" || d.Fragments[0] != (web.SourceBlock{Reference: "source-ref", Markdown: "Exact **text**."}) || d.Markdown != "Exact **text**." || d.Program.Courses[0].ConceptCount != 1 || *d.Next != 3 || d.Sections[0].Count != 3 || page.Resume.Page != 2 {
 		t.Fatalf("page %+v document %+v", page, d)
 	}
 	got, err := (Telegram{spy}).Show(context.Background(), telegram.Request{Action: "next", Revision: number(8)})

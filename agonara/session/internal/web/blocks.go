@@ -57,17 +57,7 @@ func Blocks(markdown string) []Block {
 				continue
 			}
 		}
-		kind, items, plain := list(lines)
-		if kind != "" {
-			start := 0
-			if kind == "ol" {
-				start, _ = strconv.Atoi(numberLine.FindStringSubmatch(lines[0])[1])
-			}
-			add(Block{Kind: kind, Items: items, Text: plain, Start: start})
-			continue
-		}
-		text := strings.Join(lines, " ")
-		add(Block{Kind: "p", HTML: template.HTML(inlinehtml.Render(text)), Text: marks.Replace(text)})
+		add(formatParagraph(strings.Join(lines, "\n")))
 	}
 	return blocks
 }
@@ -97,4 +87,38 @@ func list(lines []string) (string, []template.HTML, string) {
 		plain = append(plain, marks.Replace(body))
 	}
 	return kind, items, strings.Join(plain, " ")
+}
+
+// sourceBlocks formats each supplied fragment without rediscovering paragraph boundaries.
+func sourceBlocks(source []SourceBlock) []Block {
+	var blocks []Block
+	n := 0
+	for i, fragment := range source {
+		if fragment.Reference == "" {
+			if i > 0 {
+				text := strings.TrimSpace(strings.TrimLeft(fragment.Markdown, "#"))
+				blocks = append(blocks, Block{Kind: "h", HTML: template.HTML(inlinehtml.Render(text))})
+			}
+			continue
+		}
+		n++
+		block := formatParagraph(fragment.Markdown)
+		block.N, block.Reference = n, fragment.Reference
+		blocks = append(blocks, block)
+	}
+	return blocks
+}
+
+func formatParagraph(markdown string) Block {
+	lines := strings.Split(markdown, "\n")
+	kind, items, plain := list(lines)
+	if kind != "" {
+		start := 0
+		if kind == "ol" {
+			start, _ = strconv.Atoi(numberLine.FindStringSubmatch(lines[0])[1])
+		}
+		return Block{Kind: kind, Items: items, Text: plain, Start: start}
+	}
+	text := strings.Join(lines, " ")
+	return Block{Kind: "p", HTML: template.HTML(inlinehtml.Render(text)), Text: marks.Replace(text)}
 }

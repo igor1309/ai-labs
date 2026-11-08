@@ -11,7 +11,7 @@ import (
 // ReadingContext identifies source text within a particular immutable material revision.
 type ReadingContext struct {
 	MaterialID, Revision string
-	Paragraphs           []Paragraph
+	Fragments            []Fragment
 	Sections             []ContentsEntry
 	Previous, Next       *int
 	Program              *Program
@@ -20,8 +20,13 @@ type ReadingContext struct {
 }
 type Paragraph struct{ Reference, Text string }
 
+// Fragment preserves a source block; a heading has no paragraph reference.
+type Fragment struct {
+	Source, Reference string
+}
+
 var contextBreak = regexp.MustCompile(`\n\s*\n`)
-var contextHeading = regexp.MustCompile(`^#{1,6}\s+.*(?:\n|$)`)
+var contextHeading = regexp.MustCompile(`^#{1,6}(?:[ \t]+[^\n]*|$)(?:\n|$)`)
 
 func contextFor(node Entity, content string, pages []Page, page int) *ReadingContext {
 	revision := fmt.Sprintf("%x", sha256.Sum256([]byte(content)))
@@ -49,13 +54,19 @@ func contextFor(node Entity, content string, pages []Page, page int) *ReadingCon
 			}
 			start += cursor
 			cursor = start + len(raw)
-			text := strings.TrimSpace(contextHeading.ReplaceAllString(raw, ""))
+			text := raw
+			if heading := contextHeading.FindString(raw); heading != "" {
+				if i == page {
+					out.Fragments = append(out.Fragments, Fragment{Source: strings.TrimSuffix(heading, "\n")})
+				}
+				text = strings.TrimSpace(strings.TrimPrefix(raw, heading))
+			}
 			if text == "" {
 				continue
 			}
-			offset := start + strings.Index(raw, text)
+			offset := start + len(raw) - len(text)
 			if i == page {
-				out.Paragraphs = append(out.Paragraphs, Paragraph{Reference: fmt.Sprintf("%s:%d", revision, offset), Text: text})
+				out.Fragments = append(out.Fragments, Fragment{Source: text, Reference: fmt.Sprintf("%s:%d", revision, offset)})
 			}
 		}
 	}

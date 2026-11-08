@@ -316,9 +316,9 @@ func (f Flow) Explain(ctx context.Context, session Session, q Question) (Explana
 	if c == nil || c.Revision != q.MaterialRevision {
 		return Explanation{}, ErrStale
 	}
-	for _, p := range c.Paragraphs {
-		if p.Reference == q.Reference {
-			return Explanation{Available: false, Paragraph: p, MaterialID: c.MaterialID, MaterialRevision: c.Revision}, nil
+	for _, fragment := range c.Fragments {
+		if fragment.Reference != "" && fragment.Reference == q.Reference {
+			return Explanation{Available: false, Paragraph: Paragraph{Reference: fragment.Reference, Text: fragment.Source}, MaterialID: c.MaterialID, MaterialRevision: c.Revision}, nil
 		}
 	}
 	return Explanation{}, ErrInvalid

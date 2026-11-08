@@ -83,8 +83,9 @@ func (a Web) Open(ctx context.Context, q web.Request) (*web.Page, error) {
 		for _, s := range c.Sections {
 			d.Sections = append(d.Sections, web.ContentsEntry{Page: s.Page, N: s.N, Label: s.Label, Current: s.Current, Count: s.Count})
 		}
-		for _, p := range c.Paragraphs {
-			d.References = append(d.References, p.Reference)
+		for _, fragment := range c.Fragments {
+			block := web.SourceBlock{Markdown: fragment.Source, Reference: fragment.Reference}
+			d.Fragments = append(d.Fragments, block)
 		}
 	}
 	out.Document = d
