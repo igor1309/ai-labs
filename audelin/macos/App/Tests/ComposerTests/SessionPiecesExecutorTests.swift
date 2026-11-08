@@ -13,7 +13,7 @@ struct SessionPiecesExecutorTests {
             var fixtures: [ComposeFixture] = []
             for index in 0..<barrier.count {
                 let folder = root.appendingPathComponent(String(index))
-                try await offPool { try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false) }
+                try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false)
                 let fixture = try await ComposeFixture.make(root: folder, configure: { boundary in
                     let recognizers = boundary.recognizers
                     boundary.recognizers = FixtureRecognizers(source: { try await recognizers.recognizer(for: $0) },

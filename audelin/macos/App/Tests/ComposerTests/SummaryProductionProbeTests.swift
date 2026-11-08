@@ -13,7 +13,7 @@ import Testing
             let envelope = String(decoding: try JSONSerialization.data(withJSONObject: ["type": "result", "subtype": "success", "is_error": false, "result": notes]), as: UTF8.self)
             let controls = "-p --safe-mode --restricted --tools --strict-mcp-config --mcp-config --no-session-persistence --output-format --max-output-tokens"
             let script = "#!/bin/sh\nif [ \"$1\" = --help ]; then printf '%s' " + quote(controls) + "; exit 0; fi\n/bin/cat > " + quote(input.path) + "\npwd > " + quote(cwd.path) + "\nprintf '%s' " + quote(envelope) + "\n"
-            try await offPool {
+            do {
                 try Data(script.utf8).write(to: program)
                 try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: program.path)
             }
@@ -24,13 +24,13 @@ import Testing
                 try await rig.start(); await rig.mine.heard.next(); await rig.theirs.heard.next()
                 try await rig.stop()
                 for await statuses in rig.menu.summaryStates() where statuses.values.contains("Итоги готовы") { break }
-                let bytes = try await offPool { try String(contentsOf: input, encoding: .utf8) }
+                let bytes = try String(contentsOf: input, encoding: .utf8)
                 #expect(bytes.contains("mine final") && bytes.contains("theirs final"))
                 #expect(bytes.contains("Do not invent facts"))
-                let path = try await offPool { try String(contentsOf: cwd, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines) }
+                let path = try String(contentsOf: cwd, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines)
                 #expect(path.contains("audelin-summary-"))
-                #expect(await offPool { !FileManager.default.fileExists(atPath: path) })
-                let output = try await offPool { try String(contentsOf: rig.folder().appendingPathComponent("summary.md"), encoding: .utf8) }
+                #expect(!FileManager.default.fileExists(atPath: path))
+                let output = try String(contentsOf: rig.folder().appendingPathComponent("summary.md"), encoding: .utf8)
                 #expect(output.contains("<!-- audelin-summary:"))
                 #expect(output.contains("Synthetic call"))
                 #expect(try await transcriptText(of: rig).contains("mine final"))
