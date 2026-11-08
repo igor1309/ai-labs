@@ -34,10 +34,10 @@ final class LiveCall {
 
             switch self {
             case .parakeet: try await timed("Parakeet") { try await ParakeetRecognizer() }
-            case .nemotron: try await timed("Nemotron") { try await NemotronRecognizer() }
+            case .nemotron: try await timed("Nemotron") { try await NemotronRecognizer(decoders: .shared) }
             case .twoPass:
                 TwoPassRecognizer(
-                    draft: try await timed("Nemotron") { try await NemotronRecognizer() },
+                    draft: try await timed("Nemotron") { try await NemotronRecognizer(decoders: .shared) },
                     final: try await timed("Parakeet") { try await ParakeetRecognizer() }
                 )
             }

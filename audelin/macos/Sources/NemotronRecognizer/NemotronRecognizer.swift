@@ -45,9 +45,9 @@ public actor NemotronRecognizer: Recognizer {
     /// Seconds of audio fed to the decoder.
     private var fed = 0.0
 
-    public init(decoder: any TokenDecoder) {
+    public init(decoders: NemotronDecoders) async throws {
 
-        self.decoder = decoder
+        decoder = try await decoders.make()
     }
 
     public func hear(_ chunk: AudioChunk) async throws -> Hearing {
