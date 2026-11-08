@@ -108,6 +108,7 @@ jobs:
           - picturePuzzleLayout
           - picturePuzzleWalk
           - sandWritingLayout
+          - careWelcomeLayout
           - homePhone
           - nativeTouch
           - homeTiles

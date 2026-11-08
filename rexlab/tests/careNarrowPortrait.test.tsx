@@ -1,3 +1,4 @@
+import "./careSheets.ts";
 import { act, fireEvent, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { PortraitLayouts } from "../src/App.tsx";
@@ -61,27 +62,24 @@ function phoneScreen(selector: string, size: WindowSize, top = 24) {
 }
 
 describe("care upright on a phone", () => {
-  it.each(BOTH)("stands the welcome upright at %i by %i in %s, NEW VISITOR over FRIENDS", (width, height, language) => {
+  it.each(BOTH)("stands the welcome upright at %i by %i in %s on the dig site, NEW VISITOR over FRIENDS", (width, height, language) => {
     const size: WindowSize = [width, height];
     openCare(size, language);
-    phoneScreen(".care-welcome", size);
+    expect([document.documentElement.dataset.size, gateShown(), part(".gated-screen").hasAttribute("inert")]).toEqual(["tall-narrow", false, false]);
+    // The cards on the sand under the sky, 20 from the sides.
+    const page = styleAt(part(".care-welcome"), size);
+    expect([page.px("padding-left"), page.px("padding-right")]).toEqual([20, 20]);
+    const home = screen.getByRole("button", { name: TEXTS[language].home });
+    expect(styleAt(home, size).px("width")).toBe(48);
+    expect(home.querySelector(".upright-hidden")?.textContent).toBe(TEXTS[language].home);
     const text = TEXTS[language];
     expect([styleAt(part(".care-choices"), size).value("flex-direction"), styleAt(part(".care-choices"), size).rowGap()]).toEqual(["column", 16]);
-    // The bar's HOME, the title's words and the best score in one row.
-    const title = styleAt(part(".care-title"), size);
-    const best = styleAt(part(".care-best"), size);
-    expect(styleAt(part(".care-bar .care-mark"), size).value("display")).toBe("none");
-    expect(48 + 8 + capitalsWidth(text.care, title) + 8 + best.px("padding-left") + best.px("padding-right") + 20 + best.columnGap() + 3 * 0.8 * best.px("font-size")).toBeLessThanOrEqual(width - 40);
-    // NEW VISITOR beside its symbol, FRIENDS beside its own and the count.
-    const footer = styleAt(part(".new-visitor-footer"), size);
-    const words = styleAt(part(".new-visitor-title"), size);
-    expect(footer.px("padding-left") + footer.px("padding-right") + 48 + footer.columnGap() + capitalsWidth(text.newVisitor, words)).toBeLessThanOrEqual(width - 40);
-    const card = styleAt(part(".friends-card"), size);
-    const row = styleAt(part(".friends-row"), size);
-    const symbol = styleAt(part(".friends-symbol"), size);
-    const friends = styleAt(part(".friends-row .friends-title"), size);
-    const count = styleAt(part(".friends-row .friend-count"), size);
-    expect(card.px("padding-left") + card.px("padding-right") + symbol.px("width") + capitalsWidth(text.friends, friends) + countWidth(count) + 2 * row.columnGap()).toBeLessThanOrEqual(width - 40);
+    // HOME, the title without its mark, and the best in the one row.
+    expect(styleAt(part(".care-welcome .skeleton-mark"), size).value("display")).toBe("none");
+    expect(part(".care-welcome .skeleton-title-words").textContent).toBe(text.care);
+    expect(part(".care-best").getAttribute("aria-label")).toBe(text.bestScore);
+    expect(styleAt(part(".care-faces"), size).value("grid-template-columns")).toBe("repeat(3, auto)");
+    for (const pill of [".new-visitor-pill", ".friends-pill"]) expect(styleAt(part(pill), size).value("white-space")).toBe("nowrap");
   });
 
   it.each(BOTH)("stands a visit upright at %i by %i in %s, the needs under HOME and the hearts, the items in one row", (width, height, language) => {

@@ -1,3 +1,4 @@
+import "./careSheets.ts";
 import { act, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { PortraitLayouts } from "../src/App.tsx";
