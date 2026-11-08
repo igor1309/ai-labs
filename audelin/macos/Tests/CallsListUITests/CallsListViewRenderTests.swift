@@ -127,7 +127,7 @@ struct CallsListViewRenderTests {
     private func read(_ host: NSView) async throws -> RenderedText {
 
         let image = try #require(Offscreen.sharpSnapshot(host))
-        return try await offPool { try readText(in: image) }
+        return try await recognizedText(in: image)
     }
 
     private func makeState() -> CallsListState {
