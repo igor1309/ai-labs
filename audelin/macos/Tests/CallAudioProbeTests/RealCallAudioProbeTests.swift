@@ -31,7 +31,7 @@ struct RealCallAudioProbeTests {
 
     /// Contract test: the production own-process muted Core Audio tap hears its stimulus and tears down.
     @Test func realOwnProcessProbeHearsMutedStimulus() async {
-        let result = await CallAudioProbe().measure()
+        let result = await CallAudioProbe(hardware: .live).measure()
         #expect(result == .heard)
     }
 }

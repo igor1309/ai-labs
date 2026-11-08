@@ -148,7 +148,7 @@ final class ProbeRig: Sendable {
     func record(_ event: String) { calls.withLock { $0.append(event) } }
     func status(_ event: String) -> OSStatus { record(event); return failure == event ? -1 : noErr }
 
-    var probe: CallAudioProbe { CallAudioProbe(native: native, makePlayer: { [player] in player }, schedule: clock.schedule) }
+    var probe: CallAudioProbe { CallAudioProbe(hardware: .init(native: native, makePlayer: { [player] in player }, schedule: clock.schedule)) }
 
     var native: ProbeNative {
         ProbeNative(defaultOutput: { [self] in

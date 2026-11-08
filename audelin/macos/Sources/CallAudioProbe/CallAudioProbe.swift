@@ -8,6 +8,24 @@ public enum ProbeResult: Equatable, Sendable {
     case refused(String)
 }
 
+/// The audio system, tone player and clock a probe measures with.
+public struct ProbeHardware: Sendable {
+    let native: ProbeNative
+    let makePlayer: @Sendable () -> any ProbePlayer
+    let schedule: ProbeSchedule
+
+    init(native: ProbeNative, makePlayer: @escaping @Sendable () -> any ProbePlayer, schedule: @escaping ProbeSchedule) {
+        self.native = native
+        self.makePlayer = makePlayer
+        self.schedule = schedule
+    }
+
+    /// The Mac's own audio system.
+    public static var live: ProbeHardware {
+        ProbeHardware(native: .live, makePlayer: { TonePlayer() }, schedule: liveProbeSchedule)
+    }
+}
+
 /// One measurement owns all its resources; its answer is delivered after teardown.
 public final class CallAudioProbe: Sendable {
     private let native: ProbeNative
@@ -15,14 +33,11 @@ public final class CallAudioProbe: Sendable {
     private let schedule: ProbeSchedule
     private let measurements = MeasurementTurn()
 
-    public convenience init() {
-        self.init(native: .live, makePlayer: { TonePlayer() }, schedule: liveProbeSchedule)
-    }
-
-    init(native: ProbeNative, makePlayer: @escaping @Sendable () -> any ProbePlayer, schedule: @escaping ProbeSchedule) {
-        self.native = native
-        self.makePlayer = makePlayer
-        self.schedule = schedule
+    /// Measures with `hardware`: `.live` in the app.
+    public init(hardware: ProbeHardware) {
+        native = hardware.native
+        makePlayer = hardware.makePlayer
+        schedule = hardware.schedule
     }
 
     public func measure() async -> ProbeResult {
