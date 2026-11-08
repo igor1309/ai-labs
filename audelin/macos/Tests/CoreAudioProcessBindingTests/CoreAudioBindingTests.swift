@@ -37,7 +37,7 @@ struct CoreAudioBindingTests {
             let size = try (try FileManager.default.attributesOfItem(atPath: sound.path)[.size] as? NSNumber)?.intValue
             try #require((size ?? 0) > 0, "The fixture must contain audio before afplay can open it")
 
-            let binding = CoreAudioBinding()
+            let binding = CoreAudioBinding(native: .system)
             let adapter = CoreAudioProcesses(binding: binding, clock: ContinuousCallClock())
             // The native listener only signals a change; the list is read by the awaiting task.
             let changed = AsyncStream<Void>.makeStream(bufferingPolicy: .bufferingNewest(1))

@@ -79,7 +79,7 @@ struct DiskCapacity: FolderCapacity {
 }
 
 struct RealProcessSource: CallProcessSource {
-    private let binding = CoreAudioBinding()
+    private let binding = CoreAudioBinding(native: .system)
     func processObjects() throws -> [UInt32] { try binding.processObjects() }
     func pid(of object: UInt32) -> Int32? { binding.pid(of: object) }
     func bundleID(of object: UInt32) -> String? { binding.bundleID(of: object) }
