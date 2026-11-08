@@ -85,6 +85,7 @@ struct TrackFileFailureTests {
                         catch { failure = error; break }
                         acknowledged = number
                     }
+                    print("LAB1078 filled after \(acknowledged) tones")
                     try #require(failure != nil, "the image must fill before the fixture ends")
                     let error = try #require(failure as? POSIXError)
                     #expect(error.code == .ENOSPC)
@@ -103,7 +104,9 @@ struct TrackFileFailureTests {
                             try await rig.track.read(from: Double(number - 1), to: Double(number)), tone(number)
                         )
                     }
+                    print("LAB1078 checked reads")
                     try await expectPlayable(url, tones: acknowledged)
+                    print("LAB1078 playable")
                 }
             }
         }

@@ -105,21 +105,24 @@ func withDiskImage(
     _ body: (URL) async throws -> Void
 ) async throws {
 
+    let clock = ContinuousClock(); let t0 = clock.now
+    func mark(_ s: String) { print("LAB1078 \(s) \(clock.now - t0)") }
     let image = folder.appendingPathComponent("small.dmg")
     let mount = folder.appendingPathComponent("volume", isDirectory: true)
     try FileManager.default.createDirectory(at: mount, withIntermediateDirectories: false)
     let created = try await run("/usr/bin/hdiutil", [
         "create", "-size", "2m", "-fs", "HFS+", "-type", "UDIF", "-volname", "TrackFileTest", "-o", image.path,
     ])
-    try #require(created.status == 0, "\(created.output)")
+    mark("created"); try #require(created.status == 0, "\(created.output)")
     let outcome: Result<Void, any Error>
     do {
         let attached = try await run("/usr/bin/hdiutil", [
             "attach", "-nobrowse", "-noautoopen", "-mountpoint", mount.path, image.path,
         ])
-        try #require(attached.status == 0, "\(attached.output)")
+        mark("attached"); try #require(attached.status == 0, "\(attached.output)")
         try Task.checkCancellation()
         try await body(mount)
+        mark("body")
         outcome = .success(())
     } catch { outcome = .failure(error) }
     // Attach may mount before reporting cancellation. Detach must finish before
@@ -128,6 +131,7 @@ func withDiskImage(
         do { return Result<CommandResult, any Error>.success(try await run("/usr/bin/hdiutil", ["detach", mount.path])) }
         catch { return .failure(error) }
     }.value
+    mark("detached")
     switch cleanup {
     case .success(let result):
         guard result.status == 0 else { throw DiskImageDetachFailure.nonzero(result) }
