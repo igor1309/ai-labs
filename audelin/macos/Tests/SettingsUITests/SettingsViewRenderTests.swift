@@ -7,6 +7,25 @@ import Testing
 @MainActor
 struct SettingsViewRenderTests {
 
+    @Test(arguments: [ColorScheme.light, .dark])
+    func shortPagesFillTheScrollViewportWithThePageBackground(scheme: ColorScheme) throws {
+        var state = SettingsState.release
+        // Loading is shorter than either populated tab, leaving ample empty viewport.
+        state.selectedTab = .callNotes
+        state.callNotes = .loading("Загружаем настройки…")
+        let host = Offscreen.host(
+            SettingsScrollView(state: state, event: { _ in }).environment(\.colorScheme, scheme),
+            size: CGSize(width: 620, height: 700), scheme: scheme
+        )
+        let image = try #require(Offscreen.snapshot(host))
+        let page = try #require(image.colorAt(x: 4, y: 4)?.usingColorSpace(.deviceRGB))
+        let empty = try #require(image.colorAt(x: 4, y: image.pixelsHigh - 4)?.usingColorSpace(.deviceRGB))
+        #expect(abs(page.redComponent - empty.redComponent) < 0.01)
+        #expect(abs(page.greenComponent - empty.greenComponent) < 0.01)
+        #expect(abs(page.blueComponent - empty.blueComponent) < 0.01)
+        try Offscreen.save(image, "settings-scroll-\(scheme == .dark ? "dark" : "light")")
+    }
+
     @Test func exportRegistryContainsExactlyTheRequiredStates() {
         let required: Set<String> = [
             "release", "debug", "confirm-move", "moving", "move-failed", "during-recording",
