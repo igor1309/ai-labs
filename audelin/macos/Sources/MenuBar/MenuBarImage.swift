@@ -12,8 +12,9 @@ public extension MenuBarItem {
 
     @MainActor
     func image() -> NSImage {
-        let image = NSImage(systemSymbolName: symbol, accessibilityDescription: "Audelin") ?? NSImage()
-        image.isTemplate = true
+        let image = NSImage(systemSymbolName: symbol, accessibilityDescription: title)?
+            .withSymbolConfiguration(.init(paletteColors: [isRed ? .systemRed : .labelColor])) ?? NSImage()
+        image.isTemplate = !isRed
         return image
     }
 }
