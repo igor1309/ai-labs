@@ -1,6 +1,5 @@
-import Synchronization
 import Testing
-@testable import CallText
+import CallText
 
 @Suite(.timeLimit(.minutes(1)))
 struct FinalEntriesTests {
@@ -187,10 +186,10 @@ struct FinalEntriesTests {
     }
 
     @Test(arguments: [20, 800, 6_000])
-    func newestEntrySortWorkDoesNotGrowWithTheFinalPrefix(count: Int) async {
+    func newestEntryRevisionsKeepTheFinalPrefix(count: Int) async {
 
-        let mine = FinalSide(), theirs = FinalSide(), work = SortedWork()
-        let call = CallText(microphone: mine, call: theirs, sortedEntry: { work.record($0) })
+        let mine = FinalSide(), theirs = FinalSide()
+        let call = CallText(microphone: mine, call: theirs)
         await call.start()
         let myFinals = (0..<count / 2).map { word($0, start: Double($0 * 2), end: Double($0 * 2 + 2)) }
         let theirFinals = (0..<count / 2).map { word($0, start: Double($0 * 2 + 1), end: Double($0 * 2 + 3)) }
@@ -200,7 +199,6 @@ struct FinalEntriesTests {
         let first = await call.state
         #expect(first.finalCount == count)
         #expect(CallOutput(first).entries == ordered(myFinals, theirFinals, myTail: [myTail], theirTail: [word(count / 2, start: Double(count + 1))]))
-        _ = work.take()
 
         // Retain every snapshot, as an unread stream or a slow reader does.
         var retained = [first]
@@ -208,7 +206,6 @@ struct FinalEntriesTests {
             let newest = word(count / 2, start: Double(count + 1), pending: "revision\(revision)")
             await theirs.send(final: theirFinals, tail: [newest])
             let next = await call.state
-            #expect(work.take() == [myTail.text, newest.text])
             #expect(next.finalCount == count)
             #expect(Array(next.entries.prefix(count)) == Array(first.entries.prefix(count)))
             #expect(next.entries.last?.text == newest.text)
@@ -219,7 +216,7 @@ struct FinalEntriesTests {
         let nextTail = word(count / 2 + 1, start: Double(count + 2))
         await mine.send(final: myFinals + [final], tail: [nextTail])
         #expect(await call.state.finalCount == count + 1)
-        #expect(work.take() == [final.text, nextTail.text, retained.last!.entries.last!.text])
+        #expect(await call.state.entries.last?.text == nextTail.text)
         #expect(retained.first == first)
         await call.stop()
     }
@@ -245,20 +242,6 @@ private func storage<T>(_ entries: [T]) -> UInt {
     entries.withUnsafeBufferPointer { UInt(bitPattern: $0.baseAddress) }
 }
 
-private final class SortedWork: Sendable {
-
-    private let entries = Mutex<[Text]>([])
-
-    func record(_ entry: State.Entry) { entries.withLock { $0.append(entry.text) } }
-
-    func take() -> [Text] {
-
-        entries.withLock { value in
-            defer { value = [] }
-            return value
-        }
-    }
-}
 
 private actor FinalSide: Side {
 

@@ -7,7 +7,6 @@ public actor CallText {
 
     private let continuation: AsyncStream<State>.Continuation
     private let sides: [any Side]
-    private let sortedEntry: @Sendable (State.Entry) -> Void
     private var snapshots = [SideState](repeating: .init(status: .off, entries: []), count: 2)
     private var committed = [0, 0]
     private var listeners: [Task<Void, Never>] = []
@@ -20,13 +19,7 @@ public actor CallText {
 
     public init(microphone: any Side, call: any Side) {
 
-        self.init(microphone: microphone, call: call, sortedEntry: { _ in })
-    }
-
-    init(microphone: any Side, call: any Side, sortedEntry: @escaping @Sendable (State.Entry) -> Void) {
-
         sides = [microphone, call]
-        self.sortedEntry = sortedEntry
         // An omitted entry can return under the same producer id in the next snapshot.
         (updates, continuation) = AsyncStream.makeStream()
     }
@@ -182,7 +175,6 @@ public actor CallText {
 
     private func sort(_ entries: inout [Remaining]) {
 
-        for item in entries { sortedEntry(item.entry) }
         entries.sort { Self.precedes($0.entry, $1.entry) }
     }
 
