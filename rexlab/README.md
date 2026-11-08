@@ -81,3 +81,10 @@ completion rewards. Set `COLORING_ARTIFACT_DIR` to choose the workshop screensho
 directory. `node tests/coloringFlow.browser.cjs` checks the production Home route,
 including all four choices and T-Rex at 1180 × 820 and 1024 × 768 across the three
 age levels, both languages and themes.
+
+`npm run slow-tests` runs the whole suite three times and writes every test,
+ranked by its median duration with its file and line, to
+`slow-tests-report.json` and `.md` in the current directory. The weekly
+`rexlab-slow-tests` workflow runs it and hands the ranking to the slow-test
+hunter autopilot. Tests listed in `scripts/slow-tests.skip` (one id per line,
+`#` for the reason) are marked as skipped there.
