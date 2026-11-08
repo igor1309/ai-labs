@@ -72,13 +72,7 @@ jobs:
 
       - name: Run tests
         working-directory: audelin/macos
-        run: sh ../scripts/swift-test-bounded.sh 180 -Xswiftc -O --skip TranscriptLogLoadTests
-
-      # Main-actor measurements must not queue behind concurrent render tests:
-      # that waiting counts against Swift Testing's per-test time limit.
-      - name: Measure transcript load separately
-        working-directory: audelin/macos
-        run: sh ../scripts/swift-test-bounded.sh 180 -Xswiftc -O --filter TranscriptLogLoadTests
+        run: sh ../scripts/swift-test-bounded.sh 180 -Xswiftc -O
 
       - name: Build app tests
         working-directory: audelin/macos/App
@@ -86,11 +80,7 @@ jobs:
 
       - name: Run app tests
         working-directory: audelin/macos/App
-        run: sh ../../scripts/swift-test-bounded.sh 180 -Xswiftc -O --scratch-path ../.build --skip PanelLoadTests
-
-      - name: Measure panel load separately
-        working-directory: audelin/macos/App
-        run: sh ../../scripts/swift-test-bounded.sh 180 -Xswiftc -O --scratch-path ../.build --filter PanelLoadTests
+        run: sh ../../scripts/swift-test-bounded.sh 180 -Xswiftc -O --scratch-path ../.build
 
       - name: Build preview app tests
         working-directory: audelin/macos/PreviewApps
