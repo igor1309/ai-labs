@@ -243,6 +243,8 @@ jobs:
               - "agonara/showcase/*.mjs"
               - "agonara/session/**/*.go"
               - "agonara/session/go.mod"
+              - "agonara/session/internal/web/static/**"
+              - "agonara/session/internal/web/templates/**"
               - "agonara/docs/api/**"
               - "agonara/docs/intent/**"
               - "agonara/skills/**"
@@ -294,6 +296,7 @@ jobs:
               - "audelin/docs/research/spike/fixtures/**"
             audelin-ci:
               - ".github/workflows/audelin-core.yml"
+              - ".github/workflows/audelin-nightly.yml"
               - "audelin/scripts/swift-test-bounded.sh"
             mizan-ble:
               - "mizan-ble/ios/**"

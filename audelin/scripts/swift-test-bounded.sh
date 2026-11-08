@@ -20,7 +20,7 @@ trap 'rm -f "$events"' EXIT
 # swift test starts its test runner in a process group of its own, so the
 # limit kills every process below the run, not a group. perl is on every
 # macOS.
-SWIFT_BACKTRACE=enable=yes perl -e '
+BOUNDED_EVENTS="$events" SWIFT_BACKTRACE=enable=yes perl -e '
   my ($limit, @cmd) = @ARGV;
   sub tree {
     my %children;
@@ -31,6 +31,24 @@ SWIFT_BACKTRACE=enable=yes perl -e '
   }
   my $pid = fork() // die "fork: $!";
   exec(@cmd) or die "exec: $!" if $pid == 0;
+  # A test past its own time limit is reported while its stuck work still
+  # runs: sample every process below the run once, at that moment, so a
+  # per-test timeout leaves stacks and not only its name.
+  my $watcher = fork() // die "fork: $!";
+  if ($watcher == 0) {
+    while (kill(0, $pid)) {
+      if (open(my $fh, "<", $ENV{BOUNDED_EVENTS})) {
+        local $/; my $text = <$fh>; close $fh;
+        if ($text =~ /Time limit was exceeded/) {
+          print STDERR "error: a test exceeded its time limit; sampling the run\n";
+          system("sample", $_, "2") for tree($pid);
+          exit 0;
+        }
+      }
+      sleep 2;
+    }
+    exit 0;
+  }
   local $SIG{ALRM} = sub {
     my @all = tree($pid);
     system("sample", $_, "2") for @all;
@@ -40,8 +58,10 @@ SWIFT_BACKTRACE=enable=yes perl -e '
   };
   alarm($limit);
   waitpid($pid, 0);
+  my $status = $?;
   alarm(0);
-  exit($? & 127 ? 128 + ($? & 127) : $? >> 8);
+  kill("TERM", $watcher); waitpid($watcher, 0);
+  exit($status & 127 ? 128 + ($status & 127) : $status >> 8);
 ' "$limit" swift test --skip-build \
   --event-stream-output-path "$events" --event-stream-version 0 "$@"
 code=$?

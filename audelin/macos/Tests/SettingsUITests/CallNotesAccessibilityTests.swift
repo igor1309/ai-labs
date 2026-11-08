@@ -50,6 +50,35 @@ struct CallNotesAccessibilityTests {
         #expect(try button("tab-callNotes", in: host).isAccessibilitySelected())
     }
 
+    @Test func sectionTabsStayVisibleAndActionableAfterScrolling() throws {
+        var events: [SettingsEvent] = []
+        let state = try #require(SettingsState.summaryPreviews.first?.state)
+        let host = Offscreen.host(
+            SettingsScrollView(state: state, event: { events.append($0) })
+                .frame(height: 300)
+        )
+        host.window?.isReleasedWhenClosed = false
+        defer { host.window?.close() }
+        _ = try #require(Offscreen.snapshot(host))
+        let recording = try button("tab-recording", in: host)
+        let notes = try button("tab-callNotes", in: host)
+        let originalFrame = recording.convert(recording.bounds, to: host)
+        let scroll = try #require(descendants(host).compactMap { $0 as? NSScrollView }.first)
+        let document = try #require(scroll.documentView)
+        #expect(document.bounds.height > scroll.contentView.bounds.height)
+        #expect(!descendants(document).contains { $0 === recording || $0 === notes })
+        let originalOffset = scroll.contentView.bounds.origin
+        document.scroll(NSPoint(x: 0, y: document.bounds.height))
+        scroll.reflectScrolledClipView(scroll.contentView)
+        _ = try #require(Offscreen.snapshot(host))
+        #expect(scroll.contentView.bounds.origin != originalOffset)
+        #expect(recording.convert(recording.bounds, to: host) == originalFrame)
+        #expect(host.bounds.contains(originalFrame))
+        #expect(notes.isAccessibilitySelected())
+        #expect(recording.accessibilityPerformPress())
+        #expect(events == [.selectTab(.recording)])
+    }
+
     private func button(_ id: String, in view: NSView) throws -> NSButton {
         try #require(descendants(view).compactMap { $0 as? NSButton }.first { $0.accessibilityIdentifier() == id })
     }

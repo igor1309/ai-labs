@@ -15,10 +15,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-
-	"github.com/igor1309/ai-labs/agonara/session/internal/agonara"
-	"github.com/igor1309/ai-labs/agonara/session/internal/flow"
-	"github.com/igor1309/ai-labs/agonara/session/internal/store"
 )
 
 //go:embed templates/*.html
@@ -29,13 +25,16 @@ var staticFiles embed.FS
 
 const cookieName = "agonara_web"
 
-// Server serves the page. Token guards every request; PlacePath keeps where
-// the reader last was, for Continue reading.
+type Session interface {
+	Open(context.Context, Request) (*Page, error)
+	Explain(context.Context, Question) (Answer, error)
+}
+
+// Server renders the reading session and guards every request with its access token.
 type Server struct {
-	Flow      flow.Flow
-	Token     string
-	PlacePath string
-	Log       func(string)
+	Session Session
+	Token   string
+	Log     func(string)
 
 	pages *template.Template
 }
@@ -47,23 +46,66 @@ type Place struct {
 	Title     string `json:"title"`
 	Page      int    `json:"page"`
 	Label     string `json:"label"`
-	Topic     string `json:"topic,omitempty"` // "Тема 3", where the lecture lives
+	Topic     string
+	Course    string
+	Courses   []Item
+	Position  *Position
 }
 
 // Where names the place for Continue reading: "Тема 3 · §1 · 6/10".
 func (p Place) Where() string {
+	label := p.Label
+	if p.Position != nil {
+		label = "Введение"
+		if p.Position.Section != nil {
+			label = "§" + strconv.Itoa(*p.Position.Section)
+		} else if p.Position.Label != "" {
+			label = p.Position.Label
+		}
+		if p.Position.Count > 1 {
+			label += fmt.Sprintf(" · %d/%d", p.Position.Index+1, p.Position.Count)
+		}
+	}
 	topic := p.Topic
+	if topic == "" {
+		for _, course := range p.Courses {
+			label, _, module, _ := split(course.Title)
+			if !module {
+				topic = label
+				if topic == "" {
+					topic = course.Title
+				}
+				break
+			}
+		}
+	}
+	if topic == "" {
+		label, _, module, _ := split(p.Title)
+		if !module && label != "" {
+			topic = label
+		}
+	}
+
+	if topic == "" && p.Course != "" {
+		topic, _, _, _ = split(p.Course)
+		if topic == "" {
+			topic = p.Course
+		}
+	}
 	if topic == "" {
 		topic, _, _, _ = split(p.Title)
 	}
 	if topic != "" {
-		return topic + " · " + p.Label
+		return topic + " · " + label
 	}
-	return p.Title + " · " + p.Label
+	return p.Title + " · " + label
 }
 
 // Handler returns the routes.
 func (s *Server) Handler() (http.Handler, error) {
+	if s.Session == nil {
+		return nil, errors.New("web session is required")
+	}
 	if s.Token == "" {
 		return nil, errors.New("web token is required")
 	}
@@ -151,6 +193,14 @@ func (s *Server) render(w http.ResponseWriter, name string, data any) {
 // fail answers an Agonara error with a short page; the error names a route,
 // never a secret.
 func (s *Server) fail(w http.ResponseWriter, r *http.Request, err error) {
+	if errors.Is(err, ErrStale) {
+		http.Error(w, "Страница устарела. Обновите страницу.", http.StatusConflict)
+		return
+	}
+	if errors.Is(err, ErrInvalid) {
+		http.Error(w, "Недоступное действие", http.StatusBadRequest)
+		return
+	}
 	path := r.URL.Path
 	if strings.Contains(path, "token") {
 		path = "(path withheld)"
@@ -160,68 +210,39 @@ func (s *Server) fail(w http.ResponseWriter, r *http.Request, err error) {
 	s.render(w, "error.html", map[string]any{"Title": "Agonara не отвечает", "Message": "Страница не загрузилась: Agonara не ответила. Попробуйте обновить страницу.", "Icon": "offline", "Retry": true})
 }
 
-func (s *Server) place() *Place {
-	if s.PlacePath == "" {
-		return nil
-	}
-	place, err := store.Load(s.PlacePath, func() Place { return Place{} })
-	if err != nil || place.EntityID == "" {
-		return nil
-	}
-	return &place
-}
-
 func (s *Server) programs(w http.ResponseWriter, r *http.Request) {
-	programs, err := s.Flow.Reader.ListPrograms(r.Context())
+	page, err := s.Session.Open(r.Context(), Request{Route: "programs"})
 	if err != nil {
 		s.fail(w, r, err)
 		return
 	}
-	// Programs with topics come first; empty ones gather below, dimmed.
 	var full, empty []ProgramRow
-	for _, p := range programs {
-		navigation, err := s.Flow.Reader.Navigation(r.Context(), p.ProgramID)
-		if err != nil {
-			s.fail(w, r, err)
-			return
-		}
-		row := ProgramRow{ID: p.ProgramID, Title: p.Title, Topics: len(navigation.Topics)}
+	for _, row := range page.Programs {
 		if row.Topics > 0 {
 			full = append(full, row)
 		} else {
 			empty = append(empty, row)
 		}
 	}
-	s.render(w, "programs.html", map[string]any{"Full": full, "Empty": empty, "Count": len(programs), "Place": s.place()})
+	s.render(w, "programs.html", map[string]any{"Full": full, "Empty": empty, "Count": len(page.Programs), "Place": page.Resume})
 }
-
 func (s *Server) program(w http.ResponseWriter, r *http.Request) {
-	program, err := s.Flow.Program(r.Context(), r.PathValue("id"))
+	page, err := s.Session.Open(r.Context(), Request{Route: "program", ID: r.PathValue("id")})
 	if err != nil {
 		s.fail(w, r, err)
 		return
 	}
-	place := s.place()
-	if place != nil && place.ProgramID != program.ID {
+	place := page.Resume
+	if place != nil && place.ProgramID != page.Program.ID {
 		place = nil
 	}
-	s.render(w, "program.html", map[string]any{"Program": program, "Outline": newOutline(program), "Place": place})
+	s.render(w, "program.html", map[string]any{"Program": page.Program, "Outline": newOutline(page.Program), "Place": place})
 }
 
 // ProgramRow is a program in the list, with how many topics it has.
 type ProgramRow struct {
 	ID, Title string
 	Topics    int
-}
-
-// linkedCourse is the first topic linking to an entity.
-func linkedCourse(entity agonara.Entity) *flow.Item {
-	for _, link := range entity.Relationships.Incoming {
-		if link.FromKind == "topic" {
-			return &flow.Item{ID: link.FromEntityID, Title: link.FromTitle, Kind: "topic"}
-		}
-	}
-	return nil
 }
 
 // Pager is a link to the page before or after.
@@ -240,100 +261,65 @@ type Section struct {
 
 // Reading is a lecture page.
 type Reading struct {
-	EntityID   string
-	Title      string // the lecture
-	Heading    string // the section, or the lecture for the intro
-	Eyebrow    string // "§1 · страница 2 из 5"
-	Page       int
-	Pages      int
-	Index      int // page within the section
-	Count      int // pages in the section
-	Blocks     []Block
-	Prev, Next *Pager
-	Sections   []Section
-	Program    *flow.Program
-	Outline    Outline
-	Home       *Row // the topic the lecture lives in
-	Course     *flow.Item
-	Linked     []flow.Item
-	Intro      string
+	Revision         int
+	MaterialRevision string
+	EntityID         string
+	Title            string // the lecture
+	Heading          string // the section, or the lecture for the intro
+	Eyebrow          string // "§1 · страница 2 из 5"
+	Page             int
+	Pages            int
+	Index            int // page within the section
+	Count            int // pages in the section
+	Blocks           []Block
+	Prev, Next       *Pager
+	Sections         []Section
+	Program          *Program
+	Outline          Outline
+	Home             *Row // the topic the lecture lives in
+	Course           *Item
+	Linked           []Item
+	Intro            string
 }
 
 func (s *Server) entity(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	id := r.PathValue("id")
-	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
-	page = max(page, 0)
-	session := flow.Session{Place: flow.Place{Screen: "entity", EntityID: id, Page: &page}, Items: []flow.Item{}, History: []flow.Place{}}
-	result, err := s.Flow.Act(ctx, session, "")
-	if err != nil {
-		s.fail(w, r, err)
-		return
-	}
-	entity, err := s.Flow.Reader.Entity(ctx, id)
-	if err != nil {
-		s.fail(w, r, err)
-		return
-	}
-	var program *flow.Program
-	if entity.ProgramID != "" {
-		if program, err = s.Flow.Program(ctx, entity.ProgramID); err != nil {
-			s.fail(w, r, err)
+	request := Request{Route: "entity", ID: r.PathValue("id")}
+	if value := r.URL.Query().Get("page"); value != "" {
+		n, err := strconv.Atoi(value)
+		if err != nil || n < 0 {
+			http.Error(w, "bad page", 400)
 			return
 		}
+		request.Page = &n
 	}
-	course := linkedCourse(entity)
-	if program != nil {
-		// A lecture's linked topic can be a module outside the program's
-		// topics; the first course that lists the lecture is the one to open.
-		course = nil
-	courses:
-		for _, c := range program.Courses {
-			for _, m := range c.Materials {
-				if m.ID == id {
-					topic := c.Topic
-					course = &topic
-					break courses
-				}
-			}
+	if value := r.URL.Query().Get("rev"); value != "" {
+		n, err := strconv.Atoi(value)
+		if err != nil || n < 0 {
+			http.Error(w, "bad revision", 400)
+			return
 		}
-		if course == nil {
-			course = linkedCourse(entity)
-		}
+		request.Revision = &n
 	}
-	view := result.View
-	if view.Page == nil {
-		s.render(w, "entity.html", map[string]any{
-			"Title": view.Title, "Body": Blocks(view.Body), "Items": result.Session.Items,
-			"Program": program, "Course": course, "Kind": entity.AcceptedKind,
-		})
-		return
-	}
-	reading, err := s.reading(ctx, result, program, course)
+	page, err := s.Session.Open(r.Context(), request)
 	if err != nil {
 		s.fail(w, r, err)
 		return
 	}
-	if s.PlacePath != "" && program != nil {
-		place := Place{ProgramID: program.ID, EntityID: id, Title: reading.Title, Page: reading.Page, Label: reading.short()}
-		if reading.Home != nil {
-			place.Topic = reading.Home.Label
-		}
-		if err := store.Save(s.PlacePath, place); err != nil {
-			s.log("save place: %v", err)
-		}
+	doc := page.Document
+	if doc.Page == nil {
+		s.render(w, "entity.html", map[string]any{"Title": doc.Title, "Body": Blocks(doc.Body), "Items": doc.Items, "Program": doc.Program, "Course": doc.Course, "Kind": doc.Kind})
+		return
 	}
-	s.render(w, "reading.html", reading)
+	s.render(w, "reading.html", reading(doc))
 }
-
-func (s *Server) reading(ctx context.Context, result *flow.Result, program *flow.Program, course *flow.Item) (*Reading, error) {
-	view := result.View
+func reading(doc *Document) *Reading {
 	reading := &Reading{
-		EntityID: result.Session.EntityID, Title: view.Title, Heading: view.Title,
-		Page: view.Page.Index, Pages: view.Page.Count, Index: 0, Count: 1,
-		Blocks: Blocks(view.Markdown), Program: program, Course: course, Intro: view.Body,
-		Outline: newOutline(program),
+		EntityID: doc.ID, Title: doc.Title, Heading: doc.Title,
+		Page: doc.Page.Index, Pages: doc.Page.Count, Index: 0, Count: 1,
+		Blocks: sourceBlocks(doc.Fragments), Program: doc.Program, Course: doc.Course, Intro: doc.Body,
+		Outline: newOutline(doc.Program), Revision: doc.Revision, MaterialRevision: doc.MaterialRevision,
 	}
+	course := doc.Course
 	reading.Home = reading.Outline.home(reading.EntityID)
 	defer func() {
 		// The intro of a lecture named like its topic is headed "Введение",
@@ -346,34 +332,13 @@ func (s *Server) reading(ctx context.Context, result *flow.Result, program *flow
 		label, name, module, _ := split(course.Title)
 		reading.Home = &Row{ID: course.ID, Full: course.Title, Label: label, Name: name, Module: module}
 	}
-	// The contents page lists each section by its first page, and the
-	// lecture's linked items.
-	contents := result
-	if view.Page.Count > 1 {
-		var err error
-		if contents, err = s.Flow.Act(ctx, result.Session, "contents"); err != nil {
-			return nil, err
-		}
-		if contents == nil {
-			contents = result
-		}
-	}
-	for _, entry := range contents.View.Contents {
-		reading.Sections = append(reading.Sections, Section{Page: entry.Page, Label: sectionLabel(entry.N, entry.Label)})
+	for _, entry := range doc.Sections {
+		reading.Sections = append(reading.Sections, Section{Page: entry.Page, Label: sectionLabel(entry.N, entry.Label), Current: entry.Current, Count: entry.Count})
 	}
 	if len(reading.Sections) == 0 {
-		reading.Sections = []Section{{Page: 0, Label: view.Title}}
+		reading.Sections = []Section{{Page: 0, Label: doc.Title}}
 	}
-	for index := range reading.Sections {
-		end := reading.Pages
-		if index+1 < len(reading.Sections) {
-			end = reading.Sections[index+1].Page
-		}
-		reading.Sections[index].Count = end - reading.Sections[index].Page
-	}
-	current := reading.sectionOf(reading.Page)
-	reading.Sections[current].Current = true
-	if position := view.Position; position != nil {
+	if position := doc.Position; position != nil {
 		reading.Index, reading.Count = position.Index, position.Count
 		if position.Label != "" {
 			reading.Heading = position.Label
@@ -384,21 +349,21 @@ func (s *Server) reading(ctx context.Context, result *flow.Result, program *flow
 		} else if position.Label != "" {
 			eyebrow = ""
 		}
-		if len(contents.View.Contents) < 2 {
+		if len(doc.Sections) < 2 {
 			eyebrow = ""
 		}
 		reading.Eyebrow = eyebrow
 	} else {
 		reading.Index, reading.Count = reading.Page, reading.Pages
 	}
-	if reading.Page > 0 {
-		reading.Prev = &Pager{Page: reading.Page - 1, Label: reading.pageLabel(reading.Page - 1)}
+	if doc.Previous != nil {
+		reading.Prev = &Pager{Page: *doc.Previous, Label: reading.pageLabel(*doc.Previous)}
 	}
-	if reading.Page+1 < reading.Pages {
-		reading.Next = &Pager{Page: reading.Page + 1, Label: reading.pageLabel(reading.Page + 1)}
+	if doc.Next != nil {
+		reading.Next = &Pager{Page: *doc.Next, Label: reading.pageLabel(*doc.Next)}
 	}
-	reading.Linked = contents.Session.Items
-	return reading, nil
+	reading.Linked = doc.Items
+	return reading
 }
 
 func sectionLabel(n *int, label string) string {
@@ -465,35 +430,49 @@ func (r *Reading) Steps() []bool {
 
 // Question is what the paragraph menu asks.
 type Question struct {
-	Kind      string `json:"kind"` // more, simpler, example or ask
-	EntityID  string `json:"entityId"`
-	Page      int    `json:"page"`
-	Paragraph int    `json:"paragraph"`
-	Text      string `json:"text"`
+	Reference        string `json:"reference"`
+	MaterialRevision string `json:"materialRevision"`
+	Revision         int    `json:"revision"`
+	Kind             string `json:"kind"` // more, simpler, example or ask
+	EntityID         string `json:"entityId"`
+	Page             int    `json:"page"`
+	Paragraph        int    `json:"paragraph"`
+	Text             string `json:"text"`
 }
 
-var answerTitles = map[string]string{
-	"more": "Расскажи подробнее", "simpler": "Объясни проще", "example": "Приведи пример", "ask": "Вопрос",
+func answerTitle(kind string) (string, bool) {
+	switch kind {
+	case "more":
+		return "Расскажи подробнее", true
+	case "simpler":
+		return "Объясни проще", true
+	case "example":
+		return "Приведи пример", true
+	case "ask":
+		return "Вопрос", true
+	}
+	return "", false
 }
 
-// answer is a stub until a model is chosen: it says so in place of an answer.
+// answer renders the activity's capability result, including unavailable explanations.
 func (s *Server) answer(w http.ResponseWriter, r *http.Request) {
 	var question Question
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8<<10)).Decode(&question); err != nil {
-		http.Error(w, "bad question", http.StatusBadRequest)
+		http.Error(w, "bad question", 400)
 		return
 	}
-	title, ok := answerTitles[question.Kind]
+	title, ok := answerTitle(question.Kind)
 	if !ok {
-		http.Error(w, "unknown kind", http.StatusBadRequest)
+		http.Error(w, "unknown kind", 400)
 		return
 	}
-	s.log("ask %s about %s page %d paragraph %d", question.Kind, question.EntityID, question.Page, question.Paragraph)
+	answer, err := s.Session.Explain(r.Context(), question)
+	if err != nil {
+		s.fail(w, r, err)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
-		"title": title,
-		"text":  "Ответы пока не подключены: модель ещё не выбрана. Здесь появится ответ к этому абзацу.",
-	})
+	json.NewEncoder(w).Encode(map[string]any{"title": title, "available": answer.Available, "text": "Объяснения пока недоступны."})
 }
 
 // plural picks the Russian form for n: one (курс), few (курса) or many (курсов).

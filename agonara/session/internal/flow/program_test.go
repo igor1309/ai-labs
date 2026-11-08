@@ -6,45 +6,44 @@ import (
 	"reflect"
 	"sync"
 	"testing"
-
-	"github.com/igor1309/ai-labs/agonara/session/internal/agonara"
 )
 
 // treeReader answers each entity by ID and is safe for concurrent reads.
 type treeReader struct {
 	mu       sync.Mutex
-	entities map[string]agonara.Entity
+	entities map[string]Entity
 	failOn   string
 	fakeReader
 }
 
-func (r *treeReader) Entity(_ context.Context, id string) (agonara.Entity, error) {
+func (r *treeReader) Entity(_ context.Context, id string) (Entity, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if id == r.failOn {
-		return agonara.Entity{}, errors.New("GET /navigation/entities failed (HTTP 500): request rejected")
+		return Entity{}, errors.New("GET /navigation/entities failed (HTTP 500): request rejected")
 	}
 	return r.entities[id], nil
 }
 
 func newTree() *treeReader {
-	r := &treeReader{entities: map[string]agonara.Entity{}}
-	r.programs = []agonara.Program{{ProgramID: "p", Title: "Agents", Description: "From a call to an agent."}}
-	r.navigation = agonara.Navigation{
-		Topics: []agonara.Node{
-			{EntityID: "t1", AcceptedKind: "topic", Title: "What an agent is"},
-			{EntityID: "t2", AcceptedKind: "topic", Title: "Checks"},
+	r := &treeReader{entities: map[string]Entity{}}
+	r.programs = []CatalogEntry{{ID: "p", Title: "Agents", Description: "From a call to an agent."}}
+	r.navigation = Navigation{
+		Topics: []Item{
+			{ID: "t1", Kind: "topic", Title: "What an agent is"},
+			{ID: "t2", Kind: "topic", Title: "Checks"},
 		},
-		UngroupedMaterials: []agonara.Node{{EntityID: "m9", AcceptedKind: material, Title: "Glossary"}},
+		Materials: []Item{{ID: "m9", Kind: material, Title: "Glossary"}},
 	}
-	t1 := agonara.Entity{EntityID: "t1"}
-	t1.Relationships.Outgoing = links("c1", "concept", "Loop", "m1", material, "Lecture", "c2", "concept", "Tools")
+	t1 := Entity{ID: "t1"}
+	t1.Children = links("c1", "concept", "Loop", "m1", material, "Lecture", "c2", "concept", "Tools")
 	r.entities["t1"] = t1
-	r.entities["t2"] = agonara.Entity{EntityID: "t2"}
+	r.entities["t2"] = Entity{ID: "t2"}
 	return r
 }
 
 func TestProgramNestsEachTopicsConceptsAndMaterialsInOrder(t *testing.T) {
+	t.Parallel()
 	r := newTree()
 	got, err := Flow{Reader: r}.Program(context.Background(), "p")
 	if err != nil {
@@ -68,6 +67,7 @@ func TestProgramNestsEachTopicsConceptsAndMaterialsInOrder(t *testing.T) {
 }
 
 func TestProgramFailsWhenATopicCannotBeRead(t *testing.T) {
+	t.Parallel()
 	r := newTree()
 	r.failOn = "t2"
 	if _, err := (Flow{Reader: r}).Program(context.Background(), "p"); err == nil {

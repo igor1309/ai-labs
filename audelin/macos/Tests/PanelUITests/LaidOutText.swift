@@ -23,3 +23,22 @@ func characterIndex(at point: NSPoint, in text: NSTextView) -> Int? {
     guard let fragment = layout.textLayoutFragment(for: inContainer) else { return nil }
     return content.offset(from: content.documentRange.location, to: fragment.rangeInElement.location)
 }
+
+/// The bounds of the line that holds `part`, in the text view.
+@MainActor
+func lineFrame(of part: String, in text: NSTextView) -> NSRect? {
+
+    let location = (text.string as NSString).range(of: part).location
+    guard location != NSNotFound,
+          let layout = text.textLayoutManager,
+          let content = layout.textContentManager,
+          let start = content.location(content.documentRange.location, offsetBy: location),
+          let fragment = layout.textLayoutFragment(for: start),
+          let line = fragment.textLineFragments.first(where: {
+              $0.characterRange.contains(location - content.offset(from: content.documentRange.location, to: fragment.rangeInElement.location))
+          })
+    else { return nil }
+
+    let origin = fragment.layoutFragmentFrame.origin
+    return line.typographicBounds.offsetBy(dx: origin.x + text.textContainerOrigin.x, dy: origin.y + text.textContainerOrigin.y)
+}

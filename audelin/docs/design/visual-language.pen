@@ -46167,6 +46167,2332 @@
           ]
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "nsHwe",
+      "x": 2160,
+      "y": 17341,
+      "name": "Screen 7b — Installed update",
+      "fill": "#FFFFFF",
+      "layout": "vertical",
+      "gap": 40,
+      "padding": 56,
+      "children": [
+        {
+          "type": "frame",
+          "id": "GNsBz",
+          "name": "Info",
+          "width": 1100,
+          "layout": "vertical",
+          "gap": 12,
+          "children": [
+            {
+              "type": "text",
+              "id": "eUv17",
+              "name": "Number",
+              "fill": "#0E9F92",
+              "content": "GLASS LEDGER · SCREEN 7B",
+              "fontFamily": "Inter",
+              "fontSize": 12,
+              "fontWeight": "600",
+              "letterSpacing": 1.5
+            },
+            {
+              "type": "text",
+              "id": "KTS8Y",
+              "name": "Title",
+              "fill": "#111318",
+              "content": "Installed update",
+              "fontFamily": "IBM Plex Mono",
+              "fontSize": 38,
+              "fontWeight": "600",
+              "letterSpacing": -1
+            },
+            {
+              "type": "text",
+              "id": "F0r8Z0",
+              "name": "Idea",
+              "fill": "#444444",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "A newer build is installed in /Applications while the older one keeps running. A badge, an 8 pt accent dot with a ring cut out of the bar, sits over the top-right corner of the menu bar item; the item keeps its size and position. The menu opens with «Перезапустить для обновления» (Restart to update). It quits and opens the installed copy; a launch resumes pending note jobs as usual. During a call (recording, or the final transcript still being saved) the item stays but is disabled, with the reason «Доступно после звонка» (Available after the call). The badge stays until the restart.",
+              "lineHeight": 1.5,
+              "fontFamily": "Inter",
+              "fontSize": 15,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "S9L2m8",
+              "name": "Open",
+              "fill": "#B4540A",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Decided (LAB-1059; owner): a badge over the icon's corner that changes no geometry; the item, gating and wording of the issue. Proposed, not decided: the badge's colour (accent `me`); the item at the top of the menu; the Russian wording.",
+              "lineHeight": 1.5,
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "kEnrZ",
+          "name": "Light",
+          "layout": "vertical",
+          "gap": 12,
+          "children": [
+            {
+              "type": "text",
+              "id": "bZQpy",
+              "name": "Label",
+              "fill": "#666666",
+              "content": "Light",
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "600"
+            },
+            {
+              "type": "frame",
+              "id": "z0zAfO",
+              "name": "Update states",
+              "reusable": true,
+              "fill": "#FFFFFF",
+              "gap": 24,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "TWKg8",
+                  "name": "No update",
+                  "layout": "vertical",
+                  "gap": 8,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "gfcGe",
+                      "name": "State",
+                      "fill": "#333333",
+                      "content": "No update",
+                      "fontFamily": "Inter",
+                      "fontSize": "$type-body",
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "lOHQK",
+                      "name": "Note",
+                      "fill": "#777777",
+                      "textGrowth": "fixed-width",
+                      "width": 468,
+                      "content": "The running build is the installed one, or nothing newer has finished installing. No dot, no item: the menu is Screen 7's.",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "e9UGf",
+                      "name": "Desktop",
+                      "clip": true,
+                      "width": 468,
+                      "height": 380,
+                      "fill": "$back",
+                      "cornerRadius": "$radius-card",
+                      "layout": "none",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "nybWW",
+                          "x": 0,
+                          "y": 0,
+                          "name": "Menu bar",
+                          "width": 468,
+                          "height": 28,
+                          "fill": "$glass",
+                          "effect": {
+                            "type": "background_blur",
+                            "radius": 20
+                          },
+                          "gap": "$space-16",
+                          "padding": [
+                            0,
+                            "$space-12"
+                          ],
+                          "justifyContent": "end",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "MXMzA",
+                              "name": "Our item",
+                              "fill": "$btn",
+                              "cornerRadius": "$radius-control",
+                              "gap": "$space-6",
+                              "padding": [
+                                "$space-2",
+                                "$space-8"
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "NcNvH",
+                                  "name": "Glyph",
+                                  "layout": "vertical",
+                                  "gap": "$space-2",
+                                  "children": [
+                                    {
+                                      "type": "rectangle",
+                                      "cornerRadius": "$radius-bar",
+                                      "id": "H5Ayn",
+                                      "name": "Line",
+                                      "fill": "$text",
+                                      "width": 12,
+                                      "height": 2
+                                    },
+                                    {
+                                      "type": "rectangle",
+                                      "cornerRadius": "$radius-bar",
+                                      "id": "H8fYgL",
+                                      "name": "Line",
+                                      "fill": "$text",
+                                      "width": 8,
+                                      "height": 2
+                                    },
+                                    {
+                                      "type": "rectangle",
+                                      "cornerRadius": "$radius-bar",
+                                      "id": "eyPs1",
+                                      "name": "Line",
+                                      "fill": "$text",
+                                      "width": 12,
+                                      "height": 2
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "id": "GLY45",
+                              "name": "Wifi",
+                              "fill": "$text",
+                              "content": "◠",
+                              "lineHeight": 1.45,
+                              "fontFamily": "$font-ui",
+                              "fontSize": "$type-body",
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "text",
+                              "id": "XCCRa",
+                              "name": "Clock",
+                              "fill": "$text",
+                              "content": "Вт 21 окт  13:02",
+                              "lineHeight": 1.45,
+                              "fontFamily": "$font-ui",
+                              "fontSize": "$type-small",
+                              "fontWeight": "500"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "O1zL3S",
+                          "x": 130,
+                          "y": 32,
+                          "name": "Menu",
+                          "width": 290,
+                          "fill": "$glass",
+                          "cornerRadius": "$radius-card",
+                          "stroke": "$rule",
+                          "strokeWidth": 1,
+                          "effect": [
+                            {
+                              "type": "background_blur",
+                              "radius": 24
+                            },
+                            {
+                              "type": "shadow",
+                              "shadowType": "outer",
+                              "color": "$shadow",
+                              "offset": {
+                                "x": 0,
+                                "y": 10
+                              },
+                              "blur": 30
+                            }
+                          ],
+                          "layout": "vertical",
+                          "padding": "$space-6",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "O2P32y",
+                              "name": "Item Ждёт звонка",
+                              "width": "fill_container",
+                              "cornerRadius": "$radius-control",
+                              "gap": "$space-6",
+                              "padding": [
+                                "$space-4",
+                                "$space-12",
+                                "$space-4",
+                                "$space-6"
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "JeKvr",
+                                  "name": "Check",
+                                  "width": 12,
+                                  "height": 19,
+                                  "justifyContent": "center"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "yzIwK",
+                                  "name": "L",
+                                  "fill": "$gutter",
+                                  "content": "Ждёт звонка",
+                                  "lineHeight": 1.45,
+                                  "fontFamily": "$font-ui",
+                                  "fontSize": "$type-body",
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "BsvWN",
+                                  "name": "Spacer",
+                                  "width": "fill_container",
+                                  "height": 1
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "sXzIo",
+                              "name": "Item Начать запись",
+                              "width": "fill_container",
+                              "cornerRadius": "$radius-control",
+                              "gap": "$space-6",
+                              "padding": [
+                                "$space-4",
+                                "$space-12",
+                                "$space-4",
+                                "$space-6"
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "X4RZ1",
+                                  "name": "Check",
+                                  "width": 12,
+                                  "height": 19,
+                                  "justifyContent": "center"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "H4Bfu",
+                                  "name": "L",
+                                  "fill": "$text",
+                                  "content": "Начать запись",
+                                  "lineHeight": 1.45,
+                                  "fontFamily": "$font-ui",
+                                  "fontSize": "$type-body",
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "BbsgN",
+                                  "name": "Spacer",
+                                  "width": "fill_container",
+                                  "height": 1
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "JC6Mi",
+                              "name": "Separator",
+                              "width": "fill_container",
+                              "padding": [
+                                "$space-4",
+                                "$space-12"
+                              ],
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "id": "GjK8G",
+                                  "name": "Rule",
+                                  "fill": "$rule",
+                                  "width": "fill_container",
+                                  "height": 1
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "PuRFJ",
+                              "name": "Item Записывать звонки автоматически",
+                              "width": "fill_container",
+                              "cornerRadius": "$radius-control",
+                              "gap": "$space-6",
+                              "padding": [
+                                "$space-4",
+                                "$space-12",
+                                "$space-4",
+                                "$space-6"
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "MYhBh",
+                                  "name": "Check",
+                                  "width": 12,
+                                  "height": 19,
+                                  "justifyContent": "center",
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "Ma90e",
+                                      "name": "Tick",
+                                      "fill": "$text",
+                                      "content": "✓",
+                                      "lineHeight": 1.45,
+                                      "fontFamily": "$font-ui",
+                                      "fontSize": "$type-body",
+                                      "fontWeight": "600"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "C1xUAF",
+                                  "name": "L",
+                                  "fill": "$text",
+                                  "content": "Записывать звонки автоматически",
+                                  "lineHeight": 1.45,
+                                  "fontFamily": "$font-ui",
+                                  "fontSize": "$type-body",
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "YktJD",
+                                  "name": "Spacer",
+                                  "width": "fill_container",
+                                  "height": 1
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "zE4Bh",
+                              "name": "Item Живой текст",
+                              "width": "fill_container",
+                              "cornerRadius": "$radius-control",
+                              "gap": "$space-6",
+                              "padding": [
+                                "$space-4",
+                                "$space-12",
+                                "$space-4",
+                                "$space-6"
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "Ayac8",
+                                  "name": "Check",
+                                  "width": 12,
+                                  "height": 19,
+                                  "justifyContent": "center",
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "RcNfb",
+                                      "name": "Tick",
+                                      "fill": "$text",
+                                      "content": "✓",
+                                      "lineHeight": 1.45,
+                                      "fontFamily": "$font-ui",
+                                      "fontSize": "$type-body",
+                                      "fontWeight": "600"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "N3ipT",
+                                  "name": "L",
+                                  "fill": "$text",
+                                  "content": "Живой текст",
+                                  "lineHeight": 1.45,
+                                  "fontFamily": "$font-ui",
+                                  "fontSize": "$type-body",
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "Z7oOdP",
+                                  "name": "Spacer",
+                                  "width": "fill_container",
+                                  "height": 1
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "p2aOBF",
+                              "name": "Separator",
+                              "width": "fill_container",
+                              "padding": [
+                                "$space-4",
+                                "$space-12"
+                              ],
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "id": "liZvF",
+                                  "name": "Rule",
+                                  "fill": "$rule",
+                                  "width": "fill_container",
+                                  "height": 1
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "wpST8",
+                              "name": "Item Показать панель",
+                              "width": "fill_container",
+                              "cornerRadius": "$radius-control",
+                              "gap": "$space-6",
+                              "padding": [
+                                "$space-4",
+                                "$space-12",
+                                "$space-4",
+                                "$space-6"
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "suHbN",
+                                  "name": "Check",
+                                  "width": 12,
+                                  "height": 19,
+                                  "justifyContent": "center"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "Qb9AB",
+                                  "name": "L",
+                                  "fill": "$text",
+                                  "content": "Показать панель",
+                                  "lineHeight": 1.45,
+                                  "fontFamily": "$font-ui",
+                                  "fontSize": "$type-body",
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "j8itjM",
+                                  "name": "Spacer",
+                                  "width": "fill_container",
+                                  "height": 1
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "GagrK",
+                              "name": "Item Звонки…",
+                              "width": "fill_container",
+                              "cornerRadius": "$radius-control",
+                              "gap": "$space-6",
+                              "padding": [
+                                "$space-4",
+                                "$space-12",
+                                "$space-4",
+                                "$space-6"
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "K2I8cw",
+                                  "name": "Check",
+                                  "width": 12,
+                                  "height": 19,
+                                  "justifyContent": "center"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "VDZnR",
+                                  "name": "L",
+                                  "fill": "$text",
+                                  "content": "Звонки…",
+                                  "lineHeight": 1.45,
+                                  "fontFamily": "$font-ui",
+                                  "fontSize": "$type-body",
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "g7dDf",
+                                  "name": "Spacer",
+                                  "width": "fill_container",
+                                  "height": 1
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "YHbax",
+                              "name": "Item Открыть папку звонков",
+                              "width": "fill_container",
+                              "cornerRadius": "$radius-control",
+                              "gap": "$space-6",
+                              "padding": [
+                                "$space-4",
+                                "$space-12",
+                                "$space-4",
+                                "$space-6"
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "SAtHt",
+                                  "name": "Check",
+                                  "width": 12,
+                                  "height": 19,
+                                  "justifyContent": "center"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "G1dHb",
+                                  "name": "L",
+                                  "fill": "$text",
+                                  "content": "Открыть папку звонков",
+                                  "lineHeight": 1.45,
+                                  "fontFamily": "$font-ui",
+                                  "fontSize": "$type-body",
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "J7w9q7",
+                                  "name": "Spacer",
+                                  "width": "fill_container",
+                                  "height": 1
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "V57iD3",
+                              "name": "Item Настройки…",
+                              "width": "fill_container",
+                              "cornerRadius": "$radius-control",
+                              "gap": "$space-6",
+                              "padding": [
+                                "$space-4",
+                                "$space-12",
+                                "$space-4",
+                                "$space-6"
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "xF0V1",
+                                  "name": "Check",
+                                  "width": 12,
+                                  "height": 19,
+                                  "justifyContent": "center"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "e4UUxL",
+                                  "name": "L",
+                                  "fill": "$text",
+                                  "content": "Настройки…",
+                                  "lineHeight": 1.45,
+                                  "fontFamily": "$font-ui",
+                                  "fontSize": "$type-body",
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "EgwmY",
+                                  "name": "Spacer",
+                                  "width": "fill_container",
+                                  "height": 1
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "q8UXjW",
+                                  "name": "K",
+                                  "fill": "$gutter",
+                                  "content": "⌘,",
+                                  "lineHeight": 1.55,
+                                  "fontFamily": "$font-data",
+                                  "fontSize": "$type-caption",
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "qiuVm",
+                              "name": "Separator",
+                              "width": "fill_container",
+                              "padding": [
+                                "$space-4",
+                                "$space-12"
+                              ],
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "id": "VBEwh",
+                                  "name": "Rule",
+                                  "fill": "$rule",
+                                  "width": "fill_container",
+                                  "height": 1
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "I7md6p",
+                              "name": "Item Выйти",
+                              "width": "fill_container",
+                              "cornerRadius": "$radius-control",
+                              "gap": "$space-6",
+                              "padding": [
+                                "$space-4",
+                                "$space-12",
+                                "$space-4",
+                                "$space-6"
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "ZH58I",
+                                  "name": "Check",
+                                  "width": 12,
+                                  "height": 19,
+                                  "justifyContent": "center"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "Z8Skh",
+                                  "name": "L",
+                                  "fill": "$text",
+                                  "content": "Выйти",
+                                  "lineHeight": 1.45,
+                                  "fontFamily": "$font-ui",
+                                  "fontSize": "$type-body",
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "e1o8fu",
+                                  "name": "Spacer",
+                                  "width": "fill_container",
+                                  "height": 1
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "B4zZt",
+                                  "name": "K",
+                                  "fill": "$gutter",
+                                  "content": "⌘Q",
+                                  "lineHeight": 1.55,
+                                  "fontFamily": "$font-data",
+                                  "fontSize": "$type-caption",
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "V6XVe",
+                  "name": "Update available",
+                  "layout": "vertical",
+                  "gap": 8,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "ipDQF",
+                      "name": "State",
+                      "fill": "#333333",
+                      "content": "Update available",
+                      "fontFamily": "Inter",
+                      "fontSize": "$type-body",
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "l7kJv",
+                      "name": "Note",
+                      "fill": "#777777",
+                      "textGrowth": "fixed-width",
+                      "width": 468,
+                      "content": "A newer build is installed and no call is on. The dot shows; the first item restarts into the installed build (shown hovered).",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Jif0y",
+                      "name": "Desktop",
+                      "clip": true,
+                      "width": 468,
+                      "height": 380,
+                      "fill": "$back",
+                      "cornerRadius": "$radius-card",
+                      "layout": "none",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "raVOn",
+                          "x": 0,
+                          "y": 0,
+                          "name": "Menu bar",
+                          "width": 468,
+                          "height": 28,
+                          "fill": "$glass",
+                          "effect": {
+                            "type": "background_blur",
+                            "radius": 20
+                          },
+                          "gap": "$space-16",
+                          "padding": [
+                            0,
+                            "$space-12"
+                          ],
+                          "justifyContent": "end",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "ytZir",
+                              "name": "Our item with badge",
+                              "width": 28,
+                              "height": 14,
+                              "layout": "none",
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "jUIaQ",
+                                  "x": 0,
+                                  "y": 0,
+                                  "name": "Our item",
+                                  "fill": "$btn",
+                                  "cornerRadius": "$radius-control",
+                                  "gap": "$space-6",
+                                  "padding": [
+                                    "$space-2",
+                                    "$space-8"
+                                  ],
+                                  "alignItems": "center",
+                                  "children": [
+                                    {
+                                      "type": "frame",
+                                      "id": "Lq0MK",
+                                      "name": "Glyph",
+                                      "layout": "vertical",
+                                      "gap": "$space-2",
+                                      "children": [
+                                        {
+                                          "type": "rectangle",
+                                          "cornerRadius": "$radius-bar",
+                                          "id": "K4oEA",
+                                          "name": "Line",
+                                          "fill": "$text",
+                                          "width": 12,
+                                          "height": 2
+                                        },
+                                        {
+                                          "type": "rectangle",
+                                          "cornerRadius": "$radius-bar",
+                                          "id": "jTqFn",
+                                          "name": "Line",
+                                          "fill": "$text",
+                                          "width": 8,
+                                          "height": 2
+                                        },
+                                        {
+                                          "type": "rectangle",
+                                          "cornerRadius": "$radius-bar",
+                                          "id": "zgkmM",
+                                          "name": "Line",
+                                          "fill": "$text",
+                                          "width": 12,
+                                          "height": 2
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "ellipse",
+                                  "id": "dPBzY",
+                                  "x": 21,
+                                  "y": -2,
+                                  "name": "Update badge",
+                                  "fill": "$me",
+                                  "width": 8,
+                                  "height": 8,
+                                  "stroke": "$glass",
+                                  "strokeWidth": 1.5
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "id": "b4j5pW",
+                              "name": "Wifi",
+                              "fill": "$text",
+                              "content": "◠",
+                              "lineHeight": 1.45,
+                              "fontFamily": "$font-ui",
+                              "fontSize": "$type-body",
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "text",
+                              "id": "mH1EY",
+                              "name": "Clock",
+                              "fill": "$text",
+                              "content": "Вт 21 окт  13:02",
+                              "lineHeight": 1.45,
+                              "fontFamily": "$font-ui",
+                              "fontSize": "$type-small",
+                              "fontWeight": "500"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "ljx3V",
+                          "x": 130,
+                          "y": 32,
+                          "name": "Menu",
+                          "width": 290,
+                          "fill": "$glass",
+                          "cornerRadius": "$radius-card",
+                          "stroke": "$rule",
+                          "strokeWidth": 1,
+                          "effect": [
+                            {
+                              "type": "background_blur",
+                              "radius": 24
+                            },
+                            {
+                              "type": "shadow",
+                              "shadowType": "outer",
+                              "color": "$shadow",
+                              "offset": {
+                                "x": 0,
+                                "y": 10
+                              },
+                              "blur": 30
+                            }
+                          ],
+                          "layout": "vertical",
+                          "padding": "$space-6",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "zXeNI",
+                              "name": "Item Перезапустить для обновления",
+                              "width": "fill_container",
+                              "fill": "$selBg",
+                              "cornerRadius": "$radius-control",
+                              "gap": "$space-6",
+                              "padding": [
+                                "$space-4",
+                                "$space-12",
+                                "$space-4",
+                                "$space-6"
+                              ],
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "s56zm4",
+                                  "name": "Check",
+                                  "width": 12,
+                                  "height": 19,
+                                  "justifyContent": "center",
+                                  "alignItems": "center",
+                                  "children": [
+                                    {
+                                      "type": "ellipse",
+                                      "id": "ZhymE",
+                                      "name": "Update dot",
+                                      "fill": "$selText",
+                                      "width": 6,
+                                      "height": 6
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "o6uPr6",
+                                  "name": "Labels",
+                                  "width": "fill_container",
+                                  "layout": "vertical",
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "jy5aO",
+                                      "name": "L",
+                                      "fill": "$selText",
+                                      "content": "Перезапустить для обновления",
+                                      "lineHeight": 1.45,
+                                      "fontFamily": "$font-ui",
+                                      "fontSize": "$type-body",
+                                      "fontWeight": "600"
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "vqnHJ",
+                              "name": "Separator",
+                              "width": "fill_container",
+                              "padding": [
+                                "$space-4",
+                                "$space-12"
+                              ],
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "id": "kInt4",
+                                  "name": "Rule",
+                                  "fill": "$rule",
+                                  "width": "fill_container",
+                                  "height": 1
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "FfJxK",
+                              "name": "Item Ждёт звонка",
+                              "width": "fill_container",
+                              "cornerRadius": "$radius-control",
+                              "gap": "$space-6",
+                              "padding": [
+                                "$space-4",
+                                "$space-12",
+                                "$space-4",
+                                "$space-6"
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "Acoth",
+                                  "name": "Check",
+                                  "width": 12,
+                                  "height": 19,
+                                  "justifyContent": "center"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "TFkmC",
+                                  "name": "L",
+                                  "fill": "$gutter",
+                                  "content": "Ждёт звонка",
+                                  "lineHeight": 1.45,
+                                  "fontFamily": "$font-ui",
+                                  "fontSize": "$type-body",
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "omwvf",
+                                  "name": "Spacer",
+                                  "width": "fill_container",
+                                  "height": 1
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "d6ROdb",
+                              "name": "Item Начать запись",
+                              "width": "fill_container",
+                              "cornerRadius": "$radius-control",
+                              "gap": "$space-6",
+                              "padding": [
+                                "$space-4",
+                                "$space-12",
+                                "$space-4",
+                                "$space-6"
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "GpQ5S",
+                                  "name": "Check",
+                                  "width": 12,
+                                  "height": 19,
+                                  "justifyContent": "center"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "KJCp0",
+                                  "name": "L",
+                                  "fill": "$text",
+                                  "content": "Начать запись",
+                                  "lineHeight": 1.45,
+                                  "fontFamily": "$font-ui",
+                                  "fontSize": "$type-body",
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "HOxxN",
+                                  "name": "Spacer",
+                                  "width": "fill_container",
+                                  "height": 1
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "b18qF",
+                              "name": "Separator",
+                              "width": "fill_container",
+                              "padding": [
+                                "$space-4",
+                                "$space-12"
+                              ],
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "id": "mmbkO",
+                                  "name": "Rule",
+                                  "fill": "$rule",
+                                  "width": "fill_container",
+                                  "height": 1
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "Z2GOqt",
+                              "name": "Item Записывать звонки автоматически",
+                              "width": "fill_container",
+                              "cornerRadius": "$radius-control",
+                              "gap": "$space-6",
+                              "padding": [
+                                "$space-4",
+                                "$space-12",
+                                "$space-4",
+                                "$space-6"
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "joHxj",
+                                  "name": "Check",
+                                  "width": 12,
+                                  "height": 19,
+                                  "justifyContent": "center",
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "K1So4",
+                                      "name": "Tick",
+                                      "fill": "$text",
+                                      "content": "✓",
+                                      "lineHeight": 1.45,
+                                      "fontFamily": "$font-ui",
+                                      "fontSize": "$type-body",
+                                      "fontWeight": "600"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "ycRBE",
+                                  "name": "L",
+                                  "fill": "$text",
+                                  "content": "Записывать звонки автоматически",
+                                  "lineHeight": 1.45,
+                                  "fontFamily": "$font-ui",
+                                  "fontSize": "$type-body",
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "S1CH8",
+                                  "name": "Spacer",
+                                  "width": "fill_container",
+                                  "height": 1
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "L1iid",
+                              "name": "Item Живой текст",
+                              "width": "fill_container",
+                              "cornerRadius": "$radius-control",
+                              "gap": "$space-6",
+                              "padding": [
+                                "$space-4",
+                                "$space-12",
+                                "$space-4",
+                                "$space-6"
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "joDXJ",
+                                  "name": "Check",
+                                  "width": 12,
+                                  "height": 19,
+                                  "justifyContent": "center",
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "TCNDb",
+                                      "name": "Tick",
+                                      "fill": "$text",
+                                      "content": "✓",
+                                      "lineHeight": 1.45,
+                                      "fontFamily": "$font-ui",
+                                      "fontSize": "$type-body",
+                                      "fontWeight": "600"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "i2Py4g",
+                                  "name": "L",
+                                  "fill": "$text",
+                                  "content": "Живой текст",
+                                  "lineHeight": 1.45,
+                                  "fontFamily": "$font-ui",
+                                  "fontSize": "$type-body",
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "mUyt5",
+                                  "name": "Spacer",
+                                  "width": "fill_container",
+                                  "height": 1
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "q2XGf",
+                              "name": "Separator",
+                              "width": "fill_container",
+                              "padding": [
+                                "$space-4",
+                                "$space-12"
+                              ],
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "id": "K3sDLj",
+                                  "name": "Rule",
+                                  "fill": "$rule",
+                                  "width": "fill_container",
+                                  "height": 1
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "qytEP",
+                              "name": "Item Показать панель",
+                              "width": "fill_container",
+                              "cornerRadius": "$radius-control",
+                              "gap": "$space-6",
+                              "padding": [
+                                "$space-4",
+                                "$space-12",
+                                "$space-4",
+                                "$space-6"
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "aoSea",
+                                  "name": "Check",
+                                  "width": 12,
+                                  "height": 19,
+                                  "justifyContent": "center"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "ubwKI",
+                                  "name": "L",
+                                  "fill": "$text",
+                                  "content": "Показать панель",
+                                  "lineHeight": 1.45,
+                                  "fontFamily": "$font-ui",
+                                  "fontSize": "$type-body",
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "N6n90d",
+                                  "name": "Spacer",
+                                  "width": "fill_container",
+                                  "height": 1
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "DNNs6",
+                              "name": "Item Звонки…",
+                              "width": "fill_container",
+                              "cornerRadius": "$radius-control",
+                              "gap": "$space-6",
+                              "padding": [
+                                "$space-4",
+                                "$space-12",
+                                "$space-4",
+                                "$space-6"
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "w7M6c",
+                                  "name": "Check",
+                                  "width": 12,
+                                  "height": 19,
+                                  "justifyContent": "center"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "GCL97",
+                                  "name": "L",
+                                  "fill": "$text",
+                                  "content": "Звонки…",
+                                  "lineHeight": 1.45,
+                                  "fontFamily": "$font-ui",
+                                  "fontSize": "$type-body",
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "amlmT",
+                                  "name": "Spacer",
+                                  "width": "fill_container",
+                                  "height": 1
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "NyycN",
+                              "name": "Item Открыть папку звонков",
+                              "width": "fill_container",
+                              "cornerRadius": "$radius-control",
+                              "gap": "$space-6",
+                              "padding": [
+                                "$space-4",
+                                "$space-12",
+                                "$space-4",
+                                "$space-6"
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "AEgqQ",
+                                  "name": "Check",
+                                  "width": 12,
+                                  "height": 19,
+                                  "justifyContent": "center"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "SXTMK",
+                                  "name": "L",
+                                  "fill": "$text",
+                                  "content": "Открыть папку звонков",
+                                  "lineHeight": 1.45,
+                                  "fontFamily": "$font-ui",
+                                  "fontSize": "$type-body",
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "bElge",
+                                  "name": "Spacer",
+                                  "width": "fill_container",
+                                  "height": 1
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "vPPBO",
+                              "name": "Item Настройки…",
+                              "width": "fill_container",
+                              "cornerRadius": "$radius-control",
+                              "gap": "$space-6",
+                              "padding": [
+                                "$space-4",
+                                "$space-12",
+                                "$space-4",
+                                "$space-6"
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "xoA9f",
+                                  "name": "Check",
+                                  "width": 12,
+                                  "height": 19,
+                                  "justifyContent": "center"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "nvbIu",
+                                  "name": "L",
+                                  "fill": "$text",
+                                  "content": "Настройки…",
+                                  "lineHeight": 1.45,
+                                  "fontFamily": "$font-ui",
+                                  "fontSize": "$type-body",
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "qdaYA",
+                                  "name": "Spacer",
+                                  "width": "fill_container",
+                                  "height": 1
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "CJeN5",
+                                  "name": "K",
+                                  "fill": "$gutter",
+                                  "content": "⌘,",
+                                  "lineHeight": 1.55,
+                                  "fontFamily": "$font-data",
+                                  "fontSize": "$type-caption",
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "amNy5",
+                              "name": "Separator",
+                              "width": "fill_container",
+                              "padding": [
+                                "$space-4",
+                                "$space-12"
+                              ],
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "id": "NFjkn",
+                                  "name": "Rule",
+                                  "fill": "$rule",
+                                  "width": "fill_container",
+                                  "height": 1
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "hnPEe",
+                              "name": "Item Выйти",
+                              "width": "fill_container",
+                              "cornerRadius": "$radius-control",
+                              "gap": "$space-6",
+                              "padding": [
+                                "$space-4",
+                                "$space-12",
+                                "$space-4",
+                                "$space-6"
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "DTFBR",
+                                  "name": "Check",
+                                  "width": 12,
+                                  "height": 19,
+                                  "justifyContent": "center"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "kcrdo",
+                                  "name": "L",
+                                  "fill": "$text",
+                                  "content": "Выйти",
+                                  "lineHeight": 1.45,
+                                  "fontFamily": "$font-ui",
+                                  "fontSize": "$type-body",
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "XDOAS",
+                                  "name": "Spacer",
+                                  "width": "fill_container",
+                                  "height": 1
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "zce2G",
+                                  "name": "K",
+                                  "fill": "$gutter",
+                                  "content": "⌘Q",
+                                  "lineHeight": 1.55,
+                                  "fontFamily": "$font-data",
+                                  "fontSize": "$type-caption",
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "w2peZ",
+                  "name": "Update during a call",
+                  "layout": "vertical",
+                  "gap": 8,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "aUF2G",
+                      "name": "State",
+                      "fill": "#333333",
+                      "content": "Update during a call",
+                      "fontFamily": "Inter",
+                      "fontSize": "$type-body",
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "W41VUZ",
+                      "name": "Note",
+                      "fill": "#777777",
+                      "textGrowth": "fixed-width",
+                      "width": 468,
+                      "content": "Recording, or the final transcript is still being saved: the item is shown disabled with its reason. When the call ends it becomes active by itself; the dot never leaves before the restart.",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "HlZga",
+                      "name": "Desktop",
+                      "clip": true,
+                      "width": 468,
+                      "height": 380,
+                      "fill": "$back",
+                      "cornerRadius": "$radius-card",
+                      "layout": "none",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "n1gIX",
+                          "x": 0,
+                          "y": 0,
+                          "name": "Menu bar",
+                          "width": 468,
+                          "height": 28,
+                          "fill": "$glass",
+                          "effect": {
+                            "type": "background_blur",
+                            "radius": 20
+                          },
+                          "gap": "$space-16",
+                          "padding": [
+                            0,
+                            "$space-12"
+                          ],
+                          "justifyContent": "end",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "KLFdc",
+                              "name": "Our item with badge",
+                              "width": 63,
+                              "height": 21,
+                              "layout": "none",
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "A8yrB",
+                                  "x": 0,
+                                  "y": 0,
+                                  "name": "Our item",
+                                  "fill": "$btn",
+                                  "cornerRadius": "$radius-control",
+                                  "gap": "$space-6",
+                                  "padding": [
+                                    "$space-2",
+                                    "$space-8"
+                                  ],
+                                  "alignItems": "center",
+                                  "children": [
+                                    {
+                                      "type": "ellipse",
+                                      "id": "C3Au6",
+                                      "name": "Rec dot",
+                                      "fill": "$rec",
+                                      "width": 8,
+                                      "height": 8
+                                    },
+                                    {
+                                      "type": "text",
+                                      "id": "DaYZF",
+                                      "name": "Time",
+                                      "fill": "$text",
+                                      "content": "12:47",
+                                      "lineHeight": 1.55,
+                                      "fontFamily": "$font-data",
+                                      "fontSize": "$type-caption",
+                                      "fontWeight": "600"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "ellipse",
+                                  "id": "wNe8F",
+                                  "x": 56,
+                                  "y": -2,
+                                  "name": "Update badge",
+                                  "fill": "$me",
+                                  "width": 8,
+                                  "height": 8,
+                                  "stroke": "$glass",
+                                  "strokeWidth": 1.5
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "id": "j2CkR",
+                              "name": "Wifi",
+                              "fill": "$text",
+                              "content": "◠",
+                              "lineHeight": 1.45,
+                              "fontFamily": "$font-ui",
+                              "fontSize": "$type-body",
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "text",
+                              "id": "e3KqOo",
+                              "name": "Clock",
+                              "fill": "$text",
+                              "content": "Вт 21 окт  13:02",
+                              "lineHeight": 1.45,
+                              "fontFamily": "$font-ui",
+                              "fontSize": "$type-small",
+                              "fontWeight": "500"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "ncVfJ",
+                          "x": 130,
+                          "y": 32,
+                          "name": "Menu",
+                          "width": 290,
+                          "fill": "$glass",
+                          "cornerRadius": "$radius-card",
+                          "stroke": "$rule",
+                          "strokeWidth": 1,
+                          "effect": [
+                            {
+                              "type": "background_blur",
+                              "radius": 24
+                            },
+                            {
+                              "type": "shadow",
+                              "shadowType": "outer",
+                              "color": "$shadow",
+                              "offset": {
+                                "x": 0,
+                                "y": 10
+                              },
+                              "blur": 30
+                            }
+                          ],
+                          "layout": "vertical",
+                          "padding": "$space-6",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "asSRi",
+                              "name": "Item Перезапустить для обновления",
+                              "width": "fill_container",
+                              "cornerRadius": "$radius-control",
+                              "gap": "$space-6",
+                              "padding": [
+                                "$space-4",
+                                "$space-12",
+                                "$space-4",
+                                "$space-6"
+                              ],
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "s3AoI",
+                                  "name": "Check",
+                                  "width": 12,
+                                  "height": 19,
+                                  "justifyContent": "center",
+                                  "alignItems": "center",
+                                  "children": [
+                                    {
+                                      "type": "ellipse",
+                                      "id": "HEqDX",
+                                      "name": "Update dot",
+                                      "fill": "$gutter",
+                                      "width": 6,
+                                      "height": 6
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "ZuITV",
+                                  "name": "Labels",
+                                  "width": "fill_container",
+                                  "layout": "vertical",
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "T7vuU",
+                                      "name": "L",
+                                      "fill": "$gutter",
+                                      "content": "Перезапустить для обновления",
+                                      "lineHeight": 1.45,
+                                      "fontFamily": "$font-ui",
+                                      "fontSize": "$type-body",
+                                      "fontWeight": "normal"
+                                    },
+                                    {
+                                      "type": "text",
+                                      "id": "C1514",
+                                      "name": "Reason",
+                                      "fill": "$gutter",
+                                      "content": "Доступно после звонка",
+                                      "lineHeight": 1.45,
+                                      "fontFamily": "$font-ui",
+                                      "fontSize": "$type-small",
+                                      "fontWeight": "normal"
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "N7Hc19",
+                              "name": "Separator",
+                              "width": "fill_container",
+                              "padding": [
+                                "$space-4",
+                                "$space-12"
+                              ],
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "id": "np18h",
+                                  "name": "Rule",
+                                  "fill": "$rule",
+                                  "width": "fill_container",
+                                  "height": 1
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "a8Bytc",
+                              "name": "Item Запись · Zoom · 00:12:47",
+                              "width": "fill_container",
+                              "cornerRadius": "$radius-control",
+                              "gap": "$space-6",
+                              "padding": [
+                                "$space-4",
+                                "$space-12",
+                                "$space-4",
+                                "$space-6"
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "h5PTs",
+                                  "name": "Check",
+                                  "width": 12,
+                                  "height": 19,
+                                  "justifyContent": "center"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "QuH0y",
+                                  "name": "L",
+                                  "fill": "$gutter",
+                                  "content": "Запись · Zoom · 00:12:47",
+                                  "lineHeight": 1.45,
+                                  "fontFamily": "$font-ui",
+                                  "fontSize": "$type-body",
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "rKSNV",
+                                  "name": "Spacer",
+                                  "width": "fill_container",
+                                  "height": 1
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "ILjQ1",
+                              "name": "Item Остановить запись",
+                              "width": "fill_container",
+                              "cornerRadius": "$radius-control",
+                              "gap": "$space-6",
+                              "padding": [
+                                "$space-4",
+                                "$space-12",
+                                "$space-4",
+                                "$space-6"
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "bplnZ",
+                                  "name": "Check",
+                                  "width": 12,
+                                  "height": 19,
+                                  "justifyContent": "center"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "w3z8xm",
+                                  "name": "L",
+                                  "fill": "$rec",
+                                  "content": "Остановить запись",
+                                  "lineHeight": 1.45,
+                                  "fontFamily": "$font-ui",
+                                  "fontSize": "$type-body",
+                                  "fontWeight": "600"
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "c5qRSu",
+                                  "name": "Spacer",
+                                  "width": "fill_container",
+                                  "height": 1
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "Q3MSq",
+                              "name": "Separator",
+                              "width": "fill_container",
+                              "padding": [
+                                "$space-4",
+                                "$space-12"
+                              ],
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "id": "Y7Dl2",
+                                  "name": "Rule",
+                                  "fill": "$rule",
+                                  "width": "fill_container",
+                                  "height": 1
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "KhnuR",
+                              "name": "Item Записывать звонки автоматически",
+                              "width": "fill_container",
+                              "cornerRadius": "$radius-control",
+                              "gap": "$space-6",
+                              "padding": [
+                                "$space-4",
+                                "$space-12",
+                                "$space-4",
+                                "$space-6"
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "weAVq",
+                                  "name": "Check",
+                                  "width": 12,
+                                  "height": 19,
+                                  "justifyContent": "center",
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "W1oR0",
+                                      "name": "Tick",
+                                      "fill": "$text",
+                                      "content": "✓",
+                                      "lineHeight": 1.45,
+                                      "fontFamily": "$font-ui",
+                                      "fontSize": "$type-body",
+                                      "fontWeight": "600"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "WTDDK",
+                                  "name": "L",
+                                  "fill": "$text",
+                                  "content": "Записывать звонки автоматически",
+                                  "lineHeight": 1.45,
+                                  "fontFamily": "$font-ui",
+                                  "fontSize": "$type-body",
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "CRVo4",
+                                  "name": "Spacer",
+                                  "width": "fill_container",
+                                  "height": 1
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "T0O6Jl",
+                              "name": "Item Живой текст",
+                              "width": "fill_container",
+                              "cornerRadius": "$radius-control",
+                              "gap": "$space-6",
+                              "padding": [
+                                "$space-4",
+                                "$space-12",
+                                "$space-4",
+                                "$space-6"
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "q0PtD",
+                                  "name": "Check",
+                                  "width": 12,
+                                  "height": 19,
+                                  "justifyContent": "center",
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "BfadH",
+                                      "name": "Tick",
+                                      "fill": "$text",
+                                      "content": "✓",
+                                      "lineHeight": 1.45,
+                                      "fontFamily": "$font-ui",
+                                      "fontSize": "$type-body",
+                                      "fontWeight": "600"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "P3mlzf",
+                                  "name": "L",
+                                  "fill": "$text",
+                                  "content": "Живой текст",
+                                  "lineHeight": 1.45,
+                                  "fontFamily": "$font-ui",
+                                  "fontSize": "$type-body",
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "oHz6M",
+                                  "name": "Spacer",
+                                  "width": "fill_container",
+                                  "height": 1
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "N4z0g",
+                              "name": "Separator",
+                              "width": "fill_container",
+                              "padding": [
+                                "$space-4",
+                                "$space-12"
+                              ],
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "id": "REI5Y",
+                                  "name": "Rule",
+                                  "fill": "$rule",
+                                  "width": "fill_container",
+                                  "height": 1
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "tsx9A",
+                              "name": "Item Показать панель",
+                              "width": "fill_container",
+                              "cornerRadius": "$radius-control",
+                              "gap": "$space-6",
+                              "padding": [
+                                "$space-4",
+                                "$space-12",
+                                "$space-4",
+                                "$space-6"
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "TKWp9",
+                                  "name": "Check",
+                                  "width": 12,
+                                  "height": 19,
+                                  "justifyContent": "center"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "oXa6b",
+                                  "name": "L",
+                                  "fill": "$text",
+                                  "content": "Показать панель",
+                                  "lineHeight": 1.45,
+                                  "fontFamily": "$font-ui",
+                                  "fontSize": "$type-body",
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "G0pcVB",
+                                  "name": "Spacer",
+                                  "width": "fill_container",
+                                  "height": 1
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "tgf9T",
+                              "name": "Item Звонки…",
+                              "width": "fill_container",
+                              "cornerRadius": "$radius-control",
+                              "gap": "$space-6",
+                              "padding": [
+                                "$space-4",
+                                "$space-12",
+                                "$space-4",
+                                "$space-6"
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "uhO0I",
+                                  "name": "Check",
+                                  "width": 12,
+                                  "height": 19,
+                                  "justifyContent": "center"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "WUMl5",
+                                  "name": "L",
+                                  "fill": "$text",
+                                  "content": "Звонки…",
+                                  "lineHeight": 1.45,
+                                  "fontFamily": "$font-ui",
+                                  "fontSize": "$type-body",
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "kPYFN",
+                                  "name": "Spacer",
+                                  "width": "fill_container",
+                                  "height": 1
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "B8djX",
+                              "name": "Item Открыть папку звонков",
+                              "width": "fill_container",
+                              "cornerRadius": "$radius-control",
+                              "gap": "$space-6",
+                              "padding": [
+                                "$space-4",
+                                "$space-12",
+                                "$space-4",
+                                "$space-6"
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "ncZns",
+                                  "name": "Check",
+                                  "width": 12,
+                                  "height": 19,
+                                  "justifyContent": "center"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "OJvj7",
+                                  "name": "L",
+                                  "fill": "$text",
+                                  "content": "Открыть папку звонков",
+                                  "lineHeight": 1.45,
+                                  "fontFamily": "$font-ui",
+                                  "fontSize": "$type-body",
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "CqyCh",
+                                  "name": "Spacer",
+                                  "width": "fill_container",
+                                  "height": 1
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "B1zbh",
+                              "name": "Item Настройки…",
+                              "width": "fill_container",
+                              "cornerRadius": "$radius-control",
+                              "gap": "$space-6",
+                              "padding": [
+                                "$space-4",
+                                "$space-12",
+                                "$space-4",
+                                "$space-6"
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "ET5LR",
+                                  "name": "Check",
+                                  "width": 12,
+                                  "height": 19,
+                                  "justifyContent": "center"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "M8X6K",
+                                  "name": "L",
+                                  "fill": "$text",
+                                  "content": "Настройки…",
+                                  "lineHeight": 1.45,
+                                  "fontFamily": "$font-ui",
+                                  "fontSize": "$type-body",
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "T7GdvP",
+                                  "name": "Spacer",
+                                  "width": "fill_container",
+                                  "height": 1
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "qlxuO",
+                                  "name": "K",
+                                  "fill": "$gutter",
+                                  "content": "⌘,",
+                                  "lineHeight": 1.55,
+                                  "fontFamily": "$font-data",
+                                  "fontSize": "$type-caption",
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "g0y7q",
+                              "name": "Separator",
+                              "width": "fill_container",
+                              "padding": [
+                                "$space-4",
+                                "$space-12"
+                              ],
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "id": "w75gbf",
+                                  "name": "Rule",
+                                  "fill": "$rule",
+                                  "width": "fill_container",
+                                  "height": 1
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "gxihA",
+                              "name": "Item Выйти",
+                              "width": "fill_container",
+                              "cornerRadius": "$radius-control",
+                              "gap": "$space-6",
+                              "padding": [
+                                "$space-4",
+                                "$space-12",
+                                "$space-4",
+                                "$space-6"
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "GEv1D",
+                                  "name": "Check",
+                                  "width": 12,
+                                  "height": 19,
+                                  "justifyContent": "center"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "CqPwj",
+                                  "name": "L",
+                                  "fill": "$text",
+                                  "content": "Выйти",
+                                  "lineHeight": 1.45,
+                                  "fontFamily": "$font-ui",
+                                  "fontSize": "$type-body",
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "v0isEy",
+                                  "name": "Spacer",
+                                  "width": "fill_container",
+                                  "height": 1
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "wGNB9",
+                                  "name": "K",
+                                  "fill": "$gutter",
+                                  "content": "⌘Q",
+                                  "lineHeight": 1.55,
+                                  "fontFamily": "$font-data",
+                                  "fontSize": "$type-caption",
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "KCBzE",
+          "name": "Dark",
+          "layout": "vertical",
+          "gap": 12,
+          "children": [
+            {
+              "type": "text",
+              "id": "aAt2P",
+              "name": "Label",
+              "fill": "#666666",
+              "content": "Dark",
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "600"
+            },
+            {
+              "id": "i3Ibq",
+              "type": "ref",
+              "ref": "z0zAfO",
+              "name": "Update states — dark",
+              "theme": {
+                "mode": "dark"
+              },
+              "fill": "#FFFFFF"
+            }
+          ]
+        }
+      ]
     }
   ],
   "themes": {

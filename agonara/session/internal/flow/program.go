@@ -3,8 +3,6 @@ package flow
 import (
 	"context"
 	"sync"
-
-	"github.com/igor1309/ai-labs/agonara/session/internal/agonara"
 )
 
 // Course is a program's topic with the concepts and materials it links to.
@@ -31,7 +29,7 @@ func (f Flow) Program(ctx context.Context, programID string) (*Program, error) {
 	}
 	program := &Program{ID: programID}
 	for _, p := range programs {
-		if p.ProgramID == programID {
+		if p.ID == programID {
 			program.Title, program.Description = p.Title, p.Description
 		}
 	}
@@ -44,26 +42,25 @@ func (f Flow) Program(ctx context.Context, programID string) (*Program, error) {
 	var wg sync.WaitGroup
 	limit := make(chan struct{}, 4)
 	for index, topic := range navigation.Topics {
-		program.Courses[index].Topic = item(topic)
+		program.Courses[index].Topic = topic
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			limit <- struct{}{}
 			defer func() { <-limit }()
-			entity, err := f.Reader.Entity(ctx, topic.EntityID)
+			entity, err := f.Reader.Entity(ctx, topic.ID)
 			if err != nil {
 				errs[index] = err
 				return
 			}
 			course := &program.Courses[index]
 			course.Concepts, course.Materials = []Item{}, []Item{}
-			for _, link := range entity.Relationships.Outgoing {
-				linked := Item{ID: link.ToEntityID, Title: link.ToTitle, Kind: link.ToKind}
-				switch link.ToKind {
+			for _, link := range entity.Children {
+				switch link.Kind {
 				case material:
-					course.Materials = append(course.Materials, linked)
+					course.Materials = append(course.Materials, link)
 				case "concept":
-					course.Concepts = append(course.Concepts, linked)
+					course.Concepts = append(course.Concepts, link)
 				}
 			}
 		}()
@@ -74,17 +71,13 @@ func (f Flow) Program(ctx context.Context, programID string) (*Program, error) {
 			return nil, err
 		}
 	}
-	for _, node := range navigation.UngroupedConcepts {
-		program.Concepts = append(program.Concepts, item(node))
+	for _, node := range navigation.Concepts {
+		program.Concepts = append(program.Concepts, node)
 	}
-	for _, node := range navigation.UngroupedMaterials {
-		program.Materials = append(program.Materials, item(node))
+	for _, node := range navigation.Materials {
+		program.Materials = append(program.Materials, node)
 	}
 	return program, nil
-}
-
-func item(node agonara.Node) Item {
-	return Item{ID: node.EntityID, Title: node.Title, Kind: node.AcceptedKind}
 }
 
 // IsMaterial says whether an item is something to read.

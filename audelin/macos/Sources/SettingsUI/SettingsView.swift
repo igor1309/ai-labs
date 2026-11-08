@@ -27,10 +27,7 @@ public struct SettingsView: View {
 
         VStack(alignment: .leading, spacing: tokens.space16) {
             tabs
-            switch state.selectedTab {
-            case .recording: recordingPage
-            case .callNotes: callNotesPage
-            }
+            page
         }
         .padding(tokens.space24)
         .frame(width: config.windowWidth, alignment: .topLeading)
@@ -46,6 +43,14 @@ public struct SettingsView: View {
 }
 
 extension SettingsView {
+
+    @ViewBuilder
+    var page: some View {
+        switch state.selectedTab {
+        case .recording: recordingPage
+        case .callNotes: callNotesPage
+        }
+    }
 
     var recordingPage: some View {
         VStack(alignment: .leading, spacing: tokens.space24) {

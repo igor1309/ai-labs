@@ -2,21 +2,20 @@ package web
 
 import (
 	"testing"
-
-	"github.com/igor1309/ai-labs/agonara/session/internal/flow"
 )
 
-func course(id, title string, concepts int, materials ...flow.Item) flow.Course {
-	return flow.Course{Topic: flow.Item{ID: id, Title: title}, Concepts: make([]flow.Item, concepts), Materials: materials}
+func course(id, title string, concepts int, materials ...Item) Course {
+	return Course{Topic: Item{ID: id, Title: title}, ConceptCount: concepts, Materials: materials}
 }
 
 func TestOutlineSortsByTheTitlesNumberAndGivesEachMaterialOneHome(t *testing.T) {
-	lecture := flow.Item{ID: "m3", Title: "Тема 3. Этические проблемы"}
-	program := &flow.Program{Courses: []flow.Course{
+	t.Parallel()
+	lecture := Item{ID: "m3", Title: "Тема 3. Этические проблемы"}
+	program := &Program{Courses: []Course{
 		course("t2", "Тема 2. Ценности", 9),
 		course("t3", "Тема 3. Этические проблемы", 20, lecture),
 		course("t10", "Тема 10. Итоги", 1),
-		course("mod", "Модуль 1. Введение в профессию", 2, lecture, flow.Item{ID: "m0", Title: "Обзор модуля"}, flow.Item{ID: "m2", Title: "Тема 2. Ценности"}),
+		course("mod", "Модуль 1. Введение в профессию", 2, lecture, Item{ID: "m0", Title: "Обзор модуля"}, Item{ID: "m2", Title: "Тема 2. Ценности"}),
 		course("t1", "Тема 1. Общая этика", 12),
 		course("x", "Глоссарий", 0),
 	}}
@@ -45,5 +44,18 @@ func TestOutlineSortsByTheTitlesNumberAndGivesEachMaterialOneHome(t *testing.T) 
 	}
 	if home := o.home("m3"); home == nil || home.ID != "t3" {
 		t.Fatalf("home of m3: %+v", home)
+	}
+}
+
+func TestResumeLabelUsesTopicBeforeModulePlacement(t *testing.T) {
+	t.Parallel()
+	place := Place{Title: "Lecture", Course: "Модуль 1. Общий", Courses: []Item{{Title: "Модуль 1. Общий"}, {Title: "Тема 3. Этика"}}, Position: &Position{Section: intPtr(2), Index: 1, Count: 4}}
+	if got := place.Where(); got != "Тема 3 · §2 · 2/4" {
+		t.Fatal(got)
+	}
+	place.Courses = nil
+	place.Title = "Тема 2. Ценности"
+	if got := place.Where(); got != "Тема 2 · §2 · 2/4" {
+		t.Fatal(got)
 	}
 }

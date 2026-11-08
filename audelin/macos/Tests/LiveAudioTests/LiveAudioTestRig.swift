@@ -59,12 +59,20 @@ final class FakeCapture: Capture, Sendable {
     let startFailure: Refusal?
     let stopFailure: Refusal?
     let stopEndsInput: Bool
+    let flush: [AudioPiece]
 
-    init(startFailure: Refusal? = nil, stopFailure: Refusal? = nil, stopEndsInput: Bool = true) {
+    /// `flush` is given while stopping, as a capture hands over its tail.
+    init(
+        startFailure: Refusal? = nil,
+        stopFailure: Refusal? = nil,
+        stopEndsInput: Bool = true,
+        flush: [AudioPiece] = []
+    ) {
 
         self.startFailure = startFailure
         self.stopFailure = stopFailure
         self.stopEndsInput = stopEndsInput
+        self.flush = flush
     }
 
     var stops: Int { stopCount.withLock { $0 } }
@@ -78,6 +86,7 @@ final class FakeCapture: Capture, Sendable {
     func stop() async throws {
 
         stopCount.withLock { $0 += 1 }
+        give(flush)
         if stopEndsInput { finish() }
         stopped.continuation.yield(())
         if let stopFailure { throw stopFailure }

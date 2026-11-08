@@ -1,5 +1,11 @@
 # Log
 
+## 2026-11-08
+
+- Session migration keeps old Telegram buttons stale; ordinary reading survives unrelated outline failures. Startup refuses invalid Telegram credentials or transport state, and rollback preserves combined-runner updates and checks restored HTTP availability. LAB-1058.
+
+- Web and Telegram continue one persisted reading session, with stale-action protection across surfaces and honest unavailable paragraph explanations until a Brain exists. LAB-1058.
+
 ## 2026-11-07
 
 - The coach skill explains each word before using it, teaches a topic as a chain, offers a map marking what to skim, checks understanding on a new case, and recovers from its own mistake in one line. LAB-1038.

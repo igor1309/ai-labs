@@ -727,6 +727,10 @@ struct TranscriptLogTests {
         let host = Offscreen.host(panel(history, elapsed: "00:07:05"), size: CGSize(width: 396, height: 560))
         let scroll = try #require(scrollView(in: host))
         let text = try #require(Offscreen.textView(in: host))
+        let window = try #require(host.window)
+        // Run the same sizing probe before and after the baseline. Otherwise
+        // the first update also measures the initial, still-estimated layout.
+        _ = host.fittingSize
         text.scrollRangeToVisible((text.string as NSString).range(of: "03:24"))
         scroll.contentView.scroll(to: NSPoint(x: 0, y: 800))
         host.display()
@@ -738,6 +742,9 @@ struct TranscriptLogTests {
 
         var entries = history
         for step in 0..<10 {
+            if step == 0 {
+                window.setFrameOrigin(NSPoint(x: window.frame.minX + 20, y: window.frame.minY + 40))
+            }
             if !step.isMultiple(of: 2) { entries = history + [newest("слово \(step)")] }
             host.rootView = panel(entries, elapsed: "00:07:\(step + 6)")
             host.layoutSubtreeIfNeeded()
@@ -819,24 +826,6 @@ struct TranscriptLogTests {
             ])),
             .entry(live[1]),
         ])
-    }
-
-    /// The bounds of the line that holds `part`, in the text view.
-    private func lineFrame(of part: String, in text: NSTextView) -> NSRect? {
-
-        let location = (text.string as NSString).range(of: part).location
-        guard location != NSNotFound,
-              let layout = text.textLayoutManager,
-              let content = layout.textContentManager,
-              let start = content.location(content.documentRange.location, offsetBy: location),
-              let fragment = layout.textLayoutFragment(for: start),
-              let line = fragment.textLineFragments.first(where: {
-                  $0.characterRange.contains(location - content.offset(from: content.documentRange.location, to: fragment.rangeInElement.location))
-              })
-        else { return nil }
-
-        let origin = fragment.layoutFragmentFrame.origin
-        return line.typographicBounds.offsetBy(dx: origin.x + text.textContainerOrigin.x, dy: origin.y + text.textContainerOrigin.y)
     }
 
     private func attribute(_ key: NSAttributedString.Key, of part: String, in text: NSTextView) -> Any? {

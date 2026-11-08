@@ -32,6 +32,18 @@ test("ciPathFilters_shouldRunScreenshotTests_onAgonaraShowcaseCodeChanges", () =
   assert.match(core, /node --test agonara\/showcase\/\*\.test\.mjs/);
 });
 
+test("ciPathFilters_shouldRunSessionBrowserChecks_onEmbeddedAssetsAndTests", () => {
+  for (const file of [
+    "agonara/session/internal/web/static/app.js",
+    "agonara/session/internal/web/templates/reading.html",
+    "agonara/tests/session-explanation-actions.test.js",
+  ]) {
+    assert.equal(jobRuns("agonara-core", [file]), true, `${file} does not run agonara-core`);
+  }
+  const manifest = JSON.parse(readFileSync(new URL("agonara/package.json", repoRoot), "utf8"));
+  assert.ok(manifest.scripts.test.includes("node --test tests/*.test.js"));
+});
+
 test("ciPathFilters_shouldNotTreatDashboardScriptAsSharedInfrastructure", () => {
   const sharedFilter = filterSection("shared", "nomos");
 
@@ -266,7 +278,7 @@ for (const file of [
 // code runs. A new module fails here until a workflow runs it.
 const goModules = {
   agister: { runner: ".github/workflows/agister-core.yml", command: "run: agister/scripts/test.sh", job: "agister-core" },
-  "agonara/session": { runner: ".github/workflows/agonara-core.yml", command: "go test -race -count=1 ./...", job: "agonara-core" },
+  "agonara/session": { runner: ".github/workflows/agonara-core.yml", command: "go test -race -count=1 -timeout 1m ./...", job: "agonara-core" },
   gokit: { runner: "agister/scripts/test.sh", command: "../gokit/scripts/test.sh", job: "agister-core" },
   "gokit/tree": { runner: "gokit/scripts/test.sh", command: "check tree gokit/tree", job: "agister-core" },
   warder: { runner: ".github/workflows/warder-core.yml", command: "run: warder/scripts/test.sh", job: "warder-core" },
@@ -470,3 +482,50 @@ function changesOutputs(matchedFilters) {
   }
   return outputs;
 }
+
+// The nightly long runs (LAB-797): their scripts and workflow run the
+// tests of the report in audelin-core, and nothing else.
+test("ciPathFilters_shouldRunAudelinCore_onANightlyLongRunChange", () => {
+  for (const file of [
+    ".github/workflows/audelin-nightly.yml",
+    "audelin/macos/scripts/nightly.sh",
+    "audelin/macos/scripts/nightly-report.py",
+    "audelin/macos/scripts/tests/test_nightly_report.py",
+  ]) {
+    assert.equal(jobRuns("audelin-core", [file]), true, `${file} does not run audelin-core`);
+  }
+  const running = [...projectJobs().keys()].filter((job) => jobRuns(job, [".github/workflows/audelin-nightly.yml"]));
+  assert.deepEqual(running, ["audelin-core"]);
+});
+
+test("audelinNightly_shouldRunOnlyOnTheSelfHostedMac_onASchedule", () => {
+  const nightly = readFileSync(new URL(".github/workflows/audelin-nightly.yml", repoRoot), "utf8");
+  const on = nightly.match(/\non:\n((?: {2}.*\n|\n)+?)\n(?=\S)/);
+  assert.ok(on, "missing on: block");
+  assert.deepEqual([...on[1].matchAll(/^ {2}([\w-]+):/gm)].map((match) => match[1]), ["schedule", "workflow_dispatch"]);
+  assert.match(on[1], /^    - cron: "\d+ \d+ \* \* \*"/m);
+  assert.doesNotMatch(nightly, /^ {2}(pull_request|pull_request_target|push|workflow_call):/m);
+  const job = nightly.match(/\n  long-runs:\n((?:    .*\n|\n)+)/);
+  assert.ok(job, "missing long-runs job");
+  assert.match(job[1], /^    runs-on: \[self-hosted, local-mac\]$/m);
+  assert.match(job[1], /scripts\/nightly\.sh/);
+});
+
+// Long profiled runs never enter pull request checks: no workflow a pull
+// request starts, nor any workflow it calls, runs them or calls the nightly.
+test("ciPullRequestChecks_shouldNeverRunTheLongProfiledRuns", () => {
+  const directory = new URL(".github/workflows/", repoRoot);
+  const files = readdirSync(directory).filter((file) => file.endsWith(".yml"));
+  const text = new Map(files.map((file) => [file, readFileSync(new URL(file, directory), "utf8")]));
+  const reached = new Set(files.filter((file) => /^ {2}pull_request(_target)?:/m.test(text.get(file))));
+  assert.ok(reached.has("ci.yml"));
+  for (const file of reached) {
+    for (const [, called] of text.get(file).matchAll(/uses: \.\/\.github\/workflows\/([\w-]+\.yml)/g)) reached.add(called);
+  }
+  assert.ok(reached.has("audelin-core.yml"));
+  assert.equal(reached.has("audelin-nightly.yml"), false);
+  const long = /nightly\.sh|profile-rehearsal\.sh|xctrace record|AudelinBaseline|Profile\/growth\.sh|--speed 1\b/;
+  for (const file of reached) {
+    assert.doesNotMatch(text.get(file), long, `${file} runs a long profiled run`);
+  }
+});
