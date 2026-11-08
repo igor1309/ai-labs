@@ -89,3 +89,62 @@ func TestCacheRequiresExplicitReaderClockAndLifetime(t *testing.T) {
 		t.Fatal("zero lifetime")
 	}
 }
+
+func TestKeyedCacheKeepsIdentitiesAndExpiryIndependent(t *testing.T) {
+	t.Parallel()
+	for _, method := range []string{"navigation", "entity", "content"} {
+		t.Run(method, func(t *testing.T) {
+			t.Parallel()
+			now := time.Unix(0, 0)
+			reader := &cacheReader{calls: map[string]int{}}
+			cache, err := NewCache(reader, time.Minute, func() time.Time { return now })
+			if err != nil {
+				t.Fatal(err)
+			}
+			read := func(id string) {
+				t.Helper()
+				ctx := context.Background()
+				switch method {
+				case "navigation":
+					got, err := cache.Navigation(ctx, id)
+					if err != nil || len(got.Topics) != 1 || got.Topics[0].EntityID != id {
+						t.Fatalf("%+v %v", got, err)
+					}
+				case "entity":
+					got, err := cache.Entity(ctx, id)
+					if err != nil || got.EntityID != id || got.Body != "exact" {
+						t.Fatalf("%+v %v", got, err)
+					}
+				case "content":
+					got, err := cache.MaterialContent(ctx, id)
+					if err != nil || got != "exact **content** "+id {
+						t.Fatalf("%q %v", got, err)
+					}
+				}
+			}
+			prefix := map[string]string{"navigation": "nav ", "entity": "entity ", "content": "text "}[method]
+			counts := func(a, b int) {
+				t.Helper()
+				if reader.calls[prefix+"a"] != a || reader.calls[prefix+"b"] != b {
+					t.Fatalf("calls=%v want a=%d b=%d", reader.calls, a, b)
+				}
+			}
+			read("a")
+			now = now.Add(30 * time.Second)
+			read("b")
+			read("a")
+			read("b")
+			counts(1, 1)
+			now = now.Add(30 * time.Second)
+			read("a")
+			read("b")
+			read("a")
+			counts(2, 1)
+			now = now.Add(30 * time.Second)
+			read("b")
+			read("a")
+			read("b")
+			counts(2, 2)
+		})
+	}
+}

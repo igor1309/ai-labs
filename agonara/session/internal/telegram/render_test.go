@@ -109,7 +109,7 @@ func TestPositionLabel(t *testing.T) {
 func TestContentsPage(t *testing.T) {
 	t.Parallel()
 	html := RenderRich(View{Title: "Notes", Contents: []ContentsEntry{
-		{Page: 0, Label: "Intro"}, {Page: 2, N: n(1), Label: "A", Current: true},
+		{ActionID: "sec_0", Page: 0, Label: "Intro"}, {ActionID: "sec_2", Page: 2, N: n(1), Label: "A", Current: true},
 	}}, []Action{{ID: "sec_0", Kind: "section"}, {ID: "sec_2", Kind: "section"}, {ID: "read", Kind: "page", Label: "📖 Continue reading"}}, 4)
 	equal(t, html, "<h2>📖 Notes</h2><h3>Contents</h3><ul><li>"+link("4:sec_0", "Intro")+"</li><li>▸ §1 "+link("4:sec_2", "A")+
 		"</li></ul><tg-button-row>"+button("4:read", "📖 Continue reading")+"</tg-button-row>")
@@ -157,4 +157,19 @@ func TestSplitTextLosesNothing(t *testing.T) {
 			t.Fatal("chunk over limit")
 		}
 	}
+}
+
+func TestSectionAndListActionsUseOpaqueSuppliedIdentifiers(t *testing.T) {
+	t.Parallel()
+	view := View{Title: "Notes", Contents: []ContentsEntry{{ActionID: "jump-chapter", Page: 2, N: n(1), Label: "Chapter"}}, Lists: []List{{Entries: []Entry{{ID: "choose-lecture", Label: "Lecture"}}}}}
+	actions := []Action{{ID: "jump-chapter", Kind: "section", Label: "Chapter"}, {ID: "choose-lecture", Kind: "material", Label: "Lecture"}}
+	rich := RenderRich(view, actions, 7)
+	for _, part := range []string{link("7:jump-chapter", "Chapter"), link("7:choose-lecture", "Lecture")} {
+		if !strings.Contains(rich, part) {
+			t.Fatalf("missing %s in %s", part, rich)
+		}
+	}
+	_, keyboard := Render(view, actions, 7)
+	equal(t, keyboard.InlineKeyboard[0][0].CallbackData, "7:choose-lecture")
+	equal(t, keyboard.InlineKeyboard[1][0].CallbackData, "7:jump-chapter")
 }

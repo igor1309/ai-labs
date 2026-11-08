@@ -109,7 +109,7 @@ func TestProgramListNumbersProgramsWithoutProgramsButton(t *testing.T) {
 	t.Parallel()
 	f := Flow{Reader: setup()}
 	result := act(t, f, InitialSession(), "")
-	equal(t, result.View, View{Title: "Programs", Lists: []List{{Entries: []Entry{{0, n(1), "Algebra"}, {1, n(2), "Geometry"}}}}})
+	equal(t, result.View, View{Title: "Programs", Lists: []List{{Entries: []Entry{{"open_0", 0, n(1), "Algebra"}, {"open_1", 1, n(2), "Geometry"}}}}})
 	equal(t, result.Actions, []Action{{"open_0", "item", "1"}, {"open_1", "item", "2"}})
 	equal(t, result.Session.Screen, "programs")
 }
@@ -122,9 +122,9 @@ func TestProgramGroupsMaterialsFirstAndNumbersTheRest(t *testing.T) {
 	result := act(t, f, list.Session, "open_0")
 	equal(t, r.calls[len(r.calls)-1], "navigation program-a")
 	equal(t, result.View.Lists, []List{
-		{Heading: "Materials", Entries: []Entry{{2, nil, "Notes"}}},
-		{Heading: "Topics", Entries: []Entry{{0, n(1), "Vectors"}}},
-		{Heading: "Concepts", Entries: []Entry{{1, n(2), "Basis"}}},
+		{Heading: "Materials", Entries: []Entry{{"open_2", 2, nil, "Notes"}}},
+		{Heading: "Topics", Entries: []Entry{{"open_0", 0, n(1), "Vectors"}}},
+		{Heading: "Concepts", Entries: []Entry{{"open_1", 1, n(2), "Basis"}}},
 	})
 	equal(t, result.Actions, []Action{
 		{"open_0", "item", "1"}, {"open_1", "item", "2"}, {"open_2", "material", "Notes"},
@@ -138,8 +138,8 @@ func TestNumbersFollowTheListsAndEachOpensItsItem(t *testing.T) {
 	f := Flow{Reader: r}
 	result := act(t, f, entityState("topic-id"), "")
 	equal(t, result.View.Lists, []List{
-		{Heading: "Materials", Entries: []Entry{{1, nil, "Reading"}}},
-		{Heading: "Concepts", Entries: []Entry{{0, n(1), "Child"}, {2, n(2), "Other"}}},
+		{Heading: "Materials", Entries: []Entry{{"open_1", 1, nil, "Reading"}}},
+		{Heading: "Concepts", Entries: []Entry{{"open_0", 0, n(1), "Child"}, {"open_2", 2, n(2), "Other"}}},
 	})
 	equal(t, result.Actions[:3], []Action{{"open_0", "item", "1"}, {"open_1", "material", "Reading"}, {"open_2", "item", "2"}})
 	for action, id := range map[string]string{"open_0": "child-id", "open_1": "reading-id", "open_2": "other-id"} {
@@ -259,7 +259,7 @@ func TestLectureReadAScreenAtATimeWithContents(t *testing.T) {
 
 	contents := act(t, f, a2.Session, "contents")
 	equal(t, contents.View.Contents, []ContentsEntry{
-		{Count: 2, Page: 0, Label: "Intro"}, {Count: 2, Page: 2, N: n(1), Label: "A", Current: true}, {Count: 1, Page: 4, N: n(2), Label: "B"},
+		{ActionID: "sec_0", Count: 2, Page: 0, Label: "Intro"}, {ActionID: "sec_2", Count: 2, Page: 2, N: n(1), Label: "A", Current: true}, {ActionID: "sec_4", Count: 1, Page: 4, N: n(2), Label: "B"},
 	})
 	equal(t, contents.View.Lists[0].Entries[0].Label, "Concept")
 	equal(t, ids(contents.Actions), []string{"open_0", "sec_0", "sec_2", "sec_4", "read", "programs"})

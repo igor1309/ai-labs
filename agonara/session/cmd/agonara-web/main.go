@@ -31,12 +31,12 @@ func run() error {
 			return err
 		}
 	}
-	config, err := composition.Configuration(os.Getenv, true)
+	config, err := composition.Configuration(os.Getenv, true, composition.ResolveStatePath)
 	if err != nil {
 		return err
 	}
 	if *probe {
-		return composition.CheckRunning(config, &http.Client{Timeout: 2 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }})
+		return composition.CheckRunning(config, true, &http.Client{Timeout: 2 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }})
 	}
 	if *check {
 		fmt.Println("configuration valid")
@@ -44,5 +44,5 @@ func run() error {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	return composition.Run(ctx, config, true, func(message string) { fmt.Printf("%s %s\n", time.Now().UTC().Format(time.RFC3339Nano), message) })
+	return composition.RunProduction(ctx, config, true, func(message string) { fmt.Printf("%s %s\n", time.Now().UTC().Format(time.RFC3339Nano), message) })
 }

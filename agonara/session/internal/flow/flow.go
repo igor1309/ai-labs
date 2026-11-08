@@ -52,9 +52,10 @@ type Session struct {
 
 // Entry is a listed name: Index is its item, N its number (nil for a material).
 type Entry struct {
-	Index int
-	N     *int
-	Label string
+	ActionID string
+	Index    int
+	N        *int
+	Label    string
 }
 
 // List is a group of entries under an optional heading.
@@ -77,11 +78,12 @@ type Position struct {
 
 // ContentsEntry is the intro or a section on the contents page.
 type ContentsEntry struct {
-	Count   int
-	Page    int
-	N       *int
-	Label   string
-	Current bool
+	ActionID string
+	Count    int
+	Page     int
+	N        *int
+	Label    string
+	Current  bool
 }
 
 // View is a screen as meaning.
@@ -277,10 +279,18 @@ func (f Flow) Act(ctx context.Context, session Session, actionID string) (*Resul
 			actions = append(actions, Action{ID: "open_" + strconv.Itoa(index), Kind: "item", Label: strconv.Itoa(numberOf(view.Lists, index))})
 		}
 	}
+	for i := range view.Lists {
+		for j := range view.Lists[i].Entries {
+			entry := &view.Lists[i].Entries[j]
+			entry.ActionID = actions[entry.Index].ID
+		}
+	}
 	switch {
 	case target.Contents && view.Contents != nil:
-		for _, entry := range view.Contents {
-			actions = append(actions, Action{ID: "sec_" + strconv.Itoa(entry.Page), Kind: "section", Label: entry.Label})
+		for i := range view.Contents {
+			entry := &view.Contents[i]
+			entry.ActionID = "sec_" + strconv.Itoa(entry.Page)
+			actions = append(actions, Action{ID: entry.ActionID, Kind: "section", Label: entry.Label})
 		}
 		actions = append(actions, Action{ID: "read", Kind: "page", Label: "Continue reading"})
 	case view.Page != nil:

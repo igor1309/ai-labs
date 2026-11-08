@@ -43,7 +43,10 @@ accept `-env-file <path>`, `-check-config` (no services started) and
 | `WEB_PLACE_PATH` | Optional legacy web place; defaults to `web-place.json` beside the legacy bot file |
 | `WEB_SESSION_STATE_PATH` | Required for isolated `agonara-web`; must differ from shared, transport and legacy paths |
 
-All state paths must be absolute and distinct. The shared file takes precedence;
+All state paths must be absolute and distinct after resolving directory symlinks,
+including missing state files. Final-component state symlinks are rejected to keep
+startup reads and atomic writes on the same destination. The shared file takes
+precedence;
 without it, migration chooses the existing web place, then the bot session.
 Corruption fails startup rather than silently losing the student's place. Neither
 legacy file is changed. Telegram offset and message revision are copied into the
@@ -106,7 +109,9 @@ deploy/migrate.sh rollback
 
 Activation validates first, saves the current runner, stops both old jobs,
 disables standalone web, starts one combined runner and checks its local HTTP
-identity and access guard. A failed activation restores the saved binary/jobs.
+`shared` identity and access guard. Standalone web advertises `standalone` and
+cannot satisfy the combined activation probe. A failed activation restores the
+saved binary/jobs.
 Rollback restores the saved deployment mode and checks job availability and the
 restored HTTP guard for both legacy web and combined runners, independent of the
 failed version. Rolling back a subsequent combined-runner update keeps the

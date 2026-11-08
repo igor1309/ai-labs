@@ -3,7 +3,6 @@ package composition
 import (
 	"context"
 	"errors"
-	"strconv"
 
 	"github.com/igor1309/ai-labs/agonara/session/internal/flow"
 	"github.com/igor1309/ai-labs/agonara/session/internal/telegram"
@@ -124,12 +123,12 @@ func (a Telegram) Show(ctx context.Context, q telegram.Request) (*telegram.Resul
 		}
 	}
 	for _, s := range v.Contents {
-		out.View.Contents = append(out.View.Contents, telegram.ContentsEntry{Page: s.Page, N: s.N, Label: s.Label, Current: s.Current})
+		out.View.Contents = append(out.View.Contents, telegram.ContentsEntry{ActionID: s.ActionID, Page: s.Page, N: s.N, Label: s.Label, Current: s.Current})
 	}
 	for _, l := range v.Lists {
 		list := telegram.List{Heading: l.Heading}
 		for _, e := range l.Entries {
-			list.Entries = append(list.Entries, telegram.Entry{ID: "open_" + strconv.Itoa(e.Index), N: e.N, Label: e.Label})
+			list.Entries = append(list.Entries, telegram.Entry{ID: e.ActionID, N: e.N, Label: e.Label})
 		}
 		out.View.Lists = append(out.View.Lists, list)
 	}

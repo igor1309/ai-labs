@@ -32,6 +32,18 @@ test("ciPathFilters_shouldRunScreenshotTests_onAgonaraShowcaseCodeChanges", () =
   assert.match(core, /node --test agonara\/showcase\/\*\.test\.mjs/);
 });
 
+test("ciPathFilters_shouldRunSessionBrowserChecks_onEmbeddedAssetsAndTests", () => {
+  for (const file of [
+    "agonara/session/internal/web/static/app.js",
+    "agonara/session/internal/web/templates/reading.html",
+    "agonara/tests/session-explanation-actions.test.js",
+  ]) {
+    assert.equal(jobRuns("agonara-core", [file]), true, `${file} does not run agonara-core`);
+  }
+  const manifest = JSON.parse(readFileSync(new URL("agonara/package.json", repoRoot), "utf8"));
+  assert.ok(manifest.scripts.test.includes("node --test tests/*.test.js"));
+});
+
 test("ciPathFilters_shouldNotTreatDashboardScriptAsSharedInfrastructure", () => {
   const sharedFilter = filterSection("shared", "nomos");
 
@@ -266,7 +278,7 @@ for (const file of [
 // code runs. A new module fails here until a workflow runs it.
 const goModules = {
   agister: { runner: ".github/workflows/agister-core.yml", command: "run: agister/scripts/test.sh", job: "agister-core" },
-  "agonara/session": { runner: ".github/workflows/agonara-core.yml", command: "go test -race -count=1 ./...", job: "agonara-core" },
+  "agonara/session": { runner: ".github/workflows/agonara-core.yml", command: "go test -race -count=1 -timeout 1m ./...", job: "agonara-core" },
   gokit: { runner: "agister/scripts/test.sh", command: "../gokit/scripts/test.sh", job: "agister-core" },
   "gokit/tree": { runner: "gokit/scripts/test.sh", command: "check tree gokit/tree", job: "agister-core" },
   warder: { runner: ".github/workflows/warder-core.yml", command: "run: warder/scripts/test.sh", job: "warder-core" },

@@ -80,7 +80,7 @@ func (h *deploymentHarness) stage() {
 printf '%s\n' "$*" >> "$SESSION_TEST_DIR/probes"
 case "$*" in
  *-check-config*) [ "$SESSION_TEST_CASE" != bad-config ] ;;
- *-check-running*) [ "$SESSION_TEST_CASE" != bad-health ] ;;
+ *-check-running*) [ "$SESSION_TEST_CASE" != bad-health ] && [ "$SESSION_TEST_CASE" != standalone-port ] ;;
 esac
 `)
 }
@@ -253,5 +253,20 @@ func writeFile(t *testing.T, path string, data []byte) {
 	t.Helper()
 	if err := os.WriteFile(path, data, 0o600); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// Contract test: activation rolls back when its combined probe rejects an isolated server at the configured port.
+func TestDeploymentRollsBackWhenStandaloneOwnsExpectedPort(t *testing.T) {
+	t.Parallel()
+	h := deploymentFixture(t, "both", "standalone-port")
+	out, err := h.run("activate")
+	if err == nil || !strings.Contains(out, "activation failed") || strings.Contains(out, "single reading owner active") {
+		t.Fatalf("%v %s", err, out)
+	}
+	h.assertRestored()
+	probes, err := os.ReadFile(filepath.Join(h.dir, "probes"))
+	if err != nil || strings.Count(string(probes), "-check-running") != 10 {
+		t.Fatalf("probes %s %v", probes, err)
 	}
 }

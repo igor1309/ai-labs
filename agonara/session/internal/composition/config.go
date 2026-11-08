@@ -19,7 +19,10 @@ type Config struct {
 	PageSize                                       int
 }
 
-func Configuration(get func(string) string, standalone bool) (Config, error) {
+func Configuration(get func(string) string, standalone bool, resolve func(string) (string, error)) (Config, error) {
+	if get == nil || resolve == nil {
+		return Config{}, errors.New("environment and state path resolver are required")
+	}
 	c := Config{BaseURL: get("AGONARA_BASE_URL"), Login: get("AGONARA_LOGIN"), Password: get("AGONARA_PASSWORD"), WebToken: get("WEB_TOKEN"), WebAddr: get("WEB_ADDR"), LegacyWeb: get("WEB_PLACE_PATH"), LegacyBot: get("SESSION_STATE_PATH"), PageSize: flow.PageSize}
 	if c.BaseURL == "" || c.Login == "" || c.Password == "" || c.WebToken == "" {
 		return c, errors.New("AGONARA_BASE_URL, AGONARA_LOGIN, AGONARA_PASSWORD and WEB_TOKEN are required")
@@ -66,7 +69,8 @@ func Configuration(get func(string) string, standalone bool) (Config, error) {
 	if standalone {
 		paths = append(paths, get("SESSION_SHARED_STATE_PATH"), get("TELEGRAM_STATE_PATH"))
 	}
-	seen := map[string]bool{}
+	seen := map[string]string{}
+	resolvedPaths := map[string]string{}
 	for _, path := range paths {
 		if path == "" {
 			continue
@@ -74,11 +78,20 @@ func Configuration(get func(string) string, standalone bool) (Config, error) {
 		if !filepath.IsAbs(path) {
 			return c, errors.New("state paths must be absolute")
 		}
-		clean := filepath.Clean(path)
-		if seen[clean] {
-			return c, errors.New("reading, transport and legacy state paths must be distinct")
+		clean, err := resolve(filepath.Clean(path))
+		if err != nil {
+			return c, fmt.Errorf("resolve state path %q: %w", path, err)
 		}
-		seen[clean] = true
+		if previous, exists := seen[clean]; exists {
+			return c, fmt.Errorf("state paths must be distinct: %q and %q resolve to %q", previous, path, clean)
+		}
+		seen[clean] = path
+		resolvedPaths[path] = clean
+	}
+	for _, path := range []*string{&c.StatePath, &c.TransportPath, &c.LegacyWeb, &c.LegacyBot} {
+		if *path != "" {
+			*path = resolvedPaths[*path]
+		}
 	}
 	return c, nil
 }

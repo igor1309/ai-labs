@@ -128,3 +128,44 @@ func TestConstructionRejectsMissingTransportCollaborators(t *testing.T) {
 		}
 	}
 }
+
+func TestPollerAdvancesSuccessfulUpdatesAcrossBatchesAndIgnoresPriorUpdates(t *testing.T) {
+	t.Parallel()
+	store := &pollStore{state: State{Offset: 5, Revision: 20}}
+	var offsets []int64
+	var inputs []State
+	var handled []int64
+	api := pollAPI(func(_ context.Context, method string, params map[string]any) (json.RawMessage, error) {
+		if method != "getUpdates" {
+			t.Fatalf("method %s", method)
+		}
+		offsets = append(offsets, params["offset"].(int64))
+		switch len(offsets) {
+		case 1:
+			return json.RawMessage(`[{"update_id":4},{"update_id":5},{"update_id":8}]`), nil
+		case 2:
+			return json.RawMessage(`[{"update_id":8},{"update_id":9},{"update_id":12}]`), nil
+		default:
+			return nil, &Error{Code: 409}
+		}
+	})
+	handler := pollHandler(func(_ context.Context, u Update, state State) (State, error) {
+		inputs = append(inputs, state)
+		handled = append(handled, u.UpdateID)
+		state.Revision++
+		return state, nil
+	})
+	p, err := NewPoller(api, handler, store, func(context.Context, time.Duration) error { t.Error("unexpected retry"); return nil }, func(string) {})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var conflict *Error
+	if err := p.Run(context.Background()); !errors.As(err, &conflict) || conflict.Code != 409 {
+		t.Fatalf("%v", err)
+	}
+	if !reflect.DeepEqual(offsets, []int64{5, 9, 13}) || !reflect.DeepEqual(handled, []int64{5, 8, 9, 12}) ||
+		!reflect.DeepEqual(inputs, []State{{Offset: 5, Revision: 20}, {Offset: 6, Revision: 21}, {Offset: 9, Revision: 22}, {Offset: 10, Revision: 23}}) ||
+		!reflect.DeepEqual(store.saves, []State{{Offset: 6, Revision: 21}, {Offset: 9, Revision: 22}, {Offset: 10, Revision: 23}, {Offset: 13, Revision: 24}}) {
+		t.Fatalf("offsets=%v handled=%v inputs=%+v saves=%+v", offsets, handled, inputs, store.saves)
+	}
+}

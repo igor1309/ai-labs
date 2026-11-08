@@ -33,6 +33,8 @@ paragraph reference.
 Web consumes `Open(context, request)` and `Explain(context, question)` in its own
 models. Telegram consumes `Show(context, request)` in message-oriented models.
 Composition translates the requests, reading hierarchy, navigation and failures.
+List entries and available sections carry activity-generated action identifiers;
+Telegram treats these as opaque values in both rich links and plain buttons.
 Neither surface imports the activity, HTTP content client or reading storage.
 
 ## Behavior rules
@@ -70,10 +72,14 @@ Neither surface imports the activity, HTTP content client or reading storage.
   Schema versions and JSON records belong to the file adapter; the service only
   validates semantic reading state.
 - The normal runner owns one service instance and one poller. Required settings
-  and distinct absolute state paths are checked before startup. Kernel locks
+  and distinct absolute state paths are checked before startup. Directory aliases
+  are resolved even for missing files; final-component state symlinks are rejected
+  so reads and atomic writes cannot target different files. Kernel locks
   prevent overlapping owners and local pollers. Standalone web requires its own
   explicit state path and does not poll Telegram. Combined startup authenticates
   Telegram and loads and validates transport state before exposing HTTP readiness.
+  Combined HTTP identifies itself as `shared`; isolated web identifies itself as
+  `standalone`. Activation requires the combined identity and the access guard.
 - URLs, cookie-token exchange, escaped content, existing assets, long titles,
   sections, topic/module placement, rich-message rendering and plain fallback
   remain surface behavior. Paragraph actions and Telegram callbacks carry session revisions; direct page

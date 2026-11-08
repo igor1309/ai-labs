@@ -105,7 +105,8 @@ func TestReadingPageShowsSectionsReferencesAndPager(t *testing.T) {
 	}
 	contains(t, body,
 		`<h1 class="heading">Цикл агента</h1>`, "§1",
-		`data-n="1"`, "Агент &lt;выбирает&gt; шаг.", `data-n="2"`,
+		`data-entity="m" data-revision="7" data-material-revision="material-revision" data-page="1"`,
+		`data-n="1" data-reference="ref-a"`, "Агент &lt;выбирает&gt; шаг.", `data-n="2" data-reference="ref-b"`,
 		`href="/m/m?page=0" rel="prev"`, "<b>Введение</b>",
 		`href="/m/m?page=2" rel="next"`, "<b>§2 Инструменты</b>",
 		`o-section current`, "Что такое агент")
@@ -159,13 +160,14 @@ func TestLongTitlesAndParagraphReferencesStayEscapedInMarkup(t *testing.T) {
 	t.Parallel()
 	title := strings.Repeat("Длинное название ", 30) + `<script>"&`
 	s := &Server{Token: "secret", Session: &sessionSpy{open: func(Request) (*Page, error) {
-		return &Page{Document: &Document{ID: "m", Title: title, Markdown: "Text <unsafe> & **bold**.", Page: &PageInfo{Count: 1}, Position: &Position{Count: 1}, Sections: []ContentsEntry{{Page: 0, Label: title, Count: 1, Current: true}}, References: []string{`ref"<&`}, Revision: 4}}, nil
+		return &Page{Document: &Document{ID: "m", Title: title, Markdown: "Text <unsafe> & **bold**.", Page: &PageInfo{Count: 1}, Position: &Position{Count: 1}, Sections: []ContentsEntry{{Page: 0, Label: title, Count: 1, Current: true}}, References: []string{`ref"<&`}, Revision: 4, MaterialRevision: `material"<&`}}, nil
 	}}}
 	h, err := s.Handler()
 	if err != nil {
 		t.Fatal(err)
 	}
 	code, body := fetch(t, h, "/m/m")
+	contains(t, body, `data-revision="4" data-material-revision="material&#34;&lt;&amp;"`)
 	if code != 200 || strings.Contains(body, "<script>\"") || !strings.Contains(body, strings.Repeat("Длинное название ", 30)+"&lt;script&gt;&#34;&amp;") || !strings.Contains(body, `data-reference="ref&#34;&lt;&amp;"`) || !strings.Contains(body, "Text &lt;unsafe&gt; &amp; <b>bold</b>.") {
 		t.Fatalf("%d %s", code, body)
 	}

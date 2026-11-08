@@ -24,10 +24,11 @@ type ReadingPosition struct {
 	Offset, Length int
 }
 type ContentsEntry struct {
-	Page    int
-	N       *int
-	Label   string
-	Current bool
+	ActionID string
+	Page     int
+	N        *int
+	Label    string
+	Current  bool
 }
 type Entry struct {
 	ID    string

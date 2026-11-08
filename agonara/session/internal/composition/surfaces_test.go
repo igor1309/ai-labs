@@ -39,7 +39,7 @@ func TestSurfaceAdaptersTranslateTheirOwnRequestsAndViews(t *testing.T) {
 	t.Parallel()
 	spy := &sessionSpy{snapshot: &flow.Snapshot{Result: &flow.Result{
 		Session: flow.Session{Place: flow.Place{Screen: "entity", EntityID: "m"}, Step: 8, Items: []flow.Item{{ID: "child", Title: "Linked", Kind: "concept"}}}, Kind: "material_reference",
-		View:    flow.View{Title: "Lecture", Markdown: "Exact **text**.", Page: &flow.PageInfo{Index: 2, Count: 4}, Position: &flow.Position{Section: number(1), Label: "Section", Index: 1, Count: 3}, Lists: []flow.List{{Heading: "Materials", Entries: []flow.Entry{{Index: 0, Label: "Reading"}}}}},
+		View:    flow.View{Contents: []flow.ContentsEntry{{ActionID: "jump-unrelated", Page: 2, Label: "Jump"}}, Title: "Lecture", Markdown: "Exact **text**.", Page: &flow.PageInfo{Index: 2, Count: 4}, Position: &flow.Position{Section: number(1), Label: "Section", Index: 1, Count: 3}, Lists: []flow.List{{Heading: "Materials", Entries: []flow.Entry{{ActionID: "choose-reading", Index: 0, Label: "Reading"}}}}},
 		Actions: []flow.Action{{ID: "next", Kind: "page", Label: "Next"}},
 		Context: &flow.ReadingContext{Revision: "source-rev", MaterialID: "m", Paragraphs: []flow.Paragraph{{Reference: "source-ref", Text: "Exact **text**."}}, Sections: []flow.ContentsEntry{{Page: 1, N: number(1), Label: "Section", Count: 3, Current: true}}, Next: number(3), Program: &flow.Program{ID: "p", Courses: []flow.Course{{Topic: flow.Item{ID: "t"}, Concepts: []flow.Item{{ID: "c"}}, Materials: []flow.Item{{ID: "m"}}}}}},
 	}, Resume: &flow.Bookmark{EntityID: "m", Page: 2, Position: &flow.Position{Count: 3}}}}
@@ -58,7 +58,7 @@ func TestSurfaceAdaptersTranslateTheirOwnRequestsAndViews(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if spy.command.Action != "next" || spy.command.Target != "" || *spy.command.Revision != 8 || got.Revision != 8 || got.View.Markdown != d.Markdown || got.View.Reading.Heading != "Section" || got.View.Lists[0].Entries[0].Label != "Reading" || got.Actions[0].ID != "next" {
+	if spy.command.Action != "next" || spy.command.Target != "" || *spy.command.Revision != 8 || got.Revision != 8 || got.View.Markdown != d.Markdown || got.View.Reading.Heading != "Section" || got.View.Lists[0].Entries[0].Label != "Reading" || got.View.Lists[0].Entries[0].ID != "choose-reading" || got.View.Contents[0].ActionID != "jump-unrelated" || got.Actions[0].ID != "next" {
 		t.Fatalf("command %+v result %+v", spy.command, got)
 	}
 	question := web.Question{Kind: "ask", EntityID: "m", MaterialRevision: "source-rev", Reference: "source-ref", Revision: 8, Text: "Why?"}
@@ -99,7 +99,7 @@ func (c *contentSpy) ListPrograms(context.Context) ([]agonara.Program, error) {
 }
 func (c *contentSpy) Navigation(_ context.Context, id string) (agonara.Navigation, error) {
 	c.id = id
-	return agonara.Navigation{Topics: []agonara.Node{{EntityID: "t", Title: "Topic", AcceptedKind: "topic"}}, UngroupedMaterials: []agonara.Node{{EntityID: "m", Title: "Material", AcceptedKind: "material_reference"}}}, c.err
+	return agonara.Navigation{Topics: []agonara.Node{{EntityID: "t", Title: "Topic", AcceptedKind: "topic"}}, UngroupedConcepts: []agonara.Node{{EntityID: "ungrouped-c", Title: "Ungrouped concept", AcceptedKind: "concept"}}, UngroupedMaterials: []agonara.Node{{EntityID: "m", Title: "Material", AcceptedKind: "material_reference"}}}, c.err
 }
 func (c *contentSpy) Entity(_ context.Context, id string) (agonara.Entity, error) {
 	c.id = id
@@ -122,11 +122,11 @@ func TestContentAdapterReducesWireRelationshipsToReadingEntries(t *testing.T) {
 		t.Fatalf("%+v %v", ps, err)
 	}
 	nav, err := a.Navigation(ctx, "program-id")
-	if err != nil || spy.id != "program-id" || nav.Topics[0].ID != "t" || nav.Materials[0].Kind != "material_reference" {
+	if err != nil || spy.id != "program-id" || !reflect.DeepEqual(nav, flow.Navigation{Topics: []flow.Item{{ID: "t", Title: "Topic", Kind: "topic"}}, Concepts: []flow.Item{{ID: "ungrouped-c", Title: "Ungrouped concept", Kind: "concept"}}, Materials: []flow.Item{{ID: "m", Title: "Material", Kind: "material_reference"}}}) {
 		t.Fatalf("%+v %v", nav, err)
 	}
 	entity, err := a.Entity(ctx, "entity-id")
-	if err != nil || spy.id != "entity-id" || entity.ID != "entity-id" || !entity.Readable || entity.Parents[0].ID != "t" || entity.Children[0].Title != "Child" {
+	if err != nil || spy.id != "entity-id" || !reflect.DeepEqual(entity, flow.Entity{ID: "entity-id", ProgramID: "p", Title: "Entity", Kind: "material_reference", Readable: true, Body: "Body", Parents: []flow.Item{{ID: "t", Title: "Parent", Kind: "topic"}}, Children: []flow.Item{{ID: "c", Title: "Child", Kind: "concept"}}}) {
 		t.Fatalf("%+v %v", entity, err)
 	}
 	text, err := a.MaterialContent(ctx, "material-id")

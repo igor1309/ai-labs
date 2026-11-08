@@ -183,7 +183,7 @@ func RenderRich(view View, actions []Action, step int) string {
 	if view.Contents != nil {
 		var items strings.Builder
 		for _, entry := range view.Contents {
-			items.WriteString("<li>" + contentsLine(entry, tap("sec_"+strconv.Itoa(entry.Page), entry.Label)) + "</li>")
+			items.WriteString("<li>" + contentsLine(entry, tap(entry.ActionID, entry.Label)) + "</li>")
 		}
 		parts = append(parts, "<h3>Contents</h3><ul>"+items.String()+"</ul>")
 	}

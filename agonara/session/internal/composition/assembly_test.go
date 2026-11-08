@@ -79,10 +79,10 @@ func TestStandaloneAssemblyUsesItsOwnStateAndNoTelegramInfrastructure(t *testing
 	if standalone.Bot != nil || standalone.Poller != nil || standalone.Telegram.Session != nil {
 		t.Fatal("standalone owns Telegram")
 	}
-	for _, a := range []*Assembly{normal, standalone} {
+	for i, a := range []*Assembly{normal, standalone} {
 		w := httptest.NewRecorder()
 		a.Handler.ServeHTTP(w, httptest.NewRequest("GET", "/", nil))
-		if w.Code != http.StatusUnauthorized || w.Header().Get("X-Agonara-Session") != "shared" {
+		if w.Code != http.StatusUnauthorized || w.Header().Get("X-Agonara-Session") != []string{"shared", "standalone"}[i] {
 			t.Fatalf("guard/readiness: %d %v", w.Code, w.Header())
 		}
 	}
