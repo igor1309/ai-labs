@@ -294,6 +294,7 @@ jobs:
               - "audelin/docs/research/spike/fixtures/**"
             audelin-ci:
               - ".github/workflows/audelin-core.yml"
+              - ".github/workflows/audelin-nightly.yml"
               - "audelin/scripts/swift-test-bounded.sh"
             mizan-ble:
               - "mizan-ble/ios/**"

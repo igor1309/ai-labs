@@ -29,14 +29,14 @@ struct TranscriptLogLoadTests {
         #expect(late.update / early.update <= 3, "an update late in a long call costs the log \(late.update / early.update)x one early")
     }
 
-    @Test func loadReportNamesTheCompiledBuild() {
+    @Test nonisolated func loadReportNamesTheCompiledBuild() {
         var build = "optimized"
         // The assertion's autoclosure runs only when debug assertions are enabled.
         assert({ build = "debug"; return true }())
         #expect(report("measurement") == "log load (\(build)): measurement\n")
     }
 
-    private func report(_ measurement: String) -> String {
+    nonisolated private func report(_ measurement: String) -> String {
         let build = _isDebugAssertConfiguration() ? "debug" : "optimized"
         return "log load (\(build)): \(measurement)\n"
     }

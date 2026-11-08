@@ -27,7 +27,10 @@ adds a request. The loopback variant warns that the local server controls any
 onward forwarding. No credentials or transcripts are sent by validation.
 
 Save affects future jobs, and reports saving, success or retained draft after
-failure. Validate reports availability without a paid prompt. Loading and load
+failure. Save is available for a changed, syntactically valid draft; when notes
+are enabled it checks provider availability automatically before persisting.
+An edit during that check cancels the pending save. Validate also reports
+availability independently without a paid prompt. Loading and load
 failure never show invented editable defaults. Stale async replies must not
 replace newer edits. Runtime and validation logic belongs to the subsequent
 implementation phase, after UI rehearsal comparison.

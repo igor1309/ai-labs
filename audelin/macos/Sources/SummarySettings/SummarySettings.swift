@@ -28,6 +28,7 @@ public struct State: Equatable, Sendable {
     public var revision: UInt64
     public var validatedRevision: UInt64?
     public var savingRevision: UInt64?
+    public var saveAfterValidation: Bool = false
     public var message: String
     public var disclosure: String
     public var issues: [ValidationIssue]
@@ -147,6 +148,7 @@ public struct Reducer: Sendable {
         case .loadFailed where state.phase == .loading: next.phase = .loadFailed
         case let .edit(config) where state.draft != nil:
             next.draft = config; next.revision += 1; next.validatedRevision = nil
+            next.saveAfterValidation = false
             next.phase = state.savingRevision == nil ? .editing : .saving
             next.disclosure = disclosure(config)
             next.issues = safety(config)
@@ -159,13 +161,21 @@ public struct Reducer: Sendable {
         case let .validated(revision, issues) where revision == state.revision && state.phase == .validating:
             next.phase = .editing; next.validatedRevision = issues.isEmpty ? revision : nil
             next.issues = issues
-        case .save where state.savingRevision == nil && state.phase != .validating && state.draft != nil && state.draft != state.saved:
-            guard !state.draft!.enabled || state.validatedRevision == state.revision else { return (state, nil) }
+            next.saveAfterValidation = false
+            if state.saveAfterValidation && issues.isEmpty {
+                return reduce(next, .save)
+            }
+        case .save where state.savingRevision == nil && state.phase != .validating && state.draft != nil && state.draft != state.saved && state.issues.isEmpty:
             next.issues = safety(state.draft!)
             // Disabling still checks persisted syntax, without needing a live provider.
             if next.issues.isEmpty {
-                next.phase = .saving; next.savingRevision = state.revision
-                effect = .save(state.revision, state.draft!)
+                if state.draft!.enabled && state.validatedRevision != state.revision {
+                    next.phase = .validating; next.saveAfterValidation = true
+                    effect = .validate(state.revision, state.draft!)
+                } else {
+                    next.phase = .saving; next.savingRevision = state.revision
+                    effect = .save(state.revision, state.draft!)
+                }
             }
         case let .saved(revision, config) where state.savingRevision == revision:
             next.saved = config; next.savingRevision = nil
@@ -177,7 +187,7 @@ public struct Reducer: Sendable {
         let busy = next.savingRevision != nil || next.phase == .validating
         next.canValidate = next.draft != nil && !busy
         next.canSave = next.draft != nil && !busy && next.draft != next.saved
-            && next.issues.isEmpty && (next.draft?.enabled == false || next.validatedRevision == next.revision)
+            && next.issues.isEmpty
         next.saveAction = next.phase == .saveFailed ? .retrySave : .save
         next.showsSaveFailure = next.phase == .saveFailed
         let failed = next.phase == .saveFailed || next.phase == .loadFailed

@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// A scrollable host for future window composition. Offscreen previews use
-/// SettingsView directly so their content is exported at its full height.
+/// Keeps section navigation above the scrolling settings page.
+/// Offscreen previews use SettingsView to export the full page height.
 public struct SettingsScrollView: View {
     private let state: SettingsState
     private let event: (SettingsEvent) -> Void
@@ -15,8 +15,29 @@ public struct SettingsScrollView: View {
     }
 
     public var body: some View {
-        ScrollView(.vertical) {
-            SettingsView(state: state, event: event, config: config)
+        let content = SettingsView(state: state, event: event, config: config)
+        let tokens = content.tokens
+
+        VStack(spacing: 0) {
+            content.tabs
+                .padding(.horizontal, tokens.space24)
+                .padding(.top, tokens.space24)
+                .padding(.bottom, tokens.space16)
+            ScrollView(.vertical) {
+                VStack(alignment: .leading, spacing: tokens.space16) {
+                    content.page
+                }
+                .padding(.horizontal, tokens.space24)
+                .padding(.bottom, tokens.space24)
+                .frame(width: config.windowWidth, alignment: .topLeading)
+            }
+        }
+        .frame(width: config.windowWidth)
+        .background(tokens.win)
+        .overlay(alignment: .top) {
+            if state.selectedTab == .recording, let confirm = state.moveConfirm {
+                content.moveSheet(confirm)
+            }
         }
     }
 }

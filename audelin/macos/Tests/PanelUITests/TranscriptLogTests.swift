@@ -664,10 +664,9 @@ struct TranscriptLogTests {
             window.setContentSize(CGSize(width: width, height: 560))
             #expect(settlesLayout(of: host, scroll: scroll), "layout did not settle at width \(width)")
             #expect(text.string == originalText, "Resize duplicated or lost transcript text")
-            let last = text.firstRect(forCharacterRange: NSRange(location: text.string.utf16.count - 1, length: 1), actualRange: nil)
-            let visible = scroll.convert(scroll.contentView.bounds, from: scroll.contentView)
-            let screen = window.convertToScreen(scroll.convert(visible, to: nil))
-            #expect(last.intersects(screen), "last line disappeared at width \(width): \(last), viewport \(screen)")
+            let last = try #require(lineRect(at: text.string.utf16.count - 1, in: text))
+            let visible = scroll.contentView.documentVisibleRect
+            #expect(last.intersects(visible), "last line disappeared at width \(width): \(last), viewport \(visible)")
         }
     }
 
@@ -726,21 +725,34 @@ struct TranscriptLogTests {
         let host = Offscreen.host(panel(history, elapsed: "00:07:05"), size: CGSize(width: 396, height: 560))
         let scroll = try #require(scrollView(in: host))
         let text = try #require(Offscreen.textView(in: host))
+        let window = try #require(host.window)
+        // Run the same sizing probe before and after the baseline. Otherwise
+        // the first update also measures the initial, still-estimated layout.
+        _ = host.fittingSize
         text.scrollRangeToVisible((text.string as NSString).range(of: "03:24"))
         scroll.contentView.scroll(to: NSPoint(x: 0, y: 800))
         #expect(settlesLayout(of: host, scroll: scroll), "the paused log did not settle before its anchor was taken")
         let origin = scroll.contentView.bounds.origin
-        let anchor = text.characterIndexForInsertion(at: NSPoint(x: 100, y: origin.y + 40))
-        let anchorRect = text.firstRect(forCharacterRange: NSRange(location: anchor, length: 1), actualRange: nil)
+        let anchor = try #require(lineOffset(atY: origin.y + 40, in: text))
+        // In the scroll view's coordinates: the window's placement says
+        // nothing about whether text stays under the reader.
+        func anchorInViewport() throws -> NSRect {
+            scroll.convert(try #require(lineRect(at: anchor, in: text)), from: text)
+        }
+        let anchorRect = try anchorInViewport()
 
         var entries = history
         for step in 0..<10 {
+            if step == 0 {
+                window.setFrameOrigin(NSPoint(x: window.frame.minX + 20, y: window.frame.minY + 40))
+            }
             if !step.isMultiple(of: 2) { entries = history + [newest("слово \(step)")] }
             host.rootView = panel(entries, elapsed: "00:07:\(step + 6)")
             _ = host.fittingSize
             #expect(settlesLayout(of: host, scroll: scroll), "layout did not settle on update \(step)")
-            let rect = text.firstRect(forCharacterRange: NSRange(location: anchor, length: 1), actualRange: nil)
-            #expect(abs(rect.minY - anchorRect.minY) < 1, "visible text moved on update \(step)")
+            let rect = try anchorInViewport()
+            #expect(abs(rect.minY - anchorRect.minY) < 1,
+                "visible text moved on update \(step): \(anchorRect) -> \(rect); window \(window.frame), scroll \(scroll.frame)")
             #expect(abs(scroll.contentView.bounds.origin.y - origin.y) < 1,
                 "paused viewport moved on update \(step): \(origin) -> \(scroll.contentView.bounds.origin)")
         }
@@ -958,6 +970,36 @@ struct TranscriptLogTests {
             last = now
         }
         return true
+    }
+
+    /// The character starting the layout fragment at a height in `text`.
+    private func lineOffset(atY y: CGFloat, in text: NSTextView) -> Int? {
+
+        guard let layout = text.textLayoutManager, let content = layout.textContentManager else { return nil }
+        let point = CGPoint(x: 0, y: y - text.textContainerOrigin.y)
+        layout.ensureLayout(for: CGRect(x: 0, y: point.y, width: text.bounds.width, height: 1))
+        guard let fragment = layout.textLayoutFragment(for: point) else { return nil }
+        return content.offset(from: content.documentRange.location, to: fragment.rangeInElement.location)
+    }
+
+    /// Where a character's line is, in `text`'s coordinates. `firstRect`
+    /// answers zero for text TextKit has not laid out yet, so this lays out
+    /// that character first.
+    private func lineRect(at offset: Int, in text: NSTextView) -> NSRect? {
+
+        guard let layout = text.textLayoutManager,
+              let content = layout.textContentManager,
+              let start = content.location(content.documentRange.location, offsetBy: offset),
+              let end = content.location(start, offsetBy: 1),
+              let range = NSTextRange(location: start, end: end)
+        else { return nil }
+        layout.ensureLayout(for: range)
+        var found: NSRect?
+        layout.enumerateTextSegments(in: range, type: .standard, options: []) { _, rect, _, _ in
+            found = rect.offsetBy(dx: text.textContainerOrigin.x, dy: text.textContainerOrigin.y)
+            return false
+        }
+        return found
     }
 
     private func isAtBottom(_ scroll: NSScrollView) -> Bool {

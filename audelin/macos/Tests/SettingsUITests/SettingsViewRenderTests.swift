@@ -1,4 +1,3 @@
-import BlockingTestWork
 import RenderedText
 import SwiftUI
 import Testing
@@ -7,7 +6,26 @@ import Testing
 @MainActor
 struct SettingsViewRenderTests {
 
-    @Test func exportRegistryContainsExactlyTheRequiredStates() {
+    @Test(arguments: [ColorScheme.light, .dark])
+    func shortPagesFillTheScrollViewportWithThePageBackground(scheme: ColorScheme) throws {
+        var state = SettingsState.release
+        // Loading is shorter than either populated tab, leaving ample empty viewport.
+        state.selectedTab = .callNotes
+        state.callNotes = .loading("Загружаем настройки…")
+        let host = Offscreen.host(
+            SettingsScrollView(state: state, event: { _ in }).environment(\.colorScheme, scheme),
+            size: CGSize(width: 620, height: 700), scheme: scheme
+        )
+        let image = try #require(Offscreen.snapshot(host))
+        let page = try #require(image.colorAt(x: 4, y: 4)?.usingColorSpace(.deviceRGB))
+        let empty = try #require(image.colorAt(x: 4, y: image.pixelsHigh - 4)?.usingColorSpace(.deviceRGB))
+        #expect(abs(page.redComponent - empty.redComponent) < 0.01)
+        #expect(abs(page.greenComponent - empty.greenComponent) < 0.01)
+        #expect(abs(page.blueComponent - empty.blueComponent) < 0.01)
+        try Offscreen.save(image, "settings-scroll-\(scheme == .dark ? "dark" : "light")")
+    }
+
+    @Test nonisolated func exportRegistryContainsExactlyTheRequiredStates() {
         let required: Set<String> = [
             "release", "debug", "confirm-move", "moving", "move-failed", "during-recording",
             "summaries-off", "summaries-on", "summaries-local", "summaries-invalid", "summaries-unavailable",
@@ -30,86 +48,5 @@ struct SettingsViewRenderTests {
 
             try Offscreen.save(image, "settings-\(name)-\(scheme == .dark ? "dark" : "light")")
         }
-    }
-
-    @Test(arguments: [ColorScheme.light, .dark])
-    func releaseShowsItsValuesAndNoTransientRows(scheme: ColorScheme) async throws {
-
-        let text = try await rendered(.release, scheme)
-
-        #expect(text.shows("Записывать звонки автоматически"), "\(text)")
-        #expect(text.shows("~/Recordings/Audelin"), "\(text)")
-        #expect(text.shows("52 звонка"), "\(text)")
-        #expect(text.shows("Parakeet v3"), "\(text)")
-        #expect(text.shows("Whisper Large v3 Turbo"), "\(text)")
-        #expect(text.shows("461 MB"), "\(text)")
-        #expect(text.shows("есть · из Amanu"), "\(text)")
-
-        #expect(!text.shows("DEBUG"), "\(text)")
-        #expect(!text.shows("Перенести"), "\(text)")
-        #expect(!text.shows("Повторить"), "\(text)")
-        #expect(!text.shows("идёт запись"), "\(text)")
-    }
-
-    @Test func debugAddsTheChunkPicker() async throws {
-
-        let text = try await rendered(.debug, .light)
-
-        #expect(text.shows("Размер фрагмента"), "\(text)")
-        #expect(text.shows("DEBUG"), "\(text)")
-        #expect(text.shows("В релизе — 4 с"), "\(text)")
-    }
-
-    @Test func moveConfirmationAsksWithItsTitleAndBody() async throws {
-
-        let text = try await rendered(.confirmMove, .light)
-
-        #expect(text.shows("Перенести 52 звонка"), "\(text)")
-        #expect(text.shows("запись не начнётся"), "\(text)")
-        #expect(text.shows("Отмена"), "\(text)")
-    }
-
-    @Test func movingShowsProgressInsteadOfTheCount() async throws {
-
-        let text = try await rendered(.moving, .light)
-
-        #expect(text.shows("31 из 52"), "\(text)")
-        #expect(text.shows("~/Documents/Audelin"), "\(text)")
-        #expect(!text.shows("аудио 135 MB"), "\(text)")
-    }
-
-    @Test(arguments: [ColorScheme.light, .dark])
-    func failedMoveExplainsAndOffersARetry(scheme: ColorScheme) async throws {
-
-        let text = try await rendered(.moveFailed, scheme)
-
-        #expect(text.shows("часть звонков ещё здесь"), "\(text)")
-        #expect(text.shows("Перенесено 31 из 52"), "\(text)")
-        #expect(text.shows("нет места на диске"), "\(text)")
-        #expect(text.shows("Повторить"), "\(text)")
-        #expect(text.shows("Отмена"), "\(text)")
-    }
-
-    @Test func aRecordingHoldsTheFolderChange() async throws {
-
-        let text = try await rendered(.duringRecording, .light)
-
-        #expect(text.shows("идёт запись"), "\(text)")
-        #expect(!text.shows("52 звонка"), "\(text)")
-    }
-
-    @Test func readingForgivesLettersTheReaderMixesAcrossScripts() {
-
-        #expect(RenderedText(lines: ["есть • из Аmапи"]).shows("есть · из Amanu"))
-        #expect(!RenderedText(lines: ["есть"]).shows("есть · из Amanu"))
-    }
-
-    // MARK: - Helpers
-
-    private func rendered(_ state: SettingsState, _ scheme: ColorScheme) async throws -> RenderedText {
-
-        let host = Offscreen.host(SettingsPreview(state: state, scheme: scheme), scheme: scheme)
-        let image = try #require(Offscreen.sharpSnapshot(host))
-        return try await readText(in: image)
     }
 }

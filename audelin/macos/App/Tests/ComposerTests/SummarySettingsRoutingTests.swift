@@ -11,7 +11,7 @@ import Testing
 
 @MainActor @Suite(.timeLimit(.minutes(1)))
 struct SummarySettingsRoutingTests {
-    @Test func menuEditsValidatesAndSavesBothSlotsWithoutChangingRecordingPreferences() async throws {
+    @Test func menuEditsAndSavesBothSlotsWithoutSeparateValidationOrChangingRecordingPreferences() async throws {
         try await withComposeFolder { root in
             let transport = SettingsNoHTTP()
             let rig = try await settingsFixture(root, transport)
@@ -21,11 +21,12 @@ struct SummarySettingsRoutingTests {
                 await rig.menu.sendSettings(.setAutomaticNotes(true))
                 await rig.menu.sendSettings(.setIdentifySpeakers(true))
                 try await editSlots(rig.menu)
-                let edited = try await loaded(rig.menu) { $0.automatic && $0.identifySpeakers && $0.runtimes.last?.fields.first?.value == "fallback-distinct" }
+                let edited = try await loaded(rig.menu) { $0.automatic && $0.identifySpeakers
+                    && $0.runtimes.last?.fields.first?.value == "fallback-distinct"
+                    && $0.runtimes.last?.fields.last?.value == ""
+                    && $0.runtimes.last?.fields.first { $0.id == .endpoint }?.value == "http://localhost:9191/fallback" }
                 #expect(rig.menu.settingsState.selectedTab == .callNotes)
-                #expect(!edited.save.isEnabled)
-                await rig.menu.sendSettings(.notesAction(.validate))
-                _ = try await loaded(rig.menu) { $0.save.isEnabled }
+                #expect(edited.save.isEnabled)
                 assertRenderedChoices(rig.menu.settingsState, canSave: true)
                 await rig.menu.sendSettings(.notesAction(.save))
                 _ = try await loaded(rig.menu) { $0.status == "Настройки сохранены" }
