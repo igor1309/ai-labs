@@ -143,8 +143,8 @@ func quit(_ handler: LifecycleEffectHandler) async {
 }
 
 @MainActor
-func makeRecordings(handler: RecordingsEffectHandler) -> RecordingsInputs {
-    let model = ObservableModel(initialState: RecordingsState(), reduce: RecordingsReducer.reduce,
+func makeRecordings(handler: RecordingsEffectHandler, initial: RecordingsState = .init()) -> RecordingsInputs {
+    let model = ObservableModel(initialState: initial, reduce: RecordingsReducer.reduce,
                                 handleEffect: { handleRecordingsEffect(handler, $0) })
     return RecordingsInputs(state: { model.state }, send: { model.event($0) })
 }
