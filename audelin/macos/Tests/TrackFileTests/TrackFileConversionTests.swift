@@ -57,20 +57,24 @@ struct TrackFileConversionTests {
             while position < input.count {
                 let end = min(input.count, position + sizes[chunk % sizes.count])
                 let samples = Array(input[position..<end])
+                let previous = duration, first = expected.count
                 duration += Double(samples.count) / rate
                 let last = Int((duration * 48_000).rounded())
                 expected += try referenceWrite(
-                    samples, preceding: Array(input[..<position]), rate: rate, frames: expected.count..<last
+                    samples, preceding: Array(input[..<position]), rate: rate, frames: first..<last
                 )
                 try await track.write(samples, sampleRate: rate)
-                let disk = try await externalSamples(url)
-                try #require(disk.count == last)
-                let written = try await track.read(from: 0, to: duration)
-                expectSamples(written, expected)
-                let bytes = try await offPool { try Data(contentsOf: url).dropFirst(68) }
-                #expect(bytes.starts(with: acknowledged))
-                acknowledged = Data(bytes)
-                expectSamples(disk, expected)
+                expectSamples(try await track.read(from: previous, to: duration), Array(expected[first...]))
+                // The file is checked once per second of audio: rereading it after every
+                // chunk makes the work grow with the square of the input.
+                if Int(duration) > Int(previous) {
+                    let disk = try await externalSamples(url)
+                    try #require(disk.count == last)
+                    expectSamples(disk, expected)
+                    let bytes = try await offPool { try Data(contentsOf: url).dropFirst(68) }
+                    #expect(bytes.starts(with: acknowledged))
+                    acknowledged = Data(bytes)
+                }
                 position = end
                 chunk += 1
             }
