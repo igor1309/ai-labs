@@ -1,4 +1,3 @@
-import Dispatch
 import Foundation
 
 /// Each result contains only this write's audio, drained through its end.
@@ -9,10 +8,6 @@ protocol TrackFileConversion {
 
 /// One mono recording. Its times are seconds from its first sample.
 public actor TrackFile {
-
-    // Blocking file operations must not occupy the cooperative thread pool.
-    nonisolated let queue: DispatchSerialQueue
-    public nonisolated var unownedExecutor: UnownedSerialExecutor { queue.asUnownedSerialExecutor() }
 
     public enum Failure: Error, Equatable {
 
@@ -26,7 +21,6 @@ public actor TrackFile {
 
     /// Reads the duration of this adapter's 48 kHz mono Int16 CAF, sealed or open-ended.
     /// An open-ended track counts only the whole frames available on disk.
-    /// Performs blocking disk work; call on a dedicated disk queue, never the cooperative pool.
     public nonisolated static func duration(at url: URL) throws -> TimeInterval {
         try DiskTrackBinding.duration(at: url)
     }
@@ -50,31 +44,17 @@ public actor TrackFile {
         readWaiting: (@Sendable () -> Void)? = nil
     ) async throws {
 
-        let queue = DispatchSerialQueue(label: "audelin.TrackFile")
-        // The header is written on the file's queue, not on the caller's thread.
-        let binding = try await withCheckedThrowingContinuation { (done: CheckedContinuation<any TrackFileBinding, any Error>) in
-            queue.async {
-                done.resume(with: Result {
-                    let binding = try makeBinding(url)
-                    do { try binding.initialize() }
-                    catch {
-                        binding.remove()
-                        throw error
-                    }
-                    return binding
-                })
-            }
+        let binding = try makeBinding(url)
+        do { try binding.initialize() }
+        catch {
+            binding.remove()
+            throw error
         }
-        self.queue = queue
         self.url = url
         self.binding = binding
         self.makeConversion = makeConversion
         self.readWaiting = readWaiting
     }
-
-    // The binding closes its descriptor when released; an isolated deinit
-    // destroys the stored binding on the file's queue.
-    isolated deinit {}
 
     /// Appends mono floating point audio. A failed write ends writing permanently.
     public func write(_ samples: [Float], sampleRate: Double) throws {

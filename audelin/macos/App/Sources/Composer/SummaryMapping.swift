@@ -40,21 +40,12 @@ func summaryStatus(_ phase: SummaryJobs.State.Phase, _ warning: Bool) -> String 
 
 struct SummaryPreferences: SummarySettings.Preferences {
     let storage: PreferencesStore
-    private let queue = DispatchQueue(label: "audelin.notes.preferences")
     func load() async throws -> SummarySettings.Configuration {
-        try await withCheckedThrowingContinuation { done in
-            queue.async { done.resume(with: Result { try settingsConfiguration(storage.loadNotes()) }) }
-        }
+        try settingsConfiguration(storage.loadNotes())
     }
     func save(_ configuration: SummarySettings.Configuration) async throws {
-        try await withCheckedThrowingContinuation { (done: CheckedContinuation<Void, any Error>) in
-            queue.async {
-                done.resume(with: Result {
-                    guard SummaryAvailability.configurationIssues(configuration).isEmpty else { throw SummaryRuntime.Failure.configuration }
-                    try storage.updateNotes(storedConfiguration(configuration))
-                })
-            }
-        }
+        guard SummaryAvailability.configurationIssues(configuration).isEmpty else { throw SummaryRuntime.Failure.configuration }
+        try storage.updateNotes(storedConfiguration(configuration))
     }
 }
 struct SummaryAvailability: SummarySettings.Availability {

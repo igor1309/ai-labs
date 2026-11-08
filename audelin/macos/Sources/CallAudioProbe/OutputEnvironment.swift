@@ -3,16 +3,17 @@ import CoreAudio
 import Dispatch
 import Foundation
 
-/// Reads the route off the cooperative pool and observes changes without changing it.
-public final class OutputEnvironment: @unchecked Sendable {
+/// Observes route changes without changing the route. The queue exists only
+/// because Core Audio delivers property listeners on one.
+public final class OutputEnvironment: Sendable {
     public let changes: AsyncStream<Void>
     private let output: AsyncStream<Void>.Continuation
-    private let queue = DispatchQueue(label: "audelin.ProbeEnvironment")
+    private let listenerQueue = DispatchQueue(label: "audelin.ProbeEnvironment")
     private let listener: OutputListener
     private let native: OutputNative
     private let center: NotificationCenter
-    private var observers: [any NSObjectProtocol] = []
-    private var installed = false
+    private let observers: [ObserverToken]
+    private let installed: Bool
 
     public convenience init() {
         self.init(native: .live, center: NSWorkspace.shared.notificationCenter)
@@ -24,35 +25,31 @@ public final class OutputEnvironment: @unchecked Sendable {
         (changes, output) = AsyncStream.makeStream()
         let output = output
         listener = OutputListener { _, _ in output.yield(()) }
-        for name in [NSWorkspace.willSleepNotification, NSWorkspace.didWakeNotification] {
-            observers.append(center.addObserver(forName: name, object: nil, queue: nil) { _ in output.yield(()) })
+        observers = [NSWorkspace.willSleepNotification, NSWorkspace.didWakeNotification].map { name in
+            ObserverToken(center.addObserver(forName: name, object: nil, queue: nil) { _ in output.yield(()) })
         }
-        queue.async { [self] in
-            var address = property(kAudioHardwarePropertyDefaultOutputDevice)
-            installed = native.add(&address, queue, listener.block) == noErr
-        }
+        var address = property(kAudioHardwarePropertyDefaultOutputDevice)
+        installed = native.add(&address, listenerQueue, listener.block) == noErr
     }
 
     public func device() async -> UInt32? {
-        await withCheckedContinuation { done in
-            queue.async { [self] in
-                // Without change delivery a cached grant could survive sleep or a route change.
-                done.resume(returning: installed ? try? native.device() : nil)
-            }
-        }
+        // Without change delivery a cached grant could survive sleep or a route change.
+        installed ? try? native.device() : nil
     }
 
     deinit {
-        for observer in observers { center.removeObserver(observer) }
+        for observer in observers { center.removeObserver(observer.value) }
         if installed {
-            let queue = queue, listener = listener, native = native
-            queue.async {
-                var address = property(kAudioHardwarePropertyDefaultOutputDevice)
-                _ = native.remove(&address, queue, listener.block)
-            }
+            var address = property(kAudioHardwarePropertyDefaultOutputDevice)
+            _ = native.remove(&address, listenerQueue, listener.block)
         }
         output.finish()
     }
+}
+
+private final class ObserverToken: @unchecked Sendable {
+    let value: any NSObjectProtocol
+    init(_ value: any NSObjectProtocol) { self.value = value }
 }
 
 struct OutputNative: Sendable {

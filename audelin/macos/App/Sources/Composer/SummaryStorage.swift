@@ -32,7 +32,9 @@ final class SummaryStorage: SummaryFiles.Locations, Sendable {
     private let journal: URL?
     private let writeJournal: @Sendable (Journal, URL) throws -> Void
     private let makeCalls: @Sendable (URL) -> Calls
-    private let queue = DispatchQueue(label: "audelin.call-storage")
+    // Every operation, including summary writes through withFolder, takes this turn,
+    // so one waiting for a long folder move suspends instead of blocking a thread.
+    private let turn = Turn()
 
     convenience init(folder: URL, timeZone: TimeZone, journal: URL? = nil) {
         self.init(folder: folder, timeZone: timeZone, journal: journal, writeJournal: { record, journal in
@@ -133,14 +135,17 @@ final class SummaryStorage: SummaryFiles.Locations, Sendable {
     private func ownerRoot(id: String, state: State) -> URL? {
         state.journal.moves[id]?.owner.deletingLastPathComponent() ?? state.journal.owners[id]
     }
-    func withFolder<Value: Sendable>(call: String, _ operation: @Sendable (URL) throws -> Value) throws -> Value {
+    func withFolder<Value: Sendable>(call: String, _ operation: @Sendable (URL) throws -> Value) async throws -> Value {
+        try await perform { try folder(call: call, operation) }
+    }
+    private func folder<Value: Sendable>(call: String, _ operation: @Sendable (URL) throws -> Value) throws -> Value {
         try state.withLock { state in
             recover(&state, id: call)
             return try operation(location(id: call, state: state))
         }
     }
-    func perform<Value: Sendable>(_ work: @escaping @Sendable () throws -> Value) async throws -> Value {
-        try await withCheckedThrowingContinuation { done in queue.async { done.resume(with: Result(catching: work)) } }
+    private func perform<Value: Sendable>(_ work: () throws -> Value) async throws -> Value {
+        try await turn.run(work)
     }
     private func list(_ state: State) throws -> [Calls.Call] {
         var result = try makeCalls(state.recordingFolder).list().filter {
@@ -165,7 +170,7 @@ final class SummaryStorage: SummaryFiles.Locations, Sendable {
     }
     func rename(id: String, title: String) async throws {
         try await perform { [self] in
-            try withFolder(call: id) { try makeCalls($0.deletingLastPathComponent()).rename(id: id, title: title) }
+            try folder(call: id) { try makeCalls($0.deletingLastPathComponent()).rename(id: id, title: title) }
         }
     }
     func delete(id: String) async throws {
@@ -185,7 +190,7 @@ final class SummaryStorage: SummaryFiles.Locations, Sendable {
             }
         }
     }
-    func location(id: String) async throws -> URL { try await perform { [self] in try withFolder(call: id) { $0 } } }
+    func location(id: String) async throws -> URL { try await perform { [self] in try folder(call: id) { $0 } } }
     private func validate(_ destination: URL, state: State) throws {
         guard destination.isFileURL else { throw CocoaError(.fileWriteInvalidFileName) }
         let target = destination.resolvingSymlinksInPath().standardizedFileURL.path

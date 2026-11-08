@@ -15,3 +15,18 @@ Issues are in the Multica project `Audelin`, in the `ai-labs` workspace (parent 
 - The app and rehearsal compose machines in `macos/App/Sources/Composer`; components stay in
   `macos/Sources`. Build and test both packages from their directories with
   `swift build --build-tests` and `swift test`; `scripts/gate-step.sh` gates both and bundles.
+
+## Real-audio tests
+
+- Four test files use the Mac's audio hardware through `coreaudiod`: the call-audio probe, the
+  Core Audio binding, the microphone binding and the end-to-end recording test. CI skips them
+  (`GITHUB_ACTIONS=1`); locally they run with every `swift test`.
+- When one fails, do not rerun it to diagnose. Each run opens real audio connections, and a
+  failed or hung run can leave them behind; repeated runs grew `coreaudiod` to about 50 GB and
+  froze the Mac until a hard reboot.
+- On a failure, check `coreaudiod` first: its memory (`ps -Ao rss,command | grep coreaudiod`)
+  and its connections from dead processes (`pmset -g assertions`). If it holds either, stop
+  every audio run, tell the owner it needs restarting, and gate with `GITHUB_ACTIONS=1` until
+  it is.
+- To verify these tests, run each file once, on its own, and check `coreaudiod`'s memory after
+  each. Stop at the first sign it grows.

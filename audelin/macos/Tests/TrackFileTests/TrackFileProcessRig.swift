@@ -44,9 +44,7 @@ final class TrackCommand: @unchecked Sendable {
             ended.continuation.yield(process.terminationStatus)
             ended.continuation.finish()
         }
-        // Launching blocks while the child is spawned, so it happens off the cooperative pool.
-        let launching = process
-        do { try launching.run() }
+        do { try process.run() }
         catch {
             pipe.fileHandleForReading.readabilityHandler = nil
             bytes.continuation.finish()

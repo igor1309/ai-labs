@@ -5,6 +5,21 @@ import SummaryRuntime
 import Synchronization
 import Testing
 
+/// Suspends between reads of the nonblocking descriptor, so a slow child never
+/// holds a thread the child's own runner may need.
+private func readPID(from fd: Int32) async throws -> Int32 {
+    var buffer = [UInt8](repeating: 0, count: 64)
+    while true {
+        let count = Darwin.read(fd, &buffer, buffer.count)
+        if count > 0 {
+            guard let pid = Int32(String(decoding: buffer.prefix(count), as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)) else { throw CocoaError(.fileReadCorruptFile) }
+            return pid
+        }
+        guard count < 0, errno == EAGAIN else { throw CocoaError(.fileReadUnknown) }
+        try await Task.sleep(for: .milliseconds(10))
+    }
+}
+
 @Suite(.timeLimit(.minutes(1))) struct ProcessRunnerTests {
     /// Contract test: both parent and descendant ignore TERM. Only escalation
     /// directed at the owned group can finish the attempt and its exit witness.
@@ -19,30 +34,23 @@ import Testing
             guard fd >= 0 else { throw CocoaError(.fileReadUnknown) }
             return (folder, fd)
         }()
-        let events = ProcessEvents(), clock = Mutex(0.0)
-        let runner = ProcessRunner(now: { clock.withLock { $0 } }, deadline: 120, outputLimit: 4096, observe: { event in
+        let events = ProcessEvents(), clock = FakeClock()
+        let runner = ProcessRunner(now: clock.now, sleepUntil: clock.sleep(until:), deadline: 120, outputLimit: 4096, observe: { event in
             events.receive(event)
-            if case .terminating = event { clock.withLock { $0 = 122 } }
+            if case .terminating = event { clock.set(122) }
         })
         let fifo = fixture.0.appendingPathComponent("ready").path
         let child = "trap '' TERM; printf '%s\\n' \"$$\" > '" + fifo + "'; exec /usr/bin/tail -f /dev/null"
         let script = "trap '' TERM; /bin/sh -c " + shellQuote(child) + " & wait"
         let task = Task { try await runner.run(program: "/bin/sh", arguments: ["-c", script], input: Data(repeating: 65, count: 2 * 1024 * 1024)) }
         do {
-            let descendant = try { () throws -> Int32 in
-                var ready = pollfd(fd: fixture.1, events: Int16(POLLIN), revents: 0)
-                guard poll(&ready, 1, 30000) == 1 else { throw CocoaError(.fileReadUnknown) }
-                var buffer = [UInt8](repeating: 0, count: 64)
-                let count = Darwin.read(fixture.1, &buffer, buffer.count)
-                guard count > 0, let pid = Int32(String(decoding: buffer.prefix(count), as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)) else { throw CocoaError(.fileReadCorruptFile) }
-                return pid
-            }()
+            let descendant = try await readPID(from: fixture.1)
             let exited = AsyncStream<Void>.makeStream()
             let witness = DispatchSource.makeProcessSource(identifier: descendant, eventMask: .exit, queue: .global())
             witness.setEventHandler { exited.continuation.yield(()); exited.continuation.finish() }
             witness.activate()
             defer { witness.cancel() }
-            if cancel { task.cancel() } else { clock.withLock { $0 = 120 } }
+            if cancel { task.cancel() } else { clock.set(120) }
             await #expect(throws: cancel ? Failure.cancelled : Failure.timeout) { try await task.value }
             for await _ in exited.stream { break }
             #expect(witness.data.contains(.exit))
@@ -100,11 +108,11 @@ import Testing
     }
     /// Contract test: blocked stdin, group termination grace, SIGKILL and reap against a real child.
     @Test func deadlineIncludesBlockedInputAndEscalates() async {
-        let events = ProcessEvents(), clock = Mutex(0.0)
-        let runner = ProcessRunner(now: { clock.withLock { $0 } }, deadline: 120, outputLimit: 4096, observe: { event in
+        let events = ProcessEvents(), clock = FakeClock()
+        let runner = ProcessRunner(now: clock.now, sleepUntil: clock.sleep(until:), deadline: 120, outputLimit: 4096, observe: { event in
             events.receive(event)
-            if case .inputBlocked = event { clock.withLock { $0 = 120 } }
-            if case .terminating = event { clock.withLock { $0 = 122 } }
+            if case .inputBlocked = event { clock.set(120) }
+            if case .terminating = event { clock.set(122) }
         })
         await #expect(throws: Failure.timeout) {
             try await runner.run(program: "/bin/sh", arguments: ["-c", "trap '' TERM; exec /usr/bin/tail -f /dev/null"], input: Data(repeating: 65, count: 2 * 1024 * 1024))
@@ -114,10 +122,10 @@ import Testing
     }
     /// Contract test: cancellation joins a real process with blocked stdin.
     @Test func cancellationJoinsCleanup() async {
-        let events = ProcessEvents(), clock = Mutex(0.0)
-        let runner = ProcessRunner(now: { clock.withLock { $0 } }, deadline: 120, outputLimit: 4096, observe: { event in
+        let events = ProcessEvents(), clock = FakeClock()
+        let runner = ProcessRunner(now: clock.now, sleepUntil: clock.sleep(until:), deadline: 120, outputLimit: 4096, observe: { event in
             events.receive(event)
-            if case .terminating = event { clock.withLock { $0 += 2 } }
+            if case .terminating = event { clock.set(clock.now() + 2) }
         })
         let task = Task { try await runner.run(program: "/usr/bin/tail", arguments: ["-f", "/dev/null"], input: Data(repeating: 65, count: 1024 * 1024)) }
         for await event in events.stream where event == "blocked" { break }
@@ -134,6 +142,38 @@ import Testing
     }
 }
 private func shellQuote(_ value: String) -> String { "'" + value.replacingOccurrences(of: "'", with: "'\"'\"'") + "'" }
+/// A clock the test moves by hand; a sleeper wakes once the clock reaches its time, or when cancelled.
+private final class FakeClock: Sendable {
+    private struct Sleeper { let id: UUID, time: Double, wake: CheckedContinuation<Void, Never> }
+    private let state = Mutex((time: 0.0, sleepers: [Sleeper]()))
+    @Sendable func now() -> Double { state.withLock { $0.time } }
+    @Sendable func set(_ time: Double) {
+        let due = state.withLock { state in
+            state.time = time
+            defer { state.sleepers.removeAll { $0.time <= time } }
+            return state.sleepers.filter { $0.time <= time }
+        }
+        for sleeper in due { sleeper.wake.resume() }
+    }
+    @Sendable func sleep(until time: Double) async {
+        let id = UUID()
+        await withTaskCancellationHandler {
+            await withCheckedContinuation { wake in
+                let parked = state.withLock { state in
+                    guard state.time < time, !Task.isCancelled else { return false }
+                    state.sleepers.append(Sleeper(id: id, time: time, wake: wake))
+                    return true
+                }
+                if !parked { wake.resume() }
+            }
+        } onCancel: {
+            let sleeper = state.withLock { state in
+                state.sleepers.firstIndex { $0.id == id }.map { state.sleepers.remove(at: $0) }
+            }
+            sleeper?.wake.resume()
+        }
+    }
+}
 private final class ProcessEvents: Sendable {
     let pid = Mutex<Int32>(0), reaped = Mutex(false), blocked = Mutex(false)
     private let output = AsyncStream<String>.makeStream()

@@ -6,6 +6,7 @@ import Preferences
 import Recordings
 import SummaryFiles
 import SummaryJobs
+import Synchronization
 import Testing
 @testable import Composer
 
@@ -302,6 +303,39 @@ import Testing
             try await files.publish(records[1], notes: "published after completion")
             #expect(try String(contentsOf: destination.appendingPathComponent(ids[0] + "/summary.md"), encoding: .utf8).hasSuffix("published between moves"))
             #expect(try String(contentsOf: destination.appendingPathComponent(ids[1] + "/summary.md"), encoding: .utf8).hasSuffix("published after completion"))
+        }
+    }
+
+    @Test func aSummaryWriteStartedDuringAMoveWaitsForItAndLandsInTheDestination() async throws {
+        try await withComposeFolder { root in
+            let source = root.appendingPathComponent("source"), destination = root.appendingPathComponent("destination")
+            let id = "1970.01.01-0000"
+            try FileManager.default.createDirectory(at: source.appendingPathComponent(id), withIntermediateDirectories: true)
+            try Data("transcript".utf8).write(to: source.appendingPathComponent(id + "/transcript.md"))
+            try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
+            let record = Record(job: id, call: id, input: "input", snapshot: Data(), phase: "pending")
+            let files = Mutex<Files?>(nil)
+            let moving = Mutex(false)
+            let publish = Mutex<Task<Void, any Error>?>(nil)
+            let storage = SummaryStorage(folder: source, timeZone: .gmt, journal: root.appendingPathComponent("roots.json"),
+                                         writeJournal: { journal, url in
+                try JSONEncoder().encode(journal).write(to: url, options: .atomic)
+                guard moving.withLock({ $0 }) else { return }
+                publish.withLock { task in
+                    guard task == nil, let files = files.withLock({ $0 }) else { return }
+                    task = Task { try await files.publish(record, notes: "written during the move") }
+                }
+            })
+            files.withLock { $0 = Files(locations: storage, disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("leases")) }
+            let summaries = try #require(files.withLock { $0 })
+            _ = try await summaries.claim(record)
+            _ = try await summaries.start(record)
+            moving.withLock { $0 = true }
+            _ = try await storage.move(id: id, to: destination)
+            try await #require(publish.withLock { $0 }).value
+            #expect(try String(contentsOf: destination.appendingPathComponent(id + "/summary.md"), encoding: .utf8)
+                .hasSuffix("written during the move"))
+            #expect(!FileManager.default.fileExists(atPath: source.appendingPathComponent(id + "/summary.md").path))
         }
     }
 

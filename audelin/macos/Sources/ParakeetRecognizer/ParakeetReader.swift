@@ -1,4 +1,3 @@
-import Dispatch
 import FluidAudio
 import LiveText
 import ModelLoading
@@ -23,7 +22,7 @@ extension ParakeetRecognizer {
         makeReader: @escaping @Sendable (Model) async throws -> any WindowReader
     ) -> @Sendable () async throws -> any WindowReader {
 
-        let models = SharedModel(loadQueue: DispatchQueue(label: "audelin.ParakeetModelLoading"), load: load)
+        let models = SharedModel(load: load)
         return { try await makeReader(models.load().value) }
     }
 }

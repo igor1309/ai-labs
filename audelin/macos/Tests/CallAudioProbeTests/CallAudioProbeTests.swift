@@ -96,7 +96,7 @@ struct CallAudioProbeTests {
         timeout.fireEvenIfCancelled()
         rig.emit([0.001])
         rig.player.complete()
-        // A second measurement is a queue barrier for the late work above.
+        // Late callbacks finish their work, or find the measurement over, before they return.
         #expect(await rig.measure(samples: [0]) == .silent)
         #expect(Array(rig.events.prefix(completed.count)) == completed)
         #expect(rig.events.filter { $0 == "destroy tap" }.count == 2)

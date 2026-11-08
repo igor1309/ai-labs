@@ -1,4 +1,3 @@
-import Dispatch
 import FluidAudio
 import ModelLoading
 
@@ -25,7 +24,7 @@ extension NemotronRecognizer {
         makeDecoder: @escaping @Sendable (Model) async throws -> any TokenDecoder
     ) -> @Sendable () async throws -> any TokenDecoder {
 
-        let models = SharedModel(loadQueue: DispatchQueue(label: "audelin.NemotronModelLoading"), load: load)
+        let models = SharedModel(load: load)
         return { try await makeDecoder(models.load().value) }
     }
 }

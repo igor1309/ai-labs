@@ -75,7 +75,7 @@ public func defaultOutputDevice() throws -> UInt32 {
 }
 
 final class TonePlayer: @unchecked Sendable, ProbePlayer {
-    // Measurement calls these only on its serial native queue.
+    // Measurement calls these only while holding its turn.
     private var engine: AVAudioEngine?
     private var player: AVAudioPlayerNode?
     private var format: AVAudioFormat?

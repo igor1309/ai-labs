@@ -44,19 +44,16 @@ private final class OutputSpy: Sendable {
     init(failure: String = "") { self.failure = failure }
     var native: OutputNative {
         OutputNative(device: { [self] in
-            #expect(!Thread.isMainThread)
             events.withLock { $0.append("read") }
             if failure == "read" { throw ProbeFailure("read") }
             return 10
         }, add: { [self] address, _, listener in
-            #expect(!Thread.isMainThread)
             #expect(address.pointee.mSelector == kAudioHardwarePropertyDefaultOutputDevice)
             events.withLock { $0.append("add") }
             if failure == "add" { return -1 }
             block.withLock { $0 = CapturedListener(listener) }
             return noErr
         }, remove: { [self] address, _, _ in
-            #expect(!Thread.isMainThread)
             #expect(address.pointee.mSelector == kAudioHardwarePropertyDefaultOutputDevice)
             events.withLock { $0.append("remove") }
             removed.continuation.yield(())

@@ -127,11 +127,5 @@ final class ApplicationRecording: LifecycleRecording {
 func createDefaultCallsFolder(_ folder: URL, default defaultFolder: URL) async {
 
     guard folder.standardizedFileURL == defaultFolder.standardizedFileURL else { return }
-    // Creating a folder blocks on the disk, so it runs outside the cooperative pool.
-    await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
-        DispatchQueue(label: "audelin.CallsFolderCreation").async {
-            try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-            done.resume()
-        }
-    }
+    try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
 }
