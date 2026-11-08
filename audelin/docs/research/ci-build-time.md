@@ -125,3 +125,41 @@ not a production change.
 
 An optimization with measured before/after times remains outstanding. Cache
 changes alone would not answer this question.
+
+### Controlled hosted batching result
+
+[Run 42522875579](https://github.com/igor1309/ai-labs/actions/runs/42522875579)
+completed both fresh variants successfully:
+
+| Variant | Core | App | Preview | Combined test builds |
+|---|---:|---:|---:|---:|
+| Default batching | 303.72 s | 125.98 s | 18.43 s | 448.13 s |
+| Single batch | 405.70 s | 175.08 s | 18.55 s | 599.33 s |
+
+FluidAudio's summed debug frontend time fell from 644.83 s to 360.23 s,
+and ComposerTests from 111.57 s to 77.20 s, but lost parallelism outweighed
+the reduced work. Reject single batching: combined elapsed time rose 34%.
+The default variant's release command took 177.81 s. Variation from the earlier
+228.71 s run is another reason not to claim improvements across unrelated runs.
+
+### Proposed next change, pending owner decision
+
+Use release configuration for test compilation and execution, then reuse that
+release output when constructing the bundle. Keep all test suites and time
+limits. This addresses the measured duplication of FluidAudio compilation
+across optimized debug and release configurations, rather than cache reuse.
+
+A local feasibility probe, `swift build --build-tests -c release`, failed:
+`RecordedCapture` was not compiled for testing. The generated production target
+command lacks `-enable-testing`, while tests require `@testable import`.
+Therefore switching only `-c release` is insufficient. The concrete proposal
+requires `-Xswiftc -enable-testing` consistently in test compilation and bundle
+compilation to reuse outputs. This enables internal declaration access for
+testable imports in the shipped build; it also changes tests from optimized
+debug semantics to release semantics (including DEBUG conditionals).
+
+This is an owner decision under the issue's shipped-build constraint. It is
+not implemented or assumed safe. If accepted, measure the complete pipeline
+and run every existing test and limit before adopting it; compare the bundle's
+compiler invocation and output reuse explicitly. The measured duplicate work
+motivates the experiment but does not establish its eventual speedup.
