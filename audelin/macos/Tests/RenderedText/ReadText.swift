@@ -1,17 +1,20 @@
 import CoreGraphics
+import Foundation
 import Vision
 
 /// The words an image shows, read by Vision: SwiftUI's `Text` has no view and,
 /// in a window that is never shown, no accessibility element to read.
-public func readText(in image: CGImage) throws -> RenderedText {
+public func readText(in image: CGImage) async throws -> RenderedText {
 
-    let request = VNRecognizeTextRequest()
+    var request = RecognizeTextRequest()
     request.recognitionLevel = .accurate
-    request.recognitionLanguages = ["ru-RU", "en-US"]
+    request.recognitionLanguages = [Locale.Language(identifier: "ru-RU"), Locale.Language(identifier: "en-US")]
+    request.automaticallyDetectsLanguage = false
+    request.minimumTextHeightFraction = 0
     request.usesLanguageCorrection = false
-    try VNImageRequestHandler(cgImage: image).perform([request])
+    let observations = try await request.perform(on: image)
 
-    let lines = (request.results ?? []).compactMap { $0.topCandidates(1).first?.string }
+    let lines = observations.compactMap { $0.topCandidates(1).first?.string }
     return RenderedText(lines: lines)
 }
 
