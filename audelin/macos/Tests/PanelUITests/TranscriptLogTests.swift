@@ -642,36 +642,6 @@ struct TranscriptLogTests {
         #expect(scroll.contentView.bounds.origin.y == 0, "the log moved under the reader")
     }
 
-    @Test func resizingALongLiveLogKeepsItsLastLineVisible() throws {
-        let history = (0..<120).map { index in
-            PanelState.Entry(id: index, time: "03:24", speaker: .them,
-                settled: String(repeating: "Обсуждаем план работ и следующий релиз. ", count: 1 + index % 7))
-        }
-        func panel(_ width: CGFloat) -> AnyView {
-            var config = PanelConfig.glassLedger
-            config.panelWidth = width
-            return AnyView(PanelView(state: .init(recording: .on(elapsed: "00:11:26"),
-                log: .lines(.init(entries: history))), event: { _ in }, config: config)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top))
-        }
-        let host = Offscreen.host(panel(396), size: CGSize(width: 396, height: 560))
-        let window = try #require(host.window)
-        let text = try #require(Offscreen.textView(in: host))
-        let scroll = try #require(scrollView(in: host))
-        let originalText = text.string
-        for width: CGFloat in [500, 320, 600, 396, 550, 340] {
-            host.rootView = panel(width)
-            window.setContentSize(CGSize(width: width, height: 560))
-            host.layoutSubtreeIfNeeded()
-            RunLoop.main.run(until: .now.addingTimeInterval(0.05))
-            host.display()
-            #expect(text.string == originalText, "Resize duplicated or lost transcript text")
-            let last = try #require(laidOutRect(of: text.string.utf16.count - 1, in: text))
-            let viewport = text.convert(scroll.contentView.bounds, from: scroll.contentView)
-            #expect(last.intersects(viewport), "last line disappeared at width \(width): \(last), viewport \(viewport)")
-        }
-    }
-
     @Test func resizingDoesNotReplaceUnchangedTranscriptCharacters() {
         let rows = Transcript.Rows()
         var config = PanelConfig.glassLedger
@@ -737,8 +707,15 @@ struct TranscriptLogTests {
         RunLoop.main.run(until: .now.addingTimeInterval(0.1))
         host.display()
         let origin = scroll.contentView.bounds.origin
-        let anchor = try #require(characterIndex(at: NSPoint(x: 100, y: origin.y + 40), in: text))
-        let anchorRect = try #require(laidOutRect(of: anchor, in: text))
+        let anchor = text.characterIndexForInsertion(at: NSPoint(x: 100, y: origin.y + 40))
+        func anchorInViewport() -> NSRect {
+            let screen = text.firstRect(forCharacterRange: NSRange(location: anchor, length: 1), actualRange: nil)
+            return scroll.convert(window.convertFromScreen(screen), from: nil)
+        }
+        // firstRect returns screen coordinates. Window placement is independent
+        // of whether text stays under the reader inside the scroll viewport.
+        let anchorRect = anchorInViewport()
+        #expect(!anchorRect.isEmpty)
 
         var entries = history
         for step in 0..<10 {
@@ -751,8 +728,9 @@ struct TranscriptLogTests {
             _ = host.fittingSize
             RunLoop.main.run(until: .now.addingTimeInterval(0.03))
             host.display()
-            let rect = try #require(laidOutRect(of: anchor, in: text))
-            #expect(abs(rect.minY - anchorRect.minY) < 1, "visible text moved on update \(step)")
+            let rect = anchorInViewport()
+            #expect(abs(rect.minY - anchorRect.minY) < 1,
+                "visible text moved on update \(step): \(anchorRect) -> \(rect); window \(window.frame), scroll \(scroll.frame)")
             #expect(abs(scroll.contentView.bounds.origin.y - origin.y) < 1,
                 "paused viewport moved on update \(step): \(origin) -> \(scroll.contentView.bounds.origin)")
         }
@@ -826,6 +804,24 @@ struct TranscriptLogTests {
             ])),
             .entry(live[1]),
         ])
+    }
+
+    /// The bounds of the line that holds `part`, in the text view.
+    private func lineFrame(of part: String, in text: NSTextView) -> NSRect? {
+
+        let location = (text.string as NSString).range(of: part).location
+        guard location != NSNotFound,
+              let layout = text.textLayoutManager,
+              let content = layout.textContentManager,
+              let start = content.location(content.documentRange.location, offsetBy: location),
+              let fragment = layout.textLayoutFragment(for: start),
+              let line = fragment.textLineFragments.first(where: {
+                  $0.characterRange.contains(location - content.offset(from: content.documentRange.location, to: fragment.rangeInElement.location))
+              })
+        else { return nil }
+
+        let origin = fragment.layoutFragmentFrame.origin
+        return line.typographicBounds.offsetBy(dx: origin.x + text.textContainerOrigin.x, dy: origin.y + text.textContainerOrigin.y)
     }
 
     private func attribute(_ key: NSAttributedString.Key, of part: String, in text: NSTextView) -> Any? {

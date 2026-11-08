@@ -7,7 +7,6 @@ public actor RecordedCapture {
 
     private let capture: any Capture
     private let track: any Track
-    private let beforeInput: @Sendable () async -> Void
     private let news: AsyncStream<Failure>.Continuation
     private let pending = AsyncStream<AudioPiece>.makeStream()
     private var attempted = false
@@ -22,18 +21,8 @@ public actor RecordedCapture {
 
     public init(capture: any Capture, track: any Track) {
 
-        self.init(capture: capture, track: track, beforeInput: {})
-    }
-
-    init(
-        capture: any Capture,
-        track: any Track,
-        beforeInput: @escaping @Sendable () async -> Void
-    ) {
-
         self.capture = capture
         self.track = track
-        self.beforeInput = beforeInput
         let events = AsyncStream<Failure>.makeStream()
         failures = events.stream
         news = events.continuation
@@ -84,9 +73,7 @@ public actor RecordedCapture {
                 await self?.failedWrite(error)
             }
         }
-        let beforeInput = beforeInput
         receiving = Task { @concurrent [weak self] in
-            await beforeInput()
             do {
                 for try await piece in stream {
                     guard await self?.receive(piece) == true else { break }

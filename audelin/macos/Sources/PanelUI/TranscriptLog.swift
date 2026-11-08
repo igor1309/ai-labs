@@ -92,7 +92,13 @@ struct TranscriptLog: NSViewRepresentable {
               let layout = text.textLayoutManager
         else { return nil }
 
-        if text.frame.width != width { text.frame.size.width = width }
+        // A legacy scroller takes room from the clip. Text set wider than the
+        // clip is narrowed again by AppKit, and each change rewraps the whole
+        // log, which can leave its estimated height short of the real end.
+        let shown = scroll.scrollerStyle == .legacy && scroll.verticalScroller.map { !$0.isHidden } ?? false
+        let scroller = shown ? NSScroller.scrollerWidth(for: scroll.verticalScroller?.controlSize ?? .regular, scrollerStyle: .legacy) : 0
+        let textWidth = width - scroller
+        if text.frame.width != textWidth { text.frame.size.width = textWidth }
 
         // SwiftUI probes several heights, including zero. Do not move
         // TextKit's viewport to the beginning or end of a scrolling log

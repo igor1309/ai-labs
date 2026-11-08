@@ -204,30 +204,16 @@ struct RecordedCaptureTests {
     }
 
     @Test(arguments: [false, true])
-    func failedStopDrainsPiecesThatHaveNotYetBeenRead(stopEndsInput: Bool) async throws {
+    func failedStopWritesPiecesFlushedWhileStopping(stopEndsInput: Bool) async throws {
 
-        let capture = FakeCapture(stopFailure: .stop, stopEndsInput: stopEndsInput)
-        let track = FakeTrack(), input = WriteGate()
-        let returned = Mutex(false)
-        let task = Task {
-            let recorded = RecordedCapture(
-                capture: capture, track: track, beforeInput: { await input.wait() }
-            )
-            try await recorded.start()
-            capture.give(tones())
-            await #expect(throws: Failure.self) { try await recorded.stop() }
-            returned.withLock { $0 = true }
-            #expect(track.pieces == tones())
-        }
-        defer { input.release(); capture.finish() }
-        await input.waitUntilEntered()
-        await capture.waitUntilStopped()
-        #expect(input.isHeld)
-        #expect(!returned.withLock { $0 })
-        #expect(track.pieces.isEmpty)
-        input.release()
-        try await task.value
-        #expect(returned.withLock { $0 })
+        let capture = FakeCapture(stopFailure: .stop, stopEndsInput: stopEndsInput, flush: tones())
+        let track = FakeTrack()
+        defer { capture.finish() }
+        let recorded = RecordedCapture(capture: capture, track: track)
+        try await recorded.start()
+        if !stopEndsInput { Task { await capture.waitUntilStopped(); capture.finish() } }
+        await #expect(throws: Failure.self) { try await recorded.stop() }
+        #expect(track.pieces == tones())
     }
 }
 

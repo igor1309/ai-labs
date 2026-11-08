@@ -23,25 +23,15 @@ typealias RecordingFailure = RecordedCapture.Failure
 actor RecordedInput: RecordedCapture.Capture {
 
     private let capture: any LiveAudio.Capture
-    private let beforeInput: @Sendable () async -> Void
     private var translating: Task<Void, Never>?
 
-    init(
-        capture: any LiveAudio.Capture,
-        beforeInput: @escaping @Sendable () async -> Void = {}
-    ) {
-
-        self.capture = capture
-        self.beforeInput = beforeInput
-    }
+    init(capture: any LiveAudio.Capture) { self.capture = capture }
 
     func start() async throws -> AsyncThrowingStream<RecordedCapture.AudioPiece, any Error> {
 
         let stream = try await capture.start()
         let output = AsyncThrowingStream<RecordedCapture.AudioPiece, any Error>.makeStream()
-        let beforeInput = beforeInput
         let translating = Task { @concurrent in
-            await beforeInput()
             do {
                 for try await piece in stream {
                     output.continuation.yield(.init(samples: piece.samples, sampleRate: piece.sampleRate))
