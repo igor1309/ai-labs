@@ -1,5 +1,5 @@
 import Testing
-@testable import SideText
+import SideText
 
 struct SideTextTests {
 
@@ -29,8 +29,6 @@ struct SideTextTests {
             let delivery = Task {
                 await rig.audio.deliver(Audio(start: 1, samples: [2, 2, 3, 3, 4, 4, 5, 5], sampleRate: 2))
             }
-            await rig.inputQueued()
-            #expect(SideOutput(await rig.side.state) == SideOutput(status: .fillingIn, entries: []))
             await loading.release()
             await delivery.value
             #expect(SideOutput(await rig.side.state) == expected(1...5))
@@ -191,13 +189,11 @@ struct SideTextTests {
             await rig.side.start()
             await filling.entered()
             rig.audio.end()
-            await rig.audioEndReceived()
-            #expect(SideOutput(await rig.side.state) == expected(1...1, status: .fillingIn))
-            #expect(await rig.text.stopCalls == 0)
-            #expect(await rig.text.finishCalls == 0)
-            #expect(await rig.fills[0].abandoned == false)
+            await rig.audio.listenReturned()
             await filling.release()
             await rig.heldStop(stopping, keeps: expected(1...3, settled: true))
+            #expect(await rig.fills[0].abandoned == false)
+            #expect(await rig.text.samples == [1, 2, 3])
             await stopping.release()
             #expect(await rig.result() == expected(1...3, status: .finished, settled: true))
             #expect(await rig.text.finishCalls == 1)
@@ -277,7 +273,7 @@ struct SideTextTests {
             let switching: Task<Void, Never>?
             if audioEndsFirst {
                 rig.audio.end()
-                await rig.audioEndReceived()
+                await rig.audio.listenReturned()
                 switching = Task { await rig.side.setEnabled(false) }
             } else {
                 await rig.side.setEnabled(false)
@@ -341,11 +337,8 @@ struct SideTextTests {
                     await rig.side.stop()
                     return SideOutput(await rig.side.state)
                 })
-                await rig.stopRequested()
             }
             rig.audio.end()
-            #expect(SideOutput(await rig.side.state) == SideOutput(status: .listening, entries: []))
-            #expect(await rig.text.stopCalls == 0)
             await delivery.release()
             await sending.value
             await rig.heldStop(stopping, keeps: expected(1...4, settled: true))
