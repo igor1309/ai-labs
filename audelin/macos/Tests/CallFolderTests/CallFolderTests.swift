@@ -42,7 +42,7 @@ struct CallFolderTests {
         try await withCallsFolder { calls in
             let occupied = Mutex(["2026.10.24-1405 Zoom", "2026.10.24-1405-2", "other"])
             let adapter = CallFolder(callsURL: calls, now: { fixedStart }, timeZone: tokyo,
-                                     occupiedNames: { occupied.withLock { $0 } })
+                                     occupiedNames: { occupied.withLock { $0 } }, disk: .system)
             let first = try adapter.make(title: "Meet")
             #expect(first.url.lastPathComponent == "2026.10.24-1405-3 Meet")
             occupied.withLock { $0.append("2026.10.24-1405-4 Finder") }
@@ -55,7 +55,7 @@ struct CallFolderTests {
     @Test func failureReadingRetainedNamesFailsWithoutAllocatingAnIdentity() async throws {
         try await withCallsFolder { calls in
             let adapter = CallFolder(callsURL: calls, now: { fixedStart }, timeZone: tokyo,
-                                     occupiedNames: { throw POSIXError(.EACCES) })
+                                     occupiedNames: { throw POSIXError(.EACCES) }, disk: .system)
             await #expect(throws: POSIXError(.EACCES)) { try adapter.make() }
             let remaining = try await names(calls)
             #expect(remaining.isEmpty)
@@ -76,7 +76,7 @@ struct CallFolderTests {
     @Test func titleFollowsTheIdAndAnIdTakenByAnyTitleIsNumbered() async throws {
 
         try await withCallsFolder { calls in
-            let adapter = CallFolder(callsURL: calls, now: { fixedStart.addingTimeInterval(249_540) }, timeZone: tokyo)
+            let adapter = CallFolder(callsURL: calls, now: { fixedStart.addingTimeInterval(249_540) }, timeZone: tokyo, occupiedNames: { [] }, disk: .system)
             let made = try { try [
                 adapter.make(title: "Zoom"), adapter.make(), adapter.make(title: "Zoom"),
                 adapter.make(title: "a/b:c"), adapter.make(title: "//::"), adapter.make(title: ""),
@@ -93,7 +93,7 @@ struct CallFolderTests {
 
         try await withCallsFolder { calls in
             let clock = Mutex(fixedStart)
-            let adapter = CallFolder(callsURL: calls, now: { clock.withLock { $0 } }, timeZone: tokyo)
+            let adapter = CallFolder(callsURL: calls, now: { clock.withLock { $0 } }, timeZone: tokyo, occupiedNames: { [] }, disk: .system)
             let first = try adapter.make()
             clock.withLock { $0 = fixedStart.addingTimeInterval(60) }
             let second = try adapter.make()
@@ -152,9 +152,9 @@ struct CallFolderTests {
         try await withCallsFolder { calls in
             try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: calls.path)
                         // Inject the denial because privileged test runners can write read-only folders.
-            let adapter = CallFolder(callsURL: calls, now: { fixedStart }, timeZone: tokyo, occupiedNames: { [] }, createDirectory: { _ in
+            let adapter = CallFolder(callsURL: calls, now: { fixedStart }, timeZone: tokyo, occupiedNames: { [] }, disk: CallFolderDisk(createDirectory: { _ in
                 throw POSIXError(code)
-            }, names: { _ in [] })
+            }, names: { _ in [] }))
             await #expect(throws: POSIXError(code)) { try adapter.make() }
             #expect(try await names(calls).isEmpty)
             try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: calls.path)
@@ -219,9 +219,9 @@ struct CallFolderTests {
     @Test func failedListingFailsWithoutCreatingAnything() async throws {
 
         try await withCallsFolder { calls in
-            let adapter = CallFolder(callsURL: calls, now: { fixedStart }, timeZone: tokyo, occupiedNames: { [] }, createDirectory: { _ in
+            let adapter = CallFolder(callsURL: calls, now: { fixedStart }, timeZone: tokyo, occupiedNames: { [] }, disk: CallFolderDisk(createDirectory: { _ in
                 Issue.record("made a folder after listing failed")
-            }, names: { _ in throw POSIXError(.EACCES) })
+            }, names: { _ in throw POSIXError(.EACCES) }))
             await #expect(throws: POSIXError(.EACCES)) { try adapter.make() }
             let left = try await names(calls)
             #expect(left.isEmpty)
@@ -254,7 +254,7 @@ private let tokyo = TimeZone(identifier: "Asia/Tokyo")!
 
 private func maker(_ calls: URL) -> CallFolder {
 
-    CallFolder(callsURL: calls, now: { fixedStart }, timeZone: tokyo)
+    CallFolder(callsURL: calls, now: { fixedStart }, timeZone: tokyo, occupiedNames: { [] }, disk: .system)
 }
 
 private func names(_ folder: URL) async throws -> [String] {

@@ -24,51 +24,23 @@ public struct CallFolder: Sendable {
     private let callsURL: URL
     private let now: @Sendable () -> Date
     private let timeZone: TimeZone
-    private let createDirectory: @Sendable (URL) throws -> Void
     private let occupiedNames: @Sendable () throws -> [String]
-    private let names: @Sendable (URL) throws -> [String]
+    private let disk: CallFolderDisk
 
-    public init(callsURL: URL, now: @escaping @Sendable () -> Date, timeZone: TimeZone) {
-
-        self.init(callsURL: callsURL, now: now, timeZone: timeZone, occupiedNames: { [] })
-    }
-
-    /// Also reserves names in retained locations when calls span folders during a move.
+    /// Also reserves `occupiedNames`, names in retained locations when calls
+    /// span folders during a move.
     public init(callsURL: URL, now: @escaping @Sendable () -> Date, timeZone: TimeZone,
-                occupiedNames: @escaping @Sendable () throws -> [String]) {
-        self.init(callsURL: callsURL, now: now, timeZone: timeZone, occupiedNames: occupiedNames, createDirectory: { url in
-            guard mkdir(url.path, 0o700) == 0 else {
-                throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
-            }
-        }, names: { url in
-            guard let directory = opendir(url.path) else {
-                throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
-            }
-            defer { closedir(directory) }
-            var names: [String] = []
-            while let entry = readdir(directory) {
-                names.append(withUnsafeBytes(of: entry.pointee.d_name) { String(decoding: $0.prefix(Int(entry.pointee.d_namlen)), as: UTF8.self) })
-            }
-            return names
-        })
-    }
-
-    init(
-        callsURL: URL,
-        now: @escaping @Sendable () -> Date,
-        timeZone: TimeZone,
-        occupiedNames: @escaping @Sendable () throws -> [String],
-        createDirectory: @escaping @Sendable (URL) throws -> Void,
-        names: @escaping @Sendable (URL) throws -> [String]
-    ) {
+                occupiedNames: @escaping @Sendable () throws -> [String], disk: CallFolderDisk) {
 
         self.callsURL = callsURL
         self.now = now
         self.timeZone = timeZone
-        self.createDirectory = createDirectory
-        self.names = names
         self.occupiedNames = occupiedNames
+        self.disk = disk
     }
+
+    private func names(_ url: URL) throws -> [String] { try disk.names(url) }
+    private func createDirectory(_ url: URL) throws { try disk.createDirectory(url) }
 
     /// Names the folder `<id> <title>`, or the bare id without a title, with an id no entry there has.
     public func make(title: String? = nil) throws -> Made {
@@ -95,4 +67,31 @@ public struct CallFolder: Sendable {
             }
         }
     }
+}
+
+/// The file system as `CallFolder` lists names and makes a folder.
+public struct CallFolderDisk: Sendable {
+
+    var createDirectory: @Sendable (URL) throws -> Void
+    var names: @Sendable (URL) throws -> [String]
+
+    /// The local file system; making a folder fails when its name is taken.
+    public static let system = CallFolderDisk(
+        createDirectory: { url in
+            guard mkdir(url.path, 0o700) == 0 else {
+                throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
+            }
+        },
+        names: { url in
+            guard let directory = opendir(url.path) else {
+                throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
+            }
+            defer { closedir(directory) }
+            var names: [String] = []
+            while let entry = readdir(directory) {
+                names.append(withUnsafeBytes(of: entry.pointee.d_name) { String(decoding: $0.prefix(Int(entry.pointee.d_namlen)), as: UTF8.self) })
+            }
+            return names
+        }
+    )
 }
