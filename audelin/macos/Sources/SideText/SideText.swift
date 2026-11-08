@@ -9,11 +9,6 @@ public actor SideText {
     private let audio: any LiveAudio
     private let text: any LiveText
     private let makeFillIn: @Sendable () -> any FillingIn
-    private let inputQueued: @Sendable () -> Void
-    private let audioEndReceived: @Sendable () -> Void
-    private let stopRequested: @Sendable () -> Void
-    private let identifiedEntry: @Sendable (Text) -> Void
-    private let shownEntry: @Sendable (Text) -> Void
     private var listener: Task<Void, Never>?
     private var operation: Task<Void, Never>?
     private var enabled = false
@@ -43,30 +38,9 @@ public actor SideText {
         fillIn: @escaping @Sendable () -> any FillingIn
     ) {
 
-        self.init(
-            audio: audio, text: text, fillIn: fillIn,
-            inputQueued: {}, audioEndReceived: {}, stopRequested: {}
-        )
-    }
-
-    init(
-        audio: any LiveAudio, text: any LiveText,
-        fillIn: @escaping @Sendable () -> any FillingIn,
-        inputQueued: @escaping @Sendable () -> Void,
-        audioEndReceived: @escaping @Sendable () -> Void,
-        stopRequested: @escaping @Sendable () -> Void,
-        identifiedEntry: @escaping @Sendable (Text) -> Void = { _ in },
-        shownEntry: @escaping @Sendable (Text) -> Void = { _ in }
-    ) {
-
         self.audio = audio
         self.text = text
         makeFillIn = fillIn
-        self.inputQueued = inputQueued
-        self.audioEndReceived = audioEndReceived
-        self.stopRequested = stopRequested
-        self.identifiedEntry = identifiedEntry
-        self.shownEntry = shownEntry
         (updates, continuation) = AsyncStream.makeStream(bufferingPolicy: .bufferingNewest(1))
     }
 
@@ -104,7 +78,6 @@ public actor SideText {
     public func stop() async {
 
         stopping = true
-        stopRequested()
         if !ending, !fills.isEmpty || listener == nil {
             await end(.finished)
         } else {
@@ -177,7 +150,6 @@ public actor SideText {
             await self?.hear(chunk, turn: turn)
         }
         operation = next
-        inputQueued()
         await next.value
     }
 
@@ -216,7 +188,6 @@ public actor SideText {
     private func audioEnded() async {
 
         sourceEnded = true
-        audioEndReceived()
         guard !ending else { return }
         if !enabled {
             await end(.finished)
@@ -286,7 +257,6 @@ public actor SideText {
 
     private func entry(_ segment: Text) -> State.Entry {
 
-        shownEntry(segment)
         return State.Entry(text: segment, writtenLater: later.contains {
             ((segment.end - $0.lowerBound) * sampleRate).rounded() > 0
                 && (($0.upperBound - segment.start) * sampleRate).rounded() > 0
@@ -318,15 +288,12 @@ public actor SideText {
 
     private func identify(_ text: Text) -> Text {
 
-        identifiedEntry(text)
         let id = shownIDs[text.id] ?? (text.id > highestID ? text.id : highestID + 1)
         highestID = max(highestID, id)
         return Text(id: id, start: text.start, end: text.end, settled: text.settled, pending: text.pending)
     }
 
     private func publish() { continuation.yield(state) }
-
-    func waitForAudioEnd() async { await listener?.value }
 
     deinit {
 

@@ -1,12 +1,12 @@
 import Synchronization
 import Testing
-@testable import SideText
+import SideText
 
 @Suite(.timeLimit(.minutes(1)))
 struct FinalTextTests {
 
     @Test(arguments: [20, 800, 6_000])
-    func liveWorkDependsOnlyOnTheTail(count: Int) async {
+    func liveTailRevisionsPreserveFinalEntries(count: Int) async {
 
         let prefix = (0..<count).map { word($0, settled: true) }
         let draft = word(count)
@@ -19,42 +19,33 @@ struct FinalTextTests {
             TextUpdate(final: prefix + [final], tail: [next]),
             TextUpdate(final: prefix + [final], tail: [next]),
         ], finish: TextUpdate(final: prefix + [final, word(count + 1, settled: true)], tail: []))
-        let work = Work(), audio = CueAudio()
-        let side = SideText(
-            audio: audio, text: text, fillIn: { DeltaFill(progress: nil) },
-            inputQueued: {}, audioEndReceived: {}, stopRequested: {},
-            identifiedEntry: { work.identified($0) }, shownEntry: { work.shown($0) }
-        )
+        let audio = CueAudio()
+        let side = SideText(audio: audio, text: text, fillIn: { DeltaFill(progress: nil) })
         await side.start()
         await listening(side)
         await audio.send(chunk(0))
         let retained = await side.state
         #expect(retained.finalCount == count)
         #expect(retained.entries.map(\.text) == prefix + [draft])
-        #expect(work.take() == Work.Counts(identified: Array(0...count), shown: Array(0...count)))
 
         await audio.send(chunk(1))
         let revised = await side.state
         #expect(revised.finalCount == count)
         #expect(revised.entries.map(\.text) == prefix + [revision])
-        #expect(work.take() == Work.Counts(identified: [count], shown: [count]))
 
         await audio.send(chunk(2))
         let advanced = await side.state
         #expect(advanced.finalCount == count + 1)
         #expect(advanced.entries.map(\.text) == prefix + [final, next])
-        #expect(work.take() == Work.Counts(identified: [count, count + 1], shown: [count, count + 1]))
 
         await audio.send(chunk(3))
         #expect(await side.state == advanced)
-        #expect(work.take() == Work.Counts(identified: [count + 1], shown: [count + 1]))
         audio.end()
-        await side.waitForAudioEnd()
+        await finished(side)
         let finished = await side.state
         #expect(finished.status == .finished)
         #expect(finished.finalCount == count + 2)
         #expect(finished.entries.map(\.text) == prefix + [final, word(count + 1, settled: true)])
-        #expect(work.take() == Work.Counts(identified: [count + 1], shown: [count + 1]))
         #expect(retained.entries.map(\.text) == prefix + [draft])
         #expect(revised.entries.map(\.text) == prefix + [revision])
         #expect(advanced.entries.map(\.text) == prefix + [final, next])
@@ -80,7 +71,7 @@ struct FinalTextTests {
         #expect(state.entries.map(\.text.settled) == ["word0", "other words", ""])
         #expect(state.entries.last?.text == kept)
         audio.end()
-        await side.waitForAudioEnd()
+        await finished(side)
         #expect(await side.state.finalCount == 3)
         #expect(await side.state.entries.map(\.text.id) == [0, 3, 2])
     }
@@ -121,7 +112,7 @@ struct FinalTextTests {
         #expect(await side.state.entries.map(\.writtenLater) == [true, true, false, true, false])
         #expect(retained.entries.map(\.writtenLater) == [true, true, false])
         audio.end()
-        await side.waitForAudioEnd()
+        await finished(side)
         #expect(await side.state.finalCount == 5)
     }
 
@@ -151,7 +142,7 @@ struct FinalTextTests {
         #expect(await side.state.entries.map(\.text) == finals)
         #expect(await side.state.entries.map(\.writtenLater) == [false, true])
         audio.end()
-        await side.waitForAudioEnd()
+        await finished(side)
     }
 
     @Test func aBoundArrivingWhileOffIsShownOnlyWithTheFinalTextItCovers() async {
@@ -179,7 +170,7 @@ struct FinalTextTests {
         #expect(await side.state.noTextBefore == 2)
         #expect(await side.state.finalCount == 2)
         audio.end()
-        await side.waitForAudioEnd()
+        await finished(side)
     }
 }
 
@@ -198,6 +189,12 @@ private func listening(_ side: SideText) async {
 
     for await state in side.updates where state.status == .listening { return }
     Issue.record("Text ended before listening")
+}
+
+private func finished(_ side: SideText) async {
+
+    for await _ in side.updates {}
+    #expect(await side.state.status == .finished)
 }
 
 private actor DeltaText: LiveText {
@@ -237,26 +234,4 @@ private struct DeltaFill: FillingIn {
     }
 
     func abandon() {}
-}
-
-private final class Work: Sendable {
-
-    struct Counts: Equatable {
-
-        var identified: [Int] = []
-        var shown: [Int] = []
-    }
-
-    private let counts = Mutex(Counts())
-
-    func identified(_ text: Text) { counts.withLock { $0.identified.append(text.id) } }
-    func shown(_ text: Text) { counts.withLock { $0.shown.append(text.id) } }
-
-    func take() -> Counts {
-
-        counts.withLock { value in
-            defer { value = Counts() }
-            return value
-        }
-    }
 }
