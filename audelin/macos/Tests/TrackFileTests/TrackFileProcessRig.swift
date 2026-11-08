@@ -40,11 +40,14 @@ final class TrackCommand: @unchecked Sendable {
                 bytes.continuation.yield(data)
             }
         }
+        let began = Date().timeIntervalSince1970
+        let label = arguments.first ?? ""
         process.terminationHandler = { process in
+            print("LAB1078P \(label) ran \(Date().timeIntervalSince1970 - began)")
             ended.continuation.yield(process.terminationStatus)
             ended.continuation.finish()
         }
-        do { try process.run() }
+        do { try process.run(); print("LAB1078P \(label) launched \(Date().timeIntervalSince1970 - began)") }
         catch {
             pipe.fileHandleForReading.readabilityHandler = nil
             bytes.continuation.finish()
