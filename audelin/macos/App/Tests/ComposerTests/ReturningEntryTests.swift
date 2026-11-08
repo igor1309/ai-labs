@@ -56,7 +56,9 @@ struct ReturningEntryTests {
 
         let shown = await reading.value
         let old = shown.filter { $0.pending.hasPrefix("old") }, new = shown.filter { $0.pending.hasPrefix("new") }
-        #expect(old.map(\.pending) == ["old", "old more"])
+        // A side hands on its latest state, so "old" may be replaced unread;
+        // "old more" is the state the side is held after, so it always arrives.
+        #expect([["old more"], ["old", "old more"]].contains(old.map(\.pending)))
         #expect(Set(old.map(\.time)) == ["00:02"])
         #expect(Set(old.map(\.id)).count == 1, "the old entry changed identity as it grew")
         #expect(Set(new.map(\.id)).count == 1, "the new entry changed identity as it grew")
