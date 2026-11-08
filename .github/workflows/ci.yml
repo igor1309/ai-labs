@@ -243,6 +243,8 @@ jobs:
               - "agonara/showcase/*.mjs"
               - "agonara/session/**/*.go"
               - "agonara/session/go.mod"
+              - "agonara/session/internal/web/static/**"
+              - "agonara/session/internal/web/templates/**"
               - "agonara/docs/api/**"
               - "agonara/docs/intent/**"
               - "agonara/skills/**"

@@ -5,8 +5,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-
-	"github.com/igor1309/ai-labs/agonara/session/internal/flow"
 )
 
 // Row is one topic or module of a program as the page lists it: the number
@@ -57,7 +55,7 @@ func split(title string) (label, name string, module bool, n int) {
 	return m[1] + " " + m[2], name, m[1] == "Модуль", n
 }
 
-func newOutline(program *flow.Program) Outline {
+func newOutline(program *Program) Outline {
 	var out Outline
 	if program == nil {
 		return out
@@ -65,8 +63,8 @@ func newOutline(program *flow.Program) Outline {
 	rows := make([]Row, len(program.Courses))
 	for i, c := range program.Courses {
 		label, name, module, n := split(c.Topic.Title)
-		rows[i] = Row{ID: c.Topic.ID, Full: c.Topic.Title, Label: label, Name: name, Module: module, Concepts: len(c.Concepts), n: n, at: i}
-		out.ConceptCount += len(c.Concepts)
+		rows[i] = Row{ID: c.Topic.ID, Full: c.Topic.Title, Label: label, Name: name, Module: module, Concepts: c.ConceptCount, n: n, at: i}
+		out.ConceptCount += c.ConceptCount
 	}
 	// Topics claim their materials before modules do.
 	claimed := map[string]bool{}

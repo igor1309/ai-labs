@@ -7,6 +7,8 @@ import (
 	"testing"
 )
 
+// Contract test: env files are read from disk and applied to the process environment.
+// Serial: modifies the process environment.
 func TestLoadEnvReadsPairsSkipsCommentsAndKeepsSetValues(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "probe.env")
 	content := "# comment\n\nSESSION_A=one\nexport SESSION_B=\"two words\"\nSESSION_C='x=y'\nSESSION_D=from-file\n"
@@ -28,6 +30,8 @@ func TestLoadEnvReadsPairsSkipsCommentsAndKeepsSetValues(t *testing.T) {
 	}
 }
 
+// Contract test: env files are read from disk and applied to the process environment.
+// Serial: modifies the process environment.
 func TestLoadEnvNamesABadLineWithoutItsContent(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "probe.env")
 	if err := os.WriteFile(path, []byte("A=1\nsecret-without-equals\n"), 0o600); err != nil {

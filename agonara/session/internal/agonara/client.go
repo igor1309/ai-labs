@@ -67,13 +67,13 @@ type Client struct {
 	cookie                        string
 }
 
-// New returns a client; httpClient may be nil for a default one.
+// New returns a client with an explicitly supplied HTTP transport.
 func New(baseURL, login, password string, httpClient *http.Client) (*Client, error) {
 	if baseURL == "" || login == "" || password == "" {
 		return nil, errors.New("agonara base URL, login and password are required")
 	}
 	if httpClient == nil {
-		httpClient = &http.Client{}
+		return nil, errors.New("HTTP client is required")
 	}
 	c := *httpClient
 	c.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }

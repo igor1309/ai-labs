@@ -4,8 +4,6 @@ import (
 	"reflect"
 	"strings"
 	"testing"
-
-	"github.com/igor1309/ai-labs/agonara/session/internal/flow"
 )
 
 func n(value int) *int { return &value }
@@ -38,24 +36,26 @@ func labels(k Keyboard) [][]string {
 }
 
 func TestPlainScreenRendersTitleBodyAndLists(t *testing.T) {
-	text, _ := Render(flow.View{Title: "Тема 3", Body: "About <ethics> & more.", Lists: []flow.List{
-		{Heading: "Materials", Entries: []flow.Entry{{Index: 1, Label: "Лекция"}}},
-		{Heading: "Concepts", Entries: []flow.Entry{{Index: 0, N: n(1), Label: "Власть"}, {Index: 2, N: n(2), Label: "Секреты"}}},
+	t.Parallel()
+	text, _ := Render(View{Title: "Тема 3", Body: "About <ethics> & more.", Lists: []List{
+		{Heading: "Materials", Entries: []Entry{{ID: "open_1", Label: "Лекция"}}},
+		{Heading: "Concepts", Entries: []Entry{{ID: "open_0", N: n(1), Label: "Власть"}, {ID: "open_2", N: n(2), Label: "Секреты"}}},
 	}}, nil, 1)
 	equal(t, text, "<b>Тема 3</b>\n\nAbout &lt;ethics&gt; &amp; more.\n\n<b>Materials</b>\n📖 Read: Лекция\n\n<b>Concepts</b>\n1. Власть\n2. Секреты")
-	text, _ = Render(flow.View{Title: "Programs", Empty: "No programs."}, nil, 1)
+	text, _ = Render(View{Title: "Programs", Empty: "No programs."}, nil, 1)
 	equal(t, text, "<b>Programs</b>\n\nNo programs.")
 }
 
 func TestKeyboardRows(t *testing.T) {
-	var actions []flow.Action
+	t.Parallel()
+	var actions []Action
 	for i := 0; i < 7; i++ {
-		actions = append(actions, flow.Action{ID: "open_" + string(rune('0'+i)), Kind: "item", Label: string(rune('1' + i))})
+		actions = append(actions, Action{ID: "open_" + string(rune('0'+i)), Kind: "item", Label: string(rune('1' + i))})
 	}
 	actions = append(actions,
-		flow.Action{ID: "open_7", Kind: "material", Label: "Тема 3. Этические проблемы в деятельности практического психолога"},
-		flow.Action{ID: "prev", Kind: "page", Label: "◀ Prev"}, flow.Action{ID: "next", Kind: "page", Label: "Next ▶"},
-		flow.Action{ID: "back", Kind: "nav", Label: "◀ Back"}, flow.Action{ID: "programs", Kind: "nav", Label: "Programs"})
+		Action{ID: "open_7", Kind: "material", Label: "Тема 3. Этические проблемы в деятельности практического психолога"},
+		Action{ID: "prev", Kind: "page", Label: "◀ Prev"}, Action{ID: "next", Kind: "page", Label: "Next ▶"},
+		Action{ID: "back", Kind: "nav", Label: "◀ Back"}, Action{ID: "programs", Kind: "nav", Label: "Programs"})
 	k := MakeKeyboard(actions, 4)
 	equal(t, labels(k), [][]string{
 		{"📖 Read: Тема 3. Этические проблемы…"}, {"1", "2", "3", "4", "5"}, {"6", "7"}, {"◀ Prev", "Next ▶"}, {"◀ Back", "Programs"},
@@ -65,10 +65,11 @@ func TestKeyboardRows(t *testing.T) {
 }
 
 func TestRichScreenMakesNamesTappable(t *testing.T) {
-	html := RenderRich(flow.View{Title: "Тема 3", Body: "About <ethics>\n& more.", Lists: []flow.List{
-		{Heading: "Materials", Entries: []flow.Entry{{Index: 1, Label: "Лекция"}}},
-		{Heading: "Concepts", Entries: []flow.Entry{{Index: 0, N: n(1), Label: "Власть"}, {Index: 2, N: n(2), Label: "Секреты"}}},
-	}}, []flow.Action{
+	t.Parallel()
+	html := RenderRich(View{Title: "Тема 3", Body: "About <ethics>\n& more.", Lists: []List{
+		{Heading: "Materials", Entries: []Entry{{ID: "open_1", Label: "Лекция"}}},
+		{Heading: "Concepts", Entries: []Entry{{ID: "open_0", N: n(1), Label: "Власть"}, {ID: "open_2", N: n(2), Label: "Секреты"}}},
+	}}, []Action{
 		{ID: "open_0", Kind: "item", Label: "1"}, {ID: "open_1", Kind: "material", Label: "Лекция"}, {ID: "open_2", Kind: "item", Label: "2"},
 		{ID: "back", Kind: "nav", Label: "◀ Back"}, {ID: "programs", Kind: "nav", Label: "Programs"},
 	}, 5)
@@ -76,43 +77,46 @@ func TestRichScreenMakesNamesTappable(t *testing.T) {
 		"<h3>Materials</h3><ul><li>📖 "+link("5:open_1", "Лекция")+"</li></ul>"+
 		"<h3>Concepts</h3><ol><li>"+link("5:open_0", "Власть")+"</li><li>"+link("5:open_2", "Секреты")+"</li></ol>"+
 		"<tg-button-row>"+button("5:back", "◀ Back")+button("5:programs", "Programs")+"</tg-button-row>")
-	equal(t, RenderRich(flow.View{Title: "Programs", Lists: []flow.List{{Entries: []flow.Entry{{Index: 0, N: n(1), Label: "A"}}}}}, nil, 1),
+	equal(t, RenderRich(View{Title: "Programs", Lists: []List{{Entries: []Entry{{ID: "open_0", N: n(1), Label: "A"}}}}}, nil, 1),
 		"<h2>Programs</h2><ol><li>A</li></ol>")
 }
 
 func TestLecturePageStartsWithWhereItIs(t *testing.T) {
-	actions := []flow.Action{{ID: "next", Kind: "page", Label: "Next ▶"}, {ID: "contents", Kind: "page", Label: "☰ Contents"}, {ID: "back", Kind: "nav", Label: "◀ Back"}}
-	view := flow.View{Title: "Notes", Markdown: "Text.", Page: &flow.PageInfo{Index: 3, Count: 9},
-		Position: &flow.Position{Section: n(2), Label: "B", Index: 1, Count: 4}}
+	t.Parallel()
+	actions := []Action{{ID: "next", Kind: "page", Label: "Next ▶"}, {ID: "contents", Kind: "page", Label: "☰ Contents"}, {ID: "back", Kind: "nav", Label: "◀ Back"}}
+	view := View{Title: "Notes", Markdown: "Text.", Reading: &ReadingPosition{Page: 3, Pages: 9, Section: n(2), Heading: "B", Offset: 1, Length: 4}}
 	equal(t, RenderRich(view, actions, 1), "<p><i>📖 §2 B · 2/4</i></p><p>Text.</p><tg-button-row>"+button("1:next", "Next ▶")+
 		button("1:contents", "☰ Contents")+"</tg-button-row><tg-button-row>"+button("1:back", "◀ Back")+"</tg-button-row>")
 	text, _ := Render(view, actions, 1)
 	if !strings.HasPrefix(text, "📖 <b>Notes</b>\n<i>§2 B · 2/4</i>") {
 		t.Fatal(text)
 	}
-	intro := flow.View{Title: "Notes", Markdown: "Text.", Page: &flow.PageInfo{Index: 0, Count: 9}, Position: &flow.Position{Index: 0, Count: 2}}
+	intro := View{Title: "Notes", Markdown: "Text.", Reading: &ReadingPosition{Page: 0, Pages: 9, Offset: 0, Length: 2}}
 	if !strings.HasPrefix(RenderRich(intro, nil, 1), "<p><i>📖 Notes · Intro · 1/2</i></p>") {
 		t.Fatal(RenderRich(intro, nil, 1))
 	}
-	single := flow.View{Title: "Notes", Markdown: "Text.", Page: &flow.PageInfo{Count: 1}, Position: &flow.Position{Count: 1}}
+	single := View{Title: "Notes", Markdown: "Text.", Reading: &ReadingPosition{Pages: 1, Length: 1}}
 	equal(t, RenderRich(single, nil, 1), "<h2>📖 Notes</h2><p>Text.</p>")
 }
 
 func TestPositionLabel(t *testing.T) {
-	equal(t, PositionLabel(flow.Position{Count: 1}), "Intro")
-	equal(t, PositionLabel(flow.Position{Section: n(3), Label: "C", Count: 1}), "§3 C")
-	equal(t, PositionLabel(flow.Position{Section: n(3), Label: "C", Index: 4, Count: 6}), "§3 C · 5/6")
+	t.Parallel()
+	equal(t, PositionLabel(ReadingPosition{Length: 1}), "Intro")
+	equal(t, PositionLabel(ReadingPosition{Section: n(3), Heading: "C", Length: 1}), "§3 C")
+	equal(t, PositionLabel(ReadingPosition{Section: n(3), Heading: "C", Offset: 4, Length: 6}), "§3 C · 5/6")
 }
 
 func TestContentsPage(t *testing.T) {
-	html := RenderRich(flow.View{Title: "Notes", Contents: []flow.ContentsEntry{
-		{Page: 0, Label: "Intro"}, {Page: 2, N: n(1), Label: "A", Current: true},
-	}}, []flow.Action{{ID: "sec_0", Kind: "section"}, {ID: "sec_2", Kind: "section"}, {ID: "read", Kind: "page", Label: "📖 Continue reading"}}, 4)
+	t.Parallel()
+	html := RenderRich(View{Title: "Notes", Contents: []ContentsEntry{
+		{ActionID: "sec_0", Page: 0, Label: "Intro"}, {ActionID: "sec_2", Page: 2, N: n(1), Label: "A", Current: true},
+	}}, []Action{{ID: "sec_0", Kind: "section"}, {ID: "sec_2", Kind: "section"}, {ID: "read", Kind: "page", Label: "📖 Continue reading"}}, 4)
 	equal(t, html, "<h2>📖 Notes</h2><h3>Contents</h3><ul><li>"+link("4:sec_0", "Intro")+"</li><li>▸ §1 "+link("4:sec_2", "A")+
 		"</li></ul><tg-button-row>"+button("4:read", "📖 Continue reading")+"</tg-button-row>")
 }
 
 func TestMarkdownToHTML(t *testing.T) {
+	t.Parallel()
 	equal(t, MarkdownToHTML(strings.Join([]string{
 		"## Цель **важно**", "Text with **bold**, __bold__, *italic* and `code` & <tag>.",
 		"- one", "  * two", "---", "[Link](https://example.com) stays as text.", "2 * 3 * 4 is not italic.",
@@ -124,6 +128,7 @@ func TestMarkdownToHTML(t *testing.T) {
 }
 
 func TestMarkdownToRich(t *testing.T) {
+	t.Parallel()
 	equal(t, MarkdownToRich(strings.Join([]string{
 		"# Lecture", "Goal: **know** it.", "1. one", "2. two", "## Part A", "Line one\nline two", "- x\n- y", "---", "Text & <tag>.",
 	}, "\n\n")), "<h3>Lecture</h3><p>Goal: <b>know</b> it.</p><ol><li>one</li><li>two</li></ol>"+
@@ -132,6 +137,7 @@ func TestMarkdownToRich(t *testing.T) {
 }
 
 func TestParseCallback(t *testing.T) {
+	t.Parallel()
 	step, action, ok := ParseCallback("12:open_3")
 	equal(t, []any{step, action, ok}, []any{12, "open_3", true})
 	for _, data := range []string{"12:open-3", ""} {
@@ -142,6 +148,7 @@ func TestParseCallback(t *testing.T) {
 }
 
 func TestSplitTextLosesNothing(t *testing.T) {
+	t.Parallel()
 	text := strings.Repeat("x", TextLimit*2+5)
 	chunks := SplitText(text, TextLimit)
 	equal(t, strings.Join(chunks, ""), text)
@@ -150,4 +157,19 @@ func TestSplitTextLosesNothing(t *testing.T) {
 			t.Fatal("chunk over limit")
 		}
 	}
+}
+
+func TestSectionAndListActionsUseOpaqueSuppliedIdentifiers(t *testing.T) {
+	t.Parallel()
+	view := View{Title: "Notes", Contents: []ContentsEntry{{ActionID: "jump-chapter", Page: 2, N: n(1), Label: "Chapter"}}, Lists: []List{{Entries: []Entry{{ID: "choose-lecture", Label: "Lecture"}}}}}
+	actions := []Action{{ID: "jump-chapter", Kind: "section", Label: "Chapter"}, {ID: "choose-lecture", Kind: "material", Label: "Lecture"}}
+	rich := RenderRich(view, actions, 7)
+	for _, part := range []string{link("7:jump-chapter", "Chapter"), link("7:choose-lecture", "Lecture")} {
+		if !strings.Contains(rich, part) {
+			t.Fatalf("missing %s in %s", part, rich)
+		}
+	}
+	_, keyboard := Render(view, actions, 7)
+	equal(t, keyboard.InlineKeyboard[0][0].CallbackData, "7:choose-lecture")
+	equal(t, keyboard.InlineKeyboard[1][0].CallbackData, "7:jump-chapter")
 }

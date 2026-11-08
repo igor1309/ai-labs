@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"strings"
 	"testing"
-
-	"github.com/igor1309/ai-labs/agonara/session/internal/flow"
 )
 
 const chat = int64(1)
@@ -46,11 +44,14 @@ func noRich(method string, params map[string]any) error {
 	return nil
 }
 
-func makeFlow(body string) Actor {
-	return func(_ context.Context, s flow.Session, _ string) (*flow.Result, error) {
-		s.Step++
-		return &flow.Result{Session: s, View: flow.View{Title: "Programs", Body: body},
-			Actions: []flow.Action{{ID: "open_0", Kind: "item", Label: "1"}}}, nil
+func makeFlow(body string) sessionSpy {
+	return func(_ context.Context, q Request) (*Result, error) {
+		step := 1
+		if q.Revision != nil {
+			step = *q.Revision + 1
+		}
+		return &Result{Revision: step, Screen: "programs", View: View{Title: "Programs", Body: body},
+			Actions: []Action{{ID: "open_0", Kind: "item", Label: "1"}}}, nil
 	}
 }
 
@@ -60,15 +61,15 @@ func press(data string, chatID int64) Update {
 	return Update{CallbackQuery: &CallbackQuery{ID: "cb", Data: data, Message: &Message{MessageID: 7, Chat: Chat{ID: chatID}}}}
 }
 
-func newState() State { return State{Session: flow.InitialSession()} }
+func newState() State { return State{} }
 
-func handle(t *testing.T, api *fakeAPI, update Update, state State, act Actor, logs *[]string) State {
+func handle(t *testing.T, api *fakeAPI, update Update, state State, act sessionSpy, logs *[]string) State {
 	t.Helper()
 	log := func(string) {}
 	if logs != nil {
 		log = func(line string) { *logs = append(*logs, line) }
 	}
-	next, err := Bot{API: api, Act: act, AllowedChatID: chat, Log: log}.Handle(context.Background(), update, state)
+	next, err := Bot{API: api, Session: act, AllowedChatID: chat, Log: log}.Handle(context.Background(), update, state)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,6 +77,7 @@ func handle(t *testing.T, api *fakeAPI, update Update, state State, act Actor, l
 }
 
 func TestMessageGetsOneRichMessage(t *testing.T) {
+	t.Parallel()
 	api := &fakeAPI{}
 	handle(t, api, message(), newState(), makeFlow("Study algebra."), nil)
 	equal(t, api.methods(), []string{"sendRichMessage"})
@@ -83,6 +85,7 @@ func TestMessageGetsOneRichMessage(t *testing.T) {
 }
 
 func TestRefusedRichMessageFallsBackToPlainAndIsLogged(t *testing.T) {
+	t.Parallel()
 	api := &fakeAPI{fail: noRich}
 	var logs []string
 	handle(t, api, message(), newState(), makeFlow("Study algebra."), &logs)
@@ -95,8 +98,9 @@ func TestRefusedRichMessageFallsBackToPlainAndIsLogged(t *testing.T) {
 }
 
 func TestOtherChatsGetNothing(t *testing.T) {
+	t.Parallel()
 	api := &fakeAPI{}
-	act := func(context.Context, flow.Session, string) (*flow.Result, error) {
+	act := func(context.Context, Request) (*Result, error) {
 		t.Fatal("reached flow")
 		return nil, nil
 	}
@@ -107,15 +111,17 @@ func TestOtherChatsGetNothing(t *testing.T) {
 }
 
 func TestCurrentButtonEditsItsMessage(t *testing.T) {
+	t.Parallel()
 	api := &fakeAPI{}
 	state := handle(t, api, press("0:open_0", chat), newState(), makeFlow("Study algebra."), nil)
-	equal(t, state.Session.Step, 1)
+	equal(t, state.Revision, 1)
 	equal(t, api.methods(), []string{"answerCallbackQuery", "editMessageText"})
 	equal(t, api.calls[1].params["message_id"], int64(7))
 	equal(t, api.calls[1].params["rich_message"], map[string]any{"html": "<h2>Programs</h2><p>Study algebra.</p>"})
 }
 
 func TestUnchangedScreenSendsNothingNew(t *testing.T) {
+	t.Parallel()
 	api := &fakeAPI{fail: func(method string, _ map[string]any) error {
 		if method == "editMessageText" {
 			return errors.New("editMessageText failed: 400 Bad Request: message is not modified")
@@ -127,6 +133,7 @@ func TestUnchangedScreenSendsNothingNew(t *testing.T) {
 }
 
 func TestMessageThatCannotBeEditedGetsANewOne(t *testing.T) {
+	t.Parallel()
 	api := &fakeAPI{fail: func(method string, _ map[string]any) error {
 		if method == "editMessageText" {
 			return errors.New("editMessageText failed: 400 Bad Request: message can't be edited")
@@ -138,6 +145,7 @@ func TestMessageThatCannotBeEditedGetsANewOne(t *testing.T) {
 }
 
 func TestWithoutRichAButtonEditsThePlainScreen(t *testing.T) {
+	t.Parallel()
 	api := &fakeAPI{fail: noRich}
 	handle(t, api, press("0:open_0", chat), newState(), makeFlow(""), nil)
 	equal(t, api.methods(), []string{"answerCallbackQuery", "editMessageText", "sendRichMessage", "editMessageText"})
@@ -145,10 +153,11 @@ func TestWithoutRichAButtonEditsThePlainScreen(t *testing.T) {
 }
 
 func TestOldButtonIsAnsweredAndChangesNothing(t *testing.T) {
+	t.Parallel()
 	api := &fakeAPI{}
 	state := newState()
-	state.Session.Step = 3
-	act := func(context.Context, flow.Session, string) (*flow.Result, error) {
+	state.Revision = 3
+	act := func(context.Context, Request) (*Result, error) {
 		t.Fatal("reached flow")
 		return nil, nil
 	}
@@ -160,6 +169,7 @@ func TestOldButtonIsAnsweredAndChangesNothing(t *testing.T) {
 }
 
 func TestUnparsableMarkupIsSentPlain(t *testing.T) {
+	t.Parallel()
 	api := &fakeAPI{fail: func(method string, params map[string]any) error {
 		if err := noRich(method, params); err != nil {
 			return err
@@ -175,6 +185,7 @@ func TestUnparsableMarkupIsSentPlain(t *testing.T) {
 }
 
 func TestLongPlainScreenArrivesSplitWithButtonsLast(t *testing.T) {
+	t.Parallel()
 	api := &fakeAPI{fail: noRich}
 	var lines []string
 	for i := 1; i <= 300; i++ {
@@ -202,37 +213,45 @@ func TestLongPlainScreenArrivesSplitWithButtonsLast(t *testing.T) {
 }
 
 func TestUnknownActionIsAcknowledged(t *testing.T) {
+	t.Parallel()
 	api := &fakeAPI{}
 	state := newState()
-	act := func(context.Context, flow.Session, string) (*flow.Result, error) { return nil, nil }
+	act := func(context.Context, Request) (*Result, error) { return nil, nil }
 	equal(t, handle(t, api, press("0:open_99", chat), state, act, nil), state)
 	equal(t, api.calls, []call{{"answerCallbackQuery", map[string]any{"callback_query_id": "cb", "text": "Unknown action."}}})
 }
 
 func TestAgonaraFailureLogsKeepsStateAndAllowsTheNextUpdate(t *testing.T) {
+	t.Parallel()
 	for name, update := range map[string]Update{"message": message(), "callback": press("0:open_0", chat)} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			api := &fakeAPI{}
 			var logs []string
 			state := newState()
-			act := func(context.Context, flow.Session, string) (*flow.Result, error) {
+			act := func(context.Context, Request) (*Result, error) {
 				return nil, errors.New("GET /programs failed (HTTP 503): request rejected")
 			}
 			equal(t, handle(t, api, update, state, act, &logs), state)
 			equal(t, logs, []string{"ERROR: GET /programs failed (HTTP 503): request rejected"})
 			last := api.calls[len(api.calls)-1]
 			equal(t, last, call{"sendMessage", map[string]any{"chat_id": chat, "text": "Could not load Agonara: GET /programs failed (HTTP 503): request rejected"}})
-			equal(t, handle(t, api, update, state, makeFlow(""), nil).Session.Step, 1)
+			equal(t, handle(t, api, update, state, makeFlow(""), nil).Revision, 1)
 		})
 	}
 }
 
 func TestEachUpdateLogsItsTap(t *testing.T) {
+	t.Parallel()
 	var logs []string
-	act := func(_ context.Context, s flow.Session, _ string) (*flow.Result, error) {
-		page, count := 2, 9
-		return &flow.Result{Session: flow.Session{Place: flow.Place{Screen: "entity", Page: &page, Contents: true}, PageCount: &count, Step: 1}}, nil
+	act := func(_ context.Context, q Request) (*Result, error) {
+		page := &PageInfo{Index: 2, Count: 9}
+		return &Result{Screen: "entity", Page: page, Contents: true, Revision: 1}, nil
 	}
 	handle(t, &fakeAPI{}, press("0:next", chat), newState(), act, &logs)
 	equal(t, logs, []string{"tap next -> entity page 3/9 contents"})
 }
+
+type sessionSpy func(context.Context, Request) (*Result, error)
+
+func (s sessionSpy) Show(ctx context.Context, q Request) (*Result, error) { return s(ctx, q) }
