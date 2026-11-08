@@ -26,7 +26,7 @@ func TestDependencyGraphAndTestDiscipline(t *testing.T) {
 	allowed := map[string][]string{
 		"internal/flow": {}, "internal/store": {}, "internal/envfile": {}, "internal/ownerlock": {}, "internal/inlinehtml": {}, "internal/agonara": {},
 		"internal/web": {"internal/inlinehtml"}, "internal/telegram": {"internal/inlinehtml"},
-		"internal/sessionstore": {"internal/flow", "internal/store", "internal/telegram"},
+		"internal/sessionstore": {"internal/store"},
 		"internal/composition":  {"internal/sessionstore", "internal/agonara", "internal/flow", "internal/store", "internal/telegram", "internal/web", "internal/ownerlock"},
 		"cmd/agonara-session":   {"internal/composition", "internal/envfile"}, "cmd/agonara-web": {"internal/composition", "internal/envfile"}, "internal/architecture": {},
 	}

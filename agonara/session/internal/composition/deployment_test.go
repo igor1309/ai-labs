@@ -4,6 +4,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -56,16 +58,33 @@ case "$1" in
    if grep -Eq 'new-runner|old-combined' "$SESSION_TEST_DIR/bin/agonara-session" && [ -f "$SESSION_TEST_DIR/ai.labs.agonara-web" ]; then echo overlapping-owners >&2; exit 1; fi
    if [ "$SESSION_TEST_CASE" = bad-bootstrap ] && grep -q new-runner "$SESSION_TEST_DIR/bin/agonara-session"; then exit 1; fi
   fi
+  if [ -f "$SESSION_TEST_DIR/$label.disabled" ]; then echo disabled-start >&2; exit 1; fi
   touch "$SESSION_TEST_DIR/$label" ;;
- enable|disable) exit 0 ;;
+ enable) rm -f "$SESSION_TEST_DIR/$label.disabled" ;;
+ disable) touch "$SESSION_TEST_DIR/$label.disabled" ;;
 esac
+`)
+	script(t, filepath.Join(dir, "touch"), `#!/bin/sh
+if [ "$SESSION_TEST_CASE" = bad-marker ] && [ "$1" = "$SESSION_TEST_DIR/single-owner" ]; then
+ printf '%s\n' "$1" >> "$SESSION_TEST_DIR/marker-write-failures"
+ echo 'marker write failed' >&2
+ exit 1
+fi
+exec /usr/bin/touch "$@"
 `)
 	script(t, filepath.Join(dir, "sleep"), "#!/bin/sh\nexit 0\n")
 	script(t, filepath.Join(dir, "curl"), `#!/bin/sh
 printf '%s\n' "$*" >> "$SESSION_TEST_DIR/http-probes"
 if [ -f "$SESSION_TEST_DIR/restore-unavailable" ]; then printf 000; else printf 401; fi
 `)
-	h.env = append(os.Environ(), "AGONARA_SESSION_HOME="+dir, "AGONARA_SESSION_LAUNCH_DIR="+launchDir, "AGONARA_SESSION_ENV_FILE="+filepath.Join(dir, "env"), "AGONARA_SESSION_LAUNCHCTL="+filepath.Join(dir, "launchctl"), "AGONARA_SESSION_CURL="+filepath.Join(dir, "curl"), "AGONARA_SESSION_SLEEP="+filepath.Join(dir, "sleep"), "SESSION_TEST_DIR="+dir, "SESSION_TEST_CASE="+scenario)
+	// Unloaded jobs start disabled so bootstrap must enable them persistently.
+	if !h.initialSession {
+		writeFile(t, filepath.Join(dir, "ai.labs.agonara-session.disabled"), nil)
+	}
+	if !h.initialWeb {
+		writeFile(t, filepath.Join(dir, "ai.labs.agonara-web.disabled"), nil)
+	}
+	h.env = append(os.Environ(), "AGONARA_SESSION_HOME="+dir, "AGONARA_SESSION_LAUNCH_DIR="+launchDir, "AGONARA_SESSION_ENV_FILE="+filepath.Join(dir, "env"), "AGONARA_SESSION_LAUNCHCTL="+filepath.Join(dir, "launchctl"), "AGONARA_SESSION_CURL="+filepath.Join(dir, "curl"), "AGONARA_SESSION_SLEEP="+filepath.Join(dir, "sleep"), "SESSION_TEST_DIR="+dir, "SESSION_TEST_CASE="+scenario, "PATH="+dir+string(os.PathListSeparator)+os.Getenv("PATH"))
 	return h
 }
 func script(t *testing.T, path, body string) {
@@ -107,6 +126,12 @@ func (h *deploymentHarness) assertRestored() {
 	h.assertExists("ai.labs.agonara-web", h.initialWeb)
 	h.assertExists("ai.labs.agonara-session", h.initialSession)
 	h.assertExists("single-owner", h.combined)
+	if h.initialWeb {
+		h.assertExists("ai.labs.agonara-web.disabled", false)
+	}
+	if h.initialSession {
+		h.assertExists("ai.labs.agonara-session.disabled", false)
+	}
 	if h.combined {
 		data, err := os.ReadFile(filepath.Join(h.dir, "single-owner"))
 		if err != nil || string(data) != "previous-mode" {
@@ -141,6 +166,65 @@ func (h *deploymentHarness) assertHandoff() {
 	h.assertExists("ai.labs.agonara-web", false)
 	h.assertExists("ai.labs.agonara-session", true)
 	h.assertExists("single-owner", true)
+	h.assertExists("ai.labs.agonara-web.disabled", true)
+	h.assertExists("ai.labs.agonara-session.disabled", false)
+	h.assertTransitions(h.activationCalls())
+}
+
+// Assert every persistent enable/disable transition together with the owner handoff.
+func (h *deploymentHarness) assertTransitions(want []string) {
+	h.t.Helper()
+	data, err := os.ReadFile(filepath.Join(h.dir, "calls"))
+	if err != nil {
+		h.t.Fatal(err)
+	}
+	var got []string
+	domain := "gui/" + strconv.Itoa(os.Getuid())
+	for _, line := range strings.Split(strings.TrimSpace(string(data)), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) == 0 || fields[0] == "print" {
+			continue
+		}
+		label := filepath.Base(fields[1])
+		if fields[0] == "bootstrap" {
+			if len(fields) != 3 {
+				h.t.Fatalf("invalid bootstrap: %q", line)
+			}
+			label = strings.TrimSuffix(filepath.Base(fields[2]), ".plist")
+			if fields[1] != domain || fields[2] != filepath.Join(h.dir, "launch", label+".plist") {
+				h.t.Fatalf("wrong bootstrap target: %q", line)
+			}
+		} else if len(fields) != 2 || fields[1] != domain+"/"+label {
+			h.t.Fatalf("wrong service target: %q", line)
+		}
+		got = append(got, fields[0]+":"+label)
+	}
+	if !reflect.DeepEqual(got, want) {
+		h.t.Fatalf("launchd transitions=%v want=%v", got, want)
+	}
+}
+func (h *deploymentHarness) activationCalls() []string {
+	var calls []string
+	if h.initialWeb {
+		calls = append(calls, "bootout:ai.labs.agonara-web")
+	}
+	if h.initialSession {
+		calls = append(calls, "bootout:ai.labs.agonara-session")
+	}
+	return append(calls, "disable:ai.labs.agonara-web", "enable:ai.labs.agonara-session", "bootstrap:ai.labs.agonara-session")
+}
+func (h *deploymentHarness) restorationCalls(stopReplacement bool) []string {
+	var calls []string
+	if stopReplacement {
+		calls = append(calls, "bootout:ai.labs.agonara-session")
+	}
+	if h.initialWeb {
+		calls = append(calls, "enable:ai.labs.agonara-web", "bootstrap:ai.labs.agonara-web")
+	}
+	if h.initialSession {
+		calls = append(calls, "enable:ai.labs.agonara-session", "bootstrap:ai.labs.agonara-session")
+	}
+	return calls
 }
 
 // Contract test: the deployment shell uses isolated launchctl, runner, HTTP and wait processes.
@@ -158,6 +242,7 @@ func TestDeploymentHandoffAndRollbackNeverOverlapPollers(t *testing.T) {
 				t.Fatalf("rollback: %v %s", err, out)
 			}
 			h.assertRestored()
+			h.assertTransitions(append(h.activationCalls(), h.restorationCalls(true)...))
 			if h.initialWeb || h.combined {
 				data, err := os.ReadFile(filepath.Join(h.dir, "http-probes"))
 				if err != nil || !strings.Contains(string(data), "http://127.0.0.1:8740/") {
@@ -171,10 +256,10 @@ func TestDeploymentHandoffAndRollbackNeverOverlapPollers(t *testing.T) {
 // Contract test: activation failures restore each deployment topology through real shell processes.
 func TestDeploymentFailuresPreservePreviousBinaryJobsAndMode(t *testing.T) {
 	t.Parallel()
-	for _, topology := range []string{"both", "combined"} {
-		for _, scenario := range []string{"bad-config", "bad-stop", "bad-bootstrap", "bad-health"} {
-			// A combined-only installation has no standalone web job to fail stopping.
-			if topology == "combined" && scenario == "bad-stop" {
+	for _, topology := range []string{"both", "web", "session", "none", "combined"} {
+		for _, scenario := range []string{"bad-config", "bad-stop", "bad-bootstrap", "bad-health", "bad-marker"} {
+			// Only installations with a loaded standalone web job can fail stopping it.
+			if topology != "both" && topology != "web" && scenario == "bad-stop" {
 				continue
 			}
 			t.Run(topology+"/"+scenario, func(t *testing.T) {
@@ -185,6 +270,21 @@ func TestDeploymentFailuresPreservePreviousBinaryJobsAndMode(t *testing.T) {
 					t.Fatalf("failure accepted: %s", out)
 				}
 				h.assertRestored()
+				if scenario == "bad-marker" {
+					data, readErr := os.ReadFile(filepath.Join(h.dir, "marker-write-failures"))
+					if readErr != nil || string(data) != filepath.Join(h.dir, "single-owner")+"\n" || !strings.Contains(out, "activation failed; restoring previous services") || strings.Contains(out, "single reading owner active") {
+						t.Fatalf("marker failure skipped rollback: %v %s %s", readErr, data, out)
+					}
+				}
+				if scenario != "bad-config" {
+					want := h.activationCalls()
+					if scenario == "bad-stop" {
+						want = []string{"bootout:ai.labs.agonara-web"}
+					} else {
+						want = append(want, h.restorationCalls(scenario != "bad-bootstrap")...)
+					}
+					h.assertTransitions(want)
+				}
 				if scenario == "bad-config" {
 					if data, _ := os.ReadFile(filepath.Join(h.dir, "calls")); len(data) != 0 {
 						t.Fatalf("configuration touched services: %s", data)

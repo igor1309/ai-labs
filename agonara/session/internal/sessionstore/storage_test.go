@@ -6,8 +6,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
-
-	"github.com/igor1309/ai-labs/agonara/session/internal/flow"
 )
 
 // Contract test: JSON migration and atomic replacement on the filesystem.
@@ -30,9 +28,9 @@ func TestMigrationPrefersSharedThenWebThenBotAndPreservesLegacyBytes(t *testing.
 				writeFile(t, f.LegacyWeb, oldWeb)
 			}
 			if source == "shared" {
-				s := flow.InitialState()
+				s := initialReading()
 				s.Current.Step = 20
-				s.Current.Place = flow.Place{Screen: "entity", EntityID: "shared-material"}
+				s.Current.PlaceRecord = PlaceRecord{Screen: "entity", EntityID: "shared-material"}
 				if err := f.Save(s); err != nil {
 					t.Fatal(err)
 				}
@@ -148,7 +146,7 @@ func TestHigherPriorityStateIgnoresCorruptLowerPriorityFiles(t *testing.T) {
 		f := ReadingFile{Path: filepath.Join(dir, "reading.json"), LegacyWeb: filepath.Join(dir, "web.json"), LegacyBot: filepath.Join(dir, "bot.json")}
 		writeFile(t, f.LegacyBot, []byte("{"))
 		if shared {
-			if err := f.Save(flow.InitialState()); err != nil {
+			if err := f.Save(initialReading()); err != nil {
 				t.Fatal(err)
 			}
 			writeFile(t, f.LegacyWeb, []byte("{"))
@@ -209,11 +207,46 @@ func TestStateSavedByJavaScriptBotStillLoads(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	expected := flow.InitialState()
-	expected.Current = flow.Session{Place: flow.Place{Screen: "entity", EntityID: "material-id", Page: intPointer(2)}, Items: []flow.Item{{ID: "linked", Title: "Linked", Kind: "concept"}}, History: []flow.Place{{Screen: "programs"}, {Screen: "program", ProgramID: "p", Title: "Course"}, {Screen: "entity", EntityID: "topic-id"}}, Step: 73, PageCount: intPointer(23)}
-	expected.Resume = &flow.Bookmark{EntityID: "material-id", Page: 2}
+	expected := initialReading()
+	expected.Current = SessionRecord{PlaceRecord: PlaceRecord{Screen: "entity", EntityID: "material-id", Page: intPointer(2)}, Items: []ItemRecord{{ID: "linked", Title: "Linked", Kind: "concept"}}, History: []PlaceRecord{{Screen: "programs"}, {Screen: "program", ProgramID: "p", Title: "Course"}, {Screen: "entity", EntityID: "topic-id"}}, Step: 73, PageCount: intPointer(23)}
+	expected.Resume = &BookmarkRecord{EntityID: "material-id", Page: 2}
 	if !reflect.DeepEqual(state, expected) {
 		t.Fatalf("legacy translation: %+v", state)
 	}
 }
 func intPointer(n int) *int { return &n }
+
+// Contract test: invalid version-one records remain authoritative failures without filesystem replacement or legacy fallback.
+func TestInvalidReadingRecordsArePreservedWithoutLegacyFallback(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct{ name, fields string }{
+		{"revision", `"current":{"screen":"programs","step":-1}`},
+		{"screen", `"current":{"screen":"unknown"}`},
+		{"program identity", `"current":{"screen":"program"}`},
+		{"material identity", `"current":{"screen":"entity"}`},
+		{"negative page", `"current":{"screen":"entity","entityId":"m","page":-1}`},
+		{"page count", `"current":{"screen":"entity","entityId":"m","page":0,"pageCount":0}`},
+		{"missing page", `"current":{"screen":"entity","entityId":"m","pageCount":1}`},
+		{"page outside count", `"current":{"screen":"entity","entityId":"m","page":2,"pageCount":2}`},
+		{"history identity", `"current":{"screen":"programs","history":[{"screen":"program"}]}`},
+		{"history page", `"current":{"screen":"programs","history":[{"screen":"entity","entityId":"m","page":-1}]}`},
+		{"bookmark identity", `"current":{"screen":"programs"},"resume":{"Page":0}`},
+		{"bookmark page", `"current":{"screen":"programs"},"resume":{"EntityID":"m","Page":-1}`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			dir := t.TempDir()
+			f := ReadingFile{Path: filepath.Join(dir, "reading.json"), LegacyWeb: filepath.Join(dir, "web.json")}
+			raw := []byte(`{"version":1,` + tc.fields + `}`)
+			writeFile(t, f.Path, raw)
+			writeFile(t, f.LegacyWeb, []byte(`{"entityId":"legacy","page":1}`))
+			if _, err := f.Load(); err == nil {
+				t.Fatal("invalid shared record replaced with legacy state")
+			}
+			got, err := os.ReadFile(f.Path)
+			if err != nil || string(got) != string(raw) {
+				t.Fatalf("invalid record changed: %s %v", got, err)
+			}
+		})
+	}
+}

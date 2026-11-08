@@ -41,8 +41,8 @@ type Update struct {
 
 // State holds only polling and displayed-message bookkeeping.
 type State struct {
-	Offset   int64 `json:"offset"`
-	Revision int   `json:"revision"`
+	Offset   int64
+	Revision int
 }
 
 type Session interface {

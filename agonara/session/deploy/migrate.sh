@@ -88,8 +88,8 @@ activate)
     "$sleepBin" 1
   done
   [[ "$ready" == true ]]
-  trap - ERR
   touch "$runnerHome/single-owner"
+  trap - ERR
   echo "single reading owner active; legacy files retained"
   ;;
 rollback)

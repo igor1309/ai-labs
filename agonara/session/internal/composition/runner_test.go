@@ -163,7 +163,12 @@ func TestRunnerJoinsBothSurfacesBeforeReleasingOwnership(t *testing.T) {
 				},
 			}
 			jobs := make(chan runnerJob, 2)
+			starts := 0
 			d.Start = func(work func() error) <-chan error {
+				starts++
+				if starts > 2 {
+					return startRunnerWork(work)
+				}
 				done := make(chan error)
 				jobs <- runnerJob{work: work, done: done}
 				return done
@@ -460,6 +465,219 @@ func TestRunnerStartupFailuresReleaseOwnershipWithoutPublishingSurfaces(t *testi
 			}
 			if !reflect.DeepEqual(events, want) {
 				t.Fatalf("events=%v want=%v", events, want)
+			}
+		})
+	}
+}
+
+type blockedReadingStorage struct {
+	entered chan flow.State
+	finish  <-chan struct{}
+	saved   chan flow.State
+	err     error
+}
+
+func (s *blockedReadingStorage) Load() (flow.State, error) { return flow.InitialState(), nil }
+func (s *blockedReadingStorage) Save(v flow.State) error {
+	s.entered <- v
+	<-s.finish
+	s.saved <- v
+	return s.err
+}
+
+// Integration test: both runner modes drain real HTTP actions through a blocked storage spy and manual lifecycle completion.
+func TestRunnerDrainsWritingHandlersAfterForcedClose(t *testing.T) {
+	t.Parallel()
+	for _, standalone := range []bool{false, true} {
+		for _, saveFails := range []bool{false, true} {
+			t.Run(fmt.Sprintf("standalone=%v/saveFails=%v", standalone, saveFails), func(t *testing.T) {
+				t.Parallel()
+				ctx, cancel := context.WithCancel(context.Background())
+				defer cancel()
+				finish := make(chan struct{})
+				var finishOnce sync.Once
+				unblock := func() { finishOnce.Do(func() { close(finish) }) }
+				defer unblock()
+				saved := make(chan flow.State, 1)
+				storage := &blockedReadingStorage{entered: make(chan flow.State, 1), finish: finish, saved: saved}
+				if saveFails {
+					storage.err = errors.New("sync failed")
+				}
+				actionDone := make(chan *httptest.ResponseRecorder, 1)
+				handlers := make(chan http.Handler, 1)
+				serveExit := make(chan struct{})
+				forcedClose := make(chan struct{})
+				var closeOnce sync.Once
+				timerStarted := make(chan time.Duration, 1)
+				fired := make(chan time.Time, 1)
+				jobs := make(chan runnerJob, 3)
+				owners := &ownershipSpy{held: map[string]bool{}}
+				owners.beforeRelease = func() {
+					select {
+					case v := <-saved:
+						if v.Current.EntityID != "m" || v.Current.Step != 1 {
+							t.Errorf("unfinished action: %+v", v)
+						}
+						saved <- v
+					default:
+						t.Error("ownership released before storage finished")
+					}
+				}
+				server := &runnerHTTP{
+					serve:    func() error { <-serveExit; return http.ErrServerClosed },
+					shutdown: func(ctx context.Context) error { <-ctx.Done(); return ctx.Err() },
+					close:    func() error { closeOnce.Do(func() { close(forcedClose); close(serveExit) }); return nil },
+				}
+				api := runnerAPI(func(ctx context.Context, method string, _ map[string]any) (json.RawMessage, error) {
+					if method == "getMe" {
+						return json.RawMessage(`{}`), nil
+					}
+					if method != "getUpdates" {
+						t.Errorf("unexpected API method %s", method)
+					}
+					<-ctx.Done()
+					return nil, ctx.Err()
+				})
+				d := RunnerDependencies{
+					Assembly:        Dependencies{Content: readingSpy{}, Reading: storage, API: api, Transport: &transportSpy{}, Wait: func(context.Context, time.Duration) error { t.Error("unexpected polling wait"); return nil }, Log: func(string) {}},
+					EnsureDirectory: func(string) error { return nil }, Acquire: owners.acquire, PollerLockDirectory: "/locks",
+					Listen: func(_ string, h http.Handler) (RunningHTTP, error) { handlers <- h; return server, nil },
+					Timer: func(duration time.Duration) (<-chan time.Time, func()) {
+						timerStarted <- duration
+						return fired, func() {}
+					},
+					Start: func(work func() error) <-chan error {
+						done := make(chan error)
+						jobs <- runnerJob{work: work, done: done}
+						return done
+					},
+				}
+				done := make(chan error, 1)
+				config := runnerConfig()
+				config.WebToken = "access"
+				go func() { done <- Run(ctx, config, standalone, d) }()
+				h := <-handlers
+				httpJob := <-jobs
+				httpResult := startRunnerWork(httpJob.work)
+				var pollJob runnerJob
+				var pollResult <-chan error
+				if !standalone {
+					pollJob = <-jobs
+					pollResult = startRunnerWork(pollJob.work)
+				}
+				go func() { actionDone <- request(t, h, "/m/m?page=1") }()
+				candidate := <-storage.entered
+				if candidate.Current.EntityID != "m" || candidate.Current.Step != 1 {
+					t.Errorf("save candidate %+v", candidate)
+				}
+				cancel()
+				drainJob := <-jobs
+				drainResult := startRunnerWork(drainJob.work)
+				if duration := <-timerStarted; duration != 5*time.Second {
+					t.Errorf("timer %v", duration)
+				}
+				// Admission has stopped before the deadline; even an uncancelled request cannot enter the session.
+				rejected := request(t, h, "/m/m?page=2")
+				if rejected.Code != http.StatusServiceUnavailable {
+					t.Errorf("new action admitted during shutdown: %d", rejected.Code)
+				}
+				fired <- time.Time{}
+				<-forcedClose
+				httpJob.done <- <-httpResult
+				if !standalone {
+					pollJob.done <- <-pollResult
+				}
+				if lock, err := owners.acquire(runnerConfig().StatePath + ".lock"); err == nil {
+					lock.Close()
+					t.Error("replacement acquired ownership during the old write")
+				}
+				unblock()
+				response := <-actionDone
+				wantCode := http.StatusOK
+				if saveFails {
+					wantCode = http.StatusBadGateway
+				}
+				if response.Code != wantCode {
+					t.Errorf("completed action status=%d want=%d: %s", response.Code, wantCode, response.Body.String())
+				}
+				// Completion delivery is controlled separately from Serve and polling, proving Run joins the drain.
+				drainJob.done <- <-drainResult
+				if err := <-done; !errors.Is(err, context.Canceled) {
+					t.Errorf("shutdown result %v", err)
+				}
+				wantReleases := 1
+				if !standalone {
+					wantReleases = 2
+				}
+				if len(owners.released) != wantReleases || len(owners.held) != 0 {
+					t.Errorf("ownership left held: %+v", owners)
+				}
+			})
+		}
+	}
+}
+
+func TestHTTPAdmissionCompletesOnlyAfterEveryAcceptedHandlerReturns(t *testing.T) {
+	t.Parallel()
+	for _, count := range []int{0, 1, 2} {
+		t.Run(fmt.Sprint(count), func(t *testing.T) {
+			t.Parallel()
+			entered := make(chan struct{}, count)
+			exits := make([]chan struct{}, count)
+			finished := make([]chan struct{}, count)
+			for i := range exits {
+				exits[i] = make(chan struct{})
+				finished[i] = make(chan struct{})
+			}
+			h := &admittedHTTP{drained: make(chan struct{}), next: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				i := 0
+				if r.URL.Path == "/second" {
+					i = 1
+				}
+				entered <- struct{}{}
+				<-exits[i]
+				w.WriteHeader(http.StatusAccepted)
+			})}
+			for i := range exits {
+				go func() {
+					path := "/first"
+					if i == 1 {
+						path = "/second"
+					}
+					w := httptest.NewRecorder()
+					h.ServeHTTP(w, httptest.NewRequest("GET", path, nil))
+					if w.Code != http.StatusAccepted {
+						t.Errorf("accepted handler status %d", w.Code)
+					}
+					close(finished[i])
+				}()
+			}
+			for range count {
+				<-entered
+			}
+			drained := h.stop()
+			// Stopping is idempotent, including when no work was admitted.
+			if h.stop() != drained {
+				t.Error("stopping changed completion channel")
+			}
+			w := httptest.NewRecorder()
+			h.ServeHTTP(w, httptest.NewRequest("GET", "/late", nil))
+			if w.Code != http.StatusServiceUnavailable {
+				t.Errorf("late handler status %d", w.Code)
+			}
+			for i := range exits {
+				// All remaining handlers are blocked, so their completion cannot race this assertion.
+				select {
+				case <-drained:
+					t.Error("reported completion with active handlers")
+				default:
+				}
+				close(exits[i])
+				<-finished[i]
+			}
+			<-drained
+			if len(entered) != 0 {
+				t.Error("late request reached the wrapped handler")
 			}
 		})
 	}

@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/igor1309/ai-labs/agonara/session/internal/agonara"
@@ -115,7 +116,7 @@ type RunnerDependencies struct {
 	Start func(func() error) <-chan error
 }
 
-// Run holds ownership until HTTP and polling have both finished.
+// Run holds ownership until HTTP handlers and polling have finished.
 func Run(parent context.Context, c Config, standalone bool, d RunnerDependencies) error {
 	if d.EnsureDirectory == nil || d.Acquire == nil || d.Listen == nil || d.Timer == nil || d.Start == nil || (!standalone && !filepath.IsAbs(d.PollerLockDirectory)) {
 		return errors.New("directory, ownership, listener, timer, work starter and absolute poller lock directory are required")
@@ -142,7 +143,8 @@ func Run(parent context.Context, c Config, standalone bool, d RunnerDependencies
 	if err != nil {
 		return err
 	}
-	httpServer, err := d.Listen(c.WebAddr, assembled.Handler)
+	handlers := &admittedHTTP{next: assembled.Handler, drained: make(chan struct{})}
+	httpServer, err := d.Listen(c.WebAddr, handlers)
 	if err != nil {
 		return err
 	}
@@ -164,7 +166,9 @@ func Run(parent context.Context, c Config, standalone bool, d RunnerDependencies
 	case result = <-pollDone:
 		pollJoined = true
 	}
+	drained := handlers.stop()
 	cancel()
+	handlersDone := d.Start(func() error { <-drained; return nil })
 	shutdown, stop := context.WithCancel(context.Background())
 	fired, stopTimer := d.Timer(5 * time.Second)
 	timerDone := make(chan struct{})
@@ -197,10 +201,53 @@ func Run(parent context.Context, c Config, standalone bool, d RunnerDependencies
 			result = err
 		}
 	}
+	// Closing connections cannot cancel or join an in-flight filesystem write.
+	<-handlersDone
 	if errors.Is(result, http.ErrServerClosed) {
 		return nil
 	}
 	return result
+}
+
+// Admission and stopping share a lock so every accepted handler belongs to the drain.
+type admittedHTTP struct {
+	next     http.Handler
+	mu       sync.Mutex
+	stopping bool
+	active   int
+	drained  chan struct{}
+}
+
+func (h *admittedHTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	h.mu.Lock()
+	if h.stopping {
+		h.mu.Unlock()
+		http.Error(w, "session is stopping", http.StatusServiceUnavailable)
+		return
+	}
+	h.active++
+	h.mu.Unlock()
+	defer h.complete()
+	h.next.ServeHTTP(w, r)
+}
+func (h *admittedHTTP) complete() {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.active--
+	if h.stopping && h.active == 0 {
+		close(h.drained)
+	}
+}
+func (h *admittedHTTP) stop() <-chan struct{} {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if !h.stopping {
+		h.stopping = true
+		if h.active == 0 {
+			close(h.drained)
+		}
+	}
+	return h.drained
 }
 
 // CheckRunning probes only the local HTTP surface, without credentials or a Telegram request.
@@ -258,7 +305,7 @@ func RunProduction(ctx context.Context, c Config, standalone bool, log func(stri
 		return err
 	}
 	return Run(ctx, c, standalone, RunnerDependencies{
-		Assembly:            Dependencies{Content: Content{Source: cache}, Reading: sessionstore.ReadingFile{Path: c.StatePath, LegacyWeb: c.LegacyWeb, LegacyBot: c.LegacyBot}, API: telegram.Client{Token: c.BotToken, HTTP: &http.Client{Timeout: 40 * time.Second}}, Transport: sessionstore.TransportFile{Path: c.TransportPath, Legacy: c.LegacyBot}, Wait: wait, Log: log},
+		Assembly:            Dependencies{Content: Content{Source: cache}, Reading: ReadingPersistence{Records: sessionstore.ReadingFile{Path: c.StatePath, LegacyWeb: c.LegacyWeb, LegacyBot: c.LegacyBot}}, API: telegram.Client{Token: c.BotToken, HTTP: &http.Client{Timeout: 40 * time.Second}}, Transport: TransportPersistence{Records: sessionstore.TransportFile{Path: c.TransportPath, Legacy: c.LegacyBot}}, Wait: wait, Log: log},
 		EnsureDirectory:     func(path string) error { return os.MkdirAll(path, 0o700) },
 		Acquire:             func(path string) (io.Closer, error) { return ownerlock.Acquire(path) },
 		PollerLockDirectory: "/tmp",
