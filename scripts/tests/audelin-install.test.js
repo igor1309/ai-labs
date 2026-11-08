@@ -37,7 +37,7 @@ function setup({ running, tmpdir }) {
     AUDELIN_LAUNCH_AGENTS_DIR: path.join(dir, "LaunchAgents"),
     TMPDIR: tmpdir ?? os.tmpdir(),
   };
-  const run = () => execFileSync("sh", [path.join(macos, "scripts/install.sh")], { cwd: dir, encoding: "utf8", env });
+  const run = (...args) => execFileSync("sh", [path.join(macos, "scripts/install.sh"), ...args], { cwd: dir, encoding: "utf8", env });
   return { dir, apps, calls, run, read: () => fs.readFileSync(calls, "utf8") };
 }
 
@@ -82,4 +82,23 @@ test("install keeps a TMPDIR that exists", () => {
   const s = setup({ running: false });
   s.run();
   assert.ok(s.read().includes(`bundle TMPDIR=${os.tmpdir()}`));
+});
+
+test("update replaces a running app's bundle without quitting or opening it", () => {
+  const s = setup({ running: true });
+  const output = s.run("--update");
+  const target = path.join(s.apps, "Audelin.app");
+
+  assert.equal(output.trim(), target);
+  assert.equal(fs.readFileSync(path.join(target, "Contents/marker"), "utf8"), "new\n");
+  assert.deepEqual(fs.readdirSync(s.apps), ["Audelin.app"]);
+  const calls = s.read();
+  assert.doesNotMatch(calls, /pkill/);
+  assert.doesNotMatch(calls, /^open /m);
+  assert.ok(fs.existsSync(path.join(s.dir, "LaunchAgents/dev.igor1309.audelin.login.plist")));
+});
+
+test("install rejects an unknown option", () => {
+  const s = setup({ running: false });
+  assert.throws(() => s.run("--bogus"), /usage: install.sh \[--update\]/);
 });
