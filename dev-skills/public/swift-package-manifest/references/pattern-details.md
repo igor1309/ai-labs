@@ -11,10 +11,10 @@ Purpose: Create maintainable, type-safe Package.swift files that scale from simp
 
 ```swift
 // swift-tools-version: 6.1
-@preconcurrency import PackageDescription
+import PackageDescription
 ```
 
-The `@preconcurrency` annotation suppresses Sendable warnings that are irrelevant for Package.swift files.
+No `@preconcurrency` is needed: manifest top-level code is main-actor isolated, so Swift 6 mode reports no Sendable diagnostics here. `swift package init` emits the same plain import.
 
 ### 2. Main Package Declaration
 

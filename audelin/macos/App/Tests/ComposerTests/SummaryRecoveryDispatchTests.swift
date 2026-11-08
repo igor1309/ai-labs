@@ -12,7 +12,7 @@ struct SummaryRecoveryDispatchTests {
     @Test func startupResumesPendingSnapshotOnceWithSavedConfigurationAndTranscript() async throws {
         try await withComposeFolder { root in
             let call = "1970.01.01-0000", folder = root.appendingPathComponent("1970.01.01-0000")
-            try await offPool {
+            do {
                 try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
                 try Data("newer transcript must not replace snapshot".utf8).write(to: folder.appendingPathComponent("transcript.md"))
             }
@@ -21,8 +21,8 @@ struct SummaryRecoveryDispatchTests {
             let initial = Files(locations: SummaryStorage(folder: root, timeZone: .gmt), disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("leases"))
             #expect(try await SummaryJobStore(files: initial).claim(job).owned)
             let current = NotesPreferences.Runtime(kind: "compatibleAPI", model: "current-model", executable: "", endpoint: "http://127.0.0.1:9191/current", credentialVariable: "")
-            let preferences = await offPool { PreferencesStore(fileURL: root.appendingPathComponent("preferences.json")) }
-            try await offPool { try preferences.write(Preferences(notes: .init(enabled: true, primary: current, fallback: current), automaticRecording: false, callsFolder: root)) }
+            let preferences = PreferencesStore(fileURL: root.appendingPathComponent("preferences.json"))
+            try preferences.write(Preferences(notes: .init(enabled: true, primary: current, fallback: current), automaticRecording: false, callsFolder: root))
             let files = Files(locations: SummaryStorage(folder: root, timeZone: .gmt), disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("leases"))
             let http = RecoveryHTTP()
             let runtime = Runtime(process: RecoveryNoProcess(), http: http, credential: { _ in nil }, deadline: {
@@ -54,7 +54,7 @@ struct SummaryRecoveryDispatchTests {
                 #expect(record.phase == "succeeded")
                 #expect(record.job == job.id && record.input == "saved-input" && !record.warning)
                 #expect(try SummaryJobStore(files: files).state(record).job == job)
-                let output = try await offPool { try String(contentsOf: folder.appendingPathComponent("summary.md"), encoding: .utf8) }
+                let output = try String(contentsOf: folder.appendingPathComponent("summary.md"), encoding: .utf8)
                 #expect(output.hasSuffix("# Topic\n\nRecovered meeting\n\n## Key points\n\n- Saved spoken input\n\n## Decisions\n\nNone recorded.\n\n## Actions\n\nNone recorded.\n\n"))
                 #expect(await http.requests.count == 1)
                 await summaries.shutdown()

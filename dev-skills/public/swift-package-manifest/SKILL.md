@@ -31,7 +31,7 @@ Place the main Package declaration at the top, using static properties:
 
 ```swift
 // swift-tools-version: 6.1
-@preconcurrency import PackageDescription
+import PackageDescription
 
 let package = Package(
     name: "package-name",
@@ -87,7 +87,7 @@ targets: [.core, .thisFeature, .tests]
 - **Private Extensions**: Always mark extensions as `private`
 - **Alphabetical Order**: Keep properties alphabetically ordered
 - **Omit Empty Arrays**: Don't include `dependencies: []` if empty
-- **Swift 6**: Use `@preconcurrency import PackageDescription`
+- **Swift 6**: Plain `import PackageDescription` — no `@preconcurrency` needed (manifest top-level code is main-actor isolated)
 - **Dependency Types**: 
   - `byName()` for internal targets
   - `product()` for external packages

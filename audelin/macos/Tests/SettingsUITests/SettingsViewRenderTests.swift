@@ -110,6 +110,6 @@ struct SettingsViewRenderTests {
 
         let host = Offscreen.host(SettingsPreview(state: state, scheme: scheme), scheme: scheme)
         let image = try #require(Offscreen.sharpSnapshot(host))
-        return try await offPool { try readText(in: image) }
+        return try await readText(in: image)
     }
 }

@@ -11,9 +11,9 @@ import Testing
     @Test func completionDuringStartupReadCannotLoseOrDoubleDispatchPendingJob() async throws {
         try await withComposeFolder { root in
             let id = "1970.01.01-0000"
-            try await offPool { try FileManager.default.createDirectory(at: root.appendingPathComponent(id), withIntermediateDirectories: true) }
-            let preferences = await offPool { PreferencesStore(fileURL: root.appendingPathComponent("preferences.json")) }
-            try await offPool { try preferences.updateNotes(.init(enabled: true)) }
+            try FileManager.default.createDirectory(at: root.appendingPathComponent(id), withIntermediateDirectories: true)
+            let preferences = PreferencesStore(fileURL: root.appendingPathComponent("preferences.json"))
+            try preferences.updateNotes(.init(enabled: true))
             let files = Files(locations: SummaryStorage(folder: root, timeZone: .gmt), disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("leases"))
             let readStarted = Signal(), releaseRead = Signal(), submitStarted = Signal()
             let runtime = Runtime(process: ArbitrationProcess(), http: ArbitrationHTTP(), credential: { _ in nil }, deadline: { throw Failure.timeout })
@@ -40,9 +40,9 @@ import Testing
     @Test func secondCompositionObservesHeldGenerationWithoutInvalidatingPublication() async throws {
         try await withComposeFolder { root in
             let id = "1970.01.01-0000"
-            try await offPool { try FileManager.default.createDirectory(at: root.appendingPathComponent(id), withIntermediateDirectories: true) }
-            let preferences = await offPool { PreferencesStore(fileURL: root.appendingPathComponent("preferences.json")) }
-            try await offPool { try preferences.updateNotes(enabledNotes()) }
+            try FileManager.default.createDirectory(at: root.appendingPathComponent(id), withIntermediateDirectories: true)
+            let preferences = PreferencesStore(fileURL: root.appendingPathComponent("preferences.json"))
+            try preferences.updateNotes(enabledNotes())
             let directory = root.appendingPathComponent("leases")
             let ownerFiles = Files(locations: SummaryStorage(folder: root, timeZone: .gmt), disk: FileDisk(), ownershipDirectory: directory)
             let observerFiles = Files(locations: SummaryStorage(folder: root, timeZone: .gmt), disk: FileDisk(), ownershipDirectory: directory)
@@ -71,9 +71,9 @@ import Testing
     @Test func shutdownRetainsOwnershipUntilCancelledRequestCleanupIsJoined() async throws {
         try await withComposeFolder { root in
             let id = "1970.01.01-0000"
-            try await offPool { try FileManager.default.createDirectory(at: root.appendingPathComponent(id), withIntermediateDirectories: true) }
-            let preferences = await offPool { PreferencesStore(fileURL: root.appendingPathComponent("preferences.json")) }
-            try await offPool { try preferences.updateNotes(enabledNotes()) }
+            try FileManager.default.createDirectory(at: root.appendingPathComponent(id), withIntermediateDirectories: true)
+            let preferences = PreferencesStore(fileURL: root.appendingPathComponent("preferences.json"))
+            try preferences.updateNotes(enabledNotes())
             let directory = root.appendingPathComponent("leases")
             let ownerFiles = Files(locations: SummaryStorage(folder: root, timeZone: .gmt), disk: FileDisk(), ownershipDirectory: directory)
             let observerFiles = Files(locations: SummaryStorage(folder: root, timeZone: .gmt), disk: FileDisk(), ownershipDirectory: directory)
@@ -96,9 +96,9 @@ import Testing
     @Test func pendingRecoveryRetainsItsSnapshotOverConcurrentCompletion() async throws {
         try await withComposeFolder { root in
             let id = "1970.01.01-0000"
-            try await offPool { try FileManager.default.createDirectory(at: root.appendingPathComponent(id), withIntermediateDirectories: true) }
-            let preferences = await offPool { PreferencesStore(fileURL: root.appendingPathComponent("preferences.json")) }
-            try await offPool { try preferences.updateNotes(enabledNotes()) }
+            try FileManager.default.createDirectory(at: root.appendingPathComponent(id), withIntermediateDirectories: true)
+            let preferences = PreferencesStore(fileURL: root.appendingPathComponent("preferences.json"))
+            try preferences.updateNotes(enabledNotes())
             let files = Files(locations: SummaryStorage(folder: root, timeZone: .gmt), disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("leases"))
             let store = SummaryJobStore(files: files)
             let saved = savedJob(call: id)
@@ -133,19 +133,19 @@ import Testing
         try await withComposeFolder { root in
             let id = "1970.01.01-0000", folder = root.appendingPathComponent(id)
             let corrupt = Data("{broken".utf8)
-            try await offPool {
+            do {
                 try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
                 try corrupt.write(to: folder.appendingPathComponent(".summary-job.json"))
             }
-            let preferences = await offPool { PreferencesStore(fileURL: root.appendingPathComponent("preferences.json")) }
-            try await offPool { try preferences.updateNotes(enabledNotes()) }
+            let preferences = PreferencesStore(fileURL: root.appendingPathComponent("preferences.json"))
+            try preferences.updateNotes(enabledNotes())
             let files = Files(locations: SummaryStorage(folder: root, timeZone: .gmt), disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("leases"))
             let runtime = Runtime(process: ArbitrationProcess(), http: ArbitrationHTTP(), credential: { _ in nil }, deadline: { throw Failure.timeout })
             let summaries = AudelinSummaries(files: files, runtime: runtime, preferences: preferences, sink: TestLogSink())
             await summaries.recover(calls: [id])
             #expect(summaries.statuses[id] == summaryStatus(.failed, false))
             await summaries.submit(call: id, input: "input", entries: [.init(label: "A", time: "0", text: "spoken")], finalWrite: true, usable: true)
-            #expect(try await offPool { try Data(contentsOf: folder.appendingPathComponent(".summary-job.json")) } == corrupt)
+            #expect(try Data(contentsOf: folder.appendingPathComponent(".summary-job.json")) == corrupt)
             #expect(summaries.statuses[id] == summaryStatus(.failed, false))
             await summaries.shutdown()
         }
@@ -154,9 +154,9 @@ import Testing
     @Test func shutdownJoinsHeldRecoveryAndLeavesItsJobPending() async throws {
         try await withComposeFolder { root in
             let id = "1970.01.01-0000"
-            try await offPool { try FileManager.default.createDirectory(at: root.appendingPathComponent(id), withIntermediateDirectories: true) }
-            let preferences = await offPool { PreferencesStore(fileURL: root.appendingPathComponent("preferences.json")) }
-            try await offPool { try preferences.updateNotes(enabledNotes()) }
+            try FileManager.default.createDirectory(at: root.appendingPathComponent(id), withIntermediateDirectories: true)
+            let preferences = PreferencesStore(fileURL: root.appendingPathComponent("preferences.json"))
+            try preferences.updateNotes(enabledNotes())
             let files = Files(locations: SummaryStorage(folder: root, timeZone: .gmt), disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("leases"))
             let saved = savedJob(call: id)
             #expect(try await SummaryJobStore(files: files).claim(saved).owned)

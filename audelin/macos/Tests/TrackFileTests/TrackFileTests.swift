@@ -101,14 +101,14 @@ struct TrackFileTests {
         try await withTrackFolder { folder in
             let missing = folder.appendingPathComponent("missing/track.caf")
             await #expect(throws: (any Error).self) { try await TrackFile(url: missing) }
-            #expect(await offPool { !FileManager.default.fileExists(atPath: missing.path) })
+            #expect(!FileManager.default.fileExists(atPath: missing.path))
             let locked = folder.appendingPathComponent("locked", isDirectory: true)
-            try await offPool { try FileManager.default.createDirectory(at: locked, withIntermediateDirectories: false) }
-            try await offPool { try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: locked.path) }
+            try FileManager.default.createDirectory(at: locked, withIntermediateDirectories: false)
+            try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: locked.path)
             try await withCleanup {
                 let url = locked.appendingPathComponent("track.caf")
                 await #expect(throws: (any Error).self) { try await TrackFile(url: url) }
-                #expect(await offPool { !FileManager.default.fileExists(atPath: url.path) })
+                #expect(!FileManager.default.fileExists(atPath: url.path))
             } cleanup: {
                 try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: locked.path)
             }
@@ -127,7 +127,7 @@ struct TrackFileTests {
                     makeConversion: { try CompleteConversion(inputRate: $0) }
                 )
             }
-            #expect(await offPool { !FileManager.default.fileExists(atPath: url.path) })
+            #expect(!FileManager.default.fileExists(atPath: url.path))
             let track = try await TrackFile(url: url)
             try await track.write(tone(1), sampleRate: 48_000)
             try await track.close()
@@ -140,12 +140,12 @@ struct TrackFileTests {
         try await withTrackFolder { folder in
             let url = folder.appendingPathComponent("kept.caf")
             let bytes = Data("a kept recording".utf8)
-            try await offPool { try bytes.write(to: url) }
+            try bytes.write(to: url)
             let link = folder.appendingPathComponent("link.caf")
-            try await offPool { try FileManager.default.createSymbolicLink(at: link, withDestinationURL: url) }
+            try FileManager.default.createSymbolicLink(at: link, withDestinationURL: url)
             for path in [url, link] {
                 await #expect(throws: (any Error).self) { try await TrackFile(url: path) }
-                #expect(try await offPool { try Data(contentsOf: url) } == bytes)
+                #expect(try Data(contentsOf: url) == bytes)
             }
         }
     }

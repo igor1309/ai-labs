@@ -27,7 +27,7 @@ struct BoundaryCompositionTests {
                 monotonicNow: { 0 }, sleep: { _ in throw CancellationError() },
                 after: { _, _ in BoundaryCancellation {} }, ticks: { AsyncStream { $0.finish() } })
             let url = root.appendingPathComponent("preferences.json")
-            try await offPool {
+            do {
                 try PreferencesStore(fileURL: url).write(Preferences(automaticRecording: false, liveText: false, callsFolder: root))
             }
             let composition = await compose(boundary: boundary, preferencesURL: url,
