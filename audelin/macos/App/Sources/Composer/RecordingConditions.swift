@@ -10,6 +10,7 @@ final class RecordingConditions: Sendable {
     private let send: @Sendable (RecordingEvent) async -> Void
     private let lastSent = Mutex<[RecordingCondition: Bool]>([:])
     private let turn = Turn()
+    private let storageMoving = Mutex(false)
     private let access: AccessPolicy
     private let observation = Mutex<Task<Void, Never>?>(nil)
     // The checks read the disk and access status, which block, so they run here.
@@ -37,6 +38,13 @@ final class RecordingConditions: Sendable {
         } }
     }
 
+    func setStorageMoving(_ moving: Bool) async {
+        await turn.take()
+        storageMoving.withLock { $0 = moving }
+        if moving { await publish(.callsFolder, available: false) }
+        turn.give()
+    }
+
     func refresh() async {
         _ = await access.refresh()
         await turn.take()
@@ -48,7 +56,7 @@ final class RecordingConditions: Sendable {
             readings.insert((.callAudioAccess, state.published), at: 1)
             break
         }
-        for (condition, available) in readings { await publish(condition, available: available) }
+        for (condition, available) in readings { await publish(condition, available: available && (condition != .callsFolder || !storageMoving.withLock { $0 })) }
         turn.give()
     }
 

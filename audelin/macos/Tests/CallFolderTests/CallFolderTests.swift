@@ -38,6 +38,30 @@ struct CallFolderTests {
         }
     }
 
+    @Test func retainedNamesReserveIdentitiesAcrossTitlesAndEachAllocationReadsThemAgain() async throws {
+        try await withCallsFolder { calls in
+            let occupied = Mutex(["2026.10.24-1405 Zoom", "2026.10.24-1405-2", "other"])
+            let adapter = CallFolder(callsURL: calls, now: { fixedStart }, timeZone: tokyo,
+                                     occupiedNames: { occupied.withLock { $0 } })
+            let first = try await offPool { try adapter.make(title: "Meet") }
+            #expect(first.url.lastPathComponent == "2026.10.24-1405-3 Meet")
+            occupied.withLock { $0.append("2026.10.24-1405-4 Finder") }
+            let second = try await offPool { try adapter.make() }
+            #expect(second.url.lastPathComponent == "2026.10.24-1405-5")
+            #expect(try await names(calls) == ["2026.10.24-1405-3 Meet", "2026.10.24-1405-5"])
+        }
+    }
+
+    @Test func failureReadingRetainedNamesFailsWithoutAllocatingAnIdentity() async throws {
+        try await withCallsFolder { calls in
+            let adapter = CallFolder(callsURL: calls, now: { fixedStart }, timeZone: tokyo,
+                                     occupiedNames: { throw POSIXError(.EACCES) })
+            await #expect(throws: POSIXError(.EACCES)) { try await offPool { try adapter.make() } }
+            let remaining = try await names(calls)
+            #expect(remaining.isEmpty)
+        }
+    }
+
     @Test func madeFolderIsPrivateToTheUser() async throws {
 
         try await withCallsFolder { calls in
@@ -128,7 +152,7 @@ struct CallFolderTests {
         try await withCallsFolder { calls in
             try await offPool { try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: calls.path) }
                         // Inject the denial because privileged test runners can write read-only folders.
-            let adapter = CallFolder(callsURL: calls, now: { fixedStart }, timeZone: tokyo, createDirectory: { _ in
+            let adapter = CallFolder(callsURL: calls, now: { fixedStart }, timeZone: tokyo, occupiedNames: { [] }, createDirectory: { _ in
                 throw POSIXError(code)
             }, names: { _ in [] })
             await #expect(throws: POSIXError(code)) { try await offPool { try adapter.make() } }
@@ -195,7 +219,7 @@ struct CallFolderTests {
     @Test func failedListingFailsWithoutCreatingAnything() async throws {
 
         try await withCallsFolder { calls in
-            let adapter = CallFolder(callsURL: calls, now: { fixedStart }, timeZone: tokyo, createDirectory: { _ in
+            let adapter = CallFolder(callsURL: calls, now: { fixedStart }, timeZone: tokyo, occupiedNames: { [] }, createDirectory: { _ in
                 Issue.record("made a folder after listing failed")
             }, names: { _ in throw POSIXError(.EACCES) })
             await #expect(throws: POSIXError(.EACCES)) { try await offPool { try adapter.make() } }

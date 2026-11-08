@@ -190,7 +190,10 @@ extension SettingsView {
         case let .failed(moved, reason):
             dataText("часть звонков ещё здесь", tokens.typeSmall, tokens.warn)
             errorBanner(moved, reason)
-            button("Повторить", .secondary) { event(.retryMove) }
+            HStack(spacing: tokens.space8) {
+                button("Повторить", .secondary) { event(.retryMove) }
+                button("Отмена", .secondary) { event(.cancelMove) }
+            }
 
         case .recording:
             dataText("идёт запись — папку можно сменить после звонка", tokens.typeSmall, tokens.warn)

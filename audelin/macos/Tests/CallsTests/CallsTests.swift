@@ -41,7 +41,7 @@ struct CallsTests {
                                 received.withLock { $0.append(url) }
                                 if failing == "*" || failing == url.lastPathComponent { throw POSIXError(.EACCES) }
                                 return url.lastPathComponent == "microphone.caf" ? 12.5 : 3.25
-                            }, rename: { _, _ in throw POSIXError(.EIO) },
+                            }, copy: { try FileManager.default.copyItem(at: $0, to: $1) }, rename: { _, _ in throw POSIXError(.EIO) },
                             remove: { _ in throw POSIXError(.EIO) })
             #expect(received.withLock { $0.isEmpty })
             let calls = try await offPool { try sut.list() }
@@ -213,6 +213,7 @@ struct CallsTests {
                             children: { try FileManager.default.contentsOfDirectory(at: $0, includingPropertiesForKeys: nil) },
                             values: { try $0.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey, .fileSizeKey]) },
                             duration: { _ in throw POSIXError(.EIO) },
+                            copy: { try FileManager.default.copyItem(at: $0, to: $1) },
                             rename: { _, _ in throw POSIXError(.EACCES) },
                             remove: { url in try FileManager.default.removeItem(at: url.appendingPathComponent("kept")); throw POSIXError(.EACCES) })
             await #expect(throws: POSIXError(.EACCES)) { try await offPool { try sut.rename(id: "2026.10.24-1405", title: "New") } }

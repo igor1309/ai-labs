@@ -1,7 +1,14 @@
 # Log
 
+## 2026-11-08
+
+- Install works from a shell whose temp folder no longer exists (LAB-1056).
+
+- One command installs the app into /Applications, replaces an older copy, opens it and starts it at login (LAB-1054).
+
 ## 2026-11-07
 
+- Changing the calls folder confirms the count and size, moves verified copies with progress, and retries the remaining calls after a failure; recordings wait until the move ends (LAB-747).
 - Optional call notes can be configured in native Settings and generated after a saved final transcript; Calls displays progress, warnings and failures while recording remains independent (LAB-1034).
 - Durable notes follow call rename, deletion and folder moves; pending jobs retain their configuration and interrupted requests are not automatically repeated (LAB-1034).
 

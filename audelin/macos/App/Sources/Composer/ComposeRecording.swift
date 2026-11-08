@@ -6,7 +6,8 @@ import CallAudioAccess
 import Synchronization
 
 func composeRecording(
-    preferences: PreferencesStore, callApp: RecordingCallApp, processes: CoreAudioProcesses,
+    preferences: PreferencesStore, occupiedCallNames: @escaping @Sendable () throws -> [String],
+    callApp: RecordingCallApp, processes: CoreAudioProcesses,
     boundary: ComposerBoundary, panel: AudelinPanel, summaries: SummaryCallbacks = .disabled
 ) async -> RecordingInputs {
     let initial = RecordingState(automatic: preferences.read().automaticRecording)
@@ -14,7 +15,7 @@ func composeRecording(
     let sink = boundary.log
     // Ending Recording clears the report path, which otherwise keeps the model alive through its Session.
     let destination = Mutex<RecordingInputs?>(nil)
-    let sessions = RecordingSessions(preferences: preferences, callApp: callApp, processes: processes, boundary: boundary, report: { id, report in
+    let sessions = RecordingSessions(preferences: preferences, occupiedCallNames: occupiedCallNames, callApp: callApp, processes: processes, boundary: boundary, report: { id, report in
         guard let recording = destination.withLock({ $0 }) else { return }
         await recording.send(.sessionReported(id: id, report))
     }, panel: panel, summaries: summaries)

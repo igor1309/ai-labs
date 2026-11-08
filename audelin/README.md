@@ -23,6 +23,11 @@ Provider availability, quota and factual faithfulness are not guaranteed by
 configuration checks or structural validation.
 
 Build: `cd audelin/macos && sh scripts/bundle.sh`.
+Install: `sh audelin/macos/scripts/install.sh` builds, quits a running copy, replaces
+`/Applications/Audelin.app`, opens it, and adds the LaunchAgent
+`~/Library/LaunchAgents/dev.igor1309.audelin.login.plist` that opens it at login.
+Turn start at login off by deleting that file. macOS asks for microphone and
+audio-capture access on first use; the first launch downloads and compiles the models.
 Components: `macos/`; composer, app, rehearsal and their integration tests: `macos/App/`.
 Build and test each package from its directory with `swift build --build-tests` and `swift test`.
 Reading exposes its complete state, including rendered lines, the stored `log`,
