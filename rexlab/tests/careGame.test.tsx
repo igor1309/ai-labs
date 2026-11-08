@@ -1,3 +1,4 @@
+import "./careSheets.ts";
 import { HOME_TILE_PICTURES } from "../src/homeTilePictures.ts";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -198,7 +199,7 @@ describe("the items", () => {
       expect(shown.querySelector("img")?.getAttribute("src")).toBe(fakeItemPicture(item));
       expect(shown.querySelector(".tray-label")?.textContent).toBe(item.toUpperCase());
       expect(parseFloat(getComputedStyle(shown).minWidth)).toBeGreaterThanOrEqual(48);
-      expect(parseFloat(getComputedStyle(shown).height)).toBeGreaterThanOrEqual(48);
+      expect(parseFloat(getComputedStyle(shown).minHeight)).toBeGreaterThanOrEqual(48);
     }
     const meat = trayItem("meat");
 

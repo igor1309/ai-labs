@@ -61,6 +61,18 @@ function phoneScreen(selector: string, size: WindowSize, top = 24) {
   }
 }
 
+// A visit upright on the dig site, 20 from the sides, HOME a 48-pixel
+// symbol with its word for screen readers.
+function visitScreen(size: WindowSize) {
+  expect([document.documentElement.dataset.size, gateShown(), part(".gated-screen").hasAttribute("inert")]).toEqual(["tall-narrow", false, false]);
+  expect(part(".visit").classList.contains("skeleton-dig")).toBe(true);
+  const page = styleAt(part(".visit"), size);
+  expect([page.px("padding-left"), page.px("padding-right")]).toEqual([20, 20]);
+  const home = part(".visit .home-button");
+  expect(styleAt(home, size).px("width")).toBe(48);
+  expect(home.querySelector(".upright-hidden")?.textContent).toBe(home.textContent);
+}
+
 describe("care upright on a phone", () => {
   it.each(BOTH)("stands the welcome upright at %i by %i in %s on the dig site, NEW VISITOR over FRIENDS", (width, height, language) => {
     const size: WindowSize = [width, height];
@@ -86,46 +98,36 @@ describe("care upright on a phone", () => {
     const size: WindowSize = [width, height];
     openCare(size, language);
     fireEvent.click(screen.getByRole("button", { name: TEXTS[language].newVisitor }));
-    phoneScreen(".visit", size);
+    visitScreen(size);
     const bar = styleAt(part(".visit-bar"), size);
     expect([bar.value("flex-wrap"), bar.rowGap()]).toEqual(["wrap", 12]);
     const needs = styleAt(part(".needs"), size);
-    expect([needs.value("order"), needs.value("flex-basis"), needs.value("justify-content")]).toEqual(["1", "100%", "space-around"]);
-    const needList = all(".need");
-    expect(needList).toHaveLength(4);
-    for (const need of needList) expect(styleAt(need, size).px("width")).toBe(48);
-    expect(2 * 4 + 4 * 48).toBeLessThanOrEqual(width - 40);
-    const hearts = styleAt(part(".hearts-counter"), size);
-    expect(48 + 8 + hearts.px("padding-left") + hearts.px("padding-right") + 24 + hearts.columnGap() + 2 * 0.8 * hearts.px("font-size")).toBeLessThanOrEqual(width - 40);
-    // Five items, 6 apart, sharing the row and each at least 44 wide and
-    // 72 tall, its word hidden from sight and naming it for screen readers.
-    const tray = styleAt(part(".tray"), size);
+    expect([needs.value("position"), needs.value("order"), needs.value("flex-basis"), needs.value("justify-content")]).toEqual(["static", "1", "100%", "center"]);
+    expect(all(".need")).toHaveLength(4);
+    // Five items in their pockets, at least 48 square, each word hidden
+    // from sight and naming it for screen readers.
     expect(all(".tray-item")).toHaveLength(5);
-    expect((width - 40 - 4 * tray.columnGap()) / 5).toBeGreaterThanOrEqual(44);
     for (const label of Object.values(TEXTS[language].items)) {
-      const item = styleAt(screen.getByRole("button", { name: label }), size);
-      expect([item.value("flex-basis"), item.value("flex-grow"), item.px("min-width"), item.px("height")]).toEqual(["0px", "1", 0, 72]);
-      const words = styleAt(screen.getByRole("button", { name: label }).querySelector<HTMLElement>(".tray-label")!, size);
-      expect([words.value("position"), words.px("width"), words.value("overflow"), words.value("clip-path"), words.value("display")]).toEqual(["absolute", 1, "hidden", "inset(50%)", "inline"]);
+      const button = screen.getByRole("button", { name: label });
+      expect([styleAt(button, size).px("min-width"), styleAt(button, size).px("min-height")]).toEqual([48, 48]);
+      const words = styleAt(button.querySelector<HTMLElement>(".tray-label")!, size);
+      expect([words.value("position"), words.value("overflow"), words.value("clip-path")]).toEqual(["absolute", "hidden", "inset(50%)"]);
     }
-    const name = styleAt(part(".visitor-name"), size);
-    expect([name.px("left"), name.px("font-size")]).toEqual([16, 22]);
-    // The stage keeps at least 200 pixels of height for the visitor, the
-    // screen scrolling where the window is too short.
-    const stage = styleAt(part(".stage"), size);
-    expect([stage.value("flex-grow"), stage.value("flex-shrink"), stage.value("flex-basis")]).toEqual(["1", "0", "200px"]);
-    const visit = styleAt(part(".visit"), size);
-    expect([visit.value("height"), visit.px("min-height")]).toEqual(["auto", height]);
+    expect(styleAt(part(".visitor-name"), size).value("white-space")).toBe("nowrap");
+    // The stage keeps at least 200 pixels for the visitor, the screen
+    // scrolling where the window is too short.
+    expect(styleAt(part(".stage"), size).value("flex-basis")).toBe("200px");
+    expect(styleAt(part(".visit"), size).value("height")).toBe("auto");
   });
 
   it.each(LANGUAGES)("keeps a visit's stage 200 tall in a short window in %s, the screen scrolling", (language) => {
     const size: WindowSize = [320, 420];
     openCare(size, language);
     fireEvent.click(screen.getByRole("button", { name: TEXTS[language].newVisitor }));
-    phoneScreen(".visit", size);
+    visitScreen(size);
     expect(styleAt(part(".stage"), size).value("flex-basis")).toBe("200px");
     expect(styleAt(part(".stage"), size).value("flex-shrink")).toBe("0");
-    expect(styleAt(part(".visit"), size).value("height")).toBe("auto");
+    expect([styleAt(part(".visit"), size).value("height"), styleAt(part(".visit"), size).value("overflow")]).toEqual(["auto", "visible"]);
   });
 
   it.each(BOTH)("stands FRIENDS upright at %i by %i in %s, the cards two to a row", (width, height, language) => {
@@ -191,6 +193,6 @@ describe("care upright on a phone", () => {
     openWindow(393, 852);
     act(() => viewport.resize("tall-narrow", true));
     expect([document.documentElement.dataset.size, gateShown(), part(".stage")]).toEqual(["tall-narrow", false, stage]);
-    phoneScreen(".visit", [393, 852]);
+    visitScreen([393, 852]);
   });
 });

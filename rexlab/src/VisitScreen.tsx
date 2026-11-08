@@ -1,9 +1,12 @@
 import { Bath, Check, Droplet, Heart, House, Moon, Undo2, Utensils, type LucideIcon } from "lucide-react";
 import type { CSSProperties } from "react";
 import { Button } from "./Button.tsx";
+import { DigGround } from "./DigBar.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS, type Texts } from "./language/texts.ts";
 import { Picture } from "./Picture.tsx";
+import "./skeletonSite.css";
+import "./careVisit.css";
 
 export type CareItem = keyof Texts["items"];
 export type CareNeed = keyof Texts["needs"];
@@ -51,7 +54,8 @@ export function VisitScreen({ language, visit, itemPicture, onGive, onHome }: Vi
   // reaction, or once the visitor leaves, gives nothing.
   const busy = need === undefined || reacting !== null;
   return (
-    <main className="visit">
+    <main className="skeleton-dig visit">
+      <DigGround />
       <header className="visit-bar">
         <Button className="home-button" onClick={onHome}>
           <House size={24} aria-hidden="true" />
@@ -68,7 +72,7 @@ export function VisitScreen({ language, visit, itemPicture, onGive, onHome }: Vi
           })}
         </ol>
         <p className="hearts-counter" aria-label={text.hearts}>
-          <Heart size={28} aria-hidden="true" />
+          <Heart size={22} aria-hidden="true" />
           {/* A new count bumps in as the hearts earned reach it. */}
           <span key={hearts} className="hearts-count">
             {hearts}
