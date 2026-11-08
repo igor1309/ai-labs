@@ -155,4 +155,5 @@ models, machine and instrumentation.
 - A real-speech, real-recogniser rehearsal at 1× with per-stage latency.
 - Memory over a call against entries held, and release across repeated
   calls.
-- Nightly long runs on the self-hosted Mac.
+- Nightly long runs on the self-hosted Mac: `.github/workflows/audelin-nightly.yml`
+  runs `macos/scripts/nightly.sh` (LAB-797).
