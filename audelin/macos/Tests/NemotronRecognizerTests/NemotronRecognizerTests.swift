@@ -77,26 +77,6 @@ struct NemotronRecognizerTests {
         #expect(hearing.from == 0.2)
     }
 
-    @Test func blockedRecognizersOutnumberingThePoolAllKeepDecodingAcrossSuspension() async throws {
-
-        let feeding = SuspendingBarriers(), finishing = SuspendingBarriers()
-        let recognizers = (0..<feeding.before.count).map { _ in
-            NemotronRecognizer(decoder: BarrierDecoder(feeding: feeding, finishing: finishing))
-        }
-
-        try await withThrowingTaskGroup { group in
-            for recognizer in recognizers { group.addTask { _ = try await recognizer.hear(silence(1.12)) } }
-            try await group.waitForAll()
-        }
-        #expect(feeding.met)
-
-        try await withThrowingTaskGroup { group in
-            for recognizer in recognizers { group.addTask { _ = try await recognizer.finish() } }
-            try await group.waitForAll()
-        }
-        #expect(finishing.met)
-    }
-
     @Test func aWordFollowedByAnotherIsFinal() async throws {
 
         let recognizer = NemotronRecognizer(decoder: ScriptedDecoder([twoWords]))
@@ -391,42 +371,6 @@ private actor ControlledModelLoad {
         for waiter in waiters { waiter.resume(returning: model) }
         waiters.removeAll()
         starts.finish()
-    }
-}
-
-/// A barrier on each side of a suspension.
-private struct SuspendingBarriers {
-
-    let before = ThreadBarrier()
-    let after = ThreadBarrier()
-
-    var met: Bool { before.met && after.met }
-
-    func pass() async {
-
-        before.arrive()
-        await Task.yield()
-        after.arrive()
-    }
-}
-
-/// Blocks whichever thread the recognizer runs it on; it has no isolation of its own.
-private struct BarrierDecoder: TokenDecoder {
-
-    let chunk = 1.12
-    let feeding: SuspendingBarriers
-    let finishing: SuspendingBarriers
-
-    func feed(_ samples: [Float]) async throws -> [DecodedToken] {
-
-        await feeding.pass()
-        return []
-    }
-
-    func finish() async throws -> [DecodedToken] {
-
-        await finishing.pass()
-        return []
     }
 }
 

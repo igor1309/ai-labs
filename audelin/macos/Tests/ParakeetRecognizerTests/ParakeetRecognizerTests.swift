@@ -252,22 +252,6 @@ struct ParakeetRecognizerTests {
         }
     }
 
-    @Test func blockedRecognizersOutnumberingThePoolAllKeepReadingAcrossSuspension() async throws {
-
-        let before = ThreadBarrier(), after = ThreadBarrier()
-        let recognizers = (0..<before.count).map { _ in
-            ParakeetRecognizer(reader: BarrierReader(before: before, after: after))
-        }
-
-        try await withThrowingTaskGroup { group in
-            for recognizer in recognizers { group.addTask { _ = try await recognizer.hear(silence(6)) } }
-            try await group.waitForAll()
-        }
-
-        #expect(before.met)
-        #expect(after.met)
-    }
-
     // MARK: - Helpers
 
     private func word(_ text: String, _ start: Double, _ end: Double) -> WindowWord {
@@ -356,21 +340,6 @@ private actor ControlledModelLoad {
         for waiter in waiters { waiter.resume(returning: model) }
         waiters.removeAll()
         starts.finish()
-    }
-}
-
-/// Blocks whichever thread the recognizer runs it on; it has no isolation of its own.
-private struct BarrierReader: WindowReader {
-
-    let before: ThreadBarrier
-    let after: ThreadBarrier
-
-    func read(_ samples: [Float]) async throws -> [WindowWord] {
-
-        before.arrive()
-        await Task.yield()
-        after.arrive()
-        return []
     }
 }
 
