@@ -19,7 +19,7 @@ struct PanelBannerTests {
         }
     }
 
-    @Test func bannerCopyAndActionsDescribeEachProblem() {
+    @Test nonisolated func bannerCopyAndActionsDescribeEachProblem() {
 
         let cases: [(PanelState.Banner, String, String, String, PanelEvent)] = [
             (.callAudio, "Нет звука звонка",

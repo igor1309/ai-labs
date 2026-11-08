@@ -44,7 +44,7 @@ struct LongCallFaultTests {
             // The rig's scripted captures add one piece at start and one at stop.
             #expect(try await recordedFrames(folder.appendingPathComponent("microphone.caf")) == micSent + 3)
             #expect(try await recordedFrames(folder.appendingPathComponent("call.caf")) == callSent + 3)
-            let transcript = try await offPool { try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8) }
+            let transcript = try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8)
             let words = { (side: String) in
                 tokens(transcript).filter { $0.hasPrefix(side) && $0.dropFirst(side.count).allSatisfy(\.isNumber) }
             }
@@ -85,5 +85,5 @@ private actor FailingRecognizer: Recognizer {
 
 private func recordedFrames(_ url: URL) async throws -> Int {
 
-    try await offPool { Int(try AVAudioFile(forReading: url).length) }
+    try Int(try AVAudioFile(forReading: url).length)
 }

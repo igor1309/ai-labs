@@ -89,6 +89,7 @@ Two things keep the table above from going stale (LAB-219):
 
 - **Every test file runs some job.** `scripts/tests/ci-workflow-paths.test.js` lists every tracked test file (Go, Node, Python, Swift, Kotlin, shell) and fails when a change to one would select no job. A new project's tests fail there until a filter and a job cover them, or until `unfilteredTests` in that file names the reason they need none.
 - **Every job runs weekly.** A push runs only the jobs its changed paths select, so a project nothing touches is never re-tested. `ci-weekly.yml` dispatches `ci.yml` on trunk each Sunday at 03:37 Moscow time; a manual dispatch runs every job, `real-provider-smoke` included, and the same test keeps that true. A failure arrives through `ci.yml`'s own Telegram notification.
+- **Audelin's long runs run nightly, never in a pull request.** `audelin-nightly.yml` runs `audelin/macos/scripts/nightly.sh` on the self-hosted `local-mac` runner at 04:43 Moscow time: a 3-hour real-model call at 1x with lag and memory, and short CPU-and-hangs captures at 1,620 and 6,000 preloaded lines. Its report names the workload, build, models, machine and toolchain, and compares only with a previous run that matches on all of them. `ciPullRequestChecks_shouldNeverRunTheLongProfiledRuns` keeps it out of every workflow a pull request starts; a change to it runs `audelin-core`, which tests the report.
 
 ## Notio Split
 
@@ -108,9 +109,13 @@ There is no trunk-push Cloudflare Pages deploy path for Notio frontend.
 
 There is no trunk-push deploy path for RexLab.
 
+## Audelin
+
+- `audelin-install.yml` runs on a trunk push that changes Audelin's app code, `bundle.sh` or `install.sh`, and on manual dispatch. On the self-hosted `local-mac` runner it builds the app and replaces `/Applications/Audelin.app` with `install.sh --update`: a running Audelin is not quit and the app is not opened, so the new version starts at the next launch or login. A failure arrives in the CI Telegram chat. It is no required check, so while the runner is offline the run waits queued and nothing else is held. Signing needs the owner's login keychain, so the runner's launch agent must not set `SessionCreate` (`svc.sh install` adds it; `audelin/README.md` says how to remove it).
+
 ## Shared Infrastructure
 
 - **Path detection**: `dorny/paths-filter@v4` in the `changes` job
 - **Failure notifications**: all pipelines route failures through `notify-telegram-failure.yml`
 - **Concurrency**: scheduled workflows use `concurrency` groups to prevent overlap
-- **Timezone**: cron schedules target Moscow morning (UTC+3), and `ci-weekly.yml` Sunday night, documented in each file
+- **Timezone**: cron schedules target Moscow morning (UTC+3), and `ci-weekly.yml` Sunday night and `audelin-nightly.yml` every night, documented in each file

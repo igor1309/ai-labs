@@ -43,7 +43,7 @@ import Testing
             state = reducer.reduce(state, .editField(.fallback, .endpoint, proposed)).0
             let view = try loadedPresentation(state)
             #expect(view.runtimes[1].fields.first { $0.id == .endpoint }?.value == proposed)
-            #expect(!view.save.isEnabled)
+            #expect(view.save.isEnabled == (state.issues.isEmpty && state.draft != state.saved))
         }
         let invalid = reducer.reduce(state, .editField(.fallback, .endpoint, "http://remote.example/v1")).0
         let field = try #require(loadedPresentation(invalid).runtimes[1].fields.first { $0.id == .endpoint })
@@ -78,11 +78,11 @@ import Testing
     func disabledUnsafeURLNeverReachesTemporaryPreferences(endpoint: String) async throws {
         try await withComposeFolder { root in
             let url = root.appendingPathComponent("preferences.json")
-            let storage = await offPool { PreferencesStore(fileURL: url) }
+            let storage = PreferencesStore(fileURL: url)
             let preferences = SummaryPreferences(storage: storage)
             let initial = try await preferences.load()
             try await preferences.save(initial)
-            let before = try await offPool { try Data(contentsOf: url) }
+            let before = try Data(contentsOf: url)
             let provider = ProviderSpy()
             let handler = EffectHandler(preferences: preferences, availability: SummaryAvailability(runtime: provider.runtime()))
             let reducer = settingsReducer()
@@ -100,7 +100,7 @@ import Testing
             // The persistence boundary also rejects a caller bypassing the reducer.
             let unsafe = try #require(edited.draft)
             #expect(await handler.handle(.save(edited.revision, unsafe)) == .saveFailed(edited.revision))
-            #expect(try await offPool { try Data(contentsOf: url) } == before)
+            #expect(try Data(contentsOf: url) == before)
             #expect(try await preferences.load() == initial)
             #expect(provider.calls.withLock { $0.isEmpty })
         }
@@ -109,7 +109,7 @@ import Testing
     @Test func disabledSafeSaveAndValidationNeedNoInstalledOrAuthenticatedProvider() async throws {
         try await withComposeFolder { root in
             let url = root.appendingPathComponent("preferences.json")
-            let storage = await offPool { PreferencesStore(fileURL: url) }
+            let storage = PreferencesStore(fileURL: url)
             let preferences = SummaryPreferences(storage: storage)
             let config = try await preferences.load()
             let provider = ProviderSpy()
@@ -123,7 +123,7 @@ import Testing
             #expect(!saving.canSave && !saving.canValidate)
             let saved = reducer.reduce(saving, await handler.handle(try #require(save))).0
             #expect(saved.saved == edited.draft && saved.phase == .saved)
-            let reloaded = try await SummaryPreferences(storage: await offPool { PreferencesStore(fileURL: url) }).load()
+            let reloaded = try await SummaryPreferences(storage: PreferencesStore(fileURL: url)).load()
             #expect(reloaded.primary.executable == "/missing/claude" && !reloaded.enabled)
             #expect(provider.calls.withLock { $0.isEmpty })
         }
@@ -149,13 +149,13 @@ import Testing
         #expect(corrected.issues.isEmpty && corrected.validatedRevision == nil)
         #expect(correction.runtimes.flatMap(\.fields).allSatisfy { !$0.isInvalid })
         #expect(correction.status == settingsMessage(.editing))
-        #expect(!correction.save.isEnabled && correction.validate.isEnabled)
+        #expect(correction.save.isEnabled && correction.validate.isEnabled)
         #expect(provider.calls.withLock { $0.isEmpty })
     }
 
     @Test func enabledValidationAndSaveRemainBoundToTheEditedRevision() async throws {
         try await withComposeFolder { root in
-            let preferences = SummaryPreferences(storage: await offPool { PreferencesStore(fileURL: root.appendingPathComponent("preferences.json")) })
+            let preferences = SummaryPreferences(storage: PreferencesStore(fileURL: root.appendingPathComponent("preferences.json")))
             let provider = ProviderSpy()
             let handler = EffectHandler(preferences: preferences, availability: SummaryAvailability(runtime: provider.runtime()))
             let reducer = settingsReducer()
@@ -165,11 +165,12 @@ import Testing
             let oldResult = await handler.handle(try #require(validate))
             let newer = reducer.reduce(validating, .editField(.fallback, .model, "latest-model")).0
             #expect(reducer.reduce(newer, oldResult).0 == newer)
-            #expect(!newer.canSave && reducer.reduce(newer, .save).1 == nil)
-            let (checking, latest) = reducer.reduce(newer, .validate)
-            let approved = reducer.reduce(checking, await handler.handle(try #require(latest))).0
-            #expect(approved.canSave)
-            let (saving, save) = reducer.reduce(approved, .save)
+            #expect(newer.canSave)
+            #expect(try loadedPresentation(newer).save.isEnabled)
+            let (checking, latest) = reducer.reduce(newer, .save)
+            #expect(latest == .validate(newer.revision, newer.draft!))
+            let (saving, save) = reducer.reduce(checking, await handler.handle(try #require(latest)))
+            #expect(save == .save(newer.revision, newer.draft!))
             #expect(reducer.reduce(saving, .save).1 == nil)
             let saved = reducer.reduce(saving, await handler.handle(try #require(save))).0
             let view = try loadedPresentation(saved)
@@ -184,8 +185,8 @@ import Testing
             var stored = Preferences()
             stored.notes.fallback.endpoint = "https://user:secret@example.com/v1?key=secret"
             let data = try JSONEncoder().encode(stored)
-            try await offPool { try data.write(to: url) }
-            let preferences = SummaryPreferences(storage: await offPool { PreferencesStore(fileURL: url) })
+            try data.write(to: url)
+            let preferences = SummaryPreferences(storage: PreferencesStore(fileURL: url))
             let provider = ProviderSpy()
             let handler = EffectHandler(preferences: preferences, availability: SummaryAvailability(runtime: provider.runtime()))
             let reducer = settingsReducer()
@@ -193,7 +194,7 @@ import Testing
             let result = reducer.reduce(loading, await handler.handle(try #require(load))).0
             #expect(result.phase == .loadFailed && result.draft == nil)
             #expect(!String(describing: notesPresentation(result)).contains("secret"))
-            #expect(try await offPool { try Data(contentsOf: url) } == data)
+            #expect(try Data(contentsOf: url) == data)
         }
     }
 

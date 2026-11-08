@@ -163,10 +163,10 @@ struct TranscriptFileTests {
         try await withTranscriptFolder { folder in
             let missing = folder.appendingPathComponent("missing/transcript.md")
             await #expect(throws: (any Error).self) { try await TranscriptFile(url: missing) }
-            #expect(await offPool { !FileManager.default.fileExists(atPath: missing.path) })
+            #expect(!FileManager.default.fileExists(atPath: missing.path))
             let locked = folder.appendingPathComponent("locked", isDirectory: true)
-            try await offPool { try FileManager.default.createDirectory(at: locked, withIntermediateDirectories: false) }
-            try await offPool { try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: locked.path) }
+            try FileManager.default.createDirectory(at: locked, withIntermediateDirectories: false)
+            try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: locked.path)
             try await withCleanup {
                 let url = locked.appendingPathComponent("transcript.md")
                 await #expect(throws: (any Error).self) { try await TranscriptFile(url: url) }
@@ -199,18 +199,18 @@ struct TranscriptFileTests {
         try await withTranscriptFolder { folder in
             let url = folder.appendingPathComponent("kept.md")
             let bytes = Data([0, 255, 42, 10])
-            try await offPool { try bytes.write(to: url) }
+            try bytes.write(to: url)
             let link = folder.appendingPathComponent("link.md")
             let dangling = folder.appendingPathComponent("dangling.md")
             let absent = folder.appendingPathComponent("absent.md")
-            try await offPool { try FileManager.default.createSymbolicLink(at: link, withDestinationURL: url) }
-            try await offPool { try FileManager.default.createSymbolicLink(at: dangling, withDestinationURL: absent) }
+            try FileManager.default.createSymbolicLink(at: link, withDestinationURL: url)
+            try FileManager.default.createSymbolicLink(at: dangling, withDestinationURL: absent)
             for path in [url, link, dangling] {
                 await #expect(throws: (any Error).self) { try await TranscriptFile(url: path) }
-                #expect(try await offPool { try Data(contentsOf: url) } == bytes)
-                #expect(try await offPool { try FileManager.default.destinationOfSymbolicLink(atPath: link.path) } == url.path)
-                #expect(try await offPool { try FileManager.default.destinationOfSymbolicLink(atPath: dangling.path) } == absent.path)
-                #expect(await offPool { !FileManager.default.fileExists(atPath: absent.path) })
+                #expect(try Data(contentsOf: url) == bytes)
+                #expect(try FileManager.default.destinationOfSymbolicLink(atPath: link.path) == url.path)
+                #expect(try FileManager.default.destinationOfSymbolicLink(atPath: dangling.path) == absent.path)
+                #expect(!FileManager.default.fileExists(atPath: absent.path))
             }
             #expect(try await folderNames(folder) == ["dangling.md", "kept.md", "link.md"])
         }

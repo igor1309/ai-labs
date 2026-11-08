@@ -112,11 +112,16 @@
   kept: cut the work it checks, do not loosen the check.
 - Swift: never synchronously block a cooperative-pool thread waiting for
   future work (no semaphore, `NSCondition`, group wait or queue `sync` on
-  async work; no lock held across `await`). Project policy goes further:
-  blocking I/O, `Process` launches and blocking framework calls (Core Audio
-  HAL, CoreBluetooth setup) run on an executor backed by a dedicated serial
-  queue or thread and are awaited, however short; a slow CI runner is no
-  excuse.
+  async work; no lock held across `await`). A lock around a short critical
+  section and work that finishes on its own (a file read, a framework
+  call) may run where they are; the runtime schedules them. Do not add
+  queues, custom executors or executor preferences to schedule your own
+  work; use a queue only where an API requires one (a Core Audio IO proc,
+  a tap, a termination handler).
+- Swift tests: Swift Testing runs tests in parallel with the concurrency the
+  runtime chooses. A test awaits the component's own API and its fakes'
+  reports; it does not move work between threads, count threads or check
+  where the component runs. A `.timeLimit` catches a hang, not slowness.
 
 ## State machines
 
@@ -164,6 +169,26 @@ composes it.
   given state plus a mutation closure (`assert(state, event) { $0.status = .dismissed }`), and
   omits the closure for "no change". No test spells out a whole expected state, and reducer
   tests need no `@testable`.
+
+## Testing UI
+
+- Three claims, three kinds of test. Reducer and state tests prove the state
+  is right. Preview tests prove a view shows a given state as intended: the
+  right value in the right place, nothing missing or extra. Behaviour tests
+  prove what a view does itself: control events, focus and keyboard,
+  accessibility, scroll and selection.
+- A preview test builds the state in question directly as a value, renders
+  the view and compares it with a reference image. Each UI module keeps a
+  registry of named preview states; a case not yet covered is a new preview,
+  not a new test.
+- Do not drive a model to reach a state for a rendering check, and do not
+  read a rendered view back by OCR: both cost far more than building the
+  state, and OCR misreads.
+- Test a composition only for wiring no component test shows. A test that
+  replays a reducer or effect handler through the composed app adds nothing.
+- A test is main-actor only where the code it calls needs the main actor.
+  Main-actor tests run one at a time, and each one's time limit starts with
+  the suite, so needless ones push the rest past their limits.
 
 ## Writing docs and comments
 

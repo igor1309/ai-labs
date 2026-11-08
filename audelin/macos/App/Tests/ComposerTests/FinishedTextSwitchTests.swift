@@ -47,7 +47,7 @@ struct FinishedTextSwitchTests {
                     #expect(entries.map(\.text) == [.init(id: 0, start: 0, end: 2, settled: "first last")])
                     #expect(entries.map(\.writtenLater) == [false])
                     try await transcript.write(Transcript.segments(from: snapshot))
-                    #expect(try await offPool { try String(contentsOf: url, encoding: .utf8) }.contains("first last"))
+                    #expect(try String(contentsOf: url, encoding: .utf8).contains("first last"))
                     final = snapshot
                 }
                 #expect(statuses.contains(.off))
@@ -55,7 +55,7 @@ struct FinishedTextSwitchTests {
                 #expect(final?.status == .finished)
                 let mine = onCallSide ? "continuing" : "first last"
                 let theirs = onCallSide ? "first last" : "continuing"
-                #expect(try await offPool { try String(contentsOf: url, encoding: .utf8) }
+                #expect(try String(contentsOf: url, encoding: .utf8)
                     == "# Transcript\n\n**Me** 00:00:00\n\(mine)\n\n**Them** 00:00:00\n\(theirs)\n")
                 await transcript.close()
             } catch {

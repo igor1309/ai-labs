@@ -33,11 +33,11 @@ struct CallRecordingTranscriptTests {
             _ = try await rig.state { $0.phase == .idle && !$0.callOn }
 
             let name = "1970.01.01-0000 Zoom"
-            #expect(try await offPool {
+            #expect(try {
                 try FileManager.default.contentsOfDirectory(atPath: rig.root.path).sorted()
-            } == [name, "preferences.json"])
+            }() == [name, "preferences.json"])
             let folder = rig.folder(name)
-            #expect(await offPool { isFolder(folder.path) })
+            #expect(isFolder(folder.path))
             let microphoneTrack = try await audioFile(folder.appendingPathComponent("microphone.caf"))
             let callTrack = try await audioFile(folder.appendingPathComponent("call.caf"))
             #expect(microphoneTrack.sampleRate == 48_000)

@@ -9,13 +9,13 @@ import Testing
 struct CallsMoveTests {
     @Test func moveKeepsEveryFileAndIdentityAfterAFinderRename() async throws {
         try await withMoveFolders { (source: URL, target: URL) async throws in
-            try await offPool { try FileManager.default.moveItem(at: source.appendingPathComponent(name), to: source.appendingPathComponent(id + " Finder")) }
+            try FileManager.default.moveItem(at: source.appendingPathComponent(name), to: source.appendingPathComponent(id + " Finder"))
             let disk = Calls(folder: source, timeZone: .gmt, duration: { _ in 0 })
-            #expect(try await offPool { try disk.move(id: id, to: target) } == 7)
-            #expect(try await offPool { try FileManager.default.contentsOfDirectory(atPath: source.path).isEmpty })
-            #expect(try await offPool { try FileManager.default.contentsOfDirectory(atPath: target.path) } == [id + " Finder"])
-            #expect(try await offPool { try Data(contentsOf: target.appendingPathComponent(id + " Finder/nested/two")) } == Data([4, 5, 6, 7]))
-            #expect(try await offPool { try Data(contentsOf: target.appendingPathComponent(id + " Finder/one")) } == Data([1, 2, 3]))
+            #expect(try disk.move(id: id, to: target) == 7)
+            #expect(try FileManager.default.contentsOfDirectory(atPath: source.path).isEmpty)
+            #expect(try FileManager.default.contentsOfDirectory(atPath: target.path) == [id + " Finder"])
+            #expect(try Data(contentsOf: target.appendingPathComponent(id + " Finder/nested/two")) == Data([4, 5, 6, 7]))
+            #expect(try Data(contentsOf: target.appendingPathComponent(id + " Finder/one")) == Data([1, 2, 3]))
         }
     }
 
@@ -27,7 +27,7 @@ struct CallsMoveTests {
             let verificationReads = Mutex<[String]>([])
             let finalNameVisibleDuringVerification = Mutex<[Bool]>([])
             let readsAtRename = Mutex<[String]>([])
-            try await offPool { try Data([99]).write(to: target.appendingPathComponent("unrelated")) }
+            try Data([99]).write(to: target.appendingPathComponent("unrelated"))
             let disk = Calls(folder: source, timeZone: .gmt,
                 children: { try FileManager.default.contentsOfDirectory(at: $0, includingPropertiesForKeys: nil) },
                 values: { url in
@@ -58,18 +58,18 @@ struct CallsMoveTests {
                        from.deletingLastPathComponent().lastPathComponent == "source" { throw POSIXError(.EACCES) }
                     guard renamex_np(from.path, to.path, UInt32(RENAME_EXCL)) == 0 else { throw POSIXError(.EIO) }
                 }, remove: { try FileManager.default.removeItem(at: $0) })
-            await #expect(throws: (any Error).self) { try await offPool { try disk.move(id: id, to: target) } }
+            await #expect(throws: (any Error).self) { try disk.move(id: id, to: target) }
             #expect(renames.withLock { $0 } == (["copy", "sizes", "read", "missing"].contains(step) ? 0 : step == "retire" ? 2 : 1))
             #expect(finalNameVisibleDuringVerification.withLock { $0.allSatisfy { !$0 } })
             if step != "copy" { #expect(!verificationReads.withLock { $0.isEmpty }) }
             if ["rename", "retire"].contains(step) {
                 #expect(readsAtRename.withLock { $0.contains("one") && $0.contains("two") })
             }
-            #expect(try await offPool { try FileManager.default.contentsOfDirectory(atPath: source.path) } == [name])
-            #expect(try await offPool { try Data(contentsOf: original.appendingPathComponent("one")) } == Data([1, 2, 3]))
-            #expect(try await offPool { try Data(contentsOf: original.appendingPathComponent("nested/two")) } == Data([4, 5, 6, 7]))
-            #expect(try await offPool { try FileManager.default.contentsOfDirectory(atPath: target.path) } == ["unrelated"])
-            #expect(try await offPool { try Data(contentsOf: target.appendingPathComponent("unrelated")) } == Data([99]))
+            #expect(try FileManager.default.contentsOfDirectory(atPath: source.path) == [name])
+            #expect(try Data(contentsOf: original.appendingPathComponent("one")) == Data([1, 2, 3]))
+            #expect(try Data(contentsOf: original.appendingPathComponent("nested/two")) == Data([4, 5, 6, 7]))
+            #expect(try FileManager.default.contentsOfDirectory(atPath: target.path) == ["unrelated"])
+            #expect(try Data(contentsOf: target.appendingPathComponent("unrelated")) == Data([99]))
         }
     }
 
@@ -78,15 +78,15 @@ struct CallsMoveTests {
         try await withMoveFolders { (source: URL, target: URL) async throws in
             let disk = Calls(folder: source, timeZone: .gmt, duration: { _ in 0 })
             await #expect(throws: (any Error).self) {
-                try await offPool {
+                do {
                     try disk.move(id: id, to: target) { record in
                         if record.phase == phase { throw POSIXError(.ENOSPC) }
                     }
                 }
             }
-            #expect(try await offPool { try Data(contentsOf: source.appendingPathComponent(name + "/one")) } == Data([1, 2, 3]))
-            #expect(try await offPool { try Data(contentsOf: source.appendingPathComponent(name + "/nested/two")) } == Data([4, 5, 6, 7]))
-            #expect(try await offPool { try FileManager.default.contentsOfDirectory(atPath: target.path) }.isEmpty)
+            #expect(try Data(contentsOf: source.appendingPathComponent(name + "/one")) == Data([1, 2, 3]))
+            #expect(try Data(contentsOf: source.appendingPathComponent(name + "/nested/two")) == Data([4, 5, 6, 7]))
+            #expect(try FileManager.default.contentsOfDirectory(atPath: target.path).isEmpty)
         }
     }
 
@@ -102,16 +102,16 @@ struct CallsMoveTests {
                 default: try Data([8, 9]).write(to: original.appendingPathComponent("one"))
                 }
             })
-            await #expect(throws: (any Error).self) { try await offPool { try disk.move(id: id, to: target) } }
-            #expect(try await offPool { try FileManager.default.contentsOfDirectory(atPath: target.path) }.isEmpty)
-            #expect(try await offPool { try Data(contentsOf: original.appendingPathComponent("nested/two")) } == Data([4, 5, 6, 7]))
+            await #expect(throws: (any Error).self) { try disk.move(id: id, to: target) }
+            #expect(try FileManager.default.contentsOfDirectory(atPath: target.path).isEmpty)
+            #expect(try Data(contentsOf: original.appendingPathComponent("nested/two")) == Data([4, 5, 6, 7]))
             if change == "add" {
-                #expect(try await offPool { try Data(contentsOf: original.appendingPathComponent("new")) } == Data([8]))
-                #expect(try await offPool { try Data(contentsOf: original.appendingPathComponent("one")) } == Data([1, 2, 3]))
+                #expect(try Data(contentsOf: original.appendingPathComponent("new")) == Data([8]))
+                #expect(try Data(contentsOf: original.appendingPathComponent("one")) == Data([1, 2, 3]))
             } else if change == "remove" {
-                #expect(await offPool { !FileManager.default.fileExists(atPath: original.appendingPathComponent("one").path) })
+                #expect(!FileManager.default.fileExists(atPath: original.appendingPathComponent("one").path))
             } else {
-                #expect(try await offPool { try Data(contentsOf: original.appendingPathComponent("one")) } == Data([8, 9]))
+                #expect(try Data(contentsOf: original.appendingPathComponent("one")) == Data([8, 9]))
             }
         }
     }
@@ -121,7 +121,7 @@ struct CallsMoveTests {
         try await withMoveFolders { (source: URL, target: URL) async throws in
             let original = source.appendingPathComponent(name), copied = target.appendingPathComponent(name)
             let move = Calls.Move(source: original, target: copied, temporary: target.appendingPathComponent(".audelin-move-test"), phase: .restoringSource)
-            try await offPool {
+            do {
                 try FileManager.default.copyItem(at: original, to: copied)
                 try FileManager.default.removeItem(at: original.appendingPathComponent("one"))
             }
@@ -137,17 +137,17 @@ struct CallsMoveTests {
                 restored.withLock { $0 = true }
             })
             await #expect(throws: (any Error).self) {
-                try await offPool { try disk.recover(move) { next in saved.withLock { $0 = next } } }
+                try disk.recover(move) { next in saved.withLock { $0 = next } }
             }
             let owner = saved.withLock { $0.owner }
-            #expect(try await offPool { try sameMoveDirectory(owner, copied) })
-            #expect(try await offPool { try Data(contentsOf: copied.appendingPathComponent("one")) } == Data([1, 2, 3]))
-            #expect(try await offPool { try Data(contentsOf: copied.appendingPathComponent("nested/two")) } == Data([4, 5, 6, 7]))
+            #expect(try sameMoveDirectory(owner, copied))
+            #expect(try Data(contentsOf: copied.appendingPathComponent("one")) == Data([1, 2, 3]))
+            #expect(try Data(contentsOf: copied.appendingPathComponent("nested/two")) == Data([4, 5, 6, 7]))
             fail.withLock { $0 = false }
-            #expect(try await offPool { try disk.recover(saved.withLock { $0 }) { next in saved.withLock { $0 = next } }.phase } == .source)
-            #expect(try await offPool { try Data(contentsOf: original.appendingPathComponent("one")) } == Data([1, 2, 3]))
-            #expect(try await offPool { try Data(contentsOf: original.appendingPathComponent("nested/two")) } == Data([4, 5, 6, 7]))
-            #expect(try await offPool { try FileManager.default.contentsOfDirectory(atPath: target.path) }.isEmpty)
+            #expect(try disk.recover(saved.withLock { $0 }) { next in saved.withLock { $0 = next } }.phase == .source)
+            #expect(try Data(contentsOf: original.appendingPathComponent("one")) == Data([1, 2, 3]))
+            #expect(try Data(contentsOf: original.appendingPathComponent("nested/two")) == Data([4, 5, 6, 7]))
+            #expect(try FileManager.default.contentsOfDirectory(atPath: target.path).isEmpty)
         }
     }
 
@@ -166,27 +166,27 @@ struct CallsMoveTests {
             if restarting {
                 let interrupted = Calls.Move(source: source.appendingPathComponent(name), target: target.appendingPathComponent(name),
                                              temporary: target.appendingPathComponent(".audelin-move-test"), phase: .removingSource)
-                try await offPool { try FileManager.default.copyItem(at: interrupted.source, to: interrupted.target) }
+                try FileManager.default.copyItem(at: interrupted.source, to: interrupted.target)
                 await #expect(throws: POSIXError(.EIO)) {
-                    try await offPool { try disk.recover(interrupted) { next in saved.withLock { $0 = next } } }
+                    try disk.recover(interrupted) { next in saved.withLock { $0 = next } }
                 }
             } else {
                 await #expect(throws: POSIXError(.EIO)) {
-                    try await offPool { try disk.move(id: id, to: target) { next in saved.withLock { $0 = next } } }
+                    try disk.move(id: id, to: target) { next in saved.withLock { $0 = next } }
                 }
             }
             let pending = try #require(saved.withLock { $0 })
             #expect(pending.phase == .removingCopy)
-            #expect(try await offPool { try sameMoveDirectory(pending.owner, source.appendingPathComponent(name)) })
-            #expect(try await offPool { try Data(contentsOf: pending.owner.appendingPathComponent("one")) } == Data([1, 2, 3]))
-            #expect(try await offPool { try Data(contentsOf: pending.owner.appendingPathComponent("nested/two")) } == Data([4, 5, 6, 7]))
-            #expect(try await offPool { try FileManager.default.contentsOfDirectory(atPath: target.path) }.isEmpty)
+            #expect(try sameMoveDirectory(pending.owner, source.appendingPathComponent(name)))
+            #expect(try Data(contentsOf: pending.owner.appendingPathComponent("one")) == Data([1, 2, 3]))
+            #expect(try Data(contentsOf: pending.owner.appendingPathComponent("nested/two")) == Data([4, 5, 6, 7]))
+            #expect(try FileManager.default.contentsOfDirectory(atPath: target.path).isEmpty)
             fail.withLock { $0 = false }
-            #expect(try await offPool { try disk.recover(pending) { next in saved.withLock { $0 = next } }.phase } == .source)
-            #expect(try await offPool { try FileManager.default.contentsOfDirectory(atPath: source.path) } == [name])
-            #expect(try await offPool { try disk.move(id: id, to: target) } == 7)
-            #expect(try await offPool { try FileManager.default.contentsOfDirectory(atPath: source.path) }.isEmpty)
-            #expect(try await offPool { try FileManager.default.contentsOfDirectory(atPath: target.path) } == [name])
+            #expect(try disk.recover(pending) { next in saved.withLock { $0 = next } }.phase == .source)
+            #expect(try FileManager.default.contentsOfDirectory(atPath: source.path) == [name])
+            #expect(try disk.move(id: id, to: target) == 7)
+            #expect(try FileManager.default.contentsOfDirectory(atPath: source.path).isEmpty)
+            #expect(try FileManager.default.contentsOfDirectory(atPath: target.path) == [name])
         }
     }
 
@@ -194,17 +194,17 @@ struct CallsMoveTests {
         try await withMoveFolders { (source: URL, target: URL) async throws in
             let disk = Calls(folder: source, timeZone: .gmt, duration: { _ in 0 })
             let durable = Mutex<Calls.Move?>(nil)
-            #expect(try await offPool {
+            #expect(try {
                 try disk.move(id: id, to: target) { move in
                     if move.phase == .destination { throw POSIXError(.ENOSPC) }
                     durable.withLock { $0 = move }
                 }
-            } == 7)
+            }() == 7)
             let saved = try #require(durable.withLock { $0 })
             #expect(saved.phase == .removingSource)
-            #expect(try await offPool { try FileManager.default.contentsOfDirectory(atPath: source.path) }.isEmpty)
-            #expect(try await offPool { try Data(contentsOf: target.appendingPathComponent(name + "/one")) } == Data([1, 2, 3]))
-            #expect(try await offPool { try disk.recover(saved, record: { move in durable.withLock { $0 = move } }).phase } == .destination)
+            #expect(try FileManager.default.contentsOfDirectory(atPath: source.path).isEmpty)
+            #expect(try Data(contentsOf: target.appendingPathComponent(name + "/one")) == Data([1, 2, 3]))
+            #expect(try disk.recover(saved, record: { move in durable.withLock { $0 = move } }).phase == .destination)
         }
     }
 
@@ -212,7 +212,7 @@ struct CallsMoveTests {
         try await withMoveFolders { (source: URL, target: URL) async throws in
             let original = source.appendingPathComponent(name), copied = target.appendingPathComponent(name)
             let alias = target.deletingLastPathComponent().appendingPathComponent("target-alias")
-            try await offPool {
+            do {
                 try FileManager.default.copyItem(at: original, to: copied)
                 try FileManager.default.createSymbolicLink(at: alias, withDestinationURL: target)
             }
@@ -221,12 +221,12 @@ struct CallsMoveTests {
                 return root.lastPathComponent == "target" ? entries.map { alias.appendingPathComponent($0.lastPathComponent) } : entries
             }, copy: { try FileManager.default.copyItem(at: $0, to: $1) })
             let move = Calls.Move(source: original, target: copied, temporary: target.appendingPathComponent(".audelin-move-test"), phase: .removingSource)
-            let recovered = try await offPool { try disk.recover(move, record: { _ in }) }
+            let recovered = try disk.recover(move, record: { _ in })
             #expect(recovered.phase == .destination)
             #expect(recovered.target == copied)
             #expect(recovered.temporary.deletingLastPathComponent() == move.temporary.deletingLastPathComponent())
-            #expect(try await offPool { try Data(contentsOf: recovered.owner.appendingPathComponent("one")) } == Data([1, 2, 3]))
-            #expect(try await offPool { try FileManager.default.contentsOfDirectory(atPath: source.path) }.isEmpty)
+            #expect(try Data(contentsOf: recovered.owner.appendingPathComponent("one")) == Data([1, 2, 3]))
+            #expect(try FileManager.default.contentsOfDirectory(atPath: source.path).isEmpty)
         }
     }
 
@@ -240,29 +240,29 @@ struct CallsMoveTests {
                 copies.withLock { $0 += 1 }
                 try FileManager.default.copyItem(at: from, to: to)
             })
-            await #expect(throws: POSIXError.self) { try await offPool { try disk.move(id: id, to: target) } }
+            await #expect(throws: POSIXError.self) { try disk.move(id: id, to: target) }
             #expect(copies.withLock { $0 } == 0)
-            #expect(try await offPool { try Data(contentsOf: source.appendingPathComponent(name + "/one")) } == Data([1, 2, 3]))
-            #expect(try await offPool { try FileManager.default.contentsOfDirectory(atPath: target.path) }.isEmpty)
+            #expect(try Data(contentsOf: source.appendingPathComponent(name + "/one")) == Data([1, 2, 3]))
+            #expect(try FileManager.default.contentsOfDirectory(atPath: target.path).isEmpty)
         }
     }
 
     @Test(arguments: [1, 2])
     func differentlyNamedCallsWithTheSameIDCannotBecomeAnotherCopy(count: Int) async throws {
         try await withMoveFolders { (source: URL, target: URL) async throws in
-            try await offPool {
+            do {
                 for number in 1...count {
                     try FileManager.default.createDirectory(at: target.appendingPathComponent(id + " other\(number)"), withIntermediateDirectories: false)
                     try Data([99]).write(to: target.appendingPathComponent(id + " other\(number)/kept"))
                 }
             }
             let disk = Calls(folder: source, timeZone: .gmt, duration: { _ in 0 })
-            await #expect(throws: (any Error).self) { try await offPool { try disk.move(id: id, to: target) } }
-            #expect(try await offPool { try FileManager.default.contentsOfDirectory(atPath: target.path).sorted() } == (1...count).map { id + " other\($0)" })
+            await #expect(throws: (any Error).self) { try disk.move(id: id, to: target) }
+            #expect(try FileManager.default.contentsOfDirectory(atPath: target.path).sorted() == (1...count).map { id + " other\($0)" })
             for number in 1...count {
-                #expect(try await offPool { try Data(contentsOf: target.appendingPathComponent(id + " other\(number)/kept")) } == Data([99]))
+                #expect(try Data(contentsOf: target.appendingPathComponent(id + " other\(number)/kept")) == Data([99]))
             }
-            #expect(try await offPool { try Data(contentsOf: source.appendingPathComponent(name + "/one")) } == Data([1, 2, 3]))
+            #expect(try Data(contentsOf: source.appendingPathComponent(name + "/one")) == Data([1, 2, 3]))
         }
     }
 
@@ -270,26 +270,26 @@ struct CallsMoveTests {
     func occupiedTargetIsNeverOverwritten(kind: String) async throws {
         try await withMoveFolders { (source: URL, target: URL) async throws in
             let occupied = target.appendingPathComponent(name)
-            try await offPool {
+            do {
                 if kind == "directory" { try FileManager.default.createDirectory(at: occupied, withIntermediateDirectories: false) }
                 else if kind == "link" { try FileManager.default.createSymbolicLink(at: occupied, withDestinationURL: source) }
                 else { try Data([99]).write(to: occupied) }
             }
             let disk = Calls(folder: source, timeZone: .gmt, duration: { _ in 0 })
-            await #expect(throws: (any Error).self) { try await offPool { try disk.move(id: id, to: target) } }
-            #expect(try await offPool { try FileManager.default.contentsOfDirectory(atPath: target.path) } == [name])
-            #expect(try await offPool { try Data(contentsOf: source.appendingPathComponent(name + "/one")) } == Data([1, 2, 3]))
-            if kind == "file" { #expect(try await offPool { try Data(contentsOf: occupied) } == Data([99])) }
+            await #expect(throws: (any Error).self) { try disk.move(id: id, to: target) }
+            #expect(try FileManager.default.contentsOfDirectory(atPath: target.path) == [name])
+            #expect(try Data(contentsOf: source.appendingPathComponent(name + "/one")) == Data([1, 2, 3]))
+            if kind == "file" { #expect(try Data(contentsOf: occupied) == Data([99])) }
         }
     }
 
     @Test func missingCallAndDestinationInsideTheCallFailWithoutChanges() async throws {
         try await withMoveFolders { (source: URL, target: URL) async throws in
             let disk = Calls(folder: source, timeZone: .gmt, duration: { _ in 0 })
-            await #expect(throws: (any Error).self) { try await offPool { try disk.move(id: "gone", to: target) } }
-            await #expect(throws: (any Error).self) { try await offPool { try disk.move(id: id, to: source.appendingPathComponent(name + "/nested")) } }
-            #expect(try await offPool { try FileManager.default.contentsOfDirectory(atPath: target.path).isEmpty })
-            #expect(try await offPool { try Data(contentsOf: source.appendingPathComponent(name + "/nested/two")) } == Data([4, 5, 6, 7]))
+            await #expect(throws: (any Error).self) { try disk.move(id: "gone", to: target) }
+            await #expect(throws: (any Error).self) { try disk.move(id: id, to: source.appendingPathComponent(name + "/nested")) }
+            #expect(try FileManager.default.contentsOfDirectory(atPath: target.path).isEmpty)
+            #expect(try Data(contentsOf: source.appendingPathComponent(name + "/nested/two")) == Data([4, 5, 6, 7]))
         }
     }
 }
@@ -309,9 +309,9 @@ private func testCalls(folder: URL,
           }, remove: remove)
 }
 private func withMoveFolders(_ work: @escaping @Sendable (URL, URL) async throws -> Void) async throws {
-    let root = await offPool { FileManager.default.temporaryDirectory.resolvingSymlinksInPath().appendingPathComponent(UUID().uuidString) }
+    let root = FileManager.default.temporaryDirectory.resolvingSymlinksInPath().appendingPathComponent(UUID().uuidString)
     let source = root.appendingPathComponent("source"), target = root.appendingPathComponent("target")
-    try await offPool {
+    do {
         try FileManager.default.createDirectory(at: source.appendingPathComponent(name + "/nested"), withIntermediateDirectories: true)
         try FileManager.default.createDirectory(at: target, withIntermediateDirectories: true)
         try Data([1, 2, 3]).write(to: source.appendingPathComponent(name + "/one"))

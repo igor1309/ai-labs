@@ -15,7 +15,7 @@ FolioTell opens local Markdown or plain-text files from the system document brow
 ## Layout
 
 `foliotell/` is a platform-family directory (like `notio/`): the iOS app lives
-in `ios/`, the Android sibling in `android/` (Kotlin/Compose skeleton; see the
+in `ios/`, the Android sibling in `android/` (Kotlin/Compose reader with platform TTS; see the
 [Android roadmap](docs/foliotell-android-roadmap.md)), and product-level
 assets — this README, the landing page, the backlog, research, and family
 docs — stay at the family level.
