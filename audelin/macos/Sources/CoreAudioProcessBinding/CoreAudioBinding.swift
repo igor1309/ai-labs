@@ -11,12 +11,8 @@ public struct CoreAudioBinding: ProcessBinding {
 
     private let native: CoreAudioCalls
 
-    public init() {
-
-        self.init(native: .system)
-    }
-
-    init(native: CoreAudioCalls) {
+    /// Binds `native`: `.system` in the app.
+    public init(native: CoreAudioCalls) {
 
         self.native = native
     }
@@ -161,7 +157,7 @@ struct ListenerBlock: @unchecked Sendable {
 }
 
 /// The native calls beneath property decoding and notification filtering.
-struct CoreAudioCalls: Sendable {
+public struct CoreAudioCalls: Sendable {
 
     typealias Address = AudioObjectPropertyAddress
 
@@ -170,7 +166,7 @@ struct CoreAudioCalls: Sendable {
     var addListener: @Sendable (UInt32, inout Address, DispatchQueue, ListenerBlock) -> Int32
     var removeListener: @Sendable (UInt32, inout Address, DispatchQueue, ListenerBlock) -> Int32
 
-    static let system = CoreAudioCalls(
+    public static let system = CoreAudioCalls(
         dataSize: { AudioObjectGetPropertyDataSize($0, &$1, 0, nil, &$2) },
         data: { AudioObjectGetPropertyData($0, &$1, 0, nil, &$2, $3) },
         addListener: { AudioObjectAddPropertyListenerBlock($0, &$1, $2, $3.value) },
