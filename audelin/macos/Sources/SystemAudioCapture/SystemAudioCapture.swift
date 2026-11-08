@@ -46,9 +46,14 @@ public final class SystemAudioCapture: Sendable {
 /// Setup, naming and removal take turns on the actor. Ending may be requested
 /// from a native callback before setup has run, so cleanup can run more than
 /// once and setup cleans up after itself when the capture ended meanwhile.
+/// The actor runs on its own queue: native calls block (removal waits for IO
+/// in flight), and blocking the few shared concurrency threads stalls every
+/// other task in the process.
 private actor CaptureLifetime {
 
     private let binding: any CaptureBinding
+    private nonisolated let queue = DispatchSerialQueue(label: "audelin.capture.lifetime")
+    nonisolated var unownedExecutor: UnownedSerialExecutor { queue.asUnownedSerialExecutor() }
     private nonisolated let state: CaptureState
 
     init(binding: any CaptureBinding, continuation: AsyncThrowingStream<AudioPiece, any Error>.Continuation) {
@@ -92,6 +97,7 @@ private actor CaptureLifetime {
         }
         guard first else { return }
         // Never inline: native removal waits for IO, and this may be an IO callback.
+        // The task hops to the actor's own queue, off the shared threads.
         Task { await cleanup() }
     }
 

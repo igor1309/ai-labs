@@ -1,3 +1,4 @@
+import Dispatch
 import Synchronization
 import Testing
 @testable import SystemAudioCapture
@@ -48,6 +49,33 @@ struct SystemAudioCaptureTests {
         try expectTone([pieces[0]], pid: 10)
         try expectTone([pieces[1]], pid: 20)
         #expect(binding.events.suffix(2) == ["destroy device", "destroy tap"])
+    }
+
+    @Test func removalWaitingForIOLeavesOtherTasksRunning() async throws {
+
+        // More captures than shared concurrency threads, each ending with IO in
+        // flight, so each removal blocks. Other tasks must still run.
+        var captures: [SystemAudioCapture] = []
+        var finishes: [@Sendable () -> Void] = []
+        for _ in 0..<32 {
+            let binding = FakeCaptureBinding()
+            let capture = try await SystemAudioCapture(binding: binding, processes: .allExcept([]))
+            finishes.append(try #require(binding.beginBuffer([20])))
+            captures.append(capture)
+        }
+        for capture in captures { capture.stop() }
+        let ran = DispatchSemaphore(value: 0)
+        let starved = Mutex(false)
+        let release = finishes
+        // A watchdog off the shared threads releases the IO either way, so a
+        // regression fails here instead of hanging the run.
+        DispatchQueue.global().async {
+            if ran.wait(timeout: .now() + 5) == .timedOut { starved.withLock { $0 = true } }
+            for finish in release { finish() }
+        }
+        await Task.detached { ran.signal() }.value
+        #expect(!starved.withLock { $0 })
+        for capture in captures { _ = try await drain(capture) }
     }
 
     @Test func anInFlightBufferPrecedesAnExplicitStopInOrder() async throws {
