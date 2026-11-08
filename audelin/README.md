@@ -22,7 +22,7 @@ subscription authentication and remains subject to managed organization policy.
 Provider availability, quota and factual faithfulness are not guaranteed by
 configuration checks or structural validation.
 
-Build: `cd audelin/macos && sh scripts/bundle.sh`.
+Build: `cd audelin/macos && sh scripts/bundle.sh`. Install and automatic updates: see below.
 Components: `macos/`; composer, app, rehearsal and their integration tests: `macos/App/`.
 Build and test each package from its directory with `swift build --build-tests` and `swift test`.
 Reading exposes its complete state, including rendered lines, the stored `log`,
@@ -39,7 +39,7 @@ Endurance: `scripts/profile-rehearsal.sh endurance --minutes 180 --speed 1` runs
 Recognisers are fakes: lag is pipeline backlog, and speeds above 1× measure saturation.
 
 Optimized load tests: from each of `audelin/macos` and `audelin/macos/App`, run `swift build --build-tests -Xswiftc -O`,
-then, in the same directory, `audelin/scripts/swift-test-bounded.sh 120 -Xswiftc -O --filter LoadTests`.
+then, in the same directory, run `../scripts/swift-test-bounded.sh 120 -Xswiftc -O --filter LoadTests` or `../../scripts/swift-test-bounded.sh 120 -Xswiftc -O --filter LoadTests`, respectively.
 
 | Path | What it holds |
 |---|---|
@@ -51,3 +51,26 @@ then, in the same directory, `audelin/scripts/swift-test-bounded.sh 120 -Xswiftc
 | [docs/research/](docs/research/) | Research, the Parakeet spike and naming rounds |
 
 CLI `audelin`, data folder `~/.audelin`, calls in `~/Recordings/Audelin`.
+
+## Install and updates
+
+- **First install:** `sh audelin/macos/scripts/install.sh` from the repository root
+  builds the app, quits a running copy, replaces `/Applications/Audelin.app`, opens it
+  and adds `~/Library/LaunchAgents/dev.igor1309.audelin.login.plist`, which opens it
+  at login. Delete that file to stop starting at login. macOS asks for microphone and
+  audio-capture access on first use; the first launch downloads and compiles the models.
+- **Updates are automatic.** Each trunk merge that changes the app (`macos/App`,
+  `macos/Sources`, the package manifests, `bundle.sh` or `install.sh`) runs the
+  `Audelin Install` workflow on this Mac's self-hosted `local-mac` runner, which runs
+  `install.sh --update`: it replaces the copy in `/Applications` but neither quits a
+  running Audelin nor opens it. Quit and reopen Audelin, or log in again, to run the
+  new build. To install trunk by hand, dispatch `Audelin Install` from GitHub Actions.
+  A failed install is reported in the CI Telegram chat and leaves the installed copy
+  as it was.
+- **Signing on the runner** uses the owner's Apple Development certificate, so macOS
+  keeps the microphone and audio-capture grants across builds. The runner's launch
+  agent (`~/Library/LaunchAgents/actions.runner.igor1309-ai-labs.MacBook-Pro.plist`)
+  must not set `SessionCreate`: with it, jobs run in a security session that cannot
+  reach the login keychain and `codesign` fails with `errSecInternalComponent`.
+  Reinstalling the runner with `svc.sh install` adds it back; remove it with
+  `/usr/libexec/PlistBuddy -c "Delete :SessionCreate" <plist>` and reload the agent.

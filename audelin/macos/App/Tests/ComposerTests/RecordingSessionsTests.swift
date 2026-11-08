@@ -200,16 +200,16 @@ private func withSessions(_ body: @Sendable (SessionsRig) async throws -> Void) 
         boundary.log = log
         boundary.processes = FixtureProcesses(binding: CallBinding(fails: false))
         let url = root.appendingPathComponent("preferences.json")
-        let preferences = try await offPool {
+        let preferences = try {
             let store = PreferencesStore(fileURL: url)
             try store.write(Preferences(liveText: false, callsFolder: root))
             return store
-        }
+        }()
         let processes = CoreAudioProcesses(binding: BoundaryProcesses(base: boundary.processes), clock: BoundaryCallClock(time: boundary.time))
         let app = RecordingCallApp()
         app.started("us.zoom.xos")
         let panel = await AudelinPanel(now: clock.time.monotonicNow, ticks: clock.ticks, sink: log, intervals: testIntervals)
-        let sessions = RecordingSessions(preferences: preferences, callApp: app, processes: processes, boundary: boundary,
+        let sessions = RecordingSessions(preferences: preferences, occupiedCallNames: { [] }, callApp: app, processes: processes, boundary: boundary,
                                          report: { id, report in reports.append(.init(id: id, report: report)) }, panel: panel)
         try await body(SessionsRig(sessions: sessions, panel: panel, microphones: microphones, calls: calls, reports: reports, log: log))
         await processes.stop()

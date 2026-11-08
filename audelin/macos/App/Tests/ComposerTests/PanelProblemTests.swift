@@ -84,7 +84,7 @@ struct PanelProblemTests {
             try await rig.start()
             await rig.clock.waitForSleep(.seconds(5))
             let folder = rig.folder()
-            try await offPool { try FileManager.default.removeItem(at: folder) }
+            try FileManager.default.removeItem(at: folder)
             rig.clock.wake(.seconds(5))
             await rig.log.wait { $0.category == .session && $0.error?.contains("transcript:") == true }
             rig.clock.advance(1)

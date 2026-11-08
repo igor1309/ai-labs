@@ -24,7 +24,7 @@ struct SessionTranscriptTests {
             await rig.clock.waitForSleep(.seconds(5))
             // Removing the destination gives the real writer a deterministic missing-parent failure.
             let folder = rig.folder()
-            try await offPool { try FileManager.default.removeItem(at: folder) }
+            try FileManager.default.removeItem(at: folder)
             rig.clock.wake(.seconds(5))
             await rig.log.wait { $0.category == .session && $0.message.contains("phase=recording") && $0.error?.contains("transcript:") == true }
             let recording = try await rig.state { $0.phase == .recording }

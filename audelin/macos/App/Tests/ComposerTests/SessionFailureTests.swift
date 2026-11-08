@@ -10,7 +10,7 @@ struct SessionFailureTests {
     @Test func aRemovedCallsFolderIsReportedWithoutStartingCaptures() async throws {
         try await withComposeFolder { root in
             let calls = root.appendingPathComponent("calls")
-            try await offPool { try FileManager.default.createDirectory(at: calls, withIntermediateDirectories: false) }
+            try FileManager.default.createDirectory(at: calls, withIntermediateDirectories: false)
             let reads = Mutex(0), startupRead = Signal()
             defer { startupRead.end() }
             let rig = try await ComposeFixture.make(root: root,
@@ -23,7 +23,7 @@ struct SessionFailureTests {
                 })
             do {
                 await startupRead.next()
-                try await offPool { try FileManager.default.removeItem(at: calls) }
+                try FileManager.default.removeItem(at: calls)
                 await rig.menu.perform(.start)
                 let state = try await rig.state { $0.phase == .idle && $0.cannotRecord != nil }
                 let expected = "folder: \(String(describing: POSIXError(.ENOENT) as NSError))"
@@ -33,7 +33,7 @@ struct SessionFailureTests {
                 #expect(shown.banners.isEmpty)
                 #expect(rig.microphone.starts.all.isEmpty && rig.call.starts.all.isEmpty)
                 #expect(rig.log.entries.all.contains { $0.category == .recording && $0.error == expected })
-                #expect(await offPool { !isFolder(calls.path) })
+                #expect(!isFolder(calls.path))
                 await rig.finish()
             } catch { await rig.finish(); throw error }
         }

@@ -21,10 +21,10 @@ struct SummaryCompositionTests {
                 #expect(await http.count == 0)
                 #expect(try await transcriptText(of: rig).contains("final"))
                 let folder = rig.folder()
-                #expect(await offPool {
+                #expect({
                     !FileManager.default.fileExists(atPath: folder.appendingPathComponent(".summary-job.json").path)
                     && !FileManager.default.fileExists(atPath: folder.appendingPathComponent("summary.md").path)
-                })
+                }())
                 for await statuses in rig.menu.summaryStates() {
                     #expect(statuses.values.allSatisfy { $0.isEmpty })
                     break
@@ -59,7 +59,7 @@ struct SummaryCompositionTests {
                     let body = await http.lastBody
                     #expect(body.contains("Me:") && body.contains("Them:"))
                 } else {
-                    #expect(await offPool { !FileManager.default.fileExists(atPath: output.path) })
+                    #expect(!FileManager.default.fileExists(atPath: output.path))
                 }
                 await rig.finish()
             } catch { await rig.finish(); throw error }
@@ -108,7 +108,7 @@ struct SummaryCompositionTests {
                     statuses.values.contains { finalFails ? $0.contains("недоступны") : $0 == "Итоги готовы" }
                 }
                 #expect(await http.count == (finalFails ? 0 : 1))
-                #expect(await offPool { FileManager.default.fileExists(atPath: rig.folder().appendingPathComponent("transcript.md").path) })
+                #expect(FileManager.default.fileExists(atPath: rig.folder().appendingPathComponent("transcript.md").path))
                 await rig.finish()
             } catch { await rig.finish(); throw error }
         }
@@ -126,13 +126,13 @@ struct SummaryCompositionTests {
                 await rig.finish()
                 #expect(await http.cancelled)
                 // Active work is never replayed; the second handoff is retained pending.
-                let records = try await offPool {
+                let records = try {
                     try FileManager.default.contentsOfDirectory(at: root, includingPropertiesForKeys: nil).compactMap { folder -> String? in
                         let path = folder.appendingPathComponent(".summary-job.json")
                         guard let bytes = try? Data(contentsOf: path), let object = try JSONSerialization.jsonObject(with: bytes) as? [String: Any] else { return nil }
                         return object["phase"] as? String
                     }
-                }
+                }()
                 #expect(records.sorted() == ["pending", "running"])
                 #expect(await http.count == 1)
             } catch { await rig.finish(); throw error }
@@ -170,7 +170,7 @@ struct SummaryCompositionTests {
     for await state in menu.summaryStates() where matching(state) { return state }
     throw ScriptFailure.failed
 }
-private func read(_ url: URL) async throws -> String { try await offPool { try String(contentsOf: url, encoding: .utf8) } }
+private func read(_ url: URL) async throws -> String { try String(contentsOf: url, encoding: .utf8) }
 private struct NoProcess: ProcessRunning {
     func run(program: String, arguments: [String], input: Data) throws -> ProcessOutput { throw Failure.unavailable }
 }

@@ -12,9 +12,9 @@ struct TrackFileDurationTests {
             let url = folder.appendingPathComponent("track.caf")
             let track = try await TrackFile(url: url)
             try await track.write(Array(repeating: 0, count: frames), sampleRate: 48_000)
-            #expect(try await offPool { try TrackFile.duration(at: url) } == Double(frames) / 48_000)
+            #expect(try TrackFile.duration(at: url) == Double(frames) / 48_000)
             try await track.close()
-            #expect(try await offPool { try TrackFile.duration(at: url) } == Double(frames) / 48_000)
+            #expect(try TrackFile.duration(at: url) == Double(frames) / 48_000)
         }
     }
 
@@ -23,9 +23,9 @@ struct TrackFileDurationTests {
         try await withDurationFolder { folder in
             let valid = try await sealedHeader(in: folder)
             let url = folder.appendingPathComponent("truncated.caf")
-            try await offPool { try valid.prefix(length).write(to: url) }
+            try valid.prefix(length).write(to: url)
             await #expect(throws: TrackFile.Failure.invalidFile) {
-                try await offPool { try TrackFile.duration(at: url) }
+                try TrackFile.duration(at: url)
             }
         }
     }
@@ -37,9 +37,9 @@ struct TrackFileDurationTests {
             header[offset] ^= 1
             let bytes = header
             let url = folder.appendingPathComponent("invalid.caf")
-            try await offPool { try bytes.write(to: url) }
+            try bytes.write(to: url)
             await #expect(throws: TrackFile.Failure.invalidFile) {
-                try await offPool { try TrackFile.duration(at: url) }
+                try TrackFile.duration(at: url)
             }
         }
     }
@@ -52,9 +52,9 @@ struct TrackFileDurationTests {
             bytes.append(contentsOf: [0, 0, 0, 0])
             let contents = bytes
             let url = folder.appendingPathComponent("invalid.caf")
-            try await offPool { try contents.write(to: url) }
+            try contents.write(to: url)
             await #expect(throws: TrackFile.Failure.invalidFile) {
-                try await offPool { try TrackFile.duration(at: url) }
+                try TrackFile.duration(at: url)
             }
         }
     }
@@ -66,9 +66,9 @@ struct TrackFileDurationTests {
             bytes.append(0)
             let contents = bytes
             let url = folder.appendingPathComponent("partial.caf")
-            try await offPool { try contents.write(to: url) }
+            try contents.write(to: url)
             await #expect(throws: TrackFile.Failure.invalidFile) {
-                try await offPool { try TrackFile.duration(at: url) }
+                try TrackFile.duration(at: url)
             }
         }
     }
@@ -77,14 +77,14 @@ struct TrackFileDurationTests {
         try await withDurationFolder { folder in
             let url = folder.appendingPathComponent("track.caf")
             await #expect(throws: (any Error).self) {
-                try await offPool { try TrackFile.duration(at: url) }
+                try TrackFile.duration(at: url)
             }
             let track = try await TrackFile(url: url)
             try await track.close()
-            try await offPool { try FileManager.default.setAttributes([.posixPermissions: 0], ofItemAtPath: url.path) }
+            try FileManager.default.setAttributes([.posixPermissions: 0], ofItemAtPath: url.path)
             try await withCleanup {
                 await #expect(throws: (any Error).self) {
-                    try await offPool { try TrackFile.duration(at: url) }
+                    try TrackFile.duration(at: url)
                 }
                 return ()
             } cleanup: {
@@ -92,7 +92,7 @@ struct TrackFileDurationTests {
             }
             for invalid in [folder, URL(string: "https://example.com/track.caf")!] {
                 await #expect(throws: (any Error).self) {
-                    try await offPool { try TrackFile.duration(at: invalid) }
+                    try TrackFile.duration(at: invalid)
                 }
             }
         }
@@ -105,13 +105,13 @@ struct TrackFileDurationTests {
             header.replaceSubrange(56..<64, with: bigEndianBytes(audioBytes + 4))
             let contents = header
             let url = folder.appendingPathComponent("large.caf")
-            try await offPool {
+            do {
                 try contents.write(to: url)
                 let file = try FileHandle(forWritingTo: url)
                 defer { try? file.close() }
                 try file.truncate(atOffset: 68 + audioBytes)
             }
-            #expect(try await offPool { try TrackFile.duration(at: url) } == Double(audioBytes / 2) / 48_000)
+            #expect(try TrackFile.duration(at: url) == Double(audioBytes / 2) / 48_000)
         }
     }
 }
@@ -120,7 +120,7 @@ private func sealedHeader(in folder: URL) async throws -> Data {
     let url = folder.appendingPathComponent("empty.caf")
     let track = try await TrackFile(url: url)
     try await track.close()
-    return try await offPool { try Data(contentsOf: url) }
+    return try Data(contentsOf: url)
 }
 
 private func bigEndianBytes(_ value: UInt64) -> [UInt8] {
@@ -128,8 +128,8 @@ private func bigEndianBytes(_ value: UInt64) -> [UInt8] {
 }
 
 private func withDurationFolder(_ body: (URL) async throws -> Void) async throws {
-    let folder = await offPool { FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true) }
-    try await offPool { try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false) }
+    let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false)
     try await withCleanup { try await body(folder) } cleanup: {
         try FileManager.default.removeItem(at: folder)
     }

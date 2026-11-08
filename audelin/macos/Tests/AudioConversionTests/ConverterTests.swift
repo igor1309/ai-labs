@@ -9,7 +9,7 @@ struct ConverterTests {
 
         let samples = tone(frequency: 440, rate: 44_100, seconds: 0.25)
 
-        let (drained, undrained, whole) = try await offPool {
+        let (drained, undrained, whole) = try {
             let tight = { try Converter(from: 44_100, to: 16_000, spareFrames: 0) }
             let single = try Converter(from: 44_100, to: 16_000)
             return (
@@ -17,7 +17,7 @@ struct ConverterTests {
                 try chunked(samples, through: tight(), convert: { try $0.convert($1) }),
                 try single.convertAvailable(samples)
             )
-        }
+        }()
 
         #expect(drained == whole)
         #expect(undrained.count < whole.count, "The tight result must fill, or draining goes untested.")
@@ -27,10 +27,10 @@ struct ConverterTests {
 
         let samples = tone(frequency: 440, rate: 48_000, seconds: 0.25)
 
-        let (converted, tail, secondTail) = try await offPool {
+        let (converted, tail, secondTail) = try {
             let converter = try Converter(from: 48_000, to: 16_000)
             return (try converter.convertAvailable(samples), try converter.flush(), try converter.flush())
-        }
+        }()
 
         #expect(converted.count < 4_000)
         #expect(converted.count + tail.count == 4_000)
@@ -43,10 +43,10 @@ struct ConverterTests {
 
         let samples = tone(frequency: 440, rate: input, seconds: 1)
 
-        let converted = try await offPool {
+        let converted = try {
             let converter = try Converter(from: input, to: output)
             return try converter.convertAvailable(samples) + converter.flush()
-        }
+        }()
 
         #expect(abs(Double(converted.count) - output) <= 2)
         #expect(abs(frequency(of: converted, rate: output) - 440) <= 2)
@@ -54,10 +54,10 @@ struct ConverterTests {
 
     @Test func emptyChunkGivesNothing() async throws {
 
-        let (converted, available) = try await offPool {
+        let (converted, available) = try {
             let converter = try Converter(from: 48_000, to: 16_000)
             return (try converter.convert([]), try converter.convertAvailable([]))
-        }
+        }()
 
         #expect(converted.isEmpty)
         #expect(available.isEmpty)
@@ -72,7 +72,7 @@ struct ConverterTests {
     func invalidRateFails(from input: Double, to output: Double) async {
 
         await #expect(throws: Converter.ConversionFailed.self) {
-            try await offPool { _ = try Converter(from: input, to: output) }
+            try _ = try Converter(from: input, to: output)
         }
     }
 }

@@ -27,10 +27,7 @@ public struct SettingsView: View {
 
         VStack(alignment: .leading, spacing: tokens.space16) {
             tabs
-            switch state.selectedTab {
-            case .recording: recordingPage
-            case .callNotes: callNotesPage
-            }
+            page
         }
         .padding(tokens.space24)
         .frame(width: config.windowWidth, alignment: .topLeading)
@@ -46,6 +43,14 @@ public struct SettingsView: View {
 }
 
 extension SettingsView {
+
+    @ViewBuilder
+    var page: some View {
+        switch state.selectedTab {
+        case .recording: recordingPage
+        case .callNotes: callNotesPage
+        }
+    }
 
     var recordingPage: some View {
         VStack(alignment: .leading, spacing: tokens.space24) {
@@ -190,7 +195,10 @@ extension SettingsView {
         case let .failed(moved, reason):
             dataText("часть звонков ещё здесь", tokens.typeSmall, tokens.warn)
             errorBanner(moved, reason)
-            button("Повторить", .secondary) { event(.retryMove) }
+            HStack(spacing: tokens.space8) {
+                button("Повторить", .secondary) { event(.retryMove) }
+                button("Отмена", .secondary) { event(.cancelMove) }
+            }
 
         case .recording:
             dataText("идёт запись — папку можно сменить после звонка", tokens.typeSmall, tokens.warn)

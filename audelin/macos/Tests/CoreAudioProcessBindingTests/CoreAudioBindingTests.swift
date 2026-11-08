@@ -29,12 +29,12 @@ struct CoreAudioBindingTests {
     private func playingProcess() async throws -> AudioProcess {
 
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        try await offPool { try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true) }
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         return try await withCleanup {
             // Process discovery needs an open audio file, independent of speech synthesis.
             let sound = directory.appendingPathComponent("tone.wav")
             try await writeTone(to: sound)
-            let size = try await offPool { (try FileManager.default.attributesOfItem(atPath: sound.path)[.size] as? NSNumber)?.intValue }
+            let size = try (try FileManager.default.attributesOfItem(atPath: sound.path)[.size] as? NSNumber)?.intValue
             try #require((size ?? 0) > 0, "The fixture must contain audio before afplay can open it")
 
             let binding = CoreAudioBinding()
@@ -43,13 +43,13 @@ struct CoreAudioBindingTests {
             let changed = AsyncStream<Void>.makeStream(bufferingPolicy: .bufferingNewest(1))
             defer { changed.continuation.finish() }
             let inspect: @Sendable () -> Void = { changed.continuation.yield(()) }
-            let listener = try await offPool { try binding.onProcessListChange(inspect) }
+            let listener = try binding.onProcessListChange(inspect)
             defer { listener.cancel() }
 
             let player = Process()
             player.executableURL = URL(fileURLWithPath: "/usr/bin/afplay")
             player.arguments = ["-v", "0", sound.path]
-            try await offPool { try player.run() }
+            try player.run()
             let childPID = player.processIdentifier
             inspect()
             let result = await withTaskGroup(of: AudioProcess?.self) { group in
@@ -82,7 +82,7 @@ struct CoreAudioBindingTests {
 
     private func writeTone(to sound: URL) async throws {
 
-        try await offPool {
+        do {
             guard let format = AVAudioFormat(standardFormatWithSampleRate: 48_000, channels: 1),
                   let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 48_000 * 40),
                   let samples = buffer.floatChannelData?[0]
