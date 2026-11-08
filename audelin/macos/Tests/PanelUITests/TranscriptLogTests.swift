@@ -666,10 +666,9 @@ struct TranscriptLogTests {
             RunLoop.main.run(until: .now.addingTimeInterval(0.05))
             host.display()
             #expect(text.string == originalText, "Resize duplicated or lost transcript text")
-            let last = text.firstRect(forCharacterRange: NSRange(location: text.string.utf16.count - 1, length: 1), actualRange: nil)
-            let visible = scroll.convert(scroll.contentView.bounds, from: scroll.contentView)
-            let screen = window.convertToScreen(scroll.convert(visible, to: nil))
-            #expect(last.intersects(screen), "last line disappeared at width \(width): \(last), viewport \(screen)")
+            let last = try #require(laidOutRect(of: text.string.utf16.count - 1, in: text))
+            let viewport = text.convert(scroll.contentView.bounds, from: scroll.contentView)
+            #expect(last.intersects(viewport), "last line disappeared at width \(width): \(last), viewport \(viewport)")
         }
     }
 
@@ -734,8 +733,8 @@ struct TranscriptLogTests {
         RunLoop.main.run(until: .now.addingTimeInterval(0.1))
         host.display()
         let origin = scroll.contentView.bounds.origin
-        let anchor = text.characterIndexForInsertion(at: NSPoint(x: 100, y: origin.y + 40))
-        let anchorRect = text.firstRect(forCharacterRange: NSRange(location: anchor, length: 1), actualRange: nil)
+        let anchor = try #require(characterIndex(at: NSPoint(x: 100, y: origin.y + 40), in: text))
+        let anchorRect = try #require(laidOutRect(of: anchor, in: text))
 
         var entries = history
         for step in 0..<10 {
@@ -745,7 +744,7 @@ struct TranscriptLogTests {
             _ = host.fittingSize
             RunLoop.main.run(until: .now.addingTimeInterval(0.03))
             host.display()
-            let rect = text.firstRect(forCharacterRange: NSRange(location: anchor, length: 1), actualRange: nil)
+            let rect = try #require(laidOutRect(of: anchor, in: text))
             #expect(abs(rect.minY - anchorRect.minY) < 1, "visible text moved on update \(step)")
             #expect(abs(scroll.contentView.bounds.origin.y - origin.y) < 1,
                 "paused viewport moved on update \(step): \(origin) -> \(scroll.contentView.bounds.origin)")
