@@ -17,10 +17,12 @@ export type LevelOfferProps = {
   startTimer: StartTimer;
 };
 
-export function LevelOfferDialog({ controls, digSite = false, language, offer, leaving, onShown, onAnswer, onGone }: {
+export function LevelOfferDialog({ controls, digSite = false, picture, language, offer, leaving, onShown, onAnswer, onGone }: {
   controls?: ReactNode;
   // The dig site's look: a tag over the picture and NOT NOW before YES.
   digSite?: boolean;
+  // Stands in the pocket instead of the level's emoji.
+  picture?: ReactNode;
   language: Language;
   offer: LevelOfferProps;
   leaving: boolean;
@@ -72,7 +74,7 @@ export function LevelOfferDialog({ controls, digSite = false, language, offer, l
         }}>
         {controls}
         {digSite && <p className="pairs-offer-tag"><ArrowUp aria-hidden="true" />{text.levelOffer.tag}</p>}
-        <span className="pairs-offer-picture" aria-hidden="true">{AGE_LEVEL_PICTURES[offer.level]}</span>
+        <span className="pairs-offer-picture" aria-hidden="true">{picture ?? AGE_LEVEL_PICTURES[offer.level]}</span>
         <h2 id={title} className="pairs-offer-question">{text.levelOffer.question(text.ageLevels[offer.level].name)}</h2>
         <div className="pairs-offer-answers">
           {digSite ? <>{notNow}{yes}</> : <>{yes}{notNow}</>}

@@ -1,3 +1,4 @@
+import "./picturePuzzleSheets.ts";
 import { THEMES } from "../src/theme.ts";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -73,7 +74,7 @@ describe.each(LANGUAGES)("picture result in %s", (language) => {
     expect(screen.getByLabelText(text.pictureCollection).textContent).toBe("3/3");
     expect(screen.getByLabelText(text.bestScore).textContent).toBe(`${text.best}12/3`);
     expect(screen.getByRole("status").textContent).toBe(text.celebrations["new-best"].text);
-    expect(getComputedStyle(view.container.querySelector("main")!).backgroundColor).toBe("rgb(15, 19, 32)");
+    expect(getComputedStyle(view.container.querySelector(".picture-puzzle-well-done")!).color).toBe("rgb(243, 238, 226)");
     const image = view.container.querySelector("img")!;
     expect(image.dataset.picture).toBe("loading");
     expect(image.hasAttribute("src")).toBe(false);

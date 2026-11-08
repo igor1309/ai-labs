@@ -1,3 +1,4 @@
+import Foundation
 import struct CallText.State
 import Session
 import Synchronization
@@ -19,7 +20,7 @@ struct WritingCallText: TranscriptWriting.CallText {
 }
 
 /// A recording's transcript destination, kept open until its text has stopped.
-protocol SessionTranscriptFile: Sendable {
+public protocol SessionTranscriptFile: Sendable {
 
     func write(_ state: State) async throws
 
@@ -78,5 +79,16 @@ final class TranscriptFailureReport: FailureReport, Sendable {
 
         let deliver = delivery.withLock { $0.deliver }
         await deliver(.pieceFailed(.transcript, error: String(describing: error)))
+    }
+}
+
+
+public protocol TranscriptStorage: Sendable {
+    func open(at url: Foundation.URL, sink: any LogSink) async throws -> any SessionTranscriptFile
+}
+public struct FileTranscriptStorage: TranscriptStorage {
+    public init() {}
+    public func open(at url: Foundation.URL, sink: any LogSink) async throws -> any SessionTranscriptFile {
+        try await WritingTranscript(file: TranscriptFile(url: url), sink: sink)
     }
 }

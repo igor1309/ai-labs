@@ -28,7 +28,7 @@ struct MenuBarActionTests {
                 await rig.menu.perform(.setAutomatic(true))
                 await rig.menu.perform(.setLiveText(false))
                 #expect(rig.menu.preferences.automaticRecording && !rig.menu.preferences.liveText)
-                let snapshot = await offPool { PreferencesStore(fileURL: root.appendingPathComponent("preferences.json")).read() }
+                let snapshot = PreferencesStore(fileURL: root.appendingPathComponent("preferences.json")).read()
                 #expect(snapshot == rig.menu.preferences)
                 await rig.menu.sendPanel(.start)
                 _ = try await rig.state { $0.phase == .recording }

@@ -38,6 +38,14 @@ import {
 import type { Place, Skeleton } from "../src/skeletons/index.ts";
 import { SILENT, type SkeletonSounds } from "../src/skeletonSounds.ts";
 import type { Theme } from "../src/theme.ts";
+import { appStylesheet, NO_SAFE_AREA } from "./stylesheet.ts";
+
+// The skeleton screens bring their own sheets, as they do in the app.
+if (typeof document !== "undefined") {
+  const skeletonSheets = document.createElement("style");
+  skeletonSheets.textContent = appStylesheet(NO_SAFE_AREA, ["skeletonSite.css", "skeletonChoice.css", "skeletonPuzzle.css", "skeletonGuess.css", "skeletonMuseum.css", "skeletonResult.css"]);
+  document.head.append(skeletonSheets);
+}
 
 export type SkeletonsAppOptions = {
   // Where progress, the language and the theme are kept: one storage, as

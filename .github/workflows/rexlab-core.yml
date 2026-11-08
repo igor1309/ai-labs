@@ -103,6 +103,11 @@ jobs:
           - coloringWalk
           - labyrinthLayout
           - labyrinthWalk
+          - skeletonLayout
+          - skeletonWalk
+          - picturePuzzleLayout
+          - picturePuzzleWalk
+          - sandWritingLayout
           - homePhone
           - nativeTouch
           - homeTiles

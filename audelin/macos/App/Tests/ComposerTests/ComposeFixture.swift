@@ -8,6 +8,7 @@ import Preferences
 import Recording
 import SessionRehearsal
 import Synchronization
+import SummaryRuntime
 import Testing
 
 /// Drives the public composition with real machines, UI models and files.
@@ -24,7 +25,7 @@ struct ComposeFixture {
     let log: FixtureLog
 
     static func make(
-        root: URL, preferences: Preferences? = nil,
+        root: URL, preferences: Preferences? = nil, summaryRuntime: SummaryRuntime.Runtime? = nil,
         microphoneFails: Bool = false, stopFailure: ComposerSide? = nil, stopEndsStream: Bool = true,
         rates: [Double]? = nil, recognizers: (any Recognizer, any Recognizer)? = nil,
         configure: (inout ComposerBoundary) -> Void = { _ in },
@@ -54,12 +55,12 @@ struct ComposeFixture {
         boundary.log = log
         configure(&boundary)
         let preferencesURL = root.appendingPathComponent("preferences.json")
-        try await offPool {
+        do {
             try PreferencesStore(fileURL: preferencesURL).write(preferences ?? Preferences(automaticRecording: false, liveText: true, callsFolder: root))
         }
         let menu = await compose(boundary: boundary, preferencesURL: preferencesURL,
             openCallsFolder: openFolder, presentCalls: presentCalls, openURL: openURL,
-            presentPanel: presentPanel, terminate: terminate)
+            presentPanel: presentPanel, terminate: terminate, summaryRuntime: summaryRuntime)
         return Self(menu: menu, root: root, microphone: microphone, call: call, mine: mine, theirs: theirs,
                     selections: selections, clock: clock, log: log)
     }
@@ -94,7 +95,7 @@ struct ComposeFixture {
 
 func transcriptText(of rig: ComposeFixture, folder: String = "1970.01.01-0000") async throws -> String {
     let url = rig.folder(folder).appendingPathComponent("transcript.md")
-    return try await offPool { try String(contentsOf: url, encoding: .utf8) }
+    return try String(contentsOf: url, encoding: .utf8)
 }
 
 /// A capture the test feeds itself, with no pieces but the ones it sends.

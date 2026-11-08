@@ -32,12 +32,15 @@ func makeRecording(
     let doer = RecordingDoer(session: session, callAudioReady: callAudioReady,
                              callAudioReleased: callAudioReleased, send: { await model.send($0) })
     let acting = Task { for await state in model.states() { doer.act(on: state) } }
-    return RecordingInputs(
+    var inputs = RecordingInputs(
         send: { await model.send($0) },
         state: { await model.state },
         states: { await model.states() },
         end: { acting.cancel(); await model.end() }
     )
+    inputs.reserveStorage = { await model.reserveStorage() }
+    inputs.releaseStorage = { await model.send(.releaseStorage) }
+    return inputs
 }
 
 /// Holds the sync model on the main actor; callers elsewhere await the hop.
@@ -62,6 +65,11 @@ final class RecordingModel {
     }
 
     var state: RecordingState { model.state }
+    func reserveStorage() -> Bool {
+        let previouslyReserved = model.state.storageReserved
+        model.event(.reserveStorage)
+        return !previouslyReserved && model.state.storageReserved
+    }
 
     func send(_ event: RecordingEvent) { model.event(event) }
 
@@ -135,8 +143,8 @@ func quit(_ handler: LifecycleEffectHandler) async {
 }
 
 @MainActor
-func makeRecordings(handler: RecordingsEffectHandler) -> RecordingsInputs {
-    let model = ObservableModel(initialState: RecordingsState(), reduce: RecordingsReducer.reduce,
+func makeRecordings(handler: RecordingsEffectHandler, initial: RecordingsState = .init()) -> RecordingsInputs {
+    let model = ObservableModel(initialState: initial, reduce: RecordingsReducer.reduce,
                                 handleEffect: { handleRecordingsEffect(handler, $0) })
     return RecordingsInputs(state: { model.state }, send: { model.event($0) })
 }

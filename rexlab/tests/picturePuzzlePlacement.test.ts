@@ -57,11 +57,25 @@ it.each(AGE_LEVELS)("fits the %s board and four-piece tray at minimum 48px targe
     const room = { width: width! - 48, height: height! - 136 };
     const board = pictureBoardLayout(room, cut);
     expect(board.fits).toBe(true);
-    expect(board.width + 248).toBeLessThanOrEqual(room.width);
+    expect(board.width + 24 + board.tools + 36).toBeLessThanOrEqual(room.width);
     expect(board.height).toBeLessThanOrEqual(room.height);
     expect(board.width / board.height).toBeCloseTo(4 / 3);
     expect(Math.min(board.width / cut.columns, board.height / cut.rows)).toBeGreaterThanOrEqual(48);
   }
-  expect(pictureBoardLayout({ width: 430, height: 600 }, cut).fits).toBe(false);
-  expect(pictureBoardLayout({ width: 1000, height: 280 }, cut).fits).toBe(false);
+  expect(pictureBoardLayout({ width: 1000, height: 260 }, cut).fits).toBe(false);
+  expect(pictureBoardLayout({ width: 280, height: 600 }, cut).fits).toBe(false);
+});
+
+// Upright the tools lie under the board; on a phone the 36 places would be
+// under 48px tall, so only the paleontologist's board waits for a turn.
+it.each(AGE_LEVELS)("lays the %s board over its tools upright, playable on a phone below the paleontologist", (level) => {
+  const cut = cutPicture(level);
+  for (const [width, height, phone] of [[744, 1133, false], [768, 1024, false], [393, 852, true]] as const) {
+    const room = { width: width - 48, height: height - 136 };
+    const board = pictureBoardLayout(room, cut);
+    expect(board.upright).toBe(true);
+    expect(board.fits).toBe(!phone || level !== "paleontologist");
+    expect(board.width + 24).toBeLessThanOrEqual(room.width);
+    expect(board.height + 24 + board.tools + 36).toBeLessThanOrEqual(room.height);
+  }
 });

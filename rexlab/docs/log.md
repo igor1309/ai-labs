@@ -2,6 +2,19 @@
 
 ## 2026-11-07
 
+- LAB-923: DRAW stands on the dig site: the whole window is sand that glows in the middle, specked, with grooves and lips in the dig site's groove tokens, darker at night; HOME a pill with its word, round on a phone; STICK round with its word, showing the chosen tip, drops a picker of THIN, MEDIUM and THICK as lines of their width, the chosen navy with a tick, and CLEAR under a rule. A browser contract opens it from Home on every size, draws, chooses THICK, clears and goes Home, in English and light and in Russian and dark without motion, and at every age level.
+- LAB-922: a walk contract plays PICTURE PUZZLE through the released app on a device of each size, a Hatchling in English and light and an Explorer in Russian and dark: Home, a picture dragged together piece by piece, its result, PLAY AGAIN and the replay's result, ANOTHER PICTURE and Home, each screen checked on arrival; CI runs it as its own browser job.
+- LAB-922: PICTURE PUZZLE's result stands on the dig site as BONES' does: the whole picture framed in the sky beside or over WELL DONE by its star, the celebration beside the level's score, the name and fact, and ANOTHER PICTURE and PLAY AGAIN on the sand; it plays upright too.
+- LAB-922: PICTURE PUZZLE plays upright and on a phone on its side: the board over its tools on an iPad or phone, beside them on its side with HINT and PICTURE as symbols; only where the places would be under 48px, the paleontologist's on an upright phone or a small one on its side, does the board wait for a turn. Its choice and board now leave the app's portrait gate.
+- LAB-922: PICTURE PUZZLE's board stands on the dig site in wide windows: HOME, BACK and the picture's name in the sky with the pieces fitted, and on the sand the board in its pocket beside the tools' pocket of tray, pages, HINT and PICTURE.
+- LAB-922: PICTURE PUZZLE's choice stands on the dig site: HOME and the title in the sky, and on the sand the level switch over the three pictures in their pockets, beside their names on an upright phone.
+- LAB-921: BONES walks whole on every size: its dig-site sheets now outweigh the older skeleton rules, so on an upright iPad the choice's level switch and the museum's stands sit under the sky, and on an iPhone the result fits without scrolling.
+- LAB-921: BONES' result stands on the dig site: the skeleton and body in a tall sky beside or over the reward, the fact by its bulb and both ways on on the sand.
+- LAB-921: BONES' museum stands on the dig site: the title in the sky, and on the sand five open stands on plinths, built, awaiting rebuild or empty, with the jaw shelf.
+- LAB-921: BONES' guess stands on the dig site: the question, or the clue in its place, in the sky, the skeleton in its pocket and the name cards on the sand.
+- LAB-921: BONES' puzzle stands on the dig site: the board and tray are pockets in the sand, HOME comes before BACK, and the count turns green with the last bone.
+- LAB-921: BONES' choice stands on the dig site: the sky's bar and title over the sand's level switch and skeletons in their pockets.
+- LAB-920: LABYRINTH's level offers show the design's compass for Explorer and pickaxe for Paleontologist in the pocket.
 - LAB-920: On an iPhone SE held upright, HATCHLING's maze fits whole: its parent waits on home, as on the larger mazes, and the sides narrow.
 - LAB-1031: On an upright phone, EXPLORER's and PALEONTOLOGIST's mazes turn on their side like HATCHLING's, so they fill the screen's height and pan less across.
 

@@ -132,13 +132,15 @@ public struct ComposerBoundary: Sendable {
     public var time: any ComposerClock
     public var log: any LogSink
     public var intervals: ProfileIntervals
+    public var transcripts: any TranscriptStorage
     public var recordings: any RecordingStorage
 
     public init(capturePersistence: CapturePersistence, microphone: any MicrophoneSource, callAudio: any CallAudioSource,
                 recognizers: any RecognizerSource, processes: any CallProcessSource, access: any CallAudioAccessSource,
                 microphonePermission: any MicrophonePermission, capacity: any FolderCapacity,
                 time: any ComposerClock, log: any LogSink, intervals: ProfileIntervals,
-                recordings: any RecordingStorage) {
+                recordings: any RecordingStorage, transcripts: any TranscriptStorage = FileTranscriptStorage()) {
+        self.transcripts = transcripts
         self.capturePersistence = capturePersistence
         self.microphone = microphone; self.callAudio = callAudio; self.recognizers = recognizers
         self.processes = processes; self.access = access; self.microphonePermission = microphonePermission

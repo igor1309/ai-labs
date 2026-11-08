@@ -33,6 +33,7 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
 
     let news = AsyncStream<SessionEvent>.makeStream()
     nonisolated let transcriptFailures: TranscriptFailureReport
+    let summaries: SummaryCallbacks
     let folder: CallFolder
     let folderTitle: String?
     let processes: CallAppProcesses
@@ -57,7 +58,8 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
     /// A long call's transcript is saved at most this often, and at once when its text stops.
     static let transcriptInterval: Duration = .seconds(5)
 
-    init(folder: CallFolder, folderTitle: String?, processes: CallAppProcesses, boundary: ComposerBoundary) {
+    init(folder: CallFolder, folderTitle: String?, processes: CallAppProcesses, boundary: ComposerBoundary, summaries: SummaryCallbacks = .disabled) {
+        self.summaries = summaries
         self.folder = folder
         self.folderTitle = folderTitle
         self.processes = processes
@@ -116,7 +118,8 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
     func openTranscript(in folder: SessionCallFolder) async throws {
 
         let made = try places(in: folder)
-        transcriptFile = try await WritingTranscript(file: TranscriptFile(url: made.transcriptURL), sink: boundary.log)
+        let file = try await boundary.transcripts.open(at: made.transcriptURL, sink: boundary.log)
+        transcriptFile = SummaryTranscript(base: file, folder: made.url, callbacks: summaries)
     }
 
     func closeTranscript() async throws {
@@ -157,6 +160,7 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
 
     func stop() async throws {
 
+        if let made { await summaries.waiting(made.url) }
         await writing?.stop()
         await readingObservation?.value
     }

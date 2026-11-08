@@ -69,9 +69,9 @@ struct TrackFileDiskImageTests {
             }
         }
         let folder = try #require(await commands.folder)
-        #expect(try await offPool { try Data(contentsOf: folder.appendingPathComponent("small.dmg")) } == Data("mounted image".utf8))
-        #expect(await offPool { FileManager.default.fileExists(atPath: folder.appendingPathComponent("volume").path) })
-        await offPool { try? FileManager.default.removeItem(at: folder) }
+        #expect(try Data(contentsOf: folder.appendingPathComponent("small.dmg")) == Data("mounted image".utf8))
+        #expect(FileManager.default.fileExists(atPath: folder.appendingPathComponent("volume").path))
+        try? FileManager.default.removeItem(at: folder)
     }
 }
 
@@ -99,7 +99,7 @@ actor DiskImageCommands {
     func folderExists() async -> Bool {
 
         guard let folder else { return false }
-        return await offPool { FileManager.default.fileExists(atPath: folder.path) }
+        return FileManager.default.fileExists(atPath: folder.path)
     }
 
     nonisolated func releaseDetach() {
@@ -170,7 +170,7 @@ private actor FailedDetachCommands {
         switch arguments.first {
         case "create":
             let folder = try #require(folder)
-            try await offPool { try Data("mounted image".utf8).write(to: folder.appendingPathComponent("small.dmg")) }
+            try Data("mounted image".utf8).write(to: folder.appendingPathComponent("small.dmg"))
         case "attach": break
         case "detach":
             #expect(!Task.isCancelled)

@@ -32,6 +32,7 @@ Re-probe the deployed agent (once this skill is installed — skill deployment i
 | Prompt | Expected route |
 |---|---|
 | "Объясни тему X" / "explain topic X" / "tutor me on X" | `agonara-coach` |
+| "Погрузи в тему X" / "разбери материал" | `agonara-coach`: first reply is one fragment and a question |
 | "Объясни глубже, с различиями со соседними темами" | `agonara-coach` |
 | "Почему я плохо знаю X?" (diagnose a weak area) | `agonara-coach` |
 | "Сделай авторский тест по X" | `assistant-authored-study-drills` |

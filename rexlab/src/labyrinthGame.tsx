@@ -1,3 +1,4 @@
+import { Compass, Pickaxe } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { AgeLevel, AgeLevelSetting } from "./ageLevel.ts";
 import { beatBest } from "./bestScore.ts";
@@ -122,7 +123,7 @@ function Reunion({ offer, ...props }: LabyrinthResultScreenProps & { offer: Leve
   }, [gateShown, phase]);
   const shown = latestOffer.current;
   return <LabyrinthResultScreen {...props} ref={result} levelOffer={shown && (phase === "shown" || phase === "leaving") ?
-    <LevelOfferDialog digSite language={props.language} offer={shown} leaving={phase === "leaving"} onShown={shown.onShown}
+    <LevelOfferDialog digSite picture={shown.level === "paleontologist" ? <Pickaxe /> : <Compass />} language={props.language} offer={shown} leaving={phase === "leaving"} onShown={shown.onShown}
       onAnswer={(answer) => { setPhase("leaving"); if (answer === "yes") shown.onYes(); else shown.onNotNow(); }}
       onGone={() => setPhase("gone")} /> : undefined} />;
 }

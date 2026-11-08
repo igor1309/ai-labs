@@ -1,3 +1,4 @@
+import "./picturePuzzleSheets.ts";
 import { THEMES } from "../src/theme.ts";
 import { shortHomeName } from "./support.ts";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
@@ -35,7 +36,7 @@ function openApp(storage: MemoryStorage, language: Language, theme: Theme, featu
     dinosaurs: SHIPPED_DINOSAURS, catalogue: SHIPPED_CATALOGUE, bodyPicture: fakeBodyPicture, random: seededRandom(17),
     picturePuzzle: { dinosaurs: readPictureDinosaurs(records), bodyPicture: fakeBodyPicture, random: seededRandom(29),
       choiceStore: localPicturePuzzleChoice(() => storage), progressStore: localPicturePuzzleProgress(() => storage) },
-    viewport, portraitLayouts: { home: ["tall", "tall-narrow"] },
+    viewport, portraitLayouts: { home: ["tall", "tall-narrow"], "picturePuzzle-choice": ["tall", "tall-narrow"], "picturePuzzle-puzzle": ["tall", "tall-narrow"], "picturePuzzle-result": ["tall", "tall-narrow"] },
     progress: emptyProgress(), deviceLanguage: "en-GB", languageStore: localLanguage(() => storage), nameVersion: () => {},
     appearance: { isDark: () => false, subscribe: () => () => {} }, themeStore: localTheme(() => storage), ageLevelStore: localAgeLevel(() => storage),
     ...emptyLabyrinth(), ...emptyCare(), ...emptyDig(), ...emptyPairs(), ...emptySkeletons(), ...emptySorting(), ...pageAtRest(), ...featuring(featured),
@@ -181,18 +182,27 @@ it.each([false, true])("uses the root double-tap filter across choice, final dro
   expect(app.countStart).toHaveBeenCalledTimes(2);
 });
 
-it.each(["hatchling", "explorer", "paleontologist"] as const)("keeps a %s board behind the orientation guard and abandons it without rewards", (level: AgeLevel) => {
+it.each([["hatchling", false], ["explorer", false], ["paleontologist", true]] as const)("on an upright phone keeps a %s board playable unless its places would be under 48px (%s), and abandons it without rewards", (level: AgeLevel, gated: boolean) => {
   const storage = memoryStorage();
   localAgeLevel(() => storage).save({ level, revision: "parent" });
-  const app = openApp(storage, "en", "dark");
+  // Without motion the turn does not glide, and play goes on at once.
+  const app = openApp(storage, "en", "dark", "compare", true);
   fireEvent.click(button(TEXTS.en.picturePuzzle));
   fireEvent.click(button("TRICERATOPS"));
   place("en", firstPiece("en"));
   const fitted = screen.getByLabelText(TEXTS.en.pictureFitted).textContent;
-  act(() => app.viewport.turn("portrait"));
-  expect(screen.getByRole("img", { name: TEXTS.en.turnSideways })).not.toBeNull();
-  expect(screen.queryByRole("group", { name: TEXTS.en.pictureBoard })).toBeNull();
-  act(() => app.viewport.turn("landscape"));
+  act(() => {
+    Object.assign(window, { innerWidth: 393, innerHeight: 852 });
+    app.viewport.resize("tall-narrow", true);
+    fireEvent(window, new Event("resize"));
+  });
+  expect(screen.queryByRole("img", { name: TEXTS.en.turnSideways }) !== null).toBe(gated);
+  expect(screen.queryByRole("group", { name: TEXTS.en.pictureBoard }) === null).toBe(gated);
+  act(() => {
+    Object.assign(window, { innerWidth: 1180, innerHeight: 820 });
+    app.viewport.resize("wide", false);
+    fireEvent(window, new Event("resize"));
+  });
   expect(screen.getByLabelText(TEXTS.en.pictureFitted).textContent).toBe(fitted);
   fireEvent.click(button(TEXTS.en.home));
   expect(button(TEXTS.en.picturePuzzle).querySelector(".picture-puzzle-tile-count")?.textContent).toBe(undefined);

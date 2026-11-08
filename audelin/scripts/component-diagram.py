@@ -27,8 +27,13 @@ LANES = {
 
 # Target: (lane, line under its name, slot in the lane). Planned boxes have no target yet.
 TARGETS = {
+    "SummarySettings": ("machines", "validates and saves call-note settings", 6),
+    "SummaryJobs": ("machines", "coordinates durable call-note jobs", 7),
+    "SummaryFiles": ("storage", "claims and publishes call notes", 9),
+    "SummaryRuntime": ("capture", "executes bounded note requests", 6),
+    "SpeakerIdentification": ("text", "validates self-introduction evidence", 10),
     "BlockingTestWork": ("external", "test helper: dispatches blocking work", 3),
-    "RenderedText": ("external", "test helper: reads what a view draws", 4),
+    "RenderedText": ("external", "test helper: hosts a view offscreen", 4),
     "AudelinRehearsal": ("tools", "synthetic call through the shipped composition", 0),
     "SessionRehearsal": ("tools", "synthetic recogniser", 1),
     "SessionCrashWriter": ("tools", "test helper: call killed mid-save", 2),

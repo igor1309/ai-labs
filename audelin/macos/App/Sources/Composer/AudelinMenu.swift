@@ -9,6 +9,7 @@ import Observation
 import PanelUI
 import Preferences
 import Recording
+import SettingsUI
 
 private struct MenuApplication {
 
@@ -16,6 +17,8 @@ private struct MenuApplication {
     let failures: AsyncStream<any Error>
     let send: (RecordingEvent) async -> Void
     let quit: () async -> Void
+    let reserveStorage: () async -> Bool
+    let releaseStorage: () async -> Void
     let panelStates: () async -> AsyncStream<PanelState>
     let sendPanel: (PanelEvent) async -> Void
 }
@@ -25,10 +28,18 @@ public final class AudelinMenu {
 
     public private(set) var calls: AudelinCalls?
     public private(set) var state = RecordingState()
-    public var preferences: Preferences { settings.snapshot }
+    public var preferences: Preferences {
+        var value = settings.snapshot
+        value.callsFolder = settings.callsFolder
+        return value
+    }
     public private(set) var quitting = false
     public private(set) var panelState = PanelState(recording: .off, log: .empty)
     private(set) var panelPresence = PanelPresence()
+    public private(set) var summarySettings: AudelinSettings?
+    private var chooseFolder: () async -> URL? = { nil }
+    private var summaries: AudelinSummaries?
+    private var presentSettings: () -> Void = {}
     private let presentPanel: (Bool) -> Void
     private let sleep: @Sendable (Duration) async throws -> Void
     private let sendPanelEvent: (PanelEvent) async -> Void
@@ -42,6 +53,8 @@ public final class AudelinMenu {
     private let send: (RecordingEvent) async -> Void
     private let openFolder: (URL) -> Void
     private let openURL: (URL) -> Void
+    private let reserveStorage: () async -> Bool
+    private let releaseStorage: () async -> Void
     private let quit: () async -> Void
     private var observation: Task<Void, Never>?
     private var detectionObservation: Task<Void, Never>?
@@ -53,6 +66,7 @@ public final class AudelinMenu {
 
     init(
         storage: PreferencesStore,
+        occupiedCallNames: @escaping @Sendable () throws -> [String],
         boundary: ComposerBoundary,
         processes: CoreAudioProcesses,
         panel: AudelinPanel,
@@ -61,20 +75,26 @@ public final class AudelinMenu {
         terminate: @escaping @Sendable () async -> Void,
         sink: any LogSink,
         presentPanel: @escaping (Bool) -> Void,
-        sleep: @escaping @Sendable (Duration) async throws -> Void
+        sleep: @escaping @Sendable (Duration) async throws -> Void,
+        summaries: AudelinSummaries? = nil
     ) async {
 
         self.sink = sink
+        self.summaries = summaries
         self.presentPanel = presentPanel
         self.sleep = sleep
         let application: MenuApplication?
         do {
-            let recording = try await AudelinRecording(preferences: storage, boundary: boundary,
-                                                       processes: processes, panel: panel)
+            let recording = try await AudelinRecording(preferences: storage, occupiedCallNames: occupiedCallNames, boundary: boundary,
+                                                       processes: processes, panel: panel, summaries: summaries?.callbacks(timeZone: boundary.time.timeZone()) ?? .disabled)
             application = MenuApplication(
                 states: { await recording.inputs.states() }, failures: recording.detectionFailures,
                 send: { await recording.inputs.send($0) },
-                quit: { await Composer.quit(recording.lifecycle(terminate: terminate)) },
+                quit: { await Composer.quit(recording.lifecycle(terminate: {
+                    await summaries?.shutdown()
+                    await terminate()
+                })) },
+                reserveStorage: { await recording.reserveStorage() }, releaseStorage: { await recording.releaseStorage() },
                 panelStates: { await recording.panel.states() },
                 sendPanel: { await recording.panel.send($0) }
             )
@@ -90,7 +110,9 @@ public final class AudelinMenu {
         self.send = send
         self.openFolder = openFolder
         self.openURL = openURL
-        self.quit = application?.quit ?? terminate
+        self.reserveStorage = application?.reserveStorage ?? { false }
+        self.releaseStorage = application?.releaseStorage ?? {}
+        self.quit = application?.quit ?? { await summaries?.shutdown(); await terminate() }
         self.sendPanelEvent = application?.sendPanel ?? { _ in }
         if let application {
             panelObservation = Task { [weak self, states = application.panelStates] in
@@ -118,9 +140,44 @@ public final class AudelinMenu {
         }
     }
 
+    func installFolderPicker(_ choose: @escaping () async -> URL?) { chooseFolder = choose }
+    func reserveCallsFolder() async -> Bool { await reserveStorage() }
+    func releaseCallsFolder() async { await releaseStorage() }
+
+    func installSettings(_ model: AudelinSettings, present: @escaping () -> Void) {
+        summarySettings = model; presentSettings = present
+    }
+
+    public var settingsState: SettingsState {
+        var result = SettingsState(recordsCalls: preferences.automaticRecording, liveText: preferences.liveText,
+                      folder: .init(path: settings.callsFolder.path, status: state.phase == .idle ? .idle(calls: "") : .recording),
+                      engines: [.init(id: "parakeet", name: "Parakeet v3", note: "Локальное распознавание", availability: "", size: "")],
+                      selectedEngine: "parakeet", explainKeys: "", selectedTab: summarySettings?.selectedTab ?? .recording,
+                      callNotes: summarySettings?.notes ?? .loading("Загружаем настройки…"))
+        if let recordings = calls?.recordingsState { applyFolderMove(recordings, to: &result) }
+        return result
+    }
+    public func sendSettings(_ event: SettingsEvent) async {
+        guard !quitting else { return }
+        switch event {
+        case .changeFolder:
+            if let destination = await chooseFolder() { calls?.sendRecordings(.chooseFolder(destination)) }
+        case .confirmMove: calls?.sendRecordings(.confirmMove)
+        case .retryMove: calls?.sendRecordings(.retryMove)
+        case .cancelMove: calls?.sendRecordings(.cancelMove)
+        case let .setRecordsCalls(value): await perform(.setAutomatic(value))
+        case let .setLiveText(value): await perform(.setLiveText(value))
+        default: summarySettings?.send(event)
+        }
+    }
+
     func installCalls(_ calls: AudelinCalls) {
         self.calls = calls
         calls.recordingChanged(state)
+    }
+
+    public func summaryStates() -> AsyncStream<[String: String]> {
+        summaries?.updates() ?? AsyncStream { $0.finish() }
     }
 
     public func states() async -> AsyncStream<RecordingState> { await recordingStates() }
@@ -137,13 +194,16 @@ public final class AudelinMenu {
         case let .setAutomatic(enabled):
             await settings.setAutomatic(enabled)
         case let .setLiveText(enabled):
-            settings.setLiveText(enabled)
+            await settings.setLiveText(enabled)
         case .showCalls: calls?.show()
+        case .showSettings: presentSettings()
         case .showPanel: receivePanelPresence(.reopen)
         case .hidePanel: receivePanelPresence(.userClosed)
         case .openCallsFolder: openFolder(settings.callsFolder)
         case .quit:
             quitting = true
+            summaries?.stopDispatch()
+            await calls?.drainMove()
             await quit()
         }
     }

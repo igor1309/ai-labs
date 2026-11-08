@@ -6,6 +6,11 @@
 
 - Web and Telegram continue one persisted reading session, with stale-action protection across surfaces and honest unavailable paragraph explanations until a Brain exists. LAB-1058.
 
+## 2026-11-07
+
+- The coach skill explains each word before using it, teaches a topic as a chain, offers a map marking what to skim, checks understanding on a new case, and recovers from its own mistake in one line. LAB-1038.
+- The coach skill teaches new material one fragment per message and waits for the student's reply, instead of a full overview, and holds the course's exact terms. LAB-1037.
+
 ## 2026-11-05
 
 - The Session runner is ported from JavaScript to Go, the repository's main language: one module with no dependencies, the flow apart from Telegram so a web page can reuse it. launchd runs the built binary, which reads the same state file and env file. LAB-962.

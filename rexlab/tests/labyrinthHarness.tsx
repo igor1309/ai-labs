@@ -1,5 +1,6 @@
 import "@fontsource-variable/lexend";
 import "@fontsource-variable/manrope";
+import { Compass, Pickaxe } from "lucide-react";
 import { createRoot, type Root } from "react-dom/client";
 import { flushSync } from "react-dom";
 import { useState } from "react";
@@ -81,7 +82,7 @@ export function mountResult(options: { language?: Language; theme?: "light" | "d
       <LabyrinthResultScreen language={language} level={options.level ?? "hatchling"} onLevel={() => undefined} picture={triceratops}
         totalStars={kind === "unreadable" ? undefined : kind === "first" ? 48 : 51} best={kind === "unreadable" ? undefined : 3} beaten={undefined}
         celebration={kind === "first" ? "first-best" : null} onPlayAgain={() => undefined} onHome={() => undefined}
-        levelOffer={options.offer && <LevelOfferDialog digSite language={language} leaving={false} onShown={() => undefined} onAnswer={() => undefined} onGone={() => undefined}
+        levelOffer={options.offer && <LevelOfferDialog digSite picture={options.offer === "paleontologist" ? <Pickaxe /> : <Compass />} language={language} leaving={false} onShown={() => undefined} onAnswer={() => undefined} onGone={() => undefined}
           offer={{ level: options.offer, onYes: () => undefined, onNotNow: () => undefined, onShown: () => undefined, startTimer: () => () => {} }} />} />
     </PicturesProvider>
   ));

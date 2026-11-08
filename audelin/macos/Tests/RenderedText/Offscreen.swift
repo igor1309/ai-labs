@@ -53,29 +53,6 @@ public enum Offscreen {
         ((view as? NSTextField).map { [$0] } ?? []) + view.subviews.flatMap { textFields(in: $0) }
     }
 
-    /// The view drawn at three pixels a point whatever the display's scale,
-    /// so small type stays readable on a 1x runner.
-    public static func sharpSnapshot(_ view: NSView) -> CGImage? {
-
-        view.display()
-        let scale = 3
-        guard let rep = NSBitmapImageRep(
-            bitmapDataPlanes: nil,
-            pixelsWide: Int(view.bounds.width) * scale,
-            pixelsHigh: Int(view.bounds.height) * scale,
-            bitsPerSample: 8,
-            samplesPerPixel: 4,
-            hasAlpha: true,
-            isPlanar: false,
-            colorSpaceName: .deviceRGB,
-            bytesPerRow: 0,
-            bitsPerPixel: 0
-        ) else { return nil }
-        rep.size = view.bounds.size
-        view.cacheDisplay(in: view.bounds, to: rep)
-        return rep.cgImage
-    }
-
     /// Writes the image only when `AUDELIN_SNAPSHOTS` names a folder, for
     /// comparing the panel with the design by eye.
     public static func save(_ image: NSBitmapImageRep, _ name: String) throws {

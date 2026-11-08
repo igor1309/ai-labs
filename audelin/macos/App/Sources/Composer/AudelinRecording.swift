@@ -17,14 +17,15 @@ final class AudelinRecording: Sendable {
     private let delivery: ApplicationDelivery
 
     init(
-        preferences: PreferencesStore, boundary: ComposerBoundary, processes: CoreAudioProcesses,
-        panel: AudelinPanel
+        preferences: PreferencesStore, occupiedCallNames: @escaping @Sendable () throws -> [String],
+        boundary: ComposerBoundary, processes: CoreAudioProcesses,
+        panel: AudelinPanel, summaries: SummaryCallbacks = .disabled
     ) async throws {
 
         let app = RecordingCallApp()
         self.panel = panel
         let (recording, conditions) = await composeRecordingWithPreferences(
-            preferences: preferences, callApp: app, processes: processes, boundary: boundary, panel: panel
+            preferences: preferences, occupiedCallNames: occupiedCallNames, callApp: app, processes: processes, boundary: boundary, panel: panel, summaries: summaries
         )
         let inputs = recording
         self.inputs = inputs
@@ -44,6 +45,17 @@ final class AudelinRecording: Sendable {
             await boundary.microphonePermission.request()
             await conditions.refresh()
         }
+    }
+
+    func reserveStorage() async -> Bool {
+        guard await inputs.reserveStorage() else { return false }
+        await conditions.setStorageMoving(true)
+        return true
+    }
+    func releaseStorage() async {
+        await conditions.setStorageMoving(false)
+        await conditions.refresh()
+        await inputs.releaseStorage()
     }
 
     func lifecycle(terminate: @escaping @Sendable () async -> Void) -> LifecycleEffectHandler {

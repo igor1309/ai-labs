@@ -238,7 +238,7 @@ describe("a silhouette whose picture is not shown", () => {
       act(() => new Set(pictures.loading()).forEach((url) => (url !== outline ? pictures.finish(url) : ends === "failed" && pictures.fail(url))));
       const picture = stand("TYRANNOSAURUS").querySelector<HTMLElement>(".skeleton-exhibit-picture") ?? document.body;
 
-      expect([picture.dataset.picture, picture.classList.contains("skeleton-silhouette"), getComputedStyle(picture).opacity]).toEqual([ends, true, "0.22"]);
+      expect([picture.dataset.picture, picture.classList.contains("skeleton-silhouette"), getComputedStyle(picture).opacity]).toEqual([ends, true, picture.closest("[data-state=rebuilding]") ? "0.38" : "0.22"]);
       expect(getComputedStyle(picture).filter).not.toContain("brightness");
       if (ends === "loading") {
         act(() => pictures.finish(outline));

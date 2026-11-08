@@ -13,7 +13,7 @@ struct CallFolderTests {
     @Test func madeFolderUsesGivenTimeZoneAndContainsWritablePlaces() async throws {
 
         try await withCallsFolder { calls in
-            let made = try await offPool { try maker(calls).make() }
+            let made = try maker(calls).make()
             #expect(made.url == calls.appendingPathComponent("2026.10.24-1405", isDirectory: true))
             try await expectDirectory(made.url)
             let places = [made.microphoneURL, made.callURL, made.transcriptURL]
@@ -38,13 +38,37 @@ struct CallFolderTests {
         }
     }
 
+    @Test func retainedNamesReserveIdentitiesAcrossTitlesAndEachAllocationReadsThemAgain() async throws {
+        try await withCallsFolder { calls in
+            let occupied = Mutex(["2026.10.24-1405 Zoom", "2026.10.24-1405-2", "other"])
+            let adapter = CallFolder(callsURL: calls, now: { fixedStart }, timeZone: tokyo,
+                                     occupiedNames: { occupied.withLock { $0 } })
+            let first = try adapter.make(title: "Meet")
+            #expect(first.url.lastPathComponent == "2026.10.24-1405-3 Meet")
+            occupied.withLock { $0.append("2026.10.24-1405-4 Finder") }
+            let second = try adapter.make()
+            #expect(second.url.lastPathComponent == "2026.10.24-1405-5")
+            #expect(try await names(calls) == ["2026.10.24-1405-3 Meet", "2026.10.24-1405-5"])
+        }
+    }
+
+    @Test func failureReadingRetainedNamesFailsWithoutAllocatingAnIdentity() async throws {
+        try await withCallsFolder { calls in
+            let adapter = CallFolder(callsURL: calls, now: { fixedStart }, timeZone: tokyo,
+                                     occupiedNames: { throw POSIXError(.EACCES) })
+            await #expect(throws: POSIXError(.EACCES)) { try adapter.make() }
+            let remaining = try await names(calls)
+            #expect(remaining.isEmpty)
+        }
+    }
+
     @Test func madeFolderIsPrivateToTheUser() async throws {
 
         try await withCallsFolder { calls in
-            let made = try await offPool { try maker(calls).make() }
-            let mode = try await offPool {
+            let made = try maker(calls).make()
+            let mode = try {
                 try FileManager.default.attributesOfItem(atPath: made.url.path)[.posixPermissions] as? Int
-            }
+            }()
             #expect(mode == 0o700)
         }
     }
@@ -53,10 +77,10 @@ struct CallFolderTests {
 
         try await withCallsFolder { calls in
             let adapter = CallFolder(callsURL: calls, now: { fixedStart.addingTimeInterval(249_540) }, timeZone: tokyo)
-            let made = try await offPool { try [
+            let made = try { try [
                 adapter.make(title: "Zoom"), adapter.make(), adapter.make(title: "Zoom"),
                 adapter.make(title: "a/b:c"), adapter.make(title: "//::"), adapter.make(title: ""),
-            ] }
+            ] }()
             #expect(made.map(\.url.lastPathComponent) == [
                 "2026.10.27-1124 Zoom", "2026.10.27-1124-2", "2026.10.27-1124-3 Zoom",
                 "2026.10.27-1124-4 a-b-c", "2026.10.27-1124-5 ----", "2026.10.27-1124-6",
@@ -70,9 +94,9 @@ struct CallFolderTests {
         try await withCallsFolder { calls in
             let clock = Mutex(fixedStart)
             let adapter = CallFolder(callsURL: calls, now: { clock.withLock { $0 } }, timeZone: tokyo)
-            let first = try await offPool { try adapter.make() }
+            let first = try adapter.make()
             clock.withLock { $0 = fixedStart.addingTimeInterval(60) }
-            let second = try await offPool { try adapter.make() }
+            let second = try adapter.make()
             #expect([first, second].map(\.url.lastPathComponent) == ["2026.10.24-1405", "2026.10.24-1406"])
         }
     }
@@ -81,12 +105,12 @@ struct CallFolderTests {
 
         try await withCallsFolder { calls in
             let adapter = maker(calls)
-            let first = try await offPool { try adapter.make() }
+            let first = try adapter.make()
             let kept = first.url.appendingPathComponent("kept")
             let bytes = Data([0, 255, 42, 10])
-            try await offPool { try bytes.write(to: kept) }
-            let second = try await offPool { try adapter.make() }
-            let third = try await offPool { try adapter.make() }
+            try bytes.write(to: kept)
+            let second = try adapter.make()
+            let third = try adapter.make()
             #expect([first, second, third].map(\.url.lastPathComponent) == [
                 "2026.10.24-1405", "2026.10.24-1405-2", "2026.10.24-1405-3"
             ])
@@ -103,8 +127,8 @@ struct CallFolderTests {
         try await withCallsFolder { calls in
             let taken = calls.appendingPathComponent("2026.10.24-1405")
             let bytes = Data([0, 255, 42, 10])
-            try await offPool { try bytes.write(to: taken) }
-            let made = try await offPool { try maker(calls).make() }
+            try bytes.write(to: taken)
+            let made = try maker(calls).make()
             #expect(made.url.lastPathComponent == "2026.10.24-1405-2")
             try await expectDirectory(made.url)
             #expect(try await contents(taken) == bytes)
@@ -115,8 +139,8 @@ struct CallFolderTests {
     @Test func missingCallsFolderFailsWithoutCreatingAnything() async throws {
 
         try await withCallsFolder { calls in
-            try await offPool { try FileManager.default.removeItem(at: calls) }
-            await #expect(throws: POSIXError(.ENOENT)) { try await offPool { try maker(calls).make() } }
+            try FileManager.default.removeItem(at: calls)
+            await #expect(throws: POSIXError(.ENOENT)) { try maker(calls).make() }
             #expect(await !exists(calls.path))
             #expect(try await names(calls.deletingLastPathComponent()).isEmpty)
         }
@@ -126,15 +150,15 @@ struct CallFolderTests {
     func failedMakeLeavesCallsFolderEmptyAndNameAvailable(code: POSIXErrorCode) async throws {
 
         try await withCallsFolder { calls in
-            try await offPool { try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: calls.path) }
+            try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: calls.path)
                         // Inject the denial because privileged test runners can write read-only folders.
-            let adapter = CallFolder(callsURL: calls, now: { fixedStart }, timeZone: tokyo, createDirectory: { _ in
+            let adapter = CallFolder(callsURL: calls, now: { fixedStart }, timeZone: tokyo, occupiedNames: { [] }, createDirectory: { _ in
                 throw POSIXError(code)
             }, names: { _ in [] })
-            await #expect(throws: POSIXError(code)) { try await offPool { try adapter.make() } }
+            await #expect(throws: POSIXError(code)) { try adapter.make() }
             #expect(try await names(calls).isEmpty)
-            try await offPool { try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: calls.path) }
-            let retry = try await offPool { try maker(calls).make() }
+            try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: calls.path)
+            let retry = try maker(calls).make()
             #expect(retry.url.lastPathComponent == "2026.10.24-1405")
             try await expectDirectory(retry.url)
         }
@@ -144,16 +168,16 @@ struct CallFolderTests {
 
         try await withCallsFolder { calls in
             let target = calls.deletingLastPathComponent().appendingPathComponent("target", isDirectory: true)
-            try await offPool { try FileManager.default.createDirectory(at: target, withIntermediateDirectories: false) }
+            try FileManager.default.createDirectory(at: target, withIntermediateDirectories: false)
             let kept = target.appendingPathComponent("kept")
             let bytes = Data([0, 255, 42, 10])
-            try await offPool { try bytes.write(to: kept) }
+            try bytes.write(to: kept)
             let link = calls.appendingPathComponent("2026.10.24-1405")
-            try await offPool { try FileManager.default.createSymbolicLink(at: link, withDestinationURL: target) }
-            let made = try await offPool { try maker(calls).make() }
+            try FileManager.default.createSymbolicLink(at: link, withDestinationURL: target)
+            let made = try maker(calls).make()
             #expect(made.url.lastPathComponent == "2026.10.24-1405-2")
             try await expectDirectory(made.url)
-            #expect(try await offPool { try FileManager.default.destinationOfSymbolicLink(atPath: link.path) } == target.path)
+            #expect(try FileManager.default.destinationOfSymbolicLink(atPath: link.path) == target.path)
             #expect(try await names(target) == ["kept"])
             #expect(try await contents(kept) == bytes)
             #expect(try await names(calls) == ["2026.10.24-1405", "2026.10.24-1405-2"])
@@ -165,11 +189,11 @@ struct CallFolderTests {
         try await withCallsFolder { calls in
             let target = calls.deletingLastPathComponent().appendingPathComponent("missing", isDirectory: true)
             let link = calls.appendingPathComponent("2026.10.24-1405")
-            try await offPool { try FileManager.default.createSymbolicLink(at: link, withDestinationURL: target) }
-            let made = try await offPool { try maker(calls).make() }
+            try FileManager.default.createSymbolicLink(at: link, withDestinationURL: target)
+            let made = try maker(calls).make()
             #expect(made.url.lastPathComponent == "2026.10.24-1405-2")
             try await expectDirectory(made.url)
-            #expect(try await offPool { try FileManager.default.destinationOfSymbolicLink(atPath: link.path) } == target.path)
+            #expect(try FileManager.default.destinationOfSymbolicLink(atPath: link.path) == target.path)
             #expect(await !exists(target.path))
             #expect(try await names(calls) == ["2026.10.24-1405", "2026.10.24-1405-2"])
         }
@@ -179,11 +203,11 @@ struct CallFolderTests {
 
         try await withCallsFolder { calls in
             let bytes = Data([0, 255, 42, 10])
-            try await offPool { try bytes.write(to: calls.appendingPathComponent("2026.10.24-1405 Meet")) }
-            try await offPool { try FileManager.default.createDirectory(
+            try bytes.write(to: calls.appendingPathComponent("2026.10.24-1405 Meet"))
+            do { try FileManager.default.createDirectory(
                 at: calls.appendingPathComponent("2026.10.24-1405-2 Zoom"), withIntermediateDirectories: false) }
-            try await offPool { try bytes.write(to: calls.appendingPathComponent("2026.10.24-14050")) }
-            let made = try await offPool { try maker(calls).make(title: "Zoom") }
+            try bytes.write(to: calls.appendingPathComponent("2026.10.24-14050"))
+            let made = try maker(calls).make(title: "Zoom")
             #expect(made.url.lastPathComponent == "2026.10.24-1405-3 Zoom")
             #expect(try await contents(calls.appendingPathComponent("2026.10.24-1405 Meet")) == bytes)
             #expect(try await names(calls) == [
@@ -195,10 +219,10 @@ struct CallFolderTests {
     @Test func failedListingFailsWithoutCreatingAnything() async throws {
 
         try await withCallsFolder { calls in
-            let adapter = CallFolder(callsURL: calls, now: { fixedStart }, timeZone: tokyo, createDirectory: { _ in
+            let adapter = CallFolder(callsURL: calls, now: { fixedStart }, timeZone: tokyo, occupiedNames: { [] }, createDirectory: { _ in
                 Issue.record("made a folder after listing failed")
             }, names: { _ in throw POSIXError(.EACCES) })
-            await #expect(throws: POSIXError(.EACCES)) { try await offPool { try adapter.make() } }
+            await #expect(throws: POSIXError(.EACCES)) { try adapter.make() }
             let left = try await names(calls)
             #expect(left.isEmpty)
         }
@@ -208,13 +232,13 @@ struct CallFolderTests {
 
         try await withCallsFolder { calls in
             let folder = calls.appendingPathComponent("2026.10.24-1405", isDirectory: true)
-            try await offPool { try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false) }
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false)
             let kept = folder.appendingPathComponent("kept")
             let file = calls.appendingPathComponent("2026.10.24-1405-2")
             let bytes = Data([0, 255, 42, 10])
-            try await offPool { try bytes.write(to: kept) }
-            try await offPool { try bytes.write(to: file) }
-            let made = try await offPool { try maker(calls).make() }
+            try bytes.write(to: kept)
+            try bytes.write(to: file)
+            let made = try maker(calls).make()
             #expect(made.url.lastPathComponent == "2026.10.24-1405-3")
             try await expectDirectory(made.url)
             #expect(try await names(folder) == ["kept"])
@@ -235,16 +259,16 @@ private func maker(_ calls: URL) -> CallFolder {
 
 private func names(_ folder: URL) async throws -> [String] {
 
-    try await offPool { try FileManager.default.contentsOfDirectory(atPath: folder.path).sorted() }
+    try FileManager.default.contentsOfDirectory(atPath: folder.path).sorted()
 }
 
-private func contents(_ file: URL) async throws -> Data { try await offPool { try Data(contentsOf: file) } }
+private func contents(_ file: URL) async throws -> Data { try Data(contentsOf: file) }
 
-private func exists(_ path: String) async -> Bool { await offPool { FileManager.default.fileExists(atPath: path) } }
+private func exists(_ path: String) async -> Bool { FileManager.default.fileExists(atPath: path) }
 
 private func fileType(_ url: URL) async throws -> FileAttributeType? {
 
-    try await offPool { try FileManager.default.attributesOfItem(atPath: url.path)[.type] as? FileAttributeType }
+    try FileManager.default.attributesOfItem(atPath: url.path)[.type] as? FileAttributeType
 }
 
 private func expectDirectory(_ url: URL) async throws {
@@ -255,14 +279,14 @@ private func expectDirectory(_ url: URL) async throws {
 private func withCallsFolder(_ body: (URL) async throws -> Void) async throws {
 
     let root = FileManager.default.temporaryDirectory.appendingPathComponent("CallFolderTests-\(UUID())", isDirectory: true)
-    try await offPool { try FileManager.default.createDirectory(at: root, withIntermediateDirectories: false) }
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: false)
     let calls = root.appendingPathComponent("calls", isDirectory: true)
     do {
-        try await offPool { try FileManager.default.createDirectory(at: calls, withIntermediateDirectories: false) }
+        try FileManager.default.createDirectory(at: calls, withIntermediateDirectories: false)
         try await body(calls)
     } catch {
-        await offPool { try? FileManager.default.removeItem(at: root) }
+        try? FileManager.default.removeItem(at: root)
         throw error
     }
-    await offPool { try? FileManager.default.removeItem(at: root) }
+    try? FileManager.default.removeItem(at: root)
 }

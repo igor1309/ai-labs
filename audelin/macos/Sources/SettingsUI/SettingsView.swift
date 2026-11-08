@@ -7,9 +7,9 @@ import SwiftUI
 /// state of its own.
 public struct SettingsView: View {
 
-    private let state: SettingsState
-    private let event: (SettingsEvent) -> Void
-    private let config: SettingsConfig
+    let state: SettingsState
+    let event: (SettingsEvent) -> Void
+    let config: SettingsConfig
 
     @Environment(\.colorScheme) private var scheme
 
@@ -25,6 +25,34 @@ public struct SettingsView: View {
 
     public var body: some View {
 
+        VStack(alignment: .leading, spacing: tokens.space16) {
+            tabs
+            page
+        }
+        .padding(tokens.space24)
+        .frame(width: config.windowWidth, alignment: .topLeading)
+        .background(tokens.win)
+        .overlay(alignment: .top) {
+
+            if state.selectedTab == .recording, let confirm = state.moveConfirm {
+
+                moveSheet(confirm)
+            }
+        }
+    }
+}
+
+extension SettingsView {
+
+    @ViewBuilder
+    var page: some View {
+        switch state.selectedTab {
+        case .recording: recordingPage
+        case .callNotes: callNotesPage
+        }
+    }
+
+    var recordingPage: some View {
         VStack(alignment: .leading, spacing: tokens.space24) {
 
             row("Запись") { recording }
@@ -38,20 +66,21 @@ public struct SettingsView: View {
                 row("Размер фрагмента") { chunkPicker(chunk) }
             }
         }
-        .padding(tokens.space24)
-        .frame(width: config.windowWidth, alignment: .topLeading)
-        .background(tokens.win)
-        .overlay(alignment: .top) {
+    }
 
-            if let confirm = state.moveConfirm {
-
-                moveSheet(confirm)
-            }
+    var tabs: some View {
+        HStack(spacing: tokens.space4) {
+            tab("Запись", .recording)
+            tab("Итоги звонков", .callNotes)
         }
     }
-}
 
-private extension SettingsView {
+    func tab(_ title: String, _ tab: SettingsState.Tab) -> some View {
+        button(title, state.selectedTab == tab ? .primary : .secondary, fill: true, id: "tab-\(tab.rawValue)", selected: state.selectedTab == tab) {
+            event(.selectTab(tab))
+        }
+        .accessibilityIdentifier("tab-\(tab.rawValue)")
+    }
 
     var tokens: GlassLedger { config.tokens(for: scheme) }
 
@@ -101,7 +130,7 @@ private extension SettingsView {
 
 // MARK: - Rows
 
-private extension SettingsView {
+extension SettingsView {
 
     @ViewBuilder
     var recording: some View {
@@ -166,7 +195,10 @@ private extension SettingsView {
         case let .failed(moved, reason):
             dataText("часть звонков ещё здесь", tokens.typeSmall, tokens.warn)
             errorBanner(moved, reason)
-            button("Повторить", .secondary) { event(.retryMove) }
+            HStack(spacing: tokens.space8) {
+                button("Повторить", .secondary) { event(.retryMove) }
+                button("Отмена", .secondary) { event(.cancelMove) }
+            }
 
         case .recording:
             dataText("идёт запись — папку можно сменить после звонка", tokens.typeSmall, tokens.warn)
@@ -250,41 +282,47 @@ private extension SettingsView {
 
 // MARK: - Controls
 
-private extension SettingsView {
+extension SettingsView {
 
     func checkbox(
         _ label: String,
         isOn: Bool,
+        id: String? = nil,
         set: @escaping (Bool) -> Void
     ) -> some View {
 
-        Button { set(!isOn) } label: {
+        let content = HStack(spacing: tokens.space8) {
 
-            HStack(spacing: tokens.space8) {
+            ZStack {
 
-                ZStack {
+                RoundedRectangle(cornerRadius: tokens.radiusBar)
+                    .fill(isOn ? tokens.selBg : tokens.surface)
+
+                if isOn {
+
+                    Text("✓")
+                        .font(tokens.ui(tokens.typeSmall, .semibold))
+                        .foregroundStyle(tokens.selText)
+                } else {
 
                     RoundedRectangle(cornerRadius: tokens.radiusBar)
-                        .fill(isOn ? tokens.selBg : tokens.surface)
-
-                    if isOn {
-
-                        Text("✓")
-                            .font(tokens.ui(tokens.typeSmall, .semibold))
-                            .foregroundStyle(tokens.selText)
-                    } else {
-
-                        RoundedRectangle(cornerRadius: tokens.radiusBar)
-                            .strokeBorder(tokens.sub, lineWidth: 1)
-                    }
+                        .strokeBorder(tokens.sub, lineWidth: 1)
                 }
-                .frame(width: 16, height: 16)
-
-                uiText(label, tokens.typeBody, tokens.text)
             }
-            .contentShape(.rect)
+            .frame(width: 16, height: 16)
+
+            uiText(label, tokens.typeBody, tokens.text)
         }
-        .buttonStyle(.plain)
+        return Group {
+            if let id {
+                content.accessibilityHidden(true).overlay {
+                    SettingsPressTarget(title: label, identifier: id, isEnabled: true, checked: isOn) { set(!isOn) }
+                }
+            } else {
+                Button { set(!isOn) } label: { content.contentShape(.rect) }
+                    .buttonStyle(.plain)
+            }
+        }
     }
 
     enum ButtonKind { case primary, secondary }
@@ -294,6 +332,8 @@ private extension SettingsView {
         _ kind: ButtonKind,
         isEnabled: Bool = true,
         fill: Bool = false,
+        id: String? = nil,
+        selected: Bool? = nil,
         action: @escaping () -> Void
     ) -> some View {
 
@@ -303,16 +343,22 @@ private extension SettingsView {
         case (.secondary, true): (tokens.btn, tokens.text)
         }
 
-        return Button(action: action) {
-
-            uiText(label, tokens.typeSmall, colors.1, .semibold)
-                .padding(.vertical, tokens.space6)
-                .padding(.horizontal, tokens.space16)
-                .frame(maxWidth: fill ? .infinity : nil)
-                .background(colors.0, in: .rect(cornerRadius: tokens.radiusControl))
+        let content = uiText(label, tokens.typeSmall, colors.1, .semibold)
+            .padding(.vertical, tokens.space6)
+            .padding(.horizontal, tokens.space16)
+            .frame(maxWidth: fill ? .infinity : nil)
+            .background(colors.0, in: .rect(cornerRadius: tokens.radiusControl))
+        return Group {
+            if let id {
+                content.accessibilityHidden(true).overlay {
+                    SettingsPressTarget(title: label, identifier: id, isEnabled: isEnabled, selected: selected, action: action)
+                }
+            } else {
+                Button(action: action) { content }
+                    .buttonStyle(.plain)
+                    .disabled(!isEnabled)
+            }
         }
-        .buttonStyle(.plain)
-        .disabled(!isEnabled)
     }
 
     func option(_ engine: SettingsState.Engine, isSelected: Bool) -> some View {

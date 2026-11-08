@@ -2,6 +2,7 @@ import Foundation
 
 public struct CallsListState: Equatable, Sendable {
     public struct Row: Equatable, Identifiable, Sendable {
+        public var summaryStatus: String
         public let id: String
         public let title: String
         public let date: String
@@ -10,7 +11,8 @@ public struct CallsListState: Equatable, Sendable {
         public let editable: Bool
         public var folderName: String { id + (title.isEmpty ? "" : " " + title) }
 
-        public init(id: String, title: String, start: Date, duration: TimeInterval?, timeZone: TimeZone, editable: Bool) {
+        public init(id: String, title: String, start: Date, duration: TimeInterval?, timeZone: TimeZone, editable: Bool, summaryStatus: String = "") {
+            self.summaryStatus = summaryStatus
             self.id = id
             self.title = title
             self.editable = editable

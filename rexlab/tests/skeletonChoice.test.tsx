@@ -16,7 +16,7 @@ const NAMES = ["TYRANNOSAURUS", "TRICERATOPS", "STEGOSAURUS", "BRACHIOSAURUS", "
 // The look of the outline's picture, then of each bone's in the tray.
 const looks = () => [board().querySelector(".skeleton-outline img"), ...within(tray()).getAllByRole("img")].map((picture) => (picture as HTMLElement | null)?.dataset.picture);
 
-// A touch target's least side, as app.css gives it: jsdom lays nothing
+// A touch target's least side, as its sheet gives it: jsdom lays nothing
 // out, so it is read from the sizes and least sizes the stylesheet sets.
 const leastSide = (element: Element) => {
   const style = getComputedStyle(element);
@@ -55,15 +55,14 @@ describe("the skeleton game's choice of dinosaurs", () => {
     openSkeletonsApp();
 
     // jsdom works out no size from a card's width, so the size is read as
-    // app.css gives it: at most a cap, otherwise the card's width, less the
-    // name's sides, over a width in ems no name is wider than, which jsdom
-    // keeps as a multiplication by its inverse.
+    // its sheet gives it: at most a cap, otherwise the card's width, less the
+    // name's sides, over a width in ems no name is wider than.
     const name = choices()[0]?.querySelector(".skeleton-choice-name") ?? document.body;
     const style = getComputedStyle(name);
-    const size = /^min\((\d+)px, ([\d.]+) \* \(100cqi - (\d+)px\)\)$/.exec(style.fontSize);
-    expect([size?.[1], size?.[3]].map(Number)).toEqual([30, parseFloat(style.paddingLeft) + parseFloat(style.paddingRight)]);
+    const size = /^min\(var\(--sc-name-size\), \(100cqi - (\d+)px\) \/ ([\d.]+)\)$/.exec(style.fontSize);
+    expect(Number(size?.[1])).toBe(parseFloat(style.paddingLeft) + parseFloat(style.paddingRight));
     expect(style.whiteSpace).toBe("nowrap");
-    const ems = 1 / Number(size?.[2]);
+    const ems = Number(size?.[2]);
     const names = SHIPPED_SKELETONS.flatMap(({ name: { en, ru } }) => [en.toLocaleUpperCase("en"), ru.toLocaleUpperCase("ru")]);
     expect(names.filter((each) => !((NAME_EMS[each] ?? Infinity) <= ems))).toEqual([]);
   });
@@ -72,10 +71,9 @@ describe("the skeleton game's choice of dinosaurs", () => {
     openSkeletonsApp();
 
     const row = getComputedStyle(choices()[0]?.parentElement ?? document.body);
-    const gap = parseFloat(row.gap.split(" ").at(-1) ?? "");
     expect([row.flexWrap, row.justifyContent]).toEqual(["wrap", "center"]);
     expect(choices().map((choice) => [getComputedStyle(choice).flexBasis, getComputedStyle(choice).flexGrow])).toEqual(
-      choices().map(() => [`calc(${1 / 3}*(100% - ${2 * gap}px))`, "0"])
+      choices().map(() => ["calc((100% - 2 * var(--sc-gap)) / 3)", "0"])
     );
   });
 

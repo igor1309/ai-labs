@@ -1,3 +1,4 @@
+import "./sandWritingSheets.ts";
 import { HOME_TILE_PICTURES } from "../src/homeTilePictures.ts";
 import { emptyLabyrinth } from "./support.ts";
 import { act, fireEvent, render, screen } from "@testing-library/react";
@@ -16,6 +17,9 @@ import {
   lightDevice, manualTimers, manualViewport, pageAtRest, symbolOf, unsetAgeLevel
 } from "./support.ts";
 import { openWindow } from "./windowSizes.ts";
+
+// The marks take the dig site's groove, ds-groove in the light theme.
+const GROOVE = "#A07D52";
 
 vi.mock("react", async (actual) => {
   const react = await actual<typeof import("react")>();
@@ -90,7 +94,7 @@ describe("sand writing through Home", () => {
     await act(async () => { fireEvent.click(door); fireEvent.click(door); });
     const first = canvas();
     const drawing = app.canvases.get(first)!;
-    const marks = () => drawing.paths.filter(({ colour }) => colour === "#98723f");
+    const marks = () => drawing.paths.filter(({ colour }) => colour === GROOVE);
     expect(app.starts).toEqual(["sandWriting"]);
     expect(changes()).toEqual([SCREEN_CHANGE]);
     expect(gateShown()).toBe(false);
@@ -102,7 +106,7 @@ describe("sand writing through Home", () => {
     expect(getComputedStyle(app.footer).display).toBe("none");
     expect(getComputedStyle(document.body).overflow).toBe("hidden");
     const home = screen.getByRole("button", { name: text.home });
-    expect(home.textContent).toBe("");
+    expect(home.textContent).toBe(text.home);
     fireEvent.click(screen.getByRole("button", { name: text.sandTipPicker }));
     fireEvent.click(screen.getByRole("button", { name: text.sandTip(8) }));
     fireEvent.pointerDown(first, { pointerId: 1, button: 0, clientX: 30, clientY: 40 });
@@ -140,7 +144,7 @@ describe("sand writing through Home", () => {
     fireEvent.click(screen.getByRole("button", { name: text.sandTip(4) }));
     fireEvent.pointerDown(second, { pointerId: 2, button: 0, clientX: 70, clientY: 80 });
     fireEvent.pointerUp(second, { pointerId: 2, button: 0, clientX: 90, clientY: 100 });
-    expect(app.canvases.get(second)!.paths.filter(({ colour }) => colour === "#98723f").map(({ width }) => width)).toEqual([4, 4]);
+    expect(app.canvases.get(second)!.paths.filter(({ colour }) => colour === GROOVE).map(({ width }) => width)).toEqual([4, 4]);
     expect(app.starts).toEqual(["sandWriting", "sandWriting"]);
     expect(changes()).toEqual([SCREEN_CHANGE, SCREEN_CHANGE, SCREEN_CHANGE]);
   });

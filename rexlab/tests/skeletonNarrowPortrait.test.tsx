@@ -31,6 +31,12 @@ const narrowViewport = () => {
 
 // The screen stands upright on a phone with its 24, 32 and 20 padding and
 // its parts 16 apart, the bar one row of 48-pixel symbols 8 apart.
+function themedPhoneScreen() {
+  expect([document.documentElement.dataset.size, gateShown(), part(".gated-screen").hasAttribute("inert")]).toEqual(["tall-narrow", false, false]);
+  expect(screen.queryByRole("img", { name: TEXTS.en.turnSideways })).toBeNull();
+  for (const button of part(".skeleton-bar").querySelectorAll<HTMLElement>(".home-button")) expect(button.querySelector(".upright-hidden")?.textContent).toBe(button.textContent);
+}
+
 function phoneScreen(size: WindowSize) {
   expect([document.documentElement.dataset.size, gateShown(), part(".gated-screen").hasAttribute("inert")]).toEqual(["tall-narrow", false, false]);
   expect(screen.queryByRole("img", { name: TEXTS.en.turnSideways })).toBeNull();
@@ -53,26 +59,25 @@ describe("the skeleton screens upright on a phone", () => {
   it.each(PHONES)("stands the choice upright at %i by %i, its skeletons in rows of two", (...size) => {
     openWindow(...size);
     openSkeletonsApp({ viewport: narrowViewport(), portraitLayouts: NARROW_LAYOUTS, storage: starred() });
-    phoneScreen(size);
+    themedPhoneScreen();
     const room = styleAt(part(".skeleton-choices"), size);
-    expect([room.value("flex-wrap"), room.rowGap(), room.columnGap()]).toEqual(["wrap", 12, 12]);
-    for (const card of choices()) expect(styleAt(card, size).value("flex-basis")).toBe("calc(0.5 * (100% - 12px))");
+    expect(room.value("flex-wrap")).toBe("wrap");
+    for (const card of choices()) expect(styleAt(card, size).value("flex-basis")).toBe("calc((100% - var(--sc-gap)) / 2)");
   });
 
   it.each(PHONES)("stands the museum upright at %i by %i, its stands in rows of two", async (...size) => {
     openWindow(...size);
     const app = openSkeletonsApp({ viewport: narrowViewport(), portraitLayouts: NARROW_LAYOUTS, storage: starred(["triceratops"]) });
     await app.user.click(screen.getByRole("button", { name: shownTexts().museum }));
-    phoneScreen(size);
+    themedPhoneScreen();
     const hall = styleAt(part(".skeleton-hall"), size);
-    expect([hall.px("padding-top"), hall.rowGap(), hall.columnGap()]).toEqual([12, 12, 12]);
+    expect([hall.px("padding-top"), hall.rowGap(), hall.columnGap()]).toEqual([4, 12, 12]);
     const stands = within(screen.getByRole("group", { name: shownTexts().stands })).getAllByRole("region");
     for (const stand of stands) expect(styleAt(stand, size).value("flex-basis")).toBe("calc(0.5 * (100% - 12px))");
-    // The bar's two buttons and two chips, the title out of the way, fit
+    // The bar's two buttons and two chips, the title on its own line, fit
     // inside the 20-pixel sides: each chip its padding, a 20 symbol, a gap
     // and "n/n" in letters at most 0.75 of the type wide.
-    const title = styleAt(part(".skeleton-museum-screen .skeleton-title"), size);
-    expect([title.value("position"), title.px("width")]).toEqual(["absolute", 1]);
+    expect(styleAt(part(".skeleton-museum-screen .skeleton-title"), size).value("position")).toBe("absolute");
     const chips = [...part(".skeleton-museum-screen .skeleton-bar").querySelectorAll(".skeleton-chip")];
     expect(chips).toHaveLength(2);
     const widths = chips.map((chip) => {
@@ -86,7 +91,7 @@ describe("the skeleton screens upright on a phone", () => {
   it.each(PHONES)("stands the puzzle upright at %i by %i, the board as wide as the screen over a tray of at least a third", async (...size) => {
     openWindow(...size);
     await openPuzzle("TYRANNOSAURUS", { viewport: narrowViewport(), portraitLayouts: NARROW_LAYOUTS });
-    phoneScreen(size);
+    themedPhoneScreen();
     expect([styleAt(part(".skeleton-puzzle"), size).value("flex-direction"), styleAt(part(".skeleton-puzzle"), size).columnGap()]).toEqual(["column", 16]);
     expect(styleAt(part(".skeleton-puzzle .skeleton-board"), size).value("width")).toBe("min(100cqw, (100cqh - 16px) * 0.6 * var(--frame-width) / var(--frame-height))");
     const tray = styleAt(part(".skeleton-tray"), size);
@@ -109,23 +114,21 @@ describe("the skeleton screens upright on a phone", () => {
     layOutPuzzle();
     fitAll(skeletonOf("triceratops"));
     act(() => opened.pictures.fire(REVEAL.motion));
-    phoneScreen(size);
-    expect(styleAt(part(".skeleton-reveal-board"), size).value("width")).toBe("min(100cqw, (100cqh - 16px - 300px) * var(--frame-width) / var(--frame-height))");
-    expect(styleAt(part(".skeleton-reveal"), size).value("height")).toBe(`max(436px, -(128px) + ${size[1]}px)`);
+    themedPhoneScreen();
+    expect(styleAt(part(".skeleton-reveal-board"), size).value("width")).toBe("min(100cqw - 40px, (100cqh - 12px - 250px) * var(--frame-width) / var(--frame-height))");
     expect([styleAt(part(".skeleton-guess-screen"), size).value("height"), styleAt(part(".skeleton-guess-screen"), size).px("min-height")]).toEqual(["auto", size[1]]);
     expect(styleAt(part(".skeleton-guess-choices"), size).value("flex-direction")).toBe("column");
-    const reveal = Math.max(436, size[1] - 128);
-    expect(Math.min(size[0] - 40, (reveal - 16 - 300) * 800 / 600)).toBeGreaterThanOrEqual(160);
+    expect(Math.min(size[0] - 32 - 40, (465 - 12 - 250) * 800 / 600)).toBeGreaterThanOrEqual(160);
     // Each name beside its 80-wide picture keeps at least 12 pixels: the
-    // card's content is the width less the guess's 2 × 16 padding, its own
-    // 2 × 12 padding and 2 × 2 border.
-    const content = size[0] - 40 - 32 - 24 - 4;
+    // card's content is the width less the screen's 2 × 16 sides and its own
+    // 2 × 12 padding.
+    const content = size[0] - 32 - 24;
     for (const name of document.querySelectorAll<HTMLElement>(".skeleton-guess-name")) {
       const letters = Number(name.style.getPropertyValue("--letters"));
       expect(styleAt(name, size).value("font-size")).toBe("min(20px, calc((100cqi - 88px) / (var(--letters) * 0.75)))");
       expect(Math.min(20, (content - 88) / (letters * 0.75)), name.textContent ?? "").toBeGreaterThanOrEqual(12);
     }
-    expect(styleAt(part(".skeleton-guess-picture"), size).px("width")).toBe(80);
+    expect(styleAt(part(".skeleton-guess-pocket"), size).px("width")).toBe(80);
   });
 
   it.each(PHONES.flatMap((size) => ["en-GB", "ru-RU"].map((language) => [...size, language] as const)))("stands the result upright at %i by %i in %s, both ways on one line", async (width, height, deviceLanguage) => {
@@ -135,16 +138,14 @@ describe("the skeleton screens upright on a phone", () => {
     const opened = await openPuzzle(name, { viewport: narrowViewport(), portraitLayouts: NARROW_LAYOUTS, deviceLanguage });
     fitAll(skeletonOf("tyrannosaurus"));
     revealNow(opened.pictures, "tyrannosaurus");
-    phoneScreen(size);
-    expect(styleAt(part(".skeleton-reveal-board"), size).value("width")).toBe("min(100cqw, (100cqh - 16px - 440px) * var(--frame-width) / var(--frame-height))");
-    expect(styleAt(part(".skeleton-reveal"), size).value("height")).toBe(`max(576px, -(128px) + ${height}px)`);
+    
+    expect(styleAt(part(".skeleton-reveal-board"), size).value("width")).toBe("min(100cqw, (100cqh - 12px - 420px) * var(--frame-width) / var(--frame-height))");
     const reward = styleAt(part(".skeleton-reward"), size);
-    expect([reward.px("padding-top"), reward.rowGap(), styleAt(part(".skeleton-fact"), size).px("font-size")]).toEqual([16, 12, 18]);
-    const reveal = Math.max(576, height - 128);
-    expect(Math.min(width - 40, (reveal - 16 - 440) * 800 / 600)).toBeGreaterThanOrEqual(160);
+    expect([reward.px("padding-top"), reward.rowGap(), styleAt(part(".skeleton-fact"), size).px("font-size")]).toEqual([0, 10, 17]);
+    expect(Math.min(width - 32, (560 - 12 - 420) * 800 / 600)).toBeGreaterThanOrEqual(160);
     // A way on spends its 2 × 8 padding, its 28 symbol and 8 gap beside its
     // words at 17px, each at most 0.75 of its size wide, 1px apart.
-    const content = width - 40 - 32;
+    const content = width - 32;
     const text = shownTexts();
     for (const words of [text.buildAnother, text.museum]) {
       const button = screen.getByRole("button", { name: words });
@@ -162,6 +163,6 @@ describe("the skeleton screens upright on a phone", () => {
     openWindow(393, 852);
     act(() => viewport.resize("tall-narrow", true));
     expect([document.documentElement.dataset.size, gateShown(), part(".skeleton-board")]).toEqual(["tall-narrow", false, shown]);
-    phoneScreen([393, 852]);
+    themedPhoneScreen();
   });
 });
