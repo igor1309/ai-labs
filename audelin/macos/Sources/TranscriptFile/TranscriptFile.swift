@@ -1,13 +1,8 @@
-import Dispatch
 import Foundation
 
 /// One call's latest transcript. Once some of it is final, a write keeps the final text already on
 /// disk and rewrites only what follows it; until then, and after a failure, it replaces the file whole.
 public actor TranscriptFile {
-
-    // Blocking file operations must not occupy the cooperative thread pool.
-    private nonisolated let queue: DispatchSerialQueue
-    public nonisolated var unownedExecutor: UnownedSerialExecutor { queue.asUnownedSerialExecutor() }
 
     public enum Failure: Error, Equatable {
 
@@ -61,23 +56,14 @@ public actor TranscriptFile {
 
     public init(url: URL, binding: any TranscriptFileBinding) async throws {
 
-        let queue = DispatchSerialQueue(label: "audelin.TranscriptFile")
-        // The first write happens on the file's queue, not on the caller's thread.
-        try await withCheckedThrowingContinuation { (done: CheckedContinuation<Void, any Error>) in
-            queue.async {
-                done.resume(with: Result {
-                    let file = try binding.create(at: url)
-                    do {
-                        try file.write(Data(Self.noText.utf8))
-                        try file.flush()
-                    } catch {
-                        binding.remove(at: url)
-                        throw error
-                    }
-                })
-            }
+        let file = try binding.create(at: url)
+        do {
+            try file.write(Data(Self.noText.utf8))
+            try file.flush()
+        } catch {
+            binding.remove(at: url)
+            throw error
         }
-        self.queue = queue
         self.url = url
         self.binding = binding
     }
