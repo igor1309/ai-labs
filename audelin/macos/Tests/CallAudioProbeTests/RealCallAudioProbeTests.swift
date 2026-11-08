@@ -1,3 +1,4 @@
+import AppKit
 import BlockingTestWork
 import CallAudioProbe
 import CoreAudio
@@ -9,7 +10,7 @@ import Testing
 struct RealCallAudioProbeTests {
     /// Contract test: the live output environment installs its listener and reads the system's default output.
     @Test func realOutputEnvironmentReturnsCurrentDefaultOutputDevice() async throws {
-        let environment = OutputEnvironment()
+        let environment = OutputEnvironment(native: .live, center: NSWorkspace.shared.notificationCenter)
         let device = try #require(await environment.device())
         let (status, defaultDevice) = {
             var address = AudioObjectPropertyAddress(

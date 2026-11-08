@@ -1,10 +1,11 @@
+import AppKit
 import CallAudioAccess
 import CallAudioProbe
 import Composer
 import Foundation
 
 func makeCallAudioAccess() async -> AccessPolicy {
-    let environment = OutputEnvironment()
+    let environment = OutputEnvironment(native: .live, center: NSWorkspace.shared.notificationCenter)
     let probe = CallAudioProbe(hardware: .live)
     let model = CallAudioAccessModel(device: { await environment.device() }, now: { ProcessInfo.processInfo.systemUptime })
     await model.start(probe: {

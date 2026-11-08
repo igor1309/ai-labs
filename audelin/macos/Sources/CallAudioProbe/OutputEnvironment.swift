@@ -15,11 +15,8 @@ public final class OutputEnvironment: Sendable {
     private let observers: [ObserverToken]
     private let installed: Bool
 
-    public convenience init() {
-        self.init(native: .live, center: NSWorkspace.shared.notificationCenter)
-    }
-
-    init(native: OutputNative, center: NotificationCenter) {
+    /// Observes `native` and `center`: `.live` and the workspace's notification center in the app.
+    public init(native: OutputNative, center: NotificationCenter) {
         self.native = native
         self.center = center
         (changes, output) = AsyncStream.makeStream()
@@ -52,12 +49,12 @@ private final class ObserverToken: @unchecked Sendable {
     init(_ value: any NSObjectProtocol) { self.value = value }
 }
 
-struct OutputNative: Sendable {
+public struct OutputNative: Sendable {
     var device: @Sendable () throws -> UInt32
     var add: @Sendable (UnsafePointer<AudioObjectPropertyAddress>, DispatchQueue, @escaping AudioObjectPropertyListenerBlock) -> OSStatus
     var remove: @Sendable (UnsafePointer<AudioObjectPropertyAddress>, DispatchQueue, @escaping AudioObjectPropertyListenerBlock) -> OSStatus
 
-    static let live = OutputNative(device: defaultOutputDevice, add: {
+    public static let live = OutputNative(device: defaultOutputDevice, add: {
         AudioObjectAddPropertyListenerBlock(AudioObjectID(kAudioObjectSystemObject), $0, $1, $2)
     }, remove: {
         AudioObjectRemovePropertyListenerBlock(AudioObjectID(kAudioObjectSystemObject), $0, $1, $2)
