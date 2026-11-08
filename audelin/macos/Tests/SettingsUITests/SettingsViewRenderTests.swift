@@ -25,7 +25,7 @@ struct SettingsViewRenderTests {
         try Offscreen.save(image, "settings-scroll-\(scheme == .dark ? "dark" : "light")")
     }
 
-    @Test func exportRegistryContainsExactlyTheRequiredStates() {
+    @Test nonisolated func exportRegistryContainsExactlyTheRequiredStates() {
         let required: Set<String> = [
             "release", "debug", "confirm-move", "moving", "move-failed", "during-recording",
             "summaries-off", "summaries-on", "summaries-local", "summaries-invalid", "summaries-unavailable",
