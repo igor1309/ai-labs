@@ -1,7 +1,17 @@
 #!/bin/sh
 # Build Audelin, install it into /Applications, start it at login and open it.
 # Run from anywhere; a second run replaces the installed copy.
+# --update, as CI runs it: replace the installed copy without quitting a
+# running Audelin and without opening it; the new version starts at the next
+# launch or login.
 set -eu
+
+update=false
+case "${1:-}" in
+    --update) update=true ;;
+    "") ;;
+    *) echo "usage: install.sh [--update]" >&2; exit 2 ;;
+esac
 
 # A shell left by an agent task can export TMPDIR as a folder since deleted;
 # swift build then fails. Use the user's default temp folder instead.
@@ -21,7 +31,7 @@ cd "$here"
 sh scripts/bundle.sh
 
 # Quit a running copy so its bundle can be replaced; give it 10 s to save.
-if pgrep -x Audelin >/dev/null; then
+if ! $update && pgrep -x Audelin >/dev/null; then
     pkill -TERM -x Audelin || true
     tries=0
     while pgrep -x Audelin >/dev/null; do
@@ -34,9 +44,16 @@ if pgrep -x Audelin >/dev/null; then
     done
 fi
 
+# Copy beside the old bundle, then swap by rename, so a running copy never
+# sees a half-written bundle.
 mkdir -p "$apps"
-rm -rf "$target"
-ditto .build/Audelin.app "$target"
+staged="$apps/.Audelin.app.new"
+old="$apps/.Audelin.app.old"
+rm -rf "$staged" "$old"
+ditto .build/Audelin.app "$staged"
+if [ -e "$target" ]; then mv "$target" "$old"; fi
+mv "$staged" "$target"
+rm -rf "$old"
 
 # A per-user LaunchAgent opens the app at login through Launch Services,
 # so macOS attributes microphone and audio-capture access to Audelin.
@@ -64,5 +81,5 @@ domain="gui/$(id -u)"
 launchctl bootout "$domain/$label" 2>/dev/null || true
 launchctl enable "$domain/$label"
 
-open "$target"
+$update || open "$target"
 echo "$target"
