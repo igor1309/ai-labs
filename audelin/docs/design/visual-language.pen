@@ -46216,7 +46216,7 @@
               "fill": "#444444",
               "textGrowth": "fixed-width",
               "width": "fill_container",
-              "content": "A newer build is installed in /Applications while the older one keeps running. The menu bar item gains a small accent dot, and the menu opens with «Перезапустить для обновления» (Restart to update). It quits and opens the installed copy; a launch resumes pending note jobs as usual. During a call (recording, or the final transcript still being saved) the item stays but is disabled, with the reason «Доступно после звонка» (Available after the call). The dot stays until the restart.",
+              "content": "A newer build is installed in /Applications while the older one keeps running. A badge, an 8 pt accent dot with a ring cut out of the bar, sits over the top-right corner of the menu bar item; the item keeps its size and position. The menu opens with «Перезапустить для обновления» (Restart to update). It quits and opens the installed copy; a launch resumes pending note jobs as usual. During a call (recording, or the final transcript still being saved) the item stays but is disabled, with the reason «Доступно после звонка» (Available after the call). The badge stays until the restart.",
               "lineHeight": 1.5,
               "fontFamily": "Inter",
               "fontSize": 15,
@@ -46229,7 +46229,7 @@
               "fill": "#B4540A",
               "textGrowth": "fixed-width",
               "width": "fill_container",
-              "content": "Decided (LAB-1059): badge, item, gating and wording of the issue. Proposed, not decided: the dot's colour (accent `me`) and its place at the end of the item; the item at the top of the menu; the Russian wording.",
+              "content": "Decided (LAB-1059; owner): a badge over the icon's corner that changes no geometry; the item, gating and wording of the issue. Proposed, not decided: the badge's colour (accent `me`); the item at the top of the menu; the Russian wording.",
               "lineHeight": 1.5,
               "fontFamily": "Inter",
               "fontSize": 13,
@@ -46994,60 +46994,76 @@
                           "children": [
                             {
                               "type": "frame",
-                              "id": "LQ4Kx",
-                              "name": "Our item",
-                              "fill": "$btn",
-                              "cornerRadius": "$radius-control",
-                              "gap": "$space-6",
-                              "padding": [
-                                "$space-2",
-                                "$space-8"
-                              ],
-                              "alignItems": "center",
+                              "id": "ytZir",
+                              "name": "Our item with badge",
+                              "width": 28,
+                              "height": 14,
+                              "layout": "none",
                               "children": [
                                 {
                                   "type": "frame",
-                                  "id": "L9nrZ",
-                                  "name": "Glyph",
-                                  "layout": "vertical",
-                                  "gap": "$space-2",
+                                  "id": "jUIaQ",
+                                  "x": 0,
+                                  "y": 0,
+                                  "name": "Our item",
+                                  "fill": "$btn",
+                                  "cornerRadius": "$radius-control",
+                                  "gap": "$space-6",
+                                  "padding": [
+                                    "$space-2",
+                                    "$space-8"
+                                  ],
+                                  "alignItems": "center",
                                   "children": [
                                     {
-                                      "type": "rectangle",
-                                      "cornerRadius": "$radius-bar",
-                                      "id": "qK1Ls",
-                                      "name": "Line",
-                                      "fill": "$text",
-                                      "width": 12,
-                                      "height": 2
-                                    },
-                                    {
-                                      "type": "rectangle",
-                                      "cornerRadius": "$radius-bar",
-                                      "id": "EiwKd",
-                                      "name": "Line",
-                                      "fill": "$text",
-                                      "width": 8,
-                                      "height": 2
-                                    },
-                                    {
-                                      "type": "rectangle",
-                                      "cornerRadius": "$radius-bar",
-                                      "id": "zWvF3",
-                                      "name": "Line",
-                                      "fill": "$text",
-                                      "width": 12,
-                                      "height": 2
+                                      "type": "frame",
+                                      "id": "Lq0MK",
+                                      "name": "Glyph",
+                                      "layout": "vertical",
+                                      "gap": "$space-2",
+                                      "children": [
+                                        {
+                                          "type": "rectangle",
+                                          "cornerRadius": "$radius-bar",
+                                          "id": "K4oEA",
+                                          "name": "Line",
+                                          "fill": "$text",
+                                          "width": 12,
+                                          "height": 2
+                                        },
+                                        {
+                                          "type": "rectangle",
+                                          "cornerRadius": "$radius-bar",
+                                          "id": "jTqFn",
+                                          "name": "Line",
+                                          "fill": "$text",
+                                          "width": 8,
+                                          "height": 2
+                                        },
+                                        {
+                                          "type": "rectangle",
+                                          "cornerRadius": "$radius-bar",
+                                          "id": "zgkmM",
+                                          "name": "Line",
+                                          "fill": "$text",
+                                          "width": 12,
+                                          "height": 2
+                                        }
+                                      ]
                                     }
                                   ]
                                 },
                                 {
                                   "type": "ellipse",
-                                  "id": "RERJT",
+                                  "id": "dPBzY",
+                                  "x": 21,
+                                  "y": -2,
                                   "name": "Update badge",
                                   "fill": "$me",
-                                  "width": 6,
-                                  "height": 6
+                                  "width": 8,
+                                  "height": 8,
+                                  "stroke": "$glass",
+                                  "strokeWidth": 1.5
                                 }
                               ]
                             },
@@ -47746,43 +47762,59 @@
                           "children": [
                             {
                               "type": "frame",
-                              "id": "pWWan",
-                              "name": "Our item",
-                              "fill": "$btn",
-                              "cornerRadius": "$radius-control",
-                              "gap": "$space-6",
-                              "padding": [
-                                "$space-2",
-                                "$space-8"
-                              ],
-                              "alignItems": "center",
+                              "id": "KLFdc",
+                              "name": "Our item with badge",
+                              "width": 63,
+                              "height": 21,
+                              "layout": "none",
                               "children": [
                                 {
-                                  "type": "ellipse",
-                                  "id": "UDYnN",
-                                  "name": "Rec dot",
-                                  "fill": "$rec",
-                                  "width": 8,
-                                  "height": 8
+                                  "type": "frame",
+                                  "id": "A8yrB",
+                                  "x": 0,
+                                  "y": 0,
+                                  "name": "Our item",
+                                  "fill": "$btn",
+                                  "cornerRadius": "$radius-control",
+                                  "gap": "$space-6",
+                                  "padding": [
+                                    "$space-2",
+                                    "$space-8"
+                                  ],
+                                  "alignItems": "center",
+                                  "children": [
+                                    {
+                                      "type": "ellipse",
+                                      "id": "C3Au6",
+                                      "name": "Rec dot",
+                                      "fill": "$rec",
+                                      "width": 8,
+                                      "height": 8
+                                    },
+                                    {
+                                      "type": "text",
+                                      "id": "DaYZF",
+                                      "name": "Time",
+                                      "fill": "$text",
+                                      "content": "12:47",
+                                      "lineHeight": 1.55,
+                                      "fontFamily": "$font-data",
+                                      "fontSize": "$type-caption",
+                                      "fontWeight": "600"
+                                    }
+                                  ]
                                 },
                                 {
-                                  "type": "text",
-                                  "id": "uDzAk",
-                                  "name": "Time",
-                                  "fill": "$text",
-                                  "content": "12:47",
-                                  "lineHeight": 1.55,
-                                  "fontFamily": "$font-data",
-                                  "fontSize": "$type-caption",
-                                  "fontWeight": "600"
-                                },
-                                {
                                   "type": "ellipse",
-                                  "id": "T39gZ8",
+                                  "id": "wNe8F",
+                                  "x": 56,
+                                  "y": -2,
                                   "name": "Update badge",
                                   "fill": "$me",
-                                  "width": 6,
-                                  "height": 6
+                                  "width": 8,
+                                  "height": 8,
+                                  "stroke": "$glass",
+                                  "strokeWidth": 1.5
                                 }
                               ]
                             },
