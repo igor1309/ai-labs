@@ -115,5 +115,13 @@ The supplemental profiling job now runs both variants independently from empty
 scratch directories and names artifacts with their batching variant. Release
 compilation runs only in the default variant and retains its existing flags.
 
+Locally, after cleaning compiled outputs and retaining resolved dependencies,
+the single-batch core build completed in 149.78 s. FluidAudio's object-producing
+frontend took 134.89 s, plus a separate 7.93 s module-emission frontend. This
+is slower than the default-batching core command's 81.62 s even though that
+original command also included dependency setup. Single batching is therefore
+not recommended on this Mac. The hosted comparison remains an experiment,
+not a production change.
+
 An optimization with measured before/after times remains outstanding. Cache
 changes alone would not answer this question.
