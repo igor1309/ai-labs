@@ -1,12 +1,18 @@
+public enum MenuBarUpdateItem: Equatable, Sendable {
+    case absent, active, disabled(String)
+}
+
 public enum MenuBarAction: Equatable, Sendable {
 
-    case start, stop
+    case start, stop, restartTapped
     case setAutomatic(Bool), setLiveText(Bool)
     case showPanel, hidePanel, showCalls, showSettings, openCallsFolder, quit
 }
 
 public enum MenuBarEntry: Equatable, Sendable {
 
+    case restart(String, reason: String?)
+    case separator
     case stateLine(String)
     case button(String, MenuBarAction)
     case toggle(String, checked: Bool, MenuBarAction)
@@ -16,12 +22,21 @@ public struct MenuBarModel: Equatable, Sendable {
 
     public let item: MenuBarItem
     public let entries: [MenuBarEntry]
+    public let updateBadge: Bool
 
     public init(recording: MenuBarRecording, preferences: MenuBarPreferences, statusLine: String? = nil,
-                offersPanelReopen: Bool = false, panelVisible: Bool = false) {
+                offersPanelReopen: Bool = false, panelVisible: Bool = false,
+                updateBadge: Bool = false, updateItem: MenuBarUpdateItem = .absent) {
 
         item = .from(recording, liveText: preferences.liveText)
-        var entries: [MenuBarEntry] = [.stateLine(statusLine ?? item.stateLine)]
+        self.updateBadge = updateBadge
+        var entries: [MenuBarEntry] = []
+        switch updateItem {
+        case .absent: break
+        case .active: entries = [.restart("Перезапустить для обновления", reason: nil), .separator]
+        case let .disabled(reason): entries = [.restart("Перезапустить для обновления", reason: reason), .separator]
+        }
+        entries.append(.stateLine(statusLine ?? item.stateLine))
         switch recording {
         case let .idle(_, unavailable, _) where unavailable.isEmpty:
             entries.append(.button("Начать запись", .start))

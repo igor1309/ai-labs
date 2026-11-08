@@ -19,7 +19,8 @@ public func compose(
     terminate: @escaping @Sendable () async -> Void,
     presentSettings: @escaping () -> Void = {},
     chooseCallsFolder: @escaping () async -> URL? = { nil },
-    summaryRuntime: SummaryRuntime.Runtime? = nil
+    summaryRuntime: SummaryRuntime.Runtime? = nil,
+    updates: InstalledUpdates? = nil
 ) async -> AudelinMenu {
     let preferences = await withCheckedContinuation { done in
         DispatchQueue(label: "audelin.preferences.load").async {
@@ -46,6 +47,7 @@ public func compose(
     let menu = await AudelinMenu(storage: preferences, boundary: boundary, processes: processes, panel: panel,
         openFolder: { _ = openCallsFolder($0) }, openURL: openURL, terminate: terminate,
         sink: boundary.log, presentPanel: presentPanel, sleep: boundary.time.sleep, summaries: summaries)
+    if let updates { menu.installUpdates(updates, sleep: boundary.time.sleep) }
     menu.installFolderSettings(storage: storage, preferences: preferences, choose: chooseCallsFolder)
     menu.installSettings(AudelinSettings(preferences: SummaryPreferences(storage: preferences),
                                         availability: SummaryAvailability(runtime: runtime)), present: presentSettings)

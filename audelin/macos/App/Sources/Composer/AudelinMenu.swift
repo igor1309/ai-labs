@@ -1,3 +1,4 @@
+import AppUpdate
 import CoreAudioProcesses
 import Calls
 import Recordings
@@ -53,12 +54,14 @@ public final class AudelinMenu {
     private let reserveStorage: () async -> Bool
     private let releaseStorage: () async -> Void
     private let quit: () async -> Void
+    private var updates: AudelinAppUpdate?
     private var observation: Task<Void, Never>?
     private var detectionObservation: Task<Void, Never>?
 
     public var menu: MenuBarModel {
         MenuBarModel(recording: menuBarRecording(state), preferences: menuBarPreferences(preferences), statusLine: failure,
-                     offersPanelReopen: panelPresence.offersReopen, panelVisible: panelPresence.visible)
+                     offersPanelReopen: panelPresence.offersReopen, panelVisible: panelPresence.visible,
+                     updateBadge: updates?.state.badge ?? false, updateItem: menuUpdateItem(updates?.state.item ?? .absent))
     }
 
     init(
@@ -121,6 +124,7 @@ public final class AudelinMenu {
                 for await state in await states() {
                     guard let self else { return }
                     self.state = state
+                    self.updates?.send(.callChanged(updateCall(state.phase)))
                     self.calls?.recordingChanged(state)
                     self.receivePanelPresence(.recordingChanged(panelRecordingID(state)))
                     sink.write(.init(category: .menu, message: "item symbol=\(self.menu.item.symbol) red=\(self.menu.item.isRed)"))
@@ -134,6 +138,15 @@ public final class AudelinMenu {
                 }
             }
         }
+    }
+
+    func installUpdates(_ ports: InstalledUpdates, sleep: @escaping @Sendable (Duration) async throws -> Void) {
+        let updates = AudelinAppUpdate(ports: ports, sleep: sleep, terminate: { [weak self] in
+            await self?.perform(.quit)
+        })
+        self.updates = updates
+        updates.send(.callChanged(updateCall(state.phase)))
+        updates.send(.started)
     }
 
     func installFolderSettings(storage: SummaryStorage, preferences: PreferencesStore, choose: @escaping () async -> URL?) {
@@ -197,6 +210,7 @@ public final class AudelinMenu {
         guard !quitting else { return }
         sink.write(.init(category: .menu, message: "action=\(action)"))
         switch action {
+        case .restartTapped: updates?.send(.restartTapped)
         case .start: await send(.userStart)
         case .stop: await send(.userStop)
         case let .setAutomatic(enabled):
@@ -280,5 +294,13 @@ private func panelRecordingID(_ state: RecordingState) -> UInt64? {
     switch state.phase {
     case .beginning, .recording, .ending: state.session?.id
     case .idle: nil
+    }
+}
+
+private func menuUpdateItem(_ item: AppUpdate.Item) -> MenuBarUpdateItem {
+    switch item {
+    case .absent: .absent
+    case .active: .active
+    case let .disabled(reason): .disabled(reason)
     }
 }

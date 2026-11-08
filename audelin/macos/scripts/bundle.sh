@@ -11,7 +11,13 @@ mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 bin=$(swift build --package-path App --scratch-path "$scratch" -c release --show-bin-path)
 cp "$bin/Audelin" "$app/Contents/MacOS/Audelin"
 cp -R "$bin/Audelin_GlassLedger.bundle" "$app/Contents/Resources/"
-cat > "$app/Contents/Info.plist" <<'PLIST'
+stamp=$(date -u +%Y%m%dT%H%M%SZ)
+bundle_version=$(printf %s "$stamp" | tr -d TZ)
+revision=$(git rev-parse --short HEAD)
+dirty=
+[ -z "$(git status --porcelain)" ] || dirty=-dirty
+build_id="$revision$dirty-$stamp"
+cat > "$app/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -21,7 +27,8 @@ cat > "$app/Contents/Info.plist" <<'PLIST'
     <key>CFBundleName</key><string>Audelin</string>
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>CFBundleShortVersionString</key><string>0.1</string>
-    <key>CFBundleVersion</key><string>1</string>
+    <key>CFBundleVersion</key><string>$bundle_version</string>
+    <key>AudelinBuildID</key><string>$build_id</string>
     <key>LSMinimumSystemVersion</key><string>26.0</string>
     <key>LSUIElement</key><true/>
     <key>NSMicrophoneUsageDescription</key><string>Audelin записывает вашу сторону звонка.</string>

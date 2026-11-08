@@ -5,6 +5,8 @@ let package = Package(
     name: "Audelin",
     platforms: [.macOS(.v26)],
     products: [
+        .library(name: "AppUpdate", targets: ["AppUpdate"]),
+        .library(name: "AppUpdateInstallation", targets: ["AppUpdateInstallation"]),
         .library(name: "SummarySettings", targets: ["SummarySettings"]),
         .library(name: "SummaryJobs", targets: ["SummaryJobs"]),
         .library(name: "SummaryFiles", targets: ["SummaryFiles"]),
@@ -51,6 +53,10 @@ let package = Package(
         .package(url: "https://github.com/FluidInference/FluidAudio.git", exact: "0.17.7"),
     ],
     targets: [
+        .target(name: "AppUpdate"),
+        .target(name: "AppUpdateInstallation"),
+        .testTarget(name: "AppUpdateTests", dependencies: ["AppUpdate"]),
+        .testTarget(name: "AppUpdateInstallationTests", dependencies: ["AppUpdateInstallation", "BlockingTestWork"]),
         .target(name: "SummarySettings"),
         .testTarget(name: "SummarySettingsTests", dependencies: ["SummarySettings", "BlockingTestWork"]),
         .target(name: "SummaryJobs"),

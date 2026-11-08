@@ -1,3 +1,4 @@
+import GlassLedger
 import SettingsUI
 import CallsListUI
 import Recordings
@@ -60,7 +61,7 @@ struct AudelinApp: App {
                 return await withCheckedContinuation { done in
                     picker.begin { result in done.resume(returning: result == .OK ? picker.url : nil) }
                 }
-            }
+            }, updates: await installedUpdates(runningBundle: Bundle.main.bundleURL, pid: ProcessInfo.processInfo.processIdentifier)
         )
         self.model = model
         settingsWindow.contentView = NSHostingView(rootView: SettingsContent(model: model))
@@ -78,6 +79,19 @@ struct AudelinApp: App {
             if let model {
                 ForEach(Array(model.menu.entries.enumerated()), id: \.offset) { _, entry in
                     switch entry {
+                    case .separator: Divider()
+                    case let .restart(title, reason):
+                        Button { Task { await model.perform(.restartTapped) } } label: {
+                            Label {
+                                Text(title).foregroundStyle(reason == nil ? tokens.text : tokens.gutter)
+                            } icon: {
+                                Image(nsImage: MenuBarItem.updateDot(colour: NSColor(reason == nil ? tokens.me : tokens.gutter)))
+                            }
+                        }
+                        .disabled(reason != nil)
+                        if let reason {
+                            Text(reason).font(.system(size: tokens.typeSmall)).foregroundStyle(tokens.gutter)
+                        }
                     case let .stateLine(line):
                         Text(line)
                         Divider()
@@ -100,17 +114,16 @@ struct AudelinApp: App {
         }
     }
 
+    @Environment(\.colorScheme) private var scheme
+    private var tokens: GlassLedger { .for(scheme) }
+
     private var menuBarImage: NSImage {
 
         guard let item = model?.menu.item else {
             return NSImage(systemSymbolName: "waveform", accessibilityDescription: "Audelin") ?? NSImage()
         }
-        let image = NSImage(systemSymbolName: item.symbol, accessibilityDescription: item.title)?
-            .withSymbolConfiguration(.init(paletteColors: [item.isRed ? .systemRed : .labelColor]))
-            ?? NSImage()
-        // Template status images discard their palette in the menu bar.
-        image.isTemplate = !item.isRed
-        return image
+        return item.image(updateBadge: model?.menu.updateBadge ?? false,
+                          accent: NSColor(tokens.me))
     }
 }
 

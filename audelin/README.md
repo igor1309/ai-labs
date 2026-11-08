@@ -22,6 +22,12 @@ subscription authentication and remains subject to managed organization policy.
 Provider availability, quota and factual faithfulness are not guaranteed by
 configuration checks or structural validation.
 
+Update: when a different build is installed in `/Applications/Audelin.app`, an accent
+badge appears on the menu bar item. Choose «Перезапустить для обновления» at the top
+of the menu to quit safely and open the installed copy. During a recording or its
+final save, the entry is disabled with «Доступно после звонка»; it becomes available
+when saving finishes. Builds include their commit, dirty marker and UTC build time.
+
 Build: `cd audelin/macos && sh scripts/bundle.sh`.
 Install: `sh audelin/macos/scripts/install.sh` builds, quits a running copy, replaces
 `/Applications/Audelin.app`, opens it, and adds the LaunchAgent

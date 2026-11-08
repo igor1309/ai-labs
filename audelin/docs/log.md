@@ -2,6 +2,8 @@
 
 ## 2026-11-08
 
+- An installed update shows a menu bar badge and a restart entry, available after the call and final save finish (LAB-1059).
+
 - One command installs the app into /Applications, replaces an older copy, opens it and starts it at login (LAB-1054).
 
 ## 2026-11-07

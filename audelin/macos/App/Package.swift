@@ -16,6 +16,7 @@ let package = Package(
         .executableTarget(
             name: "Audelin",
             dependencies: [
+                .product(name: "GlassLedger", package: "macos"),
                 .product(name: "SettingsUI", package: "macos"),
                 "Composer",
                 .product(name: "MicrophoneCapture", package: "macos"),
@@ -50,6 +51,8 @@ let package = Package(
         .target(
             name: "Composer",
             dependencies: [
+                .product(name: "AppUpdate", package: "macos"),
+                .product(name: "AppUpdateInstallation", package: "macos"),
                 .product(name: "SummarySettings", package: "macos"),
                 .product(name: "SummaryJobs", package: "macos"),
                 .product(name: "SummaryFiles", package: "macos"),
@@ -98,6 +101,7 @@ let package = Package(
         .testTarget(
             name: "ComposerTests",
             dependencies: [
+                .product(name: "AppUpdate", package: "macos"),
                 "Composer", "Audelin",
                 .product(name: "CallAudioAccess", package: "macos"),
                 .product(name: "CallFolder", package: "macos"),
