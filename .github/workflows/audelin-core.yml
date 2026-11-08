@@ -28,10 +28,15 @@ jobs:
   # and optimization timers; summed job times are not pipeline wall time.
   profile:
     if: inputs.profile
+    strategy:
+      fail-fast: false
+      matrix:
+        batching: [default, single]
     runs-on: macos-latest
     timeout-minutes: 30
     env:
       STATS: ${{ github.workspace }}/build-profile/statistics
+      BATCHING: ${{ matrix.batching }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -58,26 +63,36 @@ jobs:
         working-directory: audelin/macos
         run: |
           set -o pipefail
+          flags=()
+          if [[ "$BATCHING" == single ]]; then flags=(-Xswiftc -driver-batch-count -Xswiftc 1); fi
           /usr/bin/time -lp swift build --build-tests -Xswiftc -O \
+            "${flags[@]}" \
             -Xswiftc -stats-output-dir -Xswiftc "$STATS/debug" \
             2>&1 | tee "$GITHUB_WORKSPACE/build-profile/core.log"
       - name: Profile app test build
         working-directory: audelin/macos/App
         run: |
           set -o pipefail
+          flags=()
+          if [[ "$BATCHING" == single ]]; then flags=(-Xswiftc -driver-batch-count -Xswiftc 1); fi
           /usr/bin/time -lp swift build --build-tests -Xswiftc -O --scratch-path ../.build \
+            "${flags[@]}" \
             -Xswiftc -stats-output-dir -Xswiftc "$STATS/debug" \
             2>&1 | tee "$GITHUB_WORKSPACE/build-profile/app.log"
       - name: Profile preview test build
         working-directory: audelin/macos/PreviewApps
         run: |
           set -o pipefail
+          flags=()
+          if [[ "$BATCHING" == single ]]; then flags=(-Xswiftc -driver-batch-count -Xswiftc 1); fi
           /usr/bin/time -lp swift build --build-tests -Xswiftc -O --scratch-path ../.build \
+            "${flags[@]}" \
             -Xswiftc -stats-output-dir -Xswiftc "$STATS/debug" \
             2>&1 | tee "$GITHUB_WORKSPACE/build-profile/preview.log"
       # This is a diagnostic compilation, not a replacement for bundling,
       # signing or testing in the core job. Release retains its existing flags.
       - name: Profile fresh release compilation
+        if: matrix.batching == 'default'
         working-directory: audelin/macos
         run: |
           set -o pipefail
@@ -89,7 +104,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: audelin-fresh-build-profile
+          name: audelin-fresh-build-profile-${{ matrix.batching }}
           path: build-profile
           if-no-files-found: error
 

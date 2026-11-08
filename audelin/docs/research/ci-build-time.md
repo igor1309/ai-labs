@@ -85,5 +85,35 @@ logs and compiler JSON as `audelin-fresh-build-profile`. Existing tests, limits,
 bundle construction and signing still run in the unchanged core job. The
 diagnostic release compilation does not create a shipped bundle.
 
-Hosted per-module evidence and an optimization with measured before/after
-times remain outstanding. Cache changes alone would not answer this question.
+### Hosted evidence
+
+[Fresh profile 42521465535](https://github.com/igor1309/ai-labs/actions/runs/42521465535)
+ran Apple Swift 6.3.3 on macOS 26.7.2, with three CPUs and 7 GiB RAM. After
+dependency resolution, command wall times were core 364.72 s, app 173.65 s,
+preview 24.82 s and release executable 228.71 s. The release measurement excludes
+bundle assembly and signing. PR checks, including `report`, passed.
+
+| Module / configuration | Frontend jobs | Summed frontend wall | Type checking | SIL optimization |
+|---|---:|---:|---:|---:|
+| FluidAudio / optimized debug | 15 | 737.15 s | 53.29 s | 394.45 s |
+| Composer / optimized debug | 4 | 66.24 s | 6.37 s | 25.24 s |
+| ComposerTests / optimized debug | 5 | 163.44 s | 40.66 s | 57.45 s |
+| FluidAudio / release | 1 | 196.28 s | 19.57 s | 109.14 s |
+| Composer / release | 1 | 15.95 s | 1.53 s | 7.66 s |
+
+The hosted and local runs use different compiler versions and hardware; their
+absolute times are not a controlled comparison. Both identify FluidAudio as
+the dominant release frontend. Its hosted frontend occupies 196.28 s of the
+228.71 s command. Changing the shipped build remains subject to owner approval.
+
+The next controlled experiment compares default batching with
+`-driver-batch-count 1` for optimized debug builds. Unlike the WMO experiment,
+this preserves the existing compilation model, indexing and per-file outputs.
+The hypothesis is less repeated module work across batches; the experiment must
+measure whether reduced work outweighs reduced within-module parallelism.
+The supplemental profiling job now runs both variants independently from empty
+scratch directories and names artifacts with their batching variant. Release
+compilation runs only in the default variant and retains its existing flags.
+
+An optimization with measured before/after times remains outstanding. Cache
+changes alone would not answer this question.
