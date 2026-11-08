@@ -1,5 +1,9 @@
 # Log
 
+## 2026-11-08
+
+- One command installs the app into /Applications, replaces an older copy, opens it and starts it at login (LAB-1054).
+
 ## 2026-11-07
 
 - Optional call notes can be configured in native Settings and generated after a saved final transcript; Calls displays progress, warnings and failures while recording remains independent (LAB-1034).
