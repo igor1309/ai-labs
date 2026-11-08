@@ -15,11 +15,16 @@ public func readText(in image: CGImage) async throws -> RenderedText {
     // The same device on every Mac: a CI virtual machine has no Neural Engine.
     let cpu = request.supportedComputeStageDevices[.main]?.first { if case .cpu = $0 { true } else { false } }
     request.setComputeDevice(cpu, for: .main)
+    await ocrGate.enter()
+    defer { Task { await ocrGate.leave() } }
     let observations = try await request.perform(on: image)
 
     let lines = observations.compactMap { $0.topCandidates(1).first?.string }
     return RenderedText(lines: lines)
 }
+
+actor OCRGate { var busy = false; var q: [CheckedContinuation<Void, Never>] = []; func enter() async { if !busy { busy = true; return }; await withCheckedContinuation { q.append($0) } }; func leave() { if q.isEmpty { busy = false } else { q.removeFirst().resume() } } }
+let ocrGate = OCRGate()
 
 public struct RenderedText: Sendable, CustomStringConvertible {
 
