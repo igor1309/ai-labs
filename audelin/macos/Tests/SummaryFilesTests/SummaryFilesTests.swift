@@ -19,7 +19,7 @@ import Testing
             async let start = files.start(owned)
             async let duplicate = other.start(owned)
             #expect(try await [start, duplicate].filter { $0 }.count == 1)
-            #expect(try await offPool { try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8) } == "original transcript")
+            #expect(try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8) == "original transcript")
         }
     }
     @Test func liveOwnerSurvivesObservationThroughPublicationAndTerminalSave() async throws {
@@ -39,7 +39,7 @@ import Testing
             var terminal = job; terminal.phase = "succeeded"
             try await owner.progress(terminal)
             #expect(try await observer.load(call: "call") == terminal)
-            #expect(try await offPool { try String(contentsOf: folder.appendingPathComponent("summary.md"), encoding: .utf8) }.hasSuffix("complete result"))
+            #expect(try String(contentsOf: folder.appendingPathComponent("summary.md"), encoding: .utf8).hasSuffix("complete result"))
         }
     }
     /// Contract test: kernel locks exclude another process and process exit proves abandonment.
@@ -49,7 +49,7 @@ import Testing
             let owner = Files(locations: locations, disk: FileDisk(), ownershipDirectory: directory)
             let observer = Files(locations: locations, disk: FileDisk(), ownershipDirectory: directory)
             _ = try await owner.claim(record()); _ = try await owner.start(record())
-            let lock = try await offPool { try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil).first! }
+            let lock = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil).first!
             let probe = Process()
             probe.executableURL = URL(fileURLWithPath: "/usr/bin/perl")
             probe.arguments = ["-e", "use Fcntl qw(:flock); open(my $f, '+<', $ARGV[0]) or die; exit(flock($f, LOCK_EX|LOCK_NB) ? 0 : 23);", lock.path]
@@ -74,7 +74,7 @@ import Testing
             _ = try await files.claim(record); _ = try await files.start(record)
             try await files.publish(record, notes: "# Complete notes")
             if unicodeBoundary {
-                let bytes = try await offPool { try Data(contentsOf: folder.appendingPathComponent("summary.md")) }
+                let bytes = try Data(contentsOf: folder.appendingPathComponent("summary.md"))
                 let receiptLength = try #require(bytes.firstIndex(of: 10)) + 1
                 let notes = String(repeating: "x", count: 4095 - receiptLength) + "Я\n# Complete notes"
                 try await files.publish(record, notes: notes)
@@ -85,9 +85,9 @@ import Testing
             disk.failure.withLock { $0 = nil }
             let observer = Files(locations: locations, disk: FileDisk(), ownershipDirectory: folder.deletingLastPathComponent().appendingPathComponent("leases"))
             #expect(try await observer.load(call: "call")?.phase == "succeeded")
-            let output = try await offPool { try String(contentsOf: folder.appendingPathComponent("summary.md"), encoding: .utf8) }
+            let output = try String(contentsOf: folder.appendingPathComponent("summary.md"), encoding: .utf8)
             #expect(output.hasSuffix("# Complete notes"))
-            #expect(try await offPool { try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8) } == "original transcript")
+            #expect(try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8) == "original transcript")
         }
     }
     @Test(arguments: ["job", "input"])
@@ -99,7 +99,7 @@ import Testing
             var changed = record(); changed.phase = "running"
             if field == "job" { changed.job = "different" } else { changed.input = "different" }
             let bytes = try JSONEncoder().encode(changed)
-            try await offPool { try bytes.write(to: folder.appendingPathComponent(".summary-job.json")) }
+            try bytes.write(to: folder.appendingPathComponent(".summary-job.json"))
             await files.release(job: "job", call: "call", input: "input")
             #expect(try await files.load(call: "call")?.phase == "interrupted")
             #expect(try await files.start(changed) == false)
@@ -110,10 +110,10 @@ import Testing
             let disk = FailingDisk(), files = Files(locations: locations, disk: disk, ownershipDirectory: folder.deletingLastPathComponent().appendingPathComponent("leases"))
             _ = try await files.claim(record()); _ = try await files.start(record())
             try await files.publish(record(), notes: "old complete")
-            let previous = try await offPool { try Data(contentsOf: folder.appendingPathComponent("summary.md")) }
+            let previous = try Data(contentsOf: folder.appendingPathComponent("summary.md"))
             disk.failure.withLock { $0 = "summary.md" }
             await #expect(throws: (any Error).self) { try await files.publish(record(), notes: "replacement") }
-            #expect(try await offPool { try Data(contentsOf: folder.appendingPathComponent("summary.md")) } == previous)
+            #expect(try Data(contentsOf: folder.appendingPathComponent("summary.md")) == previous)
         }
     }
     @Test func corruptRecordIsNotAbsentAndPendingSurvivesRestart() async throws {
@@ -121,7 +121,7 @@ import Testing
             let files = Files(locations: locations, disk: FileDisk(), ownershipDirectory: folder.deletingLastPathComponent().appendingPathComponent("leases"))
             _ = try await files.claim(record())
             #expect(try await files.load(call: "call") == record())
-            try await offPool { try Data("{broken".utf8).write(to: folder.appendingPathComponent(".summary-job.json")) }
+            do { try Data("{broken".utf8).write(to: folder.appendingPathComponent(".summary-job.json")) }
             await #expect(throws: (any Error).self) { try await files.claim(record()) }
             await #expect(throws: (any Error).self) { try await files.load(call: "call") }
         }
@@ -131,15 +131,15 @@ import Testing
             let files = Files(locations: locations, disk: FileDisk(), ownershipDirectory: folder.deletingLastPathComponent().appendingPathComponent("leases"))
             _ = try await files.claim(record()); _ = try await files.start(record())
             let renamed = folder.appendingPathExtension("renamed")
-            try await offPool {
+            do {
                 try FileManager.default.moveItem(at: folder, to: renamed)
                 locations.folder.withLock { $0 = renamed }
             }
             try await files.publish(record(), notes: "renamed notes")
-            #expect(try await offPool { try String(contentsOf: renamed.appendingPathComponent("summary.md"), encoding: .utf8) }.hasSuffix("renamed notes"))
-            try await offPool { try FileManager.default.removeItem(at: renamed) }
+            #expect(try String(contentsOf: renamed.appendingPathComponent("summary.md"), encoding: .utf8).hasSuffix("renamed notes"))
+            try FileManager.default.removeItem(at: renamed)
             await #expect(throws: (any Error).self) { try await files.publish(record(), notes: "deleted") }
-            #expect(await offPool { !FileManager.default.fileExists(atPath: renamed.path) && !FileManager.default.fileExists(atPath: folder.path) })
+            #expect(!FileManager.default.fileExists(atPath: renamed.path) && !FileManager.default.fileExists(atPath: folder.path))
         }
     }
     /// Contract test: a failed terminal save after deletion still closes the kernel lease.
@@ -148,15 +148,15 @@ import Testing
             let directory = folder.deletingLastPathComponent().appendingPathComponent("leases")
             let owner = Files(locations: locations, disk: FileDisk(), ownershipDirectory: directory)
             _ = try await owner.claim(record()); _ = try await owner.start(record())
-            let lock = try await offPool { try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil).first! }
-            try await offPool { try FileManager.default.removeItem(at: folder) }
+            let lock = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil).first!
+            try FileManager.default.removeItem(at: folder)
             var terminal = record(); terminal.phase = "failed"
             await #expect(throws: (any Error).self) { try await owner.progress(terminal) }
             let probe = Process()
             probe.executableURL = URL(fileURLWithPath: "/usr/bin/perl")
             probe.arguments = ["-e", "use Fcntl qw(:flock); open(my $f, '+<', $ARGV[0]) or die; exit(flock($f, LOCK_EX|LOCK_NB) ? 0 : 23);", lock.path]
             #expect(try await exitStatus(of: probe) == 0)
-            #expect(await offPool { !FileManager.default.fileExists(atPath: folder.path) })
+            #expect(!FileManager.default.fileExists(atPath: folder.path))
         }
     }
     @Test func recoveryRereadsAfterAcquisitionToPreserveAConcurrentTerminalSave() async throws {
@@ -164,7 +164,7 @@ import Testing
             let directory = folder.deletingLastPathComponent().appendingPathComponent("leases")
             let owner = Files(locations: locations, disk: FileDisk(), ownershipDirectory: directory)
             _ = try await owner.claim(record()); _ = try await owner.start(record())
-            let stale = try await offPool { try Data(contentsOf: folder.appendingPathComponent(".summary-job.json")) }
+            let stale = try Data(contentsOf: folder.appendingPathComponent(".summary-job.json"))
             var terminal = record(); terminal.phase = "failed"
             try await owner.progress(terminal)
             let observer = Files(locations: locations, disk: StaleFirstReadDisk(stale: stale), ownershipDirectory: directory)
@@ -179,7 +179,7 @@ import Testing
             let observer = Files(locations: locations, disk: FileDisk(), ownershipDirectory: directory)
             _ = try await owner.claim(record()); _ = try await owner.start(record())
             let destination = folder.appendingPathExtension("moved")
-            try await offPool {
+            do {
                 // A cross-volume move copies inodes, unlike rename on one volume.
                 try FileManager.default.copyItem(at: folder, to: destination)
                 locations.folder.withLock { $0 = destination }
@@ -190,7 +190,7 @@ import Testing
             var terminal = record(); terminal.phase = "succeeded"
             try await owner.progress(terminal)
             #expect(try await observer.load(call: "call") == terminal)
-            #expect(await offPool { !FileManager.default.fileExists(atPath: folder.path) })
+            #expect(!FileManager.default.fileExists(atPath: folder.path))
         }
     }
     /// Contract test: exec closes the ownership descriptor even without spawn close-all flags.
@@ -199,7 +199,7 @@ import Testing
             let directory = folder.deletingLastPathComponent().appendingPathComponent("leases")
             let owner = Files(locations: locations, disk: FileDisk(), ownershipDirectory: directory)
             _ = try await owner.claim(record()); _ = try await owner.start(record())
-            let status = try await offPool { () throws -> Int32 in
+            let status = try { () throws -> Int32 in
                 let paths = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
                 let path: URL = try #require(paths.first)
                 let controlURL = directory.appendingPathComponent("inheritable-control")
@@ -219,7 +219,7 @@ import Testing
                 var status: Int32 = 0
                 while waitpid(child, &status, 0) == -1 { if errno != EINTR { throw POSIXError(.ECHILD) } }
                 return status
-            }
+            }()
             #expect(status == 0)
             await owner.release(job: "job", call: "call", input: "input")
         }
@@ -270,7 +270,7 @@ private final class FailingDisk: Disk, Sendable {
 private func withFolder(_ body: (URL, Location) async throws -> Void) async throws {
     let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
     let folder = root.appendingPathComponent("call")
-    try await offPool {
+    do {
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         try Data("original transcript".utf8).write(to: folder.appendingPathComponent("transcript.md"))
     }

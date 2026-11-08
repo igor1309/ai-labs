@@ -1,31 +1,23 @@
 import CoreGraphics
-import Dispatch
+import Foundation
 import Vision
-
-// Recognition takes seconds of CPU per image. It runs on a lane of its own,
-// not on the shared blocking-work queues, so the many short file and process
-// hops of other suites in the same test process never wait behind it.
-private let recognition = DispatchQueue(label: "audelin.tests.recognition")
-
-/// Reads an image's words off the cooperative pool, on recognition's own lane.
-public func recognizedText(in image: CGImage) async throws -> RenderedText {
-
-    try await withCheckedThrowingContinuation { (done: CheckedContinuation<RenderedText, any Error>) in
-        recognition.async { done.resume(with: Result { try readText(in: image) }) }
-    }
-}
 
 /// The words an image shows, read by Vision: SwiftUI's `Text` has no view and,
 /// in a window that is never shown, no accessibility element to read.
-public func readText(in image: CGImage) throws -> RenderedText {
+public func readText(in image: CGImage) async throws -> RenderedText {
 
-    let request = VNRecognizeTextRequest()
+    var request = RecognizeTextRequest()
     request.recognitionLevel = .accurate
-    request.recognitionLanguages = ["ru-RU", "en-US"]
+    request.recognitionLanguages = [Locale.Language(identifier: "ru-RU"), Locale.Language(identifier: "en-US")]
+    request.automaticallyDetectsLanguage = false
+    request.minimumTextHeightFraction = 0
     request.usesLanguageCorrection = false
-    try VNImageRequestHandler(cgImage: image).perform([request])
+    // The same device on every Mac: a CI virtual machine has no Neural Engine.
+    let cpu = request.supportedComputeStageDevices[.main]?.first { if case .cpu = $0 { true } else { false } }
+    request.setComputeDevice(cpu, for: .main)
+    let observations = try await request.perform(on: image)
 
-    let lines = (request.results ?? []).compactMap { $0.topCandidates(1).first?.string }
+    let lines = observations.compactMap { $0.topCandidates(1).first?.string }
     return RenderedText(lines: lines)
 }
 

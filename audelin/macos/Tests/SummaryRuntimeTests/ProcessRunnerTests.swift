@@ -10,7 +10,7 @@ import Testing
     /// directed at the owned group can finish the attempt and its exit witness.
     @Test(arguments: [false, true])
     func timeoutAndCancellationTerminateOwnedDescendants(cancel: Bool) async throws {
-        let fixture = try await offPool { () throws -> (URL, Int32) in
+        let fixture = try { () throws -> (URL, Int32) in
             let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false)
             let fifo = folder.appendingPathComponent("ready")
@@ -18,7 +18,7 @@ import Testing
             let fd = open(fifo.path, O_RDWR | O_NONBLOCK | O_CLOEXEC)
             guard fd >= 0 else { throw CocoaError(.fileReadUnknown) }
             return (folder, fd)
-        }
+        }()
         let events = ProcessEvents(), clock = Mutex(0.0)
         let runner = ProcessRunner(now: { clock.withLock { $0 } }, deadline: 120, outputLimit: 4096, observe: { event in
             events.receive(event)
@@ -29,14 +29,14 @@ import Testing
         let script = "trap '' TERM; /bin/sh -c " + shellQuote(child) + " & wait"
         let task = Task { try await runner.run(program: "/bin/sh", arguments: ["-c", script], input: Data(repeating: 65, count: 2 * 1024 * 1024)) }
         do {
-            let descendant = try await offPool { () throws -> Int32 in
+            let descendant = try { () throws -> Int32 in
                 var ready = pollfd(fd: fixture.1, events: Int16(POLLIN), revents: 0)
                 guard poll(&ready, 1, 30000) == 1 else { throw CocoaError(.fileReadUnknown) }
                 var buffer = [UInt8](repeating: 0, count: 64)
                 let count = Darwin.read(fixture.1, &buffer, buffer.count)
                 guard count > 0, let pid = Int32(String(decoding: buffer.prefix(count), as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)) else { throw CocoaError(.fileReadCorruptFile) }
                 return pid
-            }
+            }()
             let exited = AsyncStream<Void>.makeStream()
             let witness = DispatchSource.makeProcessSource(identifier: descendant, eventMask: .exit, queue: .global())
             witness.setEventHandler { exited.continuation.yield(()); exited.continuation.finish() }
@@ -50,29 +50,29 @@ import Testing
         } catch {
             task.cancel()
             _ = await task.result
-            await offPool { _ = close(fixture.1); try? FileManager.default.removeItem(at: fixture.0) }
+            _ = close(fixture.1); try? FileManager.default.removeItem(at: fixture.0)
             throw error
         }
-        await offPool { _ = close(fixture.1); try? FileManager.default.removeItem(at: fixture.0) }
+        _ = close(fixture.1); try? FileManager.default.removeItem(at: fixture.0)
     }
     /// Contract test: an unrelated open descriptor cannot keep another
     /// attempt's pipes, locks or call files alive in the spawned process.
     @Test func unrelatedOpenDescriptorsAreNotInherited() async throws {
-        let descriptor = try await offPool {
+        let descriptor = try {
             let source = open("/dev/null", O_RDONLY)
             guard source >= 0 else { throw CocoaError(.fileReadUnknown) }
             defer { close(source) }
             let duplicate = fcntl(source, F_DUPFD, 200)
             guard duplicate >= 0 else { throw CocoaError(.fileReadUnknown) }
             return duplicate
-        }
+        }()
         let runner = ProcessRunner(now: { ProcessInfo.processInfo.systemUptime }, deadline: 30, outputLimit: 4096, observe: { _ in })
         do {
             let result = try await runner.run(program: "/bin/cat", arguments: ["/dev/fd/\(descriptor)"], input: Data())
             #expect(result.status != 0)
-            await offPool { _ = close(descriptor) }
+            _ = close(descriptor)
         } catch {
-            await offPool { _ = close(descriptor) }
+            _ = close(descriptor)
             throw error
         }
     }
@@ -86,7 +86,7 @@ import Testing
         let cwd = try await runner.run(program: "/bin/pwd", arguments: [], input: Data())
         let path = String(decoding: cwd.stdout, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
         #expect(path.contains("audelin-summary-"))
-        #expect(await offPool { !FileManager.default.fileExists(atPath: path) })
+        #expect(!FileManager.default.fileExists(atPath: path))
     }
     /// Contract test: excessive real process output is terminated and reaped.
     @Test func oversizedOutputKillsAndReapsProcess() async {
@@ -96,7 +96,7 @@ import Testing
         let pid = events.pid.withLock { $0 }
         #expect(pid > 0)
         #expect(events.reaped.withLock { $0 })
-        #expect(await offPool { kill(pid, 0) == -1 && errno == ESRCH })
+        #expect(kill(pid, 0) == -1 && errno == ESRCH)
     }
     /// Contract test: blocked stdin, group termination grace, SIGKILL and reap against a real child.
     @Test func deadlineIncludesBlockedInputAndEscalates() async {

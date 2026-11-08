@@ -9,7 +9,7 @@ struct PreferencesTests {
 
         try await withPreferencesFolder { root in
             let file = root.appendingPathComponent("preferences.json")
-            let stored = await offPool { PreferencesStore(fileURL: file).read() }
+            let stored = PreferencesStore(fileURL: file).read()
             #expect(stored.automaticRecording)
             #expect(stored.liveText)
             #expect(stored.callsFolder == FileManager.default.homeDirectoryForCurrentUser
@@ -22,19 +22,19 @@ struct PreferencesTests {
 
         try await withPreferencesFolder { root in
             let file = root.appendingPathComponent("preferences.json")
-            let store = await offPool { PreferencesStore(fileURL: file) }
+            let store = PreferencesStore(fileURL: file)
             let first = Preferences(automaticRecording: false, liveText: false,
                                     callsFolder: root.appendingPathComponent("first"))
-            try await offPool { try store.write(first) }
-            #expect(await offPool { PreferencesStore(fileURL: file).read() } == first)
+            try store.write(first)
+            #expect(PreferencesStore(fileURL: file).read() == first)
             let firstData = try await contents(file)
             // An open handle keeps the old file whole when the path is replaced, not rewritten in place.
-            let handle = try await offPool { try FileHandle(forReadingFrom: file) }
+            let handle = try FileHandle(forReadingFrom: file)
             let next = Preferences(automaticRecording: true, liveText: true,
                                    callsFolder: root.appendingPathComponent("a-longer-next-folder"))
-            try await offPool { try store.write(next) }
-            #expect(try await offPool { try handle.readToEnd() } == firstData)
-            await offPool { try? handle.close() }
+            try store.write(next)
+            #expect(try handle.readToEnd() == firstData)
+            try? handle.close()
             #expect(store.read() == next)
             #expect(try JSONDecoder().decode(Preferences.self, from: await contents(file)) == next)
         }
@@ -53,8 +53,8 @@ struct PreferencesTests {
                  Preferences(callsFolder: folder)),
             ]
             for (data, expected) in cases {
-                try await offPool { try data.write(to: file) }
-                #expect(await offPool { PreferencesStore(fileURL: file).read() } == expected)
+                try data.write(to: file)
+                #expect(PreferencesStore(fileURL: file).read() == expected)
                 #expect(try await contents(file) == data)
             }
         }
@@ -64,22 +64,22 @@ struct PreferencesTests {
 
         try await withPreferencesFolder { root in
             let file = root.appendingPathComponent("preferences.json")
-            let store = await offPool { PreferencesStore(fileURL: file) }
+            let store = PreferencesStore(fileURL: file)
             for text in ["{", "[]", #"{"automaticRecording":"off"}"#,
                          #"{"liveText":1}"#, #"{"callsFolder":42}"#] {
                 let data = Data(text.utf8)
-                try await offPool { try data.write(to: file) }
+                try data.write(to: file)
                 #expect(store.read() == Preferences())
                 #expect(try await contents(file) == data)
             }
             let replacement = Preferences(automaticRecording: false, liveText: false, callsFolder: root)
-            try await offPool { try store.write(replacement) }
+            try store.write(replacement)
             #expect(store.read() == replacement)
 
             let unreadable = root.appendingPathComponent("directory")
-            try await offPool { try FileManager.default.createDirectory(at: unreadable, withIntermediateDirectories: false) }
-            #expect(await offPool { PreferencesStore(fileURL: unreadable).read() } == Preferences())
-            #expect(try await offPool { try FileManager.default.contentsOfDirectory(atPath: unreadable.path) }.isEmpty)
+            try FileManager.default.createDirectory(at: unreadable, withIntermediateDirectories: false)
+            #expect(PreferencesStore(fileURL: unreadable).read() == Preferences())
+            #expect(try FileManager.default.contentsOfDirectory(atPath: unreadable.path).isEmpty)
         }
     }
 
@@ -88,20 +88,20 @@ struct PreferencesTests {
         try await withPreferencesFolder { root in
             let file = root.appendingPathComponent("data/nested/preferences.json")
             let expected = Preferences(automaticRecording: false, liveText: true, callsFolder: root)
-            try await offPool { try PreferencesStore(fileURL: file).write(expected) }
+            try PreferencesStore(fileURL: file).write(expected)
             #expect(try JSONDecoder().decode(Preferences.self, from: await contents(file)) == expected)
         }
     }
 }
 
-private func contents(_ file: URL) async throws -> Data { try await offPool { try Data(contentsOf: file) } }
+private func contents(_ file: URL) async throws -> Data { try Data(contentsOf: file) }
 
-private func exists(_ file: URL) async -> Bool { await offPool { FileManager.default.fileExists(atPath: file.path) } }
+private func exists(_ file: URL) async -> Bool { FileManager.default.fileExists(atPath: file.path) }
 
 private func withPreferencesFolder(_ body: (URL) async throws -> Void) async throws {
 
     let root = FileManager.default.temporaryDirectory.appendingPathComponent("preferences-test-\(UUID())")
-    try await offPool { try FileManager.default.createDirectory(at: root, withIntermediateDirectories: false) }
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: false)
     do { try await body(root) } catch {
         await removeFolder(root)
         throw error
@@ -111,6 +111,6 @@ private func withPreferencesFolder(_ body: (URL) async throws -> Void) async thr
 
 private func removeFolder(_ root: URL) async {
 
-    do { try await offPool { try FileManager.default.removeItem(at: root) } }
+    do { try FileManager.default.removeItem(at: root) }
     catch { Issue.record(error) }
 }

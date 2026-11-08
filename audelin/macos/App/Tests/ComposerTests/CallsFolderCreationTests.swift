@@ -17,8 +17,8 @@ struct CallsFolderCreationTests {
             await createDefaultCallsFolder(chosen, default: defaultFolder)
             await createDefaultCallsFolder(defaultFolder, default: defaultFolder)
 
-            #expect(await offPool { !FileManager.default.fileExists(atPath: chosen.path) })
-            #expect(await offPool { isFolder(defaultFolder.path) })
+            #expect(!FileManager.default.fileExists(atPath: chosen.path))
+            #expect(isFolder(defaultFolder.path))
         } cleanup: {
             try FileManager.default.removeItem(at: root)
         }

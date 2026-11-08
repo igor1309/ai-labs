@@ -52,7 +52,7 @@ private final class LoopbackServer: Sendable {
     var url: URL { URL(string: "http://127.0.0.1:\(listener.port!.rawValue)/v1/chat/completions")! }
     init(listener: NWListener, scenario: String) { self.listener = listener; self.scenario = scenario }
     static func make(scenario: String) async throws -> LoopbackServer {
-        let listener = try await offPool { try NWListener(using: .tcp, on: .any) }
+        let listener = try NWListener(using: .tcp, on: .any)
         let server = LoopbackServer(listener: listener, scenario: scenario)
         try await server.start()
         return server
