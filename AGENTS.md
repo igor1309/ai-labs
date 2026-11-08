@@ -170,6 +170,26 @@ composes it.
   omits the closure for "no change". No test spells out a whole expected state, and reducer
   tests need no `@testable`.
 
+## Testing UI
+
+- Three claims, three kinds of test. Reducer and state tests prove the state
+  is right. Preview tests prove a view shows a given state as intended: the
+  right value in the right place, nothing missing or extra. Behaviour tests
+  prove what a view does itself: control events, focus and keyboard,
+  accessibility, scroll and selection.
+- A preview test builds the state in question directly as a value, renders
+  the view and compares it with a reference image. Each UI module keeps a
+  registry of named preview states; a case not yet covered is a new preview,
+  not a new test.
+- Do not drive a model to reach a state for a rendering check, and do not
+  read a rendered view back by OCR: both cost far more than building the
+  state, and OCR misreads.
+- Test a composition only for wiring no component test shows. A test that
+  replays a reducer or effect handler through the composed app adds nothing.
+- A test is main-actor only where the code it calls needs the main actor.
+  Main-actor tests run one at a time, and each one's time limit starts with
+  the suite, so needless ones push the rest past their limits.
+
 ## Writing docs and comments
 
 - Do not add cross-references as traceability theater. A code comment, doc
