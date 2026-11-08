@@ -3,9 +3,9 @@ package agonara
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
-	"net/http/httptest"
 	"strings"
 	"testing"
 )
@@ -33,30 +33,31 @@ type seen struct{ method, path, cookie, origin, body string }
 func serve(t *testing.T, replies ...reply) (*Client, *[]seen) {
 	t.Helper()
 	var requests []seen
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	transport := roundTrip(func(r *http.Request) (*http.Response, error) {
 		body, _ := io.ReadAll(r.Body)
 		requests = append(requests, seen{r.Method, r.URL.EscapedPath(), r.Header.Get("Cookie"), r.Header.Get("Origin"), string(body)})
 		if len(replies) == 0 {
 			t.Errorf("unexpected request %s %s", r.Method, r.URL)
-			return
+			return nil, errors.New("unexpected request")
 		}
 		next := replies[0]
 		replies = replies[1:]
+		header := http.Header{}
 		if next.cookie != "" {
-			w.Header().Add("Set-Cookie", next.cookie+"; Path=/; HttpOnly; Secure")
+			header.Add("Set-Cookie", next.cookie+"; Path=/; HttpOnly; Secure")
 		}
-		w.WriteHeader(next.status)
-		_, _ = w.Write([]byte(next.body))
-	}))
-	t.Cleanup(server.Close)
-	client, err := New(server.URL+"/", login, password, server.Client())
+		return &http.Response{StatusCode: next.status, Header: header, Body: io.NopCloser(strings.NewReader(next.body)), Request: r}, nil
+	})
+	client, err := New("https://content.example/", login, password, &http.Client{Transport: transport})
 	if err != nil {
 		t.Fatal(err)
 	}
 	return client, &requests
 }
 
+// Contract test: the public HTTP protocol through an injected transport, including authentication and failures.
 func TestSignsInAndReadsEachRoute(t *testing.T) {
+	t.Parallel()
 	client, requests := serve(t, signedIn(cookie),
 		ok(`{"programs":[{"programId":"p","title":"Program"}]}`),
 		ok(`{"navigation":{"topics":[{"entityId":"t","title":"T","acceptedKind":"topic"}]}}`),
@@ -87,7 +88,9 @@ func TestSignsInAndReadsEachRoute(t *testing.T) {
 	}
 }
 
+// Contract test: the public HTTP protocol through an injected transport, including authentication and failures.
 func TestA401SignsInOnceAgain(t *testing.T) {
+	t.Parallel()
 	client, requests := serve(t, signedIn(cookie), reply{401, "{}", ""}, signedIn("session=new"), ok(`{"programs":[]}`))
 	if _, err := client.ListPrograms(context.Background()); err != nil {
 		t.Fatal(err)
@@ -97,7 +100,9 @@ func TestA401SignsInOnceAgain(t *testing.T) {
 	}
 }
 
+// Contract test: the public HTTP protocol through an injected transport, including authentication and failures.
 func TestErrorsNameTheRouteNotTheSecrets(t *testing.T) {
+	t.Parallel()
 	leak := `{"password":"` + password + `","cookie":"` + cookie + `"}`
 	for name, c := range map[string]struct {
 		replies []reply
@@ -113,6 +118,7 @@ func TestErrorsNameTheRouteNotTheSecrets(t *testing.T) {
 		"non-accepted read": {[]reply{signedIn(cookie), {200, `{"status":"rejected"}`, ""}}, "GET /programs", "200"},
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			client, _ := serve(t, c.replies...)
 			_, err := client.ListPrograms(context.Background())
 			if err == nil {
@@ -127,8 +133,10 @@ func TestErrorsNameTheRouteNotTheSecrets(t *testing.T) {
 	}
 }
 
+// Contract test: the public HTTP protocol through an injected transport, including authentication and failures.
 func TestNetworkFailureSaysUnavailable(t *testing.T) {
-	client, err := New("http://127.0.0.1:1", login, password, nil)
+	t.Parallel()
+	client, err := New("https://content.example", login, password, &http.Client{Transport: roundTrip(func(*http.Request) (*http.Response, error) { return nil, errors.New("offline") })})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -139,7 +147,12 @@ func TestNetworkFailureSaysUnavailable(t *testing.T) {
 }
 
 func TestRequiresCredentials(t *testing.T) {
+	t.Parallel()
 	if _, err := New("", login, password, nil); err == nil {
 		t.Fatal("want error")
 	}
 }
+
+type roundTrip func(*http.Request) (*http.Response, error)
+
+func (f roundTrip) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }

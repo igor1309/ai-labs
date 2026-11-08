@@ -5,57 +5,57 @@ package flow
 
 import (
 	"context"
+	"errors"
 	"regexp"
 	"strconv"
-
-	"github.com/igor1309/ai-labs/agonara/session/internal/agonara"
 )
 
-// PageSize fits one phone screen, so Next flips a page in place and nothing
-// scrolls: about 1,000 characters of rich-message text on an iPhone.
+// PageSize is the default character budget for a reading page.
 const PageSize = 1000
 
 const material = "material_reference"
 
-// Reader is the part of Agonara the flow reads.
+// Reader supplies accepted reading content, independently of its wire format.
 type Reader interface {
-	ListPrograms(ctx context.Context) ([]agonara.Program, error)
-	Navigation(ctx context.Context, programID string) (agonara.Navigation, error)
-	Entity(ctx context.Context, entityID string) (agonara.Entity, error)
-	MaterialContent(ctx context.Context, entityID string) (string, error)
+	ListPrograms(context.Context) ([]CatalogEntry, error)
+	Navigation(context.Context, string) (Navigation, error)
+	Entity(context.Context, string) (Entity, error)
+	MaterialContent(context.Context, string) (string, error)
 }
 
 // Place is a screen the session can return to.
 type Place struct {
-	Screen    string `json:"screen"`
-	ProgramID string `json:"programId,omitempty"`
-	EntityID  string `json:"entityId,omitempty"`
-	Title     string `json:"title,omitempty"`
-	Page      *int   `json:"page,omitempty"`
-	Contents  bool   `json:"contents,omitempty"`
+	Screen    string
+	ProgramID string
+	EntityID  string
+	Title     string
+	Page      *int
+	Contents  bool
 }
 
 // Item is a listed name the student can open; IDs stay in the saved state.
 type Item struct {
-	ID    string `json:"id"`
-	Title string `json:"title"`
-	Kind  string `json:"kind"`
+	ID    string
+	Title string
+	Kind  string
 }
 
 // Session is one student's place, saved after every update.
 type Session struct {
+	MaterialRevision string
 	Place
-	PageCount *int    `json:"pageCount,omitempty"`
-	Items     []Item  `json:"items"`
-	History   []Place `json:"history"`
-	Step      int     `json:"step"`
+	PageCount *int
+	Items     []Item
+	History   []Place
+	Step      int
 }
 
 // Entry is a listed name: Index is its item, N its number (nil for a material).
 type Entry struct {
-	Index int
-	N     *int
-	Label string
+	ActionID string
+	Index    int
+	N        *int
+	Label    string
 }
 
 // List is a group of entries under an optional heading.
@@ -78,10 +78,12 @@ type Position struct {
 
 // ContentsEntry is the intro or a section on the contents page.
 type ContentsEntry struct {
-	Page    int
-	N       *int
-	Label   string
-	Current bool
+	ActionID string
+	Count    int
+	Page     int
+	N        *int
+	Label    string
+	Current  bool
 }
 
 // View is a screen as meaning.
@@ -101,6 +103,9 @@ type Action struct{ ID, Kind, Label string }
 
 // Result is a screen and the session after it.
 type Result struct {
+	entity  *Entity
+	Context *ReadingContext
+	Kind    string
 	Session Session
 	View    View
 	Actions []Action
@@ -111,7 +116,7 @@ func InitialSession() Session {
 	return Session{Place: Place{Screen: "programs"}, Items: []Item{}, History: []Place{}}
 }
 
-// Flow runs the session over an Agonara reader.
+// Flow runs the reading activity over accepted content.
 type Flow struct {
 	Reader   Reader
 	PageSize int
@@ -194,6 +199,9 @@ func (f Flow) Act(ctx context.Context, session Session, actionID string) (*Resul
 		history = append(append([]Place{}, history...), descriptor(current.Place))
 	}
 
+	var readingContext *ReadingContext
+	var kind string
+	var entity *Entity
 	var view View
 	items := []Item{}
 	var pageCount *int
@@ -204,7 +212,7 @@ func (f Flow) Act(ctx context.Context, session Session, actionID string) (*Resul
 			return nil, err
 		}
 		for _, program := range programs {
-			items = append(items, Item{ID: program.ProgramID, Title: program.Title, Kind: "program"})
+			items = append(items, Item{ID: program.ID, Title: program.Title, Kind: "program"})
 		}
 		view = View{Title: "Programs", Lists: []List{numbered(items)}}
 		if len(items) == 0 {
@@ -215,10 +223,8 @@ func (f Flow) Act(ctx context.Context, session Session, actionID string) (*Resul
 		if err != nil {
 			return nil, err
 		}
-		for _, group := range [][]agonara.Node{navigation.Topics, navigation.UngroupedConcepts, navigation.UngroupedMaterials} {
-			for _, node := range group {
-				items = append(items, Item{ID: node.EntityID, Title: node.Title, Kind: node.AcceptedKind})
-			}
+		for _, group := range [][]Item{navigation.Topics, navigation.Concepts, navigation.Materials} {
+			items = append(items, group...)
 		}
 		view = View{Title: target.Title, Lists: grouped(items)}
 	default:
@@ -226,12 +232,12 @@ func (f Flow) Act(ctx context.Context, session Session, actionID string) (*Resul
 		if err != nil {
 			return nil, err
 		}
-		for _, link := range node.Relationships.Outgoing {
-			items = append(items, Item{ID: link.ToEntityID, Title: link.ToTitle, Kind: link.ToKind})
-		}
+		items = append(items, node.Children...)
+		kind = node.Kind
+		entity = &node
 		view = View{Title: node.Title, Body: node.Body, Lists: grouped(items)}
-		if node.AcceptedKind == material && node.HasContent {
-			content, err := f.Reader.MaterialContent(ctx, node.EntityID)
+		if node.Kind == material && node.Readable {
+			content, err := f.Reader.MaterialContent(ctx, node.ID)
 			if err != nil {
 				return nil, err
 			}
@@ -242,7 +248,7 @@ func (f Flow) Act(ctx context.Context, session Session, actionID string) (*Resul
 			pages := SectionPages(withoutFrontMatter(content), size)
 			count := len(pages)
 			pageCount = &count
-			page := min(deref(target.Page), count-1)
+			page := max(0, min(deref(target.Page), count-1))
 			target.Page = &page
 			view.Markdown = pages[page].Text
 			view.Page = &PageInfo{Index: page, Count: count}
@@ -250,6 +256,7 @@ func (f Flow) Act(ctx context.Context, session Session, actionID string) (*Resul
 				view.Body = ""
 			}
 			view.Position, view.Contents = locate(pages, page)
+			readingContext = contextFor(node, content, pages, page)
 			if target.Contents {
 				view = View{Title: node.Title, Contents: view.Contents, Lists: view.Lists}
 			} else {
@@ -272,33 +279,46 @@ func (f Flow) Act(ctx context.Context, session Session, actionID string) (*Resul
 			actions = append(actions, Action{ID: "open_" + strconv.Itoa(index), Kind: "item", Label: strconv.Itoa(numberOf(view.Lists, index))})
 		}
 	}
+	for i := range view.Lists {
+		for j := range view.Lists[i].Entries {
+			entry := &view.Lists[i].Entries[j]
+			entry.ActionID = actions[entry.Index].ID
+		}
+	}
 	switch {
 	case target.Contents && view.Contents != nil:
-		for _, entry := range view.Contents {
-			actions = append(actions, Action{ID: "sec_" + strconv.Itoa(entry.Page), Kind: "section", Label: entry.Label})
+		for i := range view.Contents {
+			entry := &view.Contents[i]
+			entry.ActionID = "sec_" + strconv.Itoa(entry.Page)
+			actions = append(actions, Action{ID: entry.ActionID, Kind: "section", Label: entry.Label})
 		}
-		actions = append(actions, Action{ID: "read", Kind: "page", Label: "📖 Continue reading"})
+		actions = append(actions, Action{ID: "read", Kind: "page", Label: "Continue reading"})
 	case view.Page != nil:
 		if view.Page.Index > 0 {
-			actions = append(actions, Action{ID: "prev", Kind: "page", Label: "◀ Prev"})
+			actions = append(actions, Action{ID: "prev", Kind: "page", Label: "Previous"})
 		}
 		if view.Page.Index < view.Page.Count-1 {
-			actions = append(actions, Action{ID: "next", Kind: "page", Label: "Next ▶"})
+			actions = append(actions, Action{ID: "next", Kind: "page", Label: "Next"})
 		}
 		if view.Contents != nil {
-			actions = append(actions, Action{ID: "contents", Kind: "page", Label: "☰ Contents"})
+			actions = append(actions, Action{ID: "contents", Kind: "page", Label: "Contents"})
 		}
 		// A reading page lists no sections; the contents page does.
 		view.Contents = nil
 	}
 	if len(history) > 0 {
-		actions = append(actions, Action{ID: "back", Kind: "nav", Label: "◀ Back"})
+		actions = append(actions, Action{ID: "back", Kind: "nav", Label: "Back"})
 	}
 	if target.Screen != "programs" {
 		actions = append(actions, Action{ID: "programs", Kind: "nav", Label: "Programs"})
 	}
+	materialRevision := ""
+	if readingContext != nil {
+		materialRevision = readingContext.Revision
+	}
 	return &Result{
-		Session: Session{Place: target, PageCount: pageCount, Items: items, History: history, Step: session.Step + 1},
+		Context: readingContext, Kind: kind, entity: entity,
+		Session: Session{MaterialRevision: materialRevision, Place: target, PageCount: pageCount, Items: items, History: history, Step: session.Step + 1},
 		View:    view,
 		Actions: actions,
 	}, nil
@@ -343,19 +363,33 @@ func locate(pages []Page, page int) (*Position, []ContentsEntry) {
 		if title := pages[start].Title; title != nil {
 			label = *title
 		}
-		contents[index] = ContentsEntry{Page: start, N: number(index), Label: label, Current: index == section}
+		end := len(pages)
+		if index+1 < len(starts) {
+			end = starts[index+1]
+		}
+		contents[index] = ContentsEntry{Count: end - start, Page: start, N: number(index), Label: label, Current: index == section}
 	}
 	return position, contents
 }
 
-var headings = map[string]string{"topic": "Topics", "concept": "Concepts", material: "Materials"}
+func heading(kind string) (string, bool) {
+	switch kind {
+	case "topic":
+		return "Topics", true
+	case "concept":
+		return "Concepts", true
+	case material:
+		return "Materials", true
+	}
+	return "Related", false
+}
 
 // grouped lists items by kind, materials first; topics and concepts are
 // numbered across the screen in the order of the items.
 func grouped(items []Item) []List {
 	order := []string{material, "topic", "concept", "other"}
 	kindOf := func(item Item) string {
-		if _, ok := headings[item.Kind]; ok {
+		if _, ok := heading(item.Kind); ok {
 			return item.Kind
 		}
 		return "other"
@@ -372,7 +406,7 @@ func grouped(items []Item) []List {
 	}
 	lists := []List{}
 	for _, kind := range order {
-		heading, ok := headings[kind]
+		heading, ok := heading(kind)
 		if !ok {
 			heading = "Related"
 		}
@@ -435,4 +469,11 @@ func deref(value *int) int {
 		return 0
 	}
 	return *value
+}
+
+func New(reader Reader, pageSize int) (Flow, error) {
+	if reader == nil || pageSize <= 0 {
+		return Flow{}, errors.New("content reader and positive page size are required")
+	}
+	return Flow{Reader: reader, PageSize: pageSize}, nil
 }
