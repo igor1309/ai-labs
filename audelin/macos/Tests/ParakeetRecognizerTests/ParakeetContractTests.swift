@@ -14,7 +14,7 @@ struct ParakeetContractTests {
         #expect(audio.sampleRate == 16_000)
         #expect(audio.channelCount == 1)
         let duration = Double(audio.samples.count) / audio.sampleRate
-        let reader = try await ParakeetRecognizer.readers()
+        let reader = try await ParakeetReaders.shared.make()
         let words = try await reader.read(audio.samples)
 
         #expect(words.map { $0.text.lowercased().filter(\.isLetter) } == [

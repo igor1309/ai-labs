@@ -199,18 +199,18 @@ guard arguments.count == 5, let lineCount = Int(arguments[1]), let seconds = Int
 let mineAudio = try samples(of: arguments[3]), theirsAudio = try samples(of: arguments[4])
 
 // Model loading and the first read stay out of the measured part.
-let warm = try await ParakeetRecognizer()
+let warm = try await ParakeetRecognizer(readers: .shared)
 _ = try await warm.hear(AudioChunk(samples: .init(repeating: 0, count: 480_000), sampleRate: 48_000))
 _ = try await warm.finish()
 
 let recorder = Recorder()
 let mine = Switching(
     side: "mine", fake: SpeakingRecognizer(name: "mine", sentence: 8, pause: 4, offset: 0),
-    real: try await ParakeetRecognizer(), recorder: recorder
+    real: try await ParakeetRecognizer(readers: .shared), recorder: recorder
 )
 let theirs = Switching(
     side: "theirs", fake: SpeakingRecognizer(name: "theirs", sentence: 10, pause: 5, offset: 6),
-    real: try await ParakeetRecognizer(), recorder: recorder
+    real: try await ParakeetRecognizer(readers: .shared), recorder: recorder
 )
 let call = try await Call(mine: mine, theirs: theirs)
 await call.play(toLines: lineCount)

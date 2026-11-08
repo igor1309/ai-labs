@@ -59,11 +59,11 @@ struct RealCallAudio: CallAudioSource {
 struct RealRecognizerSource: RecognizerSource {
     let log: any LogSink
     func recognizer(for side: ComposerSide) async throws -> any SpeechRecognizer {
-        RealRecognizer(base: try await ParakeetRecognizer())
+        RealRecognizer(base: try await ParakeetRecognizer(readers: .shared))
     }
     func missingModels() -> [String] { ParakeetRecognizer.missingModels(in: ParakeetRecognizer.modelsDirectory) }
     func startLoading() -> Task<Void, any Error> {
-        loadModel(recognizerSource: { try await ParakeetRecognizer() }, sink: log)
+        loadModel(recognizerSource: { try await ParakeetRecognizer(readers: .shared) }, sink: log)
     }
 
 }

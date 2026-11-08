@@ -45,9 +45,9 @@ public actor ParakeetRecognizer: Recognizer {
     private var reportedCount = 0
     private var pendingFrom: Double?
 
-    public init(reader: any WindowReader) {
+    public init(readers: ParakeetReaders) async throws {
 
-        self.reader = reader
+        reader = try await readers.make()
     }
 
     public func hear(_ chunk: AudioChunk) async throws -> Hearing {

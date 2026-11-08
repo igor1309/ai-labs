@@ -14,7 +14,7 @@ struct ParakeetRecognizerTests {
     @Test func recognizersBuiltTogetherShareOneModelLoad() async throws {
 
         let load = ControlledModelLoad()
-        let makeReader = ParakeetRecognizer.sharedReaders(
+        let makeReader = ParakeetReaders.sharedReaders(
             load: { await load.load() },
             makeReader: { model in
                 ScriptedReader([[WindowWord(String(model), start: 0.1, end: 0.4)]])
@@ -24,7 +24,7 @@ struct ParakeetRecognizerTests {
         defer { arrivals.finish() }
         let build: @Sendable () async throws -> ParakeetRecognizer = {
             arrivals.yield(())
-            return ParakeetRecognizer(reader: try await makeReader())
+            return try await ParakeetRecognizer(readers: ParakeetReaders(make: makeReader))
         }
         let recognizers = 4
 
@@ -54,7 +54,7 @@ struct ParakeetRecognizerTests {
     @Test func nothingIsHeardBeforeAWindowsAudioIsIn() async throws {
 
         let reader = ScriptedReader([[word("слово", 4.1, 4.5)]])
-        let recognizer = ParakeetRecognizer(reader: reader)
+        let recognizer = try await parakeet(reader)
 
         let hearing = try await recognizer.hear(silence(5.9))
 
@@ -64,7 +64,7 @@ struct ParakeetRecognizerTests {
 
     @Test func wordsBeforeTheRightContextAreFinal() async throws {
 
-        let recognizer = ParakeetRecognizer(reader: try await RecordedReader())
+        let recognizer = try await parakeet(try await RecordedReader())
 
         _ = try await recognizer.hear(silence(6))
         let hearing = try await recognizer.hear(silence(4))
@@ -75,7 +75,7 @@ struct ParakeetRecognizerTests {
 
     @Test func wordsInTheRightContextArePending() async throws {
 
-        let recognizer = ParakeetRecognizer(reader: try await RecordedReader())
+        let recognizer = try await parakeet(try await RecordedReader())
 
         let hearing = try await recognizer.hear(silence(6))
 
@@ -85,7 +85,7 @@ struct ParakeetRecognizerTests {
 
     @Test func theNextWindowReadsPendingWordsAnew() async throws {
 
-        let recognizer = ParakeetRecognizer(reader: try await RecordedReader())
+        let recognizer = try await parakeet(try await RecordedReader())
 
         let first = try await recognizer.hear(silence(6))
         let next = try await recognizer.hear(silence(4))
@@ -100,7 +100,7 @@ struct ParakeetRecognizerTests {
             [word("один", 4.25, 4.5)],
             [word("один", 2.25, 2.5), word("два", 3, 3.5)],
         ])
-        let recognizer = ParakeetRecognizer(reader: reader)
+        let recognizer = try await parakeet(reader)
 
         let first = try await recognizer.hear(silence(6))
         let next = try await recognizer.hear(silence(4))
@@ -114,7 +114,7 @@ struct ParakeetRecognizerTests {
 
         let reader = ScriptedReader([[word("слово", 4.2, 4.6)], []])
 
-        let updates = await listen(ParakeetRecognizer(reader: reader), to: [silence(6), silence(4)])
+        let updates = await listen(try await parakeet(reader), to: [silence(6), silence(4)])
 
         #expect(updates.first?.all.map(\.pending) == ["слово"])
         #expect(updates.dropFirst().first?.all == [])
@@ -125,7 +125,7 @@ struct ParakeetRecognizerTests {
         let reader = try await RecordedReader()
         let audio = stride(from: 0, to: reader.duration, by: 1).map { silence(min(1, reader.duration - $0)) }
 
-        let updates = await listen(ParakeetRecognizer(reader: reader), to: audio)
+        let updates = await listen(try await parakeet(reader), to: audio)
 
         let settled = updates.last?.all.flatMap { $0.settled.split(separator: " ").map(String.init) } ?? []
         #expect(await reader.sampleCounts == reader.windowSampleCounts)
@@ -136,7 +136,7 @@ struct ParakeetRecognizerTests {
     @Test func aWordNoLaterWindowReadsIsFinal() async throws {
 
         let reader = ScriptedReader([[word("долгое", 1.5, 9)], [word("потом", 2.2, 2.6)]])
-        let recognizer = ParakeetRecognizer(reader: reader)
+        let recognizer = try await parakeet(reader)
 
         _ = try await recognizer.hear(silence(6))
         let hearing = try await recognizer.hear(silence(4))
@@ -153,7 +153,7 @@ struct ParakeetRecognizerTests {
             [word("новое", 2.25, 2.5)],
         ])
 
-        let updates = await listen(ParakeetRecognizer(reader: reader), to: [silence(6), silence(4), silence(4)])
+        let updates = await listen(try await parakeet(reader), to: [silence(6), silence(4), silence(4)])
 
         #expect(updates.dropFirst().first?.all.map(\.pending) == ["долгое старое"])
         #expect(updates.last?.all.map(\.settled) == ["долгое новое"])
@@ -166,7 +166,7 @@ struct ParakeetRecognizerTests {
             [word("полдень", 1.9, 2.3)],
         ])
 
-        let updates = await listen(ParakeetRecognizer(reader: reader), to: [silence(6)])
+        let updates = await listen(try await parakeet(reader), to: [silence(6)])
 
         #expect(updates.last?.all.map(\.settled) == ["в полдень"])
     }
@@ -178,7 +178,7 @@ struct ParakeetRecognizerTests {
             [word("два", 3, 3.5)],
             [word("три", 2.5, 2.9)],
         ])
-        let recognizer = ParakeetRecognizer(reader: reader)
+        let recognizer = try await parakeet(reader)
 
         _ = try await recognizer.hear(silence(9))
         let hearing = try await recognizer.finish()
@@ -192,7 +192,7 @@ struct ParakeetRecognizerTests {
 
         let track = (0..<144_000).map(Float.init)
         let reader = ScriptedReader([])
-        let recognizer = ParakeetRecognizer(reader: reader)
+        let recognizer = try await parakeet(reader)
 
         for start in stride(from: 0, to: track.count, by: 7_000) {
             _ = try await recognizer.hear(.init(samples: Array(track[start..<min(start + 7_000, track.count)]), sampleRate: 16_000))
@@ -208,7 +208,7 @@ struct ParakeetRecognizerTests {
 
     @Test func aTrackShorterThanTheModelTakesIsHeard() async throws {
 
-        let recognizer = try await ParakeetRecognizer()
+        let recognizer = try await ParakeetRecognizer(readers: .shared)
 
         _ = try await recognizer.hear(silence(0.2))
         let hearing = try await recognizer.finish()
@@ -219,7 +219,7 @@ struct ParakeetRecognizerTests {
     @Test func audioAtAnotherSampleRateIsCutIntoTheSameWindows() async throws {
 
         let reader = ScriptedReader([[]])
-        let recognizer = ParakeetRecognizer(reader: reader)
+        let recognizer = try await parakeet(reader)
 
         for _ in 0..<14 {
             _ = try await recognizer.hear(.init(samples: .init(repeating: 0, count: 24_000), sampleRate: 48_000))
@@ -236,7 +236,7 @@ struct ParakeetRecognizerTests {
             AudioChunk(samples: Array(samples[$0..<min($0 + 4_800, samples.count)]), sampleRate: 48_000)
         }
 
-        let updates = await listen(try await ParakeetRecognizer(), to: chunks)
+        let updates = await listen(try await ParakeetRecognizer(readers: .shared), to: chunks)
 
         let heard = updates.last?.all.map(\.settled).joined(separator: " ") ?? ""
         #expect(updates.last?.ending == .finished)
@@ -245,7 +245,7 @@ struct ParakeetRecognizerTests {
 
     @Test func aFailingModelFailsTheRecogniser() async throws {
 
-        let recognizer = ParakeetRecognizer(reader: ScriptedReader([], failing: true))
+        let recognizer = try await parakeet(ScriptedReader([], failing: true))
 
         await #expect(throws: ScriptedReader.Failed.self) {
             _ = try await recognizer.hear(silence(6))
@@ -465,3 +465,9 @@ private struct Chunks: AudioSource {
 }
 
 private typealias SegmentSnapshot = (all: [Segments.Segment], ending: Segments.Ending?)
+
+/// A recognizer reading with one reader.
+func parakeet(_ reader: any WindowReader) async throws -> ParakeetRecognizer {
+
+    try await ParakeetRecognizer(readers: ParakeetReaders { reader })
+}
