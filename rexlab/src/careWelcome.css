@@ -1,0 +1,255 @@
+/* CARE's welcome on the dig site (design/dig-site.pen, CARE · welcome): HOME
+   and the best in the sky over the title, or the title between them on a
+   phone; on the sand NEW VISITOR beside FRIENDS, or over it upright, each a
+   label-white card over its pill. */
+.skeleton-dig.care-welcome {
+  --cw-gap: var(--ds-space-xl);
+  --cw-pad: var(--ds-space-m);
+  --cw-pill: 22px;
+  --cw-face: 72px;
+  --dig-sky: calc(156px + env(safe-area-inset-top));
+  --dig-ochre: calc(44px + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+  height: 100vh;
+  height: 100dvh;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  padding: calc(var(--dig-sky) + var(--ds-space-xl)) calc(var(--sc-side) + var(--screen-right)) calc(var(--dig-ochre) + var(--ds-space-xl)) calc(var(--sc-side) + var(--screen-left));
+  display: flex;
+  flex-direction: column;
+}
+
+html[data-size="tall"] .skeleton-dig.care-welcome {
+  --cw-pill: 24px;
+  --cw-face: 76px;
+  --dig-sky: calc(160px + env(safe-area-inset-top));
+  --dig-ochre: calc(28px + env(safe-area-inset-bottom));
+}
+
+html[data-size="tall-narrow"] .skeleton-dig.care-welcome {
+  --cw-gap: var(--ds-space-l);
+  --cw-pad: var(--ds-space-s);
+  --cw-pill: 24px;
+  --cw-face: 56px;
+  --dig-sky: calc(96px + env(safe-area-inset-top));
+  --dig-ochre: calc(16px + env(safe-area-inset-bottom));
+  padding-top: calc(var(--dig-sky) + var(--ds-space-l));
+  padding-bottom: calc(var(--dig-ochre) + var(--ds-space-l));
+}
+
+html[data-size="wide-short"] .skeleton-dig.care-welcome {
+  --cw-gap: var(--ds-space-l);
+  --cw-pad: var(--ds-space-s);
+  --cw-pill: 18px;
+  --cw-face: 52px;
+  --dig-sky: calc(72px + env(safe-area-inset-top));
+  --dig-ochre: 0px;
+  padding: calc(var(--dig-sky) + var(--ds-space-m)) calc(var(--sc-side) + var(--screen-right) + clamp(0px, (100vw - 667px) * 0.4, 72px)) calc(var(--ds-space-xl) + env(safe-area-inset-bottom)) calc(var(--sc-side) + var(--screen-left) + clamp(0px, (100vw - 667px) * 0.4, 72px));
+}
+
+/* HOME, then the title centred under it on a tablet, or between it and the
+   best on a phone. */
+.care-welcome .skeleton-bar::after { content: ""; flex: 1 1 0; }
+
+html[data-size="wide"] .care-welcome .skeleton-title,
+html[data-size="tall"] .care-welcome .skeleton-title {
+  position: absolute;
+  top: 64px;
+  left: 0;
+  right: 0;
+  gap: var(--ds-space-l);
+}
+
+html[data-size="tall-narrow"] .care-welcome .skeleton-title,
+html[data-size="wide-short"] .care-welcome .skeleton-title {
+  position: static;
+  flex: 1 1 0;
+  min-width: 0;
+  height: 48px;
+}
+
+html[data-size="tall-narrow"] .care-welcome .skeleton-bar::after,
+html[data-size="wide-short"] .care-welcome .skeleton-bar::after { content: none; }
+
+html[data-size] .care-welcome .skeleton-title-words { font-size: 40px; }
+html[data-size="tall-narrow"] .care-welcome.skeleton-dig .skeleton-title-words { font-size: min(26px, 100cqi / (var(--letters) * 0.75)); }
+html[data-size="wide-short"] .care-welcome.skeleton-dig .skeleton-title-words { font-size: 22px; }
+
+html[data-size] .care-welcome .skeleton-mark {
+  width: 60px;
+  height: 60px;
+  border-radius: var(--ds-radius-30) var(--ds-radius-30) var(--ds-radius-15) var(--ds-radius-15);
+}
+
+.care-best-of { font-size: 0.65em; opacity: 0.7; margin-inline-start: 2px; }
+
+/* The two cards share the sand: NEW VISITOR the wider beside FRIENDS, or
+   over it upright. */
+.care-choices {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  gap: var(--cw-gap);
+}
+
+html[data-size="tall"] .care-choices,
+html[data-size="tall-narrow"] .care-choices { flex-direction: column; }
+
+html[data-size] .care-card {
+  min-width: 0;
+  min-height: 0;
+  box-sizing: border-box;
+  padding: var(--cw-pad) var(--cw-pad) var(--ds-space-l);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ds-space-l);
+  border: none;
+  border-radius: var(--ds-radius-28);
+  outline: none;
+  background: var(--ds-label);
+  color: var(--ds-on-label);
+  box-shadow: 0 6px 16px var(--ds-pocket-shadow);
+  container-type: inline-size;
+  animation: rise-in var(--motion-screen) var(--ease-out) both;
+}
+
+html[data-size] .care-card:focus-visible { outline: 3px solid var(--ds-strong); outline-offset: 3px; }
+
+html[data-size] .new-visitor-card { flex: 1.75 1 0; }
+html[data-size] .friends-card { flex: 1 1 0; padding-top: var(--ds-space-l); animation-delay: var(--motion-stagger); }
+html[data-size="tall"] .new-visitor-card { flex: 2.4 1 0; }
+html[data-size="tall-narrow"] .new-visitor-card { flex: 1.35 1 0; }
+html[data-size="wide-short"] .new-visitor-card { flex: 1.3 1 0; }
+html[data-size="wide-short"] .care-card { gap: var(--ds-space-s); padding-bottom: var(--ds-space-s); }
+
+/* The visitor waits in a pocket of sky, the door at its corner. */
+.new-visitor-art {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 0;
+  align-self: stretch;
+  display: flex;
+  border-radius: var(--ds-radius-22) var(--ds-radius-22) var(--ds-radius-11) var(--ds-radius-11);
+  background: linear-gradient(var(--ds-sky-top), var(--ds-sky-bottom));
+  box-shadow: inset 0 -12px 0 var(--ds-pocket-1);
+  overflow: hidden;
+}
+
+.new-visitor-picture {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  padding: var(--ds-space-s) var(--ds-space-xl) var(--ds-space-l);
+  object-fit: contain;
+}
+
+.knock-bubble {
+  position: absolute;
+  top: var(--ds-space-m);
+  left: var(--ds-space-m);
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--ds-label);
+  color: var(--ds-action);
+  animation: pop-in var(--motion-standard) var(--ease-overshoot) var(--motion-screen) both;
+}
+
+.knock-bubble svg { width: 26px; height: 26px; }
+html[data-size="wide-short"] .knock-bubble { width: 36px; height: 36px; top: var(--ds-space-s); left: var(--ds-space-s); }
+html[data-size="wide-short"] .knock-bubble svg { width: 20px; height: 20px; }
+
+/* The pills: NEW VISITOR in the action's terracotta, FRIENDS in the strong
+   navy. A pill's words are the card's width over their own, in ems. */
+.care-pill {
+  flex-shrink: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  min-height: 48px;
+  padding: var(--ds-space-s) var(--ds-space-xl);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ds-space-s);
+  border-radius: var(--ds-radius-pill);
+  font-size: min(var(--cw-pill), (100cqi - 96px) / 9);
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.care-pill svg { flex-shrink: 0; width: 1.1em; height: 1.1em; }
+.new-visitor-pill { background: var(--ds-action); color: var(--ds-on-action); }
+.friends-pill { background: var(--ds-strong); color: var(--ds-on-strong); font-size: min(var(--cw-pill), (100cqi - 120px) / 6); }
+html[data-size="wide-short"] .care-pill { min-height: 40px; padding: var(--ds-space-xs) var(--ds-space-l); }
+
+.care-friends-row {
+  flex-shrink: 0;
+  max-width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-s);
+}
+
+.care-friend-count {
+  flex-shrink: 0;
+  min-height: 40px;
+  box-sizing: border-box;
+  padding: var(--ds-space-xs) var(--ds-space-m);
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-xs);
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-quiet);
+  color: var(--ds-ink);
+  font-size: var(--ds-size-20);
+  font-weight: 800;
+}
+
+.care-friend-count svg { width: 18px; height: 18px; color: var(--ds-bad); }
+
+/* The friends' faces, two rows of three, or one row of six on an upright
+   tablet, each as large as the card leaves them. */
+.care-faces {
+  flex: 1 1 0;
+  min-height: 0;
+  align-self: stretch;
+  container-type: size;
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  place-content: center;
+  gap: var(--ds-space-m);
+}
+
+html[data-size="tall"] .care-faces { grid-template-columns: repeat(6, auto); }
+
+.care-face {
+  --cw-size: min(var(--cw-face), (100cqw - 2 * var(--ds-space-m)) / 3, (100cqh - var(--ds-space-m)) / 2);
+  width: var(--cw-size);
+  height: var(--cw-size);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--ds-pocket-1);
+  animation: pop-in var(--motion-standard) var(--ease-overshoot) calc(var(--motion-screen) + var(--face) * var(--motion-stagger) * 0.75) both;
+}
+
+html[data-size="tall"] .care-face { --cw-size: min(var(--cw-face), (100cqw - 5 * var(--ds-space-m)) / 6, 100cqh); }
+
+.care-face[data-empty] { background: var(--ds-quiet); color: var(--ds-ink); }
+.care-face[data-empty] svg { width: 34%; height: 34%; opacity: 0.6; }
+
+.care-face-picture {
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 10%;
+  object-fit: contain;
+}

@@ -3021,9 +3021,8 @@ html[data-size="tall-narrow"] .result-actions .home-button {
   object-fit: contain;
 }
 
-/* Care's welcome, its friends and a visit fill the screen under a bar
+/* Care's friends and a visit fill the screen under a bar
    like the catalogue's. */
-.care-welcome,
 .friends,
 .visit {
   position: relative;
@@ -3034,16 +3033,6 @@ html[data-size="tall-narrow"] .result-actions .home-button {
   flex-direction: column;
 }
 
-.care-welcome {
-  padding:
-    calc(40px + env(safe-area-inset-top))
-    calc(56px + var(--screen-right))
-    calc(48px + env(safe-area-inset-bottom))
-    calc(56px + var(--screen-left));
-  gap: 28px;
-}
-
-.care-bar,
 .friends-bar,
 .visit-bar {
   display: flex;
@@ -3051,7 +3040,6 @@ html[data-size="tall-narrow"] .result-actions .home-button {
   gap: 24px;
 }
 
-.care-title,
 .friends-title {
   flex: 1 1 0;
   min-width: 0;
@@ -3063,7 +3051,6 @@ html[data-size="tall-narrow"] .result-actions .home-button {
   font-weight: 700;
 }
 
-.care-mark,
 .friends-mark {
   flex-shrink: 0;
   display: grid;
@@ -3073,17 +3060,11 @@ html[data-size="tall-narrow"] .result-actions .home-button {
   border-radius: 14px;
 }
 
-.care-mark {
-  background: #e39b2d;
-  color: #1d2742;
-}
-
 .friends-mark {
   background: #c9583d;
   color: #ffffff;
 }
 
-.care-best,
 .friend-count {
   flex-shrink: 0;
   margin: 0;
@@ -3101,206 +3082,6 @@ html[data-size="tall-narrow"] .result-actions .home-button {
 
 .friend-count svg {
   color: #c9583d;
-}
-
-.care-choices {
-  flex: 1 1 0;
-  min-height: 0;
-  display: flex;
-  gap: 28px;
-}
-
-.new-visitor-card {
-  flex: 760 1 0;
-  min-width: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  border: none;
-  border-radius: 32px;
-  background: #1f2b4d;
-  color: #f6f2e9;
-  box-shadow: 0 18px 40px #1d274224;
-  text-align: left;
-}
-
-.new-visitor-art {
-  position: relative;
-  flex: 1 1 0;
-  min-height: 0;
-}
-
-.new-visitor-glow {
-  position: absolute;
-  left: 23.7%;
-  top: 5%;
-  width: 52.6%;
-  aspect-ratio: 1;
-  border-radius: 50%;
-  background: #a9bcd6;
-  opacity: 0.12;
-}
-
-.new-visitor-picture {
-  position: absolute;
-  left: 19.7%;
-  top: 10%;
-  width: 60.5%;
-  height: 85%;
-  object-fit: contain;
-  opacity: 0.9;
-}
-
-/* The visitor knocks: its bubble grows in after the screen. */
-.knock-bubble {
-  position: absolute;
-  left: 73.7%;
-  top: 10%;
-  width: 110px;
-  height: 110px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  background: #fffdf8;
-  color: #1d2742;
-  transform-origin: bottom left;
-  animation: pop-in var(--motion-standard) var(--ease-overshoot) var(--motion-screen) both;
-}
-
-.new-visitor-footer {
-  padding: 24px 40px 32px;
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  background: #00000026;
-}
-
-.new-visitor-symbol {
-  flex-shrink: 0;
-  display: grid;
-  place-items: center;
-  width: 64px;
-  height: 64px;
-  border-radius: 18px;
-  background: #e39b2d;
-  color: #1d2742;
-}
-
-.new-visitor-title {
-  font-size: 52px;
-  font-weight: 700;
-  letter-spacing: 1px;
-}
-
-.friends-card {
-  flex: 540 1 0;
-  min-width: 0;
-  padding: 32px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: 24px;
-  border: none;
-  border-radius: 32px;
-  outline: 1px solid #1d27421f;
-  outline-offset: -0.5px;
-  background: #fffdf8;
-  box-shadow: 0 8px 24px #1d274224;
-  text-align: left;
-}
-
-.friend-faces {
-  flex: 1 1 0;
-  min-height: 0;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  grid-template-rows: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-}
-
-.friend-face {
-  min-height: 0;
-  display: flex;
-  border-radius: 20px;
-  background: #e6e2d9;
-  animation: rise-in var(--motion-standard) var(--ease-out) both;
-  animation-delay: calc(var(--face) * var(--motion-stagger) * 0.75);
-}
-
-.friend-face-picture {
-  width: 100%;
-  height: 100%;
-  min-height: 0;
-  box-sizing: border-box;
-  padding: 8px;
-  object-fit: contain;
-}
-
-.friends-row {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.friends-symbol {
-  flex-shrink: 0;
-  display: grid;
-  place-items: center;
-  width: 56px;
-  height: 56px;
-  border-radius: 16px;
-  background: #c9583d;
-  color: #ffffff;
-}
-
-.friends-row .friends-title {
-  font-size: 34px;
-}
-
-/* Upright, the welcome takes the narrower side padding of the other
-   upright screens, its bar keeps one row with HOME as its symbol, and NEW
-   VISITOR stands over FRIENDS across the width, its words a size that fits
-   in either language. */
-html[data-size="tall"] .care-welcome,
-html[data-size="tall-narrow"] .care-welcome {
-  padding-right: calc(32px + var(--screen-right));
-  padding-left: calc(32px + var(--screen-left));
-}
-
-html[data-size="tall"] .care-bar,
-html[data-size="tall-narrow"] .care-bar {
-  gap: 16px;
-}
-html[data-size="tall"] .care-bar .home-button,
-html[data-size="tall-narrow"] .care-bar .home-button {
-  width: 56px;
-  padding: 0;
-  justify-content: center;
-}
-
-html[data-size="tall"] .care-choices,
-html[data-size="tall-narrow"] .care-choices {
-  flex-direction: column;
-  gap: 24px;
-}
-
-html[data-size="tall"] .new-visitor-card,
-html[data-size="tall-narrow"] .new-visitor-card {
-  flex: 3 1 0;
-  min-height: 0;
-}
-
-html[data-size="tall"] .friends-card,
-html[data-size="tall-narrow"] .friends-card {
-  flex: 2 1 0;
-  min-height: 0;
-}
-
-html[data-size="tall"] .new-visitor-title,
-html[data-size="tall-narrow"] .new-visitor-title {
-  font-size: 40px;
-  white-space: nowrap;
 }
 
 /* Upright, a visit takes the narrower side padding, its bar keeps one
@@ -3946,7 +3727,6 @@ html[data-size="tall-narrow"] .care-result .result-actions .home-button {
 /* On a phone care's screens take 24 pixels above, 32 below and 20 at the
    sides, their parts 16 apart, HOME and BACK as 48-pixel symbols, the
    titles at 24 pixels. */
-html[data-size="tall-narrow"] .care-welcome,
 html[data-size="tall-narrow"] .visit {
   padding:
     calc(24px + env(safe-area-inset-top))
@@ -3956,83 +3736,17 @@ html[data-size="tall-narrow"] .visit {
   gap: 16px;
 }
 
-html[data-size="tall-narrow"] .care-bar,
 html[data-size="tall-narrow"] .visit-bar {
   gap: 12px 8px;
 }
-html[data-size="tall-narrow"] .care-bar .home-button,
 html[data-size="tall-narrow"] .visit-bar .home-button {
   width: 48px;
 }
 
-html[data-size="tall-narrow"] .care-title {
-  gap: 8px;
-  font-size: 24px;
-}
-
 /* The bars' titles are their words alone, beside HOME, BACK and the
    best score. */
-html[data-size="tall-narrow"] .care-bar .care-mark {
-  display: none;
-}
-
-html[data-size="tall-narrow"] .care-best,
-html[data-size="tall-narrow"] .care-welcome .friend-count {
-  padding: 0 10px;
-  gap: 6px;
-  font-size: 16px;
-}
 
 /* The welcome's NEW VISITOR over FRIENDS, their footers smaller. */
-html[data-size="tall-narrow"] .care-choices {
-  gap: 16px;
-}
-
-html[data-size="tall-narrow"] .new-visitor-card,
-html[data-size="tall-narrow"] .friends-card {
-  border-radius: 24px;
-}
-
-html[data-size="tall-narrow"] .knock-bubble {
-  width: 64px;
-  height: 64px;
-}
-
-html[data-size="tall-narrow"] .new-visitor-footer {
-  padding: 12px 16px 16px;
-  gap: 12px;
-}
-
-html[data-size="tall-narrow"] .new-visitor-symbol {
-  width: 48px;
-  height: 48px;
-}
-
-html[data-size="tall-narrow"] .new-visitor-title {
-  font-size: 20px;
-}
-
-html[data-size="tall-narrow"] .friends-card {
-  padding: 16px;
-  gap: 12px;
-}
-
-html[data-size="tall-narrow"] .friend-faces {
-  gap: 8px;
-}
-
-html[data-size="tall-narrow"] .friends-row {
-  gap: 8px;
-}
-
-html[data-size="tall-narrow"] .friends-symbol {
-  width: 40px;
-  height: 40px;
-}
-
-html[data-size="tall-narrow"] .friends-row .friends-title {
-  font-size: 20px;
-}
 
 /* A visit's bar puts HOME and the hearts on its first row and the needs
    across the second; the visitor's name is smaller, and the five items
@@ -6537,11 +6251,6 @@ html[data-size="tall-narrow"] .dig-reveal-screen .result-actions .home-button {
 /* The level switch, centred between the bar and the dinosaurs, as wide as
    find the pair's column so every level's name fits on one line. */
 
-
-
-
-
-
 /* A brush stroke on the board neither scrolls nor bounces the page, so it
    never pulls the board away or swipes back a page. */
 html:has(.dig-board-screen),
@@ -7234,8 +6943,6 @@ html[data-size="tall-narrow"] .skeleton-bar .home-button {
   justify-content: center;
 }
 
-
-
 /* Upright, the museum's hall stands its stands in rows of two. */
 html[data-size="tall"] .skeleton-hall,
 html[data-size="tall-narrow"] .skeleton-hall {
@@ -7632,7 +7339,6 @@ html[data-size="tall-narrow"] .skeleton-puzzle .skeleton-tray {
   color: #ffffff;
 }
 
-
 /* The reveal: the whole skeleton on its board, then the dinosaur's body
    fading in over it in the frame they share while the bones fade back,
    beside the reward, the name, the fact and the ways on. A skeleton whose
@@ -7751,23 +7457,10 @@ html[data-size="tall-narrow"] .skeleton-puzzle .skeleton-tray {
    second surface, ringed in terracotta, in place of a picture and a
    name. */
 
-
 /* The mystery's guess: beside its finished skeleton, a panel as wide as
    the reward's, of the three dinosaurs' cards, each its body picture over
    its name, and the clue below them. A wrong guess wobbles and rests
    aside, faded and tilted. */
-
-
-
-
-
-
-
-
-
-
-
-
 
 .skeleton-best {
   margin: 0;
@@ -7887,9 +7580,6 @@ html[data-size="tall-narrow"] .skeleton-chip {
   font-size: 17px;
 }
 
-
-
-
 html[data-size="tall-narrow"] .skeleton-hall {
   padding: 12px;
   gap: 12px;
@@ -7926,18 +7616,11 @@ html[data-size="tall-narrow"] .skeleton-result {
   height: auto;
 }
 
-
 html[data-size="tall-narrow"] .skeleton-result .skeleton-reveal {
   flex: 1 0 auto;
   height: max(576px, 100vh - (128px + env(safe-area-inset-top) + env(safe-area-inset-bottom)));
   height: max(576px, 100dvh - (128px + env(safe-area-inset-top) + env(safe-area-inset-bottom)));
 }
-
-
-
-
-
-
 
 html[data-size="tall-narrow"] .skeleton-result .skeleton-reveal-board {
   width: min(100cqw, (100cqh - 16px - 440px) * var(--frame-width) / var(--frame-height));
@@ -8285,7 +7968,6 @@ html[data-size="tall-narrow"] .game-audio-button {
 .pairs-offer-question { color: var(--ds-ink); }
 .pairs-offer-picture { background-color: var(--ds-pocket-1); color: var(--ds-ink); border-radius: var(--ds-radius-pocket-top) var(--ds-radius-pocket-top) var(--ds-radius-pocket-bottom) var(--ds-radius-pocket-bottom); }
 
-
 .result-score { font-family: var(--ds-font); color: var(--result-ink, var(--ds-ink)); }
 
 .result-score-total { color: var(--result-ink-soft, var(--ds-ink-soft)); }
@@ -8518,16 +8200,11 @@ html[data-theme="dark"],
 /* Care's screens take the dark values in the same shapes. Words and
    symbols on amber stay the light ink. */
 [data-theme="dark"] .featured-card[data-game="care"],
-[data-theme="dark"] .care-mark,
-[data-theme="dark"] .new-visitor-symbol,
 [data-theme="dark"] .need[data-state="current"],
 [data-theme="dark"] .bubble-badge {
   background: #f2b24b;
 }
 
-[data-theme="dark"] .care-best,
-[data-theme="dark"] .care-welcome .friend-count,
-[data-theme="dark"] .friend-face,
 [data-theme="dark"] .need,
 [data-theme="dark"] .tray-item[data-pressed] {
   background: #222a3d;
@@ -8541,21 +8218,14 @@ html[data-theme="dark"],
   color: #1d2742;
 }
 
-[data-theme="dark"] .new-visitor-card,
 [data-theme="dark"] .stage {
   background: #2c3b66;
 }
 
-[data-theme="dark"] .new-visitor-card {
-  box-shadow: 0 18px 40px #00000066;
-}
-
-[data-theme="dark"] .new-visitor-glow,
 [data-theme="dark"] .stage-glow {
   background: #34466e;
 }
 
-[data-theme="dark"] .knock-bubble,
 [data-theme="dark"] .need-bubble,
 [data-theme="dark"] .bubble-tail,
 [data-theme="dark"] .hearts-pop {
@@ -8571,7 +8241,6 @@ html[data-theme="dark"],
   color: #ece8de;
 }
 
-[data-theme="dark"] .friends-card,
 [data-theme="dark"] .needs,
 [data-theme="dark"] .hearts-counter,
 [data-theme="dark"] .tray-item {
@@ -8579,7 +8248,6 @@ html[data-theme="dark"],
   background: #181e2e;
 }
 
-[data-theme="dark"] .friends-card,
 [data-theme="dark"] .tray-item {
   box-shadow: 0 8px 24px #00000066;
 }
@@ -8590,16 +8258,11 @@ html[data-theme="dark"],
 
 /* White would fade on the dark theme's lighter terracotta and green, so
    the marks there take the dark page's ink, as the catalogue's do. */
-[data-theme="dark"] .friends-symbol {
-  background: #e57a5d;
-  color: #0f1320;
-}
 
 [data-theme="dark"] .need[data-state="met"] {
   background: #63c98c;
   color: #0f1320;
 }
-[data-theme="dark"] .care-welcome .friend-count svg,
 [data-theme="dark"] .hearts-counter svg,
 [data-theme="dark"] .friend-chip svg {
   color: #e57a5d;
@@ -8714,7 +8377,6 @@ html[data-theme="dark"],
   background: #181e2e;
 }
 
-
 [data-theme="dark"] .skeleton-lifted {
   filter: drop-shadow(0 18px 24px #00000066);
 }
@@ -8751,12 +8413,6 @@ html[data-theme="dark"],
 [data-theme="dark"] .skeleton-fact {
   background: #222a3d;
 }
-
-
-
-
-
-
 
 [data-theme="dark"] .skeleton-fact svg,
 [data-theme="dark"] .skeleton-best-beaten {
@@ -9110,8 +8766,6 @@ body:has(.picture-puzzle-board-screen) {
 [data-theme="dark"] .picture-puzzle-preview { outline-color: #181e2e; }
 [data-theme="dark"] .picture-puzzle-slot { box-shadow: inset 0 0 0 1px #adc8bb66; }
 [data-theme="dark"] .picture-puzzle-slot[data-fitted] { box-shadow: none; }
-
-
 
 .picture-puzzle-tile-art { display: block; flex: 1 1 0; min-height: 0; width: 100%; overflow: hidden; }
 .picture-puzzle-tile-art > .picture-puzzle-crop { width: 100%; height: 100%; }
@@ -11510,7 +11164,6 @@ html[data-size="wide-short"] .pairs-board-bedrock { display: none; }
 /* There every card fits; a name too small is left to its label. */
 html[data-size="wide-short"] .pair-board { --pb-card: min(var(--pb-card-max), (100cqw - (var(--columns) - 1) * var(--pb-gap)) / var(--columns), (100cqh - (var(--rows) - 1) * var(--pb-gap)) / var(--rows) / var(--pb-ratio)); }
 html[data-size="wide-short"] .pair-card-name[data-caption] { display: none; }
-
 
 @media (prefers-reduced-motion: reduce) {
   :root {

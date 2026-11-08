@@ -1,3 +1,4 @@
+import "./careSheets.ts";
 import { act, fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { computedStyleWithVariables } from "./stylesheet.ts";

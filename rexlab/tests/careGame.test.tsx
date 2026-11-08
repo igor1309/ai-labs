@@ -71,7 +71,7 @@ describe("the CARE tile", () => {
     expect(symbolsOf(button("NEW VISITOR"))).toContain("footprints");
     const friends = button("FRIENDS");
     expect(symbolsOf(friends)).toContain("heart-handshake");
-    const count = friends.querySelector(".friend-count");
+    const count = friends.querySelector(".care-friend-count");
     expect(count && [symbolOf(count), count.textContent]).toEqual(["heart", "2"]);
     expect(symbolOf(button("HOME"))).toBe("house");
     expect(screen.getByLabelText("BEST SCORE").textContent).toBe("6/8");

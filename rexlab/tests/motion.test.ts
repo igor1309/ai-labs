@@ -40,7 +40,7 @@ const declarationsOf = (body: string) =>
       return { property: declaration.slice(0, colon).trim(), value: declaration.slice(colon + 1).trim() };
     });
 
-const CSS = ["app.css", "labyrinthBoard.css", "labyrinthResult.css", "skeletonSite.css", "skeletonChoice.css", "skeletonPuzzle.css", "skeletonGuess.css", "skeletonMuseum.css", "skeletonResult.css", "picturePuzzleChoice.css", "picturePuzzleBoard.css", "picturePuzzleResult.css", "sandWriting.css"].map((file) => readFileSync(join(import.meta.dirname, "../src", file), "utf8")).join("\n").replace(/\/\*[\s\S]*?\*\//g, "");
+const CSS = ["app.css", "labyrinthBoard.css", "labyrinthResult.css", "skeletonSite.css", "skeletonChoice.css", "skeletonPuzzle.css", "skeletonGuess.css", "skeletonMuseum.css", "skeletonResult.css", "picturePuzzleChoice.css", "picturePuzzleBoard.css", "picturePuzzleResult.css", "sandWriting.css", "careWelcome.css"].map((file) => readFileSync(join(import.meta.dirname, "../src", file), "utf8")).join("\n").replace(/\/\*[\s\S]*?\*\//g, "");
 const RULES = rulesOf(CSS);
 const REDUCED = RULES.filter(({ prelude }) => prelude === "@media (prefers-reduced-motion: reduce)").flatMap(({ body }) => rulesOf(body));
 const PLAIN = RULES.filter(({ prelude }) => !prelude.startsWith("@"));
@@ -442,8 +442,8 @@ describe("care's motion", () => {
     expect(animations.get(".tray-item[data-suggested]::after")).toBe("fade-in");
   });
 
-  it("fills the hearts won, and rises friends in, one after the other", () => {
-    expect([".result-heart-won", ".friends-dig-site .friend-card", ".friend-face"].map((selector) => animations.get(selector))).toEqual(["pop-in", "rise-in", "rise-in"]);
+  it("fills the hearts won, rises friends in and pops the welcome's faces in, one after the other", () => {
+    expect([".result-heart-won", ".friends-dig-site .friend-card", ".care-face"].map((selector) => animations.get(selector))).toEqual(["pop-in", "rise-in", "pop-in"]);
     expect(delayOf(".result-heart-won")).toBe("calc(var(--heart) * var(--motion-stagger) * 1.5)");
     expect(delayOf(".friends-dig-site .friend-card")).toBe("calc(var(--card) * var(--motion-stagger) * 0.75)");
   });

@@ -33,7 +33,7 @@ const stored = (bestScore: number | null, visitsFinished: number, friends: strin
 
 const bestShown = () => screen.queryByLabelText("BEST SCORE")?.querySelector(".best-score-value")?.textContent;
 const friendCards = (label = "FRIENDS") => within(screen.getByRole("group", { name: label })).getAllByRole("button");
-const friendCount = () => document.querySelector(".friend-count")?.textContent;
+const friendCount = () => document.querySelector(".care-friend-count, .friend-count")?.textContent;
 
 describe("a finished visit", () => {
   it.each([
