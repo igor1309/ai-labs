@@ -24,7 +24,7 @@ const SHOTS = [
   try {
     for (const [name, { progress, theme = "light", language = "en" }] of SHOTS) {
       if (process.env.ONLY && !name.startsWith(process.env.ONLY)) continue;
-      const page = await browser.newPage({ viewport: { width: Number(width), height: Number(height) }, reducedMotion: "reduce" });
+      const page = await browser.newPage({ viewport: { width: Number(width), height: Number(height) }, reducedMotion: process.env.VISIT ? "no-preference" : "reduce" });
       await page.goto(server.resolvedUrls.local[0]);
       await page.evaluate(({ progress, theme, language }) => {
         localStorage.setItem("rexlab-language", language); localStorage.setItem("rexlab-theme", theme);
@@ -38,6 +38,18 @@ const SHOTS = [
       await page.evaluate(() => document.fonts.ready);
       await page.waitForTimeout(400);
       await page.screenshot({ path: join(out, `${name}.png`) });
+      if (process.env.VISIT) {
+        // A visit: as it opens, as an item is given, and after.
+        await page.locator(".new-visitor-card").click();
+        await page.locator(".visit .visitor").waitFor();
+        await page.waitForTimeout(1500);
+        await page.screenshot({ path: join(out, `${name}-visit.png`) });
+        await page.locator('.tray-item[data-item="meat"]').click();
+        await page.waitForTimeout(700);
+        await page.screenshot({ path: join(out, `${name}-visit-given.png`) });
+        await page.waitForTimeout(2500);
+        await page.screenshot({ path: join(out, `${name}-visit-after.png`) });
+      }
       await page.close();
     }
   } finally {

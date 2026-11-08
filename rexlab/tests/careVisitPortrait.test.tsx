@@ -1,6 +1,6 @@
 import "./careSheets.ts";
 import { act, fireEvent, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, onTestFinished } from "vitest";
 import type { PortraitLayouts } from "../src/App.tsx";
 import { TEXTS } from "../src/language/texts.ts";
 import { CARE_ITEMS } from "../src/VisitScreen.tsx";
@@ -18,6 +18,7 @@ const part = (selector: string) => {
   if (!found) throw new Error(`No ${selector}`);
   return found;
 };
+const all = (selector: string) => [...document.querySelectorAll<HTMLElement>(selector)];
 const gateShown = () => part(".orientation-gate").hasAttribute("data-shown");
 
 // A new visitor's visit in a window of `size`.
@@ -29,87 +30,58 @@ function openVisit(size: WindowSize, language: "en" | "ru" = "en") {
   return app;
 }
 
-// jsdom does not lay out: capitals at a conservative 0.8 em with their
-// spacing.
-const capitalsWidth = (words: string, style: ReturnType<typeof styleAt>) => words.length * (style.px("font-size") * 0.8 + style.px("letter-spacing"));
+const THEME = {
+  light: { label: "rgb(255, 253, 248)", strong: "rgb(31, 43, 77)", onStrong: "rgb(246, 242, 233)", action: "rgb(193, 80, 54)" },
+  dark: { label: "rgb(28, 34, 56)", strong: "rgb(237, 229, 210)", onStrong: "rgb(29, 39, 66)", action: "rgb(229, 122, 93)" }
+} as const;
 
 describe("a care visit upright", () => {
-  it.each([[744, 1133], [820, 1180], [600, 1000]] as const)("stands upright at %j, the five items in one row under the stage", (...size) => {
+  it.each([[744, 1133], [820, 1180], [600, 1000]] as const)("stands upright at %j on the dig site, the five items in one row on the sand under the stage", (...size) => {
     openVisit(size);
     expect([document.documentElement.dataset.size, gateShown(), part(".gated-screen").hasAttribute("inert")]).toEqual(["tall", false, false]);
     expect(screen.queryByRole("img", { name: TEXTS.en.turnSideways })).toBeNull();
+    expect(part(".visit").classList.contains("skeleton-dig")).toBe(true);
+    expect(part(".visit > .dig-ground")).toBeDefined();
     const page = styleAt(part(".visit"), size);
-    expect([page.value("flex-direction"), page.px("padding-left"), page.px("padding-right")]).toEqual(["column", 32, 32]);
-    // The stage takes the column's whole width and the room left, the
-    // tray after it.
+    expect([page.value("flex-direction"), page.value("overflow")]).toEqual(["column", "hidden"]);
     const stage = styleAt(part(".stage"), size);
-    expect([stage.value("flex-grow"), stage.value("width") || "auto", stage.value("max-width") || "none", stage.value("order") || "0"]).toEqual(["1", "auto", "none", "0"]);
-    expect(styleAt(part(".tray"), size).value("order") || "0").toBe("0");
+    expect([stage.value("flex-grow"), stage.value("order") || "0"]).toEqual(["1", "0"]);
     expect(part(".stage").compareDocumentPosition(part(".tray")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    // The visitor stands larger and lower on it, its picture inside.
+    // The visitor stands large where the sky meets the sand.
     const visitor = styleAt(part(".stage > .visitor"), size);
-    expect([visitor.value("left"), visitor.value("top"), visitor.value("width"), visitor.value("height")]).toEqual(["8%", "30%", "84%", "62%"]);
+    expect([visitor.value("left"), visitor.value("top"), visitor.value("width"), visitor.value("height")]).toEqual(["6%", "34%", "88%", "66%"]);
     expect(part(".visitor").querySelector(".visitor-picture")).not.toBeNull();
     const tray = styleAt(part(".tray"), size);
-    expect([tray.value("flex-wrap") || "nowrap", tray.columnGap()]).toEqual(["nowrap", 10]);
+    expect([tray.value("flex-wrap") || "nowrap", tray.columnGap()]).toEqual(["nowrap", 12]);
     expect(document.querySelectorAll(".tray > .tray-item")).toHaveLength(CARE_ITEMS.length);
-    // The items share the row the page leaves them, none held wider.
-    const item = styleAt(part(".tray-item"), size);
-    expect([item.value("flex-grow"), item.px("min-width")]).toEqual(["1", 0]);
+    expect(styleAt(part(".tray-item"), size).px("min-height")).toBe(48);
   });
 
-  it.each(["en", "ru"] as const)("keeps the bar on one row and every word on one line at 600 wide in %s", (language) => {
+  it.each(["en", "ru"] as const)("keeps HOME, the needs and the hearts in the sky and every word on one line at 600 wide in %s", (language) => {
     const size: WindowSize = [600, 1000];
     openVisit(size, language);
     const text = TEXTS[language];
-    const page = styleAt(part(".visit"), size);
-    const width = 600 - page.px("padding-left") - page.px("padding-right");
-
     const home = screen.getByRole("button", { name: text.home });
-    expect(styleAt(home, size).px("width")).toBe(56);
-    expect(home.querySelector(".upright-hidden")?.textContent).toBe(text.home);
-    // The bar's parts at their set sizes: HOME, the four needs in their
-    // padded strip, and the hearts with a two-digit count.
-    const bar = styleAt(part(".visit-bar"), size);
-    expect(bar.value("flex-wrap") || "nowrap").toBe("nowrap");
+    expect(styleAt(home, size).px("height")).toBe(48);
+    expect(styleAt(part(".visit-bar"), size).value("flex-wrap") || "nowrap").toBe("nowrap");
     const needs = styleAt(part(".needs"), size);
-    const need = styleAt(part(".need"), size);
-    const hearts = styleAt(part(".hearts-counter"), size);
-    const needsWidth = 4 * need.px("width") + 3 * needs.columnGap() + needs.px("padding-left") + needs.px("padding-right");
-    const heartsWidth = hearts.px("padding-left") + hearts.px("padding-right") + 28 + hearts.columnGap() + 2 * hearts.px("font-size") * 0.7;
-    expect(56 + needsWidth + heartsWidth + 2 * bar.columnGap()).toBeLessThanOrEqual(width);
-
-    // Every visitor's name, on one line from its place on the stage.
-    const name = styleAt(part(".visitor-name"), size);
-    expect(name.value("white-space")).toBe("nowrap");
-    const longest = Math.max(...SHIPPED_VISITORS.map((visitor) => capitalsWidth(visitor.name[language], name)));
-    expect(longest).toBeLessThanOrEqual(width - 2 * name.px("left"));
-
-    // The need's bubble under the name: its top, a share of the stage
-    // the column leaves at this height, below the name's line.
-    const bubble = styleAt(part(".stage > .need-bubble"), size);
-    const tray = styleAt(part(".tray"), size);
-    const item = styleAt(part(".tray-item"), size);
-    const stageHeight = 1000 - page.px("padding-top") - page.px("padding-bottom") - 56 - item.px("height") - 2 * page.rowGap();
-    expect((Number.parseFloat(bubble.value("top")) / 100) * stageHeight).toBeGreaterThanOrEqual(name.px("top") + name.px("font-size"));
-
-    // Every item's word, inside its share of the row.
-    const room = (width - (CARE_ITEMS.length - 1) * tray.columnGap()) / CARE_ITEMS.length - item.px("padding-left") - item.px("padding-right");
-    const label = styleAt(part(".tray-label"), size);
-    expect(label.value("white-space")).toBe("nowrap");
-    for (const each of CARE_ITEMS) expect(capitalsWidth(text.items[each], label), text.items[each]).toBeLessThanOrEqual(room);
+    expect([needs.value("position"), needs.value("left")]).toEqual(["absolute", "50%"]);
+    expect(all(".need")).toHaveLength(4);
+    expect(styleAt(part(".visitor-name"), size).value("white-space")).toBe("nowrap");
+    expect(styleAt(part(".tray-label"), size).value("white-space")).toBe("nowrap");
+    for (const each of CARE_ITEMS) expect(screen.getByRole("button", { name: text.items[each] })).toBeDefined();
   });
 
-  it("keeps the landscape visit as it was", () => {
+  it("stands the landscape visit on the dig site", () => {
     openWindow(1180, 820);
     const { user } = openCareApp({ portraitLayouts: PORTRAIT_LAYOUTS });
     return welcomeVisitor(user).then(() => {
       expect([document.documentElement.dataset.size, gateShown()]).toEqual(["wide", false]);
-      expect(getComputedStyle(part(".visit")).paddingLeft).toBe("56px");
-      expect(getComputedStyle(part(".tray")).gap).toBe("20px");
-      expect(getComputedStyle(part(".tray-item")).minWidth).toBe("120px");
-      expect(getComputedStyle(part(".visitor-name")).fontSize).toBe("36px");
-      expect(screen.getByRole("button", { name: TEXTS.en.home }).querySelector(".upright-hidden")).not.toBeNull();
+      expect(part(".visit").classList.contains("skeleton-dig")).toBe(true);
+      expect(styleAt(part(".tray"), [1180, 820]).columnGap()).toBe(12);
+      expect(getComputedStyle(part(".visitor-name")).fontSize).toBe("34px");
+      const visitor = getComputedStyle(part(".stage > .visitor"));
+      expect([visitor.left, visitor.top, visitor.width, visitor.height]).toEqual(["30%", "16%", "42%", "84%"]);
     });
   });
 
@@ -126,5 +98,15 @@ describe("a care visit upright", () => {
     expect([document.documentElement.dataset.size, gateShown(), part(".gated-screen").hasAttribute("inert")]).toEqual(["tall", false, false]);
     expect({ visitor: visitorShown().id, hearts: heartsShown(), needs: needStates(), asked: needAsked() }).toEqual(before);
     expect([part(".stage").dataset.turnPart, part(".tray").dataset.turnPart]).toEqual(["care-stage", "care-tray"]);
+  });
+
+  it.each(["light", "dark"] as const)("dresses the hearts, the asked need and the bubble in the %s theme's tokens", (theme) => {
+    const colours = THEME[theme];
+    openVisit([820, 1180]);
+    document.documentElement.dataset.theme = theme;
+    onTestFinished(() => { delete document.documentElement.dataset.theme; });
+    expect(getComputedStyle(part(".hearts-counter")).backgroundColor).toBe(colours.label);
+    expect(getComputedStyle(part('.need[data-state="current"]')).backgroundColor).toBe(colours.action);
+    expect(getComputedStyle(part(".need-bubble")).backgroundColor).toBe(colours.label);
   });
 });

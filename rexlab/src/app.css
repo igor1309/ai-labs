@@ -3023,8 +3023,7 @@ html[data-size="tall-narrow"] .result-actions .home-button {
 
 /* Care's friends and a visit fill the screen under a bar
    like the catalogue's. */
-.friends,
-.visit {
+.friends {
   position: relative;
   height: 100vh;
   height: 100dvh;
@@ -3033,8 +3032,7 @@ html[data-size="tall-narrow"] .result-actions .home-button {
   flex-direction: column;
 }
 
-.friends-bar,
-.visit-bar {
+.friends-bar {
   display: flex;
   align-items: center;
   gap: 24px;
@@ -3089,148 +3087,15 @@ html[data-size="tall-narrow"] .result-actions .home-button {
    the visitor larger and lower and the bubble under the name, and the
    five items share one row, their words a size that fits in either
    language. */
-html[data-size="tall"] .visit,
-html[data-size="tall-narrow"] .visit {
-  padding-right: calc(32px + var(--screen-right));
-  padding-left: calc(32px + var(--screen-left));
-}
-html[data-size="tall"] .visit-bar .home-button,
-html[data-size="tall-narrow"] .visit-bar .home-button {
-  width: 56px;
-  padding: 0;
-  justify-content: center;
-}
-
-html[data-size="tall"] .visitor-name,
-html[data-size="tall-narrow"] .visitor-name {
-  left: 32px;
-  top: 28px;
-  font-size: 28px;
-  white-space: nowrap;
-}
-
-html[data-size="tall"] .visitor,
-html[data-size="tall-narrow"] .visitor {
-  left: 8%;
-  top: 30%;
-  width: 84%;
-  height: 62%;
-}
-
-html[data-size="tall"] .need-bubble,
-html[data-size="tall-narrow"] .need-bubble {
-  left: 55%;
-  top: 14%;
-}
-
-html[data-size="tall"] .tray,
-html[data-size="tall-narrow"] .tray {
-  gap: 10px;
-}
-
-html[data-size="tall"] .tray-item,
-html[data-size="tall-narrow"] .tray-item {
-  min-width: 0;
-  height: 150px;
-  padding: 8px 4px 12px;
-}
-
-html[data-size="tall"] .tray-picture,
-html[data-size="tall-narrow"] .tray-picture {
-  height: 96px;
-}
-
-html[data-size="tall"] .tray-label,
-html[data-size="tall-narrow"] .tray-label {
-  font-size: 14px;
-  white-space: nowrap;
-}
 
 /* A visit: the needs and hearts above, the visitor on its stage, and the
    items below. */
-.visit {
-  padding:
-    calc(40px + env(safe-area-inset-top))
-    calc(56px + var(--screen-right))
-    calc(40px + env(safe-area-inset-bottom))
-    calc(56px + var(--screen-left));
-  gap: 24px;
-}
-
-.visit-bar {
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.needs {
-  margin: 0;
-  padding: 8px;
-  display: flex;
-  gap: 14px;
-  list-style: none;
-  border-radius: 36px;
-  outline: 1px solid #1d27421f;
-  outline-offset: -0.5px;
-  background: #fffdf8;
-}
 
 /* The need asked now grows a little and turns amber; a met need turns
    green and its tick pops in. */
-.need {
-  width: 56px;
-  height: 56px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  background: #e6e2d9;
-  color: #5c647a;
-  transition:
-    background-color var(--motion-standard) var(--ease-out),
-    scale var(--motion-standard) var(--ease-overshoot);
-}
-
-.need[data-state="current"] {
-  background: #e39b2d;
-  color: #1d2742;
-  scale: calc(1 + 0.08 * var(--motion-amount));
-}
-
-.need[data-state="met"] {
-  background: #2e7d4f;
-  color: #ffffff;
-}
-
-.need[data-state="met"] svg {
-  animation: pop-in var(--motion-standard) var(--ease-overshoot) both;
-}
-
-.hearts-counter {
-  margin: 0;
-  height: 56px;
-  box-sizing: border-box;
-  padding: 0 22px 0 16px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  border-radius: 28px;
-  outline: 1px solid #1d27421f;
-  outline-offset: -0.5px;
-  background: #fffdf8;
-  font-size: 24px;
-  font-weight: 700;
-}
-
-.hearts-counter svg {
-  color: #c9583d;
-}
 
 /* The count bumps as the hearts earned reach it; until then it shows,
    never blank. */
-.hearts-count {
-  display: inline-block;
-  animation: bump-in var(--motion-standard) var(--ease-overshoot) forwards;
-  animation-delay: calc(var(--motion-screen) + var(--motion-standard) * 2);
-}
 
 @keyframes bump-in {
   from {
@@ -3239,70 +3104,7 @@ html[data-size="tall-narrow"] .tray-label {
   }
 }
 
-.stage {
-  position: relative;
-  isolation: isolate;
-  flex: 1 1 0;
-  min-height: 0;
-  overflow: hidden;
-  border-radius: 32px;
-  background: #1f2b4d;
-  color: #f6f2e9;
-}
-
-.stage-glow {
-  position: absolute;
-  z-index: -1;
-  left: 22.6%;
-  top: -11%;
-  width: 42%;
-  aspect-ratio: 1;
-  border-radius: 50%;
-  background: #a9bcd6;
-  opacity: 0.12;
-}
-
-.stage-ground {
-  position: absolute;
-  z-index: -1;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  height: 24%;
-  background: #00000026;
-}
-
-.visitor-name {
-  position: absolute;
-  z-index: 1;
-  left: 40px;
-  top: 30px;
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-size: 36px;
-  font-weight: 700;
-  letter-spacing: 1px;
-}
-
 /* The visitor walks in from the right once its picture is ready. */
-.visitor {
-  position: absolute;
-  left: 18.8%;
-  top: 7.6%;
-  width: 42%;
-  height: 80%;
-  transform-origin: bottom center;
-  animation: walk-in var(--motion-screen) var(--ease-out) both;
-}
-
-.visitor-picture {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-}
 
 @keyframes walk-in {
   from {
@@ -3312,9 +3114,6 @@ html[data-size="tall-narrow"] .tray-label {
 }
 
 /* A happy visitor hops twice once the item reaches it. */
-.stage[data-reaction="happy"] .visitor {
-  animation: hop calc(var(--motion-count) * 0.8) var(--ease-out) var(--motion-screen) both;
-}
 
 @keyframes hop {
   25% {
@@ -3330,9 +3129,6 @@ html[data-size="tall-narrow"] .tray-label {
 
 /* An unsuitable item: the visitor gently turns its head away, no shake
    and no mark. */
-.stage[data-reaction="refusal"] .visitor {
-  animation: turn-away calc(var(--motion-standard) * 1.5) var(--ease-out) var(--motion-screen) both;
-}
 
 @keyframes turn-away {
   35% {
@@ -3347,11 +3143,6 @@ html[data-size="tall-narrow"] .tray-label {
 
 /* Every need met, the visitor dances three hops with a tilt, then walks
    off to the left. */
-.stage[data-leaving] .visitor {
-  animation:
-    dance calc(var(--motion-count) * 1.6) var(--ease-out) both,
-    walk-off var(--motion-screen) var(--ease-out) calc(var(--motion-count) * 1.6) forwards;
-}
 
 @keyframes dance {
   16% {
@@ -3385,117 +3176,9 @@ html[data-size="tall-narrow"] .tray-label {
 
 /* The need's bubble grows from its tail; the bubble of a need just met
    fades as the visitor enjoys it. */
-.need-bubble {
-  position: absolute;
-  left: 61.7%;
-  top: 4.6%;
-  width: min(220px, 40%);
-  aspect-ratio: 1;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  background: #fffdf8;
-  color: #1d2742;
-  transform-origin: -20% 120%;
-  animation: pop-in var(--motion-standard) var(--ease-overshoot) both;
-}
-
-.bubble-tail {
-  position: absolute;
-  border-radius: 50%;
-  background: #fffdf8;
-}
-
-.bubble-tail-1 {
-  left: -9%;
-  top: 93.6%;
-  width: 16.4%;
-  height: 16.4%;
-}
-
-.bubble-tail-2 {
-  left: -20%;
-  top: 111%;
-  width: 9%;
-  height: 9%;
-}
-
-.bubble-art {
-  position: relative;
-  width: 86%;
-  height: 86%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.bubble-picture {
-  min-width: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-}
-
-.bubble-art[data-count="2"] .bubble-picture {
-  width: 50%;
-}
-
-.bubble-badge {
-  position: absolute;
-  right: 0;
-  top: 0;
-  width: 48px;
-  height: 48px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  background: #e39b2d;
-  color: #1d2742;
-}
 
 /* The item given flies up from the tray to the visitor's mouth, where it
    is eaten, drunk or used, or from where it drifts back, turned away. */
-.given {
-  position: absolute;
-  left: 52%;
-  top: 30%;
-  width: min(130px, 26%);
-  pointer-events: none;
-  animation:
-    fly-in var(--motion-screen) var(--ease-out) both,
-    fade-out var(--motion-small) var(--ease-out) var(--motion-screen) forwards;
-}
-
-.given[data-reaction="refusal"] {
-  left: 5%;
-  top: 36%;
-  width: min(170px, 32%);
-  animation:
-    fly-in var(--motion-screen) var(--ease-out) both,
-    drift-back calc(var(--motion-standard) * 1.5) var(--ease-out) var(--motion-screen) forwards;
-}
-
-.given-picture {
-  display: block;
-  width: 100%;
-  /* Square whatever size its picture says it is. */
-  height: auto;
-  aspect-ratio: 1;
-  object-fit: contain;
-}
-
-.given[data-reaction="refusal"] .given-picture {
-  opacity: 0.85;
-  rotate: -18deg;
-}
-
-.turn-away {
-  position: absolute;
-  left: 24%;
-  top: -18%;
-  color: #f6f2e9;
-  animation: pop-in var(--motion-standard) var(--ease-overshoot) var(--motion-screen) both;
-}
 
 @keyframes fly-in {
   from {
@@ -3513,27 +3196,6 @@ html[data-size="tall-narrow"] .tray-label {
 }
 
 /* The hearts earned pop up beside the visitor, then fly to the counter. */
-.hearts-pop {
-  position: absolute;
-  left: 63%;
-  top: 17%;
-  padding: 14px 26px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  border-radius: 40px;
-  background: #fffdf8;
-  color: #c9583d;
-  animation:
-    pop-in var(--motion-standard) var(--ease-overshoot) var(--motion-screen) both,
-    fly-to-counter var(--motion-standard) var(--ease-out) calc(var(--motion-screen) + var(--motion-standard)) forwards;
-}
-
-.hearts-pop-count {
-  color: #1d2742;
-  font-size: 34px;
-  font-weight: 700;
-}
 
 @keyframes fly-to-counter {
   to {
@@ -3544,29 +3206,6 @@ html[data-size="tall-narrow"] .tray-label {
 }
 
 /* Bubbles rise from a bath, and moons drift up from a nest. */
-.rising {
-  position: absolute;
-  left: 18.8%;
-  top: 20%;
-  width: 42%;
-  height: 60%;
-  pointer-events: none;
-}
-
-.rising-piece {
-  position: absolute;
-  bottom: 0;
-  color: #f6f2e9;
-  animation: rise-away calc(var(--motion-count) * 0.8) var(--ease-out) both;
-  animation-delay: calc(var(--motion-screen) + var(--piece) * var(--motion-stagger) * 2);
-}
-
-.rising[data-item="bath"] .rising-piece {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: #ffffff33;
-}
 
 @keyframes rise-away {
   from {
@@ -3581,62 +3220,8 @@ html[data-size="tall-narrow"] .tray-label {
 /* The items, each a big picture with its word under it. While a
    reaction plays they rest dimmed and take no tap, and fade back in once
    it ends. */
-.tray {
-  display: flex;
-  gap: 20px;
-}
-
-.tray-item {
-  position: relative;
-  flex: 1 1 0;
-  min-width: 120px;
-  height: 190px;
-  box-sizing: border-box;
-  padding: 10px 10px 16px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  border: none;
-  border-radius: 24px;
-  outline: 1px solid #1d27421f;
-  outline-offset: -0.5px;
-  background: #fffdf8;
-  box-shadow: 0 6px 16px #1d274224;
-}
-
-.tray-item[data-pressed] {
-  background: #e6e2d9;
-}
-
-.tray[data-busy] .tray-item,
-.tray-item[data-refused] {
-  opacity: 0.5;
-}
 
 /* After a refusal, what would meet the need is ringed in amber. */
-.tray-item[data-suggested]::after {
-  content: "";
-  position: absolute;
-  inset: -5px;
-  border: 5px solid #e39b2d;
-  border-radius: 29px;
-  pointer-events: none;
-  animation: fade-in var(--motion-standard) var(--ease-out) both;
-}
-
-.tray-picture {
-  width: 100%;
-  height: 124px;
-  min-height: 0;
-  object-fit: contain;
-}
-
-.tray-label {
-  font-size: 22px;
-  font-weight: 700;
-}
 
 /* A care result is the quiz's, with hearts for stars and the visitor,
    tilted, as its hero. */
@@ -3727,21 +3312,6 @@ html[data-size="tall-narrow"] .care-result .result-actions .home-button {
 /* On a phone care's screens take 24 pixels above, 32 below and 20 at the
    sides, their parts 16 apart, HOME and BACK as 48-pixel symbols, the
    titles at 24 pixels. */
-html[data-size="tall-narrow"] .visit {
-  padding:
-    calc(24px + env(safe-area-inset-top))
-    calc(20px + var(--screen-right))
-    calc(32px + env(safe-area-inset-bottom))
-    calc(20px + var(--screen-left));
-  gap: 16px;
-}
-
-html[data-size="tall-narrow"] .visit-bar {
-  gap: 12px 8px;
-}
-html[data-size="tall-narrow"] .visit-bar .home-button {
-  width: 48px;
-}
 
 /* The bars' titles are their words alone, beside HOME, BACK and the
    best score. */
@@ -3752,77 +3322,9 @@ html[data-size="tall-narrow"] .visit-bar .home-button {
    across the second; the visitor's name is smaller, and the five items
    share one row as their pictures alone, their words kept for screen
    readers. */
-html[data-size="tall-narrow"] .visit-bar {
-  flex-wrap: wrap;
-}
-
-html[data-size="tall-narrow"] .needs {
-  order: 1;
-  flex: 1 0 100%;
-  box-sizing: border-box;
-  padding: 4px;
-  justify-content: space-around;
-}
-
-html[data-size="tall-narrow"] .need {
-  width: 48px;
-  height: 48px;
-}
-
-html[data-size="tall-narrow"] .hearts-counter {
-  height: 48px;
-  padding: 0 14px 0 12px;
-  gap: 6px;
-  font-size: 20px;
-}
 
 /* The stage keeps at least 200 pixels for the visitor: a window too
    short for that scrolls. */
-html[data-size="tall-narrow"] .visit {
-  height: auto;
-  min-height: 100vh;
-  min-height: 100dvh;
-}
-
-html[data-size="tall-narrow"] .stage {
-  flex: 1 0 200px;
-  border-radius: 24px;
-}
-
-html[data-size="tall-narrow"] .visitor-name {
-  left: 16px;
-  top: 14px;
-  font-size: 22px;
-}
-
-html[data-size="tall-narrow"] .tray {
-  gap: 6px;
-}
-
-html[data-size="tall-narrow"] .tray-item {
-  height: 72px;
-  padding: 6px 2px;
-  border-radius: 16px;
-}
-
-html[data-size="tall-narrow"] .tray-item[data-suggested]::after {
-  border-radius: 21px;
-}
-
-html[data-size="tall-narrow"] .tray-picture {
-  height: 100%;
-}
-
-html[data-size="tall-narrow"] .tray-label {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
 
 /* A care result's visitor as wide as the column, its eight hearts at 28
    on one row, and its three ways one over another. */
@@ -8199,71 +7701,13 @@ html[data-theme="dark"],
 
 /* Care's screens take the dark values in the same shapes. Words and
    symbols on amber stay the light ink. */
-[data-theme="dark"] .featured-card[data-game="care"],
-[data-theme="dark"] .need[data-state="current"],
-[data-theme="dark"] .bubble-badge {
+[data-theme="dark"] .featured-card[data-game="care"] {
   background: #f2b24b;
-}
-
-[data-theme="dark"] .need,
-[data-theme="dark"] .tray-item[data-pressed] {
-  background: #222a3d;
-}
-
-[data-theme="dark"] .need {
-  color: #9ca3b6;
-}
-
-[data-theme="dark"] .need[data-state="current"] {
-  color: #1d2742;
-}
-
-[data-theme="dark"] .stage {
-  background: #2c3b66;
-}
-
-[data-theme="dark"] .stage-glow {
-  background: #34466e;
-}
-
-[data-theme="dark"] .need-bubble,
-[data-theme="dark"] .bubble-tail,
-[data-theme="dark"] .hearts-pop {
-  background: #181e2e;
-  color: #ece8de;
-}
-
-[data-theme="dark"] .hearts-pop {
-  color: #e57a5d;
-}
-
-[data-theme="dark"] .hearts-pop-count {
-  color: #ece8de;
-}
-
-[data-theme="dark"] .needs,
-[data-theme="dark"] .hearts-counter,
-[data-theme="dark"] .tray-item {
-  outline-color: #ece8de1f;
-  background: #181e2e;
-}
-
-[data-theme="dark"] .tray-item {
-  box-shadow: 0 8px 24px #00000066;
-}
-
-[data-theme="dark"] .tray-item[data-suggested]::after {
-  border-color: #f2b24b;
 }
 
 /* White would fade on the dark theme's lighter terracotta and green, so
    the marks there take the dark page's ink, as the catalogue's do. */
 
-[data-theme="dark"] .need[data-state="met"] {
-  background: #63c98c;
-  color: #0f1320;
-}
-[data-theme="dark"] .hearts-counter svg,
 [data-theme="dark"] .friend-chip svg {
   color: #e57a5d;
 }
@@ -11164,6 +10608,18 @@ html[data-size="wide-short"] .pairs-board-bedrock { display: none; }
 /* There every card fits; a name too small is left to its label. */
 html[data-size="wide-short"] .pair-board { --pb-card: min(var(--pb-card-max), (100cqw - (var(--columns) - 1) * var(--pb-gap)) / var(--columns), (100cqh - (var(--rows) - 1) * var(--pb-gap)) / var(--rows) / var(--pb-ratio)); }
 html[data-size="wide-short"] .pair-card-name[data-caption] { display: none; }
+
+
+/* The need asked now grows a little on a visit. */
+.need {
+  transition:
+    background-color var(--motion-standard) var(--ease-out),
+    scale var(--motion-standard) var(--ease-overshoot);
+}
+
+.need[data-state="current"] {
+  scale: calc(1 + 0.08 * var(--motion-amount));
+}
 
 @media (prefers-reduced-motion: reduce) {
   :root {

@@ -1,3 +1,4 @@
+import "./careSheets.ts";
 import { act, render } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { describe, expect, it } from "vitest";
