@@ -7,7 +7,7 @@ struct ContinuousCallClockTests {
 
     @Test func firesOnceAfterRealDelay() async throws {
 
-        let clock = ContinuousCallClock()
+        let clock = ContinuousCallClock(now: { ContinuousClock.now }, sleep: { try await Task.sleep(until: $0, clock: .continuous) })
         let delay = Duration.milliseconds(20)
         let fired = AsyncStream<ContinuousClock.Instant>.makeStream()
         defer { fired.continuation.finish() }
@@ -28,7 +28,7 @@ struct ContinuousCallClockTests {
 
     @Test func cancellingRealWaitDoesNotFire() async throws {
 
-        let clock = ContinuousCallClock()
+        let clock = ContinuousCallClock(now: { ContinuousClock.now }, sleep: { try await Task.sleep(until: $0, clock: .continuous) })
         let delay = Duration.milliseconds(20)
         let laterFired = AsyncStream<Void>.makeStream()
         defer { laterFired.continuation.finish() }
@@ -61,18 +61,21 @@ struct ContinuousCallClockTests {
 
         let sleep = ControlledCallSleep()
         let origin = ContinuousClock.now
-        let completed = AsyncStream<Void>.makeStream()
+        let fires = AsyncStream<Void>.makeStream()
         let fired = Mutex(0)
-        let clock = ContinuousCallClock(now: { origin }, sleep: { try await sleep.until($0) }, finished: { completed.continuation.yield(()) })
-        let wait = clock.after(delay) { fired.withLock { $0 += 1 } }
+        let clock = ContinuousCallClock(now: { origin }, sleep: { try await sleep.until($0) })
+        let wait = clock.after(delay) {
+            fired.withLock { $0 += 1 }
+            fires.continuation.yield(())
+        }
         defer { wait.cancel() }
         var deadlines = sleep.deadlines.makeAsyncIterator()
 
         #expect(await deadlines.next() == origin.advanced(by: delay))
         #expect(fired.withLock { $0 } == 0)
         sleep.resume()
-        var finishes = completed.stream.makeAsyncIterator()
-        _ = await finishes.next()
+        var firing = fires.stream.makeAsyncIterator()
+        _ = await firing.next()
         #expect(fired.withLock { $0 } == 1)
     }
 
@@ -80,17 +83,17 @@ struct ContinuousCallClockTests {
 
         let sleep = ControlledCallSleep()
         let origin = ContinuousClock.now
-        let completed = AsyncStream<Void>.makeStream()
         let fired = Mutex(0)
-        let clock = ContinuousCallClock(now: { origin }, sleep: { try await sleep.until($0) }, finished: { completed.continuation.yield(()) })
+        let clock = ContinuousCallClock(now: { origin }, sleep: { try await sleep.until($0) })
         let wait = clock.after(.seconds(30)) { fired.withLock { $0 += 1 } }
         var deadlines = sleep.deadlines.makeAsyncIterator()
         #expect(await deadlines.next() == origin.advanced(by: .seconds(30)))
 
         wait.cancel()
         sleep.resume()
-        var finishes = completed.stream.makeAsyncIterator()
-        _ = await finishes.next()
+        // A sleep that returns cancelled throws, and nothing after it fires.
+        var returns = sleep.returns.makeAsyncIterator()
+        _ = await returns.next()
 
         #expect(sleep.wasCancelled)
         #expect(fired.withLock { $0 } == 0)
@@ -109,10 +112,14 @@ private final class ControlledCallSleep: Sendable {
     private let state = Mutex(State())
     let deadlines: AsyncStream<ContinuousClock.Instant>
     private let started: AsyncStream<ContinuousClock.Instant>.Continuation
+    /// Reports each return, after recording whether it was cancelled.
+    let returns: AsyncStream<Void>
+    private let returned: AsyncStream<Void>.Continuation
 
     init() {
 
         (deadlines, started) = AsyncStream.makeStream()
+        (returns, returned) = AsyncStream.makeStream()
     }
 
     var wasCancelled: Bool {
@@ -127,6 +134,7 @@ private final class ControlledCallSleep: Sendable {
             started.yield(deadline)
         }
         state.withLock { $0.cancelled = Task.isCancelled }
+        returned.yield(())
         try Task.checkCancellation()
     }
 
