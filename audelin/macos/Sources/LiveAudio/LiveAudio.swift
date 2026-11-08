@@ -4,7 +4,6 @@ import Synchronization
 public actor LiveAudio: Capture {
 
     private let capture: any Capture
-    private let beforeInput: @Sendable () async -> Void
     private let position = Mutex(0.0)
     private let live = AsyncStream<Audio>.makeStream()
     private let measured = AsyncStream<AudioStatistics>.makeStream()
@@ -23,16 +22,7 @@ public actor LiveAudio: Capture {
 
     public init(capture: any Capture) {
 
-        self.init(capture: capture, beforeInput: {})
-    }
-
-    init(
-        capture: any Capture,
-        beforeInput: @escaping @Sendable () async -> Void
-    ) {
-
         self.capture = capture
-        self.beforeInput = beforeInput
     }
 
     /// Only the first listener receives audio; it may subscribe before start.
@@ -80,9 +70,7 @@ public actor LiveAudio: Capture {
             throw error
         }
         started = true
-        let beforeInput = beforeInput
         receiving = Task { @concurrent [weak self] in
-            await beforeInput()
             do {
                 for try await piece in stream { await self?.receive(piece) }
                 await self?.finish()
