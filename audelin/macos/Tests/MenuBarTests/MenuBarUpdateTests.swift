@@ -38,18 +38,32 @@ struct MenuBarUpdateTests {
         }
     }
 
-    @MainActor @Test func badgeKeepsImageGeometryAndColour() {
+    @MainActor @Test func badgePresentationLeavesPlainTemplateGlyphInEveryState() {
         for recording in recordings {
             let item = MenuBarItem.from(recording, liveText: true)
-            let plain = item.image(updateBadge: false, accent: .systemTeal)
-            let badged = item.image(updateBadge: true, accent: .systemTeal)
-            #expect(badged.size == plain.size)
-            #expect(badged.alignmentRect == plain.alignmentRect)
-            #expect(plain.isTemplate == !item.isRed)
-            #expect(!badged.isTemplate)
-            #expect(badged.tiffRepresentation != plain.tiffRepresentation)
+            let expected = NSImage(systemSymbolName: item.symbol, accessibilityDescription: "Audelin")!
+            expected.isTemplate = true
+            let spy = BadgeSpy()
+            for badge in [false, true, true, false] {
+                let menu = MenuBarModel(recording: recording, preferences: .init(automatic: false, liveText: true),
+                                        updateBadge: badge)
+                menu.presentBadge(using: spy)
+                let image = menu.item.image()
+                #expect(image.isTemplate)
+                #expect(image.size == expected.size)
+                #expect(image.alignmentRect == expected.alignmentRect)
+                #expect(image.tiffRepresentation == expected.tiffRepresentation)
+            }
+            #expect(spy.calls == [false, true, true, false])
         }
     }
+}
+
+@MainActor
+private final class BadgeSpy: MenuBarBadgePresenting {
+    var calls: [Bool] = []
+    func show() { calls.append(true) }
+    func hide() { calls.append(false) }
 }
 
 private let recordings: [MenuBarRecording] = [

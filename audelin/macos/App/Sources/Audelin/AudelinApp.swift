@@ -20,6 +20,12 @@ import SwiftUI
 struct AudelinApp: App {
 
     @NSApplicationDelegateAdaptor(AudelinAppDelegate.self) private var appDelegate
+    @State private var badgePresenter = StatusButtonBadgePresenter(
+        windows: { NSApp.windows },
+        matches: { $0.accessibilityIdentifier() == "audelin.menu" || $0.image?.accessibilityDescription == "Audelin" },
+        accent: { appearance in
+            NSColor(GlassLedger.for(appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? .dark : .light).me)
+        }, notifications: .default)
     @State private var model: AudelinMenu?
     @State private var panel: FloatingPanel?
     @State private var settingsWindow: NSWindow?
@@ -111,7 +117,11 @@ struct AudelinApp: App {
             // Icon only: titles of different widths shifted the icon (LAB-640).
             Image(nsImage: menuBarImage)
                 .accessibilityLabel(model?.menu.item.title ?? "Audelin")
+                .accessibilityIdentifier("audelin.menu")
                 .task { await start() }
+                .onChange(of: model?.menu.updateBadge, initial: true) {
+                    model?.menu.presentBadge(using: badgePresenter)
+                }
         }
     }
 
@@ -123,8 +133,7 @@ struct AudelinApp: App {
         guard let item = model?.menu.item else {
             return NSImage(systemSymbolName: "waveform", accessibilityDescription: "Audelin") ?? NSImage()
         }
-        return item.image(updateBadge: model?.menu.updateBadge ?? false,
-                          accent: NSColor(tokens.me))
+        return item.image()
     }
 }
 
