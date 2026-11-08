@@ -248,6 +248,20 @@ struct SystemAudioCaptureTests {
         #expect(binding.events == expected)
     }
 
+    @Test func aSystemStopDuringStartReleasesEverythingOnce() async throws {
+
+        let binding = FakeCaptureBinding()
+        binding.state.withLock { $0.stopsWhileStarting = true }
+        let capture = try await SystemAudioCapture(binding: binding, processes: .only([10]))
+        var failure: CaptureError?
+        do {
+            for try await _ in capture.audio {}
+        } catch { failure = error as? CaptureError }
+        #expect(failure == .deviceStopped)
+        #expect(Array(binding.events.suffix(5)) == ["stop", "unwatch", "remove io", "destroy device", "destroy tap"])
+        #expect(binding.events.filter { $0 == "destroy tap" }.count == 1)
+    }
+
     @Test func aSystemStopReportsFailure() async throws {
 
         let binding = FakeCaptureBinding()

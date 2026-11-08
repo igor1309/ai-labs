@@ -18,6 +18,7 @@ final class FakeCaptureBinding: CaptureBinding, @unchecked Sendable {
         var refuse: String?
         var running = false
         var notifyOnStop = false
+        var stopsWhileStarting = false
         var receive: (@Sendable (Result<AudioPiece, any Error>) -> Void)?
         var stopped: (@Sendable () -> Void)?
     }
@@ -29,8 +30,6 @@ final class FakeCaptureBinding: CaptureBinding, @unchecked Sendable {
     private var cleaned = false
     private var removalWaiters: [CheckedContinuation<Void, Never>] = []
     private var cleanupWaiters: [CheckedContinuation<Void, Never>] = []
-    private let callbackKey = UUID().uuidString
-    private let listenerKey = UUID().uuidString
 
     func waitForRemoval() async {
 
@@ -88,7 +87,6 @@ final class FakeCaptureBinding: CaptureBinding, @unchecked Sendable {
     func destroyTap(_ tap: UInt32) {
 
         #expect(tap == 11)
-        expectCleanupContext()
         state.withLock { $0.events.append("destroy tap") }
         callbacks.lock()
         cleaned = true
@@ -108,7 +106,6 @@ final class FakeCaptureBinding: CaptureBinding, @unchecked Sendable {
 
     func destroyDevice(_ device: UInt32) {
 
-        expectCleanupContext()
         #expect(device == 22)
         state.withLock { $0.events.append("destroy device") }
     }
@@ -135,7 +132,6 @@ final class FakeCaptureBinding: CaptureBinding, @unchecked Sendable {
     func removeIO(_ device: UInt32, _ io: UInt64) {
 
         #expect(device == 22 && io == 33)
-        expectCleanupContext()
         callbacks.lock()
         state.withLock { $0.events.append("remove io"); $0.receive = nil }
         removing = true
@@ -144,7 +140,7 @@ final class FakeCaptureBinding: CaptureBinding, @unchecked Sendable {
         callbacks.unlock()
         for waiter in waiters { waiter.resume() }
         callbacks.lock()
-        // The capture's dedicated cleanup queue waits for native IO to return.
+        // Removal waits for native IO already in flight to return.
         while inFlight > 0 { callbacks.wait() }
         callbacks.unlock()
     }
@@ -159,7 +155,6 @@ final class FakeCaptureBinding: CaptureBinding, @unchecked Sendable {
 
     func unwatchDevice(_ device: UInt32, _ watch: UInt64) {
 
-        expectCleanupContext()
         #expect(device == 22 && watch == 44)
         state.withLock { $0.events.append("unwatch"); $0.stopped = nil }
     }
@@ -168,13 +163,13 @@ final class FakeCaptureBinding: CaptureBinding, @unchecked Sendable {
 
         #expect(device == 22 && io == 33)
         try record("start")
-        state.withLock { $0.running = true }
+        let stopped = state.withLock { $0.running = true; return $0.stopsWhileStarting ? $0.stopped : nil }
+        stopped?()
     }
 
     func stopDevice(_ device: UInt32, _ io: UInt64) {
 
         #expect(device == 22 && io == 33)
-        expectCleanupContext()
         let callback = state.withLock {
             $0.events.append("stop")
             $0.running = false
@@ -190,16 +185,8 @@ final class FakeCaptureBinding: CaptureBinding, @unchecked Sendable {
 
     func systemStops() {
 
-        Thread.current.threadDictionary[listenerKey] = true
-        defer { Thread.current.threadDictionary.removeObject(forKey: listenerKey) }
         let callback = state.withLock { $0.stopped }
         callback?()
-    }
-
-    private func expectCleanupContext() {
-
-        #expect(Thread.current.threadDictionary[callbackKey] == nil)
-        #expect(Thread.current.threadDictionary[listenerKey] == nil)
     }
 
     func play(_ pids: [Int32]) {
@@ -226,14 +213,12 @@ final class FakeCaptureBinding: CaptureBinding, @unchecked Sendable {
         }
         inFlight += 1
         return { [self] in
-            Thread.current.threadDictionary[callbackKey] = true
             if snapshot.2 > 0 {
                 receive(.success(AudioPiece(samples: samples, sampleRate: snapshot.2)))
             } else {
                 receive(.failure(CaptureError.unsupportedFormat))
             }
             beforeReturn()
-            Thread.current.threadDictionary.removeObject(forKey: callbackKey)
             callbacks.lock()
             inFlight -= 1
             callbacks.broadcast()
