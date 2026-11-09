@@ -1,0 +1,4 @@
+work/
+.venv/
+clips/
+labels.csv
