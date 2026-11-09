@@ -11,6 +11,7 @@ let package = Package(
         .library(name: "SummaryRuntime", targets: ["SummaryRuntime"]),
         .library(name: "SpeakerIdentification", targets: ["SpeakerIdentification"]),
         .library(name: "SpeakerNaming", targets: ["SpeakerNaming"]),
+        .library(name: "CallObservation", targets: ["CallObservation"]),
 
         .library(name: "BlockingTestWork", targets: ["BlockingTestWork"]),
         .library(name: "SplitRows", targets: ["SplitRows"]),
@@ -65,6 +66,8 @@ let package = Package(
         .testTarget(name: "SpeakerIdentificationTests", dependencies: ["SpeakerIdentification", "BlockingTestWork"]),
         .target(name: "SpeakerNaming"),
         .testTarget(name: "SpeakerNamingTests", dependencies: ["SpeakerNaming"]),
+        .target(name: "CallObservation"),
+        .testTarget(name: "CallObservationTests", dependencies: ["CallObservation"]),
 
         .testTarget(name: "SourceChecksTests", dependencies: ["BlockingTestWork"]),
         .target(name: "Calls", dependencies: ["CallFolderName"]),
