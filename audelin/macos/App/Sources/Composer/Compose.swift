@@ -36,7 +36,9 @@ public func compose(
         credential: { name in
             guard let value = getenv(name) else { return nil }
             return String(cString: value)
-        }, deadline: { try await boundary.time.sleep(.seconds(120)) })
+        }, resolveProgram: summaryExecutable(path: ProcessInfo.processInfo.environment["PATH"] ?? "",
+                                            home: FileManager.default.homeDirectoryForCurrentUser.path).resolve,
+        deadline: { try await boundary.time.sleep(.seconds(120)) })
     let summaries = AudelinSummaries(files: SummaryFiles.Files(locations: storage, disk: FileDisk(), ownershipDirectory: preferencesURL.deletingLastPathComponent().appendingPathComponent("summary-ownership")),
                                      runtime: runtime, preferences: preferences, sink: boundary.log)
     let menu = await AudelinMenu(storage: preferences, occupiedCallNames: { try storage.occupiedCallNames() }, boundary: boundary, processes: processes, panel: panel,
@@ -58,4 +60,12 @@ public func compose(
     do { await summaries.recover(calls: try await storage.list().map(\.id)) }
     catch { boundary.log.write(.init(category: .session, message: "summary recovery listing failed")) }
     return menu
+}
+
+func summaryExecutable(path: String, home: String) -> ClaudeExecutable {
+    ClaudeExecutable(path: path, home: home, isExecutableFile: { program in
+        var directory: ObjCBool = false
+        return FileManager.default.fileExists(atPath: program, isDirectory: &directory)
+            && !directory.boolValue && FileManager.default.isExecutableFile(atPath: program)
+    })
 }
