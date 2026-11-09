@@ -6,6 +6,14 @@ that the app does not need back, and gating leaves transcript quality unchanged
 at best. Criteria 1–3 and 9 were not settled: the recogniser reference is
 contaminated (below) and hand labelling was not done.
 
+Follow-up on 2026-11-09: two owner-reported silent microphone windows reproduce
+English hallucinations. A whole-window gate at threshold 0.5 rejects both with
+reference Silero, but only one with FluidAudio; FluidAudio rejects both at 0.95.
+Both retain twelve speech controls at their respective settings (three utterances
+at four levels). This motivates broader validation
+of silent-window rejection; it does not establish recall on real calls or change
+production's no-VAD configuration.
+
 If a VAD is wanted later: FluidAudio for skipping silence before recognition (no
 new dependency, passes the WER criterion); not FluidAudio for a speech-based
 microphone silence signal, since it marks far-end bleed 7× as often as Silero.
