@@ -32,7 +32,8 @@ struct TranscriptLogResizeTests {
             // TextKit can temporarily return no segment while the resized
             // viewport is being laid out. Wait for geometry, not a fixed
             // runner-speed-dependent delay; never scroll the view in the test.
-            let deadline = Date.now.addingTimeInterval(2)
+            let started = Date.now
+            let deadline = started.addingTimeInterval(2)
             var last = NSRect.zero
             repeat {
                 RunLoop.main.run(until: .now.addingTimeInterval(0.01))
@@ -43,7 +44,9 @@ struct TranscriptLogResizeTests {
             #expect(text.string == originalText, "Resize duplicated or lost transcript text")
             let visible = scroll.convert(scroll.contentView.bounds, from: scroll.contentView)
             let screen = window.convertToScreen(scroll.convert(visible, to: nil))
-            #expect(last.intersects(screen), "last line disappeared at width \(width): \(last), viewport \(screen)")
+            #expect(last.intersects(screen), """
+                last line disappeared at width \(width): \(last), viewport \(screen); \(layoutReport(text, waitedSince: started))
+                """)
         }
     }
 
@@ -80,4 +83,30 @@ struct TranscriptLogResizeTests {
         if let scroll = view as? NSScrollView { return scroll }
         return view.subviews.lazy.compactMap(scrollView(in:)).first
     }
+}
+
+
+/// What a missing last line needs explained: how long the test waited and
+/// how far TextKit had laid the text out.
+@MainActor
+private func layoutReport(_ text: NSTextView, waitedSince started: Date) -> String {
+
+    let waited = String(format: "%.3f", Date.now.timeIntervalSince(started))
+    var report = "waited \(waited) s, text frame \(text.frame), visible \(text.visibleRect), "
+        + "window visible \(text.window?.isVisible ?? false), length \(text.string.utf16.count)"
+    guard let layout = text.textLayoutManager else { return report + ", no TextKit 2 layout manager" }
+    report += ", usage bounds \(layout.usageBoundsForTextContainer)"
+    if let viewport = layout.textViewportLayoutController.viewportRange, let content = layout.textContentManager {
+        let start = content.offset(from: content.documentRange.location, to: viewport.location)
+        let end = content.offset(from: content.documentRange.location, to: viewport.endLocation)
+        report += ", viewport characters \(start)..<\(end)"
+    } else {
+        report += ", no viewport range"
+    }
+    if let content = layout.textContentManager {
+        let lastCharacter = content.location(content.documentRange.endLocation, offsetBy: -1)
+        let fragment = lastCharacter.flatMap { layout.textLayoutFragment(for: $0) }
+        report += ", last line's fragment \(fragment.map { "\($0.state.rawValue) at \($0.layoutFragmentFrame)" } ?? "none")"
+    }
+    return report
 }
