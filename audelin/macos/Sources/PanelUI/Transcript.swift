@@ -296,7 +296,7 @@ private extension Transcript {
             let key = SymbolKey(speaker: speaker, alpha: alpha, size: size)
             if let attachment = symbols[key] { return attachment }
 
-            let name = speaker == .me ? "mic.fill" : "speaker.wave.2"
+            let name = speaker == .me ? "microphone.fill" : "speaker.wave.3.fill"
             let label = speaker == .me ? "я" : "они"
             let color = NSColor(speaker == .me ? tokens.me : tokens.them).withAlphaComponent(alpha)
             let configuration = NSImage.SymbolConfiguration(pointSize: Self.symbolSize, weight: .regular)
