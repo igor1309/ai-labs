@@ -54,6 +54,22 @@ BOUNDED_EVENTS="$events" BOUNDED_GROWN="$grown" SWIFT_BACKTRACE=enable=yes perl 
   # A test past its own time limit is reported while its stuck work still
   # runs: sample every process below the run once, at that moment, so a
   # per-test timeout leaves stacks and not only its name.
+  # DIAGNOSTIC (LAB-1078): sample the run early, while suites start together.
+  my $early = fork() // die "fork: $!";
+  if ($early == 0) {
+    until (-s $ENV{BOUNDED_EVENTS}) { exit 0 unless kill(0, $pid); select(undef, undef, undef, 0.2) }
+    for my $wait (3, 4, 4) {
+      sleep $wait;
+      print STDERR "LAB1078S sampling\n";
+      my @samplers = map {
+        my $s = fork() // die "fork: $!";
+        if ($s == 0) { exec("sample", $_, "2") or exit 1 }
+        $s
+      } reverse tree($pid);
+      waitpid($_, 0) for @samplers;
+    }
+    exit 0;
+  }
   my $watcher = fork() // die "fork: $!";
   if ($watcher == 0) {
     my $sampled = 0;
@@ -98,6 +114,7 @@ BOUNDED_EVENTS="$events" BOUNDED_GROWN="$grown" SWIFT_BACKTRACE=enable=yes perl 
   my $status = $?;
   alarm(0);
   kill("TERM", $watcher); waitpid($watcher, 0);
+  waitpid($early, 0);
   my $after = rss();
   print STDERR "coreaudiod after the run: " . int($after / 1024) . " MB\n"
     if defined $before && defined $after;
