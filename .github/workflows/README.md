@@ -74,6 +74,15 @@ Notes:
 - `warder/cmd/warder/files_test.go`, `process_test.go` and `serve_test.go` are `//go:build unix`: they run on the `local-mac` runner and are skipped on any other OS.
 - Agister, gokit and warder run on the self-hosted `local-mac` runner. When it is offline, the job waits queued; `local-wait` (`scripts/local-wait.js`) cancels the run once one has waited 15 minutes, naming it, so `report` ends red rather than pending for GitHub's 24 hours: never a silent pass.
 
+## Slow-test hunts
+
+`rexlab-slow-tests` (Tuesdays) and `audelin-slow-tests` (Wednesdays, on
+macOS) run the project's whole suite three times with
+`<project>/scripts/slow-tests.*`, upload the ranking as the
+`slow-tests-report` artifact, write its top to the job summary and post it
+to the project's slow-test hunter autopilot. They never run on a push or
+pull request, and nothing in them fails on a slow test.
+
 ## Keeping it regular
 
 Two things keep the table above from going stale (LAB-219):

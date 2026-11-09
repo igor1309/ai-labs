@@ -298,6 +298,7 @@ jobs:
               - ".github/workflows/audelin-core.yml"
               - ".github/workflows/audelin-nightly.yml"
               - "audelin/scripts/swift-test-bounded.sh"
+              - "audelin/scripts/slow-tests.py"
             mizan-ble:
               - "mizan-ble/ios/**"
               - "mizan-ble/docs/design/mizan-ble.pen"

@@ -52,6 +52,14 @@ then, in the same directory, run `../scripts/swift-test-bounded.sh 120 -Xswiftc 
 
 CLI `audelin`, data folder `~/.audelin`, calls in `~/Recordings/Audelin`.
 
+`python3 -I audelin/scripts/slow-tests.py` runs the tests of all three
+packages three times and writes every test, ranked by its median duration
+with its file and line, to `slow-tests-report.json` and `.md` in the current
+directory. The weekly `audelin-slow-tests` workflow runs it on macOS and
+hands the ranking to the slow-test hunter autopilot. Tests listed in
+`scripts/slow-tests.skip` (one test id per line, `#` for the reason) are
+marked as skipped there.
+
 ## Install and updates
 
 - **First install:** `sh audelin/macos/scripts/install.sh` from the repository root

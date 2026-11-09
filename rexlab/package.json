@@ -11,7 +11,8 @@
     "test": "vitest run",
     "cyrillic-ems": "node scripts/cyrillic-ems.cjs",
     "test:browser": "node tests/whoseJawBoardLandscape.browser.cjs && node tests/whoseJawDigSite.browser.cjs && node tests/pairsDigSite.browser.cjs",
-    "postinstall": "patch-package --error-on-fail"
+    "postinstall": "patch-package --error-on-fail",
+    "slow-tests": "tsx scripts/slow-tests.ts"
   },
   "devDependencies": {
     "@gltf-transform/core": "4.5.1",
