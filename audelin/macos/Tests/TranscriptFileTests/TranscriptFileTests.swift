@@ -446,3 +446,64 @@ struct TranscriptFileTests {
         }
     }
 }
+
+@Suite(.timeLimit(.minutes(1)))
+struct TranscriptFileSpeakerTests {
+
+    @Test func rowsKeepGenericIDsAndNamesLiveInOneBlock() async throws {
+
+        try await withTranscriptFolder { folder in
+            let url = folder.appendingPathComponent("transcript.md")
+            let file = try await TranscriptFile(url: url)
+            try await file.write([
+                .init(side: .mine, start: 1, settled: "привет", pending: ""),
+                .init(side: .theirs, start: 2, settled: "hello", pending: "", speaker: "s3"),
+            ], speakers: [.init(id: "s3", name: "Anna", state: "confirmed")])
+            #expect(try await transcriptText(url) == """
+                # Transcript
+
+                **Me** 00:00:01
+                привет
+
+                **Speaker s3** 00:00:02
+                hello
+
+                ## Speakers
+
+                - Speaker s3: Anna
+
+                <!-- audelin-speakers {"revision":1,"schemaVersion":1,"speakers":[{"id":"s3","name":"Anna","state":"confirmed"}]} -->
+
+                """)
+        }
+    }
+
+    @Test func renamingRewritesOnlyTheBlockAndFinalRowsStay() async throws {
+
+        try await withTranscriptFolder { folder in
+            let url = folder.appendingPathComponent("transcript.md")
+            let file = try await TranscriptFile(url: url)
+            let row = TranscriptFile.Segment(side: .theirs, start: 2, settled: "hello", pending: "", speaker: "s3")
+            try await file.write(count: 1, finalCount: 1, speakers: [.init(id: "s3", name: "Anna", state: "confirmed")]) { _ in row }
+            try await file.write(count: 1, finalCount: 1, speakers: [.init(id: "s3", name: nil, state: "disputed")]) { _ in row }
+            let text = try await transcriptText(url)
+            #expect(text.contains("**Speaker s3** 00:00:02\nhello\n"))
+            #expect(text.contains("- Speaker s3: unknown"))
+            #expect(!text.contains("Anna"))
+            #expect(text.contains("\"revision\":2"))
+        }
+    }
+
+    @Test func hostileNamesCannotBreakTheFile() async throws {
+
+        try await withTranscriptFolder { folder in
+            let url = folder.appendingPathComponent("transcript.md")
+            let file = try await TranscriptFile(url: url)
+            try await file.write([.init(side: .theirs, start: 0, settled: "hi", pending: "", speaker: "s1")],
+                                 speakers: [.init(id: "s1", name: "**Eve** -->\n# x", state: "confirmed")])
+            let text = try await transcriptText(url)
+            #expect(text.contains("- Speaker s1: \\*\\*Eve\\*\\* --\\> \\# x\n"))
+            #expect(text.components(separatedBy: "-->").count == 2)
+        }
+    }
+}

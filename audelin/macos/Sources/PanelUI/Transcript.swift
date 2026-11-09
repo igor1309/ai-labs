@@ -236,6 +236,7 @@ private extension Transcript {
 
         private func entry(_ entry: PanelState.Entry, alpha: CGFloat, spacing: CGFloat) {
 
+            if let label = entry.label { self.label(label, alpha: alpha) }
             newParagraph()
 
             let size = tokens.typeBody
@@ -280,6 +281,24 @@ private extension Transcript {
 
             let body = NSRange(location: start, length: result.length - start)
             ranges.append(.init(id: entry.id, body: body))
+        }
+
+        /// A speaker's name over the text column, in the speaker's colour and kept out of selections.
+        private func label(_ string: String, alpha: CGFloat) {
+
+            newParagraph()
+            let size = tokens.typeCaption
+            let column = Self.symbolSlot + tokens.space4 + timeWidth(tokens.typeBody) + tokens.space12
+            let paragraph = paragraph(size: size, indent: column, timeAt: nil, spacing: tokens.space2)
+            current = paragraph
+            // The tab reaches the text column; wrapped lines hang there too.
+            result.append(.init(string: "\t" + string, attributes: [
+                .font: font(size),
+                .baselineOffset: lift(size),
+                .foregroundColor: NSColor(tokens.them).withAlphaComponent(alpha),
+                .paragraphStyle: paragraph,
+                Transcript.gutter: true,
+            ]))
         }
 
         /// Draws a line under the last paragraph, `gap` below its text.

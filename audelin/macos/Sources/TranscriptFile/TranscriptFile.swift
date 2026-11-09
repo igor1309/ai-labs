@@ -23,15 +23,29 @@ public actor TranscriptFile {
         public let settled: String
         public let pending: String
         public let filledInLater: Bool
+        /// The diarized speaker's stable generic ID on the other side; never a name, so a
+        /// final row never needs rewriting when names change.
+        public let speaker: String?
 
-        public init(side: Side, start: Double, settled: String, pending: String, filledInLater: Bool = false) {
+        public init(side: Side, start: Double, settled: String, pending: String, filledInLater: Bool = false, speaker: String? = nil) {
 
             self.side = side
+            self.speaker = speaker
             self.start = start
             self.settled = settled
             self.pending = pending
             self.filledInLater = filledInLater
         }
+    }
+
+    /// One remote speaker's current name, revised as evidence changes.
+    public struct Speaker: Sendable, Equatable, Codable {
+
+        public let id: String
+        public let name: String?
+        public let state: String
+
+        public init(id: String, name: String?, state: String) { self.id = id; self.name = name; self.state = state }
     }
 
     public nonisolated let url: URL
@@ -46,6 +60,8 @@ public actor TranscriptFile {
     private var finalHasWords = false
     /// How many leading bytes of `finalText` the file on disk is known to hold, once it holds a final entry.
     private var keptOnDisk: Int?
+    private var speakers: [Speaker] = []
+    private var revision = 0
     private static let noText = "# Transcript\n\nNo text was heard.\n"
 
     /// Creates a new file exclusively; an existing path is always an error.
@@ -69,22 +85,26 @@ public actor TranscriptFile {
     }
 
     /// A failed replacement leaves writing available for the next snapshot.
-    public func write(_ segments: [Segment]) throws {
+    public func write(_ segments: [Segment], speakers: [Speaker] = []) throws {
 
-        try write(count: segments.count, finalCount: 0) { segments[$0] }
+        try write(count: segments.count, finalCount: 0, speakers: speakers) { segments[$0] }
     }
 
     /// Asks only for segments after those already final, so a save does not walk
     /// the call. The leading `finalCount` segments must never change again.
-    public func write(count: Int, finalCount: Int, segment: @Sendable (Int) -> Segment) throws {
+    /// Speakers go in a block after the rows. While there are any, every write replaces the file
+    /// whole, so an interruption never leaves a half-written name mapping.
+    public func write(count: Int, finalCount: Int, speakers: [Speaker] = [], segment: @Sendable (Int) -> Segment) throws {
 
         guard !closed else { throw Failure.writingEnded }
+        self.speakers = speakers
+        revision += 1
         // Cleared first, so any failure below, rendering included, makes the next write replace the file whole.
         let kept = keptOnDisk
         keptOnDisk = nil
         try render(count: count, finalCount: finalCount, segment: segment)
         let (text, tail, noText) = text()
-        if let kept, !noText {
+        if let kept, !noText, speakers.isEmpty {
             try rewrite(after: min(kept, text.count), text: text, tail: tail)
         } else {
             try replace(text: text, tail: tail)
@@ -142,8 +162,35 @@ public actor TranscriptFile {
     private func text() -> (final: Data, tail: Data, noText: Bool) {
 
         guard finalHasWords || rendered.contains(where: \.hasWords) else { return (Data(Self.noText.utf8), Data(), true) }
-        if rendered.isEmpty { return (finalText.dropLast(), Data(), false) }
-        return (finalText, Data((rendered.lazy.map(\.text).joined(separator: "\n\n") + "\n").utf8), false)
+        let block = speakerBlock()
+        if rendered.isEmpty { return block.isEmpty ? (finalText.dropLast(), Data(), false) : (finalText, Data(block.utf8), false) }
+        let rows = rendered.lazy.map(\.text).joined(separator: "\n\n") + "\n"
+        return (finalText, Data((block.isEmpty ? rows : rows + "\n" + block).utf8), false)
+    }
+
+    /// A readable Speakers section and one versioned machine-readable block after it.
+    private func speakerBlock() -> String {
+
+        guard !speakers.isEmpty else { return "" }
+        let lines = speakers.map { "- Speaker \(Self.escaped($0.id)): \($0.name.map(Self.escaped) ?? "unknown")" }
+        struct Metadata: Encodable { let schemaVersion = 1; let revision: Int; let speakers: [Speaker] }
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        let json = (try? encoder.encode(Metadata(revision: revision, speakers: speakers))).map { String(decoding: $0, as: UTF8.self) } ?? "{}"
+        // `>` only ever appears inside JSON strings, so escaping it keeps the comment closed.
+        let safe = json.replacingOccurrences(of: ">", with: "\\u003e")
+        return "## Speakers\n\n" + lines.joined(separator: "\n") + "\n\n<!-- audelin-speakers \(safe) -->\n"
+    }
+
+    static func escaped(_ text: String) -> String {
+
+        var out = ""
+        for character in text {
+            if character.isNewline { out.append(" "); continue }
+            if "\\`*_[]<>#|".contains(character) { out.append("\\") }
+            out.append(character)
+        }
+        return out
     }
 
     /// One segment's text, kept so an unchanged segment is not rendered again.
@@ -160,7 +207,7 @@ public actor TranscriptFile {
             }
             let seconds = Int(segment.start.rounded(.down))
             let time = String(format: "%02lld:%02lld:%02lld", seconds / 3_600, seconds / 60 % 60, seconds % 60)
-            let side = segment.side == .mine ? "Me" : "Them"
+            let side = segment.side == .mine ? "Me" : segment.speaker.map { "Speaker \(TranscriptFile.escaped($0))" } ?? "Them"
             let later = segment.filledInLater ? " (filled in later)" : ""
             let words = [segment.settled, segment.pending].filter { !$0.isEmpty }.joined(separator: " ")
             self.segment = segment
