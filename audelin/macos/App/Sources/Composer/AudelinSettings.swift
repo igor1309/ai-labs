@@ -63,18 +63,17 @@ func settingsMessage(_ phase: SummarySettings.State.Phase) -> String {
     }
 }
 func runtimeDisclosure(_ runtime: SummarySettings.Configuration.Runtime) -> String {
-    if runtime.kind == .claudeCLI { return "Пустое поле «Программа» — автоматический поиск Claude в PATH и стандартных папках установки. Для другой установки укажите абсолютный путь. Квота подписки Claude · транскрипт → Anthropic. Изоляция исключает настройки пользователя; политики организации сохраняются." }
+    if runtime.kind == .claudeCLI { return "Транскрипт → Anthropic · квота подписки Claude" }
     if let url = try? SummaryRuntime.Runtime.endpoint(runtime.endpoint), SummaryRuntime.Runtime.isLoopback(url.host) {
-        return "Запрос на этот Mac · локальные вычисления. Сервер под вашим управлением может пересылать данные дальше."
+        return "Транскрипт → сервер на этом Mac. Сервер может пересылать данные дальше."
     }
-    return "Оплата API по токенам · транскрипт → \(safeRecipient(runtime.endpoint)). Сохраняется только имя переменной учётных данных."
+    return "Транскрипт → \(safeRecipient(runtime.endpoint)) · оплата по тарифу API"
 }
 private func safeRecipient(_ endpoint: String) -> String { URLComponents(string: endpoint)?.host ?? "настроенный API" }
 func notesDisclosure(_ config: SummarySettings.Configuration) -> String {
-    let fallback = config.fallback.map { "Резервный: " + runtimeDisclosure($0) } ?? "Резервный сервис не настроен."
-    let recipients = config.fallback == nil ? "Основной сервис может получить полный транскрипт." : "Оба сервиса могут получить полный транскрипт."
-    return "Основной: " + runtimeDisclosure(config.primary) + "\n" + fallback
-    + "\n" + recipients + " Определение имён — дополнительный запрос. Таймаут тоже может расходовать квоту или деньги. Проверка не отправляет транскрипт и не подтверждает квоту."
+    let primary = "Выбранный сервис получает полный транскрипт."
+    return config.fallback == nil ? primary
+        : primary + " Резервный получает его только при повторе запроса."
 }
 func notesPresentation(_ state: SummarySettings.State) -> SettingsState.CallNotes {
     guard let draft = state.draft else {
@@ -93,18 +92,18 @@ func notesPresentation(_ state: SummarySettings.State) -> SettingsState.CallNote
             case .credentialVariable: id = .credentialVariable
             }
             return .init(id: id, label: settingsFieldLabel(field.field), value: field.value,
-                         placeholder: id == .executable ? "Автоматически найти Claude" : id == .credentialVariable ? "не требуется" : "", isInvalid: field.isInvalid)
+                         placeholder: id == .executable ? "Найти автоматически" : id == .credentialVariable ? "Имя переменной окружения" : "", isInvalid: field.isInvalid)
         }
         let title: String
         if slot == .primary { title = "Основной сервис" }
-        else if value.kind == nil { title = "Резервный сервис · не настроен" }
+        else if value.kind == nil { title = "Резервный сервис" }
         else if fields.contains(where: \.isInvalid) { title = "Резервный сервис · требует настройки" }
-        else { title = "Резервный сервис · настроен" }
+        else { title = "Резервный сервис" }
         var options: [SettingsState.NotesRuntime.Option] = [
             .init(id: .claudeCLI, title: "Claude Code CLI"),
             .init(id: .compatibleAPI, title: "API · OpenAI-совместимый"),
         ]
-        if slot == .fallback { options.insert(.init(id: .unconfigured, title: "Не настроен (необязательно)"), at: 0) }
+        if slot == .fallback { options.insert(.init(id: .unconfigured, title: "Не использовать"), at: 0) }
         return .init(id: slot, title: title, kind: value.kind.flatMap { .init(rawValue: $0.rawValue) } ?? .unconfigured,
                      options: options, fields: fields, disclosure: value.disclosure)
     }
@@ -128,7 +127,7 @@ func settingsFieldLabel(_ field: SummarySettings.Field) -> String {
     case .model: "Модель"
     case .executable: "Программа"
     case .endpoint: "Адрес API"
-    case .credentialVariable: "API-ключ из"
+    case .credentialVariable: "Переменная ключа"
     }
 }
 func settingsIssueMessage(_ issue: SummarySettings.ValidationIssue) -> String {

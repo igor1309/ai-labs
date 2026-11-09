@@ -18,8 +18,8 @@ extension SettingsView {
                     event(.setAutomaticNotes($0))
                 }
                 .accessibilityIdentifier("notes-automatic")
-                uiText("После финальной расшифровки; запись следующего звонка не ждёт итоги.", tokens.typeSmall, tokens.sub)
-                checkbox("Пробовать определить имена участников", isOn: draft.identifySpeakers, id: "notes-speakers") {
+                uiText("После завершения расшифровки.", tokens.typeSmall, tokens.sub)
+                checkbox("Определять имена участников", isOn: draft.identifySpeakers, id: "notes-speakers") {
                     event(.setIdentifySpeakers($0))
                 }
                 .accessibilityIdentifier("notes-speakers")
@@ -27,8 +27,7 @@ extension SettingsView {
             ForEach(draft.runtimes) { runtime in
                 runtimeCard(runtime)
             }
-            uiText(draft.disclosure, tokens.typeSmall, tokens.sub)
-                .fixedSize(horizontal: false, vertical: true)
+            notesDetails(draft)
             if let banner = draft.banner {
                 errorBanner(banner.title, banner.detail)
             }
@@ -38,6 +37,45 @@ extension SettingsView {
                 notesButton(draft.validate, .secondary)
                 notesButton(draft.save, .primary)
             }
+        }
+    }
+
+    func notesDetails(_ draft: SettingsState.NotesDraft) -> some View {
+        VStack(alignment: .leading, spacing: tokens.space12) {
+            uiText(notesDetailsExpanded ? "▾ О данных, оплате и проверке" : "▸ О данных, оплате и проверке",
+                   tokens.typeSmall, tokens.sub)
+                .padding(.vertical, tokens.space6)
+                .accessibilityHidden(true)
+                .overlay {
+                    SettingsPressTarget(title: "О данных, оплате и проверке", identifier: "notes-details",
+                                        isEnabled: true, selected: notesDetailsExpanded) {
+                        notesDetailsExpanded.toggle()
+                    }
+                }
+            if notesDetailsExpanded {
+                VStack(alignment: .leading, spacing: tokens.space12) {
+                    notesDetail("Данные", draft.disclosure)
+                    notesDetail("Расходы", "Определение имён — отдельный запрос. Запрос с истёкшим временем ожидания тоже может расходовать квоту или деньги.")
+                    notesDetail("Проверка", "«Проверить» проверяет настройки и доступность сервисов. Транскрипт не отправляется. Наличие квоты не проверяется.")
+                    if draft.runtimes.contains(where: { $0.kind == .claudeCLI }) {
+                        notesDetail("Claude", "Пустое поле «Программа» — автоматический поиск Claude в PATH и стандартных папках установки. Для другой установки укажите полный путь. Пользовательские настройки Claude не используются; политики организации действуют.")
+                    }
+                    if draft.runtimes.contains(where: { $0.kind == .compatibleAPI }) {
+                        notesDetail("API-ключ", "Укажите имя переменной окружения с API-ключом, без значения ключа. Сохраняется только имя переменной. Оставьте пустым, если сервер не требует ключ.")
+                    }
+                }
+                .padding(tokens.space12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(tokens.surface, in: .rect(cornerRadius: tokens.radiusCard))
+            }
+        }
+    }
+
+    func notesDetail(_ title: String, _ body: String) -> some View {
+        VStack(alignment: .leading, spacing: tokens.space4) {
+            uiText(title, tokens.typeSmall, tokens.text, .semibold)
+            uiText(body, tokens.typeSmall, tokens.sub)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -60,7 +98,13 @@ extension SettingsView {
 
     func runtimeCard(_ runtime: SettingsState.NotesRuntime) -> some View {
         VStack(alignment: .leading, spacing: tokens.space8) {
-            uiText(runtime.title, tokens.typeBody, tokens.text, .semibold)
+            HStack {
+                uiText(runtime.title, tokens.typeBody, tokens.text, .semibold)
+                Spacer()
+                if runtime.id == .fallback {
+                    uiText("Необязательно", tokens.typeSmall, tokens.sub)
+                }
+            }
             notesRow("Сервис") {
                 SettingsNotesMenu(runtime: runtime, font: notesFont) {
                     event(.selectNotesRuntime(runtime.id, $0))
@@ -75,8 +119,14 @@ extension SettingsView {
                     .disabled(!field.isEnabled)
                 }
             }
-            uiText(runtime.disclosure, tokens.typeSmall, tokens.sub)
-                .fixedSize(horizontal: false, vertical: true)
+            if runtime.id == .fallback {
+                uiText("Повторяет запрос, если основной сервис завершится ошибкой.", tokens.typeSmall, tokens.sub)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if runtime.kind != .unconfigured {
+                uiText(runtime.disclosure, tokens.typeSmall, tokens.sub)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .padding(tokens.space12)
         .background(tokens.surface, in: .rect(cornerRadius: tokens.radiusCard))

@@ -7,6 +7,24 @@ import Testing
 @MainActor
 struct CallNotesInteractionTests {
 
+    @Test(arguments: [ColorScheme.light, .dark])
+    func detailsExpandAndCollapseWithoutChangingPreferences(scheme: ColorScheme) throws {
+        var events: [SettingsEvent] = []
+        let host = Offscreen.host(SettingsView(state: try preview("no-fallback"), event: { events.append($0) })
+            .environment(\.colorScheme, scheme))
+        _ = try #require(Offscreen.snapshot(host))
+        let collapsedHeight = host.fittingSize.height
+        try button("notes-details", in: host).performClick(nil)
+        RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.1))
+        _ = try #require(Offscreen.snapshot(host))
+        #expect(host.fittingSize.height > collapsedHeight)
+        try Offscreen.save(try #require(Offscreen.snapshot(host)), "settings-details-expanded-\(scheme == .dark ? "dark" : "light")")
+        try button("notes-details", in: host).performClick(nil)
+        RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.1))
+        #expect(abs(host.fittingSize.height - collapsedHeight) < 1)
+        #expect(events.isEmpty)
+    }
+
     @Test func tabsAndActionsSendEventsWithoutChangingTheRenderedState() throws {
         var events: [SettingsEvent] = []
         let host = try host("off") { events.append($0) }

@@ -21,11 +21,15 @@ The design's drawn menu chevron is replaced with the native menu affordance.
 
 Primary defaults to Claude Code CLI / sonnet with automatic executable discovery.
 Fallback is optional and defaults to unconfigured. Only the fallback picker
-includes “Не настроен (необязательно)”; choosing it clears the fallback fields.
-The card title explicitly shows whether fallback is configured or needs correction.
+includes “Не использовать”; choosing it clears the fallback fields.
+The fallback header always says “Необязательно”; invalid fields retain the
+“требует настройки” title and inline validation.
 Existing configured fallbacks remain selected. Each configured card discloses its
-recipient and charging model. The footer describes only configured transcript
-recipients and explains that speaker naming adds a request. The loopback variant
+recipient and charging model. The initially collapsed “О данных, оплате и проверке” disclosure groups data,
+cost and validation guidance. It includes provider-specific CLI discovery/isolation
+and API credential-variable help only when that provider is configured. Recipient
+and charging details appear once per configured card, without footer repetition.
+Expansion is local view state and does not change preferences. The loopback variant
 warns that the local server controls any onward forwarding. No credentials or transcripts are sent by validation.
 
 Save affects future jobs, and reports saving, success or retained draft after

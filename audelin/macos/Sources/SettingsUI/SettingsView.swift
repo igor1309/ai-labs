@@ -4,7 +4,7 @@ import SwiftUI
 /// The Settings window's content: one page of labelled rows.
 ///
 /// Renders the state it is given and reports what the user does; it holds no
-/// state of its own.
+/// domain state of its own; disclosure expansion is local presentation state.
 public struct SettingsView: View {
 
     let state: SettingsState
@@ -12,6 +12,7 @@ public struct SettingsView: View {
     let config: SettingsConfig
     var scrolls = false
     var contentHeightChanged: (CGFloat) -> Void = { _ in }
+    @State var notesDetailsExpanded = false
     @State var tabsHeight: CGFloat = 0
     @State var pageHeight: CGFloat = 0
 

@@ -24,26 +24,26 @@ extension SettingsState {
             runtimes: [
                 .init(id: .primary, title: "Основной сервис", kind: .claudeCLI, options: notesOptions,
                       fields: [.init(id: .model, label: "Модель", value: "sonnet"),
-                               .init(id: .executable, label: "Программа", value: "claude")],
-                      disclosure: "Квота подписки Claude · транскрипт → Anthropic."),
-                apiPreview(.fallback, title: "Резервный сервис · настроен", local: false),
+                               .init(id: .executable, label: "Программа", value: "", placeholder: "Найти автоматически")],
+                      disclosure: "Транскрипт → Anthropic · квота подписки Claude"),
+                apiPreview(.fallback, title: "Резервный сервис", local: false),
             ],
-            disclosure: "Оба сервиса могут получить полный транскрипт. Определение имён — дополнительный запрос.\nТаймаут тоже может расходовать квоту или деньги.",
+            disclosure: "Выбранный сервис получает полный транскрипт. Резервный получает его только при повторе запроса.",
             status: "Есть несохранённые изменения",
             validate: .init(id: .validate, title: "Проверить"),
             save: .init(id: .save, title: "Сохранить")
         )
         switch name {
         case "no-fallback":
-            draft.runtimes[1] = .init(id: .fallback, title: "Резервный сервис · не настроен", kind: .unconfigured,
-                                      options: [.init(id: .unconfigured, title: "Не настроен (необязательно)")] + notesOptions,
+            draft.runtimes[1] = .init(id: .fallback, title: "Резервный сервис", kind: .unconfigured,
+                                      options: [.init(id: .unconfigured, title: "Не использовать")] + notesOptions,
                                       fields: [], disclosure: "Резервный сервис не настроен. При ошибке основного сервиса итоги не будут готовы; расшифровка и аудио сохранятся.")
-            draft.disclosure = "Основной сервис может получить полный транскрипт. Определение имён — дополнительный запрос."
+            draft.disclosure = "Выбранный сервис получает полный транскрипт."
         case "off": draft.status = "Автосводка выключена"
         case "local":
             draft.runtimes = [apiPreview(.primary, title: "Основной сервис", local: true),
-                              apiPreview(.fallback, title: "Резервный сервис · настроен", local: true)]
-            draft.disclosure = "Оба адреса — на этом Mac. Поведение локального сервера зависит от его настроек."
+                              apiPreview(.fallback, title: "Резервный сервис", local: true)]
+
         case "invalid":
             draft.runtimes[1].fields[0].value = ""
             draft.runtimes[1].fields[0].placeholder = "Название модели"
@@ -79,15 +79,15 @@ extension SettingsState {
     ]
 
     private static func apiPreview(_ slot: NotesRuntime.Slot, title: String, local: Bool) -> NotesRuntime {
-        .init(id: slot, title: title, kind: .compatibleAPI, options: (slot == .fallback ? [.init(id: .unconfigured, title: "Не настроен (необязательно)")] : []) + notesOptions,
+        .init(id: slot, title: title, kind: .compatibleAPI, options: (slot == .fallback ? [.init(id: .unconfigured, title: "Не использовать")] : []) + notesOptions,
               fields: [
                 .init(id: .model, label: "Модель", value: local ? "local-model" : "gpt-4.1-mini"),
                 .init(id: .endpoint, label: "Адрес API", value: local ? "http://127.0.0.1:8080/v1" : "https://api.openai.com/v1"),
-                .init(id: .credentialVariable, label: "API-ключ из", value: local ? "" : "OPENAI_API_KEY", placeholder: "не требуется"),
+                .init(id: .credentialVariable, label: "Переменная ключа", value: local ? "" : "OPENAI_API_KEY", placeholder: "Имя переменной окружения"),
               ],
               disclosure: local
-                ? "Запрос на этот Mac · сервер под вашим управлением.\nЛокальный сервер может пересылать данные дальше."
-                : "Оплата API по токенам · транскрипт → OpenAI.\nAPI-ключ из переменной окружения; сохраняется только её имя.")
+                ? "Транскрипт → сервер на этом Mac. Сервер может пересылать данные дальше."
+                : "Транскрипт → api.openai.com · оплата по тарифу API")
     }
 }
 
