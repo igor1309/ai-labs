@@ -1,7 +1,14 @@
 # VAD: FluidAudio vs reference Silero (LAB-1101)
 
-Status: interim. Criteria 4–8 are measured; 1–3 and 9 wait for hand labels,
-because the recogniser reference turned out to be contaminated (below).
+Status: closed. Decision: **add no VAD now.** Neither engine shows a gain worth
+a change: Parakeet already reads windows, a VAD saves about a third of its compute
+that the app does not need back, and gating leaves transcript quality unchanged
+at best. Criteria 1–3 and 9 were not settled: the recogniser reference is
+contaminated (below) and hand labelling was not done.
+
+If a VAD is wanted later: FluidAudio for skipping silence before recognition (no
+new dependency, passes the WER criterion); not FluidAudio for a speech-based
+microphone silence signal, since it marks far-end bleed 7× as often as Silero.
 
 ## Candidates
 
@@ -20,7 +27,7 @@ artefact and hop, not from segmentation code.
 Yandex Browser, two dailies, a planning call and 1:1s. Each channel
 (`microphone.caf`, `call.caf`) resampled to 16 kHz and scored separately.
 
-## Results so far
+## Results
 
 Each engine at its sweep setting with fewest dropped words (threshold 0.3, padding
 0.3 for both; no setting met the dropped-word limit, see the reference problem).
@@ -56,11 +63,11 @@ Each engine at its sweep setting with fewest dropped words (threshold 0.3, paddi
   any other number here.
 - Both are cheap enough that cost does not decide it.
 
-## Next
+## Not done
 
-Hand-label the 40 clips that `score.py windows` picks (half where the engines
-disagree most, half random), then `score.py report` adds hand-label miss and false
-rates for criteria 1, 3 and 9, and the decision is written here.
+Hand labels. `score.py windows` picks 40 clips (half where the engines disagree
+most, half random); with `labels.csv` filled, `score.py report` adds hand-label
+miss and false rates for criteria 1, 3 and 9.
 
 ## Reproduce
 

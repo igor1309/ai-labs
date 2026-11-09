@@ -25,6 +25,7 @@ under the working name wisper.
 | [baseline/](baseline/README.md) | Recording and live text baseline (LAB-667): what the tests cover, the real-device smoke procedure, and real Parakeet through the app's composition at 1× |
 | [replay/](replay/) | `audelin-replay`: recorded call tracks through Audelin's recognisers and Live text, with word delays and how much live text changes |
 | [spike/](spike/) | CLIs that run a recording through Parakeet v3: the sliding window, and Audelin's own windows (`audelin-windows`, with the stabilizer's fixtures) |
+| [vad.md](vad.md), [vad/](vad/) | FluidAudio vs reference Silero VAD on 12 recorded calls: no VAD adopted; harness to rerun it |
 | `gallery/` | Site captures and screenshots of the surveyed apps (inventory-a6) |
 | `../design/visual-language.pen` | Glass Ledger's design system, components and Screens 1–8, light and dark |
 | [design/README.md](../design/README.md) | Index of the design file: Glass Ledger's tokens, components, and the frame map |
