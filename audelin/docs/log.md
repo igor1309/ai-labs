@@ -2,6 +2,7 @@
 
 ## 2026-11-09
 
+- Call-notes service pickers show the selected service and native popup arrows for both primary and fallback services (LAB-1111).
 - Call notes find Claude automatically in PATH and standard installation folders, including native installs; an absolute path can still select a specific installation (LAB-1110).
 
 ## 2026-11-08

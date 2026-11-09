@@ -176,6 +176,10 @@ struct CallNotesSuppliedStateTests {
         let draft = try draft(state)
         for runtime in draft.runtimes {
             let menu = try menu(runtime.id, in: host)
+            #expect(menu.isBordered)
+            #expect(!menu.pullsDown)
+            let cell = try #require(menu.cell as? NSPopUpButtonCell)
+            #expect(cell.arrowPosition != .noArrow)
             #expect(menu.selectedItem?.representedObject as? String == runtime.kind.rawValue)
             #expect(menu.titleOfSelectedItem == runtime.options.first { $0.id == runtime.kind }?.title)
             for field in runtime.fields {

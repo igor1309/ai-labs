@@ -12,7 +12,7 @@ struct SettingsNotesMenu: NSViewRepresentable {
 
     func makeNSView(context: Context) -> NSPopUpButton {
         let menu = NSPopUpButton(frame: .zero, pullsDown: false)
-        menu.isBordered = false
+        menu.isBordered = true
         menu.focusRingType = .exterior
         return menu
     }
