@@ -82,7 +82,7 @@ struct TrackRig {
         waiting = signal.stream
         track = try await TrackFile(
             url: folder.appendingPathComponent("track.caf"),
-            makeBinding: { url in try binding ?? DiskTrackBinding(url: url) },
+            makeBinding: { url in try binding ?? DiskTrackBinding(url: url, positionedWrite: DiskTrackBinding.systemWrite) },
             makeConversion: { try CompleteConversion(inputRate: $0) },
             readWaiting: { signal.continuation.yield(()) }
         )
@@ -121,7 +121,7 @@ final class FailingBinding: TrackFileBinding, Sendable {
     private let disk: DiskTrackBinding
     private let failure = Mutex<Point?>(nil)
 
-    init(url: URL) throws { disk = try DiskTrackBinding(url: url) }
+    init(url: URL) throws { disk = try DiskTrackBinding(url: url, positionedWrite: DiskTrackBinding.systemWrite) }
 
     func fail(_ point: Point?) { failure.withLock { $0 = point } }
 

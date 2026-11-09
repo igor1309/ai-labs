@@ -37,7 +37,7 @@ struct AudioTests {
             let began = Signal()
             let track = try await TrackFile(
                 url: folder.appendingPathComponent("track.caf"),
-                makeBinding: DiskTrackBinding.init,
+                makeBinding: { try DiskTrackBinding(url: $0, positionedWrite: DiskTrackBinding.systemWrite) },
                 makeConversion: { _ in throw ScriptFailure.failed },
                 readWaiting: { began.send() }
             )
