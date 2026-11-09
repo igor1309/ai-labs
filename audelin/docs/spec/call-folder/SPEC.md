@@ -34,12 +34,22 @@ over the file system.
   kind, even a link to nothing, sends it to the next. Checking first would
   race (Apple: `fileExists` follows links), so a second call never shares
   or changes a kept one.
+- **An id is taken by any entry named by it, with or without a title,**
+  so a second call in the same minute is numbered whatever its title, and
+  two calls never share an id. The calls folder is read once per make.
+- **The name's format has one owner, `CallFolderName`,** which writes it
+  here and for a rename and reads it for the calls list, so the sides
+  cannot drift. An empty title leaves the bare name.
 - **The calls folder is never made here:** a missing calls folder is a
   condition Recording waits on, so making it would hide that the user's
   folder went away. Making a call's folder fails instead.
 - **The places are `microphone.caf`, `call.caf` and `transcript.md`**
   inside the folder, so every call looks alike (Amanu keeps `mic.caf` and
   `system.caf`; "call" is the side's name here).
+- **The folder is private to the user, mode `0700`,** because it holds
+  the user's recorded calls; no other account on the Mac may list or read
+  them. The mode is given to the folder as it is made, so it is never
+  readable by others even for a moment.
 - **A make that fails leaves nothing,** so it never takes a name from the
   next call.
 

@@ -42,3 +42,6 @@ agister/home/probes/
 agister/home/runs/
 # and what a write of a settings document cut short leaves beside it
 agister/home/**/.*.*.*
+
+# Xcode per-user window state and scheme lists
+xcuserdata/

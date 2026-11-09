@@ -19,8 +19,9 @@ import UIKit
         }
         let side: Side = UIDevice.current.userInterfaceIdiom == .pad ? .host : .client
         let log = SystemLogSink()
+        let clock = SystemClock()
         _root = State(initialValue: AppRoot(
-            radios: scriptedRadios(settingsPath: path, log: log), launchSide: side, clock: SystemClock(),
+            radios: scriptedRadios(settingsPath: path, clock: clock, log: log), launchSide: side, clock: clock,
             store: Preferences.app(), log: log
         ))
     }

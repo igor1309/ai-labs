@@ -1,0 +1,36 @@
+{
+  "parts": [
+    {
+      "name": "switch",
+      "device": "iPad",
+      "expected": [
+        {
+          "category": "mode",
+          "phase": "client built"
+        },
+        {
+          "category": "clientPayment",
+          "phase": "paid"
+        }
+      ],
+      "flow": "switch.yaml",
+      "settings": "switch.json"
+    },
+    {
+      "name": "iphone",
+      "device": "iPhone",
+      "expected": [
+        {
+          "category": "mode",
+          "phase": "host built"
+        },
+        {
+          "category": "mode",
+          "phase": "client built"
+        }
+      ],
+      "flow": "iphone.yaml",
+      "settings": "iphone.json"
+    }
+  ]
+}

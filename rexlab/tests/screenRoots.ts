@@ -37,3 +37,29 @@ export function edgePart(tag: string, attributes: { id?: string; className?: str
   document.body.append(part);
   return part;
 }
+
+// The dig-site screens pad their sky and their scrolling content rather
+// than their root, so the earth and its waves can reach both window edges.
+const DIG_SITE_CONTENT: Record<string, string[]> = {
+  "friends-dig-site": ["friends-sky", "friends-grid", "no-friends"],
+  "whose-jaw-welcome": ["whose-jaw-welcome-sky", "whose-jaw-welcome-body"],
+  "pairs-welcome": ["pairs-welcome-sky", "pairs-welcome-body"],
+  "pairs-board-screen": ["pairs-bar", "pairs-board-sand"],
+  "whose-jaw-board": ["whose-jaw-board-sky", "jaw-sand-body"]
+};
+
+// Whether a screen's root pads parts of its own, not itself.
+export function padsItsParts(root: HTMLElement) {
+  return Object.keys(DIG_SITE_CONTENT).some(className => root.classList.contains(className));
+}
+
+export function contentRoots(root: HTMLElement): HTMLElement[] {
+  const parts = Object.entries(DIG_SITE_CONTENT).find(([className]) => root.classList.contains(className))?.[1];
+  if (!parts) return [root];
+  return parts.map(className => {
+    const part = document.createElement("div");
+    part.className = className;
+    root.append(part);
+    return part;
+  });
+}

@@ -1,6 +1,6 @@
 import Synchronization
 import Testing
-@testable import SideText
+import SideText
 
 /// Retains arrivals so a release never depends on task scheduling.
 actor Gate {
@@ -46,6 +46,7 @@ final class CueAudio: LiveAudio, Sendable {
     private let heldDelivery = Mutex<Gate?>(nil)
     private let ended = Mutex(false)
     private let deliveries = AsyncStream<Delivery>.makeStream()
+    private let listenReturns = AsyncStream<Void>.makeStream()
     var capturedThrough: Double { chunks.withLock { $0.last?.end ?? 0 } }
     var isEnded: Bool { ended.withLock { $0 } }
 
@@ -62,6 +63,15 @@ final class CueAudio: LiveAudio, Sendable {
             await receive(delivery.audio)
             delivery.handled.resume()
         }
+        listenReturns.continuation.yield(())
+        listenReturns.continuation.finish()
+    }
+
+    /// Reports that listen finished delivering chunks and returned.
+    func listenReturned() async {
+
+        var iterator = listenReturns.stream.makeAsyncIterator()
+        _ = await iterator.next()
     }
 
     func deliver(_ audio: Audio) async {
@@ -134,7 +144,7 @@ actor ToneText: LiveText {
 
     func holdNextHearing(_ gate: Gate) { hearing = gate }
 
-    func hear(_ audio: Audio) async throws -> [Text] {
+    func hear(_ audio: Audio) async throws -> TextUpdate {
 
         let held = hearing
         hearing = nil
@@ -157,7 +167,7 @@ actor ToneText: LiveText {
                 words.append(segment)
             }
         }
-        return words
+        return TextUpdate(final: [], tail: words)
     }
 
     func cancelHearing() async {
@@ -166,13 +176,13 @@ actor ToneText: LiveText {
         if releasesCancelledHearing { await activeHearing?.release() }
     }
 
-    func finish() throws -> [Text] {
+    func finish() throws -> TextUpdate {
 
         finishCalls += 1
         if failFinish { throw CuedFailure(description: "finishing failed") }
         if let buffered { words.append(buffered) }
         words = words.map { Text(id: $0.id, start: $0.start, end: $0.end, settled: $0.pending) }
-        return words
+        return TextUpdate(final: [], tail: words)
     }
 
     func stop() async {
@@ -206,6 +216,8 @@ actor FakeFill: FillingIn {
     let plan: FillPlan
     private(set) var abandoned = false
     private(set) var starts: [Double] = []
+    private var returns = 0
+    private var returnWaiters: [CheckedContinuation<Void, Never>] = []
 
     init(audio: CueAudio, text: ToneText, plan: FillPlan) {
 
@@ -217,6 +229,11 @@ actor FakeFill: FillingIn {
     func fillIn(from: Double, receive: @escaping @Sendable (FilledText) async -> Void) async throws {
 
         starts.append(from)
+        defer {
+            returns += 1
+            for waiter in returnWaiters { waiter.resume() }
+            returnWaiters.removeAll()
+        }
         let boundary = plan.through ?? audio.capturedThrough
         await plan.before?.wait()
         guard !abandoned || plan.returnsAfterAbandon else { return }
@@ -238,11 +255,19 @@ actor FakeFill: FillingIn {
 
         for chunk in audio.read(from: from, through: through) {
             let words = try await text.hear(chunk)
-            await receive(FilledText(text: words, heardThrough: chunk.end, sampleRate: chunk.sampleRate))
+            await receive(FilledText(text: words.final + words.tail, heardThrough: chunk.end, sampleRate: chunk.sampleRate))
         }
     }
 
     func abandon() { abandoned = true }
+
+    /// Returns once every started run has returned or thrown.
+    func returned() async {
+
+        while returns < starts.count {
+            await withCheckedContinuation { returnWaiters.append($0) }
+        }
+    }
 }
 
 final class FillFactory: Sendable {
@@ -260,45 +285,24 @@ struct Rig: Sendable {
     let text: ToneText
     let fills: [FakeFill]
     let side: SideText
-    let queued: AsyncStream<Void>
-    let audioEnds: AsyncStream<Void>
-    let stopRequests: AsyncStream<Void>
 
     @discardableResult
-    func listening() async -> State {
+    func listening() async -> SideOutput {
 
-        for await state in side.updates where state.status == .listening { return state }
+        for await state in side.updates where state.status == .listening { return SideOutput(state) }
         Issue.record("Text ended before listening")
-        return await side.state
+        return SideOutput(await side.state)
     }
 
-    func inputQueued() async {
-
-        var iterator = queued.makeAsyncIterator()
-        _ = await iterator.next()
-    }
-
-    func audioEndReceived() async {
-
-        var iterator = audioEnds.makeAsyncIterator()
-        _ = await iterator.next()
-    }
-
-    func stopRequested() async {
-
-        var iterator = stopRequests.makeAsyncIterator()
-        _ = await iterator.next()
-    }
-
-    func heldStop(_ stopping: Gate, keeps snapshot: State) async {
+    func heldStop(_ stopping: Gate, keeps snapshot: SideOutput) async {
 
         await stopping.entered()
-        #expect(await side.state == snapshot)
+        #expect(SideOutput(await side.state) == snapshot)
         #expect(await text.stopCalls == 1)
         #expect(await text.stopped == false)
     }
 
-    func result() async -> State {
+    func result() async -> SideOutput {
 
         var final: State?
         var endings = 0
@@ -309,12 +313,15 @@ struct Rig: Sendable {
             default: break
             }
         }
-        let state = await side.state
         #expect(endings == 1)
-        #expect(final == state)
         #expect(await text.stopCalls == 1)
         #expect(await text.stopped)
-        return state
+        guard let final else {
+            Issue.record("Side ended without publishing a result")
+            return SideOutput(await side.state)
+        }
+        #expect(SideOutput(final) == SideOutput(await side.state))
+        return SideOutput(final)
     }
 }
 
@@ -332,19 +339,8 @@ func withRig(
     )
     let fills = plans.map { FakeFill(audio: audio, text: text, plan: $0) }
     let factory = FillFactory(fills)
-    let queued = AsyncStream<Void>.makeStream()
-    let audioEnds = AsyncStream<Void>.makeStream()
-    let stopRequests = AsyncStream<Void>.makeStream()
-    let side = SideText(
-        audio: audio, text: text, fillIn: { factory.next() },
-        inputQueued: { queued.continuation.yield(()) },
-        audioEndReceived: { audioEnds.continuation.yield(()) },
-        stopRequested: { stopRequests.continuation.yield(()) }
-    )
-    await body(Rig(
-        audio: audio, text: text, fills: fills, side: side, queued: queued.stream,
-        audioEnds: audioEnds.stream, stopRequests: stopRequests.stream
-    ))
+    let side = SideText(audio: audio, text: text, fillIn: { factory.next() })
+    await body(Rig(audio: audio, text: text, fills: fills, side: side))
     await side.setEnabled(false)
     for plan in plans {
         await plan.before?.release()
@@ -353,11 +349,9 @@ func withRig(
     await hearing?.release()
     await stopping?.release()
     audio.end()
-    await side.waitForWork()
-    await side.waitForAudioEnd()
-    queued.continuation.finish()
-    audioEnds.continuation.finish()
-    stopRequests.continuation.finish()
+    for fill in fills { await fill.returned() }
+    await side.stop()
+    await audio.listenReturned()
 }
 
 func tones(_ words: ClosedRange<Int>, sampleRate: Double = 1) -> Audio {
@@ -368,11 +362,11 @@ func tones(_ words: ClosedRange<Int>, sampleRate: Double = 1) -> Audio {
 func expected(
     _ words: ClosedRange<Int>, status: State.Status = .listening,
     later: Range<Int> = 0..<0, sampleRate: Double = 1, settled: Bool = false
-) -> State {
+) -> SideOutput {
 
-    State(status: status, entries: words.map { word in
+    SideOutput(status: status, entries: words.map { word in
         let start = Double(word - 1) / sampleRate
-        return State.Entry(
+        return SideOutput.Entry(
             text: Text(
                 id: word, start: start, end: start + 1 / sampleRate,
                 settled: settled ? "word\(word)" : "", pending: settled ? "" : "word\(word)"
@@ -380,4 +374,31 @@ func expected(
             writtenLater: later.contains(word)
         )
     })
+}
+
+struct SideOutput: Equatable, Sendable {
+
+    struct Entry: Equatable, Sendable {
+        let text: Text
+        let writtenLater: Bool
+    }
+
+    let status: State.Status
+    let entries: [Entry]
+    let finalCount: Int
+    let noTextBefore: Double?
+
+    init(status: State.Status, entries: [Entry], finalCount: Int = 0, noTextBefore: Double? = nil) {
+        self.status = status
+        self.entries = entries
+        self.finalCount = finalCount
+        self.noTextBefore = noTextBefore
+    }
+
+    init(_ snapshot: State) {
+        status = snapshot.status
+        entries = snapshot.entries.map { Entry(text: $0.text, writtenLater: $0.writtenLater) }
+        finalCount = snapshot.finalCount
+        noTextBefore = snapshot.noTextBefore
+    }
 }

@@ -1,3 +1,4 @@
+import { THEMES } from "../src/theme.ts";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { GUST, LIFT, STAR_LANDS } from "../src/digGame.tsx";
@@ -87,7 +88,7 @@ describe.each(["explorer", "paleontologist"] as const)("the question at %s", (le
     expect(board().hasAttribute("data-blown")).toBe(false);
   });
 
-  it.each(["light", "dark"] as const)("shows an empty card for each choice from the start, in the %s theme, that no tap or screen reader takes", (theme) => {
+  it.each(THEMES)("shows an empty card for each choice from the start, in the %s theme, that no tap or screen reader takes", (theme) => {
     openRound(level, { theme });
     const colours = PALETTE[theme];
     expect([column()?.getAttribute("aria-hidden"), choices().length, choices().every((card) => card.disabled && card.tabIndex === -1)])
@@ -97,7 +98,7 @@ describe.each(["explorer", "paleontologist"] as const)("the question at %s", (le
     for (const card of emptyCards()) {
       const style = getComputedStyle(card);
       expect([card.textContent, card.getAttribute("aria-hidden"), style.borderTopWidth, style.borderTopStyle, style.borderRadius, style.fontSize, style.fontWeight, style.placeItems])
-        .toEqual(["?", "true", "2px", "solid", "24px", "64px", "700", "center"]);
+        .toEqual(["?", "true", "2px", "solid", "20px", "64px", "700", "center"]);
       expect([style.backgroundColor, style.borderTopColor, style.color].map((colour, at) => sameColour(colour, [colours["surface-2"], colours.line, colours.line][at]!)))
         .toEqual([true, true, true]);
     }
@@ -147,7 +148,7 @@ describe.each(["explorer", "paleontologist"] as const)("the question at %s", (le
     const roundAt = (count: number) => ({ ...started, dinosaur, sand: { ...started.sand, counts: new Uint8Array(GRID.columns * GRID.rows).fill(25, 0, count) } });
     const submitted: string[] = [];
     const draw = (count: number) => <DigBoardScreen language="en" {...presentDigBoard(roundAt(count), fakeBodyPicture, fakeTreasurePicture, (id) => id)}
-      choiceCount={started.choices.length} level={level} brush={BRUSH_SIZES[level]} wide={false} onWide={() => {}} menuTimer={manualTimers().startTimer} grains={!reducedMotion}
+      choiceCount={started.choices.length} level={level} brush={BRUSH_SIZES[level]} wide={false} onWide={() => {}} grains={!reducedMotion}
       dugUp={0} total={SHIPPED_DIG.length} treasures={0} sandContext={() => null}
       onBrush={() => {}} onPick={(id) => submitted.push(id)} onHome={() => {}} />;
     const view = render(draw(0), withPictures);
@@ -190,7 +191,7 @@ describe.each(["explorer", "paleontologist"] as const)("the question at %s", (le
     const asked = brushRound(started, { from: { x: 400, y: 300 }, to: { x: 400, y: 300 }, radius: 1000 });
     const marks: SandMark[] = [];
     const draw = (round: typeof started) => <DigBoardScreen language="en" {...presentDigBoard(round, fakeBodyPicture, fakeTreasurePicture, (id) => id)}
-      choiceCount={round.choices.length} level={level} brush={BRUSH_SIZES[level]} wide={false} onWide={() => {}} menuTimer={manualTimers().startTimer} grains={!reducedMotion}
+      choiceCount={round.choices.length} level={level} brush={BRUSH_SIZES[level]} wide={false} onWide={() => {}} grains={!reducedMotion}
       dugUp={0} total={SHIPPED_DIG.length} treasures={0} sandContext={() => null}
       onBrush={(mark) => marks.push(mark)} onHome={() => {}} />;
     const view = render(draw(started), withPictures);
@@ -316,7 +317,7 @@ describe.each(["explorer", "paleontologist"] as const)("the question at %s", (le
     fireEvent.click(rejected!);
     expect([rejected!.disabled, rejected!.hasAttribute("data-rejected"), getComputedStyle(rejected!).opacity,
       getComputedStyle(rejected!.querySelector("img")!).opacity, rejected!.textContent, rejected!.getAttribute("aria-label")])
-      .toEqual([true, true, "1", "0.45", `${SHIPPED_DINOSAURS.find((dinosaur) => dinosaur.id === rejected!.dataset.choice)!.name.en.toLocaleUpperCase("en")}↻ ${TEXTS.en.digChoice.tryAnother}`, `${TEXTS.en.whoIsIt}: ${SHIPPED_DINOSAURS.find((dinosaur) => dinosaur.id === rejected!.dataset.choice)!.name.en.toLocaleUpperCase("en")}: ${TEXTS.en.digChoice.tryAnother}`]);
+      .toEqual([true, true, "1", "0.45", `${SHIPPED_DINOSAURS.find((dinosaur) => dinosaur.id === rejected!.dataset.choice)!.name.en.toLocaleUpperCase("en")}${TEXTS.en.digChoice.tryAnother}`, `${TEXTS.en.whoIsIt}: ${SHIPPED_DINOSAURS.find((dinosaur) => dinosaur.id === rejected!.dataset.choice)!.name.en.toLocaleUpperCase("en")}: ${TEXTS.en.digChoice.tryAnother}`]);
     fireEvent.click(rejected!);
     expect(choices().filter((card) => card.hasAttribute("data-rejected"))).toEqual([rejected]);
     expect([other!.disabled, board().hasAttribute("data-blown")]).toEqual([false, false]);
@@ -328,7 +329,8 @@ describe.each(["explorer", "paleontologist"] as const)("the question at %s", (le
     expect(board().hasAttribute("data-blown")).toBe(true);
     expect(choiceCard().hasAttribute("data-correct")).toBe(true);
     expect(getComputedStyle(choiceCard().querySelector("img")!).filter).toBe("grayscale(0)");
-    expect(choiceCard().textContent).toBe(`${SHIPPED_DINOSAURS.find((dinosaur) => dinosaur.id === choiceCard().dataset.choice)!.name.en.toLocaleUpperCase("en")}✓`);
+    expect(choiceCard().querySelector(".dig-choice-mark-correct svg")).not.toBeNull();
+    expect(choiceCard().textContent).toBe(`${SHIPPED_DINOSAURS.find((dinosaur) => dinosaur.id === choiceCard().dataset.choice)!.name.en.toLocaleUpperCase("en")}`);
     expect(choiceCard().getAttribute("aria-label")).toContain(TEXTS.en.digChoice.right);
     const correctChoice = choiceCard();
     const currentRejected = choices().find((card) => card.dataset.choice === rejected!.dataset.choice)!;
@@ -414,7 +416,7 @@ describe("the question's cards", () => {
     const round = brushRound(started, { from: { x: 400, y: 300 }, to: { x: 400, y: 300 }, radius: 1000 });
     const submitted: string[] = [];
     render(<DigBoardScreen language="en" {...presentDigBoard(round, fakeBodyPicture, fakeTreasurePicture, (id) => id)}
-      choiceCount={round.choices.length} level={round.level} brush={BRUSH_SIZES[round.level]} wide={false} onWide={() => {}} menuTimer={manualTimers().startTimer} grains={false}
+      choiceCount={round.choices.length} level={round.level} brush={BRUSH_SIZES[round.level]} wide={false} onWide={() => {}} grains={false}
       dugUp={0} total={SHIPPED_DIG.length} treasures={0} sandContext={() => null}
       onBrush={() => {}} onPick={(id) => submitted.push(id)} onHome={() => {}} />, withPictures);
     for (const card of choices()) fireEvent.click(card);

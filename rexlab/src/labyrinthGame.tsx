@@ -1,13 +1,16 @@
+import { Compass, Pickaxe } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { AgeLevel, AgeLevelSetting } from "./ageLevel.ts";
 import { beatBest } from "./bestScore.ts";
 import { LabyrinthBoardScreen } from "./LabyrinthBoardScreen.tsx";
+import { turnedFor, turnMaze } from "./labyrinthView.ts";
 import { LabyrinthResultScreen, type LabyrinthResultScreenProps } from "./LabyrinthResultScreen.tsx";
 import { adjacentPaths, hintInMaze, isPath, moveInMaze, nextMaze, NO_LABYRINTH, rewardMaze, startMaze, type LabyrinthProgress, type LabyrinthReward, type LabyrinthRound } from "./labyrinth/index.ts";
 import type { Language } from "./language/language.ts";
 import { LevelOfferDialog, type LevelOfferProps } from "./LevelOfferDialog.tsx";
 import { acceptOffer, countBoard, NO_LEVEL_OFFER, offeredLevel, showOffer, type LevelOffer } from "./levelOffer.ts";
 import { useGateShown } from "./OrientationGate.tsx";
+import type { SizeClass } from "./sizeClass.ts";
 import type { StartTimer } from "./ownedTimers.ts";
 import { afterResultAnimations } from "./resultAnimation.ts";
 import { SCREEN_CHANGE, useScreens } from "./screens.ts";
@@ -72,17 +75,18 @@ export function useLabyrinthGame({ labyrinthProgress, bodyPicture, random, start
     });
   };
   const hint = () => go((current) => current?.kind === "board" ? { ...current, round: hintInMaze(current.round) } : current);
-  const content = (language: Language) => {
+  const content = (language: Language, size: SizeClass) => {
     const picture = bodyPicture("triceratops");
     if (screen?.kind === "board") {
       const { round } = screen;
       const { maze } = round;
-      const columns = maze.rows[0]!.length;
+      // An upright window shows the maze turned on its side.
+      const turn = turnMaze(maze.rows[0]!.length, maze.rows.length, turnedFor(maze.level, size));
       const legal = adjacentPaths(maze, round.position);
-      return <LabyrinthBoardScreen language={language} level={maze.level} columns={columns} rows={maze.rows.length}
-        cells={Array.from({ length: columns * maze.rows.length }, (_, place) => ({ open: isPath(maze, place), legal: legal.includes(place) }))}
-        baby={round.position} from={round.from} goal={maze.goal} hint={round.hint} finished={false} picture={picture}
-        onMove={move} onHint={hint} onHome={home} />;
+      return <LabyrinthBoardScreen language={language} level={maze.level} columns={turn.columns} rows={turn.rows}
+        cells={Array.from({ length: turn.columns * turn.rows }, (_, place) => turn.toMaze(place)).map((place) => ({ open: isPath(maze, place), legal: legal.includes(place) }))}
+        baby={turn.toView(round.position)} from={turn.toView(round.from)} goal={turn.toView(maze.goal)} hint={round.hint === undefined ? undefined : turn.toView(round.hint)} finished={false} picture={picture}
+        onMove={(place) => move(turn.toMaze(place))} onHint={hint} onHome={home} />;
     }
     if (screen?.kind === "result") {
       const nextLevel = screen.offer;
@@ -119,7 +123,7 @@ function Reunion({ offer, ...props }: LabyrinthResultScreenProps & { offer: Leve
   }, [gateShown, phase]);
   const shown = latestOffer.current;
   return <LabyrinthResultScreen {...props} ref={result} levelOffer={shown && (phase === "shown" || phase === "leaving") ?
-    <LevelOfferDialog language={props.language} offer={shown} leaving={phase === "leaving"} onShown={shown.onShown}
+    <LevelOfferDialog digSite picture={shown.level === "paleontologist" ? <Pickaxe /> : <Compass />} language={props.language} offer={shown} leaving={phase === "leaving"} onShown={shown.onShown}
       onAnswer={(answer) => { setPhase("leaving"); if (answer === "yes") shown.onYes(); else shown.onNotNow(); }}
       onGone={() => setPhase("gone")} /> : undefined} />;
 }

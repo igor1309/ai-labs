@@ -1,0 +1,106 @@
+/* What every BONES screen on the dig site shares: the sky over DigGround, and
+   in it the bar, HOME and BACK at one side, the best or the count and MUSEUM
+   at the other, the title between them. */
+html[data-size] .skeleton-dig {
+  --sc-side: var(--ds-space-40);
+  --sc-bar-top: var(--ds-space-m);
+  color: var(--ds-ink);
+  font-family: var(--ds-font);
+  background: linear-gradient(var(--ds-sky-top), var(--ds-sky-bottom) 40dvh) var(--ds-sky-bottom);
+}
+html[data-size="tall"] .skeleton-dig { --sc-side: var(--ds-space-56); --sc-bar-top: var(--ds-space-l); }
+html[data-size="tall-narrow"] .skeleton-dig { --sc-side: var(--ds-space-20); --sc-bar-top: var(--ds-space-s); }
+html[data-size="wide-short"] .skeleton-dig { --sc-side: var(--ds-space-20); --sc-bar-top: var(--ds-space-s); }
+/* On a phone on its side the sand runs to the screen's foot. */
+html[data-size="wide-short"] .skeleton-dig .dig-ground-ochre { display: none; }
+
+/* The bar, across the top of the sky. */
+html[data-size] .skeleton-dig .skeleton-bar {
+  position: absolute;
+  z-index: 1;
+  top: calc(var(--sc-bar-top) + env(safe-area-inset-top));
+  left: calc(var(--sc-side) + var(--screen-left));
+  right: calc(var(--sc-side) + var(--screen-right));
+  gap: var(--ds-space-m);
+}
+
+html[data-size] .skeleton-dig .skeleton-bar .home-button {
+  width: auto;
+  height: 48px;
+  min-height: 48px;
+  padding: 0 var(--ds-space-18) 0 var(--ds-space-l);
+  gap: var(--ds-space-s);
+  border: 0;
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-quiet);
+  color: var(--ds-ink);
+  font-size: var(--ds-size-label);
+  font-weight: 800;
+  letter-spacing: 0;
+  box-shadow: none;
+}
+
+html[data-size] .skeleton-dig .skeleton-bar .home-button svg { width: 22px; height: 22px; }
+
+html[data-size="tall"] .skeleton-dig .skeleton-bar .home-button,
+html[data-size="tall-narrow"] .skeleton-dig .skeleton-bar .home-button { width: 48px; padding: 0; justify-content: center; }
+
+/* HOME first, then the best beside MUSEUM at the far side. */
+html[data-size="tall-narrow"] .skeleton-dig .skeleton-bar::after,
+html[data-size="wide"] .skeleton-choice-screen .skeleton-bar::after,
+html[data-size="tall"] .skeleton-choice-screen .skeleton-bar::after { content: ""; flex: 1 1 0; }
+.skeleton-dig .skeleton-chip { order: 1; }
+.skeleton-dig .museum-button { order: 2; }
+
+html[data-size] .skeleton-dig .skeleton-chip {
+  height: auto;
+  padding: var(--ds-space-s) var(--ds-space-l);
+  gap: var(--ds-space-s);
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-label);
+  color: var(--ds-ink);
+  font-size: var(--ds-size-number);
+  font-weight: 800;
+}
+
+.skeleton-dig .skeleton-chip svg { color: var(--ds-reward); }
+
+html[data-size="wide-short"] .skeleton-dig .skeleton-chip,
+html[data-size="tall-narrow"] .skeleton-dig .skeleton-chip {
+  padding: var(--ds-space-7) var(--ds-space-m);
+  font-size: var(--ds-size-20);
+}
+
+html[data-size] .skeleton-dig .skeleton-title {
+  justify-content: center;
+  gap: var(--ds-space-11);
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+html[data-size] .skeleton-dig .skeleton-mark {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--ds-radius-22) var(--ds-radius-22) var(--ds-radius-11) var(--ds-radius-11);
+  background: var(--ds-pocket-1);
+  color: var(--ds-action);
+  box-shadow: inset 0 6px 10px var(--ds-pocket-shadow);
+}
+
+.skeleton-dig .skeleton-title-words { font-size: min(30px, (100cqi - 55px) / (var(--letters) * 0.75)); }
+
+/* A phone's title goes without its mark: upright on the line under the bar,
+   which keeps every language's words large; on its side between the bar's
+   buttons. */
+html[data-size="tall-narrow"] .skeleton-dig .skeleton-title { position: absolute; top: 52px; left: 0; right: 0; }
+
+html[data-size="tall-narrow"] .skeleton-dig .skeleton-mark,
+html[data-size="wide-short"] .skeleton-dig .skeleton-mark { display: none; }
+
+html[data-size="tall-narrow"] .skeleton-choice-screen.skeleton-dig .skeleton-title-words, html[data-size="tall-narrow"] .skeleton-dig .skeleton-title-words { font-size: min(26px, 100cqi / (var(--letters) * 0.75)); }
+html[data-size="wide-short"] .skeleton-dig .skeleton-title-words { font-size: min(22px, 100cqi / (var(--letters) * 0.75)); }
+
+
+/* The chip counting the bones in place turns green with the last. */
+html[data-size] .skeleton-dig .skeleton-chip[data-complete] { color: var(--ds-good); }
+html[data-size] .skeleton-dig .skeleton-chip[data-complete] svg { color: var(--ds-good); }

@@ -1,12 +1,19 @@
 import ClientRadio
 import HostRadio
 import Root
-import SystemClock
 import Foundation
 
-@MainActor public func deviceRadios() -> RadioPair {
-    let clock = SystemClock()
-    return RadioPair(host: DeviceHost(HostRadio()), client: DeviceClient(ClientRadio(now: { clock.now() })))
+@MainActor public func deviceRadios(clock: any ClockPort) -> RadioPair {
+    deviceRadios(clock: clock, makeHost: { DeviceHost(HostRadio()) },
+                 makeClient: { DeviceClient(ClientRadio(now: $0)) })
+}
+
+@MainActor func deviceRadios(
+    clock: any ClockPort,
+    makeHost: () -> any HostRadioPort,
+    makeClient: (@escaping () -> Double) -> any ClientRadioPort
+) -> RadioPair {
+    return RadioPair(host: makeHost(), client: makeClient { clock.now() })
 }
 
 @MainActor private final class DeviceHost: HostRadioPort {

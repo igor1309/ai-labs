@@ -25,7 +25,8 @@ import Observation
     private var pendingReview: [Incoming] = []
     private var pendingPayment: [Incoming] = []
 
-    var screen: ClientState { ClientMapping.screen(find: find?.state ?? .init(), connect: connect?.state) }
+    var screen: ClientState { ClientMapping.screen(find: find?.state ?? .init(), connect: connect?.state, lines: lines) }
+    private let lines: ClientMapping.SignalLines
     var paymentScreen: ClientPaymentState? {
         if let review { return ClientMapping.screen(review: review.state, payment: payment?.state) }
         if let payment {
@@ -43,7 +44,8 @@ import Observation
         self.clock = clock
         self.log = log
         self.restChanged = restChanged
-        discovery = ClientDiscovery(radio: radio, clock: clock, settings: settings)
+        lines = .init(floor: settings.pickerFloor, dropGap: settings.pickerDropGap)
+        discovery = ClientDiscovery(radio: radio, clock: clock, settings: settings, log: log)
         let initial = ClientFind.State()
         let handler = ClientFind.EffectHandler(scanner: discovery)
         find = .init(initialState: initial,
@@ -222,9 +224,9 @@ extension ClientBluetoothState {
         switch self {
         case .on: .available
         case .unknown, .resetting: .unknown
-        case .off: .unavailable(reason: "Bluetooth is off")
-        case .notAllowed: .unavailable(reason: "Bluetooth not allowed")
-        case .unsupported: .unavailable(reason: "Bluetooth unsupported")
+        case .off: .unavailable(reason: BluetoothReason.off.rawValue)
+        case .notAllowed: .unavailable(reason: BluetoothReason.notAllowed.rawValue)
+        case .unsupported: .unavailable(reason: BluetoothReason.unsupported.rawValue)
         }
     }
 }

@@ -1,3 +1,5 @@
+import "./picturePuzzleSheets.ts";
+import { THEMES } from "../src/theme.ts";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AGE_LEVELS, type AgeLevel } from "../src/ageLevel.ts";
@@ -72,7 +74,7 @@ describe.each(LANGUAGES)("picture result in %s", (language) => {
     expect(screen.getByLabelText(text.pictureCollection).textContent).toBe("3/3");
     expect(screen.getByLabelText(text.bestScore).textContent).toBe(`${text.best}12/3`);
     expect(screen.getByRole("status").textContent).toBe(text.celebrations["new-best"].text);
-    expect(getComputedStyle(view.container.querySelector("main")!).backgroundColor).toBe("rgb(15, 19, 32)");
+    expect(getComputedStyle(view.container.querySelector(".picture-puzzle-well-done")!).color).toBe("rgb(243, 238, 226)");
     const image = view.container.querySelector("img")!;
     expect(image.dataset.picture).toBe("loading");
     expect(image.hasAttribute("src")).toBe(false);
@@ -300,11 +302,13 @@ it("compares with collections saved by another tab before the last piece", () =>
   view.unmount();
 });
 
-it.each(["light", "dark"])("keeps the previous best legible in %s", (theme) => {
+it.each(THEMES)("keeps the previous best legible in %s", (theme) => {
   const view = render(<div data-theme={theme}><PicturePuzzleResultScreen language="en" name="Stegosaurus" fact={TEXTS.en.pictureFacts.stegosaurus}
     level="explorer" score={2} shared={2} best={2} beaten={1} celebration="new-best" picture={fakeBodyPicture("stegosaurus")}
     onReplay={vi.fn()} onAnother={vi.fn()} onHome={vi.fn()} /></div>, withPictures);
   const previous = view.container.querySelector(".best-score-beaten")!;
   expect(previous.textContent).toBe("1");
-  expect(getComputedStyle(previous).color).toBe(theme === "dark" ? "rgb(156, 163, 182)" : "rgb(92, 100, 122)");
+  const colour = document.createElement("span");
+  colour.style.color = getComputedStyle(previous).getPropertyValue("--ds-ink-soft");
+  expect(getComputedStyle(previous).color).toBe(getComputedStyle(colour).color);
 });

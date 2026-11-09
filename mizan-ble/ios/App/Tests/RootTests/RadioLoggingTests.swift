@@ -83,7 +83,7 @@ import Testing
             "connect called", "connect succeeded", "writeKey called bytes=32", "writeKey succeeded", "write called bytes=44",
             "write succeeded", "write called bytes=12", "write failed", "drop called", "drop succeeded"]
             + ["unknown", "resetting", "unsupported", "notAllowed", "off", "on"].map { "bluetooth \($0)" }
-            + ["reading", "connected bytes=44 largestWrite=512", "message bytes=32", "dropped", "writeAnswered key succeeded", "writeAnswered message succeeded"]
+            + ["connected bytes=44 largestWrite=512", "message bytes=32", "dropped", "writeAnswered key succeeded", "writeAnswered message succeeded"]
             + failureLines.flatMap { ["couldNotConnect \($0)", "writeAnswered key \($0)", "writeAnswered message \($0)"] }
         #expect(h.log.entries.map(\.message) == expected)
         #expect(h.log.entries.allSatisfy { $0.category == .clientRadio })

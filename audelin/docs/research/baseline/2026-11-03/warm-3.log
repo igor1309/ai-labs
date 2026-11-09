@@ -1,0 +1,12 @@
+rehearsal: model loaded in 0,1 s
+rehearsal: call detected, recording into <temporary folder>
+rehearsal: 1 min of audio in 60.0 s, at most 0,1 s behind, now 0,1 s; newest word trails by 0,1–0,5 s, mean 0,3 s over 28, final text by 2,0–2,6 s, mean 2,2 s over 28, footprint 294 MiB, peak 298 MiB
+rehearsal: 2 min of audio in 120.0 s, at most 0,1 s behind, now 0,0 s; newest word trails by 0,1–0,5 s, mean 0,2 s over 30, final text by 2,1–2,6 s, mean 2,3 s over 30, footprint 283 MiB, peak 298 MiB
+rehearsal: 3 min of audio in 180.0 s, at most 0,2 s behind, now 0,0 s; newest word trails by 0,1–0,5 s, mean 0,3 s over 30, final text by 2,0–2,6 s, mean 2,2 s over 30, footprint 275 MiB, peak 298 MiB
+rehearsal: 4 min of audio in 240.0 s, at most 0,2 s behind, now 0,0 s; newest word trails by 0,1–0,6 s, mean 0,2 s over 30, final text by 2,1–2,9 s, mean 2,3 s over 30, footprint 74 MiB, peak 298 MiB
+rehearsal: 5 min of audio in 300.0 s, at most 0,2 s behind, now -0,0 s; newest word trails by 0,1–0,7 s, mean 0,3 s over 30, final text by 2,0–2,6 s, mean 2,2 s over 30, footprint 278 MiB, peak 298 MiB
+rehearsal: call app left
+rehearsal: call ended, recording stopped; stop to final transcript 0,2 s
+rehearsal: done: 5 min at 1.0x in 300 s; real recognisers; recognisers at most 0,2 s behind; cpu 33,5 s, 11% of one core; footprint 279 MiB at the end, peak 298 MiB
+rehearsal: first text after 6,1 s
+rehearsal: written: microphone 300,0 s, call 300,0 s of 300,0 s fed; transcript Me 1040 words, Them 1039 words

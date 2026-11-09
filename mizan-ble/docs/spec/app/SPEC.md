@@ -19,7 +19,8 @@ the user spec (`../SPEC.md`).
   is ended.
 - **Logging is `os.Logger`,** subsystem `mizan-ble`, one category per
   decorated interface, written through a sink the tests can read. A line
-  holds kinds, counters, lengths, phases and case names only: never an
+  holds kinds, counters, lengths, phases, case names and whole dBm signal
+  strength (distance, not identity): never an
   amount, a key, a nonce, a message's plaintext or ciphertext, or a peer
   or device identifier, in any form, and any value put into a line is
   `.private` unless it is one of those. Each state type gives its own

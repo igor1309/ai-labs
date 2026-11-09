@@ -3,17 +3,18 @@ Feature: Compare dinosaurs quiz: starting a round and asking
   round, and tries to beat their best score. Explorer also asks WHO IS LONGER?
   and Paleontologist adds WHO IS LIGHTER? and WHO IS SHORTER?; each level's
   questions are specified in its own compare feature.
-  home-tiles.feature tells how the games' tiles stand and scroll, and
-  home-featured-card.feature how the large card features a game.
+  home-games.feature tells how the games' tiles stand, and
+  home-today.feature how the sky features today's game.
 
   Background:
-    Given an iPad in landscape
+    Given a window of 1180 by 820 CSS pixels
 
   Scenario: The home page offers the quiz as a tile
     When I open the home page
     Then I see a "COMPARE" tile with a scales symbol and a picture of two dinosaurs
-    And on a day another game is featured it is the first tile of the row, above "ANCIENT REPTILES"
-    And it shows my best score with a trophy symbol when there is one
+    And on a day another game is featured it is the first tile of the row, above "EXPLORE"
+    And the small tile has no progress badge
+    And when COMPARE is featured its card shows my best score with a trophy symbol when there is one
 
   Scenario: The quiz tile brightens under a pointer
     Given I am on the home page
@@ -48,12 +49,13 @@ Feature: Compare dinosaurs quiz: starting a round and asking
     Then one round starts, at "1/10"
     And COMPARE counts one more start
 
-  Scenario: Portrait asks to turn sideways
+  Scenario: Turning preserves the current question
     Given I am on question 3 of a round
-    When I turn the iPad to portrait
-    Then I see a picture asking to turn sideways
-    When I turn the iPad back to landscape
-    Then I am on question 3 again
+    When the window becomes portrait
+    Then the cards stack with no orientation gate
+    And I am still on question 3 with the same answer state
+    When the window becomes landscape again
+    Then the cards stand side by side and I remain on question 3
 
   Scenario Outline: A question shows its attribute and two dinosaurs
     Given a round has started
@@ -74,7 +76,7 @@ Feature: Compare dinosaurs quiz: starting a round and asking
   Scenario: Every question in a round is a fair pair
     When a round of 10 questions is generated
     Then Hatchling questions compare mass or height, and Explorer questions can also compare length
-    And a height only of two dinosaurs, as a flying or sea reptile is not measured standing
+    And a height question pairs only dinosaurs, since flying and sea reptiles are not measured standing
     And each question's two dinosaurs are different
     And in each question the larger value is at least 1.5 times the smaller
     And no two questions use the same two dinosaurs, whatever they compare

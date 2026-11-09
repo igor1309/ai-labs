@@ -78,13 +78,15 @@ nothing; what a screen offers follows from the state.
 |---|---|---|---|
 | Amount entry | `AmountEntry` | Core | The keypad's amount and whether it can be locked |
 | Host broadcast | `HostBroadcast` | Core | The host from a locked amount, through the countdown and handshake, to a secure link |
+| Timeout notice | `TimeoutNotice` | Core | How long the host shows that it timed out: 30 s, or until the operator acts on the host screen |
 | Host payment | `HostPayment` | Core | The host from a secure link, through the client's decision and the mock outcome, to a result |
-| Client find | `ClientFind` | Core | The client from scanning, through the picker's choice, to the payer's start |
+| Client find | `ClientFind` | Core | The client from scanning, through host choice's answer, to the payer's start |
 | Client connect | `ClientConnect` | Core | The client from a chosen host, through the handshake, to a secure link and the amount |
 | Client review | `ClientReview` | Core | The client from the amount, through the payer's decision, to the host's acknowledgement |
 | Client payment | `ClientPayment` | Core | The client from an acknowledged confirm to the host's result |
 | Session crypto | `SessionCrypto` | Core | One transaction's keys, sealing, opening and replay check |
-| Host picker | `HostPicker` | Core | Choosing the nearest host from timestamped signal readings |
+| Host picker | `HostPicker` | Core | What the signal shows now: the leading host from timestamped readings, and its band |
+| Host choice | `HostChoice` | Core | Which host is offered, held over time through the leader's swings |
 | Message codec | `MessageCodec` | Core | The bytes of each message and of the session characteristic |
 | Settings | `Settings` | Core | The settings, their defaults and allowed values |
 | Design system | `DesignSystem` | UI | Tokens generated from the design, and its components as SwiftUI views |
@@ -133,6 +135,7 @@ flowchart TB
   subgraph Core
     AmountEntry
     HostBroadcast
+    TimeoutNotice
     HostPayment
     ClientFind
     ClientConnect
@@ -140,6 +143,7 @@ flowchart TB
     ClientPayment
     SessionCrypto
     HostPicker
+    HostChoice
     MessageCodec
     Settings
   end
@@ -172,7 +176,7 @@ requires. An adapter provides its own API only; the root answers each
 component's interface with a thin translation over it: the host flows'
 advertiser, sender and link over the host radio, client find's scanner and
 the client flows' links and senders over the client radio, the countdown,
-deadline and ticks with the clock's own countdown and ticks, the client
+deadline, the notice's timer and ticks with the clock's own countdown and ticks, the client
 radio's `now` with the clock's now, and the
 settings' store over preferences.
 
@@ -180,13 +184,15 @@ settings' store over preferences.
 |---|---|---|
 | Amount entry | A key and Bluetooth's availability in, the amount and whether it can be locked out | — |
 | Host broadcast | Lock, cancel, retry, new amount, the advertiser's events and the transaction's end in; its state; a secure link handed over | A session, an advertiser, a sender, a countdown, the countdown setting |
+| Timeout notice | Host broadcast's timeouts, the operator's actions and its timer's end in; whether a notice shows, and for which timeout | A timer |
 | Host payment | The client's decision, a lost link, the outcome, cancel and new amount in; its state; the end | A session, a sender, a link |
-| Client find | The picker's answer, Bluetooth's state, start and the transaction's end in; its state; a host, with its name or none, handed over | A scanner |
+| Client find | Host choice's answer, the picker's strongest signal, Bluetooth's state, start and the transaction's end in; its state; a host, with its name or none, handed over | A scanner |
 | Client connect | The link's steps, cancel, retry in; its state; a link, its session and the amount handed over | A link, a session, a deadline |
 | Client review | The payer's decision and done, the host's messages and a lost link in; its state; a confirm handed over | A session, a sender, a link |
 | Client payment | The host's result, a lost link and the payer's done in; its state; the end | A session, a link |
 | Session crypto | A session: a key pair, derive, seal, open, close | — (CryptoKit, used as a library) |
-| Host picker | Readings and the time in, a host, "hold closer" or "none" out | Its settings, given as values |
+| Host picker | Readings and the time in; the time, whether a host is heard, and the leader with its band out; the strongest smoothed signal on view | Its settings, given as values |
+| Host choice | The picker's answer in, a host, "hold closer" or "none" out | Its hold, given as a value |
 | Message codec | Each message and the Session characteristic to bytes and back | — |
 | Settings | Each setting's value, and choosing one | A store |
 | Host UI, Settings UI, Client UI, Client payment UI, Mode switch | Screens: a state drawn, the person's events sent | The state and events, as their own types; `DesignSystem` |
@@ -218,7 +224,8 @@ or reads real time; only the apps wire it in (`ios/scripts/tests/test_clock_boun
 
 - **Host:** the host UI sends key presses to amount entry, lock, cancel
   and broadcast again to host broadcast, and the mock outcome, cancel and
-  new amount to host payment. Their effects open and close a session
+  new amount to host payment. Each of the operator's actions, and host
+  broadcast's timeout, also go to timeout notice. Their effects open and close a session
   (session crypto); serve, advertise, stop advertising and retire the
   service, or finish it after what is queued (host radio; a serve waits
   for a finish); start and stop
@@ -227,8 +234,8 @@ or reads real time; only the apps wire it in (`ios/scripts/tests/test_clock_boun
   its subscription and unsubscription come back as events, the decision
   opened by session crypto and decoded by the codec on the way.
 - **Client:** the client radio's scan readings, with the clock's ticks, go
-  through the host picker; its answer (a host, hold closer, none) is the
-  client find's event. Client connect's effects connect, read the
+  through the host picker, whose answer goes through host choice; host
+  choice's answer (a host, hold closer, none) is the client find's event. The picker's strongest smoothed signal, in whole dBm or none, is another, which the client UI draws; nothing decides on it. Client connect's effects connect, read the
   session and write the key, client review's send the decision, and each
   end disconnects, through the client radio, with session crypto and the
   codec between them as on the host.
@@ -263,7 +270,7 @@ The order of one transaction:
 
 1. The host locks the amount: it makes a session, serves the service and
    advertises. Its countdown starts.
-2. The client's picker chooses the host; the payer starts the handshake.
+2. The client's host choice offers the host; the payer starts the handshake.
    The client connects, discovers the service, subscribes to To client and
    reads Session.
 3. The client writes its public key to Client key. The host stops
@@ -295,9 +302,11 @@ unsubscribed.
 | Picker floor | −65 dBm | −100 to −30 dBm | No screen in v0.0.1 |
 | Picker margin | 6 dB | 0 to 20 dB | No screen in v0.0.1 |
 | Picker fade | 2 s | 0.5 to 10 s | No screen in v0.0.1 |
+| Picker drop gap | 6 dB | 0 to 20 dB | No screen in v0.0.1 |
+| Choice hold | 1 s | 0 to 5 s | No screen in v0.0.1 |
 | Advertised name | `MIZAN-` and 4 random hex digits, made once | read-only | Shown in the settings UI |
 
-The picker's values are starting guesses (`NOTES.md`); the values measured
+The picker's and the hold's values are starting guesses (`NOTES.md`); the values measured
 between a real iPad and iPhone replace the defaults. A stored value outside
 its range reads as the default.
 
@@ -330,6 +339,14 @@ Each line can be overturned by the owner.
   states. A choice between outcomes is always a reducer's.
 - **The host picker and session crypto are components, not parts of a
   flow,** so each is tested on its own with no radio, as `NOTES.md` asks.
+- **Host choice is apart from the host picker:** the picker reads the
+  signal now, in dBm; host choice commits over time, in hosts, bands and
+  durations, never a signal level. The answer flows one way, so the
+  picker never learns which host was chosen.
+- **The timeout notice is apart from host broadcast:** how long a
+  timeout is drawn is a wait of its own, on its own timer, so it can
+  never end or restart the countdown, and host broadcast's states stay
+  as they are. Host broadcast's spec is at its limit.
 - **Two radio adapters, one per role,** because the host is only ever a
   peripheral and the client only a central; neither knows the other's API.
 - **The GATT layout lives here,** not in one spec, since both radios and

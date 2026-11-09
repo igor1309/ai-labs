@@ -1,3 +1,4 @@
+import Foundation
 import AVFoundation
 import LiveText
 import NemotronRecognizer
@@ -32,12 +33,12 @@ final class LiveCall {
         func load() async throws -> any Recognizer {
 
             switch self {
-            case .parakeet: try await timed("Parakeet") { try await ParakeetRecognizer() }
-            case .nemotron: try await timed("Nemotron") { try await NemotronRecognizer() }
+            case .parakeet: try await timed("Parakeet") { try await ParakeetRecognizer(readers: .shared) }
+            case .nemotron: try await timed("Nemotron") { try await NemotronRecognizer(decoders: .shared) }
             case .twoPass:
                 TwoPassRecognizer(
-                    draft: try await timed("Nemotron") { try await NemotronRecognizer() },
-                    final: try await timed("Parakeet") { try await ParakeetRecognizer() }
+                    draft: try await timed("Nemotron") { try await NemotronRecognizer(decoders: .shared) },
+                    final: try await timed("Parakeet") { try await ParakeetRecognizer(readers: .shared) }
                 )
             }
         }
@@ -65,6 +66,7 @@ final class LiveCall {
     private(set) var transcript = Transcript()
     private(set) var started: ContinuousClock.Instant?
     var followsLive = true
+    private var scrollAcknowledgement: UUID?
     var holds: [PanelState.Held] = []
 
     struct Audio {
@@ -126,7 +128,7 @@ final class LiveCall {
 
         guard isRecording || !transcript.entries.isEmpty else { return .init(recording: .off, log: .empty) }
         let elapsed = started.map { (now - $0).components.seconds } ?? 0
-        let lines = PanelState.Lines(entries: transcript.entries, holds: holds, followsLive: followsLive)
+        let lines = PanelState.Lines(entries: transcript.entries, holds: holds, followsLive: followsLive, scrollAcknowledgement: scrollAcknowledgement)
         let recording: PanelState.Recording = isRecording
             ? .on(elapsed: String(format: "%02d:%02d:%02d", elapsed / 3600, elapsed / 60 % 60, elapsed % 60))
             : .off
@@ -142,7 +144,9 @@ final class LiveCall {
         case .switchLiveTextOn: break
         case let .hold(held): holds.append(held)
         case let .letGo(held): holds.removeAll { $0 == held }
-        case let .scrolled(atBottom): followsLive = atBottom
+        case let .scrolled(atBottom, interaction):
+            if let interaction { scrollAcknowledgement = interaction }
+            followsLive = atBottom
         case .jumpToLive: followsLive = true
         }
     }
@@ -202,9 +206,11 @@ final class LiveCall {
 
             let showing = zip(tracks, lives).map { track, live in
                 Task {
+                    var all: [Segments.Segment] = []
                     for await segments in live.updates {
                         guard self.session === session else { continue }
-                        show(track.0, segments)
+                        all.replaceSubrange(segments.from..., with: segments.segments)
+                        show(track.0, all, ending: segments.ending)
                     }
                 }
             }
@@ -286,18 +292,18 @@ final class LiveCall {
         }
     }
 
-    private func show(_ speaker: PanelState.Speaker, _ segments: Segments) {
+    private func show(_ speaker: PanelState.Speaker, _ segments: [Segments.Segment], ending: Segments.Ending?) {
 
-        transcript.update(speaker, segments.all.map { .init(id: $0.id, start: $0.start, settled: $0.settled, pending: $0.pending) })
-        if segments.ending == .failed { message = "The recogniser failed; the text so far is kept" }
+        transcript.update(speaker, segments.map { .init(id: $0.id, start: $0.start, settled: $0.settled, pending: $0.pending) })
+        if ending == .failed { message = "The recogniser failed; the text so far is kept" }
 
         let now = ContinuousClock.now
-        guard segments.ending != nil || lastLogged[speaker].map({ now - $0 >= .seconds(5) }) ?? true else { return }
+        guard ending != nil || lastLogged[speaker].map({ now - $0 >= .seconds(5) }) ?? true else { return }
         lastLogged[speaker] = now
-        let settled = segments.all.reduce(0) { $0 + $1.settled.split(separator: " ").count }
-        let pending = segments.all.reduce(0) { $0 + $1.pending.split(separator: " ").count }
-        let ending = segments.ending.map { ", \($0)" } ?? ""
-        Log.line("\(speaker == .me ? "я" : "они"): \(segments.all.count) segment(s), \(settled) settled, \(pending) pending word(s)\(ending)")
+        let settled = segments.reduce(0) { $0 + $1.settled.split(separator: " ").count }
+        let pending = segments.reduce(0) { $0 + $1.pending.split(separator: " ").count }
+        let ending = ending.map { ", \($0)" } ?? ""
+        Log.line("\(speaker == .me ? "я" : "они"): \(segments.count) segment(s), \(settled) settled, \(pending) pending word(s)\(ending)")
     }
 
     private func describe(_ source: Source) -> String {

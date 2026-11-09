@@ -22,8 +22,8 @@ enum HostPreview {
                 HostPreviewScreen(state: preview.state, event: { _ in })
             }
         }
-        try PreviewExporter.export(snapshots, to: folder, devices: [.iPad])
-        print("Exported \(snapshots.count * 2) PNGs to \(folder.path)")
+        try PreviewExporter.export(snapshots, to: folder)
+        print("Exported \(snapshots.count * 4) PNGs to \(folder.path)")
     }
 
     private struct UsageError: Error, CustomStringConvertible {

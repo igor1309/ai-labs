@@ -19,4 +19,4 @@ Feature: The version footer's name
     Examples:
       | from    | first   | to      | tile          | then    |
       | Russian | Версия  | English | ANCIENT REPTILES | Version |
-      | English | Version | Russian | ВСЕ           | Версия  |
+      | English | Version | Russian | ДРЕВНИЕ ЯЩЕРЫ | Версия  |

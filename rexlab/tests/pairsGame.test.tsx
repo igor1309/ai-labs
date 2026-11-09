@@ -1,3 +1,4 @@
+import { gameDoor } from "./support.ts";
 import { readFileSync } from "node:fs";
 import { TEXTS } from "../src/language/texts.ts";
 import { join } from "node:path";
@@ -50,7 +51,7 @@ const NAMES = namesOf(dealt(1, { pals: THREE }));
 const [TRIKE, STEGO] = [placesOf(NAMES, "TRICERATOPS"), placesOf(NAMES, "STEGOSAURUS")];
 // Dinosaurs whose pictures the home page and the welcome screen do not
 // show, so they load only once dealt.
-const UNSEEN = [pal("velociraptor"), pal("ankylosaurus"), pal("spinosaurus"), pal("diplodocus")];
+const UNSEEN = [pal("velociraptor"), pal("allosaurus"), pal("iguanodon"), pal("diplodocus")];
 
 const picked = (level: AgeLevel): AgeLevelSetting => ({ level, revision: `picked-${level}` });
 
@@ -63,13 +64,13 @@ const LEVEL_BOARDS: [string, PairsAppOptions<ManualTimers>, Board][] = [
   ["Paleontologist", { ageLevel: picked("paleontologist") }, dealt({ large: "paleontologist" })]
 ];
 
-const button = (name: string) => screen.getByRole("button", { name });
+const button = (name: string) => document.querySelector(".home") ? gameDoor(name) : screen.getByRole("button", { name });
 const stored = (progress: Partial<StoredPairs>, games: Record<string, unknown> = {}) =>
   memoryStorage({ [PROGRESS_KEY]: pairsRecord({ stars: 0, level: 1, boardsOnLevel: 0, best: {}, found: [], ...progress }, games) });
 const celebrations = () => screen.queryAllByRole("status").map((status) => status.getAttribute("aria-label"));
 const bestShown = () => screen.queryByLabelText("BEST SCORE")?.textContent ?? null;
 // The names of the result's dinosaurs, whatever the language.
-const resultNames = () => [...document.querySelectorAll(".pairs-found-name")].map((name) => name.textContent);
+const resultNames = () => [...document.querySelectorAll(".pairs-found-name")].map((name) => name.textContent?.replaceAll("\u00AD", ""));
 
 // Plays a level 1 board of the three in `tries` tries, and lets the
 // result show.
@@ -88,7 +89,7 @@ describe("the welcome screen", () => {
     expect(screen.getByRole("heading").textContent).toBe("FIND THE PAIR");
     expect(symbolOf(button("PLAY"))).toBe("play");
     const [level, stars] = [screen.getByLabelText("LEVEL"), screen.getByLabelText("STARS")];
-    expect([level.textContent, symbolOf(level), stars.textContent, symbolOf(stars)]).toEqual(["3", "chart-no-axes-column-increasing", "5", "star"]);
+    expect([level.textContent, level.querySelector("svg.pairs-stairs") !== null, stars.textContent, symbolOf(stars)]).toEqual(["3", true, "5", "star"]);
     expect(symbolOf(button("HOME"))).toBe("house");
     expect([...document.querySelectorAll(".pairs-hero img")].map((picture) => picture.getAttribute("src"))).toEqual([
       fakeBodyPicture("triceratops"),
@@ -118,7 +119,7 @@ describe("a board", () => {
     expect(pairCards().map((card) => [card.getAttribute("data-state"), symbolsOf(card)])).toEqual(pairCards().map(() => ["down", ["footprints"]]));
     expect([board().style.getPropertyValue("--rows"), board().style.getPropertyValue("--columns")]).toEqual([String(rows), String(columns)]);
     const style = getComputedStyle(board());
-    expect([style.gridTemplateRows, style.gridTemplateColumns].map((tracks) => tracks.includes("minmax(var(--card-floor), 1fr)"))).toEqual([true, true]);
+    expect([style.gridTemplateColumns, style.getPropertyValue("--pb-card").trim().startsWith("max(var(--card-floor),")]).toEqual(["repeat(var(--columns), var(--pb-card))", true]);
     expect(board().style.getPropertyValue("--card-floor")).toBe("150px");
     expect(screen.getByLabelText("LEVEL").textContent).toBe(String(level));
 
@@ -240,7 +241,8 @@ describe.each(LEVEL_BOARDS)("turning cards at %s", (_, options, dealtBoard) => {
       ["found", firstName]
     ]);
     expect(clock.timers()).toEqual([]);
-    expect(getComputedStyle(pair[0]?.querySelector(".pair-card-face") ?? board()).outline).toBe("4px solid #2e7d4f");
+    const face = getComputedStyle(pair[0]?.querySelector(".pair-card-face") ?? board());
+    expect([face.borderTopWidth, face.borderTopStyle, face.borderTopColor]).toEqual(["4px", "solid", "rgb(62, 142, 90)"]);
   });
 
   it("names a found card in a size its card's width keeps every dinosaur's name in, in every language", async () => {
@@ -251,12 +253,15 @@ describe.each(LEVEL_BOARDS)("turning cards at %s", (_, options, dealtBoard) => {
 
     // jsdom works out no size from a card's width, so the size is read as
     // app.css gives it: at most a cap, otherwise the card's width, less the
-    // name's sides, over a width in ems no name is wider than, which jsdom
-    // keeps as a multiplication by its inverse.
+    // face's padding and border at their widest, over a width in ems no
+    // name is wider than, which jsdom keeps as a multiplication by its
+    // inverse.
     const name = pairCards()[FIRST[0] ?? 0]?.querySelector(".pair-card-name") ?? board();
     const style = getComputedStyle(name);
     const size = /^min\((\d+)px, ([\d.]+) \* \(100cqi - (\d+)px\)\)$/.exec(style.fontSize);
-    expect([size?.[1], size?.[3]].map(Number)).toEqual([24, parseFloat(style.paddingLeft) + parseFloat(style.paddingRight)]);
+    const face = getComputedStyle(name.parentElement ?? board());
+    expect([size?.[1], size?.[3]].map(Number)).toEqual([15, 24]);
+    expect(2 * (parseFloat(face.paddingLeft) + parseFloat(face.borderLeftWidth))).toBeLessThanOrEqual(24);
     expect([style.whiteSpace, style.letterSpacing]).toEqual(["nowrap", "normal"]);
     const ems = 1 / Number(size?.[2]);
     const names = SHIPPED_PALS.flatMap(({ name: { en, ru } }) => [en.toLocaleUpperCase("en"), ru.toLocaleUpperCase("ru")]);
@@ -342,14 +347,14 @@ describe.each(LEVEL_BOARDS)("turning cards at %s", (_, options, dealtBoard) => {
     expect(screen.getByLabelText("STARS").textContent).toBe("0");
   });
 
-  it("goes back from a board to the welcome screen, BACK before HOME, without asking, and the board earns nothing", async () => {
+  it("goes back from a board to the welcome screen, HOME before BACK, without asking, and the board earns nothing", async () => {
     const { user, storage } = await open();
     await turnCard(user, FIRST[0] ?? 0);
     await turnCard(user, FIRST[1] ?? 0);
     const bar = document.querySelector(".pairs-bar");
     expect([...(bar?.querySelectorAll("button") ?? [])].map((each) => [each.textContent, symbolOf(each)])).toEqual([
-      ["BACK", "arrow-left"],
-      ["HOME", "house"]
+      ["HOME", "house"],
+      ["BACK", "arrow-left"]
     ]);
 
     await user.click(button("BACK"));
@@ -521,6 +526,7 @@ describe("found cards on a phone", () => {
     }
     const loading = dealtBoard.cards.findIndex(({ pal }, place) => !failed.includes(place) && pictures.loading().includes(fakeBodyPicture(pal.id)));
     const shown = placesOf(names, names[loading] ?? "");
+    expect(shown.length).toBeGreaterThan(0);
     for (const place of shown) {
       await turnCard(user, place);
       act(() => pictures.finish(pictureOn(dealtBoard, place)));
@@ -533,7 +539,7 @@ describe("found cards on a phone", () => {
     }
     for (const place of shown) {
       expect(styleAt(nameOf(place), [393, 852]).value("display")).toBe("none");
-      expect(labelAt(place)).toContain(pal(dealtBoard.cards[place]!.pal.id).name.en);
+      expect(labelAt(place)).toContain(pal(dealtBoard.cards[place]!.pal.id).name.en.toLocaleUpperCase("en"));
     }
   });
 });
@@ -580,7 +586,7 @@ describe("the result", () => {
 
     const tries = screen.getByLabelText("TRIES");
     expect([tries.textContent, symbolOf(tries)]).toEqual(["7", "hand"]);
-    expect(screen.getByLabelText("STARS").textContent).toBe("★5");
+    expect(screen.getByLabelText("STARS").textContent).toBe("5");
     expect(resultNames()).toEqual(["TRICERATOPS", "STEGOSAURUS", "TYRANNOSAURUS"].filter((name) => NAMES.includes(name)).sort((a, b) => NAMES.indexOf(a) - NAMES.indexOf(b)));
     expect(screen.getByRole("heading").textContent).toBe("WELL DONE!");
     expect(["PLAY AGAIN", "BACK", "HOME"].map((name) => symbolOf(button(name)))).toEqual(["rotate-ccw", "arrow-left", "house"]);
@@ -630,7 +636,7 @@ describe("the result", () => {
     endWave(app.clock);
 
     const levelUp = screen.getByRole("status", { name: "NEW LEVEL 2" });
-    expect([levelUp.textContent, levelUp.querySelectorAll(".pairs-next-card").length]).toEqual(["2", 8]);
+    expect([levelUp.textContent, levelUp.querySelectorAll(".pairs-next-card").length]).toEqual(["NEW LEVEL 2", 8]);
     await app.user.click(button("PLAY AGAIN"));
     expect([pairCards().length, screen.getByLabelText("LEVEL").textContent]).toEqual([8, "2"]);
   });
@@ -666,7 +672,7 @@ describe("the result", () => {
     expect(storedPairs(app.storage)).toEqual(recorded);
   });
 
-  it("shows the home tile's stars once a board is finished", async () => {
+  it("omits the home tile's badge even after a board is finished", async () => {
     const app = openPairsApp({ pals: THREE });
     expect(document.querySelector(".pairs-tile-stars")).toBeNull();
 
@@ -674,7 +680,7 @@ describe("the result", () => {
     await app.user.click(button("HOME"));
 
     const stars = document.querySelector(".pairs-tile-stars");
-    expect(stars && [stars.textContent, symbolOf(stars)]).toEqual(["1", "star"]);
+    expect(stars).toBeNull();
   });
 });
 
@@ -682,7 +688,7 @@ describe("dinosaurs found", () => {
   const newBadges = () =>
     within(screen.getByRole("list", { name: "ANIMALS" }))
       .getAllByRole("listitem")
-      .flatMap((item) => (item.querySelector(".pairs-new-badge") ? [[item.querySelector(".pairs-found-name")?.textContent, symbolsOf(item.querySelector(".pairs-new-badge") ?? item)]] : []));
+      .flatMap((item) => (item.querySelector(".pairs-new-badge") ? [[item.querySelector(".pairs-found-name")?.textContent?.replaceAll("\u00AD", ""), symbolsOf(item.querySelector(".pairs-new-badge") ?? item)]] : []));
 
   it("are a finished board's dinosaurs, each new one marked NEW with a sparkle", async () => {
     const app = openPairsApp({ pals: THREE });

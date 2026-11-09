@@ -35,8 +35,8 @@ The one interaction at every level.
   whole dinosaur; at Explorer and Paleontologist at the right pick.
 - **Two brushes, each a size a finger can steer.** The brush is 48 CSS
   pixels across at Hatchling, 36 at Explorer and Paleontologist; the
-  wide brush is twice that, 96 and 72. A picker on DIG's bar chooses
-  between them; DIG opens with the brush, and the pick stays while DIG
+  wide brush is twice that, 96 and 72. The child can choose either on
+  every board; DIG opens with the brush, and the pick stays while DIG
   is open (LAB-398).
 
 ## The levels

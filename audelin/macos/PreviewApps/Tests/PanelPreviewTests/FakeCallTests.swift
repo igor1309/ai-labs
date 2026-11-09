@@ -1,8 +1,29 @@
+import Foundation
 import PanelUI
 import Testing
 @testable import PanelPreview
 
 struct FakeCallTests {
+
+    @Test func scrollSnapshotsEchoIdentityAndJumpKeepsIt() throws {
+
+        var call = started()
+        let interaction = UUID(uuid: (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1))
+        call.handle(.scrolled(atBottom: false, interaction: interaction))
+        guard case let .lines(paused) = call.state.log else {
+            Issue.record("expected a log")
+            return
+        }
+        #expect(paused.scrollAcknowledgement == interaction)
+        #expect(!paused.followsLive)
+        call.handle(.jumpToLive)
+        guard case let .lines(live) = call.state.log else {
+            Issue.record("expected a log")
+            return
+        }
+        #expect(live.scrollAcknowledgement == interaction)
+        #expect(live.followsLive)
+    }
 
     @Test func showsNothingUntilStarted() {
 
@@ -104,7 +125,7 @@ struct FakeCallTests {
     private func rows(_ call: FakeCall) -> [PanelState.Row] {
 
         guard case let .lines(lines) = call.state.log else { return [] }
-        return lines.rows
+        return Array(lines.rows)
     }
 
     private func entries(_ call: FakeCall) -> [PanelState.Entry] {

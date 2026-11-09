@@ -33,7 +33,7 @@ const stored = (bestScore: number | null, visitsFinished: number, friends: strin
 
 const bestShown = () => screen.queryByLabelText("BEST SCORE")?.querySelector(".best-score-value")?.textContent;
 const friendCards = (label = "FRIENDS") => within(screen.getByRole("group", { name: label })).getAllByRole("button");
-const friendCount = () => document.querySelector(".friend-count")?.textContent;
+const friendCount = () => document.querySelector(".care-friend-count, .friend-count")?.textContent;
 
 describe("a finished visit", () => {
   it.each([
@@ -96,7 +96,7 @@ describe("a finished visit", () => {
     await playVisit(user, clock, refusalsFor(7));
 
     expect(celebrations()).toEqual(["NEW BEST SCORE"]);
-    expect([screen.getByLabelText("BEST SCORE").querySelector(".best-score-beaten")?.textContent, bestShown()]).toEqual(["6", "7/8"]);
+    expect([screen.getByLabelText("BEST SCORE").querySelector(".best-score-beaten")?.textContent, bestShown()]).toEqual(["6", "7"]);
     expect(storedCare(storage)).toMatchObject({ bestScore: 7, visitsFinished: 3 });
   });
 
@@ -108,7 +108,7 @@ describe("a finished visit", () => {
 
     expect(document.querySelector(".stage")?.hasAttribute("data-leaving")).toBe(true);
     act(() => clock.settle());
-    expect([scoreShown(), bestShown(), celebrations()]).toEqual([`${score}/8`, "7/8", []]);
+    expect([scoreShown(), bestShown(), celebrations()]).toEqual([`${score}/8`, "7", []]);
     expect(storedCare(storage)).toMatchObject({ bestScore: 7 });
   });
 
@@ -189,7 +189,7 @@ describe("friends", () => {
     expect(friendCount()).toBe("1");
   });
 
-  it("are invited with a picture when there are none yet, with NEW VISITOR and BACK", async () => {
+  it("are invited with a picture when there are none yet, with NEW VISITOR, BACK, HOME and the zero count", async () => {
     const { user } = openCareApp();
     await openCare(user);
 
@@ -197,7 +197,7 @@ describe("friends", () => {
 
     expect(document.querySelector(".no-friends-nest")?.getAttribute("src")).toBe(fakeItemPicture("nest"));
     expect(screen.getByText("NO FRIENDS YET. WELCOME A DINOSAUR!")).toBeDefined();
-    expect([symbolOf(button("NEW VISITOR")), symbolOf(button("BACK"))]).toEqual(["footprints", "arrow-left"]);
+    expect([symbolOf(button("NEW VISITOR")), symbolOf(button("BACK")), symbolOf(button("HOME")), friendCount()]).toEqual(["footprints", "arrow-left", "house", "0"]);
     await user.click(button("BACK"));
     expect(button("FRIENDS")).toBeDefined();
     await user.click(button("NEW VISITOR"));
@@ -215,9 +215,7 @@ describe("friends", () => {
     expect(SHIPPED_VISITORS).toHaveLength(42);
     expect(friendCount()).toBe("42");
     expect(getComputedStyle(screen.getByRole("group", { name: "FRIENDS" })).overflowY).toBe("auto");
-    // Four to a row, the friends' own: the catalogue's cards in a row are
-    // the catalogue's alone.
-    expect(getComputedStyle(screen.getByRole("group", { name: "FRIENDS" })).gridTemplateColumns).toBe("repeat(4, minmax(0, 1fr))");
+    expect(getComputedStyle(screen.getByRole("group", { name: "FRIENDS" })).gridTemplateColumns).toBe("repeat(var(--friends-columns), minmax(0, 1fr))");
     expect(["NEW VISITOR", "BACK", "HOME"].map((name) => symbolOf(button(name)))).toEqual(["footprints", "arrow-left", "house"]);
     const last = friendCards().at(-1);
     await user.click(last ?? document.body);
@@ -267,7 +265,7 @@ describe("care progress", () => {
     const storage = stored(7, 3, ["triceratops"]);
     const { user, clock } = openCareApp({ storage });
 
-    expect(button("CARE").querySelector(".care-tile-best")?.textContent).toBe("7");
+    expect(button("CARE").querySelector(".care-tile-best")?.textContent).toBe(undefined);
     await openCare(user);
     expect([screen.getByLabelText("BEST SCORE").textContent, friendCount()]).toEqual(["7/8", "1"]);
     await user.click(button("FRIENDS"));
@@ -355,12 +353,12 @@ describe("care progress", () => {
 
     await playVisit(first.user, first.clock, refusalsFor(6));
 
-    expect([celebrations(), bestShown()]).toEqual([["NEW BEST SCORE"], "6/8"]);
+    expect([celebrations(), bestShown()]).toEqual([["NEW BEST SCORE"], "6"]);
     await first.user.click(button("FRIENDS"));
     expect(friendCards().map((card) => card.getAttribute("aria-label"))).toEqual(["Tyrannosaurus"]);
     await first.user.click(button("NEW VISITOR"));
     await playVisit(first.user, first.clock, refusalsFor(6));
-    expect([celebrations(), bestShown()]).toEqual([[], "6/8"]);
+    expect([celebrations(), bestShown()]).toEqual([[], "6"]);
     first.unmount();
 
     const { user } = openCareApp({ storage });

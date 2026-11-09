@@ -7,16 +7,21 @@ import MessageCodec
 @MainActor final class ScriptedClient: ClientRadioPort {
     @MainActor private final class Transaction {
         enum Phase { case connecting, key, amount, decision, done }
+        let recordAir: Bool
         let host: UUID
         let settings: Settings.Host
         let crypto = SessionCrypto()
         let steps = PendingSteps()
         var phase = Phase.connecting
-        init(host: UUID, settings: Settings.Host) { self.host = host; self.settings = settings }
+        init(host: UUID, settings: Settings.Host, recordAir: Bool) {
+            self.host = host; self.settings = settings; self.recordAir = recordAir
+        }
     }
     let events: AsyncStream<ClientRadioEvent>
     private let continuation: AsyncStream<ClientRadioEvent>.Continuation
     private let source: any SettingsSource
+    private let recorder: AirRecorder
+    private var recordAir = false
     private let clock: any RadioClock
     private let sealMessage: @MainActor (MessageCodec.Message, SessionCrypto) throws -> [UInt8]
     private var updatesTask: Task<Void, Never>?
@@ -28,8 +33,9 @@ import MessageCodec
     static let repeatInterval = 0.2
     private var transaction: Transaction?
 
-    init(source: any SettingsSource, clock: any RadioClock,
+    init(source: any SettingsSource, clock: any RadioClock, recorder: AirRecorder,
          sealMessage: @escaping @MainActor (MessageCodec.Message, SessionCrypto) throws -> [UInt8]) {
+        self.recorder = recorder
         self.sealMessage = sealMessage
         self.source = source; self.clock = clock
         (events, continuation) = AsyncStream.makeStream()
@@ -46,6 +52,7 @@ import MessageCodec
 
     func startScanning() {
         guard !scanning, let settings = source.current().settings, settings.bluetooth == .on else { return }
+        recordAir = settings.recordAir
         scanning = true
         catalog.removeAll()
         for host in settings.hosts {
@@ -81,11 +88,12 @@ import MessageCodec
         guard let settings = catalog[host], source.current().clientState == .on else {
             continuation.yield(.couldNotConnect(host: host, reason: .unavailableHost)); return
         }
-        let t = Transaction(host: host, settings: settings)
+        let t = Transaction(host: host, settings: settings, recordAir: recordAir)
         transaction = t
         later(settings.delays.connect, in: t) { radio, t in
             do {
                 let bytes = try MessageCodec.encodeSession(.init(publicKey: t.crypto.publicKey, sessionID: t.crypto.sessionID))
+                radio.recorder.record(bytes, direction: "hostToClient", enabled: t.recordAir)
                 t.phase = .key
                 radio.continuation.yield(.connected(host: t.host, session: bytes, largestWrite: 512))
                 if t.settings.drop == .beforeKey { radio.dropLater(t) }
@@ -95,6 +103,7 @@ import MessageCodec
 
     func writeKey(_ bytes: [UInt8]) {
         guard let t = transaction, t.phase == .key, t.settings.drop != .beforeKey else { return }
+        recorder.record(bytes, direction: "clientToHost", enabled: t.recordAir)
         do { try t.crypto.derive(peerPublicKey: bytes) } catch { drop(); return }
         t.phase = .amount
         later(t.settings.delays.key, in: t) { radio, t in
@@ -102,6 +111,7 @@ import MessageCodec
             do {
                 // Seal before scheduling delivery: a link can be lost with a frame in flight.
                 let amount = try radio.sealMessage(.amount(t.settings.amount), t.crypto)
+                radio.recorder.record(amount, direction: "hostToClient", enabled: t.recordAir)
                 if t.settings.drop == .beforeAmountArrives { radio.drop(); return }
                 radio.later(t.settings.delays.amount, in: t) { radio, t in
                     t.phase = .decision
@@ -111,6 +121,7 @@ import MessageCodec
                         radio.later(t.settings.delays.end, in: t) { radio, t in
                             do {
                                 let end = try radio.sealMessage(.end, t.crypto)
+                                radio.recorder.record(end, direction: "hostToClient", enabled: t.recordAir)
                                 t.phase = .done
                                 radio.continuation.yield(.message(host: t.host, bytes: end))
                             } catch { radio.drop() }
@@ -123,6 +134,7 @@ import MessageCodec
 
     func write(_ bytes: [UInt8]) async -> ClientWriteResult {
         guard let t = transaction else { return .failure(.notConnected) }
+        recorder.record(bytes, direction: "clientToHost", enabled: t.recordAir)
         do {
             let message = try Wire.open(bytes, with: t.crypto)
             guard t.phase == .decision, case .decision(let decision) = message else { drop(); return .failure(.disconnected) }
@@ -136,12 +148,14 @@ import MessageCodec
             later(t.settings.delays.acknowledgement, in: t) { radio, t in
                 do {
                     let ack = try radio.sealMessage(.acknowledgement(.decision), t.crypto)
+                    radio.recorder.record(ack, direction: "hostToClient", enabled: t.recordAir)
                     radio.continuation.yield(.message(host: t.host, bytes: ack))
                     if t.settings.drop == .afterAcknowledgement { radio.dropLater(t); return }
                     if decision == .confirm {
                         radio.later(t.settings.delays.outcome, in: t) { radio, t in
                             do {
                                 let result = try radio.sealMessage(.result(t.settings.outcome == .success ? .success : .failure), t.crypto)
+                                radio.recorder.record(result, direction: "hostToClient", enabled: t.recordAir)
                                 radio.continuation.yield(.message(host: t.host, bytes: result))
                             } catch { radio.drop() }
                         }

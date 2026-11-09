@@ -1,3 +1,4 @@
+import { gameDoor } from "./support.ts";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { AGE_LEVELS, type AgeLevel } from "../src/ageLevel.ts";
@@ -12,7 +13,7 @@ import { JAWS } from "./whoseJaw.ts";
 import { openWhoseJawApp } from "./whoseJawApp.tsx";
 import { filterTaps, tapAt } from "./taps.ts";
 
-const button = (name: string) => screen.getByRole("button", { name });
+const button = (name: string) => document.querySelector(".home") ? gameDoor(name) : screen.getByRole("button", { name });
 const result = () => document.querySelector<HTMLElement>(".whose-jaw-result")!;
 const saved = (app: { storage: MemoryStorage }) => localWhoseJawProgress(() => app.storage, JAWS.map(({ id }) => id)).load()!;
 const record = (entry: unknown) => memoryStorage({ [PROGRESS_KEY]: JSON.stringify({ schemaVersion: 1, games: { "whose-jaw": entry } }) });
@@ -33,18 +34,21 @@ function finish(app: ReturnType<typeof begin>, errors = 0, language: "en" | "ru"
     const id = /jaw-(.+)\.webp/.exec(document.querySelector(".jaw-loose-picture")!.getAttribute("src")!)![1]!;
     ids.push(id);
     const owner = JAWS.find((jaw) => jaw.id === id)!;
+    const board = document.querySelector(".whose-jaw-board")!;
     const put = (target: Element) => { fireEvent.click(screen.getByLabelText(TEXTS[language].jawPick)); fireEvent.click(target); };
     // Distribute errors over different questions as well as repeated tries.
     const misses = Math.floor(errors / 5) + (at < errors % 5 ? 1 : 0);
     for (let miss = 0; miss < misses; miss++) {
-      const wrong = within(screen.getByRole("group", { name: TEXTS[language].creatures })).getAllByRole("button")
+      const wrong = [...board.querySelectorAll("button.jaw-dinosaur")]
         .find((choice) => choice.getAttribute("aria-label") !== owner.name[language].toLocaleUpperCase(language))!;
       put(wrong);
       act(() => app.timers.fire(reduced ? JAW_TIMING.reducedWrong : JAW_TIMING.wrong));
     }
-    put(button(owner.name[language].toLocaleUpperCase(language)));
+    // Result scenarios drive labelled choices directly instead of recomputing
+    // the whole board's CSS visibility for every answer in every round.
+    put(screen.getByLabelText(owner.name[language].toLocaleUpperCase(language)));
     act(() => app.timers.fire(reduced ? JAW_TIMING.reduced : JAW_TIMING.right));
-    fireEvent.click(button(TEXTS[language].next));
+    fireEvent.click(board.querySelector("button.jaw-next")!);
   }
   act(() => app.timers.fire(reduced ? JAW_TIMING.reduced : JAW_TIMING.done));
   expect(result()).not.toBeNull();
@@ -98,7 +102,7 @@ describe("Whose Jaw result and rewards", () => {
     expect(screen.queryByRole("status")).toBeNull();
     expect(saved(app).best.explorer).toBe(3);
     fireEvent.click(button(TEXTS[language].home));
-    expect(homeTile(TEXTS[language].whoseJaw).textContent).toContain("5/16");
+    expect(homeTile(TEXTS[language].whoseJaw).querySelector(".whose-jaw-tile-count")).toBeNull();
   });
 
   it("celebrates a higher best once, preserves other levels and reloads rewards", () => {
@@ -112,7 +116,7 @@ describe("Whose Jaw result and rewards", () => {
     app.unmount();
     openWhoseJawApp({ storage: app.storage });
     fireEvent.click(homeTile(TEXTS.en.whoseJaw));
-    expect(screen.getByLabelText(TEXTS.en.bestScore).textContent).toBe("🦷 2");
+    expect(screen.getByLabelText(TEXTS.en.bestScore).textContent).toBe("2");
     expect(screen.getByLabelText(TEXTS.en.jawCollection).textContent).toContain("5 / 16");
   });
 

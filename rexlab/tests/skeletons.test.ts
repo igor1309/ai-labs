@@ -485,16 +485,11 @@ describe("the whole skeletons", () => {
   // find-the-pair-skeletons.feature: a skeleton on a turned card stands
   // apart from the card's art by its dark outline in light, the darkest
   // twentieth of it, and by its pale bone in dark, its median.
-  it("each stand at least 3:1 on a card's art, by the outline in light and the bone in dark", async () => {
-    const seen = await Promise.all(
-      drawn.map(async ({ id }) => {
-        const shades = await shadesOf(whole(id));
-        const at = (share: number) => shades[Math.floor(shades.length * share)] ?? "#000000";
-        return { id, light: contrast(at(0.05), PALETTE.light["surface-2"] ?? "") >= 3, dark: contrast(at(0.5), PALETTE.dark["surface-2"] ?? "") >= 3 };
-      })
-    );
+  it.each(drawn)("$id stands at least 3:1 on a card's art, by the outline in light and the bone in dark", async ({ id }) => {
+    const shades = await shadesOf(whole(id));
+    const at = (share: number) => shades[Math.floor(shades.length * share)] ?? "#000000";
 
-    expect(seen).toEqual(drawn.map(({ id }) => ({ id, light: true, dark: true })));
+    expect({ light: contrast(at(0.05), PALETTE.light["surface-2"] ?? "") >= 3, dark: contrast(at(0.5), PALETTE.dark["surface-2"] ?? "") >= 3 }).toEqual({ light: true, dark: true });
   });
 });
 

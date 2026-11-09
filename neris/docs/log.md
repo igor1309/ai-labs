@@ -1,5 +1,8 @@
 # Log
 
+## 2026-10-30
+- Tool-loop streams finish after producer cleanup, so completed requests release their dependencies and allow the next request immediately (LAB-803).
+
 ## 2026-03-25
 - Promote SessionLoop PoC types to production: REPL, Gate, Router/RouterEvent, StateEnvelope, AgentLoop/ControllableAgentLoop protocols. Rename AgentLoop actor to ToolUseLoop. Delete Loop/FilterResult. Rewire CLI to REPL.
 

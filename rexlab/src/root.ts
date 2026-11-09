@@ -1,3 +1,4 @@
+import { coloringWorkshopRoot } from "./coloringWorkshopRoot.ts";
 import { jawMouth } from "./jawPresentation.ts";
 import { readJaws, jawPictures } from "./jawContent.ts";
 import { localJawAudio } from "./localJawAudio.ts";
@@ -16,6 +17,8 @@ import { SLIDE_DISTANCE } from "./dinosaurSlide.ts";
 import { bodyPictures, skeletonPictures, wholeSkeletons } from "./dinosaurPictures.ts";
 import { readCatalogue, readDinosaurs, readPals, readPictureDinosaurs, readSkeletons, readSortables, readVisitors } from "./dinosaurs.ts";
 import { HOME_GAMES } from "./HomePage.tsx";
+import { homeMotion } from "./homeMotion.ts";
+import { homeSkeletonHero } from "./homeSkeletonHero.ts";
 import { itemPictures } from "./itemPictures.ts";
 import { localAgeLevel } from "./localAgeLevel.ts";
 import { localLanguage } from "./localLanguage.ts";
@@ -27,6 +30,7 @@ import { mediaViewport } from "./mediaViewport.ts";
 import { pictureStore } from "./Picture.tsx";
 import { skeletonSounds } from "./skeletonSounds.ts";
 import { tapFilter, type TapInput } from "./tapFilter.ts";
+import type { InputArbitration } from "./inputArbitration.ts";
 import { TURN_PART, type Box, type PageAnimation, type TurnFrame } from "./turnMotion.ts";
 
 // Every body picture, loaded through Vite so its URL carries a content
@@ -74,6 +78,59 @@ export type Browser = {
 // easing out. Under reduced motion it fades by the root view transition,
 // timed by the stylesheet.
 export const TURN_TIMING = { glide: 240, easing: "cubic-bezier(0.22, 1, 0.36, 1)" };
+
+function browserHomeMotion(page: HTMLElement): () => void {
+  const view = page.ownerDocument.defaultView!;
+  const stopHome = homeMotion(page, {
+    scrollToTop: () => view.scrollTo({ top: 0, left: 0, behavior: "instant" }),
+    watchVisible: (tiles, reveal) => {
+      const observer = new view.IntersectionObserver(entries => {
+        for (const entry of entries) if (entry.isIntersecting) {
+          reveal(entry.target as HTMLElement);
+          observer.unobserve(entry.target);
+        }
+      });
+      tiles.forEach(tile => observer.observe(tile));
+      return () => observer.disconnect();
+    }
+  });
+  const hero = page.querySelector<HTMLElement>(".home-skeleton-hero");
+  const motionQuery = hero && view.matchMedia("(prefers-reduced-motion: reduce)");
+  const stopHero = hero && motionQuery ? homeSkeletonHero(hero, {
+    load: async (canvas, signal) => {
+      const { skeletonHeroScene } = await import("./skeletonHeroScene.ts");
+      if (signal.aborted) throw new Error("Skeleton visit ended");
+      return skeletonHeroScene(canvas, signal, view.devicePixelRatio);
+    },
+    visible: () => page.ownerDocument.visibilityState === "visible",
+    reducedMotion: () => motionQuery.matches,
+    watchVisibility: change => {
+      page.ownerDocument.addEventListener("visibilitychange", change);
+      return () => page.ownerDocument.removeEventListener("visibilitychange", change);
+    },
+    watchMotion: change => {
+      motionQuery.addEventListener("change", change);
+      return () => motionQuery.removeEventListener("change", change);
+    },
+    watchIntersection: (host, change) => {
+      const observer = new view.IntersectionObserver(entries => {
+        for (const entry of entries) change(entry.isIntersecting);
+      });
+      observer.observe(host);
+      return () => observer.disconnect();
+    },
+    watchSize: (host, change) => {
+      const observer = new view.ResizeObserver(entries => {
+        for (const entry of entries) change(entry.contentRect.width, entry.contentRect.height);
+      });
+      observer.observe(host);
+      return () => observer.disconnect();
+    },
+    requestFrame: draw => view.requestAnimationFrame(draw),
+    cancelFrame: id => view.cancelAnimationFrame(id)
+  }) : undefined;
+  return () => { stopHero?.(); stopHome(); };
+}
 
 // A colour that paints nothing, as a browser gives it computed.
 const CLEAR = /^(transparent|rgba\(0, 0, 0, 0\))$/;
@@ -209,6 +266,40 @@ export function filterDoubleTaps(target: Pick<EventTarget, "addEventListener" | 
   return () => stops.forEach((stop) => stop());
 }
 
+// Rejected contacts must reach neither the shared tap policy nor app handlers.
+// Register this once, before mounting screens, so capture order is stable.
+export function browserInput(target: Pick<EventTarget, "addEventListener" | "removeEventListener">, filter = tapFilter()) {
+  // Cancel native selection/menu actions, not the contacts that scroll,
+  // draw or activate controls. Safari gesture events cover native pinch zoom.
+  // These events never enter the tap policy.
+  const nativeActions = ["contextmenu", "selectstart", "gesturestart", "gesturechange"];
+  const preventNativeAction = (event: Event) => event.preventDefault();
+  nativeActions.forEach(type => target.addEventListener(type, preventNativeAction, { capture: true, passive: false }));
+  const guards = new Set<(event: Event) => void>();
+  const arbitrate: InputArbitration = guard => {
+    guards.add(guard);
+    return () => { guards.delete(guard); };
+  };
+  const reject = (event: Event) => {
+    for (const guard of guards) {
+      guard(event);
+      if (event.cancelBubble) break;
+    }
+  };
+  const events = ["pointerdown", "pointermove", "pointerup", "pointercancel", "click"];
+  events.forEach(type => target.addEventListener(type, reject, { capture: true }));
+  const stopFilter = filterDoubleTaps(target, filter);
+  return {
+    arbitrate,
+    stop() {
+      nativeActions.forEach(type => target.removeEventListener(type, preventNativeAction, { capture: true }));
+      stopFilter();
+      events.forEach(type => target.removeEventListener(type, reject, { capture: true }));
+      guards.clear();
+    }
+  };
+}
+
 // Names index.html's version footer, which stands outside the app.
 export function versionFooter(document: Browser["document"]): (label: string) => void {
   const footer = document.getElementById("version");
@@ -258,7 +349,9 @@ export function appProps(browser: Browser): AppProps {
     },
     random: Math.random,
     viewport,
-    portraitLayouts: { "whoseJaw-welcome": ["tall", "tall-narrow"], "whoseJaw-board": ["tall", "tall-narrow"], "whoseJaw-shelf": ["tall", "tall-narrow"], "whoseJaw-result": ["tall", "tall-narrow"], home: ["tall", "tall-narrow"], catalogue: ["tall", "tall-narrow"], dinosaur: ["tall", "tall-narrow"], "compare-question": ["tall", "tall-narrow"], "compare-result": ["tall", "tall-narrow"], "pairs-welcome": ["tall", "tall-narrow"], "pairs-board": ["tall", "tall-narrow"], "pairs-result": ["tall", "tall-narrow"], "sorting-board": ["tall", "tall-narrow"], "sorting-result": ["tall", "tall-narrow"], "skeletons-choice": ["tall", "tall-narrow"], "skeletons-museum": ["tall", "tall-narrow"], "skeletons-puzzle": ["tall", "tall-narrow"], "skeletons-guess": ["tall", "tall-narrow"], "skeletons-result": ["tall", "tall-narrow"], "dig-board": ["tall", "tall-narrow"], "dig-question": ["tall", "tall-narrow"], "dig-reveal": ["tall", "tall-narrow"], "dig-guide": ["tall", "tall-narrow"], "care-welcome": ["tall", "tall-narrow"], "care-visit": ["tall", "tall-narrow"], "care-friends": ["tall", "tall-narrow"], "care-result": ["tall", "tall-narrow"], sandWriting: ["tall", "tall-narrow"] },
+    newHomeGames: featured.newGames,
+    homeMotion: browserHomeMotion,
+    portraitLayouts: { "whoseJaw-welcome": ["tall", "tall-narrow"], "whoseJaw-board": ["tall", "tall-narrow"], "whoseJaw-shelf": ["tall", "tall-narrow"], "whoseJaw-result": ["tall", "tall-narrow"], coloring: ["tall", "tall-narrow"], home: ["tall", "tall-narrow"], catalogue: ["tall", "tall-narrow"], dinosaur: ["tall", "tall-narrow"], "compare-question": ["tall", "tall-narrow"], "compare-result": ["tall", "tall-narrow"], "pairs-welcome": ["tall", "tall-narrow"], "pairs-board": ["tall", "tall-narrow"], "pairs-result": ["tall", "tall-narrow"], "sorting-board": ["tall", "tall-narrow"], "sorting-result": ["tall", "tall-narrow"], "skeletons-choice": ["tall", "tall-narrow"], "skeletons-museum": ["tall", "tall-narrow"], "skeletons-puzzle": ["tall", "tall-narrow"], "skeletons-guess": ["tall", "tall-narrow"], "skeletons-result": ["tall", "tall-narrow"], "dig-board": ["tall", "tall-narrow"], "dig-question": ["tall", "tall-narrow"], "dig-reveal": ["tall", "tall-narrow"], "dig-guide": ["tall", "tall-narrow"], "care-welcome": ["tall", "tall-narrow"], "care-visit": ["tall", "tall-narrow"], "care-friends": ["tall", "tall-narrow"], "care-result": ["tall", "tall-narrow"], "labyrinth-board": ["tall", "tall-narrow"], "labyrinth-result": ["tall", "tall-narrow"], sandWriting: ["tall", "tall-narrow"], "picturePuzzle-choice": ["tall", "tall-narrow"], "picturePuzzle-puzzle": ["tall", "tall-narrow"], "picturePuzzle-result": ["tall", "tall-narrow"] },
     pictureMotion: {
       now: () => browser.performance.now(),
       duration: Number.parseFloat(token("--motion-screen")),
@@ -298,7 +391,13 @@ export function appProps(browser: Browser): AppProps {
           finished();
           return;
         }
-        browser.document.startViewTransition(update).finished.then(finished, finished);
+        const transition = browser.document.startViewTransition(update);
+        // A transition skipped before it starts, as when the viewport
+        // resizes, rejects ready and its update promise; the page then just
+        // changes at once.
+        transition.ready.then(undefined, () => {});
+        transition.updateCallbackDone.then(undefined, () => {});
+        transition.finished.then(finished, finished);
       },
       timing: TURN_TIMING
     },
@@ -339,6 +438,30 @@ export function appProps(browser: Browser): AppProps {
     startTimer: (ms, fire) => {
       const id = browser.setTimeout(fire, ms);
       return () => browser.clearTimeout(id);
+    }
+  };
+}
+
+// Canvas paths are created only when coloring reads its collection or opens.
+export function browserColoring(browser: Pick<Window, "indexedDB" | "document" | "crypto">) {
+  let resources: ReturnType<typeof coloringWorkshopRoot> | undefined;
+  const get = () => resources ??= coloringWorkshopRoot({ open: (...args) => browser.indexedDB.open(...args) }, browser.document);
+  return {
+    source: {
+      list: async () => get().list(),
+      reset: async () => get().reset(),
+      open: (...args: Parameters<ReturnType<typeof coloringWorkshopRoot>["open"]>) => get().open(...args),
+      newWork: (...args: Parameters<ReturnType<typeof coloringWorkshopRoot>["newWork"]>) => get().newWork(...args)
+    },
+    get artworks() { return get().artworks; },
+    painterFor: (geometry: string) => get().painterFor(geometry),
+    identity: () => {
+      // getRandomValues also works on local HTTP previews opened from an iPad.
+      const bytes = browser.crypto.getRandomValues(new Uint8Array(16));
+      bytes[6] = (bytes[6]! & 0x0f) | 0x40;
+      bytes[8] = (bytes[8]! & 0x3f) | 0x80;
+      const hex = Array.from(bytes, byte => byte.toString(16).padStart(2, "0")).join("");
+      return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
     }
   };
 }

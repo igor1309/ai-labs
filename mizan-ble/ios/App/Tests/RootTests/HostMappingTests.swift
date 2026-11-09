@@ -4,6 +4,7 @@ import HostBroadcast
 import HostPayment
 import HostUI
 import SettingsUI
+import TimeoutNotice
 @testable import Root
 
 @Suite @MainActor struct HostMappingTests {
@@ -46,6 +47,22 @@ import SettingsUI
         }
     }
 
+    @Test func timedOutIsDrawnOnlyWhileTheNoticeShows() {
+        let timedOut = HostBroadcast.reduce(onAir(), .secondsLeft(.init(number: 1), 0)).0
+        let showing = TimeoutNotice.reduce(.init(), .timedOut(.init(number: 1))).0
+        let hidden = TimeoutNotice.reduce(showing, .acted).0
+        let empty = AmountEntry.State(bluetooth: .available)
+        let notice = HostMapping.screen(amount: empty, broadcast: timedOut, notice: showing, payment: nil, name: "MIZAN-ABCD", seconds: 60)
+        #expect(notice.status == "Timed out")
+        #expect(notice.notice?.title == "No client in 60 s")
+        for amount in [empty, typedAmount("5")] {
+            #expect(HostMapping.screen(amount: amount, broadcast: timedOut, notice: hidden, payment: nil, name: "MIZAN-ABCD", seconds: 60)
+                    == HostMapping.screen(amount: amount, broadcast: .init(), notice: hidden, payment: nil, name: "MIZAN-ABCD", seconds: 60))
+        }
+        // A notice left showing is drawn only while host broadcast is timed out.
+        #expect(HostMapping.screen(amount: empty, broadcast: onAir(), notice: showing, payment: nil, name: "MIZAN-ABCD", seconds: 60).status == "Advertising")
+    }
+
     @Test func screensAndRestMapEveryPhase() {
         let amount = typedAmount("124.5")
         let broadcastCases: [(HostBroadcast.State, String, [HostEvent], Bool)] = [
@@ -56,13 +73,13 @@ import SettingsUI
             (broadcastState([.lock(amount: "124.5"), .couldNotGoOnAir(.init(number: 1), reason: "denied")]),
              "Could not go on air", [.lockAndBroadcast], true),
             (HostBroadcast.reduce(onAir(), .secondsLeft(.init(number: 1), 0)).0,
-             "Timed out", [.lockAndBroadcast], true),
+             "Idle", [.lockAndBroadcast], true),
             (HostBroadcast.reduce(handshake(), .handshakeFailed(.init(number: 1), reason: "bad key")).0,
              "Failed", [.broadcastAgain, .newAmount], true),
             (handedOver(), "Awaiting client", [.cancel], false),
         ]
         for (broadcast, status, buttons, rest) in broadcastCases {
-            let screen = HostMapping.screen(amount: amount, broadcast: broadcast, payment: nil, name: "MIZAN-ABCD", seconds: 60)
+            let screen = HostMapping.screen(amount: amount, broadcast: broadcast, notice: .init(), payment: nil, name: "MIZAN-ABCD", seconds: 60)
             #expect(screen.status == status)
             #expect(screen.buttons.map(\.event) == buttons)
             #expect(screen.isSettingsEnabled == rest)
@@ -82,7 +99,7 @@ import SettingsUI
         ]
         for (events, status, buttons, rest) in paymentCases {
             let payment = paymentState(events, cleaned: rest)
-            let screen = HostMapping.screen(amount: amount, broadcast: handedOver(), payment: payment, name: "MIZAN-ABCD", seconds: 30)
+            let screen = HostMapping.screen(amount: amount, broadcast: handedOver(), notice: .init(), payment: payment, name: "MIZAN-ABCD", seconds: 30)
             #expect(screen.status == status)
             #expect(screen.amount == "124.50")
             #expect(screen.buttons.map(\.event) == buttons)
@@ -101,13 +118,13 @@ import SettingsUI
             (broadcastState([.lock(amount: "124.5")]), nil, 13),
         ]
         for (broadcast, payment, index) in previewCases {
-            #expect(HostMapping.screen(amount: amount, broadcast: broadcast, payment: payment, name: "MIZAN-7F3A", seconds: 60) == HostState.previews[index].state)
+            #expect(HostMapping.screen(amount: amount, broadcast: broadcast, notice: .init(), payment: payment, name: "MIZAN-7F3A", seconds: 60) == HostState.previews[index].state)
         }
         let pending = paymentState([.opened(.decline)], cleaned: false)
         #expect(!HostMapping.atRest(handedOver(), pending))
-        #expect(!HostMapping.screen(amount: amount, broadcast: handedOver(), payment: pending, name: "MIZAN-ABCD", seconds: 60).buttons[0].isEnabled)
+        #expect(!HostMapping.screen(amount: amount, broadcast: handedOver(), notice: .init(), payment: pending, name: "MIZAN-ABCD", seconds: 60).buttons[0].isEnabled)
         let unavailable = AmountEntry.reduce(amount, .bluetoothChanged(.unavailable(reason: "Bluetooth off"))).0
-        let off = HostMapping.screen(amount: unavailable, broadcast: .init(), payment: nil, name: "MIZAN-ABCD", seconds: 60)
+        let off = HostMapping.screen(amount: unavailable, broadcast: .init(), notice: .init(), payment: nil, name: "MIZAN-ABCD", seconds: 60)
         #expect(off.notice?.title == "Bluetooth off")
         #expect(!off.buttons[0].isEnabled)
     }

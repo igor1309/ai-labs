@@ -7,8 +7,6 @@ public actor RecordedCapture {
 
     private let capture: any Capture
     private let track: any Track
-    private let executor: (any TaskExecutor)?
-    private let beforeInput: @Sendable () async -> Void
     private let news: AsyncStream<Failure>.Continuation
     private let pending = AsyncStream<AudioPiece>.makeStream()
     private var attempted = false
@@ -23,20 +21,8 @@ public actor RecordedCapture {
 
     public init(capture: any Capture, track: any Track) {
 
-        self.init(capture: capture, track: track, executor: nil)
-    }
-
-    init(
-        capture: any Capture,
-        track: any Track,
-        beforeInput: @escaping @Sendable () async -> Void = {},
-        executor: (any TaskExecutor)?
-    ) {
-
         self.capture = capture
         self.track = track
-        self.executor = executor
-        self.beforeInput = beforeInput
         let events = AsyncStream<Failure>.makeStream()
         failures = events.stream
         news = events.continuation
@@ -47,7 +33,7 @@ public actor RecordedCapture {
 
         guard !attempted else { throw LifecycleError.alreadyStarted }
         attempted = true
-        let task = Task(executorPreference: executor) { try await self.begin() }
+        let task = Task { @concurrent in try await self.begin() }
         starting = task
         try await task.value
     }
@@ -58,7 +44,7 @@ public actor RecordedCapture {
 
         if let stopping { return try await stopping.value }
         attempted = true
-        let task = Task(executorPreference: executor) { try await self.end() }
+        let task = Task { @concurrent in try await self.end() }
         stopping = task
         try await task.value
     }
@@ -78,7 +64,7 @@ public actor RecordedCapture {
         started = true
         let track = track, pending = pending.stream
         // These unbounded streams keep capture delivery independent of disk speed.
-        writing = Task(executorPreference: executor) { [weak self] in
+        writing = Task { @concurrent [weak self] in
             do {
                 for await piece in pending {
                     try await track.write(piece.samples, sampleRate: piece.sampleRate)
@@ -87,9 +73,7 @@ public actor RecordedCapture {
                 await self?.failedWrite(error)
             }
         }
-        let beforeInput = beforeInput
-        receiving = Task(executorPreference: executor) { [weak self] in
-            await beforeInput()
+        receiving = Task { @concurrent [weak self] in
             do {
                 for try await piece in stream {
                     guard await self?.receive(piece) == true else { break }
@@ -138,7 +122,7 @@ public actor RecordedCapture {
 
         if let captureStop { return try await captureStop.value }
         let capture = capture
-        let task = Task(executorPreference: executor) { [weak self] in
+        let task = Task { @concurrent [weak self] in
             do {
                 try await capture.stop()
             } catch {

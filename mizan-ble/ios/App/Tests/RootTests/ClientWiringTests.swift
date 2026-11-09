@@ -158,7 +158,7 @@ import SessionCrypto
         #expect(h.client.calls.filter { $0 == .drop }.count == 1)
         #expect(root.isAtRest)
         let findPhases = phases(h.log, .clientFind)
-        #expect(findPhases == ["idle", "startingScan", "scanning", "stoppingScan", "handedOver", "startingScan", "scanning"])
+        #expect(findPhases == ["idle", "startingScan", "scanning none", "scanning holdCloser", "scanning host", "stoppingScan", "handedOver", "startingScan", "scanning none"])
         let opening = ["idle", "connecting startingDeadline", "connecting connecting"]
         let connectPhases: [String] = switch outcome {
         case .cannotConnect, .deadline: opening + ["couldNotConnect", "over"]
@@ -192,6 +192,8 @@ import SessionCrypto
                 }
             }
         }
+        #expect(h.log.entries.contains(.init(category: .clientFind, message: "picker holdCloser rssi=-62 hosts=1")))
+        #expect(h.log.entries.contains(.init(category: .clientFind, message: "picker host rssi=-45 hosts=2")))
         secrets.extraBytes += secrets.extraBytes.compactMap { try? MessageCodec.decodeFrame($0).sealedBox }.map { Array($0.prefix(12)) }
         secrets.assertAbsent(from: h.log.entries)
         root.choose(.host)
@@ -309,7 +311,7 @@ extension ClientSpy {
     var written: [[UInt8]] { calls.compactMap { if case .write(let bytes) = $0 { bytes } else { nil } } }
 }
 private func phases(_ log: LogSpy, _ category: LogEntry.Category) -> [String] {
-    log.entries.filter { $0.category == category && !$0.message.hasPrefix("message ") }.map(\.message).reduce([]) { result, phase in
+    log.entries.filter { $0.category == category && !$0.message.hasPrefix("message ") && !$0.message.hasPrefix("picker ") }.map(\.message).reduce([]) { result, phase in
         result.last == phase ? result : result + [phase]
     }
 }

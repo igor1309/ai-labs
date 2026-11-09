@@ -1,0 +1,211 @@
+/* PICTURE PUZZLE's choice on the dig site (design/dig-site.pen, PUZZLE ·
+   choice): HOME in the sky over the title, or the title beside it on a
+   phone; on the sand the level switch over the three pictures, each in its
+   pocket over its name, or beside it on an upright phone. */
+.skeleton-dig.picture-puzzle-choice-screen {
+  --pc-gap: var(--ds-space-xl);
+  --pc-name-size: 22px;
+  --pc-star: 40px;
+  --dig-sky: calc(156px + env(safe-area-inset-top));
+  --dig-ochre: calc(60px + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+  height: 100vh;
+  height: 100dvh;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  padding: calc(var(--dig-sky) + var(--ds-space-xl)) calc(var(--sc-side) + var(--screen-right) + 52px) calc(var(--dig-ochre) + var(--ds-space-xl)) calc(var(--sc-side) + var(--screen-left) + 52px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ds-space-l);
+}
+
+html[data-size="tall"] .skeleton-dig.picture-puzzle-choice-screen {
+  --pc-gap: var(--ds-space-xl);
+  --pc-name-size: 24px;
+  --dig-sky: calc(168px + env(safe-area-inset-top));
+  --dig-ochre: calc(28px + env(safe-area-inset-bottom));
+  padding-inline: calc(var(--sc-side) + var(--screen-left) - 16px) calc(var(--sc-side) + var(--screen-right) - 16px);
+  padding-top: calc(var(--dig-sky) + var(--ds-space-40) + var(--ds-space-40));
+}
+
+html[data-size="tall-narrow"] .skeleton-dig.picture-puzzle-choice-screen {
+  --pc-gap: var(--ds-space-m);
+  --pc-name-size: 20px;
+  --pc-star: 30px;
+  --dig-sky: calc(clamp(112px, 20dvh, 170px) + env(safe-area-inset-top));
+  --dig-ochre: calc(10px + env(safe-area-inset-bottom));
+  padding: calc(var(--dig-sky) + var(--ds-space-l)) calc(var(--sc-side) + var(--screen-right)) calc(var(--dig-ochre) + var(--ds-space-xl)) calc(var(--sc-side) + var(--screen-left));
+  gap: var(--ds-space-m);
+}
+
+html[data-size="wide-short"] .skeleton-dig.picture-puzzle-choice-screen {
+  --pc-gap: var(--ds-space-xl);
+  --pc-name-size: 17px;
+  --pc-star: 28px;
+  --dig-sky: calc(84px + env(safe-area-inset-top));
+  --dig-ochre: 0px;
+  padding: calc(var(--dig-sky) + var(--ds-space-s)) calc(var(--sc-side) + var(--screen-right) + clamp(0px, (100vw - 667px) * 0.4, 72px)) calc(var(--ds-space-s) + env(safe-area-inset-bottom)) calc(var(--sc-side) + var(--screen-left) + clamp(0px, (100vw - 667px) * 0.4, 72px));
+  gap: var(--ds-space-s);
+}
+
+/* HOME, then the title centred under it on a tablet, or at the far side on
+   a phone. The count of pictures collected is read out, the stars on the
+   pictures show it. */
+html[data-size="wide"] .picture-puzzle-choice-screen .skeleton-bar::after,
+html[data-size="tall"] .picture-puzzle-choice-screen .skeleton-bar::after,
+html[data-size="wide-short"] .picture-puzzle-choice-screen .skeleton-bar::after { content: ""; flex: 1 1 0; }
+html[data-size] .picture-puzzle-choice-screen .skeleton-bar .picture-puzzle-collection {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+html[data-size="wide"] .picture-puzzle-choice-screen .skeleton-title,
+html[data-size="tall"] .picture-puzzle-choice-screen .skeleton-title {
+  position: absolute;
+  top: 64px;
+  left: 0;
+  right: 0;
+  gap: var(--ds-space-l);
+}
+
+html[data-size="tall-narrow"] .picture-puzzle-choice-screen .skeleton-title,
+html[data-size="wide-short"] .picture-puzzle-choice-screen .skeleton-title {
+  position: absolute;
+  top: 0;
+  left: auto;
+  right: 0;
+  max-width: calc(100% - 64px);
+  height: 48px;
+  justify-content: flex-end;
+}
+
+html[data-size] .picture-puzzle-choice-screen .skeleton-title-words { font-size: min(40px, (100cqi - 76px) / (var(--letters) * 0.75)); }
+html[data-size="tall-narrow"] .picture-puzzle-choice-screen.skeleton-dig .skeleton-title-words { font-size: min(26px, (100vw - 104px) / (var(--letters) * 0.75)); }
+html[data-size="wide-short"] .picture-puzzle-choice-screen.skeleton-dig .skeleton-title-words { font-size: 22px; }
+
+html[data-size] .picture-puzzle-choice-screen .skeleton-mark {
+  width: 60px;
+  height: 60px;
+  border-radius: var(--ds-radius-30) var(--ds-radius-30) var(--ds-radius-15) var(--ds-radius-15);
+}
+
+/* The level switch on the sand. */
+.picture-puzzle-levels {
+  flex-shrink: 0;
+  align-self: center;
+  width: 648px;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+html[data-size="tall-narrow"] .picture-puzzle-levels { width: 288px; }
+html[data-size="wide-short"] .picture-puzzle-levels { width: 340px; }
+html[data-size="wide-short"] .picture-puzzle-levels .level-switch-name { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* The three pictures in a row, two over one upright, or one under another
+   on an upright phone, sharing what the sand has left. */
+.picture-puzzle-choices {
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-content: flex-start;
+  gap: var(--pc-gap);
+}
+
+html[data-size] .picture-puzzle-choice {
+  --pc-width: calc((100% - 2 * var(--pc-gap)) / 3);
+  flex: 0 0 auto;
+  width: var(--pc-width);
+  max-height: 100%;
+  box-sizing: border-box;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--ds-space-m);
+  border: none;
+  outline: none;
+  background: none;
+  box-shadow: none;
+  color: var(--ds-ink);
+  container-type: inline-size;
+  animation: rise-in var(--motion-screen) var(--ease-out) calc(var(--choice) * var(--motion-stagger)) both;
+}
+
+html[data-size="tall"] .picture-puzzle-choice { --pc-width: calc((100% - var(--pc-gap)) / 2); max-height: calc((100% - var(--pc-gap)) / 2); }
+html[data-size="wide-short"] .picture-puzzle-choice { gap: var(--ds-space-xs); }
+
+html[data-size="tall-narrow"] .picture-puzzle-choice {
+  width: 100%;
+  height: min(112px, (100% - 2 * var(--pc-gap)) / 3);
+  flex-direction: row;
+  align-items: center;
+  gap: var(--ds-space-l);
+}
+
+.picture-puzzle-choice { min-width: 48px; min-height: 48px; }
+
+html[data-size] .picture-puzzle-choice:focus-visible { outline: 3px solid var(--ds-strong); outline-offset: 3px; }
+
+/* The pocket keeps the picture's 4 by 3 within what the card has. */
+.picture-puzzle-art {
+  position: relative;
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  padding: var(--ds-space-s);
+  display: flex;
+  border-radius: var(--ds-radius-pocket-top) var(--ds-radius-pocket-top) var(--ds-radius-pocket-bottom) var(--ds-radius-pocket-bottom);
+  background: var(--ds-pocket-1);
+  box-shadow: inset 0 6px 10px var(--ds-pocket-shadow);
+}
+
+html[data-size="tall-narrow"] .picture-puzzle-art { width: auto; height: 100%; }
+
+.picture-puzzle-art > .picture-puzzle-crop {
+  width: 100%;
+  height: 100%;
+  border-radius: var(--ds-radius-l);
+}
+
+/* A name's size is the card's width over the longest name's, in ems:
+   TYRANNOSAURUS's 9.4. */
+.picture-puzzle-name {
+  flex-shrink: 0;
+  font-size: min(var(--pc-name-size), 100cqi / 9.4);
+  font-weight: 800;
+  text-align: left;
+  white-space: nowrap;
+}
+
+html[data-size="tall-narrow"] .picture-puzzle-name { flex: 1 1 0; min-width: 0; font-size: min(var(--pc-name-size), (100cqi - 166px) / 9.4); }
+
+/* The earned star in the pocket's far corner; none where there is none
+   yet, though it is still read out. */
+.picture-puzzle-star {
+  position: absolute;
+  top: var(--ds-space-s);
+  right: var(--ds-space-s);
+  width: var(--pc-star);
+  height: var(--pc-star);
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--ds-label);
+  color: var(--ds-reward);
+  animation: pop-in var(--motion-standard) var(--ease-overshoot) calc(var(--motion-stagger) * (var(--choice) + 2)) both;
+}
+
+.picture-puzzle-star svg { width: 68%; height: 68%; fill: currentColor; }
+.picture-puzzle-star[data-earned="false"] { opacity: 0; animation: none; }

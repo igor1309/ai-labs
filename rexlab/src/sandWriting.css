@@ -1,0 +1,226 @@
+/* DRAW on the dig site: the whole window is sand, glowing in the middle and
+   specked, behind the controls too, and nothing scrolls. HOME at the leading
+   top corner, a pill with its word on an iPad or a desktop and a round button
+   on a phone; STICK at the trailing corner, round with its word under it,
+   showing the chosen tip. STICK drops the picker: THIN, MEDIUM and THICK as
+   lines of their width, the chosen one navy with a tick, and CLEAR under a
+   rule. The marks and specks are painted with ds-groove, ds-groove-lip and
+   ds-speck, so the sand darkens at night with its grooves. */
+html:has(.sand-writing-screen),
+body:has(.sand-writing-screen) {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+body:has(.sand-writing-screen) #version { display: none; }
+
+/* The strip under the system bar is sand too. */
+body:has(.sand-writing-screen) .app-top-edge { background: var(--ds-strata-1); }
+
+.sand-writing-screen {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: radial-gradient(ellipse 70% 60% at 45% 45%, var(--ds-sand-glow), transparent 75%), var(--ds-strata-1);
+  color: var(--ds-ink);
+  font-family: var(--ds-font);
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+
+.sand-writing-base,
+.sand-writing-canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+
+.sand-writing-base { pointer-events: none; }
+
+.sand-writing-home,
+.sand-writing-picker {
+  position: absolute;
+  top: calc(env(safe-area-inset-top) + 36px);
+}
+
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) :is(.sand-writing-home, .sand-writing-picker) { top: calc(env(safe-area-inset-top) + 16px); }
+
+.sand-writing-screen .sand-writing-home {
+  inset-inline-start: calc(env(safe-area-inset-left) + 40px);
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 48px;
+  height: 48px;
+  padding: 0 18px 0 16px;
+  border: 0;
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-quiet);
+  color: var(--ds-ink);
+  font: 700 var(--ds-size-label)/1 var(--ds-font);
+  letter-spacing: 0.04em;
+}
+
+/* On a phone HOME is round, its word kept for the screen reader. */
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .sand-writing-screen .sand-writing-home { inset-inline-start: calc(env(safe-area-inset-left) + 20px); width: 48px; padding: 0; }
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .sand-writing-home-word {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.sand-writing-picker { inset-inline-end: calc(env(safe-area-inset-right) + 40px); }
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .sand-writing-picker { inset-inline-end: calc(env(safe-area-inset-right) + 20px); }
+
+.sand-writing-screen .sand-writing-stick {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 64px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ds-ink);
+}
+
+.sand-writing-stick-face {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--ds-label);
+  color: var(--ds-on-label);
+  box-shadow: 0 4px 14px var(--ds-shade-15);
+  transition: background-color var(--motion-small) var(--ease-out), color var(--motion-small) var(--ease-out);
+}
+
+.sand-writing-stick[aria-expanded="true"] .sand-writing-stick-face { background: var(--ds-strong); color: var(--ds-on-strong); }
+
+.sand-writing-word {
+  font: 700 var(--ds-size-foot)/1.2 var(--ds-font);
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.sand-writing-stroke { width: 32px; height: 20px; }
+
+.sand-writing-options {
+  position: absolute;
+  inset-inline-end: 0;
+  top: calc(100% + 18px);
+  box-sizing: border-box;
+  display: grid;
+  gap: 14px;
+  width: 248px;
+  padding: 16px;
+  border-radius: 24px;
+  background: var(--ds-label);
+  color: var(--ds-on-label);
+  box-shadow: 0 10px 30px var(--ds-shade-20);
+  transform-origin: calc(100% - 32px) -18px;
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity var(--motion-small) var(--ease-out), visibility var(--motion-small) var(--ease-out);
+}
+
+.sand-writing-options[data-open] {
+  visibility: visible;
+  opacity: 1;
+  animation: sand-writing-drop var(--motion-small) var(--ease-out) both;
+}
+
+@keyframes sand-writing-drop {
+  from { scale: calc(1 - 0.08 * var(--motion-amount)); }
+}
+
+.sand-writing-tips {
+  display: grid;
+  grid-template-columns: repeat(3, 64px);
+  justify-content: space-between;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--ds-outline);
+}
+
+.sand-writing-screen .sand-writing-tip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 64px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+}
+
+.sand-writing-tip-face {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  background: var(--ds-quiet);
+  color: var(--ds-ink);
+}
+
+.sand-writing-tip[aria-pressed="true"] .sand-writing-tip-face { background: var(--ds-strong); color: var(--ds-on-strong); }
+
+.sand-writing-tick {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--ds-label);
+  border-radius: 50%;
+  background: var(--ds-good);
+  color: var(--ds-on-good);
+  animation: sand-writing-tick var(--motion-small) var(--ease-out) both;
+}
+
+@keyframes sand-writing-tick {
+  from { scale: calc(1 - 0.6 * var(--motion-amount)); opacity: 0; }
+}
+
+.sand-writing-screen .sand-writing-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 54px;
+  border: 2px solid var(--ds-action);
+  border-radius: var(--ds-radius-pill);
+  background: transparent;
+  color: var(--ds-action);
+  font: 700 var(--ds-size-label)/1 var(--ds-font);
+  letter-spacing: 0.04em;
+}
+
+.sand-writing-screen button[data-pressed] { filter: brightness(0.94); }
+.sand-writing-screen button:focus-visible { outline: 3px solid var(--ds-ink); outline-offset: 3px; }
+.sand-writing-screen .sand-writing-tip:focus-visible,
+.sand-writing-screen .sand-writing-stick:focus-visible { outline-offset: 2px; border-radius: 16px; }
+
+/* In a window under 360 high the picker opens beside STICK, not under it. */
+@media (max-height: 359px) {
+  .sand-writing-options { top: 0; inset-inline-end: calc(100% + 12px); transform-origin: 100% 32px; }
+}
+
+/* Under reduced motion --motion-amount is 0: the panel and the tick only
+   fade, from the shared reduced-motion block in app.css. */

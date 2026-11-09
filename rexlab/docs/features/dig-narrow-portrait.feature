@@ -9,8 +9,9 @@ Feature: DIG in a tall-narrow window
     Given a window of <width> by <height> CSS pixels
     When I open DIG
     Then I see no picture asking to turn sideways or to make the window wider
-    And the bar is one row: HOME, the brush menu (dig-brush-menu.feature), the title and the FIELD GUIDE, even with three digits of treasures
-    And HOME, the brush menu and the FIELD GUIDE are each 48 pixels tall, at least 48 wide, with the same corners, centred on one line
+    And the bar is one row: HOME, the title and the FIELD GUIDE, even with three digits of treasures
+    And HOME and the FIELD GUIDE are each 48 pixels tall, at least 48 wide, with the same corners, centred on one line
+    And either brush can be picked on the board (dig-brush-choice.feature)
     And DUG UP's count of dinosaurs is not on the board
     And the title takes two lines where it has two words, at least 12 pixels, in English and Russian
 

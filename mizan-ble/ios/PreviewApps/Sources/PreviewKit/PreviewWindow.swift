@@ -1,4 +1,5 @@
 import AppKit
+import DesignSystem
 import SwiftUI
 
 /// Keeps the feature at device dimensions while fitting it to the window.
@@ -34,7 +35,7 @@ public struct PreviewWindow<Feature: View, Controls: View>: View {
                     (geometry.size.height - 48) / size.height
                 ))
                 feature()
-                    .frame(width: size.width, height: size.height)
+                    .deviceScreen(size, cornerRadius: device.cornerRadius, safeArea: device.safeArea)
                     .scaleEffect(scale)
                     .frame(width: size.width * scale, height: size.height * scale)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)

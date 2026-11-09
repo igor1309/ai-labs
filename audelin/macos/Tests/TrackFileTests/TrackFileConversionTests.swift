@@ -13,7 +13,7 @@ struct TrackFileConversionTests {
             let signal = AsyncStream<Void>.makeStream()
             let conversion = FailingConversion()
             let track = try await TrackFile(
-                url: url, makeBinding: DiskTrackBinding.init,
+                url: url, makeBinding: { try DiskTrackBinding(url: $0, positionedWrite: DiskTrackBinding.systemWrite) },
                 makeConversion: { rate in
                     #expect(rate == 24_000)
                     return conversion
@@ -67,7 +67,7 @@ struct TrackFileConversionTests {
                 try #require(disk.count == last)
                 let written = try await track.read(from: 0, to: duration)
                 expectSamples(written, expected)
-                let bytes = try await offPool { try Data(contentsOf: url).dropFirst(68) }
+                let bytes = try Data(contentsOf: url).dropFirst(68)
                 #expect(bytes.starts(with: acknowledged))
                 acknowledged = Data(bytes)
                 expectSamples(disk, expected)

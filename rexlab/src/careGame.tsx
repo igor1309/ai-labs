@@ -27,7 +27,7 @@ import { ownedTimers, type OwnedTimers, type StartTimer } from "./ownedTimers.ts
 import { presentCareResult, presentFriend, presentVisit } from "./presentation.ts";
 import { SCREEN_CHANGE, useScreens } from "./screens.ts";
 import { VisitScreen, type CareItem } from "./VisitScreen.tsx";
-import type { LayoutKeeping } from "./useKeptRow.ts";
+import type { LayoutKeeping } from "./layoutKeeping.ts";
 
 export type CareProgressStore = {
   // The care progress kept so far, or undefined when it cannot be read at

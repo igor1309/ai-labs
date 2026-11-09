@@ -42,30 +42,32 @@ const QUESTION_PARTS = ["question-bar", "question-prompt", "question-left", "que
 // them, with "VS" on their seam.
 function questionBox(element: Element): Box {
   const [width, height] = [window.innerWidth, window.innerHeight];
-  const inner = width - 112;
-  if (document.documentElement.dataset.size === "tall") {
-    const geometry = compareQuestionGeometry(width, height, 0, 0);
-    const cardsTop = 128 + 56 + 32;
-    const seam = cardsTop + geometry.cardHeight + 12;
+  const tall = document.documentElement.dataset.size === "tall";
+  const side = tall ? 56 : 40;
+  const inner = width - 2 * side;
+  const cardsTop = 36 + 48 + 16 + 60 + (tall ? 68 : 64);
+  if (tall) {
+    const { cardHeight } = compareQuestionGeometry(width, height, 0, 0);
+    const seam = cardsTop + cardHeight + 12;
     const boxes: Record<string, Box> = {
-      "question-bar": { left: 56, top: 40, width: inner, height: 56 },
-      "question-prompt": { left: 56, top: 128, width: inner, height: 56 },
-      "question-left": { left: 56, top: cardsTop, width: inner, height: geometry.cardHeight },
-      "question-versus": { left: 56 + (inner - 64) / 2, top: seam - 32, width: 64, height: 64 },
-      "question-right": { left: 56, top: seam + 12, width: inner, height: geometry.cardHeight },
-      "question-next": { left: 56, top: seam + 12 + geometry.cardHeight + 32, width: inner, height: 72 }
+      "question-bar": { left: side, top: 36, width: inner, height: 48 },
+      "question-prompt": { left: side, top: 100, width: inner, height: 60 },
+      "question-left": { left: side, top: cardsTop, width: inner, height: cardHeight },
+      "question-versus": { left: side + (inner - 56) / 2, top: seam - 20, width: 56, height: 40 },
+      "question-right": { left: side, top: seam + 12, width: inner, height: cardHeight },
+      "question-next": { left: side, top: seam + 12 + cardHeight, width: inner, height: 87 }
     };
     return boxes[nameOf(element)]!;
   }
-  const card = (inner - 64 - 48) / 2;
-  const cardsHeight = height - 40 - 48 - 56 - 56 - 72 - 3 * 32;
+  const card = (inner - 56 - 48) / 2;
+  const cardsHeight = height - cardsTop - 73 - 87;
   const boxes: Record<string, Box> = {
-    "question-bar": { left: 56, top: 40, width: inner, height: 56 },
-    "question-prompt": { left: 56, top: 128, width: inner, height: 56 },
-    "question-left": { left: 56, top: 216, width: card, height: cardsHeight },
-    "question-versus": { left: 56 + card + 24, top: 216 + (cardsHeight - 64) / 2, width: 64, height: 64 },
-    "question-right": { left: 56 + card + 112, top: 216, width: card, height: cardsHeight },
-    "question-next": { left: 56, top: 216 + cardsHeight + 32, width: inner, height: 72 }
+    "question-bar": { left: side, top: 36, width: inner, height: 48 },
+    "question-prompt": { left: side, top: 100, width: inner, height: 60 },
+    "question-left": { left: side, top: cardsTop, width: card, height: cardsHeight },
+    "question-versus": { left: side + card + 24, top: cardsTop + (cardsHeight - 40) / 2, width: 56, height: 40 },
+    "question-right": { left: side + card + 104, top: cardsTop, width: card, height: cardsHeight },
+    "question-next": { left: side, top: cardsTop + cardsHeight, width: inner, height: 73 }
   };
   return boxes[nameOf(element)]!;
 }
@@ -159,9 +161,7 @@ describe("the compare quiz's question turning", () => {
       const after = app.boxes();
       const glides = app.animations.filter(({ name, cancelled }) => !cancelled && !name.startsWith("frame of "));
       expect(glides.map(({ name, keyframes, options }) => ({ name, from: String(keyframes[0]?.translate).split(" ").map(px), to: keyframes[1]?.translate, options }))).toEqual(
-        // The bar and the prompt stay where they stood, only narrowing or
-        // widening; every other part moves.
-        QUESTION_PARTS.filter((name) => name !== "question-bar" && name !== "question-prompt").map((name) => {
+        QUESTION_PARTS.map((name) => {
           const [old, now] = [before.get(name)!, after.get(name)!];
           return { name, from: [old.left - now.left, old.top - now.top], to: "0px 0px", options: { duration: GLIDE, easing: EASE_OUT } };
         })

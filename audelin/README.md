@@ -1,16 +1,45 @@
 # Audelin
 
-A native, fully local macOS companion for the owner's calls (Zoom, Telemost,
+A native macOS companion for the owner's calls (Zoom, Telemost,
 Meet) in Russian with English professional terms. It records both sides as
 two tracks, shows a smooth, selectable live transcript in a floating panel,
 and, from v2, explains a selected term in Russian through bb.
 
-Status: the menu bar app records detected calls using stored preferences.
-The live panel and settings UI are not connected yet.
+Status: the menu bar app records detected calls, shows the live transcript and
+opens native Settings. Recording and recognition stay local. Optional call notes
+are off by default; Settings discloses both configured destinations and their
+subscription/API/local-compute costs. Models, CLI path, API base URL and credential
+variable names are editable. Credential values are resolved only for requests and
+are never stored or displayed. A Finder-launched app may lack shell variables;
+validation reports that without sending a transcript or making a paid request.
 
-Build: `cd audelin/macos && sh scripts/bundle.sh`.
+Eligible final transcripts create durable jobs without holding the next call.
+Calls shows waiting, preparation, success/warning and failure/interruption status;
+notes are saved as `summary.md` beside the original transcript and audio. Pending
+jobs resume with their saved configuration; interrupted running requests are never
+automatically replayed. Claude CLI requires supported isolation controls, preserves
+subscription authentication and remains subject to managed organization policy.
+Provider availability, quota and factual faithfulness are not guaranteed by
+configuration checks or structural validation.
+
+Build: `cd audelin/macos && sh scripts/bundle.sh`. Install and automatic updates: see below.
+Components: `macos/`; composer, app, rehearsal and their integration tests: `macos/App/`.
+Build and test each package from its directory with `swift build --build-tests` and `swift test`.
+Reading exposes its complete state, including rendered lines, the stored `log`,
+rendering indexes and per-reduction work counts. Public initializers retain the supplied
+values; reduction keeps `log` coherent with the lines and status. Construct a
+`ReadingReducer(recordingTime:lineTime:span:)` to inject rendering closures, or use
+`ReadingReducer.reduce` with the production functions in `ReadingFormatting`.
+
 Run: `open .build/Audelin.app` from `audelin/macos`.
 Logs: `log stream --predicate 'subsystem == "dev.igor1309.audelin"'`.
+Profile: from `audelin/macos`, `scripts/profile-rehearsal.sh capture --capture-after 120 --capture-for 30 --minutes 20 --speed 1`
+records only that wall-clock window and summarizes CPU, hangs and signpost intervals in `macos/profiles/`.
+Endurance: `scripts/profile-rehearsal.sh endurance --minutes 180 --speed 1` runs without Instruments and keeps only the rehearsal report.
+Recognisers are fakes: lag is pipeline backlog, and speeds above 1× measure saturation.
+
+Optimized load tests: from each of `audelin/macos` and `audelin/macos/App`, run `swift build --build-tests -Xswiftc -O`,
+then, in the same directory, run `../scripts/swift-test-bounded.sh 120 -Xswiftc -O --filter LoadTests` or `../../scripts/swift-test-bounded.sh 120 -Xswiftc -O --filter LoadTests`, respectively.
 
 | Path | What it holds |
 |---|---|
@@ -22,3 +51,37 @@ Logs: `log stream --predicate 'subsystem == "dev.igor1309.audelin"'`.
 | [docs/research/](docs/research/) | Research, the Parakeet spike and naming rounds |
 
 CLI `audelin`, data folder `~/.audelin`, calls in `~/Recordings/Audelin`.
+
+`python3 -I audelin/scripts/slow-tests.py` runs the tests of all three
+packages three times, serially, and writes every test, ranked by its median duration
+with its file and line, to `slow-tests-report.json` and `.md` in the current
+directory. The weekly `audelin-slow-tests` workflow runs it on macOS and
+hands the ranking to the slow-test hunter autopilot. Tests listed in
+`scripts/slow-tests.skip` (one test id per line, `#` for the reason) are
+marked as skipped there. It runs `swift test --no-parallel`: in a parallel run a
+main-actor test's duration includes its wait in the main-actor queue, which ranked
+dozens of cheap tests together at about 19.6 s.
+
+## Install and updates
+
+- **First install:** `sh audelin/macos/scripts/install.sh` from the repository root
+  builds the app, quits a running copy, replaces `/Applications/Audelin.app`, opens it
+  and adds `~/Library/LaunchAgents/dev.igor1309.audelin.login.plist`, which opens it
+  at login. Delete that file to stop starting at login. macOS asks for microphone and
+  audio-capture access on first use; the first launch downloads and compiles the models.
+- **Updates are automatic.** Each trunk merge that changes the app (`macos/App`,
+  `macos/Sources`, the package manifests, `bundle.sh` or `install.sh`) runs the
+  `Audelin Install` workflow on this Mac's self-hosted `local-mac` runner, which runs
+  `install.sh --update`: it replaces the copy in `/Applications` and neither quits nor
+  opens Audelin. A running Audelin notices within seconds and relaunches itself into the
+  new build once it is idle: never during a recording, a folder move, a pending rename or
+  delete, or a summary being written. A quit Audelin stays quit. To install trunk by hand, dispatch `Audelin Install` from GitHub Actions.
+  A failed install is reported in the CI Telegram chat and leaves the installed copy
+  as it was.
+- **Signing on the runner** uses the owner's Apple Development certificate, so macOS
+  keeps the microphone and audio-capture grants across builds. The runner's launch
+  agent (`~/Library/LaunchAgents/actions.runner.igor1309-ai-labs.MacBook-Pro.plist`)
+  must not set `SessionCreate`: with it, jobs run in a security session that cannot
+  reach the login keychain and `codesign` fails with `errSecInternalComponent`.
+  Reinstalling the runner with `svc.sh install` adds it back; remove it with
+  `/usr/libexec/PlistBuddy -c "Delete :SessionCreate" <plist>` and reload the agent.

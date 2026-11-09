@@ -36,6 +36,9 @@ const inSkeletons = (file: string) => file.startsWith("skeletons/");
 const inDig = (file: string) => file.startsWith("dig/");
 const inPicturePuzzle = (file: string) => file.startsWith("picturePuzzle/");
 const SCREENS = [
+  "ColoringWorkshopScreen.tsx",
+  "ColoringResultScreen.tsx",
+  "ColoringGalleryScreen.tsx",
   "CareResultScreen.tsx",
   "CareWelcomeScreen.tsx",
   "CatalogueScreen.tsx",
@@ -71,6 +74,7 @@ const SCREENS = [
 ];
 const PRESENTATION = [
   ...SCREENS,
+  "ColoringArtworkPreview.tsx",
   "ageLevelPictures.ts",
   "Button.tsx",
   "GameAudioButton.tsx",
@@ -86,12 +90,14 @@ const PRESENTATION = [
   "SharedPicture.tsx",
   "SkeletonBar.tsx",
   "formatValue.ts",
-  "useKeptRow.ts",
+  "labyrinthView.ts",
+  "layoutKeeping.ts",
   "usePointerState.ts"
 ];
 // The catalogue's own model of a dinosaur, apart from the quiz's.
 const CATALOGUE = "catalogue.ts";
 const ADAPTERS = [
+  "indexedColoringWorks.ts",
   "decodedPictures.ts",
   "dinosaurPictures.ts",
   "dinosaurs.ts",
@@ -110,6 +116,9 @@ const ADAPTERS = [
   "treasurePictures.ts"
 ];
 const COMPOSITION = [
+  "coloringWorkshopRoot.ts",
+  "ColoringGame.tsx",
+  "coloringProbe/main.ts",
   "App.tsx",
   "careGame.tsx",
   "digGame.tsx",
@@ -138,13 +147,36 @@ const SCREEN_STATE = "screens.ts";
 const OWNED_TIMERS = "ownedTimers.ts";
 // The motion of a screen to its other layout as the window turns, and
 // where a row of columns or a list of cards stands through it.
-const TURN_MOTION = ["turnMotion.ts", "rowAnchor.ts", "listAnchor.ts"];
+const TURN_MOTION = ["turnMotion.ts", "listAnchor.ts"];
 // The catalogue's cards in a row and how its chips stand, by the window.
 const CATALOGUE_GEOMETRY = ["catalogueColumns.ts", "chipArrangement.ts"];
 // How App sets each window's layout through the turn motion.
 const LAYOUT_TURNS = "layoutTurns.ts";
 
 describe("the import graph", () => {
+  it("keeps production coloring pure and its storage adapter wired only by composition", () => {
+    const coloring = (file: string) => file.startsWith("coloring/");
+    expect(GRAPH.get("coloring/index.ts")).toEqual([]);
+    expect(edges(coloring, target => !coloring(target))).toEqual([]);
+    // Only the coloring composition root builds the concrete vector painter;
+    // presentation and the save queue receive their collaborators.
+    expect(edges(file => !coloring(file) && file !== "coloringWorkshopRoot.ts", target => coloring(target) && target !== "coloring/index.ts")).toEqual([]);
+    expect(GRAPH.get("ColoringGalleryScreen.tsx")).not.toContain("coloring/index.ts");
+    expect(GRAPH.get("ColoringArtworkPreview.tsx")).toEqual([]);
+    const publicColoring = readFileSync(join(SRC, "coloring/index.ts"), "utf8");
+    expect(publicColoring).not.toMatch(/\b(Geometry|VectorShape|PaintRegion|ProtectedDetail|ColoringArtwork|VECTOR_SCALE)\b/);
+    expect(GRAPH.get("indexedColoringWorks.ts")).toEqual(["coloring/index.ts"]);
+    expect(edges(file => !COMPOSITION.includes(file), target => target === "indexedColoringWorks.ts")).toEqual([]);
+    expect(GRAPH.get("coloringWorkshop.ts")).toEqual(["coloring/index.ts"]);
+    expect(GRAPH.get("coloringWorkshopRoot.ts")).toEqual(expect.arrayContaining(["coloring/painter.ts", "indexedColoringWorks.ts", "coloringWorkshop.ts"]));
+  });
+  it("keeps the coloring technical probe isolated from game entry points", () => {
+    const probe = (file: string) => file.startsWith("coloringProbe/");
+    expect(edges((file) => !probe(file), probe)).toEqual([]);
+    expect(edges((file) => probe(file) && file !== "coloringProbe/main.ts", (target) => !probe(target))).toEqual([]);
+    expect(GRAPH.get("coloringProbe/main.ts")).toContain("root.ts");
+    expect(edges(probe, (target) => COMPOSITION.includes(target) && target !== "root.ts")).toEqual([]);
+  });
   it("keeps game audio independent of UI and storage, with browser persistence wired at the root", () => {
     expect(GRAPH.get("gameAudio.ts")).toEqual(["language/language.ts"]);
     expect(GRAPH.get("root.ts")).toContain("localJawAudio.ts");
@@ -339,7 +371,7 @@ describe("the import graph", () => {
     expect(edges((file) => file === OWNED_TIMERS, () => true)).toEqual([]);
   });
 
-  it("keeps the turn motion and the row's and the list's anchors free of the rest of the app", () => {
+  it("keeps the turn motion and the list's anchor free of the rest of the app", () => {
     expect(TURN_MOTION.filter((file) => !GRAPH.has(file))).toEqual([]);
     expect(edges((file) => TURN_MOTION.includes(file), () => true)).toEqual([]);
   });
@@ -349,10 +381,10 @@ describe("the import graph", () => {
     expect(edges((file) => CATALOGUE_GEOMETRY.includes(file), () => true)).toEqual([]);
   });
 
-  it("keeps App's layout turns free of all but the turn motion, and the row's keeping free of all but the row's anchor", () => {
+  it("keeps App's layout turns free of all but the turn motion, and the layout keeping contract free of the app", () => {
     expect(GRAPH.get("App.tsx")).toContain(LAYOUT_TURNS);
     expect(edges((file) => file === LAYOUT_TURNS, (target) => target !== "turnMotion.ts")).toEqual([]);
-    expect(edges((file) => file === "useKeptRow.ts", (target) => target !== "rowAnchor.ts")).toEqual([]);
+    expect(edges((file) => file === "layoutKeeping.ts", () => true)).toEqual([]);
   });
 
   it("leaves the composition root to the composition root", () => {

@@ -1,0 +1,332 @@
+<trace-query-result>
+  <node xpath="//trace-toc[1]/run[1]/data[1]/table[20]">
+    <schema name="region-of-interest">
+      <col>
+        <mnemonic>start</mnemonic>
+        <name>Start</name>
+        <engineering-type>start-time</engineering-type>
+      </col>
+      <col>
+        <mnemonic>class</mnemonic>
+        <name>Class</name>
+        <engineering-type>roi-class</engineering-type>
+      </col>
+      <col>
+        <mnemonic>name</mnemonic>
+        <name>Name</name>
+        <engineering-type>signpost-name</engineering-type>
+      </col>
+      <col>
+        <mnemonic>duration</mnemonic>
+        <name>Duration</name>
+        <engineering-type>duration</engineering-type>
+      </col>
+      <col>
+        <mnemonic>kind</mnemonic>
+        <name>Kind</name>
+        <engineering-type>roi-kind</engineering-type>
+      </col>
+      <col>
+        <mnemonic>scope</mnemonic>
+        <name>Scope</name>
+        <engineering-type>roi-scope</engineering-type>
+      </col>
+      <col>
+        <mnemonic>concept</mnemonic>
+        <name>Concept</name>
+        <engineering-type>event-concept</engineering-type>
+      </col>
+      <col>
+        <mnemonic>subsystem</mnemonic>
+        <name>Subsystem</name>
+        <engineering-type>subsystem</engineering-type>
+      </col>
+      <col>
+        <mnemonic>start-message</mnemonic>
+        <name>Start Message</name>
+        <engineering-type>os-log-metadata</engineering-type>
+      </col>
+      <col>
+        <mnemonic>end-message</mnemonic>
+        <name>End Message</name>
+        <engineering-type>os-log-metadata</engineering-type>
+      </col>
+      <col>
+        <mnemonic>process</mnemonic>
+        <name>Start Process</name>
+        <engineering-type>process</engineering-type>
+      </col>
+      <col>
+        <mnemonic>end-process</mnemonic>
+        <name>End Process</name>
+        <engineering-type>process</engineering-type>
+      </col>
+      <col>
+        <mnemonic>thread</mnemonic>
+        <name>Thread</name>
+        <engineering-type>thread</engineering-type>
+      </col>
+      <col>
+        <mnemonic>start-thread</mnemonic>
+        <name>Start Thread</name>
+        <engineering-type>thread</engineering-type>
+      </col>
+      <col>
+        <mnemonic>end-thread</mnemonic>
+        <name>End Thread</name>
+        <engineering-type>thread</engineering-type>
+      </col>
+      <col>
+        <mnemonic>core</mnemonic>
+        <name>Core</name>
+        <engineering-type>core</engineering-type>
+      </col>
+      <col>
+        <mnemonic>start-backtrace</mnemonic>
+        <name>Start Stack</name>
+        <engineering-type>backtrace</engineering-type>
+      </col>
+      <col>
+        <mnemonic>end-backtrace</mnemonic>
+        <name>End Stack</name>
+        <engineering-type>backtrace</engineering-type>
+      </col>
+      <col>
+        <mnemonic>start-user-backtrace</mnemonic>
+        <name>Start User Backtrace</name>
+        <engineering-type>text-backtrace</engineering-type>
+      </col>
+      <col>
+        <mnemonic>end-user-backtrace</mnemonic>
+        <name>End User Backtrace</name>
+        <engineering-type>text-backtrace</engineering-type>
+      </col>
+      <col>
+        <mnemonic>start-emit-location</mnemonic>
+        <name>Start Emit Location</name>
+        <engineering-type>return-location</engineering-type>
+      </col>
+      <col>
+        <mnemonic>end-emit-location</mnemonic>
+        <name>End Emit Location</name>
+        <engineering-type>return-location</engineering-type>
+      </col>
+    </schema>
+    <row>
+      <start-time fmt="00:01.019.888">1019888458</start-time>
+      <roi-class fmt="Interval">Interval</roi-class>
+      <signpost-name fmt="Hearing">Hearing</signpost-name>
+      <duration fmt="3.29 µs">3292</duration>
+      <roi-kind fmt="OS Signpost">OS Signpost</roi-kind>
+      <sentinel />
+      <event-concept fmt="Signpost">Signpost</event-concept>
+      <subsystem fmt="dev.igor1309.audelin">dev.igor1309.audelin</subsystem>
+      <sentinel />
+      <sentinel />
+      <process fmt="AudelinRehearsal (96730)">
+        <pid fmt="96730">96730</pid>
+        <device-session fmt="TODO">TODO</device-session>
+      </process>
+      <process fmt="AudelinRehearsal (96730)">
+        <pid fmt="96730">96730</pid>
+        <device-session fmt="TODO">TODO</device-session>
+      </process>
+      <sentinel />
+      <thread fmt="AudelinRehearsal 0x16565c6 (AudelinRehearsal, pid: 96730)">
+        <tid fmt="0x16565c6">23422406</tid>
+        <process fmt="AudelinRehearsal (96730)">
+          <pid fmt="96730">96730</pid>
+          <device-session fmt="TODO">TODO</device-session>
+        </process>
+      </thread>
+      <thread fmt="AudelinRehearsal 0x16565c6 (AudelinRehearsal, pid: 96730)">
+        <tid fmt="0x16565c6">23422406</tid>
+        <process fmt="AudelinRehearsal (96730)">
+          <pid fmt="96730">96730</pid>
+          <device-session fmt="TODO">TODO</device-session>
+        </process>
+      </thread>
+      <sentinel />
+      <sentinel />
+      <sentinel />
+      <sentinel />
+      <sentinel />
+      <return-location fmt="closure #1 in closure #1 in variable initialization expression of static ProfileIntervals.system  AudelinRehearsal">
+        <uuid fmt="B48F4A93-FFBF-36E9-B4C0-33A37E0522F8">
+          <eight-byte-array fmt="0xb48f4a93ffbf36e9">13010699848008021737</eight-byte-array>
+          <eight-byte-array fmt="0xb4c033a37e0522f8">13024466899642426104</eight-byte-array>
+        </uuid>
+        <mach-o-vm-offset fmt="0x61408">398344</mach-o-vm-offset>
+      </return-location>
+      <return-location fmt="$defer #1 () in SignpostedRecognizer.hear(_:)  AudelinRehearsal">
+        <uuid fmt="B48F4A93-FFBF-36E9-B4C0-33A37E0522F8">
+          <eight-byte-array fmt="0xb48f4a93ffbf36e9">13010699848008021737</eight-byte-array>
+          <eight-byte-array fmt="0xb4c033a37e0522f8">13024466899642426104</eight-byte-array>
+        </uuid>
+        <mach-o-vm-offset fmt="0x61c98">400536</mach-o-vm-offset>
+      </return-location>
+    </row>
+    <row>
+      <start-time fmt="00:01.019.896">1019896125</start-time>
+      <roi-class fmt="Interval">Interval</roi-class>
+      <signpost-name fmt="Hearing">Hearing</signpost-name>
+      <duration fmt="2.96 µs">2958</duration>
+      <roi-kind fmt="OS Signpost">OS Signpost</roi-kind>
+      <sentinel />
+      <event-concept fmt="Signpost">Signpost</event-concept>
+      <subsystem fmt="dev.igor1309.audelin">dev.igor1309.audelin</subsystem>
+      <sentinel />
+      <sentinel />
+      <process fmt="AudelinRehearsal (96730)">
+        <pid fmt="96730">96730</pid>
+        <device-session fmt="TODO">TODO</device-session>
+      </process>
+      <process fmt="AudelinRehearsal (96730)">
+        <pid fmt="96730">96730</pid>
+        <device-session fmt="TODO">TODO</device-session>
+      </process>
+      <sentinel />
+      <thread fmt="AudelinRehearsal 0x1656591 (AudelinRehearsal, pid: 96730)">
+        <tid fmt="0x1656591">23422353</tid>
+        <process fmt="AudelinRehearsal (96730)">
+          <pid fmt="96730">96730</pid>
+          <device-session fmt="TODO">TODO</device-session>
+        </process>
+      </thread>
+      <thread fmt="AudelinRehearsal 0x1656591 (AudelinRehearsal, pid: 96730)">
+        <tid fmt="0x1656591">23422353</tid>
+        <process fmt="AudelinRehearsal (96730)">
+          <pid fmt="96730">96730</pid>
+          <device-session fmt="TODO">TODO</device-session>
+        </process>
+      </thread>
+      <sentinel />
+      <sentinel />
+      <sentinel />
+      <sentinel />
+      <sentinel />
+      <return-location fmt="closure #1 in closure #1 in variable initialization expression of static ProfileIntervals.system  AudelinRehearsal">
+        <uuid fmt="B48F4A93-FFBF-36E9-B4C0-33A37E0522F8">
+          <eight-byte-array fmt="0xb48f4a93ffbf36e9">13010699848008021737</eight-byte-array>
+          <eight-byte-array fmt="0xb4c033a37e0522f8">13024466899642426104</eight-byte-array>
+        </uuid>
+        <mach-o-vm-offset fmt="0x61408">398344</mach-o-vm-offset>
+      </return-location>
+      <return-location fmt="$defer #1 () in SignpostedRecognizer.hear(_:)  AudelinRehearsal">
+        <uuid fmt="B48F4A93-FFBF-36E9-B4C0-33A37E0522F8">
+          <eight-byte-array fmt="0xb48f4a93ffbf36e9">13010699848008021737</eight-byte-array>
+          <eight-byte-array fmt="0xb4c033a37e0522f8">13024466899642426104</eight-byte-array>
+        </uuid>
+        <mach-o-vm-offset fmt="0x61c98">400536</mach-o-vm-offset>
+      </return-location>
+    </row>
+    <row>
+      <start-time fmt="00:01.124.362">1124362458</start-time>
+      <roi-class fmt="Interval">Interval</roi-class>
+      <signpost-name fmt="TranscriptWrite">TranscriptWrite</signpost-name>
+      <duration fmt="1.61 ms">1613458</duration>
+      <roi-kind fmt="OS Signpost">OS Signpost</roi-kind>
+      <sentinel />
+      <event-concept fmt="Signpost">Signpost</event-concept>
+      <subsystem fmt="dev.igor1309.audelin">dev.igor1309.audelin</subsystem>
+      <sentinel />
+      <sentinel />
+      <process fmt="AudelinRehearsal (96730)">
+        <pid fmt="96730">96730</pid>
+        <device-session fmt="TODO">TODO</device-session>
+      </process>
+      <process fmt="AudelinRehearsal (96730)">
+        <pid fmt="96730">96730</pid>
+        <device-session fmt="TODO">TODO</device-session>
+      </process>
+      <sentinel />
+      <thread fmt="AudelinRehearsal 0x16565c1 (AudelinRehearsal, pid: 96730)">
+        <tid fmt="0x16565c1">23422401</tid>
+        <process fmt="AudelinRehearsal (96730)">
+          <pid fmt="96730">96730</pid>
+          <device-session fmt="TODO">TODO</device-session>
+        </process>
+      </thread>
+      <thread fmt="AudelinRehearsal 0x1656592 (AudelinRehearsal, pid: 96730)">
+        <tid fmt="0x1656592">23422354</tid>
+        <process fmt="AudelinRehearsal (96730)">
+          <pid fmt="96730">96730</pid>
+          <device-session fmt="TODO">TODO</device-session>
+        </process>
+      </thread>
+      <sentinel />
+      <sentinel />
+      <sentinel />
+      <sentinel />
+      <sentinel />
+      <return-location fmt="closure #1 in closure #1 in variable initialization expression of static ProfileIntervals.system  AudelinRehearsal">
+        <uuid fmt="B48F4A93-FFBF-36E9-B4C0-33A37E0522F8">
+          <eight-byte-array fmt="0xb48f4a93ffbf36e9">13010699848008021737</eight-byte-array>
+          <eight-byte-array fmt="0xb4c033a37e0522f8">13024466899642426104</eight-byte-array>
+        </uuid>
+        <mach-o-vm-offset fmt="0x61408">398344</mach-o-vm-offset>
+      </return-location>
+      <return-location fmt="$defer #1 () in SignpostedTranscriptFile.write(_:)  AudelinRehearsal">
+        <uuid fmt="B48F4A93-FFBF-36E9-B4C0-33A37E0522F8">
+          <eight-byte-array fmt="0xb48f4a93ffbf36e9">13010699848008021737</eight-byte-array>
+          <eight-byte-array fmt="0xb4c033a37e0522f8">13024466899642426104</eight-byte-array>
+        </uuid>
+        <mach-o-vm-offset fmt="0x615d0">398800</mach-o-vm-offset>
+      </return-location>
+    </row>
+    <row>
+      <start-time fmt="00:01.124.831">1124831041</start-time>
+      <roi-class fmt="Interval">Interval</roi-class>
+      <signpost-name fmt="PanelUpdate">PanelUpdate</signpost-name>
+      <duration fmt="17.83 µs">17834</duration>
+      <roi-kind fmt="OS Signpost">OS Signpost</roi-kind>
+      <sentinel />
+      <event-concept fmt="Signpost">Signpost</event-concept>
+      <subsystem fmt="dev.igor1309.audelin">dev.igor1309.audelin</subsystem>
+      <sentinel />
+      <sentinel />
+      <process fmt="AudelinRehearsal (96730)">
+        <pid fmt="96730">96730</pid>
+        <device-session fmt="TODO">TODO</device-session>
+      </process>
+      <process fmt="AudelinRehearsal (96730)">
+        <pid fmt="96730">96730</pid>
+        <device-session fmt="TODO">TODO</device-session>
+      </process>
+      <sentinel />
+      <thread fmt="AudelinRehearsal 0x16565c1 (AudelinRehearsal, pid: 96730)">
+        <tid fmt="0x16565c1">23422401</tid>
+        <process fmt="AudelinRehearsal (96730)">
+          <pid fmt="96730">96730</pid>
+          <device-session fmt="TODO">TODO</device-session>
+        </process>
+      </thread>
+      <thread fmt="AudelinRehearsal 0x16565c1 (AudelinRehearsal, pid: 96730)">
+        <tid fmt="0x16565c1">23422401</tid>
+        <process fmt="AudelinRehearsal (96730)">
+          <pid fmt="96730">96730</pid>
+          <device-session fmt="TODO">TODO</device-session>
+        </process>
+      </thread>
+      <sentinel />
+      <sentinel />
+      <sentinel />
+      <sentinel />
+      <sentinel />
+      <return-location fmt="closure #1 in closure #1 in variable initialization expression of static ProfileIntervals.system  AudelinRehearsal">
+        <uuid fmt="B48F4A93-FFBF-36E9-B4C0-33A37E0522F8">
+          <eight-byte-array fmt="0xb48f4a93ffbf36e9">13010699848008021737</eight-byte-array>
+          <eight-byte-array fmt="0xb4c033a37e0522f8">13024466899642426104</eight-byte-array>
+        </uuid>
+        <mach-o-vm-offset fmt="0x61408">398344</mach-o-vm-offset>
+      </return-location>
+      <return-location fmt="$defer #1 () in SignpostedPanelUpdate.callAsFunction(_:)  AudelinRehearsal">
+        <uuid fmt="B48F4A93-FFBF-36E9-B4C0-33A37E0522F8">
+          <eight-byte-array fmt="0xb48f4a93ffbf36e9">13010699848008021737</eight-byte-array>
+          <eight-byte-array fmt="0xb4c033a37e0522f8">13024466899642426104</eight-byte-array>
+        </uuid>
+        <mach-o-vm-offset fmt="0x412cc">266956</mach-o-vm-offset>
+      </return-location>
+    </row>
+  </node>
+</trace-query-result>

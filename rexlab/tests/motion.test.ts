@@ -40,7 +40,7 @@ const declarationsOf = (body: string) =>
       return { property: declaration.slice(0, colon).trim(), value: declaration.slice(colon + 1).trim() };
     });
 
-const CSS = readFileSync(join(import.meta.dirname, "../src/app.css"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+const CSS = ["app.css", "labyrinthBoard.css", "labyrinthResult.css", "skeletonSite.css", "skeletonChoice.css", "skeletonPuzzle.css", "skeletonGuess.css", "skeletonMuseum.css", "skeletonResult.css", "picturePuzzleChoice.css", "picturePuzzleBoard.css", "picturePuzzleResult.css", "sandWriting.css", "careWelcome.css", "careVisit.css", "careResult.css"].map((file) => readFileSync(join(import.meta.dirname, "../src", file), "utf8")).join("\n").replace(/\/\*[\s\S]*?\*\//g, "");
 const RULES = rulesOf(CSS);
 const REDUCED = RULES.filter(({ prelude }) => prelude === "@media (prefers-reduced-motion: reduce)").flatMap(({ body }) => rulesOf(body));
 const PLAIN = RULES.filter(({ prelude }) => !prelude.startsWith("@"));
@@ -63,6 +63,14 @@ const declared = (rules: Rule[], selector: string) =>
   Object.fromEntries(declarationsOf(rules.find(({ prelude }) => prelude === selector)?.body ?? "").map(({ property, value }) => [property, value]));
 
 describe("the motion", () => {
+  it("cross-fades both skeleton hero layers with shared normal and reduced timings", () => {
+    const layers = ".home-skeleton-hero > .skeletons-hero-fallback, .home-skeleton-hero > canvas";
+    expect(declared(PLAIN, layers).transition).toBe("opacity var(--motion-standard) var(--ease-out)");
+    expect(declared(REDUCED, layers)["transition-duration"]).toBe("var(--motion-small)");
+    expect(tokensOf(PLAIN)["--motion-standard"]).toBe("240ms");
+    expect(tokensOf(PLAIN)["--motion-small"]).toBe("160ms");
+  });
+
   it("fades the portrait gate in and out with the screen token, including the short reduced-motion fade", () => {
     expect(declared(PLAIN, ".orientation-gate").transition).toBe("opacity var(--motion-screen) var(--ease-out), visibility var(--motion-screen) var(--ease-out)");
     expect(declared(PLAIN, ".orientation-gate[data-shown]").animation).toBe("fade-in var(--motion-screen) var(--ease-out) both");
@@ -82,6 +90,7 @@ describe("the motion", () => {
       "--motion-stagger": "40ms",
       "--motion-picture": "200ms",
       "--motion-shimmer": "1500ms",
+      "--motion-scroll": "smooth",
       "--motion-alive": "360ms",
       "--motion-amount": "1"
     });
@@ -121,7 +130,9 @@ describe("the motion", () => {
       "--motion-screen": "160ms",
       "--motion-count": "0ms",
       "--motion-stagger": "0ms",
-      "--motion-amount": "0"
+      "--motion-amount": "0",
+      // A following view jumps instead of gliding.
+      "--motion-scroll": "auto"
     });
     // Every keyframe moves by --motion-amount, so it only fades where that
     // is 0; the count-up takes no time there.
@@ -431,10 +442,10 @@ describe("care's motion", () => {
     expect(animations.get(".tray-item[data-suggested]::after")).toBe("fade-in");
   });
 
-  it("fills the hearts won, and rises friends in, one after the other", () => {
-    expect([".result-heart-won", ".friend-card", ".friend-face"].map((selector) => animations.get(selector))).toEqual(["pop-in", "rise-in", "rise-in"]);
+  it("fills the hearts won, rises friends in and pops the welcome's faces in, one after the other", () => {
+    expect([".result-heart-won", ".friends-dig-site .friend-card", ".care-face"].map((selector) => animations.get(selector))).toEqual(["pop-in", "rise-in", "pop-in"]);
     expect(delayOf(".result-heart-won")).toBe("calc(var(--heart) * var(--motion-stagger) * 1.5)");
-    expect(delayOf(".friend-card")).toBe("calc(var(--card) * var(--motion-stagger) * 0.75)");
+    expect(delayOf(".friends-dig-site .friend-card")).toBe("calc(var(--card) * var(--motion-stagger) * 0.75)");
   });
 
   it("only fades the need asked now in with reduced motion", () => {
@@ -488,7 +499,7 @@ describe("find the pair's motion", () => {
 
   it("folds the climb level in and out beside the stars, and only fades it with reduced motion", () => {
     expect(declared(PLAIN, ".pairs-climb").transition).toBe(
-      "grid-template-columns var(--motion-standard) var(--ease-out),\n    margin-right var(--motion-standard) var(--ease-out),\n    opacity var(--motion-standard) var(--ease-out)"
+      "grid-template-columns var(--motion-standard) var(--ease-out),\n    grid-template-rows var(--motion-standard) var(--ease-out),\n    margin var(--motion-standard) var(--ease-out),\n    opacity var(--motion-standard) var(--ease-out)"
     );
     expect(declared(PLAIN, ".pairs-climb[data-shown]")).toEqual({ "grid-template-columns": "1fr", "margin-right": "0", opacity: "1" });
     expect(declared(REDUCED, ".pairs-climb")).toEqual({ "transition-property": "opacity" });
@@ -767,10 +778,10 @@ describe("a picture's place", () => {
   });
 
   it("is silhouetted on a pair's card only once its picture shows, its shimmer and failure look keeping their colours", () => {
-    const silhouettes = PLAIN.filter(({ prelude, body }) => prelude.includes("pair-silhouette") && declarationsOf(body).some(({ property }) => property === "filter"));
-    expect(silhouettes.map(({ prelude }) => prelude.split(",\n"))).toEqual([
-      ['.pair-silhouette[data-picture="appearing"]', '.pair-silhouette[data-picture="shown"]'],
-      ['[data-theme="dark"] .pair-silhouette[data-picture="appearing"]', '[data-theme="dark"] .pair-silhouette[data-picture="shown"]']
+    const shown = '.pair-silhouette:is([data-picture="appearing"], [data-picture="shown"])';
+    expect([bodyOf(shown), bodyOf(`${shown} + .pair-card-shadow`)]).toEqual([
+      [{ property: "opacity", value: "0" }],
+      [{ property: "display", value: "block" }, { property: "animation", value: "fade-in var(--motion-picture) var(--ease-out) both" }]
     ]);
   });
 

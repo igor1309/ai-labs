@@ -1,3 +1,8 @@
+import { friendsColumns } from "./FriendsScreen.tsx";
+import packageInfo from "../package.json";
+import { COLOR_PAGE, DIG_PICTURE, HOME_TILE_PICTURES, PAIRS_PICTURE } from "./homeTilePictures.ts";
+import { coloringVersionsFor } from "./coloringWorkshopRoot.ts";
+import { ColoringGame, type ColoringGameProps } from "./ColoringGame.tsx";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, ViewTransition } from "react";
 import { DEFAULT_AGE_LEVEL, pickAgeLevel, type AgeLevel, type AgeLevelSetting } from "./ageLevel.ts";
 import { useCareGame, type CareGameProps, type CarePhase } from "./careGame.tsx";
@@ -8,7 +13,6 @@ import { chipArrangement, type ChipContent } from "./chipArrangement.ts";
 import { closingPicture, refitPicture, type PictureMotion } from "./closingPicture.ts";
 import { compareQuestionType, compareQuestionWidth, NARROW_QUESTION, PORTRAIT_QUESTION } from "./compareQuestionLayout.ts";
 import { compareResultType, compareResultWidth, NARROW_RESULT, PORTRAIT_RESULT } from "./compareResultLayout.ts";
-import digTile from "./assets/dig/tile.webp";
 import { DIG_REVEAL, useDigGame, type DigGameProps, type DigPhase } from "./digGame.tsx";
 import { DinosaurPage, NEXT_DINOSAUR, PREVIOUS_DINOSAUR, type DinosaurPageLayout } from "./DinosaurPage.tsx";
 import { dinosaurSlide } from "./dinosaurSlide.ts";
@@ -16,6 +20,7 @@ import { dinosaurWordsWidth, keptLines, NARROW_PAGE, PORTRAIT_PAGE } from "./din
 import { calendarDay, chooseFeatured, type FeaturedStore } from "./featured.ts";
 import type { ChipWidths } from "./FoodChips.tsx";
 import { HOME_GAMES, HomePage, type HomeGame } from "./HomePage.tsx";
+import type { HomeMotion } from "./homeMotion.ts";
 import { languageOfDevice, type Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 import { useLayoutTurns } from "./layoutTurns.ts";
@@ -23,8 +28,6 @@ import { OrientationGate } from "./OrientationGate.tsx";
 import type { StartTimer } from "./ownedTimers.ts";
 import { NARROW_BOARD, pairsBoardWidth, PORTRAIT_BOARD } from "./pairsBoardLayout.ts";
 import { usePairsGame, type PairsGameProps, type PairsPhase } from "./pairsGame.tsx";
-import { NARROW_PAIRS_RESULT, pairsResultWidth, PORTRAIT_PAIRS_RESULT } from "./pairsResultLayout.ts";
-import { NARROW_WELCOME, pairsWelcomeType, pairsWelcomeWidth, PORTRAIT_WELCOME } from "./pairsWelcomeLayout.ts";
 import { LoadAhead, PicturesProvider, type PictureStore } from "./Picture.tsx";
 import { usePicturePuzzleGame, type PicturePuzzleGameProps, type PicturePuzzlePhase } from "./picturePuzzleGame.tsx";
 import { presentCatalogueCard, presentDinosaurPage } from "./presentation.ts";
@@ -78,7 +81,8 @@ export type PageVisibility = {
   subscribe(onChange: () => void): () => void;
 };
 
-export type SizeClass = "wide" | "wide-short" | "tall" | "tall-narrow";
+import type { SizeClass } from "./sizeClass.ts";
+export type { SizeClass };
 
 // The viewport boundary's safe-area values, kept independent of any screen's
 // geometry types.
@@ -125,10 +129,14 @@ export type AppProps = CareGameProps &
   Pick<DigGameProps, "digDinosaurs" | "digProgress" | "sandContext"> & {
     // Every dinosaur, in the order the catalogue shows them.
     catalogue: readonly CatalogueEntry[];
+    coloring?: Omit<ColoringGameProps, "language" | "layout" | "home" | "countStart">;
     picturePuzzle?: PicturePuzzleGameProps;
     whoseJaw?: WhoseJawGameProps;
     // The skeleton game's sounds, silent if none.
     skeletonSounds?: SkeletonSounds;
+    // Unstarted games added after the first visit, none when storage is unavailable.
+    newHomeGames: () => readonly string[];
+    homeMotion: HomeMotion;
     viewport: Viewport;
     portraitLayouts: PortraitLayouts;
     // How the catalogue's food chips' parts are measured as laid out.
@@ -164,24 +172,31 @@ export type AppProps = CareGameProps &
 // The two dinosaurs facing off in the quiz's picture on the home page.
 const FACE_OFF = { left: "tyrannosaurus", right: "brachiosaurus" };
 
+// The quiz's own dinosaur alone on its tile; Brachiosaurus belongs to BONES.
+const COMPARE_TILE = FACE_OFF.left;
+
 // The dinosaur on the catalogue's tile.
 const CATALOGUE_TILE = "stegosaurus";
 
-// The dinosaur on dinosaur care's tile.
-const CARE_TILE = "parasaurolophus";
-
 // The dinosaur on the sorting game's card.
-const SORT_TILE = "triceratops";
-
-// The dinosaur on find the pair's tile.
-const PAIRS_TILE = "stegosaurus";
+const SORT_TILE = "pachycephalosaurus";
 
 // The dinosaur whose skeleton stands on the skeleton game's tile.
-const SKELETONS_TILE = "triceratops";
+const SKELETONS_TILE = "brachiosaurus";
+
+// Home shows six tiles to a layer of earth where the page is wide enough, three elsewhere.
+const homeTilesPerLayer = (width: number) => width >= 1000 ? 6 : 3;
+
+
+// The dinosaurs on the care, jaw and colouring games' tiles; pairs and dig
+// show the design's own pictures of their games.
+const CARE_TILE = "oviraptor";
+const JAW_TILE = "baryonyx";
+const COLOR_TILE = "mosasaurus";
 
 // The dinosaur whose shape stands on the home tile of the games still to
 // come.
-const MORE_COMING = "triceratops";
+const MORE_COMING = "brachiosaurus";
 
 const STEPS: Record<Step, string> = { next: NEXT_DINOSAUR, previous: PREVIOUS_DINOSAUR };
 
@@ -206,7 +221,8 @@ type Screen =
   | { kind: "sandWriting" }
   | { kind: "picturePuzzle" }
   | { kind: "labyrinth" }
-  | { kind: "whoseJaw" };
+  | { kind: "whoseJaw" }
+  | { kind: "coloring" };
 
 // A food chosen changes the screen at once. A dinosaur's page opens from its
 // card and closes back to it, and a step slides the next page in the
@@ -225,6 +241,8 @@ export function App({
   bodyPicture,
   random,
   viewport,
+  newHomeGames,
+  homeMotion,
   portraitLayouts,
   chipWidths,
   layoutMotion,
@@ -257,10 +275,12 @@ export function App({
   sandContext,
   picturePuzzle,
   whoseJaw,
+  coloring,
   ...careProps
 }: AppProps) {
   const { screen, go, set } = useScreens<Screen, Step>({ kind: "home" }, transitionFor);
   const size = useSyncExternalStore(viewport.subscribe, viewport.sizeClass);
+  const tilesPerLayer = useSyncExternalStore(viewport.subscribe, () => homeTilesPerLayer(viewport.width()));
   const screenUpright = useSyncExternalStore(viewport.subscribe, viewport.isScreenUpright);
   const [closing] = useState<ReturnType<typeof closingPicture>>(() => closingPicture(layoutMotion, pictureMotion));
   const [sliding] = useState<ReturnType<typeof dinosaurSlide>>(() => dinosaurSlide(layoutMotion, pictureMotion));
@@ -275,7 +295,7 @@ export function App({
   // The game the large card features, chosen once as the app starts: it
   // stays while the app is open, past midnight too, and the next day's is
   // chosen when the app is opened again.
-  const [featured] = useState<HomeGame>(() => chooseFeatured(HOME_GAMES.filter((game) => (game !== "picturePuzzle" || picturePuzzle !== undefined) && (game !== "whoseJaw" || whoseJaw !== undefined)), { store: featuredStore, random, today: calendarDay(now()) }));
+  const [featured] = useState<HomeGame>(() => chooseFeatured(HOME_GAMES.filter((game) => (game !== "picturePuzzle" || picturePuzzle !== undefined) && (game !== "whoseJaw" || whoseJaw !== undefined) && (game !== "coloring" || coloring !== undefined)), { store: featuredStore, random, today: calendarDay(now()) }));
   // The device language is only the first guess: a parent's choice is kept
   // and wins on every later visit.
   const [language, setLanguage] = useState<Language>(() => languageStore.load() ?? languageOfDevice(deviceLanguage));
@@ -302,8 +322,12 @@ export function App({
   useLayoutEffect(() => {
     const root = document.documentElement;
     root.dataset.theme = theme;
+    const tint = document.querySelector('meta[name="theme-color"]');
+    const previousTint = tint?.getAttribute("content");
+    tint?.setAttribute("content", theme === "dark" ? "#0f1320" : "#f2efe8");
     return () => {
       delete root.dataset.theme;
+      if (previousTint != null) tint?.setAttribute("content", previousTint);
     };
   }, [theme]);
 
@@ -323,7 +347,18 @@ export function App({
     ageLevelStore.save(picked);
   };
 
-  const home = () => go({ kind: "home" });
+  const home = useCallback(() => go({ kind: "home" }), [go]);
+  const countColoringStart = useCallback(() => startCounter.countStart("coloring"), [startCounter]);
+  const [coloringCount, setColoringCount] = useState<number | null | undefined>(undefined);
+  useEffect(() => {
+    if (!coloring || screen.kind !== "home") return;
+    let current = true;
+    setColoringCount(undefined);
+    void coloring.source.list().then(collection => {
+      if (current) setColoringCount(collection.completedCount);
+    }, () => { if (current) setColoringCount(null); });
+    return () => { current = false; };
+  }, [coloring, screen.kind]);
 
   // Each game counts a start where it begins, wherever the child began it
   // from, and not as it opens on a welcome or choice screen.
@@ -401,11 +436,12 @@ export function App({
     counting("dig")
   );
 
-  // Upright, tall or tall-narrow, FRIENDS stands two cards to a row, four
-  // otherwise.
   const care = useCareGame({ ...careProps, bodyPicture, random, startTimer }, home, counting("care"), {
     keeping: turns,
-    columns: () => (viewport.sizeClass().startsWith("tall") ? 2 : 4)
+    columns: () => {
+      const { left, right } = viewport.sideInsets();
+      return friendsColumns(viewport.width(), viewport.sizeClass(), left, right);
+    }
   });
 
   // Each game's phase is its own: the gate and the turns read it as the
@@ -448,11 +484,6 @@ export function App({
     const { left, right } = viewport.sideInsets();
     return compareResultWidth(viewport.width(), left, right, viewport.scrollbarWidth?.() ?? 0, viewport.sizeClass() === "tall-narrow" ? NARROW_RESULT : PORTRAIT_RESULT);
   });
-  // And one type for find the pair's welcome's title and level names.
-  const welcomeWidth = useSyncExternalStore(viewport.subscribe, () => {
-    const { left, right } = viewport.sideInsets();
-    return pairsWelcomeWidth(viewport.width(), left, right, viewport.scrollbarWidth?.() ?? 0, viewport.sizeClass() === "tall-narrow" ? NARROW_WELCOME : PORTRAIT_WELCOME);
-  });
   // And the width its board stands in.
   const boardWidth = useSyncExternalStore(viewport.subscribe, () => {
     const { left, right } = viewport.sideInsets();
@@ -462,12 +493,6 @@ export function App({
   const sortWidth = useSyncExternalStore(viewport.subscribe, () => {
     const { left, right } = viewport.sideInsets();
     return sortBoardWidth(viewport.width(), left, right, viewport.scrollbarWidth?.() ?? 0, viewport.sizeClass() === "tall-narrow" ? NARROW_SORT : PORTRAIT_SORT);
-  });
-  // And the width find the pair's result stands in.
-  const pairsResultRoom = useSyncExternalStore(viewport.subscribe, () => {
-    const { left, right } = viewport.sideInsets();
-    const sizes = viewport.sizeClass() === "tall-narrow" ? NARROW_PAIRS_RESULT : PORTRAIT_PAIRS_RESULT;
-    return pairsResultWidth(viewport.width(), left, right, viewport.scrollbarWidth?.() ?? 0, sizes);
   });
 
   // A round starts at once from the tile, with no welcome screen.
@@ -663,47 +688,50 @@ export function App({
       case "sorting":
         return sorting.content(language, sortWidth, compareResultType(resultWidth, size === "tall-narrow" ? NARROW_RESULT : PORTRAIT_RESULT), size === "tall-narrow" ? NARROW_SORT : PORTRAIT_SORT);
       case "pairs":
-        return pairs.content(language, pairsWelcomeType(welcomeWidth, size === "tall-narrow" ? NARROW_WELCOME : PORTRAIT_WELCOME), boardWidth, pairsResultRoom, size === "tall-narrow" ? NARROW_BOARD : PORTRAIT_BOARD, size === "tall-narrow" ? NARROW_PAIRS_RESULT : PORTRAIT_PAIRS_RESULT);
+        return pairs.content(language, boardWidth, size === "tall-narrow" ? NARROW_BOARD : PORTRAIT_BOARD);
       case "skeletons":
         return skeletonGame.content(language, whoseJaw ? () => go({ kind: "whoseJaw" }, { also: jawGame.openShelf }) : undefined);
       case "dig":
         return dig.content(language);
+      case "coloring":
+        return coloring && <ColoringGame {...coloring} offeredVersions={coloringVersionsFor(ageLevel.level)} language={language} layout={size} home={home} countStart={countColoringStart} />;
       case "whoseJaw":
         return jawGame.content(language);
       case "picturePuzzle":
         return pictureGame.content(language);
       case "labyrinth":
-        return labyrinth.content(language);
+        return labyrinth.content(language, size);
       case "sandWriting":
         return <SandWritingScreen language={language} sandContext={sandContext} onHome={home} />;
       case "home":
         return (
           <HomePage
+            motion={homeMotion}
             language={language}
             onLanguage={chooseLanguage}
             theme={themeChoice}
             onTheme={chooseTheme}
+            newGames={newHomeGames()}
+            version={`v${packageInfo.version}`}
             ageLevel={ageLevel.level}
             onAgeLevel={chooseAgeLevel}
             startTimer={startTimer}
-            viewport={viewport}
-            upright={size === "tall" || size === "tall-narrow"}
-            narrow={size === "tall-narrow"}
-            short={size === "wide-short"}
-            layoutKeeping={turns}
             featured={featured}
             faceOff={{ left: bodyPicture(FACE_OFF.left), right: bodyPicture(FACE_OFF.right) }}
             best={quiz.best}
             catalogue={{ picture: bodyPicture(CATALOGUE_TILE), count: catalogue.length }}
             care={{ picture: bodyPicture(CARE_TILE), best: care.best }}
-            pairs={{ picture: bodyPicture(PAIRS_TILE), stars: pairs.stars }}
+            pairs={{ picture: PAIRS_PICTURE, stars: pairs.stars }}
             skeletons={{ picture: skeletonPicture(SKELETONS_TILE, "skeleton"), best: skeletonGame.best }}
             sort={{ picture: bodyPicture(SORT_TILE), best: sorting.best }}
-            dig={{ picture: digTile, dugUp: dig.dugUp }}
-            whoseJaw={whoseJaw && { picture: whoseJaw.jawPicture, collected: jawGame.collected, total: whoseJaw.total, onOpen: () => go({ kind: "whoseJaw" }, { also: jawGame.open }) }}
-            picturePuzzle={picturePuzzle && { picture: bodyPicture("tyrannosaurus"), collected: pictureGame.collected, onOpen: () => go({ kind: "picturePuzzle" }) }}
-            labyrinth={{ picture: bodyPicture("triceratops"), stars: labyrinth.stars }}
+            dig={{ picture: DIG_PICTURE, dugUp: dig.dugUp }}
+            coloring={coloring && { picture: bodyPicture(COLOR_TILE), page: COLOR_PAGE, completed: coloringCount, onOpen: () => go({ kind: "coloring" }) }}
+            whoseJaw={whoseJaw && { picture: bodyPicture(JAW_TILE), jaw: whoseJaw.jawFor(JAW_TILE), collected: jawGame.collected, total: whoseJaw.total, onOpen: () => go({ kind: "whoseJaw" }, { also: jawGame.open }) }}
+            picturePuzzle={picturePuzzle && { picture: bodyPicture("spinosaurus"), collected: pictureGame.collected, onOpen: () => go({ kind: "picturePuzzle" }) }}
+            labyrinth={{ picture: bodyPicture("ankylosaurus"), stars: labyrinth.stars }}
             moreComing={bodyPicture(MORE_COMING)}
+            tilesPerLayer={tilesPerLayer}
+            tilePictures={{ ...HOME_TILE_PICTURES, compare: bodyPicture(COMPARE_TILE) }}
             onCompareDinosaurs={openCompare}
             onCatalogue={openCatalogue}
             onCare={openCare}
@@ -712,6 +740,7 @@ export function App({
             onSkeletons={openSkeletons}
             onMuseum={openMuseum}
             onDig={openDig}
+            sandWritingPicture={bodyPicture("parasaurolophus")}
             onSandWriting={openSandWriting}
             onLabyrinth={() => labyrinth.start(() => set({ kind: "labyrinth" }))}
           />

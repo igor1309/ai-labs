@@ -26,7 +26,7 @@ const module = "github.com/igor1309/ai-labs/agister"
 // isolated are the groups whose packages import no other package of the
 // module, inside their group or outside it: the parts (ADR-001, rule 1),
 // and e2e, which drives the built binary alone.
-var isolated = []string{"cli", "settings", "core", "e2e"}
+var isolated = []string{"cli", "settings", "core", "pages", "e2e"}
 
 // wrappers are the groups of the wrappers, which know nothing of the parts
 // that use them (ADR-001, rule 2): their packages import no package of the

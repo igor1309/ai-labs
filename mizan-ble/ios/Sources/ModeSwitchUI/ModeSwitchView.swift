@@ -2,8 +2,9 @@ import DesignSystem
 import SwiftUI
 
 /// Shows only the chosen mode. The screens own their shells and headers.
+/// A switch swaps the screen at once, as a segmented control swaps its page:
+/// two full screens never draw over each other.
 public struct ModeSwitchView<Host: View, Client: View>: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private let state: ModeSwitchState
     private let event: (ModeSwitchEvent) -> Void
@@ -25,8 +26,8 @@ public struct ModeSwitchView<Host: View, Client: View>: View {
     public var body: some View {
         Group {
             switch state.side {
-            case .host: host().id(Side.host).transition(Motion.panelTransition(reduced: reduceMotion))
-            case .client: client().id(Side.client).transition(Motion.panelTransition(reduced: reduceMotion))
+            case .host: host().id(Side.host)
+            case .client: client().id(Side.client)
             }
         }
         .environment(\.modeSwitch, ModeSwitchConfiguration(
@@ -37,6 +38,5 @@ public struct ModeSwitchView<Host: View, Client: View>: View {
                 event(.choose(side))
             }
         ))
-        .animation(Motion.panel(reduced: reduceMotion).animation, value: state.sideProjection)
     }
 }

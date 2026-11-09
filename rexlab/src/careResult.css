@@ -1,0 +1,324 @@
+/* CARE's result on the dig site (design/dig-site.pen, CARE · result): the
+   visitor in the sky standing on the sand, ringed in a glow when the visit
+   set a best; beside it, or under it upright, the score, the hearts, the
+   title, the friend's chip and the best; NEW VISITOR, FRIENDS and HOME on
+   the sand. */
+.care-result {
+  --cr-sky: 59dvh;
+  --cr-side: var(--ds-space-40);
+  --cr-hero: clamp(240px, 27vw, 380px);
+  --cr-glow: clamp(200px, 22vw, 260px);
+  --cr-score: 64px;
+  --cr-total: 34px;
+  --cr-heart: 40px;
+  --cr-heart-gap: 11px;
+  --cr-title: 34px;
+  --cr-chip: 20px;
+  --cr-chip-height: 52px;
+  --cr-action: 28px;
+  --cr-action-height: 66px;
+  --dig-sky: calc(var(--cr-sky) + 12px);
+  --dig-ochre: calc(80px + env(safe-area-inset-bottom));
+  position: relative;
+  isolation: isolate;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  --cr-top: env(safe-area-inset-top);
+  padding: var(--cr-top) calc(var(--cr-side) + var(--screen-right)) calc(var(--dig-ochre) + var(--ds-space-l)) calc(var(--cr-side) + var(--screen-left));
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: calc(var(--cr-sky) - var(--cr-top)) auto;
+  grid-template-areas: "art content" "actions actions";
+  align-content: start;
+  column-gap: var(--ds-space-xl);
+  color: var(--ds-ink);
+  font-family: var(--ds-font);
+  background: linear-gradient(var(--ds-sky-top), var(--ds-sky-bottom) 40dvh) var(--ds-sky-bottom);
+}
+
+/* The visitor stands on the sand, the glow behind it a dome of rings. */
+.care-result-art {
+  grid-area: art;
+  position: relative;
+  isolation: isolate;
+  min-height: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.care-result[data-celebrating] .care-result-art::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  left: 50%;
+  bottom: 0;
+  translate: -50% 0;
+  width: calc(2 * var(--cr-glow));
+  height: calc(1.1 * var(--cr-glow));
+  max-height: 100%;
+  background:
+    radial-gradient(ellipse 23% 46% at 50% 100%, var(--ds-reward-glow) 99%, transparent 100%),
+    radial-gradient(ellipse 36% 72% at 50% 100%, var(--ds-reward-glow) 99%, transparent 100%),
+    radial-gradient(ellipse 50% 100% at 50% 100%, var(--ds-reward-glow) 99%, transparent 100%);
+}
+
+.care-result .care-result-hero {
+  display: block;
+  width: var(--cr-hero);
+  max-width: 100%;
+  height: auto;
+  min-height: 0;
+  max-height: calc(var(--cr-sky) - var(--cr-top) - var(--ds-space-l));
+  margin-bottom: -4px;
+  object-fit: contain;
+  object-position: bottom;
+  rotate: none;
+}
+
+.care-result .result-content {
+  grid-area: content;
+  align-self: center;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ds-space-l);
+}
+
+/* The score and its total. */
+.care-result .result-score { gap: var(--ds-space-s); }
+.care-result .result-score-value { font-size: var(--cr-score); font-weight: 800; color: var(--ds-ink); }
+.care-result .result-score-total { font-size: var(--cr-total); font-weight: 800; color: var(--ds-ink-soft); }
+
+/* The hearts in one row, those not won drawn as outlines. */
+.care-result .result-hearts {
+  margin: 0;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: var(--cr-heart-gap);
+  line-height: 0;
+}
+
+.care-result .result-heart { display: flex; color: var(--ds-ink-soft); }
+.care-result .result-heart-won { color: var(--ds-bad); }
+.care-result .result-heart svg { width: var(--cr-heart); height: var(--cr-heart); }
+
+.care-result .result-title {
+  margin: 0;
+  font-size: var(--cr-title);
+  font-weight: 800;
+  line-height: 1.1;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* The friend's chip and the best, or the best it celebrates in amber. */
+.care-result-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--ds-space-m);
+}
+
+.care-result .friend-chip,
+.care-result .best-score,
+.care-result .care-record {
+  box-sizing: border-box;
+  height: var(--cr-chip-height);
+  margin: 0;
+  padding: 0 var(--ds-space-l);
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-m);
+  border-radius: var(--ds-radius-11);
+  background: var(--ds-label);
+  color: var(--ds-on-label);
+  font-size: var(--cr-chip);
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.care-result .friend-chip svg { flex-shrink: 0; width: 24px; height: 24px; color: var(--ds-bad); }
+.care-result .best-score > svg { flex-shrink: 0; width: 24px; height: 24px; color: var(--ds-reward); }
+.care-result .best-score > .lucide-arrow-right { display: none; }
+
+.care-result .care-record { background: var(--ds-reward); color: var(--ds-on-reward); }
+
+.care-result .care-record .celebration {
+  height: auto;
+  margin: 0;
+  padding: 0;
+  gap: var(--ds-space-s);
+  background: none;
+  color: inherit;
+  font-size: inherit;
+  font-weight: 800;
+}
+
+.care-result .care-record .celebration svg { flex-shrink: 0; width: 24px; height: 24px; }
+.care-result .best-score-value { font-size: calc(var(--cr-chip) * 1.3); font-weight: 800; }
+.care-result .best-score-beaten { font-size: var(--cr-chip); font-weight: 800; opacity: 0.6; }
+
+/* NEW VISITOR, FRIENDS and HOME in a row on the sand. */
+.care-result .result-actions {
+  grid-area: actions;
+  align-self: start;
+  margin-top: var(--ds-space-l);
+  display: flex;
+  justify-content: center;
+  gap: var(--ds-space-m);
+}
+
+.care-result .care-result-action {
+  box-sizing: border-box;
+  height: var(--cr-action-height);
+  min-height: 48px;
+  min-width: 48px;
+  padding: 0 var(--ds-space-xl);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ds-space-s);
+  border: 0;
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-strong);
+  color: var(--ds-on-strong);
+  font-size: var(--cr-action);
+  font-weight: 800;
+  white-space: nowrap;
+  box-shadow: none;
+}
+
+.care-result .care-result-new { background: var(--ds-action); color: var(--ds-on-action); }
+.care-result .care-result-action svg { flex-shrink: 0; width: 28px; height: 28px; }
+.care-result button:focus-visible { outline: 3px solid var(--ds-strong); outline-offset: 3px; }
+
+/* Upright: the visitor large over the chips, the score, the hearts, the
+   title and the three ways stacked. */
+html[data-size="tall"] .care-result {
+  --cr-sky: 39dvh;
+  --cr-side: var(--ds-space-xl);
+  --cr-hero: min(620px, 100%);
+  --cr-glow: min(300px, 45vw);
+  --cr-score: min(140px, 10dvh);
+  --cr-total: min(60px, 5dvh);
+  --cr-heart: 44px;
+  --cr-heart-gap: 12px;
+  --cr-title: 32px;
+  --cr-action-height: 64px;
+  --dig-ochre: calc(60px + env(safe-area-inset-bottom));
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: calc(var(--cr-sky) - var(--cr-top)) auto auto;
+  grid-template-areas: "art" "content" "actions";
+  padding-bottom: calc(var(--dig-ochre) + var(--ds-space-m));
+}
+
+html[data-size="tall"] .care-result .care-result-hero { max-height: calc(var(--cr-sky) - var(--cr-top) - var(--ds-space-40)); }
+html[data-size="tall"] .care-result .result-content { gap: var(--ds-space-m); padding-top: var(--ds-space-l); }
+html[data-size="tall"] .care-result .care-result-chips { order: -1; }
+html[data-size="tall"] .care-result .result-actions {
+  flex-direction: column;
+  align-self: center;
+  justify-self: center;
+  width: min(360px, 100%);
+}
+
+/* A phone upright: the hearts as wide as the column allows, the chips one
+   over the other, NEW VISITOR across, FRIENDS beside a round HOME; a short
+   phone scrolls. */
+html[data-size="tall-narrow"] .care-result {
+  --cr-sky: clamp(200px, 35dvh, 300px);
+  --cr-side: var(--ds-space-20);
+  --cr-hero: min(300px, 100%);
+  --cr-glow: min(180px, 45vw);
+  --cr-score: 96px;
+  --cr-total: 40px;
+  --cr-heart: min(32px, (100vw - 40px - 7 * 8px) / 8);
+  --cr-heart-gap: 8px;
+  --cr-title: min(32px, (100vw - 40px) / 9);
+  --cr-chip: 17px;
+  --cr-chip-height: 48px;
+  --cr-action: min(24px, (100vw - 40px) / 12);
+  --cr-action-height: 64px;
+  --dig-ochre: calc(40px + env(safe-area-inset-bottom));
+  height: auto;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow: visible;
+  overflow-x: clip;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: calc(var(--cr-sky) - var(--cr-top)) auto auto;
+  grid-template-areas: "art" "content" "actions";
+  padding-bottom: calc(var(--dig-ochre) + var(--ds-space-m));
+}
+
+html[data-size="tall-narrow"] .care-result .result-content { gap: var(--ds-space-m); padding-top: var(--ds-space-m); }
+html[data-size="tall-narrow"] .care-result .care-result-chips { flex-direction: column; align-items: center; gap: var(--ds-space-s); }
+html[data-size="tall-narrow"] .care-result .result-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 64px;
+  gap: var(--ds-space-m);
+}
+
+html[data-size="tall-narrow"] .care-result .care-result-action { padding: 0 var(--ds-space-l); }
+html[data-size="tall-narrow"] .care-result .care-result-new { grid-column: 1 / -1; }
+html[data-size="tall-narrow"] .care-result .care-result-home { width: 64px; padding: 0; border-radius: 50%; background: var(--ds-quiet); color: var(--ds-ink); }
+
+html[data-size="tall-narrow"] .care-result .care-result-home .care-result-words {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* A phone on its side: the visitor at the left, the chips over the score
+   with the title and the hearts beside it, the three ways on the sand. */
+html[data-size="wide-short"] .care-result {
+  --cr-sky: 69dvh;
+  --cr-side: var(--ds-space-l);
+  --cr-hero: min(300px, 100%);
+  --cr-glow: 170px;
+  --cr-score: 72px;
+  --cr-total: 26px;
+  --cr-heart: min(26px, 4.4vw);
+  --cr-heart-gap: 6px;
+  --cr-title: 24px;
+  --cr-chip: 15px;
+  --cr-chip-height: 40px;
+  --cr-action: 18px;
+  --cr-action-height: 52px;
+  --dig-ochre: 0px;
+  grid-template-columns: minmax(160px, 1fr) minmax(0, auto);
+  column-gap: var(--ds-space-l);
+  padding-bottom: calc(var(--ds-space-m) + env(safe-area-inset-bottom));
+}
+
+html[data-size="wide-short"] .care-result .dig-ground-ochre { display: none; }
+
+html[data-size="wide-short"] .care-result .result-content {
+  display: grid;
+  grid-template-columns: auto auto;
+  grid-template-areas: "chips chips" "score title" "score hearts";
+  justify-content: center;
+  align-items: center;
+  column-gap: var(--ds-space-l);
+  row-gap: var(--ds-space-s);
+  padding-top: var(--ds-space-m);
+}
+
+html[data-size="wide-short"] .care-result .care-result-chips { grid-area: chips; margin-bottom: var(--ds-space-s); }
+html[data-size="wide-short"] .care-result .result-score { grid-area: score; }
+html[data-size="wide-short"] .care-result .result-title { grid-area: title; justify-self: start; align-self: end; }
+html[data-size="wide-short"] .care-result .result-hearts { grid-area: hearts; align-self: start; }
+html[data-size="wide-short"] .care-result .result-actions { margin-top: var(--ds-space-m); }
+html[data-size="wide-short"] .care-result .care-result-action { padding: 0 var(--ds-space-l); }
+
+/* The rings behind the visitor are the glow; the confetti keeps its own. */
+.care-result .festivity .glow { display: none; }

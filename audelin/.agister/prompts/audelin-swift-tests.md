@@ -7,7 +7,7 @@ version: 0.0.1
 type: prompt
 ---
 
-Applies to Audelin's Swift packages (`audelin/macos` and
+Applies to Audelin's Swift packages (`audelin/macos`, `audelin/macos/App` and
 `audelin/macos/PreviewApps`). Skip it for anything else.
 
 Your sandbox runs Swift tests only this way, from the package's directory,

@@ -1,0 +1,83 @@
+name: RexLab Slow Tests
+
+# Weekly measurement for the rexlab slow-test hunter: runs the whole suite
+# three times, ranks every test by its median duration and hands the
+# ranking to the hunter autopilot, whose run makes the slowest tests
+# faster. Not a regression check: nothing fails on a slow test, and PR CI
+# does not run this.
+# Runs at Tuesdays at 06:00 UTC (09:00 Moscow time).
+
+on:
+  schedule:
+    - cron: "0 6 * * 2"   # Tue 09:00 MSK
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rexlab-slow-tests
+  cancel-in-progress: false
+
+jobs:
+  measure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .node-version
+
+      - name: Install dependencies
+        working-directory: rexlab
+        run: npm ci
+
+      - name: Measure the suite
+        run: npx --prefix rexlab tsx rexlab/scripts/slow-tests.ts 3
+
+      - name: Keep the report
+        uses: actions/upload-artifact@v4
+        with:
+          name: slow-tests-report
+          path: |
+            slow-tests-report.json
+            slow-tests-report.md
+          retention-days: 30
+
+      - name: Write the table to the job summary
+        run: cat slow-tests-report.md >> "$GITHUB_STEP_SUMMARY"
+
+      # The webhook gets the top of the ranking and where to download the
+      # whole of it; the full report can run to megabytes.
+      - name: Hand the report to the hunter autopilot
+        env:
+          WEBHOOK: ${{ secrets.MULTICA_REXLAB_SLOW_TESTS_WEBHOOK }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          python3 -I -c '
+          import json, os
+          report = json.load(open("slow-tests-report.json"))
+          print(json.dumps({
+              "project": report["project"], "runs": report["runs"], "generatedAt": report["generatedAt"],
+              "testCount": len(report["tests"]), "workflowRun": os.environ["RUN_URL"],
+              "artifact": "slow-tests-report", "top": report["tests"][:50],
+          }))' > payload.json
+          curl -fsS --max-time 30 -X POST -H "Content-Type: application/json" --data-binary @payload.json "$WEBHOOK" > /dev/null
+
+  notify:
+    if: ${{ always() && !cancelled() && needs.measure.result == 'failure' }}
+    needs: [measure]
+    uses: ./.github/workflows/notify-telegram-failure.yml
+    with:
+      title: "RexLab Slow Tests"
+      ref_label: "branch"
+      ref_value: ${{ github.ref_name }}
+      job_results: |
+        measure=${{ needs.measure.result }}
+    secrets:
+      CI_BOT_TOKEN: ${{ secrets.CI_BOT_TOKEN }}
+      CI_CHAT_ID: ${{ secrets.CI_CHAT_ID }}

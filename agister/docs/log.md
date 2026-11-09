@@ -1,5 +1,9 @@
 # Changes
 
+- LAB-930: The tests reviewer flags test machinery that stands in for a
+  product fix: a lock, retry or ordering that makes a failure go away, a
+  flake fixed in tests only, and tests whose subject is a test helper.
+
 - LAB-690: The skill tells callers to launch a run in the background with a
   completion notice, not in the foreground, which blocks their session.
 

@@ -17,10 +17,32 @@ designing, specifying or building anything.
 3. **Each component owns its types.** There is no shared domain module.
    Components with similar types keep their own, and the composition root
    translates between them.
-4. **Only the composition root knows concrete pieces.** It builds every
-   component and adapter and decides what answers each interface. It
-   decides nothing else: coordination that decides anything is a state
-   machine with its own tests, and the root only builds and subscribes
-   (`docs/app-shape.md`).
+4. **The composition root is a responsibility, and can span several modules.**
+   It decides which components are wired and what answers each interface:
+   a fake, a stub or the real framework. A composer owns the interfaces at
+   its boundary and imports whatever it keeps inside. Coordination that
+   decides anything is a state machine with its own tests; composition only
+   builds and subscribes.
 5. **Cross-cutting concerns are decorators at the root.** Logging, metrics
    and retries wrap interfaces in the composition root. No component logs.
+
+## Optional call notes
+
+The user overview delegates panel presentation to Live panel and optional
+post-call notes to Call summaries. Existing panel scenario identities and
+wording are preserved as that responsibility is separated from the overview.
+
+SummaryJobs owns the generation state machine and its consumer-owned ports.
+SpeakerIdentification accepts supported identity evidence without rewriting the
+transcript. SummaryRuntime adapts one bounded process or compatible HTTP
+attempt; SummaryFiles owns durable job records and complete note publication.
+Each keeps its own types. Settings owns editable configuration, rendered
+validation/save/load outcomes and its preference/availability ports.
+
+The root maps those ports and decorates attempts with fallback and logging.
+It submits only after the latest final transcript snapshot has been written
+successfully and closed, with usable spoken text. Submission does not await
+LLM work on recording cleanup. Root lifecycle integration stops dispatch,
+drains recording, retains pending handoffs, cancels and joins active summary
+resources, then allows termination. Root storage integration coordinates
+publication with call rename, deletion and calls-folder moves.

@@ -61,7 +61,7 @@ import HostUI
         #expect(h.log.entries == before)
         root.choose(.client)
         root.choose(.host)
-        #expect(Array(h.log.entries.dropFirst(5)) == [
+        #expect(Array(h.log.entries.dropFirst(6)) == [
             .init(category: .mode, message: "host tornDown"),
             .init(category: .mode, message: "client built"),
             .init(category: .clientFind, message: "idle"),
@@ -95,6 +95,7 @@ import HostUI
     private var initialClientLogs: [LogEntry] { [.init(category: .clientFind, message: "idle")] }
 
     private var initialHostLogs: [LogEntry] {
-        [.init(category: .amountEntry, message: "typing digits=0"), .init(category: .hostBroadcast, message: "ready")]
+        [.init(category: .amountEntry, message: "typing digits=0"), .init(category: .timeoutNotice, message: "hidden"),
+         .init(category: .hostBroadcast, message: "ready")]
     }
 }

@@ -1,0 +1,260 @@
+// Contract test: the bundled GLB, WebGL canvas, fallback and Home navigation in Chromium.
+const assert = require('node:assert/strict');
+const { mkdir, readFile, writeFile } = require('node:fs/promises');
+const { join, resolve, extname } = require('node:path');
+const { chromium } = require('playwright');
+const { appFiles } = require('./appBuild.cjs');
+
+const sizes = process.env.SKELETON_SIZES ? JSON.parse(process.env.SKELETON_SIZES) : [[1180, 820], [744, 1133], [852, 393], [393, 852], [1440, 900], [320, 568], [667, 375], [1133, 744], [1920, 1080]];
+const levels = ['hatchling', 'explorer', 'paleontologist'];
+const output = process.env.SKELETON_SCREENSHOTS;
+async function settle(page) {
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+    await Promise.all(document.getAnimations().filter(a => a.timeline === document.timeline && a.effect?.getComputedTiming().iterations !== Infinity).map(a => a.finished.catch(() => {})));
+  });
+  await frames(page);
+  await page.waitForFunction(() => !document.documentElement.hasAttribute("data-turning"));
+}
+async function featureBones(page) {
+  await page.evaluate(() => {
+    const progress = JSON.parse(localStorage.getItem('rexlab-progress'));
+    progress.games['home-featured'].featured.game = 'skeletons';
+    localStorage.setItem('rexlab-progress', JSON.stringify(progress));
+  });
+  await page.reload();
+}
+async function ready(page) {
+  await page.locator('.home-skeleton-hero[data-ready]').waitFor();
+  await settle(page);
+}
+async function frames(page) {
+  await page.evaluate(async () => {
+    for (let i = 0; i < 3; i++) await new Promise(resolve => requestAnimationFrame(resolve));
+  });
+}
+async function bufferFits(page) {
+  await page.waitForFunction(() => {
+    const canvas = document.querySelector('.home-skeleton-hero canvas');
+    const box = canvas.getBoundingClientRect();
+    const ratio = Math.min(devicePixelRatio, 1.5);
+    return canvas.width === Math.floor(box.width * ratio) && canvas.height === Math.floor(box.height * ratio);
+  });
+  const actual = await page.locator('.home-skeleton-hero canvas').evaluate(canvas => {
+    const box = canvas.getBoundingClientRect();
+    const ratio = Math.min(devicePixelRatio, 1.5);
+    return { buffer: [canvas.width, canvas.height], expected: [Math.floor(box.width * ratio), Math.floor(box.height * ratio)] };
+  });
+  assert.deepEqual(actual.buffer, actual.expected, 'drawing buffer follows the actual art size');
+}
+async function visibleFallback(page) {
+  await page.waitForFunction(() => {
+    const hero = document.querySelector('.home-skeleton-hero');
+    const image = hero?.querySelector('img');
+    return hero && hero.hasAttribute('data-failed') && !hero.hasAttribute('data-ready') && image?.complete && image.naturalWidth > 0;
+  });
+  await settle(page);
+  assert.equal(await page.locator('.skeletons-hero-fallback').evaluate(e => getComputedStyle(e).opacity), '1');
+}
+async function run() {
+  const files = await appFiles();
+  const glb = [...files.keys()].find(file => /assembly.*\.glb$/.test(file));
+  assert(glb && files.get(glb).length < 2_000_000, 'self-contained optimized GLB ships with the app');
+  assert(files.get('sw.js').includes(Buffer.from(glb)), 'release includes GLB in its offline file list');
+  if (output) await mkdir(output, { recursive: true });
+  const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || undefined, headless: true });
+  const errors = [];
+  let captures = 0;
+  try {
+    for (const [width, height] of sizes) for (const level of levels) for (const theme of width === 1180 || width === 393 ? ['light', 'dark'] : ['light']) {
+      const context = await browser.newContext({ viewport: { width, height }, reducedMotion: 'reduce', serviceWorkers: 'block' });
+      try {
+        const requests = [];
+        await context.route('http://skeleton.test/**', async route => {
+          const file = new URL(route.request().url()).pathname.slice(1) || 'index.html';
+          requests.push(file);
+          const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.woff2': 'font/woff2', '.webp': 'image/webp', '.png': 'image/png', '.json': 'application/json', '.glb': 'model/gltf-binary' };
+          await route.fulfill({ body: files.get(file) ?? await readFile(resolve(__dirname, '../public', file)), contentType: types[extname(file)] || 'application/octet-stream' });
+        });
+        await context.addInitScript(({ level, theme }) => {
+          localStorage.setItem('rexlab-language', 'en');
+          localStorage.setItem('rexlab-theme', theme);
+          localStorage.setItem('rexlab-age-level', JSON.stringify({ level, revision: 'home-sky' }));
+          Math.random = () => 0;
+          window.heroIntersection = undefined;
+          const Observer = window.IntersectionObserver;
+          window.IntersectionObserver = class extends Observer {
+            constructor(callback, options) {
+              super((entries, observer) => {
+                for (const entry of entries) if (entry.target.matches('.home-skeleton-hero')) window.heroIntersection = entry.isIntersecting;
+                callback(entries, observer);
+              }, options);
+            }
+          };
+          window.skeletonDraws = 0;
+          const draw = WebGL2RenderingContext.prototype.drawElements;
+          WebGL2RenderingContext.prototype.drawElements = function(...args) {
+            window.skeletonDraws++;
+            const result = draw.apply(this, args);
+            if (!window.skeletonPixels && !window.skeletonCapturePending) {
+              window.skeletonCapturePending = true;
+              queueMicrotask(() => {
+              const pixels = new Uint8Array(this.drawingBufferWidth * this.drawingBufferHeight * 4);
+              this.readPixels(0, 0, this.drawingBufferWidth, this.drawingBufferHeight, this.RGBA, this.UNSIGNED_BYTE, pixels);
+              let painted = 0, bright = 0, warm = 0;
+              for (let i = 0; i < pixels.length; i += 4) if (pixels[i + 3] > 128) {
+                painted++;
+                if (pixels[i] > 100 && pixels[i + 1] > 100 && pixels[i + 2] > 80) bright++;
+                if (pixels[i] >= pixels[i + 2]) warm++;
+              }
+              window.skeletonPixels = { painted, bright, warm, total: pixels.length / 4 };
+              });
+            }
+            return result;
+          };
+        }, { level, theme });
+        const page = await context.newPage();
+        page.on('pageerror', e => errors.push(e.message));
+        await page.goto('http://skeleton.test/');
+        await page.locator('.home').waitFor();
+        await settle(page);
+        assert(!requests.some(file => /skeletonHeroScene|\.glb$/.test(file)), 'other featured games do not load 3D dependencies');
+        assert(!requests.some(file => file.endsWith('.js') && files.get(file)?.includes(Buffer.from('WebGLRenderer'))), 'other featured games do not bundle the renderer into an eager chunk');
+        await featureBones(page);
+        await ready(page);
+        assert(requests.some(file => file.endsWith('.js') && files.get(file)?.includes(Buffer.from('WebGLRenderer'))), 'featured skeleton loads the deferred renderer');
+        await bufferFits(page);
+        const pixels = await page.evaluate(() => window.skeletonPixels);
+        assert(pixels && pixels.painted > pixels.total * .01 && pixels.bright > pixels.painted * .75 && pixels.warm > pixels.painted * .75, `visible ivory geometry is painted in ${theme}: ${JSON.stringify(pixels)}`);
+        const box = await page.locator('.home-skeleton-hero canvas').boundingBox();
+        const artBox = await page.locator('.home-today-art').boundingBox();
+        const skyBox = await page.locator('.home-sky').boundingBox();
+        // Landscape Home scrolls: the drawing surface fits its existing art slot,
+        // whose bottom clears the earth's wave; it need not fit the viewport height.
+        assert.deepEqual(box, artBox, `${width}x${height}: canvas fills the existing hero space`);
+        assert(box.width > 0 && box.height > 0 && box.x >= 0 && box.x + box.width <= width + 1 && box.y >= 0 && box.y + box.height <= skyBox.y + skyBox.height - 26, `${width}x${height}: hero fits sky ${JSON.stringify({ box, artBox, skyBox })}`);
+        const layout = await page.evaluate(() => {
+          const art = document.querySelector('.home-skeleton-hero');
+          const canvas = art.querySelector('canvas');
+          return {
+            size: document.documentElement.dataset.size,
+            canvas: [canvas.width, canvas.height],
+            interactive: getComputedStyle(canvas).pointerEvents,
+            fallback: getComputedStyle(art.querySelector('.skeletons-hero-fallback')).opacity,
+            overflow: document.documentElement.scrollWidth > innerWidth,
+            title: document.querySelector('.featured-card-title').textContent,
+            play: document.querySelector('.home-play').textContent
+          };
+        });
+        assert(layout.canvas.every(n => n > 0) && layout.interactive === 'none' && layout.fallback === '0' && !layout.overflow, 'canvas renders decoratively, without overflow');
+        assert(layout.title.includes('SKELETON') && layout.play === 'PLAY', 'title and PLAY retained');
+        for (const selector of ['.featured-card-title', '.home-play', '.home-header']) assert(await page.locator(selector).isVisible(), `${selector} stays visible`);
+        const controls = await page.locator('.featured-card-title, .home-play, .home-today-progress, .home-header').evaluateAll(elements => elements.map(element => element.getBoundingClientRect().toJSON()));
+        assert(controls.every(rect => rect.x >= 0 && rect.y >= 0 && rect.right <= width + 1 && rect.bottom <= height + 1), `${width}x${height}: title, PLAY, saved progress and top menus fit the first viewport`);
+        if (output) {
+          const name = `${width}x${height}-${level}-${theme}`;
+          for (const tile of await page.locator('.home-ground-tile').all()) {
+            await tile.scrollIntoViewIfNeeded();
+            await page.waitForFunction(e => e.dataset.homeEntrance === 'revealed', await tile.elementHandle());
+          }
+          await page.evaluate(() => scrollTo({ top: 0, left: 0, behavior: 'instant' }));
+          await frames(page); await settle(page);
+          await page.screenshot({ path: join(output, `${name}.png`) });
+          await page.screenshot({ path: join(output, `${name}-page.png`), fullPage: true });
+          await page.locator('.home-skeleton-hero').screenshot({ path: join(output, `${name}-hero.png`) });
+          captures++;
+        }
+        if (width === 1180 && level === 'explorer' && theme === 'light') {
+          const staticDraws = await page.evaluate(() => window.skeletonDraws);
+          await frames(page);
+          assert.equal(await page.evaluate(() => window.skeletonDraws), staticDraws, 'reduced motion has no continuous GPU draws');
+          await page.emulateMedia({ reducedMotion: 'no-preference' });
+          await frames(page);
+          const completedDraws = await page.evaluate(() => window.skeletonDraws);
+          await frames(page);
+          assert.equal(await page.evaluate(() => window.skeletonDraws), completedDraws, 'completed reduced-motion visit does not replay');
+          await page.reload(); await ready(page);
+          const runningDraws = await page.evaluate(() => window.skeletonDraws);
+          await frames(page);
+          assert(await page.evaluate(() => window.skeletonDraws) > runningDraws, 'new Home visit animates');
+          await page.evaluate(() => {
+            window.heroVisible = false;
+            Object.defineProperty(document, 'visibilityState', { get: () => window.heroVisible ? 'visible' : 'hidden', configurable: true });
+            document.dispatchEvent(new Event('visibilitychange'));
+          });
+          const pausedDraws = await page.evaluate(() => window.skeletonDraws);
+          await frames(page);
+          assert.equal(await page.evaluate(() => window.skeletonDraws), pausedDraws, 'hidden page pauses GPU draws');
+          await page.evaluate(() => {
+            window.heroVisible = true;
+            document.dispatchEvent(new Event('visibilitychange'));
+          });
+          await frames(page);
+          assert(await page.evaluate(() => window.skeletonDraws) > pausedDraws, 'visible page resumes GPU draws');
+          await page.setViewportSize({ width: 852, height: 393 });
+          await page.evaluate(() => scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' }));
+          await page.waitForFunction(() => window.heroIntersection === false);
+          await frames(page);
+          const offscreenDraws = await page.evaluate(() => window.skeletonDraws);
+          await frames(page);
+          assert.equal(await page.evaluate(() => window.skeletonDraws), offscreenDraws, 'offscreen hero pauses GPU draws');
+          await page.evaluate(() => scrollTo({ top: 0, behavior: 'instant' }));
+          await page.waitForFunction(() => window.heroIntersection === true);
+          await frames(page);
+          assert(await page.evaluate(() => window.skeletonDraws) > offscreenDraws, 'onscreen hero resumes GPU draws');
+          await page.setViewportSize({ width, height });
+          await page.emulateMedia({ reducedMotion: 'reduce' });
+          await settle(page);
+          // The same canvas survives resizing without replaying its ready state.
+          const canvas = await page.locator('.home-skeleton-hero canvas').elementHandle();
+          await page.setViewportSize({ width: 744, height: 1133 }); await ready(page); await bufferFits(page);
+          assert(await canvas.evaluate(e => e === document.querySelector('.home-skeleton-hero canvas')), 'resize retains renderer');
+          await page.setViewportSize({ width, height }); await ready(page); await bufferFits(page);
+          await page.evaluate(() => document.querySelector('.home-skeleton-hero canvas').getContext('webgl2').getExtension('WEBGL_lose_context').loseContext());
+          await visibleFallback(page);
+          if (output) await page.screenshot({ path: join(output, 'context-loss-fallback.png'), fullPage: true });
+          await page.locator('.featured-card').press('Enter');
+          await page.locator('.skeleton-choices').waitFor();
+          assert.equal(await page.locator('.home-skeleton-hero').count(), 0, 'leaving Home removes canvas');
+          await page.getByRole('button', { name: 'HOME', exact: true }).press('Enter');
+          await ready(page);
+          const healthyContext = await page.locator('.home-skeleton-hero canvas').evaluateHandle(canvas => canvas.getContext('webgl2'));
+          // Shared root double-tap tests own timing rejection; this checks the composed door.
+          await page.locator('.home-today-art').dblclick({ delay: 50 });
+          await page.locator('.skeleton-choices').waitFor();
+          await page.waitForFunction(context => context.isContextLost(), healthyContext);
+          await healthyContext.dispose();
+          await settle(page);
+          await frames(page);
+          assert.equal(await page.locator('.skeleton-choices').count(), 1);
+          assert.equal(await page.locator('.skeleton-puzzle').count(), 0);
+          await page.getByRole('button', { name: 'HOME', exact: true }).press('Enter'); await ready(page);
+          // A failed asset leaves the original picture and the same working door.
+          await context.route('**/*.glb', route => route.abort());
+          const failedAsset = page.waitForEvent('requestfailed', request => /\.glb$/.test(request.url()));
+          await page.reload(); await failedAsset; await visibleFallback(page);
+          await page.locator('.featured-card').press('Enter'); await page.locator('.skeleton-choices').waitFor();
+          await context.unroute('**/*.glb');
+          await page.getByRole('button', { name: 'HOME', exact: true }).press('Enter'); await ready(page);
+          // No WebGL: fail renderer construction, keeping ordinary navigation.
+          await context.addInitScript(() => {
+            window.webglAttempts = 0;
+            const original = HTMLCanvasElement.prototype.getContext;
+            HTMLCanvasElement.prototype.getContext = function(type, ...args) {
+              if (/^webgl/.test(type)) { window.webglAttempts++; return null; }
+              return original.call(this, type, ...args);
+            };
+          });
+          await page.reload();
+          await page.waitForFunction(() => window.webglAttempts > 0);
+          await visibleFallback(page);
+          await page.locator('.featured-card').press('Enter'); await page.locator('.skeleton-choices').waitFor();
+        }
+      } finally { await context.close(); }
+    }
+    assert.deepEqual(errors, [], 'no uncaught browser errors');
+    if (output) await writeFile(join(output, 'manifest.json'), JSON.stringify({ captures, sizes, levels }, null, 2));
+    console.log(`PASS Home skeleton: ${captures} screenshot layouts; real GLB, lazy dependencies, resize, fallback, context loss and navigation`);
+  } finally { await browser.close(); }
+}
+run().catch(error => { console.error(`FAIL Home skeleton: ${error.stack}`); process.exitCode = 1; });

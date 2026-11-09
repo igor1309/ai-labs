@@ -9,17 +9,11 @@ public final class CoreAudioBinding: CaptureBinding, Sendable {
     private let queue = DispatchQueue(label: "audelin.system-audio-events")
 
     private let native: CoreAudioCalls
-    private let afterIOBufferCopy: @Sendable () -> Void
 
-    public convenience init() {
-
-        self.init(native: .system, afterIOBufferCopy: {})
-    }
-
-    init(native: CoreAudioCalls, afterIOBufferCopy: @escaping @Sendable () -> Void = {}) {
+    /// Binds `native`: `.system` in the app.
+    public init(native: CoreAudioCalls) {
 
         self.native = native
-        self.afterIOBufferCopy = afterIOBufferCopy
     }
 
     public func createTap(_ request: TapRequest) throws -> UInt32 {
@@ -113,7 +107,7 @@ public final class CoreAudioBinding: CaptureBinding, Sendable {
             rate.bits.store(try sampleRate(tap).bitPattern, ordering: .releasing)
         }
         var io: AudioDeviceIOProcID?
-        try check(native.createIO(&io, device, IOBlock { [afterIOBufferCopy] _, input, _, _, _ in
+        try check(native.createIO(&io, device, IOBlock { _, input, _, _, _ in
             let bits = rate.bits.load(ordering: .acquiring)
             guard bits != 0 else { return }
             let buffers = UnsafeMutableAudioBufferListPointer(UnsafeMutablePointer(mutating: input))
@@ -121,7 +115,6 @@ public final class CoreAudioBinding: CaptureBinding, Sendable {
                   buffer.mNumberChannels == 1, let data = buffer.mData else { return }
             let count = Int(buffer.mDataByteSize) / MemoryLayout<Float>.size
             let samples = Array(UnsafeBufferPointer(start: data.assumingMemoryBound(to: Float.self), count: count))
-            afterIOBufferCopy()
             receive(.success(AudioPiece(samples: samples, sampleRate: Double(bitPattern: bits))))
         }))
         guard let io else { throw CaptureError.stopped }
@@ -323,7 +316,7 @@ struct TapSpec: Equatable, Sendable {
 }
 
 /// Native calls beneath tap translation and resource ownership.
-struct CoreAudioCalls: Sendable {
+public struct CoreAudioCalls: Sendable {
 
     typealias Address = AudioObjectPropertyAddress
 
@@ -340,7 +333,7 @@ struct CoreAudioCalls: Sendable {
     var addListener: @Sendable (UInt32, inout Address, DispatchQueue, ListenerBlock) -> Int32
     var removeListener: @Sendable (UInt32, inout Address, DispatchQueue, ListenerBlock) -> Int32
 
-    static let system = CoreAudioCalls(
+    public static let system = CoreAudioCalls(
         createTap: { AudioHardwareCreateProcessTap($0.native, &$1) },
         destroyTap: { AudioHardwareDestroyProcessTap($0) },
         createDevice: { AudioHardwareCreateAggregateDevice($0, &$1) },

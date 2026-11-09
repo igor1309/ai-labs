@@ -1,0 +1,274 @@
+/* BONES' guess on the dig site (design/dig-site.pen, BONES · guess): the
+   question, or the clue in its place, in the sky, the finished skeleton in
+   its pocket and three name cards on the sand. */
+html[data-size] .skeleton-dig.skeleton-guess-screen {
+  --dig-sky: calc(160px + env(safe-area-inset-top));
+  --dig-ochre: calc(60px + env(safe-area-inset-bottom));
+  --guess-line-top: calc(var(--dig-sky) - 80px);
+  padding: calc(var(--dig-sky) + var(--ds-space-s)) calc(var(--ds-space-40) + var(--screen-right)) calc(var(--dig-ochre) + var(--ds-space-40)) calc(var(--ds-space-40) + var(--screen-left));
+}
+
+html[data-size="tall"] .skeleton-dig.skeleton-guess-screen {
+  --dig-sky: calc(172px + env(safe-area-inset-top));
+  --dig-ochre: calc(28px + env(safe-area-inset-bottom));
+  --guess-line-top: calc(var(--dig-sky) - 92px);
+  padding: calc(var(--dig-sky) + var(--ds-space-s)) calc(var(--ds-space-2xl) + var(--screen-right)) calc(var(--dig-ochre) + var(--ds-space-2xl)) calc(var(--ds-space-2xl) + var(--screen-left));
+}
+
+/* A phone too short for the skeleton over its cards scrolls rather than
+   lose either. */
+html[data-size="tall-narrow"] .skeleton-dig.skeleton-guess-screen {
+  --dig-sky: calc(clamp(134px, 28dvh - 53px, 186px) + env(safe-area-inset-top));
+  --dig-ochre: calc(10px + env(safe-area-inset-bottom));
+  --guess-line-top: calc(var(--dig-sky) - 70px);
+  min-height: 100vh;
+  min-height: 100dvh;
+  height: auto;
+  padding: calc(var(--dig-sky) + var(--ds-space-s)) calc(var(--ds-space-m) + var(--screen-right)) calc(var(--dig-ochre) + var(--ds-space-l)) calc(var(--ds-space-m) + var(--screen-left));
+}
+
+html[data-size="wide-short"] .skeleton-dig.skeleton-guess-screen {
+  --dig-sky: calc(56px + env(safe-area-inset-top));
+  --dig-ochre: 0px;
+  padding: calc(var(--dig-sky) + var(--ds-space-l)) calc(var(--ds-space-20) + var(--screen-right)) max(var(--ds-space-40), env(safe-area-inset-bottom)) calc(var(--ds-space-20) + var(--screen-left));
+}
+
+/* The question stands on its own line in the sky, the clue in its place;
+   on a phone on its side both stay in the bar. */
+html[data-size]:not([data-size="wide-short"]) .skeleton-guess-screen .skeleton-title {
+  position: absolute;
+  top: var(--guess-line-top);
+  left: calc(var(--ds-space-40) + var(--screen-left));
+  right: calc(var(--ds-space-40) + var(--screen-right));
+  justify-content: flex-start;
+}
+
+html[data-size="tall-narrow"] .skeleton-guess-screen .skeleton-title {
+  left: calc(var(--ds-space-20) + var(--screen-left));
+  right: calc(var(--ds-space-20) + var(--screen-right));
+}
+
+.skeleton-guess-screen[data-clue] .skeleton-title { visibility: hidden; }
+
+.skeleton-clue {
+  position: absolute;
+  z-index: 1;
+  top: var(--guess-line-top);
+  left: calc(var(--ds-space-40) + var(--screen-left));
+  right: calc(var(--ds-space-40) + var(--screen-right));
+  margin: 0;
+  color: var(--ds-ink);
+}
+
+html[data-size="tall-narrow"] .skeleton-clue {
+  left: calc(var(--ds-space-20) + var(--screen-left));
+  right: calc(var(--ds-space-20) + var(--screen-right));
+}
+
+/* In the bar, between its buttons. */
+html[data-size="wide-short"] .skeleton-clue {
+  top: calc(var(--sc-bar-top) - 4px);
+  left: calc(140px + var(--screen-left));
+  right: calc(80px + var(--screen-right));
+}
+
+.skeleton-clue-line {
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-s);
+  font-size: var(--ds-size-24);
+  font-weight: 800;
+  line-height: 1.15;
+  animation: rise-in var(--motion-standard) var(--ease-out) both;
+}
+
+html[data-size="tall-narrow"] .skeleton-clue-line { font-size: var(--ds-size-17); }
+html[data-size="wide-short"] .skeleton-clue-line { min-height: 48px; justify-content: center; font-size: var(--ds-size-15); }
+
+.skeleton-clue-line svg {
+  flex-shrink: 0;
+  color: var(--ds-action);
+}
+
+/* The board and the cards beside it, the board as wide as its share or as
+   the height allows, the cards as wide as what is left. */
+html[data-size] .skeleton-guess-screen .skeleton-reveal {
+  container-type: size;
+  justify-content: center;
+  gap: var(--ds-space-2xl);
+}
+
+html[data-size] .skeleton-guess-screen .skeleton-reveal-board {
+  flex: none;
+  align-self: flex-start;
+  width: min(57cqw, 100cqh * var(--frame-width) / var(--frame-height));
+  max-height: none;
+  border-radius: var(--ds-radius-pocket-top) var(--ds-radius-pocket-top) var(--ds-radius-pocket-bottom) var(--ds-radius-pocket-bottom);
+  outline: none;
+  background: var(--ds-pocket-1);
+  box-shadow: inset 0 6px 10px var(--ds-pocket-shadow);
+}
+
+.skeleton-guess {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 560px;
+  display: flex;
+  flex-direction: column;
+  animation: rise-in var(--motion-screen) var(--ease-out) both;
+}
+
+.skeleton-guess-choices {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-18);
+}
+
+.skeleton-guess-card {
+  flex: 1 1 0;
+  min-height: 0;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: var(--ds-space-14);
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-l);
+  border: 0;
+  border-radius: var(--ds-radius-speech);
+  background: var(--ds-label);
+  color: var(--ds-ink);
+  container-type: inline-size;
+  transition: opacity var(--motion-small) var(--ease-out);
+  animation: rise-in var(--motion-screen) var(--ease-out) calc(var(--choice) * var(--motion-stagger)) both;
+}
+
+/* A wrong one wobbles, then rests aside and faded. */
+.skeleton-guess-card[data-wrong] {
+  margin-left: var(--ds-space-28);
+  opacity: 0.4;
+  rotate: calc(-3deg * var(--motion-amount));
+  animation: wobble var(--motion-alive) var(--ease-out);
+}
+
+.skeleton-guess-pocket {
+  flex: none;
+  box-sizing: border-box;
+  width: 36cqi;
+  max-width: 140px;
+  height: 100%;
+  padding: var(--ds-space-6);
+  border-radius: var(--ds-radius-tag);
+  background: var(--ds-pocket-1);
+}
+
+.skeleton-guess-picture {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* A name on one line shrinks from its size only as much as a long name
+   needs to fit the card. */
+.skeleton-guess-name {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: min(24px, calc(64cqi / (var(--letters) * 0.75) - 2px));
+  font-weight: 800;
+  line-height: 1.1;
+  text-align: left;
+  white-space: nowrap;
+}
+
+/* Upright, the skeleton stands over the cards. */
+html[data-size="tall"] .skeleton-guess-screen .skeleton-reveal,
+html[data-size="tall-narrow"] .skeleton-guess-screen .skeleton-reveal {
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+html[data-size="tall"] .skeleton-guess-screen .skeleton-reveal-board {
+  align-self: center;
+  width: min(100cqw - 80px, (100cqh - 36px - 340px) * var(--frame-width) / var(--frame-height));
+}
+
+html[data-size="tall"] .skeleton-guess-screen .skeleton-reveal { gap: var(--ds-space-2xl); }
+
+html[data-size="tall"] .skeleton-guess,
+html[data-size="tall-narrow"] .skeleton-guess { max-width: none; }
+
+html[data-size="tall"] .skeleton-guess { min-height: 340px; }
+
+html[data-size="tall"] .skeleton-guess-choices {
+  flex-direction: row;
+  gap: var(--ds-space-l);
+}
+
+html[data-size="tall"] .skeleton-guess-card {
+  padding: var(--ds-btn-gap);
+  flex-direction: column;
+  gap: var(--ds-space-m);
+}
+
+html[data-size="tall"] .skeleton-guess-card[data-wrong] { margin: var(--ds-space-22) 0 0; }
+
+html[data-size="tall"] .skeleton-guess-pocket {
+  width: 100%;
+  max-width: none;
+  height: auto;
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+html[data-size="tall"] .skeleton-guess-name {
+  flex: none;
+  font-size: min(20px, calc(100cqi / (var(--letters) * 0.75)));
+  text-align: center;
+}
+
+html[data-size="tall-narrow"] .skeleton-guess-screen .skeleton-reveal {
+  flex: 1 0 auto;
+  height: max(465px, 100vh - (var(--dig-sky) + var(--dig-ochre) + 28px));
+  height: max(465px, 100dvh - (var(--dig-sky) + var(--dig-ochre) + 28px));
+  gap: var(--ds-space-l);
+}
+
+html[data-size="tall-narrow"] .skeleton-guess-screen .skeleton-reveal-board {
+  align-self: center;
+  width: min(100cqw - 40px, (100cqh - 12px - 250px) * var(--frame-width) / var(--frame-height));
+}
+
+html[data-size="tall-narrow"] .skeleton-guess { min-height: 250px; }
+
+html[data-size="tall-narrow"] .skeleton-guess-choices,
+html[data-size="wide-short"] .skeleton-guess-choices { gap: var(--ds-space-s); }
+
+html[data-size="tall-narrow"] .skeleton-guess-card,
+html[data-size="wide-short"] .skeleton-guess-card {
+  padding: var(--ds-btn-gap);
+  gap: var(--ds-space-m);
+}
+
+html[data-size="tall-narrow"] .skeleton-guess-pocket,
+html[data-size="wide-short"] .skeleton-guess-pocket { width: 80px; }
+
+html[data-size="tall-narrow"] .skeleton-guess-name,
+html[data-size="wide-short"] .skeleton-guess-name {
+  font-size: min(20px, calc((100cqi - 88px) / (var(--letters) * 0.75)));
+}
+
+html[data-size="wide-short"] .skeleton-guess-screen .skeleton-reveal { gap: var(--ds-space-xl); }
+html[data-size="wide-short"] .skeleton-guess { max-width: 303px; }
+html[data-size="wide-short"] .skeleton-guess-name { font-size: min(17px, calc((100cqi - 88px) / (var(--letters) * 0.75))); }
+
+/* A phone on its side keeps its bar's buttons to their symbols, named for
+   screen readers, to leave the bar to the question or the clue. */
+html[data-size="wide-short"] .skeleton-guess-screen .skeleton-bar .home-button { width: 48px; padding: 0; justify-content: center; }
+html[data-size="wide-short"] .skeleton-guess-screen .home-button .upright-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+
+/* The question keeps its symbol on its own line on a phone. */
+html[data-size="tall-narrow"] .skeleton-guess-screen .skeleton-mark { display: flex; }
+html[data-size="tall-narrow"] .skeleton-guess-screen .skeleton-title-words { text-align: left; }

@@ -21,8 +21,8 @@ Observer: Recordings, which renames, deletes and moves calls through
 - **Listing gives each call its id, title, start and duration,** newest
   first by id. The start is read from the prefix in the local time zone
   given to the adapter. The duration is the longer of the two tracks'
-  lengths, read from their headers; a call with no readable track has
-  none, and still lists.
+  lengths, supplied by an injected duration reader; a call with no readable
+  track has none, and still lists.
 - **A rename takes a title, never a name.** The new name is the prefix,
   a space and the title, with `/` and `:` replaced by `-` as call folder
   does; an empty title leaves the bare prefix. A name taken by anything

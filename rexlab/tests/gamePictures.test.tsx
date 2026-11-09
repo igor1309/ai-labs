@@ -1,3 +1,4 @@
+import "./careSheets.ts";
 import { act, render } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { describe, expect, it } from "vitest";
@@ -34,7 +35,7 @@ const SCREENS: Array<[screen: string, element: ReactElement, places: string[]]> 
   [
     "the care welcome screen, the visitor at the door and a friend's face",
     <CareWelcomeScreen language="en" best={undefined} total={8} visitorPicture={fakeBodyPicture("brachiosaurus")} friendCount={1} friendPictures={[TRIKE.picture]} onNewVisitor={none} onFriends={none} onHome={none} />,
-    ["new-visitor-picture", "friend-face-picture"]
+    ["new-visitor-picture", "care-face-picture"]
   ],
   ["a visit, its visitor, its bubble's bowl and every item button", <VisitScreen language="en" visit={presentVisit(visit, false, "en", fakeBodyPicture)} itemPicture={fakeItemPicture} onGive={none} onHome={none} />, ["visitor-picture", "bubble-picture", ...Array<string>(5).fill("tray-picture")]],
   ["a visit, as the item given flies", <VisitScreen language="en" visit={presentVisit(give(visit, "meat"), false, "en", fakeBodyPicture)} itemPicture={fakeItemPicture} onGive={none} onHome={none} />, ["visitor-picture", "given-picture", ...Array<string>(5).fill("tray-picture")]],

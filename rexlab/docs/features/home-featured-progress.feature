@@ -4,7 +4,7 @@ Feature: Home page: counting starts and keeping the featured choice
 
   Background:
     Given an iPad in landscape
-    And the games, in tile order, are COMPARE, ANCIENT REPTILES, FIND THE PAIR, SKELETONS, DIG, SORT, CARE and SAND WRITING
+    And this scenario fixture provides only these eight games, in tile order: COMPARE, ANCIENT REPTILES, FIND THE PAIR, SKELETONS, DIG, SORT, CARE and SAND WRITING
 
   Scenario Outline: What counts as starting a game
     When <action>

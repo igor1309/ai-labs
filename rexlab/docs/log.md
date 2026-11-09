@@ -1,5 +1,127 @@
 # rexlab — Change Log
 
+## 2026-11-07
+
+- LAB-923: DRAW stands on the dig site: the whole window is sand that glows in the middle, specked, with grooves and lips in the dig site's groove tokens, darker at night; HOME a pill with its word, round on a phone; STICK round with its word, showing the chosen tip, drops a picker of THIN, MEDIUM and THICK as lines of their width, the chosen navy with a tick, and CLEAR under a rule. A browser contract opens it from Home on every size, draws, chooses THICK, clears and goes Home, in English and light and in Russian and dark without motion, and at every age level.
+- LAB-922: a walk contract plays PICTURE PUZZLE through the released app on a device of each size, a Hatchling in English and light and an Explorer in Russian and dark: Home, a picture dragged together piece by piece, its result, PLAY AGAIN and the replay's result, ANOTHER PICTURE and Home, each screen checked on arrival; CI runs it as its own browser job.
+- LAB-922: PICTURE PUZZLE's result stands on the dig site as BONES' does: the whole picture framed in the sky beside or over WELL DONE by its star, the celebration beside the level's score, the name and fact, and ANOTHER PICTURE and PLAY AGAIN on the sand; it plays upright too.
+- LAB-922: PICTURE PUZZLE plays upright and on a phone on its side: the board over its tools on an iPad or phone, beside them on its side with HINT and PICTURE as symbols; only where the places would be under 48px, the paleontologist's on an upright phone or a small one on its side, does the board wait for a turn. Its choice and board now leave the app's portrait gate.
+- LAB-922: PICTURE PUZZLE's board stands on the dig site in wide windows: HOME, BACK and the picture's name in the sky with the pieces fitted, and on the sand the board in its pocket beside the tools' pocket of tray, pages, HINT and PICTURE.
+- LAB-922: PICTURE PUZZLE's choice stands on the dig site: HOME and the title in the sky, and on the sand the level switch over the three pictures in their pockets, beside their names on an upright phone.
+- LAB-921: BONES walks whole on every size: its dig-site sheets now outweigh the older skeleton rules, so on an upright iPad the choice's level switch and the museum's stands sit under the sky, and on an iPhone the result fits without scrolling.
+- LAB-921: BONES' result stands on the dig site: the skeleton and body in a tall sky beside or over the reward, the fact by its bulb and both ways on on the sand.
+- LAB-921: BONES' museum stands on the dig site: the title in the sky, and on the sand five open stands on plinths, built, awaiting rebuild or empty, with the jaw shelf.
+- LAB-921: BONES' guess stands on the dig site: the question, or the clue in its place, in the sky, the skeleton in its pocket and the name cards on the sand.
+- LAB-921: BONES' puzzle stands on the dig site: the board and tray are pockets in the sand, HOME comes before BACK, and the count turns green with the last bone.
+- LAB-921: BONES' choice stands on the dig site: the sky's bar and title over the sand's level switch and skeletons in their pockets.
+- LAB-920: LABYRINTH's level offers show the design's compass for Explorer and pickaxe for Paleontologist in the pocket.
+- LAB-920: On an iPhone SE held upright, HATCHLING's maze fits whole: its parent waits on home, as on the larger mazes, and the sides narrow.
+- LAB-1031: On an upright phone, EXPLORER's and PALEONTOLOGIST's mazes turn on their side like HATCHLING's, so they fill the screen's height and pan less across.
+
+## 2026-11-06
+
+- LAB-1030: A browser walk through the released app plays LABYRINTH from Home: three Hatchling rounds by keys and taps, each result, the Explorer offer, YES, and an Explorer round, on six devices in English and light and Russian and dark, each screen checked on arrival.
+- LAB-1029: A browser contract checks LABYRINTH's board and result, with and without a level offer, in 12 windows from the iPhone SE to a large desktop: no page scroll, nothing off screen, no overlap, no cut label, 48-point targets and short fades without motion. On iPads and desktops each level's name now fits its part of the result's switch, and a small phone on its side shows the levels' pictures alone.
+- LAB-1028: LABYRINTH's Explorer and Paleontologist level offers use the dig site's card: the LEVEL UP tag over the level's picture on a pale pocket, NOT NOW before YES, stacked on phones, in light, dark, English and Russian.
+- LAB-1027: LABYRINTH's result is on the dig site: baby and parent together on the sand with a heart, beside or upright over HOME TOGETHER!, three stars, +3 STARS with the total, the best or its celebration, the level switch, AGAIN and HOME, on the iPad, upright and on phones.
+- LAB-1026: The LABYRINTH board plays upright and on phones: the upright iPad turns every maze on its side to fit whole, an upright phone turns HATCHLING's, and on phones every cell is 48 while the view pans to follow the baby, fades where more maze lies and shows the parent marker on the edge toward home.
+- LAB-1025: The LABYRINTH board is on the dig site: tunnels dug in the earth, footprints on pale spots, HINT amber with only the next step glowing, the parent beside the maze at every level and on home at the larger ones, and baby and parent together on home at the end, in light, dark, English and Russian.
+- LAB-1024: Russian text is drawn in the bundled Manrope, since Lexend has no Cyrillic, so it looks and fits the same on every device; the Coloring save-failed dialog fits a small phone on its side.
+- LAB-1003: The skeleton hero starts assembling at once and at a steady pace, a few straggling bones hop in last, bones land with a small settle, the skeleton fills more of the hero, and its bones show stronger shading.
+
+## 2026-11-05
+
+- LAB-1013: COLOR's result no longer shows the version over its buttons on a phone on its side.
+- LAB-1013: COLOR fits a small upright tablet (all eight workshop controls in one bar, ПРОДОЛЖИТЬ under its icon), and on a phone on its side a viewed work and a failed parent reset fit their dialogs.
+- LAB-1011: Every COLOR screen and state fits every device in English and Russian: CONTINUE on a small phone on its side, ПРОДОЛЖИТЬ and the long Russian colour names on the narrowest phone, and ЗАЛИВКА in the iPad rail are no longer cut.
+- LAB-1010: COLOR's result for a work finished again shows YOUR STAR with its two counts one over the other and no celebration, and a work that couldn't open says so in a pill on the paper, on every device, light, dark and Russian.
+- LAB-1009: COLOR's result is the dig site on every device, light, dark and Russian: the finished work in the sky, the title, star and COLLECTION, FIRST BEST or NEW BEST and EXPLORER BEST chips beside it under a glow and confetti, or upright on the sand, and EDIT, GALLERY and NEW WORK on the sand.
+- LAB-1008: COLOR's saving and leaving are the dig site, light, dark and Russian: a failed save asks RETRY, KEEP EDITING or HOME WITHOUT SAVING on a card with its mark, leaving unsaved asks STAY before LEAVE, and the saving and failed-save pills sit on the paper.
+- LAB-1007: COLOR's colour and size pickers are the dig site, light, dark and Russian: named colours and sizes, a popover beside its button on an iPad, a sheet over the paper on a phone, and on an upright iPad the colours stay open under the paper.
+- LAB-1006: COLOR's workshop is the dig site on every device, light, dark and Russian: HOME, NEW, GALLERY and DONE with BRUSH, FILL, COLOR, SIZE and UNDO in a rail or a bar, the paper on the sand, the save pill on the paper and a failed save set clear of the art. A gallery start card now widens to fit its dinosaur's name.
+- LAB-1005: COLOR's gallery shows loading, unreadable art, view only and parent recovery as the dig site on every device, light, dark and Russian.
+- LAB-1004: COLOR's gallery is the dig site on every device, light, dark and Russian: HOME, the title and stars in the sky, every dinosaur to start on the sand, saved works in pockets.
+- LAB-1003: The skeleton Home hero assembles from a bone pile, makes one smooth full turn, and rests; reduced motion shows its standing pose.
+
+- LAB-918: FIND THE PAIR is the dig site from welcome to level offer, with its screens walked in a browser on every device, with and without motion.
+- LAB-992: FIND THE PAIR's result and level offer are the dig site on every device, light, dark and Russian: the found dinosaurs in the sky with NEW inside each card's corner, the tries, stars and best on the sand, and the offer's LEVEL UP tag with NOT NOW before YES. Other games keep their look.
+- LAB-991: FIND THE PAIR's board is the dig site on every device, light, dark and Russian: HOME, BACK, the title and the climb and tries chips in the sky, the cards on the sand over the bedrock, face down in navy with footprints, face up on a cream card with an outlined picture, silhouette in ink or skeleton, a found pair in green with its name, a picture that cannot load by its name alone.
+- LAB-990: FIND THE PAIR's welcome is the dig site on every device, light, dark and Russian: the title with its card mark in the sky, a face-down card, a silhouette and its picture tilted on the sand, the level and stars chips, the filled level switch, red PLAY and bedrock; on a phone on its side the cards stand beside a column of the title, chips, switch and PLAY.
+- LAB-963: The first launch works without Wi-Fi once the app has installed itself; before, only the next launch did.
+
+## 2026-11-04
+
+- LAB-917: WHOSE JAW? is the dig site on every device, light, dark and Russian: the welcome with its tooth title, dinosaur and tilted jaw cards, red PLAY and navy JAW SHELF; the board with tooth sockets and best score in the sky, dinosaur cards on the sand and the jaw in a tray, the cue on the wrong card; the result with the round's jaws fanned beside the stars and new finds on a plank; the JAW SHELF as rows of four on planks with its diet tags and a restyled jaw card. A word fitted to its room now always fits, in every game.
+- LAB-915: COMPARE uses the dig-site sky, sand and pocket cards, with answer-history progress and each level’s best; its rewards and level choices fit wide, upright and phone windows in light and dark.
+- LAB-916: DIG is the dig site: the board, the question, the reveal and the FIELD GUIDE stand on sky over sand and ochre; DUG UP in the bar with its star (its words from the iPad mini's width up), the brush pair as amber rounds, the board a dug-out groove, each dinosaur card a sand pocket with a green check or TRY ANOTHER; on phones the two brushes are labelled buttons under the sand instead of a menu; the FIELD GUIDE's cards are sand pockets with a dark count tag.
+
+## 2026-11-03
+
+- LAB-925: Care's FRIENDS is the dig site: HOME, BACK, the title and the heart count in the sky with NEW VISITOR under them, the friend cards in the sand, as many to a row as the window holds; with no friends, HOME and a count of 0 stay and the nest lies in a pit.
+- LAB-939: Dig site design: TEETH welcome and JAW SHELF are drawn for the upright iPad mini, the iPhone SE and the iPhone on its side, the result for the iPhone SE, and the Hatchling and Explorer boards for the upright iPad mini and the iPhone on its side.
+- LAB-914: Home is the dig site: today's game in the sky with PLAY and its progress, every other game as a pocket tile in deepening earth each with its dinosaur, a sparkle on games added since the first visit and SOON last, three to a layer on phones, the parents' note on the bedrock; one page scroll from sky to bedrock with a slower sky; the T. rex logo, and the language menu shows its flag. Each tile shows its game being played, in its game's own pocket and icon colours, light and dark; the theme and age-level buttons are line symbols. The COMPARE tile shows its Tyrannosaurus alone, and today's COLOR sky shows its page without a brush or paint dots.
+- Dig site: every Home game tile shows its game being played with its own dinosaur, cut to one or two things that read at tile size (a jaw for TEETH, a card over its basket for SORT, footprints to the Ankylosaurus for MAZE), and each game has its own colour on its pocket and icon, in Light and Dark.
+- Dig site: Home on iPhone and upright iPad has the age-level button again, beside language and theme, as on iPad landscape.
+- Dig site: each Home tile and featured hero shows its own game's dinosaur in that game's form (a Triceratops pair for PAIRS, a half-dug Therizinosaurus for DIG), and no hero borrows another game's dinosaur.
+- In Russian, Home's large card names the catalogue ДРЕВНИЕ ЯЩЕРЫ when it is today's game, as in English, instead of the old tile word ВСЕ.
+- A page change cut short by the window resizing no longer leaves an unhandled error behind.
+
+## 2026-11-02
+
+- LAB-913: Shared parts (main buttons, round home and hear buttons, level switch and badge, level offer and dialogs, parent menu, result score, stars and best, orientation gate) take the dig-site colours, corners and font in light and dark; sizes and layouts stay until each game moves.
+- LAB-906: Home games use 4:3 tiles, short English/Russian labels and matching icon footers. Small tiles omit progress badges; the featured card keeps its full title and rewards.
+
+- LAB-908: Coloring gallery shows each work's status as a symbol on the picture's top-leading corner (a dashed circle for drafts, a star when completed) instead of a pencil and text. The whole card opens the work, and iPhone portrait shows two columns.
+- LAB-905: The upright iPhone home fits the available screen height, keeping both tile rows visible and horizontal game browsing.
+- LAB-907: The closed language picker shows only a flag; its open menu pairs each flag with the language name. Parent controls have equal widths and spacing.
+
+## 2026-11-01
+
+- LAB-893: Coloring gallery choices keep equal button heights on iPhone when dinosaur names wrap.
+
+- LAB-903: The document canvas and browser tint follow the active theme; the home app icon keeps its image in dark mode. iPhone Safari status-bar verification is pending.
+
+- LAB-899: A fixed, theme-matched top edge supplies an opaque system-bar background without taking space from games; installed iOS/iPadOS 27 verification is pending.
+
+- LAB-889: The gallery offers T-REX / ТИРАННОЗАВР with age-matched previews. Each drawing keeps its artwork, paint, undo history and single earned star across age changes and return visits.
+
+- LAB-889: T-Rex workshop artwork has a simple scene and a richer prehistoric landscape, with a friendly expressive head, two-finger arms, strong legs, a long tail and independent coloring regions.
+- LAB-891: All pages block pinch and double-tap zoom while preserving scrolling and game input.
+
+- LAB-825: Ankylosaurus coloring has new curved armor, cheek horns, sturdy feet and prehistoric scenery, with larger regions for Hatchling and extra armor and landscape details for Explorer and Paleontologist. Saved drawings retain their original artwork.
+
+## 2026-10-31
+
+- LAB-825: Coloring adds Ankylosaurus at every age level, with broad armor panels, short legs and a club tail. Its drawings join the shared gallery and star collection and stay editable after reopening.
+
+- LAB-799: Landscape colouring keeps a single narrow column of 48px controls centered below the system safe area and removes the idle save prompt; save failures keep a visible retry action.
+- LAB-824: Stegosaurus gains a richer prehistoric coloring scene for Explorer and Paleontologist, with patterned back plates, body markings and scenery. Hatchling keeps the simple drawing, and saved works retain their original artwork across age changes.
+
+- LAB-823: Coloring adds Triceratops alongside Stegosaurus: simple artwork for Hatchling and a richer prehistoric scene for Explorer and Paleontologist. Saved drawings keep their original artwork across age changes, with a shared star collection.
+- LAB-822: A game index brings current activities, difficulty, rewards and replay approaches together, distinguishing planned modes and prototypes.
+
+- LAB-820: Shared touch protection suppresses selection and long-press menus throughout RexLab while preserving scrolling, pinch zoom and game input.
+- LAB-799: Landscape colouring gives the dinosaur a full-height canvas, with coloured navigation icons and drawing tools in separate leading groups and temporary colour/size pickers.
+
+- LAB-805: New coloring works open on local HTTP previews used for iPad testing.
+
+## 2026-10-30
+
+- Coloring probe fill regions have Russian/English names and plate/spike groups; the combined body region explicitly includes legs and tail (LAB-801).
+- LAB-804: Coloring opens from Home with completed-work counts on its tile and featured card; phone brush sizes have their own chooser.
+
+- Coloring strokes update once per display frame without replaying saved brush history for every pen sample (LAB-803).
+
+- A saved coloring result brings the child's own dinosaur alive and awards one star per work, with a durable collection best and editable history (LAB-803).
+
+- Coloring gallery lists independent drafts and completed works, continues the latest saved edit and keeps unreadable history visible (LAB-803).
+
+- The coloring workshop offers clipped painting, compact tools and ordered autosave with retry and confirmed loss handling in English and Russian, both themes and orientations (LAB-803).
+
+- Coloring works now have an editable action history and atomic local storage that preserves unreadable records and earned status (LAB-803).
+
+- An isolated Stegosaurus coloring probe offers editable paint, persistent undo, independent works and animation; desktop browser checks and payload measurements are recorded; physical iPad acceptance remains pending (LAB-801).
+
 ## 2026-10-28
 
 - WHOSE JAW? groups landscape choices near the title and gives the jaw a larger, closely fitted tray; short landscape places it beside the choices (LAB-705).

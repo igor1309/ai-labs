@@ -1,3 +1,5 @@
+import "./careSheets.ts";
+import { HOME_TILE_PICTURES } from "../src/homeTilePictures.ts";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { act, fireEvent, screen, within } from "@testing-library/react";
@@ -42,27 +44,23 @@ describe("the CARE tile", () => {
 
     const tile = gameDoor("CARE");
     expect(symbolOf(tile)).toBe("heart");
-    expect(tile.querySelector("img")?.getAttribute("src")).toBe(fakeBodyPicture("parasaurolophus"));
-    // The row fills two tiles to a column, COMPARE's tile left out for
-    // the large card: the sixth tile is still under SORT. Sand writing
-    // and labyrinth occupy the next column before MORE COMING.
-    expect([...tilesRow().children].indexOf(tile)).toBe(5);
-    expect(tile.previousElementSibling).toBe(gameDoor("SORT"));
-    expect(tile.nextElementSibling).toBe(gameDoor("SAND WRITING"));
-    expect(tile.nextElementSibling?.nextElementSibling).toBe(gameDoor("LABYRINTH"));
-    expect(tile.nextElementSibling?.nextElementSibling?.nextElementSibling?.className).toBe("more-coming");
+    expect(tile.querySelector("img")?.getAttribute("src")).toBe(HOME_TILE_PICTURES.care);
+    // Games read across the earth bands, so order spans their grid containers.
+    const tiles = [...tilesRow().querySelectorAll(".tiles-grid > *")];
+    expect(tiles.indexOf(tile)).toBe(5);
+    expect(tiles.slice(4, 8)).toEqual([gameDoor("SORT"), tile, gameDoor("SAND WRITING"), gameDoor("LABYRINTH")]);
+    expect(tiles.at(-1)?.classList.contains("more-coming")).toBe(true);
     expect(tile.querySelector(".care-tile-best")).toBeNull();
   });
 
-  it("shows the care best score with a trophy once a visit is finished", async () => {
+  it("omits a badge from CARE even after a visit is finished", async () => {
     const { user, clock } = openCareApp();
 
     await welcomeVisitor(user);
     await playVisit(user, clock, ["hungry"]);
     await user.click(button("HOME"));
 
-    const best = button("CARE").querySelector(".care-tile-best");
-    expect(best && [symbolOf(best), best.textContent]).toEqual(["trophy", "7"]);
+    expect(button("CARE").querySelector(".care-tile-best")).toBeNull();
   });
 
   it("opens the care welcome screen: NEW VISITOR, FRIENDS with the number of friends, and HOME", async () => {
@@ -74,7 +72,7 @@ describe("the CARE tile", () => {
     expect(symbolsOf(button("NEW VISITOR"))).toContain("footprints");
     const friends = button("FRIENDS");
     expect(symbolsOf(friends)).toContain("heart-handshake");
-    const count = friends.querySelector(".friend-count");
+    const count = friends.querySelector(".care-friend-count");
     expect(count && [symbolOf(count), count.textContent]).toEqual(["heart", "2"]);
     expect(symbolOf(button("HOME"))).toBe("house");
     expect(screen.getByLabelText("BEST SCORE").textContent).toBe("6/8");
@@ -201,7 +199,7 @@ describe("the items", () => {
       expect(shown.querySelector("img")?.getAttribute("src")).toBe(fakeItemPicture(item));
       expect(shown.querySelector(".tray-label")?.textContent).toBe(item.toUpperCase());
       expect(parseFloat(getComputedStyle(shown).minWidth)).toBeGreaterThanOrEqual(48);
-      expect(parseFloat(getComputedStyle(shown).height)).toBeGreaterThanOrEqual(48);
+      expect(parseFloat(getComputedStyle(shown).minHeight)).toBeGreaterThanOrEqual(48);
     }
     const meat = trayItem("meat");
 

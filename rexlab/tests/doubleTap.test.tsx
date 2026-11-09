@@ -20,7 +20,7 @@ const next = () => screen.getByRole("button", { name: "NEXT" });
 // side of it ready, and the filter before it from then on.
 async function onFirstPage() {
   const { user, pictures } = openHomeApp();
-  await user.click(gameDoor(TEXTS.en.catalogueTile));
+  await user.click(gameDoor(TEXTS.en.catalogue));
   act(() => finishLoading(pictures));
   await user.click(within(screen.getByRole("group", { name: TEXTS.en.catalogue })).getByRole("button", { name: "Tyrannosaurus" }));
   act(() => finishLoading(pictures));

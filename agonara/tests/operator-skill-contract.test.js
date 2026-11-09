@@ -55,6 +55,15 @@ test("operatorSkills_shouldKeepItemQualityBlockByteIdentical_acrossCuratorAndStu
   );
 });
 
+test("coachSkill_shouldStateOneFragmentRule_inFrontMatterLoadedBeforeTheBody", () => {
+  const skill = readFileSync(join(skillsDirectory, "agonara-coach", "SKILL.md"), "utf8");
+  const description = skill.split("\n").find($0 => $0.startsWith("description:"));
+  const trigger = skill.split("\n").find($0 => $0.startsWith("trigger:"));
+
+  assert.match(description, /One fragment per message, then stop/);
+  assert.match(trigger, /погрузи в тему/);
+});
+
 function readSkillRouteCitations(directory) {
   return readdirSync(directory, { withFileTypes: true })
     .filter($0 => $0.isDirectory())

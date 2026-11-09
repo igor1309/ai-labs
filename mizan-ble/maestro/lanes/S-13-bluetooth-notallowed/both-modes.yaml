@@ -1,0 +1,25 @@
+appId: dev.igor1309.mizan-ble.rehearsal
+---
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible: "Bluetooth not allowed"
+    timeout: 15000
+- tapOn:
+    id: "key 1"
+- assertVisible:
+    text: "Lock & broadcast"
+    enabled: false
+- tapOn: "Client"
+- extendedWaitUntil:
+    visible: "Bluetooth not allowed"
+    timeout: 15000
+- assertVisible:
+    text: "Start handshake"
+    enabled: false
+- assertNotVisible: "Confirm"
+- tapOn: "Host"
+- assertVisible: "Bluetooth not allowed"
+- assertVisible:
+    text: "Lock & broadcast"
+    enabled: false

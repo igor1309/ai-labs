@@ -59,12 +59,14 @@ final class FakeCapture: Capture, Sendable {
     let startFailure: Refusal?
     let stopFailure: Refusal?
     let stopEndsInput: Bool
+    let flush: [AudioPiece]
 
-    init(startFailure: Refusal? = nil, stopFailure: Refusal? = nil, stopEndsInput: Bool = true) {
+    init(startFailure: Refusal? = nil, stopFailure: Refusal? = nil, stopEndsInput: Bool = true, flush: [AudioPiece] = []) {
 
         self.startFailure = startFailure
         self.stopFailure = stopFailure
         self.stopEndsInput = stopEndsInput
+        self.flush = flush
     }
 
     var stops: Int { stopCount.withLock { $0 } }
@@ -78,6 +80,7 @@ final class FakeCapture: Capture, Sendable {
     func stop() async throws {
 
         stopCount.withLock { $0 += 1 }
+        give(flush)
         if stopEndsInput { finish() }
         stopped.continuation.yield(())
         if let stopFailure { throw stopFailure }
@@ -171,48 +174,4 @@ func tones() -> [AudioPiece] {
         AudioPiece(samples: [0.2, 0, -0.2], sampleRate: 16_000),
         AudioPiece(samples: [0.3, 0.1, -0.3, -0.1], sampleRate: 48_000),
     ]
-}
-
-/// Runs all runnable work before inspecting whether a held write blocks stop.
-final class CaptureExecutor: TaskExecutor {
-
-    private let jobs = Mutex<[UnownedJob]>([])
-    private let events = AsyncStream<Void>.makeStream()
-    private let completed = Mutex(false)
-
-    func enqueue(_ job: consuming ExecutorJob) {
-
-        let job = UnownedJob(job)
-        jobs.withLock { $0.append(job) }
-        events.continuation.yield(())
-    }
-
-    func complete() {
-
-        completed.withLock { $0 = true }
-        events.continuation.finish()
-    }
-
-    func run(until condition: () -> Bool) async {
-
-        var iterator = events.stream.makeAsyncIterator()
-        while !condition() && !completed.withLock({ $0 }) {
-            run()
-            if !condition() { _ = await iterator.next() }
-        }
-        run()
-    }
-
-    func finish() async {
-
-        for await _ in events.stream { run() }
-        run()
-    }
-
-    func run() {
-
-        while let job = jobs.withLock({ $0.isEmpty ? nil : $0.removeFirst() }) {
-            job.runSynchronously(on: asUnownedTaskExecutor())
-        }
-    }
 }

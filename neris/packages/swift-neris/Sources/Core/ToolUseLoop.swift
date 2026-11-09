@@ -45,9 +45,15 @@ public actor ToolUseLoop {
     func process(_ input: String) -> EventStream {
 
         AsyncThrowingStream { continuation in
-            Task {
+            let producer = Task {
+                try await self.run(input, continuation: continuation)
+            }
+            // Stream completion also means the producer has unwound its actor
+            // state and released its captured collaborators.
+            Task.detached {
                 do {
-                    try await self.run(input, continuation: continuation)
+                    try await producer.value
+                    continuation.finish()
                 } catch {
                     continuation.finish(throwing: error)
                 }
@@ -65,7 +71,6 @@ public actor ToolUseLoop {
             switch response {
             case .text(let text):
                 continuation.yield(.text(text))
-                continuation.finish()
                 return
             case .toolCalls(let calls):
                 for call in calls {

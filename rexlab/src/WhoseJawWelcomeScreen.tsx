@@ -1,12 +1,14 @@
-import { House, Landmark, Play } from "lucide-react";
-import { useLayoutEffect, useRef, type ReactNode } from "react";
-import { levelNameSize } from "./levelSwitchLayout.ts";
+import { House, LibraryBig, Play, ShelvingUnit } from "lucide-react";
+import type { ReactNode } from "react";
 import type { AgeLevel } from "./ageLevel.ts";
 import { Button } from "./Button.tsx";
+import { EarthEdge } from "./EarthEdge.tsx";
+import { FitText } from "./FitText.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 import { LevelSwitch } from "./LevelSwitch.tsx";
 import { Picture, PictureImage, usePicture } from "./Picture.tsx";
+import { Tooth } from "./Tooth.tsx";
 
 export type WhoseJawWelcomeScreenProps = {
   audioControl?: ReactNode;
@@ -23,39 +25,39 @@ export type WhoseJawWelcomeScreenProps = {
   onHome: () => void;
 };
 
+// The dig site: the title in the sky, the jaw beside its dinosaur and the
+// controls on the sand, and the bedrock below.
 export function WhoseJawWelcomeScreen({ audioControl, language, level, best, collected, total, jawPicture, gummyPicture, onLevel, onPlay, onShelf, onHome }: WhoseJawWelcomeScreenProps) {
   const text = TEXTS[language];
-  const start = useRef<HTMLElement>(null);
-  useLayoutEffect(() => {
-    const column = start.current;
-    const switcher = column?.querySelector<HTMLElement>(".level-switch");
-    if (!column || !switcher) return;
-    const fit = () => {
-      if (switcher.clientWidth > 0) column.style.setProperty("--level-name-size", `${levelNameSize(switcher.clientWidth)}px`);
-    };
-    fit();
-    const observer = typeof ResizeObserver === "undefined" ? undefined : new ResizeObserver(fit);
-    observer?.observe(switcher);
-    window.addEventListener("resize", fit);
-    return () => { observer?.disconnect(); window.removeEventListener("resize", fit); };
-  }, []);
   return <main className="whose-jaw-welcome">
-    <header><Button className="home-button" aria-label={text.home} onClick={onHome}><House aria-hidden="true" /><span>{text.home}</span></Button>{audioControl}</header>
-    <div className="whose-jaw-welcome-body">
-      <WelcomeHero jawPicture={jawPicture} gummyPicture={gummyPicture} />
-      <section ref={start} className="whose-jaw-start">
-        <h1><span aria-hidden="true">🦷</span> {text.whoseJaw}</h1>
-        <div className="whose-jaw-badges">
-          {best !== null && <p aria-label={text.bestScore}><span aria-hidden="true">🦷</span> {best}</p>}
-          <p aria-label={text.jawCollection}><Landmark aria-hidden="true" /> {collected} / {total}</p>
+    <header className="whose-jaw-welcome-sky">
+      <div className="whose-jaw-welcome-bar">
+        <Button className="whose-jaw-welcome-home" aria-label={text.home} onClick={onHome}><House aria-hidden="true" /><span>{text.home}</span></Button>
+        {audioControl}
+      </div>
+      <h1 className="whose-jaw-welcome-title">
+        <span className="whose-jaw-welcome-mark"><Tooth /></span>
+        <FitText className="whose-jaw-welcome-word" text={text.whoseJaw} />
+      </h1>
+    </header>
+    <section className="whose-jaw-welcome-sand">
+      <EarthEdge className="whose-jaw-welcome-wave" />
+      <div className="whose-jaw-welcome-body">
+        <WelcomeHero jawPicture={jawPicture} gummyPicture={gummyPicture} />
+        <div className="whose-jaw-start">
+          <div className="whose-jaw-badges">
+            {best !== null && <p className="whose-jaw-best" aria-label={text.bestScore}><Tooth /><span className="whose-jaw-badge-number">{best}</span></p>}
+            <p className="whose-jaw-collection" aria-label={text.jawCollection}><ShelvingUnit aria-hidden="true" /><span className="whose-jaw-badge-number">{collected}</span> <span className="whose-jaw-badge-of">/ {total}</span></p>
+          </div>
+          <LevelSwitch language={language} level={level} onLevel={onLevel} />
+          <div className="whose-jaw-welcome-actions">
+            <Button className="card whose-jaw-play" onClick={onPlay}><Play aria-hidden="true" /><FitText className="whose-jaw-action-word" text={text.play} /></Button>
+            <Button className="card whose-jaw-shelf" onClick={onShelf}><LibraryBig aria-hidden="true" /><FitText className="whose-jaw-action-word" text={text.jawShelf} /></Button>
+          </div>
         </div>
-        <LevelSwitch language={language} level={level} onLevel={onLevel} />
-        <div className="whose-jaw-welcome-actions">
-          <Button className="card whose-jaw-play" onClick={onPlay}><Play aria-hidden="true" />{text.play}</Button>
-          <Button className="card whose-jaw-shelf" onClick={onShelf}><Landmark aria-hidden="true" />{text.jawShelf}</Button>
-        </div>
-      </section>
-    </div>
+      </div>
+    </section>
+    <div className="whose-jaw-welcome-bedrock" aria-hidden="true"><EarthEdge /></div>
   </main>;
 }
 

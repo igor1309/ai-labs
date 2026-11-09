@@ -1,5 +1,6 @@
+import "./careSheets.ts";
 import { act, fireEvent, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, onTestFinished } from "vitest";
 import type { PortraitLayouts } from "../src/App.tsx";
 import { TEXTS } from "../src/language/texts.ts";
 import { playVisit } from "./care.ts";
@@ -26,52 +27,62 @@ function openWelcome(size: WindowSize, language: "en" | "ru" = "en") {
   return app;
 }
 
-describe("care's welcome upright", () => {
-  it.each([[744, 1133], [820, 1180], [600, 1000]] as const)("stands upright at %j, NEW VISITOR over FRIENDS", (...size) => {
+const THEME = {
+  light: { label: "rgb(255, 253, 248)", strong: "rgb(31, 43, 77)", onStrong: "rgb(246, 242, 233)", action: "rgb(193, 80, 54)" },
+  dark: { label: "rgb(28, 34, 56)", strong: "rgb(237, 229, 210)", onStrong: "rgb(29, 39, 66)", action: "rgb(229, 122, 93)" }
+} as const;
+
+describe("care's welcome on the dig site", () => {
+  it.each([[744, 1133], [820, 1180], [600, 1000]] as const)("stands upright at %j, NEW VISITOR over FRIENDS on the sand", (...size) => {
     openWelcome(size);
     expect([document.documentElement.dataset.size, gateShown(), part(".gated-screen").hasAttribute("inert")]).toEqual(["tall", false, false]);
     expect(screen.queryByRole("img", { name: TEXTS.en.turnSideways })).toBeNull();
-    const page = styleAt(part(".care-welcome"), size);
-    expect([page.px("padding-left"), page.px("padding-right")]).toEqual([32, 32]);
+    expect(part(".care-welcome").classList.contains("skeleton-dig")).toBe(true);
+    expect(part(".care-welcome .dig-ground")).toBeTruthy();
     const choices = styleAt(part(".care-choices"), size);
     expect([choices.value("flex-direction"), choices.rowGap()]).toEqual(["column", 24]);
-    expect(styleAt(part(".new-visitor-card"), size).value("flex-grow")).toBe("3");
-    expect(styleAt(part(".friends-card"), size).value("flex-grow")).toBe("2");
+    expect(styleAt(part(".new-visitor-card"), size).value("flex-grow")).toBe("2.4");
+    expect(styleAt(part(".friends-card"), size).value("flex-grow")).toBe("1");
+    expect(styleAt(part(".care-faces"), size).value("grid-template-columns")).toBe("repeat(6, auto)");
   });
 
-  it.each(["en", "ru"] as const)("keeps every word on one line at 600 wide in %s, HOME as its symbol", (language) => {
+  it.each(["en", "ru"] as const)("keeps HOME a symbol upright and every pill on one line in %s", (language) => {
     openWelcome([600, 1000], language);
     const text = TEXTS[language];
-    expect(styleAt(part(".care-bar"), [600, 1000]).columnGap()).toBe(16);
     const home = screen.getByRole("button", { name: text.home });
-    expect(styleAt(home, [600, 1000]).px("width")).toBe(56);
+    expect(styleAt(home, [600, 1000]).px("width")).toBe(48);
     expect(home.querySelector(".upright-hidden")?.textContent).toBe(text.home);
-    const title = styleAt(part(".new-visitor-title"), [600, 1000]);
-    expect([title.px("font-size"), title.value("white-space")]).toEqual([40, "nowrap"]);
-    // jsdom does not lay out: the room the stylesheet leaves the words
-    // in the footer, against capitals at a conservative 0.8 em with their
-    // spacing.
-    const page = styleAt(part(".care-welcome"), [600, 1000]);
-    const footer = styleAt(part(".new-visitor-footer"), [600, 1000]);
-    const symbol = styleAt(part(".new-visitor-symbol"), [600, 1000]);
-    const room = 600 - page.px("padding-left") - page.px("padding-right") - footer.px("padding-left") - footer.px("padding-right") - symbol.px("width") - footer.columnGap();
-    expect(text.newVisitor.length * (title.px("font-size") * 0.8 + title.px("letter-spacing"))).toBeLessThanOrEqual(room);
+    expect(part(".skeleton-title-words").textContent).toBe(text.care);
+    for (const pill of [".new-visitor-pill", ".friends-pill"]) expect(styleAt(part(pill), [600, 1000]).value("white-space")).toBe("nowrap");
+    expect(part(".new-visitor-pill").textContent).toBe(text.newVisitor);
+    expect(part(".friends-pill").textContent).toBe(text.friends);
   });
 
-  it("keeps the landscape welcome as it was, NEW VISITOR beside FRIENDS", () => {
+  it("lays NEW VISITOR beside FRIENDS in landscape, the wider of the two", () => {
     openWindow(1180, 820);
     openCareApp({ portraitLayouts: PORTRAIT_LAYOUTS });
     fireEvent.click(screen.getByRole("button", { name: TEXTS.en.care }));
     expect([document.documentElement.dataset.size, gateShown()]).toEqual(["wide", false]);
-    const choices = getComputedStyle(part(".care-choices"));
-    expect([choices.flexDirection || "row", choices.gap]).toEqual(["row", "28px"]);
-    expect(getComputedStyle(part(".care-welcome")).paddingLeft).toBe("56px");
-    expect(getComputedStyle(part(".new-visitor-title")).fontSize).toBe("52px");
+    const choices = styleAt(part(".care-choices"), [1180, 820]);
+    expect([choices.value("flex-direction") || "row", choices.columnGap()]).toEqual(["row", 24]);
+    expect([getComputedStyle(part(".new-visitor-card")).flexGrow, getComputedStyle(part(".friends-card")).flexGrow]).toEqual(["1.75", "1"]);
     expect(screen.getByRole("button", { name: TEXTS.en.home }).querySelector(".upright-hidden")).not.toBeNull();
   });
 
   it("marks both cards as parts a turn glides", () => {
     openWelcome([820, 1180]);
     expect([part(".new-visitor-card").dataset.turnPart, part(".friends-card").dataset.turnPart]).toEqual(["care-new-visitor", "care-friends"]);
+  });
+
+  it.each(["light", "dark"] as const)("dresses the cards and pills in the %s theme's tokens", (theme) => {
+    const colours = THEME[theme];
+    openWelcome([820, 1180]);
+    document.documentElement.dataset.theme = theme;
+    onTestFinished(() => { delete document.documentElement.dataset.theme; });
+    for (const card of [".new-visitor-card", ".friends-card"]) expect(getComputedStyle(part(card)).backgroundColor).toBe(colours.label);
+    expect(getComputedStyle(part(".new-visitor-pill")).backgroundColor).toBe(colours.action);
+    const friends = getComputedStyle(part(".friends-pill"));
+    expect([friends.backgroundColor, friends.color]).toEqual([colours.strong, colours.onStrong]);
+    expect(getComputedStyle(part(".knock-bubble")).color).toBe(colours.action);
   });
 });

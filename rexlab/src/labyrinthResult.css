@@ -1,0 +1,269 @@
+/* LABYRINTH's result on the dig site (design/dig-site.pen, MAZE · result):
+   baby and parent together on the sand with a heart, and beside them, or
+   under them upright, HOME TOGETHER!, all three stars, +3 STARS with the
+   total, the best or its celebration, the level switch, AGAIN and HOME. */
+.labyrinth-result-screen {
+  --lr-sky: calc(88px + env(safe-area-inset-top));
+  --lr-ochre: calc(60px + env(safe-area-inset-bottom));
+  --dig-sky: var(--lr-sky);
+  --dig-ochre: var(--lr-ochre);
+  --lr-side-pad: var(--ds-space-40);
+  /* The family gives way on narrower windows so each level's name fits its
+     third of the switch. */
+  --family-width: clamp(300px, 100vw - 760px, 440px);
+  --result-gap: var(--ds-space-3xl);
+  --reward-gap: var(--ds-space-18);
+  --title-size: var(--ds-size-44);
+  --title-badge: 48px;
+  --title-badge-icon: 26px;
+  --star: 64px;
+  --star-big: 77px;
+  --star-gap: var(--ds-space-13);
+  --chip-size: var(--ds-size-20);
+  --chip-number: var(--ds-size-26);
+  --chip-symbol: 24px;
+  --chip-pad: var(--ds-space-9) var(--ds-space-18);
+  --levels-width: 600px;
+  --action-height: 72px;
+  --action-size: var(--ds-size-24);
+  position: relative;
+  isolation: isolate;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100dvh;
+  padding: calc(var(--lr-sky) + var(--ds-space-l)) calc(var(--lr-side-pad) + var(--screen-right)) calc(var(--lr-ochre) + var(--ds-space-l)) calc(var(--lr-side-pad) + var(--screen-left));
+  overflow: hidden;
+  color: var(--ds-ink);
+  font-family: var(--ds-font);
+  background: linear-gradient(var(--ds-sky-top), var(--ds-sky-bottom) 40dvh) var(--ds-sky-bottom);
+  animation: rise-in var(--motion-screen) var(--ease-out) both;
+}
+
+.labyrinth-result {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--result-gap);
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Baby and parent together on the ground, a heart between them. */
+.labyrinth-family {
+  position: relative;
+  flex: 0 0 auto;
+  width: var(--family-width);
+  aspect-ratio: 440 / 290;
+}
+
+.labyrinth-family::before {
+  content: "";
+  position: absolute;
+  left: 5.9%;
+  top: 84.1%;
+  width: 88%;
+  height: 12%;
+  border-radius: 50%;
+  background: var(--ds-ground-shadow);
+}
+
+.labyrinth-reunion-parent,
+.labyrinth-reunion-baby {
+  position: absolute;
+  display: block;
+  object-fit: contain;
+  object-position: bottom;
+}
+
+.labyrinth-reunion-parent { left: 30%; top: 2%; width: 70%; height: 90%; }
+.labyrinth-reunion-baby { left: 40%; top: 45.9%; width: 40%; height: 50%; scale: -1 1; }
+.labyrinth-reunion-parent[data-picture="loading"],
+.labyrinth-reunion-baby[data-picture="loading"] { border-radius: 60px; }
+
+.labyrinth-reunion-heart { position: absolute; left: 24.1%; top: 22.1%; width: 10%; height: auto; aspect-ratio: 1; color: var(--ds-bad); animation: pop-in var(--motion-standard) var(--ease-overshoot) both; }
+.labyrinth-reunion-glints { position: absolute; left: 5.9%; top: 10%; width: 8%; height: auto; aspect-ratio: 1; color: var(--ds-reward); animation: pop-in var(--motion-standard) var(--ease-overshoot) both; }
+
+.labyrinth-reward-column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--reward-gap);
+  min-width: 0;
+}
+
+.labyrinth-reunion-title {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-11);
+  margin: 0;
+  font-size: var(--title-size);
+  font-weight: 800;
+  line-height: 1.1;
+  text-align: center;
+}
+
+.labyrinth-result-screen .labyrinth-house-badge {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: var(--title-badge);
+  height: var(--title-badge);
+  border-radius: 50%;
+  background: var(--ds-reward);
+  color: var(--ds-on-action);
+}
+
+.labyrinth-result-screen .labyrinth-house-badge svg { width: var(--title-badge-icon); height: var(--title-badge-icon); }
+
+/* All three stars, every time; the middle one stands larger. */
+.labyrinth-reunion-stars { align-items: center; gap: var(--star-gap); }
+.labyrinth-reunion-stars .star { display: flex; }
+.labyrinth-reunion-stars svg { width: var(--star); height: var(--star); }
+.labyrinth-reunion-stars .star:nth-child(2) svg { width: var(--star-big); height: var(--star-big); }
+
+/* +3 STARS and the total, then the best or its celebration, each a pale
+   chip. */
+.labyrinth-score {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ds-space-s);
+}
+
+.labyrinth-reward,
+.labyrinth-record {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-s);
+  margin: 0;
+  padding: var(--chip-pad);
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-label);
+  color: var(--ds-ink);
+  font-size: var(--chip-size);
+  font-weight: 800;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.labyrinth-chip-symbol { flex-shrink: 0; width: var(--chip-symbol); height: var(--chip-symbol); color: var(--ds-reward); }
+
+.labyrinth-record .celebration,
+.labyrinth-record .best-score {
+  height: auto;
+  padding: 0;
+  gap: var(--ds-space-s);
+  border-radius: 0;
+  background: none;
+  color: inherit;
+  font-size: inherit;
+  font-weight: 800;
+}
+
+.labyrinth-record .celebration svg,
+.labyrinth-record .best-score > svg { flex-shrink: 0; width: var(--chip-symbol); height: var(--chip-symbol); color: var(--ds-reward); }
+.labyrinth-record .best-score-value,
+.labyrinth-record-number { display: flex; align-items: center; gap: var(--ds-space-xs); font-size: var(--chip-number); font-weight: 800; }
+.labyrinth-record-number svg { width: 20px; height: 20px; }
+
+.labyrinth-reunion-levels { width: min(100%, var(--levels-width)); }
+
+.labyrinth-reunion-actions {
+  display: flex;
+  gap: var(--ds-space-l);
+}
+
+.labyrinth-reunion-actions button {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ds-space-m);
+  min-height: 48px;
+  height: var(--action-height);
+  padding: 0 var(--ds-space-xl);
+  font-size: var(--action-size);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+/* Upright: the family stands over the reward. */
+html:is([data-size="tall"], [data-size="tall-narrow"]) .labyrinth-result { flex-direction: column; gap: var(--reward-gap); }
+html:is([data-size="tall"], [data-size="tall-narrow"]) .labyrinth-result-screen { --lr-sky: calc(100px + env(safe-area-inset-top)); --lr-ochre: calc(28px + env(safe-area-inset-bottom)); --reward-gap: var(--ds-space-20); }
+
+/* Phones: a smaller family and reward. Upright, the chips stack and the
+   buttons fill the width, AGAIN over HOME. */
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .labyrinth-result-screen {
+  --family-width: 250px;
+  --title-badge: 35px;
+  --title-badge-icon: 19px;
+  --star: 48px;
+  --star-big: 58px;
+  --star-gap: var(--ds-btn-gap);
+  --chip-number: var(--ds-size-22);
+  --chip-symbol: 20px;
+  --chip-pad: var(--ds-space-6) var(--ds-space-14);
+  --action-height: 56px;
+  --action-size: var(--ds-size-20);
+}
+
+html[data-size="tall-narrow"] .labyrinth-result-screen {
+  --lr-sky: calc(var(--ds-space-xl) + env(safe-area-inset-top));
+  --lr-ochre: calc(10px + env(safe-area-inset-bottom));
+  --lr-side-pad: var(--ds-space-l);
+  --reward-gap: var(--ds-space-14);
+  --title-size: var(--ds-size-32);
+  --chip-size: var(--ds-size-16);
+  padding-top: calc(var(--lr-sky) + var(--ds-space-s));
+}
+
+html[data-size="tall-narrow"] .labyrinth-result,
+html[data-size="tall-narrow"] .labyrinth-reward-column { width: 100%; }
+html[data-size="tall-narrow"] .labyrinth-score { flex-direction: column; }
+html[data-size="tall-narrow"] .labyrinth-reunion-actions { flex-direction: column; gap: var(--ds-btn-gap); width: 100%; }
+html[data-size="tall-narrow"] .labyrinth-reunion-levels { width: 100%; }
+
+html[data-size="wide-short"] .labyrinth-result-screen {
+  --lr-sky: calc(var(--ds-space-xl) + env(safe-area-inset-top));
+  --lr-ochre: calc(10px + env(safe-area-inset-bottom));
+  --lr-side-pad: var(--ds-space-xl);
+  --result-gap: var(--ds-space-28);
+  --reward-gap: var(--ds-space-s);
+  --title-size: var(--ds-size-26);
+  --title-badge: 29px;
+  --title-badge-icon: 16px;
+  --star: 36px;
+  --star-big: 43px;
+  --star-gap: var(--ds-space-7);
+  --chip-size: var(--ds-size-15);
+  --chip-number: var(--ds-size-20);
+  --chip-symbol: 19px;
+  --levels-width: 460px;
+  --action-height: 48px;
+  --action-size: var(--ds-size-18);
+  padding-top: calc(var(--lr-sky) + var(--ds-space-xs));
+  padding-bottom: calc(var(--lr-ochre) + var(--ds-space-xs));
+}
+
+html[data-size="wide-short"] .labyrinth-reward-column { flex: 1 1 auto; }
+
+.pairs-offer[data-dig] .pairs-offer-picture svg { width: 48px; height: 48px; color: var(--ds-ink); }
+html[data-size="wide-short"] .pairs-offer[data-dig] .pairs-offer-picture svg { width: 32px; height: 32px; }
+
+.labyrinth-result-screen button:focus-visible { outline: 3px solid var(--ds-strong); outline-offset: 3px; }
+.labyrinth-result-screen .glow { left: 50%; }
+
+/* On a phone on its side the switch keeps each level's name in its segment. */
+html[data-size="wide-short"] .labyrinth-result-screen { --family-width: 210px; }
+html[data-size="wide-short"] .labyrinth-reunion-levels { width: 100%; }
+html[data-size="wide-short"] .labyrinth-reunion-levels .level-switch-level { padding-inline: var(--ds-space-xs); font-size: var(--ds-size-15); }
+/* A small phone on its side shows each level's picture alone, its name
+   kept for screen readers. */
+@media (max-width: 760px) {
+  html[data-size="wide-short"] .labyrinth-reunion-levels .level-switch-name { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}

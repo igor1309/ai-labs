@@ -1,0 +1,60 @@
+name: Notio Supabase Keep-Alive
+
+# Write a heartbeat to Supabase every 4 hours to prevent free-tier auto-pause.
+# Supabase pauses a Free project for too little database activity over a week
+# ("a few requests a day is usually enough"); one write every 3 days was paused
+# anyway in Claude Insights, twice, within a day of a successful write.
+# Updates public.keepalive (id=1) and fails unless that row came back updated.
+# Runs at minute 7 of 00, 04, 08, 12, 16, 20 UTC (03, 07, 11, 15, 19, 23 Moscow time).
+
+on:
+  schedule:
+    - cron: "7 */4 * * *"   # every 4 hours; 03:07, 07:07, ... MSK
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: notio-supabase-keepalive
+  cancel-in-progress: true
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Write Supabase keepalive heartbeat
+        env:
+          SUPABASE_URL: ${{ secrets.NOTIO_SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.NOTIO_SUPABASE_KEY }}
+        run: |
+          set -e
+          NOW=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          BODY=$(curl -sS -f --max-time 10 \
+            --retry 3 --retry-delay 5 --retry-all-errors \
+            -X PATCH \
+            -H "apikey: ${SUPABASE_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_KEY}" \
+            -H "Content-Type: application/json" \
+            -H "Prefer: return=representation" \
+            -d "{\"last_ping_at\":\"${NOW}\"}" \
+            "${SUPABASE_URL}/rest/v1/keepalive?id=eq.1&select=id") \
+            || { echo "Keep-alive failed: request error (project paused or unreachable?)"; exit 1; }
+          echo "Supabase keepalive PATCH returned: ${BODY}"
+          # PostgREST answers 2xx even when no row matched; require the row back.
+          [ "${BODY}" = '[{"id":1}]' ] || { echo "Keep-alive failed: row id=1 was not updated"; exit 1; }
+
+  notify:
+    if: ${{ always() && !cancelled() && needs.ping.result == 'failure' }}
+    needs: [ping]
+    uses: ./.github/workflows/notify-telegram-failure.yml
+    with:
+      title: "Notio Supabase Keep-Alive"
+      ref_label: "branch"
+      ref_value: "trunk"
+      job_results: |
+        ping=${{ needs.ping.result }}
+    secrets:
+      CI_BOT_TOKEN: ${{ secrets.CI_BOT_TOKEN }}
+      CI_CHAT_ID: ${{ secrets.CI_CHAT_ID }}

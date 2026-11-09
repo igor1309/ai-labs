@@ -37,6 +37,7 @@ public struct StatusPill: View {
         .padding(.horizontal, Tokens.space3)
         .overlay { Capsule().strokeBorder(state.border, lineWidth: 1) }
         .fixedSize()
+        .fadesIn(on: title)
         .animation(Motion.fast(reduced: reduceMotion).animation, value: state)
         .accessibilityElement(children: .combine)
     }

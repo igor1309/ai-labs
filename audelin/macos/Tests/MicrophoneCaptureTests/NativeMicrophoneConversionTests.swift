@@ -1,5 +1,6 @@
 import AVFAudio
 import Darwin
+import Foundation
 import Synchronization
 import Testing
 @testable import MicrophoneCapture
@@ -11,7 +12,7 @@ struct NativeMicrophoneConversionTests {
     func nativeChannelLayoutsProduceTheExactMonoMean(interleaved: Bool, channelCount: Int) async throws {
 
         let binding = FakeMicrophoneBinding()
-        let capture = try await MicrophoneCapture(binding: binding)
+        let capture = try await MicrophoneCapture(hardware: .init(binding: binding))
         defer { capture.stop() }
         for soundingChannel in 0..<channelCount {
             var channels = Array(repeating: [Float(0), 0], count: channelCount)
@@ -48,6 +49,24 @@ struct NativeMicrophoneConversionTests {
         }
     }
 
+    /// A long call delivers thousands of buffers; each must reach the receiver
+    /// through the same frames, or the chain overflows the stack mid-call or
+    /// when it is released at stop.
+    @Test func manyDeliveriesKeepTheReceiverAtTheSameDepth() throws {
+
+        let buffer = try makeBuffer(interleaved: false, rate: 48_000)
+        let depths = Mutex<[Int]>([])
+        let tap = NativeTap(
+            receive: { _ in depths.withLock { $0.append(Thread.callStackReturnAddresses.count) } },
+            readClock: { MicrophoneClockReading(host: 1, continuous: 1) }
+        )
+        for _ in 0..<200 { tap.deliver(buffer, time: AVAudioTime(sampleTime: 0, atRate: 48_000)) }
+        tap.close()
+        let seen = depths.withLock { $0 }
+        #expect(seen.count == 200)
+        #expect(seen.first == seen.last)
+    }
+
     /// Contract test: the native clock adapter reads the kernel's host and continuous clocks.
     @Test func nativeClockReadingContainsBothMonotonicClocks() throws {
 
@@ -65,7 +84,7 @@ struct NativeMicrophoneConversionTests {
 
         let binding = FakeMicrophoneBinding()
         binding.state.withLock { $0.time = 7_200 }
-        let capture = try await MicrophoneCapture(binding: binding)
+        let capture = try await MicrophoneCapture(hardware: .init(binding: binding))
         defer { capture.stop() }
         let clock = Mutex((host: 10.0, reads: 0))
         let tap = NativeTap(

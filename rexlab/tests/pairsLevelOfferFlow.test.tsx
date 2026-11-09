@@ -1,3 +1,4 @@
+import { gameDoor } from "./support.ts";
 import { act, fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { PortraitLayouts } from "../src/App.tsx";
@@ -31,7 +32,7 @@ const EXPLORER: BoardLevel = { large: "explorer" };
 const PALEONTOLOGIST: BoardLevel = { large: "paleontologist" };
 
 const picked = (level: AgeLevel): AgeLevelSetting => ({ level, revision: `picked-${level}` });
-const button = (name: string) => screen.getByRole("button", { name });
+const button = (name: string) => document.querySelector(".home") ? gameDoor(name) : screen.getByRole("button", { name });
 const nameOf = (level: AgeLevel) => TEXTS.en.ageLevels[level].name;
 const asks = (level: AgeLevel) => TEXTS.en.levelOffer.question(nameOf(level));
 

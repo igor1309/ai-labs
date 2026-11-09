@@ -45,12 +45,16 @@ public struct Hearing: Equatable, Sendable {
     /// Words ending by this time in the track are final; nil when none is
     /// final yet.
     public var finalThrough: Double?
+    /// No word not yet reported will start before this time in the track, so
+    /// the track is known to be quiet up to it. Nil when the recogniser cannot say.
+    public var noWordBefore: Double?
 
-    public init(words: [Word], from: Double? = nil, finalThrough: Double? = nil) {
+    public init(words: [Word], from: Double? = nil, finalThrough: Double? = nil, noWordBefore: Double? = nil) {
 
         self.words = words
         self.from = from
         self.finalThrough = finalThrough
+        self.noWordBefore = noWordBefore
     }
 }
 

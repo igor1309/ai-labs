@@ -54,12 +54,12 @@ Feature: Compare dinosaurs quiz: the level switch and its progress
     Then I see a first best score celebration
     And my Paleontologist best becomes 4
     And my Explorer best stays 6
-    And the "COMPARE" tile shows 4, the best of the level the quiz plays
+    And on a day COMPARE is featured its card shows 4, the best of the level the quiz plays
 
   Scenario: A best saved before the quiz had levels is its Hatchling best
     Given my stored best score of 8 was saved before the quiz had levels
     When I choose Hatchling on the level switch
-    Then the "COMPARE" tile shows 8
+    Then on a day COMPARE is featured its card shows 8
     And the Explorer and Paleontologist levels have no best yet
 
   Scenario: The child's choice is remembered until a parent changes the level

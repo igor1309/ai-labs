@@ -9,22 +9,20 @@ crypto and codec run on a simulator with no Bluetooth.
 - **`ScriptedRadio` is a library in the root package,** since the side it
   plays seals and opens real messages with session crypto and the codec.
   Only the rehearsal app target links it.
-- **It plays from scripted settings,** taken once per serve or scan, and
-  tells Bluetooth's state from each read of them; scripted settings own
-  the file.
-- **A spy, not a second radio:** nothing leaves the process. Each step
-  answers after the settings' delay on an injected clock. A retire or a
-  drop cancels its transaction's pending steps; a stopped scan, only
-  readings.
+- **A spy, not a second radio:** nothing goes on air. It takes scripted
+  settings, which own the file, once per serve or scan; each read tells
+  Bluetooth's state. Steps wait out their delays on an injected clock; a
+  retire or drop cancels its transaction's steps, a stopped scan its readings.
 - **The settings set** the scripted client's coming, decision and drop
-  point; each scripted host's name, timed readings, amount, cancel,
-  outcome and drop point. A host on air is heard again at its last
-  strength every 0.2 s until the scan stops, unless it goes quiet. A scripted host acknowledges either decision;
-  a decline has no outcome. Its keys are fresh per session.
+  point; each scripted host's name, timed readings, amount, cancel, outcome
+  and drop point. A host on air is heard again at its last strength every
+  0.2 s until the scan stops, unless it goes quiet. Both decisions are
+  acknowledged; a decline has no outcome. Keys are fresh per session.
 - **The scripted side opens what it gets;** a message it cannot open drops
   the link at once, so a link that holds means it opened.
-- **A drop is told as the real radio tells it;** a client leaving before
-  its key is unseen, as on air.
+- **A drop is told as the real radio tells it;** a client leaving before its
+  key is unseen, as on air.
+- **Air capture is opt-in,** frame by frame to a file, never to the log.
 
 ```gherkin
 Feature: Playing the other side from settings
@@ -79,14 +77,12 @@ Feature: Playing the other side from settings
 
   Scenario Outline: S-7 Bluetooth's state from the settings
     Given settings that say Bluetooth is <state>
-    When the <side> radio reads them
-    Then I can read that Bluetooth is <state>
+    When the host radio or the client radio reads them
+    Then I can read from either that Bluetooth is <state>
     Examples:
-      | side   | state       |
-      | host   | off         |
-      | client | off         |
-      | host   | not allowed |
-      | client | not allowed |
+      | state       |
+      | off         |
+      | not allowed |
 
   Scenario Outline: S-8 A message the scripted side cannot open
     Given a <side> transaction under way
@@ -96,4 +92,9 @@ Feature: Playing the other side from settings
       | side   | what            |
       | host   | the client lost |
       | client | the link lost   |
+
+  Scenario: S-9 Reading the scripted air
+    Given settings requesting an air recording
+    When I complete a payment
+    Then I can read every carried frame in order with its direction, also after a relaunch
 ```

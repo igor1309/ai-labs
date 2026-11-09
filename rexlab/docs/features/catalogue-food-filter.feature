@@ -73,7 +73,7 @@ Feature: The dinosaur catalogue: choosing dinosaurs by their food
     Examples:
       | language | tile          | title         | all | meat | plants   | both |
       | English  | ANCIENT REPTILES | ANCIENT REPTILES | ALL | MEAT | PLANTS   | BOTH |
-      | Russian  | ВСЕ           | ДРЕВНИЕ ЯЩЕРЫ | ВСЕ | МЯСО | РАСТЕНИЯ | ВСЁ  |
+      | Russian  | ДРЕВНИЕ ЯЩЕРЫ | ДРЕВНИЕ ЯЩЕРЫ | ВСЕ | МЯСО | РАСТЕНИЯ | ВСЁ  |
 
   Scenario: The chips read well in both themes
     Given the app is in the dark theme

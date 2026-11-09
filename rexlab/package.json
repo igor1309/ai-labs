@@ -2,24 +2,30 @@
   "name": "@ai-labs/rexlab",
   "private": true,
   "type": "module",
-  "version": "0.10.78",
+  "version": "0.10.107",
   "scripts": {
     "build": "vite build",
     "dev": "vite",
     "smoke": "tsx scripts/smoke-deployed-version.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:browser": "node tests/whoseJawBoardLandscape.browser.cjs",
-    "postinstall": "patch-package --error-on-fail"
+    "cyrillic-ems": "node scripts/cyrillic-ems.cjs",
+    "test:browser": "node tests/whoseJawBoardLandscape.browser.cjs && node tests/whoseJawDigSite.browser.cjs && node tests/pairsDigSite.browser.cjs",
+    "postinstall": "patch-package --error-on-fail",
+    "slow-tests": "tsx scripts/slow-tests.ts"
   },
   "devDependencies": {
+    "@gltf-transform/core": "4.5.1",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.8",
     "@types/node": "^22.20.5",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "@types/three": "0.187.0",
     "@vitejs/plugin-react": "^6.1.2",
+    "css-tree": "3.2.1",
     "jsdom": "^30.1.3",
+    "meshoptimizer": "1.3.0",
     "patch-package": "8.0.1",
     "playwright": "1.64.1",
     "sharp": "^0.35.5",
@@ -30,8 +36,10 @@
   },
   "dependencies": {
     "@fontsource-variable/lexend": "^5.3.0",
+    "@fontsource-variable/manrope": "^5.3.0",
     "lucide-react": "^1.58.0",
     "react": "^19.3.1",
-    "react-dom": "^19.3.1"
+    "react-dom": "^19.3.1",
+    "three": "0.187.0"
   }
 }

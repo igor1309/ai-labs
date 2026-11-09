@@ -1,30 +1,35 @@
 import Darwin
 import Foundation
 
-// Package visibility lets the crash writer pause the same binding used by the adapter.
-package protocol TranscriptFileBinding: Sendable {
+// The binding lets callers inject write failures while composing the real adapter.
+public protocol TranscriptFileBinding: Sendable {
 
     func create(at url: URL) throws -> any TranscriptFileHandle
+    /// Opens an existing file, never through a symlink, so each write lands at its end.
+    func open(at url: URL) throws -> any TranscriptFileHandle
     func rename(from source: URL, to target: URL) throws
     func remove(at url: URL)
 }
 
-package protocol TranscriptFileHandle: Sendable {
+public protocol TranscriptFileHandle: Sendable {
 
     func write(_ data: Data) throws
+    func truncate(to length: Int) throws
     func flush() throws
 }
 
-package struct DiskTranscriptBinding: TranscriptFileBinding {
+public struct DiskTranscriptBinding: TranscriptFileBinding {
 
     /// Returns zero or sets `errno`, as `fsync` does.
     package typealias Sync = @Sendable (Int32) -> Int32
 
     private let sync: Sync
 
-    package init(sync: @escaping Sync = { fsync($0) }) { self.sync = sync }
+    public init() { self.sync = { fsync($0) } }
 
-    package func create(at url: URL) throws -> any TranscriptFileHandle {
+    package init(sync: @escaping Sync) { self.sync = sync }
+
+    public func create(at url: URL) throws -> any TranscriptFileHandle {
 
         guard url.isFileURL else { throw POSIXError(.EINVAL) }
         let descriptor = Darwin.open(url.path, O_CREAT | O_EXCL | O_NOFOLLOW | O_WRONLY | O_CLOEXEC, 0o600)
@@ -32,12 +37,20 @@ package struct DiskTranscriptBinding: TranscriptFileBinding {
         return DiskTranscriptHandle(descriptor: descriptor, sync: sync)
     }
 
-    package func rename(from source: URL, to target: URL) throws {
+    public func open(at url: URL) throws -> any TranscriptFileHandle {
+
+        guard url.isFileURL else { throw POSIXError(.EINVAL) }
+        let descriptor = Darwin.open(url.path, O_APPEND | O_NOFOLLOW | O_WRONLY | O_CLOEXEC)
+        guard descriptor >= 0 else { throw currentError() }
+        return DiskTranscriptHandle(descriptor: descriptor, sync: sync)
+    }
+
+    public func rename(from source: URL, to target: URL) throws {
 
         guard Darwin.rename(source.path, target.path) == 0 else { throw currentError() }
     }
 
-    package func remove(at url: URL) { _ = unlink(url.path) }
+    public func remove(at url: URL) { _ = unlink(url.path) }
 }
 
 private final class DiskTranscriptHandle: TranscriptFileHandle {
@@ -66,6 +79,14 @@ private final class DiskTranscriptHandle: TranscriptFileHandle {
                 guard size > 0 else { throw POSIXError(.EIO) }
                 done += size
             }
+        }
+    }
+
+    func truncate(to length: Int) throws {
+
+        while ftruncate(descriptor, off_t(length)) != 0 {
+            if errno == EINTR { continue }
+            throw currentError()
         }
     }
 

@@ -19,6 +19,7 @@ Every field is illustrated here, with its default value:
 ```json
 {
   "bluetooth": "on",
+  "recordAir": false,
   "client": {
     "comes": true,
     "decision": "confirm",
@@ -89,5 +90,16 @@ loss during payment, either role, Bluetooth off and not allowed, the operator's
 countdown, and both phone-only handshake failures. Host and client variants
 play their respective other side. The host's result choice, the client's
 decline, mode switching, and countdown preferences are actions in the app;
-their files provide the other side. A recorded Bluetooth-air confidentiality
-check requires real devices and has no scripted example.
+their files provide the other side.
+
+With `"recordAir": true`, every session read, key write, sealed message and
+sealed end carried by either radio appends one JSON line to
+`Documents/air-recording.jsonl`: `{"direction":"hostToClient","hex":"…"}`
+or `clientToHost`. Capture defaults off and is snapshotted with the
+transaction's settings. It appends across relaunches and never enters the
+app log. File writes run in order on a dedicated serial queue.
+
+The Maestro runner installs settings at `Documents/scripted-radio.json`
+before launch, so relaunches use the same file without launch arguments.
+Its encrypted-air lane checks a successful scripted payment's capture.
+This proves the rehearsal wire path; physical Bluetooth still needs devices.

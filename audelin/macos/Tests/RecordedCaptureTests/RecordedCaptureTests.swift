@@ -204,42 +204,26 @@ struct RecordedCaptureTests {
     }
 
     @Test(arguments: [false, true])
-    func failedStopDrainsPiecesThatHaveNotYetBeenRead(stopEndsInput: Bool) async throws {
+    func failedStopWritesPiecesFlushedWhileStopping(stopEndsInput: Bool) async throws {
 
-        let capture = FakeCapture(stopFailure: .stop, stopEndsInput: stopEndsInput)
-        let track = FakeTrack(), input = WriteGate(), executor = CaptureExecutor()
-        let returned = Mutex(false)
-        let task = Task(executorPreference: executor) {
-            defer { executor.complete() }
-            let recorded = RecordedCapture(
-                capture: capture, track: track, beforeInput: { await input.wait() }, executor: executor
-            )
-            try await recorded.start()
-            capture.give(tones())
-            await #expect(throws: Failure.self) { try await recorded.stop() }
-            returned.withLock { $0 = true }
-            #expect(track.pieces == tones())
-        }
-        defer { input.release(); capture.finish(); executor.run() }
-        await executor.run(until: { input.isHeld && capture.stops == 1 })
-        #expect(input.isHeld)
-        #expect(!returned.withLock { $0 })
-        #expect(track.pieces.isEmpty)
-        input.release()
-        await executor.finish()
-        try await task.value
-        #expect(returned.withLock { $0 })
+        let capture = FakeCapture(stopFailure: .stop, stopEndsInput: stopEndsInput, flush: tones())
+        let track = FakeTrack()
+        defer { capture.finish() }
+        let recorded = RecordedCapture(capture: capture, track: track)
+        try await recorded.start()
+        if !stopEndsInput { Task { await capture.waitUntilStopped(); capture.finish() } }
+        await #expect(throws: Failure.self) { try await recorded.stop() }
+        #expect(track.pieces == tones())
     }
 }
 
 private func expectHeldStop(stopFailure: Refusal?, stopEndsInput: Bool) async throws {
 
     let capture = FakeCapture(stopFailure: stopFailure, stopEndsInput: stopEndsInput)
-    let track = FakeTrack(heldWrite: 2), executor = CaptureExecutor()
+    let track = FakeTrack(heldWrite: 2)
     let returned = Mutex(false)
-    let task = Task(executorPreference: executor) {
-        defer { executor.complete() }
-        let recorded = RecordedCapture(capture: capture, track: track, executor: executor)
+    let task = Task {
+        let recorded = RecordedCapture(capture: capture, track: track)
         try await recorded.start()
         let given = Array(tones().prefix(2))
         capture.give(given)
@@ -259,13 +243,13 @@ private func expectHeldStop(stopFailure: Refusal?, stopEndsInput: Bool) async th
         returned.withLock { $0 = true }
         #expect(track.pieces == given)
     }
-    defer { track.gate.release(); capture.finish(); executor.run() }
-    await executor.run(until: { track.gate.isHeld && capture.stops == 1 })
+    defer { track.gate.release(); capture.finish() }
+    await track.gate.waitUntilEntered()
+    await capture.waitUntilStopped()
     #expect(track.gate.isHeld)
     #expect(!returned.withLock { $0 })
     #expect(track.pieces == Array(tones().prefix(1)))
     track.gate.release()
-    await executor.finish()
     try await task.value
     #expect(returned.withLock { $0 })
 }

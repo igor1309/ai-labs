@@ -18,6 +18,17 @@ private let microphoneSkipReason: String? = {
     return nil
 }()
 
+/// The local gate sets `AUDELIN_REQUIRE_DEVICES=1`: there the suite below must
+/// run, so its skip becomes a failure that names what is missing.
+@Suite struct NativeMicrophoneBindingRequirement {
+
+    @Test(.enabled(if: ProcessInfo.processInfo.environment["AUDELIN_REQUIRE_DEVICES"] == "1"))
+    func theRealMicrophoneTestsCanRun() {
+
+        if let reason = microphoneSkipReason { Issue.record(Comment(rawValue: reason)) }
+    }
+}
+
 @Suite(.serialized, .timeLimit(.minutes(1)), .disabled(
     if: microphoneSkipReason != nil,
     Comment(rawValue: microphoneSkipReason ?? "Default microphone available.")
@@ -28,7 +39,7 @@ struct NativeMicrophoneBindingTests {
     @Test func theDefaultInputDeliversLiveAudioWithoutVoiceProcessing() async throws {
 
         let binding = NativeMicrophoneBinding.system()
-        let capture = try await MicrophoneCapture(binding: binding)
+        let capture = try await MicrophoneCapture(hardware: .init(binding: binding))
         defer { capture.stop() }
         #expect(!binding.voiceProcessingEnabled)
         try await hearAndStop(capture)
@@ -37,10 +48,10 @@ struct NativeMicrophoneBindingTests {
     /// Contract test: native engine resources permit a second microphone capture after stop.
     @Test func aRealCaptureCanFollowAStoppedCapture() async throws {
 
-        let first = try await MicrophoneCapture()
+        let first = try await MicrophoneCapture(hardware: .system())
         defer { first.stop() }
         try await hearAndStop(first)
-        let second = try await MicrophoneCapture()
+        let second = try await MicrophoneCapture(hardware: .system())
         defer { second.stop() }
         try await hearAndStop(second)
     }
@@ -106,4 +117,17 @@ private func defaultInputDescription() -> String {
     }
     let label = named ? (name?.takeRetainedValue() as String? ?? "device \(device)") : "device \(device)"
     return "\(label) (\(kind))"
+}
+
+struct NativeMicrophoneErrorTests {
+
+    /// A refusal names its call and spells a four-character status, so a log says which call refused.
+    @Test(arguments: [
+        (1_852_797_029, "Microphone choosing the input device failed: 'nope' 1852797029"),
+        (-50, "Microphone choosing the input device failed: -50"),
+    ] as [(Int32, String)])
+    func aRefusalNamesItsCallAndStatus(status: Int32, description: String) {
+
+        #expect(String(describing: NativeMicrophoneError(call: "choosing the input device", status: status)) == description)
+    }
 }

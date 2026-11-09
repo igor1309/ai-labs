@@ -5,13 +5,26 @@ let package = Package(
     name: "Audelin",
     platforms: [.macOS(.v26)],
     products: [
+        .library(name: "SummarySettings", targets: ["SummarySettings"]),
+        .library(name: "SummaryJobs", targets: ["SummaryJobs"]),
+        .library(name: "SummaryFiles", targets: ["SummaryFiles"]),
+        .library(name: "SummaryRuntime", targets: ["SummaryRuntime"]),
+        .library(name: "SpeakerIdentification", targets: ["SpeakerIdentification"]),
+
+        .library(name: "BlockingTestWork", targets: ["BlockingTestWork"]),
+        .library(name: "SplitRows", targets: ["SplitRows"]),
+        .library(name: "Lifecycle", targets: ["Lifecycle"]),
+        .library(name: "Calls", targets: ["Calls"]),
+        .library(name: "Recordings", targets: ["Recordings"]),
+        .library(name: "CallsListUI", targets: ["CallsListUI"]),
         .library(name: "CallAudioProbe", targets: ["CallAudioProbe"]),
         .library(name: "CallAudioAccess", targets: ["CallAudioAccess"]),
         .library(name: "CallAppProcesses", targets: ["CallAppProcesses"]),
         .library(name: "CallFolder", targets: ["CallFolder"]),
+        .library(name: "CallFolderName", targets: ["CallFolderName"]),
         .library(name: "CallText", targets: ["CallText"]),
-        .library(name: "Compose", targets: ["Compose"]),
         .library(name: "CoreAudioProcesses", targets: ["CoreAudioProcesses"]),
+        .library(name: "CoreAudioProcessBinding", targets: ["CoreAudioProcessBinding"]),
         .library(name: "FillIn", targets: ["FillIn"]),
         .library(name: "GlassLedger", targets: ["GlassLedger"]),
         .library(name: "LiveAudio", targets: ["LiveAudio"]),
@@ -35,21 +48,33 @@ let package = Package(
         .library(name: "TwoPassRecognizer", targets: ["TwoPassRecognizer"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/FluidInference/FluidAudio.git", exact: "0.17.7"),
-        .package(url: "https://github.com/igor1309/swift-imrx", from: "1.1.0"),
+        // Trimmed copy of FluidAudio 0.17.7: audelin/scripts/vendor-fluidaudio.sh.
+        .package(path: "Vendor/FluidAudio"),
     ],
     targets: [
+        .target(name: "SummarySettings"),
+        .testTarget(name: "SummarySettingsTests", dependencies: ["SummarySettings", "BlockingTestWork"]),
+        .target(name: "SummaryJobs"),
+        .testTarget(name: "SummaryJobsTests", dependencies: ["SummaryJobs", "BlockingTestWork"]),
+        .target(name: "SummaryFiles"),
+        .testTarget(name: "SummaryFilesTests", dependencies: ["SummaryFiles", "BlockingTestWork"]),
+        .target(name: "SummaryRuntime"),
+        .testTarget(name: "SummaryRuntimeTests", dependencies: ["SummaryRuntime", "BlockingTestWork"]),
+        .target(name: "SpeakerIdentification"),
+        .testTarget(name: "SpeakerIdentificationTests", dependencies: ["SpeakerIdentification", "BlockingTestWork"]),
+
+        .testTarget(name: "SourceChecksTests", dependencies: ["BlockingTestWork"]),
+        .target(name: "Calls", dependencies: ["CallFolderName"]),
+        .target(name: "Recordings"),
+        .target(name: "CallsListUI", dependencies: ["GlassLedger"]),
+        .testTarget(name: "CallsTests", dependencies: ["Calls", "TrackFile", "BlockingTestWork"]),
+        .testTarget(name: "RecordingsTests", dependencies: ["Recordings"]),
+        .testTarget(name: "CallsListUITests", dependencies: ["CallsListUI", "RenderedText"]),
         .target(name: "CallAudioProbe"),
         .target(name: "CallAudioAccess"),
-        .testTarget(name: "CallAudioProbeTests", dependencies: ["CallAudioProbe"]),
+        .testTarget(name: "CallAudioProbeTests", dependencies: ["CallAudioProbe", "BlockingTestWork"]),
+        .testTarget(name: "AudioConversionTests", dependencies: ["AudioConversion", "BlockingTestWork"]),
         .testTarget(name: "CallAudioAccessTests", dependencies: ["CallAudioAccess"]),
-        .executableTarget(
-            name: "Audelin",
-            dependencies: [
-                "Compose", "CallAudioAccess", "CallAudioProbe", "Lifecycle", "MenuBar", "Preferences", "PanelUI", "Reading", "Recording", "Session",
-                .product(name: "IMRxObservation", package: "swift-imrx"),
-            ]
-        ),
         .target(
             name: "AudioConversion"
         ),
@@ -57,17 +82,22 @@ let package = Package(
             name: "CallAppProcesses"
         ),
         .target(
-            name: "CallFolder"
+            name: "CallFolder",
+            dependencies: ["CallFolderName"]
         ),
         .target(
-            name: "CallText"
+            name: "CallFolderName"
         ),
         .target(
-            name: "Compose",
-            dependencies: ["CallAudioAccess", "MenuBar", "Lifecycle", "LiveAudio", "RecordedCapture", "CallFolder", "CallAppProcesses", "CoreAudioProcesses", "Preferences", "Recording", "Session", "CallText", "SideText", "FillIn", "LiveText", "ParakeetRecognizer", "TrackFile", "TranscriptFile", "TranscriptWriting", "MicrophoneCapture", "SystemAudioCapture", "Reading", "PanelUI"]
+            name: "CallText",
+            dependencies: ["SplitRows"]
         ),
         .target(
             name: "CoreAudioProcesses"
+        ),
+        .target(
+            name: "CoreAudioProcessBinding",
+            dependencies: ["CoreAudioProcesses"]
         ),
         .target(
             name: "FillIn"
@@ -105,7 +135,7 @@ let package = Package(
         ),
         .target(
             name: "PanelUI",
-            dependencies: ["GlassLedger"]
+            dependencies: ["GlassLedger", "SplitRows"]
         ),
         .target(
             name: "ParakeetRecognizer",
@@ -123,7 +153,11 @@ let package = Package(
             name: "RecordedCapture"
         ),
         .target(
-            name: "Reading"
+            name: "Reading",
+            dependencies: ["SplitRows"]
+        ),
+        .target(
+            name: "SplitRows"
         ),
         .target(
             name: "Recording"
@@ -164,12 +198,16 @@ let package = Package(
             dependencies: ["LiveText"]
         ),
         .target(
-            name: "BlockingTestWork",
-            path: "Tests/BlockingTestWork"
+            name: "RenderedText",
+            path: "Tests/RenderedText"
         ),
         .testTarget(
-            name: "AudelinTests",
-            dependencies: ["Audelin", "Compose"]
+            name: "GlassLedgerTests",
+            dependencies: ["GlassLedger"]
+        ),
+        .target(
+            name: "BlockingTestWork",
+            path: "Tests/BlockingTestWork"
         ),
         .testTarget(
             name: "BlockingTestWorkTests",
@@ -184,19 +222,20 @@ let package = Package(
             dependencies: ["CallFolder", "TrackFile", "TranscriptFile", "BlockingTestWork"]
         ),
         .testTarget(
-            name: "CallTextTests",
-            dependencies: ["CallText"]
+            name: "CallFolderNameTests",
+            dependencies: ["CallFolderName"]
         ),
         .testTarget(
-            name: "ComposeTests",
-            dependencies: [
-                "Compose", "Audelin", "CallAudioAccess", "Lifecycle", "Recording", "BlockingTestWork",
-                .product(name: "IMRxObservation", package: "swift-imrx"),
-            ]
+            name: "CallTextTests",
+            dependencies: ["CallText", "SplitRows"]
         ),
         .testTarget(
             name: "CoreAudioProcessesTests",
-            dependencies: ["CoreAudioProcesses", "BlockingTestWork"]
+            dependencies: ["CoreAudioProcesses"]
+        ),
+        .testTarget(
+            name: "CoreAudioProcessBindingTests",
+            dependencies: ["CoreAudioProcessBinding", "CoreAudioProcesses", "BlockingTestWork"]
         ),
         .testTarget(
             name: "FillInTests",
@@ -220,23 +259,24 @@ let package = Package(
         ),
         .testTarget(
             name: "MicrophoneCaptureTests",
-            dependencies: ["MicrophoneCapture"]
+            dependencies: ["MicrophoneCapture", "BlockingTestWork"]
         ),
         .testTarget(
             name: "ModelLoadingTests",
-            dependencies: ["ModelLoading"]
+            dependencies: ["ModelLoading", "BlockingTestWork"]
         ),
         .testTarget(
             name: "NemotronRecognizerTests",
-            dependencies: ["NemotronRecognizer", "BlockingTestWork"]
+            dependencies: ["NemotronRecognizer", "BlockingTestWork", .product(name: "FluidAudio", package: "FluidAudio")]
         ),
         .testTarget(
             name: "PanelUITests",
-            dependencies: ["PanelUI"]
+            dependencies: ["PanelUI", "RenderedText"]
         ),
         .testTarget(
             name: "ParakeetRecognizerTests",
-            dependencies: ["ParakeetRecognizer", "BlockingTestWork", .product(name: "FluidAudio", package: "FluidAudio")]
+            dependencies: ["ParakeetRecognizer", "BlockingTestWork", .product(name: "FluidAudio", package: "FluidAudio")],
+            resources: [.copy("Fixtures")]
         ),
         .testTarget(
             name: "PreferencesTests",
@@ -251,19 +291,8 @@ let package = Package(
             dependencies: ["Reading"]
         ),
         .testTarget(
-            name: "RecordingTests",
-            dependencies: [
-                "Recording",
-                .product(name: "IMRxObservation", package: "swift-imrx"),
-            ]
-        ),
-        .testTarget(
             name: "SettingsUITests",
-            dependencies: ["SettingsUI"]
-        ),
-        .testTarget(
-            name: "SessionTests",
-            dependencies: ["Session", .product(name: "IMRxObservation", package: "swift-imrx")]
+            dependencies: ["SettingsUI", "RenderedText"]
         ),
         .testTarget(
             name: "SideTextTests",

@@ -1,0 +1,11 @@
+{
+  "client": {
+    "comes": false
+  },
+  "hosts": [
+    {
+      "amount": 12345
+    }
+  ],
+  "enteredAmount": 12345
+}

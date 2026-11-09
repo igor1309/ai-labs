@@ -14,7 +14,7 @@ Advertising fixture: matches M2; Cancel sends its event. Evidence: Missing.
 
 ## S-3 Timed out
 
-Timed-out fixture: matches M10's host side. Evidence: Missing.
+Timed-out fixture: matches M10's host side. Evidence: Missing. Wired, the countdown ends: the screen reads timed out; after the notice's timer ends, and separately after a key, the screen reads amount entry as before any lock, with the key's digit typed. Evidence: TimeoutNoticeWiringTests.noticeEndsThirtySecondsAfterTheTimeout, TimeoutNoticeWiringTests.anActionEndsTheNoticeAndStillTakesEffect.
 
 ## S-4 A client is connecting
 

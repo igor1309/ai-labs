@@ -1,0 +1,35 @@
+{{template "head" .Program.Title}}
+{{$place := .Place}}{{$o := .Outline}}
+<main class="column page-program">
+  <a class="back" href="/">{{template "i-back"}}Программы</a>
+  <p class="eyebrow">Программа</p>
+  <h1 class="display">{{.Program.Title}}</h1>
+  {{with .Program.Description}}<p class="lede">{{.}}</p>{{end}}
+  {{if $o.Rows}}<p class="tally">{{$o.Rows}} {{plural $o.Rows "тема" "темы" "тем"}} · {{$o.ConceptCount}} {{plural $o.ConceptCount "понятие" "понятия" "понятий"}} · {{$o.WithMaterials}} с материалами</p>{{end}}
+  {{with $place}}<a class="continue" href="/m/{{.EntityID}}?page={{.Page}}"><span><b>Продолжить чтение</b><small>{{.Where}}</small></span>{{template "i-arrow"}}</a>{{end}}
+  {{if $o.Rows}}
+  {{range $o.Modules}}
+  <div class="module">
+    <a class="module-head" href="/m/{{.ID}}" title="{{.Full}}"><span class="eyebrow">{{.Label}}</span>{{if .Concepts}}<small class="row-meta">{{.Concepts}} {{plural .Concepts "понятие" "понятия" "понятий"}}</small>{{end}}<b class="row-name">{{.Name}}</b></a>
+    {{template "reads" (pair . $place)}}
+  </div>
+  {{end}}
+  <ul class="rows topics">
+    {{range $o.Topics}}
+    <li class="{{if not .Materials}}dim{{end}}">
+      <a class="row" href="/m/{{.ID}}" title="{{.Full}}">{{if .Materials}}{{template "i-book"}}{{else}}{{template "i-empty"}}{{end}}{{with .Label}}<span class="row-label">{{.}}</span>{{end}}<span class="row-name">{{.Name}}</span>{{if .Concepts}}<small class="row-meta">{{.Concepts}} {{plural .Concepts "понятие" "понятия" "понятий"}}</small>{{end}}</a>
+      {{template "reads" (pair . $place)}}
+    </li>
+    {{end}}
+  </ul>
+  {{else}}
+  <div class="state">{{template "i-empty"}}<h2>В программе пока нет тем</h2><p>Когда в Agonara появятся темы и материалы, они будут здесь.</p></div>
+  {{end}}
+  {{if .Program.Materials}}
+  <div class="group-head"><span>Без темы</span></div>
+  {{range .Program.Materials}}<a class="read" href="/m/{{.ID}}">Читать<span class="read-title">{{.Title}}</span>{{template "i-chevron"}}</a>{{end}}
+  {{end}}
+</main>
+{{template "foot"}}
+
+{{define "reads"}}{{$place := .B}}{{range .A.Materials}}<a class="read" href="/m/{{.ID}}{{if and $place (eq $place.EntityID .ID)}}?page={{$place.Page}}{{end}}">Читать{{with .Title}}<span class="read-title">{{.}}</span>{{end}}{{if and $place (eq $place.EntityID .ID)}}<small>{{$place.Label}}</small>{{end}}{{template "i-chevron"}}</a>{{end}}{{end}}

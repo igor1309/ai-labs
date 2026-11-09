@@ -6,7 +6,7 @@ public protocol SettingsStore: AnyObject {
 public struct Settings {
     public enum Key: String, CaseIterable, Sendable {
         case countdown, pickerAlpha, pickerWindowSeconds, pickerWindowReadings
-        case pickerFloor, pickerMargin, pickerFade, advertisedName
+        case pickerFloor, pickerMargin, pickerFade, pickerDropGap, choiceHold, advertisedName
     }
 
     public enum Value: Equatable, Sendable {
@@ -21,6 +21,8 @@ public struct Settings {
     public static let pickerFloorRange = -100.0 ... -30.0
     public static let pickerMarginRange = 0.0...20.0
     public static let pickerFadeRange = 0.5...10.0
+    public static let pickerDropGapRange = 0.0...20.0
+    public static let choiceHoldRange = 0.0...5.0
 
     private let store: any SettingsStore
     public let advertisedName: String
@@ -78,6 +80,14 @@ public struct Settings {
 
     public var pickerFade: Double {
         number(.pickerFade, in: Self.pickerFadeRange, default: 2)
+    }
+
+    public var pickerDropGap: Double {
+        number(.pickerDropGap, in: Self.pickerDropGapRange, default: 6)
+    }
+
+    public var choiceHold: Double {
+        number(.choiceHold, in: Self.choiceHoldRange, default: 1)
     }
 
     @discardableResult

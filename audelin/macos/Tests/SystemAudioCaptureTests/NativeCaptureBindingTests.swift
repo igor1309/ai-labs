@@ -178,21 +178,22 @@ struct NativeCaptureBindingTests {
         let release = DispatchSemaphore(value: 0)
         defer { release.signal() }
         let firstCopy = Mutex(true)
-        let binding = CoreAudioBinding(native: calls.native, afterIOBufferCopy: {
-            let hold = firstCopy.withLock {
-                guard $0 else { return false }
-                $0 = false
-                return true
-            }
-            guard hold else { return }
-            copied.continuation.yield(())
-            release.wait()
-        })
+        let binding = CoreAudioBinding(native: calls.native)
         let tap = try binding.createTap(TapRequest(selection: .only([10]), mono: true, unmuted: true, isPrivate: true))
         let device = try binding.createDevice(DeviceRequest(tap: tap, isPrivate: true, autoStart: false))
         defer { binding.destroyDevice(device); binding.destroyTap(tap) }
         let results = Mutex<[(Result<AudioPiece, any Error>, NativeThreadRole)]>([])
+        // The first buffer is held in its delivery, after the IO callback copied it.
         let io = try binding.installIO(device) { result in
+            let hold = firstCopy.withLock {
+                guard $0, case .success = result else { return false }
+                $0 = false
+                return true
+            }
+            if hold {
+                copied.continuation.yield(())
+                release.wait()
+            }
             results.withLock { $0.append((result, NativeThreadRole.current)) }
         }
         defer { binding.removeIO(device, io) }

@@ -8,6 +8,7 @@ import { ru } from "./ru.ts";
 // shown or read out, is written in capitals here rather than styled so.
 export type Texts = {
   gameAudio: { mute: string; on: string; off: string };
+  coloring: string;
   whoseJaw: string;
   jawShelf: string;
   jawCollection: string;
@@ -46,6 +47,8 @@ export type Texts = {
   // The version footer's name, read out by a screen reader, for parents
   // too.
   versionLabel: string;
+  homeNew: string;
+  homeParentNote: string;
   turnSideways: string;
   makeWindowWider: string;
   portraitLayoutComing: string;
@@ -71,10 +74,9 @@ export type Texts = {
   bestScore: string;
   best: string;
   playAgain: string;
-  // The catalogue of every creature: its title, and its home tile's,
-  // short enough for a tile among many.
+  // The catalogue of every creature: its title, and its name on Home's
+  // large card.
   catalogue: string;
-  catalogueTile: string;
   diets: { meat: string; plants: string; both: string };
   // The catalogue's chips that choose the dinosaurs shown by their food,
   // and the chip that shows them all.
@@ -136,6 +138,7 @@ export type Texts = {
   moreComing: string;
   // Find the pair: its title, also on its home tile.
   pairs: string;
+  today: string;
   play: string;
   // The climb level reached, read out on its chip.
   level: string;
@@ -152,7 +155,7 @@ export type Texts = {
   newLevel: (level: number) => string;
   // The badge of a dinosaur found for the first time.
   newlyFound: string;
-  levelOffer: { question: (level: string) => string; yes: string; notNow: string };
+  levelOffer: { question: (level: string) => string; tag: string; yes: string; notNow: string };
   // The dinosaurs found in find the pair, read out on the catalogue's
   // count and stamps.
   found: string;
@@ -221,7 +224,6 @@ export type Texts = {
   brush: string;
   wideBrush: string;
   // The name of the phone's menu of brushes.
-  brushMenu: string;
   // The FIELD GUIDE's page: its cards, read out, the kinds of treasure
   // found, read out on their count, and each kind's name.
   treasureCards: string;

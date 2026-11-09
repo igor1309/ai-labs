@@ -35,7 +35,7 @@ struct CoreAudioBindingTests {
     @Test func realCaptureCanFollowAStoppedCapture() async throws {
 
         try await withPlayer { pid in
-            let binding = CoreAudioBinding()
+            let binding = CoreAudioBinding(native: .system)
             let first = try await start(pid, binding: binding)
             defer { first.stop() }
             try await hearToneAndStop(first)
@@ -46,7 +46,7 @@ struct CoreAudioBindingTests {
     }
 
     func start(
-        _ pid: Int32, binding: CoreAudioBinding = CoreAudioBinding(),
+        _ pid: Int32, binding: CoreAudioBinding = CoreAudioBinding(native: .system),
         pause: () async throws -> Void = { try await Task.sleep(for: .milliseconds(20)) },
         now: () -> ContinuousClock.Instant = { .now }
     ) async throws -> SystemAudioCapture {
@@ -57,7 +57,7 @@ struct CoreAudioBindingTests {
         let deadline = now() + .seconds(30)
         var object: UInt32?
         repeat {
-            object = try? await offPool { try binding.processObject(pid) }
+            object = try? try binding.processObject(pid)
             if object != nil { break }
             try await pause()
         } while now() < deadline
@@ -103,7 +103,7 @@ struct CoreAudioBindingTests {
         let player = Process()
         player.executableURL = URL(fileURLWithPath: "/bin/sh")
         player.arguments = ["-c", "trap '' TERM; sleep 60"]
-        try await offPool { try player.run() }
+        try player.run()
         try await Task.sleep(for: .milliseconds(200))
         let started = ContinuousClock.now
         await Self.end(player)
@@ -118,7 +118,7 @@ struct CoreAudioBindingTests {
     private func withPlayer(_ body: (Int32) async throws -> Void) async throws {
 
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        try await offPool { try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true) }
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         try await withCleanup {
             let sound = directory.appendingPathComponent("tone.wav")
             try await writeTone(to: sound)
@@ -126,7 +126,7 @@ struct CoreAudioBindingTests {
             player.executableURL = URL(fileURLWithPath: "/usr/bin/afplay")
             // A tap hears the process after its own volume, so the tone plays faintly, not at 0.
             player.arguments = ["-v", "0.02", sound.path]
-            try await offPool { try player.run() }
+            try player.run()
             do {
                 try await body(player.processIdentifier)
             } catch {
@@ -154,7 +154,7 @@ struct CoreAudioBindingTests {
 
     private func writeTone(to sound: URL) async throws {
 
-        try await offPool {
+        do {
             guard let format = AVAudioFormat(standardFormatWithSampleRate: 48_000, channels: 1),
                   let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 48_000 * 40),
                   let data = buffer.floatChannelData?[0]

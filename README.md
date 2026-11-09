@@ -48,7 +48,7 @@ The usual pattern is to combine a guide with a prompt when working with a chosen
 | agents | Agent definitions | OpenClaw agent-fleet operational docs and nested specialized agent definitions |
 | agonara | Application | Bring-your-own-agent (BYOA) structured learning program environment. API-first backend with `/learn`/`/admin` UIs and an operator CLI as first-class clients; curated programs, learner progression, evidence of mastery |
 | nexum | Application | Private repo memory system |
-| rexlab | Web App | Dinosaur educational web app for children aged 5–7 (working name; research stage) |
+| rexlab | Web App | Dinosaur educational web app for children aged 5–7 (working name; MVP stage) |
 | notio | Service | Personal capture service |
 | notio-backend | Release unit | Swift/Hummingbird Telegram capture service, Supabase schema/migrations owner, Docker-producing VPS deployable |
 | notio-frontend | Release unit | Svelte/Vite Supabase browse client, Cloudflare Pages deployable |
@@ -70,8 +70,8 @@ The usual pattern is to combine a guide with a prompt when working with a chosen
 | neris | Framework | Agentic execution layer in Swift |
 | warder | Tool (MVP stage) | Local monitor for AI-agent runs: polls the Claude Code source (`claude agents --json`) and writes one complete JSONL observation per successful read on stdout, diagnostics on stderr; one Go module, components as packages under `internal/`, composition root `cmd/warder`; how to build and run it: [warder/README.md](warder/README.md) |
 | ali | Product (concept) | AI Learning Agent: personalized lifelong-learning coach with adaptive teaching and a persistent Personal Learning Twin; Create AI Agents Championship entry (education track); working name, no prototype yet |
-| audelin | Product (design) | Local macOS companion for calls: records both sides as two tracks, shows a smooth, selectable live transcript of Russian calls with English terms, and explains a selected term through bb; ADR-001 decided, no app code yet |
-| mizan-ble | Product (planning) | Proof of concept for paying in Mizan between two iOS devices over Bluetooth LE: one app with an iPad host that advertises an amount and an iPhone client that confirms or declines it, with a mocked payment; plan in [mizan-ble/docs/poc.md](mizan-ble/docs/poc.md), architecture and specs in [mizan-ble/ARCHITECTURE.md](mizan-ble/ARCHITECTURE.md), no app code yet |
+| audelin | Product (implementation) | Local macOS companion for calls: records both sides as two tracks, shows a smooth, selectable live transcript of Russian calls with English terms, and explains a selected term through bb; the menu bar app records detected calls, shows the live transcript and opens native Settings |
+| mizan-ble | Product (v0.0.1) | Proof of concept for paying in Mizan between two iOS devices over Bluetooth LE: one app with an iPad host that advertises an amount and an iPhone client that confirms or declines it, with a mocked payment; plan in [mizan-ble/docs/poc.md](mizan-ble/docs/poc.md), architecture and specs in [mizan-ble/ARCHITECTURE.md](mizan-ble/ARCHITECTURE.md); v0.0.1 built and checked on devices |
 | cairana | Product (research) | AI assistant for psychologists. Turns sessions into structured notes, case context, and next steps; working name in naming-validation stage |
 | noreta | Product | Local hub for coding-agent sessions across Claude Code, Codex and Pi — one view of active and past work, with search, grouping, history and project context; read-only macOS MVP; all seven QA features have a domain implementation and a test per scenario; Claude Code adapters read real sessions, their runtime state and transcripts from disk, and `npm start` lists them as plain text; no Codex adapter yet |
 | foliotell | App family | Native document-to-speech apps that read local Markdown and plain-text files aloud: shipping iOS app (release unit `foliotell`, in `ios/`) with Apple speech synthesis; Android sibling app in `android/` (Kotlin/Compose reader with platform TTS, Stage 1 of the Android roadmap) |
@@ -88,7 +88,7 @@ Architecture Decision Records (ADRs) live in `docs/adr/`, organized by domain:
 
 ## Releases
 
-Configured release units are trunk-only, semver-based, and tag-driven (`<basename>_v<version>`). See `release-units.config.toml` for discovery paths and `release-units.toml` for the current manifest. Full release policy is in `CLAUDE.md` under "Release Process".
+Configured release units are trunk-only, semver-based, and tag-driven (`<basename>_v<version>`). See `release-units.config.toml` for discovery paths and `release-units.toml` for the current manifest. Full release policy is in `docs/adr/release/`.
 
 ## LOC Dashboard
 

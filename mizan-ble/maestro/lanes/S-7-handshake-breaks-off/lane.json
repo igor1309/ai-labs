@@ -1,0 +1,28 @@
+{
+  "parts": [
+    {
+      "name": "host",
+      "device": "iPad",
+      "expected": [
+        {
+          "category": "hostBroadcast",
+          "phase": "failed"
+        }
+      ],
+      "flow": "host.yaml",
+      "settings": "host.json"
+    },
+    {
+      "name": "client",
+      "device": "iPhone",
+      "expected": [
+        {
+          "category": "clientConnect",
+          "phase": "couldNotConnect"
+        }
+      ],
+      "flow": "client.yaml",
+      "settings": "client.json"
+    }
+  ]
+}

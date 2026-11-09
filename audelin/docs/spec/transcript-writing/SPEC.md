@@ -22,6 +22,16 @@ What it keeps, Session has in the transcript it closes next.
   written,** never an older one after a newer: each write replaces the
   whole text (`../transcript-file/SPEC.md`). The reading feed retains every
   snapshot, including listening omissions that retire entry identities.
+- **Each write is followed by a pause the root chooses,** so the file is
+  saved at most that often while the latest text waits, rather than on
+  every word: a recogniser updates several times a second, and a 3-hour
+  call rewrote its file about 220 times a minute. The app pauses 5
+  seconds between saves (owner, 2026-10-31, from
+  `../../research/transcript-save-interval.md`). A crash keeps every final entry and loses text
+  not yet final: what was heard since the last save, and, if it strikes
+  while the file is rewritten, all the text after the final entries,
+  which the next save writes again. The pause ends once call text stops,
+  so its last text is written at once.
 - **Stopping returns once call text has stopped and its last text is
   written,** so Session closes the transcript after its last text
   (session, Bring-down keeps everything); a second stop waits for the
@@ -41,7 +51,7 @@ Feature: Keeping call text's text in the transcript
   Scenario: S-1 Call text's text is kept as it changes
     Given call text I started
     When its text changes
-    Then the transcript I close keeps that text, and I can read it at once
+    Then the transcript I close keeps that text, and I can read it once the pause after the last write ends
 
   Scenario: S-2 Only the latest text is kept after a slow write
     Given a write of call text's text is held
@@ -97,4 +107,14 @@ Feature: Keeping call text's text in the transcript
     Given a stop of call text I started is waiting for its last write
     When I stop it again
     Then my second stop returns only once the first does
+
+  Scenario: S-13 Writes are spaced by a pause
+    Given call text I started whose text was just written
+    When its text changes twice during the pause after that write
+    Then nothing is written until the pause ends, and then only the latest text
+
+  Scenario: S-14 Stopping ends the pause
+    Given call text I started, in the pause after a write
+    When I stop it
+    Then its last text is written without waiting for the pause, and my stop returns
 ```

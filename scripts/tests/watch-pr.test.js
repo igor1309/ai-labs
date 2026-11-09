@@ -167,3 +167,20 @@ it('stops when checks are still pending at the overall limit', () => {
     assert.match(result.stderr, /still pending after 0s: core/);
   });
 });
+
+const TIMED_OUT = { exit: 1, stderr: 'Post "https://api.github.com/graphql": context deadline exceeded' };
+
+it('keeps watching through a gh call that times out', () => {
+  withFakeGh([polled([check('core', 'pending', 'IN_PROGRESS')]), TIMED_OUT, TIMED_OUT, polled([check('core', 'pass', 'SUCCESS')])], {}, (result, calls) => {
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+    assert.equal(calls.length, 4);
+  });
+});
+
+it('gives up after gh fails the given number of times in a row', () => {
+  withFakeGh([TIMED_OUT], { WATCH_PR_GH_RETRIES: '3' }, (result, calls) => {
+    assert.equal(result.status, 1, result.stdout + result.stderr);
+    assert.equal(calls.length, 3);
+    assert.match(result.stderr, /gh failed 3 times in a row: .*context deadline exceeded/);
+  });
+});

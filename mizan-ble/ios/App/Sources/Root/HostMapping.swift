@@ -2,6 +2,7 @@ import AmountEntry
 import DesignSystem
 import HostBroadcast
 import HostPayment
+import TimeoutNotice
 import HostUI
 import Settings
 import SettingsUI
@@ -45,8 +46,8 @@ enum HostMapping {
         case .goingOnAir, .advertising, .handshake, .handedOver: return false
         }
     }
-    static func screen(amount: AmountEntry.State, broadcast: HostBroadcast.State, payment: HostPayment.State?,
-                       name: String, seconds: Int) -> HostState {
+    static func screen(amount: AmountEntry.State, broadcast: HostBroadcast.State, notice: TimeoutNotice.State,
+                       payment: HostPayment.State?, name: String, seconds: Int) -> HostState {
         var screen = entry(amount: amount, name: name, seconds: seconds)
         screen.isSettingsEnabled = atRest(broadcast, payment)
         if let payment {
@@ -62,13 +63,14 @@ enum HostMapping {
                 screen.notice = .init(title: "Could not go on air", detail: "The amount is still here. Lock it to try again.",
                                       symbol: "antenna.radiowaves.left.and.right.slash", isFailure: true)
             }
-        case .timedOut:
+        case .timedOut where notice.showing != nil:
             screen.status = "Timed out"
             screen.statusTone = .host
             screen.isAmountMuted = amount.amount.isEmpty
             screen.steps[0] = .init(.active, title: "Amount", detail: "Reset")
             screen.notice = .init(title: "No client in \(seconds) s", detail: "Advertising stopped. The amount was cleared.",
                                   symbol: "clock.badge.xmark", isFailure: false)
+        case .timedOut: break
         case .goingOnAir, .advertising:
             let going = broadcast.phase == .goingOnAir
             let left = broadcast.secondsLeft ?? seconds

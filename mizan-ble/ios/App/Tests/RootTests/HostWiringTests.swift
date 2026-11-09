@@ -310,9 +310,21 @@ import Settings
 @MainActor func until(_ condition: @escaping @MainActor () -> Bool) async {
     while !condition() {
         await withCheckedContinuation { continuation in
-            withObservationTracking { _ = condition() } onChange: { continuation.resume() }
+            let wake = Wake(continuation)
+            withObservationTracking { _ = condition() } onChange: { wake.resume() }
+            // Tracking registers after its read, so a change made on another thread in between
+            // fires no onChange; the check after registering catches it.
+            if condition() { wake.resume() }
         }
     }
+}
+
+/// Resumes its continuation once, whichever of the change and the second check comes first.
+private final class Wake: @unchecked Sendable {
+    private let lock = NSLock()
+    private var continuation: CheckedContinuation<Void, Never>?
+    init(_ continuation: CheckedContinuation<Void, Never>) { self.continuation = continuation }
+    func resume() { lock.withLock { () -> CheckedContinuation<Void, Never>? in defer { continuation = nil }; return continuation }?.resume() }
 }
 
 @MainActor final class ClientPeer {

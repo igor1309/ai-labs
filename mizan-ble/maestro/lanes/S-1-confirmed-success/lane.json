@@ -1,0 +1,28 @@
+{
+  "parts": [
+    {
+      "name": "host",
+      "device": "iPad",
+      "expected": [
+        {
+          "category": "hostPayment",
+          "phase": "paid"
+        }
+      ],
+      "flow": "host.yaml",
+      "settings": "host.json"
+    },
+    {
+      "name": "client",
+      "device": "iPhone",
+      "expected": [
+        {
+          "category": "clientPayment",
+          "phase": "paid"
+        }
+      ],
+      "flow": "client.yaml",
+      "settings": "client.json"
+    }
+  ]
+}

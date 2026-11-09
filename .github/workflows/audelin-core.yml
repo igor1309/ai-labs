@@ -21,6 +21,10 @@ jobs:
         with:
           ref: ${{ inputs.ref || github.sha }}
 
+      - name: Test profiling tools
+        timeout-minutes: 2
+        run: python3 -I -m unittest discover -s audelin/macos/scripts/tests
+
       # Swift 6 and Swift Testing: take the image's newest Xcode, as
       # foliotell-core does.
       - name: Select newest Xcode
@@ -32,36 +36,82 @@ jobs:
       # never kept.
       - name: Cache the speech models
         id: models
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/Library/Application Support/FluidAudio/Models
-          key: audelin-models-${{ hashFiles('audelin/macos/Package.resolved') }}
+          key: audelin-models-${{ hashFiles('audelin/macos/Vendor/FluidAudio/Package.swift') }}
 
-      # Compiling is bounded by the job; the tests run under two minutes,
-      # so a hang fails at once and names the tests it left unfinished.
+      # All three test packages build in one scratch directory with the same
+      # flags, so each module compiles once. FluidAudio is vendored, trimmed to
+      # the recognizers Audelin uses. A checkout gives files new timestamps, so
+      # the vendored files get one fixed time: the cache, keyed on their
+      # content, then keeps them compiled. Our own sources still rebuild.
+      - name: Key the build cache
+        id: build-key
+        run: echo "swift=$(swift --version 2>&1 | shasum | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+
+      - name: Fix the vendored timestamps
+        run: find audelin/macos/Vendor -type f -exec touch -t 202001010000 {} +
+
+      - name: Restore the build cache
+        id: build-cache
+        uses: actions/cache/restore@v6
+        with:
+          path: audelin/macos/.build
+          key: audelin-build-${{ steps.build-key.outputs.swift }}-${{ hashFiles('audelin/macos/Vendor/FluidAudio/**', 'audelin/macos/App/Package.resolved') }}
+
+      # Compiling is bounded by the job; the main tests have a three-minute
+      # limit that names unfinished tests when exceeded.
+      # Optimize the debug configuration to retain testable imports while
+      # measuring the same optimized code paths as the app.
       - name: Build tests
         working-directory: audelin/macos
-        run: swift build --build-tests
+        run: swift build --build-tests -Xswiftc -O
 
       # Without the cache, the recognizer tests download the models first:
       # that alone can take longer than the tests' limit.
       - name: Fetch the speech models
         if: steps.models.outputs.cache-hit != 'true'
         working-directory: audelin/macos
-        run: sh ../scripts/swift-test-bounded.sh 900 --filter RecognizerTests
+        run: sh ../scripts/swift-test-bounded.sh 900 -Xswiftc -O --filter ParakeetContractTests
 
+      # The recognizer tests run their speech models on the CPU here (the
+      # runner has no Neural Engine), which takes the runner's few cores
+      # from every suite running beside them and pushed tight file and
+      # process tests past their time limits (LAB-1078). They run in a step
+      # of their own, after the rest.
       - name: Run tests
         working-directory: audelin/macos
-        run: sh ../scripts/swift-test-bounded.sh 120
+        run: sh ../scripts/swift-test-bounded.sh 180 -Xswiftc -O --skip '^(NemotronRecognizerTests|ParakeetRecognizerTests)\.'
+
+      - name: Run recognizer tests
+        working-directory: audelin/macos
+        run: sh ../scripts/swift-test-bounded.sh 180 -Xswiftc -O --filter '^(NemotronRecognizerTests|ParakeetRecognizerTests)\.'
+
+      - name: Build app tests
+        working-directory: audelin/macos/App
+        run: swift build --build-tests -Xswiftc -O --scratch-path ../.build
+
+      - name: Run app tests
+        working-directory: audelin/macos/App
+        run: sh ../../scripts/swift-test-bounded.sh 180 -Xswiftc -O --scratch-path ../.build
 
       - name: Build preview app tests
         working-directory: audelin/macos/PreviewApps
-        run: swift build --build-tests
+        run: swift build --build-tests -Xswiftc -O --scratch-path ../.build
 
       - name: Run preview app tests
         working-directory: audelin/macos/PreviewApps
-        run: sh ../../scripts/swift-test-bounded.sh 120
+        run: sh ../../scripts/swift-test-bounded.sh 120 -Xswiftc -O --scratch-path ../.build
 
       - name: Build the app bundle
         working-directory: audelin/macos
-        run: AUDELIN_SIGN_IDENTITY=- sh scripts/bundle.sh
+        run: AUDELIN_SIGN_IDENTITY=- AUDELIN_SCRATCH_PATH="$PWD/.build" sh scripts/bundle.sh
+
+      # Trunk alone saves, so pull requests do not fill the cache budget.
+      - name: Save the build cache
+        if: steps.build-cache.outputs.cache-hit != 'true' && github.ref == 'refs/heads/trunk'
+        uses: actions/cache/save@v6
+        with:
+          path: audelin/macos/.build
+          key: ${{ steps.build-cache.outputs.cache-primary-key }}

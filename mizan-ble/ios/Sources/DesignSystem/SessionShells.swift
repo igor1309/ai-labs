@@ -1,6 +1,7 @@
 import SwiftUI
 
 /// The host session rail beside the current stage. Its parent supplies the size.
+/// It lays out inside the safe area; its backgrounds reach the screen's edges.
 public struct IPadShell<Steps: View, Content: View>: View {
     let side: Side
     let eyebrow: String
@@ -44,11 +45,12 @@ public struct IPadShell<Steps: View, Content: View>: View {
                 Spacer(minLength: 0)
                 deviceFooter
             }
-            .padding(.top, Tokens.space18)
-            .padding([.horizontal, .bottom], Tokens.space7)
+            .padding(.top, Tokens.space12)
+            .padding(.horizontal, Tokens.space7)
+            .padding(.bottom, Tokens.space2)
             .frame(width: 300)
             .frame(maxHeight: .infinity, alignment: .top)
-            .background(Tokens.rail)
+            .background(Tokens.rail, ignoresSafeAreaEdges: .all)
             VStack(alignment: .leading, spacing: Tokens.space6) {
                 HStack {
                     Text(eyebrow).font(Tokens.mono(Tokens.sizeSmall, .medium)).tracking(1.5)
@@ -58,15 +60,13 @@ public struct IPadShell<Steps: View, Content: View>: View {
                 }
                 content.frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .padding(.top, Tokens.space18)
+            .padding(.top, Tokens.space12)
             .padding(.horizontal, Tokens.space14)
-            .padding(.bottom, Tokens.space12)
+            .padding(.bottom, Tokens.space7)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Tokens.ground)
-        .clipShape(RoundedRectangle(cornerRadius: Tokens.radiusIpad))
-        .overlay { RoundedRectangle(cornerRadius: Tokens.radiusIpad).strokeBorder(Tokens.lineSoft, lineWidth: 1) }
+        .background(Tokens.ground, ignoresSafeAreaEdges: .all)
     }
 
     private var deviceFooter: some View {
@@ -108,19 +108,22 @@ struct SettingsGear: View {
     }
 }
 
-/// The client session header above the current stage. Its parent supplies the size.
-public struct IPhoneShell<Steps: View, Content: View>: View {
+/// The session header above the current stage. Its parent supplies the size.
+/// It lays out inside the safe area; its backgrounds reach the screen's edges.
+public struct IPhoneShell<Steps: View, Content: View, Actions: View>: View {
     let side: Side
     let eyebrow: String
     let status: StatusPill
     let onSwitch: (Side) -> Void
     let steps: Steps
     let content: Content
+    let actions: Actions
 
     public init(
         side: Side = .client, eyebrow: String, status: StatusPill,
         onSwitch: @escaping (Side) -> Void,
-        @ViewBuilder steps: () -> Steps, @ViewBuilder content: () -> Content
+        @ViewBuilder steps: () -> Steps, @ViewBuilder content: () -> Content,
+        @ViewBuilder actions: () -> Actions
     ) {
         self.side = side
         self.eyebrow = eyebrow
@@ -128,20 +131,23 @@ public struct IPhoneShell<Steps: View, Content: View>: View {
         self.onSwitch = onSwitch
         self.steps = steps()
         self.content = content()
+        self.actions = actions()
     }
 
     public var body: some View {
         VStack(spacing: 0) {
             VStack(alignment: .leading, spacing: Tokens.space5) {
-                ModeHeader(side: side, layout: .bar, onSwitch: onSwitch)
+                ModeHeader(side: side, layout: .bar, onSwitch: onSwitch).shellFrame(.header)
                 steps
             }
-            .padding(.top, Tokens.space14)
+            .padding(.top, Tokens.space2)
             .padding([.horizontal, .bottom], Tokens.space5)
             .frame(maxWidth: .infinity)
-            .background(Tokens.rail, in: UnevenRoundedRectangle(
-                bottomLeadingRadius: 28, bottomTrailingRadius: 28
-            ))
+            .background {
+                UnevenRoundedRectangle(bottomLeadingRadius: 28, bottomTrailingRadius: 28)
+                    .fill(Tokens.rail)
+                    .ignoresSafeArea(edges: [.top, .horizontal])
+            }
             VStack(alignment: .leading, spacing: Tokens.space4) {
                 HStack {
                     Text(eyebrow).font(Tokens.mono(Tokens.sizeMicro, .medium)).tracking(1.5)
@@ -149,15 +155,59 @@ public struct IPhoneShell<Steps: View, Content: View>: View {
                     Spacer(minLength: Tokens.space2)
                     status
                 }
-                content.frame(maxWidth: .infinity, maxHeight: .infinity)
+                .shellFrame(.eyebrow)
+                // Content takes what is left and can never push the header or
+                // the actions, so every screen keeps them in the same place.
+                content.frame(maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
+                ActionStack { actions }.shellFrame(.actions)
             }
             .padding([.top, .horizontal], Tokens.space5)
-            .padding(.bottom, Tokens.space8)
+            .padding(.bottom, Tokens.space2)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Tokens.ground)
-        .clipShape(RoundedRectangle(cornerRadius: Tokens.radiusIphone))
-        .overlay { RoundedRectangle(cornerRadius: Tokens.radiusIphone).strokeBorder(Tokens.lineSoft, lineWidth: 1) }
+        .background(Tokens.ground, ignoresSafeAreaEdges: .all)
     }
+}
+
+public extension IPhoneShell where Actions == EmptyView {
+
+    init(
+        side: Side = .client, eyebrow: String, status: StatusPill,
+        onSwitch: @escaping (Side) -> Void,
+        @ViewBuilder steps: () -> Steps, @ViewBuilder content: () -> Content
+    ) {
+        self.init(side: side, eyebrow: eyebrow, status: status, onSwitch: onSwitch,
+                  steps: steps, content: content, actions: { EmptyView() })
+    }
+}
+
+/// The actions at the foot of a screen, full width, one under the other.
+public struct ActionStack<Actions: View>: View {
+    let actions: Actions
+
+    public init(@ViewBuilder actions: () -> Actions) { self.actions = actions() }
+
+    public var body: some View {
+        VStack(spacing: Tokens.space2) { actions }
+    }
+}
+
+public extension View {
+    /// The device a design frame draws, for previews and the gallery, where no
+    /// real screen supplies one: its status bar and home indicator as a safe
+    /// area, and its outline.
+    func deviceScreen(_ size: CGSize, cornerRadius: CGFloat, safeArea: EdgeInsets) -> some View {
+        safeAreaPadding(safeArea)
+            .frame(width: size.width, height: size.height)
+            .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
+            .overlay { RoundedRectangle(cornerRadius: cornerRadius).strokeBorder(Tokens.lineSoft, lineWidth: 1) }
+    }
+}
+
+public extension EdgeInsets {
+    /// The status bar and home indicator a design frame draws on an iPhone.
+    static let iPhoneScreen = EdgeInsets(top: 48, leading: 0, bottom: 24, trailing: 0)
+    /// The status bar and home indicator a design frame draws on an iPad.
+    static let iPadScreen = EdgeInsets(top: 24, leading: 0, bottom: 20, trailing: 0)
 }

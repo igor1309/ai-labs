@@ -11,33 +11,7 @@ public struct HostState: Equatable, Sendable {
     public var toneProjection: ToneProjection { ToneProjection(status: statusTone, accent: accent, steps: steps, exchangeTone: exchange.tone, direction: exchange.direction) }
     public struct ToneProjection: Equatable, Sendable { let status: StatusPill.State; let accent: Message.Tone; let steps: [SessionStep]; let exchangeTone: Message.Tone; let direction: Message.Direction }
     public var buttonsProjection: [HostAction] { buttons }
-    public struct Exchange: Equatable, Sendable {
-        public var hostCode: String
-        public var hostDetail: String
-        public var message: String
-        public var clientCode: String
-        public var clientDetail: String
-        public var tone: Message.Tone
-        public var direction: Message.Direction
-        public var symbol: String
-        public var clientIsEmpty: Bool
-
-        public init(
-            hostCode: String, hostDetail: String, message: String,
-            clientCode: String, clientDetail: String, tone: Message.Tone,
-            direction: Message.Direction, symbol: String, clientIsEmpty: Bool = false
-        ) {
-            self.hostCode = hostCode
-            self.hostDetail = hostDetail
-            self.message = message
-            self.clientCode = clientCode
-            self.clientDetail = clientDetail
-            self.tone = tone
-            self.direction = direction
-            self.symbol = symbol
-            self.clientIsEmpty = clientIsEmpty
-        }
-    }
+    public typealias Exchange = ExchangeStrip.Model
 
     public enum Panel: Equatable, Sendable {
         case keypad(rows: [[HostAction]])

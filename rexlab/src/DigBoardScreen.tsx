@@ -1,11 +1,11 @@
-import { Sparkles, Star } from "lucide-react";
+import { Check, CircleQuestionMark, PaintbrushVertical, RotateCcw, Sparkles, Star } from "lucide-react";
 import type { AgeLevel } from "./ageLevel.ts";
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { Button } from "./Button.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 import { useGateShown } from "./OrientationGate.tsx";
-import { BrushMenu, BrushPicker, DigBar, FieldGuideButton } from "./DigBar.tsx";
+import { BrushButtons, BrushPicker, DigBar, DigGround, DugUpChip, FieldGuideButton } from "./DigBar.tsx";
 import { Picture, PictureImage, usePicture, type PictureLook } from "./Picture.tsx";
 import type { StartTimer } from "./ownedTimers.ts";
 
@@ -108,8 +108,6 @@ export type DigBoardScreenProps = {
   onBrush: (mark: SandMark) => void;
   onPick?: (id: string) => void;
   onWide: (wide: boolean) => void;
-  // Times the phone's brush menu out as it closes.
-  menuTimer: StartTimer;
   onHome: () => void;
   onFieldGuide?: (() => void) | undefined;
 };
@@ -265,13 +263,11 @@ export function DigBoardScreen({
   onBrush,
   onPick,
   onWide,
-  menuTimer,
   onHome,
   onFieldGuide
 }: DigBoardScreenProps) {
   const gateShown = useGateShown();
   const text = TEXTS[language];
-  const [brushMenu, setBrushMenu] = useState(false);
   const chipStar = useRef<SVGSVGElement>(null);
   const [flight, setFlight] = useState<CSSProperties>({});
   const book = useRef<SVGSVGElement>(null);
@@ -468,18 +464,13 @@ export function DigBoardScreen({
   return (
     <main className="dig-screen dig-board-screen" data-motion={grains || undefined}
       style={{ "--dig-drop": `${arrivalWait}ms`, "--dig-gust": `${gustWait}ms`, "--dig-lift": `${liftWait}ms`, "--dig-treasure": `${flightWait}ms` } as CSSProperties}>
-      <div className="stratum stratum-1" aria-hidden="true" />
-      <DigBar language={language} title={questionShown ? text.whoIsIt : text.dig} onHome={onHome}>
+      <DigGround />
+      <DigBar language={language} title={questionShown ? text.whoIsIt : text.dig} Mark={questionShown ? CircleQuestionMark : PaintbrushVertical} onHome={onHome}>
         <BrushPicker language={language} wide={wide} disabled={blown} onWide={onWide} />
-        <BrushMenu language={language} wide={wide} disabled={blown} open={brushMenu} onOpen={() => setBrushMenu(true)} onClose={() => setBrushMenu(false)}
-          onWide={onWide} startTimer={menuTimer} />
         <FieldGuideButton language={language} count={treasures} motion={grains} bookRef={book} onFieldGuide={onFieldGuide}
           landed={treasureFlight?.phase === "landed" ? (treasureFlight.fresh ? "new" : "again") : undefined} />
-        {dugUp !== undefined && (
-          <p className="dig-chip" aria-label={text.dugUp} data-counted={finish?.phase === "counted" || undefined}>
-            <Star ref={chipStar} size={20} aria-hidden="true" />
-            <span>{shownCount}/{total}</span>
-          </p>
+        {dugUp !== undefined && shownCount !== undefined && (
+          <DugUpChip language={language} count={shownCount} total={total} counted={finish?.phase === "counted"} starRef={chipStar} />
         )}
       </DigBar>
       {flying && <Star className="dig-board-star" size={24} aria-hidden="true" style={flight} />}
@@ -565,14 +556,15 @@ export function DigBoardScreen({
                   aria-label={`${text.whoIsIt}: ${card.name.toLocaleUpperCase(language)}${card.correct ? `: ${text.digChoice.right}` : card.rejected ? `: ${text.digChoice.tryAnother}` : ""}`} onClick={() => onPick?.(card.id)}>
                   <Picture className="dig-choice-picture" src={card.picture} alt="" width={800} height={600} />
                   <ChoiceName name={card.name.toLocaleUpperCase(language)} />
-                  {card.correct && <span className="dig-choice-mark dig-choice-mark-correct" aria-hidden="true">✓</span>}
-                  {card.rejected && <span className="dig-choice-mark dig-choice-mark-rejected" aria-hidden="true">↻ {text.digChoice.tryAnother}</span>}
+                  {card.correct && <span className="dig-choice-mark dig-choice-mark-correct" aria-hidden="true"><Check size={28} /></span>}
+                  {card.rejected && <span className="dig-choice-mark dig-choice-mark-rejected" aria-hidden="true"><RotateCcw size={16} />{text.digChoice.tryAnother}</span>}
                 </Button>}
               </div>
             );
           })}
         </div>}
       </div>
+      <BrushButtons language={language} wide={wide} disabled={blown} onWide={onWide} />
     </main>
   );
 }

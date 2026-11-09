@@ -1,3 +1,5 @@
+import Foundation
+import SplitRows
 /// Everything the live panel shows, ready to render.
 ///
 /// Times and labels arrive formatted: the panel draws them as given.
@@ -42,7 +44,7 @@ public extension PanelState {
     struct Lines: Equatable, Sendable {
 
         /// The log in call order: a late group sits where its minutes were.
-        public var rows: [Row]
+        public var rows: SplitRows<Row>
         /// Selections the reader holds, oldest first.
         public var holds: [Held]
         /// Lines that arrived below while the reader is scrolled up.
@@ -50,17 +52,21 @@ public extension PanelState {
         /// The log keeps the newest line in view; off while the reader is
         /// scrolled up.
         public var followsLive: Bool
+        /// The latest reader scroll consumed by the model.
+        public var scrollAcknowledgement: UUID?
 
         public init(
-            rows: [Row],
+            rows: SplitRows<Row>,
             holds: [Held] = [],
             newBelow: Int = 0,
-            followsLive: Bool = true
+            followsLive: Bool = true,
+            scrollAcknowledgement: UUID? = nil
         ) {
             self.rows = rows
             self.holds = holds
             self.newBelow = newBelow
             self.followsLive = followsLive
+            self.scrollAcknowledgement = scrollAcknowledgement
         }
 
         /// Lines with no late group.
@@ -68,9 +74,10 @@ public extension PanelState {
             entries: [Entry],
             holds: [Held] = [],
             newBelow: Int = 0,
-            followsLive: Bool = true
+            followsLive: Bool = true,
+            scrollAcknowledgement: UUID? = nil
         ) {
-            self.init(rows: entries.map(Row.entry), holds: holds, newBelow: newBelow, followsLive: followsLive)
+            self.init(rows: .init(tail: entries.map(Row.entry)), holds: holds, newBelow: newBelow, followsLive: followsLive, scrollAcknowledgement: scrollAcknowledgement)
         }
 
         /// Every entry, late ones included, in call order.

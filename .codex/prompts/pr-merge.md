@@ -1,9 +1,11 @@
 Complete the current branch's PR lifecycle.
 
-1. Bring the branch up to date first: `git fetch origin`, then
-   `git merge origin/trunk` (a merge, never a rebase). If it conflicts,
-   stop and report the conflicting files; do not resolve them by
-   discarding either side.
+1. A branch does not need to include the latest trunk to merge. Do not
+   merge trunk just because the branch is behind. If GitHub reports merge
+   conflicts, fetch origin and merge `origin/trunk` (never rebase), resolve
+   the conflicts while preserving each side's intent, and run the checks
+   covering the merge changes before pushing. Stop and report when the
+   sides contradict each other and choosing between them is a product call.
 2. Push the current branch if it has unpushed commits.
 3. Create a PR with `gh pr create` and record its number and URL.
 4. Enable merge-commit auto-merge:

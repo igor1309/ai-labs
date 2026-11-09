@@ -44,7 +44,7 @@ describe("Whose Jaw board", () => {
     expect(document.querySelectorAll(".jaw-gummy")).toHaveLength(choices().length);
     expect(document.querySelectorAll(".jaw-gummy")).toSatisfy((pictures: NodeListOf<Element>) => [...pictures].every((picture) => picture.getAttribute("src")?.startsWith("gummy-")));
     expect([document.querySelectorAll(".jaw-socket").length, toothCount()]).toEqual([5, 0]);
-    expect(document.querySelectorAll(".jaw-food").length).toBe(level === "hatchling" ? 2 : 0);
+    expect(document.querySelectorAll(".jaw-food-tag").length).toBe(level === "hatchling" ? 2 : 0);
     expect(document.querySelectorAll(".jaw-name").length).toBe(level === "paleontologist" ? 4 : 0);
     expect(document.querySelector(".jaw-diet-hint")).toBeNull();
     expect(Number.parseFloat(getComputedStyle(jaw()).width)).toBeGreaterThanOrEqual(160);
@@ -104,7 +104,7 @@ describe("Whose Jaw board", () => {
     put(partner.id);
     expect(board().textContent).toContain(partner.hint.en);
     expect(app.parts.spoken.at(-1)).toEqual({ words: partner.hint.en, language: "en" });
-    expect(document.querySelector(".jaw-feedback p")?.textContent).toContain("📏");
+    expect(document.querySelector(".jaw-feedback p svg")?.getAttribute("class")).toContain("lucide-ruler");
     act(() => app.timers.fire(JAW_TIMING.wrong));
     for (const other of JAWS.filter((jaw) => jaw.diet !== owner.diet && screen.queryByRole("button", { name: jaw.name.en.toUpperCase() }))) {
       put(other.id);

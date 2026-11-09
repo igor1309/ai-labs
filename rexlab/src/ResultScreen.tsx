@@ -1,6 +1,7 @@
-import { House, RotateCcw } from "lucide-react";
+import { House, RotateCcw, Star } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
 import { Button } from "./Button.tsx";
+import { EarthEdge } from "./EarthEdge.tsx";
 import type { ResultType } from "./compareResultLayout.ts";
 import { Festivity } from "./Festivity.tsx";
 import type { Language } from "./language/language.ts";
@@ -13,6 +14,7 @@ export type { Celebration };
 // The result of a round scored in stars: the compare quiz's and the
 // sorting game's.
 export type ResultScreenProps = {
+  presentation?: "dig-site";
   language: Language;
   score: number;
   total: number;
@@ -38,28 +40,41 @@ export type ResultScreenProps = {
 const typeStyle = (type: ResultType | undefined) =>
   (type ? { "--star-size": `${type.star}px`, "--level-name-size": `${type.levelName}px`, "--hero-maximum": `${type.heroMaximum}px` } : {}) as CSSProperties;
 
-export function ResultScreen({ language, score, total, best, beaten, celebration, hero, levelSwitch, onPlayAgain, onHome, type }: ResultScreenProps) {
+export function ResultScreen({ presentation, language, score, total, best, beaten, celebration, hero, levelSwitch, onPlayAgain, onHome, type }: ResultScreenProps) {
   const text = TEXTS[language];
+  const digSite = presentation === "dig-site";
+  const dinosaur = <Picture className="result-hero" part="result-hero" src={hero} alt="" width={800} height={600} />;
   // The dinosaur, each reward, the level switch and the actions are the
   // parts a turn glides.
   return (
-    <main className={levelSwitch ? "result result-with-levels" : "result"} style={typeStyle(type)}>
-      {celebration && <Festivity />}
-      <div className="stratum result-stratum" aria-hidden="true" />
-      <Picture className="result-hero" part="result-hero" src={hero} alt="" width={800} height={600} />
+    <main className={digSite ? (levelSwitch ? "result result-with-levels compare-result" : "result compare-result") : (levelSwitch ? "result result-with-levels" : "result")} style={typeStyle(type)}>
+      {digSite ? (
+        <div className="compare-result-sky">
+          {celebration && <Festivity />}
+          {dinosaur}
+        </div>
+      ) : <>
+        {celebration && <Festivity />}
+        <div className="stratum result-stratum" aria-hidden="true" />
+        {dinosaur}
+      </>}
       <div className="result-content">
+        {digSite && <div className="compare-result-sand" aria-hidden="true">
+          <EarthEdge className="compare-result-edge" />
+          <div className="compare-result-ochre"><EarthEdge className="compare-result-edge" /></div>
+        </div>}
         {celebration && <CelebrationChip language={language} celebration={celebration} part="result-celebration" />}
         <ScoreCount language={language} score={score} total={total} part="result-score" />
         {/* A child who cannot read the numbers yet counts the stars. */}
         <p className="result-stars" data-turn-part="result-stars" role="img" aria-label={text.stars(score, total)}>
           {Array.from({ length: total }, (_, index) => (
             <span key={index} className={index < score ? "star star-won" : "star"} style={motion({ "--star": index })} aria-hidden="true">
-              ★
+              {digSite ? <Star fill={index < score ? "currentColor" : "none"} aria-hidden="true" /> : "★"}
             </span>
           ))}
         </p>
         <h1 className="result-title" data-turn-part="result-title">{text.wellDone}</h1>
-        {best !== undefined && <BestScore language={language} best={best} beaten={beaten} part="result-best" />}
+        {best !== undefined && <BestScore language={language} best={best} beaten={beaten} part="result-best" symbol={digSite} />}
         {levelSwitch}
         <nav className="result-actions" data-turn-part="result-actions">
           <Button className="play-again-button" onClick={onPlayAgain}>

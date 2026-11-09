@@ -119,6 +119,12 @@ agister runs, fix rounds and stacked merges.
   no-logic rule binds the UI
   module, not its preview app; the app copies no feature code and has no
   tests.
+- Screen snapshots in `ios/Tests/UISnapshotTests` render whole screens on
+  the devices they ship to, outside the UI modules. A change that moves a
+  pixel on a snapshotted screen fails them. When the change is intended,
+  rerun `ios/scripts/snapshot-tests.sh` with `SNAPSHOT_RECORD=1`, look at
+  each new image, and commit them in the same PR so its diff shows the
+  before and after. Never record to make an unintended change pass.
 
 ### Building the next UI module
 
@@ -148,16 +154,19 @@ driven by Maestro on simulators. It proves the wiring before any device.
 - `ScriptedRadio` is a spy that reads its settings from disk, as a fake
   in a test does from its setup. A JSON file says which hosts the client
   sees and at what signal, what the other side answers at each step, where
-  it fails and how long it waits. Its path comes in as a launch argument,
-  and the file is read again at each transaction's start and whenever it
-  changes, so a lane changes behaviour by changing the file, never by a
-  rebuild.
+  it fails and how long it waits. It lives at `Documents/scripted-radio.json`
+  in the app's container, or at `-scriptedRadio <path>`. It is read at
+  launch and on each change, and each serve or scan keeps the settings it
+  started with, so a lane changes behaviour by changing the file, never by
+  a rebuild.
 - Each side runs on its own simulator against a scripted other side: the
   host on an iPad, the client on an iPhone. Nothing connects the two
   simulators. Two real parties meet only on devices.
-- A lane is a Maestro flow and a settings file, one per user-spec
-  scenario, under `maestro/`. It checks what the person sees through
-  Maestro, and what the app did through its own log:
+- A lane is a folder under `maestro/lanes/`, one per user-spec scenario.
+  Its `lane.json` lists parts, one per side or Examples row: a flow, a
+  settings file, the device kind and the log lines the part must leave.
+  It checks what the person sees through Maestro, and what the app did
+  through its own log:
   `xcrun simctl spawn <udid> log show --predicate 'subsystem == "mizan-ble"'`.
   There is no other record.
 - The log never holds an amount, a key, a nonce, a message's plaintext or
@@ -167,6 +176,33 @@ driven by Maestro on simulators. It proves the wiring before any device.
 - Every wiring change is proven in the rehearsal app before a device. The
   device check is left with what a script cannot show: real Bluetooth,
   signal strength and range, and two real parties paying each other.
+
+### Running and adding a lane
+
+- `maestro/run.sh [S-n ...]` builds once, clones a fresh simulator per
+  part, puts the settings into its container and writes
+  `maestro/runs/<stamp>.md`. Commit the passing report with the change;
+  its sibling folder of screenshots and logs stays out of git. A full run
+  takes about half an hour; while fixing, run only the failing lanes.
+  CI does not run the lanes, so a change to the wiring or a screen runs
+  them before its PR.
+- Run lanes yourself. Codex's sandbox cannot reach CoreSimulator, so an
+  implement run can write lanes and the runner but cannot prove them.
+- To add a lane, copy the nearest one, rename its folder `S-<n>-<name>`
+  after the scenario, write its settings and flow, and list the log lines
+  that prove the app did the work. Then add the scenario, and its part
+  count, to the set `ios/scripts/tests/test_lane_run.py` checks every
+  lane against.
+- Tap a keypad key by its id (`id: "key 4"`, `id: "key \\."`), never by
+  its text: a text selector is a regex over every element, hidden ones
+  too, and a digit also matches the rail's step numbers.
+- Every screen must fit an iPad in portrait. iPadOS 26 ignores the app's
+  orientation limits on iPad, so a sheet or column that fits landscape
+  can squeeze to nothing there; a lane on the iPad catches it, a preview
+  does not.
+- A failure's first error and end-screen screenshot are in the report;
+  the part's Maestro output in the sibling folder names the failing step.
+  `--keep` leaves the failed clone booted to look at.
 
 ## Design
 
@@ -179,3 +215,22 @@ driven by Maestro on simulators. It proves the wiring before any device.
   commit; CI fails when they differ.
 - A screen built in code matches its frame; a screen with no frame says so
   in its spec's `## Decided` as proposed.
+
+## Installing on the owner's devices
+
+- The project turns signing off and names no team, so pass both on the
+  build. Run it from the repo root with the sandbox off:
+
+  ```sh
+  xcodebuild -project mizan-ble/ios/App/MizanBLE.xcodeproj -scheme MizanBLE \
+    -configuration Debug -destination 'generic/platform=iOS' \
+    -derivedDataPath /tmp/mizan-device-dd -allowProvisioningUpdates \
+    CODE_SIGNING_ALLOWED=YES CODE_SIGN_STYLE=Automatic DEVELOPMENT_TEAM=VRVJ9YNRQU build
+  ```
+
+- Install the app on each device with
+  `xcrun devicectl device install app --device <udid> /tmp/mizan-device-dd/Build/Products/Debug-iphoneos/MizanBLE.app`:
+  iPhone 15 Pro `00008130-000E60D411D8001C`, iPad Pro 11"
+  `00008103-0006285A3E07001E`. `xcrun devicectl list devices` shows
+  whether they are available.
+- "Integrity could not be verified" means the app was built unsigned.

@@ -1,5 +1,7 @@
 import { Footprints, Heart, HeartHandshake, House } from "lucide-react";
 import { Button } from "./Button.tsx";
+import "./careResult.css";
+import { DigGround } from "./DigBar.tsx";
 import { Festivity } from "./Festivity.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
@@ -31,18 +33,19 @@ export function CareResultScreen({ language, visitor, score, total, best, beaten
   const text = TEXTS[language];
   // The visitor, each reward and the actions are the parts a turn glides.
   return (
-    <main className="result care-result">
+    <main className="care-result" data-celebrating={celebration ? "" : undefined}>
+      <DigGround />
       {celebration && <Festivity />}
-      <div className="stratum result-stratum" aria-hidden="true" />
-      <Picture className="result-hero care-result-hero" part="result-hero" src={visitor.picture} alt="" width={800} height={600} />
+      <div className="care-result-art">
+        <Picture className="result-hero care-result-hero" part="result-hero" src={visitor.picture} alt="" width={800} height={600} />
+      </div>
       <div className="result-content">
-        {celebration && <CelebrationChip language={language} celebration={celebration} part="result-celebration" />}
         <ScoreCount language={language} score={score} total={total} part="result-score" />
         {/* A child who cannot read the numbers yet counts the hearts. */}
         <p className="result-hearts" data-turn-part="result-hearts" role="img" aria-label={text.heartsOf(score, total)}>
           {Array.from({ length: total }, (_, index) => (
             <span key={index} className={index < score ? "result-heart result-heart-won" : "result-heart"} style={motion({ "--heart": index })} aria-hidden="true">
-              <Heart size={52} fill="currentColor" />
+              <Heart size={52} fill={index < score ? "currentColor" : "none"} />
             </span>
           ))}
         </p>
@@ -52,23 +55,29 @@ export function CareResultScreen({ language, visitor, score, total, best, beaten
             <Heart size={22} fill="currentColor" aria-hidden="true" />
             {visitor.name.toLocaleUpperCase(language)}
           </p>
-          {best !== undefined && <BestScore language={language} best={best} beaten={beaten} total={total} part="result-best" />}
+          {best !== undefined && (celebration
+            ? <div className="care-record" data-turn-part="result-best" aria-label={text.bestScore}>
+              <CelebrationChip language={language} celebration={celebration} part="result-celebration" />
+              {beaten !== undefined && <span className="best-score-beaten">{beaten}</span>}
+              <span className="best-score-value">{best}</span>
+            </div>
+            : <BestScore language={language} best={best} beaten={beaten} part="result-best" symbol />)}
         </div>
-        <nav className="result-actions" data-turn-part="result-actions">
-          <Button className="play-again-button" onClick={onNewVisitor}>
-            <Footprints size={28} aria-hidden="true" />
-            {text.newVisitor}
-          </Button>
-          <Button className="home-button" onClick={onFriends}>
-            <HeartHandshake size={28} aria-hidden="true" />
-            {text.friends}
-          </Button>
-          <Button className="home-button" onClick={onHome}>
-            <House size={28} aria-hidden="true" />
-            {text.home}
-          </Button>
-        </nav>
       </div>
+      <nav className="result-actions" data-turn-part="result-actions">
+        <Button className="care-result-action care-result-new" onClick={onNewVisitor}>
+          <Footprints size={28} aria-hidden="true" />
+          <span className="care-result-words">{text.newVisitor}</span>
+        </Button>
+        <Button className="care-result-action care-result-friends" onClick={onFriends}>
+          <HeartHandshake size={28} aria-hidden="true" />
+          <span className="care-result-words">{text.friends}</span>
+        </Button>
+        <Button className="care-result-action care-result-home" onClick={onHome}>
+          <House size={28} aria-hidden="true" />
+          <span className="care-result-words">{text.home}</span>
+        </Button>
+      </nav>
     </main>
   );
 }

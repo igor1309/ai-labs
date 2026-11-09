@@ -1,7 +1,7 @@
+import { HOME_TILE_PICTURES } from "../src/homeTilePictures.ts";
 import { act, fireEvent, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { AgeLevel } from "../src/ageLevel.ts";
-import digTile from "../src/assets/dig/tile.webp";
 import { GUST, STAR_LANDS } from "../src/digGame.tsx";
 import { TEXTS } from "../src/language/texts.ts";
 import { AGE_LEVEL_KEY } from "../src/localAgeLevel.ts";
@@ -26,7 +26,7 @@ const finish = (app: ReturnType<typeof openDigApp>) => {
 it("offers committed sand art with the brush, and brightens and presses the tile before opening", async () => {
   const app = openDigApp();
   const tile = homeTile("DIG");
-  expect(tile.querySelector("img")?.getAttribute("src")).toBe(digTile);
+  expect(tile.querySelector("img")?.getAttribute("src")).toBe(HOME_TILE_PICTURES.dig);
   expect(symbolOf(tile)).toBe("brush");
   expect(tile.nextElementSibling).toBe(homeTile("SORT"));
   expect(tile.previousElementSibling).toBe(homeTile("SKELETONS"));
@@ -46,9 +46,10 @@ it.each(["compare", "dig"])("shows the stored count on DIG's door with %s featur
   // On DIG's day the large card is its only door.
   const door = () => gameDoor("DIG");
   expect(door() === featuredCard()).toBe(featured === "dig");
-  expect([badgeOf(door())?.textContent, symbolOf(badgeOf(door())!)]).toEqual(["7", "star"]);
+  if (featured === "dig") expect([badgeOf(door())?.textContent, symbolOf(badgeOf(door())!)]).toEqual(["7", "star"]);
+  else expect(badgeOf(door())).toBeNull();
   fireEvent.click(door()); finish(app); fireEvent.click(button("HOME"));
-  expect(badgeOf(door())?.textContent).toBe("8");
+  expect(badgeOf(door())?.textContent).toBe(featured === "dig" ? "8" : undefined);
 });
 
 it.each(["tile", "featured", "DIG AGAIN"])("a quick double tap from %s counts one start and brushes no sand", (door) => {

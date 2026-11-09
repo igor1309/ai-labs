@@ -90,34 +90,21 @@ struct LiveAudioTests {
     }
 
     @Test(arguments: [false, true])
-    func failedStopDrainsPiecesThatHaveNotYetBeenRead(stopEndsInput: Bool) async throws {
+    func failedStopDeliversPiecesFlushedWhileStopping(stopEndsInput: Bool) async throws {
 
-        let capture = FakeCapture(stopFailure: .stop, stopEndsInput: stopEndsInput)
-        let input = AudioGate(), executor = CaptureExecutor(), returned = Mutex(false)
-        let task = Task(executorPreference: executor) {
-            defer { executor.complete() }
-            let live = LiveAudio(capture: capture, beforeInput: { await input.wait() }, executor: executor)
-            let listener = await live.listen()
-            let statistics = await live.statistics()
-            let stream = try await live.start()
-            capture.give(tones())
-            await #expect(throws: Refusal.stop) { try await live.stop() }
-            returned.withLock { $0 = true }
-            #expect(pieces(await heard(listener)) == tones())
-            var measured: [AudioStatistics] = []
-            for await value in statistics { measured.append(value) }
-            #expect(measured.map(\.end).last == live.capturedThrough)
-            #expect(measured.count == tones().count)
-            #expect(try await read(stream) == tones())
-        }
-        defer { input.release(); capture.finish(); executor.run() }
-        await executor.run(until: { input.isHeld && capture.stops == 1 })
-        #expect(input.isHeld)
-        #expect(!returned.withLock { $0 })
-        input.release()
-        await executor.finish()
-        try await task.value
-        #expect(returned.withLock { $0 })
+        let capture = FakeCapture(stopFailure: .stop, stopEndsInput: stopEndsInput, flush: tones())
+        defer { capture.finish() }
+        let live = LiveAudio(capture: capture)
+        let listener = await live.listen()
+        let statistics = await live.statistics()
+        let stream = try await live.start()
+        await #expect(throws: Refusal.stop) { try await live.stop() }
+        #expect(pieces(await heard(listener)) == tones())
+        var measured: [AudioStatistics] = []
+        for await value in statistics { measured.append(value) }
+        #expect(measured.map(\.end).last == live.capturedThrough)
+        #expect(measured.count == tones().count)
+        #expect(try await read(stream) == tones())
     }
 
     @Test func failedCaptureDeliversEveryToneThenItsFailure() async throws {

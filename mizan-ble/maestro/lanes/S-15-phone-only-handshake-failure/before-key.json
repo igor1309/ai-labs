@@ -1,0 +1,16 @@
+{
+  "client": {
+    "drop": "beforeKey",
+    "delays": {
+      "connect": 2,
+      "drop": 1
+    }
+  },
+  "hosts": [
+    {
+      "amount": 12345,
+      "drop": "beforeKey"
+    }
+  ],
+  "enteredAmount": 12345
+}

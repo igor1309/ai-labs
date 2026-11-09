@@ -102,7 +102,7 @@ Notes:
   - `CLOUDFLARE_ACCOUNT_ID` (Cloudflare account targeting, if required by your setup)
   - `CI_BOT_TOKEN` (Telegram failure notifications)
   - `CI_CHAT_ID` (Telegram failure notifications)
-  - `LLM_API_KEY` (real-provider smoke gate)
+  - `NOMOS_ORACLE_TOKEN` (supplies `LLM_API_KEY` for the real-provider smoke gate)
 - Required GitHub Actions variables:
   - `OPENROUTER_CI_MODEL` (cheap model for the real-provider smoke gate)
 

@@ -1,0 +1,36 @@
+{
+  "parts": [
+    {
+      "name": "before-key",
+      "device": "iPad",
+      "expected": [
+        {
+          "category": "hostBroadcast",
+          "phase": "advertising"
+        },
+        {
+          "category": "clientConnect",
+          "phase": "couldNotConnect"
+        }
+      ],
+      "flow": "before-key.yaml",
+      "settings": "before-key.json"
+    },
+    {
+      "name": "before-open",
+      "device": "iPad",
+      "expected": [
+        {
+          "category": "hostPayment",
+          "phase": "linkLost"
+        },
+        {
+          "category": "clientConnect",
+          "phase": "couldNotConnect"
+        }
+      ],
+      "flow": "before-open.yaml",
+      "settings": "before-open.json"
+    }
+  ]
+}

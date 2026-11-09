@@ -26,7 +26,8 @@ Feature: Dinosaur care: friends
     Given I have no dinosaur friends
     When I open "FRIENDS"
     Then I see a friendly picture inviting me to welcome a dinosaur
-    And "NEW VISITOR" with a dinosaur symbol and "BACK" with an arrow symbol
+    And "NEW VISITOR" with a dinosaur symbol, "BACK" with an arrow symbol and "HOME" with a house symbol
+    And my friend count shows 0
     When I tap "BACK"
     Then I return to the care welcome screen
 

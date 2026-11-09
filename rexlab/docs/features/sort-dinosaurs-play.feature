@@ -78,10 +78,12 @@ Feature: Sort dinosaurs: dragging cards into baskets
     Then I am on the home page without being asked to confirm
     And the round is not recorded
 
-  Scenario: A narrow upright window asks to turn sideways
+  Scenario: Turning the window keeps the round
     Given I have sorted 3 cards, one of them after a wrong drop
-    When the window turns upright and narrower than 600 CSS pixels, as an iPhone's does
-    Then I see a picture asking to turn sideways
+    When the window turns upright, as a phone's does
+    Then the board stays, with no picture asking to turn sideways
+    And the 3 cards are still in their baskets
+    And the wrong drop still counts
     When the window turns back to landscape
     Then the 3 cards are still in their baskets
     And the wrong drop still counts

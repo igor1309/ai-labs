@@ -78,6 +78,23 @@ struct MenuBarModelTests {
         }
     }
 
+    @Test func panelControlReflectsVisibilityAcrossRecordingPhases() {
+
+        for recording: MenuBarRecording in [
+            .idle(automatic: true, unavailable: [], failure: nil),
+            .recording(call: false, faults: []), .ending(faults: []),
+        ] {
+            for visible in [false, true] {
+                let menu = MenuBarModel(recording: recording,
+                    preferences: .init(automatic: true, liveText: true),
+                    offersPanelReopen: !visible, panelVisible: visible)
+                #expect(menu.entries.contains(.button("Скрыть панель", .hidePanel)) == visible)
+                let canReopen = recording == .recording(call: false, faults: []) && !visible
+                #expect(menu.entries.contains(.button("Показать панель", .showPanel)) == canReopen)
+            }
+        }
+    }
+
     @Test func itemIsRedOnlyWhileRecording() {
 
         for (recording, red): (MenuBarRecording, Bool) in [
@@ -96,6 +113,8 @@ struct MenuBarModelTests {
         [
             .toggle("Записывать звонки автоматически", checked: automatic, .setAutomatic(!automatic)),
             .toggle("Живой текст", checked: liveText, .setLiveText(!liveText)),
+            .button("Звонки…", .showCalls),
+            .button("Настройки…", .showSettings),
             .button("Открыть папку звонков", .openCallsFolder),
             .button("Выйти", .quit),
         ]

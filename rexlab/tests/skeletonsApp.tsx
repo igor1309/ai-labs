@@ -38,11 +38,20 @@ import {
 import type { Place, Skeleton } from "../src/skeletons/index.ts";
 import { SILENT, type SkeletonSounds } from "../src/skeletonSounds.ts";
 import type { Theme } from "../src/theme.ts";
+import { appStylesheet, NO_SAFE_AREA } from "./stylesheet.ts";
+
+// The skeleton screens bring their own sheets, as they do in the app.
+if (typeof document !== "undefined") {
+  const skeletonSheets = document.createElement("style");
+  skeletonSheets.textContent = appStylesheet(NO_SAFE_AREA, ["skeletonSite.css", "skeletonChoice.css", "skeletonPuzzle.css", "skeletonGuess.css", "skeletonMuseum.css", "skeletonResult.css"]);
+  document.head.append(skeletonSheets);
+}
 
 export type SkeletonsAppOptions = {
   // Where progress, the language and the theme are kept: one storage, as
   // in a browser.
   storage?: MemoryStorage;
+  homeMotion?: AppProps["homeMotion"];
   pictures?: ManualPictures;
   viewport?: ManualViewport;
   portraitLayouts?: AppProps["portraitLayouts"];
@@ -54,6 +63,7 @@ export type SkeletonsAppOptions = {
   appearance?: Theme;
   // Told each game whose start the app counts.
   startCounter?: AppProps["startCounter"];
+  newHomeGames?: AppProps["newHomeGames"];
   // Where the parent's age level is kept, apart from progress, so a test
   // that blocks progress still has the level it gives; none picked by
   // default.
@@ -81,6 +91,8 @@ export function openHomeApp({
   reducedMotion = false,
   appearance = "light",
   startCounter,
+  newHomeGames,
+  homeMotion,
   ageLevels = memoryStorage(),
   skeletons = SHIPPED_SKELETONS,
   loadHome = true,
@@ -115,10 +127,12 @@ export function openHomeApp({
     skeletonPicture: fakeSkeletonPicture,
     ...emptyDig(),
     ...pageAtRest(),
+    ...(homeMotion && { homeMotion }),
     skeletonProgress: localSkeletonProgress(() => storage),
     reducedMotion: () => reducedMotion,
     ...featuring(),
     ...(startCounter && { startCounter }),
+    ...(newHomeGames && { newHomeGames }),
     ...pictures
   };
   const view = render(<App {...emptyLabyrinth()} {...props} />);

@@ -1,0 +1,11 @@
+{
+  "hosts": [
+    {
+      "amount": 12345,
+      "drop": "afterAcknowledgement",
+      "delays": {
+        "drop": 5
+      }
+    }
+  ]
+}

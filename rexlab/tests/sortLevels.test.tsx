@@ -1,3 +1,4 @@
+import { THEMES } from "../src/theme.ts";
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
@@ -107,7 +108,7 @@ describe.each(LEVELS)("the $name board", (level) => {
     expect(getComputedStyle(tray(language)).gridTemplateColumns).toContain("repeat(var(--columns)");
   });
 
-  it.each(WINDOW_SIZES.flatMap((size) => LANGUAGES.flatMap((language) => (["light", "dark"] as const).map((theme) => [size, language, theme] as const))))(
+  it.each(WINDOW_SIZES.flatMap((size) => LANGUAGES.flatMap((language) => THEMES.map((theme) => [size, language, theme] as const))))(
     "fits a %j screen with every basket's name in full and at least 48 by 48 to drop on, in %s and the %s theme",
     (size, language, theme) => {
       const [windowWidth, windowHeight] = size;

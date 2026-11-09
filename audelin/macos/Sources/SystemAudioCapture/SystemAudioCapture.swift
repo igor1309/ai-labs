@@ -21,7 +21,7 @@ public final class SystemAudioCapture: Sendable {
             try await lifetime.start(processes)
         } catch {
             lifetime.end(error)
-            await lifetime.drainCleanup()
+            await lifetime.cleanup()
             throw error
         }
     }
@@ -43,13 +43,18 @@ public final class SystemAudioCapture: Sendable {
 }
 
 /// Callbacks and cleanup outlive the capture without retaining its owner.
-/// Native setup, naming and removal can block, so they run in order on the
-/// capture's own queue and callers await them, never holding a pool thread.
-private final class CaptureLifetime: Sendable {
+/// Setup, naming and removal take turns on the actor. Ending may be requested
+/// from a native callback before setup has run, so cleanup can run more than
+/// once and setup cleans up after itself when the capture ended meanwhile.
+/// The actor runs on its own queue: native calls block (removal waits for IO
+/// in flight), and blocking the few shared concurrency threads stalls every
+/// other task in the process.
+private actor CaptureLifetime {
 
     private let binding: any CaptureBinding
-    private let state: CaptureState
-    private let queue = DispatchQueue(label: "audelin.system-audio-capture")
+    private nonisolated let queue = DispatchSerialQueue(label: "audelin.capture.lifetime")
+    nonisolated var unownedExecutor: UnownedSerialExecutor { queue.asUnownedSerialExecutor() }
+    private nonisolated let state: CaptureState
 
     init(binding: any CaptureBinding, continuation: AsyncThrowingStream<AudioPiece, any Error>.Continuation) {
 
@@ -57,13 +62,10 @@ private final class CaptureLifetime: Sendable {
         state = CaptureState(continuation: continuation)
     }
 
-    func start(_ processes: ProcessSelection) async throws {
+    func start(_ processes: ProcessSelection) throws {
 
-        try await onQueue { [self] in try startOnQueue(processes) }
-    }
-
-    private func startOnQueue(_ processes: ProcessSelection) throws {
-
+        defer { if state.delivery.withLock({ $0.ending }) { cleanup() } }
+        guard !state.delivery.withLock({ $0.ending }) else { throw CaptureError.stopped }
         let tap = try binding.createTap(Self.request(processes))
         state.resources.withLock { $0.tap = tap }
         let device = try binding.createDevice(DeviceRequest(tap: tap, isPrivate: true, autoStart: false))
@@ -77,12 +79,7 @@ private final class CaptureLifetime: Sendable {
         state.resources.withLock { $0.started = true }
     }
 
-    func name(_ processes: ProcessSelection) async throws {
-
-        try await onQueue { [self] in try nameOnQueue(processes) }
-    }
-
-    private func nameOnQueue(_ processes: ProcessSelection) throws {
+    func name(_ processes: ProcessSelection) throws {
 
         guard !state.delivery.withLock({ $0.ending }), let tap = state.resources.withLock({ $0.tap }) else {
             throw CaptureError.stopped
@@ -90,7 +87,7 @@ private final class CaptureLifetime: Sendable {
         try binding.updateTap(tap, Self.request(processes))
     }
 
-    func end(_ error: (any Error)?) {
+    nonisolated func end(_ error: (any Error)?) {
 
         let first = state.delivery.withLock {
             guard !$0.ending else { return false }
@@ -99,37 +96,31 @@ private final class CaptureLifetime: Sendable {
             return true
         }
         guard first else { return }
-        // Detach behind construction and naming; native removal can wait for IO.
-        // The job owns only cleanup state, never the capture being released.
-        queue.async { [binding, state] in
-            let made = state.resources.withLock {
-                let made = $0
-                $0 = Resources()
-                return made
-            }
-            if let device = made.device {
-                if made.started, let io = made.io { binding.stopDevice(device, io) }
-                if let watch = made.watch { binding.unwatchDevice(device, watch) }
-                if let io = made.io { binding.removeIO(device, io) }
-                binding.destroyDevice(device)
-            }
-            if let tap = made.tap { binding.destroyTap(tap) }
-            state.delivery.withLock {
-                $0.finished = true
-                $0.continuation.finish(throwing: $0.error)
-            }
+        // Never inline: native removal waits for IO, and this may be an IO callback.
+        // The task hops to the actor's own queue, off the shared threads.
+        Task { await cleanup() }
+    }
+
+    /// Releases what setup made so far and ends the stream. Native removal can
+    /// wait for IO already in flight; that IO finishes on its own.
+    func cleanup() {
+
+        let made = state.resources.withLock {
+            let made = $0
+            $0 = Resources()
+            return made
         }
-    }
-
-    func drainCleanup() async {
-
-        await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in queue.async { done.resume() } }
-    }
-
-    private func onQueue(_ work: @escaping @Sendable () throws -> Void) async throws {
-
-        try await withCheckedThrowingContinuation { (done: CheckedContinuation<Void, any Error>) in
-            queue.async { done.resume(with: Result { try work() }) }
+        if let device = made.device {
+            if made.started, let io = made.io { binding.stopDevice(device, io) }
+            if let watch = made.watch { binding.unwatchDevice(device, watch) }
+            if let io = made.io { binding.removeIO(device, io) }
+            binding.destroyDevice(device)
+        }
+        if let tap = made.tap { binding.destroyTap(tap) }
+        state.delivery.withLock {
+            guard !$0.finished else { return }
+            $0.finished = true
+            $0.continuation.finish(throwing: $0.error)
         }
     }
 
@@ -138,7 +129,7 @@ private final class CaptureLifetime: Sendable {
         TapRequest(selection: processes, mono: true, unmuted: true, isPrivate: true)
     }
 
-    private func receive(_ buffer: Result<AudioPiece, any Error>) {
+    private nonisolated func receive(_ buffer: Result<AudioPiece, any Error>) {
 
         do {
             let piece = try buffer.get()

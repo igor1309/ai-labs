@@ -45,6 +45,7 @@ public struct Settings: Codable, Equatable, Sendable {
         public var delays = Delays()
         public init() {}
     }
+    public var recordAir = false
     public var bluetooth: Bluetooth = .on
     public var client = Client()
     public var hosts: [Host] = [.init()]
@@ -118,10 +119,11 @@ extension Settings.Host {
 }
 
 extension Settings {
-    private enum CodingKeys: String, CodingKey { case bluetooth, client, hosts }
+    private enum CodingKeys: String, CodingKey { case bluetooth, client, hosts, recordAir }
     public init(from decoder: any Decoder) throws {
         self.init()
         let c = try decoder.container(keyedBy: CodingKeys.self)
+        if c.contains(.recordAir) { recordAir = try c.decode(Bool.self, forKey: .recordAir) }
         if c.contains(.bluetooth) { bluetooth = try c.decode(Settings.Bluetooth.self, forKey: .bluetooth) }
         if c.contains(.client) { client = try c.decode(Settings.Client.self, forKey: .client) }
         if c.contains(.hosts) { hosts = try c.decode([Settings.Host].self, forKey: .hosts) }

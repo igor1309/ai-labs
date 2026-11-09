@@ -1,4 +1,3 @@
-import Dispatch
 import AudioConversion
 import Foundation
 import LiveText
@@ -33,13 +32,6 @@ public struct DecodedToken: Equatable, Sendable {
 /// until two chunks pass it with nothing new.
 public actor NemotronRecognizer: Recognizer {
 
-    // Conversion and inference block, so they run on this queue, not the cooperative pool.
-    // Inference reaches it through a task executor preference, which default actors and
-    // nonisolated async code follow; an actor with its own executor, or an unstructured
-    // task it starts, does not.
-    nonisolated let queue = DispatchSerialQueue(label: "audelin.NemotronRecognizer")
-    public nonisolated var unownedExecutor: UnownedSerialExecutor { queue.asUnownedSerialExecutor() }
-
     private static let rate = 16_000.0
 
     private let decoder: any TokenDecoder
@@ -53,25 +45,25 @@ public actor NemotronRecognizer: Recognizer {
     /// Seconds of audio fed to the decoder.
     private var fed = 0.0
 
-    public init(decoder: any TokenDecoder) {
+    public init(decoders: NemotronDecoders) async throws {
 
-        self.decoder = decoder
+        decoder = try await decoders.make()
     }
 
     public func hear(_ chunk: AudioChunk) async throws -> Hearing {
 
         let samples = try convert(chunk)
         fed += Double(samples.count) / Self.rate
-        return report(try await withTaskExecutorPreference(queue) { try await decoder.feed(samples) }, finished: false)
+        return report(try await decoder.feed(samples), finished: false)
     }
 
     public func finish() async throws -> Hearing {
 
         if let converter {
-            _ = try await withTaskExecutorPreference(queue) { try await decoder.feed(converter.flush()) }
+            _ = try await decoder.feed(converter.flush())
         }
         converter = nil
-        return report(try await withTaskExecutorPreference(queue) { try await decoder.finish() }, finished: true)
+        return report(try await decoder.finish(), finished: true)
     }
 
     /// Live text settles by end time and drops a reported word that starts

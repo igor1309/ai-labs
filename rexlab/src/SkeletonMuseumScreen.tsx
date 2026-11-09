@@ -5,7 +5,9 @@ import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 import { LevelBadge, type ShownBadge } from "./LevelBadge.tsx";
 import { Picture } from "./Picture.tsx";
+import { DigGround } from "./DigBar.tsx";
 import { SkeletonBar } from "./SkeletonBar.tsx";
+import "./skeletonMuseum.css";
 
 // A stand shows its skeleton once built; one still to build shows the
 // skeleton's silhouette, and so does one knocked down to be built again,
@@ -36,8 +38,8 @@ export type SkeletonMuseumScreenProps = {
 export function SkeletonMuseumScreen({ language, stands, score, total, best, onBuild, onRebuild, onBuildAnother, onHome, onJawShelf }: SkeletonMuseumScreenProps) {
   const text = TEXTS[language];
   return (
-    <main className="skeleton-screen skeleton-museum-screen">
-      <div className="stratum stratum-1" aria-hidden="true" />
+    <main className="skeleton-screen skeleton-dig skeleton-museum-screen">
+      <DigGround />
       <SkeletonBar language={language} title={text.museum} Mark={Landmark} onHome={onHome}>
         <Button className="home-button skeleton-bar-button" onClick={onBuildAnother}>
           <Bone size={24} aria-hidden="true" />
@@ -58,7 +60,7 @@ export function SkeletonMuseumScreen({ language, stands, score, total, best, onB
         {stands.map((stand, index) => (
           <StandCard key={stand.id} language={language} stand={stand} index={index} onBuild={onBuild} onRebuild={onRebuild} />
         ))}
-        {onJawShelf && <section className="skeleton-stand jaw-museum-stand" aria-label={text.jawShelf} data-turn-part="jaw-shelf" style={{ "--stand": stands.length } as CSSProperties}>
+        {onJawShelf && <section className="skeleton-stand jaw-museum-stand" aria-label={text.jawShelf} data-turn-part="jaw-shelf" style={{ "--stand": stands.length, "--marks": 0 } as CSSProperties}>
           <div className="skeleton-stand-top"><h2 className="skeleton-stand-name">{text.jawShelf}</h2></div>
           <div className="skeleton-exhibit"><span className="jaw-museum-tooth" aria-hidden="true">🦷</span></div>
           <Button className="skeleton-stand-button" onClick={onJawShelf}><Landmark size={24} aria-hidden="true" />{text.jawShelf}</Button>
@@ -85,7 +87,7 @@ function StandCard({
   const name = stand.name.toLocaleUpperCase(language);
   const built = stand.state === "built";
   return (
-    <section className="skeleton-stand" aria-label={name} data-turn-part={`skeleton-stand-${stand.id}`} data-state={stand.state} style={{ "--stand": index } as CSSProperties}>
+    <section className="skeleton-stand" aria-label={name} data-turn-part={`skeleton-stand-${stand.id}`} data-state={stand.state} style={{ "--stand": index, "--marks": stand.badges.length + (stand.state === "empty" ? 0 : 1) } as CSSProperties}>
       <div className="skeleton-stand-top">
         <h2 className="skeleton-stand-name">{name}</h2>
         {stand.state !== "empty" && (
@@ -93,8 +95,6 @@ function StandCard({
             <Star size={22} aria-hidden="true" />
           </span>
         )}
-      </div>
-      <div className="skeleton-exhibit">
         {stand.badges.length > 0 && (
           <span className="skeleton-stand-badges">
             {stand.badges.map((badge) => (
@@ -102,6 +102,8 @@ function StandCard({
             ))}
           </span>
         )}
+      </div>
+      <div className="skeleton-exhibit">
         <Picture className={built ? "skeleton-exhibit-picture" : "skeleton-exhibit-picture skeleton-silhouette"} src={stand.skeleton} alt="" />
       </div>
       {built ? (

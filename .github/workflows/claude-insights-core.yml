@@ -39,4 +39,9 @@ jobs:
 
       - name: Run the functions' tests
         working-directory: claude-insights/supabase/functions/_shared
-        run: deno test format.test.ts
+        run: deno test --allow-env=BOT_TOKEN,INBOX_CHAT_ID,SUPABASE_URL,SUPABASE_SERVICE_ROLE_KEY,NOMOS_BASE_URL,NOMOS_API_KEY *.test.ts
+
+      - name: Check edge functions
+        run: |
+          deno check claude-insights/supabase/functions/notify-insights/index.ts
+          deno check claude-insights/supabase/functions/telegram-bot/index.ts

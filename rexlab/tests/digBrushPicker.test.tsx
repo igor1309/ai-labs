@@ -1,3 +1,4 @@
+import { THEMES } from "../src/theme.ts";
 import { act, fireEvent, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { brushWidth } from "../src/dig/index.ts";
@@ -7,7 +8,7 @@ import { board, clearCells, digUp, finishBoard, openDigApp, placeBoard } from ".
 import { SHIPPED_DIG, homeTile } from "./support.ts";
 import { tapAt } from "./taps.ts";
 
-// dig-brush-picker.feature: DIG's bar picks the brush or the wide brush,
+// dig-brush-choice.feature, as DIG's bar picker meets it: the brush or the wide brush,
 // twice as big, and the pick stays while DIG is open. Every test round,
 // drawn at 0, digs up a Tyrannosaurus.
 
@@ -69,20 +70,20 @@ describe("the bar's picker", () => {
     expect([brushButton(language), wideButton(language)].map((button) => button.getAttribute("aria-pressed"))).toEqual(["true", "false"]);
   });
 
-  it.each(["light", "dark"] as const)("shows each button at least 48 by 48, a dot of 14 or 28, the picked one filled amber, in the %s theme", (theme) => {
+  it.each(THEMES)("shows each button a 52 round, an ink dot of 12 or 24, the picked one filled amber, in the %s theme", (theme) => {
     openRound("hatchling", { theme });
-    const amber = theme === "light" ? "rgb(227, 155, 45)" : "rgb(242, 178, 75)";
+    const amber = theme === "light" ? "rgb(227, 155, 45)" : "rgb(240, 174, 69)";
     const look = () => [brushButton(), wideButton()].map((button) => {
       const own = getComputedStyle(button);
       const dot = getComputedStyle(button.querySelector(".dig-brush-dot")!);
       return { size: [own.width, own.height], filled: own.backgroundColor === amber, dot: [dot.width, dot.height], dotAmber: dot.backgroundColor === amber };
     });
-    const brush = { size: ["48px", "48px"], dot: ["14px", "14px"] };
-    const wide = { size: ["48px", "48px"], dot: ["28px", "28px"] };
+    const brush = { size: ["52px", "52px"], dot: ["12px", "12px"], dotAmber: false };
+    const wide = { size: ["52px", "52px"], dot: ["24px", "24px"], dotAmber: false };
 
-    expect(look()).toEqual([{ ...brush, filled: true, dotAmber: false }, { ...wide, filled: false, dotAmber: true }]);
+    expect(look()).toEqual([{ ...brush, filled: true }, { ...wide, filled: false }]);
     fireEvent.click(wideButton());
-    expect(look()).toEqual([{ ...brush, filled: false, dotAmber: true }, { ...wide, filled: true, dotAmber: false }]);
+    expect(look()).toEqual([{ ...brush, filled: false }, { ...wide, filled: true }]);
   });
 
   it("picks the wide brush and back, clearing no sand", () => {

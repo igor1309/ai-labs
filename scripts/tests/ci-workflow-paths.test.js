@@ -8,6 +8,16 @@ import { parse } from "../release/lib/toml.js";
 const repoRoot = new URL("../../", import.meta.url);
 const workflow = readFileSync(new URL(".github/workflows/ci.yml", repoRoot), "utf8");
 
+test("ciPathFilters_shouldRunClaudeInsights_onSharedAnalyzerChanges", () => {
+  for (const file of [
+    "tools/sessions-audit/sessions_audit_core.py",
+    "tools/sessions-audit/claude_parser.py",
+    "tools/sessions-audit/codex_parser.py",
+  ]) {
+    assert.equal(jobRuns("claude-insights-core", [file]), true, `${file} does not run claude-insights-core`);
+  }
+});
+
 test("ciPathFilters_shouldRunAgonaraCore_onPackageLockChanges", () => {
   const agonaraFilter = filterSection("agonara", "agonara-ci");
 
@@ -20,6 +30,18 @@ test("ciPathFilters_shouldRunScreenshotTests_onAgonaraShowcaseCodeChanges", () =
   }
   const core = readFileSync(new URL(".github/workflows/agonara-core.yml", repoRoot), "utf8");
   assert.match(core, /node --test agonara\/showcase\/\*\.test\.mjs/);
+});
+
+test("ciPathFilters_shouldRunSessionBrowserChecks_onEmbeddedAssetsAndTests", () => {
+  for (const file of [
+    "agonara/session/internal/web/static/app.js",
+    "agonara/session/internal/web/templates/reading.html",
+    "agonara/tests/session-explanation-actions.test.js",
+  ]) {
+    assert.equal(jobRuns("agonara-core", [file]), true, `${file} does not run agonara-core`);
+  }
+  const manifest = JSON.parse(readFileSync(new URL("agonara/package.json", repoRoot), "utf8"));
+  assert.ok(manifest.scripts.test.includes("node --test tests/*.test.js"));
 });
 
 test("ciPathFilters_shouldNotTreatDashboardScriptAsSharedInfrastructure", () => {
@@ -124,6 +146,16 @@ test("ciPathFilters_shouldRunEachProjectsJob_onTheDocumentsItsTestsRead", () => 
 // The projects whose tests ran in no workflow before LAB-220: each test,
 // the command its workflow runs, and the job a change to it runs.
 const auditedTests = {
+  "audelin/macos/scripts/tests/test_profile_rehearsal.py": {
+    runner: ".github/workflows/audelin-core.yml",
+    command: "python3 -I -m unittest discover -s audelin/macos/scripts/tests",
+    job: "audelin-core",
+  },
+  "audelin/macos/scripts/tests/test_summarize_trace.py": {
+    runner: ".github/workflows/audelin-core.yml",
+    command: "python3 -I -m unittest discover -s audelin/macos/scripts/tests",
+    job: "audelin-core",
+  },
   "session-digest/tests/_bootstrap.test.ts": {
     runner: ".github/workflows/session-digest-core.yml",
     command: "npm run test:session-digest",
@@ -146,7 +178,17 @@ const auditedTests = {
   },
   "claude-insights/supabase/functions/_shared/format.test.ts": {
     runner: ".github/workflows/claude-insights-core.yml",
-    command: "deno test format.test.ts",
+    command: "*.test.ts",
+    job: "claude-insights-core",
+  },
+  "claude-insights/supabase/functions/_shared/handlers.test.ts": {
+    runner: ".github/workflows/claude-insights-core.yml",
+    command: "*.test.ts",
+    job: "claude-insights-core",
+  },
+  "claude-insights/supabase/functions/_shared/llm.test.ts": {
+    runner: ".github/workflows/claude-insights-core.yml",
+    command: "*.test.ts",
     job: "claude-insights-core",
   },
   "tests/test_langfuse_shared_stack.py": {
@@ -236,6 +278,7 @@ for (const file of [
 // code runs. A new module fails here until a workflow runs it.
 const goModules = {
   agister: { runner: ".github/workflows/agister-core.yml", command: "run: agister/scripts/test.sh", job: "agister-core" },
+  "agonara/session": { runner: ".github/workflows/agonara-core.yml", command: "go test -race -count=1 -timeout 1m ./...", job: "agonara-core" },
   gokit: { runner: "agister/scripts/test.sh", command: "../gokit/scripts/test.sh", job: "agister-core" },
   "gokit/tree": { runner: "gokit/scripts/test.sh", command: "check tree gokit/tree", job: "agister-core" },
   warder: { runner: ".github/workflows/warder-core.yml", command: "run: warder/scripts/test.sh", job: "warder-core" },
@@ -281,6 +324,22 @@ test("ciTestFiles_shouldBeNamed_whenNoJobRunsThem", () => {
   const unrun = ["newtool/tests/test-install.sh", "newtool/src/parse.test.ts", "newtool/parse_test.go"];
   assert.deepEqual(unrun.filter(isTestFile), unrun);
   assert.deepEqual(testsRunningNoJob([...unrun, "loki/tests/verify-host.test.js"]), unrun);
+});
+
+test("ciPathFilters_shouldRunOnlyItsProjectsJob_onAProjectsWorkflowChange", () => {
+  const projects = projectJobs();
+  assert.ok(projects.size > 0);
+  for (const [job, file] of projects) {
+    const running = [...projects.keys()].filter((other) => jobRuns(other, [file]));
+    assert.deepEqual(running, [...projects].filter(([, used]) => used === file).map(([name]) => name), `${file} runs ${running.join(", ")}`);
+    assert.ok(running.includes(job), `${file} does not run ${job}`);
+  }
+});
+
+test("ciPathFilters_shouldRunEveryProjectsJob_onADispatcherChange", () => {
+  for (const job of projectJobs().keys()) {
+    assert.equal(jobRuns(job, [".github/workflows/ci.yml"]), true, `ci.yml does not run ${job}`);
+  }
 });
 
 test("ciJobs_shouldEachRun_onManualDispatch", () => {
@@ -338,6 +397,13 @@ function testsRunningNoJob(files) {
     }
     return !read.some(([, patterns]) => patterns.some((pattern) => matchesGlob(file, pattern)));
   });
+}
+
+// Each project's job and the workflow file it calls.
+function projectJobs() {
+  const jobs = new Map();
+  for (const [, job, file] of workflow.matchAll(/\n  ([\w-]+-core):\n(?:    .*\n)*?    uses: \.\/(\.github\/workflows\/[\w-]+\.yml)\n/g)) jobs.set(job, file);
+  return jobs;
 }
 
 function filterSection(filterName, nextFilterName) {
@@ -416,3 +482,50 @@ function changesOutputs(matchedFilters) {
   }
   return outputs;
 }
+
+// The nightly long runs (LAB-797): their scripts and workflow run the
+// tests of the report in audelin-core, and nothing else.
+test("ciPathFilters_shouldRunAudelinCore_onANightlyLongRunChange", () => {
+  for (const file of [
+    ".github/workflows/audelin-nightly.yml",
+    "audelin/macos/scripts/nightly.sh",
+    "audelin/macos/scripts/nightly-report.py",
+    "audelin/macos/scripts/tests/test_nightly_report.py",
+  ]) {
+    assert.equal(jobRuns("audelin-core", [file]), true, `${file} does not run audelin-core`);
+  }
+  const running = [...projectJobs().keys()].filter((job) => jobRuns(job, [".github/workflows/audelin-nightly.yml"]));
+  assert.deepEqual(running, ["audelin-core"]);
+});
+
+test("audelinNightly_shouldRunOnlyOnTheSelfHostedMac_onASchedule", () => {
+  const nightly = readFileSync(new URL(".github/workflows/audelin-nightly.yml", repoRoot), "utf8");
+  const on = nightly.match(/\non:\n((?: {2}.*\n|\n)+?)\n(?=\S)/);
+  assert.ok(on, "missing on: block");
+  assert.deepEqual([...on[1].matchAll(/^ {2}([\w-]+):/gm)].map((match) => match[1]), ["schedule", "workflow_dispatch"]);
+  assert.match(on[1], /^    - cron: "\d+ \d+ \* \* \*"/m);
+  assert.doesNotMatch(nightly, /^ {2}(pull_request|pull_request_target|push|workflow_call):/m);
+  const job = nightly.match(/\n  long-runs:\n((?:    .*\n|\n)+)/);
+  assert.ok(job, "missing long-runs job");
+  assert.match(job[1], /^    runs-on: \[self-hosted, local-mac\]$/m);
+  assert.match(job[1], /scripts\/nightly\.sh/);
+});
+
+// Long profiled runs never enter pull request checks: no workflow a pull
+// request starts, nor any workflow it calls, runs them or calls the nightly.
+test("ciPullRequestChecks_shouldNeverRunTheLongProfiledRuns", () => {
+  const directory = new URL(".github/workflows/", repoRoot);
+  const files = readdirSync(directory).filter((file) => file.endsWith(".yml"));
+  const text = new Map(files.map((file) => [file, readFileSync(new URL(file, directory), "utf8")]));
+  const reached = new Set(files.filter((file) => /^ {2}pull_request(_target)?:/m.test(text.get(file))));
+  assert.ok(reached.has("ci.yml"));
+  for (const file of reached) {
+    for (const [, called] of text.get(file).matchAll(/uses: \.\/\.github\/workflows\/([\w-]+\.yml)/g)) reached.add(called);
+  }
+  assert.ok(reached.has("audelin-core.yml"));
+  assert.equal(reached.has("audelin-nightly.yml"), false);
+  const long = /nightly\.sh|profile-rehearsal\.sh|xctrace record|AudelinBaseline|Profile\/growth\.sh|--speed 1\b/;
+  for (const file of reached) {
+    assert.doesNotMatch(text.get(file), long, `${file} runs a long profiled run`);
+  }
+});

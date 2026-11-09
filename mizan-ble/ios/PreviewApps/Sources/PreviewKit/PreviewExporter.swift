@@ -1,4 +1,5 @@
 import AppKit
+import DesignSystem
 import SwiftUI
 
 @MainActor
@@ -27,7 +28,8 @@ public enum PreviewExporter {
                     let name = "\(snapshot.name)-\(device.rawValue)-\(appearance).png"
                     let size = device.size
                     let renderer = ImageRenderer(content: snapshot.content(device)
-                        .frame(width: size.width, height: size.height)
+                        .deviceScreen(size, cornerRadius: device.cornerRadius, safeArea: device.safeArea)
+                        .environment(\.horizontalSizeClass, device == .iPhone ? .compact : .regular)
                         .environment(\.colorScheme, scheme))
                     renderer.proposedSize = ProposedViewSize(size)
                     renderer.scale = 1

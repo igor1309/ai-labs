@@ -7,7 +7,7 @@ Feature: Sand writing: a full-screen free drawing canvas
     Given I open sand writing in portrait or landscape
     Then sand fills the available viewport including behind the controls
     And the page has no scrolling horizontally or vertically
-    And an icon-only Home button is at the safe leading edge
+    And a Home button is at the safe leading edge
     And a tip-size picker is at the safe trailing edge
     And no title, instructions, version footer or other controls occupy the canvas
 

@@ -14,30 +14,64 @@
 
 ## Designing in pen.dev
 
-- Work only on the `.pen` in your own worktree, through the pencil MCP. Do
-  it yourself; never ask the owner to open a file or click in the editor.
-  Do not use the `pen` CLI: it runs pen.dev's own agent.
-- The MCP sends a call to the Pen.app window that has its exact `filePath`
-  open. If no window has it, the call silently goes to the last-focused
-  window, which may be another agent's file.
-- So first open your file in its own window: `open -a Pen <absolute path>`.
-  Then give focus back to any other agent's window with
-  `open -a Pen <their path>`; that only focuses it.
-- Pass your absolute `filePath` on every call. Before the first edit, prove
-  the route with a read-only `Get` (e.g. a count of top-level frames).
-- Pen.app does not auto-save a file you opened; it only writes a backup,
-  and the MCP has no save. To save, focus your window (`open -a Pen <your
-  path>`), check that the front window's `AXDocument` (via `osascript`
-  and System Events) is exactly your path, then click Pen's File › Save
-  through System Events (`click menu item "Save" of menu 1 of menu bar
-  item "File" of menu bar 1` of process "Pen"), and give focus back. A ⌘S
-  keystroke goes to the terminal while it is the front app, and ⌘W does
-  not close a Pen window. Never save without that check: every window is
-  titled `rexlab.pen`. Commit the file from your worktree.
+- Work only on the `.pen` in your own worktree, headless, through
+  `pen interactive` (the `pen` CLI, logged in with `pen status`). It runs
+  the design tools with no Pen.app window and no agent: each run loads
+  only the file it is given, so no call can reach another agent's file.
+  Do not use agent mode (`pen --prompt ...`): it runs pen.dev's own agent.
+- Run `pen interactive --in <file> --out <file>` (the same path saves in
+  place) and send it one call per line on stdin, ending with `save()` and
+  `exit()`: `execute({ input: '<script>' })`, where the script uses
+  `Get`, `Update`, `Insert`, `Export` and `Print`. Without `save()` the
+  edits are lost. Read `Print` output from the run, and check exported
+  images exist: an export failure can exit 0.
+- Run it with the sandbox off. Pipe the lines with `printf '%s\n' ...`
+  or a heredoc; keep each run's calls together, since every run starts
+  from the file on disk.
+- Do it yourself; never ask the owner to open a file or click in the
+  editor. Use the pencil MCP and Pen.app only to show the owner a file;
+  the MCP has no save.
 - A `.pen` file is JSON. To start a new one, write
-  `{"version": "2.21", "children": []}` to its path, then open it.
+  `{"version": "2.21", "children": []}` to its path. Commit the file
+  from your worktree.
 - Never edit another agent's document or branch. If you did, tell that
   agent at once, with what you changed.
+
+### What a design holds
+
+- Start from a design system, not from screens. Define tokens with
+  `SetVariables` before drawing: colours themed by one `mode` axis (light
+  and dark), font families, a type scale of about eight sizes, spacing on a
+  4 pt grid and a few radii. No frame uses a raw colour, font, size, gap,
+  padding or radius; transparent (`#00000000`) is the one exception.
+- Anything drawn twice is a component on a Components board; screens are
+  built from its instances, with content as instance overrides.
+- Each light screen is itself a component, and its dark frame is an
+  instance with `theme: {mode: "dark"}`. Never copy a screen to make dark.
+- Draw every width class the product supports: compact (iPhone, < 600),
+  medium (iPad portrait, 600–1023) and wide (≥ 1024). The brief states for
+  each what moves (navigation, menus as sheet or popover, fixed bars), and
+  separately how touch, mouse and keyboard differ, and the iPhone safe area.
+- Put design notes in the file as `note` nodes beside the frames they
+  explain, and keep the brief, a Markdown file next to the `.pen`, in step.
+- Export every frame to PNG with a readable name, next to the `.pen`, and
+  look at each image before reporting. Fix what `c.problems` and the run's
+  issues list report (clipping, collapsed sizes, unknown icons).
+
+### pen interactive pitfalls
+
+- Write a long script to a file and pipe it as
+  `execute({ input: <JSON.stringify(script)> })`; hand-quoting breaks.
+- Paths in `Export` resolve against the shell's directory; `$TMPDIR`
+  differs outside the sandbox, so export into the design folder.
+- `Copy` of a reusable node makes a linked instance with no editable
+  children. To detach, `Get` the node, delete every `id`, and `Insert` it.
+- A `fit_content` parent with a `fill_container` child on the same axis
+  collapses to zero; give one of them a fixed size.
+- Check icon names (lucide has no `message-circle-question`); an unknown
+  icon renders blank and is reported only in the issues list.
+- Snapping raw values to tokens can change a shape: a radius of 22 on a
+  sheet is not "full". Look at the export after any bulk change.
 
 ## Pull request merge workflow
 
@@ -47,6 +81,8 @@
   lands moments later. Wait until `gh pr view` says `MERGED` before running
   cleanup or closing the issue. Run `finish-merged-pr.sh` from the feature
   branch's own worktree.
+- A PR branch need not include the latest trunk. Do not merge trunk solely
+  for freshness; resolve merge conflicts and test those changes when needed.
 - Use a merge commit only; do not squash or rebase-merge.
 - Do not add a `Co-Authored-By` trailer or any other AI attribution to
   commit messages.
@@ -76,11 +112,23 @@
   kept: cut the work it checks, do not loosen the check.
 - Swift: never synchronously block a cooperative-pool thread waiting for
   future work (no semaphore, `NSCondition`, group wait or queue `sync` on
-  async work; no lock held across `await`). Project policy goes further:
-  blocking I/O, `Process` launches and blocking framework calls (Core Audio
-  HAL, CoreBluetooth setup) run on an executor backed by a dedicated serial
-  queue or thread and are awaited, however short; a slow CI runner is no
-  excuse.
+  async work; no lock held across `await`). A lock around a short critical
+  section and work that finishes on its own (a file read, a framework
+  call) may run where they are; the runtime schedules them. Do not add
+  queues, custom executors or executor preferences to schedule your own
+  work; use a queue only where an API requires one (a Core Audio IO proc,
+  a tap, a termination handler).
+- Swift tests: Swift Testing runs tests in parallel with the concurrency the
+  runtime chooses. A test awaits the component's own API and its fakes'
+  reports; it does not move work between threads, count threads or check
+  where the component runs. A `.timeLimit` catches a hang, not slowness.
+- Tests reach a component only through what production uses. Each
+  component has one initializer, the one production calls. What a test
+  replaces (a system binding, a file call, a clock, a log sink) is a
+  parameter of that initializer, and the composition root passes the real
+  one. No initializer, method, property, counter or wait exists only so
+  tests can observe, count or pause internal work; tests assert on output
+  and wait on what their fakes report.
 
 ## State machines
 
@@ -103,16 +151,51 @@ composes it.
   doer observes the state, does the work once and sends the result back as
   an event.
 - No module imports swift-imrx or any state machine, and none wraps or
-  re-implements one. Only an app (a main app or a preview app) imports
-  swift-imrx. It composes each instance from the generic model, the tested
+  re-implements one. Only an app (a main app or a preview app), or in Audelin
+  its composer package, imports swift-imrx. It composes each instance from
+  the generic model, the tested
   reducer and the tested effect handler or doer. A sync model stays on the
   actor that made it; callers elsewhere `await` the hop.
-- Reducer tests are one-line `assert(state, event, reducedTo:)` cases; an
-  async reducer pairs each with `assert(state, event, effect:)`. Effect
+- Each reducer state test is paired with an effect test for the same
+  `(state, event)`: `assert(state, event, delivers:)`. Effect
   handler tests drive collaborators through spies:
   `expect(sut, with: effect, toDeliver: event, on: { spy.complete(…) })`.
   Doer tests feed it states and check its collaborator and `send` spies,
   including that a state seen twice does the work once.
+- `State` is the machine's whole contract, as in Vortex
+  (`ios.config/.claude/skills/rx-state-machine-development/references/state-machine-dod.md`
+  § Tests and § Dependencies; canonical: `swift-vortex/Tests/Feature/CBDC/Core/PaymentClose/`).
+  Every field is public with a public `init`: no hidden bookkeeping, and no computed property
+  that derives what is shown. A screen's machine owns UI state, rendered values included. The
+  view only renders state, animates transitions and sends user interactions; it decides nothing.
+- The reducer produces UI values through injected pure dependencies (a formatter is a closure
+  passed to `init`), never through private helpers. Reducer tests check each dependency with a
+  spy: no call on init or on no-op paths, the exact payload on each call, and the spy's stub
+  value used in the resulting state.
+- A reducer test builds its given state with a `make*` factory, gives the expected state as the
+  given state plus a mutation closure (`assert(state, event) { $0.status = .dismissed }`), and
+  omits the closure for "no change". No test spells out a whole expected state, and reducer
+  tests need no `@testable`.
+
+## Testing UI
+
+- Three claims, three kinds of test. Reducer and state tests prove the state
+  is right. Preview tests prove a view shows a given state as intended: the
+  right value in the right place, nothing missing or extra. Behaviour tests
+  prove what a view does itself: control events, focus and keyboard,
+  accessibility, scroll and selection.
+- A preview test builds the state in question directly as a value, renders
+  the view and compares it with a reference image. Each UI module keeps a
+  registry of named preview states; a case not yet covered is a new preview,
+  not a new test.
+- Do not drive a model to reach a state for a rendering check, and do not
+  read a rendered view back by OCR: both cost far more than building the
+  state, and OCR misreads.
+- Test a composition only for wiring no component test shows. A test that
+  replays a reducer or effect handler through the composed app adds nothing.
+- A test is main-actor only where the code it calls needs the main actor.
+  Main-actor tests run one at a time, and each one's time limit starts with
+  the suite, so needless ones push the rest past their limits.
 
 ## Writing docs and comments
 
@@ -124,18 +207,22 @@ composes it.
 
 ## Implementing with Codex
 
+- Size the process to the task. A small task (one test or a few lines in
+  one module, no product-behaviour change) is done by hand, without a
+  Codex brief, an agister run or an agister review: write it, run its
+  tests, read the diff once yourself and open the PR. Codex and agister
+  are for larger work.
 - The implementer is `codex-sol-61`. Use `codex-luna` only when sol is
   severely limited, and only for a very simple task: it is slow on
   production code and writes poor tests.
 - After Codex stops on a quota limit, start a fresh run once it is back;
   do not resume the stopped one. When the `claude-opus` fallback is limited
   too, send one ntfy push and wait; do not try other agents.
-- Review a branch against its merge-base with trunk, after merging trunk
-  in. A base on a trunk that has moved on shows trunk's new work as the
-  branch deleting it.
-- Review every Codex implement run with agister's review processes before
-  it merges. When sol is limited, run the reviewers one at a time, falling
-  back to `claude-opus`.
+- Review a branch against its merge-base with trunk. A base on a trunk
+  that has moved on shows trunk's new work as the branch deleting it.
+- Review every Codex implement run of a larger task with agister's review
+  processes before it merges. When sol is limited, run the reviewers one
+  at a time, falling back to `claude-opus`.
 - An implement run's `verification` is the record of what it checked:
   each command, its exit code and its last line. Read it before
   committing; do not run its checks again. Run only what it lacks: a
@@ -153,6 +240,8 @@ composes it.
   normal test cannot.
 - A behaviour no normal test can make fail means the code lacks a seam (an
   injected closure, spy, clock or hook). Add the seam.
+- Before you delete a throw-away test, one written to explore or reproduce
+  something, consider keeping it as a regression test.
 
 ## Reaching the owner
 

@@ -1,0 +1,149 @@
+import AppKit
+import GlassLedger
+import SwiftUI
+
+extension SettingsView {
+
+    @ViewBuilder
+    var callNotesPage: some View {
+        switch state.callNotes {
+        case let .loading(message):
+            uiText(message, tokens.typeBody, tokens.gutter)
+        case let .loadFailed(banner, retry):
+            errorBanner(banner.title, banner.detail)
+            notesButton(retry, .secondary)
+        case let .loaded(draft):
+            VStack(alignment: .leading, spacing: tokens.space6) {
+                checkbox("Составлять итоги после звонка", isOn: draft.automatic, id: "notes-automatic") {
+                    event(.setAutomaticNotes($0))
+                }
+                .accessibilityIdentifier("notes-automatic")
+                uiText("После завершения расшифровки.", tokens.typeSmall, tokens.sub)
+                checkbox("Определять имена участников", isOn: draft.identifySpeakers, id: "notes-speakers") {
+                    event(.setIdentifySpeakers($0))
+                }
+                .accessibilityIdentifier("notes-speakers")
+            }
+            ForEach(draft.runtimes) { runtime in
+                runtimeCard(runtime)
+            }
+            notesDetails(draft)
+            if let banner = draft.banner {
+                errorBanner(banner.title, banner.detail)
+            }
+            HStack(spacing: tokens.space8) {
+                uiText(draft.status, tokens.typeSmall, notesColor(draft.statusTone))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                notesButton(draft.validate, .secondary)
+                notesButton(draft.save, .primary)
+            }
+        }
+    }
+
+    func notesDetails(_ draft: SettingsState.NotesDraft) -> some View {
+        VStack(alignment: .leading, spacing: tokens.space12) {
+            uiText(notesDetailsExpanded ? "▾ О данных, оплате и проверке" : "▸ О данных, оплате и проверке",
+                   tokens.typeSmall, tokens.sub)
+                .padding(.vertical, tokens.space6)
+                .accessibilityHidden(true)
+                .overlay {
+                    SettingsPressTarget(title: "О данных, оплате и проверке", identifier: "notes-details",
+                                        isEnabled: true, selected: notesDetailsExpanded) {
+                        notesDetailsExpanded.toggle()
+                    }
+                }
+            if notesDetailsExpanded {
+                VStack(alignment: .leading, spacing: tokens.space12) {
+                    notesDetail("Данные", draft.disclosure)
+                    notesDetail("Расходы", "Определение имён — отдельный запрос. Запрос с истёкшим временем ожидания тоже может расходовать квоту или деньги.")
+                    notesDetail("Проверка", "«Проверить» проверяет настройки и доступность сервисов. Транскрипт не отправляется. Наличие квоты не проверяется.")
+                    if draft.runtimes.contains(where: { $0.kind == .claudeCLI }) {
+                        notesDetail("Claude", "Пустое поле «Программа» — автоматический поиск Claude в PATH и стандартных папках установки. Для другой установки укажите полный путь. Пользовательские настройки Claude не используются; политики организации действуют.")
+                    }
+                    if draft.runtimes.contains(where: { $0.kind == .compatibleAPI }) {
+                        notesDetail("API-ключ", "Укажите имя переменной окружения с API-ключом, без значения ключа. Сохраняется только имя переменной. Оставьте пустым, если сервер не требует ключ.")
+                    }
+                }
+                .padding(tokens.space12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(tokens.surface, in: .rect(cornerRadius: tokens.radiusCard))
+            }
+        }
+    }
+
+    func notesDetail(_ title: String, _ body: String) -> some View {
+        VStack(alignment: .leading, spacing: tokens.space4) {
+            uiText(title, tokens.typeSmall, tokens.text, .semibold)
+            uiText(body, tokens.typeSmall, tokens.sub)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    func notesColor(_ tone: SettingsState.NotesTone) -> Color {
+        switch tone {
+        case .secondary: tokens.gutter
+        case .success: tokens.me
+        case .error: tokens.rec
+        }
+    }
+
+    func notesButton(_ action: SettingsState.NotesAction, _ kind: ButtonKind) -> some View {
+        button(action.title, kind, isEnabled: action.isEnabled, id: "notes-\(action.id.rawValue)") { event(.notesAction(action.id)) }
+            .accessibilityIdentifier("notes-\(action.id.rawValue)")
+    }
+
+    var notesFont: NSFont {
+        NSFont(name: tokens.fontData, size: tokens.typeSmall) ?? .monospacedSystemFont(ofSize: tokens.typeSmall, weight: .regular)
+    }
+
+    func runtimeCard(_ runtime: SettingsState.NotesRuntime) -> some View {
+        VStack(alignment: .leading, spacing: tokens.space8) {
+            HStack {
+                uiText(runtime.title, tokens.typeBody, tokens.text, .semibold)
+                Spacer()
+                if runtime.id == .fallback {
+                    uiText("Необязательно", tokens.typeSmall, tokens.sub)
+                }
+            }
+            notesRow("Сервис") {
+                SettingsNotesMenu(runtime: runtime, font: notesFont) {
+                    event(.selectNotesRuntime(runtime.id, $0))
+                }
+            }
+            ForEach(runtime.fields) { field in
+                notesRow(field.label, invalid: field.isInvalid) {
+                    SettingsNotesText(field: field, slot: runtime.id, slotTitle: runtime.title,
+                                      font: notesFont, color: NSColor(field.isEnabled ? tokens.text : tokens.disText)) {
+                        event(.editNotesField(runtime.id, field.id, $0))
+                    }
+                    .disabled(!field.isEnabled)
+                }
+            }
+            if runtime.id == .fallback {
+                uiText("Повторяет запрос, если основной сервис завершится ошибкой.", tokens.typeSmall, tokens.sub)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if runtime.kind != .unconfigured {
+                uiText(runtime.disclosure, tokens.typeSmall, tokens.sub)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(tokens.space12)
+        .background(tokens.surface, in: .rect(cornerRadius: tokens.radiusCard))
+        .overlay(RoundedRectangle(cornerRadius: tokens.radiusCard).strokeBorder(tokens.rule, lineWidth: 1))
+    }
+
+    func notesRow<Control: View>(_ label: String, invalid: Bool = false, @ViewBuilder control: () -> Control) -> some View {
+        HStack(spacing: tokens.space12) {
+            uiText(label, tokens.typeSmall, tokens.sub)
+                .frame(width: config.notesLabelWidth, alignment: .leading)
+            control()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, tokens.space12)
+                .frame(height: tokens.space24 + tokens.space6)
+                .background(tokens.surface, in: .rect(cornerRadius: tokens.radiusControl))
+                .overlay(RoundedRectangle(cornerRadius: tokens.radiusControl)
+                    .strokeBorder(invalid ? tokens.rec : tokens.rule, lineWidth: 1))
+        }
+    }
+}

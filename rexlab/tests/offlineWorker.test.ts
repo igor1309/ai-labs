@@ -57,8 +57,10 @@ const page = () => new Request(`${ORIGIN}/`, { mode: "same-origin" });
 // A launch's request for the page: Node makes no navigation of its own.
 const navigation = (path = "/") => ({ method: "GET", url: `${ORIGIN}${path}`, mode: "navigate" }) as Request;
 
-function release(version: string, { caches = memoryCaches().caches, fetch = network().fetch, wait = manualWait().wait } = {}) {
-  return offlineWorker({ version, files: FILES, caches, fetch, origin: ORIGIN, wait });
+const claimNothing = async () => {};
+
+function release(version: string, { caches = memoryCaches().caches, fetch = network().fetch, wait = manualWait().wait, claim = claimNothing } = {}) {
+  return offlineWorker({ version, files: FILES, caches, fetch, origin: ORIGIN, wait, claim });
 }
 
 describe("the app offline", () => {
@@ -123,7 +125,7 @@ describe("the app offline", () => {
     const { caches } = memoryCaches();
     const active = release("v1.0.0", { caches });
     await active.install();
-    await offlineWorker({ version: "v1.1.0", files: ["/", "/assets/tile-new.webp", "/icons/icon-180.png"], caches, fetch: network().fetch, origin: ORIGIN, wait: manualWait().wait }).install();
+    await offlineWorker({ version: "v1.1.0", files: ["/", "/assets/tile-new.webp", "/icons/icon-180.png"], caches, fetch: network().fetch, origin: ORIGIN, wait: manualWait().wait, claim: claimNothing }).install();
     expect(await (await active.respond(new Request(`${ORIGIN}/assets/tile-new.webp`))!).text()).toBe("cached /assets/tile-new.webp");
   });
 
@@ -157,7 +159,7 @@ describe("the app offline", () => {
     }).fetch;
     const active = release("v1.0.0", { caches, fetch });
     await active.install();
-    await offlineWorker({ version: "v1.1.0", files: ["/assets/tile-new.webp", "/icons/icon-new.png"], caches, fetch, origin: ORIGIN, wait: manualWait().wait }).install();
+    await offlineWorker({ version: "v1.1.0", files: ["/assets/tile-new.webp", "/icons/icon-new.png"], caches, fetch, origin: ORIGIN, wait: manualWait().wait, claim: claimNothing }).install();
     await (await caches.open("someone-else")).addAll(["/assets/theirs.webp"]);
     expect(await (await active.respond(navigation(path))!).text()).toBe(expected);
   });
@@ -176,6 +178,17 @@ describe("the app offline", () => {
     await next.install();
     await next.activate();
     expect([...stored.keys()].sort()).toEqual(["rexlab-v1.0.1", "someone-else"]);
+  });
+
+  it("takes the open pages once it has taken over, after the older release's cache is gone", async () => {
+    const { caches, stored } = memoryCaches();
+    await release("v1.0.0", { caches }).install();
+    const claimed: string[][] = [];
+    const next = release("v1.0.1", { caches, claim: async () => { claimed.push([...stored.keys()]); } });
+    await next.install();
+    expect(claimed).toEqual([]);
+    await next.activate();
+    expect(claimed).toEqual([["rexlab-v1.0.1"]]);
   });
 });
 

@@ -1,44 +1,48 @@
 Feature: Sort dinosaurs: the board in a tall-narrow window
-  In a tall-narrow window, portrait and under 600 CSS pixels wide (an
-  iPhone upright), the sorting board stands upright as in a tall window,
-  on 24-pixel padding at the top, 32 at the bottom and 20 a side, its
-  parts 16 apart. "HOME" shows its house alone, still named for screen
-  readers, and the prompt is in 22-pixel type. The tray's cards stand 8
-  apart, as wide as the width allows and as leaves the baskets 240 of
-  the height, never under 72 wide: below that the whole screen scrolls.
-  The baskets stand side by side, 8 apart and 12 inside, each showing
-  its mark alone, 44 tall, its name kept for screen readers: no name fits
-  a basket a third of a phone wide. Size keeps its big and its small
-  footprint. Every tap is at least 44 pixels.
+  On a phone upright the sorting board plays upright too, with no ask to
+  turn sideways. Play is as sort-dinosaurs-play.feature tells. A basket a
+  third of a phone wide may show its mark without its name, and "HOME"
+  its house without its word, so long as each keeps its name for screen
+  readers. Where the parts sit, their sizes, spacing and type are the
+  design's call, not this spec's.
 
-  Scenario Outline: The board stands upright on a phone
+  Scenario Outline: The board plays upright on a phone
     Given a window of <width> by <height> CSS pixels, with no safe areas
     When I start a <level> board
     Then I see no picture asking to turn sideways or to make the window wider
-    And the tray stands in <rows> rows of <columns>, each card <card> pixels wide
+    And I see "HOME", the progress steps, the prompt, every card on the tray and every basket, none cut
+    And the baskets are below the tray
     And the screen <scrolls>
 
     Examples:
-      | width | height | level          | rows | columns | card | scrolls         |
-      | 320   | 568    | Hatchling      | 2    | 3       | 72   | scrolls         |
-      | 393   | 852    | Hatchling      | 2    | 3       | 112  | does not scroll |
-      | 393   | 852    | Explorer       | 2    | 4       | 82   | does not scroll |
-      | 393   | 852    | Paleontologist | 3    | 4       | 82   | does not scroll |
-      | 430   | 932    | Paleontologist | 3    | 4       | 92   | does not scroll |
+      | width | height | level          | scrolls                                              |
+      | 393   | 852    | Hatchling      | does not scroll                                      |
+      | 393   | 852    | Explorer       | does not scroll                                      |
+      | 393   | 852    | Paleontologist | does not scroll                                      |
+      | 430   | 932    | Paleontologist | does not scroll                                      |
+      | 320   | 568    | Hatchling      | may scroll, rather than squeeze a card past readable |
 
-  Scenario Outline: Every mark and the prompt fit the narrowest phone
+  Scenario Outline: Every card, mark and the prompt read on the narrowest phone
     Given the language is <language>
     And a window of 320 by 568 CSS pixels
     When I see a board of any baskets a level deals
-    Then every basket's mark fits inside its basket
-    And the prompt stands on one line beside its symbol
+    Then every dinosaur's name stands on one line on its card, none cut
+    And every basket's mark shows whole inside its basket, BIG's and SMALL's footprints told apart
+    And the prompt reads in full beside its symbol
+    And every basket and "HOME" is named for screen readers
 
     Examples:
       | language |
       | English  |
       | Russian  |
 
-  Scenario: The board takes the phone's sizes as the window narrows
-    Given a sorting board upright in a tall window
+  Scenario: Every tap is easy to hit on a phone
+    Given a window of 393 by 852 CSS pixels
+    When a Paleontologist round starts
+    Then "HOME", each card and each basket is at least 44 by 44 CSS pixels to tap or drop on
+
+  Scenario: The board stays as the window narrows to a phone's
+    Given a sorting board upright in a tall window, with 3 cards sorted and one wrong drop
     When the window narrows to 393 by 852
-    Then the board stays, in the phone's sizes, with no picture asking to turn
+    Then the board stays, with no picture asking to turn
+    And the 3 cards are still in their baskets and the wrong drop still counts

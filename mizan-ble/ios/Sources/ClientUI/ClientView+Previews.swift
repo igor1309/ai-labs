@@ -23,7 +23,8 @@ public extension ClientState {
             actions: [.init(
                 "Start handshake", event: .startHandshake, icon: .bluetooth(isSlashed: false),
                 kind: .client, isEnabled: false
-            )]
+            )],
+            signal: .noSignal
         )),
         ("s2-host-in-range-m2", ClientState(
             eyebrow: "STEP 1 OF 4 · FIND",
@@ -45,7 +46,8 @@ public extension ClientState {
             actions: [.init(
                 "Start handshake", event: .startHandshake, icon: .bluetooth(isSlashed: false),
                 kind: .client, isEnabled: true
-            )]
+            )],
+            signal: .init(label: "−52 dBm", bars: 4, tone: .live)
         )),
         ("s3-hold-closer", ClientState(
             eyebrow: "STEP 1 OF 4 · FIND",
@@ -62,12 +64,13 @@ public extension ClientState {
                 tone: .idle, direction: .toHost, symbol: "antenna.radiowaves.left.and.right"
             ),
             title: "Hold closer",
-            detail: "Hold your phone closer to the till",
+            detail: "Hold the phone right next to the host iPad, so Mizan can tell which one is yours.",
             content: .discovery(icon: .bluetooth(isSlashed: false), isInRange: false),
             actions: [.init(
                 "Start handshake", event: .startHandshake, icon: .bluetooth(isSlashed: false),
                 kind: .client, isEnabled: false
-            )]
+            )],
+            signal: .init(label: "−67 dBm", bars: 2, tone: .live)
         )),
         ("s4-host-went-quiet-m10", ClientState(
             eyebrow: "STEP 1 OF 4 · FIND",
@@ -89,7 +92,8 @@ public extension ClientState {
             actions: [.init(
                 "Start handshake", event: .startHandshake, icon: .bluetooth(isSlashed: false),
                 kind: .client, isEnabled: false
-            )]
+            )],
+            signal: .noSignal
         )),
         ("s5-connecting-m3", ClientState(
             eyebrow: "STEP 2 OF 4 · CONNECT",
@@ -111,7 +115,8 @@ public extension ClientState {
             actions: [.init(
                 "Cancel", event: .cancel, icon: .system("xmark"),
                 kind: .secondary, isEnabled: true
-            )]
+            )],
+            signal: .init(label: "−52 dBm at start", bars: 4, tone: .atStart)
         )),
         ("s6-could-not-connect-m4", ClientState(
             eyebrow: "STEP 2 OF 4 · CONNECT",
@@ -133,7 +138,8 @@ public extension ClientState {
             actions: [.init(
                 "Try again", event: .tryAgain, icon: .system("arrow.counterclockwise"),
                 kind: .client, isEnabled: true
-            )]
+            )],
+            signal: .init(label: "−52 dBm at start", bars: 4, tone: .atStart)
         )),
         ("s7-bluetooth-off", ClientState(
             eyebrow: "STEP 1 OF 4 · FIND",
@@ -150,12 +156,13 @@ public extension ClientState {
                 tone: .idle, direction: .toHost, symbol: "antenna.radiowaves.left.and.right"
             ),
             title: "Bluetooth is off",
-            detail: "Turn on Bluetooth to find a nearby host.",
+            detail: "Turn on Bluetooth in Control Centre to find a nearby host.",
             content: .discovery(icon: .bluetooth(isSlashed: true), isInRange: false),
             actions: [.init(
                 "Start handshake", event: .startHandshake, icon: .bluetooth(isSlashed: false),
                 kind: .client, isEnabled: false
-            )]
+            )],
+            signal: .noSignal
         )),
         ("s8-host-with-no-name-yet", ClientState(
             eyebrow: "STEP 1 OF 4 · FIND",
@@ -177,7 +184,8 @@ public extension ClientState {
             actions: [.init(
                 "Start handshake", event: .startHandshake, icon: .bluetooth(isSlashed: false),
                 kind: .client, isEnabled: true
-            )]
+            )],
+            signal: .init(label: "−52 dBm", bars: 4, tone: .live)
         )),
     ]
 }

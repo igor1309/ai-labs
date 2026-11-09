@@ -9,13 +9,10 @@ public final class MicrophoneCapture: Sendable {
 
     private let lifetime: CaptureLifetime
 
-    public convenience init() async throws {
+    /// Captures through `hardware`: `.system()` in the app.
+    public init(hardware: MicrophoneHardware) async throws {
 
-        try await self.init(binding: NativeMicrophoneBinding.system())
-    }
-
-    init(binding: any MicrophoneBinding) async throws {
-
+        let binding = hardware.binding
         let stream = AsyncThrowingStream<AudioPiece, any Error>.makeStream()
         audio = stream.stream
         lifetime = CaptureLifetime(binding: binding, continuation: stream.continuation)
@@ -42,13 +39,24 @@ public final class MicrophoneCapture: Sendable {
     }
 }
 
-// Lifecycle state belongs to queue; the audio callback touches only delivery.
-// Native stop can wait for that callback without holding its delivery lock.
-private final class CaptureLifetime: @unchecked Sendable {
+/// Lifecycle state belongs to the actor. Native callbacks post messages to its
+/// mailbox in the order they arrive; the audio callback touches only delivery,
+/// so native stop can wait for it without holding the delivery lock.
+private actor CaptureLifetime {
+
+    private enum Message: Sendable {
+        case defaultChanged(UInt32, at: Double)
+        case configurationChanged(generation: Int)
+        case settleReached(DeviceFollowing.Settle)
+        case failed(any Error)
+        case delivering
+        case stop
+        case barrier(CheckedContinuation<Void, Never>)
+    }
 
     private let binding: any MicrophoneBinding
-    private let queue = DispatchQueue(label: "audelin.microphone-capture")
-    private let delivery: Mutex<Delivery>
+    private nonisolated let mailbox: AsyncStream<Message>.Continuation
+    private nonisolated let delivery: DeliveryBox
     private var ended = false
     private var following = DeviceFollowing(input: 0)
     private var generation = 0
@@ -57,28 +65,26 @@ private final class CaptureLifetime: @unchecked Sendable {
     init(binding: any MicrophoneBinding, continuation: AsyncThrowingStream<AudioPiece, any Error>.Continuation) {
 
         self.binding = binding
-        delivery = Mutex(Delivery(continuation: continuation))
+        delivery = DeliveryBox(Delivery(continuation: continuation))
+        let messages = AsyncStream<Message>.makeStream()
+        mailbox = messages.continuation
+        Task { await self.run(messages.stream) }
     }
 
-    /// Starting the engine can block, so it runs on the capture's queue and
-    /// the caller awaits it, never holding a pool thread.
-    func start() async throws {
+    private func run(_ messages: AsyncStream<Message>) async {
 
-        try await withCheckedThrowingContinuation { (done: CheckedContinuation<Void, any Error>) in
-            queue.async { [self] in done.resume(with: Result { try startOnQueue() }) }
-        }
+        for await message in messages { process(message) }
     }
 
-    private func startOnQueue() throws {
+    func start() throws {
 
         do {
-            try binding.watchDefaultInput { [weak self] input in
-                guard let self else { return }
-                let time = binding.now
-                queue.async { [self] in defaultChanged(input, at: time) }
+            let post = mailbox
+            try binding.watchDefaultInput { [binding] input in
+                post.yield(.defaultChanged(input, at: binding.now))
             }
             following = DeviceFollowing(input: try binding.defaultInput())
-            delivery.withLock { $0.lastEnd = binding.now }
+            delivery.state.withLock { $0.lastEnd = binding.now }
             try startEngine(input: following.input)
         } catch {
             finish(error)
@@ -86,16 +92,47 @@ private final class CaptureLifetime: @unchecked Sendable {
         }
     }
 
-    func stop() {
+    nonisolated func stop() {
 
-        queue.async { [self] in finish(nil) }
+        mailbox.yield(.stop)
     }
 
+    /// Returns once every message posted before it has been handled.
     func synchronize() async {
 
-        let signal = AsyncStream<Void>.makeStream()
-        queue.async { signal.continuation.finish() }
-        for await _ in signal.stream {}
+        await withCheckedContinuation { done in
+            if case .terminated = mailbox.yield(.barrier(done)) { done.resume() }
+        }
+    }
+
+    private func process(_ message: Message) {
+
+        switch message {
+        case let .defaultChanged(input, time):
+            handle(.defaultChanged(input == 0 ? nil : input, at: time))
+        case let .configurationChanged(startedGeneration):
+            guard !ended, generation == startedGeneration else { return }
+            do {
+                let latest = try readDefault()
+                handle(.configurationChanged(
+                    currentAvailable: binding.inputAvailable(following.input), defaultInput: latest
+                ))
+            } catch { finish(error) }
+        case let .settleReached(settle):
+            guard !ended, following.pending == settle else { return }
+            do {
+                handle(.defaultChanged(try readDefault(), at: binding.now))
+                handle(.settleReached(settle, at: binding.now))
+            } catch { finish(error) }
+        case let .failed(error):
+            finish(error)
+        case .delivering:
+            handle(.currentInputDelivering)
+        case .stop:
+            finish(nil)
+        case let .barrier(done):
+            done.resume()
+        }
     }
 
     private func startEngine(input: UInt32) throws {
@@ -103,17 +140,12 @@ private final class CaptureLifetime: @unchecked Sendable {
         guard input != 0 else { throw CaptureError.noInput }
         generation += 1
         let startedGeneration = generation
-        try binding.start(input: input, receive: { [weak self] in self?.receive($0) }) { [weak self] in
-            guard let self else { return }
-            queue.async { [self] in
-                guard !ended, generation == startedGeneration else { return }
-                do {
-                    let latest = try readDefault()
-                    handle(.configurationChanged(
-                        currentAvailable: binding.inputAvailable(following.input), defaultInput: latest
-                    ))
-                } catch { finish(error) }
-            }
+        let post = mailbox
+        let delivery = delivery
+        try binding.start(input: input, receive: { result in
+            Self.receive(result, delivery: delivery, post: post)
+        }) {
+            post.yield(.configurationChanged(generation: startedGeneration))
         }
     }
 
@@ -121,11 +153,6 @@ private final class CaptureLifetime: @unchecked Sendable {
 
         do { return try binding.defaultInput() }
         catch CaptureError.noInput { return nil }
-    }
-
-    private func defaultChanged(_ input: UInt32, at time: Double) {
-
-        handle(.defaultChanged(input == 0 ? nil : input, at: time))
     }
 
     private func handle(_ event: DeviceFollowing.Event, failure: (any Error)? = nil) {
@@ -138,16 +165,8 @@ private final class CaptureLifetime: @unchecked Sendable {
             cancelSettle?()
             cancelSettle = nil
             if let settle = following.pending {
-                cancelSettle = binding.schedule(at: settle.deadline) { [weak self] in
-                    guard let self else { return }
-                    queue.async { [self] in
-                        guard !ended, following.pending == settle else { return }
-                        do {
-                            handle(.defaultChanged(try readDefault(), at: binding.now))
-                            handle(.settleReached(settle, at: binding.now))
-                        } catch { finish(error) }
-                    }
-                }
+                let post = mailbox
+                cancelSettle = binding.schedule(at: settle.deadline) { post.yield(.settleReached(settle)) }
             }
         }
         switch result.action {
@@ -173,15 +192,21 @@ private final class CaptureLifetime: @unchecked Sendable {
         cancelSettle = nil
         binding.unwatchDefaultInput()
         binding.stop()
-        delivery.withLock {
+        delivery.state.withLock {
             $0.finished = true
             $0.continuation.finish(throwing: $0.error ?? error)
         }
+        // Messages already posted still drain; the run loop then ends.
+        mailbox.finish()
     }
 
-    private func receive(_ result: Result<InputBuffer, any Error>) {
+    private static func receive(
+        _ result: Result<InputBuffer, any Error>,
+        delivery: DeliveryBox,
+        post: AsyncStream<Message>.Continuation
+    ) {
 
-        let failure: (any Error)? = delivery.withLock { state in
+        let failure: (any Error)? = delivery.state.withLock { state in
             guard !state.finished, state.error == nil else { return nil }
             do {
                 let buffer = try result.get()
@@ -215,12 +240,15 @@ private final class CaptureLifetime: @unchecked Sendable {
                 return error
             }
         }
-        if let failure {
-            queue.async { [self] in finish(failure) }
-        } else {
-            queue.async { [self] in handle(.currentInputDelivering) }
-        }
+        if let failure { post.yield(.failed(failure)) } else { post.yield(.delivering) }
     }
+}
+
+private final class DeliveryBox: Sendable {
+
+    let state: Mutex<Delivery>
+
+    init(_ delivery: Delivery) { state = Mutex(delivery) }
 }
 
 private struct Delivery {

@@ -74,17 +74,31 @@ final class StoreSpy: SettingsStore {
 }
 
 @Observable final class ClockSpy: ClockPort, @unchecked Sendable {
+    struct CountdownRequest: Equatable {
+        let count: Int
+        let interval: Duration
+    }
+
     private let lock = NSLock()
-    private var remaining = 0
-    private var continuation: AsyncStream<Int>.Continuation?
+    /// Every running countdown, so the broadcast's and the notice's run side by side.
+    private var countdowns: [(id: Int, remaining: Int, sink: AsyncStream<Int>.Continuation)] = []
+    private var nextID = 0
     private var time = 0.0
     private var tickContinuation: AsyncStream<Double>.Continuation?
-    var starts: [Int] { lock.withLock { started } }
-    private var started: [Int] = []
+    var starts: [Int] { lock.withLock { started.map(\.count) } }
+    var countdownRequests: [CountdownRequest] { lock.withLock { started } }
+    private var started: [CountdownRequest] = []
     func now() -> Double { lock.withLock { time } }
+    func setTime(_ value: Double) { lock.withLock { time = value } }
     func countdown(from count: Int, every interval: Duration) -> AsyncStream<Int> {
         let (stream, sink) = AsyncStream<Int>.makeStream()
-        lock.withLock { remaining = count; continuation = sink; started.append(count) }
+        let id = lock.withLock {
+            nextID += 1
+            countdowns.append((nextID, count, sink))
+            started.append(.init(count: count, interval: interval))
+            return nextID
+        }
+        sink.onTermination = { [weak self] _ in self?.lock.withLock { self?.countdowns.removeAll { $0.id == id } } }
         return stream
     }
     func ticks(every interval: Duration) -> AsyncStream<Double> {
@@ -96,10 +110,19 @@ final class StoreSpy: SettingsStore {
         lock.withLock {
             time += Double(seconds)
             tickContinuation?.yield(time)
-            remaining = max(0, remaining - seconds)
-            continuation?.yield(remaining)
-            if remaining == 0 { continuation?.finish() }
+            for index in countdowns.indices {
+                countdowns[index].remaining = max(0, countdowns[index].remaining - seconds)
+            }
+        }
+        // Yielded outside the lock: a finish runs onTermination, which takes it.
+        for countdown in lock.withLock({ countdowns }) {
+            countdown.sink.yield(countdown.remaining)
+            if countdown.remaining == 0 { countdown.sink.finish() }
         }
     }
-    func finish() { lock.withLock { continuation?.finish(); tickContinuation?.finish() } }
+    var running: Int { lock.withLock { countdowns.count } }
+    func finish() {
+        for countdown in lock.withLock({ countdowns }) { countdown.sink.finish() }
+        lock.withLock { tickContinuation?.finish() }
+    }
 }

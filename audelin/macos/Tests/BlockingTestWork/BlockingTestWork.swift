@@ -1,35 +1,5 @@
 import AVFoundation
-import Dispatch
 import Foundation
-import Synchronization
-
-// Test fixtures read and write files and launch processes, which block; the
-// cooperative pool must not run them, so tests await them on a few serial
-// queues taken in turn, which bounds the threads without queueing every test
-// behind one.
-private let blockingQueues = (0..<4).map { DispatchQueue(label: "audelin.tests.blocking.\($0)") }
-private let nextQueue = Atomic<UInt>(0)
-
-private var blockingWork: DispatchQueue {
-
-    blockingQueues[Int(nextQueue.wrappingAdd(1, ordering: .relaxed).oldValue % UInt(blockingQueues.count))]
-}
-
-/// Runs blocking test work outside the cooperative pool and awaits its result.
-public func offPool<Value: Sendable>(_ work: @escaping @Sendable () throws -> Value) async throws -> Value {
-
-    try await withCheckedThrowingContinuation { (done: CheckedContinuation<Value, any Error>) in
-        blockingWork.async { done.resume(with: Result { try work() }) }
-    }
-}
-
-/// Runs blocking test work that cannot fail outside the cooperative pool.
-public func offPool<Value: Sendable>(_ work: @escaping @Sendable () -> Value) async -> Value {
-
-    await withCheckedContinuation { (done: CheckedContinuation<Value, Never>) in
-        blockingWork.async { done.resume(returning: work()) }
-    }
-}
 
 /// Runs the body, then awaits blocking cleanup whether or not the body threw.
 /// The body's error wins over a cleanup error.
@@ -41,7 +11,7 @@ public func withCleanup<Value>(
 
     let outcome: Result<Value, any Error>
     do { outcome = .success(try await body()) } catch { outcome = .failure(error) }
-    let cleaned = await offPool { Result { try cleanup() } }
+    let cleaned = Result { try cleanup() }
     let value = try outcome.get()
     try cleaned.get()
     return value
@@ -68,11 +38,9 @@ public func exitStatus(
 ) async throws -> Int32 {
 
     let ended = AsyncStream<Int32>.makeStream()
-    try await offPool {
-        try launch { status in
-            ended.continuation.yield(status)
-            ended.continuation.finish()
-        }
+    try launch { status in
+        ended.continuation.yield(status)
+        ended.continuation.finish()
     }
     // Reaping must outlive cancellation of the caller.
     let reaped = Task.detached {
@@ -93,10 +61,10 @@ public struct AudioFileContents: Sendable {
 
 public struct UnreadableAudio: Error {}
 
-/// Reads an audio file outside the cooperative pool.
+/// Reads an audio file.
 public func audioFile(_ url: URL) async throws -> AudioFileContents {
 
-    try await offPool {
+    do {
         let file = try AVAudioFile(forReading: url)
         var samples: [Float] = []
         if file.length > 0 {

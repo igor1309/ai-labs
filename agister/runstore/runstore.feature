@@ -35,6 +35,12 @@ Feature: runstore keeps runs
     Then they are "20261016T090000Z-0a0b0c", then
       "20261017T071618Z-55fd36"
 
+  Scenario: A run folder that cannot be looked into is still kept
+    Given the record of the run "b" written, and the folder "a" unsearchable
+    When the runs kept are asked
+    Then they are "a", then "b"
+    And the record of "a" is an error
+
   Scenario Outline: A run is exported, its files copied under its id
     Given the run "x" kept, <kept>
     When "x" is exported to "out", <out>

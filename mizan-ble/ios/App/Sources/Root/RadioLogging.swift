@@ -81,7 +81,10 @@ import Foundation
         eventTask = Task.immediate {
             defer { continuation.finish() }
             for await event in source {
-                writer.record(event.logDescription)
+                switch event {
+                case .reading: break
+                default: writer.record(event.logDescription)
+                }
                 continuation.yield(event)
             }
         }

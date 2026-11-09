@@ -1,6 +1,6 @@
 #!/bin/sh
 # The Agister check: gokit's check, which Agister builds against, then
-# Agister's own format, vet and race tests. The archive is its own module,
+# Agister's own format, vet and race tests, and the pages' script tests. The archive is its own module,
 # kept as reference, and is not checked. Each stage says what it ran: the
 # files gofmt saw, the packages vet saw, and for each package the tests that
 # ran, passed, failed and were skipped (gokit's testreport).
@@ -40,6 +40,10 @@ if ! test -z "$too_big"; then
   echo "$too_big"
   exit 1
 fi
+
+# The pages' script, over a fake DOM: node's own test runner, no packages.
+echo "== agister pages node --test pages/tests/*.test.js"
+node --test pages/tests/*.test.js
 
 packages=$(go list ./... | wc -l | tr -d ' ')
 echo "== agister go vet ./...: $packages packages"

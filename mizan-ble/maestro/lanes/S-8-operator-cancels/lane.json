@@ -1,0 +1,16 @@
+{
+  "parts": [
+    {
+      "name": "client",
+      "device": "iPhone",
+      "expected": [
+        {
+          "category": "clientReview",
+          "phase": "ended hostCancelled"
+        }
+      ],
+      "flow": "client.yaml",
+      "settings": "client.json"
+    }
+  ]
+}

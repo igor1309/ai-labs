@@ -13,7 +13,7 @@ Workflows are organized into four categories:
 - **Release** — tag-triggered pipelines for per-unit and legacy Oracle releases.
 - **Scheduled & Independent** — health checks, dashboards, deployments, and housekeeping that run on cron or trunk push.
 
-`update-behind-prs.yml` runs on each trunk push. It updates every open PR that has auto-merge armed and has fallen behind trunk, so it is tested again and lands without a hand update. Branch protection requires up-to-date branches. A PR that conflicts fails the run, naming the PR. It pushes with `PR_UPDATE_TOKEN`, because an update pushed with `GITHUB_TOKEN` would start no CI.
+PR branches may merge after required checks pass without incorporating the latest trunk. Merges use merge commits; conflicts must be resolved before merging. Trunk pushes do not automatically update waiting PR branches.
 
 ## Path Filtering Policy
 
@@ -22,6 +22,8 @@ Workflows are organized into four categories:
 This ensures the `report` job (a required status check for branch protection) always runs — even on doc-only or non-code changes — while expensive test/build jobs are skipped when their project files are unchanged.
 
 `ci.yml` runs on `push` to `trunk` only, so a PR commit has one run, its PR's, and auto-merge waits for that run's verdict; a branch with no PR gets no CI. The `report` job is named `report` only on `pull_request` runs (`report (push)` and `report (workflow_dispatch)` otherwise), so a trunk push run or a dispatched run never satisfies a PR's required check.
+
+The `shared` filter runs every project's job. It lists only what every project's CI runs on: `ci.yml` itself, the root Node manifests, `scripts/ci/**` and `vendor/**`. A change to a project's own `<project>-core.yml` runs only that project's job, through its own filter, and every project job honours `shared`.
 
 Per-project workflows do not need their own path filters — the dispatcher's `changes` job already prevents them from running on unrelated changes.
 
@@ -49,21 +51,22 @@ Each test, what runs it, and the change that triggers it (LAB-167, LAB-220, LAB-
 | clipdeck (`clipdeck/test/*.test.ts`), typecheck | `clipdeck-core` | the `clipdeck` filter | runs |
 | ntfy-sender (`ntfy-sender/tests/*.test.js`), in Chromium | `ntfy-sender-core` | the `ntfy-sender` filter | runs |
 | noreta (`noreta/tests/*.test.ts`), typecheck | `noreta-core` | the `noreta` filter, with `noreta/docs/qa.md` | runs |
-| agonara (`agonara/tests/*.test.js`, `agonara/showcase/*.test.mjs`), OpenAPI check and lint, Docker build | `agonara-core` | the `agonara` filter, with the documents, skills and root `docs/loc-dashboard.html` its tests read | runs |
+| agonara (`agonara/tests/*.test.js`, `agonara/showcase/*.test.mjs`, the Session runner's Go tests in `agonara/session`), OpenAPI check and lint, Docker build | `agonara-core` | the `agonara` filter, with the documents, skills and root `docs/loc-dashboard.html` its tests read | runs |
 | foliotell iOS (`foliotell/ios/Tests/`), build, archive | `foliotell-core` | the `foliotell` filter | runs |
 | foliotell Android (`:core:test`), debug build | `foliotell-android-core` | the `foliotell-android` filter | runs |
 | notio backend (`notio/backend/Tests/`) | `notio-core` | the `notio` filter | runs |
 | notio frontend (`notio/frontend/tests/`), typecheck, build | `notio-frontend-core` | the `notio-frontend` filter | runs |
-| rexlab (`rexlab/tests/*.test.ts`, `*.test.tsx`), typecheck, build, board geometry in Chromium (`npm run test:browser`) | `rexlab-core` | the `rexlab` filter | runs; browser checks once, on shard 1 |
+| rexlab (`rexlab/tests/*.test.ts`, `*.test.tsx`), typecheck, build, board geometry, tooth-game and pairs welcome, board, result and offer layout, coloring probe/production pixels, workshop, long drawing contacts, gallery, result, full flow, every-size layout and walk, labyrinth layout and walk, skeleton layout and walk, picture puzzle layout and walk, sand writing layout, care welcome, visit and result layout and walk in Chromium (`npm run test:browser`, `node tests/whoseJawDigSite.browser.cjs`, `node tests/pairsDigSite.browser.cjs`, `node tests/coloringProbe.browser.cjs`, `node tests/coloringPainter.browser.cjs`, `node tests/coloringWorkshop.browser.cjs`, `node tests/coloringDrawing.browser.cjs`, `node tests/coloringGallery.browser.cjs`, `node tests/coloringResult.browser.cjs`, `node tests/coloringFlow.browser.cjs`, `node tests/coloringLayout.browser.cjs`, `node tests/coloringWalk.browser.cjs`, `node tests/labyrinthLayout.browser.cjs`, `node tests/labyrinthWalk.browser.cjs`, `node tests/skeletonLayout.browser.cjs`, `node tests/skeletonWalk.browser.cjs`, `node tests/picturePuzzleLayout.browser.cjs`, `node tests/picturePuzzleWalk.browser.cjs`, `node tests/sandWritingLayout.browser.cjs`, `node tests/careWelcomeLayout.browser.cjs`, `node tests/careVisitLayout.browser.cjs`, `node tests/careResultLayout.browser.cjs`, `node tests/careWalk.browser.cjs`, `node tests/careWalkPhone.browser.cjs`, `node tests/nativeTouch.browser.cjs`, `node tests/homeTiles.browser.cjs`, `node tests/homeSkeletonHero.browser.cjs`, `node tests/homePhone.browser.cjs`, `node tests/careFriends.browser.cjs`, `node tests/compareQuestion.browser.cjs`, `node tests/compareResult.browser.cjs`, `node tests/compareFlow.browser.cjs`, `node tests/catalogueFit.browser.cjs`, `node tests/languagePicker.browser.cjs`), theme canvas and home icon in WebKit (`node tests/browserChrome.browser.cjs`) | `rexlab-core` | the `rexlab` filter | runs; four unit shards, one build of the app, and thirty-five independent browser jobs on it, each with a 10-minute limit |
 | dev-skills: the marketplace manifest and its skills (no tests) | `dev-skills-validation` | the `dev-skills` filter | runs |
 | session-digest (`session-digest/tests/*.test.ts`), typecheck | `session-digest-core` | the `session-digest` filter | runs |
 | loki (`loki/tests/*.test.js`) | `loki-core` | the `loki` filter, with every compose file: its label check reads those of the projects its allowlist names | runs |
 | neris (`neris/packages/swift-neris/Tests/`) | `neris-core` | the `neris` filter | runs |
-| audelin (`audelin/macos/Tests/`, `audelin/macos/PreviewApps/Tests/`) | `audelin-core` | the `audelin` filter, with the recorded fixtures its tests read | runs |
-| mizan-ble (`mizan-ble/ios/Tests/`), Python token-generator tests, the token check, iOS and preview-app builds | `mizan-ble-core` | the `mizan-ble` filter, with the design file `mizan-ble.pen` its tests read | runs |
-| claude-insights: the script's pytest and the functions' Deno tests | `claude-insights-core` | the `claude-insights` filter | runs |
+| audelin (`audelin/macos/Tests/`, `audelin/macos/App/Tests/`, `audelin/macos/PreviewApps/Tests/`), profiling tool tests (`audelin/macos/scripts/tests/`) | `audelin-core`: all three test packages built with `-Xswiftc -O` in one cached scratch directory, component and app test runs bounded to 180 seconds, preview to 120 | the `audelin` filter, with the recorded fixtures its tests read | runs |
+| mizan-ble (`mizan-ble/ios/Tests/`), Python token-generator tests, the token check, iOS and preview-app builds; screen snapshots on the self-hosted `local-mac` runner | `mizan-ble-core` | the `mizan-ble` filter, with the design file `mizan-ble.pen` its tests read | runs |
+| claude-insights: the script's pytest, all shared Deno tests and edge-function type checks | `claude-insights-core` | the `claude-insights` filter, including the shared sessions analyzer Python sources | runs |
 | The langfuse stack (`tests/test_langfuse_shared_stack.py`) | `langfuse-core` | the `langfuse` filter | runs |
 | mac-health (`tools/mac-health/tests/test-*.sh`) | `mac-health-core`: `tools/mac-health/tests/run-all.sh`, on `macos-latest` | the `mac-health` filter | runs |
+| sessions-audit (`tools/sessions-audit/test_sessions_audit.py`) | `sessions-audit-core` | the `sessions-audit` filter | runs |
 
 Notes:
 
@@ -71,12 +74,22 @@ Notes:
 - `warder/cmd/warder/files_test.go`, `process_test.go` and `serve_test.go` are `//go:build unix`: they run on the `local-mac` runner and are skipped on any other OS.
 - Agister, gokit and warder run on the self-hosted `local-mac` runner. When it is offline, the job waits queued; `local-wait` (`scripts/local-wait.js`) cancels the run once one has waited 15 minutes, naming it, so `report` ends red rather than pending for GitHub's 24 hours: never a silent pass.
 
+## Slow-test hunts
+
+`rexlab-slow-tests` (Tuesdays) and `audelin-slow-tests` (Wednesdays, on
+macOS) run the project's whole suite three times with
+`<project>/scripts/slow-tests.*`, upload the ranking as the
+`slow-tests-report` artifact, write its top to the job summary and post it
+to the project's slow-test hunter autopilot. They never run on a push or
+pull request, and nothing in them fails on a slow test.
+
 ## Keeping it regular
 
 Two things keep the table above from going stale (LAB-219):
 
 - **Every test file runs some job.** `scripts/tests/ci-workflow-paths.test.js` lists every tracked test file (Go, Node, Python, Swift, Kotlin, shell) and fails when a change to one would select no job. A new project's tests fail there until a filter and a job cover them, or until `unfilteredTests` in that file names the reason they need none.
 - **Every job runs weekly.** A push runs only the jobs its changed paths select, so a project nothing touches is never re-tested. `ci-weekly.yml` dispatches `ci.yml` on trunk each Sunday at 03:37 Moscow time; a manual dispatch runs every job, `real-provider-smoke` included, and the same test keeps that true. A failure arrives through `ci.yml`'s own Telegram notification.
+- **Audelin's long runs run nightly, never in a pull request.** `audelin-nightly.yml` runs `audelin/macos/scripts/nightly.sh` on the self-hosted `local-mac` runner at 04:43 Moscow time: a 3-hour real-model call at 1x with lag and memory, and short CPU-and-hangs captures at 1,620 and 6,000 preloaded lines. Its report names the workload, build, models, machine and toolchain, and compares only with a previous run that matches on all of them. `ciPullRequestChecks_shouldNeverRunTheLongProfiledRuns` keeps it out of every workflow a pull request starts; a change to it runs `audelin-core`, which tests the report.
 
 ## Notio Split
 
@@ -91,14 +104,18 @@ There is no trunk-push Cloudflare Pages deploy path for Notio frontend.
 
 ## RexLab
 
-- `rexlab-core.yml` runs the typecheck, tests, and build from `rexlab/`; four parallel test shards keep the complete suite within each job’s ten-minute limit.
+- `rexlab-core.yml` runs the typecheck, tests, and build from `rexlab/`; four parallel test shards keep the complete suite within each job’s ten-minute limit. Its browser contracts each run in a job of their own on one build of the app, made by the `app` job; browserChrome runs in Playwright's image, which carries WebKit's system libraries.
 - `rexlab-deploy.yml` is release-only and reusable; `release-unit.yml` calls it for `rexlab_v<version>` tags. It deploys `rexlab/dist` to the Cloudflare Pages project `rexlab` and succeeds only after `https://rexlab.enoa.ai/` serves a page whose `rexlab-version` meta tag matches the tag's version, then sends a success message to the CI Telegram chat.
 
 There is no trunk-push deploy path for RexLab.
+
+## Audelin
+
+- `audelin-install.yml` runs on a trunk push that changes Audelin's app code, `bundle.sh` or `install.sh`, and on manual dispatch. On the self-hosted `local-mac` runner it builds the app and replaces `/Applications/Audelin.app` with `install.sh --update`: a running Audelin relaunches itself into the new build once it is idle, never during a recording or a folder move; a quit Audelin is not opened. A failure arrives in the CI Telegram chat. It is no required check, so while the runner is offline the run waits queued and nothing else is held. Signing needs the owner's login keychain, so the runner's launch agent must not set `SessionCreate` (`svc.sh install` adds it; `audelin/README.md` says how to remove it).
 
 ## Shared Infrastructure
 
 - **Path detection**: `dorny/paths-filter@v4` in the `changes` job
 - **Failure notifications**: all pipelines route failures through `notify-telegram-failure.yml`
 - **Concurrency**: scheduled workflows use `concurrency` groups to prevent overlap
-- **Timezone**: cron schedules target Moscow morning (UTC+3), and `ci-weekly.yml` Sunday night, documented in each file
+- **Timezone**: cron schedules target Moscow morning (UTC+3), and `ci-weekly.yml` Sunday night and `audelin-nightly.yml` every night, documented in each file

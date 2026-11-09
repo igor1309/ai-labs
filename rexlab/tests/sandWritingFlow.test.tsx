@@ -1,3 +1,5 @@
+import "./sandWritingSheets.ts";
+import { HOME_TILE_PICTURES } from "../src/homeTilePictures.ts";
 import { emptyLabyrinth } from "./support.ts";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { addTransitionType } from "react";
@@ -15,6 +17,9 @@ import {
   lightDevice, manualTimers, manualViewport, pageAtRest, symbolOf, unsetAgeLevel
 } from "./support.ts";
 import { openWindow } from "./windowSizes.ts";
+
+// The marks take the dig site's groove, ds-groove in the light theme.
+const GROOVE = "#A07D52";
 
 vi.mock("react", async (actual) => {
   const react = await actual<typeof import("react")>();
@@ -67,10 +72,11 @@ describe("sand writing through Home", () => {
     const app = openFlow(language, portrait, featured, reduced);
     const text = TEXTS[language];
     const door = featured ? featuredCard() : homeTile(text.sandWriting);
-    expect(door.getAttribute("aria-label")).toBe(text.sandWriting);
+    expect(door.getAttribute("aria-label")).toBe(featured ? text.sandWriting : (language === "en" ? "DRAW" : "РИСУЙ"));
     expect(text.sandWriting).toBe(text.sandWriting.toLocaleUpperCase(language));
-    expect(symbolOf(door)).toBe("pencil");
-    expect(door.querySelector("img")).toBeNull();
+    expect(symbolOf(door.querySelector(".featured-card-symbol") ?? door)).toBe("pencil");
+    if (featured) expect(door.querySelector(".home-today-art > .sand-writing-tile-art")).not.toBeNull();
+    else expect(door.querySelector("img")?.getAttribute("src")).toBe(HOME_TILE_PICTURES.sandWriting);
     expect(badgeOf(door)).toBeNull();
     expect(app.starts).toEqual([]);
     const layout = () => {
@@ -79,14 +85,16 @@ describe("sand writing through Home", () => {
         getComputedStyle(document.documentElement).overflow, getComputedStyle(app.footer).display, app.footer.getAttribute("aria-label")];
     };
     const initialLayout = layout();
-    expect(initialLayout[5]).not.toBe("none");
+    // Home shows its version on the bedrock instead of the static game footer.
+    expect(initialLayout[5]).toBe("none");
+    expect(document.querySelector(".home-version")?.textContent).toMatch(/^v\d/);
     expect(gateShown()).toBe(false);
 
     // Both activations reach the same Home door before React commits it.
     await act(async () => { fireEvent.click(door); fireEvent.click(door); });
     const first = canvas();
     const drawing = app.canvases.get(first)!;
-    const marks = () => drawing.paths.filter(({ colour }) => colour === "#98723f");
+    const marks = () => drawing.paths.filter(({ colour }) => colour === GROOVE);
     expect(app.starts).toEqual(["sandWriting"]);
     expect(changes()).toEqual([SCREEN_CHANGE]);
     expect(gateShown()).toBe(false);
@@ -98,7 +106,7 @@ describe("sand writing through Home", () => {
     expect(getComputedStyle(app.footer).display).toBe("none");
     expect(getComputedStyle(document.body).overflow).toBe("hidden");
     const home = screen.getByRole("button", { name: text.home });
-    expect(home.textContent).toBe("");
+    expect(home.textContent).toBe(text.home);
     fireEvent.click(screen.getByRole("button", { name: text.sandTipPicker }));
     fireEvent.click(screen.getByRole("button", { name: text.sandTip(8) }));
     fireEvent.pointerDown(first, { pointerId: 1, button: 0, clientX: 30, clientY: 40 });
@@ -136,7 +144,7 @@ describe("sand writing through Home", () => {
     fireEvent.click(screen.getByRole("button", { name: text.sandTip(4) }));
     fireEvent.pointerDown(second, { pointerId: 2, button: 0, clientX: 70, clientY: 80 });
     fireEvent.pointerUp(second, { pointerId: 2, button: 0, clientX: 90, clientY: 100 });
-    expect(app.canvases.get(second)!.paths.filter(({ colour }) => colour === "#98723f").map(({ width }) => width)).toEqual([4, 4]);
+    expect(app.canvases.get(second)!.paths.filter(({ colour }) => colour === GROOVE).map(({ width }) => width)).toEqual([4, 4]);
     expect(app.starts).toEqual(["sandWriting", "sandWriting"]);
     expect(changes()).toEqual([SCREEN_CHANGE, SCREEN_CHANGE, SCREEN_CHANGE]);
   });

@@ -74,3 +74,31 @@ text. Evidence: `TranscriptFileTests.failedReplacementKeepsLastTextCleansTempora
 Open, write no text, write no text again; the file says no text was
 heard. Then text, then no text: the file says no text was heard.
 Evidence: `TranscriptFileTests.emptyWritesReplaceTextWithNoTextMessage()`.
+
+## S-12 Final text stays and only what follows is written
+
+Text with one final segment and a pending one is written, which replaces
+the file whole; the pending words then grow, the second segment becomes
+final, and a third is added. Each later write opens the file, cuts it,
+writes and flushes, never creating or renaming; the bytes written for a
+grown pending segment are that segment's text alone, and each read holds
+the whole text. Final segments without words keep their place, and text
+going after them still says no text was heard, then text again.
+Evidence: `TranscriptFileTests.finalEntriesStayOnDiskAndOnlyTheTextAfterThemIsWritten()` and `TranscriptFileTests.textGoingAfterFinalEntriesWithoutWordsSaysNoTextWasHeard()`.
+
+## S-13 A crash while rewriting keeps every final entry
+
+The helper of S-6 writes a final segment and a changing one three times
+and pauses the third write once the file is cut back, or once the rest is
+written and before it is flushed, and is killed with SIGKILL there. Cut
+back, the file holds exactly the final text; written, it holds the third
+text whole. No temporary file is left. Evidence: `TranscriptFileCrashTests.sigkillWhileRewritingKeepsEveryFinalEntryWhole(point:)`.
+
+## S-14 A failed rewrite keeps every final entry
+
+Through the binding fake, a rewrite fails at each step: opening, cutting
+back, writing (after part of the text is on disk), flushing. Each fails
+the write; the file holds the whole final text followed by exactly what
+reached it: the old text, part of the new, or all of it. The next write
+replaces the file whole and holds its text, with no temporary file left.
+A write that fails to render does the same to the next one. Evidence: `TranscriptFileTests.failedRewriteKeepsFinalEntriesAndTheNextWriteReplacesTheFileWhole(fault:)` and `TranscriptFileTests.aWriteThatFailsToRenderMakesTheNextWriteReplaceTheFileWhole()`.

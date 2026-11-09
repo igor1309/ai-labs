@@ -58,10 +58,10 @@ describe.each(LANGUAGES)("the FIELD GUIDE in %s", (language) => {
     const room = width - px(outer.paddingLeft) - px(outer.paddingRight) - button(text.home) - button(text.back) - kinds - 3 * px(bar.gap);
     // The book, its gap and the title's letters, at most 0.75 of their size.
     const mark = px(style(".dig-mark").width) + px(style(".dig-title").gap);
-    expect(title.fontSize).toBe("min(40px, (100cqi - 66px) / (var(--letters) * 0.75))");
-    expect(mark).toBe(66);
+    expect(title.fontSize).toBe("min(34px, (100cqi - 60px) / (var(--letters) * 0.75))");
+    expect(mark).toBe(60);
     expect(emsOf(text.fieldGuide)).toBeLessThanOrEqual(text.fieldGuide.length * 0.75);
-    const size = Math.min(40, (room - mark) / (text.fieldGuide.length * 0.75));
+    const size = Math.min(34, (room - mark) / (text.fieldGuide.length * 0.75));
 
     expect([style(".dig-title").whiteSpace, size >= 32]).toEqual(["nowrap", true]);
     expect(mark + emsOf(text.fieldGuide) * size).toBeLessThanOrEqual(room);

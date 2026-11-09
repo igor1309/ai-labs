@@ -80,21 +80,16 @@ describe("DIG upright on a phone", () => {
     const bar = styleAt(part(".dig-board-screen .dig-bar"), size);
     expect([bar.value("flex-wrap"), bar.columnGap()]).toEqual(["nowrap", 4]);
     // The picker's pair, DUG UP and the title's brush leave the bar; the
-    // brush menu takes the brush's place, after HOME.
+    // two labelled brush buttons stand under the sand instead.
     for (const gone of [".dig-brush-picker", ".dig-chip", ".dig-board-screen .dig-mark"]) expect(styleAt(part(gone), size).value("display"), gone).toBe("none");
-    const menu = styleAt(part(".dig-brush-menu"), size);
-    expect([menu.value("display"), menu.value("order"), styleAt(part(".dig-bar .home-button"), size).value("order")]).toEqual(["block", "-1", "-2"]);
-    // HOME, the menu's button of the brush and the wide brush's dot, and
-    // the FIELD GUIDE with a count of three digits, each at most Lexend's
-    // widest 0.68 em, leave the title its room.
-    const button = styleAt(part(".dig-brush-menu .parent-menu-button"), size);
-    const face = styleAt(part(".dig-brush-menu .parent-menu-face"), size);
-    expect([button.px("height"), button.px("padding-left"), button.px("padding-right")]).toEqual([48, 8, 8]);
-    const menuWidth = 2 * 8 + 24 + face.columnGap() + 14;
+    expect(styleAt(part(".dig-brush-buttons"), size).value("display")).toBe("flex");
+    expect(part(".dig-brush-buttons").closest(".dig-bar")).toBeNull();
+    // HOME and the FIELD GUIDE with a count of three digits, each at most
+    // Lexend's widest 0.68 em, leave the title its room.
     const guide = styleAt(part(".dig-field-guide-button"), size);
     expect([guide.px("height"), guide.px("font-size")]).toEqual([48, 18]);
     const guideWidth = 2 * guide.px("padding-left") + 26 + guide.columnGap() + 3 * 0.68 * 18;
-    const room = width - 40 - 48 - menuWidth - guideWidth - 3 * bar.columnGap();
+    const room = width - 40 - 48 - guideWidth - 2 * bar.columnGap();
     // Each title on its two lines at most, as large as its longer line
     // lets it, at least 12 pixels.
     const words = styleAt(part(".dig-board-screen .dig-title-words"), size);

@@ -16,6 +16,7 @@ public enum RecordingFault: CaseIterable, Hashable, Sendable {
 public enum RecordingSessionReport: Equatable, Sendable {
 
     case ready
+    case callCreated(id: String)
     case cannotRecord(String)
     case failed(RecordingFault)
     case callSilent(Bool)
@@ -59,6 +60,8 @@ public struct RecordingState: Equatable, Sendable {
         }
     }
 
+    public var storageReserved = false
+    public var pendingStart: Origin?
     public var automatic: Bool
     public var missing: Set<RecordingCondition>
     public var phase: Phase = .idle
@@ -70,12 +73,15 @@ public struct RecordingState: Equatable, Sendable {
     public var lastSessionID: UInt64 = 0
     public var cannotRecord: String?
     public var faults: Set<RecordingFault> = []
+    public var callID: String?
     public var callSilent = false
 
     /// Conditions start unknown, so a start waits for each to be reported available.
-    public init(automatic: Bool = false, missing: Set<RecordingCondition> = Set(RecordingCondition.allCases)) {
+    public init(automatic: Bool = false, missing: Set<RecordingCondition> = Set(RecordingCondition.allCases), storageReserved: Bool = false, pendingStart: Origin? = nil) {
 
         self.automatic = automatic
+        self.storageReserved = storageReserved
+        self.pendingStart = pendingStart
         self.missing = missing
     }
 }
@@ -85,6 +91,7 @@ public enum RecordingEvent: Equatable, Sendable {
     case callStarted
     case callEnded
     case userStart
+    case reserveStorage, releaseStorage
     case userStop
     case automaticChanged(Bool)
     case conditionChanged(RecordingCondition, available: Bool)
@@ -97,12 +104,24 @@ public enum RecordingReducer {
 
         var state = state
         switch event {
+        case .reserveStorage:
+            guard state.phase == .idle else { return state }
+            state.storageReserved = true
+            return state
+        case .releaseStorage:
+            state.storageReserved = false
+            if let origin = state.pendingStart { return begin(&state, origin: origin) }
+            return state
         case .callStarted:
             guard !state.callOn else { return state }
             state.callOn = true
             guard state.automatic, !state.heldForCall else { return state }
             if state.phase == .ending {
                 state.pendingCall = true
+                return state
+            }
+            if state.storageReserved {
+                if state.pendingStart == nil { state.pendingStart = .call }
                 return state
             }
             return begin(&state, origin: .call)
@@ -112,20 +131,26 @@ public enum RecordingReducer {
             state.callOn = false
             state.heldForCall = false
             state.pendingCall = false
+            if state.pendingStart == .call { state.pendingStart = nil }
             guard state.sessionBeganDuringCall else { return state }
             return end(&state)
 
         case .userStart:
+            if state.storageReserved { state.pendingStart = .hand; return state }
             return begin(&state, origin: .hand)
 
         case .userStop:
+            state.pendingStart = nil
             if state.callOn { state.heldForCall = true }
             state.pendingCall = false
             return end(&state)
 
         case let .automaticChanged(enabled):
             state.automatic = enabled
-            if !enabled { state.pendingCall = false }
+            if !enabled {
+                state.pendingCall = false
+                if state.pendingStart == .call { state.pendingStart = nil }
+            }
             return state
 
         case let .conditionChanged(condition, available):
@@ -134,6 +159,7 @@ public enum RecordingReducer {
             if !available && (condition == .callsFolder || condition == .room) {
                 return end(&state)
             }
+            if let origin = state.pendingStart { return begin(&state, origin: origin) }
             return state
 
         case let .sessionReported(id, report):
@@ -145,6 +171,9 @@ public enum RecordingReducer {
                 return state
             }
             switch report {
+            case let .callCreated(id):
+                state.callID = id
+                return state
             case let .failed(fault):
                 if state.phase == .beginning || state.phase == .recording || state.phase == .ending {
                     state.faults.insert(fault)
@@ -164,6 +193,7 @@ public enum RecordingReducer {
             case .ended:
                 state.phase = .idle
                 state.callSilent = false
+                state.callID = nil
                 state.session = nil
                 state.sessionBeganDuringCall = false
                 let resumeCall = state.pendingCall && state.callOn && state.automatic && !state.heldForCall
@@ -177,7 +207,9 @@ public enum RecordingReducer {
     private static func begin(_ state: inout RecordingState, origin: RecordingState.Origin) -> RecordingState {
 
         // Call-audio evidence is refreshed by the doer, including when the last reading failed.
-        guard state.phase == .idle, state.missing.subtracting([.callAudioAccess]).isEmpty else { return state }
+        guard !state.storageReserved, state.phase == .idle, state.missing.subtracting([.callAudioAccess]).isEmpty else { return state }
+        state.pendingStart = nil
+        state.callID = nil
         state.lastSessionID += 1
         state.session = .init(id: state.lastSessionID, origin: origin)
         // A hand start during a call belongs to that call too: Audelin may have missed its start.

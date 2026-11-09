@@ -10,7 +10,8 @@ import UIKit
 
     init() {
         let side: Side = UIDevice.current.userInterfaceIdiom == .pad ? .host : .client
-        _root = State(initialValue: AppRoot(radios: deviceRadios(), launchSide: side, clock: SystemClock(),
+        let clock = SystemClock()
+        _root = State(initialValue: AppRoot(radios: deviceRadios(clock: clock), launchSide: side, clock: clock,
                                              store: Preferences.app(), log: SystemLogSink()))
     }
 

@@ -2,7 +2,7 @@ public enum MenuBarAction: Equatable, Sendable {
 
     case start, stop
     case setAutomatic(Bool), setLiveText(Bool)
-    case showPanel, openCallsFolder, quit
+    case showPanel, hidePanel, showCalls, showSettings, openCallsFolder, quit
 }
 
 public enum MenuBarEntry: Equatable, Sendable {
@@ -18,7 +18,7 @@ public struct MenuBarModel: Equatable, Sendable {
     public let entries: [MenuBarEntry]
 
     public init(recording: MenuBarRecording, preferences: MenuBarPreferences, statusLine: String? = nil,
-                offersPanelReopen: Bool = false) {
+                offersPanelReopen: Bool = false, panelVisible: Bool = false) {
 
         item = .from(recording, liveText: preferences.liveText)
         var entries: [MenuBarEntry] = [.stateLine(statusLine ?? item.stateLine)]
@@ -27,13 +27,18 @@ public struct MenuBarModel: Equatable, Sendable {
             entries.append(.button("Начать запись", .start))
         case .recording:
             entries.append(.button("Остановить запись", .stop))
-            if offersPanelReopen { entries.append(.button("Показать панель", .showPanel)) }
+            if offersPanelReopen && !panelVisible { entries.append(.button("Показать панель", .showPanel)) }
         default: break
+        }
+        if panelVisible {
+            entries.append(.button("Скрыть панель", .hidePanel))
         }
         entries += [
             .toggle("Записывать звонки автоматически", checked: preferences.automatic,
                     .setAutomatic(!preferences.automatic)),
             .toggle("Живой текст", checked: preferences.liveText, .setLiveText(!preferences.liveText)),
+            .button("Звонки…", .showCalls),
+            .button("Настройки…", .showSettings),
             .button("Открыть папку звонков", .openCallsFolder),
             .button("Выйти", .quit),
         ]

@@ -3,8 +3,9 @@ import type { CSSProperties, ReactNode } from "react";
 import { Button } from "./Button.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
+import "./skeletonSite.css";
 
-// The bar over every skeleton screen: BACK where the screen has one, HOME,
+// The bar over every skeleton screen: HOME, BACK where the screen has one,
 // the screen's title beside a bone, or the screen's own symbol, and MUSEUM
 // where the screen has no MUSEUM of its own, with anything else the screen
 // shows in the bar after them.
@@ -28,16 +29,16 @@ export function SkeletonBar({
   const text = TEXTS[language];
   return (
     <header className="skeleton-bar">
+      <Button className="home-button" onClick={onHome}>
+        <House size={24} aria-hidden="true" />
+        <span className="upright-hidden">{text.home}</span>
+      </Button>
       {onBack && (
         <Button className="home-button" onClick={onBack}>
           <ArrowLeft size={24} aria-hidden="true" />
           <span className="upright-hidden">{text.back}</span>
         </Button>
       )}
-      <Button className="home-button" onClick={onHome}>
-        <House size={24} aria-hidden="true" />
-        <span className="upright-hidden">{text.home}</span>
-      </Button>
       <h1 className="skeleton-title">
         <span className="skeleton-mark" aria-hidden="true">
           <Mark size={28} />

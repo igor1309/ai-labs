@@ -1,0 +1,11 @@
+{
+  "hosts": [
+    {
+      "amount": 12345,
+      "cancelsAfterAmount": true,
+      "delays": {
+        "end": 5
+      }
+    }
+  ]
+}

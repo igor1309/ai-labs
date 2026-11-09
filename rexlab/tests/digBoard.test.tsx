@@ -177,15 +177,16 @@ describe("the dig game's tile", () => {
     const tile = homeTile("DIG");
     expect(symbolOf(tile.querySelector(".dig-tile-symbol") ?? tile)).toBe("brush");
     expect(tile.querySelector(".dig-tile-count")).toBeNull();
-    const picture = getComputedStyle(tile.querySelector(".dig-tile-picture")!);
-    expect([picture.borderRadius, picture.aspectRatio, picture.padding]).toEqual(["16px", "4 / 3", "0"]);
+    const picture = getComputedStyle(tile.querySelector(".home-tile-pocket img")!);
+    // Artwork fills the ground's pocket; the pocket owns its shape.
+    expect([picture.width, picture.height, picture.objectFit, picture.padding]).toEqual(["100%", "100%", "contain", "0px"]);
     fireEvent.click(tile);
 
     expect(board().getAttribute("data-blown")).toBeNull();
     const title = screen.getByRole("heading", { level: 1 });
-    expect([title.textContent, symbolOf(title)]).toEqual(["DIG", "brush"]);
+    expect([title.textContent, symbolOf(title)]).toEqual(["DIG", "paintbrush-vertical"]);
     expect(screen.getByRole("button", { name: "HOME" })).toBeDefined();
-    expect(screen.getByLabelText("DUG UP").textContent).toBe(`0/${SHIPPED_DIG.length}`);
+    expect(screen.getByLabelText("DUG UP").textContent).toBe(`DUG UP0/${SHIPPED_DIG.length}`);
     expect(getComputedStyle(board()).aspectRatio).toBe("var(--frame-width) / var(--frame-height)");
   });
 
@@ -211,7 +212,7 @@ describe("the dig game's tile", () => {
 
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("РАСКОПКИ");
     expect(screen.getByRole("button", { name: "ДОМОЙ" })).toBeDefined();
-    expect(screen.getByLabelText("ОТКОПАНО").textContent).toBe(`0/${SHIPPED_DIG.length}`);
+    expect(screen.getByLabelText("ОТКОПАНО").textContent).toBe(`ОТКОПАНО0/${SHIPPED_DIG.length}`);
   });
 });
 
@@ -262,13 +263,13 @@ describe("a round's start", () => {
     act(() => timers.fire(STAR_LANDS.motion));
 
     fireEvent.click(screen.getByRole("button", { name: "HOME" }));
-    expect(within(homeTile("DIG")).getByText("1")).toBeDefined();
+    expect(homeTile("DIG").querySelector(".dig-tile-count")).toBeNull();
     fireEvent.click(homeTile("DIG"));
     placeBoard(800);
 
     // The same draw of 0 that dug up the first dinosaur.
     expect(roundDinosaur().id).not.toBe(first.id);
-    expect(screen.getByLabelText("DUG UP").textContent).toBe(`1/${SHIPPED_DIG.length}`);
+    expect(screen.getByLabelText("DUG UP").textContent).toBe(`DUG UP1/${SHIPPED_DIG.length}`);
   });
 });
 
@@ -619,6 +620,6 @@ describe("HOME", () => {
     fireEvent.click(homeTile("DIG"));
     placeBoard(800);
 
-    expect([clearCells(), screen.getByLabelText("DUG UP").textContent]).toEqual([[], `0/${SHIPPED_DIG.length}`]);
+    expect([clearCells(), screen.getByLabelText("DUG UP").textContent]).toEqual([[], `DUG UP0/${SHIPPED_DIG.length}`]);
   });
 });

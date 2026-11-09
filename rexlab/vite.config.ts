@@ -27,6 +27,7 @@ export default defineConfig({
       input: {
         main: "index.html",
         careHatch: "prototypes/care-hatch.html",
+        coloringProbe: "prototypes/coloring.html",
         sw: "src/offline/sw.ts"
       },
       output: {

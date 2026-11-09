@@ -1,0 +1,3 @@
+{{template "head" .Title}}
+<main class="column"><div class="state state-page"><span class="state-icon">{{if eq .Icon "unlink"}}{{template "i-unlink"}}{{else}}{{template "i-offline"}}{{end}}</span><h1>{{.Title}}</h1><p>{{.Message}}</p>{{if .Retry}}<a class="button" href="">{{template "i-retry"}}Обновить</a>{{end}}<a class="back" href="/">Программы</a></div></main>
+{{template "foot"}}

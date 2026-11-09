@@ -108,6 +108,30 @@ struct RenderTests {
         #expect(pixels(row)[(12 * row.width + 180) * 4 + 3] == 0)
     }
 
+    @Test func compactHeaderShowsTheActiveOrFailedStepAndTheLastCompletedStep() {
+        for index in 0..<5 {
+            for state in [StepState.active, .failed] {
+                let steps = (0..<5).map {
+                    SessionStep($0 < index ? .done : ($0 == index ? state : .todo), title: "Step", detail: "Detail")
+                }
+                #expect(CompactHostSteps(steps, onSettings: {}).currentStepIndex == index)
+            }
+        }
+        let done = Array(repeating: SessionStep(.done, title: "Step", detail: "Done"), count: 5)
+        #expect(CompactHostSteps(done, onSettings: {}).currentStepIndex == 4)
+        #expect(CompactHostSteps([], onSettings: {}).currentStepIndex == nil)
+    }
+
+    @Test func compactKeysKeepTheirTouchTargetWithinAColumn() throws {
+        for key in [AnyView(KeypadKey("9", size: .compact) {}),
+                    AnyView(KeypadKey(systemImage: "delete.left", accessibilityLabel: "Delete", size: .compact) {})] {
+            let image = try #require(render(key.frame(width: 96), scale: 1))
+            #expect(image.width == 96)
+            #expect(image.height == 48)
+            #expect(hasInk(image))
+        }
+    }
+
     private var components: [(String, AnyView)] {
 
         var views: [(String, AnyView)] = []
@@ -127,7 +151,34 @@ struct RenderTests {
         }
         for outcome in Outcome.allCases {
             views.append(("result card \(outcome)", AnyView(ResultCard(outcome, title: "Title").frame(width: 320))))
+            views.append(("compact result card \(outcome)", AnyView(ResultCard(outcome, title: "Title", isCompact: true) {
+                Button("New amount") {}.buttonStyle(.action(.host))
+            }.frame(width: 353))))
         }
+        for tone in NoticeBanner.Tone.allCases {
+            views.append(("notice \(tone)", AnyView(
+                NoticeBanner("Title", detail: "Detail", systemImage: "info.circle", tone: tone).frame(width: 320)
+            )))
+        }
+        for size in IconBadge<TypeRoleView<Image>>.Size.allCases {
+            views.append(("badge \(size)", AnyView(
+                IconBadge(size, systemImage: "checkmark", color: Tokens.onAccent, tint: Tokens.ok)
+            )))
+        }
+        for level in [StatusPanel<EmptyView, EmptyView, EmptyView>.Level.panel, .screen] {
+            views.append(("status \(level)", AnyView(
+                StatusPanel("Title", detail: "Detail", level: level) { EmptyView() } value: { EmptyView() } footer: { EmptyView() }
+                    .frame(width: 320)
+            )))
+        }
+        views.append(("card", AnyView(Card(isCompact: true) { Text("Card").typeRole(.body) })))
+        views.append(("segmented picker", AnyView(
+            SegmentedPicker([.init(1, title: "One"), .init(2, title: "Two")], selection: 2) { _ in }.frame(width: 320)
+        )))
+        views.append(("divided list", AnyView(
+            DividedList(["A", "B"], id: \.self) { KeyValueRow($0, value: "1") }.frame(width: 320)
+        )))
+        views.append(("compact countdown", AnyView(CountdownRing(secondsLeft: 47, total: 60, isCompact: true))))
         for role in TypeRole.allCases {
             views.append(("type \(role)", AnyView(Text("Mizan 47").typeRole(role))))
         }
@@ -140,6 +191,16 @@ struct RenderTests {
             views.append(("stepper \(step.state)", AnyView(ClientStepperStep(step, number: index + 1).frame(width: 120))))
         }
         views.append(("host rail", AnyView(HostRail(steps).frame(width: 244))))
+        for enabled in [true, false] {
+            views.append(("compact host steps \(enabled)", AnyView(
+                CompactHostSteps(steps, isSettingsEnabled: enabled, onSettings: {}).frame(width: 353)
+            )))
+        }
+        for state in [StepState.active, .failed, .done] {
+            views.append(("compact host step \(state)", AnyView(CompactHostSteps([
+                SessionStep(state, title: "Client approval", detail: "On their iPhone")
+            ], onSettings: {}).frame(width: 353))))
+        }
         views.append(("client stepper", AnyView(ClientStepper(steps).frame(width: 353))))
         for kind in DeviceChip.Kind.allCases {
             views.append(("chip \(kind)", AnyView(DeviceChip(kind, code: "H2", state: "Ready"))))
@@ -156,6 +217,11 @@ struct RenderTests {
             message: Message("advertise · on lock", tone: .host),
             client: DeviceChip(.client, code: "C1", state: "Ready")
         ).frame(width: 560))))
+        views.append(("compact exchange strip", AnyView(ExchangeStrip(
+            host: DeviceChip(.host, code: "H4", state: "Awaiting client"),
+            message: Message("amount sent", tone: .host),
+            client: DeviceChip(.client, code: "C3", state: "Reviewing"), isCompact: true
+        ).frame(width: 353))))
         views.append(("digit key", AnyView(KeypadKey("7") {})))
         views.append(("icon key", AnyView(KeypadKey(systemImage: "delete.left", accessibilityLabel: "Delete") {})))
         for size in [(1194.0, 834.0), (1024.0, 768.0)] {
@@ -166,6 +232,11 @@ struct RenderTests {
                 .frame(width: size.0, height: size.1))))
         }
         for size in [(393.0, 852.0), (430.0, 932.0)] {
+            views.append(("compact host shell \(size)", AnyView(IPhoneShell(
+                side: .host, eyebrow: "STEP 1 OF 5 · AMOUNT", status: StatusPill("Idle"),
+                onSwitch: { _ in }
+            ) { CompactHostSteps(steps, onSettings: {}) } content: { Text("Content").typeRole(.body) }
+                .frame(width: size.0, height: size.1))))
             views.append(("iPhone shell \(size)", AnyView(IPhoneShell(
                 eyebrow: "STEP 1 OF 4 · FIND", status: StatusPill("Idle"), onSwitch: { _ in }
             ) { ClientStepper(steps) } content: { Text("Content").typeRole(.body) }

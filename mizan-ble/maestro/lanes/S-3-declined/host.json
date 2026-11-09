@@ -1,0 +1,11 @@
+{
+  "client": {
+    "decision": "decline"
+  },
+  "hosts": [
+    {
+      "amount": 12345
+    }
+  ],
+  "enteredAmount": 12345
+}

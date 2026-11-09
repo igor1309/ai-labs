@@ -5,7 +5,7 @@ import SwiftUI
 
 /// The Glass Ledger design system's tokens for one appearance, named as in
 /// the design file.
-public struct GlassLedger: Sendable {
+public struct GlassLedger: Equatable, Sendable {
 
     public let glass: Color
     public let win: Color

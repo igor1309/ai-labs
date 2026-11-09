@@ -5,7 +5,8 @@ Feature: DIG's board on a phone on its side
   Scenario Outline: The board fits the window
     Given a <width> by <height> window on its side in <language>
     When the child opens DIG at Hatchling
-    Then HOME, the brushes and the FIELD GUIDE stand 48 tall in one bar with the title
+    Then HOME and the FIELD GUIDE stand 48 tall in one bar with the title
+    And either brush can be picked on the board (dig-brush-choice.feature)
     And the sand is as tall as the room under the bar, centred
     And a brush stroke never scrolls the page
 

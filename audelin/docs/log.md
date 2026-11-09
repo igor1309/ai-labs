@@ -1,6 +1,107 @@
 # Log
 
+## 2026-11-09
+
+- Call-notes Settings removes repeated service explanations, labels fallback as optional, and groups detailed guidance in a collapsed disclosure (LAB-1114).
+
+- Call-notes fallback is optional; Settings shows whether it is configured, and primary-only calls need no fallback credentials (LAB-1113).
+
+- Settings follows the system’s light or dark appearance throughout the scrolling page (LAB-1108).
+- Settings fits the selected page instead of leaving a large blank area below recording controls; longer pages scroll within the screen (LAB-1109).
+- Call-notes service pickers show the selected service and native popup arrows for both primary and fallback services (LAB-1111).
+- Call notes find Claude automatically in PATH and standard installation folders, including native installs; an absolute path can still select a specific installation (LAB-1110).
+
+## 2026-11-08
+
+- With scroll bars set to always show, the live transcript keeps its newest line in view after the panel is resized (LAB-1084).
+- Settings section navigation stays visible while scrolling call notes (LAB-1063).
+
+- Each trunk build is installed on the owner's Mac without interrupting a running Audelin; the new version starts at the next launch or login (LAB-1057).
+- Install works from a shell whose temp folder no longer exists (LAB-1056).
+- One command installs the app into /Applications, replaces an older copy, opens it and starts it at login (LAB-1054).
+
+## 2026-11-07
+
+- Changing the calls folder confirms the count and size, moves verified copies with progress, and retries the remaining calls after a failure; recordings wait until the move ends (LAB-747).
+- Optional call notes can be configured in native Settings and generated after a saved final transcript; Calls displays progress, warnings and failures while recording remains independent (LAB-1034).
+- Durable notes follow call rename, deletion and folder moves; pending jobs retain their configuration and interrupted requests are not automatically repeated (LAB-1034).
+
+## 2026-11-05
+
+- Paused transcript reading avoids viewport-changing measurement and empty text edits during panel updates (LAB-1001).
+- Drag selection in the nonactivating live panel keeps readable text against macOS's inactive highlight in both appearances. Held excerpts use compact cards with up to three readable lines and full text on hover (LAB-1014).
+
+- The menu hides and restores the live transcript panel without stopping recording or transcription (LAB-1000).
+
+## 2026-11-04
+
+- Calls made in the same minute with different titles get separate ids, so each can be opened, renamed and deleted (LAB-958).
+- A call given an empty title gets the bare date and time as its folder name, with no trailing space (LAB-946).
+- Audio conversion refuses a zero or non-finite sample rate instead of accepting it (LAB-949).
+- Session exposes its complete audio observation state and accepts replaceable failure wording while preserving recording behavior (LAB-951).
+
+## 2026-11-03
+
+- The live panel keeps the newest text visible after later layout growth,
+  while paused reading and active text selection stay in place. Delayed scroll
+  acknowledgements preserve the reader’s latest position (LAB-942).
+
+- Parakeet omits whitespace-only model words while keeping spoken words' original timing (LAB-943).
+
+- Microphone capture keeps following the default input and checking device availability
+  through replaceable native audio calls (LAB-945).
+
+- Streaming transcript text leaves trailing space so the scrollbar does not cover words or the live caret (LAB-934).
+- Recorded calls show the duration of tracks kept after a crash, as well as closed tracks (LAB-944).
+
+## 2026-10-30
+
+- Call text keeps an ordered final prefix and merges only the remaining entries;
+  a lagging side holds that prefix back until its text catches up or ends (LAB-810).
+
+- Side text retains final entries and their recovered-audio marks, processing only
+  newly final entries and the live tail on each hearing (LAB-813).
+
+- Live text reports only newly final segments and its live tail; track text keeps
+  final text without mapping it again as the call grows (LAB-815).
+
+- Cancelling a capture stops its timer, recorder and rehearsal and removes the
+  recorded media unless kept (LAB-793).
+
+- Capture summaries show the recorded signpost intervals and keep machine data
+  separately; terminating endurance also stops its rehearsal (LAB-793).
+
+- Rehearsals capture bounded CPU-and-hangs windows or run endurance without a
+  profiler; summaries include named intervals and compare growth (LAB-793).
+
+- The reading reducer keeps call entries in order and rebuilds only changed
+  entries when text arrives, reducing work in long calls (LAB-775).
+
+- A long synthetic call can be profiled with one command: the real session
+  and panel under Time Profiler, with a summary of the heaviest frames,
+  hangs and peak memory (LAB-772).
+- The live log redraws only the rows that changed, so an update late in a
+  long call costs it about what one early does (LAB-770, LAB-771).
+
 ## 2026-10-29
+
+- Live text sends the panel a new state only when the words change, not on
+  every audio piece; one side's text failing leaves the other side's going;
+  a transcript that keeps failing is reported once; a hearing late in a
+  long call costs what an early one does; a word crossing a chunk's edge
+  is no longer lost; an entry whose id returns reads as new, and a
+  stalled panel finds only the newest text waiting (LAB-753).
+- Opening Audelin again shows the transcript panel during a call and the
+  calls list between calls (LAB-750).
+
+- Live text breaks long monologues into bounded paragraphs and joins short
+  fragments before a pause to the following words (LAB-749).
+
+- The microphone's delivery no longer grows with every buffer until it
+  overflowed mid-call or at the call's end, the crash seen on a real call (LAB-751).
+
+- «Звонки…» opens the recorded calls list, with Finder opening, inline title
+  editing and confirmed permanent deletion; the active call stays protected (LAB-746).
 
 - The panel shows each recording problem the menu bar shows (no call audio,
   no microphone, disk full, call silent) as a banner, with a gap row in the

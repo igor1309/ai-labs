@@ -56,7 +56,7 @@ def render(variables):
         "",
         "/// The Glass Ledger design system's tokens for one appearance, named as in",
         "/// the design file.",
-        "public struct GlassLedger: Sendable {",
+        "public struct GlassLedger: Equatable, Sendable {",
         "",
     ]
     for name, token in variables.items():

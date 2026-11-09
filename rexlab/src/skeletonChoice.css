@@ -1,0 +1,178 @@
+/* BONES' choice on the dig site (design/dig-site.pen, BONES · choice): HOME,
+   the best and MUSEUM in the sky over the title, or the title between them
+   on a phone; on the sand the level switch over the skeletons, each a body
+   in its pocket over its name. */
+html[data-size] .skeleton-dig.skeleton-choice-screen {
+  --sc-gap: var(--ds-space-14);
+  --sc-name-gap: var(--ds-space-s);
+  --sc-name-size: 20px;
+  --sc-star: 34px;
+  --sc-room: calc((100dvh - 320px) * 1.85);
+  --dig-sky: calc(156px + env(safe-area-inset-top));
+  --dig-ochre: calc(60px + env(safe-area-inset-bottom));
+  padding: calc(var(--dig-sky) + var(--ds-space-s)) calc(var(--sc-side) + var(--screen-right)) calc(var(--dig-ochre) + var(--ds-space-xl)) calc(var(--sc-side) + var(--screen-left));
+  align-items: center;
+  gap: var(--ds-space-l);
+}
+
+html[data-size="tall"] .skeleton-dig.skeleton-choice-screen {
+  --sc-gap: var(--ds-space-20);
+  --sc-name-gap: var(--ds-space-m);
+  --sc-name-size: 22px;
+  --sc-star: 40px;
+  --sc-room: 100%;
+  --dig-sky: calc(168px + env(safe-area-inset-top));
+  --dig-ochre: calc(28px + env(safe-area-inset-bottom));
+}
+
+html[data-size="tall-narrow"] .skeleton-dig.skeleton-choice-screen {
+  --sc-gap: var(--ds-space-m);
+  --sc-name-gap: var(--ds-space-xs);
+  --sc-name-size: 18px;
+  --sc-star: 30px;
+  --sc-room: 100%;
+  --dig-sky: calc(clamp(112px, 20dvh, 147px) + env(safe-area-inset-top));
+  --dig-ochre: calc(10px + env(safe-area-inset-bottom));
+  padding-top: calc(var(--dig-sky) + var(--ds-space-xs));
+  padding-bottom: calc(var(--dig-ochre) + var(--ds-space-22));
+  gap: var(--ds-space-m);
+}
+
+html[data-size="wide-short"] .skeleton-dig.skeleton-choice-screen {
+  --sc-gap: var(--ds-space-s);
+  --sc-name-gap: 0px;
+  --sc-name-size: 16px;
+  --sc-star: 26px;
+  --sc-room: 640px;
+  --dig-sky: calc(84px + env(safe-area-inset-top));
+  --dig-ochre: 0px;
+  padding-top: calc(var(--dig-sky) - var(--ds-space-xs));
+  padding-bottom: calc(var(--ds-space-s) + env(safe-area-inset-bottom));
+  gap: var(--ds-space-s);
+}
+
+/* On a tablet the title has a line of its own, centred under the bar. */
+html[data-size="wide"] .skeleton-choice-screen .skeleton-title,
+html[data-size="tall"] .skeleton-choice-screen .skeleton-title {
+  position: absolute;
+  top: 64px;
+  left: 0;
+  right: 0;
+  gap: var(--ds-space-l);
+}
+
+html[data-size] .skeleton-choice-screen .skeleton-title-words { font-size: min(40px, (100cqi - 76px) / (var(--letters) * 0.75)); }
+
+html[data-size] .skeleton-choice-screen .skeleton-mark {
+  width: 60px;
+  height: 60px;
+  border-radius: var(--ds-radius-30) var(--ds-radius-30) var(--ds-radius-15) var(--ds-radius-15);
+  background: var(--ds-pocket-1);
+  color: var(--ds-action);
+  box-shadow: inset 0 6px 10px var(--ds-pocket-shadow);
+}
+
+/* The level switch on the sand. */
+.skeleton-levels {
+  flex-shrink: 0;
+  align-self: center;
+  width: 648px;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+html[data-size="wide-short"] .skeleton-levels { width: 560px; }
+html[data-size="wide-short"] .skeleton-levels .level-switch-level { padding-inline: var(--ds-space-xs); font-size: var(--ds-size-15); }
+/* A small phone on its side shows each level's picture alone, its name kept
+   for screen readers. */
+@media (max-width: 760px) {
+  html[data-size="wide-short"] .skeleton-levels .level-switch-name { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
+
+/* The skeletons in rows of three, or two upright, a last row of fewer
+   centred, sharing what the sand has left. */
+.skeleton-choices {
+  flex: 1 1 0;
+  min-height: 0;
+  width: min(100%, var(--sc-room));
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--sc-gap);
+}
+
+html[data-size] .skeleton-choice {
+  flex: 0 0 auto;
+  flex-basis: calc((100% - 2 * var(--sc-gap)) / 3);
+  min-width: 48px;
+  min-height: 48px;
+  box-sizing: border-box;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sc-name-gap);
+  border: none;
+  outline: none;
+  background: none;
+  box-shadow: none;
+  color: var(--ds-ink);
+  container-type: inline-size;
+  animation: rise-in var(--motion-screen) var(--ease-out) calc(var(--choice) * var(--motion-stagger)) both;
+}
+
+html[data-size="tall"] .skeleton-choice,
+html[data-size="tall-narrow"] .skeleton-choice { flex-basis: calc((100% - var(--sc-gap)) / 2); }
+
+html[data-size] .skeleton-choice:focus-visible { outline: 3px solid var(--ds-strong); outline-offset: 3px; }
+
+.skeleton-choice-art {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 0;
+  box-sizing: border-box;
+  padding: var(--ds-space-s) var(--ds-space-m) var(--ds-space-xs);
+  display: flex;
+  border-radius: var(--ds-radius-pocket-top) var(--ds-radius-pocket-top) var(--ds-radius-pocket-bottom) var(--ds-radius-pocket-bottom);
+  background: var(--ds-pocket-1);
+  box-shadow: inset 0 6px 10px var(--ds-pocket-shadow);
+}
+
+.skeleton-choice-picture {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  object-fit: contain;
+}
+
+/* A name's size is the card's width over the longest name's, in ems:
+   TYRANNOSAURUS's 9.4. */
+.skeleton-choice-name {
+  flex-shrink: 0;
+  padding: 0 4px;
+  font-size: min(var(--sc-name-size), (100cqi - 8px) / 9.4);
+  font-weight: 800;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* The earned star, in the pocket's far corner. */
+.skeleton-choice-star {
+  position: absolute;
+  top: var(--ds-space-s);
+  right: var(--ds-space-s);
+  width: var(--sc-star);
+  height: var(--sc-star);
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--ds-label);
+  color: var(--ds-reward);
+  animation: pop-in var(--motion-standard) var(--ease-overshoot) calc(var(--motion-stagger) * (var(--choice) + 2)) both;
+}
+
+.skeleton-choice-star svg { width: 68%; height: 68%; }
+
+.skeleton-mystery-mark { align-items: center; justify-content: center; color: var(--ds-action); }
+.skeleton-mystery-mark svg { width: auto; height: min(70px, 70%); aspect-ratio: 1; }

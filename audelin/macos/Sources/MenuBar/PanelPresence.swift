@@ -1,17 +1,22 @@
 /// Window presence policy, independent of AppKit and recording's types.
 public struct PanelPresence: Equatable, Sendable {
 
-    public private(set) var recordingID: UInt64?
-    public private(set) var visible = false
-    private var generation: UInt64 = 0
+    public var recordingID: UInt64?
+    public var visible: Bool
+    public var generation: UInt64
+    public var offersReopen: Bool
 
-    public init() {}
-
-    public var offersReopen: Bool { recordingID != nil && !visible }
+    public init(recordingID: UInt64? = nil, visible: Bool = false,
+                generation: UInt64 = 0, offersReopen: Bool = false) {
+        self.recordingID = recordingID
+        self.visible = visible
+        self.generation = generation
+        self.offersReopen = offersReopen
+    }
 
     public enum Event: Equatable, Sendable {
         case recordingChanged(UInt64?)
-        case userClosed, reopen
+        case userClosed, reopen, appReopen
         case delayElapsed(UInt64)
     }
 
@@ -19,10 +24,12 @@ public struct PanelPresence: Equatable, Sendable {
         case show(Reason), hide(Reason)
         case hideAfter(seconds: Int, generation: UInt64)
         case cancelDelay
+        /// Opening the app again between calls shows the calls list.
+        case showCalls
     }
 
     public enum Reason: String, Equatable, Sendable {
-        case recordingBegan, recordingEnded, userClosed, menuReopen
+        case recordingBegan, recordingEnded, userClosed, menuReopen, appReopen
     }
 
     public static func reduce(_ state: Self, _ event: Event) -> (Self, [Effect]) {
@@ -50,6 +57,11 @@ public struct PanelPresence: Equatable, Sendable {
             guard state.offersReopen else { return (state, []) }
             next.visible = true
             effects.append(.show(.menuReopen))
+        case .appReopen:
+            // Shown again even when visible, so the panel comes forward.
+            guard state.recordingID != nil else { return (state, [.showCalls]) }
+            next.visible = true
+            effects.append(.show(.appReopen))
         case let .delayElapsed(generation):
             guard generation == state.generation, state.recordingID == nil, state.visible else {
                 return (state, [])
@@ -57,6 +69,7 @@ public struct PanelPresence: Equatable, Sendable {
             next.visible = false
             effects.append(.hide(.recordingEnded))
         }
+        next.offersReopen = next.recordingID != nil && !next.visible
         return (next, effects)
     }
 }

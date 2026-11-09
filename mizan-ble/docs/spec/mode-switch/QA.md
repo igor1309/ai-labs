@@ -26,3 +26,10 @@ Client failed to connect, tap Host: the host screen shows an empty amount. Evide
 ## S-6 Switching after a payment
 
 Client payment ended, tap Host: the host screen shows an empty amount. Evidence: Missing.
+
+## S-7 Switching back on an iPhone
+
+The iPhone switch-role rehearsal launches as client, chooses Host, types
+with the keypad's right column and chooses Client again. The payer's start
+screen is visible again and the log names both mode builds.
+Evidence: Missing.

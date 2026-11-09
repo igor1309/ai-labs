@@ -1,40 +1,40 @@
-import { Route, Bone, BookOpen, Brush, Copy, Footprints, Globe, Heart, Landmark, Lock, Monitor, Moon, Pencil, Puzzle, Scale, Shapes, Star, Sun, Trophy, type LucideIcon } from "lucide-react";
-import { useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
+import { FitText } from "./FitText.tsx";
+import { EarthEdge } from "./EarthEdge.tsx";
+import { Route, Bone, BookOpen, Brush, Compass, Egg, Pickaxe, Copy, Footprints, Heart, Landmark, Lock, Monitor, Moon, Palette, Pencil, Play, Puzzle, Scale, Shapes, Star, Sun, Sparkles, TriangleAlert, Trophy, type LucideIcon } from "lucide-react";
+import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import type { HomeMotion } from "./homeMotion.ts";
 import { AGE_LEVELS, type AgeLevel } from "./ageLevel.ts";
-import { AGE_LEVEL_PICTURES } from "./ageLevelPictures.ts";
 import { Button } from "./Button.tsx";
-import { LANGUAGE_NAMES, LANGUAGES, type Language } from "./language/language.ts";
+import { LANGUAGE_FLAGS, LANGUAGE_NAMES, LANGUAGES, type Language } from "./language/language.ts";
+import { SandWritingPicture } from "./SandWritingPicture.tsx";
+import { LanguageFlag } from "./LanguageFlag.tsx";
 import { TEXTS } from "./language/texts.ts";
 import { ParentMenu, type ParentMenuProps } from "./ParentMenu.tsx";
 import { Picture } from "./Picture.tsx";
-import { PicturePuzzlePicture } from "./PicturePuzzlePicture.tsx";
-import { SandWritingPicture } from "./SandWritingPicture.tsx";
 import { THEME_CHOICES, type ThemeChoice } from "./theme.ts";
-import { NARROW_ROW_START, ROW_START, SHORT_TILE_GAP, TILE_COLUMN, TILE_GAP, shortTileColumn, tileColumnWidth } from "./tileColumns.ts";
-import { useKeptRow, type LayoutKeeping } from "./useKeptRow.ts";
+import { Tooth } from "./Tooth.tsx";
+import skeletonHeroFallback from "./assets/home/skeleton-hero/standing.png";
 
 const THEME_SYMBOLS: Record<ThemeChoice, LucideIcon> = { system: Monitor, light: Sun, dark: Moon };
+// The age level menu's button shows the chosen level as a line symbol.
+const LEVEL_SYMBOLS: Record<AgeLevel, LucideIcon> = { hatchling: Egg, explorer: Compass, paleontologist: Pickaxe };
 
 // The app's name, the same in every language.
 const BRAND = "RexLab";
 
 // The games the home page offers, each on a tile of its own.
-export type HomeGame = "compare" | "catalogue" | "care" | "sort" | "pairs" | "skeletons" | "dig" | "sandWriting" | "labyrinth" | "picturePuzzle" | "whoseJaw";
+export type HomeGame = "compare" | "catalogue" | "care" | "sort" | "pairs" | "skeletons" | "dig" | "sandWriting" | "labyrinth" | "picturePuzzle" | "whoseJaw" | "coloring";
 
 // The games in their tiles' order, which never changes.
-export const HOME_GAMES: readonly HomeGame[] = ["compare", "catalogue", "pairs", "skeletons", "dig", "sort", "care", "sandWriting", "labyrinth", "picturePuzzle", "whoseJaw"];
+export const HOME_GAMES: readonly HomeGame[] = ["compare", "catalogue", "pairs", "skeletons", "dig", "sort", "care", "sandWriting", "labyrinth", "picturePuzzle", "whoseJaw", "coloring"];
 
-// What a game's tile shows in its picture's corner: a number beside its
-// symbol.
+// The featured card's progress or catalogue count beside its symbol.
 type Badge = { symbol: LucideIcon; value: number | string };
 
-// The window's width and its changes.
-export type WindowWidth = {
-  width(): number;
-  subscribe(onChange: () => void): () => void;
-};
-
 export type HomePageProps = {
+  motion: HomeMotion;
+  newGames: readonly string[];
+  version: string;
   language: Language;
   onLanguage: (language: Language) => void;
   theme: ThemeChoice;
@@ -43,19 +43,7 @@ export type HomePageProps = {
   onAgeLevel: (level: AgeLevel) => void;
   // Times each menu's way out.
   startTimer: ParentMenuProps<string>["startTimer"];
-  // The window, whose width the tiles' columns follow upright.
-  viewport: WindowWidth;
-  // Whether the window stands upright, where the tiles' columns narrow
-  // with its width, and whether it is narrow too, as an iPhone upright,
-  // where the page's sides are narrower, and whether it is short, as an
-  // iPhone on its side, where the columns are a share of the row's width.
-  upright: boolean;
-  narrow?: boolean;
-  short?: boolean;
-  // Where the page keeps where the tiles' row was swiped to, through each
-  // change of its layout.
-  layoutKeeping: LayoutKeeping;
-  // The game the large card features today, beside its own tile.
+  // Today's featured game, whose small tile is omitted.
   featured: HomeGame;
   // The pictures of the two dinosaurs facing off, the quiz's picture.
   faceOff: { left: string; right: string };
@@ -79,13 +67,19 @@ export type HomePageProps = {
   // The dig game's tile: the dinosaur on it and how many dinosaurs have
   // been dug up, undefined until one has.
   dig: { picture: string; dugUp: number | undefined };
-  // Its tile and featured card share the collection across all levels.
-  whoseJaw?: { picture: string; collected: number; total: number; onOpen: () => void } | undefined;
+  // The featured card shows the collection across all levels.
+  // The jaw stands in the sky when the game is today's; its dinosaur stands on the tile.
+  whoseJaw?: { picture: string; jaw: string; collected: number; total: number; onOpen: () => void } | undefined;
+  coloring?: { picture: string; page: string; completed: number | null | undefined; onOpen: () => void } | undefined;
   picturePuzzle?: { picture: string; collected: number; onOpen: () => void } | undefined;
   // The dinosaur whose shape stands on the tile of the games still to
   // come.
   labyrinth: { picture: string; stars: number | undefined };
   moreComing: string;
+  // How many tiles share a row; each row is its own layer of earth.
+  tilesPerLayer: number;
+  // A game whose tile shows it being played, apart from its picture in the sky.
+  tilePictures?: Partial<Record<HomeGame, string>>;
   onCompareDinosaurs: () => void;
   onCatalogue: () => void;
   onCare: () => void;
@@ -95,13 +89,23 @@ export type HomePageProps = {
   // The skeleton game's museum, opened straight from the home page.
   onMuseum: () => void;
   onDig: () => void;
+  // Sand writing's tile picture.
+  sandWritingPicture: string;
   onSandWriting: () => void;
   onLabyrinth: () => void;
+};
+
+const HOME_TILE_LABELS: Record<Language, Record<HomeGame | "moreComing", string>> = {
+  en: { compare: "COMPARE", catalogue: "EXPLORE", care: "CARE", sort: "SORT", pairs: "PAIRS", skeletons: "BONES", dig: "DIG", coloring: "COLOR", whoseJaw: "TEETH", picturePuzzle: "PUZZLE", labyrinth: "MAZE", sandWriting: "DRAW", moreComing: "SOON" },
+  ru: { compare: "СРАВНИ", catalogue: "ЯЩЕРЫ", care: "ЗАБОТА", sort: "СОРТИРУЙ", pairs: "ПАРЫ", skeletons: "КОСТИ", dig: "КОПАЙ", coloring: "РАСКРАСЬ", whoseJaw: "ЗУБЫ", picturePuzzle: "ПАЗЛ", labyrinth: "ЛАБИРИНТ", sandWriting: "РИСУЙ", moreComing: "СКОРО" }
 };
 
 type Menu = "language" | "theme" | "ageLevel";
 
 export function HomePage({
+  motion,
+  newGames,
+  version,
   language,
   onLanguage,
   theme,
@@ -109,11 +113,6 @@ export function HomePage({
   ageLevel,
   onAgeLevel,
   startTimer,
-  viewport,
-  upright,
-  narrow = false,
-  short = false,
-  layoutKeeping,
   featured,
   faceOff,
   best,
@@ -127,6 +126,7 @@ export function HomePage({
   moreComing,
   picturePuzzle,
   whoseJaw,
+  coloring,
   onCompareDinosaurs,
   onCatalogue,
   onCare,
@@ -135,11 +135,21 @@ export function HomePage({
   onSkeletons,
   onMuseum,
   onDig,
+  sandWritingPicture,
   onSandWriting,
-  onLabyrinth
+  onLabyrinth,
+  tilesPerLayer,
+  tilePictures = {}
 }: HomePageProps) {
+  const page = useRef<HTMLElement>(null);
+  useLayoutEffect(() => motion(page.current!), [motion]);
+  // The browser shows the page's own colour past the ground: the bedrock.
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    root.classList.add("home-page");
+    return () => root.classList.remove("home-page");
+  }, []);
   const text = TEXTS[language];
-  const windowWidth = useSyncExternalStore(viewport.subscribe, viewport.width);
   const [openMenu, setOpenMenu] = useState<Menu>();
   const menu = (name: Menu) => ({
     open: openMenu === name,
@@ -148,10 +158,10 @@ export function HomePage({
     startTimer
   });
   const ThemeSymbol = THEME_SYMBOLS[theme];
-  // Each game's own parts, which its tile and the large card both show,
-  // so the two never tell the child different things.
-  type GameEntry = { name: string; symbol: LucideIcon; picture: ReactNode; badge: Badge | undefined; onOpen: () => void };
-  const games: Record<Exclude<HomeGame, "picturePuzzle" | "whoseJaw">, GameEntry> & { picturePuzzle: GameEntry | undefined; whoseJaw: GameEntry | undefined } = {
+  const LevelSymbol = LEVEL_SYMBOLS[ageLevel];
+  // Both doors share artwork and navigation; rewards belong to the hero.
+  type GameEntry = { name: string; symbol: LucideIcon; picture: ReactNode; skyPicture?: ReactNode; badge: Badge | undefined; onOpen: () => void };
+  const games: Record<Exclude<HomeGame, "picturePuzzle" | "whoseJaw" | "coloring">, GameEntry> & { picturePuzzle: GameEntry | undefined; whoseJaw: GameEntry | undefined; coloring: GameEntry | undefined } = {
     compare: {
       name: text.quizCard,
       symbol: Scale,
@@ -160,7 +170,7 @@ export function HomePage({
       onOpen: onCompareDinosaurs
     },
     catalogue: {
-      name: text.catalogueTile,
+      name: text.catalogue,
       symbol: BookOpen,
       picture: <Picture className="catalogue-tile-picture" src={catalogue.picture} alt="" width={800} height={600} />,
       badge: { symbol: Footprints, value: catalogue.count },
@@ -183,7 +193,7 @@ export function HomePage({
     pairs: {
       name: text.pairs,
       symbol: Copy,
-      picture: <PairsArt picture={pairs.picture} />,
+      picture: <Picture className="pairs-dino-picture" src={pairs.picture} alt="" width={800} height={600} />,
       badge: pairs.stars === undefined ? undefined : { symbol: Star, value: pairs.stars },
       onOpen: onPairs
     },
@@ -191,25 +201,37 @@ export function HomePage({
       name: text.skeletons,
       symbol: Bone,
       picture: <Picture className="skeletons-tile-picture" src={skeletons.picture} alt="" width={800} height={600} />,
+      skyPicture: <span className="home-skeleton-hero" aria-hidden="true">
+        <span className="skeletons-hero-fallback"><Picture className="skeletons-hero-picture" src={skeletonHeroFallback} alt="" width={800} height={600} /></span>
+        <canvas aria-hidden="true" />
+      </span>,
       badge: skeletons.best === undefined ? undefined : { symbol: Trophy, value: skeletons.best },
       onOpen: onSkeletons
     },
     dig: {
       name: text.dig,
       symbol: Brush,
-      picture: <Picture className="dig-tile-picture" src={dig.picture} alt="" width={800} height={600} />,
+      picture: <Picture className="dig-fossil-picture" src={dig.picture} alt="" width={800} height={600} />,
       badge: dig.dugUp === undefined ? undefined : { symbol: Star, value: dig.dugUp },
       onOpen: onDig
+    },
+    coloring: coloring && {
+      name: text.coloring, symbol: Palette,
+      picture: <Picture className="coloring-tile-picture" src={coloring.picture} alt="" width={800} height={600} />,
+      skyPicture: <Picture className="coloring-sky-picture" src={coloring.page} alt="" width={1104} height={744} />,
+      badge: coloring.completed === undefined ? undefined : coloring.completed === null ? { symbol: TriangleAlert, value: "?" } : { symbol: Star, value: coloring.completed },
+      onOpen: coloring.onOpen
     },
     whoseJaw: whoseJaw && {
       name: text.whoseJaw, symbol: Landmark,
       picture: <Picture className="whose-jaw-tile-picture" src={whoseJaw.picture} alt="" width={600} height={450} />,
+      skyPicture: <Picture className="whose-jaw-sky-picture" src={whoseJaw.jaw} alt="" width={600} height={450} />,
       badge: { symbol: Landmark, value: `${whoseJaw.collected}/${whoseJaw.total}` }, onOpen: whoseJaw.onOpen
     },
     picturePuzzle: picturePuzzle && {
       name: text.picturePuzzle,
       symbol: Puzzle,
-      picture: <span className="picture-puzzle-tile-art"><PicturePuzzlePicture src={picturePuzzle.picture} /></span>,
+      picture: <Picture className="picture-puzzle-tile-picture" src={picturePuzzle.picture} alt="" width={800} height={600} />,
       badge: { symbol: Star, value: `${picturePuzzle.collected}/3` },
       onOpen: picturePuzzle.onOpen
     },
@@ -223,288 +245,160 @@ export function HomePage({
     sandWriting: {
       name: text.sandWriting,
       symbol: Pencil,
-      picture: <SandWritingPicture />,
+      picture: <Picture className="sand-writing-tile-picture" src={sandWritingPicture} alt="" width={800} height={600} />,
+      skyPicture: <SandWritingPicture />,
       badge: undefined,
       onOpen: onSandWriting
     }
   };
-  // Each game's tile. The large card's game has none in the row, so no
-  // game is on the page twice.
-  const tiles: Record<HomeGame, ReactNode> = {
-    compare: (
-      <Button key="compare" className="card compare-tile" data-turn-part="tile-compare" aria-label={games.compare.name} onClick={games.compare.onOpen}>
-        {games.compare.picture}
-        <span className="compare-tile-row">
-          <span className="compare-tile-symbol" aria-hidden="true">
-            <Scale size={20} />
+  const labels = HOME_TILE_LABELS[language];
+  const tiles = Object.fromEntries(HOME_GAMES.map((game) => {
+    const entry = games[game];
+    if (!entry) return [game, undefined];
+    const prefix = game.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
+    const Symbol = entry.symbol;
+    const tilePicture = tilePictures[game];
+    return [game, (
+      <Button key={game} className={`card home-ground-tile ${prefix}-tile`} data-turn-part={`tile-${game}`} aria-label={labels[game]} onClick={entry.onOpen}>
+        <span className="home-tile-pocket">{tilePicture === undefined ? entry.picture : <Picture className="home-tile-art" src={tilePicture} alt="" width={800} height={600} />}</span>
+        {newGames.includes(game) && <span className="home-new" role="img" aria-label={text.homeNew}><Sparkles size={14} aria-hidden="true" /></span>}
+        <span className={`${prefix}-tile-row home-tile-footer`}>
+          <span className={`${prefix}-tile-symbol home-tile-symbol`} aria-hidden="true">
+            {game === "whoseJaw" ? <Tooth size={20} /> : <Symbol size={20} />}
           </span>
-          <span className="compare-tile-title">{games.compare.name}</span>
-        </span>
-        <BadgeChip badge={games.compare.badge} className="compare-tile-best" size={18} />
-      </Button>
-    ),
-    catalogue: (
-      <Button key="catalogue" className="card catalogue-tile" data-turn-part="tile-catalogue" aria-label={games.catalogue.name} onClick={games.catalogue.onOpen}>
-        {games.catalogue.picture}
-        {/* The book sits in the picture's other corner: beside the
-            title it would leave ANCIENT REPTILES too little of the row on
-            the smallest iPad. */}
-        <span className="catalogue-tile-symbol" aria-hidden="true">
-          <BookOpen size={20} />
-        </span>
-        <span className="catalogue-tile-row">
-          <span className="catalogue-tile-title">{games.catalogue.name}</span>
-        </span>
-        {/* The counts sit in the tiles' corners, over the pictures: the
-            rows keep their width for the titles. */}
-        <BadgeChip badge={games.catalogue.badge} className="catalogue-tile-count" size={18} />
-      </Button>
-    ),
-    care: (
-      <Button key="care" className="card care-tile" data-turn-part="tile-care" aria-label={games.care.name} onClick={games.care.onOpen}>
-        {games.care.picture}
-        <span className="care-tile-row">
-          <span className="care-tile-symbol" aria-hidden="true">
-            <Heart size={20} />
-          </span>
-          <span className="care-tile-title">{games.care.name}</span>
-        </span>
-        <BadgeChip badge={games.care.badge} className="care-tile-best" size={18} />
-      </Button>
-    ),
-    sort: (
-      <Button key="sort" className="card sort-tile" data-turn-part="tile-sort" aria-label={games.sort.name} onClick={games.sort.onOpen}>
-        {games.sort.picture}
-        <span className="sort-tile-row">
-          <span className="sort-tile-symbol" aria-hidden="true">
-            <Shapes size={20} />
-          </span>
-          <span className="sort-tile-title">{games.sort.name}</span>
-        </span>
-        <BadgeChip badge={games.sort.badge} className="sort-tile-best" size={18} />
-      </Button>
-    ),
-    pairs: (
-      <Button key="pairs" className="card pairs-tile" data-turn-part="tile-pairs" aria-label={games.pairs.name} onClick={games.pairs.onOpen}>
-        {games.pairs.picture}
-        <span className="pairs-tile-row">
-          <span className="pairs-tile-symbol" aria-hidden="true">
-            <Copy size={24} />
-          </span>
-          <span className="pairs-tile-title">{games.pairs.name}</span>
-        </span>
-        <BadgeChip badge={games.pairs.badge} className="pairs-tile-stars" size={18} />
-      </Button>
-    ),
-    skeletons: (
-      <Button key="skeletons" className="card skeletons-tile" data-turn-part="tile-skeletons" aria-label={games.skeletons.name} onClick={games.skeletons.onOpen}>
-        {games.skeletons.picture}
-        <span className="skeletons-tile-row">
-          <span className="skeletons-tile-symbol" aria-hidden="true">
-            <Bone size={20} />
-          </span>
-          <span className="skeletons-tile-title">{games.skeletons.name}</span>
-        </span>
-        <BadgeChip badge={games.skeletons.badge} className="skeletons-tile-best" size={18} />
-      </Button>
-    ),
-    dig: (
-      <Button key="dig" className="card dig-tile" data-turn-part="tile-dig" aria-label={games.dig.name} onClick={games.dig.onOpen}>
-        {games.dig.picture}
-        <span className="dig-tile-row">
-          <span className="dig-tile-symbol" aria-hidden="true">
-            <Brush size={20} />
-          </span>
-          <span className="dig-tile-title">{games.dig.name}</span>
-        </span>
-        <BadgeChip badge={games.dig.badge} className="dig-tile-count" size={18} />
-      </Button>
-    ),
-    whoseJaw: games.whoseJaw && (
-      <Button key="whoseJaw" className="card whose-jaw-tile" data-turn-part="tile-whoseJaw" aria-label={games.whoseJaw.name} onClick={games.whoseJaw.onOpen}>
-        {games.whoseJaw.picture}
-        <span className="whose-jaw-tile-row"><span aria-hidden="true">🦷</span><span>{games.whoseJaw.name}</span></span>
-        <BadgeChip badge={games.whoseJaw.badge} className="whose-jaw-tile-count" size={18} />
-      </Button>
-    ),
-    picturePuzzle: games.picturePuzzle && (
-      <Button key="picturePuzzle" className="card picture-puzzle-tile" data-turn-part="tile-picturePuzzle" aria-label={games.picturePuzzle.name} onClick={games.picturePuzzle.onOpen}>
-        {games.picturePuzzle.picture}
-        <span className="picture-puzzle-tile-row">
-          <span className="picture-puzzle-tile-symbol" aria-hidden="true"><Puzzle size={20} /></span>
-          <span className="picture-puzzle-tile-title">{games.picturePuzzle.name}</span>
-        </span>
-        <BadgeChip badge={games.picturePuzzle.badge} className="picture-puzzle-tile-count" size={18} />
-      </Button>
-    ),
-    labyrinth: (
-      <Button key="labyrinth" className="card labyrinth-tile" data-turn-part="tile-labyrinth" aria-label={games.labyrinth.name} onClick={games.labyrinth.onOpen}>
-        {games.labyrinth.picture}
-        <span className="labyrinth-tile-row">
-          <span className="labyrinth-tile-symbol" aria-hidden="true"><Route size={20} /></span>
-          <span className="labyrinth-tile-title">{games.labyrinth.name}</span>
-        </span>
-        <BadgeChip badge={games.labyrinth.badge} className="labyrinth-tile-best" size={18} />
-      </Button>
-    ),
-    sandWriting: (
-      <Button key="sandWriting" className="card sand-writing-tile" data-turn-part="tile-sandWriting" aria-label={games.sandWriting.name} onClick={games.sandWriting.onOpen}>
-        {games.sandWriting.picture}
-        <span className="sand-writing-tile-row">
-          <span className="sand-writing-tile-symbol" aria-hidden="true">
-            <Pencil size={20} />
-          </span>
-          <span className="sand-writing-tile-title">{games.sandWriting.name}</span>
+          <FitText className={`${prefix}-tile-title home-tile-title`} text={labels[game]} />
         </span>
       </Button>
-    )
-  };
-  const featuredGame = (featured === "picturePuzzle" && !picturePuzzle) || (featured === "whoseJaw" && !whoseJaw) ? "compare" : featured;
-  const shown = HOME_GAMES.filter((game) => game !== featuredGame && (game !== "picturePuzzle" || picturePuzzle !== undefined) && (game !== "whoseJaw" || whoseJaw !== undefined));
-  // The tiles and the games still to come, in columns of two.
-  const columns = Math.ceil((shown.length + 1) / 2);
-  const rowStart = narrow ? NARROW_ROW_START : ROW_START;
-  const column = upright ? tileColumnWidth(windowWidth, columns, rowStart) : TILE_COLUMN;
-  const tilesRow = useKeptRow(layoutKeeping, short ? { column: shortTileColumn, gap: SHORT_TILE_GAP } : { column, gap: TILE_GAP });
+    )];
+  }));
+  const featuredGame = (featured === "picturePuzzle" && !picturePuzzle) || (featured === "whoseJaw" && !whoseJaw) || (featured === "coloring" && !coloring) ? "compare" : featured;
+  const shown = HOME_GAMES.filter((game) => game !== featuredGame && (game !== "picturePuzzle" || picturePuzzle !== undefined) && (game !== "whoseJaw" || whoseJaw !== undefined) && (game !== "coloring" || coloring !== undefined));
   const today = games[featuredGame] ?? games.compare;
   const FeaturedSymbol = today.symbol;
-  // Each part both layouts share is marked, so it glides to its place in
-  // the other as the window turns; a tile's name holds its game, so it
-  // pairs with itself wherever it stands. The bands of rock, along the
-  // bottom of a page each layout makes otherwise tall, fade in where the
-  // new one puts them; upright their holder draws no box to fade.
+  const moreComingTile = (
+    <div key="moreComing" className="more-coming home-ground-tile" data-turn-part="more-coming" role="img" aria-label={labels.moreComing}>
+      <span className="home-tile-pocket"><Picture className="more-coming-picture" src={moreComing} alt="" width={800} height={600} /></span>
+      <span className="more-coming-row home-tile-footer" aria-hidden="true">
+        <span className="home-tile-symbol" aria-hidden="true"><Lock size={18} /></span>
+        <FitText className="more-coming-title home-tile-title" text={labels.moreComing} />
+      </span>
+    </div>
+  );
   return (
-    <main className="home">
-      <div className="strata" aria-hidden="true">
-        <div className="stratum stratum-1" data-turn-fade="" />
-        <div className="stratum stratum-2" data-turn-fade="" />
-        <div className="stratum stratum-3" data-turn-fade="" />
-      </div>
-      <p className="wordmark" data-turn-part="wordmark">
-        <span className="wordmark-mark" aria-hidden="true" />
-        <span className="narrow-hidden">{BRAND}</span>
-      </p>
-      {/* The corner holds the museum, for the child, beside the menus for
-          parents. An open menu's backdrop is stacked here too, over the
-          museum and under the menus, so a tap on the museum then only
-          closes the menu. An open menu hangs in it, so it moves with its
-          button as the window turns. */}
-      <div className="home-corner" data-turn-part="corner">
-        {/* An open menu is closed by a tap anywhere outside it, and that tap
-            does nothing else: a parent closing a menu never starts a round. */}
-        {openMenu && <div className="menu-backdrop" onClick={() => setOpenMenu(undefined)} />}
-        <Button className="card home-museum" onClick={onMuseum}>
-          <Landmark size={24} aria-hidden="true" />
-          <span className="narrow-hidden">{text.museum}</span>
-        </Button>
-        {/* The menus are for parents: small, in the soft ink and out of the
-            way in the top-right corner, and only here, never during a round. */}
-        <div className="parent-menus">
-          <ParentMenu
-            label={text.languageMenu}
-            button={
-              <>
-                <Globe size={18} />
-                <span className="parent-menu-code">{language.toUpperCase()}</span>
-              </>
-            }
-            choices={LANGUAGES.map((option) => ({
-              value: option,
-              name: LANGUAGE_NAMES[option],
-              lang: option,
-              symbol: (
-                <span className="parent-menu-choice-code" aria-hidden="true">
-                  {option.toUpperCase()}
-                </span>
-              )
-            }))}
-            chosen={language}
-            onChoose={onLanguage}
-            {...menu("language")}
-          />
-          <ParentMenu
-            label={text.themeMenu}
-            button={<ThemeSymbol size={18} />}
-            choices={THEME_CHOICES.map((choice) => {
-              const ChoiceSymbol = THEME_SYMBOLS[choice];
-              return { value: choice, name: text.themes[choice], symbol: <ChoiceSymbol size={18} /> };
-            })}
-            chosen={theme}
-            onChoose={onTheme}
-            {...menu("theme")}
-          />
-          <ParentMenu
-            label={text.ageLevelMenu}
-            button={<AgeLevelPicture level={ageLevel} />}
-            choices={AGE_LEVELS.map((level) => ({
-              value: level,
-              name: text.ageLevels[level].name,
-              note: text.ageLevels[level].age,
-              symbol: <AgeLevelPicture level={level} />
-            }))}
-            chosen={ageLevel}
-            onChoose={onAgeLevel}
-            {...menu("ageLevel")}
-          />
+    <main ref={page} className="home home-dig-site">
+      <header className="home-header">
+        <p className="wordmark" data-turn-part="wordmark">
+          <span className="wordmark-mark" aria-hidden="true" />
+          <span className="home-brand-name">{BRAND}</span>
+        </p>
+        {/* The corner holds the museum, for the child, beside the menus for
+            parents. An open menu's backdrop is stacked here too, over the
+            museum and under the menus, so a tap on the museum then only
+            closes the menu. An open menu hangs in it, so it moves with its
+            button as the window turns. */}
+        <div className="home-corner" data-turn-part="corner">
+          {/* An open menu is closed by a tap anywhere outside it, and that tap
+              does nothing else: a parent closing a menu never starts a round. */}
+          {openMenu && <div className="menu-backdrop" onClick={() => setOpenMenu(undefined)} />}
+          <Button className="card home-museum" onClick={onMuseum}>
+            <Landmark size={18} aria-hidden="true" />
+            <span className="home-museum-word">{text.museum}</span>
+          </Button>
+          {/* The menus are for parents: small, in the soft ink and out of the
+              way in the top-right corner, and only here, never during a round. */}
+          <div className="parent-menus">
+            <ParentMenu
+              label={text.languageMenu}
+              button={<LanguageFlag language={language} />}
+              choices={LANGUAGES.map((option) => ({
+                value: option,
+                name: LANGUAGE_NAMES[option],
+                lang: option,
+                symbol: (
+                  <span className="language-flag" aria-hidden="true">
+                    {LANGUAGE_FLAGS[option]}
+                  </span>
+                )
+              }))}
+              chosen={language}
+              onChoose={onLanguage}
+              {...menu("language")}
+            />
+            <ParentMenu
+              label={text.themeMenu}
+              button={<ThemeSymbol size={24} />}
+              choices={THEME_CHOICES.map((choice) => {
+                const ChoiceSymbol = THEME_SYMBOLS[choice];
+                return { value: choice, name: text.themes[choice], symbol: <ChoiceSymbol size={18} /> };
+              })}
+              chosen={theme}
+              onChoose={onTheme}
+              {...menu("theme")}
+            />
+            <ParentMenu
+              label={text.ageLevelMenu}
+              button={<LevelSymbol size={24} aria-hidden="true" />}
+              choices={AGE_LEVELS.map((level) => {
+                const ChoiceSymbol = LEVEL_SYMBOLS[level];
+                return { value: level, name: text.ageLevels[level].name, note: text.ageLevels[level].age, symbol: <ChoiceSymbol size={18} /> };
+              })}
+              chosen={ageLevel}
+              onChoose={onAgeLevel}
+              {...menu("ageLevel")}
+            />
+          </div>
         </div>
-      </div>
-      <h1 className="greeting" data-turn-part="greeting">{text.greeting}</h1>
-      <div className="games">
-        {/* The large card is today's game's door, its tile left out of
-            the row. It stays as the tiles scroll. */}
+      </header>
+      <section className="home-sky" aria-label={text.today}>
+        {featuredGame !== "skeletons" && <div className="home-sky-body" aria-hidden="true"><span /></div>}
         <Button
-          className="card featured-card"
+          className="featured-card"
           data-game={featuredGame}
           data-turn-part="featured-card"
           aria-label={today.name}
           onClick={today.onOpen}
         >
-          {today.picture}
-          <span className="featured-card-footer">
-            <span className="featured-card-symbol" aria-hidden="true">
-              <FeaturedSymbol size={28} />
+          <span className="home-today-copy">
+            <span className="featured-card-footer">
+              <span className="featured-card-symbol" aria-hidden="true">
+                {featuredGame === "whoseJaw" ? <Tooth size={20} /> : <FeaturedSymbol size={36} />}
+              </span>
+              <FitText className="featured-card-title" text={today.name} style={{ "--title-chars": today.name.length } as CSSProperties} />
             </span>
-            <span className="featured-card-title">{today.name}</span>
+            <span className="home-today-actions">
+              <span className="home-play"><Play aria-hidden="true" />{text.play}</span>
+              {today.badge && <span className="home-today-progress">
+                <BadgeChip badge={today.badge} className="featured-card-badge" size={18} />
+                {featuredGame === "compare" && <span className="home-progress-total">/ 10</span>}
+              </span>}
+            </span>
           </span>
-          {/* The badge sits in the card's corner, over the picture, as on
-              the tiles: the footer keeps its width for the name. */}
-          <BadgeChip badge={today.badge} className="featured-card-badge" size={22} />
+          <span className="home-today-art">{today.skyPicture ?? today.picture}</span>
         </Button>
-        {/* The other games stand in columns of two, in a fixed order, and
-            scroll sideways beside the large card when they do not fit. The
-            games still to come stand under the last of them. Upright,
-            the columns narrow by the window's width so the next one
-            peeks in, which the stylesheet cannot work out. */}
-        <div
-          ref={tilesRow.ref}
-          className="games-tiles"
-          data-turn-part="tiles"
-          style={{ "--tile-column": `${tileColumnWidth(windowWidth, columns, rowStart)}px` } as CSSProperties}
-          onScroll={tilesRow.onScroll}
-        >
-          {shown.map((game) => tiles[game])}
-          {/* The games still to come are a picture, not a button: a tap on
-              it does nothing, and nothing on it invites one. */}
-          <div className="more-coming" data-turn-part="more-coming">
-            <Picture className="more-coming-picture" src={moreComing} alt="" width={800} height={600} />
-            <span className="more-coming-row">
-              <Lock size={22} aria-hidden="true" />
-              <span className="more-coming-title">{text.moreComing}</span>
-            </span>
+        <EarthEdge className="home-sky-wave" />
+      </section>
+      <div className="home-ground games-tiles">
+        {layersOf([...shown, "moreComing" as const], tilesPerLayer).map((layer, index) => (
+          <div className="home-layer" data-depth={index % 2 + 1} key={index}>
+            {index > 0 && <EarthEdge />}
+            <div className="tiles-grid" style={{ "--tiles-per-layer": tilesPerLayer } as CSSProperties}>
+              {layer.map((game) => game === "moreComing" ? moreComingTile : tiles[game])}
+            </div>
           </div>
-        </div>
+        ))}
       </div>
+      <footer className="home-bedrock">
+        <EarthEdge />
+        <p className="home-parent-note">{text.homeParentNote}</p>
+        <span className="home-version" aria-label={text.versionLabel}>{version}</span>
+      </footer>
     </main>
   );
 }
 
-// An age level's picture, beside its name or standing for it.
-function AgeLevelPicture({ level }: { level: AgeLevel }) {
-  return (
-    <span className="parent-menu-picture" aria-hidden="true">
-      {AGE_LEVEL_PICTURES[level]}
-    </span>
-  );
+// The tiles, a layer of earth to each row.
+function layersOf<Tile>(tiles: readonly Tile[], perLayer: number): Tile[][] {
+  return Array.from({ length: Math.ceil(tiles.length / perLayer) }, (_, at) => tiles.slice(at * perLayer, (at + 1) * perLayer));
 }
 
 // The quiz's picture: two dinosaurs facing off.
@@ -513,24 +407,6 @@ function FaceOff({ label, left, right }: { label: string; left: string; right: s
     <span className="face-off" role="img" aria-label={label}>
       <Picture className="face-off-picture face-off-left" src={left} alt="" width={800} height={600} />
       <Picture className="face-off-picture face-off-right" src={right} alt="" width={800} height={600} />
-    </span>
-  );
-}
-
-// Find the pair's picture: two cards of one dinosaur with a face-down
-// card between them.
-function PairsArt({ picture }: { picture: string }) {
-  return (
-    <span className="pairs-tile-art" aria-hidden="true">
-      <span className="pairs-tile-card pairs-tile-card-first">
-        <Picture className="pairs-tile-picture" src={picture} alt="" width={800} height={600} />
-      </span>
-      <span className="pairs-tile-card pairs-tile-back">
-        <Footprints size={44} />
-      </span>
-      <span className="pairs-tile-card pairs-tile-card-second">
-        <Picture className="pairs-tile-picture" src={picture} alt="" width={800} height={600} />
-      </span>
     </span>
   );
 }

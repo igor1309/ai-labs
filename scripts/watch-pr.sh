@@ -42,18 +42,32 @@ not_registered() {
     fi
     finish 1
 }
+# A gh call that fails otherwise, such as GitHub's API timing out
+# ("context deadline exceeded", PR 1510 on 2026-11-01), says nothing about
+# the checks: it is retried, and only WATCH_PR_GH_RETRIES failures in a row
+# (default 10) end the watch.
+failed_calls=0
+gh_failed() {
+    echo "$(date -u +%H:%M:%SZ) gh failed: $1" >> "$log"
+    if ((++failed_calls >= ${WATCH_PR_GH_RETRIES:-10})); then
+        echo "gh failed $failed_calls times in a row: $1" >&2
+        finish 1
+    fi
+    sleep "$interval"
+}
 while true; do
     checks=$(gh pr checks "$pr" --json name,state,bucket,startedAt "$@" 2>&1) || true
     if ! jq -e 'type == "array"' > /dev/null 2>&1 <<< "$checks"; then
-        grep -q "no checks reported" <<< "$checks" || {
-            echo "$checks" >> "$log"
-            finish 1
-        }
-        not_registered "$checks"
+        if grep -q "no checks reported" <<< "$checks"; then
+            not_registered "$checks"
+        else
+            gh_failed "$checks"
+        fi
         continue
     fi
-    head=$(gh pr view "$pr" --json headRefOid --jq .headRefOid)
-    runs=$(gh run list --commit "$head" --json status --limit 100)
+    head=$(gh pr view "$pr" --json headRefOid --jq .headRefOid 2>&1) || { gh_failed "$head"; continue; }
+    runs=$(gh run list --commit "$head" --json status --limit 100 2>&1) || { gh_failed "$runs"; continue; }
+    failed_calls=0
     if ! jq -e 'length > 0' > /dev/null <<< "$runs"; then
         not_registered "no workflow runs for $head yet"
         continue

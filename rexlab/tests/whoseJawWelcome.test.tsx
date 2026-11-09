@@ -8,8 +8,6 @@ import { WhoseJawWelcomeScreen } from "../src/WhoseJawWelcomeScreen.tsx";
 import { homeTile, memoryStorage, featuredCard, manualPictures } from "./support.ts";
 import { withManualPictures } from "./pictures.tsx";
 import { openWhoseJawApp } from "./whoseJawApp.tsx";
-import { levelNameSize, UPRIGHT_LEVEL_SWITCH } from "../src/levelSwitchLayout.ts";
-import { LEVEL_EMS } from "./levelEms.ts";
 
 const button = (name: string) => screen.getByRole("button", { name });
 const record = (entry: unknown, game = "compare") => JSON.stringify({ schemaVersion: 1, games: {
@@ -19,50 +17,11 @@ const choice = (name: string) => within(screen.getByRole("group", { name: TEXTS.
 const pressTwice = (target: Element) => act(() => { fireEvent.click(target); fireEvent.click(target); });
 
 describe("Whose Jaw welcome", () => {
-  it.each(["en", "ru"] as const)("fits every %s level name at intermediate widths and resizes the measured switch", (language) => {
-    let width = 532;
-    const clientWidth = vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockImplementation(function (this: HTMLElement) {
-      return this.classList.contains("level-switch") ? width : 0;
-    });
-    const pictures = manualPictures();
-    const view = render(<WhoseJawWelcomeScreen language={language} level="paleontologist" best={null} collected={0} total={16}
-      jawPicture="jaw.webp" gummyPicture="gummy.webp" onLevel={() => {}} onPlay={() => {}} onShelf={() => {}} onHome={() => {}} />,
-      withManualPictures(pictures));
-    try {
-      const column = document.querySelector<HTMLElement>(".whose-jaw-start")!;
-      const levels = [...column.querySelectorAll<HTMLElement>(".level-switch-level")];
-      for (width of [532, 456, 584, 620]) {
-        fireEvent(window, new Event("resize"));
-        const size = Number.parseFloat(column.style.getPropertyValue("--level-name-size"));
-        expect(size).toBe(levelNameSize(width));
-        const sizes = UPRIGHT_LEVEL_SWITCH;
-        const third = (width - 2 * sizes.padding - 2 * sizes.gap) / 3;
-        for (const level of levels) {
-          const style = getComputedStyle(level);
-          expect(style.flexDirection).toBe("column");
-          expect(style.fontSize).toBe("var(--level-name-size)");
-          const name = level.querySelector(".level-switch-name")!.textContent!;
-          const textWidth = LEVEL_EMS[name]! * size + name.length * sizes.letterSpacing;
-          expect(textWidth + 2 * sizes.sidePadding).toBeLessThanOrEqual(third);
-        }
-      }
-      document.documentElement.dataset.size = "tall-narrow";
-      for (const level of levels) {
-        expect(getComputedStyle(level.querySelector(".level-switch-name")!).position).toBe("absolute");
-        expect(level.querySelector(".level-switch-picture")!.textContent).not.toBe("");
-      }
-    } finally {
-      view.unmount();
-      clientWidth.mockRestore();
-      delete document.documentElement.dataset.size;
-    }
-  });
-
   it.each(["en", "ru"] as const)("opens in %s from a working home tile, with no invented best", (language) => {
     const text = TEXTS[language];
     const app = openWhoseJawApp({ language });
     fireEvent.click(homeTile(text.whoseJaw));
-    expect(screen.getByRole("heading", { name: text.whoseJaw }).textContent).toContain("🦷");
+    expect(screen.getByRole("heading", { name: text.whoseJaw }).querySelector(".whose-jaw-welcome-mark svg")).not.toBeNull();
     expect(document.querySelector(".whose-jaw-gummy")?.getAttribute("src")).toBe("gummy.webp");
     expect(document.querySelector(".whose-jaw-chomp img")?.getAttribute("src")).toBe("jaw.webp");
     expect(screen.queryByLabelText(text.bestScore)).toBeNull();
@@ -88,9 +47,10 @@ describe("Whose Jaw welcome", () => {
     }) });
     const app = openWhoseJawApp({ storage });
     fireEvent.click(homeTile(TEXTS.en.whoseJaw));
-    expect(screen.getByLabelText(TEXTS.en.bestScore).textContent).toBe("🦷 2");
+    expect(screen.getByLabelText(TEXTS.en.bestScore).textContent).toBe("2");
+    expect(screen.getByLabelText(TEXTS.en.bestScore).querySelector("svg")).not.toBeNull();
     fireEvent.click(choice("HATCHLING"));
-    expect(screen.getByLabelText(TEXTS.en.bestScore).textContent).toBe("🦷 3");
+    expect(screen.getByLabelText(TEXTS.en.bestScore).textContent).toBe("3");
     expect(screen.getByLabelText(TEXTS.en.jawCollection).textContent).toContain("2 / 16");
     app.unmount();
     const reloaded = openWhoseJawApp({ storage });

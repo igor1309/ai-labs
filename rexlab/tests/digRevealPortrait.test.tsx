@@ -51,8 +51,8 @@ describe("DIG's reveal upright", () => {
     const actions = styleAt(part(".dig-reveal-screen .result-actions"), size);
     expect([actions.value("flex-direction"), actions.rowGap()]).toEqual(["column", 12]);
     for (const name of [TEXTS.en.digAgain, TEXTS.en.home]) expect(styleAt(screen.getByRole("button", { name }), size).value("width")).toBe("100%");
-    // The navy reveal keeps the switch's pale edge.
-    expect(styleAt(part(".dig-reveal-screen .level-switch"), size).value("box-shadow")).toBe("inset 0 0 0 1px #ffffff40");
+    // The shared switch is flat in the reveal too.
+    expect(styleAt(part(".dig-reveal-screen .level-switch"), size).value("box-shadow")).toBe("none");
   });
 
   it.each(["en", "ru"] as const)("keeps every word on one line at 600 wide in %s", (language) => {

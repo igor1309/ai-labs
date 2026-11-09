@@ -1,3 +1,4 @@
+import { THEMES } from "../src/theme.ts";
 import { act, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { AgeLevel } from "../src/ageLevel.ts";
@@ -77,7 +78,7 @@ describe("Paleontologist's puzzle", () => {
     expect(trayPieces().filter((name) => name?.includes(" "))).toEqual(expect.arrayContaining(["TRICERATOPS FRILL", "STEGOSAURUS TAIL SPIKES", "STEGOSAURUS PLATES"]));
   });
 
-  it.each<Theme>(["light", "dark"])("draws its outline as the skeleton's silhouette alone, in the %s theme's outline colour, no bone in it", async (theme) => {
+  it.each<Theme>(THEMES)("draws its outline as the skeleton's silhouette alone, in the %s theme's outline colour, no bone in it", async (theme) => {
     await openPaleontologist("STEGOSAURUS", theme);
 
     expect(silhouette()?.style.getPropertyValue("--outline-picture")).toBe('url("/skeletons/stegosaurus/skeleton.webp")');

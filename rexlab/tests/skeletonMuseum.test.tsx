@@ -1,3 +1,4 @@
+import { THEMES } from "../src/theme.ts";
 import { act, cleanup, fireEvent, screen, within } from "@testing-library/react";
 import { describe, expect, it, onTestFinished, vi } from "vitest";
 import { LANGUAGES } from "../src/language/language.ts";
@@ -229,7 +230,7 @@ describe("a silhouette whose picture is not shown", () => {
     ["a stand awaiting rebuilding", ["tyrannosaurus"], "loading"],
     ["a stand awaiting rebuilding", ["tyrannosaurus"], "failed"]
   ] as const)("keeps %s faint, its picture %s and not turned, in both themes", async (_, rebuilding, ends) => {
-    for (const appearance of ["light", "dark"] as const) {
+    for (const appearance of THEMES) {
       const outline = fakeSkeletonPicture("tyrannosaurus", "skeleton");
       const storage = keptSkeletons({ earned: [...rebuilding], bestScore: rebuilding.length, rebuilding: [...rebuilding] });
       const { user, pictures } = openSkeletonsApp({ storage, appearance });
@@ -237,7 +238,7 @@ describe("a silhouette whose picture is not shown", () => {
       act(() => new Set(pictures.loading()).forEach((url) => (url !== outline ? pictures.finish(url) : ends === "failed" && pictures.fail(url))));
       const picture = stand("TYRANNOSAURUS").querySelector<HTMLElement>(".skeleton-exhibit-picture") ?? document.body;
 
-      expect([picture.dataset.picture, picture.classList.contains("skeleton-silhouette"), getComputedStyle(picture).opacity]).toEqual([ends, true, "0.22"]);
+      expect([picture.dataset.picture, picture.classList.contains("skeleton-silhouette"), getComputedStyle(picture).opacity]).toEqual([ends, true, picture.closest("[data-state=rebuilding]") ? "0.38" : "0.22"]);
       expect(getComputedStyle(picture).filter).not.toContain("brightness");
       if (ends === "loading") {
         act(() => pictures.finish(outline));

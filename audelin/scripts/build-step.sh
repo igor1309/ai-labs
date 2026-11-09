@@ -14,7 +14,9 @@ for part in '## Intent' '## Done when' '## Out of scope' '## Open'; do
   grep -q "^$part" "$brief" || { echo "STOP: brief lacks \"$part\"" >&2; exit 2; }
 done
 here=$(cd "$(dirname "$0")" && pwd)
-mkdir -p "$out"
+# Agister resolves a relative path against the run's directory, not this
+# shell's, so a retry after a rate limit could not find the brief.
+mkdir -p "$out" && out=$(cd "$out" && pwd) || exit 2
 full="$out/brief.md"
 awk -v rules="$here/brief-rules.md" '
   { print }

@@ -59,6 +59,36 @@ public struct DesignSystemGallery: View {
                     .frame(width: 320)
                 }
             }
+            section("SURFACES & STATUS") {
+                HStack(alignment: .top, spacing: Tokens.space12) {
+                    Card(isCompact: true) {
+                        StatusPanel("Waiting for a client", detail: "ON THEIR IPHONE", level: .panel) {
+                            IconBadge(.large, tint: Tokens.clientTint) {
+                                BluetoothSymbol().foregroundStyle(Tokens.clientHi)
+                            }
+                        } value: {
+                            EmptyView()
+                        } footer: {
+                            EmptyView()
+                        }
+                    }
+                    .frame(width: 320)
+                    VStack(spacing: Tokens.space4) {
+                        ForEach(NoticeBanner.Tone.allCases, id: \.self) {
+                            NoticeBanner("Client left", detail: "Start a new amount", systemImage: "info.circle", tone: $0)
+                        }
+                    }
+                    .frame(width: 320)
+                    VStack(spacing: Tokens.space4) {
+                        SegmentedPicker([.init(30, title: "30s"), .init(60, title: "60s"), .init(90, title: "90s")],
+                                        selection: 60) { _ in }
+                        Card(isCompact: true, padding: .list) {
+                            DividedList(["Device", "Service"], id: \.self) { KeyValueRow($0, value: "H2") }
+                        }
+                    }
+                    .frame(width: 320)
+                }
+            }
             shells
         }
         .frame(width: 1635, alignment: .leading)
@@ -97,6 +127,14 @@ public struct DesignSystemGallery: View {
                     StatusPill("Failed", state: .bad)
                     KeypadKey("7") {}
                     KeypadKey(systemImage: "delete.left", accessibilityLabel: "Delete") {}
+                }
+                HStack(spacing: Tokens.space8) {
+                    SignalMeter(.init(label: "−52 dBm", bars: 4, tone: .live))
+                    SignalMeter(.init(label: "−61 dBm", bars: 3, tone: .live))
+                    SignalMeter(.init(label: "−67 dBm", bars: 2, tone: .live))
+                    SignalMeter(.init(label: "−74 dBm", bars: 1, tone: .live))
+                    SignalMeter(.init(label: "−52 dBm at start", bars: 4, tone: .atStart))
+                    SignalMeter(.noSignal)
                 }
             }
             HStack(alignment: .top, spacing: Tokens.space12) {
@@ -147,7 +185,7 @@ public struct DesignSystemGallery: View {
                 } content: {
                     Text("Stage content").typeRole(.body)
                 }
-                .frame(width: 1194, height: 834)
+                .deviceScreen(CGSize(width: 1194, height: 834), cornerRadius: Tokens.radiusIpad, safeArea: .iPadScreen)
                 IPhoneShell(
                     eyebrow: "STEP 1 OF 4 · FIND", status: StatusPill("Idle"), onSwitch: { _ in }
                 ) {
@@ -155,7 +193,7 @@ public struct DesignSystemGallery: View {
                 } content: {
                     Text("Stage content").typeRole(.body)
                 }
-                .frame(width: 393, height: 852)
+                .deviceScreen(CGSize(width: 393, height: 852), cornerRadius: Tokens.radiusIphone, safeArea: .iPhoneScreen)
             }
         }
     }

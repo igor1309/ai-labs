@@ -33,23 +33,23 @@ describe("the skeleton's result upright", () => {
     expect([document.documentElement.dataset.size, gateShown(), part(".gated-screen").hasAttribute("inert")]).toEqual(["tall", false, false]);
     expect(screen.queryByRole("img", { name: TEXTS.en.turnSideways })).toBeNull();
     expect(styleAt(part(".skeleton-reveal"), size).value("flex-direction")).toBe("column");
-    expect(styleAt(part(".skeleton-reveal-board"), size).value("width")).toBe("min(100cqw, (100cqh - 28px - 560px) * var(--frame-width) / var(--frame-height))");
+    expect(styleAt(part(".skeleton-reveal-board"), size).value("width")).toBe("min(100cqw, (100cqh - 16px - 480px) * var(--frame-width) / var(--frame-height))");
     const reward = styleAt(part(".skeleton-reward"), size);
-    expect([reward.px("padding-top"), reward.rowGap(), reward.px("min-width")]).toEqual([24, 16, 0]);
+    expect([reward.px("padding-top"), reward.rowGap(), reward.px("min-width")]).toEqual([0, 14, 0]);
     expect(styleAt(part(".skeleton-actions"), size).value("flex-direction")).toBe("column");
-    // The room under the bar, its 40 + 48 padding, 56 bar and 28 gap: the
-    // board keeps a skeleton large enough to see above the reward's 560.
-    const room = { width: size[0] - 64, height: size[1] - 88 - 56 - 28 };
-    expect(Math.min(room.width, (room.height - 28 - 560) * 800 / 600)).toBeGreaterThanOrEqual(300);
+    // The reveal under the 108 top and the 44 foot: the board keeps a
+    // skeleton large enough to see above the reward's 480.
+    const room = { width: size[0] - 96, height: size[1] - 108 - 44 };
+    expect(Math.min(room.width, (room.height - 16 - 480) * 800 / 600)).toBeGreaterThanOrEqual(300);
   });
 
   it.each(["en-GB", "ru-RU"])("fits the name and both ways on at 600 wide in %s", async (deviceLanguage) => {
     await openResult([600, 1000], { deviceLanguage });
     const text = shownTexts();
-    // The reward's content, the 536 less its 2 × 24 padding; a way on
+    // The reward's content, the 600 less the screen's 2 × 48 sides; a way on
     // spends its 2 × 12 padding, its 28 symbol and 12 gap beside its words
     // at 22px, each at most 0.75 of its size wide, 1px apart.
-    const content = 600 - 64 - 48;
+    const content = 600 - 96;
     for (const words of [text.buildAnother, text.museum]) {
       const button = screen.getByRole("button", { name: words });
       expect(styleAt(button, [600, 1000]).value("white-space")).toBe("nowrap");
@@ -72,6 +72,6 @@ describe("the skeleton's result upright", () => {
   it("keeps the landscape result as it was", async () => {
     await openResult([1180, 820], { viewport: manualViewport("landscape") });
     expect(gateShown()).toBe(false);
-    expect(getComputedStyle(part(".skeleton-reward")).minWidth).toBe("360px");
+    expect(getComputedStyle(part(".skeleton-actions")).position).toBe("absolute");
   });
 });

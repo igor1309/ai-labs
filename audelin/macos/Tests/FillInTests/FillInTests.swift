@@ -1,5 +1,5 @@
 import Testing
-@testable import FillIn
+import FillIn
 
 struct FillInTests {
 
@@ -10,7 +10,7 @@ struct FillInTests {
             await rig.fill.start()
             await loading.entered()
             await rig.write(0..<10)
-            #expect(await rig.fill.state.status == .gettingReady)
+            #expect(FillOutput(await rig.fill.state).status == .gettingReady)
             await loading.release()
             let final = await rig.result()
             #expect(final == expected(0..<10))
@@ -66,7 +66,7 @@ struct FillInTests {
             #expect(await loading.isHeld)
             await loading.release()
             await rig.fill.waitForWork()
-            #expect(await rig.fill.state == expected(0..<0))
+            #expect(FillOutput(await rig.fill.state) == expected(0..<0))
             #expect(await rig.written.reads.isEmpty)
         }
     }
@@ -87,7 +87,7 @@ struct FillInTests {
             #expect(await reading.isHeld)
             await reading.release()
             await rig.fill.waitForWork()
-            #expect(await rig.fill.state == expected(0..<2))
+            #expect(FillOutput(await rig.fill.state) == expected(0..<2))
             #expect(await rig.text.heardSamples == [0, 1])
         }
     }
@@ -139,7 +139,7 @@ struct FillInTests {
             #expect(await hearing.isHeld)
             await hearing.release()
             await rig.fill.waitForWork()
-            #expect(await rig.fill.state == expected(0..<1))
+            #expect(FillOutput(await rig.fill.state) == expected(0..<1))
         }
     }
 
@@ -151,7 +151,7 @@ struct FillInTests {
             #expect(await rig.result() == expected(0..<2))
             await rig.fill.start(from: 0, writtenLater: true)
             await rig.fill.abandon()
-            #expect(await rig.fill.state == expected(0..<2))
+            #expect(FillOutput(await rig.fill.state) == expected(0..<2))
             #expect(await rig.text.preparations == 1)
             #expect(await rig.written.reads == [0..<2])
         }
@@ -223,13 +223,13 @@ struct FillInTests {
 private func expected(
     _ words: Range<Int>, sampleRate: Double = 1, chunkStart: Int = 0, later: Range<Int> = 0..<0,
     status: State.Status = .finished
-) -> State {
+) -> FillOutput {
 
-    State(
+    FillOutput(
         status: status,
         entries: words.map { word in
             let start = Double(chunkStart) / sampleRate + Double(word - chunkStart) / sampleRate
-            return State.Entry(
+            return FillOutput.Entry(
                 text: Text(
                     id: word, start: start, end: start + 1 / sampleRate, pending: "word\(word)"
                 ),

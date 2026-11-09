@@ -1,0 +1,193 @@
+/* BONES' result on the dig site (design/dig-site.pen, BONES · result): the
+   body over its skeleton standing in a tall sky, the reward on no card, and
+   the ways on on the sand. The name shows once, in the reward. */
+html[data-size] .skeleton-dig.skeleton-result {
+  --result-inset: env(safe-area-inset-top);
+  --dig-sky: calc(100dvh - 250px);
+  --dig-ochre: calc(80px + env(safe-area-inset-bottom));
+  padding: 92px calc(var(--ds-space-40) + var(--screen-right)) calc(230px + env(safe-area-inset-bottom)) calc(var(--ds-space-40) + var(--screen-left));
+}
+
+html[data-size="tall"] .skeleton-dig.skeleton-result {
+  --dig-sky: calc(88px + min((100vw - 96px) * 0.75, 100dvh - 672px) + var(--result-inset));
+  --dig-ochre: calc(28px + env(safe-area-inset-bottom));
+  padding: 108px calc(var(--ds-space-3xl) + var(--screen-right)) calc(var(--dig-ochre) + var(--ds-space-l)) calc(var(--ds-space-3xl) + var(--screen-left));
+}
+
+html[data-size="tall-narrow"] .skeleton-dig.skeleton-result {
+  --result-top: clamp(60px, 28dvh - 110px, 124px);
+  --dig-sky: calc(var(--result-top) + min((100vw - 32px) * 0.75, max(100px, 100dvh - var(--result-top) - 412px)) - 8px + var(--result-inset));
+  --dig-ochre: calc(10px + env(safe-area-inset-bottom));
+  padding: calc(var(--result-top) + env(safe-area-inset-top)) calc(var(--ds-space-m) + var(--screen-right)) calc(var(--dig-ochre) + var(--ds-space-20)) calc(var(--ds-space-m) + var(--screen-left));
+}
+
+html[data-size="wide-short"] .skeleton-dig.skeleton-result {
+  --dig-sky: calc(100dvh - 93px);
+  --dig-ochre: 0px;
+  padding: calc(60px + env(safe-area-inset-top)) calc(var(--ds-space-20) + var(--screen-right)) calc(64px + env(safe-area-inset-bottom)) calc(var(--ds-space-20) + var(--screen-left));
+}
+
+/* The bar keeps its title for screen readers only. */
+html[data-size] .skeleton-result .skeleton-title {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+html[data-size] .skeleton-result .skeleton-bar { justify-content: space-between; }
+
+html[data-size] .skeleton-result .skeleton-reveal {
+  container-type: size;
+  justify-content: center;
+  gap: var(--ds-space-40);
+}
+
+html[data-size] .skeleton-result .skeleton-reveal-board {
+  flex: none;
+  align-self: flex-start;
+  width: min(48cqw, 100cqh * var(--frame-width) / var(--frame-height));
+  max-height: none;
+  outline: none;
+  background: none;
+  box-shadow: none;
+}
+
+html[data-size] .skeleton-result .skeleton-reward {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 560px;
+  padding: 0;
+  justify-content: flex-start;
+  gap: var(--ds-space-14);
+  border-radius: 0;
+  outline: none;
+  background: none;
+  box-shadow: none;
+  color: var(--ds-ink);
+}
+
+html[data-size] .skeleton-result .skeleton-reward-row { gap: var(--ds-space-s); flex-wrap: wrap; }
+html[data-size] .skeleton-result .skeleton-star { background: none; box-shadow: none; color: var(--ds-reward); }
+.skeleton-result .skeleton-star svg { width: 64px; height: 64px; fill: currentColor; }
+
+html[data-size] .skeleton-result .skeleton-badge-earned {
+  align-self: flex-start;
+  padding: var(--ds-space-7) var(--ds-space-14) var(--ds-space-7) var(--ds-btn-gap);
+  gap: var(--ds-space-s);
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-label);
+  color: var(--ds-ink);
+  font-size: var(--ds-size-18);
+  font-weight: 800;
+}
+
+.skeleton-result .skeleton-badge-earned .level-badge { width: 28px; height: 28px; font-size: 18px; }
+
+html[data-size] .skeleton-result .skeleton-reveal-name { color: var(--ds-ink); font-weight: 800; text-align: left; }
+
+html[data-size] .skeleton-result .skeleton-fact {
+  padding: 0;
+  gap: var(--ds-space-m);
+  border-radius: 0;
+  background: none;
+  color: var(--ds-ink);
+  font-size: var(--ds-size-20);
+}
+
+html[data-size] .skeleton-result .skeleton-fact svg {
+  box-sizing: border-box;
+  flex: none;
+  width: 42px;
+  height: 42px;
+  padding: 9px;
+  border-radius: var(--ds-radius-tag);
+  background: var(--ds-pocket-1);
+  color: var(--ds-reward);
+}
+
+/* Beside the reveal, the ways on stand in a row on the sand under the reward. */
+html[data-size="wide"] .skeleton-result .skeleton-actions,
+html[data-size="wide-short"] .skeleton-result .skeleton-actions {
+  position: absolute;
+  top: calc(100% + var(--ds-space-xl));
+  left: 0;
+  right: 0;
+  margin: 0;
+  flex-direction: row;
+  gap: var(--ds-space-l);
+}
+
+html[data-size="wide-short"] .skeleton-result .skeleton-actions { top: calc(100% + var(--ds-space-s)); }
+html[data-size="wide-short"] .skeleton-result .skeleton-actions { gap: var(--ds-space-s); }
+html[data-size="wide-short"] .skeleton-result .skeleton-actions button { padding: 0 var(--ds-space-s); gap: var(--ds-space-xs); letter-spacing: 0; font-size: var(--ds-size-15); }
+html[data-size="wide-short"] .skeleton-result .skeleton-actions button svg { width: 22px; height: 22px; }
+html[data-size="wide-short"] .skeleton-result .skeleton-reveal-board { width: min(44cqw, 100cqh * var(--frame-width) / var(--frame-height)); }
+
+html[data-size] .skeleton-result .skeleton-actions button {
+  flex: none;
+  height: 56px;
+  border: 0;
+  border-radius: var(--ds-radius-pill);
+  outline: none;
+  box-shadow: none;
+}
+
+html[data-size="wide-short"] .skeleton-result .skeleton-actions button { height: 48px; }
+
+html[data-size] .skeleton-result .skeleton-actions .skeleton-build-another { background: var(--ds-action); color: var(--ds-on-action); }
+html[data-size] .skeleton-result .skeleton-actions .skeleton-museum { background: var(--ds-label); color: var(--ds-ink); }
+
+/* Upright, the skeleton stands over the reward. */
+html[data-size="tall"] .skeleton-result .skeleton-reveal,
+html[data-size="tall-narrow"] .skeleton-result .skeleton-reveal {
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: var(--ds-space-l);
+}
+
+html[data-size="tall"] .skeleton-result .skeleton-reveal-board {
+  align-self: center;
+  width: min(100cqw, (100cqh - 16px - 480px) * var(--frame-width) / var(--frame-height));
+}
+
+html[data-size="tall"] .skeleton-result .skeleton-reward,
+html[data-size="tall-narrow"] .skeleton-result .skeleton-reward { flex: 1 1 auto; max-width: none; }
+
+html[data-size="tall"] .skeleton-result .skeleton-actions,
+html[data-size="tall-narrow"] .skeleton-result .skeleton-actions { margin-top: auto; }
+
+html[data-size="tall-narrow"] .skeleton-dig.skeleton-result .skeleton-reveal {
+  flex: 0 0 auto;
+  height: calc(100vh - var(--result-top) - 30px);
+  height: calc(100dvh - var(--result-top) - 30px);
+  gap: var(--ds-space-s);
+}
+
+html[data-size="tall-narrow"] .skeleton-result .skeleton-reveal-board {
+  align-self: center;
+  width: min(100cqw, (100cqh - 12px - 420px) * var(--frame-width) / var(--frame-height));
+}
+
+html[data-size="tall-narrow"] .skeleton-result .skeleton-reward { gap: var(--ds-btn-gap); }
+.skeleton-result .skeleton-reward-row { align-items: center; }
+
+html[data-size="tall-narrow"] .skeleton-result .skeleton-star svg { width: 44px; height: 44px; }
+html[data-size="tall-narrow"] .skeleton-result .skeleton-fact { font-size: var(--ds-size-17); }
+html[data-size="tall-narrow"] .skeleton-result .skeleton-fact svg { width: 36px; height: 36px; padding: 8px; }
+html[data-size="tall-narrow"] .skeleton-result .skeleton-badge-earned { font-size: var(--ds-size-15); }
+
+html[data-size="wide-short"] .skeleton-result .skeleton-reveal { gap: var(--ds-space-xl); }
+html[data-size="wide-short"] .skeleton-result .skeleton-reward { gap: var(--ds-space-6); }
+html[data-size="wide-short"] .skeleton-result .skeleton-star svg { width: 34px; height: 34px; }
+html[data-size="wide-short"] .skeleton-result .skeleton-reveal-name { font-size: min(24px, 100cqi / 9.4); }
+html[data-size="wide-short"] .skeleton-result .skeleton-fact { font-size: var(--ds-size-15); }
+html[data-size="wide-short"] .skeleton-result .skeleton-fact svg { width: 30px; height: 30px; padding: 6px; }
+html[data-size="wide-short"] .skeleton-result .skeleton-badge-earned { padding: 2px var(--ds-space-s); font-size: var(--ds-size-14); }
+html[data-size="wide-short"] .skeleton-result .skeleton-best { font-size: var(--ds-size-14); }
+.skeleton-result .skeleton-badge-earned > span[aria-hidden] { color: var(--ds-ink); }
+
+/* The chip keeps to the reward's small type on a phone on its side. */
+html[data-size="wide-short"] .skeleton-result .celebration { padding: 2px var(--ds-space-s); gap: var(--ds-space-xs); font-size: var(--ds-size-14); }
+html[data-size="wide-short"] .skeleton-result .celebration svg { width: 18px; height: 18px; }

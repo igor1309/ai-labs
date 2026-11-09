@@ -25,8 +25,7 @@ import { attributeOf, correctOf, QUESTION_KINDS, ROUND_LENGTH, type Question } f
 import { TEXTS } from "../src/language/texts.ts";
 import { boardState, startBoard, type Dinosaur as Sortable, type Property, type Sorting } from "../src/sorting/index.ts";
 import type { Theme } from "../src/theme.ts";
-import { shortTileColumn } from "../src/tileColumns.ts";
-import type { LayoutKeeping } from "../src/useKeptRow.ts";
+import type { LayoutKeeping } from "../src/layoutKeeping.ts";
 import { styleAt } from "./windowSizes.ts";
 
 export const SHIPPED_DINOSAURS = readDinosaurs(records);
@@ -509,9 +508,11 @@ export function emptyDig(): Pick<AppProps, "digDinosaurs" | "digProgress" | "san
 // are not about them: every part is measured where it stands in any
 // layout, so nothing glides, and a fade changes the layout and ends at
 // once; every chip's parts take no width, so the chips stand on one row.
-export function pageAtRest(): Pick<AppProps, "layoutMotion" | "chipWidths" | "pictureMotion"> {
+export function pageAtRest(): Pick<AppProps, "layoutMotion" | "chipWidths" | "pictureMotion" | "newHomeGames" | "homeMotion"> {
   return {
+    homeMotion: () => () => {},
     pictureMotion: { now: () => 0, duration: 320, easing: "cubic-bezier(0.22, 1, 0.36, 1)" },
+    newHomeGames: () => [],
     chipWidths: { width: () => 0, subscribe: () => () => {} },
     layoutMotion: {
       parts: document,
@@ -590,7 +591,7 @@ export function unsetAgeLevel(): Pick<AppProps, "ageLevelStore"> {
 // the question, presented as the app presents it.
 export function questionView(question: Question, language: Language, choice?: string) {
   const play = startPlay(Array.from({ length: ROUND_LENGTH }, () => question), "hatchling");
-  return presentQuestion(questionState(choice === undefined ? play : choose(play, choice)), language, fakeBodyPicture);
+  return presentQuestion(questionState(choice === undefined ? play : choose(play, choice)), language, fakeBodyPicture, undefined);
 }
 
 // Media query lists, one for each query given, whose matches the test
@@ -682,20 +683,18 @@ export function seenOn(color: string, under: string): string {
   return format([0, 1, 2].map((at) => (top[at] ?? 0) * alpha + (bottom[at] ?? 0) * (1 - alpha)));
 }
 
-const hasBackground = (element: Element) => rgba(getComputedStyle(element).backgroundColor)[3] > 0;
-
 // The elements with a background of their own, translucent or not.
-export function surfacesIn(root: Element): Element[] {
-  return [root, ...root.querySelectorAll("*")].filter(hasBackground);
+export function surfacesIn(root: Element, styleOf: typeof getComputedStyle = getComputedStyle): Element[] {
+  return [root, ...root.querySelectorAll("*")].filter(element => rgba(styleOf(element).backgroundColor)[3] > 0);
 }
 
 // The colour an element is seen on: its own background, or the nearest
 // one behind it, with each translucent layer laid over what is behind it.
-export function surfaceOf(element: Element): string {
+export function surfaceOf(element: Element, styleOf: typeof getComputedStyle = getComputedStyle): string {
   const layers: string[] = [];
   for (let at: Element | null = element; at; at = at.parentElement) {
-    const background = getComputedStyle(at).backgroundColor;
-    if (!hasBackground(at)) continue;
+    const background = styleOf(at).backgroundColor;
+    if (rgba(background)[3] === 0) continue;
     if (rgba(background)[3] < 1) {
       layers.push(background);
       continue;
@@ -768,7 +767,7 @@ export const PALETTE: Record<Theme, Record<string, string>> = {
 
 // The translucent layers the design lays over the navy, the terracotta
 // and the amber in both themes.
-export const OVERLAYS = ["#00000026", "#00000033", "#FFFFFF1A", "#FFFFFF1F", "#FFFFFF33", "#FFFFFF59"];
+export const OVERLAYS = ["rgba(0, 0, 0, 0.1)", "rgba(255, 255, 255, 0.18)", "#00000026", "#00000033", "#FFFFFF1A", "#FFFFFF1F", "#FFFFFF33", "#FFFFFF59"];
 
 // The name of the first symbol an element shows, such as "sun" or "globe".
 export function symbolOf(element: Element): string | undefined {
@@ -801,43 +800,17 @@ export function tilesRow(): HTMLElement {
   return row;
 }
 
-// The home page's row of tiles laid out as a browser would, which jsdom
-// does not: upright it runs from the page's 56-pixel padding to the
-// window's right edge, and in landscape it takes four sevenths of what
-// the page's 56-pixel sides and the large card's 28-pixel gap leave, or,
-// in a wide-short window, half of what its 20-pixel sides and 16-pixel
-// gap leave with the right side it reaches into. Its columns, of two each, are as wide
-// and as far apart as the stylesheet sets them in the test's window, a
-// share of the row's width in a wide-short one. A tile's frame, drawn
-// under it as it glides, takes no place in them.
-export function layOutTilesRow(): HTMLElement {
-  const row = tilesRow();
-  const size = () => document.documentElement.dataset.size;
-  const style = () => styleAt(row, [window.innerWidth, window.innerHeight]);
-  const width = () => (size() === "tall" ? window.innerWidth - 56 : size() === "tall-narrow" ? window.innerWidth - 20 : size() === "wide-short" ? Math.round((window.innerWidth - 40 - 16 + 20) / 2) : Math.round(((window.innerWidth - 112 - 28) * 4) / 7));
-  const column = () => (size() === "wide-short" ? shortTileColumn(width()) : style().px("grid-auto-columns"));
-  const scrollWidth = () => {
-    const columns = Math.ceil([...row.children].filter((child) => !child.hasAttribute("data-turn-frame")).length / 2);
-    return Math.round(columns * column() + (columns - 1) * style().columnGap());
-  };
-  Object.defineProperties(row, { clientWidth: { get: width }, scrollWidth: { get: scrollWidth } });
-  return row;
-}
-
-// The child swipes the row of tiles to `scroll`, as the browser reports
-// it in a scroll event.
-export function swipeTiles(row: HTMLElement, scroll: number) {
-  row.scrollLeft = scroll;
-  fireEvent.scroll(row);
-}
-
 // A game's own tile on the home page, apart from the large card. The
 // large card's game has no tile.
-export const homeTile = (name: string) => within(tilesRow()).getByRole("button", { name });
+export const shortHomeName = (name: string) => ({
+  "COMPARE": "COMPARE", "ANCIENT REPTILES": "EXPLORE", "CARE": "CARE", "SORT": "SORT", "FIND THE PAIR": "PAIRS", "SKELETONS": "BONES", "DIG": "DIG", "SAND WRITING": "DRAW", "LABYRINTH": "MAZE", "PICTURE PUZZLE": "PUZZLE", "WHOSE JAW?": "TEETH", "COLOR A DINOSAUR": "COLOR",
+  "СРАВНИ": "СРАВНИ", "ДРЕВНИЕ ЯЩЕРЫ": "ЯЩЕРЫ", "ЗАБОТА": "ЗАБОТА", "РАЗЛОЖИ": "СОРТИРУЙ", "НАЙДИ ПАРУ": "ПАРЫ", "СКЕЛЕТЫ": "КОСТИ", "РАСКОПКИ": "КОПАЙ", "РИСОВАНИЕ НА ПЕСКЕ": "РИСУЙ", "ЛАБИРИНТ": "ЛАБИРИНТ", "СОБЕРИ КАРТИНКУ": "ПАЗЛ", "ЧЬЯ ЧЕЛЮСТЬ?": "ЗУБЫ", "РАСКРАСЬ ДИНОЗАВРА": "РАСКРАСЬ"
+} as Record<string, string>)[name] ?? name;
+export const homeTile = (name: string) => within(tilesRow()).getByRole("button", { name: shortHomeName(name) });
 
 // The way into a game from the home page: its tile, or the large card
 // when it features the game.
-export const gameDoor = (name: string) => within(document.body).getByRole("button", { name });
+export const gameDoor = (name: string) => within(document.body).getByRole("button", { name: !document.querySelector(".home") || document.querySelector(".featured-card")?.getAttribute("aria-label") === name ? name : shortHomeName(name) });
 
 // The home page's large card, featuring today's game, not the frame drawn
 // under it as it glides.
@@ -845,4 +818,10 @@ export function featuredCard(): HTMLElement {
   const card = document.querySelector<HTMLElement>(".featured-card:not([data-turn-frame])");
   if (!card) throw new Error("No featured card on the page");
   return card;
+}
+
+// The largest a font size can be: a title fitted to its card is
+// `min(<its size>, <what fits>)`, at its size when the name fits.
+export function largestSize(fontSize: string): number {
+  return parseFloat(/^min\(([\d.]+)px,/.exec(fontSize)?.[1] ?? fontSize);
 }

@@ -8,17 +8,17 @@ import Testing
 func withTrackFolder(_ body: (URL) async throws -> Void) async throws {
 
     let folder = FileManager.default.temporaryDirectory.appendingPathComponent("track-test-\(UUID())", isDirectory: true)
-    try await offPool { try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false) }
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false)
     do { try await body(folder) }
     catch let error as DiskImageDetachFailure {
         // The image may still be mounted, so its containing folder must survive.
         throw error
     } catch {
-        do { try await offPool { try FileManager.default.removeItem(at: folder) } }
+        do { try FileManager.default.removeItem(at: folder) }
         catch { Issue.record(error) }
         throw error
     }
-    try await offPool { try FileManager.default.removeItem(at: folder) }
+    try FileManager.default.removeItem(at: folder)
 }
 
 func tone(_ number: Int, rate: Int = 48_000, frames: Int? = nil) -> [Float] {
@@ -67,7 +67,7 @@ func expectAfinfo(_ url: URL, frames: Int) async throws {
 
 func dataChunkLength(_ url: URL) async throws -> Int64 {
 
-    let data = try await offPool { try Data(contentsOf: url) }
+    let data = try Data(contentsOf: url)
     return Int64(bitPattern: data[56..<64].reduce(UInt64(0)) { ($0 << 8) | UInt64($1) })
 }
 
@@ -82,7 +82,7 @@ struct TrackRig {
         waiting = signal.stream
         track = try await TrackFile(
             url: folder.appendingPathComponent("track.caf"),
-            makeBinding: { url in try binding ?? DiskTrackBinding(url: url) },
+            makeBinding: { url in try binding ?? DiskTrackBinding(url: url, positionedWrite: DiskTrackBinding.systemWrite) },
             makeConversion: { try CompleteConversion(inputRate: $0) },
             readWaiting: { signal.continuation.yield(()) }
         )
@@ -121,7 +121,7 @@ final class FailingBinding: TrackFileBinding, Sendable {
     private let disk: DiskTrackBinding
     private let failure = Mutex<Point?>(nil)
 
-    init(url: URL) throws { disk = try DiskTrackBinding(url: url) }
+    init(url: URL) throws { disk = try DiskTrackBinding(url: url, positionedWrite: DiskTrackBinding.systemWrite) }
 
     func fail(_ point: Point?) { failure.withLock { $0 = point } }
 

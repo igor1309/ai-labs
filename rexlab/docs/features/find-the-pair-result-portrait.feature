@@ -64,7 +64,9 @@ Feature: Find the pair: the result in a tall window
     Given a window of 820 by 1180 CSS pixels
     When I finish a board that earns the offer of the next level
     Then the offer comes over the result once its rewards have landed, as in landscape
-    And it is laid out as compare-dinosaurs-result-portrait.feature tells
+    And the dialog clears 24 pixels on each side and is at most 710 pixels wide
+    And its 32-pixel question fits on at most three lines
+    And YES and NOT NOW stand one above the other across the dialog, each on one line
 
   Scenario: The result glides to its other layout as the window turns
     Given a window of 1180 by 820 CSS pixels on find the pair's result

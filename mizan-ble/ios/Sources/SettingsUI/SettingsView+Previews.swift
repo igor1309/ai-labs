@@ -1,6 +1,19 @@
 import DesignSystem
 import SwiftUI
 
+#Preview("iPhone · all settings", traits: .sizeThatFitsLayout) {
+    ScrollView(.horizontal) {
+        HStack {
+            ForEach(SettingsState.previews.indices, id: \.self) { index in
+                SettingsView(state: SettingsState.previews[index].state, event: { _ in })
+                    .environment(\.horizontalSizeClass, .compact)
+                    .environment(\.modeSwitch, .init(side: .host, isEnabled: true, onSelect: { _ in }))
+                    .frame(width: 393, height: 852)
+            }
+        }
+    }
+}
+
 public extension SettingsState {
     static let previews: [(name: String, state: SettingsState)] = [15, 30, 60, 90, 120].map { seconds in
         (name: "s1-settings-\(seconds)s", state: SettingsState(

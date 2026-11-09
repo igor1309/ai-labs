@@ -6,16 +6,16 @@ import { TEXTS } from "../src/language/texts.ts";
 import { formatLength, formatMass } from "../src/formatValue.ts";
 import { NAME_EMS } from "./nameWidths.ts";
 
-// Advances at 28 px, weight 500: Lexend for Latin and the system face for
-// Cyrillic, rounded up to 0.01 em; the space reserves 0.3 em.
+// Advances at 28 px, weight 500: Lexend for Latin and at least Manrope's
+// for Cyrillic, rounded up to 0.01 em; the space reserves 0.3 em.
 const DESCRIPTION_EMS: Record<string, number> = {
   " ": 0.3, A: 0.7, B: 0.69, C: 0.69, D: 0.76, E: 0.63, F: 0.61, G: 0.78, H: 0.77, I: 0.51, J: 0.61, K: 0.74, L: 0.61, M: 0.87, N: 0.8, O: 0.8, P: 0.65, Q: 0.8, R: 0.7, S: 0.63, T: 0.64, U: 0.75, V: 0.72, W: 1, X: 0.7, Y: 0.68, Z: 0.67,
-  О: 0.77, Г: 0.55, Р: 0.62, М: 0.87, Н: 0.74, Ы: 0.86, Й: 0.73, Х: 0.68, Т: 0.62, И: 0.73, К: 0.66, С: 0.72, Б: 0.64, Л: 0.72, Ь: 0.63, Ш: 0.96, В: 0.64, Е: 0.59, Ч: 0.7, А: 0.68, П: 0.73, З: 0.62, У: 0.63, Д: 0.78, Я: 0.66, Ж: 0.99, Ю: 1, Э: 0.72, Ц: 0.78, Ё: 0.59, Щ: 1, Ф: 0.83, "«": 0.52, "»": 0.52, "—": 0.9,
+  О: 0.77, Г: 0.55, Р: 0.62, М: 0.87, Н: 0.74, Ы: 0.86, Й: 0.73, Х: 0.68, Т: 0.62, И: 0.73, К: 0.66, С: 0.73, Б: 0.64, Л: 0.72, Ь: 0.63, Ш: 0.96, В: 0.64, Е: 0.59, Ч: 0.7, А: 0.68, П: 0.73, З: 0.62, У: 0.63, Д: 0.78, Я: 0.66, Ж: 0.99, Ю: 1, Э: 0.72, Ц: 0.78, Ё: 0.59, Щ: 1, Ф: 0.83, "«": 0.52, "»": 0.52, "—": 0.9,
   ".": 0.24, ",": 0.28, "-": 0.42, "'": 0.23, ":": 0.24, "!": 0.27, "2": 0.55, "7": 0.55
 };
 
 // At 13 px, weight 400: Latin advances from the shipped Lexend font and
-// Cyrillic from the macOS system face through CoreText, rounded up to 0.01 em.
+// Cyrillic at least Manrope's, rounded up to 0.01 em.
 // Spaces use the larger Lexend advance, even between Cyrillic words.
 const NOTE_EMS: Record<string, number> = {
   " ": 0.29,
@@ -64,9 +64,9 @@ const NOTE_EMS: Record<string, number> = {
   "Ф": 0.83,
   "а": 0.56,
   "в": 0.55,
-  "г": 0.46,
+  "г": 0.47,
   "д": 0.61,
-  "е": 0.58,
+  "е": 0.59,
   "з": 0.53,
   "и": 0.6,
   "й": 0.6,
@@ -78,19 +78,18 @@ const NOTE_EMS: Record<string, number> = {
   "п": 0.59,
   "р": 0.62,
   "с": 0.57,
-  "т": 0.5,
+  "т": 0.51,
   "у": 0.55,
   "ф": 0.74,
   "ц": 0.62,
   "ы": 0.73,
-  "ь": 0.52,
+  "ь": 0.54,
   "э": 0.57,
-  "я": 0.53
+  "я": 0.56
 };
 
 // At weight 700, rounded up: the shipped Lexend advances for digits and
-// Latin units, and the system face's bold Cyrillic units with 10% room
-// for the iPad's face. The space reserves the wider Lexend advance.
+// Latin units, and Cyrillic units at least Manrope's. The space reserves the wider Lexend advance.
 const FACT_EMS: Record<string, number> = {
   "0": 0.68, "1": 0.57, "2": 0.55, "3": 0.6, "4": 0.67,
   "5": 0.6, "6": 0.58, "7": 0.56, "8": 0.6, "9": 0.58,
@@ -183,11 +182,11 @@ describe("portrait dinosaur words fit the kept bands", () => {
 });
 
 // Each fact label's width in ems at weight 600, rounded up: in Lexend
-// for the English labels, and in the system face, which Lexend has no
+// for the English labels, and at least Manrope's, which Lexend has no
 // Cyrillic for, for the Russian.
 const LABEL_EMS: Record<string, number> = {
   TALL: 2.54, WINGS: 3.74, LONG: 2.99, HEAVY: 3.5,
-  РОСТ: 2.68, КРЫЛЬЯ: 4.12, ДЛИНА: 3.59, ВЕС: 1.93
+  РОСТ: 2.71, КРЫЛЬЯ: 4.12, ДЛИНА: 3.59, ВЕС: 1.93
 };
 
 // The words' width in every tall-narrow window, 320 to 599 wide, on its

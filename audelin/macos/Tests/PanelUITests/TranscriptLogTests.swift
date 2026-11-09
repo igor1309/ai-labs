@@ -1,11 +1,36 @@
 import AppKit
 import GlassLedger
 import SwiftUI
+import RenderedText
 import Testing
 @testable import PanelUI
 
 @MainActor
 struct TranscriptLogTests {
+
+    @Test func wrappedStreamingTextStaysClearOfTheScrollbar() throws {
+
+        let words = String(repeating: "обсуждаем streaming transcript ", count: 12)
+        let host = hosted(.init(entries: [
+            .init(id: 1, time: "12:44", speaker: .me, settled: words, pending: words),
+        ]), height: 100)
+        let text = try #require(Offscreen.textView(in: host))
+        let scroll = try #require(scrollView(in: host))
+        scroll.scrollerStyle = .overlay
+        scroll.layoutSubtreeIfNeeded()
+        let layout = try #require(text.textLayoutManager)
+        layout.ensureLayout(for: layout.documentRange)
+
+        let clearance = NSScroller.scrollerWidth(for: .regular, scrollerStyle: .overlay)
+        var segments = 0
+        layout.enumerateTextSegments(in: layout.documentRange, type: .standard, options: []) { _, rect, _, _ in
+            segments += 1
+            #expect(rect.maxX + text.textContainerOrigin.x <= text.bounds.width - clearance)
+            return true
+        }
+        #expect(segments > 2)
+        #expect(isTallerThanItsView(scroll))
+    }
 
     @Test func gapUsesSmallMutedTextAndNamesItsMissingSide() throws {
 
@@ -15,13 +40,35 @@ struct TranscriptLogTests {
                 .entry(.init(id: 1, time: "12:44", speaker: .me, settled: "kept words")),
                 .gap(.init(speaker: speaker, text: gap)),
             ]))))
-            #expect(text.string.contains("\(label)  \(gap)"))
+            #expect(text.string.contains("\u{FFFC}\t\(gap)"))
+            let start = (text.string as NSString).range(of: gap).location - 2
+            let symbol = try #require(text.attributedString().attribute(.attachment, at: start, effectiveRange: nil) as? NSTextAttachment)
+            #expect(symbol.image?.accessibilityDescription == label)
             #expect(text.string.contains("kept words"))
             let color = try #require(attribute(.foregroundColor, of: gap, in: text) as? NSColor)
             let font = try #require(attribute(.font, of: gap, in: text) as? NSFont)
             #expect(color == NSColor(GlassLedger.light.gutter))
             #expect(font.pointSize == GlassLedger.light.typeCaption)
         }
+    }
+
+    @Test func theSymbolAndTheTimeMarkTheSpeakerInItsColour() throws {
+
+        let text = try #require(Offscreen.textView(in: hosted(.init(rows: [
+            .entry(.init(id: 1, time: "12:44", speaker: .me, settled: "mine")),
+            .entry(.init(id: 2, time: "12:45", speaker: .them, settled: "theirs")),
+        ]))))
+
+        #expect(text.string == "\u{FFFC}\t12:44\tmine\n\u{FFFC}\t12:45\ttheirs")
+        #expect(Transcript.text(in: NSRange(location: 0, length: text.string.utf16.count), of: text.attributedString()) == "mine\ntheirs")
+        var symbols: [String?] = []
+        let whole = NSRange(location: 0, length: text.string.utf16.count)
+        text.attributedString().enumerateAttribute(.attachment, in: whole) { value, _, _ in
+            if let value = value as? NSTextAttachment { symbols.append(value.image?.accessibilityDescription) }
+        }
+        #expect(symbols == ["я", "они"])
+        #expect(attribute(.foregroundColor, of: "12:44", in: text) as? NSColor == NSColor(GlassLedger.light.me))
+        #expect(attribute(.foregroundColor, of: "12:45", in: text) as? NSColor == NSColor(GlassLedger.light.them))
     }
 
     @Test func placesALateGroupWhereItsMinutesWere() throws {
@@ -74,6 +121,9 @@ struct TranscriptLogTests {
         #expect(rule.width == text.bounds.width)
         #expect(abs(rule.minY - above.maxY - gap) < 0.5, "\(above) \(rule)")
         #expect(abs(below.minY - rule.maxY - gap) < 0.5, "\(rule) \(below)")
+        // A redraw looks only near what it draws, and finds the same rule.
+        #expect(text.ruleFrames(in: rule.insetBy(dx: 0, dy: -2)) == [rule])
+        #expect(text.ruleFrames(in: NSRect(x: 0, y: rule.maxY + 200, width: 10, height: 10)).isEmpty)
     }
 
     @Test func keepsASelectionWhileTextSettlesAndLinesArrive() throws {
@@ -88,6 +138,102 @@ struct TranscriptLogTests {
 
         #expect(text.selectedRange() == selected)
         #expect((text.string as NSString).substring(with: text.selectedRange()) == "Accountable — я.")
+    }
+
+    @Test func eachNewlineCarriesItsParagraphsStyle() throws {
+
+        let lines = PanelState.Lines(entries: many(5) + [.init(id: 5, time: "13:10", speaker: .me, settled: "Последняя.", pending: "по")])
+        let string = Transcript(lines: lines, style: .init(tokens: .light, config: .glassLedger)).string
+        let text = string.string as NSString
+
+        var newlines = 0
+        for index in 1..<text.length where text.character(at: index) == 0x0A {
+            newlines += 1
+            let own = string.attribute(.paragraphStyle, at: index, effectiveRange: nil) as? NSParagraphStyle
+            let before = string.attribute(.paragraphStyle, at: index - 1, effectiveRange: nil) as? NSParagraphStyle
+            #expect(own != nil && own == before, "newline at \(index)")
+        }
+        #expect(newlines >= 5)
+    }
+
+    @Test func anUpdateToTheNewestEntryReplacesOnlyItsRow() {
+
+        let style = Transcript.Style(tokens: .light, config: .glassLedger)
+        let rows = Transcript.Rows()
+        let first = rows.update(.init(entries: many(800) + [newest("по")]), style: style)
+
+        let edit = rows.update(.init(entries: many(800) + [newest("по слог")]), style: style)
+
+        // From the newline that opens its paragraph.
+        let start = (first.text.string as NSString).range(of: "13:10").location - ("\n\u{FFFC}\t" as NSString).length
+        #expect(edit.range == NSRange(location: start, length: first.text.length - start))
+        #expect(edit.entries.last?.body.location == start + ("\n\u{FFFC}\t13:10\t" as NSString).length)
+    }
+
+    @Test func anUpdateBehindUnchangedSealedRowsAppliesCleanly() {
+
+        let style = Transcript.Style(tokens: .light, config: .glassLedger)
+        let rows = Transcript.Rows()
+        _ = rows.update(sealedLines(many(5), live: "по"), style: style)
+
+        let edit = rows.update(sealedLines(many(5), live: "по слог"), style: style)
+
+        #expect(edit.entries.count == 6)
+        expectApplied(edit, to: sealedLines(many(5), live: "по"), becomes: sealedLines(many(5), live: "по слог"), style: style)
+    }
+
+    @Test func aChangedSealedRowIsReplacedFromThere() {
+
+        let style = Transcript.Style(tokens: .light, config: .glassLedger)
+        let rows = Transcript.Rows()
+        let before = sealedLines(many(5), live: "по")
+        _ = rows.update(before, style: style)
+        var changed = many(5)
+        changed[2] = newest("другое")
+
+        let edit = rows.update(sealedLines(changed, live: "по"), style: style)
+
+        expectApplied(edit, to: before, becomes: sealedLines(changed, live: "по"), style: style)
+    }
+
+    @Test func rowsThatJoinTheSealedPartKeepTheirText() {
+
+        let style = Transcript.Style(tokens: .light, config: .glassLedger)
+        let rows = Transcript.Rows()
+        let entries = many(5)
+        let before = sealedLines(Array(entries[..<3]), tail: Array(entries[3...]))
+        _ = rows.update(before, style: style)
+        let after = sealedLines(entries, tail: [])
+
+        let edit = rows.update(after, style: style)
+
+        #expect(edit.text.length == 0)
+        #expect(edit.entries.count == 5)
+    }
+
+    @Test func aNewAppearanceReplacesEveryRow() {
+
+        let rows = Transcript.Rows()
+        let entries = PanelState.Lines(entries: many(3))
+        _ = rows.update(entries, style: .init(tokens: .light, config: .glassLedger))
+
+        let edit = rows.update(entries, style: .init(tokens: .dark, config: .glassLedger))
+
+        #expect(edit.range.location == 0)
+    }
+
+    @Test func applyEditsNothingAboveTheFirstChangedRow() {
+
+        let style = Transcript.Style(tokens: .light, config: .glassLedger)
+        let rows = Transcript.Rows()
+        let storage = RecordingStorage(rows.update(.init(entries: many(5) + [newest("по")]), style: style).text)
+        let edit = rows.update(.init(entries: many(5) + [newest("по слог")]), style: style)
+
+        TranscriptLog.apply(edit, to: storage)
+
+        #expect(storage.string == Transcript(lines: .init(entries: many(5) + [newest("по слог")]), style: style).string.string)
+        #expect(!storage.styled.isEmpty)
+        #expect(storage.styled.allSatisfy { $0.location >= edit.range.location }, "styled \(storage.styled)")
     }
 
     @Test func holdsWhatADragSelectedAndIgnoresAClick() throws {
@@ -146,6 +292,343 @@ struct TranscriptLogTests {
         #expect(settles { isAtBottom(scroll) }, "the newest line is out of view")
     }
 
+    @Test func followsDocumentGrowthAfterTheInitialScroll() throws {
+
+        var events: [PanelEvent] = []
+        let host = hosted(.init(entries: many(12)), height: 160, event: { events.append($0) })
+        let scroll = try #require(scrollView(in: host))
+        let text = try #require(scroll.documentView as? LogTextView)
+        text.scrollToEndOfDocument(nil)
+        try #require(isAtBottom(scroll))
+        events.removeAll()
+
+        // Drive later layout's geometry change without a run-loop wait.
+        for growth: CGFloat in [80, 160] {
+            let height = text.frame.height + growth
+            text.setFrameSize(NSSize(width: text.frame.width, height: height))
+
+            #expect(text.frame.height == height)
+            #expect(isAtBottom(scroll), "the newly laid out bottom is out of view")
+            #expect(events.isEmpty, "layout reported a reader scroll: \(events)")
+        }
+    }
+
+    @Test(arguments: [false, true])
+    func growthAndResizeHoldTheReadersPosition(selecting: Bool) throws {
+
+        var events: [PanelEvent] = []
+        let host = hosted(.init(entries: many(12), followsLive: selecting), height: 160, event: { events.append($0) })
+        let scroll = try #require(scrollView(in: host))
+        let text = try #require(scroll.documentView as? LogTextView)
+        if selecting { text.selectionStarted?() }
+        let selection = NSRange(location: 20, length: 6)
+        text.setSelectedRange(selection)
+        scroll.contentView.scroll(to: NSPoint(x: 0, y: 80))
+        let origin = scroll.contentView.bounds.origin
+        events.removeAll()
+
+        text.setFrameSize(NSSize(width: text.frame.width, height: text.frame.height + 200))
+        #expect(scroll.contentView.bounds.origin == origin)
+        scroll.contentView.setFrameSize(NSSize(width: scroll.contentView.frame.width, height: 100))
+        #expect(scroll.contentView.bounds.origin == origin)
+
+        host.rootView = log(.init(entries: many(14), followsLive: selecting), height: 100, event: { events.append($0) })
+        host.layoutSubtreeIfNeeded()
+
+        #expect(scroll.contentView.bounds.origin == origin)
+        #expect(text.selectedRange() == selection)
+        #expect(events.isEmpty, "geometry reported a reader scroll: \(events)")
+    }
+
+    @Test(arguments: [false, true])
+    func activeSelectionHoldsGeometryWhileStillFollowing(growing: Bool) throws {
+
+        var events: [PanelEvent] = []
+        let (scroll, coordinator) = geometry(event: { events.append($0) })
+        defer { TranscriptLog.dismantleNSView(scroll, coordinator: coordinator) }
+        let document = try #require(scroll.documentView)
+        try #require(isAtBottom(scroll))
+        let origin = scroll.contentView.bounds.origin
+        coordinator.isSelecting = true
+
+        if growing {
+            document.setFrameSize(NSSize(width: 200, height: 1_000))
+        } else {
+            scroll.contentView.setFrameSize(NSSize(width: 200, height: 100))
+        }
+        #expect(scroll.contentView.bounds.origin == origin)
+        #expect(coordinator.followsLive)
+        #expect(events.isEmpty)
+
+        coordinator.isSelecting = false
+        coordinator.quietly { }
+        #expect(isAtBottom(scroll))
+        #expect(events.isEmpty)
+    }
+
+    @Test func activeSelectionHoldsAHostedTextUpdateWhileFollowing() throws {
+
+        var events: [PanelEvent] = []
+        let event: (PanelEvent) -> Void = { events.append($0) }
+        let host = hosted(.init(entries: many(12)), height: 160, event: event)
+        let scroll = try #require(scrollView(in: host))
+        let text = try #require(scroll.documentView as? LogTextView)
+        try #require(isAtBottom(scroll))
+        let origin = scroll.contentView.bounds.origin
+        text.selectionStarted?()
+        let selection = NSRange(location: 20, length: 6)
+        text.setSelectedRange(selection)
+
+        let changed = PanelState.Lines(entries: many(14))
+        host.rootView = log(changed, height: 160, event: event)
+        host.layoutSubtreeIfNeeded()
+
+        #expect(text.string == Transcript(lines: changed, style: .init(tokens: .light, config: .glassLedger)).string.string)
+        #expect(scroll.contentView.bounds.origin == origin)
+        #expect(text.selectedRange() == selection)
+        #expect(events.isEmpty)
+    }
+
+    @Test(arguments: [false, true])
+    func staleLiveTextUpdateRendersWithoutMovingTheReader(appending: Bool) throws {
+
+        var events: [PanelEvent] = []
+        let event: (PanelEvent) -> Void = { events.append($0) }
+        let host = hosted(.init(entries: many(12)), height: 160, event: event)
+        let scroll = try #require(scrollView(in: host))
+        let text = try #require(scroll.documentView as? LogTextView)
+        scroll.contentView.scroll(to: NSPoint(x: 0, y: 80))
+        let pause = try scrollID(events.last)
+        let origin = scroll.contentView.bounds.origin
+        var changed = many(appending ? 14 : 12)
+        changed[changed.count - 1] = newest("changed live text")
+        let stale = PanelState.Lines(entries: changed)
+
+        host.rootView = log(stale, height: 160, event: event)
+        host.layoutSubtreeIfNeeded()
+        #expect(text.string == Transcript(lines: stale, style: .init(tokens: .light, config: .glassLedger)).string.string)
+        #expect(scroll.contentView.bounds.origin == origin)
+        expectScrolls(events, [false])
+
+        host.rootView = log(.init(entries: changed, followsLive: false, scrollAcknowledgement: pause), height: 160, event: event)
+        host.layoutSubtreeIfNeeded()
+        #expect(scroll.contentView.bounds.origin == origin)
+        host.rootView = log(.init(entries: changed, scrollAcknowledgement: pause), height: 160, event: event)
+        host.layoutSubtreeIfNeeded()
+        #expect(isAtBottom(scroll))
+        expectScrolls(events, [false])
+    }
+
+    @Test func viewportResizeKeepsFollowingWithoutReportingAReaderScroll() throws {
+
+        var events: [PanelEvent] = []
+        let host = hosted(.init(entries: many(12)), height: 160, event: { events.append($0) })
+        let scroll = try #require(scrollView(in: host))
+        events.removeAll()
+
+        for height: CGFloat in [100, 240] {
+            host.rootView = log(.init(entries: many(12)), height: height, event: { events.append($0) })
+            host.layoutSubtreeIfNeeded()
+            #expect(isAtBottom(scroll), "document: \(String(describing: scroll.documentView?.frame)), clip: \(scroll.contentView.bounds)")
+            #expect(events.isEmpty)
+        }
+
+        scroll.contentView.scroll(to: .zero)
+        expectScrolls(events, [false])
+    }
+
+    @Test func documentGrowthIsQuietWhenTheClipNotificationArrivesFirst() throws {
+
+        var events: [PanelEvent] = []
+        let (scroll, coordinator) = geometry(event: { events.append($0) })
+        defer { TranscriptLog.dismantleNSView(scroll, coordinator: coordinator) }
+        let document = try #require(scroll.documentView)
+        document.postsFrameChangedNotifications = false
+        document.setFrameSize(NSSize(width: 200, height: 1_000))
+
+        NotificationCenter.default.post(name: NSView.boundsDidChangeNotification, object: scroll.contentView)
+        NotificationCenter.default.post(name: NSView.frameDidChangeNotification, object: document)
+
+        #expect(isAtBottom(scroll))
+        #expect(events.isEmpty)
+        scroll.contentView.scroll(to: .zero)
+        expectScrolls(events, [false])
+    }
+
+    @Test func growthDuringFollowingAndNestedQuietChangesStayQuiet() throws {
+
+        var events: [PanelEvent] = []
+        let (scroll, coordinator) = geometry(event: { events.append($0) })
+        defer { TranscriptLog.dismantleNSView(scroll, coordinator: coordinator) }
+        let document = try #require(scroll.documentView)
+        let clip = try #require(scroll.contentView as? ScrollingClipView)
+        clip.didScroll = {
+            clip.didScroll = nil
+            document.setFrameSize(NSSize(width: 200, height: 1_200))
+        }
+
+        document.setFrameSize(NSSize(width: 200, height: 1_000))
+        #expect(document.frame.height == 1_200)
+        #expect(isAtBottom(scroll))
+        #expect(events.isEmpty)
+
+        coordinator.quietly {
+            coordinator.quietly { }
+            clip.scroll(to: .zero)
+            #expect(events.isEmpty)
+        }
+        #expect(isAtBottom(scroll))
+
+        clip.scroll(to: .zero)
+        clip.scroll(to: NSPoint(x: 0, y: document.frame.height - clip.bounds.height))
+        expectScrolls(events, [false, true])
+    }
+
+    @Test(arguments: [false, true])
+    func readerScrollSurvivesGrowthBeforeThePausedSnapshot(documentFirst: Bool) throws {
+
+        var events: [PanelEvent] = []
+        let event: (PanelEvent) -> Void = { events.append($0) }
+        let (scroll, coordinator) = geometry(event: event)
+        defer { TranscriptLog.dismantleNSView(scroll, coordinator: coordinator) }
+        let document = try #require(scroll.documentView)
+        let clip = try #require(scroll.contentView as? ScrollingClipView)
+        clip.postsBoundsChangedNotifications = !documentFirst
+        clip.didScroll = {
+            clip.didScroll = nil
+            document.setFrameSize(NSSize(width: 200, height: 1_000))
+        }
+
+        clip.scroll(to: .zero)
+        if documentFirst {
+            clip.postsBoundsChangedNotifications = true
+            NotificationCenter.default.post(name: NSView.boundsDidChangeNotification, object: clip)
+        }
+
+        #expect(coordinator.parent.lines.followsLive)
+        #expect(clip.bounds.origin == .zero)
+        expectScrolls(events, [false])
+
+        // An unrelated update can still carry the pre-scroll snapshot.
+        coordinator.parent = TranscriptLog(lines: .init(entries: []), tokens: .light, config: .glassLedger, event: event)
+        coordinator.quietly { }
+        #expect(clip.bounds.origin == .zero)
+
+        coordinator.parent = TranscriptLog(lines: .init(entries: [], followsLive: false, scrollAcknowledgement: try scrollID(events.last)), tokens: .light, config: .glassLedger, event: event)
+        coordinator.quietly { }
+        document.setFrameSize(NSSize(width: 200, height: 1_200))
+        #expect(clip.bounds.origin == .zero)
+        expectScrolls(events, [false])
+
+        coordinator.parent = TranscriptLog(lines: .init(entries: [], scrollAcknowledgement: try scrollID(events.last)), tokens: .light, config: .glassLedger, event: event)
+        coordinator.quietly { }
+        #expect(isAtBottom(scroll))
+        document.setFrameSize(NSSize(width: 200, height: 1_400))
+        #expect(isAtBottom(scroll))
+        expectScrolls(events, [false])
+    }
+
+    @Test(arguments: [false, true])
+    func olderResumeCannotAcknowledgeANewerScrollAway(jumpToLive: Bool) throws {
+
+        var events: [PanelEvent] = []
+        let event: (PanelEvent) -> Void = { events.append($0) }
+        let (scroll, coordinator) = geometry(event: event)
+        defer { TranscriptLog.dismantleNSView(scroll, coordinator: coordinator) }
+        let clip = scroll.contentView
+        let document = try #require(scroll.documentView)
+
+        clip.scroll(to: NSPoint(x: 0, y: 100))
+        coordinator.parent = TranscriptLog(lines: .init(entries: [], followsLive: false, scrollAcknowledgement: try scrollID(events.last)), tokens: .light, config: .glassLedger, event: event)
+        clip.scroll(to: NSPoint(x: 0, y: document.frame.height - clip.bounds.height))
+        let resume = try scrollID(events.last)
+        clip.scroll(to: NSPoint(x: 0, y: 200))
+        let pause = try scrollID(events.last)
+        let stopped = clip.bounds.origin
+
+        coordinator.parent = TranscriptLog(lines: .init(entries: [], scrollAcknowledgement: resume), tokens: .light, config: .glassLedger, event: event)
+        coordinator.quietly { }
+        #expect(clip.bounds.origin == stopped)
+        document.setFrameSize(NSSize(width: 200, height: 1_000))
+        #expect(clip.bounds.origin == stopped)
+        expectScrolls(events, [false, true, false])
+
+        if jumpToLive {
+            // A jump snapshot may coalesce the paused snapshot it follows.
+            coordinator.parent = TranscriptLog(lines: .init(entries: [], scrollAcknowledgement: pause), tokens: .light, config: .glassLedger, event: event)
+        } else {
+            coordinator.parent = TranscriptLog(lines: .init(entries: [], followsLive: false, scrollAcknowledgement: pause), tokens: .light, config: .glassLedger, event: event)
+            coordinator.quietly { }
+            #expect(clip.bounds.origin == stopped)
+            clip.scroll(to: NSPoint(x: 0, y: document.frame.height - clip.bounds.height))
+            coordinator.parent = TranscriptLog(lines: .init(entries: [], scrollAcknowledgement: try scrollID(events.last)), tokens: .light, config: .glassLedger, event: event)
+        }
+        coordinator.quietly { }
+        #expect(isAtBottom(scroll))
+        document.setFrameSize(NSSize(width: 200, height: 1_200))
+        #expect(isAtBottom(scroll))
+        expectScrolls(events, jumpToLive ? [false, true, false] : [false, true, false, true])
+    }
+
+    @Test func growthDuringSelectionCannotSwallowReaderMovement() throws {
+
+        var events: [PanelEvent] = []
+        let event: (PanelEvent) -> Void = { events.append($0) }
+        let (scroll, coordinator) = geometry(event: event)
+        defer { TranscriptLog.dismantleNSView(scroll, coordinator: coordinator) }
+        let document = try #require(scroll.documentView)
+        coordinator.isSelecting = true
+        document.setFrameSize(NSSize(width: 200, height: 1_000))
+        #expect(events.isEmpty)
+
+        scroll.contentView.scroll(to: NSPoint(x: 0, y: 400))
+        expectScrolls(events, [false])
+        coordinator.isSelecting = false
+        coordinator.quietly { }
+        #expect(scroll.contentView.bounds.origin.y == 400)
+    }
+
+    @Test func dismantlingStopsObservingDocumentAndClipGeometry() throws {
+
+        var events: [PanelEvent] = []
+        let (scroll, coordinator) = geometry(event: { events.append($0) })
+        let document = try #require(scroll.documentView)
+        TranscriptLog.dismantleNSView(scroll, coordinator: coordinator)
+        let origin = scroll.contentView.bounds.origin
+
+        document.setFrameSize(NSSize(width: 200, height: 1_000))
+        #expect(scroll.contentView.bounds.origin == origin)
+        #expect(!isAtBottom(scroll))
+        scroll.setFrameSize(NSSize(width: 200, height: 100))
+        #expect(scroll.contentView.bounds.origin == origin)
+        scroll.contentView.scroll(to: .zero)
+        #expect(events.isEmpty)
+    }
+
+    @Test func geometryObserversDoNotRetainTheCoordinator() {
+
+        weak var released: TranscriptLog.Coordinator?
+        let scroll: NSScrollView
+        do {
+            let pair = geometry(event: { _ in })
+            scroll = pair.scroll
+            released = pair.coordinator
+        }
+        #expect(released == nil)
+        scroll.documentView?.setFrameSize(NSSize(width: 200, height: 1_000))
+    }
+
+    /// TextKit lays text out after the update that scrolled to its end, so
+    /// the text grows under a scroll that was made too early.
+    @Test func opensALongLogAtItsNewestLine() throws {
+
+        let host = hosted(.init(entries: many(14)), height: 160)
+        let scroll = try #require(scrollView(in: host))
+
+        #expect(isTallerThanItsView(scroll))
+        #expect(settles { isAtBottom(scroll) }, "a long log opens away from its newest line")
+    }
+
     @Test func staysWhereTheReaderScrolled() throws {
 
         let host = hosted(.init(entries: many(12), followsLive: false), height: 160)
@@ -159,6 +642,100 @@ struct TranscriptLogTests {
         #expect(scroll.contentView.bounds.origin.y == 0, "the log moved under the reader")
     }
 
+    @Test func resizingDoesNotReplaceUnchangedTranscriptCharacters() {
+        let rows = Transcript.Rows()
+        var config = PanelConfig.glassLedger
+        let lines = PanelState.Lines(entries: many(120))
+        let first = rows.update(lines, style: .init(tokens: .light, config: config))
+        let storage = RecordingStorage(first.text)
+        for width: CGFloat in [500, 320, 600, 396] {
+            config.panelWidth = width
+            TranscriptLog.apply(rows.update(lines, style: .init(tokens: .light, config: config)), to: storage)
+        }
+        #expect(storage.replaced.isEmpty, "Resizing must rewrap the existing text, not replace the entire transcript")
+    }
+
+    @Test func changingTypographyReplacesTheOldTranscriptInsteadOfInsertingACopy() {
+        let rows = Transcript.Rows()
+        var config = PanelConfig.glassLedger
+        let lines = PanelState.Lines(entries: many(20))
+        let first = rows.update(lines, style: .init(tokens: .light, config: config))
+        let storage = NSTextStorage(attributedString: first.text)
+        config.lineHeight += 0.2
+        let edit = rows.update(lines, style: .init(tokens: .light, config: config))
+        #expect(edit.range == NSRange(location: 0, length: first.text.length))
+        TranscriptLog.apply(edit, to: storage)
+        #expect(storage.string == first.text.string)
+        #expect(storage.length == first.text.length)
+        #expect(storage.attribute(.paragraphStyle, at: 0, effectiveRange: nil) as? NSParagraphStyle == edit.text.attribute(.paragraphStyle, at: 0, effectiveRange: nil) as? NSParagraphStyle)
+    }
+
+    @Test func unchangedRowsDoNotEditTextStorage() {
+
+        let rows = Transcript.Rows()
+        let style = Transcript.Style(tokens: .light, config: .glassLedger)
+        let lines = PanelState.Lines(entries: many(20))
+        let first = rows.update(lines, style: style)
+        let storage = RecordingStorage(first.text)
+        TranscriptLog.apply(rows.update(lines, style: style), to: storage)
+        #expect(storage.replaced.isEmpty)
+        #expect(storage.styled.isEmpty)
+    }
+
+    @Test func pausedWrappedLogKeepsTheVisibleLineAcrossUpdates() throws {
+
+        let history = (0..<300).map { index in
+            PanelState.Entry(id: index, time: "03:24", speaker: .them,
+                settled: String(repeating: "План работ обсуждаем вместе. ", count: 1 + index % 7))
+        }
+        func panel(_ entries: [PanelState.Entry], elapsed: String) -> AnyView {
+            AnyView(PanelView(state: .init(recording: .on(elapsed: elapsed),
+                log: .lines(.init(entries: entries, newBelow: 5, followsLive: false))), event: { _ in })
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                .frame(width: 396, height: 560))
+        }
+        let host = Offscreen.host(panel(history, elapsed: "00:07:05"), size: CGSize(width: 396, height: 560))
+        let scroll = try #require(scrollView(in: host))
+        let text = try #require(Offscreen.textView(in: host))
+        let window = try #require(host.window)
+        // Run the same sizing probe before and after the baseline. Otherwise
+        // the first update also measures the initial, still-estimated layout.
+        _ = host.fittingSize
+        text.scrollRangeToVisible((text.string as NSString).range(of: "03:24"))
+        scroll.contentView.scroll(to: NSPoint(x: 0, y: 800))
+        host.display()
+        RunLoop.main.run(until: .now.addingTimeInterval(0.1))
+        host.display()
+        let origin = scroll.contentView.bounds.origin
+        let anchor = text.characterIndexForInsertion(at: NSPoint(x: 100, y: origin.y + 40))
+        func anchorInViewport() -> NSRect {
+            let screen = text.firstRect(forCharacterRange: NSRange(location: anchor, length: 1), actualRange: nil)
+            return scroll.convert(window.convertFromScreen(screen), from: nil)
+        }
+        // firstRect returns screen coordinates. Window placement is independent
+        // of whether text stays under the reader inside the scroll viewport.
+        let anchorRect = anchorInViewport()
+        #expect(!anchorRect.isEmpty)
+
+        var entries = history
+        for step in 0..<10 {
+            if step == 0 {
+                window.setFrameOrigin(NSPoint(x: window.frame.minX + 20, y: window.frame.minY + 40))
+            }
+            if !step.isMultiple(of: 2) { entries = history + [newest("слово \(step)")] }
+            host.rootView = panel(entries, elapsed: "00:07:\(step + 6)")
+            host.layoutSubtreeIfNeeded()
+            _ = host.fittingSize
+            RunLoop.main.run(until: .now.addingTimeInterval(0.03))
+            host.display()
+            let rect = anchorInViewport()
+            #expect(abs(rect.minY - anchorRect.minY) < 1,
+                "visible text moved on update \(step): \(anchorRect) -> \(rect); window \(window.frame), scroll \(scroll.frame)")
+            #expect(abs(scroll.contentView.bounds.origin.y - origin.y) < 1,
+                "paused viewport moved on update \(step): \(origin) -> \(scroll.contentView.bounds.origin)")
+        }
+    }
+
     @Test func reportsScrollingAwayFromTheNewestLineAndBack() throws {
 
         var events: [PanelEvent] = []
@@ -168,7 +745,7 @@ struct TranscriptLogTests {
         scroll.contentView.scroll(to: .zero)
         scroll.documentView?.scrollToEndOfDocument(nil)
 
-        #expect(events == [.scrolled(atBottom: false), .scrolled(atBottom: true)])
+        expectScrolls(events, [false, true])
     }
 
     @Test func hugsAShortLogAndScrollsALongOne() throws {
@@ -183,6 +760,37 @@ struct TranscriptLogTests {
     }
 
     // MARK: - Helpers
+
+    private func scrollID(_ event: PanelEvent?) throws -> UUID {
+
+        var id: UUID?
+        if case let .scrolled(_, interaction) = event { id = interaction }
+        return try #require(id)
+    }
+
+    private func expectScrolls(_ events: [PanelEvent], _ expected: [Bool], sourceLocation: SourceLocation = #_sourceLocation) {
+
+        let scrolls = events.compactMap { event -> (Bool, UUID?)? in
+            if case let .scrolled(atBottom, interaction) = event { return (atBottom, interaction) }
+            return nil
+        }
+        #expect(events.count == expected.count, sourceLocation: sourceLocation)
+        #expect(scrolls.map { $0.0 } == expected, sourceLocation: sourceLocation)
+        #expect(scrolls.allSatisfy { $0.1 != nil }, sourceLocation: sourceLocation)
+        #expect(Set(scrolls.compactMap { $0.1 }).count == scrolls.count, sourceLocation: sourceLocation)
+    }
+
+    private func geometry(event: @escaping (PanelEvent) -> Void) -> (scroll: NSScrollView, coordinator: TranscriptLog.Coordinator) {
+
+        let scroll = NSScrollView(frame: NSRect(x: 0, y: 0, width: 200, height: 160))
+        scroll.contentView = ScrollingClipView(frame: scroll.contentView.frame)
+        scroll.documentView = GeometryDocument(frame: NSRect(x: 0, y: 0, width: 200, height: 800))
+        let parent = TranscriptLog(lines: .init(entries: []), tokens: .light, config: .glassLedger, event: event)
+        let coordinator = parent.makeCoordinator()
+        coordinator.observeGeometry(of: scroll)
+        coordinator.quietly { }
+        return (scroll, coordinator)
+    }
 
     /// A live entry, minutes filled in late, then live entries again.
     private var lateLines: PanelState.Lines {
@@ -238,6 +846,30 @@ struct TranscriptLogTests {
             entries.append(.init(id: 4, time: "12:44", speaker: .me, settled: "Я.", pending: "по слог"))
         }
         return entries
+    }
+
+    private func newest(_ pending: String) -> PanelState.Entry {
+
+        .init(id: 1000, time: "13:10", speaker: .me, settled: "Последняя фраза.", pending: pending)
+    }
+
+    private func sealedLines(_ sealed: [PanelState.Entry], live: String) -> PanelState.Lines {
+
+        sealedLines(sealed, tail: [newest(live)])
+    }
+
+    private func sealedLines(_ sealed: [PanelState.Entry], tail: [PanelState.Entry]) -> PanelState.Lines {
+
+        .init(rows: .init(sealed: sealed.map(PanelState.Row.entry), tail: tail.map(PanelState.Row.entry)))
+    }
+
+    private func expectApplied(
+        _ edit: Transcript.Edit, to before: PanelState.Lines, becomes after: PanelState.Lines, style: Transcript.Style
+    ) {
+
+        let storage = NSTextStorage(attributedString: Transcript(lines: before, style: style).string)
+        TranscriptLog.apply(edit, to: storage)
+        #expect(storage.string == Transcript(lines: after, style: style).string.string)
     }
 
     private func many(_ count: Int) -> [PanelState.Entry] {
@@ -298,5 +930,55 @@ struct TranscriptLogTests {
 
         guard let document = scroll.documentView else { return false }
         return scroll.contentView.documentVisibleRect.maxY >= document.bounds.height - 1
+    }
+}
+
+private final class GeometryDocument: NSView {
+
+    override var isFlipped: Bool { true }
+}
+
+private final class ScrollingClipView: NSClipView {
+
+    var didScroll: (() -> Void)?
+
+    override func scroll(to newOrigin: NSPoint) {
+
+        super.scroll(to: newOrigin)
+        didScroll?()
+    }
+}
+
+/// A text storage that records every range it is asked to style.
+private final class RecordingStorage: NSTextStorage {
+
+    private let backing: NSMutableAttributedString
+    private(set) var styled: [NSRange] = []
+    private(set) var replaced: [NSRange] = []
+
+    init(_ string: NSAttributedString) {
+        backing = NSMutableAttributedString(attributedString: string)
+        super.init()
+    }
+
+    required init?(coder: NSCoder) { fatalError() }
+    required init?(pasteboardPropertyList propertyList: Any, ofType type: NSPasteboard.PasteboardType) { fatalError() }
+
+    override var string: String { backing.string }
+
+    override func attributes(at location: Int, effectiveRange range: NSRangePointer?) -> [NSAttributedString.Key: Any] {
+        backing.attributes(at: location, effectiveRange: range)
+    }
+
+    override func replaceCharacters(in range: NSRange, with str: String) {
+        replaced.append(range)
+        backing.replaceCharacters(in: range, with: str)
+        edited(.editedCharacters, range: range, changeInLength: (str as NSString).length - range.length)
+    }
+
+    override func setAttributes(_ attrs: [NSAttributedString.Key: Any]?, range: NSRange) {
+        styled.append(range)
+        backing.setAttributes(attrs, range: range)
+        edited(.editedAttributes, range: range, changeInLength: 0)
     }
 }

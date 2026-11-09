@@ -1,6 +1,7 @@
 import Foundation
 import ClientFind
 import HostPicker
+import HostChoice
 import ClientConnect
 import ClientReview
 import ClientPayment
@@ -12,35 +13,46 @@ import Settings
     private let radio: any ClientRadioPort
     private let clock: any ClockPort
     private let settings: Settings
+    private let log: any LogSink
     private var picker: HostPicker<UUID>
+    private var choice: HostChoice<UUID>
+    private var lastPickerLine: (answer: HostChoice<UUID>.Answer, rssi: Int?, time: Double)?
+    private var lastSignal: Int??
     private var hosts: [UUID: ClientFind.Host] = [:]
     private var ticks: Task<Void, Never>?
     private(set) var isScanning = false
     var send: (ClientFind.Event) -> Void = { _ in }
 
-    init(radio: any ClientRadioPort, clock: any ClockPort, settings: Settings) {
+    init(radio: any ClientRadioPort, clock: any ClockPort, settings: Settings, log: any LogSink) {
         self.radio = radio
         self.clock = clock
         self.settings = settings
+        self.log = log
         picker = Self.picker(settings)
+        choice = HostChoice(hold: settings.choiceHold)
     }
     deinit { ticks?.cancel() }
     private static func picker(_ settings: Settings) -> HostPicker<UUID> {
         .init(alpha: settings.pickerAlpha, windowSeconds: settings.pickerWindowSeconds,
               windowReadings: settings.pickerWindowReadings, floor: settings.pickerFloor,
-              margin: settings.pickerMargin, fade: settings.pickerFade)
+              margin: settings.pickerMargin, fade: settings.pickerFade,
+              dropGap: settings.pickerDropGap)
     }
     func start() {
         guard !isScanning else { return }
         picker = Self.picker(settings)
+        choice = HostChoice(hold: settings.choiceHold)
         hosts.removeAll()
+        lastPickerLine = nil
+        lastSignal = nil
         isScanning = true
+        logPicker(.none, at: clock.now())
         radio.startScanning()
         let source = clock.ticks(every: .milliseconds(100))
         ticks = Task.immediate { [weak self] in
             for await time in source {
                 guard !Task.isCancelled, let self else { return }
-                self.answer(self.picker.answer(at: time))
+                self.answer(self.picker.answer(at: time), at: time)
             }
         }
     }
@@ -55,16 +67,52 @@ import Settings
     func reading(host: UUID, name: String?, rssi: Int, time: Double) {
         guard isScanning else { return }
         hosts[host] = .init(id: host.uuidString, name: name ?? hosts[host]?.name)
-        answer(picker.receive(host: host, rssi: rssi, at: time))
+        answer(picker.receive(host: host, rssi: rssi, at: time), at: time)
     }
-    private func answer(_ answer: HostPicker<UUID>.Answer) {
+    private func answer(_ signal: HostPicker<UUID>.Answer, at time: Double) {
         guard isScanning else { return }
+        let answer = choice.receive(Self.signal(signal), at: signal.time)
+        logPicker(answer, at: time)
+        let strongest = picker.view(at: time).strongestAverage.map { Int($0.rounded()) }
+        if lastSignal != .some(strongest) {
+            lastSignal = .some(strongest)
+            send(.signalRead(strongest))
+        }
         switch answer {
         case .none: send(.pickerAnswered(.none))
         case .holdCloser: send(.pickerAnswered(.holdCloser))
         case .host(let id):
             if let host = hosts[id] { send(.pickerAnswered(.host(host))) }
         }
+    }
+
+    private static func signal(_ answer: HostPicker<UUID>.Answer) -> HostChoice<UUID>.Signal {
+        guard let leader = answer.leader else { return answer.hostHeard ? .noLeader : .noHost }
+        switch leader.band {
+        case .aboveFloor: return .leader(leader.host, .aboveFloor)
+        case .betweenLines: return .leader(leader.host, .betweenLines)
+        case .belowDrop(let since): return .leader(leader.host, .belowDrop(since: since))
+        }
+    }
+
+    private func logPicker(_ answer: HostChoice<UUID>.Answer, at time: Double) {
+        let view = picker.view(at: time)
+        let rssi = view.strongestAverage.map { Int($0.rounded()) }
+        let signalMoved: Bool
+        if let previous = lastPickerLine, let previousRSSI = previous.rssi, let rssi {
+            signalMoved = abs(rssi - previousRSSI) >= 3 && time - previous.time >= 1
+        } else {
+            signalMoved = false
+        }
+        guard lastPickerLine?.answer != answer || signalMoved else { return }
+        let name: String = switch answer {
+        case .none: "none"
+        case .holdCloser: "holdCloser"
+        case .host: "host"
+        }
+        lastPickerLine = (answer, rssi, time)
+        let signal = rssi.map { " rssi=\($0)" } ?? ""
+        log.write(.init(category: .clientFind, message: "picker \(name)\(signal) hosts=\(view.candidateCount)"))
     }
 }
 

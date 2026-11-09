@@ -1,0 +1,95 @@
+name: Audelin Slow Tests
+
+# Weekly measurement for the audelin slow-test hunter: runs the whole suite
+# three times, ranks every test by its median duration and hands the
+# ranking to the hunter autopilot, whose run makes the slowest tests
+# faster. Not a regression check: nothing fails on a slow test, and PR CI
+# does not run this.
+# Runs on Wednesdays at 03:00 UTC (06:00 Moscow time).
+
+on:
+  schedule:
+    - cron: "0 3 * * 3"   # Wed 06:00 MSK
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: audelin-slow-tests
+  cancel-in-progress: false
+
+jobs:
+  measure:
+    runs-on: macos-latest
+    timeout-minutes: 120
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      # The same Xcode and caches as audelin-core, so the tests measured
+      # are the ones CI runs.
+      - name: Select newest Xcode
+        run: sudo xcode-select -s "$(ls -d /Applications/Xcode_*.app | sort -V | tail -n 1)/Contents/Developer"
+
+      - name: Restore the speech models
+        uses: actions/cache/restore@v6
+        with:
+          path: ~/Library/Application Support/FluidAudio/Models
+          key: audelin-models-${{ hashFiles('audelin/macos/Package.resolved') }}
+
+      - name: Key the build cache
+        id: build-key
+        run: echo "swift=$(swift --version 2>&1 | shasum | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+
+      - name: Restore the build cache
+        uses: actions/cache/restore@v6
+        with:
+          path: audelin/macos/.build
+          key: audelin-build-${{ steps.build-key.outputs.swift }}-${{ hashFiles('audelin/macos/Package.resolved', 'audelin/macos/App/Package.resolved', 'audelin/macos/PreviewApps/Package.resolved') }}
+
+      - name: Measure the suite
+        run: python3 -I audelin/scripts/slow-tests.py 3
+
+      - name: Keep the report
+        uses: actions/upload-artifact@v4
+        with:
+          name: slow-tests-report
+          path: |
+            slow-tests-report.json
+            slow-tests-report.md
+          retention-days: 30
+
+      - name: Write the table to the job summary
+        run: cat slow-tests-report.md >> "$GITHUB_STEP_SUMMARY"
+
+      # The webhook gets the top of the ranking and where to download the
+      # whole of it; the full report can run to megabytes.
+      - name: Hand the report to the hunter autopilot
+        env:
+          WEBHOOK: ${{ secrets.MULTICA_AUDELIN_SLOW_TESTS_WEBHOOK }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          python3 -I -c '
+          import json, os
+          report = json.load(open("slow-tests-report.json"))
+          print(json.dumps({
+              "project": report["project"], "runs": report["runs"], "generatedAt": report["generatedAt"],
+              "testCount": len(report["tests"]), "workflowRun": os.environ["RUN_URL"],
+              "artifact": "slow-tests-report", "top": report["tests"][:50],
+          }))' > payload.json
+          curl -fsS --max-time 30 -X POST -H "Content-Type: application/json" --data-binary @payload.json "$WEBHOOK" > /dev/null
+
+  notify:
+    if: ${{ always() && !cancelled() && needs.measure.result == 'failure' }}
+    needs: [measure]
+    uses: ./.github/workflows/notify-telegram-failure.yml
+    with:
+      title: "Audelin Slow Tests"
+      ref_label: "branch"
+      ref_value: ${{ github.ref_name }}
+      job_results: |
+        measure=${{ needs.measure.result }}
+    secrets:
+      CI_BOT_TOKEN: ${{ secrets.CI_BOT_TOKEN }}
+      CI_CHAT_ID: ${{ secrets.CI_CHAT_ID }}

@@ -82,3 +82,17 @@ return, updates are passed on, and the report is told nothing. Evidence:
 The last write held; a second stop is called; neither returns until the
 write is released, then both do, and call text's stop was asked once
 or joined. Evidence: `TranscriptWritingTests.aSecondStopWaitsForTheFirst`.
+
+## S-13 Writes are spaced by a pause
+
+Through a fake pause that lasts until ended: the first update is written
+and a pause starts; two more updates are passed on but not written while
+it lasts; once ended, only the third is written and the next pause
+starts. Evidence: `TranscriptWritingTests.aPauseFollowsEachWriteAndOnlyTheLatestTextIsWrittenAfterIt`.
+
+## S-14 Stopping ends the pause
+
+In the pause after the first write, an update is sent and stop is asked
+for; call text sends its last text while stopping. The pause is
+cancelled, not ended, the last text is written, and stop returns.
+Evidence: `TranscriptWritingTests.stoppingEndsThePauseSoTheLastTextIsWrittenBeforeStopReturns`.

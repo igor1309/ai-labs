@@ -1,5 +1,4 @@
 import CoreAudio
-import Dispatch
 import Foundation
 import Synchronization
 
@@ -9,22 +8,36 @@ public enum ProbeResult: Equatable, Sendable {
     case refused(String)
 }
 
-/// One measurement owns all its resources; its answer is delivered after teardown.
-public final class CallAudioProbe: Sendable {
-    private let native: ProbeNative
-    private let makePlayer: @Sendable () -> any ProbePlayer
-    private let schedule: ProbeSchedule
-    private let queue = DispatchQueue(label: "audelin.CallAudioProbe")
-    private let measurements = MeasurementTurn()
-
-    public convenience init() {
-        self.init(native: .live, makePlayer: { TonePlayer() }, schedule: liveProbeSchedule)
-    }
+/// The audio system, tone player and clock a probe measures with.
+public struct ProbeHardware: Sendable {
+    let native: ProbeNative
+    let makePlayer: @Sendable () -> any ProbePlayer
+    let schedule: ProbeSchedule
 
     init(native: ProbeNative, makePlayer: @escaping @Sendable () -> any ProbePlayer, schedule: @escaping ProbeSchedule) {
         self.native = native
         self.makePlayer = makePlayer
         self.schedule = schedule
+    }
+
+    /// The Mac's own audio system.
+    public static var live: ProbeHardware {
+        ProbeHardware(native: .live, makePlayer: { TonePlayer() }, schedule: liveProbeSchedule)
+    }
+}
+
+/// One measurement owns all its resources; its answer is delivered after teardown.
+public final class CallAudioProbe: Sendable {
+    private let native: ProbeNative
+    private let makePlayer: @Sendable () -> any ProbePlayer
+    private let schedule: ProbeSchedule
+    private let measurements = MeasurementTurn()
+
+    /// Measures with `hardware`: `.live` in the app.
+    public init(hardware: ProbeHardware) {
+        native = hardware.native
+        makePlayer = hardware.makePlayer
+        schedule = hardware.schedule
     }
 
     public func measure() async -> ProbeResult {
@@ -33,19 +46,16 @@ public final class CallAudioProbe: Sendable {
         let operation = Mutex<Measurement?>(nil)
         let answer = await withTaskCancellationHandler {
             await withCheckedContinuation { done in
-                queue.async { [self] in
-                    let run = Measurement(native: native, player: makePlayer(), schedule: schedule, queue: queue) {
-                        operation.withLock { $0 = nil }
-                        done.resume(returning: $0)
-                    }
-                    operation.withLock { $0 = run }
-                    if cancelled.load(ordering: .acquiring) { run.finish(.refused("cancelled")) }
-                    else { run.start() }
+                let run = Measurement(native: native, player: makePlayer(), schedule: schedule) {
+                    operation.withLock { $0 = nil }
+                    done.resume(returning: $0)
                 }
+                operation.withLock { $0 = run }
+                run.begin(cancelled: cancelled.load(ordering: .acquiring))
             }
-        } onCancel: { [queue] in
+        } onCancel: {
             cancelled.store(true, ordering: .releasing)
-            queue.async { operation.withLock { $0 }?.finish(.refused("cancelled")) }
+            operation.withLock { $0 }?.cancel()
         }
         measurements.give()
         return answer
@@ -136,11 +146,12 @@ final class Reception: Sendable {
 }
 
 private final class Measurement: @unchecked Sendable {
-    // All state except Reception is confined to queue, including late callbacks.
+    // All state except Reception is touched only while holding turn, so a late
+    // callback has done its work, or found the measurement finished, when it returns.
+    private let turn = Mutex<Void>(())
     let native: ProbeNative
     let player: any ProbePlayer
     let schedule: ProbeSchedule
-    let queue: DispatchQueue
     let done: @Sendable (ProbeResult) -> Void
     let reception = Reception()
     var timers: [@Sendable () -> Void] = []
@@ -149,25 +160,34 @@ private final class Measurement: @unchecked Sendable {
     var io: AudioDeviceIOProcID?
     var started = false
     var finished = false
-    var rendered = false
+    // Written by the render callback without turn: stopping the player may wait for that callback.
+    let rendered = Atomic<Bool>(false)
+    let atRenderEnd = Atomic<Int>(0)
     var rate = 0.0
     var beforeTone = 0
     var beforeFrames = 0
-    var atRenderEnd = 0
 
-    init(native: ProbeNative, player: any ProbePlayer, schedule: @escaping ProbeSchedule, queue: DispatchQueue,
+    init(native: ProbeNative, player: any ProbePlayer, schedule: @escaping ProbeSchedule,
          done: @escaping @Sendable (ProbeResult) -> Void) {
-        self.native = native; self.player = player; self.schedule = schedule; self.queue = queue; self.done = done
+        self.native = native; self.player = player; self.schedule = schedule; self.done = done
     }
 
-    func later(_ seconds: Double, _ action: @escaping @Sendable (Measurement) -> Void) {
+    func begin(cancelled: Bool) {
+        turn.withLock { _ in if cancelled { finish(.refused("cancelled")) } else { start() } }
+    }
+
+    func cancel() {
+        turn.withLock { _ in finish(.refused("cancelled")) }
+    }
+
+    private func later(_ seconds: Double, _ action: @escaping @Sendable (Measurement) -> Void) {
         timers.append(schedule(seconds) { [weak self] in
             guard let self else { return }
-            queue.async { [self] in if !finished { action(self) } }
+            turn.withLock { _ in if !finished { action(self) } }
         })
     }
 
-    func start() {
+    private func start() {
         do {
             guard try native.defaultOutput() != 0 else { throw ProbeFailure("no default output") }
             try player.prime()
@@ -227,12 +247,8 @@ private final class Measurement: @unchecked Sendable {
             try player.tone { [weak self] in
                 guard let self else { return }
                 reception.stimulus.store(false, ordering: .releasing)
-                let end = reception.callbacks.load(ordering: .acquiring)
-                queue.async { [self] in
-                    guard !finished else { return }
-                    rendered = true
-                    atRenderEnd = end
-                }
+                atRenderEnd.store(reception.callbacks.load(ordering: .acquiring), ordering: .relaxed)
+                rendered.store(true, ordering: .releasing)
             }
             later(0.5) { $0.observe() }
         } catch { finish(.refused(String(describing: error))) }
@@ -244,7 +260,8 @@ private final class Measurement: @unchecked Sendable {
         if reception.invalid.load(ordering: .acquiring) { finish(.refused("nonfinite or malformed samples")); return }
         if reception.heard.load(ordering: .acquiring) { finish(.heard); return }
         let callbacks = reception.callbacks.load(ordering: .acquiring)
-        guard rendered else { finish(.refused("stimulus not rendered")); return }
+        guard rendered.load(ordering: .acquiring) else { finish(.refused("stimulus not rendered")); return }
+        let atRenderEnd = atRenderEnd.load(ordering: .relaxed)
         guard atRenderEnd - beforeTone >= 2, callbacks > atRenderEnd,
               reception.frames.load(ordering: .acquiring) - beforeFrames >= Int(rate * 0.2) else {
             finish(.refused("incomplete stimulus coverage")); return

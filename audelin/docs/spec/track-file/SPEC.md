@@ -21,6 +21,11 @@ keep the call's audio of user S-7, S-9 and S-17 and the catching up of S-15
   MacParakeet's AAC keeps up to its last 1 s fragment after a kill and is
   repaired by an export when it no longer probes (`repairIfNeeded`).
   16-bit, about 5.8 MB a minute; compressing a kept call is not this one's.
+- **A recorded track's duration is read here,** validating its 48 kHz mono
+  Int16 header and data length without loading the audio. A sealed track
+  must contain exactly its declared whole frames; an open-ended track
+  counts the whole frames available after a crash. The synchronous reader
+  must run on a dedicated disk queue.
 - **A track's time starts at its first sample,** and reads come through
   the track, which knows how much it has written. Pieces carry no time
   (System audio capture); the client places the track in call time.

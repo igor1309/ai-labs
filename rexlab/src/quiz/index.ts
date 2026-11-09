@@ -27,6 +27,8 @@ export type QuestionState = {
   total: number;
   last: boolean;
   answered: boolean;
+  // Whether each question answered so far, in order, was answered right.
+  answers: readonly boolean[];
   left: Option;
   right: Option;
 };
@@ -68,6 +70,10 @@ export function questionState(play: Play): QuestionState {
     total: play.round.length,
     last: isLastQuestion(play),
     answered: choice !== null,
+    answers: play.choices.map((chosen, index) => {
+      const asked = play.round[index];
+      return asked !== undefined && correctOf(asked).id === chosen;
+    }),
     left: option(question.left),
     right: option(question.right)
   };

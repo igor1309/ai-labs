@@ -4,8 +4,6 @@ import Synchronization
 public actor LiveAudio: Capture {
 
     private let capture: any Capture
-    private let executor: (any TaskExecutor)?
-    private let beforeInput: @Sendable () async -> Void
     private let position = Mutex(0.0)
     private let live = AsyncStream<Audio>.makeStream()
     private let measured = AsyncStream<AudioStatistics>.makeStream()
@@ -24,18 +22,7 @@ public actor LiveAudio: Capture {
 
     public init(capture: any Capture) {
 
-        self.init(capture: capture, executor: nil)
-    }
-
-    init(
-        capture: any Capture,
-        beforeInput: @escaping @Sendable () async -> Void = {},
-        executor: (any TaskExecutor)?
-    ) {
-
         self.capture = capture
-        self.beforeInput = beforeInput
-        self.executor = executor
     }
 
     /// Only the first listener receives audio; it may subscribe before start.
@@ -58,7 +45,7 @@ public actor LiveAudio: Capture {
 
         guard !attempted else { throw LifecycleError.alreadyStarted }
         attempted = true
-        let task = Task(executorPreference: executor) { try await self.begin() }
+        let task = Task { @concurrent in try await self.begin() }
         starting = task
         try await task.value
         return output.stream
@@ -69,7 +56,7 @@ public actor LiveAudio: Capture {
 
         if let stopping { return try await stopping.value }
         attempted = true
-        let task = Task(executorPreference: executor) { try await self.end() }
+        let task = Task { @concurrent in try await self.end() }
         stopping = task
         try await task.value
     }
@@ -83,9 +70,7 @@ public actor LiveAudio: Capture {
             throw error
         }
         started = true
-        let beforeInput = beforeInput
-        receiving = Task(executorPreference: executor) { [weak self] in
-            await beforeInput()
+        receiving = Task { @concurrent [weak self] in
             do {
                 for try await piece in stream { await self?.receive(piece) }
                 await self?.finish()
