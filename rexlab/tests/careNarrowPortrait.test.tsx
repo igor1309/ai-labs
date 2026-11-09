@@ -167,22 +167,29 @@ describe("care upright on a phone", () => {
     await app.user.click(screen.getByRole("button", { name: TEXTS[language].newVisitor }));
     await playVisit(app.user, app.clock);
     act(() => app.clock.settle());
-    phoneScreen(".care-result", size, 20);
+    expect([document.documentElement.dataset.size, gateShown()]).toEqual(["tall-narrow", false]);
+    const page = styleAt(part(".care-result"), size);
+    expect([page.px("padding-left"), page.px("padding-right"), page.value("height"), page.value("overflow-y")]).toEqual([20, 20, "auto", "visible"]);
     const text = TEXTS[language];
-    expect(styleAt(part(".care-result .result-hero"), size).px("max-height")).toBe(Math.min(480, (width - 40) * 3 / 4));
     const hearts = styleAt(part(".result-hearts"), size);
-    const heart = styleAt(part(".result-heart svg"), size);
+    const heart = Math.min(32, (width - 40 - 7 * 8) / 8);
     expect(all(".result-heart")).toHaveLength(8);
-    expect([hearts.value("flex-wrap"), heart.px("width")]).toEqual(["nowrap", 28]);
-    expect(8 * 28 + 7 * hearts.columnGap()).toBeLessThanOrEqual(width - 40);
-    for (const name of [text.newVisitor, text.friends, text.home]) {
+    expect(hearts.value("flex-wrap")).toBe("nowrap");
+    expect(8 * heart + 7 * hearts.columnGap()).toBeLessThanOrEqual(width - 40);
+    expect(styleAt(part(".care-result-chips"), size).value("flex-direction")).toBe("column");
+    // NEW VISITOR across, FRIENDS beside a round HOME, its word for screen
+    // readers.
+    for (const name of [text.newVisitor, text.friends]) {
       const own = styleAt(screen.getByRole("button", { name }), size);
       expect([own.px("height"), own.value("white-space")]).toEqual([64, "nowrap"]);
-      expect(own.px("padding-left") + own.px("padding-right") + 28 + own.columnGap() + capitalsWidth(name, own), name).toBeLessThanOrEqual(width - 40);
+      expect(own.px("padding-left") + own.px("padding-right") + 28 + own.columnGap() + capitalsWidth(name, own), name).toBeLessThanOrEqual(name === text.friends ? width - 40 - 64 - 12 : width - 40);
     }
+    const home = screen.getByRole("button", { name: text.home });
+    expect([styleAt(home, size).px("width"), styleAt(home, size).px("height")]).toEqual([64, 64]);
+    expect(styleAt(home.querySelector<HTMLElement>(".care-result-words")!, size).value("clip-path")).toBe("inset(50%)");
     const chip = styleAt(part(".friend-chip"), size);
     const visitorName = part(".friend-chip").textContent ?? "";
-    expect(chip.px("padding-left") + chip.px("padding-right") + 22 + chip.columnGap() + capitalsWidth(visitorName, chip), visitorName).toBeLessThanOrEqual(width - 40);
+    expect(chip.px("padding-left") + chip.px("padding-right") + 24 + chip.columnGap() + capitalsWidth(visitorName, chip), visitorName).toBeLessThanOrEqual(width - 40);
   });
 
   it("takes the phone's sizes as a tall window narrows over a visit, asking nothing", () => {

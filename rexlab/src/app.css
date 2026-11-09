@@ -3223,90 +3223,10 @@ html[data-size="tall-narrow"] .result-actions .home-button {
 
 /* After a refusal, what would meet the need is ringed in amber. */
 
-/* A care result is the quiz's, with hearts for stars and the visitor,
-   tilted, as its hero. */
-.care-result-hero {
-  rotate: 6deg;
-}
-.result-hearts {
-  margin: 0;
-  display: flex;
-  line-height: 0;
-  gap: 14px;
-}
-
 /* The hearts earned fill one by one. */
 .result-heart-won {
   animation: pop-in var(--motion-standard) var(--ease-overshoot) both;
   animation-delay: calc(var(--heart) * var(--motion-stagger) * 1.5);
-}
-
-.care-result-chips {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 12px;
-}
-
-.friend-chip {
-  margin: 0;
-  height: 48px;
-  box-sizing: border-box;
-  padding: 0 20px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  border-radius: 24px;
-  background: #00000033;
-  font-size: 20px;
-  font-weight: 600;
-}
-
-.friend-chip svg {
-  color: #c9583d;
-}
-
-/* Eight hearts and three buttons, one line each, need a wider column
-   than the quiz's result. */
-.care-result {
-  grid-template-columns: minmax(0, 520fr) minmax(0, 800fr);
-}
-
-.care-result .result-actions {
-  gap: 12px;
-}
-.care-result .play-again-button,
-.care-result .result-actions .home-button {
-  white-space: nowrap;
-  padding: 0 22px;
-  gap: 10px;
-  font-size: 22px;
-}
-
-/* Upright, a care result stands in the result's centred column: the
-   visitor, fitted whole at its 4:3, at most 480 or as tall as the width
-   allows, then the hearts in one row, and NEW VISITOR, FRIENDS and HOME
-   stacked across the width. */
-html[data-size="tall"] .care-result .result-hero,
-html[data-size="tall-narrow"] .care-result .result-hero {
-  max-height: min(480px, (100vw - 64px) * 3 / 4);
-}
-html[data-size="tall"] .care-result .result-hearts,
-html[data-size="tall-narrow"] .care-result .result-hearts {
-  flex-wrap: nowrap;
-}
-
-html[data-size="tall"] .care-result .result-actions,
-html[data-size="tall-narrow"] .care-result .result-actions {
-  align-self: stretch;
-  padding-top: 0;
-  flex-direction: column;
-}
-html[data-size="tall"] .care-result .play-again-button,
-html[data-size="tall-narrow"] .care-result .play-again-button,
-html[data-size="tall"] .care-result .result-actions .home-button,
-html[data-size="tall-narrow"] .care-result .result-actions .home-button {
-  justify-content: center;
 }
 
 /* On a phone care's screens take 24 pixels above, 32 below and 20 at the
@@ -3325,36 +3245,6 @@ html[data-size="tall-narrow"] .care-result .result-actions .home-button {
 
 /* The stage keeps at least 200 pixels for the visitor: a window too
    short for that scrolls. */
-
-/* A care result's visitor as wide as the column, its eight hearts at 28
-   on one row, and its three ways one over another. */
-html[data-size="tall-narrow"] .care-result .result-hero {
-  max-height: min(480px, (100vw - 40px) * 3 / 4);
-}
-html[data-size="tall-narrow"] .result-hearts {
-  gap: 4px;
-}
-
-html[data-size="tall-narrow"] .result-heart svg {
-  width: 28px;
-  height: 28px;
-}
-
-html[data-size="tall-narrow"] .friend-chip {
-  height: 44px;
-  padding: 0 16px;
-  font-size: 18px;
-}
-
-html[data-size="tall-narrow"] .care-result .result-actions {
-  gap: 10px;
-}
-html[data-size="tall-narrow"] .care-result .play-again-button,
-html[data-size="tall-narrow"] .care-result .result-actions .home-button {
-  height: 64px;
-  padding: 0 16px;
-  font-size: 20px;
-}
 
 /* The sorting board: the prompt, a tray of six to ten cards and the two or
    three baskets, which take what is left of the screen. */
@@ -7707,10 +7597,6 @@ html[data-theme="dark"],
 
 /* White would fade on the dark theme's lighter terracotta and green, so
    the marks there take the dark page's ink, as the catalogue's do. */
-
-[data-theme="dark"] .friend-chip svg {
-  color: #e57a5d;
-}
 
 /* The sorting board takes the dark values in the same shapes. White
    would fade on the dark theme's lighter green and terracotta, so the

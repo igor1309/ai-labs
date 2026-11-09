@@ -110,6 +110,7 @@ jobs:
           - sandWritingLayout
           - careWelcomeLayout
           - careVisitLayout
+          - careResultLayout
           - homePhone
           - nativeTouch
           - homeTiles
