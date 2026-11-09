@@ -27,9 +27,10 @@ struct SummaryGeneration: SummaryJobs.Generation {
         do { return try await attempt(runtimeConfiguration(job.primary)) }
         catch {
             if Task.isCancelled || error is CancellationError || error as? SummaryRuntime.Failure == .cancelled { throw CancellationError() }
+            guard let fallback = job.fallback else { throw error }
             // Diagnostics can contain transcript or credentials; only a fixed classification is logged.
             sink.write(.init(category: .session, message: "summary primary attempt failed; trying fallback"))
-            return try await attempt(runtimeConfiguration(job.fallback))
+            return try await attempt(runtimeConfiguration(fallback))
         }
     }
     private func transcript(_ job: Job) -> String {

@@ -85,7 +85,7 @@ struct SettingsViewRenderTests {
             "release", "debug", "confirm-move", "moving", "move-failed", "during-recording",
             "summaries-off", "summaries-on", "summaries-local", "summaries-invalid", "summaries-unavailable",
             "summaries-validating", "summaries-saving", "summaries-save-failed", "summaries-saved",
-            "summaries-loading", "summaries-load-failed",
+            "summaries-loading", "summaries-load-failed", "summaries-no-fallback",
         ]
         #expect(Set(SettingsState.previews.map(\.name)) == required)
         #expect(SettingsState.previews.count == required.count)

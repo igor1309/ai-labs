@@ -40,7 +40,7 @@ public extension SettingsState {
 
     struct NotesRuntime: Equatable, Identifiable, Sendable {
         public enum Slot: String, CaseIterable, Sendable { case primary, fallback }
-        public enum Kind: String, CaseIterable, Sendable { case claudeCLI, compatibleAPI }
+        public enum Kind: String, CaseIterable, Sendable { case unconfigured, claudeCLI, compatibleAPI }
         public struct Option: Equatable, Identifiable, Sendable {
             public var id: Kind
             public var title: String

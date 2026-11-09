@@ -14,8 +14,8 @@ public struct Configuration: Equatable, Sendable {
     public var enabled: Bool
     public var speakers: Bool
     public var primary: Runtime
-    public var fallback: Runtime
-    public init(enabled: Bool, speakers: Bool, primary: Runtime, fallback: Runtime) {
+    public var fallback: Runtime?
+    public init(enabled: Bool, speakers: Bool, primary: Runtime, fallback: Runtime? = nil) {
         self.enabled = enabled; self.speakers = speakers; self.primary = primary; self.fallback = fallback
     }
 }
@@ -75,15 +75,15 @@ public struct RenderedField: Equatable, Sendable {
 }
 public struct RenderedRuntime: Equatable, Sendable {
     public var slot: Slot
-    public var kind: Configuration.Runtime.Kind
+    public var kind: Configuration.Runtime.Kind?
     public var fields: [RenderedField]
     public var disclosure: String
-    public init(slot: Slot, kind: Configuration.Runtime.Kind, fields: [RenderedField], disclosure: String) {
+    public init(slot: Slot, kind: Configuration.Runtime.Kind?, fields: [RenderedField], disclosure: String) {
         self.slot = slot; self.kind = kind; self.fields = fields; self.disclosure = disclosure
     }
 }
 public enum Event: Equatable, Sendable {
-    case setEnabled(Bool), setSpeakers(Bool), selectKind(Slot, Configuration.Runtime.Kind), editField(Slot, Field, String)
+    case setEnabled(Bool), setSpeakers(Bool), selectKind(Slot, Configuration.Runtime.Kind?), editField(Slot, Field, String)
     case load, loaded(Configuration), loadFailed
     case edit(Configuration), validate, validated(UInt64, [ValidationIssue]), save
     case saved(UInt64, Configuration), saveFailed(UInt64)
@@ -118,7 +118,13 @@ public struct Reducer: Sendable {
             draft.speakers = value; return reduce(state, .edit(draft))
         case let .selectKind(slot, kind):
             guard var draft = state.draft else { return (state, nil) }
-            var runtime = slot == .primary ? draft.primary : draft.fallback
+            guard let kind else {
+                guard slot == .fallback else { return (state, nil) }
+                draft.fallback = nil
+                return reduce(state, .edit(draft))
+            }
+            var runtime = (slot == .primary ? draft.primary : draft.fallback)
+                ?? Configuration.Runtime(kind: kind, model: "", executable: "", endpoint: "", credentialVariable: "")
             runtime.kind = kind
             if kind == .claudeCLI {
                 runtime.model = "sonnet"; runtime.executable = ""
@@ -130,7 +136,7 @@ public struct Reducer: Sendable {
             return reduce(state, .edit(draft))
         case let .editField(slot, field, value):
             guard var draft = state.draft else { return (state, nil) }
-            var runtime = slot == .primary ? draft.primary : draft.fallback
+            guard var runtime = (slot == .primary ? draft.primary : draft.fallback) else { return (state, nil) }
             switch field {
             case .model: runtime.model = value
             case .executable: runtime.executable = value
@@ -195,6 +201,9 @@ public struct Reducer: Sendable {
         next.message = busy || failed ? message(next.phase) : next.issues.first.map(issueMessage) ?? message(next.phase)
         if let draft = next.draft {
             next.runtimes = [(Slot.primary, draft.primary), (.fallback, draft.fallback)].map { slot, runtime in
+                guard let runtime else {
+                    return RenderedRuntime(slot: slot, kind: nil, fields: [], disclosure: "Резервный сервис не настроен. При ошибке основного сервиса итоги не будут готовы; расшифровка и аудио сохранятся.")
+                }
                 var fields: [(Field, String)] = [(.model, runtime.model)]
                 fields += runtime.kind == .claudeCLI ? [(.executable, runtime.executable)] : [(.endpoint, runtime.endpoint), (.credentialVariable, runtime.credentialVariable)]
                 return RenderedRuntime(slot: slot, kind: runtime.kind, fields: fields.map { field, value in

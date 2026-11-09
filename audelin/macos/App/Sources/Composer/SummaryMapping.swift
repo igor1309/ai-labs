@@ -11,7 +11,7 @@ func settingsConfiguration(_ notes: NotesPreferences) throws -> SummarySettings.
         return .init(kind: kind, model: value.model, executable: value.executable,
               endpoint: value.endpoint, credentialVariable: value.credentialVariable)
     }
-    let config = SummarySettings.Configuration(enabled: notes.enabled, speakers: notes.speakers, primary: try runtime(notes.primary), fallback: try runtime(notes.fallback))
+    let config = SummarySettings.Configuration(enabled: notes.enabled, speakers: notes.speakers, primary: try runtime(notes.primary), fallback: try notes.fallback.map(runtime))
     guard SummaryAvailability.configurationIssues(config).isEmpty else { throw SummaryRuntime.Failure.configuration }
     return config
 }
@@ -19,7 +19,7 @@ func storedConfiguration(_ config: SummarySettings.Configuration) -> NotesPrefer
     func runtime(_ value: SummarySettings.Configuration.Runtime) -> NotesPreferences.Runtime {
         .init(kind: value.kind.rawValue, model: value.model, executable: value.executable, endpoint: value.endpoint, credentialVariable: value.credentialVariable)
     }
-    return .init(enabled: config.enabled, speakers: config.speakers, primary: runtime(config.primary), fallback: runtime(config.fallback))
+    return .init(enabled: config.enabled, speakers: config.speakers, primary: runtime(config.primary), fallback: config.fallback.map(runtime))
 }
 func runtimeConfiguration(_ value: SummaryJobs.Job.Runtime) throws -> SummaryRuntime.Configuration {
     guard let kind = SummaryRuntime.Configuration.Kind(rawValue: value.kind) else { throw SummaryRuntime.Failure.configuration }
@@ -51,7 +51,8 @@ struct SummaryPreferences: SummarySettings.Preferences {
 struct SummaryAvailability: SummarySettings.Availability {
     static func configurationIssues(_ configuration: SummarySettings.Configuration) -> [SummarySettings.ValidationIssue] {
         [(SummarySettings.Slot.primary, configuration.primary), (.fallback, configuration.fallback)].flatMap { slot, value in
-            SummaryRuntime.Runtime.configurationIssues(.init(kind: .init(rawValue: value.kind.rawValue)!, model: value.model,
+            guard let value else { return [SummarySettings.ValidationIssue]() }
+            return SummaryRuntime.Runtime.configurationIssues(.init(kind: .init(rawValue: value.kind.rawValue)!, model: value.model,
                 program: value.executable, endpoint: value.endpoint, credentialVariable: value.credentialVariable)).map { issue in
                 let field: SummarySettings.Field
                 switch issue.field {
@@ -69,6 +70,7 @@ struct SummaryAvailability: SummarySettings.Availability {
         let syntax = Self.configurationIssues(configuration)
         guard syntax.isEmpty else { return syntax }
         for (slot, value) in [(SummarySettings.Slot.primary, configuration.primary), (.fallback, configuration.fallback)] {
+            guard let value else { continue }
             do {
                 try await runtime.validate(.init(kind: .init(rawValue: value.kind.rawValue)!, model: value.model,
                     program: value.executable, endpoint: value.endpoint, credentialVariable: value.credentialVariable))
@@ -95,8 +97,8 @@ private struct Snapshot: Codable {
         init(_ value: Job.Entry) { label = value.label; time = value.time; text = value.text }
         var value: Job.Entry { .init(label: label, time: time, text: text) }
     }
-    var entries: [Entry]; var speakers: Bool; var primary: Runtime; var fallback: Runtime
-    init(_ job: Job) { entries = job.entries.map(Entry.init); speakers = job.speakers; primary = .init(job.primary); fallback = .init(job.fallback) }
+    var entries: [Entry]; var speakers: Bool; var primary: Runtime; var fallback: Runtime?
+    init(_ job: Job) { entries = job.entries.map(Entry.init); speakers = job.speakers; primary = .init(job.primary); fallback = job.fallback.map(Runtime.init) }
 }
 struct SummaryJobStore: SummaryJobs.Store {
     let files: SummaryFiles.Files
@@ -106,7 +108,7 @@ struct SummaryJobStore: SummaryJobs.Store {
     func state(_ record: Record) throws -> SummaryJobs.State {
         let saved = try JSONDecoder().decode(Snapshot.self, from: record.snapshot)
         let job = Job(id: record.job, call: record.call, input: record.input, entries: saved.entries.map(\.value), speakers: saved.speakers,
-                      primary: saved.primary.value, fallback: saved.fallback.value)
+                      primary: saved.primary.value, fallback: saved.fallback?.value)
         let phase = SummaryJobs.State.Phase(rawValue: record.phase) ?? .failed
         return .init(phase: phase, job: job, warning: record.warning, status: summaryStatus(phase, record.warning))
     }

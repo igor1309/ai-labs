@@ -126,13 +126,16 @@ struct CallNotesInteractionTests {
         #expect(events == [.editNotesField(.fallback, .credentialVariable, "")])
     }
 
-    @Test func nativeMenusSendBothKindsForEachSlot() throws {
+    @Test func nativeMenusSendProviderChoicesAndAllowOnlyFallbackToBeUnconfigured() throws {
         var events: [SettingsEvent] = []
         let host = try host("off") { events.append($0) }
         let menus = descendants(host, of: NSPopUpButton.self)
         #expect(menus.count == 2)
         for (menu, slot) in zip(menus, SettingsState.NotesRuntime.Slot.allCases) {
-            for (index, kind) in SettingsState.NotesRuntime.Kind.allCases.enumerated() {
+            let kinds: [SettingsState.NotesRuntime.Kind] = slot == .primary
+                ? [.claudeCLI, .compatibleAPI] : [.unconfigured, .claudeCLI, .compatibleAPI]
+            #expect(menu.numberOfItems == kinds.count)
+            for (index, kind) in kinds.enumerated() {
                 menu.selectItem(at: index)
                 let item = try #require(menu.item(at: index))
                 let action = try #require(item.action)
@@ -140,7 +143,7 @@ struct CallNotesInteractionTests {
                 #expect(events.last == .selectNotesRuntime(slot, kind))
             }
         }
-        #expect(events.count == 4)
+        #expect(events.count == 5)
     }
 
     private func preview(_ name: String) throws -> SettingsState {

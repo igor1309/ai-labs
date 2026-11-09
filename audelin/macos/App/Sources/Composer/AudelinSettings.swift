@@ -36,7 +36,7 @@ public final class AudelinSettings {
         switch event {
         case let .setAutomaticNotes(value): model.event(.setEnabled(value))
         case let .setIdentifySpeakers(value): model.event(.setSpeakers(value))
-        case let .selectNotesRuntime(slot, kind): model.event(.selectKind(slot == .primary ? .primary : .fallback, .init(rawValue: kind.rawValue)!))
+        case let .selectNotesRuntime(slot, kind): model.event(.selectKind(slot == .primary ? .primary : .fallback, SummarySettings.Configuration.Runtime.Kind(rawValue: kind.rawValue)))
         case let .editNotesField(slot, field, value):
             let key: SummarySettings.Field
             switch field {
@@ -71,8 +71,10 @@ func runtimeDisclosure(_ runtime: SummarySettings.Configuration.Runtime) -> Stri
 }
 private func safeRecipient(_ endpoint: String) -> String { URLComponents(string: endpoint)?.host ?? "настроенный API" }
 func notesDisclosure(_ config: SummarySettings.Configuration) -> String {
-    "Основной: " + runtimeDisclosure(config.primary) + "\nРезервный: " + runtimeDisclosure(config.fallback)
-    + "\nОба сервиса могут получить полный транскрипт. Определение имён — дополнительный запрос. Таймаут тоже может расходовать квоту или деньги. Проверка не отправляет транскрипт и не подтверждает квоту."
+    let fallback = config.fallback.map { "Резервный: " + runtimeDisclosure($0) } ?? "Резервный сервис не настроен."
+    let recipients = config.fallback == nil ? "Основной сервис может получить полный транскрипт." : "Оба сервиса могут получить полный транскрипт."
+    return "Основной: " + runtimeDisclosure(config.primary) + "\n" + fallback
+    + "\n" + recipients + " Определение имён — дополнительный запрос. Таймаут тоже может расходовать квоту или деньги. Проверка не отправляет транскрипт и не подтверждает квоту."
 }
 func notesPresentation(_ state: SummarySettings.State) -> SettingsState.CallNotes {
     guard let draft = state.draft else {
@@ -93,9 +95,18 @@ func notesPresentation(_ state: SummarySettings.State) -> SettingsState.CallNote
             return .init(id: id, label: settingsFieldLabel(field.field), value: field.value,
                          placeholder: id == .executable ? "Автоматически найти Claude" : id == .credentialVariable ? "не требуется" : "", isInvalid: field.isInvalid)
         }
-        return .init(id: slot, title: slot == .primary ? "Основной сервис" : "Резервный сервис", kind: .init(rawValue: value.kind.rawValue)!,
-                     options: [.init(id: .claudeCLI, title: "Claude Code CLI"), .init(id: .compatibleAPI, title: "API · OpenAI-совместимый")],
-                     fields: fields, disclosure: value.disclosure)
+        let title: String
+        if slot == .primary { title = "Основной сервис" }
+        else if value.kind == nil { title = "Резервный сервис · не настроен" }
+        else if fields.contains(where: \.isInvalid) { title = "Резервный сервис · требует настройки" }
+        else { title = "Резервный сервис · настроен" }
+        var options: [SettingsState.NotesRuntime.Option] = [
+            .init(id: .claudeCLI, title: "Claude Code CLI"),
+            .init(id: .compatibleAPI, title: "API · OpenAI-совместимый"),
+        ]
+        if slot == .fallback { options.insert(.init(id: .unconfigured, title: "Не настроен (необязательно)"), at: 0) }
+        return .init(id: slot, title: title, kind: value.kind.flatMap { .init(rawValue: $0.rawValue) } ?? .unconfigured,
+                     options: options, fields: fields, disclosure: value.disclosure)
     }
     let tone: SettingsState.NotesTone
     switch state.statusTone {

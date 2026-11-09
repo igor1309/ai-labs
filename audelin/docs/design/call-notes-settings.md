@@ -19,12 +19,14 @@ environment-variable name. Never display or persist the credential value.
 Use native text editing, keyboard traversal, menus, checkboxes and buttons.
 The design's drawn menu chevron is replaced with the native menu affordance.
 
-Primary defaults to Claude Code CLI / sonnet / claude. Fallback defaults to
-OpenAI-compatible API / gpt-4.1-mini / https://api.openai.com/v1 /
-OPENAI_API_KEY. Each card discloses its recipient and charging model. The footer
-explains that either slot can receive the full transcript and speaker naming
-adds a request. The loopback variant warns that the local server controls any
-onward forwarding. No credentials or transcripts are sent by validation.
+Primary defaults to Claude Code CLI / sonnet with automatic executable discovery.
+Fallback is optional and defaults to unconfigured. Only the fallback picker
+includes “Не настроен (необязательно)”; choosing it clears the fallback fields.
+The card title explicitly shows whether fallback is configured or needs correction.
+Existing configured fallbacks remain selected. Each configured card discloses its
+recipient and charging model. The footer describes only configured transcript
+recipients and explains that speaker naming adds a request. The loopback variant
+warns that the local server controls any onward forwarding. No credentials or transcripts are sent by validation.
 
 Save affects future jobs, and reports saving, success or retained draft after
 failure. Save is available for a changed, syntactically valid draft; when notes

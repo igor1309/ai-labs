@@ -2,6 +2,8 @@
 
 ## 2026-11-09
 
+- Call-notes fallback is optional; Settings shows whether it is configured, and primary-only calls need no fallback credentials (LAB-1113).
+
 - Settings follows the system’s light or dark appearance throughout the scrolling page (LAB-1108).
 - Settings fits the selected page instead of leaving a large blank area below recording controls; longer pages scroll within the screen (LAB-1109).
 - Call-notes service pickers show the selected service and native popup arrows for both primary and fallback services (LAB-1111).

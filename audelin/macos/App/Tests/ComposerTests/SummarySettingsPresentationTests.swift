@@ -103,7 +103,8 @@ import Testing
             let url = root.appendingPathComponent("preferences.json")
             let storage = PreferencesStore(fileURL: url)
             let preferences = SummaryPreferences(storage: storage)
-            let initial = try await preferences.load()
+            var initial = try await preferences.load()
+            initial.fallback = .init(kind: .compatibleAPI, model: "fixture", executable: "", endpoint: "https://api.example.com/v1", credentialVariable: "KEY")
             try await preferences.save(initial)
             let before = try Data(contentsOf: url)
             let provider = ProviderSpy()
@@ -202,11 +203,41 @@ import Testing
         }
     }
 
+    @Test func clearingFallbackRemovesItsErrorsAndSavesPrimaryOnly() async throws {
+        try await withComposeFolder { root in
+            var config = localConfiguration()
+            config.fallback?.endpoint = "https://api.example.com/v1"
+            config.fallback?.credentialVariable = "MISSING_KEY"
+            let provider = ProviderSpy()
+            let availability = SummaryAvailability(runtime: provider.runtime())
+            #expect(await availability.validate(config) == [.init(slot: .fallback, field: .credentialVariable, reason: .authentication)])
+            let reducer = settingsReducer()
+            let loaded = reducer.reduce(.init(phase: .loading), .loaded(config)).0
+            let cleared = reducer.reduce(loaded, .selectKind(.fallback, nil)).0
+            let view = try loadedPresentation(cleared)
+            #expect(view.runtimes[1].title == "Резервный сервис · не настроен")
+            #expect(view.runtimes[1].kind == .unconfigured && view.runtimes[1].fields.isEmpty)
+            #expect(view.runtimes[1].options.first?.id == .unconfigured)
+            #expect(!view.runtimes[0].options.contains { $0.id == .unconfigured })
+            #expect(!view.disclosure.contains("Оба сервиса"))
+            #expect(cleared.canSave && cleared.issues.isEmpty)
+            let preferences = SummaryPreferences(storage: PreferencesStore(fileURL: root.appendingPathComponent("preferences.json")))
+            let handler = EffectHandler(preferences: preferences, availability: availability)
+            let (checking, check) = reducer.reduce(cleared, .save)
+            let (saving, save) = reducer.reduce(checking, await handler.handle(try #require(check)))
+            let saved = reducer.reduce(saving, await handler.handle(try #require(save))).0
+            #expect(saved.phase == .saved)
+            #expect(try await preferences.load() == cleared.draft)
+            #expect(try await preferences.load().fallback == nil)
+        }
+    }
+
     @Test func unsafeStoredValuesFailLoadWithoutEchoingOrReplacingData() async throws {
         try await withComposeFolder { root in
             let url = root.appendingPathComponent("preferences.json")
             var stored = Preferences()
-            stored.notes.fallback.endpoint = "https://user:secret@example.com/v1?key=secret"
+            stored.notes.fallback = .init(kind: "compatibleAPI", model: "fixture", executable: "", endpoint: "", credentialVariable: "")
+            stored.notes.fallback?.endpoint = "https://user:secret@example.com/v1?key=secret"
             let data = try JSONEncoder().encode(stored)
             try data.write(to: url)
             let preferences = SummaryPreferences(storage: PreferencesStore(fileURL: url))

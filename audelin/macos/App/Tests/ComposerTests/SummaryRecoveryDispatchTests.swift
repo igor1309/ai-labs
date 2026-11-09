@@ -9,7 +9,8 @@ import Testing
 
 @MainActor @Suite(.timeLimit(.minutes(1)))
 struct SummaryRecoveryDispatchTests {
-    @Test func startupResumesPendingSnapshotOnceWithSavedConfigurationAndTranscript() async throws {
+    @Test(arguments: [false, true])
+    func startupResumesPendingSnapshotOnceWithSavedConfigurationAndTranscript(hasFallback: Bool) async throws {
         try await withComposeFolder { root in
             let call = "1970.01.01-0000", folder = root.appendingPathComponent("1970.01.01-0000")
             do {
@@ -17,7 +18,7 @@ struct SummaryRecoveryDispatchTests {
                 try Data("newer transcript must not replace snapshot".utf8).write(to: folder.appendingPathComponent("transcript.md"))
             }
             let saved = Job.Runtime(kind: "compatibleAPI", model: "saved-model", program: "", endpoint: "http://127.0.0.1:8181/saved", credentialVariable: "")
-            let job = Job(id: "never-started", call: call, input: "saved-input", entries: [.init(label: "A", time: "00:17", text: "Saved spoken input")], speakers: false, primary: saved, fallback: saved)
+            let job = Job(id: "never-started", call: call, input: "saved-input", entries: [.init(label: "A", time: "00:17", text: "Saved spoken input")], speakers: false, primary: saved, fallback: hasFallback ? saved : nil)
             let initial = Files(locations: SummaryStorage(folder: root, timeZone: .gmt), disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("leases"))
             #expect(try await SummaryJobStore(files: initial).claim(job).owned)
             let current = NotesPreferences.Runtime(kind: "compatibleAPI", model: "current-model", executable: "", endpoint: "http://127.0.0.1:9191/current", credentialVariable: "")

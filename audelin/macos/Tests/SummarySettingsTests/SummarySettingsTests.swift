@@ -19,7 +19,7 @@ import Testing
     @Test func validationAndSaveAreRevisionBoundAndPreventDuplicateSave() async {
         let config = configuration(enabled: true)
         let (loaded, _) = reducer.reduce(.init(phase: .loading), .loaded(config))
-        var edit = config; edit.fallback.model = "changed-model"
+        var edit = config; edit.fallback?.model = "changed-model"
         let edited = reducer.reduce(loaded, .edit(edit)).0
         let (validating, effect) = reducer.reduce(edited, .validate)
         #expect(effect == .validate(1, edit))
@@ -143,6 +143,21 @@ private struct AvailabilitySpy: Availability {
         #expect(effect == nil)
     }
 
+    @Test func absentFallbackCanBeAddedAndRemovedWithoutChangingPrimary() {
+        let reducer = makeReducer()
+        let given = makeState()
+        let (cleared, clearEffect) = reducer.reduce(given, .selectKind(.fallback, nil))
+        #expect(clearEffect == nil && cleared.draft?.fallback == nil)
+        #expect(cleared.runtimes[1].kind == nil && cleared.runtimes[1].fields.isEmpty)
+        #expect(cleared.draft?.primary == given.draft?.primary)
+        #expect(reducer.reduce(cleared, .editField(.fallback, .model, "stale")).0 == cleared)
+        #expect(reducer.reduce(cleared, .selectKind(.primary, nil)).0 == cleared)
+        let (added, addEffect) = reducer.reduce(cleared, .selectKind(.fallback, .claudeCLI))
+        #expect(addEffect == nil && added.draft?.fallback?.model == "sonnet")
+        #expect(added.runtimes[1].fields.map(\.field) == [.model, .executable])
+        #expect(added.draft?.primary == given.draft?.primary)
+    }
+
     @Test func fieldEventsEditBothSlotsWithoutLosingEarlierEdits() {
         let reducer = makeReducer()
         let initial = State(phase: .saved, draft: configuration(enabled: false))
@@ -157,15 +172,15 @@ private struct AvailabilitySpy: Availability {
         #expect(state.draft?.enabled == true && state.draft?.speakers == true)
         #expect(state.draft?.primary.model == "subscription-model")
         #expect(state.draft?.primary.executable == "/installed/cli")
-        #expect(state.draft?.fallback.model == "local-model")
-        #expect(state.draft?.fallback.endpoint == "http://localhost:123/v1")
-        #expect(state.draft?.fallback.credentialVariable == "")
+        #expect(state.draft?.fallback?.model == "local-model")
+        #expect(state.draft?.fallback?.endpoint == "http://localhost:123/v1")
+        #expect(state.draft?.fallback?.credentialVariable == "")
         #expect(state.revision == 8)
     }
 }
 
 private func makeReducer() -> Reducer {
-    Reducer(disclosure: { "recipients: \($0.primary.endpoint), \($0.fallback.endpoint)" },
+    Reducer(disclosure: { "recipients: \($0.primary.endpoint), \($0.fallback?.endpoint)" },
             message: { "\($0)" }, safety: { _ in [] },
             issueMessage: { "issue: \($0.slot) \($0.field)" }, runtimeDisclosure: { "runtime: \($0.model)" })
 }
@@ -197,7 +212,7 @@ private func makeReducer() -> Reducer {
         #expect(messageCalls.withLock { $0.isEmpty })
         #expect(issueCalls.withLock { $0.isEmpty })
         var edited = configuration(enabled: false)
-        edited.fallback.endpoint = "https://user:secret@example.com/?secret#secret"
+        edited.fallback?.endpoint = "https://user:secret@example.com/?secret#secret"
         assert(reducer, given, .edit(edited), delivers: nil) {
             $0.draft = edited; $0.revision = 1; $0.phase = .editing
             $0.disclosure = "disclosure stub"; $0.issues = [issue]; $0.message = "correction stub"
@@ -214,7 +229,7 @@ private func makeReducer() -> Reducer {
         }
         #expect(disclosureCalls.withLock { $0 } == [edited])
         #expect(safetyCalls.withLock { $0 } == [edited])
-        #expect(runtimeCalls.withLock { $0 } == [edited.primary, edited.fallback])
+        #expect(runtimeCalls.withLock { $0 } == [edited.primary, edited.fallback!])
         #expect(issueCalls.withLock { $0 } == [issue])
         #expect(messageCalls.withLock { $0.isEmpty })
         assert(reducer, makeEmptyState(), .load, delivers: .load) {
@@ -229,7 +244,7 @@ private func makeReducer() -> Reducer {
         let reducer = Reducer(disclosure: { _ in "" }, message: { "\($0)" }, safety: { config in
             calls.withLock { $0.append(config) }; return [issue]
         }, issueMessage: { _ in "correct fallback URL" }, runtimeDisclosure: { _ in "" })
-        var config = configuration(enabled: false); config.fallback.endpoint = "http://remote.example"
+        var config = configuration(enabled: false); config.fallback?.endpoint = "http://remote.example"
         let given = State(phase: .editing, draft: config, saved: configuration(enabled: false), revision: 2, validatedRevision: 2)
         let (result, effect) = reducer.reduce(given, .save)
         #expect(effect == nil)

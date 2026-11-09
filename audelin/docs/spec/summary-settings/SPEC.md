@@ -5,7 +5,8 @@ Observer: the person editing Settings.
 ## Decided
 
 - The Settings machine owns edits, rendered values, validation/save/load progress and outcomes through its own ports; views only render state and send events (root state-machine policy).
-- Both slots expose kind/model plus executable or API URL and optional credential environment-variable name. No credential value is displayed or persisted; users can use an unauthenticated loopback endpoint.
+- Fallback is optional and defaults to absent; it can be cleared without changing the primary. Settings explicitly shows configured or unconfigured status. An absent fallback needs no credentials or validation and receives no transcript.
+- Configured slots expose kind/model plus executable or API URL and optional credential environment-variable name. No credential value is displayed or persisted; users can use an unauthenticated loopback endpoint.
 - Editable sonnet and gpt-4.1-mini defaults are documented aliases/models, not promised availability or fixed pricing. Each slot discloses subscription quota, hosted token billing or local compute.
 - HTTPS is required remotely; HTTP only for loopback. Reject URL userinfo, query and fragment. Only when both slots are loopback is the configured plan local; a user-managed server may forward data.
 - Injected validation is associated with an edit revision; stale results cannot approve changed input. Availability checks use no paid prompts and cannot guarantee quota.
