@@ -1,5 +1,9 @@
 # Log
 
+## 2026-11-09
+
+- Settings fits the selected page instead of leaving a large blank area below recording controls; longer pages scroll within the screen (LAB-1109).
+
 ## 2026-11-08
 
 - With scroll bars set to always show, the live transcript keeps its newest line in view after the panel is resized (LAB-1084).

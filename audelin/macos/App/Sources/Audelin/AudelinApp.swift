@@ -39,7 +39,7 @@ struct AudelinApp: App {
                                       styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
         settingsWindow.title = "Настройки Audelin"
         settingsWindow.isReleasedWhenClosed = false
-        settingsWindow.minSize = NSSize(width: 668, height: 400)
+        settingsWindow.minSize = NSSize(width: 668, height: 120)
         settingsWindow.center()
         self.settingsWindow = settingsWindow
         let boundary = await makeRealBoundary()
@@ -63,7 +63,7 @@ struct AudelinApp: App {
             }
         )
         self.model = model
-        settingsWindow.contentView = NSHostingView(rootView: SettingsContent(model: model))
+        settingsWindow.contentView = NSHostingView(rootView: SettingsContent(model: model, window: settingsWindow))
         if let calls = model.calls { callsWindow.install(content: NSHostingView(rootView: CallsContent(model: calls))) }
         panel.install(model)
         appDelegate.connect(model)
@@ -158,8 +158,20 @@ private struct CallsContent: View {
 
 private struct SettingsContent: View {
     let model: AudelinMenu
+    let window: NSWindow
     var body: some View {
-        SettingsScrollView(state: model.settingsState, event: { event in Task { await model.sendSettings(event) } })
+        SettingsScrollView(state: model.settingsState, event: { event in Task { await model.sendSettings(event) } },
+                           contentHeightChanged: { height in
+            // Keep the title bar in place when a tab or its contents changes height.
+            let visible = window.screen?.visibleFrame ?? NSScreen.main?.visibleFrame ?? window.frame
+            let chrome = window.frame.height - window.contentLayoutRect.height
+            let targetHeight = min(height + chrome, visible.height)
+            var frame = window.frame
+            frame.origin.y += frame.height - targetHeight
+            frame.size.height = targetHeight
+            frame.origin.y = max(visible.minY, min(frame.origin.y, visible.maxY - targetHeight))
+            window.setFrame(frame, display: true)
+        })
             .disabled(model.quitting)
     }
 }
