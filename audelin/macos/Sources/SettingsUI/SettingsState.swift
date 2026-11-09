@@ -64,6 +64,8 @@ public extension SettingsState {
             case failed(moved: String, reason: String)
             /// A move cannot start while a call is recording.
             case recording
+            /// The folder picker did not open; the path is unchanged and **Изменить…** can be tried again.
+            case pickerFailed(reason: String)
         }
     }
 

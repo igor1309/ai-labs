@@ -18,7 +18,7 @@ public func compose(
     presentPanel: @escaping (Bool) -> Void,
     terminate: @escaping @Sendable () async -> Void,
     presentSettings: @escaping () -> Void = {},
-    chooseCallsFolder: @escaping () async -> URL? = { nil },
+    chooseCallsFolder: @escaping () async throws -> URL? = { nil },
     summaryRuntime: SummaryRuntime.Runtime? = nil
 ) async -> AudelinMenu {
     let preferences = PreferencesStore(fileURL: preferencesURL)

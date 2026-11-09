@@ -57,9 +57,10 @@ struct AudelinApp: App {
             }, chooseCallsFolder: {
                 let picker = NSOpenPanel()
                 picker.canChooseDirectories = true; picker.canChooseFiles = false; picker.canCreateDirectories = true
-                return await withCheckedContinuation { done in
-                    picker.begin { result in done.resume(returning: result == .OK ? picker.url : nil) }
-                }
+                return try await presentPicker(
+                    begin: { completion in picker.begin { completion($0 == .OK ? picker.url : nil) } },
+                    isVisible: { picker.isVisible }
+                )
             }
         )
         self.model = model
