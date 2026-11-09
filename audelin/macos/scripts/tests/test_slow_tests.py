@@ -58,6 +58,20 @@ class SlowTestsTests(unittest.TestCase):
         self.assertIn("| 1 | 2 | 2 | `f:2` | b (skipped) |", slow_tests.markdown(report))
         self.assertNotIn("`f:1`", slow_tests.markdown(report, limit=1))
 
+    def test_runs_each_package_serially_with_its_own_directory_as_pwd(self):
+        calls = []
+        real_run = slow_tests.subprocess.run
+        slow_tests.subprocess.run = lambda command, **options: calls.append((command, options))
+        try:
+            slow_tests.measure_once("/nonexistent", 1)
+        finally:
+            slow_tests.subprocess.run = real_run
+
+        self.assertEqual(len(calls), len(slow_tests.PACKAGES))
+        for (command, options), (directory, _) in zip(calls, slow_tests.PACKAGES):
+            self.assertIn("--no-parallel", command)
+            self.assertEqual((options["cwd"], options["env"]["PWD"]), (directory, str(directory)))
+
 
 if __name__ == "__main__":
     unittest.main()

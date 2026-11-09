@@ -1,2 +1,0 @@
-SettingsUITests.CallNotesSuppliedStateTests/repeatedIgnoredInputRestoresEveryFieldAndMenuAndUsesUpdatedCallbacks()/CallNotesSuppliedStateTests.swift:28:6 # about 120 ms alone, the rest is main-actor queueing; each snapshot is the rendered state it asserts
-SettingsUITests.CallNotesSuppliedStateTests/disabledFieldsAndValidateStayUnavailableUntilStateEnablesThem()/CallNotesSuppliedStateTests.swift:120:6 # about 55 ms alone, the rest is main-actor queueing; each snapshot is the rendered state it asserts
