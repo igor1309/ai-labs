@@ -37,6 +37,7 @@ Profile: from `audelin/macos`, `scripts/profile-rehearsal.sh capture --capture-a
 records only that wall-clock window and summarizes CPU, hangs and signpost intervals in `macos/profiles/`.
 Endurance: `scripts/profile-rehearsal.sh endurance --minutes 180 --speed 1` runs without Instruments and keeps only the rehearsal report.
 Recognisers are fakes: lag is pipeline backlog, and speeds above 1× measure saturation.
+Recurring real-model baselines and weekly artifact review: [profiling runbook](docs/research/recurring-profiling.md).
 
 Optimized load tests: from each of `audelin/macos` and `audelin/macos/App`, run `swift build --build-tests -Xswiftc -O`,
 then, in the same directory, run `../scripts/swift-test-bounded.sh 120 -Xswiftc -O --filter LoadTests` or `../../scripts/swift-test-bounded.sh 120 -Xswiftc -O --filter LoadTests`, respectively.
@@ -49,6 +50,7 @@ then, in the same directory, run `../scripts/swift-test-bounded.sh 120 -Xswiftc 
 | [docs/design/README.md](docs/design/README.md) | Glass Ledger design: tokens, components, Screens 1–8 in `visual-language.pen` |
 | [docs/mvp.md](docs/mvp.md) | The product vision as first written: not grounds for any spec or technical choice |
 | [docs/research/](docs/research/) | Research, the Parakeet spike and naming rounds |
+| [docs/research/recurring-profiling.md](docs/research/recurring-profiling.md) | Nightly real-model collection, validated baselines and weekly artifact review |
 
 CLI `audelin`, data folder `~/.audelin`, calls in `~/Recordings/Audelin`.
 

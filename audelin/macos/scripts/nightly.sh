@@ -12,7 +12,8 @@
 #    toolchain, compared with the last run only when all of those match.
 #
 # Needs a logged-in GUI session for the panel and Parakeet's models on disk.
-# DIR/../latest (or --history DIR/latest) points at the last finished run.
+# DIR/../latest (or --history DIR/latest) points at the last successful,
+# evidence-validated run.
 set -euo pipefail
 
 usage() { echo 'usage: nightly.sh --out DIR [--history DIR] [--minutes 180]' >&2; exit 64; }
@@ -27,7 +28,9 @@ while (($#)); do
 done
 [[ -n "$out" ]] || usage
 [[ "$minutes" =~ ^[1-9][0-9]*$ ]] || usage
-mkdir -p "$out"
+# Never overwrite an earlier run, including an output path resolving through latest.
+mkdir -p "$(dirname "$out")"
+mkdir "$out" || { echo "nightly requires a fresh output directory: $out" >&2; exit 1; }
 out="$(cd "$out" && pwd)"
 history="${history:-$(dirname "$out")}"
 mkdir -p "$history"
@@ -97,7 +100,10 @@ done
 # 3. The report, against the last run.
 previous=()
 [[ -e "$history/latest/report.json" ]] && previous=(--previous "$history/latest")
-python3 -I scripts/nightly-report.py "$out" ${previous[@]+"${previous[@]}"}
-# Only a run that finished becomes the one the next night compares with.
+python3 -I scripts/nightly-report.py "$out" ${previous[@]+"${previous[@]}"} || {
+  echo 'nightly report failed; previous baseline unchanged (see report.md)' >&2
+  exit 1
+}
+# Valid recording evidence and successful captures are required to advance history.
 if [[ $status == 0 ]]; then ln -sfn "$out" "$history/latest"; fi
 exit "$status"
