@@ -295,7 +295,7 @@ html[data-size="wide-short"] .care-result {
   --cr-action: 18px;
   --cr-action-height: 52px;
   --dig-ochre: 0px;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(160px, 1fr) minmax(0, auto);
   column-gap: var(--ds-space-l);
   padding-bottom: calc(var(--ds-space-m) + env(safe-area-inset-bottom));
 }

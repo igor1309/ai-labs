@@ -8371,7 +8371,7 @@ html .friends.friends-dig-site {
   font-size: var(--ds-size-label); font-weight: 800;
 }
 .friends-dig-site .friends-home svg { width: 22px; height: 22px; }
-.friends-dig-site .friends-back { height: auto; min-height: 44px; gap: var(--ds-chip-gap); padding: var(--ds-chip-pad-y) var(--ds-chip-pad-x); font-weight: 700; }
+.friends-dig-site .friends-back { height: auto; min-height: 48px; gap: var(--ds-chip-gap); padding: var(--ds-chip-pad-y) var(--ds-chip-pad-x); font-weight: 700; }
 .friends-dig-site .friends-back svg { width: 18px; height: 18px; }
 .friends-dig-site .friends-heading { display: flex; align-items: center; justify-content: flex-end; gap: var(--ds-space-m); min-width: 0; }
 .friends-dig-site .friends-title { flex: 0 1 auto; padding: 0; gap: var(--ds-space-l); font-size: var(--ds-size-34); font-weight: 800; letter-spacing: -.5px; white-space: nowrap; }
@@ -8468,12 +8468,12 @@ html[data-size="tall-narrow"] .friends-dig-site .no-friends-button { width: 100%
 }
 html[data-size="wide-short"] .friends.friends-dig-site { --friends-side: var(--ds-space-79); --friends-top: 8px; --friends-sky: 130px; --friends-bottom: 0px; --friends-gap: var(--ds-space-m); --friends-pocket: 84px; }
 html[data-size="wide-short"] .friends-dig-site .friends-bar { grid-template-columns: auto auto minmax(0, auto) auto; }
-html[data-size="wide-short"] .friends-dig-site .friends-back { width: 44px; height: 44px; }
+html[data-size="wide-short"] .friends-dig-site .friends-back { width: 48px; height: 48px; }
 html[data-size="wide-short"] .friends-dig-site .friends-title { font-size: var(--ds-size-24); }
 html[data-size="wide-short"] .friends-dig-site .friends-mark { width: 40px; height: 40px; }
 html[data-size="wide-short"] .friends-dig-site .friends-mark svg { width: 20px; height: 20px; }
 html[data-size="wide-short"] .friends-dig-site .friends-invite { grid-column: auto; height: auto; margin: 0; }
-html[data-size="wide-short"] .friends-dig-site .new-visitor-button { padding: var(--ds-btn-gap) var(--ds-space-20); font-size: var(--ds-size-18); }
+html[data-size="wide-short"] .friends-dig-site .new-visitor-button { box-sizing: border-box; min-height: 48px; padding: var(--ds-btn-gap) var(--ds-space-20); font-size: var(--ds-size-18); }
 html[data-size="wide-short"] .friends-dig-site .new-visitor-button svg { width: 20px; height: 20px; }
 html:is([data-size="tall-narrow"], [data-size="wide-short"]) .friends-dig-site .friends-sand-wave { height: 24px; }
 html[data-size="wide-short"] .friends-dig-site .friends-bedrock { display: none; }

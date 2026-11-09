@@ -111,6 +111,8 @@ jobs:
           - careWelcomeLayout
           - careVisitLayout
           - careResultLayout
+          - careWalk
+          - careWalkPhone
           - homePhone
           - nativeTouch
           - homeTiles

@@ -28,6 +28,10 @@ const VIEWPORTS = [
   { name: "small phone on its side", width: 568, height: 320, size: "wide-short" }
 ];
 const LEVELS = ["hatchling", "explorer", "paleontologist"];
+// The longest visitor's name in each language: the result is checked with
+// it in the friend's chip, whichever dinosaur came.
+const RECORDS = require("../src/data/dinosaurs.json").filter(record => record.group === "dinosaur");
+const LONGEST = Object.fromEntries(["en", "ru"].map(language => [language, RECORDS.map(record => record.name[language]).reduce((a, b) => (b.length > a.length ? b : a)).toLocaleUpperCase(language)]));
 const FRIENDS = ["tyrannosaurus", "triceratops", "stegosaurus", "brachiosaurus", "parasaurolophus"];
 const WORDS = { en: { newVisitor: "NEW VISITOR", home: "HOME" }, ru: { newVisitor: "НОВЫЙ ГОСТЬ", home: "ДОМОЙ" } };
 
@@ -71,6 +75,7 @@ async function visit(browser, url, viewport, language, theme, motion, level, ret
       throw new Error(`${state}: no result ${JSON.stringify(at)} ${error.message}`);
     });
     await settle(page);
+    await page.evaluate(name => { const chip = document.querySelector(".friend-chip"); chip.lastChild.textContent = name; }, LONGEST[language]);
     if (process.env.CARE_ARTIFACT_DIR) {
       await mkdir(process.env.CARE_ARTIFACT_DIR, { recursive: true });
       await page.screenshot({ path: join(process.env.CARE_ARTIFACT_DIR, `result-${language}-${theme}-${level}-${viewport.width}x${viewport.height}.png`), fullPage: true });
