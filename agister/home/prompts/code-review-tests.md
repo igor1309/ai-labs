@@ -3,7 +3,7 @@ date: 2026-11-03
 author: Igor Malyarov
 model: claude-opus-5-5
 name: Code review — tests
-version: 0.3.0
+version: 0.4.0
 type: prompt
 ---
 
@@ -30,7 +30,11 @@ the witness, and asks for a test that covers the class (a table over it,
 or an assertion on what holds for all of it), not the one case.
 
 The rules below say where to look; a rule broken is not a finding by
-itself. Ask for a new seam only together with the case that needs it. A
+itself. A seam is a production dependency parameter: what a test replaces
+(a system binding, file call, clock, log sink) is a parameter of the one
+initializer production calls, and the composition root passes the real
+one. A seam is never a test-only entry. Ask for a new seam only together
+with the case that needs it. A
 rule violation for which no concrete case can be shown is not a finding:
 report it in `coverage` with status `rule_only`, naming the rule and the
 location (path:line).
@@ -69,8 +73,8 @@ Definition of done:
 2. Proof rests on normal tests only: deterministic, cheap, rerunnable. Look
    for a test's claim that rests on mutation or revert checks (plants,
    mutation specs, reverting by hand), and for a behaviour no normal test
-   can make fail because the code lacks a seam (an injected closure, spy,
-   clock or hook). Either is a finding only with its case,
+   can make fail because the code lacks a seam (a closure, clock or
+   collaborator the production initializer takes). Either is a finding only with its case,
    the product change no normal test would catch; name the seam that would.
 3. A test asserts the outcome, not the implementation's incidental steps.
    Look for weak assertions (only "no error", only a length); the case is
@@ -116,8 +120,8 @@ Definition of done:
    product could make while every test stays green.
 8. Look for the wall clock: any sleep, poll or real timer in a test. The
    case is the load or ordering that flips it, or the product change it
-   lets pass; with it, name the clock, hook or event to inject so the test
-   drives time itself. If the product has no event, hook or result that
+   lets pass; with it, name the clock or collaborator the production
+   initializer should take so the test drives time itself. If the product has no event, hook or result that
    says "done", the seam is missing from the product, not only the test;
    say which. The same holds for a measure of the whole process
    taken as a test's result: allocations, memory or goroutines counted
@@ -184,6 +188,15 @@ Definition of done:
     while every test turns green. Do not ask to make such machinery or its
     own tests better (more deterministic, better covered): that asks to
     keep what the finding says to remove.
+14. Tests reach a component only through what production uses. Look for
+    an entry point only tests use: a second initializer, or a method,
+    property, counter or wait that exists only so tests can observe, count
+    or pause internal work. Such an entry is a finding; its case is the
+    production path it lets drift unchecked: what the production
+    initializer or call wires differently, while every test through the
+    test-only entry stays green. The fix: make what the test replaces a
+    parameter of the production initializer, and have tests assert on
+    output and wait on what their fakes report.
 
 Stop once the tests prove the change and the behaviour its goal requires.
 

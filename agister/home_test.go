@@ -286,6 +286,11 @@ func TestCodeReviewPromptDoDsCoverTheirReviewObligations(t *testing.T) {
 			"Each of the three is a finding of its own",
 			"Do not ask to make such machinery or its own tests better",
 		}},
+		{"code-review-tests.md", 14, []string{
+			"an entry point only tests use",
+			"the production path it lets drift unchecked",
+			"parameter of the production initializer",
+		}},
 		{"code-review-judge.md", 1, []string{"Merge findings making the same claim", "highest supported severity", "sort items by severity"}},
 		{"code-review-judge.md", 5, []string{"presented evidence", "Add no finding or evidence of your own"}},
 		{"code-review-judge.md", 6, []string{
