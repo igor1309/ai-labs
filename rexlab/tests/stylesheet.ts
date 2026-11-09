@@ -1,6 +1,6 @@
 import { createRequire } from "node:module";
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 
 export type SafeArea = { top: number; right: number; bottom: number; left: number };
 
@@ -268,6 +268,48 @@ export function computedStyleWithVariables(native: typeof getComputedStyle, incl
         const value = Reflect.get(target, key);
         return typeof value === "function" ? value.bind(target) : value;
       }
+    });
+  };
+}
+
+// Testing Library's role queries and user-event read only whether an
+// element shows and takes the pointer, but a computed style cascades all of
+// app.css's declarations onto the element, again after every change to the
+// page. Those few reads take jsdom's own value for the one property, which
+// cascades only the rules declaring it; every other read, and the style
+// itself once enumerated or read otherwise, is jsdom's whole computed style.
+const ON_READ = new Set(["display", "visibility", "pointer-events"]);
+export function cascadingOnRead(native: typeof getComputedStyle): typeof getComputedStyle {
+  const require = createRequire(import.meta.url);
+  const jsdom = dirname(require.resolve("jsdom/package.json"));
+  const { implForWrapper } = require(join(jsdom, "lib/generated/idl/utils.js")) as { implForWrapper: (wrapper: object) => object };
+  const { getComputedStylePropertyValue } = require(join(jsdom, "lib/jsdom/living/css/helpers/computed-style.js")) as { getComputedStylePropertyValue: (element: object, property: string) => string };
+  return (element, pseudo) => {
+    if (pseudo) return native(element, pseudo);
+    let whole: CSSStyleDeclaration | undefined;
+    const style = () => (whole ??= native(element));
+    // jsdom checks the element as it builds the style.
+    const view = (element as Element | undefined)?.ownerDocument?.defaultView;
+    if (!view || !(element instanceof view.Element)) return style();
+    const impl = implForWrapper(element);
+    const value = (property: string) => (ON_READ.has(property) ? getComputedStylePropertyValue(impl, property) : style().getPropertyValue(property));
+    return new Proxy({} as CSSStyleDeclaration, {
+      get(_, key) {
+        if (key === "getPropertyValue") return value;
+        if (key === "display" || key === "visibility" || key === "pointerEvents") return value(key === "pointerEvents" ? "pointer-events" : key);
+        const target = style();
+        const got = Reflect.get(target, key);
+        return typeof got === "function" ? got.bind(target) : got;
+      },
+      // Its properties are the prototype's; only its indexes are its own.
+      has: (_, key) => key === "getPropertyValue" || key === "display" || key === "visibility" || key === "pointerEvents" || Reflect.has(style(), key),
+      ownKeys: () => Reflect.ownKeys(style()),
+      getOwnPropertyDescriptor: (_, key) => {
+        if (typeof key !== "string" || !/^\d+$/.test(key)) return undefined;
+        const descriptor = Reflect.getOwnPropertyDescriptor(style(), key);
+        return descriptor && { ...descriptor, configurable: true };
+      },
+      getPrototypeOf: () => Reflect.getPrototypeOf(style())
     });
   };
 }
