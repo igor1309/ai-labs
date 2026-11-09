@@ -63,7 +63,7 @@ func settingsMessage(_ phase: SummarySettings.State.Phase) -> String {
     }
 }
 func runtimeDisclosure(_ runtime: SummarySettings.Configuration.Runtime) -> String {
-    if runtime.kind == .claudeCLI { return "Квота подписки Claude · транскрипт → Anthropic. Изоляция исключает настройки пользователя; политики организации сохраняются." }
+    if runtime.kind == .claudeCLI { return "Пустое поле «Программа» — автоматический поиск Claude в PATH и стандартных папках установки. Для другой установки укажите абсолютный путь. Квота подписки Claude · транскрипт → Anthropic. Изоляция исключает настройки пользователя; политики организации сохраняются." }
     if let url = try? SummaryRuntime.Runtime.endpoint(runtime.endpoint), SummaryRuntime.Runtime.isLoopback(url.host) {
         return "Запрос на этот Mac · локальные вычисления. Сервер под вашим управлением может пересылать данные дальше."
     }
@@ -91,7 +91,7 @@ func notesPresentation(_ state: SummarySettings.State) -> SettingsState.CallNote
             case .credentialVariable: id = .credentialVariable
             }
             return .init(id: id, label: settingsFieldLabel(field.field), value: field.value,
-                         placeholder: id == .credentialVariable ? "не требуется" : "", isInvalid: field.isInvalid)
+                         placeholder: id == .executable ? "Автоматически найти Claude" : id == .credentialVariable ? "не требуется" : "", isInvalid: field.isInvalid)
         }
         return .init(id: slot, title: slot == .primary ? "Основной сервис" : "Резервный сервис", kind: .init(rawValue: value.kind.rawValue)!,
                      options: [.init(id: .claudeCLI, title: "Claude Code CLI"), .init(id: .compatibleAPI, title: "API · OpenAI-совместимый")],
@@ -131,7 +131,7 @@ func settingsIssueMessage(_ issue: SummarySettings.ValidationIssue) -> String {
     case .invalid:
         switch issue.field {
         case .model: detail = "укажите модель."
-        case .executable: detail = "укажите абсолютный путь к программе."
+        case .executable: detail = "оставьте поле пустым для автоматического поиска или укажите абсолютный путь к программе."
         case .endpoint: detail = "укажите HTTPS или loopback HTTP без логина, пароля, параметров и фрагмента."
         case .credentialVariable: detail = "укажите только имя переменной учётных данных, без её значения."
         }

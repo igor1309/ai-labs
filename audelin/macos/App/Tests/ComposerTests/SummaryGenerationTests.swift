@@ -64,7 +64,7 @@ private func fixtureJob() -> Job {
     return .init(id: "job", call: "call", input: "input", entries: [.init(label: "A", time: "0", text: "Меня зовут Анна.")], speakers: true, primary: slot("primary"), fallback: slot("fallback"))
 }
 private func runtime(_ http: any HTTPRequesting) -> Runtime {
-    Runtime(process: UnusedProcess(), http: http, credential: { _ in nil }, deadline: { try await waitForCancellation() })
+    Runtime(process: UnusedProcess(), http: http, credential: { _ in nil }, resolveProgram: { $0 }, deadline: { try await waitForCancellation() })
 }
 private struct UnusedProcess: ProcessRunning {
     func run(program: String, arguments: [String], input: Data) async throws -> ProcessOutput { throw Failure.unavailable }
