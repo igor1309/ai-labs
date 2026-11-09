@@ -122,6 +122,13 @@
   runtime chooses. A test awaits the component's own API and its fakes'
   reports; it does not move work between threads, count threads or check
   where the component runs. A `.timeLimit` catches a hang, not slowness.
+- Tests reach a component only through what production uses. Each
+  component has one initializer, the one production calls. What a test
+  replaces (a system binding, a file call, a clock, a log sink) is a
+  parameter of that initializer, and the composition root passes the real
+  one. No initializer, method, property, counter or wait exists only so
+  tests can observe, count or pause internal work; tests assert on output
+  and wait on what their fakes report.
 
 ## State machines
 
