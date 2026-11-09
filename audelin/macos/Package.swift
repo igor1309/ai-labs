@@ -48,7 +48,8 @@ let package = Package(
         .library(name: "TwoPassRecognizer", targets: ["TwoPassRecognizer"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/FluidInference/FluidAudio.git", exact: "0.17.7"),
+        // Trimmed copy of FluidAudio 0.17.7: audelin/scripts/vendor-fluidaudio.sh.
+        .package(path: "Vendor/FluidAudio"),
     ],
     targets: [
         .target(name: "SummarySettings"),
