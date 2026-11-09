@@ -2,8 +2,8 @@
 # Build Audelin, install it into /Applications, start it at login and open it.
 # Run from anywhere; a second run replaces the installed copy.
 # --update, as CI runs it: replace the installed copy without quitting a
-# running Audelin and without opening it; the new version starts at the next
-# launch or login.
+# running Audelin and without opening it. A running Audelin sees its bundle
+# replaced and relaunches itself once idle (AudelinMenu.relaunchAfterUpdate).
 set -eu
 
 update=false
@@ -44,8 +44,9 @@ if ! $update && pgrep -x Audelin >/dev/null; then
     done
 fi
 
-# Copy beside the old bundle, then swap by rename, so a running copy never
-# sees a half-written bundle.
+# Copy beside the old bundle, then swap by rename, so the installed path never
+# holds a half-written bundle. A running copy loses its files here and macOS can
+# no longer verify its signature, so it must relaunch; it does so once idle.
 mkdir -p "$apps"
 staged="$apps/.Audelin.app.new"
 old="$apps/.Audelin.app.old"

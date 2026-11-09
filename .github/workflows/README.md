@@ -111,7 +111,7 @@ There is no trunk-push deploy path for RexLab.
 
 ## Audelin
 
-- `audelin-install.yml` runs on a trunk push that changes Audelin's app code, `bundle.sh` or `install.sh`, and on manual dispatch. On the self-hosted `local-mac` runner it builds the app and replaces `/Applications/Audelin.app` with `install.sh --update`: a running Audelin is not quit and the app is not opened, so the new version starts at the next launch or login. A failure arrives in the CI Telegram chat. It is no required check, so while the runner is offline the run waits queued and nothing else is held. Signing needs the owner's login keychain, so the runner's launch agent must not set `SessionCreate` (`svc.sh install` adds it; `audelin/README.md` says how to remove it).
+- `audelin-install.yml` runs on a trunk push that changes Audelin's app code, `bundle.sh` or `install.sh`, and on manual dispatch. On the self-hosted `local-mac` runner it builds the app and replaces `/Applications/Audelin.app` with `install.sh --update`: a running Audelin relaunches itself into the new build once it is idle, never during a recording or a folder move; a quit Audelin is not opened. A failure arrives in the CI Telegram chat. It is no required check, so while the runner is offline the run waits queued and nothing else is held. Signing needs the owner's login keychain, so the runner's launch agent must not set `SessionCreate` (`svc.sh install` adds it; `audelin/README.md` says how to remove it).
 
 ## Shared Infrastructure
 

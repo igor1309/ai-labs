@@ -1,8 +1,8 @@
 name: Audelin Install
 
 # Installs each trunk build of Audelin on the owner's Mac through the
-# self-hosted local-mac runner. A running Audelin is not quit and the app is
-# not opened: the new version starts at the next launch or login.
+# self-hosted local-mac runner. A running Audelin relaunches itself once idle;
+# a quit Audelin is not opened.
 
 on:
   push:

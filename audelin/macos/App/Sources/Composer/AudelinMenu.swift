@@ -58,6 +58,8 @@ public final class AudelinMenu {
     private let quit: () async -> Void
     private var observation: Task<Void, Never>?
     private var detectionObservation: Task<Void, Never>?
+    private var updateWatch: Task<Void, Never>?
+    private var choosingFolder = false
 
     public var menu: MenuBarModel {
         MenuBarModel(recording: menuBarRecording(state), preferences: menuBarPreferences(preferences), statusLine: failure,
@@ -161,6 +163,8 @@ public final class AudelinMenu {
         guard !quitting else { return }
         switch event {
         case .changeFolder:
+            choosingFolder = true
+            defer { choosingFolder = false }
             if let destination = await chooseFolder() { calls?.sendRecordings(.chooseFolder(destination)) }
         case .confirmMove: calls?.sendRecordings(.confirmMove)
         case .retryMove: calls?.sendRecordings(.retryMove)
@@ -206,6 +210,45 @@ public final class AudelinMenu {
             await calls?.drainMove()
             await quit()
         }
+    }
+
+    /// Checks after each `wait` whether the bundle was replaced, then relaunches
+    /// at the first idle check. `wait` throwing ends the watch.
+    public func relaunchAfterUpdate(wait: @escaping @Sendable () async throws -> Void, replaced: @escaping @Sendable () -> Bool,
+                                    relaunch: @escaping () throws -> Void) {
+
+        updateWatch = Task { [weak self] in
+            var updated = false
+            while (try? await wait()) != nil {
+                updated = updated || replaced()
+                guard updated, let self else { continue }
+                if await self.relaunchIfIdle(relaunch) { return }
+            }
+        }
+    }
+
+    /// The reservation refuses a running session and holds back a new one, so no
+    /// recording can start behind this check and be cut short by the quit.
+    func relaunchIfIdle(_ relaunch: () throws -> Void) async -> Bool {
+
+        guard !quitting, updateCanInterrupt, await reserveStorage() else { return false }
+        do {
+            guard !quitting, updateCanInterrupt else { throw CancellationError() }
+            try relaunch()
+        } catch {
+            if !(error is CancellationError) {
+                sink.write(.init(category: .menu, message: "relaunch failed", error: String(describing: error)))
+            }
+            await releaseStorage()
+            return false
+        }
+        sink.write(.init(category: .menu, message: "relaunching for update"))
+        await perform(.quit)
+        return true
+    }
+
+    private var updateCanInterrupt: Bool {
+        !choosingFolder && calls?.idle != false && summaries?.busy != true
     }
 
     public func panelClosed() { receivePanelPresence(.userClosed) }
@@ -264,6 +307,7 @@ public final class AudelinMenu {
         panelObservation?.cancel()
         observation?.cancel()
         detectionObservation?.cancel()
+        updateWatch?.cancel()
     }
 }
 
