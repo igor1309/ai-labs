@@ -1,5 +1,9 @@
 # Log
 
+## 2026-11-09
+
+- Call notes find Claude automatically in PATH and standard installation folders, including native installs; an absolute path can still select a specific installation (LAB-1110).
+
 ## 2026-11-08
 
 - With scroll bars set to always show, the live transcript keeps its newest line in view after the panel is resized (LAB-1084).

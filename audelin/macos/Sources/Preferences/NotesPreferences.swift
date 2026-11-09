@@ -15,7 +15,7 @@ public struct NotesPreferences: Codable, Equatable, Sendable {
     public var primary: Runtime
     public var fallback: Runtime
     public init(enabled: Bool = false, speakers: Bool = false,
-                primary: Runtime = .init(kind: "claudeCLI", model: "sonnet", executable: "/opt/homebrew/bin/claude", endpoint: "", credentialVariable: ""),
+                primary: Runtime = .init(kind: "claudeCLI", model: "sonnet", executable: "", endpoint: "", credentialVariable: ""),
                 fallback: Runtime = .init(kind: "compatibleAPI", model: "gpt-4.1-mini", executable: "", endpoint: "https://api.openai.com/v1", credentialVariable: "OPENAI_API_KEY")) {
         self.enabled = enabled; self.speakers = speakers; self.primary = primary; self.fallback = fallback
     }

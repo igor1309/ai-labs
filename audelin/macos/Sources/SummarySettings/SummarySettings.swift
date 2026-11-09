@@ -121,7 +121,7 @@ public struct Reducer: Sendable {
             var runtime = slot == .primary ? draft.primary : draft.fallback
             runtime.kind = kind
             if kind == .claudeCLI {
-                runtime.model = "sonnet"; runtime.executable = "/opt/homebrew/bin/claude"
+                runtime.model = "sonnet"; runtime.executable = ""
                 // API fields leave the editor when selecting CLI; discard their hidden secrets.
                 runtime.endpoint = ""; runtime.credentialVariable = ""
             }

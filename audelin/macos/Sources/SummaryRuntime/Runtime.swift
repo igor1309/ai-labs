@@ -26,7 +26,7 @@ public struct Runtime: Sendable {
     public static func configurationIssues(_ config: Configuration) -> [ConfigurationIssue] {
         var issues: [ConfigurationIssue] = []
         if config.model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { issues.append(.init(field: .model)) }
-        if config.kind == .claudeCLI && (!config.program.hasPrefix("/") || config.program.contains("\0")) { issues.append(.init(field: .program)) }
+        if config.kind == .claudeCLI && !config.program.isEmpty && (!config.program.hasPrefix("/") || config.program.contains("\0")) { issues.append(.init(field: .program)) }
         // Inactive fields are persisted too, so they must not retain URL credentials.
         if config.kind == .compatibleAPI || !config.endpoint.isEmpty {
             if (try? endpoint(config.endpoint)) == nil {
@@ -45,16 +45,20 @@ public struct Runtime: Sendable {
     private let process: any ProcessRunning
     private let http: any HTTPRequesting
     private let credential: @Sendable (String) -> String?
-    public init(process: any ProcessRunning, http: any HTTPRequesting, credential: @escaping @Sendable (String) -> String?, deadline: @escaping @Sendable () async throws -> Void) {
+    private let resolveProgram: @Sendable (String) throws -> String
+    public init(process: any ProcessRunning, http: any HTTPRequesting, credential: @escaping @Sendable (String) -> String?,
+                resolveProgram: @escaping @Sendable (String) throws -> String, deadline: @escaping @Sendable () async throws -> Void) {
         self.deadline = deadline
         self.process = process; self.http = http; self.credential = credential
+        self.resolveProgram = resolveProgram
     }
     public static let controls = ["--safe-mode", "--restricted", "--tools", "--strict-mcp-config", "--mcp-config", "--no-session-persistence", "--output-format"]
     public func validate(_ config: Configuration) async throws {
         guard Self.configurationIssues(config).isEmpty else { throw Failure.configuration }
         switch config.kind {
         case .claudeCLI:
-            let output = try await process.run(program: config.program, arguments: ["--help"], input: Data())
+            let program = try resolveProgram(config.program)
+            let output = try await process.run(program: program, arguments: ["--help"], input: Data())
             let help = String(decoding: output.stdout, as: UTF8.self)
             guard output.status == 0, Self.supports(help) else { throw Failure.unavailable }
         case .compatibleAPI:
@@ -81,13 +85,14 @@ public struct Runtime: Sendable {
         guard Self.configurationIssues(config).isEmpty else { throw Failure.configuration }
         switch config.kind {
         case .claudeCLI:
+            let program = try resolveProgram(config.program)
             // Probe without input before any transcript is handed to the program.
-            let help = try await process.run(program: config.program, arguments: ["--help"], input: Data())
+            let help = try await process.run(program: program, arguments: ["--help"], input: Data())
             let text = String(decoding: help.stdout, as: UTF8.self)
             guard help.status == 0, Self.supports(text) else { throw Failure.unavailable }
             var arguments = ["-p", "--safe-mode", "--restricted", "--tools", "", "--strict-mcp-config", "--mcp-config", "{\"mcpServers\":{}}", "--no-session-persistence", "--output-format", "json", "--model", config.model]
             if text.components(separatedBy: .whitespacesAndNewlines).contains("--max-output-tokens") { arguments += ["--max-output-tokens", "4096"] }
-            let output = try await process.run(program: config.program, arguments: arguments, input: Data(prompt.utf8))
+            let output = try await process.run(program: program, arguments: arguments, input: Data(prompt.utf8))
             return try Self.cli(output)
         case .compatibleAPI:
             let url = try Self.endpoint(config.endpoint).appendingPathComponent("chat/completions")

@@ -25,7 +25,7 @@ struct SummaryRecoveryDispatchTests {
             try preferences.write(Preferences(notes: .init(enabled: true, primary: current, fallback: current), automaticRecording: false, callsFolder: root))
             let files = Files(locations: SummaryStorage(folder: root, timeZone: .gmt), disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("leases"))
             let http = RecoveryHTTP()
-            let runtime = Runtime(process: RecoveryNoProcess(), http: http, credential: { _ in nil }, deadline: {
+            let runtime = Runtime(process: RecoveryNoProcess(), http: http, credential: { _ in nil }, resolveProgram: { $0 }, deadline: {
                 let never = AsyncStream<Void> { _ in }
                 for await _ in never {}
                 try Task.checkCancellation()
