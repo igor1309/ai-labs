@@ -30,7 +30,6 @@ struct ReadingIncrementalTests {
             }
             $0.log = .lines($0.lines)
         }
-        expectWork(state, event, rowsBuilt: 1)
     }
 
     @Test func insertingBeforeAndAtTheSameAnchorKeepsOrder() {
@@ -164,7 +163,6 @@ struct ReadingIncrementalTests {
             $0.lines.rows.remove(at: 2)
             $0.log = .lines($0.lines)
         }
-        expectWork(state, event, rowsBuilt: 0)
         let result = ReadingReducer.reduce(state, event).0
         #expect(result.text.sealed == state.text.sealed)
         #expect(result.lines.rows.sealed == state.lines.rows.sealed)
@@ -172,13 +170,38 @@ struct ReadingIncrementalTests {
         #expect(result.entryCount == 3)
     }
 
-    @Test func unchangedUpdateBuildsNoRows() { expectWork(makeCachedJoined(), .textUpdated(update([sameTime, last, middleLate, first])), rowsBuilt: 0) }
-    @Test func problemsReuseEntryRows() { expectWork(makeInitial(), .problemsChanged([gap]), rowsBuilt: 0) }
-    @Test func stoppingReusesEntryRows() { expectWork(makeCachedSplit(), .recordingChanged(.off), rowsBuilt: 0) }
-    @Test func omissionReusesRemainingRows() { expectWork(makeCachedInserted(), .textUpdated(update([first, last, sameTime])), rowsBuilt: 0) }
-    @Test func joiningBuildsOnlyTheChangedEntry() { expectWork(makeCachedInserted(), .textUpdated(update([first, middleLate, last, sameTime])), rowsBuilt: 1) }
-    @Test func leavingBuildsOnlyTheChangedEntry() { expectWork(makeCachedJoined(), .textUpdated(update([first, middle, last, sameTime])), rowsBuilt: 1) }
-    @Test func lateRevisionBuildsOnlyTheChangedEntry() { expectWork(makeCachedSplit(), .textUpdated(update([revisedFirst, last])), rowsBuilt: 1) }
+    @Test func unchangedUpdateChangesNothing() {
+
+        assert(makeCachedJoined(), .textUpdated(update([sameTime, last, middleLate, first])), delivers: nil) { _ in }
+    }
+
+    @Test func omissionKeepsTheRemainingRows() {
+
+        assert(makeCachedInserted(), .textUpdated(update([first, last, sameTime])), delivers: nil) {
+            $0.text[middle.id] = nil
+            $0.anchors[middle.id] = nil
+            $0.lines.rows = [late("00:02–00:12", [firstRow]), .entry(sameTimeRow), late("00:06–00:07", [lastRow])]
+            $0.log = .lines($0.lines)
+        }
+    }
+
+    @Test func joiningMovesOnlyTheChangedEntry() {
+
+        assert(makeCachedInserted(), .textUpdated(update([first, middleLate, last, sameTime])), delivers: nil) {
+            $0.text[middle.id] = middleLate
+            $0.lines.rows = [late("00:02–00:12", [firstRow, middleRow]), .entry(sameTimeRow), late("00:06–00:07", [lastRow])]
+            $0.log = .lines($0.lines)
+        }
+    }
+
+    @Test func leavingMovesOnlyTheChangedEntry() {
+
+        assert(makeCachedJoined(), .textUpdated(update([first, middle, last, sameTime])), delivers: nil) {
+            $0.text[middle.id] = middle
+            $0.lines.rows = [late("00:02–00:12", [firstRow]), .entry(middleRow), .entry(sameTimeRow), late("00:06–00:07", [lastRow])]
+            $0.log = .lines($0.lines)
+        }
+    }
 }
 
 private let first = segment(0, at: 2, end: 12, late: true)
@@ -308,13 +331,4 @@ private func late(_ span: String, _ entries: [ReadingState.Entry]) -> ReadingSta
 private func update(_ entries: [ReadingTextUpdate.Entry]) -> ReadingTextUpdate {
 
     .init(status: .listening, entries: entries)
-}
-
-private func expectWork(
-    _ state: ReadingState, _ event: ReadingEvent, rowsBuilt: Int, sourceLocation: SourceLocation = #_sourceLocation
-) {
-
-    let result = ReadingReducer.reduce(state, event).0
-    #expect(result.work.entryOrderComparisons == 0, sourceLocation: sourceLocation)
-    #expect(result.work.rowsBuilt == rowsBuilt, sourceLocation: sourceLocation)
 }

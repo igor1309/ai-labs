@@ -19,8 +19,7 @@ struct ReadingStateTests {
             text: .init(sealed: [id: text]), lines: lines,
             rendered: .init(prepared: true, ordered: [id], inSealedRows: 1,
                             entries: .init(sealed: [id: entry]),
-                            locations: .init(sealed: [id: .init(row: 0, lateEntry: 0)])),
-            work: .init(entryOrderComparisons: 17, rowsBuilt: 19)
+                            locations: .init(sealed: [id: .init(row: 0, lateEntry: 0)]))
         )
         #expect(state.banners == [.init(kind: .microphone, time: "banner")])
         #expect(state.recording == .on(elapsed: "elapsed"))
@@ -39,8 +38,6 @@ struct ReadingStateTests {
         #expect(state.rendered.inSealedRows == 1)
         #expect(state.rendered.entries.sealed[id] == entry)
         #expect(state.rendered.locations.sealed[id] == .init(row: 0, lateEntry: 0))
-        #expect(state.work.entryOrderComparisons == 17)
-        #expect(state.work.rowsBuilt == 19)
     }
 
     @Test func logIsStoredUntilReduction() {
@@ -55,7 +52,7 @@ struct ReadingStateTests {
         }
     }
 
-    @Test func equalityIgnoresIndexesAndWorkButObservesStoredLog() {
+    @Test func equalityIgnoresIndexesButObservesStoredLog() {
 
         let state = makeState()
         var other = state
@@ -64,8 +61,6 @@ struct ReadingStateTests {
         other.rendered.inSealedRows = 2
         other.rendered.entries = [.init(speaker: .mine, localID: 3): .init(id: 4, time: "given", speaker: .mine)]
         other.rendered.locations = [.init(speaker: .mine, localID: 3): .init(row: 0)]
-        other.work.entryOrderComparisons = 31
-        other.work.rowsBuilt = 29
         other.lines.layout = 8
         #expect(state == other)
         other.log = .preparing(holds: [])

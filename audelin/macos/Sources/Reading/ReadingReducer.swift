@@ -28,7 +28,6 @@ public struct ReadingReducer: Sendable {
     public func reduce(_ state: ReadingState, _ event: ReadingEvent) -> (ReadingState, Never?) {
 
         var state = state
-        state.work = .init()
         switch event {
         case let .recordingChanged(recording):
             switch recording {
@@ -171,7 +170,6 @@ public struct ReadingReducer: Sendable {
         while lower < upper {
             let middle = lower + (upper - lower) / 2
             let other = state.anchors[state.rendered.ordered[middle]]!
-            state.work.entryOrderComparisons += 1
             if other.start == anchor.start ? other.id < anchor.id : other.start < anchor.start {
                 lower = middle + 1
             } else {
@@ -210,7 +208,6 @@ public struct ReadingReducer: Sendable {
     ) -> ReadingState.Entry {
 
         let anchor = state.anchors[text.id]!
-        state.work.rowsBuilt += 1
         return .init(id: anchor.id, time: lineTime(anchor.start), speaker: text.id.speaker,
                      settled: text.settled, pending: text.pending)
     }

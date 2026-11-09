@@ -348,8 +348,7 @@ private func makePreparedState() -> ReadingState {
     return .init(log: .lines(lines), status: .listening, anchors: [text.id: .init(id: 0, start: 2)],
                  nextDisplayID: 1, text: [text.id: text], lines: lines,
                  rendered: .init(prepared: true, ordered: [text.id], entries: [text.id: entry],
-                                 locations: [text.id: .init(row: 0, lateEntry: nil)]),
-                 work: .init(entryOrderComparisons: 12, rowsBuilt: 34))
+                                 locations: [text.id: .init(row: 0, lateEntry: nil)]))
 }
 
 private func makeLateState(_ first: ReadingTextUpdate.Entry, _ last: ReadingTextUpdate.Entry) -> ReadingState {
