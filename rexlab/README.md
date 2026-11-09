@@ -24,7 +24,7 @@ its own Vite server and browser, and prints a unique temporary directory for
 screenshots. It checks 60 reduced-motion configurations and one normal-motion
 outward walk. Set `CHROME_PATH` to use a local Chrome executable, or `BOARD_URL`
 to check an already running server instead. CI installs Chromium with its OS
-dependencies and runs these checks on shard 1.
+dependencies and runs each browser check in a separate matrix job.
 
 Run `node tests/nativeTouch.browser.cjs` for shared input protection, touch
 scrolling, labyrinth taps and coloring drawing/navigation in Chromium with
