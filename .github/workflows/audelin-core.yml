@@ -75,9 +75,18 @@ jobs:
         working-directory: audelin/macos
         run: sh ../scripts/swift-test-bounded.sh 900 -Xswiftc -O --filter ParakeetContractTests
 
+      # The recognizer tests run their speech models on the CPU here (the
+      # runner has no Neural Engine), which takes the runner's few cores
+      # from every suite running beside them and pushed tight file and
+      # process tests past their time limits (LAB-1078). They run in a step
+      # of their own, after the rest.
       - name: Run tests
         working-directory: audelin/macos
-        run: sh ../scripts/swift-test-bounded.sh 180 -Xswiftc -O
+        run: sh ../scripts/swift-test-bounded.sh 180 -Xswiftc -O --skip '^(NemotronRecognizerTests|ParakeetRecognizerTests)\.'
+
+      - name: Run recognizer tests
+        working-directory: audelin/macos
+        run: sh ../scripts/swift-test-bounded.sh 180 -Xswiftc -O --filter '^(NemotronRecognizerTests|ParakeetRecognizerTests)\.'
 
       - name: Build app tests
         working-directory: audelin/macos/App
