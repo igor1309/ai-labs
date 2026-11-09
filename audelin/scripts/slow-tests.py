@@ -2,10 +2,12 @@
 """Measures the whole audelin suite for the weekly slow-test hunt.
 
 Runs the Swift tests of the three packages (macos, macos/App and
-macos/PreviewApps) three times, reads each test's duration from Swift
-Testing's event stream, and writes every test, ranked by its median
+macos/PreviewApps) three times, serially (`--no-parallel`), reads each
+test's duration from Swift Testing's event stream, and writes every test, ranked by its median
 duration, to slow-tests-report.json and .md in the current directory.
-Deterministic and token-free; a failing test does not stop the measurement.
+A parallel run would charge a main-actor test for its wait in the
+main-actor queue, so dozens of cheap tests would tie at the top; serially
+each duration is the test's own cost. Deterministic and token-free; a failing test does not stop the measurement.
 Hardware-dependent tests run where the runner allows: those that need a
 device or a permission the runner lacks disable themselves.
 
@@ -111,11 +113,14 @@ def measure_once(scratch, run):
     samples = []
     for directory, extra in PACKAGES:
         events = Path(scratch) / f"{directory.name}-{run}.jsonl"
-        command = ["swift", "test", "-Xswiftc", "-O", *extra,
+        command = ["swift", "test", "--no-parallel", "-Xswiftc", "-O", *extra,
                    "--event-stream-output-path", str(events), "--event-stream-version", "0"]
         print(f"run {run}: {directory.relative_to(AUDELIN.parent)}", file=sys.stderr, flush=True)
         try:
-            subprocess.run(command, cwd=directory, stdout=subprocess.DEVNULL, timeout=RUN_LIMIT_SECONDS, check=False)
+            # SwiftPM finds the package from PWD when it is set, and the
+            # inherited one can name another package: then that package's
+            # tests run three times and these never do.
+            subprocess.run(command, cwd=directory, env={**os.environ, "PWD": str(directory)}, stdout=subprocess.DEVNULL, timeout=RUN_LIMIT_SECONDS, check=False)
         except subprocess.TimeoutExpired:
             print(f"run {run}: {directory.name} passed {RUN_LIMIT_SECONDS}s; ranking what ended", file=sys.stderr)
         if events.exists():
