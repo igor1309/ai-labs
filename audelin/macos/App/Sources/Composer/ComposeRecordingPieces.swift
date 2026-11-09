@@ -31,7 +31,7 @@ func composeRecordingPieces(
         let callsURL = preferences.read().callsFolder
         let app = callApp.current
         return SessionPieces(
-            folder: CallFolder(callsURL: callsURL, now: boundary.time.now, timeZone: boundary.time.timeZone(), occupiedNames: occupiedCallNames),
+            folder: CallFolder(callsURL: callsURL, now: boundary.time.now, timeZone: boundary.time.timeZone(), occupiedNames: occupiedCallNames, disk: .system),
             folderTitle: app.flatMap(CoreAudioProcesses.callAppName),
             processes: CallAppProcesses(app: app ?? "", list: RecordingProcessList(
                 source: processes, appKnown: app != nil

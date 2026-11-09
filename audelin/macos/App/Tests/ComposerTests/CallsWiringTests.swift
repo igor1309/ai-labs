@@ -164,7 +164,7 @@ struct CallsWiringTests {
                 (3, nil, "1970.01.01-0003", ""),
             ]
             for item in cases {
-                let folder = CallFolder(callsURL: root, now: { Date(timeIntervalSince1970: item.minute * 60) }, timeZone: .gmt)
+                let folder = CallFolder(callsURL: root, now: { Date(timeIntervalSince1970: item.minute * 60) }, timeZone: .gmt, occupiedNames: { [] }, disk: .system)
                 let name = try folder.make(title: item.made).url.lastPathComponent
                 #expect(Calls.id(in: name, timeZone: .gmt) == item.id)
                 #expect(try calls.list().first { $0.id == item.id }?.title == item.title)

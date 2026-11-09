@@ -92,7 +92,7 @@ import Testing
             #expect(try await sameDirectory(recovered.location(id: remaining).deletingLastPathComponent(), source))
             let made = try {
                 try CallFolder(callsURL: source, now: { Date(timeIntervalSince1970: 0) }, timeZone: .gmt,
-                               occupiedNames: { try recovered.occupiedCallNames() }).make()
+                               occupiedNames: { try recovered.occupiedCallNames() }, disk: .system).make()
             }()
             #expect(made.url.lastPathComponent == moved + "-2")
             #expect(made.url.deletingLastPathComponent().path == source.path)
@@ -128,7 +128,7 @@ import Testing
             #expect(saved.moves[id]?.phase == phase)
             let made = try {
                 try CallFolder(callsURL: configured, now: { Date(timeIntervalSince1970: 0) }, timeZone: .gmt,
-                               occupiedNames: { try storage.occupiedCallNames() }).make()
+                               occupiedNames: { try storage.occupiedCallNames() }, disk: .system).make()
             }()
             #expect(made.url.lastPathComponent == id + "-2")
             #expect(try await sameDirectory(made.url.deletingLastPathComponent(), configured))
