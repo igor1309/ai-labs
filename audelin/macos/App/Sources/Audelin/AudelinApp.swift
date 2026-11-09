@@ -68,6 +68,11 @@ struct AudelinApp: App {
         if let calls = model.calls { callsWindow.install(content: NSHostingView(rootView: CallsContent(model: calls))) }
         panel.install(model)
         appDelegate.connect(model)
+        let bundle = Bundle.main.bundleURL
+        if bundle.pathExtension == "app" {
+            model.relaunchAfterUpdate(wait: { try await Task.sleep(for: .seconds(5)) }, replaced: bundleReplaced(at: bundle),
+                                      relaunch: { try relaunchProcess(after: getpid(), bundle: bundle).run() })
+        }
     }
 
     init() {

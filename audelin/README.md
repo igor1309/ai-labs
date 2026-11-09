@@ -70,9 +70,10 @@ marked as skipped there.
 - **Updates are automatic.** Each trunk merge that changes the app (`macos/App`,
   `macos/Sources`, the package manifests, `bundle.sh` or `install.sh`) runs the
   `Audelin Install` workflow on this Mac's self-hosted `local-mac` runner, which runs
-  `install.sh --update`: it replaces the copy in `/Applications` but neither quits a
-  running Audelin nor opens it. Quit and reopen Audelin, or log in again, to run the
-  new build. To install trunk by hand, dispatch `Audelin Install` from GitHub Actions.
+  `install.sh --update`: it replaces the copy in `/Applications` and neither quits nor
+  opens Audelin. A running Audelin notices within seconds and relaunches itself into the
+  new build once it is idle: never during a recording, a folder move, a pending rename or
+  delete, or a summary being written. A quit Audelin stays quit. To install trunk by hand, dispatch `Audelin Install` from GitHub Actions.
   A failed install is reported in the CI Telegram chat and leaves the installed copy
   as it was.
 - **Signing on the runner** uses the owner's Apple Development certificate, so macOS

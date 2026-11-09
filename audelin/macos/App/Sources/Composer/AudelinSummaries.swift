@@ -48,6 +48,7 @@ final class AudelinSummaries {
             await coordinator.wait(call: call)
         }
     }
+    var busy: Bool { coordinator.busy }
     func stopDispatch() { coordinator.send(.stopDispatch) }
     func shutdown() async { await coordinator.shutdown() }
 }

@@ -48,6 +48,8 @@ public final class AudelinCalls {
     }
 
     var recordingsState: RecordingsState { inputs.state() }
+    /// No folder move, delete or rename is under way or waiting on an answer.
+    var idle: Bool { inputs.state().phase == .idle && editing == nil && !opening }
     func sendRecordings(_ event: RecordingsEvent) {
         recordingChanged(recordingState())
         inputs.send(event)
