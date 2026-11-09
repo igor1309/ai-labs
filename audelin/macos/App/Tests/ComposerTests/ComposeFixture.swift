@@ -75,6 +75,12 @@ struct ComposeFixture {
         throw ScriptFailure.failed
     }
 
+    /// The session itself has reduced the end. `RecordingState` reaches `.ending`
+    /// first, so it cannot order a held start after the end.
+    func sessionEnding(id: UInt64 = 1) async {
+        await log.wait { $0.category == .session && $0.message.hasPrefix("state id=\(id) phase=ending ") }
+    }
+
     func start() async throws {
         await menu.perform(.start)
         _ = try await state { $0.phase == .recording }

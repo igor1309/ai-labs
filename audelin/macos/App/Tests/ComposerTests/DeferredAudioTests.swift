@@ -64,7 +64,7 @@ struct DeferredAudioCompositionTests {
             if stopDuringBringUp {
                 await starting.waitUntilEntered()
                 await rig.menu.perform(.stop)
-                _ = try await rig.state { $0.phase == .ending }
+                await rig.sessionEnding()
                 starting.release()
                 _ = try await rig.state { $0.phase == .idle }
             } else {

@@ -49,7 +49,7 @@ struct SessionRecordingTests {
             #expect(beginning.phase == .beginning)
             #expect(beginning.callID == "1970.01.01-0000")
             await rig.menu.perform(.stop)
-            _ = try await rig.state { $0.phase == .ending }
+            await rig.sessionEnding()
             #expect(rig.microphone.stops.all.isEmpty)
             release.release()
             let ended = try await rig.state { $0.phase == .idle }
