@@ -5,11 +5,11 @@ name: Audelin Slow Tests
 # ranking to the hunter autopilot, whose run makes the slowest tests
 # faster. Not a regression check: nothing fails on a slow test, and PR CI
 # does not run this.
-# Runs at Wednesdays at 06:00 UTC (09:00 Moscow time).
+# Runs on Wednesdays at 03:00 UTC (06:00 Moscow time).
 
 on:
   schedule:
-    - cron: "0 6 * * 3"   # Wed 09:00 MSK
+    - cron: "0 3 * * 3"   # Wed 06:00 MSK
   workflow_dispatch:
 
 permissions:
