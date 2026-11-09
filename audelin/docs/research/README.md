@@ -7,6 +7,7 @@ under the working name wisper.
 
 | File | What it holds |
 |---|---|
+| [profiling.md](profiling.md) | Profiling tools, pipeline metrics, instrumentation and proposed benchmark budgets |
 | [needs.md](needs.md) | What the owner needs, and the constraints |
 | [apps.md](apps.md) | Dictation and meeting apps surveyed, with how each fits |
 | [tests.md](tests.md) | Hands-on test results from 2026-10-21 |
