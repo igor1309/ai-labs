@@ -2,6 +2,8 @@
 
 ## 2026-11-09
 
+- Nightly profiling validates both written tracks and speaker evidence before keeping a baseline, and reports matching-run deltas and descriptive memory/backlog trends for recurring review (LAB-748).
+
 - Call-notes Settings removes repeated service explanations, labels fallback as optional, and groups detailed guidance in a collapsed disclosure (LAB-1114).
 
 - Call-notes fallback is optional; Settings shows whether it is configured, and primary-only calls need no fallback credentials (LAB-1113).

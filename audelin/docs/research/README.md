@@ -7,6 +7,7 @@ under the working name wisper.
 
 | File | What it holds |
 |---|---|
+| [recurring-profiling.md](recurring-profiling.md) | Nightly collection, validated baselines and the weekly performance review |
 | [profiling.md](profiling.md) | Profiling tools, pipeline metrics, instrumentation and proposed benchmark budgets |
 | [needs.md](needs.md) | What the owner needs, and the constraints |
 | [apps.md](apps.md) | Dictation and meeting apps surveyed, with how each fits |

@@ -1,5 +1,9 @@
 # Profiling Audelin
 
+Historical snapshot (2026-10-29): app-wiring statements below describe that
+date, not the current app. For current real-model baselines, nightly collection
+and weekly artifact review, use the [recurring profiling runbook](recurring-profiling.md).
+
 Research date: 2026-10-29. Recommendation: protect audio capture first, measure
 live latency second, then optimize resource use against a paired call-only
 control. A fast offline recognizer is insufficient evidence of a healthy live
