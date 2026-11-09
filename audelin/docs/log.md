@@ -1,5 +1,9 @@
 # Log
 
+## 2026-11-09
+
+- Call-notes service pickers show the selected service and native popup arrows for both primary and fallback services (LAB-1111).
+
 ## 2026-11-08
 
 - With scroll bars set to always show, the live transcript keeps its newest line in view after the panel is resized (LAB-1084).
