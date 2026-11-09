@@ -7,8 +7,6 @@ public struct SettingsScrollView: View {
     private let event: (SettingsEvent) -> Void
     private let config: SettingsConfig
     private let contentHeightChanged: (CGFloat) -> Void
-    @State private var tabsHeight: CGFloat = 0
-    @State private var pageHeight: CGFloat = 0
 
     public init(state: SettingsState, event: @escaping (SettingsEvent) -> Void,
                 config: SettingsConfig = .glassLedger,
@@ -20,18 +18,24 @@ public struct SettingsScrollView: View {
     }
 
     public var body: some View {
-        let content = SettingsView(state: state, event: event, config: config)
-        let tokens = content.tokens
+        var content = SettingsView(state: state, event: event, config: config)
+        content.scrolls = true
+        content.contentHeightChanged = contentHeightChanged
+        return content
+    }
+}
 
+extension SettingsView {
+    var scrollingBody: some View {
         VStack(spacing: 0) {
-            content.tabs
+            tabs
                 .padding(.horizontal, tokens.space24)
                 .padding(.top, tokens.space24)
                 .padding(.bottom, tokens.space16)
                 .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { tabsHeight = $0 }
             ScrollView(.vertical) {
                 VStack(alignment: .leading, spacing: tokens.space16) {
-                    content.page
+                    page
                 }
                 .padding(.horizontal, tokens.space24)
                 .padding(.bottom, tokens.space24)
@@ -46,7 +50,7 @@ public struct SettingsScrollView: View {
         }
         .overlay(alignment: .top) {
             if state.selectedTab == .recording, let confirm = state.moveConfirm {
-                content.moveSheet(confirm)
+                moveSheet(confirm)
             }
         }
     }

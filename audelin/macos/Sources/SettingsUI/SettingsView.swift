@@ -10,6 +10,10 @@ public struct SettingsView: View {
     let state: SettingsState
     let event: (SettingsEvent) -> Void
     let config: SettingsConfig
+    var scrolls = false
+    var contentHeightChanged: (CGFloat) -> Void = { _ in }
+    @State var tabsHeight: CGFloat = 0
+    @State var pageHeight: CGFloat = 0
 
     @Environment(\.colorScheme) private var scheme
 
@@ -24,6 +28,10 @@ public struct SettingsView: View {
     }
 
     public var body: some View {
+        if scrolls { scrollingBody } else { fullPageBody }
+    }
+
+    private var fullPageBody: some View {
 
         VStack(alignment: .leading, spacing: tokens.space16) {
             tabs
