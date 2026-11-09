@@ -18,8 +18,8 @@ import Testing
         let view = try loadedPresentation(state)
         let field = try #require(view.runtimes[0].fields.first { $0.id == .executable })
         #expect(field.value.isEmpty && !field.isInvalid)
-        #expect(field.placeholder == "Автоматически найти Claude")
-        #expect(view.runtimes[0].disclosure.contains("Пустое поле «Программа» — автоматический поиск Claude"))
+        #expect(field.placeholder == "Найти автоматически")
+        #expect(view.runtimes[0].disclosure == "Транскрипт → Anthropic · квота подписки Claude")
         #expect(settingsIssueMessage(.init(slot: .primary, field: .executable)).contains("оставьте поле пустым для автоматического поиска или укажите абсолютный путь"))
     }
 
@@ -37,11 +37,11 @@ import Testing
         let remote = SummarySettings.Configuration.Runtime(kind: .compatibleAPI, model: "hosted", executable: "", endpoint: "https://recipient.example/v1", credentialVariable: "VARIABLE_NAME")
         let config = SummarySettings.Configuration(enabled: true, speakers: true, primary: local, fallback: remote)
         let disclosure = notesDisclosure(config)
-        #expect(disclosure.contains("Основной:") && disclosure.contains("Резервный:"))
-        #expect(disclosure.contains("локальные вычисления"))
-        #expect(disclosure.contains("Оплата API по токенам"))
-        #expect(disclosure.contains("recipient.example"))
-        #expect(disclosure.contains("Оба сервиса могут получить полный транскрипт"))
+        #expect(!disclosure.contains("recipient.example"))
+        #expect(disclosure.contains("Резервный получает его только при повторе запроса"))
+        #expect(runtimeDisclosure(local).contains("сервер на этом Mac"))
+        #expect(runtimeDisclosure(remote).contains("recipient.example"))
+        #expect(runtimeDisclosure(remote).contains("оплата по тарифу API"))
         let state = settingsReducer().reduce(.init(phase: .loading), .loaded(config)).0
         guard case let .loaded(draft) = notesPresentation(state) else { Issue.record("missing loaded settings"); return }
         #expect(!draft.save.isEnabled)
@@ -215,7 +215,7 @@ import Testing
             let loaded = reducer.reduce(.init(phase: .loading), .loaded(config)).0
             let cleared = reducer.reduce(loaded, .selectKind(.fallback, nil)).0
             let view = try loadedPresentation(cleared)
-            #expect(view.runtimes[1].title == "Резервный сервис · не настроен")
+            #expect(view.runtimes[1].title == "Резервный сервис")
             #expect(view.runtimes[1].kind == .unconfigured && view.runtimes[1].fields.isEmpty)
             #expect(view.runtimes[1].options.first?.id == .unconfigured)
             #expect(!view.runtimes[0].options.contains { $0.id == .unconfigured })

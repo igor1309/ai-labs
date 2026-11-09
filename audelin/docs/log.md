@@ -2,6 +2,8 @@
 
 ## 2026-11-09
 
+- Call-notes Settings removes repeated service explanations, labels fallback as optional, and groups detailed guidance in a collapsed disclosure (LAB-1114).
+
 - Call-notes fallback is optional; Settings shows whether it is configured, and primary-only calls need no fallback credentials (LAB-1113).
 
 - Settings follows the system’s light or dark appearance throughout the scrolling page (LAB-1108).
