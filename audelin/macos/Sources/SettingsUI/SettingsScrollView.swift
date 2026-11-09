@@ -15,17 +15,22 @@ public struct SettingsScrollView: View {
     }
 
     public var body: some View {
-        let content = SettingsView(state: state, event: event, config: config)
-        let tokens = content.tokens
+        var content = SettingsView(state: state, event: event, config: config)
+        content.scrolls = true
+        return content
+    }
+}
 
+extension SettingsView {
+    var scrollingBody: some View {
         VStack(spacing: 0) {
-            content.tabs
+            tabs
                 .padding(.horizontal, tokens.space24)
                 .padding(.top, tokens.space24)
                 .padding(.bottom, tokens.space16)
             ScrollView(.vertical) {
                 VStack(alignment: .leading, spacing: tokens.space16) {
-                    content.page
+                    page
                 }
                 .padding(.horizontal, tokens.space24)
                 .padding(.bottom, tokens.space24)
@@ -36,7 +41,7 @@ public struct SettingsScrollView: View {
         .background(tokens.win)
         .overlay(alignment: .top) {
             if state.selectedTab == .recording, let confirm = state.moveConfirm {
-                content.moveSheet(confirm)
+                moveSheet(confirm)
             }
         }
     }

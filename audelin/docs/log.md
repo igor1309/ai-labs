@@ -1,5 +1,9 @@
 # Log
 
+## 2026-11-09
+
+- Settings follows the system’s light or dark appearance throughout the scrolling page (LAB-1108).
+
 ## 2026-11-08
 
 - With scroll bars set to always show, the live transcript keeps its newest line in view after the panel is resized (LAB-1084).

@@ -25,6 +25,25 @@ struct SettingsViewRenderTests {
         try Offscreen.save(image, "settings-scroll-\(scheme == .dark ? "dark" : "light")")
     }
 
+    @Test(arguments: [ColorScheme.light, .dark])
+    func scrollingPageUsesTheInheritedWindowAppearance(scheme: ColorScheme) throws {
+        let host = Offscreen.host(
+            SettingsScrollView(state: .release, event: { _ in }),
+            size: CGSize(width: 620, height: 700), scheme: scheme
+        )
+        let image = try #require(Offscreen.snapshot(host))
+        let actual = try #require(image.colorAt(x: 4, y: 4)?.usingColorSpace(.deviceRGB))
+        let reference = Offscreen.host(
+            SettingsConfig.glassLedger.tokens(for: scheme).win,
+            size: CGSize(width: 20, height: 20), scheme: scheme
+        )
+        let referenceImage = try #require(Offscreen.snapshot(reference))
+        let expected = try #require(referenceImage.colorAt(x: 4, y: 4)?.usingColorSpace(.deviceRGB))
+        #expect(abs(actual.redComponent - expected.redComponent) < 0.01)
+        #expect(abs(actual.greenComponent - expected.greenComponent) < 0.01)
+        #expect(abs(actual.blueComponent - expected.blueComponent) < 0.01)
+    }
+
     @Test nonisolated func exportRegistryContainsExactlyTheRequiredStates() {
         let required: Set<String> = [
             "release", "debug", "confirm-move", "moving", "move-failed", "during-recording",
