@@ -11,6 +11,9 @@ public struct SettingsView: View {
     let event: (SettingsEvent) -> Void
     let config: SettingsConfig
     var scrolls = false
+    var contentHeightChanged: (CGFloat) -> Void = { _ in }
+    @State var tabsHeight: CGFloat = 0
+    @State var pageHeight: CGFloat = 0
 
     @Environment(\.colorScheme) private var scheme
 
