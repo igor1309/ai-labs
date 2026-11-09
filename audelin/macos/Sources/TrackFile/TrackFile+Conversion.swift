@@ -7,7 +7,7 @@ extension TrackFile {
     public init(url: URL) async throws {
 
         try await self.init(
-            url: url, makeBinding: DiskTrackBinding.init,
+            url: url, makeBinding: { try DiskTrackBinding(url: $0, positionedWrite: DiskTrackBinding.systemWrite) },
             makeConversion: { try CompleteConversion(inputRate: $0) }
         )
     }

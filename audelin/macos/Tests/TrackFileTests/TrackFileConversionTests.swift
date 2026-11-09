@@ -13,7 +13,7 @@ struct TrackFileConversionTests {
             let signal = AsyncStream<Void>.makeStream()
             let conversion = FailingConversion()
             let track = try await TrackFile(
-                url: url, makeBinding: DiskTrackBinding.init,
+                url: url, makeBinding: { try DiskTrackBinding(url: $0, positionedWrite: DiskTrackBinding.systemWrite) },
                 makeConversion: { rate in
                     #expect(rate == 24_000)
                     return conversion

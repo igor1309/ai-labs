@@ -42,13 +42,11 @@ final class DiskTrackBinding: TrackFileBinding {
         }
     }
 
-    convenience init(url: URL) throws {
-
-        try self.init(url: url, positionedWrite: { descriptor, bytes, offset in
-            let size = pwrite(descriptor, bytes.baseAddress, bytes.count, offset)
-            guard size >= 0 else { throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO) }
-            return size
-        })
+    /// Writes with `pwrite`, reporting its errno.
+    static let systemWrite: @Sendable (Int32, UnsafeRawBufferPointer, Int64) throws -> Int = { descriptor, bytes, offset in
+        let size = pwrite(descriptor, bytes.baseAddress, bytes.count, offset)
+        guard size >= 0 else { throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO) }
+        return size
     }
 
     init(
