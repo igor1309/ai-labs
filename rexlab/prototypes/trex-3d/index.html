@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>RexLab: 3D T-Rex prototype</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #fdf3dc; overflow: hidden;
+    touch-action: none; -webkit-user-select: none; user-select: none;
+    font: 700 16px/1.2 system-ui, sans-serif; color: #5a4a2e; }
+  main { display: grid; grid-template-columns: 1fr 1fr; height: 100%; }
+  section { position: relative; display: flex; align-items: center; justify-content: center; }
+  section + section { border-left: 2px dashed #e4cf9f; }
+  h2 { position: absolute; top: 16px; margin: 0; font-size: 18px; letter-spacing: .06em; }
+  img { max-width: 90%; max-height: 80%; }
+  canvas { width: 100%; height: 100%; cursor: grab; }
+  canvas:active { cursor: grabbing; }
+  @media (max-width: 700px) { main { grid-template-columns: 1fr; grid-template-rows: 1fr 2fr; }
+    section + section { border-left: 0; border-top: 2px dashed #e4cf9f; } }
+</style>
+</head>
+<body>
+<main>
+  <section><h2>NOW · 2D</h2><img src="../../src/assets/dinos/tyrannosaurus/body.webp" alt="T-Rex"></section>
+  <section><h2>3D · DRAG TO TURN</h2><canvas id="c"></canvas></section>
+</main>
+<script>
+// Shows trex.glb (built by build.py in Blender) with plain WebGL 2: the GLB is
+// parsed here, one mesh with vertex colours, soft toon-ish light and a ground
+// shadow disc. Drag to orbit; left alone, it sways around the picture's view.
+fetch('trex.glb').then(r => r.arrayBuffer()).then(start);
+
+function readGlb(buf) {
+  const dv = new DataView(buf);
+  let off = 12, json, bin;
+  while (off < buf.byteLength) {
+    const len = dv.getUint32(off, true), type = dv.getUint32(off + 4, true);
+    if (type === 0x4E4F534A) json = JSON.parse(new TextDecoder().decode(new Uint8Array(buf, off + 8, len)));
+    if (type === 0x004E4942) bin = off + 8;
+    off += 8 + len;
+  }
+  const T = { 5120: Int8Array, 5121: Uint8Array, 5122: Int16Array, 5123: Uint16Array, 5125: Uint32Array, 5126: Float32Array };
+  const N = { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4 };
+  const acc = i => {
+    const a = json.accessors[i], v = json.bufferViews[a.bufferView];
+    return { data: new T[a.componentType](buf, bin + (v.byteOffset || 0) + (a.byteOffset || 0), a.count * N[a.type]),
+             size: N[a.type], type: a.componentType, normalized: !!a.normalized, min: a.min, max: a.max };
+  };
+  return json.meshes[0].primitives.map(p => ({
+    pos: acc(p.attributes.POSITION), nor: acc(p.attributes.NORMAL),
+    col: p.attributes.COLOR_0 !== undefined ? acc(p.attributes.COLOR_0) : null,
+    idx: acc(p.indices),
+  }));
+}
+
+function start(buf) {
+  const prims = readGlb(buf);
+  const canvas = document.getElementById('c');
+  const gl = canvas.getContext('webgl2', { antialias: true });
+  const prog = program(gl, `#version 300 es
+    in vec3 p; in vec3 n; in vec4 c;
+    uniform mat4 vp; uniform mat4 model;
+    out vec3 vn; out vec3 vc; out vec3 wp;
+    void main(){ vn = mat3(model) * n; vc = c.rgb; vec4 w = model * vec4(p, 1.); wp = w.xyz;
+      gl_Position = vp * w; }`,
+  `#version 300 es
+    precision highp float;
+    in vec3 vn; in vec3 vc; in vec3 wp; uniform vec3 eye; uniform float ground; out vec4 o;
+    void main(){
+      if (ground > .5) {   // soft shadow disc under the feet
+        float r = length(wp.xz / vec2(1.9, .9));
+        o = vec4(.45, .33, .15, .28 * smoothstep(1., .2, r)); return;
+      }
+      vec3 n = normalize(vn), v = normalize(eye - wp), L = normalize(vec3(-.4, .9, .5));
+      float d = max(dot(n, L), 0.);
+      float band = smoothstep(.05, .35, d) * .5 + smoothstep(.45, .7, d) * .25; // soft picture-book bands
+      vec3 albedo = pow(vc, vec3(1. / 2.2));
+      vec3 col = albedo * (.6 + band * .7) + vec3(.06) * pow(max(dot(reflect(-L, n), v), 0.), 20.);
+      float rim = smoothstep(.35, .12, dot(n, v));           // dark storybook outline
+      o = vec4(mix(col, albedo * .25, rim * .85), 1.);
+    }`);
+  gl.useProgram(prog);
+  const loc = n => gl.getAttribLocation(prog, n);
+
+  const draws = prims.map(pr => {
+    const vao = gl.createVertexArray(); gl.bindVertexArray(vao);
+    const attr = (name, a) => {
+      gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+      gl.bufferData(gl.ARRAY_BUFFER, a.data, gl.STATIC_DRAW);
+      gl.enableVertexAttribArray(loc(name));
+      gl.vertexAttribPointer(loc(name), a.size, a.type, a.normalized, 0, 0);
+    };
+    attr('p', pr.pos); attr('n', pr.nor);
+    if (pr.col) attr('c', pr.col); else gl.vertexAttrib4f(loc('c'), .8, .5, .2, 1);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gl.createBuffer());
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, pr.idx.data, gl.STATIC_DRAW);
+    return { vao, count: pr.idx.data.length, type: pr.idx.type };
+  });
+  // the model's bounds, to frame it
+  const mn = prims[0].pos.min, mx = prims[0].pos.max;
+  const centre = [(mn[0] + mx[0]) / 2, (mn[1] + mx[1]) / 2, (mn[2] + mx[2]) / 2];
+  const span = Math.max(mx[0] - mn[0], mx[1] - mn[1], mx[2] - mn[2]);
+
+  const groundVao = gl.createVertexArray(); gl.bindVertexArray(groundVao);
+  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+  const G = 3;
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-G,0,-G, G,0,-G, -G,0,G, G,0,G]), gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(loc('p')); gl.vertexAttribPointer(loc('p'), 3, gl.FLOAT, false, 0, 0);
+  gl.vertexAttrib3f(loc('n'), 0, 1, 0);
+
+  const U = n => gl.getUniformLocation(prog, n);
+  const uVp = U('vp'), uModel = U('model'), uEye = U('eye'), uGround = U('ground');
+  gl.enable(gl.DEPTH_TEST);
+  gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+  function resize() {
+    const r = Math.min(devicePixelRatio, 2);
+    canvas.width = canvas.clientWidth * r; canvas.height = canvas.clientHeight * r;
+    gl.viewport(0, 0, canvas.width, canvas.height);
+  }
+  addEventListener('resize', resize); resize();
+
+  // yaw 0 is the picture's view: side on, head to the left, turned a little to us
+  const BASE = -0.35;
+  let yaw = BASE, pitch = 0.12, drag = null, idleSince = -1e9;
+  canvas.addEventListener('pointerdown', e => { drag = { x: e.clientX, y: e.clientY }; canvas.setPointerCapture(e.pointerId); });
+  canvas.addEventListener('pointermove', e => {
+    if (!drag) return;
+    yaw += (e.clientX - drag.x) * 0.01;
+    pitch = Math.max(-0.1, Math.min(1.0, pitch + (e.clientY - drag.y) * 0.006));
+    drag = { x: e.clientX, y: e.clientY };
+  });
+  const end = () => { drag = null; idleSince = performance.now(); };
+  canvas.addEventListener('pointerup', end); canvas.addEventListener('pointercancel', end);
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function frame(now) {
+    if (!drag && !reduced && now - idleSince > 1500) {
+      // ease back towards the picture's view, the long way round never
+      yaw = Math.atan2(Math.sin(yaw), Math.cos(yaw));
+      yaw += (BASE + 0.45 * Math.sin(now / 1700) - yaw) * 0.03;
+    }
+    const aspect = canvas.width / canvas.height;
+    const dist = span * 1.25 * Math.max(1, 1.5 / aspect);
+    const eye = [centre[0] + dist * Math.cos(pitch) * Math.sin(yaw), centre[1] + dist * Math.sin(pitch),
+                 centre[2] + dist * Math.cos(pitch) * Math.cos(yaw)];
+    const vp = mul(perspective(0.7, aspect, 0.1, 100), lookAt(eye, centre));
+    gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.uniformMatrix4fv(uVp, false, vp); gl.uniform3fv(uEye, eye);
+    gl.uniformMatrix4fv(uModel, false, [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]);
+    gl.uniform1f(uGround, 1); gl.depthMask(false);
+    gl.bindVertexArray(groundVao); gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    gl.uniform1f(uGround, 0); gl.depthMask(true);
+    for (const d of draws) { gl.bindVertexArray(d.vao); gl.drawElements(gl.TRIANGLES, d.count, d.type, 0); }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
+
+function program(gl, vs, fs) {
+  const p = gl.createProgram();
+  for (const [type, src] of [[gl.VERTEX_SHADER, vs], [gl.FRAGMENT_SHADER, fs]]) {
+    const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+    gl.attachShader(p, s);
+  }
+  gl.linkProgram(p); return p;
+}
+// column-major 4x4 helpers
+function mul(a, b) { const o = new Array(16).fill(0);
+  for (let c = 0; c < 4; c++) for (let r = 0; r < 4; r++) for (let k = 0; k < 4; k++) o[c * 4 + r] += a[k * 4 + r] * b[c * 4 + k];
+  return o; }
+function perspective(f, a, n, far) { const t = 1 / Math.tan(f / 2);
+  return [t / a,0,0,0, 0,t,0,0, 0,0,(far + n) / (n - far),-1, 0,0,2 * far * n / (n - far),0]; }
+function lookAt(e, c) {
+  const sub = (a, b) => [a[0]-b[0], a[1]-b[1], a[2]-b[2]];
+  const norm = v => { const l = Math.hypot(...v); return v.map(x => x / l); };
+  const cross = (a, b) => [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]];
+  const dot = (a, b) => a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+  const z = norm(sub(e, c)), x = norm(cross([0,1,0], z)), y = cross(z, x);
+  return [x[0],y[0],z[0],0, x[1],y[1],z[1],0, x[2],y[2],z[2],0, -dot(x,e),-dot(y,e),-dot(z,e),1];
+}
+</script>
+</body>
+</html>

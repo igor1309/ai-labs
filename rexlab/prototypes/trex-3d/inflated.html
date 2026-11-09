@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>RexLab: 3D T-Rex prototype</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #fdf3dc; overflow: hidden;
+    touch-action: none; -webkit-user-select: none; user-select: none;
+    font: 700 16px/1.2 system-ui, sans-serif; color: #5a4a2e; }
+  main { display: grid; grid-template-columns: 1fr 1fr; height: 100%; }
+  section { position: relative; display: flex; align-items: center; justify-content: center; }
+  section + section { border-left: 2px dashed #e4cf9f; }
+  h2 { position: absolute; top: 16px; margin: 0; font-size: 18px; letter-spacing: .06em; }
+  img { max-width: 90%; max-height: 80%; }
+  canvas { width: 100%; height: 100%; cursor: grab; }
+  canvas:active { cursor: grabbing; }
+  @media (max-width: 700px) { main { grid-template-columns: 1fr; grid-template-rows: 1fr 2fr; }
+    section + section { border-left: 0; border-top: 2px dashed #e4cf9f; } }
+</style>
+</head>
+<body>
+<main>
+  <section><h2>NOW · 2D</h2><img id="src" src="../../src/assets/dinos/tyrannosaurus/body.webp" alt="T-Rex"></section>
+  <section><h2>3D · DRAG TO TURN</h2><canvas id="c"></canvas></section>
+</main>
+<script>
+// The app's own T-Rex picture, inflated into a 3D mesh: the alpha channel gives
+// the silhouette, the distance to its edge gives the thickness (a rounded
+// profile, thin at the edge, thick in the body), and the picture is the
+// texture on both faces. Plain WebGL 2, no libraries.
+const STEP = 2;           // image pixels per mesh cell
+const R = 70;             // round profile radius in image px: thinner parts become round tubes
+
+const img = document.getElementById('src');
+img.decode().then(() => start(img));
+
+function start(img) {
+  const W = img.naturalWidth, H = img.naturalHeight;
+  const cv = new OffscreenCanvas(W, H), cx = cv.getContext('2d');
+  cx.drawImage(img, 0, 0);
+  const imgData = cx.getImageData(0, 0, W, H), px = imgData.data;
+
+  // The picture's dark outline would stretch along the rim where front and
+  // back meet. Repaint a band at the edge with the skin colour just inside
+  // it, filling from the inner side of the band outwards.
+  const BAND = 7;
+  const pd = chamfer(Uint8Array.from({ length: W * H }, (_, i) => px[i * 4 + 3] > 128), W, H);
+  const order = [];
+  for (let i = 0; i < W * H; i++) if (pd[i] > 0 && pd[i] <= BAND) order.push(i);
+  order.sort((a, b) => pd[b] - pd[a]);
+  for (const i of order) {
+    const x = i % W, y = (i / W) | 0; let r = 0, g = 0, b = 0, n = 0;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      const xx = x + dx, yy = y + dy; if (xx < 0 || yy < 0 || xx >= W || yy >= H) continue;
+      const j = yy * W + xx; if (pd[j] <= pd[i]) continue;
+      r += px[j * 4]; g += px[j * 4 + 1]; b += px[j * 4 + 2]; n++;
+    }
+    if (n) { px[i * 4] = r / n; px[i * 4 + 1] = g / n; px[i * 4 + 2] = b / n; }
+  }
+  // keep the margin transparent
+  for (let i = 0; i < W * H; i++) if (!pd[i]) px[i * 4 + 3] = 0;
+  cx.putImageData(imgData, 0, 0);
+
+  // grid of samples
+  const gw = Math.floor(W / STEP) + 1, gh = Math.floor(H / STEP) + 1;
+  const inside = new Uint8Array(gw * gh);
+  for (let y = 0; y < gh; y++) for (let x = 0; x < gw; x++) {
+    const ix = Math.min(x * STEP, W - 1), iy = Math.min(y * STEP, H - 1);
+    inside[y * gw + x] = px[(iy * W + ix) * 4 + 3] > 128 ? 1 : 0;
+  }
+  // chamfer distance to the outside, in grid cells
+  const INF = 1e9, d = new Float32Array(gw * gh);
+  for (let i = 0; i < d.length; i++) d[i] = inside[i] ? INF : 0;
+  const A = 1, B = Math.SQRT2;
+  for (let y = 0; y < gh; y++) for (let x = 0; x < gw; x++) {
+    const i = y * gw + x; if (!d[i]) continue;
+    let v = d[i];
+    if (x > 0) v = Math.min(v, d[i - 1] + A); else v = Math.min(v, A);
+    if (y > 0) { v = Math.min(v, d[i - gw] + A);
+      if (x > 0) v = Math.min(v, d[i - gw - 1] + B);
+      if (x < gw - 1) v = Math.min(v, d[i - gw + 1] + B); } else v = Math.min(v, A);
+    d[i] = v;
+  }
+  for (let y = gh - 1; y >= 0; y--) for (let x = gw - 1; x >= 0; x--) {
+    const i = y * gw + x; if (!d[i]) continue;
+    let v = d[i];
+    if (x < gw - 1) v = Math.min(v, d[i + 1] + A); else v = Math.min(v, A);
+    if (y < gh - 1) { v = Math.min(v, d[i + gw] + A);
+      if (x < gw - 1) v = Math.min(v, d[i + gw + 1] + B);
+      if (x > 0) v = Math.min(v, d[i + gw - 1] + B); } else v = Math.min(v, A);
+    d[i] = v;
+  }
+  // height: rounded profile, zero on the rim so front and back meet
+  let h = new Float32Array(gw * gh);
+  for (let i = 0; i < h.length; i++)
+    { const t = Math.min(Math.max(d[i] - 1, 0) * STEP, R); h[i] = inside[i] ? Math.sqrt(t * (2 * R - t)) : 0; }
+  // two box blurs inside the silhouette smooth the chamfer facets
+  for (let pass = 0; pass < 6; pass++) {
+    const n = new Float32Array(h.length);
+    for (let y = 1; y < gh - 1; y++) for (let x = 1; x < gw - 1; x++) {
+      const i = y * gw + x; if (!inside[i] || d[i] <= 1) { n[i] = h[i]; continue; }
+      let s = 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) s += h[i + dy * gw + dx];
+      n[i] = s / 9;
+    }
+    h = n;
+  }
+
+  // mesh: front face (z = +h) and back face (z = -h)
+  const S = 2 / H; // world units per image px
+  const nV = gw * gh;
+  const pos = new Float32Array(nV * 2 * 3), nor = new Float32Array(nV * 2 * 3), uv = new Float32Array(nV * 2 * 2);
+  for (let y = 0; y < gh; y++) for (let x = 0; x < gw; x++) {
+    const i = y * gw + x;
+    const X = (x * STEP - W / 2) * S, Y = (H / 2 - y * STEP) * S, Z = h[i] * S;
+    const hl = h[y * gw + Math.max(x - 1, 0)], hr = h[y * gw + Math.min(x + 1, gw - 1)];
+    const hu = h[Math.max(y - 1, 0) * gw + x], hd = h[Math.min(y + 1, gh - 1) * gw + x];
+    let nx = -(hr - hl) / (2 * STEP), ny = (hd - hu) / (2 * STEP), nz = 1;
+    const l = Math.hypot(nx, ny, nz); nx /= l; ny /= l; nz /= l;
+    for (let side = 0; side < 2; side++) {
+      const k = side * nV + i, sz = side ? -1 : 1;
+      pos.set([X, Y, Z * sz], k * 3);
+      nor.set([nx, ny, nz * sz], k * 3);
+      uv.set([Math.min(x * STEP, W - 1) / W, Math.min(y * STEP, H - 1) / H], k * 2);
+    }
+  }
+  const idx = [];
+  for (let y = 0; y < gh - 1; y++) for (let x = 0; x < gw - 1; x++) {
+    const a = y * gw + x, b = a + 1, c = a + gw, e = c + 1;
+    // keep a cell when at least three corners are inside, so the rim is not jagged
+    const tri = (p, q, r, side) => {
+      if (!(inside[p] && inside[q] && inside[r])) return;
+      const o = side * nV;
+      side ? idx.push(p + o, r + o, q + o) : idx.push(p + o, q + o, r + o);
+    };
+    for (let side = 0; side < 2; side++) { tri(a, c, b, side); tri(b, c, e, side); }
+  }
+
+  const canvas = document.getElementById('c');
+  const gl = canvas.getContext('webgl2', { antialias: true, premultipliedAlpha: false });
+  const prog = program(gl, `#version 300 es
+    in vec3 p; in vec3 n; in vec2 t;
+    uniform mat4 mvp; uniform mat3 rot;
+    out vec3 vn; out vec2 vt;
+    void main(){ vn = rot * n; vt = t; gl_Position = mvp * vec4(p, 1.); }`,
+  `#version 300 es
+    precision highp float;
+    in vec3 vn; in vec2 vt; uniform sampler2D tex; out vec4 o;
+    void main(){
+      vec4 c = texture(tex, vt);
+      vec3 n = normalize(gl_FrontFacing ? vn : -vn);
+      float l = .62 + .38 * max(dot(n, normalize(vec3(-.4, .7, .6))), 0.) + .12 * n.z;
+      o = vec4(c.rgb * l, 1.);
+    }`);
+  gl.useProgram(prog);
+  const buf = (loc, data, size) => {
+    gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+    gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
+    const l = gl.getAttribLocation(prog, loc);
+    gl.enableVertexAttribArray(l); gl.vertexAttribPointer(l, size, gl.FLOAT, false, 0, 0);
+  };
+  buf('p', pos, 3); buf('n', nor, 3); buf('t', uv, 2);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gl.createBuffer());
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint32Array(idx), gl.STATIC_DRAW);
+  const tex = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, cv.transferToImageBitmap());
+  gl.generateMipmap(gl.TEXTURE_2D);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+  gl.enable(gl.DEPTH_TEST);
+  const uMvp = gl.getUniformLocation(prog, 'mvp'), uRot = gl.getUniformLocation(prog, 'rot');
+
+  function resize() {
+    const r = Math.min(devicePixelRatio, 2);
+    canvas.width = canvas.clientWidth * r; canvas.height = canvas.clientHeight * r;
+    gl.viewport(0, 0, canvas.width, canvas.height);
+  }
+  addEventListener('resize', resize); resize();
+
+  let yaw = 0, pitch = 0.08, drag = null, idleSince = -1e9;
+  canvas.addEventListener('pointerdown', e => { drag = { x: e.clientX, y: e.clientY }; canvas.setPointerCapture(e.pointerId); });
+  canvas.addEventListener('pointermove', e => {
+    if (!drag) return;
+    yaw += (e.clientX - drag.x) * 0.01;
+    pitch = Math.max(-0.6, Math.min(0.8, pitch + (e.clientY - drag.y) * 0.006));
+    drag = { x: e.clientX, y: e.clientY };
+  });
+  const end = () => { drag = null; idleSince = performance.now(); };
+  canvas.addEventListener('pointerup', end); canvas.addEventListener('pointercancel', end);
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function frame(now) {
+    // when left alone, ease back and sway gently around the picture's own view
+    if (!drag && !reduced && now - idleSince > 1500) {
+      const target = 0.55 * Math.sin(now / 1600);
+      yaw += (target - yaw) * 0.04;
+    }
+    const aspect = canvas.width / canvas.height;
+    const fit = Math.max(1, (W / H) / aspect * 1.05);
+    const P = perspective(0.75, aspect, 0.1, 50);
+    const R = mul(rotX(pitch), rotY(yaw));
+    const M = mul(translate(0, 0, -2.5 * fit), R);
+    gl.uniformMatrix4fv(uMvp, false, mul(P, M));
+    gl.uniformMatrix3fv(uRot, false, [R[0], R[1], R[2], R[4], R[5], R[6], R[8], R[9], R[10]]);
+    gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.drawElements(gl.TRIANGLES, idx.length, gl.UNSIGNED_INT, 0);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
+
+// distance in pixels from each inside pixel to the outside (0 outside)
+function chamfer(inside, w, h) {
+  const d = new Float32Array(w * h), B = Math.SQRT2;
+  for (let i = 0; i < d.length; i++) d[i] = inside[i] ? 1e9 : 0;
+  const at = (x, y) => (x < 0 || y < 0 || x >= w || y >= h) ? 0 : d[y * w + x];
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = y * w + x; if (!d[i]) continue;
+    d[i] = Math.min(d[i], at(x-1,y)+1, at(x,y-1)+1, at(x-1,y-1)+B, at(x+1,y-1)+B); }
+  for (let y = h - 1; y >= 0; y--) for (let x = w - 1; x >= 0; x--) { const i = y * w + x; if (!d[i]) continue;
+    d[i] = Math.min(d[i], at(x+1,y)+1, at(x,y+1)+1, at(x+1,y+1)+B, at(x-1,y+1)+B); }
+  return d;
+}
+
+function program(gl, vs, fs) {
+  const p = gl.createProgram();
+  for (const [type, src] of [[gl.VERTEX_SHADER, vs], [gl.FRAGMENT_SHADER, fs]]) {
+    const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+    gl.attachShader(p, s);
+  }
+  gl.linkProgram(p); return p;
+}
+// column-major 4x4 helpers
+function mul(a, b) { const o = new Array(16).fill(0);
+  for (let c = 0; c < 4; c++) for (let r = 0; r < 4; r++) for (let k = 0; k < 4; k++) o[c * 4 + r] += a[k * 4 + r] * b[c * 4 + k];
+  return o; }
+function perspective(f, a, n, far) { const t = 1 / Math.tan(f / 2);
+  return [t / a,0,0,0, 0,t,0,0, 0,0,(far + n) / (n - far),-1, 0,0,2 * far * n / (n - far),0]; }
+function translate(x, y, z) { return [1,0,0,0, 0,1,0,0, 0,0,1,0, x,y,z,1]; }
+function rotY(a) { const c = Math.cos(a), s = Math.sin(a); return [c,0,-s,0, 0,1,0,0, s,0,c,0, 0,0,0,1]; }
+function rotX(a) { const c = Math.cos(a), s = Math.sin(a); return [1,0,0,0, 0,c,s,0, 0,-s,c,0, 0,0,0,1]; }
+</script>
+</body>
+</html>
