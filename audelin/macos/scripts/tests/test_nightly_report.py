@@ -196,6 +196,36 @@ class NightlyReportTests(unittest.TestCase):
         self.assertEqual(growing["backlog_max_s"], 180)
         self.assertIn("Retained transcript growth is not evidence of a leak", nightly.markdown(data))
 
+    def test_warmup_does_not_affect_steady_state_footprint_slope(self):
+        log = LOG
+        for n in range(1, 181):
+            log = log.replace(minute(n, 0.5, 300 + n), minute(n, 0.5, 100 + n if n < 30 else 500))
+        trends = run(self.root / "steady", "a", log=log)["endurance"]["trends"]
+        self.assertEqual(trends["footprint_samples"], 151)
+        self.assertAlmostEqual(trends["footprint_mib_per_hour"], 0)
+
+    def test_written_comparisons_use_the_final_minute(self):
+        for duration in (120, 180):
+            with self.subTest(duration=duration):
+                identity = copy.deepcopy(IDENTITY)
+                identity["workload"]["endurance"] = f"AudelinBaseline --minutes {duration} --speed 1"
+                log = "\n".join(LOG.splitlines()[:duration] + LOG.splitlines()[-2:])
+                log = log.replace("done: 180 min", f"done: {duration} min").replace("10800.0", f"{duration * 60}.0")
+                old_dir = self.root / f"old-{duration}"
+                old = run(old_dir, "a", identity=identity, log=log)
+                (old_dir / "report.json").write_text(json.dumps(old))
+                final = minute(duration, 0.5, 300 + duration)
+                changed = final.replace("mean 1.50 s", "mean 3.00 s").replace("now 0.1 s", "now 0.2 s")
+                directory = self.root / f"new-{duration}"
+                run(directory, "b", identity=identity, log=log.replace(final, changed))
+                result, data, text = self.cli(directory, old_dir)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                for metric, baseline, current in (("final_lag_mean_s", 1.5, 3), ("backlog_s", 0.1, 0.2)):
+                    delta = data["comparison"]["deltas"][metric]
+                    self.assertEqual(delta, {"baseline": baseline, "current": current, "delta": current - baseline, "percent": 100})
+                    self.assertTrue(any(w.startswith(metric + " ") for w in data["comparison"]["warnings"]))
+                    self.assertIn(metric, text)
+
     def test_missing_measurements_are_null_and_never_invented_zeroes(self):
         log = "\n".join([minute(1, 0.5, -1, lag="no reports").replace(
             "1.00–2.00 s, mean 1.50 s over 10", "no reports")] + LOG.splitlines()[-2:])
