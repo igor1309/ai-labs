@@ -37,7 +37,8 @@ public final class AudelinMenu {
     public private(set) var panelState = PanelState(recording: .off, log: .empty)
     private(set) var panelPresence = PanelPresence()
     public private(set) var summarySettings: AudelinSettings?
-    private var chooseFolder: () async -> URL? = { nil }
+    private var chooseFolder: () async throws -> URL? = { nil }
+    private var pickerFailure: String?
     private var summaries: AudelinSummaries?
     private var presentSettings: () -> Void = {}
     private let presentPanel: (Bool) -> Void
@@ -140,7 +141,7 @@ public final class AudelinMenu {
         }
     }
 
-    func installFolderPicker(_ choose: @escaping () async -> URL?) { chooseFolder = choose }
+    func installFolderPicker(_ choose: @escaping () async throws -> URL?) { chooseFolder = choose }
     func reserveCallsFolder() async -> Bool { await reserveStorage() }
     func releaseCallsFolder() async { await releaseStorage() }
 
@@ -154,6 +155,7 @@ public final class AudelinMenu {
                       engines: [.init(id: "parakeet", name: "Parakeet v3", note: "Локальное распознавание", availability: "", size: "")],
                       selectedEngine: "parakeet", explainKeys: "", selectedTab: summarySettings?.selectedTab ?? .recording,
                       callNotes: summarySettings?.notes ?? .loading("Загружаем настройки…"))
+        if let pickerFailure, case .idle = result.folder.status { result.folder.status = .pickerFailed(reason: pickerFailure) }
         if let recordings = calls?.recordingsState { applyFolderMove(recordings, to: &result) }
         return result
     }
@@ -161,7 +163,14 @@ public final class AudelinMenu {
         guard !quitting else { return }
         switch event {
         case .changeFolder:
-            if let destination = await chooseFolder() { calls?.sendRecordings(.chooseFolder(destination)) }
+            sink.write(.init(category: .menu, message: "folder picker requested"))
+            pickerFailure = nil
+            do {
+                if let destination = try await chooseFolder() { calls?.sendRecordings(.chooseFolder(destination)) }
+            } catch {
+                sink.write(.init(category: .menu, message: "folder picker failed", error: String(describing: error)))
+                pickerFailure = "Окно выбора папки не появилось. Попробуйте ещё раз; если не поможет — перезапустите Audelin."
+            }
         case .confirmMove: calls?.sendRecordings(.confirmMove)
         case .retryMove: calls?.sendRecordings(.retryMove)
         case .cancelMove: calls?.sendRecordings(.cancelMove)
