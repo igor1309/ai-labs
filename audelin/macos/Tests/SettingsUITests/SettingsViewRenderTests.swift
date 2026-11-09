@@ -25,6 +25,42 @@ struct SettingsViewRenderTests {
         try Offscreen.save(image, "settings-scroll-\(scheme == .dark ? "dark" : "light")")
     }
 
+    @Test(arguments: [SettingsState.release, SettingsState.duringRecording])
+    func reportsPageHeightRatherThanTheOversizedViewport(state: SettingsState) {
+        var heights: [CGFloat] = []
+        let host = Offscreen.host(
+            SettingsScrollView(state: state, event: { _ in }, contentHeightChanged: { heights.append($0) }),
+            size: CGSize(width: 620, height: 900), scheme: .light
+        )
+        host.layoutSubtreeIfNeeded()
+        RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.1))
+        #expect(heights.last != nil)
+        if let height = heights.last {
+            #expect(height > 300)
+            #expect(height < 650)
+        }
+    }
+
+    @Test func reportsNewHeightWhenSwitchingToAShorterPage() throws {
+        var heights: [CGFloat] = []
+        let report: (CGFloat) -> Void = { heights.append($0) }
+        let host = Offscreen.host(
+            SettingsScrollView(state: .release, event: { _ in }, contentHeightChanged: report),
+            size: CGSize(width: 620, height: 900), scheme: .light
+        )
+        RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.1))
+        let recordingHeight = try #require(heights.last)
+        var loading = SettingsState.release
+        loading.selectedTab = .callNotes
+        loading.callNotes = .loading("Загружаем настройки…")
+        host.rootView = SettingsScrollView(state: loading, event: { _ in }, contentHeightChanged: report)
+        host.layoutSubtreeIfNeeded()
+        RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.1))
+        let loadingHeight = try #require(heights.last)
+        #expect(loadingHeight < recordingHeight)
+        #expect(loadingHeight > 70)
+    }
+
     @Test nonisolated func exportRegistryContainsExactlyTheRequiredStates() {
         let required: Set<String> = [
             "release", "debug", "confirm-move", "moving", "move-failed", "during-recording",

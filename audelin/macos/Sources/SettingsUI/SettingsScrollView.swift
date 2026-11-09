@@ -6,12 +6,17 @@ public struct SettingsScrollView: View {
     private let state: SettingsState
     private let event: (SettingsEvent) -> Void
     private let config: SettingsConfig
+    private let contentHeightChanged: (CGFloat) -> Void
+    @State private var tabsHeight: CGFloat = 0
+    @State private var pageHeight: CGFloat = 0
 
     public init(state: SettingsState, event: @escaping (SettingsEvent) -> Void,
-                config: SettingsConfig = .glassLedger) {
+                config: SettingsConfig = .glassLedger,
+                contentHeightChanged: @escaping (CGFloat) -> Void = { _ in }) {
         self.state = state
         self.event = event
         self.config = config
+        self.contentHeightChanged = contentHeightChanged
     }
 
     public var body: some View {
@@ -23,6 +28,7 @@ public struct SettingsScrollView: View {
                 .padding(.horizontal, tokens.space24)
                 .padding(.top, tokens.space24)
                 .padding(.bottom, tokens.space16)
+                .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { tabsHeight = $0 }
             ScrollView(.vertical) {
                 VStack(alignment: .leading, spacing: tokens.space16) {
                     content.page
@@ -30,10 +36,14 @@ public struct SettingsScrollView: View {
                 .padding(.horizontal, tokens.space24)
                 .padding(.bottom, tokens.space24)
                 .frame(width: config.windowWidth, alignment: .topLeading)
+                .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { pageHeight = $0 }
             }
         }
         .frame(width: config.windowWidth)
         .background(tokens.win)
+        .onChange(of: tabsHeight + pageHeight) { _, height in
+            if tabsHeight > 0, pageHeight > 0 { contentHeightChanged(height) }
+        }
         .overlay(alignment: .top) {
             if state.selectedTab == .recording, let confirm = state.moveConfirm {
                 content.moveSheet(confirm)

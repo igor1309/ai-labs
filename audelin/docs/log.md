@@ -2,6 +2,7 @@
 
 ## 2026-11-09
 
+- Settings fits the selected page instead of leaving a large blank area below recording controls; longer pages scroll within the screen (LAB-1109).
 - Call-notes service pickers show the selected service and native popup arrows for both primary and fallback services (LAB-1111).
 - Call notes find Claude automatically in PATH and standard installation folders, including native installs; an absolute path can still select a specific installation (LAB-1110).
 
