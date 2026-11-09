@@ -287,6 +287,26 @@ class NightlyReportTests(unittest.TestCase):
         self.assertEqual(result.returncode, 1)
         self.assertIn("cannot parse run evidence", text)
 
+    def test_malformed_historical_sample_rows_do_not_block_current_reports(self):
+        old_dir, new_dir = self.root / "old", self.root / "new"
+        old = run(old_dir, "a")
+        run(new_dir, "b")
+        for field in ("at", "samples"):
+            for malformed in (None, [], {"1": None}, {"1": []},
+                              {"1": {"footprint_mib": "unknown"}},
+                              {"1": {"footprint_mib": True}}):
+                with self.subTest(field=field, malformed=malformed):
+                    previous = copy.deepcopy(old)
+                    previous["endurance"][field] = malformed
+                    content = json.dumps(previous)
+                    (old_dir / "report.json").write_text(content)
+                    result, data, text = self.cli(new_dir, old_dir)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertTrue(data["valid"])
+                    self.assertFalse(data["comparison"]["deltas"])
+                    self.assertIn("Not compared", text)
+                    self.assertEqual((old_dir / "report.json").read_text(), content)
+
     def test_workload_duration_must_be_known_and_reached(self):
         for workload in ("AudelinBaseline --speech mine.wav", "AudelinBaseline --minutes", "AudelinBaseline --minutes nope",
                          "AudelinBaseline --minutes 0", "AudelinBaseline --minutes 181"):

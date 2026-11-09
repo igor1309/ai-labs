@@ -247,9 +247,17 @@ def eligible(run):
     if not isinstance(evidence, dict) or not isinstance(run.get("identity"), dict):
         return False
     try:
+        values = list(metrics(run).values())
+        # Markdown consumes historical rows independently of summary metrics.
+        # Invalid historical evidence must never prevent a current report.
+        for field in ("at", "samples"):
+            rows = evidence.get(field, {})
+            if not isinstance(rows, dict) or any(not isinstance(row, dict) for row in rows.values()):
+                return False
+            values.extend(value for row in rows.values() for value in row.values())
         if any(value is not None and (isinstance(value, bool) or not isinstance(value, (int, float))
                                      or not math.isfinite(value) or value < 0)
-               for value in metrics(run).values()):
+               for value in values):
             return False
     except (AttributeError, TypeError, ValueError, OverflowError):
         return False
