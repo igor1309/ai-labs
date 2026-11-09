@@ -28,7 +28,9 @@ while (($#)); do
 done
 [[ -n "$out" ]] || usage
 [[ "$minutes" =~ ^[1-9][0-9]*$ ]] || usage
-mkdir -p "$out"
+# Never overwrite an earlier run, including an output path resolving through latest.
+mkdir -p "$(dirname "$out")"
+mkdir "$out" || { echo "nightly requires a fresh output directory: $out" >&2; exit 1; }
 out="$(cd "$out" && pwd)"
 history="${history:-$(dirname "$out")}"
 mkdir -p "$history"

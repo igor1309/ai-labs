@@ -19,6 +19,9 @@ sample plus the convenient minute 1/30/90/180 subset. Read the JSON for numbers
 and the Markdown for evidence failures, unavailable metrics and comparisons.
 Do not copy private audio or raw private call data into issues or the repository.
 
+Each collection requires a fresh output directory; existing paths (including
+`latest`) are rejected before any evidence is overwritten.
+
 The Mac's history `latest` points to the previous successful, evidence-validated
 run. It advances only after both collection and reporting succeed. A done line
 alone is insufficient: the intended `--minutes` duration must be reached, one

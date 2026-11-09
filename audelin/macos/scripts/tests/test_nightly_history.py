@@ -87,3 +87,18 @@ xcrun() { if [[ "$2" == record && "$CAPTURE_FAIL" == 1 ]]; then return 1; fi; }
                         previous_report = (out / "report.json").read_text()
                     self.assertEqual((history / "latest").resolve(), previous)
                     self.assertEqual((history / "latest/report.json").read_text(), previous_report)
+
+            # A failed retry through either spelling must preserve the target,
+            # not merely leave the latest symlink in place.
+            saved = {path.name: path.read_bytes() for path in previous.iterdir() if path.is_file()}
+            log.write_text(LOG.replace("call 10800.0 s", "call unreadable"))
+            env.update(STUB_STATUS="9")
+            for reused in (previous, history / "latest", previous / "."):
+                with self.subTest(reused=str(reused)):
+                    result = subprocess.run(["/bin/bash", str(scripts / "nightly.sh"), "--out", str(reused),
+                                             "--history", str(history)], env=env, text=True,
+                                            capture_output=True, timeout=20)
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn("fresh output directory", result.stderr)
+                    self.assertEqual((history / "latest").resolve(), previous)
+                    self.assertEqual({path.name: path.read_bytes() for path in previous.iterdir() if path.is_file()}, saved)
