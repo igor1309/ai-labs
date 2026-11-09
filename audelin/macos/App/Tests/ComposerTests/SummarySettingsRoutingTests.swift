@@ -82,7 +82,7 @@ struct SummarySettingsRoutingTests {
     try await ComposeFixture.make(root: root, preferences: Preferences(automaticRecording: false, liveText: false, callsFolder: root), summaryRuntime: settingsRuntime(http))
 }
 private func settingsRuntime(_ http: SettingsNoHTTP) -> Runtime {
-    Runtime(process: SettingsNoProcess(), http: http, credential: { _ in nil }, deadline: { Issue.record("validation must not start generation"); throw Failure.timeout })
+    Runtime(process: SettingsNoProcess(), http: http, credential: { _ in nil }, resolveProgram: { $0 }, deadline: { Issue.record("validation must not start generation"); throw Failure.timeout })
 }
 @MainActor private func editSlots(_ menu: AudelinMenu) async throws {
     for (slot, model, endpoint) in [(SettingsState.NotesRuntime.Slot.primary, "primary-distinct", "http://127.0.0.1:8181/primary"), (.fallback, "fallback-distinct", "http://localhost:9191/fallback")] {
@@ -94,7 +94,7 @@ private func settingsRuntime(_ http: SettingsNoHTTP) -> Runtime {
 }
 private func expectedNotes() -> NotesPreferences {
     .init(enabled: true, speakers: true,
-          primary: .init(kind: "compatibleAPI", model: "primary-distinct", executable: "/opt/homebrew/bin/claude", endpoint: "http://127.0.0.1:8181/primary", credentialVariable: ""),
+          primary: .init(kind: "compatibleAPI", model: "primary-distinct", executable: "", endpoint: "http://127.0.0.1:8181/primary", credentialVariable: ""),
           fallback: .init(kind: "compatibleAPI", model: "fallback-distinct", executable: "", endpoint: "http://localhost:9191/fallback", credentialVariable: ""))
 }
 @MainActor private func loaded(_ menu: AudelinMenu, where matches: (SettingsState.NotesDraft) -> Bool = { _ in true }) async throws -> SettingsState.NotesDraft {

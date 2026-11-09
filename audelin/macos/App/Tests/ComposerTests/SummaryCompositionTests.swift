@@ -12,7 +12,7 @@ struct SummaryCompositionTests {
     @Test func defaultOffFinishesTheCallWithoutClaimingOrRequestingNotes() async throws {
         try await withComposeFolder { root in
             let http = ControlledHTTP(hold: false)
-            let runtime = Runtime(process: NoProcess(), http: http, credential: { _ in nil }, deadline: { try await waitForCancellation() })
+            let runtime = Runtime(process: NoProcess(), http: http, credential: { _ in nil }, resolveProgram: { $0 }, deadline: { try await waitForCancellation() })
             let rig = try await ComposeFixture.make(root: root,
                 preferences: Preferences(automaticRecording: false, callsFolder: root), summaryRuntime: runtime)
             do {
@@ -162,7 +162,7 @@ struct SummaryCompositionTests {
                                terminate: @escaping @Sendable () async -> Void = {}) async throws -> ComposeFixture {
     let slot = NotesPreferences.Runtime(kind: "compatibleAPI", model: "fixture", executable: "", endpoint: "http://127.0.0.1/v1", credentialVariable: "")
     let preferences = Preferences(notes: .init(enabled: true, speakers: speakers, primary: slot, fallback: slot), automaticRecording: false, callsFolder: root)
-    let runtime = Runtime(process: NoProcess(), http: http, credential: { _ in nil }, deadline: { try await waitForCancellation() })
+    let runtime = Runtime(process: NoProcess(), http: http, credential: { _ in nil }, resolveProgram: { $0 }, deadline: { try await waitForCancellation() })
     return try await ComposeFixture.make(root: root, preferences: preferences, summaryRuntime: runtime,
                                          configure: { $0.transcripts = storage }, terminate: terminate)
 }

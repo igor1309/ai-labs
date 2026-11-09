@@ -9,6 +9,29 @@ import Testing
 @testable import Composer
 
 @Suite struct SummarySettingsPresentationTests {
+    @Test func newPreferencesUseAutomaticDiscoveryWithRussianGuidance() throws {
+        let notes = NotesPreferences()
+        #expect(notes.primary.kind == "claudeCLI" && notes.primary.executable.isEmpty)
+        let config = try settingsConfiguration(notes)
+        #expect(SummaryAvailability.configurationIssues(config).isEmpty)
+        let state = settingsReducer().reduce(.init(phase: .loading), .loaded(config)).0
+        let view = try loadedPresentation(state)
+        let field = try #require(view.runtimes[0].fields.first { $0.id == .executable })
+        #expect(field.value.isEmpty && !field.isInvalid)
+        #expect(field.placeholder == "Автоматически найти Claude")
+        #expect(view.runtimes[0].disclosure.contains("Пустое поле «Программа» — автоматический поиск Claude"))
+        #expect(settingsIssueMessage(.init(slot: .primary, field: .executable)).contains("оставьте поле пустым для автоматического поиска или укажите абсолютный путь"))
+    }
+
+    @Test func legacySavedDefaultRemainsAvailableToRuntimeRecovery() throws {
+        var notes = NotesPreferences()
+        notes.primary.executable = "/opt/homebrew/bin/claude"
+        let saved = try JSONEncoder().encode(notes)
+        let config = try settingsConfiguration(JSONDecoder().decode(NotesPreferences.self, from: saved))
+        #expect(config.primary.executable == "/opt/homebrew/bin/claude")
+        #expect(storedConfiguration(config) == notes)
+    }
+
     @Test func bothSlotsDiscloseRecipientsAndCostsIncludingRemoteFallback() {
         let local = SummarySettings.Configuration.Runtime(kind: .compatibleAPI, model: "local", executable: "", endpoint: "http://127.0.0.1:8080/v1", credentialVariable: "")
         let remote = SummarySettings.Configuration.Runtime(kind: .compatibleAPI, model: "hosted", executable: "", endpoint: "https://recipient.example/v1", credentialVariable: "VARIABLE_NAME")
@@ -230,7 +253,7 @@ private final class ProviderSpy: ProcessRunning, HTTPRequesting, Sendable {
     func runtime() -> SummaryRuntime.Runtime {
         .init(process: self, http: self, credential: { name in
             self.calls.withLock { $0.append("credential: " + name) }; return nil
-        }, deadline: { throw SummaryRuntime.Failure.timeout })
+        }, resolveProgram: { $0 }, deadline: { throw SummaryRuntime.Failure.timeout })
     }
     func run(program: String, arguments: [String], input: Data) throws -> ProcessOutput {
         calls.withLock { $0.append("process: " + program) }; throw SummaryRuntime.Failure.unavailable

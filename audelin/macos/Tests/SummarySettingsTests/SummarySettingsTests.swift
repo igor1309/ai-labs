@@ -128,14 +128,19 @@ private struct AvailabilitySpy: Availability {
 }
 
 @Suite struct SummarySettingsEditTests {
-    @Test func selectingCLIDiscardsHiddenAPIFields() {
+    @Test(arguments: [Slot.primary, .fallback])
+    func selectingCLIUsesDiscoveryAndDiscardsHiddenAPIFields(slot: Slot) {
         var given = makeState()
-        given.draft?.fallback.endpoint = "https://user:secret@example.com/v1"
-        given.draft?.fallback.credentialVariable = "secret=value"
-        let result = makeReducer().reduce(given, .selectKind(.fallback, .claudeCLI)).0
-        #expect(result.draft?.fallback.endpoint == "")
-        #expect(result.draft?.fallback.credentialVariable == "")
-        #expect(result.runtimes[1].fields.map(\.field) == [.model, .executable])
+        let api = Configuration.Runtime(kind: .compatibleAPI, model: "api", executable: "/stale/cli", endpoint: "https://user:secret@example.com/v1", credentialVariable: "secret=value")
+        if slot == .primary { given.draft?.primary = api } else { given.draft?.fallback = api }
+        let (result, effect) = makeReducer().reduce(given, .selectKind(slot, .claudeCLI))
+        let runtime = slot == .primary ? result.draft?.primary : result.draft?.fallback
+        #expect(runtime?.endpoint == "")
+        #expect(runtime?.credentialVariable == "")
+        #expect(runtime?.executable == "")
+        #expect(runtime?.model == "sonnet" && runtime?.kind == .claudeCLI)
+        #expect(result.runtimes[slot == .primary ? 0 : 1].fields.map(\.field) == [.model, .executable])
+        #expect(effect == nil)
     }
 
     @Test func fieldEventsEditBothSlotsWithoutLosingEarlierEdits() {
