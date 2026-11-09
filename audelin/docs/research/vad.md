@@ -34,9 +34,9 @@ Each engine at its sweep setting with fewest dropped words (threshold 0.3, paddi
 
 | Criterion | FluidAudio mic / call | Silero mic / call | Pass? |
 |---|---|---|---|
-| 1 Missed speech (vs Parakeet words, overstated) | 6.2 % / 6.7 % | 8.8 % / 9.4 % | waits for labels |
-| 2 Recognised words dropped (overstated) | 2.0 % / 0.9 % | 2.8 % / 1.4 % | waits for labels |
-| 3 False speech (frames > 0.5 s from any word, overstated) | 18.1 % / 30.6 % | 10.5 % / 21.5 % | waits for labels |
+| 1 Missed speech (vs Parakeet words, overstated) | 6.2 % / 6.7 % | 8.8 % / 9.4 % | not settled |
+| 2 Recognised words dropped (overstated) | 2.0 % / 0.9 % | 2.8 % / 1.4 % | not settled |
+| 3 False speech (frames > 0.5 s from any word, overstated) | 18.1 % / 30.6 % | 10.5 % / 21.5 % | not settled |
 | 4 Far-end-only time marked speech on the microphone | 12.8 % | 1.9 % | Silero far better |
 | 5 ΔWER, gated vs fixed 14 s chunks | −0.1 / +0.5 pt | −0.3 / +2.3 pt | FluidAudio passes; Silero fails on call |
 | 6 Parakeet audio saved | 30 % / 31 % | 35 % / 36 % | both pass |
