@@ -211,6 +211,9 @@ extension SettingsView {
 
         case .recording:
             dataText("идёт запись — папку можно сменить после звонка", tokens.typeSmall, tokens.warn)
+
+        case let .pickerFailed(reason):
+            errorBanner("Не удалось открыть выбор папки", reason)
         }
     }
 
@@ -464,6 +467,9 @@ private extension SettingsState.Folder.Status {
 
     var allowsChange: Bool {
 
-        if case .idle = self { true } else { false }
+        switch self {
+        case .idle, .pickerFailed: true
+        case .moving, .failed, .recording: false
+        }
     }
 }
