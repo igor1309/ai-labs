@@ -4,7 +4,7 @@ extension SettingsState {
 
     static let summaryPreviews: [(name: String, state: SettingsState)] = [
         "off", "on", "local", "invalid", "unavailable", "validating", "saving",
-        "save-failed", "saved", "loading", "load-failed",
+        "save-failed", "saved", "loading", "load-failed", "no-fallback",
     ].map { name in
         var state = release
         state.selectedTab = .callNotes
@@ -26,7 +26,7 @@ extension SettingsState {
                       fields: [.init(id: .model, label: "Модель", value: "sonnet"),
                                .init(id: .executable, label: "Программа", value: "claude")],
                       disclosure: "Квота подписки Claude · транскрипт → Anthropic."),
-                apiPreview(.fallback, title: "Резервный сервис", local: false),
+                apiPreview(.fallback, title: "Резервный сервис · настроен", local: false),
             ],
             disclosure: "Оба сервиса могут получить полный транскрипт. Определение имён — дополнительный запрос.\nТаймаут тоже может расходовать квоту или деньги.",
             status: "Есть несохранённые изменения",
@@ -34,10 +34,15 @@ extension SettingsState {
             save: .init(id: .save, title: "Сохранить")
         )
         switch name {
+        case "no-fallback":
+            draft.runtimes[1] = .init(id: .fallback, title: "Резервный сервис · не настроен", kind: .unconfigured,
+                                      options: [.init(id: .unconfigured, title: "Не настроен (необязательно)")] + notesOptions,
+                                      fields: [], disclosure: "Резервный сервис не настроен. При ошибке основного сервиса итоги не будут готовы; расшифровка и аудио сохранятся.")
+            draft.disclosure = "Основной сервис может получить полный транскрипт. Определение имён — дополнительный запрос."
         case "off": draft.status = "Автосводка выключена"
         case "local":
             draft.runtimes = [apiPreview(.primary, title: "Основной сервис", local: true),
-                              apiPreview(.fallback, title: "Резервный сервис", local: true)]
+                              apiPreview(.fallback, title: "Резервный сервис · настроен", local: true)]
             draft.disclosure = "Оба адреса — на этом Mac. Поведение локального сервера зависит от его настроек."
         case "invalid":
             draft.runtimes[1].fields[0].value = ""
@@ -74,7 +79,7 @@ extension SettingsState {
     ]
 
     private static func apiPreview(_ slot: NotesRuntime.Slot, title: String, local: Bool) -> NotesRuntime {
-        .init(id: slot, title: title, kind: .compatibleAPI, options: notesOptions,
+        .init(id: slot, title: title, kind: .compatibleAPI, options: (slot == .fallback ? [.init(id: .unconfigured, title: "Не настроен (необязательно)")] : []) + notesOptions,
               fields: [
                 .init(id: .model, label: "Модель", value: local ? "local-model" : "gpt-4.1-mini"),
                 .init(id: .endpoint, label: "Адрес API", value: local ? "http://127.0.0.1:8080/v1" : "https://api.openai.com/v1"),
@@ -97,3 +102,5 @@ extension SettingsState {
 #Preview("summaries-saved") { SettingsPreview(state: SettingsState.summaryPreviews[8].state, scheme: .light) }
 #Preview("summaries-loading") { SettingsPreview(state: SettingsState.summaryPreviews[9].state, scheme: .light) }
 #Preview("summaries-load-failed") { SettingsPreview(state: SettingsState.summaryPreviews[10].state, scheme: .light) }
+
+#Preview("summaries-no-fallback") { SettingsPreview(state: SettingsState.summaryPreviews[11].state, scheme: .light) }

@@ -52,6 +52,28 @@ struct SummarySettingsRoutingTests {
         }
     }
 
+    @Test func menuClearsFallbackAndSavesWithoutCredentials() async throws {
+        try await withComposeFolder { root in
+            let transport = SettingsNoHTTP(), rig = try await settingsFixture(root, transport)
+            do {
+                let initial = try await loaded(rig.menu)
+                #expect(initial.runtimes[1].kind == .unconfigured)
+                await rig.menu.sendSettings(.setAutomaticNotes(true))
+                try await editSlots(rig.menu)
+                await rig.menu.sendSettings(.selectNotesRuntime(.fallback, .unconfigured))
+                let cleared = try await loaded(rig.menu) { $0.automatic && $0.runtimes[1].kind == .unconfigured }
+                #expect(cleared.runtimes[1].fields.isEmpty && cleared.save.isEnabled)
+                await rig.menu.sendSettings(.notesAction(.save))
+                _ = try await loaded(rig.menu) { $0.status == "Настройки сохранены" }
+                let notes = PreferencesStore(fileURL: root.appendingPathComponent("preferences.json")).read().notes
+                #expect(notes.enabled && notes.fallback == nil)
+                #expect(notes.primary.model == "primary-distinct")
+                #expect(await transport.requests == 0)
+                await rig.finish()
+            } catch { await rig.finish(); throw error }
+        }
+    }
+
     @Test func invalidFallbackModelDisablesSaveAndIdentifiesOnlyThatField() async throws {
         try await withComposeFolder { root in
             let transport = SettingsNoHTTP(), rig = try await settingsFixture(root, transport)

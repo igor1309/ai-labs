@@ -21,8 +21,8 @@ public struct Job: Equatable, Sendable {
     public var entries: [Entry]
     public var speakers: Bool
     public var primary: Runtime
-    public var fallback: Runtime
-    public init(id: String, call: String, input: String, entries: [Entry], speakers: Bool, primary: Runtime, fallback: Runtime) {
+    public var fallback: Runtime?
+    public init(id: String, call: String, input: String, entries: [Entry], speakers: Bool, primary: Runtime, fallback: Runtime? = nil) {
         self.id = id; self.call = call; self.input = input; self.entries = entries
         self.speakers = speakers; self.primary = primary; self.fallback = fallback
     }

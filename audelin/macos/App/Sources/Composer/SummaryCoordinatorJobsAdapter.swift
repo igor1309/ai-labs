@@ -28,7 +28,7 @@ import SummaryJobs
         }
         let job = Job(id: UUID().uuidString, call: submission.call, input: submission.input,
                       entries: submission.entries.map { .init(label: $0.label, time: $0.time, text: $0.text) },
-                      speakers: config.speakers, primary: runtime(config.primary), fallback: runtime(config.fallback))
+                      speakers: config.speakers, primary: runtime(config.primary), fallback: config.fallback.map(runtime))
         let model = install(.init(), call: submission.call)
         guard config.enabled else { return false }
         model.send(.offer(job, enabled: config.enabled, finalWrite: submission.finalWrite, usable: submission.usable))
