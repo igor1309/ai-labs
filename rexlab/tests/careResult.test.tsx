@@ -96,7 +96,7 @@ describe("a finished visit", () => {
     await playVisit(user, clock, refusalsFor(7));
 
     expect(celebrations()).toEqual(["NEW BEST SCORE"]);
-    expect([screen.getByLabelText("BEST SCORE").querySelector(".best-score-beaten")?.textContent, bestShown()]).toEqual(["6", "7/8"]);
+    expect([screen.getByLabelText("BEST SCORE").querySelector(".best-score-beaten")?.textContent, bestShown()]).toEqual(["6", "7"]);
     expect(storedCare(storage)).toMatchObject({ bestScore: 7, visitsFinished: 3 });
   });
 
@@ -108,7 +108,7 @@ describe("a finished visit", () => {
 
     expect(document.querySelector(".stage")?.hasAttribute("data-leaving")).toBe(true);
     act(() => clock.settle());
-    expect([scoreShown(), bestShown(), celebrations()]).toEqual([`${score}/8`, "7/8", []]);
+    expect([scoreShown(), bestShown(), celebrations()]).toEqual([`${score}/8`, "7", []]);
     expect(storedCare(storage)).toMatchObject({ bestScore: 7 });
   });
 
@@ -353,12 +353,12 @@ describe("care progress", () => {
 
     await playVisit(first.user, first.clock, refusalsFor(6));
 
-    expect([celebrations(), bestShown()]).toEqual([["NEW BEST SCORE"], "6/8"]);
+    expect([celebrations(), bestShown()]).toEqual([["NEW BEST SCORE"], "6"]);
     await first.user.click(button("FRIENDS"));
     expect(friendCards().map((card) => card.getAttribute("aria-label"))).toEqual(["Tyrannosaurus"]);
     await first.user.click(button("NEW VISITOR"));
     await playVisit(first.user, first.clock, refusalsFor(6));
-    expect([celebrations(), bestShown()]).toEqual([[], "6/8"]);
+    expect([celebrations(), bestShown()]).toEqual([[], "6"]);
     first.unmount();
 
     const { user } = openCareApp({ storage });
