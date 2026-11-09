@@ -20,8 +20,10 @@ struct TranscriptLogLoadTests {
 
         // The quickest of three runs each, so a busy machine slows neither side alone.
         var early = Cost.slowest, late = Cost.slowest
-        for _ in 0..<3 {
-            early = early.quicker(cost(entries: 20))
+        for _ in 0..<3 { early = early.quicker(cost(entries: 20)) }
+        // Hosting the long log is the cost of this test. `late` only gets
+        // quicker, so more runs cannot change a pass; a slow one earns the rest.
+        for _ in 0..<3 where late.update / early.update > 3 {
             late = late.quicker(cost(entries: entries))
         }
         let line = report("\(early.line) at 20 entries, \(late.line) at \(entries) entries")
