@@ -1,0 +1,107 @@
+---
+date: 2026-11-09
+model: claude-opus-5-5
+description: "How Audelin names remote speakers: call observation, timing-based naming, revisioned identity in the single transcript file"
+---
+
+# ADR-002: Naming remote speakers
+
+Status: accepted by the owner on LAB-1121 (2026-11-09). Built by LAB-1123 (Zoom),
+reused by LAB-1124 (Telemost) and LAB-1125 (Google Meet).
+
+## Decisions (owner, 2026-11-09)
+
+1. **Timing matching.** A roster says who is in the call, not which voice is whose.
+   Names come from the call app's active-speaker intervals lined up against the
+   speaker turns diarized on the call track (LAB-1103).
+2. **Names show live,** when the evidence supports them. Live never means every
+   new word gets a reliable name at once.
+3. **One transcript file** holds the names; no sidecar.
+
+## Components
+
+Each owns its types and the interfaces it depends on (`ARCHITECTURE.md`).
+
+- **Call observation** — one call's roster and speaking activity, normalised from an
+  adapter. Inputs carry session epoch, source, sequence, participant ID (session-scoped,
+  never the display name), display name, local or remote, observation time and its
+  uncertainty. It publishes capabilities: roster, activity, complete or not, healthy or
+  stale. AX, native-messaging and DOM structures stay inside the adapters
+  (`ZoomAccessibility`, later `BrowserBridge`).
+- **SpeakerNaming** (`macos/Sources/SpeakerNaming`, built) — a pure, replayable state
+  machine. Input: roster, activity intervals valid through a watermark, and diarized turns
+  (`id`, cluster, start, end, overlapped) where a turn's revision replaces the earlier one.
+  Output per cluster: unknown, candidate, confirmed or disputed. A cluster split, merge or
+  reset drops its assignment; names never carry over by cluster number.
+- **Presentation** — accepts text, diarization and identity revisions independently,
+  keeps row IDs, selection and scroll anchor when a name changes, and draws the caption
+  from LAB-1126 only for confirmed names.
+- **Root** picks the adapter from the call app `CallAppProcesses` detects and wires
+  observation → naming → presentation and the transcript writer. Deciding which meeting
+  is authoritative, reconnects and conflicts are state machines, not composition.
+
+## Time
+
+The call clock is the captured audio's sample position mapped to the host monotonic clock,
+kept across resampling, interruptions and capture restarts; never derived from when
+recognition finishes. AX observations are stamped on receipt with their polling and
+delivery uncertainty. Browser events get a clock offset from timestamped ping/reply,
+recalibrated after reconnect or sleep. The app's own indicator lag is measured per adapter
+against captured speech and excluded as edge uncertainty — never tuned to whichever name
+matches best. History is kept as long as diarization revision lag plus delivery lag plus a
+margin; events older than that cannot rename.
+
+## Matching policy
+
+Evidence is **exclusive voiced overlap**: time inside a non-overlapped turn where exactly one
+remote participant was shown speaking, edges trimmed by uncertainty, nothing after the
+activity watermark, and each turn's influence capped. Local activity counts as a speaker, so
+echo and crosstalk are never evidence. Starting thresholds, unvalidated until recorded calls
+recalibrate them (`Policy`):
+
+| Parameter | Start |
+|---|---|
+| evidence window | 30 s |
+| candidate | 1 s |
+| confirmed | ≥ 4 s over ≥ 2 turns, ≥ 85 % support, ≥ 25 pp lead |
+| disputed | ≥ 2 s of another participant over ≥ 2 turns |
+| per-turn cap | 3 s |
+
+States: unknown → candidate → confirmed; contradiction → disputed (shown as `Speaker N`);
+disputed → confirmed only on evidence after the dispute, so a name never flips straight to
+another. Candidate names stay internal. A stale source stops new evidence but keeps earlier
+names. A rename changes the text, not the identity; a rejoin is a new epoch. There is no
+one-cluster-per-person rule. Mixed rows stay generic unless word timing justifies a split.
+`SpeakerIdentification`'s self-introductions are a separate evidence source, never a
+tie-breaker against timing.
+
+## Transcript file
+
+Markdown keeps stable generic speaker IDs on rows (`**Speaker s3** 00:01:12`) and one
+versioned metadata block after the transcript: `schemaVersion`, `callID`, snapshot revision,
+participants, speaker epochs, assignment states with evidence summaries, and per-row
+`{id, start, end, speakerID, diarizationRevision}`. A readable Speakers section shows the
+mapping in plain Markdown. `TranscriptFile` stays the only reader and writer; summaries use
+its decoded snapshot. Snapshots are published by same-directory temporary file → write →
+flush → close → atomic replace → directory sync, serialised by revision so a late save never
+replaces a newer one. On failure the last complete snapshot stays, the panel shows unsaved
+state and the latest snapshot is retried. Shutdown drains naming, writes, closes, then
+submits summaries.
+
+## Failure
+
+No Accessibility permission, a missing extension, an unknown AX or DOM layout, a lost bridge
+or an unbound meeting disables new naming evidence only — recording and transcription go on,
+rows keep generic labels, and the app shows a specific recoverable state. Zoom asks for
+Accessibility only when the user turns naming on. Adapters tell "nobody speaking" apart from
+"cannot observe" through health and heartbeat.
+
+## Open
+
+- Whether Zoom exposes the speaking indicator through AX: probe
+  `docs/research/probes/zoom-ax.swift`, run during a real meeting. If it does not, Zoom gets
+  roster-only naming, safe only with one remote participant, a complete roster and the
+  captured audio bound to that meeting.
+- Live latency numbers wait for LAB-1103's measurements (first text, first name, correction
+  rate, time to stable identity; p50 and p95).
+- LAB-1128's survey of open-source recorders, folded in when it lands.
