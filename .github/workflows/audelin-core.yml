@@ -39,21 +39,26 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ~/Library/Application Support/FluidAudio/Models
-          key: audelin-models-${{ hashFiles('audelin/macos/Package.resolved') }}
+          key: audelin-models-${{ hashFiles('audelin/macos/Vendor/FluidAudio/Package.swift') }}
 
       # All three test packages build in one scratch directory with the same
-      # flags, so each module compiles once. The cache keeps FluidAudio, most of
-      # the compile: a checkout's new timestamps still rebuild our own sources.
+      # flags, so each module compiles once. FluidAudio is vendored, trimmed to
+      # the recognizers Audelin uses. A checkout gives files new timestamps, so
+      # the vendored files get one fixed time: the cache, keyed on their
+      # content, then keeps them compiled. Our own sources still rebuild.
       - name: Key the build cache
         id: build-key
         run: echo "swift=$(swift --version 2>&1 | shasum | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+
+      - name: Fix the vendored timestamps
+        run: find audelin/macos/Vendor -type f -exec touch -t 202001010000 {} +
 
       - name: Restore the build cache
         id: build-cache
         uses: actions/cache/restore@v6
         with:
           path: audelin/macos/.build
-          key: audelin-build-${{ steps.build-key.outputs.swift }}-${{ hashFiles('audelin/macos/Package.resolved', 'audelin/macos/App/Package.resolved', 'audelin/macos/PreviewApps/Package.resolved') }}
+          key: audelin-build-${{ steps.build-key.outputs.swift }}-${{ hashFiles('audelin/macos/Vendor/FluidAudio/**', 'audelin/macos/App/Package.resolved') }}
 
       # Compiling is bounded by the job; the main tests have a three-minute
       # limit that names unfinished tests when exceeded.

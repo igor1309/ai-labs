@@ -11,7 +11,7 @@ on:
       - "audelin/macos/App/**"
       - "audelin/macos/Sources/**"
       - "audelin/macos/Package.swift"
-      - "audelin/macos/Package.resolved"
+      - "audelin/macos/Vendor/**"
       - "audelin/macos/scripts/bundle.sh"
       - "audelin/macos/scripts/install.sh"
       - ".github/workflows/audelin-install.yml"
