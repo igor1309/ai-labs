@@ -71,7 +71,9 @@ final class WritingTranscript: SessionTranscriptFile {
             do {
                 let turns = try await CallDiarizer().turns(of: track)
                 let rows = state.entries.filter { $0.speaker != .mine }.map { (id: $0.text.id, start: $0.text.start, end: $0.text.end) }
-                LiveNameBoard.shared.confirm(AfterCallNames.names(rows: rows, turns: turns, board: board))
+                let confirmed = AfterCallNames.names(rows: rows, turns: turns, board: board)
+                LiveNameBoard.shared.confirm(confirmed)
+                await LiveNameBoard.shared.announce(confirmed)
                 try await save(state)
                 sink.write(.init(category: .session, message: "after-call names saved turns=\(turns.count)"))
             } catch {

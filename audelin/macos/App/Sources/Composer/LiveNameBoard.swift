@@ -23,6 +23,20 @@ final class LiveNameBoard: Sendable {
 
     private let names = Mutex(Names())
 
+    private struct Listener: Sendable { let deliver: @Sendable ([Int: String]) async -> Void }
+    private let listener = Mutex<Listener?>(nil)
+
+    /// The panel's reading model, told when the after-call pass confirms names.
+    func listen(_ deliver: @escaping @Sendable ([Int: String]) async -> Void) {
+
+        listener.withLock { $0 = Listener(deliver: deliver) }
+    }
+
+    func announce(_ confirmed: [Int: String]) async {
+
+        await listener.withLock { $0 }?.deliver(confirmed)
+    }
+
     func reset() { names.withLock { $0 = Names() } }
 
     func record(roster: [String], spoken: [(name: String, start: Double, end: Double?)], through: Double) {

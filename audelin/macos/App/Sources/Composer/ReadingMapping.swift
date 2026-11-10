@@ -112,7 +112,7 @@ private func panelEntry(_ entry: ReadingState.Entry, previous: inout String?) ->
     defer { previous = name }
     return .init(id: entry.id, time: entry.time, speaker: entry.speaker == .mine ? .me : .them,
                  settled: entry.settled, pending: entry.pending,
-                 label: label, labelIsTentative: label != nil)
+                 label: label, labelIsTentative: label != nil && !entry.nameConfirmed)
 }
 
 private func panelHeld(_ held: ReadingState.Held) -> PanelState.Held {

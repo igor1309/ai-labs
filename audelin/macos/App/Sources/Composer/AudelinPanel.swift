@@ -79,7 +79,8 @@ actor AudelinPanel {
 
         guard current?.id == id else { return }
         current = nil
-        publish(.init(recording: .off, log: .empty))
+        // The finished call stays readable, with its confirmed names, until the next recording.
+        publish(.init(recording: .off, log: state.log))
     }
 
     private func receive(_ state: ReadingState, id: UInt64) {
@@ -136,6 +137,7 @@ final class ReadingSubscription {
                 await presenter.show(state)
             }
         }
+        LiveNameBoard.shared.listen { names in await reading.send(.namesConfirmed(names)) }
         let names = self.names
         await names.start { await time.elapsed() }
         self.text = Task {
