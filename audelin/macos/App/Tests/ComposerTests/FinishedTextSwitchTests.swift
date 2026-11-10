@@ -2,7 +2,6 @@ import BlockingTestWork
 import CallText
 import Foundation
 import Testing
-import TranscriptFile
 @testable import Composer
 
 @Suite(.timeLimit(.minutes(1)))
@@ -36,7 +35,7 @@ struct FinishedTextSwitchTests {
 
         try await withComposeFolder { folder in
             let url = folder.appendingPathComponent("transcript.md")
-            let transcript = try await TranscriptFile(url: url)
+            let transcript = try await FileTranscriptStorage().open(at: url, sink: SilentTranscriptLog())
             do {
                 let speaker: CallState.Speaker = onCallSide ? .theirs : .mine
                 var statuses: [CallState.Status] = []
@@ -46,7 +45,7 @@ struct FinishedTextSwitchTests {
                     let entries = snapshot.entries.filter { $0.speaker == speaker }
                     #expect(entries.map(\.text) == [.init(id: 0, start: 0, end: 2, settled: "first last")])
                     #expect(entries.map(\.writtenLater) == [false])
-                    try await transcript.write(Transcript.segments(from: snapshot))
+                    try await transcript.write(snapshot)
                     #expect(try String(contentsOf: url, encoding: .utf8).contains("first last"))
                     final = snapshot
                 }
@@ -64,4 +63,8 @@ struct FinishedTextSwitchTests {
             }
         }
     }
+}
+
+private struct SilentTranscriptLog: LogSink {
+    func write(_ entry: LogEntry) {}
 }

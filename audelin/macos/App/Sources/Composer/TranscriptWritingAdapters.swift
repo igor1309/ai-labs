@@ -3,6 +3,7 @@ import Foundation
 import Session
 import Synchronization
 import TranscriptFile
+import TranscriptFormat
 import protocol TranscriptWriting.CallText
 import protocol TranscriptWriting.Transcript
 import protocol TranscriptWriting.FailureReport
@@ -34,29 +35,49 @@ struct TranscriptDestination: TranscriptWriting.Transcript {
     func write(_ state: CallState) async throws { try await file.write(state) }
 }
 
-final class WritingTranscript: SessionTranscriptFile {
+actor WritingTranscript: SessionTranscriptFile {
 
     let file: TranscriptFile
     let sink: any LogSink
-    private let last = Mutex<CallState?>(nil)
+    private let names: LiveNameBoard
+    private var format: TranscriptFormat
+    private var replaceNext = false
+    private var closed = false
+    private var last: CallState?
 
-    init(file: TranscriptFile, sink: any LogSink) { self.file = file; self.sink = sink }
+    init(file: TranscriptFile, format: TranscriptFormat, names: LiveNameBoard, sink: any LogSink) {
+        self.file = file; self.format = format; self.names = names; self.sink = sink
+    }
 
     /// Logs each save with the final count it wrote, so a reader of the log knows
     /// how many entries on disk will not change again.
     func write(_ state: CallState) async throws {
 
-        last.withLock { $0 = state }
+        guard !closed else { throw TranscriptFile.Failure.writingEnded }
+        last = state
         try await save(state)
     }
 
     private func save(_ state: CallState) async throws {
 
         let entries = state.entries, finalCount = state.finalCount
-        let names = LiveNameBoard.shared.snapshot()
-        try await file.write(count: entries.count, finalCount: finalCount, speakers: Composer.Transcript.speakers(names)) {
-            let entry = entries[$0]
-            return Composer.Transcript.segment(from: entry, speaker: names.rows[entry.text.id].flatMap { names.ids[$0] })
+        let names = names.snapshot()
+        let rendering: TranscriptFormat.Rendering
+        do {
+            rendering = try format.render(count: entries.count, finalCount: finalCount, speakers: Composer.Transcript.speakers(names)) {
+                let entry = entries[$0]
+                return Composer.Transcript.segment(from: entry, speaker: names.rows[entry.text.id].flatMap { names.ids[$0] })
+            }
+        } catch {
+            replaceNext = true
+            throw error
+        }
+        let replace = replaceNext
+        replaceNext = false
+        if replace {
+            try await file.replace(rendering.chunks, finalLength: rendering.finalLength)
+        } else {
+            try await file.write(rendering.chunks, finalLength: rendering.finalLength)
         }
         sink.write(.init(category: .session, message: "transcript saved finalCount=\(finalCount)"))
     }
@@ -65,20 +86,21 @@ final class WritingTranscript: SessionTranscriptFile {
     /// the file is sealed. A failed pass keeps the tentative names.
     func close() async {
 
-        let board = LiveNameBoard.shared.snapshot()
-        if let state = last.withLock({ $0 }), let track = board.callTrack, !board.spoken.isEmpty {
+        let board = names.snapshot()
+        if let state = last, let track = board.callTrack, !board.spoken.isEmpty {
             do {
                 let turns = try await CallDiarizer().turns(of: track)
                 let rows = state.entries.filter { $0.speaker != .mine }.map { (id: $0.text.id, start: $0.text.start, end: $0.text.end) }
                 let confirmed = AfterCallNames.names(rows: rows, turns: turns, board: board)
-                LiveNameBoard.shared.confirm(confirmed)
-                await LiveNameBoard.shared.announce(confirmed)
+                names.confirm(confirmed)
+                await names.announce(confirmed)
                 try await save(state)
                 sink.write(.init(category: .session, message: "after-call names saved turns=\(turns.count)"))
             } catch {
                 sink.write(.init(category: .session, message: "after-call names failed: \(error)"))
             }
         }
+        closed = true
         await file.close()
     }
 }
@@ -117,6 +139,10 @@ public protocol TranscriptStorage: Sendable {
 public struct FileTranscriptStorage: TranscriptStorage {
     public init() {}
     public func open(at url: Foundation.URL, sink: any LogSink) async throws -> any SessionTranscriptFile {
-        try await WritingTranscript(file: TranscriptFile(url: url), sink: sink)
+        var format = TranscriptFormat()
+        let initial = try format.render([])
+        let file = try await TranscriptFile(url: url, initialBytes: initial.chunks, binding: DiskTranscriptBinding())
+        // Opening has no live write revision; the first saved speaker block starts at one.
+        return WritingTranscript(file: file, format: TranscriptFormat(), names: .shared, sink: sink)
     }
 }

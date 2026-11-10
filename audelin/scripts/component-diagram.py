@@ -20,9 +20,9 @@ LANES = {
     "machines": ("State machines", "#fbbf24", 560, 280, 1240, 230, 5),
     "text": ("Live text", "#bef264", 40, 530, 820, 300, 3),
     "capture": ("Capture and processes", "#fb923c", 900, 530, 440, 300, 2),
-    "storage": ("Storage", "#a78bfa", 1380, 530, 460, 390, 2),
-    "tools": ("Rehearsal and integration helpers", "#60a5fa", 40, 960, 1800, 140, 4),
-    "external": ("Platform and packages", "#94a3b8", 40, 1120, 1800, 120, 4),
+    "storage": ("Storage", "#a78bfa", 1380, 530, 460, 550, 2),
+    "tools": ("Rehearsal and integration helpers", "#60a5fa", 40, 1120, 1800, 140, 4),
+    "external": ("Platform and packages", "#94a3b8", 40, 1280, 1800, 120, 4),
 }
 
 # Target: (lane, line under its name, slot in the lane). Planned boxes have no target yet.
@@ -60,7 +60,8 @@ TARGETS = {
     "Session": ("machines", "brings one recording's\npieces up and down", 0),
     "CallFolder": ("storage", "one folder per call", 0),
     "TrackFile": ("storage", "one track's audio, readable live", 1),
-    "TranscriptFile": ("storage", "the call's transcript", 2),
+    "TranscriptFormat": ("storage", "renders transcript Markdown", 10),
+    "TranscriptFile": ("storage", "keeps transcript bytes on disk", 2),
     "TrackFileCrashWriter": ("storage", "test helper: killed mid-write", 3),
     "TranscriptFileCrashWriter": ("storage", "test helper: killed mid-write", 4),
     "TranscriptWriting": ("storage", "keeps call text's latest text\nin the transcript", 5),
@@ -136,12 +137,12 @@ def main():
         sys.exit(f"update TARGETS: not drawn {unknown}, no longer in the package {gone}")
 
     cells = [
-        cell("canvas", "", "rounded=0;whiteSpace=wrap;html=1;fillColor=#252525;strokeColor=none;container=1;pointerEvents=0;", "1", 0, 0, 1880, 1310),
+        cell("canvas", "", "rounded=0;whiteSpace=wrap;html=1;fillColor=#252525;strokeColor=none;container=1;pointerEvents=0;", "1", 0, 0, 1880, 1470),
         cell("title", "Audelin", "text;html=1;align=left;verticalAlign=middle;fontSize=28;fontColor=#f8fafc;fontStyle=1;", "canvas", 40, 24, 400, 40),
         cell("subtitle", "components as built — generated from both package manifests by scripts/component-diagram.py",
              "text;html=1;align=left;verticalAlign=middle;fontSize=15;fontColor=#94a3b8;", "canvas", 42, 66, 900, 26),
         cell("legend", "solid box: a target · dashed box: planned · arrow: depends on",
-             "text;html=1;align=left;verticalAlign=middle;fontSize=13;fontColor=#94a3b8;", "canvas", 40, 1270, 900, 26),
+             "text;html=1;align=left;verticalAlign=middle;fontSize=13;fontColor=#94a3b8;", "canvas", 40, 1430, 900, 26),
     ]
     for lane, (title, colour, x, y, w, h, _) in LANES.items():
         cells.append(cell(f"lane-{lane}", title,

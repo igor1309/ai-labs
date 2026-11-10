@@ -10,7 +10,8 @@ fake of the file binding. The user spec's real call proves the whole path.
 
 Open with a numbered text and close with no write; the file holds it. A
 composition row: a recording with live text off, stopped with no text,
-leaves a transcript that says no text was heard. Evidence: Missing.
+leaves a transcript that says no text was heard.
+Evidence: `TranscriptFileTests.openedWithoutWritesKeepsInitialBytes()` and `SessionTranscriptTests.liveTextOffLeavesTheNoTextTranscriptAfterStopping()`.
 
 ## S-4 A closed transcript keeps the last text
 
@@ -34,7 +35,7 @@ in the folder is not tripped by the left temporary. Evidence: `TranscriptFileCra
 ## S-18 A crash after a replacement lands keeps the new text
 
 A second run of S-6 pauses after the rename; the file holds the new text
-whole. Evidence: as S-6.
+whole. Evidence: `TranscriptFileCrashTests.sigkillAtRenameKeepsExactlyOneWholeTranscript(point:)`.
 
 ## S-7 A transcript that cannot be opened fails
 
@@ -59,9 +60,8 @@ whose write returned, and no temporary file is left. Evidence: `TranscriptFileTe
 After each failure of S-9 and S-14, the next write returns and holds its
 text whole. After a rewrite, a write telling no final text, as compose
 sends after a failed rendering, replaces the file whole. A composition
-row, once `aWriteThatFailsToRenderMakesTheNextWriteReplaceTheFileWhole()`,
-fails one rendering and finds the next write replaces the file whole.
-Evidence: S-9's and S-14's tests; Missing for the other two.
+row fails one rendering and finds the next write replaces the file whole.
+Evidence: `TranscriptFileTests.failedReplacementKeepsLastTextCleansTemporaryAndAllowsRetry(fault:)`, `TranscriptFileTests.failedRewriteKeepsFinalEntriesAndTheNextWriteReplacesTheFileWhole(fault:)`, `TranscriptFileTests.noFinalLengthReplacesWholeAndForgetsTheKeptPrefix()` and `TranscriptRenderingTests.aWriteThatFailsToRenderMakesTheNextWriteReplaceTheFileWhole()`.
 
 ## S-12 Final text stays and only what follows is written
 
@@ -81,7 +81,7 @@ SIGKILL there; the file holds exactly the final text, and no temporary. Evidence
 ## S-19 A crash before a rewrite is flushed keeps its text
 
 S-13 paused once the rest is written, before the flush: the file holds
-the third text whole. Evidence: as S-13.
+the third text whole. Evidence: `TranscriptFileCrashTests.sigkillWhileRewritingKeepsEveryFinalEntryWhole(point:)`.
 
 ## S-14 A failed rewrite keeps the final text
 
@@ -97,4 +97,5 @@ Evidence: `TranscriptFileTests.failedRewriteKeepsFinalEntriesAndTheNextWriteRepl
 Text is written and the transcript closed; replacing it with another
 numbered text returns, and the file holds the new text whole, through a
 write beside it and a rename. S-9's faults, run on a closed transcript,
-each keep the old text whole. Evidence: Missing.
+each keep the old text whole.
+Evidence: `TranscriptFileTests.closedTranscriptCanBeReplacedWhole()` and `TranscriptFileTests.failedClosedReplacementKeepsLastTextAndAllowsRetry(fault:)`.

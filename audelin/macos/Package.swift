@@ -48,6 +48,7 @@ let package = Package(
         .library(name: "SideText", targets: ["SideText"]),
         .library(name: "SystemAudioCapture", targets: ["SystemAudioCapture"]),
         .library(name: "TrackFile", targets: ["TrackFile"]),
+        .library(name: "TranscriptFormat", targets: ["TranscriptFormat"]),
         .library(name: "TranscriptFile", targets: ["TranscriptFile"]),
         .library(name: "TranscriptWriting", targets: ["TranscriptWriting"]),
         .library(name: "TwoPassRecognizer", targets: ["TwoPassRecognizer"]),
@@ -197,6 +198,8 @@ let package = Package(
             name: "TrackFileCrashWriter",
             dependencies: ["TrackFile"]
         ),
+        .target(name: "TranscriptFormat"),
+        .testTarget(name: "TranscriptFormatTests", dependencies: ["TranscriptFormat"]),
         .target(
             name: "TranscriptFile"
         ),

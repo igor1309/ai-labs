@@ -77,6 +77,7 @@ let package = Package(
                 .product(name: "FillIn", package: "macos"),
                 .product(name: "LiveText", package: "macos"),
                 .product(name: "TrackFile", package: "macos"),
+                .product(name: "TranscriptFormat", package: "macos"),
                 .product(name: "TranscriptFile", package: "macos"),
                 .product(name: "TranscriptWriting", package: "macos"),
                 .product(name: "Reading", package: "macos"),
