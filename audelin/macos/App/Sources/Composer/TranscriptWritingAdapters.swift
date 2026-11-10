@@ -35,17 +35,34 @@ struct TranscriptDestination: TranscriptWriting.Transcript {
     func write(_ state: CallState) async throws { try await file.write(state) }
 }
 
+/// Renders call text for the transcript; `TranscriptFormat` in the app.
+protocol TranscriptRenderer: Sendable {
+
+    mutating func render(count: Int, finalCount: Int, speakers: [TranscriptFormat.Speaker], segment: (Int) -> TranscriptFormat.Segment) throws -> TranscriptFormat.Rendering
+}
+
+/// Keeps rendered bytes on disk; `TranscriptFile` in the app.
+protocol TranscriptBytes: Sendable {
+
+    func write(_ chunks: [Data], finalLength: Int?) async throws
+    func replace(_ chunks: [Data], finalLength: Int?) async throws
+    func close() async
+}
+
+extension TranscriptFormat: TranscriptRenderer {}
+extension TranscriptFile: TranscriptBytes {}
+
 actor WritingTranscript: SessionTranscriptFile {
 
-    let file: TranscriptFile
+    let file: any TranscriptBytes
     let sink: any LogSink
     private let names: LiveNameBoard
-    private var format: TranscriptFormat
+    private var format: any TranscriptRenderer
     private var replaceNext = false
     private var closed = false
     private var last: CallState?
 
-    init(file: TranscriptFile, format: TranscriptFormat, names: LiveNameBoard, sink: any LogSink) {
+    init(file: any TranscriptBytes, format: any TranscriptRenderer, names: LiveNameBoard, sink: any LogSink) {
         self.file = file; self.format = format; self.names = names; self.sink = sink
     }
 

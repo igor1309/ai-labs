@@ -11,30 +11,18 @@ struct TranscriptRenderingTests {
 
     @Test func aWriteThatFailsToRenderMakesTheNextWriteReplaceTheFileWhole() async throws {
 
-        try await withComposeFolder { folder in
-            let url = folder.appendingPathComponent("transcript.md")
-            let binding = RecordingTranscriptBinding()
-            var initial = TranscriptFormat()
-            let file = try await TranscriptFile(url: url, initialBytes: try initial.render([]).chunks, binding: binding)
-            let writer = WritingTranscript(file: file, format: TranscriptFormat(), names: LiveNameBoard(), sink: RenderingLog())
-            let final = CallState.Entry(speaker: .mine, text: .init(id: 0, start: 1, end: 2, settled: "1 final"), writtenLater: false)
-            func snapshot(start: Double, words: String) -> CallState {
-                .init(status: .listening, entries: [final, .init(speaker: .theirs, text: .init(id: 1, start: start, end: 3, pending: words), writtenLater: false)], finalCount: 1)
-            }
-            try await writer.write(snapshot(start: 2, words: "2 pending"))
-            try await writer.write(snapshot(start: 2, words: "2 growing"))
-            #expect(binding.take() == ["create", "create", "rename", "open"])
-            let before = try Data(contentsOf: url)
-            await #expect(throws: TranscriptFormat.Failure.invalidStart) {
-                try await writer.write(snapshot(start: .nan, words: "bad"))
-            }
-            #expect(try Data(contentsOf: url) == before)
-            #expect(binding.take().isEmpty)
-            try await writer.write(snapshot(start: 2, words: "3 recovered"))
-            #expect(binding.take() == ["create", "rename"])
-            #expect(try String(contentsOf: url, encoding: .utf8) == "# Transcript\n\n**Me** 00:00:01\n1 final\n\n**Them** 00:00:02\n3 recovered\n")
-            await writer.close()
-        }
+        let bytes = BytesSpy()
+        let renderer = RendererStub()
+        let writer = WritingTranscript(file: bytes, format: renderer, names: LiveNameBoard(), sink: RenderingLog())
+        let state = CallState(status: .listening, entries: [
+            .init(speaker: .mine, text: .init(id: 0, start: 1, end: 2, settled: "1 final"), writtenLater: false),
+        ], finalCount: 1)
+        try await writer.write(state)
+        renderer.failNext()
+        await #expect(throws: TranscriptFormat.Failure.invalidStart) { try await writer.write(state) }
+        try await writer.write(state)
+        try await writer.write(state)
+        #expect(bytes.calls() == ["write", "replace", "write"])
     }
 
     @Test func closingAfterAFailedRenderingEndsFurtherWrites() async throws {
@@ -84,6 +72,32 @@ struct TranscriptRenderingTests {
             await writer.close()
         }
     }
+}
+
+/// The real format, failing once when asked to.
+private final class RendererStub: TranscriptRenderer {
+
+    private let state = Mutex((format: TranscriptFormat(), fail: false))
+
+    func failNext() { state.withLock { $0.fail = true } }
+
+    func render(count: Int, finalCount: Int, speakers: [TranscriptFormat.Speaker], segment: (Int) -> TranscriptFormat.Segment) throws -> TranscriptFormat.Rendering {
+
+        try state.withLock { value in
+            if value.fail { value.fail = false; throw TranscriptFormat.Failure.invalidStart }
+            return try value.format.render(count: count, finalCount: finalCount, speakers: speakers, segment: segment)
+        }
+    }
+}
+
+private final class BytesSpy: TranscriptBytes {
+
+    private let log = Mutex<[String]>([])
+
+    func calls() -> [String] { log.withLock { $0 } }
+    func write(_ chunks: [Data], finalLength: Int?) async throws { log.withLock { $0.append("write") } }
+    func replace(_ chunks: [Data], finalLength: Int?) async throws { log.withLock { $0.append("replace") } }
+    func close() async { log.withLock { $0.append("close") } }
 }
 
 private struct RenderingLog: LogSink {
