@@ -1,7 +1,8 @@
 #!/bin/sh
 # Writes audelin/macos/Vendor/FluidAudio: FluidAudio's library at one
 # upstream tag, trimmed to what Audelin uses, Parakeet and Nemotron speech
-# recognition with their shared code. Speech synthesis, diarization,
+# recognition with their shared code, and the Nemotron 3 diarizer for the
+# after-call speaker pass (LAB-1123). Speech synthesis, diarization,
 # enhancement, speaker and the other recognition models never ship in
 # Audelin, yet were most of every build. The files kept from those areas
 # define types the remaining code names.
@@ -24,6 +25,12 @@ src=$work/upstream/Sources/FluidAudio
 keep="
 ASR/Canary/CanaryConfig.swift
 Diarizer/Core/DiarizerTypes.swift
+Diarizer/DiarizerProtocol.swift
+Diarizer/DiarizerTimeline.swift
+Diarizer/Nemotron3/Nemotron3Diarizer.swift
+Diarizer/Nemotron3/Nemotron3Models.swift
+Diarizer/Nemotron3/Nemotron3StateUpdater.swift
+Diarizer/Nemotron3/Nemotron3Types.swift
 Diarizer/Sortformer/SortformerTypes.swift
 Enhancement/LocalVQE/LocalVqeManager.swift
 Enhancement/LocalVQE/LocalVqeStream.swift
