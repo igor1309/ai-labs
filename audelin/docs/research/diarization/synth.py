@@ -24,8 +24,9 @@ How a call is built
   Line: each speaker's track passes through Opus (VoIP mode, 12-32 kbps, 20 ms frames)
   and 0-5 % packet loss (lost 20 ms frames replaced by the previous frame, fading),
   then a gain of -8..+8 dB and their own noise at 15-35 dB SNR, and the tracks are mixed.
-  Reference: per speaker, 10 ms frames whose placed speech is within 35 dB of that
-  speaker's peak level, gaps under 0.25 s bridged, written as RTTM. Speech pauses
+  Reference: per speaker, the 10 ms frames of each placed recording within 35 dB of
+  its peak and at least 12 dB above its own noise floor, gaps under 0.25 s bridged,
+  written as RTTM; a noisy recording's background does not count as speech. Speech pauses
   inside a read sentence are therefore not counted as speech, as in forced alignment.
 """
 import argparse
@@ -88,6 +89,7 @@ class Voice:
         self.rng = rng
         self.files = []
         self.buf = np.zeros(0, dtype=np.float32)
+        self.speech = np.zeros(0, dtype=bool)  # per sample: is this the reader speaking
         self.used = []
 
     def _fill(self, n):
@@ -99,27 +101,28 @@ class Voice:
             self.used.append(str(f.relative_to(DATA)))
             x = load(f)
             x = x / (np.max(np.abs(x)) + 1e-9) * 0.5
-            self.buf = np.concatenate([self.buf, x, np.zeros(int(0.2 * SR), np.float32)])
+            pad = int(0.2 * SR)
+            self.buf = np.concatenate([self.buf, x, np.zeros(pad, np.float32)])
+            self.speech = np.concatenate([self.speech, speech_mask(x), np.zeros(pad, bool)])
 
     def _onset(self):
         self._fill(SR * 3)
-        e = frame_energy(self.buf[: SR * 3])
-        on = np.flatnonzero(e > e.max() - 30)
-        start = on[0] * 160 if len(on) else 0
-        self.buf = self.buf[start:]
+        on = np.flatnonzero(self.speech[: SR * 3])
+        start = on[0] if len(on) else 0
+        self.buf, self.speech = self.buf[start:], self.speech[start:]
 
     def take(self, n):
         self._onset()
         self._fill(n)
-        out, self.buf = self.buf[:n].copy(), self.buf[n:]
-        return out
+        out, mask = self.buf[:n].copy(), self.speech[:n].copy()
+        self.buf, self.speech = self.buf[n:], self.speech[n:]
+        return out, mask
 
     def burst(self, n):
         """A short word-like burst: speech up to the first pause of 120 ms, at most n."""
         self._onset()
         self._fill(n)
-        e = frame_energy(self.buf[:n])
-        quiet = e < e.max() - 30
+        quiet = ~self.speech[: n - n % 160].reshape(-1, 160)[:, 0]
         end = n
         run = 0
         for i, q in enumerate(quiet):
@@ -127,8 +130,21 @@ class Voice:
             if run >= 12 and i * 160 > 0.15 * SR:
                 end = (i - 11) * 160
                 break
-        out, self.buf = self.buf[:end].copy(), self.buf[end:]
-        return out
+        out, mask = self.buf[:end].copy(), self.speech[:end].copy()
+        self.buf, self.speech = self.buf[end:], self.speech[end:]
+        return out, mask
+
+
+def speech_mask(x):
+    """Per sample, where a recording holds speech: 10 ms frames within 35 dB of its peak
+    and at least 12 dB above its own noise floor (its 10th-percentile frame), so a noisy
+    recording's background is not counted as speech."""
+    e = frame_energy(x)
+    if not len(e):
+        return np.zeros(len(x), bool)
+    on = e > max(e.max() - 35, np.percentile(e, 10) + 12)
+    m = np.repeat(on, 160)
+    return np.pad(m, (0, len(x) - len(m)))
 
 
 def fade(x, ms=10):
@@ -210,9 +226,9 @@ def noise(n, rng):
     return 0.7 * p + 0.3 * w
 
 
-def reference(track, bridge=0.25):
-    e = frame_energy(track)
-    on = e > e.max() - 35
+def reference(mask, bridge=0.25):
+    n = len(mask) // 160
+    on = mask[: n * 160].reshape(n, 160).any(axis=1)
     segs, i = [], 0
     while i < len(on):
         if on[i]:
@@ -254,18 +270,20 @@ def build(name, n, rng, ru, en, meetings, english):
     pools = {**ru, **en}
     voices = [Voice(pools[p], rng) for p in picks]
     tracks = [np.zeros(length, np.float32) for _ in range(n)]
+    masks = [np.zeros(length, bool) for _ in range(n)]
     for sp, a, b in mapped:
         i, k = int(a * SR), int((b - a) * SR)
-        piece = voices[sp].burst(k) if b - a < 0.6 else voices[sp].take(k)
-        piece = fade(piece[: length - i])
+        piece, mask = voices[sp].burst(k) if b - a < 0.6 else voices[sp].take(k)
+        piece, mask = fade(piece[: length - i]), mask[: length - i]
         tracks[sp][i:i + len(piece)] += piece
+        masks[sp][i:i + len(mask)] |= mask
 
     nrng = np.random.default_rng(rng.randrange(2 ** 32))
     lines, mix = [], np.zeros(length, np.float32)
     ref = []
     with tempfile.TemporaryDirectory() as tmp:
         for sp in range(n):
-            ref += [(f"spk{sp}", a, b) for a, b in reference(tracks[sp])]
+            ref += [(f"spk{sp}", a, b) for a, b in reference(masks[sp])]
             kbps, loss = rng.choice([12, 16, 20, 24, 32]), rng.uniform(0, 0.05)
             gain_db, snr = rng.uniform(-8, 8), rng.uniform(15, 35)
             y, lost = opus_line(tracks[sp], kbps, loss, nrng, tmp)

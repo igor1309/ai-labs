@@ -23,6 +23,13 @@ call track only; the microphone stays "Me". Not live. VBx
   for VBx and 0.2 % for Nemotron, and it counts right in only 7 of 16
   meetings, usually one speaker short. On the owner's dailies it shows one
   speaker where VBx and Nemotron find two to four.
+- **Synthetic Russian calls (LAB-1130).** On 30 built calls of 2–6
+  speakers (7.3 h; Russian read speech through Opus with packet loss,
+  turns timed from AMI), Nemotron's speaker error is 3.8 % against VBx's
+  9.2 %, and it holds as speakers are added (5.4 % at six, VBx 17.9 %).
+  It gets the count of main speakers right in 19 of 30 calls, VBx in 13. This
+  confirms Nemotron on Russian call audio, with the caveat that read speech is a
+  best case.
 - **Q4, cost.** Nemotron: 325× real time, about 11 s for a 1-hour call,
   model 193 MB, peak footprint 815 MiB on a 58-minute call. VBx: 195–246×,
   about 15–18 s per hour, 21 MB, 1.39 GiB on the same call. LS-EEND: 87–94×
@@ -237,6 +244,86 @@ footprint grows with the call; Nemotron was measured on the long call only.
 Both projects, like this measurement, put diarization after the call on the
 remote track alone, and the one that measured local engines chose Nemotron.
 
+## Synthetic Russian group calls (LAB-1130)
+
+The owner's calls have no labels, so the AMI figures above leave open
+whether the models hold up on Russian VoIP calls. To measure that without hand
+labelling, `diarization/synth.py` builds calls whose speaker turns are known
+by construction (seed 1130, rebuilt by `diarization/synth-night.sh`):
+
+- **30 calls**, 6 for each speaker count from 2 to 6, 10–20 minutes each,
+  7.3 h in total.
+- **Voices: 49 Russian speakers.** 17 are audiobook readers from Russian
+  LibriSpeech, public domain. 32 are VoxForge volunteers, GPL, each on their
+  own microphone. In about a quarter of the calls one speaker reads English
+  (LibriSpeech test-clean).
+- **Turn-taking from AMI train and dev meetings:** turn lengths, pauses, short
+  back-channel turns and overlap, remapped from four speakers to the call's
+  count. Overlap ends up at 6.6 % of speech on average: 2.9 % with two
+  speakers, 7–11 % with four to six.
+- **Line:** each speaker goes through Opus VoIP at 12–32 kbps with 0–5 % lost
+  frames, their own gain (±8 dB) and noise (15–35 dB SNR), and the tracks are
+  mixed.
+- **Reference:** each speaker's placed speech in 10 ms frames, with pauses
+  under 0.25 s bridged. A frame counts as speech when it is within 35 dB of
+  its recording's peak and at least 12 dB above that recording's noise floor,
+  so background noise in a VoxForge recording is not counted.
+
+**Read speech is cleaner than real conversation.** It has no hesitations, no
+laughter and no talking over each other beyond the overlap built in, and
+each speaker reads steadily. Treat these figures as a best case for the
+owner's calls, not an estimate of them.
+
+DER pooled over calls, 0.25 s collar (`score.py synth`); SE is speaker error, the
+part diarization decides. "Count right" compares speakers holding at least 5 % of the
+system's speech with the true number.
+
+| System | Speakers | DER, overlap ignored | SE, ignored | DER, overlap included | miss / FA / SE, included | Count right (≥ 5 %) |
+|---|---:|---:|---:|---:|---:|---:|
+| Nemotron `fast128` | 2 | 22.4 % | 0.6 % | 22.2 % | 1.1 / 20.5 / 0.6 | 6/6 |
+| | 3 | 18.5 % | 7.4 % | 18.3 % | 1.9 / 9.0 / 7.5 | 4/6 |
+| | 4 | 13.3 % | 3.2 % | 12.9 % | 3.0 / 6.9 / 3.0 | 2/6 |
+| | 5 | 16.2 % | 1.9 % | 15.7 % | 3.1 / 10.5 / 2.1 | 4/6 |
+| | 6 | 17.9 % | 5.4 % | 17.6 % | 5.0 / 7.2 / 5.3 | 3/6 |
+| | **all** | **17.5 %** | **3.8 %** | **17.1 %** | 2.9 / 10.4 / 3.8 | **19/30** |
+| VBx | 2 | 31.7 % | 1.8 % | 32.0 % | 3.9 / 26.3 / 1.8 | 6/6 |
+| | 3 | 28.5 % | 7.0 % | 29.5 % | 5.7 / 16.8 / 6.9 | 4/6 |
+| | 4 | 26.8 % | 7.7 % | 28.5 % | 6.5 / 14.3 / 7.6 | 1/6 |
+| | 5 | 32.2 % | 11.2 % | 35.4 % | 8.3 / 15.7 / 11.4 | 1/6 |
+| | 6 | 39.2 % | 17.9 % | 40.2 % | 7.4 / 15.3 / 17.5 | 1/6 |
+| | **all** | **31.6 %** | **9.2 %** | **33.0 %** | 6.4 / 17.4 / 9.2 | **13/30** |
+
+With no collar, Nemotron's DER is 36.9 % / 34.2 % (SE 4.6 % / 4.7 %) and VBx's
+is 59.0 % / 59.6 % (SE 12.6 % / 12.0 %).
+
+What the figures say:
+
+- **Most of the DER is false alarm, for both systems.** That comes from the
+  reference, not the speakers. Read speech has many short pauses between
+  phrases; the reference marks them as silence, while both systems label
+  through them. The false alarm is highest in the 2-speaker calls, which have
+  the longest single turns. Miss is low: 2.9 % for Nemotron, 6.4 % for VBx.
+- **Speaker error is the comparison that matters, and Nemotron wins it at
+  every count but three speakers, where the two are level** (7.4 % against
+  7.0 %). Its errors grow little with more speakers. VBx's grow steadily, to
+  17.9 % at six, because it merges speakers: its mean count is 3.2 against a
+  true 4.0, and with four to six speakers it counts right in 3 of 18 calls.
+- **Nemotron errs the other way: it sometimes adds speakers.** In 13 of 30
+  calls it reports more speakers than there are, five times all eight of its
+  slots. The extras hold little speech: counting only speakers with at least
+  5 % of its speech, its mean is 4.0, matching the truth. The app should drop
+  or merge such minor speakers before showing labels.
+- **Audiobook and home microphones fare alike:** Nemotron misses 4.7 % of
+  RuLS readers' speech and 4.8 % of VoxForge speakers' (VBx: 11.0 % and
+  9.6 %).
+- **Cost** matches AMI: Nemotron 326× real time, VBx 178×.
+
+**Recommendation for LAB-1131: keep Nemotron 3 `fast128` as the default.** It
+has under half of VBx's speaker error on Russian call audio, holds up as
+speakers are added, and is faster. VBx stays the fallback only for calls
+with more than eight remote speakers. Before showing labels, merge speakers
+that hold under 5 % of the call's speech.
+
 ## What still needs hand labels
 
 - **DER on the owner's calls**: speaker turns on a few calls of each kind
@@ -245,8 +332,9 @@ remote track alone, and the one that measured local engines chose Nemotron.
   is a real person or one voice split in two.
 - **The true number of remote speakers** per call, for Q1: the counts above
   are the systems' own.
-- A public Russian set with speaker labels, if one is found; and
-  VoxConverse once its audio can be fetched.
+- **Real conversation**: the synthetic Russian calls above are read speech,
+  a best case. A public Russian conversational set with speaker labels, if
+  one is found; and VoxConverse once its audio can be fetched.
 
 ## Before adopting
 
@@ -286,5 +374,10 @@ figures). FluidAudio's reference rows run from `work/` with
 the latter with AMI's manual annotations (`ami_public_manual_1.6.2.zip`)
 unpacked into `work/Datasets/ami_public_1.6.2`. The live test:
 `audelin-diarize lseend <call.f32> <out.json> dihard3 paced` beside
-`macos/Benchmarks`' `AudelinBaseline`. Outputs go under `diarization/work/`,
-which is not committed.
+`macos/Benchmarks`' `AudelinBaseline`. The synthetic Russian calls:
+`diarization/synth-night.sh` downloads RuLS, VoxForge Russian and
+LibriSpeech test-clean (about 9.6 GB), builds the 30 calls with seed 1130,
+runs Nemotron and VBx on them and writes the tables to `work/synth-summary.md`
+(0.25 s collar) and `work/synth-summary-collar0.md`. Details are in
+`diarization/README.md`. Outputs go under `diarization/work/`, which is not
+committed.

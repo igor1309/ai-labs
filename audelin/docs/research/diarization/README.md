@@ -36,12 +36,14 @@ speakers, 10–20 minutes each, made from read speech with known speakers.
 - **Line**: each speaker's track goes through Opus in VoIP mode (12–32 kbps),
   0–5 % lost 20 ms frames, their own gain (±8 dB) and noise (15–35 dB SNR), and
   then all tracks are mixed.
-- **Reference**: the RTTM marks each speaker's placed speech in 10 ms frames, with
-  gaps under 0.25 s bridged. The details are in the docstring at the top of
-  `synth.py`.
+- **Reference**: the RTTM marks each speaker's placed speech in 10 ms frames,
+  with gaps under 0.25 s bridged. A frame counts as speech when it is within
+  35 dB of its recording's peak and at least 12 dB above that recording's own
+  noise floor, so a noisy recording's background is not counted. The details
+  are in the docstring at the top of `synth.py`.
 
 Seed 1130 with 6 calls per speaker count gives the set the report uses: 30 calls,
-about 7.5 hours. Each call is seeded from the main seed and its own name, so a call
+7.3 hours. Each call is seeded from the main seed and its own name, so a call
 can be rebuilt alone (delete its `.rttm` and rerun `synth.py`).
 
 Read speech is cleaner than real conversation: there are no hesitations, no
