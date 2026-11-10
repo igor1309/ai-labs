@@ -270,6 +270,20 @@ and the pass with a reference takes owner words where there is no bleed
 - Check the alignment of the two tracks in Audelin's recordings; a few
   milliseconds of offset decides whether cancellation works.
 
+## When to rerun
+
+Not on a calendar: the public-set results change only when the models do.
+Rerun the whole measurement when
+
+- FluidAudio moves past 0.17.7, or LocalVQE ships a new model;
+- hand-transcribed owner calls exist, to replace the label-free retention
+  check with a WER on the owner's own speech;
+- more calls with speaker bleed turn up. The result on the owner's calls
+  rests on one 3.7-minute recording.
+
+The monthly check (`monthly/`) watches for the last: it flags any new call
+whose microphone transcript has 3 or more leaked words a minute.
+
 ## Reproduce
 
 From `audelin/docs/research`: build the spike (`swift build --package-path spike -c release`),

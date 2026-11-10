@@ -256,6 +256,22 @@ remote track alone, and the one that measured local engines chose Nemotron.
   VBx has no such limit.
 - A word gets one speaker; overlaps need a rule for which one.
 
+## When to rerun
+
+Not on a calendar: the AMI results change only when the models do. Rerun
+the whole measurement when
+
+- FluidAudio moves past 0.17.7, or Nemotron, VBx or LS-EEND ship new
+  models;
+- hand-labelled owner calls exist: score Nemotron and VBx on them and
+  choose between them there;
+- calls of a new kind appear, such as more than eight remote speakers, or a
+  call that VBx and Nemotron count differently.
+
+The monthly check (`monthly/`) watches for the last: it flags a new call
+where VBx and Nemotron disagree on whether there is more than one remote
+speaker, or where the speakers outnumber Nemotron's eight slots.
+
 ## Reproduce
 
 From `audelin/docs/research`: build the spike (`swift build --package-path spike -c release`);
