@@ -91,7 +91,7 @@ public struct CallsListView: View {
                     .background(tokens.surface, in: .rect(cornerRadius: tokens.radiusControl))
                     .overlay(RoundedRectangle(cornerRadius: tokens.radiusControl).stroke(tokens.me, lineWidth: 1.5))
                 } else {
-                    Button { event(.beginRename(row.id)) } label: {
+                    Button { event(.select(row.id)); event(.beginRename(row.id)) } label: {
                         VStack(alignment: .leading, spacing: tokens.space4) {
                             Text(row.displayTitle)
                             if !row.summaryStatus.isEmpty {

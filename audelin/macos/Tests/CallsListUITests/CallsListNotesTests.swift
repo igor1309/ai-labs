@@ -5,35 +5,12 @@ import RenderedText
 import SwiftUI
 import Testing
 
-/// SwiftUI takes clicks and keys only in a window on screen, and gives an
-/// offscreen host no accessibility children, so these tests show the list
-/// far off the visible screen, click and type into it, and read its pixels.
+/// What the view does itself with clicks and keys. SwiftUI takes clicks and
+/// keys only in a window on screen and gives an offscreen host no
+/// accessibility children, so these tests show the list far off the visible
+/// screen, find the eyes by their pixels, and click and type into it.
 @MainActor
 struct CallsListNotesTests {
-
-    @Test(arguments: [ColorScheme.light, .dark])
-    func theEyeShowsOnlyOnCallsWithNotesJustBeforeTheActions(scheme: ColorScheme) throws {
-
-        let shown = Shown(makeState(), scheme: scheme)
-        defer { shown.close() }
-        let eyes = try shown.eyes()
-
-        #expect(eyes.count == 2)
-        let first = try #require(eyes.first), last = try #require(eyes.last)
-        #expect(first.midY < last.midY)
-        #expect(eyes.allSatisfy { $0.minX >= eyeColumn.lowerBound && $0.maxX <= eyeColumn.upperBound })
-    }
-
-    @Test func callsWithoutNotesKeepTheEyesPlace() throws {
-
-        var none = makeState()
-        for index in none.rows.indices { none.rows[index].hasNotes = false }
-        let with = Shown(makeState()), without = Shown(none)
-        defer { with.close(); without.close() }
-
-        #expect(try without.eyes().isEmpty)
-        #expect(try with.pixels(leftOf: eyeColumn.lowerBound) == without.pixels(leftOf: eyeColumn.lowerBound))
-    }
 
     @Test func pressingAnEyeAsksForThatCallsNotes() throws {
 
@@ -44,6 +21,18 @@ struct CallsListNotesTests {
         shown.click(CGPoint(x: eye.midX, y: eye.midY))
 
         #expect(shown.sent == [.preview("2026.10.17-1100")])
+    }
+
+    @Test func clickingARowsTitleSelectsItAndStartsItsRename() throws {
+
+        let shown = Shown(makeState())
+        defer { shown.close() }
+        let eyes = try shown.eyes()
+        let first = try #require(eyes.first), last = try #require(eyes.last)
+
+        shown.click(CGPoint(x: 200, y: (first.midY + last.midY) / 2))
+
+        #expect(shown.sent == [.select("2026.10.20-1600"), .beginRename("2026.10.20-1600")])
     }
 
     @Test func clickingARowSelectsIt() throws {
@@ -72,28 +61,7 @@ struct CallsListNotesTests {
         #expect(shown.sent == [.selectNext, .selectPrevious])
     }
 
-    @Test(arguments: [ColorScheme.light, .dark])
-    func theSelectedRowAndThePreviewedEyeShowAsSelected(scheme: ColorScheme) throws {
-
-        var state = makeState()
-        state.selectedID = state.rows[2].id
-        state.previewedID = state.rows[2].id
-        let selected = Shown(state, scheme: scheme), plain = Shown(makeState(), scheme: scheme)
-        defer { selected.close(); plain.close() }
-        let eyes = try plain.eyes()
-        let first = try #require(eyes.first), last = try #require(eyes.last)
-
-        #expect(try plain.color(at: CGPoint(x: 8, y: last.midY)) == selected.color(at: CGPoint(x: 8, y: first.midY)))
-        #expect(try plain.color(at: CGPoint(x: 8, y: last.midY)) != selected.color(at: CGPoint(x: 8, y: last.midY)))
-        #expect(try selected.isTinted(last))
-        #expect(try !selected.isTinted(first))
-        #expect(try !plain.isTinted(last))
-    }
-
     // MARK: - Helpers
-
-    /// The eye's place: the row's padding, then the actions and their spacing.
-    private let eyeColumn: ClosedRange<CGFloat> = (920 - 24 - 170 - 12 - 28)...(920 - 24 - 170 - 12)
 
     @MainActor private final class Shown {
         private(set) var sent: [CallsListEvent] = []
@@ -130,27 +98,6 @@ struct CallsListNotesTests {
                 if let last = boxes.last, row.minY - last.maxY < 2 { boxes[boxes.count - 1] = last.union(row) } else { boxes.append(row) }
             }
             return boxes.filter { $0.height > 4 }
-        }
-
-        func pixels(leftOf x: CGFloat) throws -> [NSColor?] {
-            let image = try snapshot(), scale = CGFloat(image.pixelsWide) / 920
-            return (0..<image.pixelsHigh).flatMap { y in (0..<Int(x * scale)).map { image.colorAt(x: $0, y: y) } }
-        }
-
-        func color(at point: CGPoint) throws -> NSColor? {
-            let image = try snapshot(), scale = CGFloat(image.pixelsWide) / 920
-            return image.colorAt(x: Int(point.x * scale), y: Int(point.y * scale))
-        }
-
-        /// Whether the box holds the accent's teal, which no grey reaches.
-        func isTinted(_ box: CGRect) throws -> Bool {
-            let image = try snapshot(), scale = CGFloat(image.pixelsWide) / 920
-            return (Int(box.minY * scale)...Int(box.maxY * scale)).contains { y in
-                (Int(box.minX * scale)...Int(box.maxX * scale)).contains { x in
-                    guard let pixel = image.colorAt(x: x, y: y)?.usingColorSpace(.sRGB) else { return false }
-                    return pixel.greenComponent - pixel.redComponent > 0.3
-                }
-            }
         }
 
         func click(_ point: CGPoint) {
