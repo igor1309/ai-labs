@@ -116,7 +116,7 @@ struct ParakeetRecognizerTests {
 
         let updates = await listen(try await parakeet(reader), to: [silence(6), silence(4)])
 
-        #expect(updates.first?.all.map(\.pending) == ["слово"])
+        #expect(updates.first?.all.map { $0.words.dropFirst($0.settledCount).map(\.text).joined(separator: " ") } == ["слово"])
         #expect(updates.dropFirst().first?.all == [])
     }
 
@@ -127,7 +127,7 @@ struct ParakeetRecognizerTests {
 
         let updates = await listen(try await parakeet(reader), to: audio)
 
-        let settled = updates.last?.all.flatMap { $0.settled.split(separator: " ").map(String.init) } ?? []
+        let settled = updates.last?.all.flatMap { $0.words.prefix($0.settledCount).map(\.text) } ?? []
         #expect(await reader.sampleCounts == reader.windowSampleCounts)
         #expect(updates.last?.ending == .finished)
         #expect(settled == reader.chunkWords)
@@ -155,8 +155,8 @@ struct ParakeetRecognizerTests {
 
         let updates = await listen(try await parakeet(reader), to: [silence(6), silence(4), silence(4)])
 
-        #expect(updates.dropFirst().first?.all.map(\.pending) == ["долгое старое"])
-        #expect(updates.last?.all.map(\.settled) == ["долгое новое"])
+        #expect(updates.dropFirst().first?.all.map { $0.words.dropFirst($0.settledCount).map(\.text).joined(separator: " ") } == ["долгое старое"])
+        #expect(updates.last?.all.map { $0.words.prefix($0.settledCount).map(\.text).joined(separator: " ") } == ["долгое новое"])
     }
 
     @Test func aPendingWordStartingBeforeAFinalWordEndsKeepsItPending() async throws {
@@ -168,7 +168,7 @@ struct ParakeetRecognizerTests {
 
         let updates = await listen(try await parakeet(reader), to: [silence(6)])
 
-        #expect(updates.last?.all.map(\.settled) == ["в полдень"])
+        #expect(updates.last?.all.map { $0.words.prefix($0.settledCount).map(\.text).joined(separator: " ") } == ["в полдень"])
     }
 
     @Test func finishingHearsTheRest() async throws {
@@ -238,7 +238,7 @@ struct ParakeetRecognizerTests {
 
         let updates = await listen(try await ParakeetRecognizer(readers: .shared), to: chunks)
 
-        let heard = updates.last?.all.map(\.settled).joined(separator: " ") ?? ""
+        let heard = updates.last?.all.map { $0.words.prefix($0.settledCount).map(\.text).joined(separator: " ") }.joined(separator: " ") ?? ""
         #expect(updates.last?.ending == .finished)
         #expect(letters(heard) == letters(sentence))
     }

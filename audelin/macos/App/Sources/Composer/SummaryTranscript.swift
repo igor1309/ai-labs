@@ -20,7 +20,9 @@ actor SummaryTranscript: SessionTranscriptFile {
         do {
             try await base.write(text)
             let entries = text.entries.compactMap { entry -> Job.Entry? in
-                let words = [entry.text.settled, entry.text.pending].filter { !$0.isEmpty }.joined(separator: " ")
+                let settled = entry.text.settledText
+                let pending = entry.text.pendingText
+                let words = [settled, pending].filter { !$0.isEmpty }.joined(separator: " ")
                 guard !words.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
                 return .init(label: entry.speaker == .mine ? "Me" : "Them",
                              time: String(entry.text.start), text: words)

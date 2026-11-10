@@ -1,3 +1,4 @@
+import LiveText
 import CallText
 import Foundation
 import SummaryJobs
@@ -7,9 +8,13 @@ import Testing
 
 @Suite(.timeLimit(.minutes(1)))
 struct SummaryTranscriptBoundaryTests {
-    @Test func disabledTextKeepsSettledAndPendingWordBoundariesAtHandoff() async throws {
+    @Test(arguments: 0...4)
+    func disabledTextKeepsSettledAndPendingWordBoundariesAtHandoff(settledCount: Int) async throws {
         let state = try await publishedCall(status: .off, mine: [
-            .init(text: .init(id: 1, start: 0, end: 1, settled: "My name is", pending: "Alice."))
+            .init(text: .init(id: 1, start: 0, end: 1, words: [
+                .init("My", start: 0, end: 0.2), .init("name", start: 0.25, end: 0.4),
+                .init("is", start: 0.5, end: 0.6), .init("Alice.", start: 0.75, end: 1),
+            ], settledCount: settledCount))
         ], theirs: [])
         let captured = Mutex<[Job.Entry]>([])
         let file = SummaryTranscript(base: BoundaryTranscript(), folder: URL(fileURLWithPath: "/synthetic"), callbacks: .init(waiting: { _ in }, completed: { _, entries, final, usable in

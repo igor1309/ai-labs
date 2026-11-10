@@ -283,6 +283,6 @@ actor TrackText {
 
     private static func text(_ segment: Segments.Segment, _ end: Double) -> TranscriptSegment {
 
-        TranscriptSegment(id: segment.id, start: segment.start, end: end, settled: segment.settled, pending: segment.pending)
+        TranscriptSegment(id: segment.id, start: segment.start, end: end, words: segment.words, settledCount: segment.settledCount)
     }
 }

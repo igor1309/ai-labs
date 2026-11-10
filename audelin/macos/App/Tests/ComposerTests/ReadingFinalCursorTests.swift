@@ -1,3 +1,4 @@
+import LiveText
 @testable import CallText
 import PanelUI
 import Reading
@@ -11,7 +12,7 @@ struct ReadingFinalCursorTests {
 
         let start = Double(index) * 6
         return .init(speaker: index % 2 == 0 ? .mine : .theirs,
-                     text: .init(id: index, start: start, end: start + 5, settled: words, pending: ""),
+                     text: .init(id: index, start: start, end: start + 5, words: words.split(separator: " ").map { .init(String($0), start: start, end: start + 5) }, settledCount: words.split(separator: " ").count),
                      writtenLater: later)
     }
 
@@ -58,7 +59,7 @@ struct ReadingFinalCursorTests {
             let later = next(5) == 0
             let added = CallState.Entry(
                 speaker: next(2) == 0 ? .mine : .theirs,
-                text: .init(id: id, start: start, end: start + 1, settled: "word\(id)", pending: ""), writtenLater: later
+                text: .init(id: id, start: start, end: start + 1, words: [.init("word\(id)", start: start, end: start + 1)], settledCount: 1), writtenLater: later
             )
             let place = entries[final...].firstIndex { $0.text.start > start } ?? entries.count
             entries.insert(added, at: place)

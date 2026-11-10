@@ -214,7 +214,7 @@ struct SaveCounts {
         }
         guard segments.all != before else { return }
         changes += 1
-        tailBytes.append(Double(segments.all[finalCount...].reduce(0) { $0 + $1.settled.utf8.count + $1.pending.utf8.count }))
+        tailBytes.append(Double(segments.all[finalCount...].reduce(0) { $0 + settled($1).utf8.count + pending($1).utf8.count }))
     }
 }
 
@@ -283,9 +283,9 @@ for source in sources {
             while next < byStart.count, byStart[next].word.end < seen.word.start - 30 { next += 1 }
             if !byStart[next...].prefix(400).contains(where: { same($0.word, seen.word) }) { neverFinal += 1 }
         }
-        let settledWords = segments.all.flatMap { $0.settled.split(separator: " ") }.count
+        let settledWords = segments.all.flatMap { $0.words.prefix($0.settledCount) }.count
 
-        let text = segments.all.map { "[\(clock($0.start))] \($0.settled)" }.joined(separator: "\n\n")
+        let text = segments.all.map { "[\(clock($0.start))] \(settled($0))" }.joined(separator: "\n\n")
         let ending = segments.ending.map { "\($0)" } ?? "none"
         try "# \(name) — \(model.name)\n\nEnding: \(ending)\n\n\(text)\n"
             .write(to: output.appendingPathComponent("\(name)-\(model.name).md"), atomically: true, encoding: .utf8)
@@ -324,4 +324,14 @@ for source in sources {
         try handle.close()
         print(line, terminator: "")
     }
+}
+
+/// A segment's settled words as the panel shows them, joined with single spaces.
+func settled(_ segment: Segments.Segment) -> String {
+    segment.words.prefix(segment.settledCount).map(\.text).joined(separator: " ")
+}
+
+/// A segment's pending words as the panel shows them, joined with single spaces.
+func pending(_ segment: Segments.Segment) -> String {
+    segment.words.dropFirst(segment.settledCount).map(\.text).joined(separator: " ")
 }

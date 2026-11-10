@@ -74,7 +74,7 @@ private func secondsPerHearing(after history: Int) -> (seconds: Double, lost: In
         for _ in 0..<hearings { segments.hear(spoken.next()) }
     }
     let said = (0..<history + hearings).map { "w\($0)" }
-    let held = segments.all.flatMap { ($0.settled + " " + $0.pending).split(separator: " ").map(String.init) }
+    let held = segments.all.flatMap { $0.words.map(\.text) }
     let lost = held.difference(from: said).removals.count
     return ((Double(elapsed.components.attoseconds) / 1e18 + Double(elapsed.components.seconds)) / Double(hearings), lost)
 }

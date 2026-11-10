@@ -6,10 +6,10 @@ public struct Segments: Equatable, Sendable {
         public let id: Int
         /// Seconds into the track where the segment's first word starts.
         public var start: Double
-        /// Words that will not change any more.
-        public var settled: String
-        /// Words the recogniser may still hear differently.
-        public var pending: String
+        /// The recogniser's words, in order, with their reported times.
+        public var words: [Word]
+        /// How many words, from the first, will not change any more.
+        public var settledCount: Int
     }
 
     public enum Ending: Equatable, Sendable {
@@ -38,7 +38,7 @@ public struct Segments: Equatable, Sendable {
     let maximumLength: Double = 30
 
     /// Words after the last cut that can no longer move; segments before it
-    /// are final and keep only their text.
+    /// are final and keep their words.
     private var words: [Word] = []
     private var settledCount = 0
     private var finalEnd = 0.0
@@ -141,8 +141,8 @@ public struct Segments: Equatable, Sendable {
             return Segment(
                 id: finalCount + offset,
                 start: words[lower].start,
-                settled: text(words[lower..<settledUpper]),
-                pending: text(words[settledUpper..<upper])
+                words: Array(words[lower..<upper]),
+                settledCount: settledUpper - lower
             )
         }
         if let final = cuts.last(where: { $0 < settledCount }) {
@@ -157,10 +157,5 @@ public struct Segments: Equatable, Sendable {
 
         guard let last = word.text.last else { return false }
         return ".?!…".contains(last)
-    }
-
-    private func text(_ words: ArraySlice<Word>) -> String {
-
-        words.map(\.text).joined(separator: " ")
     }
 }
