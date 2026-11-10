@@ -23,17 +23,21 @@ struct AudelinApp: App {
     @State private var panel: FloatingPanel?
     @State private var settingsWindow: NSWindow?
     @State private var callsWindow: CallsWindow?
+    @State private var presence = WindowPresence(setPolicy: { NSApplication.shared.setActivationPolicy($0) })
 
     @MainActor
     private func start() async {
 
         guard model == nil else { return }
         let panel = FloatingPanel.onScreen()
+        let presence = self.presence
         self.panel = panel
         let callsWindow = CallsWindow(makeWindow: {
-            NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1000, height: 560),
-                     styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
-        }, activate: { NSApplication.shared.activate() })
+            let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1000, height: 560),
+                                  styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
+            presence.track(window)
+            return window
+        }, activate: { NSApplication.shared.activate() }, shown: { presence.shown($0) })
         self.callsWindow = callsWindow
         let settingsWindow = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 668, height: 700),
                                       styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
@@ -41,6 +45,7 @@ struct AudelinApp: App {
         settingsWindow.isReleasedWhenClosed = false
         settingsWindow.minSize = NSSize(width: 668, height: 120)
         settingsWindow.center()
+        presence.track(settingsWindow)
         self.settingsWindow = settingsWindow
         let boundary = await makeRealBoundary()
         let model = await compose(
@@ -51,6 +56,7 @@ struct AudelinApp: App {
             presentPanel: { [weak panel] in panel?.setVisible($0) },
             terminate: { await MainActor.run { appDelegate.terminationReady = true; NSApplication.shared.terminate(nil) } },
             presentSettings: {
+                presence.shown(settingsWindow)
                 NSApplication.shared.activate()
                 settingsWindow.deminiaturize(nil)
                 settingsWindow.makeKeyAndOrderFront(nil)
