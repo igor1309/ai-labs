@@ -59,6 +59,9 @@ struct SettingsNotesMenu: NSViewRepresentable {
 }
 
 struct SettingsNotesText: NSViewRepresentable {
+    // Revisit even an ignored proposal in SwiftUI's update phase. AppKit can
+    // lay out/draw before the caller's observed state reaches updateNSView.
+    @State private var editRevision: UInt = 0
     var field: SettingsState.NotesField
     var slot: SettingsState.NotesRuntime.Slot
     var slotTitle: String
@@ -81,7 +84,11 @@ struct SettingsNotesText: NSViewRepresentable {
     }
 
     func updateNSView(_ input: SuppliedTextField, context: Context) {
-        context.coordinator.action = action
+        _ = editRevision
+        context.coordinator.action = { value in
+            action(value)
+            editRevision &+= 1
+        }
         input.suppliedValue = field.value
         input.placeholderString = field.placeholder
         input.isEnabled = field.isEnabled
@@ -110,9 +117,6 @@ struct SettingsNotesText: NSViewRepresentable {
         func controlTextDidChange(_ notification: Notification) {
             guard let input = notification.object as? SuppliedTextField, input.isEnabled else { return }
             action?(input.stringValue)
-            input.needsLayout = true
-            input.needsDisplay = true
-
         }
     }
 }
@@ -135,13 +139,4 @@ final class SuppliedTextField: NSTextField {
         }
     }
 
-    override func layout() {
-        super.layout()
-        reconcile()
-    }
-
-    override func draw(_ dirtyRect: NSRect) {
-        reconcile()
-        super.draw(dirtyRect)
-    }
 }
