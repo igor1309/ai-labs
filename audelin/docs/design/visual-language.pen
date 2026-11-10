@@ -49021,7 +49021,7 @@
               "fill": "#B4540A",
               "textGrowth": "fixed-width",
               "width": "fill_container",
-              "content": "Owner to pick one eye-button variant (A1–A3) and one window variant (B1–B3). Proposed, not decided: the eye column sits before the pin; Esc closes the popover and the inspector toggles from the eye or ⌥⌘I.",
+              "content": "Picked by the owner: A1, the eye only on rows with a summary. To pick: B1–B3, all separate windows that follow the selected row and keep size and position across restarts. Proposed, not decided: the eye column sits before the pin.",
               "lineHeight": 1.5,
               "fontFamily": "Inter",
               "fontSize": 13,
@@ -49075,7 +49075,7 @@
                       "id": "EzOWV",
                       "name": "Group",
                       "fill": "$text",
-                      "content": "A — Eye button",
+                      "content": "A — Eye button (A1, picked)",
                       "lineHeight": 1.45,
                       "fontFamily": "$font-ui",
                       "fontSize": "$type-title",
@@ -49471,779 +49471,6 @@
                               ]
                             }
                           ]
-                        },
-                        {
-                          "type": "frame",
-                          "id": "InfyX",
-                          "name": "A2 — Always, disabled when none",
-                          "width": 1228,
-                          "layout": "vertical",
-                          "gap": "$space-12",
-                          "children": [
-                            {
-                              "type": "text",
-                              "id": "Q1ZK63",
-                              "name": "State",
-                              "fill": "#333333",
-                              "content": "A2 — Always, disabled when none",
-                              "fontFamily": "Inter",
-                              "fontSize": 13,
-                              "fontWeight": "600"
-                            },
-                            {
-                              "type": "text",
-                              "id": "gRmHn",
-                              "name": "Note",
-                              "fill": "#777777",
-                              "textGrowth": "fixed-width",
-                              "width": "fill_container",
-                              "content": "Every row has the eye; with no summary it is dimmed and does nothing. Tooltip: «Саммари нет».",
-                              "fontFamily": "Inter",
-                              "fontSize": 12,
-                              "fontWeight": "normal"
-                            },
-                            {
-                              "type": "frame",
-                              "id": "uf6TX",
-                              "name": "Desktop",
-                              "fill": "$back",
-                              "cornerRadius": "$radius-card",
-                              "padding": "$space-24",
-                              "children": [
-                                {
-                                  "type": "frame",
-                                  "id": "vT99z",
-                                  "name": "Window",
-                                  "clip": true,
-                                  "width": 1180,
-                                  "fill": "$win",
-                                  "cornerRadius": "$radius-card",
-                                  "stroke": "$rule",
-                                  "strokeWidth": 1,
-                                  "effect": {
-                                    "type": "shadow",
-                                    "shadowType": "outer",
-                                    "color": "$shadow",
-                                    "offset": {
-                                      "x": 0,
-                                      "y": 12
-                                    },
-                                    "blur": 32
-                                  },
-                                  "layout": "vertical",
-                                  "children": [
-                                    {
-                                      "id": "u2kfo4",
-                                      "type": "ref",
-                                      "ref": "H1efZf",
-                                      "name": "Title bar",
-                                      "width": "fill_container",
-                                      "descendants": {
-                                        "Feu5Z": {
-                                          "content": "Звонки"
-                                        }
-                                      }
-                                    },
-                                    {
-                                      "type": "frame",
-                                      "id": "ivgNg",
-                                      "name": "Header row",
-                                      "width": "fill_container",
-                                      "stroke": "$rule",
-                                      "strokeWidth": {
-                                        "bottom": 1
-                                      },
-                                      "gap": "$space-12",
-                                      "padding": [
-                                        "$space-8",
-                                        "$space-24"
-                                      ],
-                                      "children": [
-                                        {
-                                          "type": "frame",
-                                          "id": "u5S3Zo",
-                                          "name": "H Дата",
-                                          "width": 130,
-                                          "height": 16,
-                                          "children": [
-                                            {
-                                              "type": "text",
-                                              "id": "cdVm5",
-                                              "name": "H",
-                                              "fill": "$gutter",
-                                              "content": "Дата",
-                                              "lineHeight": 1.45,
-                                              "fontFamily": "$font-ui",
-                                              "fontSize": "$type-caption",
-                                              "fontWeight": "600"
-                                            }
-                                          ]
-                                        },
-                                        {
-                                          "type": "frame",
-                                          "id": "Rtc5M",
-                                          "name": "H Звонок",
-                                          "width": "fill_container",
-                                          "height": 16,
-                                          "children": [
-                                            {
-                                              "type": "text",
-                                              "id": "r0IN2",
-                                              "name": "H",
-                                              "fill": "$gutter",
-                                              "content": "Звонок",
-                                              "lineHeight": 1.45,
-                                              "fontFamily": "$font-ui",
-                                              "fontSize": "$type-caption",
-                                              "fontWeight": "600"
-                                            }
-                                          ]
-                                        },
-                                        {
-                                          "type": "frame",
-                                          "id": "U7BYQ2",
-                                          "name": "H Длит.",
-                                          "width": 80,
-                                          "height": 16,
-                                          "children": [
-                                            {
-                                              "type": "text",
-                                              "id": "L3Aeb",
-                                              "name": "H",
-                                              "fill": "$gutter",
-                                              "content": "Длит.",
-                                              "lineHeight": 1.45,
-                                              "fontFamily": "$font-ui",
-                                              "fontSize": "$type-caption",
-                                              "fontWeight": "600"
-                                            }
-                                          ]
-                                        },
-                                        {
-                                          "type": "frame",
-                                          "id": "AJ3xo",
-                                          "name": "H Аудио",
-                                          "width": 200,
-                                          "height": 16,
-                                          "children": [
-                                            {
-                                              "type": "text",
-                                              "id": "GSbeB",
-                                              "name": "H",
-                                              "fill": "$gutter",
-                                              "content": "Аудио",
-                                              "lineHeight": 1.45,
-                                              "fontFamily": "$font-ui",
-                                              "fontSize": "$type-caption",
-                                              "fontWeight": "600"
-                                            }
-                                          ]
-                                        },
-                                        {
-                                          "type": "frame",
-                                          "id": "eiCzO",
-                                          "name": "H eye",
-                                          "width": 32,
-                                          "height": 16
-                                        },
-                                        {
-                                          "type": "frame",
-                                          "id": "Ymoyd",
-                                          "name": "H ",
-                                          "width": 32,
-                                          "height": 16
-                                        },
-                                        {
-                                          "type": "frame",
-                                          "id": "L0BAjI",
-                                          "name": "H ",
-                                          "width": 330,
-                                          "height": 16
-                                        }
-                                      ]
-                                    },
-                                    {
-                                      "id": "wQkow",
-                                      "type": "ref",
-                                      "ref": "yFtkD",
-                                      "name": "Row 21.10 · 12:30",
-                                      "width": "fill_container",
-                                      "fill": "$surface",
-                                      "descendants": {
-                                        "MgalN": {
-                                          "content": "21.10 · 12:30"
-                                        },
-                                        "tkEBB": {
-                                          "content": "Запуск: роли и SLA"
-                                        },
-                                        "cVb80": {
-                                          "content": "47 мин"
-                                        },
-                                        "P2c8z": {
-                                          "fill": "$me"
-                                        },
-                                        "QAlfq": {
-                                          "content": "аудио до 28.10"
-                                        },
-                                        "pWDMZ": {
-                                          "enabled": true
-                                        }
-                                      }
-                                    },
-                                    {
-                                      "id": "GkKMS",
-                                      "type": "ref",
-                                      "ref": "yFtkD",
-                                      "name": "Row 20.10 · 16:00",
-                                      "width": "fill_container",
-                                      "fill": "$surface",
-                                      "descendants": {
-                                        "MgalN": {
-                                          "content": "20.10 · 16:00"
-                                        },
-                                        "tkEBB": {
-                                          "content": "Синк по OKR на квартал"
-                                        },
-                                        "cVb80": {
-                                          "content": "1 ч 12 мин"
-                                        },
-                                        "P2c8z": {
-                                          "fill": "$them"
-                                        },
-                                        "QAlfq": {
-                                          "content": "закреплено"
-                                        },
-                                        "pWDMZ": {
-                                          "enabled": true
-                                        },
-                                        "fHLm9": {
-                                          "id": "X5U9S",
-                                          "type": "ref",
-                                          "ref": "S5zLs",
-                                          "name": "Pin"
-                                        }
-                                      }
-                                    },
-                                    {
-                                      "id": "KCWnw",
-                                      "type": "ref",
-                                      "ref": "yFtkD",
-                                      "name": "Row 17.10 · 11:00",
-                                      "width": "fill_container",
-                                      "fill": "$okBg",
-                                      "descendants": {
-                                        "MgalN": {
-                                          "content": "17.10 · 11:00"
-                                        },
-                                        "tkEBB": {
-                                          "content": "Zoom"
-                                        },
-                                        "cVb80": {
-                                          "content": "28 мин"
-                                        },
-                                        "P2c8z": {
-                                          "fill": "$me"
-                                        },
-                                        "QAlfq": {
-                                          "content": "аудио до 24.10"
-                                        },
-                                        "pWDMZ": {
-                                          "enabled": true
-                                        },
-                                        "FBgY3": {
-                                          "fill": "$okBg"
-                                        },
-                                        "FBgY3/oO3QH": {
-                                          "fill": "$me"
-                                        }
-                                      }
-                                    },
-                                    {
-                                      "id": "sVPDI",
-                                      "type": "ref",
-                                      "ref": "yFtkD",
-                                      "name": "Row 12.10 · 15:30",
-                                      "width": "fill_container",
-                                      "fill": "$surface",
-                                      "descendants": {
-                                        "MgalN": {
-                                          "content": "12.10 · 15:30"
-                                        },
-                                        "tkEBB": {
-                                          "content": "Zoom"
-                                        },
-                                        "cVb80": {
-                                          "content": "38 мин"
-                                        },
-                                        "P2c8z": {
-                                          "fill": "$gutter"
-                                        },
-                                        "QAlfq": {
-                                          "content": "аудио удалено · текст есть"
-                                        },
-                                        "pWDMZ": {
-                                          "enabled": true
-                                        },
-                                        "FBgY3/oO3QH": {
-                                          "fill": "$disText"
-                                        },
-                                        "FWt4R/EWsWH": {
-                                          "fill": "$disText"
-                                        }
-                                      }
-                                    },
-                                    {
-                                      "id": "PNbqd",
-                                      "type": "ref",
-                                      "ref": "yFtkD",
-                                      "name": "Row 12.10 · 15:30",
-                                      "width": "fill_container",
-                                      "fill": "$surface",
-                                      "descendants": {
-                                        "MgalN": {
-                                          "content": "12.10 · 15:30"
-                                        },
-                                        "tkEBB": {
-                                          "content": "Zoom 2"
-                                        },
-                                        "cVb80": {
-                                          "content": "6 мин"
-                                        },
-                                        "P2c8z": {
-                                          "fill": "$gutter"
-                                        },
-                                        "QAlfq": {
-                                          "content": "аудио удалено · текст есть"
-                                        },
-                                        "pWDMZ": {
-                                          "enabled": true
-                                        },
-                                        "FBgY3/oO3QH": {
-                                          "fill": "$disText"
-                                        },
-                                        "FWt4R/EWsWH": {
-                                          "fill": "$disText"
-                                        }
-                                      }
-                                    },
-                                    {
-                                      "type": "frame",
-                                      "id": "S9RF0",
-                                      "name": "Footer",
-                                      "width": "fill_container",
-                                      "gap": "$space-8",
-                                      "padding": [
-                                        "$space-12",
-                                        "$space-24"
-                                      ],
-                                      "alignItems": "center",
-                                      "children": [
-                                        {
-                                          "type": "text",
-                                          "id": "QJsXf",
-                                          "name": "Legend",
-                                          "fill": "$gutter",
-                                          "content": "название = имя папки звонка · переименовать: клик по названию или в Finder · аудио хранится 7 дней, текст — всегда · два звонка в одну минуту: второй — « 2»",
-                                          "lineHeight": 1.45,
-                                          "fontFamily": "$font-ui",
-                                          "fontSize": "$type-caption",
-                                          "fontWeight": "normal"
-                                        }
-                                      ]
-                                    }
-                                  ]
-                                }
-                              ]
-                            }
-                          ]
-                        },
-                        {
-                          "type": "frame",
-                          "id": "Pzy6d",
-                          "name": "A3 — On hover or selection",
-                          "width": 1228,
-                          "layout": "vertical",
-                          "gap": "$space-12",
-                          "children": [
-                            {
-                              "type": "text",
-                              "id": "uu3dK",
-                              "name": "State",
-                              "fill": "#333333",
-                              "content": "A3 — On hover or selection",
-                              "fontFamily": "Inter",
-                              "fontSize": 13,
-                              "fontWeight": "600"
-                            },
-                            {
-                              "type": "text",
-                              "id": "nMfUO",
-                              "name": "Note",
-                              "fill": "#777777",
-                              "textGrowth": "fixed-width",
-                              "width": "fill_container",
-                              "content": "The eye appears only on the selected row (17.10, active) and the hovered row (20.10, with Удалить).",
-                              "fontFamily": "Inter",
-                              "fontSize": 12,
-                              "fontWeight": "normal"
-                            },
-                            {
-                              "type": "frame",
-                              "id": "RvBKk",
-                              "name": "Desktop",
-                              "fill": "$back",
-                              "cornerRadius": "$radius-card",
-                              "padding": "$space-24",
-                              "children": [
-                                {
-                                  "type": "frame",
-                                  "id": "VN1yX",
-                                  "name": "Window",
-                                  "clip": true,
-                                  "width": 1180,
-                                  "fill": "$win",
-                                  "cornerRadius": "$radius-card",
-                                  "stroke": "$rule",
-                                  "strokeWidth": 1,
-                                  "effect": {
-                                    "type": "shadow",
-                                    "shadowType": "outer",
-                                    "color": "$shadow",
-                                    "offset": {
-                                      "x": 0,
-                                      "y": 12
-                                    },
-                                    "blur": 32
-                                  },
-                                  "layout": "vertical",
-                                  "children": [
-                                    {
-                                      "id": "Q6sUn7",
-                                      "type": "ref",
-                                      "ref": "H1efZf",
-                                      "name": "Title bar",
-                                      "width": "fill_container",
-                                      "descendants": {
-                                        "Feu5Z": {
-                                          "content": "Звонки"
-                                        }
-                                      }
-                                    },
-                                    {
-                                      "type": "frame",
-                                      "id": "oJvBn",
-                                      "name": "Header row",
-                                      "width": "fill_container",
-                                      "stroke": "$rule",
-                                      "strokeWidth": {
-                                        "bottom": 1
-                                      },
-                                      "gap": "$space-12",
-                                      "padding": [
-                                        "$space-8",
-                                        "$space-24"
-                                      ],
-                                      "children": [
-                                        {
-                                          "type": "frame",
-                                          "id": "F7ZRN",
-                                          "name": "H Дата",
-                                          "width": 130,
-                                          "height": 16,
-                                          "children": [
-                                            {
-                                              "type": "text",
-                                              "id": "wQAxu",
-                                              "name": "H",
-                                              "fill": "$gutter",
-                                              "content": "Дата",
-                                              "lineHeight": 1.45,
-                                              "fontFamily": "$font-ui",
-                                              "fontSize": "$type-caption",
-                                              "fontWeight": "600"
-                                            }
-                                          ]
-                                        },
-                                        {
-                                          "type": "frame",
-                                          "id": "mjXTy",
-                                          "name": "H Звонок",
-                                          "width": "fill_container",
-                                          "height": 16,
-                                          "children": [
-                                            {
-                                              "type": "text",
-                                              "id": "jlvAB",
-                                              "name": "H",
-                                              "fill": "$gutter",
-                                              "content": "Звонок",
-                                              "lineHeight": 1.45,
-                                              "fontFamily": "$font-ui",
-                                              "fontSize": "$type-caption",
-                                              "fontWeight": "600"
-                                            }
-                                          ]
-                                        },
-                                        {
-                                          "type": "frame",
-                                          "id": "uoJHG",
-                                          "name": "H Длит.",
-                                          "width": 80,
-                                          "height": 16,
-                                          "children": [
-                                            {
-                                              "type": "text",
-                                              "id": "K5TCm",
-                                              "name": "H",
-                                              "fill": "$gutter",
-                                              "content": "Длит.",
-                                              "lineHeight": 1.45,
-                                              "fontFamily": "$font-ui",
-                                              "fontSize": "$type-caption",
-                                              "fontWeight": "600"
-                                            }
-                                          ]
-                                        },
-                                        {
-                                          "type": "frame",
-                                          "id": "U5srO",
-                                          "name": "H Аудио",
-                                          "width": 200,
-                                          "height": 16,
-                                          "children": [
-                                            {
-                                              "type": "text",
-                                              "id": "TrvO2",
-                                              "name": "H",
-                                              "fill": "$gutter",
-                                              "content": "Аудио",
-                                              "lineHeight": 1.45,
-                                              "fontFamily": "$font-ui",
-                                              "fontSize": "$type-caption",
-                                              "fontWeight": "600"
-                                            }
-                                          ]
-                                        },
-                                        {
-                                          "type": "frame",
-                                          "id": "lwo4Z",
-                                          "name": "H eye",
-                                          "width": 32,
-                                          "height": 16
-                                        },
-                                        {
-                                          "type": "frame",
-                                          "id": "t7z2B",
-                                          "name": "H ",
-                                          "width": 32,
-                                          "height": 16
-                                        },
-                                        {
-                                          "type": "frame",
-                                          "id": "Xtp8X",
-                                          "name": "H ",
-                                          "width": 330,
-                                          "height": 16
-                                        }
-                                      ]
-                                    },
-                                    {
-                                      "id": "MqSJr",
-                                      "type": "ref",
-                                      "ref": "yFtkD",
-                                      "name": "Row 21.10 · 12:30",
-                                      "width": "fill_container",
-                                      "fill": "$surface",
-                                      "descendants": {
-                                        "MgalN": {
-                                          "content": "21.10 · 12:30"
-                                        },
-                                        "tkEBB": {
-                                          "content": "Запуск: роли и SLA"
-                                        },
-                                        "cVb80": {
-                                          "content": "47 мин"
-                                        },
-                                        "P2c8z": {
-                                          "fill": "$me"
-                                        },
-                                        "QAlfq": {
-                                          "content": "аудио до 28.10"
-                                        },
-                                        "pWDMZ": {
-                                          "enabled": true
-                                        },
-                                        "FBgY3": {
-                                          "enabled": false
-                                        }
-                                      }
-                                    },
-                                    {
-                                      "id": "T2yIz1",
-                                      "type": "ref",
-                                      "ref": "uMMD6",
-                                      "name": "Row 20.10 · 16:00",
-                                      "width": "fill_container",
-                                      "fill": "$card",
-                                      "descendants": {
-                                        "MgalN": {
-                                          "content": "20.10 · 16:00"
-                                        },
-                                        "tkEBB": {
-                                          "content": "Синк по OKR на квартал"
-                                        },
-                                        "cVb80": {
-                                          "content": "1 ч 12 мин"
-                                        },
-                                        "P2c8z": {
-                                          "fill": "$them"
-                                        },
-                                        "QAlfq": {
-                                          "content": "закреплено"
-                                        },
-                                        "pWDMZ": {
-                                          "enabled": true
-                                        },
-                                        "fHLm9": {
-                                          "id": "RaFIW",
-                                          "type": "ref",
-                                          "ref": "S5zLs",
-                                          "name": "Pin"
-                                        }
-                                      }
-                                    },
-                                    {
-                                      "id": "tjJ5Y",
-                                      "type": "ref",
-                                      "ref": "yFtkD",
-                                      "name": "Row 17.10 · 11:00",
-                                      "width": "fill_container",
-                                      "fill": "$okBg",
-                                      "descendants": {
-                                        "MgalN": {
-                                          "content": "17.10 · 11:00"
-                                        },
-                                        "tkEBB": {
-                                          "content": "Zoom"
-                                        },
-                                        "cVb80": {
-                                          "content": "28 мин"
-                                        },
-                                        "P2c8z": {
-                                          "fill": "$me"
-                                        },
-                                        "QAlfq": {
-                                          "content": "аудио до 24.10"
-                                        },
-                                        "pWDMZ": {
-                                          "enabled": true
-                                        },
-                                        "FBgY3": {
-                                          "fill": "$okBg"
-                                        },
-                                        "FBgY3/oO3QH": {
-                                          "fill": "$me"
-                                        }
-                                      }
-                                    },
-                                    {
-                                      "id": "zxotL",
-                                      "type": "ref",
-                                      "ref": "yFtkD",
-                                      "name": "Row 12.10 · 15:30",
-                                      "width": "fill_container",
-                                      "fill": "$surface",
-                                      "descendants": {
-                                        "MgalN": {
-                                          "content": "12.10 · 15:30"
-                                        },
-                                        "tkEBB": {
-                                          "content": "Zoom"
-                                        },
-                                        "cVb80": {
-                                          "content": "38 мин"
-                                        },
-                                        "P2c8z": {
-                                          "fill": "$gutter"
-                                        },
-                                        "QAlfq": {
-                                          "content": "аудио удалено · текст есть"
-                                        },
-                                        "pWDMZ": {
-                                          "enabled": true
-                                        },
-                                        "FBgY3": {
-                                          "enabled": false
-                                        },
-                                        "FWt4R/EWsWH": {
-                                          "fill": "$disText"
-                                        }
-                                      }
-                                    },
-                                    {
-                                      "id": "T1oM6o",
-                                      "type": "ref",
-                                      "ref": "yFtkD",
-                                      "name": "Row 12.10 · 15:30",
-                                      "width": "fill_container",
-                                      "fill": "$surface",
-                                      "descendants": {
-                                        "MgalN": {
-                                          "content": "12.10 · 15:30"
-                                        },
-                                        "tkEBB": {
-                                          "content": "Zoom 2"
-                                        },
-                                        "cVb80": {
-                                          "content": "6 мин"
-                                        },
-                                        "P2c8z": {
-                                          "fill": "$gutter"
-                                        },
-                                        "QAlfq": {
-                                          "content": "аудио удалено · текст есть"
-                                        },
-                                        "pWDMZ": {
-                                          "enabled": true
-                                        },
-                                        "FBgY3": {
-                                          "enabled": false
-                                        },
-                                        "FWt4R/EWsWH": {
-                                          "fill": "$disText"
-                                        }
-                                      }
-                                    },
-                                    {
-                                      "type": "frame",
-                                      "id": "qsC1Y",
-                                      "name": "Footer",
-                                      "width": "fill_container",
-                                      "gap": "$space-8",
-                                      "padding": [
-                                        "$space-12",
-                                        "$space-24"
-                                      ],
-                                      "alignItems": "center",
-                                      "children": [
-                                        {
-                                          "type": "text",
-                                          "id": "zyePZ",
-                                          "name": "Legend",
-                                          "fill": "$gutter",
-                                          "content": "название = имя папки звонка · переименовать: клик по названию или в Finder · аудио хранится 7 дней, текст — всегда · два звонка в одну минуту: второй — « 2»",
-                                          "lineHeight": 1.45,
-                                          "fontFamily": "$font-ui",
-                                          "fontSize": "$type-caption",
-                                          "fontWeight": "normal"
-                                        }
-                                      ]
-                                    }
-                                  ]
-                                }
-                              ]
-                            }
-                          ]
                         }
                       ]
                     }
@@ -50276,7 +49503,7 @@
                         {
                           "type": "frame",
                           "id": "opdqK",
-                          "name": "B1 — Floating panel",
+                          "name": "B1 — Utility panel",
                           "width": 1388,
                           "layout": "vertical",
                           "gap": "$space-12",
@@ -50286,7 +49513,7 @@
                               "id": "Bsqfd",
                               "name": "State",
                               "fill": "#333333",
-                              "content": "B1 — Floating panel",
+                              "content": "B1 — Utility panel",
                               "fontFamily": "Inter",
                               "fontSize": 13,
                               "fontWeight": "600"
@@ -50298,7 +49525,7 @@
                               "fill": "#777777",
                               "textGrowth": "fixed-width",
                               "width": "fill_container",
-                              "content": "A separate utility panel (title «Саммари — Zoom»), floats above the list, moves and resizes on its own; size and position are kept.",
+                              "content": "An NSPanel with a small title bar «Саммари — Zoom». Floats above the list while Audelin is active and hides when another app is. Follows the selected row; size and position are kept across rows and restarts.",
                               "fontFamily": "Inter",
                               "fontSize": 12,
                               "fontWeight": "normal"
@@ -50709,47 +49936,47 @@
                         },
                         {
                           "type": "frame",
-                          "id": "aUWZW",
-                          "name": "B2 — Popover anchored to the row",
-                          "width": 1228,
+                          "id": "UtWVc",
+                          "name": "B2 — Standard window",
+                          "width": 1800,
                           "layout": "vertical",
                           "gap": "$space-12",
                           "children": [
                             {
                               "type": "text",
-                              "id": "Kja9g",
+                              "id": "F9Apyg",
                               "name": "State",
                               "fill": "#333333",
-                              "content": "B2 — Popover anchored to the row",
+                              "content": "B2 — Standard window",
                               "fontFamily": "Inter",
                               "fontSize": 13,
                               "fontWeight": "600"
                             },
                             {
                               "type": "text",
-                              "id": "OEkFq",
+                              "id": "xke51",
                               "name": "Note",
                               "fill": "#777777",
                               "textGrowth": "fixed-width",
                               "width": "fill_container",
-                              "content": "An NSPopover under the eye of the selected row; ↑↓ moves it to the new row. Esc or a click outside closes it; it can be detached to a panel.",
+                              "content": "A regular window at normal level: it can go behind the list, appears in the Window menu and in ⌘` cycling. Follows the selected row; size and position are kept across rows and restarts.",
                               "fontFamily": "Inter",
                               "fontSize": 12,
                               "fontWeight": "normal"
                             },
                             {
                               "type": "frame",
-                              "id": "SE9bB",
+                              "id": "w0RK09",
                               "name": "Desktop",
-                              "width": 1228,
-                              "height": 800,
+                              "width": 1800,
+                              "height": 640,
                               "fill": "$back",
                               "cornerRadius": "$radius-card",
                               "layout": "none",
                               "children": [
                                 {
                                   "type": "frame",
-                                  "id": "I6TbO",
+                                  "id": "T4RAjz",
                                   "x": 24,
                                   "y": 24,
                                   "name": "Window",
@@ -50772,7 +49999,7 @@
                                   "layout": "vertical",
                                   "children": [
                                     {
-                                      "id": "LUUvh",
+                                      "id": "S2YGvm",
                                       "type": "ref",
                                       "ref": "H1efZf",
                                       "name": "Title bar",
@@ -50785,7 +50012,7 @@
                                     },
                                     {
                                       "type": "frame",
-                                      "id": "OJglj",
+                                      "id": "bJ69G",
                                       "name": "Header row",
                                       "width": "fill_container",
                                       "stroke": "$rule",
@@ -50800,14 +50027,14 @@
                                       "children": [
                                         {
                                           "type": "frame",
-                                          "id": "KOpaZ",
+                                          "id": "dm7kO",
                                           "name": "H Дата",
                                           "width": 130,
                                           "height": 16,
                                           "children": [
                                             {
                                               "type": "text",
-                                              "id": "Yq01e",
+                                              "id": "DyiZD",
                                               "name": "H",
                                               "fill": "$gutter",
                                               "content": "Дата",
@@ -50820,14 +50047,14 @@
                                         },
                                         {
                                           "type": "frame",
-                                          "id": "IHm1n",
+                                          "id": "rJxQR",
                                           "name": "H Звонок",
                                           "width": "fill_container",
                                           "height": 16,
                                           "children": [
                                             {
                                               "type": "text",
-                                              "id": "QXVJZ",
+                                              "id": "K8J6El",
                                               "name": "H",
                                               "fill": "$gutter",
                                               "content": "Звонок",
@@ -50840,14 +50067,14 @@
                                         },
                                         {
                                           "type": "frame",
-                                          "id": "DKnz8",
+                                          "id": "R5OEg",
                                           "name": "H Длит.",
                                           "width": 80,
                                           "height": 16,
                                           "children": [
                                             {
                                               "type": "text",
-                                              "id": "KW3Ii",
+                                              "id": "FtOW4",
                                               "name": "H",
                                               "fill": "$gutter",
                                               "content": "Длит.",
@@ -50860,14 +50087,14 @@
                                         },
                                         {
                                           "type": "frame",
-                                          "id": "M2fbZ1",
+                                          "id": "T9LVkY",
                                           "name": "H Аудио",
                                           "width": 200,
                                           "height": 16,
                                           "children": [
                                             {
                                               "type": "text",
-                                              "id": "I2120k",
+                                              "id": "f4xzm",
                                               "name": "H",
                                               "fill": "$gutter",
                                               "content": "Аудио",
@@ -50880,21 +50107,21 @@
                                         },
                                         {
                                           "type": "frame",
-                                          "id": "r9s4FK",
+                                          "id": "R9M6M",
                                           "name": "H eye",
                                           "width": 32,
                                           "height": 16
                                         },
                                         {
                                           "type": "frame",
-                                          "id": "EGuk6",
+                                          "id": "hNlHf",
                                           "name": "H ",
                                           "width": 32,
                                           "height": 16
                                         },
                                         {
                                           "type": "frame",
-                                          "id": "CRoDZ",
+                                          "id": "UiVvK",
                                           "name": "H ",
                                           "width": 330,
                                           "height": 16
@@ -50902,7 +50129,7 @@
                                       ]
                                     },
                                     {
-                                      "id": "twE4e",
+                                      "id": "Q5WiX",
                                       "type": "ref",
                                       "ref": "yFtkD",
                                       "name": "Row 21.10 · 12:30",
@@ -50930,7 +50157,7 @@
                                       }
                                     },
                                     {
-                                      "id": "Ptt75",
+                                      "id": "EgbpK",
                                       "type": "ref",
                                       "ref": "yFtkD",
                                       "name": "Row 20.10 · 16:00",
@@ -50956,7 +50183,7 @@
                                           "enabled": true
                                         },
                                         "fHLm9": {
-                                          "id": "j2Lyq",
+                                          "id": "jvSKG",
                                           "type": "ref",
                                           "ref": "S5zLs",
                                           "name": "Pin"
@@ -50964,7 +50191,7 @@
                                       }
                                     },
                                     {
-                                      "id": "LFjVV",
+                                      "id": "goalA",
                                       "type": "ref",
                                       "ref": "yFtkD",
                                       "name": "Row 17.10 · 11:00",
@@ -50998,7 +50225,7 @@
                                       }
                                     },
                                     {
-                                      "id": "D5g3rG",
+                                      "id": "u1FzHi",
                                       "type": "ref",
                                       "ref": "yFtkD",
                                       "name": "Row 12.10 · 15:30",
@@ -51032,7 +50259,7 @@
                                       }
                                     },
                                     {
-                                      "id": "U6lX77",
+                                      "id": "EYHuF",
                                       "type": "ref",
                                       "ref": "yFtkD",
                                       "name": "Row 12.10 · 15:30",
@@ -51067,7 +50294,7 @@
                                     },
                                     {
                                       "type": "frame",
-                                      "id": "jK4IF",
+                                      "id": "IjN7A",
                                       "name": "Footer",
                                       "width": "fill_container",
                                       "gap": "$space-8",
@@ -51079,7 +50306,7 @@
                                       "children": [
                                         {
                                           "type": "text",
-                                          "id": "BaHUH",
+                                          "id": "s6YcC",
                                           "name": "Legend",
                                           "fill": "$gutter",
                                           "content": "название = имя папки звонка · переименовать: клик по названию или в Finder · аудио хранится 7 дней, текст — всегда · два звонка в одну минуту: второй — « 2»",
@@ -51093,26 +50320,13 @@
                                   ]
                                 },
                                 {
-                                  "type": "rectangle",
-                                  "id": "qBWZ7",
-                                  "x": 770,
-                                  "y": 262,
-                                  "name": "Arrow",
-                                  "rotation": 45,
-                                  "fill": "$win",
-                                  "width": 16,
-                                  "height": 16,
-                                  "stroke": "$rule",
-                                  "strokeWidth": 1
-                                },
-                                {
                                   "type": "frame",
-                                  "id": "zO4ZZ",
-                                  "x": 558,
-                                  "y": 268,
-                                  "name": "Popover",
+                                  "id": "NugNC",
+                                  "x": 1228,
+                                  "y": 40,
+                                  "name": "Preview window",
                                   "clip": true,
-                                  "width": 440,
+                                  "width": 540,
                                   "fill": "$win",
                                   "cornerRadius": "$radius-card",
                                   "stroke": "$rule",
@@ -51130,7 +50344,19 @@
                                   "layout": "vertical",
                                   "children": [
                                     {
-                                      "id": "JUlpB",
+                                      "id": "SBGZd",
+                                      "type": "ref",
+                                      "ref": "H1efZf",
+                                      "name": "Title bar",
+                                      "width": "fill_container",
+                                      "descendants": {
+                                        "Feu5Z": {
+                                          "content": "Zoom — саммари"
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "id": "QG22c",
                                       "type": "ref",
                                       "ref": "BDCrD",
                                       "name": "Summary preview",
@@ -51144,48 +50370,52 @@
                         },
                         {
                           "type": "frame",
-                          "id": "gaoOE",
-                          "name": "B3 — Inspector side pane",
-                          "width": 1648,
+                          "id": "F1frIY",
+                          "name": "B3 — Glass panel",
+                          "width": 1388,
                           "layout": "vertical",
                           "gap": "$space-12",
                           "children": [
                             {
                               "type": "text",
-                              "id": "UZyTm",
+                              "id": "w7Im5",
                               "name": "State",
                               "fill": "#333333",
-                              "content": "B3 — Inspector side pane",
+                              "content": "B3 — Glass panel",
                               "fontFamily": "Inter",
                               "fontSize": 13,
                               "fontWeight": "600"
                             },
                             {
                               "type": "text",
-                              "id": "M5Shuq",
+                              "id": "M50vQx",
                               "name": "Note",
                               "fill": "#777777",
                               "textGrowth": "fixed-width",
                               "width": "fill_container",
-                              "content": "A pane on the window's right, toggled by the eye; the list narrows and the pane follows the selection. Its width is kept.",
+                              "content": "The Live panel's blurred glass shell, no title bar: dragged by its header, closed by Esc or the eye. Floats like B1. Follows the selected row; size and position are kept across rows and restarts.",
                               "fontFamily": "Inter",
                               "fontSize": 12,
                               "fontWeight": "normal"
                             },
                             {
                               "type": "frame",
-                              "id": "NZs9d",
+                              "id": "pMDjY",
                               "name": "Desktop",
+                              "width": 1388,
+                              "height": 640,
                               "fill": "$back",
                               "cornerRadius": "$radius-card",
-                              "padding": "$space-24",
+                              "layout": "none",
                               "children": [
                                 {
                                   "type": "frame",
-                                  "id": "P44T77",
+                                  "id": "N82Yxe",
+                                  "x": 24,
+                                  "y": 24,
                                   "name": "Window",
                                   "clip": true,
-                                  "width": 1600,
+                                  "width": 1180,
                                   "fill": "$win",
                                   "cornerRadius": "$radius-card",
                                   "stroke": "$rule",
@@ -51203,7 +50433,7 @@
                                   "layout": "vertical",
                                   "children": [
                                     {
-                                      "id": "RWxPE",
+                                      "id": "HYQZa",
                                       "type": "ref",
                                       "ref": "H1efZf",
                                       "name": "Title bar",
@@ -51216,350 +50446,347 @@
                                     },
                                     {
                                       "type": "frame",
-                                      "id": "rkgTt",
-                                      "name": "Split",
+                                      "id": "TbMZ0",
+                                      "name": "Header row",
                                       "width": "fill_container",
-                                      "height": 560,
+                                      "stroke": "$rule",
+                                      "strokeWidth": {
+                                        "bottom": 1
+                                      },
+                                      "gap": "$space-12",
+                                      "padding": [
+                                        "$space-8",
+                                        "$space-24"
+                                      ],
                                       "children": [
                                         {
                                           "type": "frame",
-                                          "id": "cyUX1",
-                                          "name": "List",
-                                          "width": "fill_container",
-                                          "layout": "vertical",
+                                          "id": "cQi3c",
+                                          "name": "H Дата",
+                                          "width": 130,
+                                          "height": 16,
                                           "children": [
                                             {
-                                              "type": "frame",
-                                              "id": "nN4oz",
-                                              "name": "Header row",
-                                              "width": "fill_container",
-                                              "stroke": "$rule",
-                                              "strokeWidth": {
-                                                "bottom": 1
-                                              },
-                                              "gap": "$space-12",
-                                              "padding": [
-                                                "$space-8",
-                                                "$space-24"
-                                              ],
-                                              "children": [
-                                                {
-                                                  "type": "frame",
-                                                  "id": "n2GxCr",
-                                                  "name": "H Дата",
-                                                  "width": 130,
-                                                  "height": 16,
-                                                  "children": [
-                                                    {
-                                                      "type": "text",
-                                                      "id": "j4MS4d",
-                                                      "name": "H",
-                                                      "fill": "$gutter",
-                                                      "content": "Дата",
-                                                      "lineHeight": 1.45,
-                                                      "fontFamily": "$font-ui",
-                                                      "fontSize": "$type-caption",
-                                                      "fontWeight": "600"
-                                                    }
-                                                  ]
-                                                },
-                                                {
-                                                  "type": "frame",
-                                                  "id": "k7XzU",
-                                                  "name": "H Звонок",
-                                                  "width": "fill_container",
-                                                  "height": 16,
-                                                  "children": [
-                                                    {
-                                                      "type": "text",
-                                                      "id": "Vmqy9",
-                                                      "name": "H",
-                                                      "fill": "$gutter",
-                                                      "content": "Звонок",
-                                                      "lineHeight": 1.45,
-                                                      "fontFamily": "$font-ui",
-                                                      "fontSize": "$type-caption",
-                                                      "fontWeight": "600"
-                                                    }
-                                                  ]
-                                                },
-                                                {
-                                                  "type": "frame",
-                                                  "id": "dgyDn",
-                                                  "name": "H Длит.",
-                                                  "width": 80,
-                                                  "height": 16,
-                                                  "children": [
-                                                    {
-                                                      "type": "text",
-                                                      "id": "QNIG7",
-                                                      "name": "H",
-                                                      "fill": "$gutter",
-                                                      "content": "Длит.",
-                                                      "lineHeight": 1.45,
-                                                      "fontFamily": "$font-ui",
-                                                      "fontSize": "$type-caption",
-                                                      "fontWeight": "600"
-                                                    }
-                                                  ]
-                                                },
-                                                {
-                                                  "type": "frame",
-                                                  "id": "FvP8g",
-                                                  "name": "H Аудио",
-                                                  "width": 200,
-                                                  "height": 16,
-                                                  "children": [
-                                                    {
-                                                      "type": "text",
-                                                      "id": "azFmM",
-                                                      "name": "H",
-                                                      "fill": "$gutter",
-                                                      "content": "Аудио",
-                                                      "lineHeight": 1.45,
-                                                      "fontFamily": "$font-ui",
-                                                      "fontSize": "$type-caption",
-                                                      "fontWeight": "600"
-                                                    }
-                                                  ]
-                                                },
-                                                {
-                                                  "type": "frame",
-                                                  "id": "n5hJ7",
-                                                  "name": "H eye",
-                                                  "width": 32,
-                                                  "height": 16
-                                                },
-                                                {
-                                                  "type": "frame",
-                                                  "id": "ikoIk",
-                                                  "name": "H ",
-                                                  "width": 32,
-                                                  "height": 16
-                                                },
-                                                {
-                                                  "type": "frame",
-                                                  "id": "bAYKL",
-                                                  "name": "H ",
-                                                  "width": 330,
-                                                  "height": 16
-                                                }
-                                              ]
-                                            },
-                                            {
-                                              "id": "x8y5Dl",
-                                              "type": "ref",
-                                              "ref": "yFtkD",
-                                              "name": "Row 21.10 · 12:30",
-                                              "width": "fill_container",
-                                              "fill": "$surface",
-                                              "descendants": {
-                                                "MgalN": {
-                                                  "content": "21.10 · 12:30"
-                                                },
-                                                "tkEBB": {
-                                                  "content": "Запуск: роли и SLA"
-                                                },
-                                                "cVb80": {
-                                                  "content": "47 мин"
-                                                },
-                                                "P2c8z": {
-                                                  "fill": "$me"
-                                                },
-                                                "QAlfq": {
-                                                  "content": "аудио до 28.10"
-                                                },
-                                                "pWDMZ": {
-                                                  "enabled": true
-                                                }
-                                              }
-                                            },
-                                            {
-                                              "id": "Az31E",
-                                              "type": "ref",
-                                              "ref": "yFtkD",
-                                              "name": "Row 20.10 · 16:00",
-                                              "width": "fill_container",
-                                              "fill": "$surface",
-                                              "descendants": {
-                                                "MgalN": {
-                                                  "content": "20.10 · 16:00"
-                                                },
-                                                "tkEBB": {
-                                                  "content": "Синк по OKR на квартал"
-                                                },
-                                                "cVb80": {
-                                                  "content": "1 ч 12 мин"
-                                                },
-                                                "P2c8z": {
-                                                  "fill": "$them"
-                                                },
-                                                "QAlfq": {
-                                                  "content": "закреплено"
-                                                },
-                                                "pWDMZ": {
-                                                  "enabled": true
-                                                },
-                                                "fHLm9": {
-                                                  "id": "L52KW9",
-                                                  "type": "ref",
-                                                  "ref": "S5zLs",
-                                                  "name": "Pin"
-                                                }
-                                              }
-                                            },
-                                            {
-                                              "id": "ecHY4",
-                                              "type": "ref",
-                                              "ref": "yFtkD",
-                                              "name": "Row 17.10 · 11:00",
-                                              "width": "fill_container",
-                                              "fill": "$okBg",
-                                              "descendants": {
-                                                "MgalN": {
-                                                  "content": "17.10 · 11:00"
-                                                },
-                                                "tkEBB": {
-                                                  "content": "Zoom"
-                                                },
-                                                "cVb80": {
-                                                  "content": "28 мин"
-                                                },
-                                                "P2c8z": {
-                                                  "fill": "$me"
-                                                },
-                                                "QAlfq": {
-                                                  "content": "аудио до 24.10"
-                                                },
-                                                "pWDMZ": {
-                                                  "enabled": true
-                                                },
-                                                "FBgY3": {
-                                                  "fill": "$okBg"
-                                                },
-                                                "FBgY3/oO3QH": {
-                                                  "fill": "$me"
-                                                }
-                                              }
-                                            },
-                                            {
-                                              "id": "wAbrJ",
-                                              "type": "ref",
-                                              "ref": "yFtkD",
-                                              "name": "Row 12.10 · 15:30",
-                                              "width": "fill_container",
-                                              "fill": "$surface",
-                                              "descendants": {
-                                                "MgalN": {
-                                                  "content": "12.10 · 15:30"
-                                                },
-                                                "tkEBB": {
-                                                  "content": "Zoom"
-                                                },
-                                                "cVb80": {
-                                                  "content": "38 мин"
-                                                },
-                                                "P2c8z": {
-                                                  "fill": "$gutter"
-                                                },
-                                                "QAlfq": {
-                                                  "content": "аудио удалено · текст есть"
-                                                },
-                                                "pWDMZ": {
-                                                  "enabled": true
-                                                },
-                                                "FBgY3": {
-                                                  "enabled": false
-                                                },
-                                                "FWt4R/EWsWH": {
-                                                  "fill": "$disText"
-                                                }
-                                              }
-                                            },
-                                            {
-                                              "id": "VvBZL",
-                                              "type": "ref",
-                                              "ref": "yFtkD",
-                                              "name": "Row 12.10 · 15:30",
-                                              "width": "fill_container",
-                                              "fill": "$surface",
-                                              "descendants": {
-                                                "MgalN": {
-                                                  "content": "12.10 · 15:30"
-                                                },
-                                                "tkEBB": {
-                                                  "content": "Zoom 2"
-                                                },
-                                                "cVb80": {
-                                                  "content": "6 мин"
-                                                },
-                                                "P2c8z": {
-                                                  "fill": "$gutter"
-                                                },
-                                                "QAlfq": {
-                                                  "content": "аудио удалено · текст есть"
-                                                },
-                                                "pWDMZ": {
-                                                  "enabled": true
-                                                },
-                                                "FBgY3": {
-                                                  "enabled": false
-                                                },
-                                                "FWt4R/EWsWH": {
-                                                  "fill": "$disText"
-                                                }
-                                              }
-                                            },
-                                            {
-                                              "type": "frame",
-                                              "id": "w2PHB4",
-                                              "name": "Footer",
-                                              "width": "fill_container",
-                                              "gap": "$space-8",
-                                              "padding": [
-                                                "$space-12",
-                                                "$space-24"
-                                              ],
-                                              "alignItems": "center",
-                                              "children": [
-                                                {
-                                                  "type": "text",
-                                                  "id": "TgPcj",
-                                                  "name": "Legend",
-                                                  "fill": "$gutter",
-                                                  "content": "название = имя папки звонка · переименовать: клик по названию или в Finder · аудио хранится 7 дней, текст — всегда · два звонка в одну минуту: второй — « 2»",
-                                                  "lineHeight": 1.45,
-                                                  "fontFamily": "$font-ui",
-                                                  "fontSize": "$type-caption",
-                                                  "fontWeight": "normal"
-                                                }
-                                              ]
+                                              "type": "text",
+                                              "id": "OLjUm",
+                                              "name": "H",
+                                              "fill": "$gutter",
+                                              "content": "Дата",
+                                              "lineHeight": 1.45,
+                                              "fontFamily": "$font-ui",
+                                              "fontSize": "$type-caption",
+                                              "fontWeight": "600"
                                             }
                                           ]
                                         },
                                         {
                                           "type": "frame",
-                                          "id": "SAUH7",
-                                          "name": "Inspector",
-                                          "width": 440,
-                                          "height": "fill_container",
-                                          "fill": "$surface",
-                                          "stroke": "$rule",
-                                          "strokeWidth": {
-                                            "left": 1
-                                          },
-                                          "layout": "vertical",
+                                          "id": "R54Lbh",
+                                          "name": "H Звонок",
+                                          "width": "fill_container",
+                                          "height": 16,
                                           "children": [
                                             {
-                                              "id": "oEKAD",
-                                              "type": "ref",
-                                              "ref": "BDCrD",
-                                              "name": "Summary preview",
-                                              "width": "fill_container"
+                                              "type": "text",
+                                              "id": "ZfVs8",
+                                              "name": "H",
+                                              "fill": "$gutter",
+                                              "content": "Звонок",
+                                              "lineHeight": 1.45,
+                                              "fontFamily": "$font-ui",
+                                              "fontSize": "$type-caption",
+                                              "fontWeight": "600"
                                             }
                                           ]
+                                        },
+                                        {
+                                          "type": "frame",
+                                          "id": "JsabK",
+                                          "name": "H Длит.",
+                                          "width": 80,
+                                          "height": 16,
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "id": "L0F4F",
+                                              "name": "H",
+                                              "fill": "$gutter",
+                                              "content": "Длит.",
+                                              "lineHeight": 1.45,
+                                              "fontFamily": "$font-ui",
+                                              "fontSize": "$type-caption",
+                                              "fontWeight": "600"
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "type": "frame",
+                                          "id": "RWhdD",
+                                          "name": "H Аудио",
+                                          "width": 200,
+                                          "height": 16,
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "id": "k1nOc",
+                                              "name": "H",
+                                              "fill": "$gutter",
+                                              "content": "Аудио",
+                                              "lineHeight": 1.45,
+                                              "fontFamily": "$font-ui",
+                                              "fontSize": "$type-caption",
+                                              "fontWeight": "600"
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "type": "frame",
+                                          "id": "ZJqA2",
+                                          "name": "H eye",
+                                          "width": 32,
+                                          "height": 16
+                                        },
+                                        {
+                                          "type": "frame",
+                                          "id": "ddjnu",
+                                          "name": "H ",
+                                          "width": 32,
+                                          "height": 16
+                                        },
+                                        {
+                                          "type": "frame",
+                                          "id": "dy3YV",
+                                          "name": "H ",
+                                          "width": 330,
+                                          "height": 16
                                         }
                                       ]
+                                    },
+                                    {
+                                      "id": "j4ECEz",
+                                      "type": "ref",
+                                      "ref": "yFtkD",
+                                      "name": "Row 21.10 · 12:30",
+                                      "width": "fill_container",
+                                      "fill": "$surface",
+                                      "descendants": {
+                                        "MgalN": {
+                                          "content": "21.10 · 12:30"
+                                        },
+                                        "tkEBB": {
+                                          "content": "Запуск: роли и SLA"
+                                        },
+                                        "cVb80": {
+                                          "content": "47 мин"
+                                        },
+                                        "P2c8z": {
+                                          "fill": "$me"
+                                        },
+                                        "QAlfq": {
+                                          "content": "аудио до 28.10"
+                                        },
+                                        "pWDMZ": {
+                                          "enabled": true
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "id": "QE7Kz",
+                                      "type": "ref",
+                                      "ref": "yFtkD",
+                                      "name": "Row 20.10 · 16:00",
+                                      "width": "fill_container",
+                                      "fill": "$surface",
+                                      "descendants": {
+                                        "MgalN": {
+                                          "content": "20.10 · 16:00"
+                                        },
+                                        "tkEBB": {
+                                          "content": "Синк по OKR на квартал"
+                                        },
+                                        "cVb80": {
+                                          "content": "1 ч 12 мин"
+                                        },
+                                        "P2c8z": {
+                                          "fill": "$them"
+                                        },
+                                        "QAlfq": {
+                                          "content": "закреплено"
+                                        },
+                                        "pWDMZ": {
+                                          "enabled": true
+                                        },
+                                        "fHLm9": {
+                                          "id": "Kh0xa",
+                                          "type": "ref",
+                                          "ref": "S5zLs",
+                                          "name": "Pin"
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "id": "cdkCN",
+                                      "type": "ref",
+                                      "ref": "yFtkD",
+                                      "name": "Row 17.10 · 11:00",
+                                      "width": "fill_container",
+                                      "fill": "$okBg",
+                                      "descendants": {
+                                        "MgalN": {
+                                          "content": "17.10 · 11:00"
+                                        },
+                                        "tkEBB": {
+                                          "content": "Zoom"
+                                        },
+                                        "cVb80": {
+                                          "content": "28 мин"
+                                        },
+                                        "P2c8z": {
+                                          "fill": "$me"
+                                        },
+                                        "QAlfq": {
+                                          "content": "аудио до 24.10"
+                                        },
+                                        "pWDMZ": {
+                                          "enabled": true
+                                        },
+                                        "FBgY3": {
+                                          "fill": "$okBg"
+                                        },
+                                        "FBgY3/oO3QH": {
+                                          "fill": "$me"
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "id": "F7Zvl",
+                                      "type": "ref",
+                                      "ref": "yFtkD",
+                                      "name": "Row 12.10 · 15:30",
+                                      "width": "fill_container",
+                                      "fill": "$surface",
+                                      "descendants": {
+                                        "MgalN": {
+                                          "content": "12.10 · 15:30"
+                                        },
+                                        "tkEBB": {
+                                          "content": "Zoom"
+                                        },
+                                        "cVb80": {
+                                          "content": "38 мин"
+                                        },
+                                        "P2c8z": {
+                                          "fill": "$gutter"
+                                        },
+                                        "QAlfq": {
+                                          "content": "аудио удалено · текст есть"
+                                        },
+                                        "pWDMZ": {
+                                          "enabled": true
+                                        },
+                                        "FBgY3": {
+                                          "enabled": false
+                                        },
+                                        "FWt4R/EWsWH": {
+                                          "fill": "$disText"
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "id": "dvG0r",
+                                      "type": "ref",
+                                      "ref": "yFtkD",
+                                      "name": "Row 12.10 · 15:30",
+                                      "width": "fill_container",
+                                      "fill": "$surface",
+                                      "descendants": {
+                                        "MgalN": {
+                                          "content": "12.10 · 15:30"
+                                        },
+                                        "tkEBB": {
+                                          "content": "Zoom 2"
+                                        },
+                                        "cVb80": {
+                                          "content": "6 мин"
+                                        },
+                                        "P2c8z": {
+                                          "fill": "$gutter"
+                                        },
+                                        "QAlfq": {
+                                          "content": "аудио удалено · текст есть"
+                                        },
+                                        "pWDMZ": {
+                                          "enabled": true
+                                        },
+                                        "FBgY3": {
+                                          "enabled": false
+                                        },
+                                        "FWt4R/EWsWH": {
+                                          "fill": "$disText"
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "type": "frame",
+                                      "id": "n0oNXY",
+                                      "name": "Footer",
+                                      "width": "fill_container",
+                                      "gap": "$space-8",
+                                      "padding": [
+                                        "$space-12",
+                                        "$space-24"
+                                      ],
+                                      "alignItems": "center",
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "id": "wdCxd",
+                                          "name": "Legend",
+                                          "fill": "$gutter",
+                                          "content": "название = имя папки звонка · переименовать: клик по названию или в Finder · аудио хранится 7 дней, текст — всегда · два звонка в одну минуту: второй — « 2»",
+                                          "lineHeight": 1.45,
+                                          "fontFamily": "$font-ui",
+                                          "fontSize": "$type-caption",
+                                          "fontWeight": "normal"
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "itHFJ",
+                                  "x": 924,
+                                  "y": 96,
+                                  "name": "Preview glass panel",
+                                  "clip": true,
+                                  "width": 440,
+                                  "fill": "$glass",
+                                  "cornerRadius": "$radius-panel",
+                                  "effect": [
+                                    {
+                                      "type": "background_blur",
+                                      "radius": 24
+                                    },
+                                    {
+                                      "type": "shadow",
+                                      "shadowType": "outer",
+                                      "color": "$shadow",
+                                      "offset": {
+                                        "x": 0,
+                                        "y": 12
+                                      },
+                                      "blur": 32
+                                    }
+                                  ],
+                                  "layout": "vertical",
+                                  "children": [
+                                    {
+                                      "id": "mGgu0",
+                                      "type": "ref",
+                                      "ref": "BDCrD",
+                                      "name": "Summary preview",
+                                      "width": "fill_container"
                                     }
                                   ]
                                 }

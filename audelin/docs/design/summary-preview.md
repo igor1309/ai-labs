@@ -17,26 +17,26 @@ Frames: "Screen 4b — Summary preview" (right of Screen 4) and the board
   (copies the Markdown source), and the summary as selectable rendered
   Markdown: headings, lists, code and tables. No transcript link.
 
-## For the owner to pick
+## Eye button: A1 (picked)
 
-Eye button, one of:
+The eye shows only on rows with a `summary.md`. Rows without one keep an
+empty slot, so the columns stay put.
 
-- **A1 — only when a summary exists.** Rows without a summary keep an empty
-  slot, so the columns stay put.
-- **A2 — always, disabled when none.** Dimmed eye, tooltip «Саммари нет».
-- **A3 — on hover or selection.** Only the hovered and the selected row show it.
+## Preview window: to pick
 
-Preview window, one of:
+Each option is a separate window. It follows the selected row and keeps its
+size and position across rows and app restarts.
 
-- **B1 — floating panel.** A separate utility panel above the list; moves
-  and resizes on its own.
-- **B2 — popover anchored to the row.** Under the selected row's eye; Esc or
-  a click outside closes it. Its position follows the row, so only its size
-  can be kept.
-- **B3 — inspector side pane.** On the window's right; the list narrows.
-  Only its width can be kept.
+- **B1 — utility panel.** An `NSPanel` with a small title bar «Саммари —
+  Zoom». It floats above the list while Audelin is active and hides when
+  another app is.
+- **B2 — standard window.** A regular window at normal level. It can go
+  behind the list, and it appears in the Window menu and in ⌘` cycling.
+- **B3 — glass panel.** The Live panel's blurred glass shell with no title
+  bar. It is dragged by its header, closed by Esc or the eye, and floats
+  like B1.
 
-Proposed, not decided: the eye column sits just before the pin; the active
+Proposed, not decided: the eye column sits just before the pin. The active
 eye uses the `okBg` tint with a `me` icon, like the selected row.
 
 ## Components
