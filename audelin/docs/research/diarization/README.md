@@ -9,6 +9,7 @@ outputs go under `work/`, which is not committed.
 | `run.sh ami\|calls\|synth` | runs `audelin-diarize` (from `../spike`) on a set and writes `work/<set>/<name>.<system>.json` |
 | `score.py` | DER (miss, false alarm, speaker error) against an RTTM, speaker counts, and the summary tables |
 | `synth.py` | builds synthetic Russian group calls whose speaker turns are known by construction |
+| `fetch-voxforge.sh` | downloads the VoxForge Russian speakers `synth.py` uses |
 | `synth-night.sh` | the synthetic-call measurement end to end: fetch, build, run, score |
 
 ## Synthetic Russian group calls
@@ -17,8 +18,14 @@ The owner's calls have no speaker labels, so no DER can be measured on them. The
 synthetic set gives a reference without labelling anything by hand: calls of 2–6
 speakers, 10–20 minutes each, made from read speech with known speakers.
 
-- **Voices**: Russian LibriSpeech (RuLS, [OpenSLR 96](https://www.openslr.org/96/),
-  public domain, LibriVox readers). In about a quarter of the calls, one speaker
+- **Voices**: 49 Russian speakers. 17 are audiobook readers from Russian
+  LibriSpeech (RuLS, [OpenSLR 96](https://www.openslr.org/96/), public domain,
+  LibriVox). 32 are volunteers from
+  [VoxForge Russian](http://www.repository.voxforge1.org/downloads/Russian/Trunk/Audio/Main/16kHz_16bit/)
+  (GPL), each on their own microphone: every named speaker with 3 or more
+  submissions. VoxForge speakers have only a few minutes of audio each, so a
+  speaker whose audio runs out within a call is heard again, reshuffled. In about
+  a quarter of the calls, one speaker
   reads English instead ([LibriSpeech test-clean](https://www.openslr.org/12/),
   CC BY 4.0), since real calls mix both languages.
 - **Turn-taking**: the turn lengths, pauses, short back-channel turns and overlap
@@ -49,7 +56,7 @@ From this directory:
 ./synth-night.sh
 ```
 
-The first run downloads about 9.5 GB (RuLS is 9.1 GB) into `work/Datasets/`. It
+The first run downloads about 9.6 GB (RuLS is 9.1 GB) into `work/Datasets/`. It
 needs `ffmpeg` built with libopus, `uv`, Swift and network access. Every step
 skips work that is already done, so a run that stops resumes where it left off.
 Do not run other CPU-heavy benchmarks at the same time; they distort the timings.
