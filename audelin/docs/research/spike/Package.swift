@@ -32,5 +32,15 @@ let package = Package(
             dependencies: [.product(name: "FluidAudio", package: "FluidAudio")],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
+        .executableTarget(
+            name: "audelin-enhance",
+            dependencies: [.product(name: "FluidAudio", package: "FluidAudio")],
+            swiftSettings: [.swiftLanguageMode(.v5)]
+        ),
+        .executableTarget(
+            name: "audelin-diarize",
+            dependencies: [.product(name: "FluidAudio", package: "FluidAudio")],
+            swiftSettings: [.swiftLanguageMode(.v5)]
+        ),
     ]
 )
