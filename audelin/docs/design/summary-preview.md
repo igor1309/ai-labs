@@ -22,19 +22,16 @@ Frames: "Screen 4b — Summary preview" (right of Screen 4) and the board
 The eye shows only on rows with a `summary.md`. Rows without one keep an
 empty slot, so the columns stay put.
 
-## Preview window: to pick
+## Preview window: B1 (picked)
 
-Each option is a separate window. It follows the selected row and keeps its
-size and position across rows and app restarts.
+A utility panel (`NSPanel`) with a small title bar «Саммари — Zoom». It
+floats above the list while Audelin is active and hides when another app
+is. It follows the selected row and keeps its size and position across rows
+and app restarts.
 
-- **B1 — utility panel.** An `NSPanel` with a small title bar «Саммари —
-  Zoom». It floats above the list while Audelin is active and hides when
-  another app is.
-- **B2 — standard window.** A regular window at normal level. It can go
-  behind the list, and it appears in the Window menu and in ⌘` cycling.
-- **B3 — glass panel.** The Live panel's blurred glass shell with no title
-  bar. It is dragged by its header, closed by Esc or the eye, and floats
-  like B1.
+Considered and dropped: a popover and an inspector pane, which cannot keep
+their position; a standard window, which gets lost behind the list; a
+borderless glass panel.
 
 Proposed, not decided: the eye column sits just before the pin. The active
 eye uses the `okBg` tint with a `me` icon, like the selected row.
