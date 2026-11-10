@@ -9,6 +9,7 @@ let package = Package(
         .library(name: "SummaryJobs", targets: ["SummaryJobs"]),
         .library(name: "SummaryFiles", targets: ["SummaryFiles"]),
         .library(name: "SummaryRuntime", targets: ["SummaryRuntime"]),
+        .library(name: "BleedCleanup", targets: ["BleedCleanup"]),
         .library(name: "SpeakerIdentification", targets: ["SpeakerIdentification"]),
 
         .library(name: "BlockingTestWork", targets: ["BlockingTestWork"]),
@@ -60,6 +61,8 @@ let package = Package(
         .testTarget(name: "SummaryFilesTests", dependencies: ["SummaryFiles", "BlockingTestWork"]),
         .target(name: "SummaryRuntime"),
         .testTarget(name: "SummaryRuntimeTests", dependencies: ["SummaryRuntime", "BlockingTestWork"]),
+        .target(name: "BleedCleanup"),
+        .testTarget(name: "BleedCleanupTests", dependencies: ["BleedCleanup"]),
         .target(name: "SpeakerIdentification"),
         .testTarget(name: "SpeakerIdentificationTests", dependencies: ["SpeakerIdentification", "BlockingTestWork"]),
 

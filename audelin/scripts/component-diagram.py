@@ -31,6 +31,7 @@ TARGETS = {
     "SummaryJobs": ("machines", "coordinates durable call-note jobs", 7),
     "SummaryFiles": ("storage", "claims and publishes call notes", 9),
     "SummaryRuntime": ("capture", "executes bounded note requests", 6),
+    "BleedCleanup": ("machines", "cleans far-side bleed from the mic after a call", 8),
     "SpeakerIdentification": ("text", "validates self-introduction evidence", 10),
     "BlockingTestWork": ("external", "test helper: dispatches blocking work", 3),
     "RenderedText": ("external", "test helper: hosts a view offscreen", 4),
