@@ -1,5 +1,4 @@
 import BlockingTestWork
-import struct CallText.State
 import Foundation
 import Observation
 import Preferences
@@ -207,7 +206,7 @@ private final class ControlledTranscripts: TranscriptStorage, Sendable {
 private struct ControlledTranscript: SessionTranscriptFile {
     let base: any SessionTranscriptFile
     let controls: ControlledTranscripts
-    func write(_ state: State) async throws {
+    func write(_ state: CallState) async throws {
         let final = state.status == .finished
         if final && controls.holdFinal { controls.held.send(); await controls.release.next() }
         if final ? controls.failFinal : controls.failEarly { throw ScriptFailure.failed }

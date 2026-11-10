@@ -83,7 +83,7 @@ struct ReadingCompositionTests {
 
     @Test func translatesPopulatedReadingAndEveryTextStatusAndLogMode() async throws {
 
-        let statuses: [(State.Status, ReadingTextUpdate.Status)] = [
+        let statuses: [(CallState.Status, ReadingTextUpdate.Status)] = [
             (.off, .off), (.gettingReady, .gettingReady), (.listening, .listening),
             (.failed("reason"), .failed("reason")), (.finished, .finished),
         ]

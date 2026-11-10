@@ -2,7 +2,6 @@ import struct CallText.SideState
 import struct FillIn.Audio
 import protocol FillIn.WrittenTrack
 import struct SideText.Audio
-import struct SideText.Text
 import Testing
 @testable import Composer
 
@@ -14,12 +13,12 @@ struct SideTests {
 
         let engine = SideEngine(silent: false, failWord: nil, finalWordCount: finalWordCount)
         let hearing = SideHearing(text: engine)
-        let settled: [SideText.Text] = [
+        let settled: [TranscriptSegment] = [
             .init(id: 0, start: 0, end: 1, settled: "word0"),
             .init(id: 1, start: 1, end: 2, settled: "word1"),
             .init(id: 2, start: 2, end: 3, settled: "word2")
         ]
-        let pending: [SideText.Text] = [
+        let pending: [TranscriptSegment] = [
             .init(id: 0, start: 0, end: 1, pending: "word0"),
             .init(id: 1, start: 1, end: 2, pending: "word1"),
             .init(id: 2, start: 2, end: 3, pending: "word2")
@@ -85,7 +84,7 @@ struct SideTests {
         rig.audio.capture(sideTones(0..<3, sampleRate: sampleRate))
         await rig.side.start(enabled: true)
         await rig.engine.preparing.next()
-        #expect(await rig.next { $0.status == .gettingReady } == SideState(status: .gettingReady, entries: []))
+        #expect(await rig.next { $0.status == .gettingReady } == SideState<TranscriptSegment>(status: .gettingReady, entries: []))
         rig.engine.release.end()
         let caughtUp = await rig.next { $0.status == .listening }
         #expect(caughtUp.entries.map(\.text.pending) == ["word0", "word1", "word2"])
@@ -140,7 +139,7 @@ struct SideTests {
         await rig.engine.preparing.next()
         _ = await rig.next { $0.status == .gettingReady }
         await rig.side.setEnabled(false)
-        #expect(await rig.next { $0.status == .off } == SideState(status: .off, entries: []))
+        #expect(await rig.next { $0.status == .off } == SideState<TranscriptSegment>(status: .off, entries: []))
         await rig.audio.send(sideTones(2..<3, sampleRate: 1))
         await rig.side.setEnabled(true)
         await rig.engine.preparing.next()
@@ -168,7 +167,7 @@ struct SideTests {
         await rig.audio.send(sideTones(3..<5, sampleRate: 1))
         rig.audio.end()
         await rig.side.stop()
-        #expect(await rig.next { $0.status == .finished } == SideState(status: .finished, entries: []))
+        #expect(await rig.next { $0.status == .finished } == SideState<TranscriptSegment>(status: .finished, entries: []))
         #expect(await rig.engine.samples == (0..<5).map(Float.init))
         await rig.listener.value
     }
@@ -195,7 +194,7 @@ private struct SideRig {
     let written: SideWritten
     let engine: SideEngine
     let side: CallSide
-    let snapshots = AsyncStream<SideState>.makeStream()
+    let snapshots = AsyncStream<SideState<TranscriptSegment>>.makeStream()
     let listener: Task<Void, Never>
 
     init(sampleRate: Double, silent: Bool = false, failWord: Int? = nil, finalWordCount: Int = 0) {
@@ -212,11 +211,11 @@ private struct SideRig {
         }
     }
 
-    func next(_ matches: (SideState) -> Bool) async -> SideState {
+    func next(_ matches: (SideState<TranscriptSegment>) -> Bool) async -> SideState<TranscriptSegment> {
 
         for await snapshot in snapshots.stream where matches(snapshot) { return snapshot }
         Issue.record("Side ended before its expected snapshot")
-        return SideState(status: .off, entries: [])
+        return SideState<TranscriptSegment>(status: .off, entries: [])
     }
 
     func cleanup() {
@@ -252,7 +251,7 @@ private actor SideEngine: TextEngine {
     private let silent: Bool
     private let failWord: Int?
     private let finalWordCount: Int
-    private var text: [SideText.Text] = []
+    private var text: [TranscriptSegment] = []
     private(set) var samples: [Float] = []
     private(set) var preparations = 0
     private(set) var stops = 0

@@ -19,6 +19,8 @@ reached, through interfaces of its own. It knows no device, file or model.
 - It reads up to where the live audio has reached when it starts, and on
   to the audio's end when the audio has ended, so nothing is heard twice
   or missed (live-audio S-9).
+- Generic over the segments it carries, which it reads only for identity,
+  start and end; the composition chooses what else a segment holds (LAB-1142).
 - Text it fills in after a switch on is marked as written later.
 - Abandoning ends it at once with the text so far, without waiting for a
   load or a read in flight.

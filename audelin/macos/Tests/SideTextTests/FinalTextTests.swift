@@ -185,13 +185,13 @@ private func chunk(_ second: Int, sampleRate: Double = 1) -> Audio {
     Audio(start: Double(second) / sampleRate, samples: [0], sampleRate: sampleRate)
 }
 
-private func listening(_ side: SideText) async {
+private func listening(_ side: SideText<Text>) async {
 
     for await state in side.updates where state.status == .listening { return }
     Issue.record("Text ended before listening")
 }
 
-private func finished(_ side: SideText) async {
+private func finished(_ side: SideText<Text>) async {
 
     for await _ in side.updates {}
     #expect(await side.state.status == .finished)
@@ -199,11 +199,11 @@ private func finished(_ side: SideText) async {
 
 private actor DeltaText: LiveText {
 
-    private var hearings: [TextUpdate]
-    private let ending: TextUpdate
+    private var hearings: [TextUpdate<Text>]
+    private let ending: TextUpdate<Text>
     private var gate: Gate?
 
-    init(hearings: [TextUpdate], finish: TextUpdate) {
+    init(hearings: [TextUpdate<Text>], finish: TextUpdate<Text>) {
 
         self.hearings = hearings
         ending = finish
@@ -211,7 +211,7 @@ private actor DeltaText: LiveText {
 
     func holdNextHearing(_ gate: Gate) { self.gate = gate }
 
-    func hear(_ audio: Audio) async -> TextUpdate {
+    func hear(_ audio: Audio) async -> TextUpdate<Text> {
 
         let held = gate
         gate = nil
@@ -220,15 +220,15 @@ private actor DeltaText: LiveText {
     }
 
     func cancelHearing() {}
-    func finish() -> TextUpdate { ending }
+    func finish() -> TextUpdate<Text> { ending }
     func stop() {}
 }
 
 private struct DeltaFill: FillingIn {
 
-    let progress: FilledText?
+    let progress: FilledText<Text>?
 
-    func fillIn(from: Double, receive: @escaping @Sendable (FilledText) async -> Void) async {
+    func fillIn(from: Double, receive: @escaping @Sendable (FilledText<Text>) async -> Void) async {
 
         if let progress { await receive(progress) }
     }

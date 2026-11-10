@@ -38,9 +38,9 @@ struct FinishedTextSwitchTests {
             let url = folder.appendingPathComponent("transcript.md")
             let transcript = try await TranscriptFile(url: url)
             do {
-                let speaker: State.Speaker = onCallSide ? .theirs : .mine
-                var statuses: [State.Status] = []
-                var final: State?
+                let speaker: CallState.Speaker = onCallSide ? .theirs : .mine
+                var statuses: [CallState.Status] = []
+                var final: CallState?
                 while let snapshot = await updates.next() {
                     statuses.append(snapshot.status)
                     let entries = snapshot.entries.filter { $0.speaker == speaker }

@@ -1,6 +1,5 @@
 import AVFAudio
 import BlockingTestWork
-import struct CallText.State
 import Darwin
 import Foundation
 import LiveText

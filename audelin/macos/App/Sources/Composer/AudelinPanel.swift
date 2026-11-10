@@ -1,4 +1,3 @@
-import struct CallText.State
 import Foundation
 import Observation
 import PanelUI
@@ -62,7 +61,7 @@ actor AudelinPanel {
         if let event = readingEvent(event), let reading = current?.reading { await reading.send(event) }
     }
 
-    func begin(id: UInt64, text: AsyncStream<State>, enableLiveText: @escaping @Sendable () async -> Void) async -> ReadingSubscription {
+    func begin(id: UInt64, text: AsyncStream<CallState>, enableLiveText: @escaping @Sendable () async -> Void) async -> ReadingSubscription {
 
         let reading = await makeReading()
         current = (id, reading, enableLiveText)
@@ -119,7 +118,7 @@ final class ReadingSubscription {
     private let names = ZoomLiveNames()
 
     init(
-        reading: ReadingInputs, text: AsyncStream<State>,
+        reading: ReadingInputs, text: AsyncStream<CallState>,
         now: @escaping @Sendable () -> Double, ticks: AsyncStream<Void>, sink: any LogSink,
         receive: @escaping @Sendable (ReadingState) async -> Void
     ) async {

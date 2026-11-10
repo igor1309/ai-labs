@@ -1,6 +1,5 @@
 import CallDiarizer
 import Foundation
-import struct CallText.State
 import Session
 import Synchronization
 import TranscriptFile
@@ -14,7 +13,7 @@ struct WritingCallText: TranscriptWriting.CallText {
 
     init(text: CallReader) { self.text = text }
 
-    var updates: AsyncStream<State> { text.updates }
+    var updates: AsyncStream<CallState> { text.updates }
     func start(enabled: Bool) async { await text.start(enabled: enabled) }
     func setEnabled(_ enabled: Bool) async { await text.setEnabled(enabled) }
     func stop() async { await text.stop() }
@@ -23,7 +22,7 @@ struct WritingCallText: TranscriptWriting.CallText {
 /// A recording's transcript destination, kept open until its text has stopped.
 public protocol SessionTranscriptFile: Sendable {
 
-    func write(_ state: State) async throws
+    func write(_ state: CallState) async throws
 
     func close() async
 }
@@ -32,26 +31,26 @@ struct TranscriptDestination: TranscriptWriting.Transcript {
 
     let file: any SessionTranscriptFile
 
-    func write(_ state: State) async throws { try await file.write(state) }
+    func write(_ state: CallState) async throws { try await file.write(state) }
 }
 
 final class WritingTranscript: SessionTranscriptFile {
 
     let file: TranscriptFile
     let sink: any LogSink
-    private let last = Mutex<State?>(nil)
+    private let last = Mutex<CallState?>(nil)
 
     init(file: TranscriptFile, sink: any LogSink) { self.file = file; self.sink = sink }
 
     /// Logs each save with the final count it wrote, so a reader of the log knows
     /// how many entries on disk will not change again.
-    func write(_ state: State) async throws {
+    func write(_ state: CallState) async throws {
 
         last.withLock { $0 = state }
         try await save(state)
     }
 
-    private func save(_ state: State) async throws {
+    private func save(_ state: CallState) async throws {
 
         let entries = state.entries, finalCount = state.finalCount
         let names = LiveNameBoard.shared.snapshot()

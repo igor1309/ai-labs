@@ -121,7 +121,7 @@ struct Rig: Sendable {
     let written: MemoryTrack
     let text: ToneText
     let audio: CuePosition
-    let fill: FillIn
+    let fill: FillIn<Text>
 
     func write(_ words: Range<Int>, ended: Bool = false) async {
 
@@ -133,7 +133,7 @@ struct Rig: Sendable {
 
     func result() async -> FillOutput {
 
-        var final: State?
+        var final: State<Text>?
         for await state in fill.updates { final = state }
         guard let final else {
             Issue.record("Fill-in ended without publishing a result")
@@ -169,19 +169,29 @@ struct FillOutput: Equatable, Sendable {
         let writtenLater: Bool
     }
 
-    let status: State.Status
+    let status: State<Text>.Status
     let entries: [Entry]
     let heardThrough: Double
 
-    init(status: State.Status, entries: [Entry], heardThrough: Double) {
+    init(status: State<Text>.Status, entries: [Entry], heardThrough: Double) {
         self.status = status
         self.entries = entries
         self.heardThrough = heardThrough
     }
 
-    init(_ snapshot: State) {
+    init(_ snapshot: State<Text>) {
         status = snapshot.status
         entries = snapshot.entries.map { Entry(text: $0.text, writtenLater: $0.writtenLater) }
         heardThrough = snapshot.heardThrough
     }
+}
+
+/// A segment with words, as the composition relays through fill in.
+struct Text: Segment {
+
+    let id: Int
+    let start: Double
+    let end: Double
+    var settled = ""
+    var pending = ""
 }

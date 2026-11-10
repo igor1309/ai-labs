@@ -1,13 +1,13 @@
 /// Combines two sides' text, marking whose it is and switching them together.
 /// A side whose text fails leaves the other side going.
-public actor CallText {
+public actor CallText<Text: Segment> {
 
-    public nonisolated let updates: AsyncStream<State>
-    public private(set) var state = State(status: .off, entries: [])
+    public nonisolated let updates: AsyncStream<State<Text>>
+    public private(set) var state = State<Text>(status: .off, entries: [])
 
-    private let continuation: AsyncStream<State>.Continuation
-    private let sides: [any Side]
-    private var snapshots = [SideState](repeating: .init(status: .off, entries: []), count: 2)
+    private let continuation: AsyncStream<State<Text>>.Continuation
+    private let sides: [any Side<Text>]
+    private var snapshots = [SideState<Text>](repeating: .init(status: .off, entries: []), count: 2)
     private var committed = [0, 0]
     private var listeners: [Task<Void, Never>] = []
     private var endedSides = [false, false]
@@ -17,7 +17,7 @@ public actor CallText {
     private var enabled = false
     private var ended = false
 
-    public init(microphone: any Side, call: any Side) {
+    public init(microphone: any Side<Text>, call: any Side<Text>) {
 
         sides = [microphone, call]
         // An omitted entry can return under the same producer id in the next snapshot.
@@ -83,7 +83,7 @@ public actor CallText {
         await operation.value
     }
 
-    private func receive(_ snapshot: SideState, on index: Int) {
+    private func receive(_ snapshot: SideState<Text>, on index: Int) {
 
         guard !ended else { return }
         snapshots[index] = snapshot
@@ -127,7 +127,7 @@ public actor CallText {
 
     private struct Remaining {
 
-        let entry: State.Entry
+        let entry: State<Text>.Entry
         let side: Int
         let isFinal: Bool
     }
@@ -136,7 +136,7 @@ public actor CallText {
 
         var remaining: [Remaining] = []
         for (index, snapshot) in snapshots.enumerated() {
-            func include(_ entries: some Sequence<SideState.Entry>, final: Bool) {
+            func include(_ entries: some Sequence<SideState<Text>.Entry>, final: Bool) {
                 for entry in entries {
                     remaining.append(Remaining(entry: .init(
                         speaker: index == 0 ? .mine : .theirs, text: entry.text, writtenLater: entry.writtenLater
@@ -150,7 +150,7 @@ public actor CallText {
 
         // A revisable start can move. An immutable segment's end is a lower
         // bound on future text, and so is what the side says of its quiet.
-        let bounds = snapshots.enumerated().compactMap { index, snapshot -> (Double, State.Speaker)? in
+        let bounds = snapshots.enumerated().compactMap { index, snapshot -> (Double, State<Text>.Speaker)? in
             guard !snapshot.ended, !endedSides[index] else { return nil }
             let bound = max(snapshot.finalEntries.last?.text.end ?? -.infinity, snapshot.noTextBefore ?? -.infinity)
             return (bound, index == 0 ? .mine : .theirs)
@@ -167,7 +167,7 @@ public actor CallText {
         state.entries.seal(upTo: state.finalCount)
     }
 
-    private static func precedes(_ lhs: State.Entry, _ rhs: State.Entry) -> Bool {
+    private static func precedes(_ lhs: State<Text>.Entry, _ rhs: State<Text>.Entry) -> Bool {
 
         if lhs.text.start != rhs.text.start { return lhs.text.start < rhs.text.start }
         return lhs.speaker == .mine && rhs.speaker == .theirs

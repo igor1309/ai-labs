@@ -1,4 +1,3 @@
-import struct CallText.State
 import LiveText
 import Reading
 
@@ -31,7 +30,7 @@ struct SignpostedTranscriptFile: SessionTranscriptFile {
     let base: any SessionTranscriptFile
     let intervals: ProfileIntervals
 
-    func write(_ state: State) async throws {
+    func write(_ state: CallState) async throws {
 
         let end = intervals.begin("TranscriptWrite")
         defer { end() }

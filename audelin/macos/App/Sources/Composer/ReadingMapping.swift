@@ -1,5 +1,4 @@
 import Foundation
-import struct CallText.State
 import PanelUI
 import SplitRows
 import Reading
@@ -12,7 +11,7 @@ func readingRecording(_ state: SessionState) -> ReadingRecording {
 }
 
 /// Maps the entries from position `from` on; those before it are already final.
-func readingText(_ state: State, from: Int = 0, names: [Int: String] = [:]) -> ReadingTextUpdate {
+func readingText(_ state: CallState, from: Int = 0, names: [Int: String] = [:]) -> ReadingTextUpdate {
 
     let status: ReadingTextUpdate.Status = switch state.status {
     case .off: .off

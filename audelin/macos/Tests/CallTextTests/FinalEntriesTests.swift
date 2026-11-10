@@ -61,8 +61,8 @@ struct FinalEntriesTests {
         await call.stop()
     }
 
-    @Test(arguments: [SideState.Status.finished, .failed("ended")])
-    func anEndedSideReleasesItsBound(status: SideState.Status) async {
+    @Test(arguments: [SideState<Text>.Status.finished, .failed("ended")])
+    func anEndedSideReleasesItsBound(status: SideState<Text>.Status) async {
 
         let mine = FinalSide(), theirs = FinalSide()
         let call = CallText(microphone: mine, call: theirs)
@@ -89,8 +89,8 @@ struct FinalEntriesTests {
         await call.stop()
     }
 
-    @Test(arguments: [State.Speaker.mine, .theirs])
-    func listenReturningAlonePublishesTheOtherSidesFinalPrefix(ending: State.Speaker) async {
+    @Test(arguments: [State<Text>.Speaker.mine, .theirs])
+    func listenReturningAlonePublishesTheOtherSidesFinalPrefix(ending: State<Text>.Speaker) async {
 
         let mine = FinalSide(), theirs = FinalSide()
         let call = CallText(microphone: mine, call: theirs)
@@ -222,13 +222,13 @@ struct FinalEntriesTests {
     }
 }
 
-private func word(_ id: Int, start: Double? = nil, end: Double? = nil, pending: String = "", later: Bool = false) -> SideState.Entry {
+private func word(_ id: Int, start: Double? = nil, end: Double? = nil, pending: String = "", later: Bool = false) -> SideState<Text>.Entry {
 
     let start = start ?? Double(id)
     return .init(text: .init(id: id, start: start, end: end ?? start + 1, settled: pending.isEmpty ? "word\(id)" : "", pending: pending), writtenLater: later)
 }
 
-private func ordered(_ mine: [SideState.Entry], _ theirs: [SideState.Entry], myTail: [SideState.Entry] = [], theirTail: [SideState.Entry] = []) -> [CallOutput.Entry] {
+private func ordered(_ mine: [SideState<Text>.Entry], _ theirs: [SideState<Text>.Entry], myTail: [SideState<Text>.Entry] = [], theirTail: [SideState<Text>.Entry] = []) -> [CallOutput.Entry] {
 
     let mine = (mine + myTail).map { CallOutput.Entry(speaker: .mine, text: $0.text, writtenLater: $0.writtenLater) }
     let theirs = (theirs + theirTail).map { CallOutput.Entry(speaker: .theirs, text: $0.text, writtenLater: $0.writtenLater) }
@@ -246,14 +246,14 @@ private func storage<T>(_ entries: [T]) -> UInt {
 private actor FinalSide: Side {
 
     private struct Delivery {
-        let state: SideState
+        let state: SideState<Text>
         let received: CheckedContinuation<Void, Never>
     }
 
     private let deliveries = AsyncStream<Delivery>.makeStream()
-    private var state = SideState(status: .listening, entries: [])
+    private var state = SideState<Text>(status: .listening, entries: [])
 
-    func listen(_ receive: @escaping @Sendable (SideState) async -> Void) async {
+    func listen(_ receive: @escaping @Sendable (SideState<Text>) async -> Void) async {
 
         for await delivery in deliveries.stream {
             await receive(delivery.state)
@@ -272,7 +272,7 @@ private actor FinalSide: Side {
     }
 
     func send(
-        final: [SideState.Entry], tail: [SideState.Entry], status: SideState.Status = .listening,
+        final: [SideState<Text>.Entry], tail: [SideState<Text>.Entry], status: SideState<Text>.Status = .listening,
         noTextBefore: Double? = nil
     ) async {
 

@@ -3,12 +3,12 @@ import TranscriptFile
 
 enum Transcript {
 
-    static func segments(from state: State) -> [TranscriptFile.Segment] {
+    static func segments(from state: CallState) -> [TranscriptFile.Segment] {
 
         state.entries.map { segment(from: $0) }
     }
 
-    static func segment(from entry: State.Entry, speaker: String? = nil) -> TranscriptFile.Segment {
+    static func segment(from entry: CallState.Entry, speaker: String? = nil) -> TranscriptFile.Segment {
 
         TranscriptFile.Segment(
             side: entry.speaker == .mine ? .mine : .theirs,
