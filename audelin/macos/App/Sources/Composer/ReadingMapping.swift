@@ -24,7 +24,9 @@ func readingText(_ state: CallState, from: Int = 0, names: [Int: String] = [:]) 
         .init(
             id: .init(speaker: entry.speaker == .mine ? .mine : .theirs, localID: entry.text.id),
             start: entry.text.start, end: entry.text.end,
-            settled: entry.text.settled, pending: entry.text.pending, writtenLater: entry.writtenLater,
+            settled: entry.text.settledText,
+            pending: entry.text.pendingText,
+            writtenLater: entry.writtenLater,
             name: entry.speaker == .mine ? nil : names[entry.text.id]
         )
     }, from: from, finalCount: state.finalCount)

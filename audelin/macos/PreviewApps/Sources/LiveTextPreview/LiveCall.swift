@@ -294,14 +294,18 @@ final class LiveCall {
 
     private func show(_ speaker: PanelState.Speaker, _ segments: [Segments.Segment], ending: Segments.Ending?) {
 
-        transcript.update(speaker, segments.map { .init(id: $0.id, start: $0.start, settled: $0.settled, pending: $0.pending) })
+        transcript.update(speaker, segments.map {
+            .init(id: $0.id, start: $0.start,
+                  settled: $0.words.prefix($0.settledCount).map(\.text).joined(separator: " "),
+                  pending: $0.words.dropFirst($0.settledCount).map(\.text).joined(separator: " "))
+        })
         if ending == .failed { message = "The recogniser failed; the text so far is kept" }
 
         let now = ContinuousClock.now
         guard ending != nil || lastLogged[speaker].map({ now - $0 >= .seconds(5) }) ?? true else { return }
         lastLogged[speaker] = now
-        let settled = segments.reduce(0) { $0 + $1.settled.split(separator: " ").count }
-        let pending = segments.reduce(0) { $0 + $1.pending.split(separator: " ").count }
+        let settled = segments.reduce(0) { $0 + $1.settledCount }
+        let pending = segments.reduce(0) { $0 + $1.words.count - $1.settledCount }
         let ending = ending.map { ", \($0)" } ?? ""
         Log.line("\(speaker == .me ? "я" : "они"): \(segments.count) segment(s), \(settled) settled, \(pending) pending word(s)\(ending)")
     }

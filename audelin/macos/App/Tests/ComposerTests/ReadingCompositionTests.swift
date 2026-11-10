@@ -1,3 +1,4 @@
+import LiveText
 import CallText
 import PanelUI
 import Reading
@@ -68,12 +69,12 @@ struct ReadingCompositionTests {
         func send(_ event: ReadingEvent) { reading = ReadingReducer.reduce(reading, event).0 }
         send(.recordingChanged(.on(elapsed: 30)))
         let snapshot = try await publishedCall(status: .listening, mine: [
-            .init(text: .init(id: 1, start: 10, end: 11, settled: "мой")),
+            .init(text: .init(id: 1, start: 10, end: 11, words: [.init("мой", start: 10, end: 11)], settledCount: 1)),
         ], theirs: [
-            .init(text: .init(id: 1, start: 1, end: 2, settled: "раз")),
-            .init(text: .init(id: 2, start: 3, end: 4, settled: "два")),
-            .init(text: .init(id: 3, start: 5, end: 6, settled: "три")),
-            .init(text: .init(id: 4, start: 12, end: 13, settled: "четыре")),
+            .init(text: .init(id: 1, start: 1, end: 2, words: [.init("раз", start: 1, end: 2)], settledCount: 1)),
+            .init(text: .init(id: 2, start: 3, end: 4, words: [.init("два", start: 3, end: 4)], settledCount: 1)),
+            .init(text: .init(id: 3, start: 5, end: 6, words: [.init("три", start: 5, end: 6)], settledCount: 1)),
+            .init(text: .init(id: 4, start: 12, end: 13, words: [.init("четыре", start: 12, end: 13)], settledCount: 1)),
         ])
         send(.textUpdated(readingText(snapshot, names: [1: "Анна", 2: "Анна", 3: "Борис", 4: "Борис"])))
         guard case let .lines(lines) = panelState(reading).log else { throw ScriptFailure.failed }
@@ -89,9 +90,9 @@ struct ReadingCompositionTests {
         ]
         for (source, expected) in statuses {
             let snapshot = try await publishedCall(status: source, mine: [
-                .init(text: .init(id: 7, start: 1, end: 2, settled: "settled", pending: " pending")),
+                .init(text: .init(id: 7, start: 1, end: 2, words: [.init("settled", start: 1, end: 2), .init(" pending", start: 1, end: 2)], settledCount: 1)),
             ], theirs: [
-                .init(text: .init(id: 7, start: 3, end: 4, settled: "late"), writtenLater: true),
+                .init(text: .init(id: 7, start: 3, end: 4, words: [.init("late", start: 3, end: 4)], settledCount: 1), writtenLater: true),
             ])
             let translated = readingText(snapshot)
             #expect(translated == .init(status: expected, entries: [
@@ -106,9 +107,9 @@ struct ReadingCompositionTests {
         #expect(panelState(reading) == .init(recording: .on(elapsed: "00:01:02"), log: .liveTextOff(kept: nil)))
         send(.scrolled(atBottom: false))
         let snapshot = try await publishedCall(status: .listening, mine: [
-            .init(text: .init(id: 1, start: 1, end: 2, settled: "settled", pending: " pending")),
+            .init(text: .init(id: 1, start: 1, end: 2, words: [.init("settled", start: 1, end: 2), .init(" pending", start: 1, end: 2)], settledCount: 1)),
         ], theirs: [
-            .init(text: .init(id: 1, start: 3, end: 4, settled: "late"), writtenLater: true),
+            .init(text: .init(id: 1, start: 3, end: 4, words: [.init("late", start: 3, end: 4)], settledCount: 1), writtenLater: true),
         ])
         send(.textUpdated(readingText(snapshot)))
         send(.hold(.init(entryID: 0, text: "held")))

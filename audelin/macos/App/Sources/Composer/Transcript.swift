@@ -12,8 +12,10 @@ enum Transcript {
 
         TranscriptFormat.Segment(
             side: entry.speaker == .mine ? .mine : .theirs,
-            start: entry.text.start, settled: entry.text.settled,
-            pending: entry.text.pending, filledInLater: entry.writtenLater,
+            start: entry.text.start,
+            settled: entry.text.settledText,
+            pending: entry.text.pendingText,
+            filledInLater: entry.writtenLater,
             speaker: entry.speaker == .mine ? nil : speaker
         )
     }

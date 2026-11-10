@@ -1,3 +1,4 @@
+import LiveText
 import Foundation
 import Synchronization
 import Testing
@@ -15,7 +16,7 @@ struct TranscriptRenderingTests {
         let renderer = RendererStub()
         let writer = WritingTranscript(file: bytes, format: renderer, names: LiveNameBoard(), sink: RenderingLog())
         let state = CallState(status: .listening, entries: [
-            .init(speaker: .mine, text: .init(id: 0, start: 1, end: 2, settled: "1 final"), writtenLater: false),
+            .init(speaker: .mine, text: .init(id: 0, start: 1, end: 2, words: [.init("1", start: 1, end: 2), .init("final", start: 1, end: 2)], settledCount: 2), writtenLater: false),
         ], finalCount: 1)
         try await writer.write(state)
         renderer.failNext()
@@ -34,7 +35,7 @@ struct TranscriptRenderingTests {
             let file = try await TranscriptFile(url: url, initialBytes: try initial.render([]).chunks, binding: binding)
             let writer = WritingTranscript(file: file, format: TranscriptFormat(), names: LiveNameBoard(), sink: RenderingLog())
             let bad = CallState(status: .listening, entries: [
-                .init(speaker: .mine, text: .init(id: 1, start: .nan, end: 3, settled: "bad"), writtenLater: false),
+                .init(speaker: .mine, text: .init(id: 1, start: .nan, end: 3, words: [.init("bad", start: .nan, end: 3)], settledCount: 1), writtenLater: false),
             ])
             await #expect(throws: TranscriptFormat.Failure.invalidStart) { try await writer.write(bad) }
             await writer.close()
@@ -58,7 +59,7 @@ struct TranscriptRenderingTests {
             names.give([1: "Anna"])
             let writer = WritingTranscript(file: file, format: TranscriptFormat(), names: names, sink: RenderingLog())
             let snapshot = CallState(status: .listening, entries: [
-                .init(speaker: .theirs, text: .init(id: 1, start: 2, end: 3, settled: "1 hello"), writtenLater: false),
+                .init(speaker: .theirs, text: .init(id: 1, start: 2, end: 3, words: [.init("1", start: 2, end: 3), .init("hello", start: 2, end: 3)], settledCount: 2), writtenLater: false),
             ], finalCount: 1)
             for revision in 1...2 {
                 _ = binding.take()
