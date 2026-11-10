@@ -12,7 +12,7 @@ func readingRecording(_ state: SessionState) -> ReadingRecording {
 }
 
 /// Maps the entries from position `from` on; those before it are already final.
-func readingText(_ state: State, from: Int = 0) -> ReadingTextUpdate {
+func readingText(_ state: State, from: Int = 0, names: [Int: String] = [:]) -> ReadingTextUpdate {
 
     let status: ReadingTextUpdate.Status = switch state.status {
     case .off: .off
@@ -25,7 +25,8 @@ func readingText(_ state: State, from: Int = 0) -> ReadingTextUpdate {
         .init(
             id: .init(speaker: entry.speaker == .mine ? .mine : .theirs, localID: entry.text.id),
             start: entry.text.start, end: entry.text.end,
-            settled: entry.text.settled, pending: entry.text.pending, writtenLater: entry.writtenLater
+            settled: entry.text.settled, pending: entry.text.pending, writtenLater: entry.writtenLater,
+            name: entry.speaker == .mine ? nil : names[entry.text.id]
         )
     }, from: from, finalCount: state.finalCount)
 }
@@ -47,6 +48,8 @@ struct MappedRows {
     var layout = -1
     var mapped = 0
     var sealed: [PanelState.Row] = []
+    /// The last sealed entry's remote name, so a caption shows only where it changes.
+    var previousName: String?
 }
 
 func panelState(_ state: ReadingState) -> PanelState {
@@ -77,13 +80,13 @@ func panelState(_ state: ReadingState, rows: inout MappedRows) -> PanelState {
     })
 }
 
-private func panelRow(_ row: ReadingState.Row) -> PanelState.Row {
+private func panelRow(_ row: ReadingState.Row, previous: inout String?) -> PanelState.Row {
 
     switch row {
-    case let .entry(entry): .entry(panelEntry(entry))
+    case let .entry(entry): .entry(panelEntry(entry, previous: &previous))
     case let .gap(gap):
         .gap(.init(speaker: gap.speaker == .mine ? .me : .them, text: gapText(gap)))
-    case let .late(group): .late(.init(span: group.span, entries: group.entries.map(panelEntry)))
+    case let .late(group): .late(.init(span: group.span, entries: group.entries.map { panelEntry($0, previous: &previous) }))
     }
 }
 
@@ -92,16 +95,24 @@ private func panelLines(_ lines: ReadingState.Lines, acknowledgement: UUID?, row
     let sealed = lines.rows.sealed
     if rows.layout != lines.layout || rows.mapped > sealed.count { rows = .init(layout: lines.layout) }
     if rows.mapped < sealed.count {
-        rows.sealed.append(contentsOf: sealed[rows.mapped...].map(panelRow))
+        rows.sealed.append(contentsOf: sealed[rows.mapped...].map { panelRow($0, previous: &rows.previousName) })
         rows.mapped = sealed.count
     }
-    return .init(rows: .init(sealed: rows.sealed, tail: lines.rows.tail.map(panelRow)), holds: lines.holds.map(panelHeld), newBelow: lines.newBelow, followsLive: lines.followsLive, scrollAcknowledgement: acknowledgement)
+    var previous = rows.previousName
+    let tail = lines.rows.tail.map { panelRow($0, previous: &previous) }
+    return .init(rows: .init(sealed: rows.sealed, tail: tail), holds: lines.holds.map(panelHeld), newBelow: lines.newBelow, followsLive: lines.followsLive, scrollAcknowledgement: acknowledgement)
 }
 
-private func panelEntry(_ entry: ReadingState.Entry) -> PanelState.Entry {
+/// A remote name is captioned only where it differs from the entry before (design option C);
+/// live names are guesses until the after-call pass.
+private func panelEntry(_ entry: ReadingState.Entry, previous: inout String?) -> PanelState.Entry {
 
-    .init(id: entry.id, time: entry.time, speaker: entry.speaker == .mine ? .me : .them,
-          settled: entry.settled, pending: entry.pending)
+    let name = entry.speaker == .mine ? nil : entry.name
+    let label = name != nil && name != previous ? name : nil
+    defer { previous = name }
+    return .init(id: entry.id, time: entry.time, speaker: entry.speaker == .mine ? .me : .them,
+                 settled: entry.settled, pending: entry.pending,
+                 label: label, labelIsTentative: label != nil)
 }
 
 private func panelHeld(_ held: ReadingState.Held) -> PanelState.Held {

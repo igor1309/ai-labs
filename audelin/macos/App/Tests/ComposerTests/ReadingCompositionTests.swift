@@ -62,6 +62,25 @@ struct ReadingCompositionTests {
         }
     }
 
+    @Test func aLiveNameIsCaptionedTentativelyOnlyWhereTheSpeakerChanges() async throws {
+
+        var reading = ReadingState()
+        func send(_ event: ReadingEvent) { reading = ReadingReducer.reduce(reading, event).0 }
+        send(.recordingChanged(.on(elapsed: 30)))
+        let snapshot = try await publishedCall(status: .listening, mine: [
+            .init(text: .init(id: 1, start: 10, end: 11, settled: "мой")),
+        ], theirs: [
+            .init(text: .init(id: 1, start: 1, end: 2, settled: "раз")),
+            .init(text: .init(id: 2, start: 3, end: 4, settled: "два")),
+            .init(text: .init(id: 3, start: 5, end: 6, settled: "три")),
+            .init(text: .init(id: 4, start: 12, end: 13, settled: "четыре")),
+        ])
+        send(.textUpdated(readingText(snapshot, names: [1: "Анна", 2: "Анна", 3: "Борис", 4: "Борис"])))
+        guard case let .lines(lines) = panelState(reading).log else { throw ScriptFailure.failed }
+        #expect(lines.entries.map(\.label) == ["Анна", nil, "Борис", nil, "Борис"])
+        #expect(lines.entries.filter { $0.label != nil }.allSatisfy { $0.labelIsTentative })
+    }
+
     @Test func translatesPopulatedReadingAndEveryTextStatusAndLogMode() async throws {
 
         let statuses: [(State.Status, ReadingTextUpdate.Status)] = [

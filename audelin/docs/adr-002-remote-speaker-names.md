@@ -18,6 +18,24 @@ reused by LAB-1124 (Telemost) and LAB-1125 (Google Meet).
    new word gets a reliable name at once.
 3. **One transcript file** holds the names; no sidecar.
 
+## Revised after LAB-1103 (owner, 2026-11-10)
+
+LAB-1103 measured that live diarization is not good enough (LS-EEND: 16.6 % speaker error,
+right count in 7/16 meetings), while Nemotron after the call is (2.7 % DER, 16/16). So names
+come in two tiers:
+
+- **Live, tentative:** a remote row takes the name the call app showed alone over most of it
+  (`LiveNames`), with no diarization. It is drawn in the option-C caption, slanted and in the
+  gutter grey, and never changes during the call. Overlap or nobody shown leaves `Them`.
+- **After the call, confirmed:** Nemotron diarizes the call track, `SpeakerNaming` matches its
+  turns against the recorded indicator timeline, and confirmed names replace the tentative
+  ones in the amber caption and in the transcript file. Unconfirmed speakers stay
+  `Speaker N`. Live names reach the file marked tentative, so a quit before the pass keeps
+  them as guesses.
+
+The live tier needs no Accessibility prompt of its own yet: it runs only when the
+permission is already granted.
+
 ## Components
 
 Each owns its types and the interfaces it depends on (`ARCHITECTURE.md`).
