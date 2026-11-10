@@ -31,7 +31,7 @@ speakers, 10–20 minutes each, made from read speech with known speakers.
 - **Turn-taking**: the turn lengths, pauses, short back-channel turns and overlap
   come from AMI train and dev meetings (the forced-alignment RTTMs in
   [`nttcslab-sp/diar-forced-alignment`](https://github.com/nttcslab-sp/diar-forced-alignment)),
-  remapped from 4 speakers to the call's 2–6. A turn under 1 s gets one short burst
+  remapped from 4 speakers to the call's 2–6. A turn under 0.6 s gets one short burst
   of the reader's speech, standing in for "да" or "угу".
 - **Line**: each speaker's track goes through Opus in VoIP mode (12–32 kbps),
   0–5 % lost 20 ms frames, their own gain (±8 dB) and noise (15–35 dB SNR), and
