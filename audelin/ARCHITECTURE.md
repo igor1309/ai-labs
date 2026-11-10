@@ -46,3 +46,30 @@ LLM work on recording cleanup. Root lifecycle integration stops dispatch,
 drains recording, retains pending handoffs, cancels and joins active summary
 resources, then allows termination. Root storage integration coordinates
 publication with call rename, deletion and calls-folder moves.
+
+## Bleed cleanup
+
+After a call on speakers, far-side speech heard by the microphone appears in
+the transcript as the user's. One new responsibility answers it: decide from a
+call's two finished transcripts whether the far side leaked, and if so have the
+microphone side recognised again from a cleaned microphone and replaced.
+
+BleedCleanup owns that responsibility and nothing else. It is a plain component,
+not a state machine: it runs once per ended call, in a fixed order, and nothing
+observes it on the way; it keeps no state between calls, so it is not an actor.
+Its gate is a pure rule over its own word type. It owns three ports: clean the
+microphone against the call track, hear the cleaned samples, replace the
+microphone side of the saved transcript. Any port failing, or hearing nothing,
+keeps the raw transcript.
+
+No other component is added. Cleaning is one call to FluidAudio's LocalVQE
+manager, which downloads and loads its model, fits the reference to the
+microphone and returns 16 kHz samples; the root answers the port with it,
+passing the two tracks as recorded. Hearing is Live text over the Parakeet
+recogniser, composed by the root over those samples, as Fill-in hears missed
+audio. The replacement belongs to Transcript file, the transcript's only writer.
+
+The root builds BleedCleanup with those answers and runs it on each recording's
+closed transcript. Summary submission waits for its outcome instead of the
+close, so notes never quote the far side as the user. Logging of a kept raw
+transcript is a root decorator.
