@@ -297,6 +297,23 @@ recorded, starting with the microphone, and never delay it.**
   speakers). A Bluetooth speaker's delay can exceed 328 ms; rerun
   `shift.sh` with larger shifts on such a call when one turns up.
 
+## The gate needs word times (LAB-1134)
+
+Measured on 2026-11-10. Parakeet v3 heard each whole track of 16 owner calls
+(`seg.sh`), and the gate (leaked mic words, two or more in a row heard on the call
+track within 2 s) was scored twice (`gate.py`): with each word's own time, and with
+times spread evenly over segments split at 2 s pauses, as the live transcript keeps
+them.
+
+| | Leaked words/min, word times | Spread over segments |
+|---|---:|---:|
+| Speaker call (10.29-1525) | 15.3 | 2.7 |
+| The other 15 calls | 0.0–2.1 | 0.0–2.4 |
+
+On segments the speaker call falls under the 3/min threshold and the margin to
+other calls is gone: the gate must read real word times. Hearing both tracks of a
+58-minute call took 28 s.
+
 ## Before adopting
 
 - Prefer an echo-only model if FluidAudio adds one, and rerun this set; the
@@ -330,4 +347,4 @@ then in `enhance/` `uv sync`, `uv run python labelled.py build <LibriSpeech test
 test: `audelin-enhance live <mic.f32> <call.f32> 300` beside
 `macos/Benchmarks`' `AudelinBaseline`. Outputs go under `enhance/work/`,
 which is not committed. Track alignment: `uv run python align.py "<call folder>"...`,
-`./shift.sh "<call folder>" <ms>...` and `uv run python shift.py`.
+`./shift.sh "<call folder>" <ms>...` and `uv run python shift.py`. Gate: `./seg.sh "<call folder>"...`, then `uv run python gate.py`.
