@@ -10,6 +10,21 @@ import TranscriptFile
 @Suite(.timeLimit(.minutes(1)))
 struct CallFolderTests {
 
+    @Test func failedIdentityWriteRemovesFolderAndReleasesName() async throws {
+        try await withCallsFolder { calls in
+            let disk = CallFolderDisk(createDirectory: CallFolderDisk.system.createDirectory,
+                                      names: CallFolderDisk.system.names,
+                                      write: { _, _ in throw POSIXError(.ENOSPC) },
+                                      remove: CallFolderDisk.system.remove)
+            let adapter = CallFolder(callsURL: calls, now: { fixedStart }, timeZone: tokyo, occupiedNames: { [] }, disk: disk)
+            await #expect(throws: POSIXError(.ENOSPC)) { try adapter.make() }
+            let remaining = try await names(calls)
+            #expect(remaining.isEmpty)
+            let retry = try maker(calls).make()
+            #expect(retry.url.lastPathComponent == "2026.10.24-1405")
+        }
+    }
+
     @Test func madeFolderUsesGivenTimeZoneAndContainsWritablePlaces() async throws {
 
         try await withCallsFolder { calls in
@@ -23,14 +38,14 @@ struct CallFolderTests {
                 #expect(place.deletingLastPathComponent() == made.url)
                 #expect(await !exists(place.path))
             }
-            #expect(try await names(made.url).isEmpty)
+            #expect(try await names(made.url) == [".recording-id"])
             for place in [made.microphoneURL, made.callURL] {
                 let track = try await TrackFile(url: place)
                 try await track.close()
             }
             let transcript = try await TranscriptFile(url: made.transcriptURL, initialBytes: [Data("initial bytes\n".utf8)], binding: DiskTranscriptBinding())
             await transcript.close()
-            #expect(try await names(made.url) == ["call.caf", "microphone.caf", "transcript.md"])
+            #expect(try await names(made.url) == [".recording-id", "call.caf", "microphone.caf", "transcript.md"])
             for place in places {
                 #expect(try await fileType(place) == .typeRegular)
             }
@@ -116,9 +131,9 @@ struct CallFolderTests {
             ])
             for made in [first, second, third] { try await expectDirectory(made.url) }
             #expect(try await contents(kept) == bytes)
-            #expect(try await names(first.url) == ["kept"])
-            #expect(try await names(second.url).isEmpty)
-            #expect(try await names(third.url).isEmpty)
+            #expect(try await names(first.url) == [".recording-id", "kept"])
+            #expect(try await names(second.url) == [".recording-id"])
+            #expect(try await names(third.url) == [".recording-id"])
         }
     }
 
@@ -154,7 +169,7 @@ struct CallFolderTests {
                         // Inject the denial because privileged test runners can write read-only folders.
             let adapter = CallFolder(callsURL: calls, now: { fixedStart }, timeZone: tokyo, occupiedNames: { [] }, disk: CallFolderDisk(createDirectory: { _ in
                 throw POSIXError(code)
-            }, names: { _ in [] }))
+            }, names: { _ in [] }, write: { try $0.write(to: $1) }, remove: { try FileManager.default.removeItem(at: $0) }))
             await #expect(throws: POSIXError(code)) { try adapter.make() }
             #expect(try await names(calls).isEmpty)
             try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: calls.path)
@@ -221,7 +236,7 @@ struct CallFolderTests {
         try await withCallsFolder { calls in
             let adapter = CallFolder(callsURL: calls, now: { fixedStart }, timeZone: tokyo, occupiedNames: { [] }, disk: CallFolderDisk(createDirectory: { _ in
                 Issue.record("made a folder after listing failed")
-            }, names: { _ in throw POSIXError(.EACCES) }))
+            }, names: { _ in throw POSIXError(.EACCES) }, write: { try $0.write(to: $1) }, remove: { try FileManager.default.removeItem(at: $0) }))
             await #expect(throws: POSIXError(.EACCES)) { try adapter.make() }
             let left = try await names(calls)
             #expect(left.isEmpty)

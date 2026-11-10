@@ -8,6 +8,38 @@ import Testing
 @testable import Composer
 
 @MainActor @Suite(.timeLimit(.minutes(1))) struct SummaryArbitrationTests {
+    @Test func replacementRecordingClaimsItsOwnJobAndRecoveryKeepsItsIdentity() async throws {
+        try await withComposeFolder { root in
+            let id = "1970.01.01-0000", folder = root.appendingPathComponent("1970.01.01-0000")
+            let preferences = PreferencesStore(fileURL: root.appendingPathComponent("preferences.json"))
+            try preferences.updateNotes(enabledNotes())
+            let files = Files(locations: SummaryStorage(folder: root, timeZone: .gmt), disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("leases"))
+            let runtime = Runtime(process: ArbitrationProcess(), http: ArbitrationHTTP(), credential: { _ in nil }, resolveProgram: { $0 }, deadline: { throw Failure.timeout })
+            let summaries = AudelinSummaries(files: files, runtime: runtime, preferences: preferences, sink: TestLogSink())
+            summaries.stopDispatch()
+            let old = UUID(), new = UUID()
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false)
+            try Data(old.uuidString.utf8).write(to: folder.appendingPathComponent(".recording-id"))
+            let entries = [Job.Entry(label: "A", time: "0", text: "spoken")]
+            await summaries.submit(call: id, recording: old, input: "input", entries: entries, finalWrite: true, usable: true)
+            let first = try #require(try await files.load(call: id, recording: old))
+            try FileManager.default.removeItem(at: folder)
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false)
+            try Data(new.uuidString.utf8).write(to: folder.appendingPathComponent(".recording-id"))
+            await summaries.submit(call: id, recording: new, input: "input", entries: entries, finalWrite: true, usable: true)
+            let second = try #require(try await files.load(call: id, recording: new))
+            #expect(first.recording == old && second.recording == new)
+            #expect(first.job != second.job && second.phase == "pending")
+            #expect(try SummaryJobStore(files: files).state(second).job?.recording == new)
+            let observer = AudelinSummaries(files: files, runtime: runtime, preferences: preferences, sink: TestLogSink())
+            observer.stopDispatch()
+            await observer.recover(calls: [.init(call: id, recording: new)])
+            #expect(observer.statuses[id] == summaryStatus(.pending, false))
+            #expect(try await files.load(call: id, recording: new) == second)
+            await summaries.shutdown(); await observer.shutdown()
+        }
+    }
+
     @Test func completionDuringStartupReadCannotLoseOrDoubleDispatchPendingJob() async throws {
         try await withComposeFolder { root in
             let id = "1970.01.01-0000"
@@ -18,10 +50,10 @@ import Testing
             let readStarted = Signal(), releaseRead = Signal(), submitStarted = Signal()
             let runtime = Runtime(process: ArbitrationProcess(), http: ArbitrationHTTP(), credential: { _ in nil }, resolveProgram: { $0 }, deadline: { throw Failure.timeout })
             let summaries = AudelinSummaries(files: files, runtime: runtime, preferences: preferences, sink: TestLogSink(), load: { call in
-                readStarted.send(); await releaseRead.next(); return try await files.load(call: call)
+                readStarted.send(); await releaseRead.next(); return try await files.load(call: call.call, recording: call.recording)
             })
             summaries.stopDispatch()
-            let recovery = Task { await summaries.recover(calls: [id]) }
+            let recovery = Task { await summaries.recover(calls: [.init(call: id)]) }
             await readStarted.next()
             let submit = Task {
                 submitStarted.send()
@@ -53,7 +85,7 @@ import Testing
             await owner.submit(call: id, input: "input", entries: [.init(label: "A", time: "0", text: "spoken")], finalWrite: true, usable: true)
             await http.started.next()
             do {
-                await observer.recover(calls: [id])
+                await observer.recover(calls: [.init(call: id)])
                 #expect(observer.statuses[id] == "Готовим итоги…")
                 #expect(try await observerFiles.load(call: id)?.phase == "running")
                 await observer.submit(call: id, input: "duplicate", entries: [], finalWrite: false, usable: false)
@@ -107,9 +139,9 @@ import Testing
             let http = HeldSummaryHTTP()
             let runtime = Runtime(process: ArbitrationProcess(), http: http, credential: { _ in nil }, resolveProgram: { $0 }, deadline: { try await waitForCancellation() })
             let summaries = AudelinSummaries(files: files, runtime: runtime, preferences: preferences, sink: TestLogSink(), load: { call in
-                readStarted.send(); await releaseRead.next(); return try await files.load(call: call)
+                readStarted.send(); await releaseRead.next(); return try await files.load(call: call.call, recording: call.recording)
             })
-            let recovery = Task { await summaries.recover(calls: [id]) }
+            let recovery = Task { await summaries.recover(calls: [.init(call: id)]) }
             await readStarted.next()
             let submit = Task {
                 submitStarted.send()
@@ -142,7 +174,7 @@ import Testing
             let files = Files(locations: SummaryStorage(folder: root, timeZone: .gmt), disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("leases"))
             let runtime = Runtime(process: ArbitrationProcess(), http: ArbitrationHTTP(), credential: { _ in nil }, resolveProgram: { $0 }, deadline: { throw Failure.timeout })
             let summaries = AudelinSummaries(files: files, runtime: runtime, preferences: preferences, sink: TestLogSink())
-            await summaries.recover(calls: [id])
+            await summaries.recover(calls: [.init(call: id)])
             #expect(summaries.statuses[id] == summaryStatus(.failed, false))
             await summaries.submit(call: id, input: "input", entries: [.init(label: "A", time: "0", text: "spoken")], finalWrite: true, usable: true)
             #expect(try Data(contentsOf: folder.appendingPathComponent(".summary-job.json")) == corrupt)
@@ -163,9 +195,9 @@ import Testing
             let readStarted = Signal(), releaseRead = Signal(), shutdownStarted = Signal()
             let runtime = Runtime(process: ArbitrationProcess(), http: ArbitrationHTTP(), credential: { _ in nil }, resolveProgram: { $0 }, deadline: { throw Failure.timeout })
             let summaries = AudelinSummaries(files: files, runtime: runtime, preferences: preferences, sink: TestLogSink(), load: { call in
-                readStarted.send(); await releaseRead.next(); return try await files.load(call: call)
+                readStarted.send(); await releaseRead.next(); return try await files.load(call: call.call, recording: call.recording)
             })
-            let recovery = Task { await summaries.recover(calls: [id]) }
+            let recovery = Task { await summaries.recover(calls: [.init(call: id)]) }
             await readStarted.next()
             let shutdown = Task { shutdownStarted.send(); await summaries.shutdown() }
             await shutdownStarted.next()

@@ -1,3 +1,5 @@
+import Foundation
+
 public struct Job: Equatable, Sendable {
     public struct Runtime: Equatable, Sendable {
         public var kind: String
@@ -17,13 +19,14 @@ public struct Job: Equatable, Sendable {
     }
     public var id: String
     public var call: String
+    public var recording: UUID?
     public var input: String
     public var entries: [Entry]
     public var speakers: Bool
     public var primary: Runtime
     public var fallback: Runtime?
-    public init(id: String, call: String, input: String, entries: [Entry], speakers: Bool, primary: Runtime, fallback: Runtime? = nil) {
-        self.id = id; self.call = call; self.input = input; self.entries = entries
+    public init(id: String, call: String, recording: UUID? = nil, input: String, entries: [Entry], speakers: Bool, primary: Runtime, fallback: Runtime? = nil) {
+        self.id = id; self.call = call; self.recording = recording; self.input = input; self.entries = entries
         self.speakers = speakers; self.primary = primary; self.fallback = fallback
     }
 }

@@ -4,6 +4,8 @@ Observer: the caller storing and reading a call summary job.
 
 ## Decided
 
+- Every job captures its recording UUID. Claim, load, start, progress and publication resolve the call by its minute prefix and check the recording UUID within the same storage operation. A different identity fails as a missing call before any write. A folder and job both lacking a UUID remain compatible; a missing UUID never matches a present one.
+
 - This adapter owns job records and summary output; transcript bytes are never rewritten (architecture rule 2).
 - Exclusive claim creation and dispatch arbitration distinguish owner from observers; pending/running must persist before runtime work. A cross-process ownership lease stays held through terminal completion or joined cancellation/shutdown, including failed terminal saves. Its descriptor is closed on exec, and its stable location outside call folders survives rename and copied moves. Unreadable records are errors, not absence.
 - Loading running work first tries to acquire its ownership lease. A busy lease proves a live owner: return running unchanged, even if output is already published. Only an acquired lease permits reconciliation using the exact job/input receipt, or interruption without replay. Release the reconciliation lease even when saving fails.
@@ -91,4 +93,11 @@ Feature: Keep notes and job records durably
     When I acquire its released ownership lease and load the call
     Then I observe interruption without permission to repeat the request
 
+  Scenario: S-16 A replacement recording cannot receive an old job's work
+    Given a job belongs to a recording that has been deleted
+    And a new recording reuses its call folder name with a different UUID
+    When I claim, load, start, save progress or publish for the old job
+    Then I receive a call-not-found failure
+    And the new recording's folder remains unchanged
+    And a legacy folder and job without recording UUIDs can still complete
 ```

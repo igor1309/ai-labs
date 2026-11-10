@@ -28,6 +28,7 @@ import Testing
                     Calls(folder: folder, timeZone: .gmt,
                         duration: { _ in 0 },
                         disk: CallsDisk(
+                            read: { try Data(contentsOf: $0) },
                             children: { try FileManager.default.contentsOfDirectory(at: $0, includingPropertiesForKeys: nil) },
                             values: { try $0.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey, .fileSizeKey]) },
                             copy: { try FileManager.default.copyItem(at: $0, to: $1) },
@@ -297,6 +298,7 @@ import Testing
                     Calls(folder: folder, timeZone: .gmt,
                         duration: { _ in 0 },
                         disk: CallsDisk(
+                            read: { try Data(contentsOf: $0) },
                             children: { try FileManager.default.contentsOfDirectory(at: $0, includingPropertiesForKeys: nil) },
                             values: { url in
                             if step == "verification", fail.withLock({ $0 }),
@@ -376,6 +378,7 @@ import Testing
                     Calls(folder: folder, timeZone: .gmt,
                         duration: { _ in 0 },
                         disk: CallsDisk(
+                            read: { try Data(contentsOf: $0) },
                             children: { try FileManager.default.contentsOfDirectory(at: $0, includingPropertiesForKeys: nil) },
                             values: { try $0.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey, .fileSizeKey]) },
                             copy: { from, to in
@@ -417,6 +420,7 @@ import Testing
                     Calls(folder: folder, timeZone: .gmt,
                         duration: { _ in 0 },
                         disk: CallsDisk(
+                            read: { try Data(contentsOf: $0) },
                             children: { try FileManager.default.contentsOfDirectory(at: $0, includingPropertiesForKeys: nil) },
                             values: { try $0.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey, .fileSizeKey]) },
                             copy: { from, to in

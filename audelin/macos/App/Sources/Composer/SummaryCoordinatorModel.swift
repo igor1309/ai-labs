@@ -17,7 +17,7 @@ import IMRxObservation
     }
     /// A pending call survives a quit and is recovered at the next launch.
     var busy: Bool { model.state.calls.values.contains { $0.phase != .pending && $0.phase != .installed } }
-    func wait(call: String) async {
+    func wait(call: SummaryCall) async {
         for await state in feed.subscribe(from: model.state) {
             switch state.calls[call]?.phase {
             case .recovering, .submitting, .dispatching, .failing: continue

@@ -17,7 +17,9 @@ struct SummaryTranscriptBoundaryTests {
             ], settledCount: settledCount))
         ], theirs: [])
         let captured = Mutex<[Job.Entry]>([])
-        let file = SummaryTranscript(base: BoundaryTranscript(), folder: URL(fileURLWithPath: "/synthetic"), callbacks: .init(waiting: { _ in }, completed: { _, entries, final, usable in
+        let recording = UUID()
+        let file = SummaryTranscript(base: BoundaryTranscript(), folder: URL(fileURLWithPath: "/synthetic"), recording: recording, callbacks: .init(waiting: { _ in }, completed: { _, identity, entries, final, usable in
+            #expect(identity == recording)
             #expect(final && usable)
             captured.withLock { $0 = entries }
         }))

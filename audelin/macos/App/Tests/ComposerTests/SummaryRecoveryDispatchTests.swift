@@ -33,12 +33,12 @@ struct SummaryRecoveryDispatchTests {
             })
             let loads = Values<String>()
             let summaries = AudelinSummaries(files: files, runtime: runtime, preferences: preferences, sink: TestLogSink(), load: { call in
-                loads.append(call); return try await files.load(call: call)
+                loads.append(call.call); return try await files.load(call: call.call, recording: call.recording)
             })
             do {
-                await summaries.recover(calls: [call, call])
+                await summaries.recover(calls: [.init(call: call), .init(call: call)])
                 await http.started.next()
-                await summaries.recover(calls: [call])
+                await summaries.recover(calls: [.init(call: call)])
                 let requests = await http.requests
                 #expect(requests.count == 1)
                 let request = try #require(requests.first)

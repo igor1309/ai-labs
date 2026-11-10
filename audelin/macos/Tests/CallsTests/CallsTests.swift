@@ -41,6 +41,7 @@ struct CallsTests {
                                 return url.lastPathComponent == "microphone.caf" ? 12.5 : 3.25
                             },
                             disk: CallsDisk(
+                                read: { try Data(contentsOf: $0) },
                                 children: { _ in [folder] },
                                 values: { try $0.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey]) },
                                 copy: { try FileManager.default.copyItem(at: $0, to: $1) },
@@ -215,6 +216,7 @@ struct CallsTests {
             let sut = Calls(folder: root, timeZone: tokyo,
                             duration: { _ in throw POSIXError(.EIO) },
                             disk: CallsDisk(
+                                read: { try Data(contentsOf: $0) },
                                 children: { try FileManager.default.contentsOfDirectory(at: $0, includingPropertiesForKeys: nil) },
                                 values: { try $0.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey, .fileSizeKey]) },
                                 copy: { try FileManager.default.copyItem(at: $0, to: $1) },

@@ -1,5 +1,9 @@
 # Log
 
+## 2026-11-10
+
+- Each recording carries an identity that is never reused, so a call deleted and recorded again in the same minute never receives the old recording's summary (LAB-1151).
+
 ## 2026-11-09
 
 - Nightly profiling validates both written tracks and speaker evidence before keeping a baseline, and reports matching-run deltas and descriptive memory/backlog trends for recurring review (LAB-748).

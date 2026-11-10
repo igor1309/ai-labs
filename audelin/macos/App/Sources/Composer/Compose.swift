@@ -57,7 +57,7 @@ public func compose(
                                   timeZone: timeZone, recordingState: { [weak menu] in menu?.state ?? .init() },
                                   location: { try await storage.location(id: $0) }, openFolder: openCallsFolder,
                                   present: presentCalls, summaryStatuses: { summaries.statuses }))
-    do { await summaries.recover(calls: try await storage.list().map(\.id)) }
+    do { await summaries.recover(calls: try await storage.list().map { SummaryCall(call: $0.id, recording: $0.recording) }) }
     catch { boundary.log.write(.init(category: .session, message: "summary recovery listing failed")) }
     return menu
 }

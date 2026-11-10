@@ -57,3 +57,12 @@ target. Evidence: `brokenSymlinkTakingNameIsSkippedWithoutCreatingTarget`.
 
 A folder at `…-1405` and a file at `…-1405-2`; the make gives `…-1405-3`,
 and both are unchanged. Evidence: `everyTakenNameIsSkippedWithoutChangingFolderOrFile`.
+
+## S-10 A deleted recording's identity is never reused
+
+Create a folder with a fixed clock, read its UUID through Calls and from the hidden file,
+delete it, and create another with the same clock. The locator is reused, the UUIDs differ,
+and the calls list returns the second UUID. Renaming preserves that UUID; a legacy folder
+lists with none. Evidence: `deletingAndRecordingInSameMinuteReusesOnlyTheLocator`.
+An identity-write failure removes the new folder and leaves the name available.
+Evidence: `failedIdentityWriteRemovesFolderAndReleasesName`.

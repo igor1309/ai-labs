@@ -2,7 +2,7 @@ import CallFolderName
 import Darwin
 import Foundation
 
-/// Recorded folders, identified by the timestamp prefix that survives a title change.
+/// Recorded folders, located by the timestamp prefix that survives a title change.
 public struct Calls: Sendable {
 
     public struct Call: Equatable, Sendable {
@@ -10,9 +10,11 @@ public struct Calls: Sendable {
         public let title: String
         public let start: Date
         public let duration: TimeInterval?
+        public let recording: UUID?
 
-        public init(id: String, title: String, start: Date, duration: TimeInterval?) {
+        public init(id: String, title: String, start: Date, duration: TimeInterval?, recording: UUID? = nil) {
             self.id = id; self.title = title; self.start = start; self.duration = duration
+            self.recording = recording
         }
     }
 
@@ -51,8 +53,17 @@ public struct Calls: Sendable {
                       let length = try? duration(trackURL), length.isFinite, length >= 0 else { return nil }
                 return length
             }
-            return Call(id: name.id, title: name.title, start: name.start, duration: lengths.max())
+            return Call(id: name.id, title: name.title, start: name.start, duration: lengths.max(), recording: try recording(in: url))
         }.sorted { $0.id > $1.id }
+    }
+
+    private func recording(in folder: URL) throws -> UUID? {
+        let path = folder.appendingPathComponent(".recording-id")
+        guard try disk.children(folder).contains(where: { $0.lastPathComponent == path.lastPathComponent }) else { return nil }
+        guard let uuid = UUID(uuidString: String(decoding: try disk.read(path), as: UTF8.self)) else {
+            throw CocoaError(.fileReadCorruptFile)
+        }
+        return uuid
     }
 
     /// Resolves afresh, including when the title has changed in Finder.
@@ -293,6 +304,7 @@ public struct Calls: Sendable {
 /// The file system as `Calls` lists, renames, copies and removes folders.
 public struct CallsDisk: Sendable {
 
+    var read: @Sendable (URL) throws -> Data
     var children: @Sendable (URL) throws -> [URL]
     var values: @Sendable (URL) throws -> URLResourceValues
     var copy: @Sendable (URL, URL) throws -> Void
@@ -301,6 +313,7 @@ public struct CallsDisk: Sendable {
 
     /// The local file system; a rename never replaces an existing folder.
     public static let system = CallsDisk(
+        read: { try Data(contentsOf: $0) },
         children: { try FileManager.default.contentsOfDirectory(at: $0, includingPropertiesForKeys: nil) },
         values: { try $0.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey, .fileSizeKey]) },
         copy: { try FileManager.default.copyItem(at: $0, to: $1) },

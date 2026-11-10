@@ -16,11 +16,11 @@ final class AudelinSummaries {
     func updates() -> AsyncStream<[String: String]> { feed.subscribe(from: statuses) }
     private var coordinator: SummaryCoordinatorModel!
     private let preferences: PreferencesStore
-    init(files: SummaryFiles.Files, runtime: SummaryRuntime.Runtime, preferences: PreferencesStore, sink: any LogSink, load: (@Sendable (String) async throws -> SummaryFiles.Record?)? = nil) {
+    init(files: SummaryFiles.Files, runtime: SummaryRuntime.Runtime, preferences: PreferencesStore, sink: any LogSink, load: (@Sendable (SummaryCall) async throws -> SummaryFiles.Record?)? = nil) {
         self.preferences = preferences
         let store = SummaryJobStore(files: files)
         let handler = SummaryJobs.EffectHandler(store: store, generation: SummaryGeneration(runtime: runtime, sink: sink), cancelled: { Task.isCancelled })
-        let jobs = SummaryCoordinatorJobsAdapter(load: load ?? { try await files.load(call: $0) }, store: store,
+        let jobs = SummaryCoordinatorJobsAdapter(load: load ?? { try await files.load(call: $0.call, recording: $0.recording) }, store: store,
             handler: handler, preferences: preferences, changed: { [weak self] call, status in self?.statuses[call] = status })
         coordinator = SummaryCoordinatorModel(jobs: jobs)
     }
@@ -32,17 +32,17 @@ final class AudelinSummaries {
         SummaryCallbacks(waiting: { [weak self] folder in
             guard let call = Calls.id(in: folder.lastPathComponent, timeZone: timeZone) else { return }
             await self?.waiting(call: call)
-        }, completed: { [weak self] folder, entries, finalWrite, usable in
+        }, completed: { [weak self] folder, recording, entries, finalWrite, usable in
             guard let call = Calls.id(in: folder.lastPathComponent, timeZone: timeZone) else { return }
-            await self?.submit(call: call, input: summaryInput(entries), entries: entries, finalWrite: finalWrite, usable: usable)
+            await self?.submit(call: call, recording: recording, input: summaryInput(entries), entries: entries, finalWrite: finalWrite, usable: usable)
         })
     }
-    func submit(call: String, input: String, entries: [Job.Entry], finalWrite: Bool, usable: Bool) async {
-        coordinator.send(.submit(.init(call: call, input: input,
+    func submit(call: String, recording: UUID? = nil, input: String, entries: [Job.Entry], finalWrite: Bool, usable: Bool) async {
+        coordinator.send(.submit(.init(call: call, recording: recording, input: input,
             entries: entries.map { .init(label: $0.label, time: $0.time, text: $0.text) }, finalWrite: finalWrite, usable: usable)))
-        await coordinator.wait(call: call)
+        await coordinator.wait(call: .init(call: call, recording: recording))
     }
-    func recover(calls: [String]) async {
+    func recover(calls: [SummaryCall]) async {
         for call in calls {
             coordinator.send(.recover(call))
             await coordinator.wait(call: call)

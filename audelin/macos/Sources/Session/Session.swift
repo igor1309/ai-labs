@@ -1,3 +1,4 @@
+import Foundation
 import Synchronization
 
 /// The two destinations in one recording.
@@ -28,10 +29,12 @@ public enum SessionCallCaptureSelection: Equatable, Sendable {
 public struct SessionCallFolder: Equatable, Sendable {
 
     public let id: String
+    public let recording: UUID?
 
-    public init(id: String) {
+    public init(id: String, recording: UUID? = nil) {
 
         self.id = id
+        self.recording = recording
     }
 }
 

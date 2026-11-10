@@ -8,6 +8,8 @@ over the file system.
 
 ## Decided
 
+- **Each new folder holds a fresh UUID in `.recording-id`,** returned to Session with its destination and read by the calls list. The minute prefix remains a locator and display name; deleting a folder makes that name available again without reusing its recording identity. A failed identity write fails creation and removes the new folder.
+
 - **This is making a call's folder only.** Renaming, deleting, moving and
   listing calls are Recordings' (`app-shape.md`), whose spec takes them
   with its own client; whether the calls folder is there and has room is
@@ -95,4 +97,10 @@ Feature: Making a call's folder
     Given a calls folder where no folder can be made
     When I make a call's folder
     Then I can tell it failed
+
+  Scenario: S-10 A deleted recording's identity is never reused
+    Given a recording folder made in this minute with its own UUID
+    When I delete it and make another recording in the same minute
+    Then the new folder has a different UUID even if its name is the same
+    And the calls list gives the new recording's UUID
 ```

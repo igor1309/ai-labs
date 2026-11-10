@@ -56,3 +56,18 @@ Automated boundary: `cd audelin/macos && swift test --filter SummaryFilesTests/d
 ## S-13 Reject mismatched input receipt
 
 Automated boundary: `cd audelin/macos && swift test --filter SummaryFilesTests/mismatchedReceiptNeverCompletesNewRunningClaim`. Setup fixture: existing output names the current job but another input; drive: I recover the current job; read-back oracle: I cannot mistake that output for current success. Use temporary call folders and job/input receipts; inject failure at the named claim/progress/publication/read/move operation and inspect on-disk bytes.
+
+## S-16 A replacement recording cannot receive an old job's work
+
+For each of claim, load, start, progress and publish, replace a claimed recording's folder
+at the same path. Test different UUIDs, a UUID replaced by no identity and a legacy recording
+replaced by a UUID. Each old operation fails as call-not-found and leaves the replacement's
+entries and identity bytes unchanged, with or without an active ownership lease. Evidence: `reusedFolderRejectsEveryOldJobOperation`.
+Loading a copied stale record also fails without changing its bytes.
+Evidence: `loadRejectsARecordCopiedFromAnotherRecording`.
+Both matching UUIDs and legacy folders/jobs without UUIDs complete the full job lifecycle.
+Evidence: `matchingRecordingAndLegacyJobsComplete`.
+Independent coordinator submissions and dispatches retain each recording's UUID, and a new
+recording can claim a job after deletion of its predecessor.
+Evidence: `sameMinuteRecordingsHaveIndependentSubmissionsAndDispatches` and
+`replacementRecordingClaimsItsOwnJobAndRecoveryKeepsItsIdentity`.

@@ -31,6 +31,7 @@ struct CallsMoveTests {
             let disk = Calls(folder: source, timeZone: .gmt,
                 duration: { _ in 0 },
                 disk: CallsDisk(
+                    read: { try Data(contentsOf: $0) },
                     children: { try FileManager.default.contentsOfDirectory(at: $0, includingPropertiesForKeys: nil) },
                     values: { url in
                     if url.path.contains("/.audelin-move-") {
@@ -308,6 +309,7 @@ private func testCalls(folder: URL,
     Calls(folder: folder, timeZone: .gmt,
           duration: { _ in 0 },
           disk: CallsDisk(
+              read: { try Data(contentsOf: $0) },
               children: children,
               values: values,
               copy: copy,

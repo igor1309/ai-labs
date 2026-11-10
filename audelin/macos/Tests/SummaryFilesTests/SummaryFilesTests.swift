@@ -6,6 +6,78 @@ import Synchronization
 import Testing
 
 @Suite struct SummaryFilesTests {
+    @Test(arguments: ["claim", "load", "start", "progress", "publish"], [false, true])
+    func reusedFolderRejectsEveryOldJobOperation(operation: String, ownsLease: Bool) async throws {
+        for identity in ["new", "legacy", "oldLegacy"] {
+            try await withFolder { folder, locations in
+                let oldID: UUID? = identity == "oldLegacy" ? nil : UUID()
+                let newID: UUID? = identity == "legacy" ? nil : UUID()
+                if let oldID { try Data(oldID.uuidString.utf8).write(to: folder.appendingPathComponent(".recording-id")) }
+                var job = record(); job.recording = oldID
+                let files = Files(locations: locations, disk: FileDisk(), ownershipDirectory: folder.deletingLastPathComponent().appendingPathComponent("leases"))
+                _ = try await files.claim(job)
+                if ownsLease { #expect(try await files.start(job)) }
+                try FileManager.default.removeItem(at: folder)
+                try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false)
+                if let newID { try Data(newID.uuidString.utf8).write(to: folder.appendingPathComponent(".recording-id")) }
+                let before = try FileManager.default.contentsOfDirectory(atPath: folder.path).sorted()
+                await #expect(throws: CocoaError(.fileNoSuchFile)) {
+                    switch operation {
+                    case "claim": _ = try await files.claim(job)
+                    case "load": _ = try await files.load(call: job.call, recording: oldID)
+                    case "start": _ = try await files.start(job)
+                    case "progress": try await files.progress(job)
+                    default: try await files.publish(job, notes: "old recording")
+                    }
+                }
+                #expect(try FileManager.default.contentsOfDirectory(atPath: folder.path).sorted() == before)
+                if let newID {
+                    #expect(try Data(contentsOf: folder.appendingPathComponent(".recording-id")) == Data(newID.uuidString.utf8))
+                }
+                await files.release(job: job.job, call: job.call, input: job.input)
+            }
+        }
+    }
+
+    @Test(arguments: [false, true])
+    func matchingRecordingAndLegacyJobsComplete(hasIdentity: Bool) async throws {
+        try await withFolder { folder, locations in
+            let id: UUID? = hasIdentity ? UUID() : nil
+            if let id { try Data(id.uuidString.utf8).write(to: folder.appendingPathComponent(".recording-id")) }
+            var job = record(); job.recording = id
+            let files = Files(locations: locations, disk: FileDisk(), ownershipDirectory: folder.deletingLastPathComponent().appendingPathComponent("leases"))
+            #expect(try await files.claim(job).record == job)
+            #expect(try await files.load(call: job.call, recording: id) == job)
+            #expect(try await files.start(job))
+            job.phase = "running"; job.checkpoint = Data("accepted evidence".utf8)
+            try await files.progress(job)
+            try await files.publish(job, notes: "complete notes")
+            job.phase = "succeeded"
+            try await files.progress(job)
+            #expect(try await files.load(call: job.call, recording: id) == job)
+            #expect(try String(contentsOf: folder.appendingPathComponent("summary.md"), encoding: .utf8).hasSuffix("complete notes"))
+            #expect(try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8) == "original transcript")
+            if !hasIdentity {
+                let bytes = try Data(contentsOf: folder.appendingPathComponent(".summary-job.json"))
+                #expect(!String(decoding: bytes, as: UTF8.self).contains("recording"))
+            }
+        }
+    }
+
+    @Test func loadRejectsARecordCopiedFromAnotherRecording() async throws {
+        try await withFolder { folder, locations in
+            let id = UUID()
+            try Data(id.uuidString.utf8).write(to: folder.appendingPathComponent(".recording-id"))
+            var old = record(); old.phase = "running"; old.recording = UUID()
+            let bytes = try JSONEncoder().encode(old)
+            let path = folder.appendingPathComponent(".summary-job.json")
+            try bytes.write(to: path)
+            let files = Files(locations: locations, disk: FileDisk(), ownershipDirectory: folder.deletingLastPathComponent().appendingPathComponent("leases"))
+            await #expect(throws: CocoaError(.fileNoSuchFile)) { try await files.load(call: old.call, recording: id) }
+            #expect(try Data(contentsOf: path) == bytes)
+        }
+    }
+
     @Test func exclusiveClaimAndRunningSaveArbitrateAcrossInstances() async throws {
         try await withFolder { folder, locations in
             let files = Files(locations: locations, disk: FileDisk(), ownershipDirectory: folder.deletingLastPathComponent().appendingPathComponent("leases"))

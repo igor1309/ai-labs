@@ -76,7 +76,7 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
 
         let made = try folder.make(title: folderTitle)
         self.made = made
-        return SessionCallFolder(id: made.url.path)
+        return SessionCallFolder(id: made.url.path, recording: made.recording)
     }
 
     func select() async throws -> SessionProcessSelection {
@@ -115,7 +115,7 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
         let made = try places(in: folder)
         LiveNameBoard.shared.callTrack(made.callURL)
         let file = try await boundary.transcripts.open(at: made.transcriptURL, sink: boundary.log)
-        transcriptFile = SummaryTranscript(base: file, folder: made.url, callbacks: summaries)
+        transcriptFile = SummaryTranscript(base: file, folder: made.url, recording: made.recording, callbacks: summaries)
     }
 
     func closeTranscript() async throws {

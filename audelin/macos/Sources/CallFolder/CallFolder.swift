@@ -7,13 +7,15 @@ public struct CallFolder: Sendable {
 
     public struct Made: Equatable, Sendable {
 
+        public let recording: UUID
         public let url: URL
         public let microphoneURL: URL
         public let callURL: URL
         public let transcriptURL: URL
 
-        init(url: URL) {
+        init(url: URL, recording: UUID) {
 
+            self.recording = recording
             self.url = url
             microphoneURL = url.appendingPathComponent("microphone.caf")
             callURL = url.appendingPathComponent("call.caf")
@@ -61,7 +63,10 @@ public struct CallFolder: Sendable {
             let url = callsURL.appendingPathComponent(name, isDirectory: true)
             do {
                 try createDirectory(url)
-                return Made(url: url)
+                let recording = UUID()
+                do { try disk.write(Data(recording.uuidString.utf8), url.appendingPathComponent(".recording-id")) }
+                catch { try disk.remove(url); throw error }
+                return Made(url: url, recording: recording)
             } catch let error as POSIXError where error.code == .EEXIST {
                 number += 1
             }
@@ -74,6 +79,8 @@ public struct CallFolderDisk: Sendable {
 
     var createDirectory: @Sendable (URL) throws -> Void
     var names: @Sendable (URL) throws -> [String]
+    var write: @Sendable (Data, URL) throws -> Void
+    var remove: @Sendable (URL) throws -> Void
 
     /// The local file system; making a folder fails when its name is taken.
     public static let system = CallFolderDisk(
@@ -92,6 +99,8 @@ public struct CallFolderDisk: Sendable {
                 names.append(withUnsafeBytes(of: entry.pointee.d_name) { String(decoding: $0.prefix(Int(entry.pointee.d_namlen)), as: UTF8.self) })
             }
             return names
-        }
+        },
+        write: { try $0.write(to: $1, options: .withoutOverwriting) },
+        remove: { try FileManager.default.removeItem(at: $0) }
     )
 }

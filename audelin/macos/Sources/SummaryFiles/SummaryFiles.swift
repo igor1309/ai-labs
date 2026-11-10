@@ -5,13 +5,14 @@ import Foundation
 public struct Record: Codable, Equatable, Sendable {
     public var job: String
     public var call: String
+    public var recording: UUID?
     public var input: String
     public var snapshot: Data
     public var phase: String
     public var checkpoint: Data?
     public var warning: Bool
-    public init(job: String, call: String, input: String, snapshot: Data, phase: String, checkpoint: Data? = nil, warning: Bool = false) {
-        self.job = job; self.call = call; self.input = input; self.snapshot = snapshot
+    public init(job: String, call: String, recording: UUID? = nil, input: String, snapshot: Data, phase: String, checkpoint: Data? = nil, warning: Bool = false) {
+        self.job = job; self.call = call; self.recording = recording; self.input = input; self.snapshot = snapshot
         self.phase = phase; self.checkpoint = checkpoint; self.warning = warning
     }
 }
@@ -58,7 +59,7 @@ public struct Files: Sendable {
     }
     public func release(job: String, call: String, input: String) async { await storage.release(job: job, call: call, input: input) }
     public func claim(_ record: Record) async throws -> (owned: Bool, record: Record) { try await storage.claim(record) }
-    public func load(call: String) async throws -> Record? { try await storage.load(call: call) }
+    public func load(call: String, recording: UUID? = nil) async throws -> Record? { try await storage.load(call: call, recording: recording) }
     public func start(_ record: Record) async throws -> Bool { try await storage.start(record) }
     public func progress(_ record: Record) async throws { try await storage.progress(record) }
     public func publish(_ record: Record, notes: String) async throws { try await storage.publish(record, notes: notes) }
@@ -66,7 +67,7 @@ public struct Files: Sendable {
 private protocol FilesStorage: Sendable {
     func release(job: String, call: String, input: String) async
     func claim(_ record: Record) async throws -> (owned: Bool, record: Record)
-    func load(call: String) async throws -> Record?
+    func load(call: String, recording: UUID?) async throws -> Record?
     func start(_ record: Record) async throws -> Bool
     func progress(_ record: Record) async throws
     func publish(_ record: Record, notes: String) async throws
@@ -109,14 +110,16 @@ private actor DiskFiles: FilesStorage {
     }
     public func claim(_ record: Record) async throws -> (owned: Bool, record: Record) {
         try await locations.withFolder(call: record.call) { [disk] folder in
+            try Self.check(recording: record.recording, in: folder, disk: disk)
             let path = folder.appendingPathComponent(".summary-job.json")
             if try disk.exists(path) { return (false, try Self.read(path, disk: disk, call: record.call)) }
             let owned = try disk.create(JSONEncoder().encode(record), at: path)
             return (owned, owned ? record : try Self.read(path, disk: disk, call: record.call))
         }
     }
-    public func load(call: String) async throws -> Record? {
+    public func load(call: String, recording: UUID?) async throws -> Record? {
         try await locations.withFolder(call: call) { [disk, ownershipDirectory] folder in
+            try Self.check(recording: recording, in: folder, disk: disk)
             let path = folder.appendingPathComponent(".summary-job.json")
             guard try disk.exists(path) else { return nil }
             var record = try Self.read(path, disk: disk, call: call)
@@ -140,8 +143,10 @@ private actor DiskFiles: FilesStorage {
     }
     public func start(_ record: Record) async throws -> Bool {
         let identity = Identity(call: record.call, job: record.job, input: record.input)
-        guard leases[identity] == nil else { return false }
+        let alreadyOwned = leases[identity] != nil
         let lease: Int32? = try await locations.withFolder(call: record.call) { [disk, ownershipDirectory] folder in
+            try Self.check(recording: record.recording, in: folder, disk: disk)
+            guard !alreadyOwned else { return nil }
             let path = folder.appendingPathComponent(".summary-job.json")
             guard let fd = try Self.acquire(record, directory: ownershipDirectory) else { return nil }
             do {
@@ -159,9 +164,11 @@ private actor DiskFiles: FilesStorage {
         return true
     }
     public func progress(_ record: Record) async throws {
-        guard leases[.init(call: record.call, job: record.job, input: record.input)] != nil else { throw CocoaError(.fileWriteUnknown) }
+        let owned = leases[.init(call: record.call, job: record.job, input: record.input)] != nil
         defer { if record.phase != "running" { release(job: record.job, call: record.call, input: record.input) } }
         try await locations.withFolder(call: record.call) { [disk] folder in
+            try Self.check(recording: record.recording, in: folder, disk: disk)
+            guard owned else { throw CocoaError(.fileWriteUnknown) }
             let path = folder.appendingPathComponent(".summary-job.json")
             let current = try Self.read(path, disk: disk, call: record.call)
             guard current.job == record.job, current.input == record.input, current.phase == "running" else { throw CocoaError(.fileWriteUnknown) }
@@ -171,8 +178,10 @@ private actor DiskFiles: FilesStorage {
         }
     }
     public func publish(_ record: Record, notes: String) async throws {
-        guard leases[.init(call: record.call, job: record.job, input: record.input)] != nil else { throw CocoaError(.fileWriteUnknown) }
+        let owned = leases[.init(call: record.call, job: record.job, input: record.input)] != nil
         try await locations.withFolder(call: record.call) { [disk] folder in
+            try Self.check(recording: record.recording, in: folder, disk: disk)
+            guard owned else { throw CocoaError(.fileWriteUnknown) }
             let current = try Self.read(folder.appendingPathComponent(".summary-job.json"), disk: disk, call: record.call)
             guard current.job == record.job, current.input == record.input, current.phase == "running" else { throw CocoaError(.fileWriteUnknown) }
             let receipt = Receipt(job: record.job, input: record.input, warning: record.warning)
@@ -186,7 +195,19 @@ private actor DiskFiles: FilesStorage {
         let record = try JSONDecoder().decode(Record.self, from: disk.read(url))
         guard !record.job.isEmpty, record.call == call, !record.input.isEmpty,
               ["pending", "running", "succeeded", "failed", "interrupted"].contains(record.phase) else { throw CocoaError(.fileReadCorruptFile) }
+        try check(recording: record.recording, in: url.deletingLastPathComponent(), disk: disk)
         return record
+    }
+    private static func check(recording: UUID?, in folder: URL, disk: any Disk) throws {
+        let path = folder.appendingPathComponent(".recording-id")
+        let current: UUID?
+        if try disk.exists(path) {
+            guard let value = UUID(uuidString: String(decoding: try disk.read(path), as: UTF8.self)) else {
+                throw CocoaError(.fileReadCorruptFile)
+            }
+            current = value
+        } else { current = nil }
+        guard current == recording else { throw CocoaError(.fileNoSuchFile) }
     }
     private struct Receipt: Codable { var job: String; var input: String; var warning: Bool }
     private static func receipt(_ data: Data) -> Receipt? {

@@ -1,3 +1,13 @@
+import Foundation
+
+public struct SummaryCall: Hashable, Sendable {
+    public var call: String
+    public var recording: UUID?
+    public init(call: String, recording: UUID? = nil) {
+        self.call = call; self.recording = recording
+    }
+}
+
 public struct SummarySubmission: Equatable, Sendable {
     public struct Entry: Equatable, Sendable {
         public var label: String
@@ -8,12 +18,13 @@ public struct SummarySubmission: Equatable, Sendable {
         }
     }
     public var call: String
+    public var recording: UUID?
     public var input: String
     public var entries: [Entry]
     public var finalWrite: Bool
     public var usable: Bool
-    public init(call: String, input: String, entries: [Entry], finalWrite: Bool, usable: Bool) {
-        self.call = call; self.input = input; self.entries = entries; self.finalWrite = finalWrite; self.usable = usable
+    public init(call: String, recording: UUID? = nil, input: String, entries: [Entry], finalWrite: Bool, usable: Bool) {
+        self.call = call; self.recording = recording; self.input = input; self.entries = entries; self.finalWrite = finalWrite; self.usable = usable
     }
 }
 
@@ -31,17 +42,17 @@ public struct SummaryCoordinatorState: Equatable, Sendable {
     public var phase: Phase
     public var dispatch: Bool
     public var sequence: UInt64
-    public var calls: [String: Call]
-    public init(phase: Phase = .accepting, dispatch: Bool = true, sequence: UInt64 = 0, calls: [String: Call] = [:]) {
+    public var calls: [SummaryCall: Call]
+    public init(phase: Phase = .accepting, dispatch: Bool = true, sequence: UInt64 = 0, calls: [SummaryCall: Call] = [:]) {
         self.phase = phase; self.dispatch = dispatch; self.sequence = sequence; self.calls = calls
     }
 }
 
 public enum SummaryRecovery: Equatable, Sendable { case absent, pending, installed }
 public enum SummaryCoordinatorEvent: Equatable, Sendable {
-    case recover(String), submit(SummarySubmission)
-    case recovered(String, SummaryRecovery), recoveryFailed(String)
-    case submitted(String, pending: Bool), dispatched(String), failureInstalled(String)
+    case recover(SummaryCall), submit(SummarySubmission)
+    case recovered(SummaryCall, SummaryRecovery), recoveryFailed(SummaryCall)
+    case submitted(SummaryCall, pending: Bool), dispatched(SummaryCall), failureInstalled(SummaryCall)
     case stopDispatch, shutdown, joined
 }
 
@@ -53,10 +64,11 @@ public struct SummaryCoordinatorReducer {
         case let .recover(call) where state.phase == .accepting && state.calls[call] == nil:
             next.calls[call] = .init(phase: .recovering)
         case let .submit(submission) where state.phase == .accepting:
-            if state.calls[submission.call] == nil {
-                next.calls[submission.call] = .init(phase: .submitting, submission: submission)
-            } else if state.calls[submission.call]?.phase == .recovering && state.calls[submission.call]?.submission == nil {
-                next.calls[submission.call]?.submission = submission
+            let call = SummaryCall(call: submission.call, recording: submission.recording)
+            if state.calls[call] == nil {
+                next.calls[call] = .init(phase: .submitting, submission: submission)
+            } else if state.calls[call]?.phase == .recovering && state.calls[call]?.submission == nil {
+                next.calls[call]?.submission = submission
             }
         case let .recovered(call, outcome) where state.calls[call]?.phase == .recovering:
             switch outcome {
@@ -100,10 +112,10 @@ public struct SummaryCoordinatorReducer {
 
 /// The coordinator speaks only in recovery and job lifecycle outcomes.
 @MainActor public protocol SummaryCoordinatorJobs {
-    func recover(call: String) async throws -> SummaryRecovery
+    func recover(call: SummaryCall) async throws -> SummaryRecovery
     func submit(_ submission: SummarySubmission) async -> Bool
-    func dispatch(call: String)
-    func recoveryFailed(call: String) async
+    func dispatch(call: SummaryCall)
+    func recoveryFailed(call: SummaryCall) async
     func join() async
 }
 
@@ -112,7 +124,7 @@ public struct SummaryCoordinatorReducer {
     private let jobs: any SummaryCoordinatorJobs
     private let send: (SummaryCoordinatorEvent) -> Void
     private var started: Set<UInt64> = []
-    private var tasks: [String: Task<Void, Never>] = [:]
+    private var tasks: [SummaryCall: Task<Void, Never>] = [:]
     private var joining: Task<Void, Never>?
     public init(jobs: any SummaryCoordinatorJobs, send: @escaping (SummaryCoordinatorEvent) -> Void) {
         self.jobs = jobs; self.send = send

@@ -4,17 +4,18 @@ import SummaryJobs
 
 struct SummaryCallbacks: Sendable {
     var waiting: @Sendable (URL) async -> Void
-    var completed: @Sendable (URL, [Job.Entry], Bool, Bool) async -> Void
-    static let disabled = Self(waiting: { _ in }, completed: { _, _, _, _ in })
+    var completed: @Sendable (URL, UUID?, [Job.Entry], Bool, Bool) async -> Void
+    static let disabled = Self(waiting: { _ in }, completed: { _, _, _, _, _ in })
 }
 
 actor SummaryTranscript: SessionTranscriptFile {
     private let base: any SessionTranscriptFile
     private let folder: URL
+    private let recording: UUID?
     private let callbacks: SummaryCallbacks
     private var state = Handoff()
-    init(base: any SessionTranscriptFile, folder: URL, callbacks: SummaryCallbacks) {
-        self.base = base; self.folder = folder; self.callbacks = callbacks
+    init(base: any SessionTranscriptFile, folder: URL, recording: UUID? = nil, callbacks: SummaryCallbacks) {
+        self.base = base; self.folder = folder; self.recording = recording; self.callbacks = callbacks
     }
     func write(_ text: CallState) async throws {
         do {
@@ -39,7 +40,7 @@ actor SummaryTranscript: SessionTranscriptFile {
         let (next, effect) = Handoff.reduce(state, .closed)
         state = next
         if case let .offer(entries, finalWrite, usable) = effect {
-            await callbacks.completed(folder, entries, finalWrite, usable)
+            await callbacks.completed(folder, recording, entries, finalWrite, usable)
         }
     }
 }

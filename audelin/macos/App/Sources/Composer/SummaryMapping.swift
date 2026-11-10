@@ -103,11 +103,11 @@ private struct Snapshot: Codable {
 struct SummaryJobStore: SummaryJobs.Store {
     let files: SummaryFiles.Files
     func record(_ job: Job, phase: String = "running", warning: Bool = false) throws -> Record {
-        .init(job: job.id, call: job.call, input: job.input, snapshot: try JSONEncoder().encode(Snapshot(job)), phase: phase, warning: warning)
+        .init(job: job.id, call: job.call, recording: job.recording, input: job.input, snapshot: try JSONEncoder().encode(Snapshot(job)), phase: phase, warning: warning)
     }
     func state(_ record: Record) throws -> SummaryJobs.State {
         let saved = try JSONDecoder().decode(Snapshot.self, from: record.snapshot)
-        let job = Job(id: record.job, call: record.call, input: record.input, entries: saved.entries.map(\.value), speakers: saved.speakers,
+        let job = Job(id: record.job, call: record.call, recording: record.recording, input: record.input, entries: saved.entries.map(\.value), speakers: saved.speakers,
                       primary: saved.primary.value, fallback: saved.fallback?.value)
         let phase = SummaryJobs.State.Phase(rawValue: record.phase) ?? .failed
         return .init(phase: phase, job: job, warning: record.warning, status: summaryStatus(phase, record.warning))
