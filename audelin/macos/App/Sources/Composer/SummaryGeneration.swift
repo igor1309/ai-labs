@@ -65,30 +65,26 @@ enum NotesResponse {
     /// Validate the document contract, not the truth of the generated claims.
     static func validate(_ output: String) throws -> String {
         let text = output.trimmingCharacters(in: .whitespacesAndNewlines)
-        let lines = text.components(separatedBy: .newlines)
-        var headings: [(offset: Int, element: String)] = []
-        var fence: String?
-        for (offset, line) in lines.enumerated() {
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-            if let marker = fence {
-                if trimmed.hasPrefix(marker), trimmed.dropFirst(marker.count).allSatisfy({ $0 == marker.first || $0.isWhitespace }) {
-                    fence = nil
+        let document = try AttributedString(markdown: text)
+        var sections: [(identity: Int, name: String, body: String)] = []
+        for run in document.runs {
+            let content = String(document[run.range].characters)
+            if let components = run.presentationIntent?.components, components.count == 1,
+               case .header(level: 2) = components[0].kind {
+                if sections.last?.identity == components[0].identity {
+                    sections[sections.count - 1].name += content
+                } else {
+                    sections.append((components[0].identity, content, ""))
                 }
-            } else if trimmed.hasPrefix("```") || trimmed.hasPrefix("~~~") {
-                let character = trimmed.first!
-                fence = String(trimmed.prefix(while: { $0 == character }))
-            } else if line.hasPrefix("## ") {
-                headings.append((offset, line))
+            } else if !sections.isEmpty {
+                sections[sections.count - 1].body += content
             }
         }
-        guard fence == nil else { throw SummaryRuntime.Failure.invalidResponse }
-        let names = headings.map { String($0.element.dropFirst(3)).trimmingCharacters(in: .whitespaces) }
+        let names = sections.map(\.name)
         guard let expected = [russian, english].first(where: { names == Array($0.prefix(4)) || names == $0 }),
-              lines.first == "## " + expected[0] else { throw SummaryRuntime.Failure.invalidResponse }
-        for (index, heading) in headings.enumerated() {
-            let end = index + 1 < headings.count ? headings[index + 1].offset : lines.count
-            let body = lines[(heading.offset + 1)..<end].joined(separator: "\n")
-                .trimmingCharacters(in: .whitespacesAndNewlines)
+              text.components(separatedBy: .newlines).first == "## " + expected[0] else { throw SummaryRuntime.Failure.invalidResponse }
+        for section in sections {
+            let body = section.body.trimmingCharacters(in: .whitespacesAndNewlines)
             let refusal = ["i cannot", "i can't", "i’m sorry", "i am sorry", "не могу", "отказываюсь"]
             guard !body.isEmpty, !refusal.contains(where: { body.lowercased().hasPrefix($0) }) else { throw SummaryRuntime.Failure.invalidResponse }
         }

@@ -32,7 +32,7 @@ import Testing
         #expect(await transport.calls.map(\.model) == ["primary", "primary"])
     }
     @Test func primaryOnlyPropagatesFailureWithoutRetry() async {
-        let transport = AttemptHTTP(outputs: [#"{"language":"ru","topic":"API","keyPoints":[],"decisions":[],"actions":[]}"#, "{}"])
+        let transport = AttemptHTTP(outputs: [englishNotes.replacingOccurrences(of: "- No decision was made", with: ""), "{}"])
         let generation = SummaryGeneration(runtime: runtime(transport), sink: SilentLog())
         var job = fixtureJob(); job.fallback = nil
         await #expect(throws: Failure.invalidResponse) { try await generation.notes(job, identities: []) }
@@ -74,11 +74,36 @@ import Testing
         #expect(try NotesResponse.validate(nested) == nested)
         #expect(throws: (any Error).self) { try NotesResponse.validate(nested + "\n## Open questions\n") }
     }
-    @Test func codeFenceHeadingsAreContentAndUnclosedFencesFail() throws {
+    @Test func codeFenceHeadingsAreContentAndHiddenSectionsFail() throws {
         let fenced = englishNotes.replacingOccurrences(of: "API review", with: "API review\n\n```text\n## Example\n``` ")
         #expect(try NotesResponse.validate(fenced) == fenced)
-        #expect(throws: (any Error).self) { try NotesResponse.validate(englishNotes + "\n~~~text\nUnfinished") }
+        #expect(throws: (any Error).self) { try NotesResponse.validate(englishNotes.replacingOccurrences(of: "API review", with: "API review\n\n~~~text\nUnfinished")) }
 
+    }
+    @Test(arguments: ["```", "~~~"])
+    func codeBlocksRespectClosingSyntaxAndListContainers(marker: String) async throws {
+        for body in [marker + "text\nExample\n" + marker + " " + marker,
+                     "- item\n  " + marker + "\n  Example\n" + marker] {
+            let malformed = englishNotes.replacingOccurrences(of: "- No decision was made", with: body)
+            let transport = AttemptHTTP(outputs: [malformed, englishNotes])
+            let result = try await SummaryGeneration(runtime: runtime(transport), sink: SilentLog()).notes(fixtureJob(), identities: [])
+            #expect(result == englishNotes)
+            #expect(await transport.calls.map(\.model) == ["primary", "fallback"])
+        }
+        for body in [marker + "text\n## Example\n" + marker + String(marker.prefix(1)) + "\t ",
+                     "- item\n  " + marker + "\n  ## Example\n  " + marker] {
+            let valid = englishNotes.replacingOccurrences(of: "- No decision was made", with: body)
+            #expect(try NotesResponse.validate(valid) == valid)
+        }
+        // CommonMark permits a final code block to end at EOF. Every required section is still visible.
+        let finalBlock = englishNotes + "\n" + marker + "text\nExample\n"
+        #expect(try NotesResponse.validate(finalBlock) == finalBlock)
+    }
+    @Test(arguments: [russianNotes, englishNotes], [0, 1, 2, 3])
+    func eachRequiredSectionMustHaveContent(markdown: String, index: Int) {
+        var sections = markdown.components(separatedBy: "\n\n## ")
+        sections[index] = String(sections[index].components(separatedBy: "\n\n")[0]) + "\n"
+        #expect(throws: (any Error).self) { try NotesResponse.validate(sections.joined(separator: "\n\n## ")) }
     }
     @Test func transcriptContentIsPassedWithoutLosingNotes() async throws {
         let transport = AttemptHTTP(outputs: [englishNotes])
