@@ -2,6 +2,8 @@
 
 ## 2026-11-10
 
+- LAB-1156: Checking unchanged call-notes settings or reverting edits keeps the saved status; actual edits remain available to save.
+
 - LAB-1148: Typing in call-notes settings keeps the caret after the inserted text, including model names.
 
 - LAB-1147: Call notes use Markdown directly, with source times on actions and clearer instructions for corrections, owners and completion states.

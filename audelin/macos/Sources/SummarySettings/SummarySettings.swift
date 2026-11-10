@@ -155,7 +155,7 @@ public struct Reducer: Sendable {
         case let .edit(config) where state.draft != nil:
             next.draft = config; next.revision += 1; next.validatedRevision = nil
             next.saveAfterValidation = false
-            next.phase = state.savingRevision == nil ? .editing : .saving
+            next.phase = state.savingRevision != nil ? .saving : config == state.saved ? .saved : .editing
             next.disclosure = disclosure(config)
             next.issues = safety(config)
         case .validate where state.draft != nil && state.savingRevision == nil && state.phase != .validating:
@@ -165,7 +165,8 @@ public struct Reducer: Sendable {
                 next.phase = .validating; effect = .validate(state.revision, state.draft!)
             }
         case let .validated(revision, issues) where revision == state.revision && state.phase == .validating:
-            next.phase = .editing; next.validatedRevision = issues.isEmpty ? revision : nil
+            next.phase = state.draft == state.saved ? .saved : .editing
+            next.validatedRevision = issues.isEmpty ? revision : nil
             next.issues = issues
             next.saveAfterValidation = false
             if state.saveAfterValidation && issues.isEmpty {
