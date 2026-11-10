@@ -8,6 +8,8 @@ import LiveText
 import SessionRehearsal
 import struct SideText.Audio
 import SummaryJobs
+import SummaryFiles
+import Preferences
 import Testing
 import TranscriptFormat
 @testable import Composer
@@ -15,7 +17,7 @@ import TranscriptFormat
 @Suite(.timeLimit(.minutes(1)))
 struct BleedCleanupCompositionTests {
     enum Scenario: CaseIterable {
-        case cleaned, ungated, differentWordTimes, longRecording, silent, emptyWords, cleaningFails, hearingFails, replacingFails
+        case cleaned, ungated, differentWordTimes, longRecording, silent, emptyWords, cleaningFails, hearingFails, replacingFails, finalWriteFails
     }
 
     @Test(arguments: Scenario.allCases)
@@ -27,7 +29,7 @@ struct BleedCleanupCompositionTests {
                 words: callSegment.words.map { Word($0.text, start: $0.start + 20, end: $0.end + 20) },
                 settledCount: callSegment.settledCount
             ) : callSegment
-            let raw = try await publishedCall(status: .finished, mine: [.init(text: segment("shared words here", start: 1))],
+            let raw = try await publishedCall(status: scenario == .finalWriteFails ? .off : .finished, mine: [.init(text: segment("shared words here", start: 1))],
                 theirs: [.init(text: timedCall)])
             let heard = [segment("my actual answer", start: 3), segment("one more thought", start: 5)]
             let cleaningCalls = Values<CleanupRecording>(), hearingCalls = Values<[Float]>()
@@ -48,11 +50,11 @@ struct BleedCleanupCompositionTests {
                 if scenario == .emptyWords { return [.init(id: 0, start: 0, end: 1, words: [], settledCount: 0)] }
                 return heard
             }
-            boundary.transcripts = ReplacementStorage(fails: scenario == .replacingFails)
+            boundary.transcripts = ReplacementStorage(fails: scenario == .replacingFails, failFinal: scenario == .finalWriteFails)
             let pieces = SessionPieces(
                 folder: CallFolder(callsURL: root, now: { Date(timeIntervalSince1970: 0) }, timeZone: .gmt,
                     occupiedNames: { [] }, disk: .system), folderTitle: nil,
-                processes: CallAppProcesses(app: "", list: EmptyProcessList()), boundary: boundary,
+                processes: CallAppProcesses(app: "", list: EmptyProcessList()), boundary: boundary, cleanupRuns: CleanupRuns(),
                 summaries: .init(waiting: { _ in }, completed: { folder, entries, final, usable in
                     summaries.continuation.yield(.init(folder: folder, entries: entries, final: final, usable: usable))
                 }))
@@ -64,9 +66,14 @@ struct BleedCleanupCompositionTests {
             sides[.call]!.audio.attach(EndedAudio(capturedThrough: 60))
             try await pieces.openTranscript(in: folder)
             let file = try #require(await pieces.transcriptFile)
-            let old = try await publishedCall(status: .finished, mine: [.init(text: segment("obsolete words", start: 0))], theirs: [])
+            let old = try await publishedCall(status: .off, mine: [.init(text: segment("obsolete words", start: 0))], theirs: [])
             try await file.write(old)
             try await file.write(raw)
+            if scenario == .finalWriteFails {
+                let final = try await publishedCall(status: .finished,
+                    mine: [.init(text: segment("new final words", start: 1))], theirs: [])
+                await #expect(throws: CleanupFailure.self) { try await file.write(final) }
+            }
             let before = try String(contentsOf: made.transcriptURL, encoding: .utf8)
             try await pieces.closeTranscript()
             var results = summaries.stream.makeAsyncIterator()
@@ -86,12 +93,17 @@ struct BleedCleanupCompositionTests {
                 .init(label: "Them", time: "0.0", text: scenario == .ungated ? "their own speech" : "shared words here"),
                 .init(label: "Me", time: "1.0", text: "shared words here"),
             ]))
-            #expect(summary.final && summary.usable)
-            let gated = scenario != .ungated && scenario != .differentWordTimes && scenario != .longRecording
+            #expect(summary.final == (scenario != .finalWriteFails))
+            #expect(summary.usable)
+            let gated = scenario != .ungated && scenario != .differentWordTimes && scenario != .longRecording && scenario != .finalWriteFails
             #expect(cleaningCalls.all == (gated ? [.init(microphoneURL: made.microphoneURL, callURL: made.callURL)] : []))
             #expect(hearingCalls.all == (gated && scenario != .cleaningFails ? [[0.25, -0.5]] : []))
+            if scenario == .replacingFails {
+                await log.wait { $0.message == "bleed cleanup kept raw: replacing failed" }
+            }
             let kept = log.entries.all.filter { $0.message.hasPrefix("bleed cleanup kept raw:") }
             if replaced { #expect(kept.isEmpty) }
+            else if scenario == .finalWriteFails { #expect(kept.isEmpty) }
             else if !gated {
                 #expect(kept == [.init(category: .session, message: "bleed cleanup kept raw: no bleed found", level: .debug)])
             } else if scenario == .silent || scenario == .emptyWords {
@@ -100,6 +112,117 @@ struct BleedCleanupCompositionTests {
                 let step = scenario == .cleaningFails ? "cleaning" : scenario == .hearingFails ? "hearing" : "replacing"
                 #expect(kept == [.init(category: .session, message: "bleed cleanup kept raw: \(step) failed", error: "failed")])
             }
+        }
+    }
+
+    @MainActor @Test(arguments: [false, true])
+    func quitHandsOffRawBeforeSummaryShutdown(holdingHearing: Bool) async throws {
+        try await withComposeFolder { root in
+            let held = HeldCleanupStep()
+            let cancelled = Signal(), terminated = Signal()
+            defer { cancelled.end(); terminated.end() }
+            let words: [Word] = [.init("shared", start: 0, end: 0.01), .init("words", start: 0.01, end: 0.02)]
+            func recognizer() -> ScriptRecognizer {
+                ScriptRecognizer(hearings: [.success(.init(words: words))], endings: [.success(.init(words: words))])
+            }
+            let rig = try await ComposeFixture.make(root: root,
+                preferences: Preferences(notes: .init(enabled: true), automaticRecording: false, callsFolder: root),
+                recognizers: (recognizer(), recognizer()), configure: { boundary in
+                    boundary.bleedCleaning = CleaningStub { _ in
+                        if !holdingHearing {
+                            await withTaskCancellationHandler { await held.wait() } onCancel: { cancelled.send() }
+                        }
+                        return [0]
+                    }
+                    boundary.bleedHearing = HearingStub { _ in
+                        if holdingHearing {
+                            await withTaskCancellationHandler { await held.wait() } onCancel: { cancelled.send() }
+                        } else { Issue.record("Cancelled cleaning reached hearing") }
+                        return [segment("cleaned answer", start: 0)]
+                    }
+                }, terminate: {
+                    // Durable acceptance proves the handoff preceded coordinator shutdown.
+                    do {
+                        let record = try JSONDecoder().decode(Record.self, from: Data(contentsOf:
+                            root.appendingPathComponent("1970.01.01-0000/.summary-job.json")))
+                        #expect(record.phase == "pending")
+                        let snapshot = try #require(try JSONSerialization.jsonObject(with: record.snapshot) as? [String: Any])
+                        let entries = try #require(snapshot["entries"] as? [[String: String]])
+                        #expect(entries.compactMap { $0["text"] } == ["shared words", "shared words"])
+                        #expect(Set(entries.compactMap { $0["label"] }) == ["Me", "Them"])
+                    } catch { Issue.record(error) }
+                    terminated.send()
+                })
+            do {
+                try await rig.start()
+                try await rig.stop()
+                await held.started.next()
+                let before = try await transcriptText(of: rig)
+                await rig.menu.perform(.quit)
+                await terminated.next()
+                await cancelled.next()
+                #expect(try await transcriptText(of: rig) == before)
+                await held.release()
+                await rig.log.wait { $0.message.hasPrefix("bleed cleanup kept raw:") }
+                #expect(try await transcriptText(of: rig) == before)
+                await rig.finish()
+            } catch { await held.release(); await rig.finish(); throw error }
+        }
+    }
+
+    @Test func unequalCaptureStartsGateBleedAndOffsetHeardMicrophone() async throws {
+        try await withComposeFolder { root in
+            let clock = FixtureClock(), runs = CleanupRuns()
+            let summaries = AsyncStream<SummaryResult>.makeStream()
+            defer { summaries.continuation.finish(); clock.finish() }
+            var boundary = testBoundary()
+            boundary.time = clock.time
+            let cleaningCalls = Values<CleanupRecording>()
+            boundary.bleedCleaning = CleaningStub { cleaningCalls.append($0); return [0] }
+            boundary.bleedHearing = HearingStub { _ in [segment("cleaned answer", start: 2)] }
+            let replacements = Values<[TranscriptSegment]>()
+            boundary.transcripts = ReplacementStorage(fails: false, replacement: { replacements.append($0) })
+            let pieces = SessionPieces(
+                folder: CallFolder(callsURL: root, now: { Date(timeIntervalSince1970: 0) }, timeZone: .gmt,
+                    occupiedNames: { [] }, disk: .system), folderTitle: nil,
+                processes: CallAppProcesses(app: "", list: EmptyProcessList()), boundary: boundary, cleanupRuns: runs,
+                summaries: .init(waiting: { _ in }, completed: { folder, entries, final, usable in
+                    summaries.continuation.yield(.init(folder: folder, entries: entries, final: final, usable: usable))
+                }))
+            let folder = try await pieces.create()
+            try await pieces.openTrack(.microphone, in: folder)
+            try await pieces.openTrack(.call, in: folder)
+            clock.advance(4)
+            try await pieces.startMicrophoneCapture()
+            clock.advance(10)
+            try await pieces.startCallCapture(selection: .everyAppButAudelin)
+            try await pieces.stopCapture(.microphone)
+            try await pieces.stopCapture(.call)
+            try await pieces.closeTrack(.microphone)
+            try await pieces.closeTrack(.call)
+            try await pieces.openTranscript(in: folder)
+            let file = try #require(await pieces.transcriptFile)
+            // Both sets of words occur at session second 15.
+            let raw = try await publishedCall(status: .finished,
+                mine: [.init(text: segment("shared words here", start: 11))],
+                theirs: [.init(text: segment("shared words here", start: 1))])
+            try await file.write(raw)
+            await file.close()
+            var results = summaries.stream.makeAsyncIterator()
+            let summary = try #require(await results.next())
+            await runs.shutdown()
+            #expect(cleaningCalls.all.count == 1)
+            #expect(replacements.all == [[TranscriptSegment(id: 2, start: 6, end: 7,
+                words: [.init("cleaned", start: 6, end: 6.1), .init("answer", start: 6.1, end: 6.2)],
+                settledCount: 2)]])
+            #expect(summary.entries == [
+                .init(label: "Them", time: "1.0", text: "shared words here"),
+                .init(label: "Me", time: "6.0", text: "cleaned answer"),
+            ])
+            let made = try await pieces.places(in: folder)
+            let saved = try String(contentsOf: made.transcriptURL, encoding: .utf8)
+            #expect(saved.contains("00:00:06\ncleaned answer"))
+            #expect(!saved.contains("00:00:11"))
         }
     }
 
@@ -192,20 +315,28 @@ private struct EndedAudio: CaptureAudio {
 }
 private struct ReplacementStorage: TranscriptStorage {
     let fails: Bool
+    var failFinal = false
     var replaced: @Sendable () -> Void = {}
+    var replacement: @Sendable ([TranscriptSegment]) -> Void = { _ in }
     func open(at url: URL, sink: any LogSink) async throws -> any SessionTranscriptFile {
-        ReplacementFile(base: try await FileTranscriptStorage().open(at: url, sink: sink), fails: fails, replaced: replaced)
+        ReplacementFile(base: try await FileTranscriptStorage().open(at: url, sink: sink), fails: fails, failFinal: failFinal, replaced: replaced, replacement: replacement)
     }
 }
 private struct ReplacementFile: SessionTranscriptFile {
     let base: any SessionTranscriptFile
     let fails: Bool
+    let failFinal: Bool
     let replaced: @Sendable () -> Void
-    func write(_ state: CallState) async throws { try await base.write(state) }
+    let replacement: @Sendable ([TranscriptSegment]) -> Void
+    func write(_ state: CallState) async throws {
+        if failFinal && state.status == .finished { throw CleanupFailure.failed }
+        try await base.write(state)
+    }
     func close() async { await base.close() }
     func replaceMicrophone(in state: CallState, with segments: [TranscriptSegment]) async throws {
         if fails { throw CleanupFailure.failed }
         try await base.replaceMicrophone(in: state, with: segments)
+        replacement(segments)
         replaced()
     }
 }
@@ -231,4 +362,18 @@ private actor MemoryTranscriptBytes: TranscriptBytes {
         replacement = String(decoding: chunks.reduce(Data(), +), as: UTF8.self)
     }
     func close() {}
+}
+
+/// Holds the model call even after cancellation, until the test releases it.
+private actor HeldCleanupStep {
+    nonisolated let started = Signal()
+    private var continuation: CheckedContinuation<Void, Never>?
+    func wait() async {
+        await withCheckedContinuation { continuation in
+            self.continuation = continuation
+            started.send()
+        }
+    }
+    func release() { continuation?.resume(); continuation = nil }
+    deinit { started.end() }
 }

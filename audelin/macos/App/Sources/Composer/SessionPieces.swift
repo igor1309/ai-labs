@@ -28,6 +28,8 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
 
     let news = AsyncStream<SessionEvent>.makeStream()
     nonisolated let transcriptFailures: TranscriptFailureReport
+    let cleanupRuns: CleanupRuns
+    let timeline = CaptureTimeline()
     let summaries: SummaryCallbacks
     let folder: CallFolder
     let folderTitle: String?
@@ -53,7 +55,8 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
     /// A long call's transcript is saved at most this often, and at once when its text stops.
     static let transcriptInterval: Duration = .seconds(5)
 
-    init(folder: CallFolder, folderTitle: String?, processes: CallAppProcesses, boundary: ComposerBoundary, summaries: SummaryCallbacks = .disabled) {
+    init(folder: CallFolder, folderTitle: String?, processes: CallAppProcesses, boundary: ComposerBoundary, cleanupRuns: CleanupRuns, summaries: SummaryCallbacks = .disabled) {
+        self.cleanupRuns = cleanupRuns
         self.summaries = summaries
         self.folder = folder
         self.folderTitle = folderTitle
@@ -116,11 +119,11 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
         LiveNameBoard.shared.callTrack(made.callURL)
         let file = try await boundary.transcripts.open(at: made.transcriptURL, sink: boundary.log)
         transcriptFile = SummaryTranscript(base: file, folder: made.url, callbacks: summaries, cleanup: TranscriptCleanup(
-            recording: CleanupRecording(microphoneURL: made.microphoneURL, callURL: made.callURL),
-            duration: { [microphone = sides[.microphone]!.audio, call = sides[.call]!.audio] in
-                max(microphone.capturedThrough, call.capturedThrough)
+            timeline: timeline, recording: CleanupRecording(microphoneURL: made.microphoneURL, callURL: made.callURL),
+            duration: { [timeline, microphone = sides[.microphone]!.audio, call = sides[.call]!.audio] in
+                max(timeline.offset(.microphone) + microphone.capturedThrough, timeline.offset(.call) + call.capturedThrough)
             }, cleaning: boundary.bleedCleaning, hearing: boundary.bleedHearing, sink: boundary.log
-        ))
+        ), runs: cleanupRuns)
     }
 
     func closeTranscript() async throws {

@@ -19,6 +19,7 @@ let package = Package(
             dependencies: [
                 .product(name: "SettingsUI", package: "macos"),
                 "Composer",
+                .product(name: "FluidAudio", package: "FluidAudio"),
                 .product(name: "MicrophoneCapture", package: "macos"),
                 .product(name: "SystemAudioCapture", package: "macos"),
                 .product(name: "ParakeetRecognizer", package: "macos"),
@@ -52,7 +53,6 @@ let package = Package(
             name: "Composer",
             dependencies: [
                 .product(name: "BleedCleanup", package: "macos"),
-                .product(name: "FluidAudio", package: "FluidAudio"),
                 .product(name: "SummarySettings", package: "macos"),
                 .product(name: "SummaryJobs", package: "macos"),
                 .product(name: "SummaryFiles", package: "macos"),

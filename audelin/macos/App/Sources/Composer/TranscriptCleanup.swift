@@ -13,17 +13,18 @@ public struct CleanupRecording: Equatable, Sendable {
 
 /// Runs on the closed snapshot; the summary follows the successful atomic replacement.
 struct TranscriptCleanup: Sendable {
+    let timeline: CaptureTimeline
     let recording: CleanupRecording
     let duration: @Sendable () -> Double
     let cleaning: any MicrophoneCleaning<CleanupRecording, [Float]>
     let hearing: any CleanedHearing<[Float], [TranscriptSegment]>
     let sink: any LogSink
 
-    func run(_ raw: CallState, replacing file: any SessionTranscriptFile) async -> [Job.Entry] {
-        let replacement = CleanupReplacement(raw: raw, file: file)
+    func run(_ raw: CallState, replacing replace: @escaping @Sendable ([TranscriptSegment]) async throws -> Void) async -> [Job.Entry] {
+        let replacement = CleanupReplacement(replace: replace)
         let cleanup = BleedCleanup(
             gate: BleedGate(), cleaning: cleaning,
-            hearing: NonemptyHearing(base: hearing), replacing: replacement
+            hearing: NonemptyHearing(base: hearing, offset: timeline.offset(.microphone)), replacing: replacement
         )
         let outcome = await LoggingCleanup(base: cleanup, sink: sink).run(
             recording: recording,
@@ -37,30 +38,33 @@ struct TranscriptCleanup: Sendable {
 
     private func words(in state: CallState, speaker: CallState.Speaker) -> [Word] {
         state.entries.filter { $0.speaker == speaker }.flatMap { entry in
-            entry.text.words.map { Word(start: $0.start, text: $0.text) }
+            entry.text.words.map { Word(start: $0.start + timeline.offset(speaker == .mine ? .microphone : .call), text: $0.text) }
         }
     }
 }
 
 private actor CleanupReplacement: MicrophoneReplacing {
-    let raw: CallState
-    let file: any SessionTranscriptFile
+    let replace: @Sendable ([TranscriptSegment]) async throws -> Void
     private(set) var heard: [TranscriptSegment] = []
 
-    init(raw: CallState, file: any SessionTranscriptFile) { self.raw = raw; self.file = file }
+    init(replace: @escaping @Sendable ([TranscriptSegment]) async throws -> Void) { self.replace = replace }
 
     func replaceMicrophone(of recording: CleanupRecording, with text: [TranscriptSegment]) async throws {
-        try await file.replaceMicrophone(in: raw, with: text)
+        try Task.checkCancellation()
+        try await replace(text)
         heard = text
     }
 }
 
 private struct NonemptyHearing: CleanedHearing {
     let base: any CleanedHearing<[Float], [TranscriptSegment]>
+    let offset: Double
 
     func hear(_ samples: [Float]) async throws -> [TranscriptSegment]? {
+        try Task.checkCancellation()
         guard let text = try await base.hear(samples), text.contains(where: { !$0.words.isEmpty }) else { return nil }
-        return text
+        try Task.checkCancellation()
+        return text.map { $0.offset(by: offset) }
     }
 }
 

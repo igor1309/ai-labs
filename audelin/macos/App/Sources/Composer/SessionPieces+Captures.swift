@@ -69,6 +69,7 @@ extension SessionPieces {
         // Both sides take their offset immediately before starting RecordedCapture,
         // before LiveAudio can accept its first piece on its local zero-based timeline.
         let offset = boundary.time.monotonicNow() - timeOrigin
+        timeline.started(side, at: offset)
         let statistics = Task { @concurrent in
             for await piece in measurements {
                 switch side {

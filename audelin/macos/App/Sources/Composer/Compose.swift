@@ -41,9 +41,10 @@ public func compose(
         deadline: { try await boundary.time.sleep(.seconds(120)) })
     let summaries = AudelinSummaries(files: SummaryFiles.Files(locations: storage, disk: FileDisk(), ownershipDirectory: preferencesURL.deletingLastPathComponent().appendingPathComponent("summary-ownership")),
                                      runtime: runtime, preferences: preferences, sink: boundary.log)
+    let cleanupRuns = CleanupRuns()
     let menu = await AudelinMenu(storage: preferences, occupiedCallNames: { try storage.occupiedCallNames() }, boundary: boundary, processes: processes, panel: panel,
         openFolder: { _ = openCallsFolder($0) }, openURL: openURL, terminate: terminate,
-        sink: boundary.log, presentPanel: presentPanel, sleep: boundary.time.sleep, summaries: summaries)
+        sink: boundary.log, presentPanel: presentPanel, sleep: boundary.time.sleep, cleanupRuns: cleanupRuns, summaries: summaries)
     menu.installFolderPicker(chooseCallsFolder)
     menu.installSettings(AudelinSettings(preferences: SummaryPreferences(storage: preferences),
                                         availability: SummaryAvailability(runtime: runtime)), present: presentSettings)

@@ -15,9 +15,11 @@ actor SummaryTranscript: SessionTranscriptFile {
     private let callbacks: SummaryCallbacks
     private var state = Handoff()
     private var last: CallState?
-    private let cleanup: TranscriptCleanup?
-    init(base: any SessionTranscriptFile, folder: URL, callbacks: SummaryCallbacks, cleanup: TranscriptCleanup? = nil) {
+    private let cleanup: TranscriptCleanup
+    private let runs: CleanupRuns
+    init(base: any SessionTranscriptFile, folder: URL, callbacks: SummaryCallbacks, cleanup: TranscriptCleanup, runs: CleanupRuns) {
         self.cleanup = cleanup
+        self.runs = runs
         self.base = base; self.folder = folder; self.callbacks = callbacks
     }
     func write(_ text: CallState) async throws {
@@ -37,12 +39,8 @@ actor SummaryTranscript: SessionTranscriptFile {
         let (next, effect) = Handoff.reduce(state, .closed)
         state = next
         if case let .offer(entries, finalWrite, usable) = effect {
-            if let cleanup, let last {
-                let base = base, folder = folder, callbacks = callbacks
-                Task {
-                    let result = await cleanup.run(last, replacing: base)
-                    await callbacks.completed(folder, result, finalWrite, !result.isEmpty)
-                }
+            if finalWrite, let last {
+                await runs.start(raw: last, cleanup: cleanup, file: base, folder: folder, callbacks: callbacks)
             } else {
                 await callbacks.completed(folder, entries, finalWrite, usable)
             }

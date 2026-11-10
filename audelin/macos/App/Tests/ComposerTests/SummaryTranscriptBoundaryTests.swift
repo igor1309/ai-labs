@@ -2,7 +2,6 @@ import LiveText
 import CallText
 import Foundation
 import SummaryJobs
-import Synchronization
 import Testing
 @testable import Composer
 
@@ -16,14 +15,22 @@ struct SummaryTranscriptBoundaryTests {
                 .init("is", start: 0.5, end: 0.6), .init("Alice.", start: 0.75, end: 1),
             ], settledCount: settledCount))
         ], theirs: [])
-        let captured = Mutex<[Job.Entry]>([])
+        let captured = AsyncStream<[Job.Entry]>.makeStream()
+        defer { captured.continuation.finish() }
+        let runs = CleanupRuns()
+        let cleanup = TranscriptCleanup(timeline: CaptureTimeline(),
+            recording: .init(microphoneURL: URL(fileURLWithPath: "/mic"), callURL: URL(fileURLWithPath: "/call")),
+            duration: { 60 }, cleaning: CleaningStub { _ in Issue.record("Unexpected cleaning"); return [] },
+            hearing: HearingStub { _ in Issue.record("Unexpected hearing"); return nil }, sink: TestLogSink())
         let file = SummaryTranscript(base: BoundaryTranscript(), folder: URL(fileURLWithPath: "/synthetic"), callbacks: .init(waiting: { _ in }, completed: { _, entries, final, usable in
             #expect(final && usable)
-            captured.withLock { $0 = entries }
-        }))
+            captured.continuation.yield(entries)
+        }), cleanup: cleanup, runs: runs)
         try await file.write(state)
         await file.close()
-        #expect(captured.withLock { $0.map(\.text) } == ["My name is Alice."])
+        var results = captured.stream.makeAsyncIterator()
+        #expect(await results.next()?.map(\.text) == ["My name is Alice."])
+        await runs.shutdown()
     }
 }
 private actor BoundaryTranscript: SessionTranscriptFile {

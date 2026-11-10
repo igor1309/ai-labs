@@ -44,12 +44,12 @@ actor RecordingSessions: RecordingSession {
         callApp: RecordingCallApp, processes: CoreAudioProcesses,
         boundary: ComposerBoundary,
         report: @escaping @Sendable (UInt64, RecordingSessionReport) async -> Void,
-        panel: AudelinPanel, summaries: SummaryCallbacks = .disabled
+        panel: AudelinPanel, cleanupRuns: CleanupRuns, summaries: SummaryCallbacks = .disabled
     ) {
         self.timeZone = boundary.time.timeZone
         self.panel = panel
         self.makePieces = composeRecordingPieces(preferences: preferences, occupiedCallNames: occupiedCallNames, callApp: callApp,
-                                                 processes: processes, boundary: boundary, summaries: summaries)
+                                                 processes: processes, boundary: boundary, cleanupRuns: cleanupRuns, summaries: summaries)
         self.liveText = { preferences.read().liveText }
         self.report = report
         self.sink = boundary.log
