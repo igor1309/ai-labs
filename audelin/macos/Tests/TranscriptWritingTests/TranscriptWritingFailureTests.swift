@@ -3,57 +3,6 @@ import TranscriptWriting
 
 extension TranscriptWritingTests {
 
-    @Test func aTranscriptThatKeepsFailingIsToldOnceUntilAWriteSucceeds() async {
-
-        let changes = Changes()
-        let denied = WriteFailure(message: "write denied")
-        let full = WriteFailure(message: "out of space")
-        let later = WriteFailure(message: "out of space again")
-        let texts = ["first", "first\nsecond", "first\nsecond\nthird", "first\nsecond\nthird\nfourth", "fifth"]
-        let run = Run(
-            changes: changes, enabled: true, holds: [:],
-            failures: [texts[1]: denied, texts[2]: full, texts[4]: later]
-        )
-        defer { run.requestStop() }
-        await changes.until({ run.observed.started })
-        // Reports told after each text, and the text the file keeps.
-        let expected: [(reports: Int, kept: String)] = [(0, texts[0]), (1, texts[0]), (1, texts[0]), (1, texts[3]), (2, texts[3])]
-        for (index, text) in texts.enumerated() {
-            run.call.send(text)
-            await changes.until({
-                run.transcript.writes.count == index + 1 && run.report.recorded.count == expected[index].reports
-                    && run.transcript.kept == expected[index].kept
-            })
-        }
-        run.requestStop()
-        await run.task.value
-        #expect(run.transcript.writes == texts)
-        #expect(run.observed.texts == texts)
-        #expect(run.report.recorded == [denied, later])
-    }
-
-    @Test func aWriteAfterAFailedOneKeepsTheNewerText() async {
-
-        let changes = Changes()
-        let failure = WriteFailure(message: "write failed")
-        let old = "first draft\nsecond draft"
-        let new = "first corrected\nsecond final\nthird"
-        let run = Run(changes: changes, enabled: true, holds: [:], failures: [old: failure])
-        defer { run.requestStop() }
-        await changes.until({ run.observed.started })
-        run.call.send(old)
-        await changes.until({ run.report.recorded == [failure] })
-        #expect(run.transcript.kept == nil)
-        run.call.send(new)
-        await changes.until({ run.transcript.kept == new })
-        run.requestStop()
-        await run.task.value
-        #expect(run.transcript.writes == [old, new])
-        #expect(run.transcript.kept == new)
-        #expect(run.observed.texts == [old, new])
-        #expect(run.report.recorded == [failure])
-    }
-
     @Test func theLastWriteFailingIsToldBeforeStoppingReturns() async {
 
         let changes = Changes()
@@ -74,7 +23,7 @@ extension TranscriptWritingTests {
         #expect(run.observed.stopped)
         #expect(run.events.recorded == [.transcriptFailed(failure), .stopReturned(1)])
         #expect(run.report.recorded == [failure])
-        #expect(run.transcript.writes == ["last text"])
+        #expect(run.saving.writes == ["last text"])
         #expect(run.call.recorded == [.subscribe, .start(true), .stop])
     }
 
@@ -90,11 +39,11 @@ extension TranscriptWritingTests {
             startGate: nil, stopGate: nil, startText: nil, lastText: nil,
             switchText: { _ in failed }, changed: changes.notify
         )
-        let transcript = FakeTranscript(holds: [first: held], failures: [first: failure], changed: changes.notify)
         let events = Events()
         let report = FakeFailureReport(events: events, gate: nil, changed: changes.notify)
         let observed = Observation<CallUpdate>()
-        let subject = TranscriptWriting(callText: call, transcript: transcript, failureReport: report)
+        let saving = FakeTextSaving(holds: [first: held], failures: [first: failure], report: report, finishGate: nil, changed: changes.notify)
+        let subject = TranscriptWriting(callText: call, saving: saving)
         let task = Task {
             let reader = Task {
                 for await update in subject.updates {
@@ -117,17 +66,17 @@ extension TranscriptWritingTests {
         call.send(failed)
         call.finishUpdates()
         await changes.until({ observed.texts == [first, failed] })
-        #expect(transcript.writes == [first])
-        #expect(transcript.kept == nil)
+        #expect(saving.writes == [first])
+        #expect(saving.kept == nil)
         #expect(report.recorded.isEmpty)
         held.open()
-        await changes.until({ transcript.kept == failed && report.recorded == [failure] })
+        await changes.until({ saving.kept == failed && report.recorded == [failure] && saving.finishCalls == 1 })
         stopping.open()
         await task.value
         #expect(observed.stopped)
         #expect(observed.texts == [first, failed])
-        #expect(transcript.writes == [first, failed])
-        #expect(transcript.kept == failed)
+        #expect(saving.writes == [first, failed])
+        #expect(saving.kept == failed)
         #expect(report.recorded == [failure])
         #expect(call.recorded == [.subscribe, .start(true), .stop])
     }
@@ -148,16 +97,18 @@ extension TranscriptWritingTests {
         #expect(run.observed.stopped)
         #expect(run.call.recorded == [.subscribe, .start(true), .switchTo(false), .stop])
         #expect(run.observed.texts == ["while starting", "live text off", "last text"])
-        #expect(run.transcript.writes.isEmpty)
+        #expect(run.saving.writes.isEmpty)
+        #expect(run.saving.finishCalls == 0)
         #expect(run.report.recorded.isEmpty)
         #expect(run.events.recorded == [.stopReturned(1)])
+        await run.saving.finish()
     }
 
     @Test func aSecondStopWaitsForTheFirst() async {
 
         let changes = Changes()
         let held = Gate(changed: changes.notify)
-        let run = Run(changes: changes, enabled: true, holds: ["last text": held], lastText: "last text")
+        let run = Run(changes: changes, enabled: true, holds: ["last text": held], lastText: "last text", finishGate: held)
         defer { held.open(); run.requestStop() }
         await changes.until({ run.observed.started })
         run.requestStop()
@@ -184,9 +135,50 @@ extension TranscriptWritingTests {
         #expect(run.events.recorded.count == 2)
         #expect(run.events.recorded.contains(.stopReturned(1)))
         #expect(run.events.recorded.contains(.stopReturned(2)))
-        #expect(run.transcript.writes == ["last text"])
-        #expect(run.transcript.kept == "last text")
+        #expect(run.saving.writes == ["last text"])
+        #expect(run.saving.kept == "last text")
+        #expect(run.saving.finishCalls == 1)
         #expect(run.call.recorded == [.subscribe, .start(true), .stop])
+    }
+    @Test func aFailedWriteLeavesCallTextGoing() async {
+
+        let changes = Changes()
+        let failure = WriteFailure(message: "write denied")
+        let run = Run(changes: changes, enabled: true, holds: [:], failures: ["first": failure])
+        defer { run.requestStop() }
+        await changes.until({ run.observed.started })
+        run.call.send("first")
+        await changes.until({ run.report.recorded == [failure] })
+        run.setEnabled(false)
+        await changes.until({ run.observed.texts == ["first", "live text off"] && run.saving.kept == "live text off" })
+        run.call.send("new text")
+        await changes.until({ run.observed.texts == ["first", "live text off", "new text"] && run.saving.kept == "new text" })
+        run.requestStop()
+        await run.task.value
+        #expect(run.call.recorded == [.subscribe, .start(true), .switchTo(false), .stop])
+        #expect(run.saving.kept == "new text")
+        #expect(run.report.recorded == [failure])
+    }
+
+    @Test func updatesReachReadersWhileASaveIsHeld() async {
+
+        let changes = Changes()
+        let held = Gate(changed: changes.notify)
+        let run = Run(changes: changes, enabled: true, holds: ["first": held])
+        defer { held.open(); run.requestStop() }
+        await changes.until({ run.observed.started })
+        run.call.send("first")
+        await changes.until({ held.entered })
+        run.call.send("second")
+        run.call.send("third")
+        await changes.until({ run.observed.texts == ["first", "second", "third"] })
+        #expect(run.saving.kept == nil)
+        #expect(run.saving.writes == ["first"])
+        held.open()
+        run.requestStop()
+        await run.task.value
+        #expect(run.saving.writes == ["first", "second", "third"])
+        #expect(run.saving.kept == "third")
     }
 }
 

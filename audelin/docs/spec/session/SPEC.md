@@ -25,7 +25,7 @@ what failed (user S-8, S-9, S-15, S-16, S-7, S-17 in `../SPEC.md`).
 - **The transcript is saved at most every 5 seconds,** and at once when
   call text stops (owner, 2026-10-31,
   `../../research/transcript-save-interval.md`); a crash keeps every
-  final entry already saved (transcript writing S-13, S-14; transcript
+  final entry already saved (save pacing S-4, S-5; transcript
   file S-12, S-13) (S-15, S-16).
 - **Live text is the Session's own:** set by the preference and switch, as
   call text says (S-8); getting ready is shown beside the tracks (user S-15, S-16).

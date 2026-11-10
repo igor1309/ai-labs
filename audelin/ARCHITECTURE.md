@@ -89,7 +89,16 @@ it field by field at seven boundaries. Live text drops word times. In order:
    (never over a file), replacing whole, rewriting after a kept prefix, and
    closing. Transcript writing stays the component that decides what is
    written during a call; the root chains it, the format and the file.
-4. Transcript writing's spec is over 100 lines: find what splits it.
+4. Split save pacing out of Transcript writing (LAB-1146). Transcript writing
+   stands in for call text towards Session: start, switch and stop pass
+   through, updates reach readers as they come, and stopping returns once
+   the last text is kept. Save pacing is an operator generic over what it
+   saves: the latest value waiting is saved, never an older after a newer,
+   with a pause between saves that the root chooses and finishing ends;
+   a failed save is told once until one succeeds. The first changes with
+   Session's lifecycle, the second with the disk and the save interval.
+   Transcript writing owns the port it hands texts to; the root binds it
+   to save pacing, and save pacing's save port to the format and the file.
 
 ## Bleed cleanup
 

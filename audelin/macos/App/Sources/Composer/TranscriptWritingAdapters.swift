@@ -5,8 +5,10 @@ import Synchronization
 import TranscriptFile
 import TranscriptFormat
 import protocol TranscriptWriting.CallText
-import protocol TranscriptWriting.Transcript
-import protocol TranscriptWriting.FailureReport
+import protocol TranscriptWriting.TextSaving
+import class SavePacing.SavePacing
+import protocol SavePacing.Saving
+import protocol SavePacing.FailureReport
 
 struct WritingCallText: TranscriptWriting.CallText {
 
@@ -28,11 +30,19 @@ public protocol SessionTranscriptFile: Sendable {
     func close() async
 }
 
-struct TranscriptDestination: TranscriptWriting.Transcript {
+struct PacedTextSaving<Value: Sendable>: TextSaving {
+
+    let pacing: SavePacing<Value>
+
+    func submit(_ text: Value) { pacing.submit(text) }
+    func finish() async { await pacing.finish() }
+}
+
+struct TranscriptDestination: Saving {
 
     let file: any SessionTranscriptFile
 
-    func write(_ state: CallState) async throws { try await file.write(state) }
+    func save(_ state: CallState) async throws { try await file.write(state) }
 }
 
 /// Renders call text for the transcript; `TranscriptFormat` in the app.
@@ -142,7 +152,7 @@ final class TranscriptFailureReport: FailureReport, Sendable {
         delivery.withLock { $0 = Delivery(deliver: deliver) }
     }
 
-    func transcriptFailed(_ error: any Error) async {
+    func saveFailed(_ error: any Error) async {
 
         let deliver = delivery.withLock { $0.deliver }
         await deliver(.pieceFailed(.transcript, error: String(describing: error)))
