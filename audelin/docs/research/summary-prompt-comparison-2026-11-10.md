@@ -59,9 +59,12 @@ audio-grounded ground truth, a blinded evaluation, or an overall accuracy score.
 
 The semantic trial used the same draft prompt for both standalone models, with a separate
 review prompt. Production adds exact Russian/English section names for format validation.
-A separate Sonnet smoke request using that production prompt returned all required
-Markdown sections. It still selected 10:30 on the conflicting November 10 transcript.
-This smoke checked the prompt's document shape, not the installed app's CLI security
+An initial Sonnet smoke request returned all required Markdown sections but selected 10:30.
+The final prompt additionally asks for unresolved conflicts to remain uncertain. Separate
+Sonnet and Opus smoke requests with this final prompt both returned the required sections;
+Sonnet still selected 10:30 as final, while Opus retained both times as unresolved. These
+three additional requests use the known regression and are not independent evaluation.
+They checked the prompt's document shape, not the installed app's CLI security
 controls, deadline, fallback, or output-budget behavior; controlled composition tests
 cover the adapter and publication path.
 
