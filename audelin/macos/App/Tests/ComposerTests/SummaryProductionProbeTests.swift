@@ -1,7 +1,6 @@
 import BlockingTestWork
 import Foundation
 import Preferences
-import SummaryJobs
 import Testing
 @testable import Composer
 
@@ -27,7 +26,7 @@ import Testing
                 for await statuses in rig.menu.summaryStates() where statuses.values.contains("Итоги готовы") { break }
                 let bytes = try String(contentsOf: input, encoding: .utf8)
                 #expect(bytes.contains("mine final") && bytes.contains("theirs final"))
-                #expect(bytes.hasPrefix(SummaryJobs.Prompts.notes))
+                #expect(bytes.hasPrefix(NotesResponse.prompt))
                 let path = try String(contentsOf: cwd, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines)
                 #expect(path.contains("audelin-summary-"))
                 #expect(!FileManager.default.fileExists(atPath: path))

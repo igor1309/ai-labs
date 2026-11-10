@@ -47,7 +47,7 @@ struct SummaryRecoveryDispatchTests {
                 #expect(request.headers == ["Content-Type": "application/json"])
                 let payload = try JSONDecoder().decode(RecoveryRequest.self, from: request.body)
                 #expect(payload.model == "saved-model")
-                #expect(payload.messages.map(\.content) == [Prompts.notes + "\nACCEPTED EVIDENCE:\n\nTRANSCRIPT DATA:\n[00:17] A: Saved spoken input"])
+                #expect(payload.messages.map(\.content) == [NotesResponse.prompt + "\nACCEPTED EVIDENCE:\n\nTRANSCRIPT DATA:\n[00:17] A: Saved spoken input"])
                 #expect(loads.all == [call])
                 http.release.send()
                 for await statuses in summaries.updates() where statuses[call] == "Итоги готовы" { break }
