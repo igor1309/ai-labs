@@ -1,3 +1,4 @@
+import CallDiarizer
 import Foundation
 import struct CallText.State
 import Session
@@ -34,10 +35,11 @@ struct TranscriptDestination: TranscriptWriting.Transcript {
     func write(_ state: State) async throws { try await file.write(state) }
 }
 
-struct WritingTranscript: SessionTranscriptFile {
+final class WritingTranscript: SessionTranscriptFile {
 
     let file: TranscriptFile
     let sink: any LogSink
+    private let last = Mutex<State?>(nil)
 
     init(file: TranscriptFile, sink: any LogSink) { self.file = file; self.sink = sink }
 
@@ -45,14 +47,39 @@ struct WritingTranscript: SessionTranscriptFile {
     /// how many entries on disk will not change again.
     func write(_ state: State) async throws {
 
+        last.withLock { $0 = state }
+        try await save(state)
+    }
+
+    private func save(_ state: State) async throws {
+
         let entries = state.entries, finalCount = state.finalCount
-        try await file.write(count: entries.count, finalCount: finalCount) {
-            Composer.Transcript.segment(from: entries[$0])
+        let names = LiveNameBoard.shared.snapshot()
+        try await file.write(count: entries.count, finalCount: finalCount, speakers: Composer.Transcript.speakers(names)) {
+            let entry = entries[$0]
+            return Composer.Transcript.segment(from: entry, speaker: names.rows[entry.text.id].flatMap { names.ids[$0] })
         }
         sink.write(.init(category: .session, message: "transcript saved finalCount=\(finalCount)"))
     }
 
-    func close() async { await file.close() }
+    /// Runs the after-call pass first, so confirmed names replace the live guesses before
+    /// the file is sealed. A failed pass keeps the tentative names.
+    func close() async {
+
+        let board = LiveNameBoard.shared.snapshot()
+        if let state = last.withLock({ $0 }), let track = board.callTrack, !board.spoken.isEmpty {
+            do {
+                let turns = try await CallDiarizer().turns(of: track)
+                let rows = state.entries.filter { $0.speaker != .mine }.map { (id: $0.text.id, start: $0.text.start, end: $0.text.end) }
+                LiveNameBoard.shared.confirm(AfterCallNames.names(rows: rows, turns: turns, board: board))
+                try await save(state)
+                sink.write(.init(category: .session, message: "after-call names saved turns=\(turns.count)"))
+            } catch {
+                sink.write(.init(category: .session, message: "after-call names failed: \(error)"))
+            }
+        }
+        await file.close()
+    }
 }
 
 final class TranscriptFailureReport: FailureReport, Sendable {
