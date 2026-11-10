@@ -19,6 +19,9 @@ knows no side, device, file or model.
 - Switched off, the text stays as it is and live text is kept for a later
   switch on; any ending lets go of it, and ends only once that is done.
 - Any failure, its own or fill in's, keeps the text so far and is told.
+- Generic over the segments it carries, which it reads only for identity,
+  start and end, and renumbers through the segment itself; the composition
+  chooses what else a segment holds (LAB-1143).
 
 ```gherkin
 Feature: Reading one side's text through a recording

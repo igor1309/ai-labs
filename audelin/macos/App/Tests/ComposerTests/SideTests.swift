@@ -1,4 +1,3 @@
-import struct SideText.Text
 import struct CallText.SideState
 import struct FillIn.Audio
 import protocol FillIn.WrittenTrack
@@ -14,12 +13,12 @@ struct SideTests {
 
         let engine = SideEngine(silent: false, failWord: nil, finalWordCount: finalWordCount)
         let hearing = SideHearing(text: engine)
-        let settled: [SideText.Text] = [
+        let settled: [TranscriptSegment] = [
             .init(id: 0, start: 0, end: 1, settled: "word0"),
             .init(id: 1, start: 1, end: 2, settled: "word1"),
             .init(id: 2, start: 2, end: 3, settled: "word2")
         ]
-        let pending: [SideText.Text] = [
+        let pending: [TranscriptSegment] = [
             .init(id: 0, start: 0, end: 1, pending: "word0"),
             .init(id: 1, start: 1, end: 2, pending: "word1"),
             .init(id: 2, start: 2, end: 3, pending: "word2")

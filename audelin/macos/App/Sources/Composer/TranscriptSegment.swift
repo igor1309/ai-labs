@@ -1,4 +1,5 @@
 import protocol FillIn.Segment
+import protocol SideText.Segment
 
 /// One segment of a side's text: the content the transcript pipeline relays
 /// from Live text to its readers. Live text cuts the segment; its end is the
@@ -22,3 +23,11 @@ struct TranscriptSegment: Equatable, Sendable {
 }
 
 extension TranscriptSegment: FillIn.Segment {}
+
+extension TranscriptSegment: SideText.Segment {
+
+    func identified(as id: Int) -> TranscriptSegment {
+
+        TranscriptSegment(id: id, start: start, end: end, settled: settled, pending: pending)
+    }
+}
