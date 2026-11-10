@@ -11,6 +11,10 @@
 - `issue children LAB-<n>` lists a parent's sub-issues with their status;
   `issue create --parent LAB-<n> --title ... --description-file ...`
   adds one; `issue status LAB-<n> <status>` moves it.
+- To shorten the workspace flag, define a function:
+  `m(){ multica --workspace-id 4bffb154-c309-4416-917d-22a9fb2b5950 "$@"; }`.
+  Not a variable: zsh runs `$M issue ...` as one word and fails with
+  "command not found".
 
 ## Designing in pen.dev
 
