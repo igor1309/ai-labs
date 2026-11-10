@@ -48,6 +48,6 @@ resources, then allows termination. Root storage integration coordinates
 publication with call rename, deletion and calls-folder moves.
 
 SummaryFiles is also the one reader of published notes: it gives a call's
-notes text, none, or why they cannot be read. The calls list decides which
-call's notes are previewed; the summary preview draws them, Markdown
+notes text, none, or why they cannot be read. The calls list holds the
+selected call; the summary preview draws that call's notes, Markdown
 included, and the app owns the window that holds it.
