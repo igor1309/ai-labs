@@ -32,6 +32,7 @@ TARGETS = {
     "SummaryFiles": ("storage", "claims and publishes call notes", 9),
     "SummaryRuntime": ("capture", "executes bounded note requests", 6),
     "SpeakerIdentification": ("text", "validates self-introduction evidence", 10),
+    "ZoomAccessibility": ("capture", "who Zoom shows talking,\nthrough Accessibility", 7),
     "CallObservation": ("machines", "one call's roster and\nwho is speaking, kept honest", 9),
     "SpeakerNaming": ("machines", "names diarized speakers\nfrom active-speaker timing", 8),
     "BlockingTestWork": ("external", "test helper: dispatches blocking work", 3),

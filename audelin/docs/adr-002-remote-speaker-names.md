@@ -98,10 +98,13 @@ Accessibility only when the user turns naming on. Adapters tell "nobody speaking
 
 ## Open
 
-- Whether Zoom exposes the speaking indicator through AX: probe
-  `docs/research/probes/zoom-ax.swift`, run during a real meeting. If it does not, Zoom gets
-  roster-only naming, safe only with one remote participant, a complete roster and the
-  captured audio bound to that meeting.
+- ~~Whether Zoom exposes the speaking indicator through AX~~ — **yes** (probe on a real
+  15-person Zoom meeting, 2026-11-10): a static text `Talking: <name>` (empty when nobody
+  talks) in the floating video window during screen share, and the participant count on the
+  toolbar's `participant` button. Zoom gives display names only, no participant IDs, so
+  duplicate names cannot be told apart. The main meeting window can drop out of the AX tree
+  while the floating window stays. Still unmeasured: the indicator's lag behind speech, and
+  where it appears outside screen share.
 - Live latency numbers wait for LAB-1103's measurements (first text, first name, correction
   rate, time to stable identity; p50 and p95).
 - LAB-1128's survey of open-source recorders, folded in when it lands.
