@@ -115,7 +115,12 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
         let made = try places(in: folder)
         LiveNameBoard.shared.callTrack(made.callURL)
         let file = try await boundary.transcripts.open(at: made.transcriptURL, sink: boundary.log)
-        transcriptFile = SummaryTranscript(base: file, folder: made.url, callbacks: summaries)
+        transcriptFile = SummaryTranscript(base: file, folder: made.url, callbacks: summaries, cleanup: TranscriptCleanup(
+            recording: CleanupRecording(microphoneURL: made.microphoneURL, callURL: made.callURL),
+            duration: { [microphone = sides[.microphone]!.audio, call = sides[.call]!.audio] in
+                max(microphone.capturedThrough, call.capturedThrough)
+            }, cleaning: boundary.bleedCleaning, hearing: boundary.bleedHearing, sink: boundary.log
+        ))
     }
 
     func closeTranscript() async throws {

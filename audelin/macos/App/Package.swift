@@ -10,6 +10,7 @@ let package = Package(
     ],
     dependencies: [
         .package(path: ".."),
+        .package(path: "../Vendor/FluidAudio"),
         .package(url: "https://github.com/igor1309/swift-imrx", from: "1.1.0"),
     ],
     targets: [
@@ -45,11 +46,13 @@ let package = Package(
         ),
         .target(
             name: "SessionRehearsal",
-            dependencies: ["Composer", .product(name: "LiveText", package: "macos"), .product(name: "Preferences", package: "macos")]
+            dependencies: ["Composer", .product(name: "BleedCleanup", package: "macos"), .product(name: "LiveText", package: "macos"), .product(name: "Preferences", package: "macos")]
         ),
         .target(
             name: "Composer",
             dependencies: [
+                .product(name: "BleedCleanup", package: "macos"),
+                .product(name: "FluidAudio", package: "FluidAudio"),
                 .product(name: "SummarySettings", package: "macos"),
                 .product(name: "SummaryJobs", package: "macos"),
                 .product(name: "SummaryFiles", package: "macos"),

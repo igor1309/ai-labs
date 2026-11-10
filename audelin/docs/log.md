@@ -1,5 +1,9 @@
 # Log
 
+## 2026-11-10
+
+- Calls with microphone bleed get a background transcript cleanup; call notes use the cleaned text when it succeeds and the original text otherwise (LAB-1129).
+
 ## 2026-11-09
 
 - Nightly profiling validates both written tracks and speaker evidence before keeping a baseline, and reports matching-run deltas and descriptive memory/backlog trends for recurring review (LAB-748).

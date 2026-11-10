@@ -10,12 +10,13 @@ import ParakeetRecognizer
 
 func makeRealBoundary() async -> ComposerBoundary {
     let access = await makeCallAudioAccess()
+    let recognizers = RealRecognizerSource(log: SystemLogSink())
     return ComposerBoundary(
         capturePersistence: .recorded,
-        microphone: RealMicrophone(), callAudio: RealCallAudio(), recognizers: RealRecognizerSource(log: SystemLogSink()),
+        microphone: RealMicrophone(), callAudio: RealCallAudio(), recognizers: recognizers,
         processes: RealProcessSource(), access: RealCallAudioAccess(policy: access),
         microphonePermission: SystemMicrophonePermission(), capacity: DiskCapacity(), time: RealClock(), log: SystemLogSink(), intervals: .systemIntervals,
-        recordings: FileRecordingStorage()
+        recordings: FileRecordingStorage(), bleedCleaning: LocalVqeCleaning(), bleedHearing: CleanupHearing(recognizers: recognizers)
     )
 }
 

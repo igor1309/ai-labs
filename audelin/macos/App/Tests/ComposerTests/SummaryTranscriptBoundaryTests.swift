@@ -29,4 +29,7 @@ struct SummaryTranscriptBoundaryTests {
 private actor BoundaryTranscript: SessionTranscriptFile {
     func write(_ text: CallState) {}
     func close() {}
+    func replaceMicrophone(in state: CallState, with segments: [TranscriptSegment]) {
+        Issue.record("Unexpected microphone replacement")
+    }
 }
