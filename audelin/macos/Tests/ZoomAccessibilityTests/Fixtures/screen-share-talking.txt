@@ -1,0 +1,37 @@
+Role=AXWindow Subrole=AXSystemDialog Title=zoom floating video window
+  Role=AXStaticText Value=Talking: Анна Петрова
+  Role=AXButton Description=Hide thumbnail video Help=Hide thumbnail video
+  Role=AXButton Description=Show active speaker video Help=Show active speaker video
+  Role=AXButton Description=Show thumbnail video Help=Show thumbnail video
+  Role=AXButton Description=Show grid video Help=Show grid video
+  Role=AXButton Description=Swap shared screen with video Help=Swap shared screen with video
+Role=AXWindow Subrole=AXUnknown Title=
+Role=AXWindow Subrole=AXSystemDialog Title=zoom annotation entrypoint
+  Role=AXButton Description=Annotate, current location: left-bottom corner, press arrow keys to change location
+Role=AXWindow Subrole=AXStandardWindow Title=Zoom Meeting Identifier=zm.meeting.window.main
+  Role=AXUnknown Description=Share content
+  Role=AXButton Description=Unmute my audio Identifier=audio Help=Press (⇧⌘A) to unmute or hold (Space) to temporarily unmute.
+  Role=AXButton Description=Audio options
+  Role=AXButton Description=Start video Identifier=video Help=Start video (⇧⌘V)
+  Role=AXButton Description=Video options
+  Role=AXButton Description=Leave Identifier=leave Help=Leave (⌘W)
+  Role=AXButton Description=Open participants panel, closed, 15 participants Identifier=participant Help=Show the participants list (⌘U), press Shift+F10 key to open the context menu, Press Ctrl + Command + Arrow Keys to reorder
+  Role=AXButton Description=Participants options
+  Role=AXButton Description=Open chat panel  Identifier=chat Help=Show chat (⇧⌘H), press Shift+F10 key to open the context menu, Press Ctrl + Command + Arrow Keys to reorder
+  Role=AXButton Description=Chat options
+  Role=AXButton Description=Share Identifier=share Help=Share (⇧⌘S), press Shift+F10 key to open the context menu, Press Ctrl + Command + Arrow Keys to reorder
+  Role=AXButton Description=Share options
+  Role=AXButton Description=React Identifier=react Help=Open reactions panel (⇧⌘Y), press Shift+F10 key to open the context menu, Press Ctrl + Command + Arrow Keys to reorder
+  Role=AXButton Description=React options Help=
+  Role=AXButton Description=More meeting controls, collapsed Identifier=more Help=Opens the navigation tabs in a grid
+  Role=AXButton Description=Зал персональной конференции Host Name Identifier=MeetingTopBarInfoButton
+  Role=menu button Description=Change screen
+  Role=AXUnknown Description=Meeting Help=press VO+down arrow to interact with more options
+  Role=AXUnknown Description=Анна Петрова's screen, selected Help=press VO+down arrow to interact with more options
+    Role=AXButton Title= Description=Анна Петрова's screen, selected Help=press VO+down arrow to interact with more options
+    Role=menu button Description=options for Анна Петрова's screen
+  Role=AXButton Description=Open Notes pop-up; My Notes is off Help=Press Enter to open Notes panel
+  Role=AXButton Description=Open Zoom AI pop-up; Zoom AI is off Help=Press Enter to open AI chat
+  Role=AXButton Description=View options, Speaker
+  Role=AXButton Description=Open meeting security popup
+  Role=AXButton Description=My connected time is 33:27 Help=Meeting duration

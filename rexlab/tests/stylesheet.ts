@@ -275,10 +275,12 @@ export function computedStyleWithVariables(native: typeof getComputedStyle, incl
 // Testing Library's role queries and user-event read only whether an
 // element shows and takes the pointer, but a computed style cascades all of
 // app.css's declarations onto the element, again after every change to the
-// page. Those few reads take jsdom's own value for the one property, which
+// page. Those few reads, and the colours the theme and contrast checks read
+// of every element, take jsdom's own value for the one property, which
 // cascades only the rules declaring it; every other read, and the style
 // itself once enumerated or read otherwise, is jsdom's whole computed style.
-const ON_READ = new Set(["display", "visibility", "pointer-events"]);
+const ON_READ = new Map([["display", "display"], ["visibility", "visibility"], ["pointerEvents", "pointer-events"], ["color", "color"], ["backgroundColor", "background-color"]]);
+const ON_READ_PROPERTIES = new Set(ON_READ.values());
 export function cascadingOnRead(native: typeof getComputedStyle): typeof getComputedStyle {
   const require = createRequire(import.meta.url);
   const jsdom = dirname(require.resolve("jsdom/package.json"));
@@ -292,17 +294,18 @@ export function cascadingOnRead(native: typeof getComputedStyle): typeof getComp
     const view = (element as Element | undefined)?.ownerDocument?.defaultView;
     if (!view || !(element instanceof view.Element)) return style();
     const impl = implForWrapper(element);
-    const value = (property: string) => (ON_READ.has(property) ? getComputedStylePropertyValue(impl, property) : style().getPropertyValue(property));
+    const value = (property: string) => (ON_READ_PROPERTIES.has(property) ? getComputedStylePropertyValue(impl, property) : style().getPropertyValue(property));
     return new Proxy({} as CSSStyleDeclaration, {
       get(_, key) {
         if (key === "getPropertyValue") return value;
-        if (key === "display" || key === "visibility" || key === "pointerEvents") return value(key === "pointerEvents" ? "pointer-events" : key);
+        const property = typeof key === "string" ? ON_READ.get(key) : undefined;
+        if (property) return value(property);
         const target = style();
         const got = Reflect.get(target, key);
         return typeof got === "function" ? got.bind(target) : got;
       },
       // Its properties are the prototype's; only its indexes are its own.
-      has: (_, key) => key === "getPropertyValue" || key === "display" || key === "visibility" || key === "pointerEvents" || Reflect.has(style(), key),
+      has: (_, key) => key === "getPropertyValue" || (typeof key === "string" && ON_READ.has(key)) || Reflect.has(style(), key),
       ownKeys: () => Reflect.ownKeys(style()),
       getOwnPropertyDescriptor: (_, key) => {
         if (typeof key !== "string" || !/^\d+$/.test(key)) return undefined;

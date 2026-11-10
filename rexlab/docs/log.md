@@ -1,5 +1,9 @@
 # rexlab — Change Log
 
+## 2026-11-10
+
+- LAB-1137: the test seam reads `color` and `background-color` by cascading only the rules that declare them, as it already did display, visibility and pointer-events; the slowest test, which checks those reads against jsdom's whole computed style, runs about a quarter faster. The two theme tests on a board of silhouettes join the slow-test skip list: their time is the var() resolution seam, not the test.
+
 ## 2026-11-07
 
 - LAB-923: DRAW stands on the dig site: the whole window is sand that glows in the middle, specked, with grooves and lips in the dig site's groove tokens, darker at night; HOME a pill with its word, round on a phone; STICK round with its word, showing the chosen tip, drops a picker of THIN, MEDIUM and THICK as lines of their width, the chosen navy with a tick, and CLEAR under a rule. A browser contract opens it from Home on every size, draws, chooses THICK, clears and goes Home, in English and light and in Russian and dark without motion, and at every age level.

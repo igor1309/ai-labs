@@ -77,11 +77,16 @@ let package = Package(
                 .product(name: "FillIn", package: "macos"),
                 .product(name: "LiveText", package: "macos"),
                 .product(name: "TrackFile", package: "macos"),
+                .product(name: "TranscriptFormat", package: "macos"),
                 .product(name: "TranscriptFile", package: "macos"),
                 .product(name: "TranscriptWriting", package: "macos"),
                 .product(name: "Reading", package: "macos"),
                 .product(name: "PanelUI", package: "macos"),
                 .product(name: "SplitRows", package: "macos"),
+                .product(name: "CallObservation", package: "macos"),
+                .product(name: "SpeakerNaming", package: "macos"),
+                .product(name: "ZoomAccessibility", package: "macos"),
+                .product(name: "CallDiarizer", package: "macos"),
             ]
         ),
         .executableTarget(

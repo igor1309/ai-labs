@@ -6,6 +6,15 @@ import Testing
 @MainActor
 @Suite(.timeLimit(.minutes(1)))
 struct SessionTranscriptTests {
+    @Test func liveTextOffLeavesTheNoTextTranscriptAfterStopping() async throws {
+        try await withComposition(preferences: { .init(automaticRecording: false, liveText: false, callsFolder: $0) }) { rig in
+            try await rig.start()
+            try await rig.stop()
+            let url = rig.folder().appendingPathComponent("transcript.md")
+            #expect(try String(contentsOf: url, encoding: .utf8) == "# Transcript\n\nNo text was heard.\n")
+        }
+    }
+
     @Test func theAppWaitsFiveSecondsAfterEachTranscriptWrite() async throws {
         try await withComposition { rig in
             try await rig.start()

@@ -83,9 +83,13 @@ it field by field at seven boundaries. Live text drops word times. In order:
 1. Make Fill-in, Side text and Call text generic over their content, with the
    root conforming one content type to each. No behaviour changes.
 2. Live text keeps each segment's words with their times.
-3. Split Transcript file: the adapter alone owns the Markdown and the disk, with
-   creating (never over a file) and replacing whole as separate operations; a
-   component of its own owns writing during a call.
+3. Split Transcript file into two adapters that change for different reasons:
+   Transcript format renders segments as Markdown, incrementally, and is the
+   format's only writer; Transcript file owns the bytes on disk: creating
+   (never over a file), replacing whole, rewriting after a kept prefix, and
+   closing. Transcript writing stays the component that decides what is
+   written during a call; the root chains it, the format and the file.
+4. Transcript writing's spec is over 100 lines: find what splits it.
 
 ## Bleed cleanup
 
@@ -107,7 +111,7 @@ manager, which downloads and loads its model, fits the reference to the
 microphone and returns 16 kHz samples; the root answers the port with it,
 passing the two tracks as recorded. Hearing is Live text over the Parakeet
 recogniser, composed by the root over those samples, as Fill-in hears missed
-audio. The replacement is Transcript file's replacing whole, the transcript's only writer.
+audio. The replacement is rendered by Transcript format, the format's only writer, and saved by Transcript file's replacing whole.
 
 The root builds BleedCleanup with those answers and runs it on each recording's
 closed transcript. Summary submission waits for its outcome instead of the

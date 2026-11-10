@@ -1,6 +1,5 @@
 import struct CallText.SideState
 import struct SideText.Audio
-import struct SideText.Text
 import Testing
 @testable import Composer
 
@@ -23,7 +22,7 @@ struct CallSideFinalEntriesTests {
         ], ending: .init(final: prefix + [final, segment(count + 1, settled: "next")], tail: []))
         let audio = TextAudio()
         let side = CallSide(audio: audio, text: engine, written: TextTrack(chunks: []), sampleRate: 1)
-        let snapshots = AsyncStream<SideState>.makeStream()
+        let snapshots = AsyncStream<SideState<TranscriptSegment>>.makeStream()
         let listener = Task {
             await side.listen { snapshots.continuation.yield($0) }
             snapshots.continuation.finish()
@@ -63,7 +62,7 @@ struct CallSideFinalEntriesTests {
     }
 }
 
-private func segment(_ id: Int, settled: String = "", pending: String = "") -> SideText.Text {
+private func segment(_ id: Int, settled: String = "", pending: String = "") -> TranscriptSegment {
 
     .init(id: id, start: Double(id), end: Double(id + 1), settled: settled, pending: pending)
 }

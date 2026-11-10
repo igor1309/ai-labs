@@ -4,7 +4,8 @@ import Synchronization
 import Testing
 @testable import TranscriptFile
 
-let noTextTranscript = "# Transcript\n\nNo text was heard.\n"
+let initialText = "0 initial\n"
+let initialBytes = [Data(initialText.utf8)]
 
 func withTranscriptFolder(_ body: (URL) async throws -> Void) async throws {
 
@@ -27,18 +28,9 @@ func folderNames(_ folder: URL) async throws -> [String] {
     try FileManager.default.contentsOfDirectory(atPath: folder.path).sorted()
 }
 
-func numberedSegments(_ number: Int) -> [TranscriptFile.Segment] {
+func numberedBytes(_ number: Int) -> [Data] { [Data(numberedTranscript(number).utf8)] }
 
-    [
-        .init(side: .mine, start: 1, settled: "\(number) mine settled", pending: "\(number) mine pending"),
-        .init(side: .theirs, start: 2, settled: "\(number) theirs settled", pending: "\(number) theirs pending"),
-    ]
-}
-
-func numberedTranscript(_ number: Int) -> String {
-
-    "# Transcript\n\n**Me** 00:00:01\n\(number) mine settled \(number) mine pending\n\n**Them** 00:00:02\n\(number) theirs settled \(number) theirs pending\n"
-}
+func numberedTranscript(_ number: Int) -> String { "\(number) first\n\(number) second\n" }
 
 enum TranscriptFault: CaseIterable, Sendable {
 

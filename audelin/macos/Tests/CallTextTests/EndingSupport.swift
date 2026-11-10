@@ -78,7 +78,7 @@ final class CallObservation: Sendable {
         }
     }
 
-    func listen(to call: CallText) async {
+    func listen(to call: CallText<Text>) async {
 
         for await state in call.updates {
             let snapshot = CallOutput(state)

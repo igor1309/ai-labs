@@ -2,49 +2,40 @@
 
 An adapter over a file, so every row runs against real files in a fresh
 temporary folder, never the user's own. Text is written as numbered
-segments on both sides, so a read proves which text came back: a row reads
-the file from outside the adapter and checks its parts, never just that a
-call was made. Where the file system will not fail on cue, a row runs
-through a fake of the file binding, as spec-process allows. The real call
-of the user spec (LAB-408) proves the whole path.
+lines and read from outside the adapter, so a read proves which text came
+back. Where the file system will not fail on cue, a row runs through a
+fake of the file binding. The user spec's real call proves the whole path.
 
-## S-1 Written text can be read
+## S-16 An opened transcript holds its first text
 
-Four numbered segments, mine and theirs interleaved, are written; the file
-holds each in the order given, marked mine or theirs, with its start time.
-Settled-only, pending-only and mixed segments are written; the file holds
-all their words, settled and pending. Evidence: `TranscriptFileTests.interleavedSegmentsKeepOrderTimesAndAllWords()`.
-
-## S-2 Revised text replaces what it revised
-
-Segments with pending text are written, then the same segments settled
-with different words; the file holds only the settled words. A segment
-dropped by the revision is gone. Evidence: `TranscriptFileTests.revisionReplacesPendingWordsAndDroppedSegments()`.
-
-## S-3 Text filled in later is marked
-
-Live segments and segments marked written later are written; only the
-latter are marked as filled in later. Evidence: `TranscriptFileTests.onlyLaterSegmentsAreMarked()`.
+Open with a numbered text and close with no write; the file holds it. A
+composition row: a recording with live text off, stopped with no text,
+leaves a transcript that says no text was heard.
+Evidence: `TranscriptFileTests.openedWithoutWritesKeepsInitialBytes()` and `SessionTranscriptTests.liveTextOffLeavesTheNoTextTranscriptAfterStopping()`.
 
 ## S-4 A closed transcript keeps the last text
 
 Three writes, then close; the file holds the third write's text.
 Evidence: `TranscriptFileTests.closeKeepsThirdWriteAndEndsWriting()`.
 
-## S-5 A transcript with no text is kept
+## S-20 A closed transcript takes no more writes
 
-Open, then close with no write; the file exists and says no text was
-heard. Evidence: `TranscriptFileTests.openedWithoutWritesKeepsNoTextMessage()`.
+After S-4's close a fourth write fails and the file is unchanged.
+Evidence: `TranscriptFileTests.closeKeepsThirdWriteAndEndsWriting()`.
 
-## S-6 A crash keeps the last whole text
+## S-6 A crash before a replacement lands keeps the last text
 
 A helper process opens a transcript through a binding that pauses a
 chosen write after writing beside the file and before renaming, and says
 so; it writes numbered texts, reports each once its write returns, and is
 killed with SIGKILL while paused. The file read independently holds
 exactly the last reported text, whole, and a later open at another place
-in the folder is not tripped by the left temporary. A second run pauses
-just after the rename and finds the new text whole. Evidence: `TranscriptFileCrashTests.sigkillAtRenameKeepsExactlyOneWholeTranscript(point:)`.
+in the folder is not tripped by the left temporary. Evidence: `TranscriptFileCrashTests.sigkillAtRenameKeepsExactlyOneWholeTranscript(point:)`.
+
+## S-18 A crash after a replacement lands keeps the new text
+
+A second run of S-6 pauses after the rename; the file holds the new text
+whole. Evidence: `TranscriptFileCrashTests.sigkillAtRenameKeepsExactlyOneWholeTranscript(point:)`.
 
 ## S-7 A transcript that cannot be opened fails
 
@@ -66,39 +57,45 @@ whose write returned, and no temporary file is left. Evidence: `TranscriptFileTe
 
 ## S-10 A write after a failed one works
 
-After each failure of S-9, the next write returns and the file holds its
-text. Evidence: `TranscriptFileTests.failedReplacementKeepsLastTextCleansTemporaryAndAllowsRetry(fault:)`.
-
-## S-11 Writing no text keeps saying none was heard
-
-Open, write no text, write no text again; the file says no text was
-heard. Then text, then no text: the file says no text was heard.
-Evidence: `TranscriptFileTests.emptyWritesReplaceTextWithNoTextMessage()`.
+After each failure of S-9 and S-14, the next write returns and holds its
+text whole. After a rewrite, a write telling no final text, as compose
+sends after a failed rendering, replaces the file whole. A composition
+row fails one rendering and finds the next write replaces the file whole.
+Evidence: `TranscriptFileTests.failedReplacementKeepsLastTextCleansTemporaryAndAllowsRetry(fault:)`, `TranscriptFileTests.failedRewriteKeepsFinalEntriesAndTheNextWriteReplacesTheFileWhole(fault:)`, `TranscriptFileTests.noFinalLengthReplacesWholeAndForgetsTheKeptPrefix()` and `TranscriptRenderingTests.aWriteThatFailsToRenderMakesTheNextWriteReplaceTheFileWhole()`.
 
 ## S-12 Final text stays and only what follows is written
 
-Text with one final segment and a pending one is written, which replaces
-the file whole; the pending words then grow, the second segment becomes
-final, and a third is added. Each later write opens the file, cuts it,
-writes and flushes, never creating or renaming; the bytes written for a
-grown pending segment are that segment's text alone, and each read holds
-the whole text. Final segments without words keep their place, and text
-going after them still says no text was heard, then text again.
-Evidence: `TranscriptFileTests.finalEntriesStayOnDiskAndOnlyTheTextAfterThemIsWritten()` and `TranscriptFileTests.textGoingAfterFinalEntriesWithoutWordsSaysNoTextWasHeard()`.
+Text with a final part and a changing one is written, which replaces the
+file whole; the changing part then grows, more becomes final, and more is
+added. Each later write opens the file, cuts it, writes and flushes, never
+creating or renaming; the bytes written are the text after the final part
+alone, and each read holds the whole text.
+Evidence: `TranscriptFileTests.finalEntriesStayOnDiskAndOnlyTheTextAfterThemIsWritten()`.
 
-## S-13 A crash while rewriting keeps every final entry
+## S-13 A crash while rewriting keeps the final text
 
-The helper of S-6 writes a final segment and a changing one three times
-and pauses the third write once the file is cut back, or once the rest is
-written and before it is flushed, and is killed with SIGKILL there. Cut
-back, the file holds exactly the final text; written, it holds the third
-text whole. No temporary file is left. Evidence: `TranscriptFileCrashTests.sigkillWhileRewritingKeepsEveryFinalEntryWhole(point:)`.
+The helper of S-6 writes a final part and a changing one three times
+and pauses the third write once the file is cut back, and is killed with
+SIGKILL there; the file holds exactly the final text, and no temporary. Evidence: `TranscriptFileCrashTests.sigkillWhileRewritingKeepsEveryFinalEntryWhole(point:)`.
 
-## S-14 A failed rewrite keeps every final entry
+## S-19 A crash before a rewrite is flushed keeps its text
+
+S-13 paused once the rest is written, before the flush: the file holds
+the third text whole. Evidence: `TranscriptFileCrashTests.sigkillWhileRewritingKeepsEveryFinalEntryWhole(point:)`.
+
+## S-14 A failed rewrite keeps the final text
 
 Through the binding fake, a rewrite fails at each step: opening, cutting
 back, writing (after part of the text is on disk), flushing. Each fails
 the write; the file holds the whole final text followed by exactly what
 reached it: the old text, part of the new, or all of it. The next write
-replaces the file whole and holds its text, with no temporary file left.
-A write that fails to render does the same to the next one. Evidence: `TranscriptFileTests.failedRewriteKeepsFinalEntriesAndTheNextWriteReplacesTheFileWhole(fault:)` and `TranscriptFileTests.aWriteThatFailsToRenderMakesTheNextWriteReplaceTheFileWhole()`.
+replaces the file whole and holds its text (S-10).
+Evidence: `TranscriptFileTests.failedRewriteKeepsFinalEntriesAndTheNextWriteReplacesTheFileWhole(fault:)`.
+
+## S-15 A closed transcript is replaced whole
+
+Text is written and the transcript closed; replacing it with another
+numbered text returns, and the file holds the new text whole, through a
+write beside it and a rename. S-9's faults, run on a closed transcript,
+each keep the old text whole.
+Evidence: `TranscriptFileTests.closedTranscriptCanBeReplacedWhole()` and `TranscriptFileTests.failedClosedReplacementKeepsLastTextAndAllowsRetry(fault:)`.

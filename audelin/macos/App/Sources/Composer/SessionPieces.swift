@@ -1,6 +1,5 @@
 import class CallAppProcesses.CallAppProcesses
 import CallFolder
-import struct CallText.State
 import Foundation
 import Session
 import TrackFile
@@ -43,7 +42,7 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
     private var readingObservation: Task<Void, Never>?
 
     // Register before Session begins so its first text state cannot be missed.
-    func readingText() -> AsyncStream<State> {
+    func readingText() -> AsyncStream<CallState> {
 
         let output = NewestText()
         readingOutput = output
@@ -113,6 +112,7 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
     func openTranscript(in folder: SessionCallFolder) async throws {
 
         let made = try places(in: folder)
+        LiveNameBoard.shared.callTrack(made.callURL)
         let file = try await boundary.transcripts.open(at: made.transcriptURL, sink: boundary.log)
         transcriptFile = SummaryTranscript(base: file, folder: made.url, callbacks: summaries)
     }

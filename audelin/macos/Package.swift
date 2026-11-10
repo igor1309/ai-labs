@@ -11,6 +11,10 @@ let package = Package(
         .library(name: "SummaryRuntime", targets: ["SummaryRuntime"]),
         .library(name: "BleedCleanup", targets: ["BleedCleanup"]),
         .library(name: "SpeakerIdentification", targets: ["SpeakerIdentification"]),
+        .library(name: "SpeakerNaming", targets: ["SpeakerNaming"]),
+        .library(name: "CallObservation", targets: ["CallObservation"]),
+        .library(name: "ZoomAccessibility", targets: ["ZoomAccessibility"]),
+        .library(name: "CallDiarizer", targets: ["CallDiarizer"]),
 
         .library(name: "BlockingTestWork", targets: ["BlockingTestWork"]),
         .library(name: "SplitRows", targets: ["SplitRows"]),
@@ -44,6 +48,7 @@ let package = Package(
         .library(name: "SideText", targets: ["SideText"]),
         .library(name: "SystemAudioCapture", targets: ["SystemAudioCapture"]),
         .library(name: "TrackFile", targets: ["TrackFile"]),
+        .library(name: "TranscriptFormat", targets: ["TranscriptFormat"]),
         .library(name: "TranscriptFile", targets: ["TranscriptFile"]),
         .library(name: "TranscriptWriting", targets: ["TranscriptWriting"]),
         .library(name: "TwoPassRecognizer", targets: ["TwoPassRecognizer"]),
@@ -65,6 +70,13 @@ let package = Package(
         .testTarget(name: "BleedCleanupTests", dependencies: ["BleedCleanup"]),
         .target(name: "SpeakerIdentification"),
         .testTarget(name: "SpeakerIdentificationTests", dependencies: ["SpeakerIdentification", "BlockingTestWork"]),
+        .target(name: "SpeakerNaming"),
+        .testTarget(name: "SpeakerNamingTests", dependencies: ["SpeakerNaming"]),
+        .target(name: "CallObservation"),
+        .testTarget(name: "CallObservationTests", dependencies: ["CallObservation"]),
+        .target(name: "ZoomAccessibility"),
+        .target(name: "CallDiarizer", dependencies: ["AudioConversion", .product(name: "FluidAudio", package: "FluidAudio")]),
+        .testTarget(name: "ZoomAccessibilityTests", dependencies: ["ZoomAccessibility"], resources: [.copy("Fixtures")]),
 
         .testTarget(name: "SourceChecksTests", dependencies: ["BlockingTestWork"]),
         .target(name: "Calls", dependencies: ["CallFolderName"]),
@@ -186,6 +198,8 @@ let package = Package(
             name: "TrackFileCrashWriter",
             dependencies: ["TrackFile"]
         ),
+        .target(name: "TranscriptFormat"),
+        .testTarget(name: "TranscriptFormatTests", dependencies: ["TranscriptFormat"]),
         .target(
             name: "TranscriptFile"
         ),

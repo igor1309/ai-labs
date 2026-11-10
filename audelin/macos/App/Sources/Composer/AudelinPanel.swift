@@ -1,4 +1,3 @@
-import struct CallText.State
 import Foundation
 import Observation
 import PanelUI
@@ -62,7 +61,7 @@ actor AudelinPanel {
         if let event = readingEvent(event), let reading = current?.reading { await reading.send(event) }
     }
 
-    func begin(id: UInt64, text: AsyncStream<State>, enableLiveText: @escaping @Sendable () async -> Void) async -> ReadingSubscription {
+    func begin(id: UInt64, text: AsyncStream<CallState>, enableLiveText: @escaping @Sendable () async -> Void) async -> ReadingSubscription {
 
         let reading = await makeReading()
         current = (id, reading, enableLiveText)
@@ -79,7 +78,8 @@ actor AudelinPanel {
 
         guard current?.id == id else { return }
         current = nil
-        publish(.init(recording: .off, log: .empty))
+        // The finished call stays readable, with its confirmed names, until the next recording.
+        publish(.init(recording: .off, log: state.log))
     }
 
     private func receive(_ state: ReadingState, id: UInt64) {
@@ -115,9 +115,10 @@ final class ReadingSubscription {
     private let text: Task<Void, Never>
     private let timer: Task<Void, Never>
     private let observation: Task<Void, Never>
+    private let names = ZoomLiveNames()
 
     init(
-        reading: ReadingInputs, text: AsyncStream<State>,
+        reading: ReadingInputs, text: AsyncStream<CallState>,
         now: @escaping @Sendable () -> Double, ticks: AsyncStream<Void>, sink: any LogSink,
         receive: @escaping @Sendable (ReadingState) async -> Void
     ) async {
@@ -135,11 +136,17 @@ final class ReadingSubscription {
                 await presenter.show(state)
             }
         }
+        LiveNameBoard.shared.listen { names in await reading.send(.namesConfirmed(names)) }
+        let names = self.names
+        await names.start { await time.elapsed() }
         self.text = Task {
             var mapped = 0
             for await state in text {
                 guard !Task.isCancelled else { return }
-                reading.send(.textUpdated(readingText(state, from: mapped)))
+                let remote = state.entries[mapped...].filter { $0.speaker != .mine }
+                    .map { (id: $0.text.id, start: $0.text.start, end: $0.text.end) }
+                let given = remote.isEmpty ? [:] : await names.names(for: remote)
+                reading.send(.textUpdated(readingText(state, from: mapped, names: given)))
                 mapped = state.finalCount
             }
         }
@@ -164,6 +171,7 @@ final class ReadingSubscription {
 
     func end() async {
 
+        await names.stop()
         text.cancel()
         timer.cancel()
         await text.value
@@ -250,6 +258,9 @@ private final class ReadingTime {
         }
         reading.send(.problemsChanged(problems))
     }
+
+    /// Seconds since the recording began, or nil while it is off.
+    func elapsed() -> Double? { origin.map { now() - $0 } }
 
     func tick() {
 

@@ -1,5 +1,4 @@
 import CallText
-import struct CallText.State
 import Foundation
 import SummaryJobs
 import Synchronization
@@ -23,6 +22,6 @@ struct SummaryTranscriptBoundaryTests {
     }
 }
 private actor BoundaryTranscript: SessionTranscriptFile {
-    func write(_ text: State) {}
+    func write(_ text: CallState) {}
     func close() {}
 }

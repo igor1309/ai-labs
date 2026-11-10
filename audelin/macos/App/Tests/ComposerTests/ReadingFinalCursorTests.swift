@@ -7,7 +7,7 @@ import Testing
 /// Reading the call from the final cursor must show what reading it whole shows.
 struct ReadingFinalCursorTests {
 
-    private static func entry(_ index: Int, words: String, later: Bool = false) -> State.Entry {
+    private static func entry(_ index: Int, words: String, later: Bool = false) -> CallState.Entry {
 
         let start = Double(index) * 6
         return .init(speaker: index % 2 == 0 ? .mine : .theirs,
@@ -16,13 +16,13 @@ struct ReadingFinalCursorTests {
     }
 
     /// A call whose tail changes and goes, with several entries going final at once.
-    private static func states(later: Bool) -> [State] {
+    private static func states(later: Bool) -> [CallState] {
 
-        var states: [State] = []
+        var states: [CallState] = []
         func add(_ count: Int, final: Int, last: String = "") {
             var entries = (0..<count).map { entry($0, words: "words \($0)", later: later && $0 % 4 == 1) }
             if !last.isEmpty { entries[count - 1] = entry(count - 1, words: last) }
-            var state = State(status: .listening, entries: .init(tail: entries))
+            var state = CallState(status: .listening, entries: .init(tail: entries))
             state.finalCount = final
             states.append(state)
         }
@@ -49,14 +49,14 @@ struct ReadingFinalCursorTests {
         }
         let listening = ReadingReducer.reduce(ReadingState(), .recordingChanged(.on(elapsed: 0))).0
         var sealing = listening, oracle = listening
-        var entries: [State.Entry] = []
+        var entries: [CallState.Entry] = []
         var final = 0, mapped = 0
         for id in 0..<120 {
             let floor = entries.prefix(final).last?.text.start ?? 0
             let newest = entries.last?.text.start ?? 0
             let start = max(floor, newest + Double(next(7)) - 3)
             let later = next(5) == 0
-            let added = State.Entry(
+            let added = CallState.Entry(
                 speaker: next(2) == 0 ? .mine : .theirs,
                 text: .init(id: id, start: start, end: start + 1, settled: "word\(id)", pending: ""), writtenLater: later
             )
@@ -70,10 +70,10 @@ struct ReadingFinalCursorTests {
             final = min(entries.count, final + next(4))
             if next(4) == 0, entries.count > final + 1 { entries.remove(at: final + next(entries.count - final)) }
 
-            var state = State(status: .listening, entries: .init(tail: entries))
+            var state = CallState(status: .listening, entries: .init(tail: entries))
             state.finalCount = final
             sealing = ReadingReducer.reduce(sealing, .textUpdated(readingText(state, from: mapped))).0
-            var whole = State(status: .listening, entries: .init(tail: entries))
+            var whole = CallState(status: .listening, entries: .init(tail: entries))
             whole.finalCount = 0
             oracle = ReadingReducer.reduce(oracle, .textUpdated(readingText(whole))).0
             mapped = final
@@ -86,11 +86,11 @@ struct ReadingFinalCursorTests {
 
         var reading = ReadingReducer.reduce(ReadingState(), .recordingChanged(.on(elapsed: 0))).0
         let finals = (0..<4).map { Self.entry($0, words: "final \($0)") }
-        var first = State(status: .listening, entries: .init(tail: finals + [Self.entry(4, words: "tail"), Self.entry(5, words: "tail")]))
+        var first = CallState(status: .listening, entries: .init(tail: finals + [Self.entry(4, words: "tail"), Self.entry(5, words: "tail")]))
         first.finalCount = 4
         reading = ReadingReducer.reduce(reading, .textUpdated(readingText(first))).0
 
-        var next = State(status: .listening, entries: .init(tail: finals + [Self.entry(5, words: "tail")]))
+        var next = CallState(status: .listening, entries: .init(tail: finals + [Self.entry(5, words: "tail")]))
         next.finalCount = 4
         reading = ReadingReducer.reduce(reading, .textUpdated(readingText(next, from: 4))).0
 
