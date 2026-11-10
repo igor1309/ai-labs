@@ -4,6 +4,33 @@ import Testing
 
 @Suite struct SummarySettingsTests {
     let reducer = makeReducer()
+    @Test(arguments: [false, true])
+    func checkingSavedSettingsDoesNotClaimUnsavedChanges(edited: Bool) async {
+        let loaded = reducer.reduce(.init(phase: .loading), .loaded(configuration(enabled: true))).0
+        let before = edited ? reducer.reduce(loaded, .setSpeakers(true)).0 : loaded
+        let (checking, effect) = reducer.reduce(before, .validate)
+        #expect(effect == .validate(before.revision, before.draft!))
+        let preferences = PreferencesSpy(fails: false)
+        let handler = EffectHandler(preferences: preferences, availability: AvailabilitySpy(issues: []))
+        let (result, followUp) = reducer.reduce(checking, await handler.handle(effect!))
+        #expect(result.phase == (edited ? .editing : .saved))
+        #expect(result.message == (edited ? "editing" : "saved"))
+        #expect(result.canSave == edited && result.canValidate)
+        #expect(result.draft == before.draft && result.saved == loaded.saved)
+        #expect(followUp == nil)
+        #expect(await preferences.saves.isEmpty)
+    }
+
+    @Test func revertingEditsRestoresSavedStatus() {
+        let loaded = reducer.reduce(.init(phase: .loading), .loaded(configuration(enabled: true))).0
+        let edited = reducer.reduce(loaded, .setSpeakers(true)).0
+        let (restored, effect) = reducer.reduce(edited, .setSpeakers(false))
+        #expect(restored.draft == restored.saved)
+        #expect(restored.phase == .saved && restored.message == "saved")
+        #expect(!restored.canSave && restored.canValidate)
+        #expect(effect == nil)
+    }
+
     @Test func loadFailurePreservesDataAndCanRetry() async {
         let preferences = PreferencesSpy(fails: true)
         let handler = EffectHandler(preferences: preferences, availability: AvailabilitySpy(issues: []))
