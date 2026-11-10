@@ -120,8 +120,8 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
         let file = try await boundary.transcripts.open(at: made.transcriptURL, sink: boundary.log)
         transcriptFile = SummaryTranscript(base: file, folder: made.url, callbacks: summaries, cleanup: TranscriptCleanup(
             timeline: timeline, recording: CleanupRecording(microphoneURL: made.microphoneURL, callURL: made.callURL),
-            duration: { [microphone = sides[.microphone]!.audio, call = sides[.call]!.audio] in
-                max(microphone.capturedThrough, call.capturedThrough)
+            duration: { [timeline, microphone = sides[.microphone]!.audio, call = sides[.call]!.audio] in
+                max(timeline.offset(.microphone) + microphone.capturedThrough, timeline.offset(.call) + call.capturedThrough)
             }, cleaning: boundary.bleedCleaning, hearing: boundary.bleedHearing, sink: boundary.log
         ), runs: cleanupRuns)
     }

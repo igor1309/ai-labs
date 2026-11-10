@@ -1,19 +1,15 @@
-import CleanupPublication
 import Foundation
 import SummaryJobs
 
-/// Owns model tasks; the publication machine decides which handoff executes.
-@MainActor final class CleanupRuns: CleanupPublications {
-    private final class Run {
-        var work: Task<Void, Never>?
+/// Owns model work until completion or quit. Only publication is joined at quit.
+actor CleanupRuns {
+    private struct Run {
+        let work: Task<Void, Never>
         let rawHandoff: @Sendable () async -> Void
-        var operation: (@Sendable () async throws -> Void)?
-        var result: Result<Void, any Error>?
-        init(rawHandoff: @escaping @Sendable () async -> Void) { self.rawHandoff = rawHandoff }
+        var publication: Task<Result<Void, any Error>, Never>?
     }
     private var runs: [UUID: Run] = [:]
-    private lazy var model = CleanupPublicationModel(publications: CleanupRunPublications(owner: self))
-    nonisolated init() {}
+    private var stopped = false
 
     func start(raw: CallState, cleanup: TranscriptCleanup, file: any SessionTranscriptFile,
                folder: URL, callbacks: SummaryCallbacks) async {
@@ -21,57 +17,58 @@ import SummaryJobs
             let entries = summaryEntries(Transcript.segments(from: raw))
             await callbacks.completed(folder, entries, true, !entries.isEmpty)
         }
-        let id = UUID(), run = Run(rawHandoff: rawHandoff)
-        runs[id] = run
-        run.work = Task {
-            await cleanup.run(raw, replacing: { heard in
-                try await self.publishReplacement(id: id) {
-                    try await file.replaceMicrophone(in: raw, with: heard)
-                    let entries = summaryEntries(Transcript.replacingMicrophone(in: raw, with: heard))
-                    await callbacks.completed(folder, entries, true, !entries.isEmpty)
+        guard !stopped else { await rawHandoff(); return }
+        let id = UUID()
+        let work = Task {
+            let entries = await cleanup.run(raw, replacing: { heard in
+                try await self.publish(id: id) {
+                    do {
+                        try await file.replaceMicrophone(in: raw, with: heard)
+                        let entries = summaryEntries(Transcript.replacingMicrophone(in: raw, with: heard))
+                        await callbacks.completed(folder, entries, true, !entries.isEmpty)
+                    } catch {
+                        await rawHandoff()
+                        throw error
+                    }
                 }
             })
-            self.model.send(.completed(id, .raw))
-        }
-        model.send(.started(id))
-    }
-
-    private func publishReplacement(id: UUID,
-                                    operation: @escaping @Sendable () async throws -> Void) async throws {
-        guard let run = runs[id] else { throw CancellationError() }
-        run.operation = operation
-        let accepted = model.complete(id, as: .cleaned)
-        // Joining publication must survive cancellation of the model work that requested it.
-        let completion = Task { await model.wait(id) }
-        await completion.value
-        guard accepted, let result = run.result else { throw CancellationError() }
-        try result.get()
-    }
-
-    func cancel(_ id: UUID) { runs[id]?.work?.cancel() }
-
-    func publish(_ id: UUID, as publication: Publication) async {
-        guard let run = runs[id] else { return }
-        do {
-            switch publication {
-            case .cleaned:
-                guard let operation = run.operation else { preconditionFailure("Cleaned publication requires a replacement") }
-                try await operation()
-            case .raw: await run.rawHandoff()
+            try? await self.publish(id: id) {
+                await callbacks.completed(folder, entries, true, !entries.isEmpty)
             }
-            run.result = .success(())
-        } catch {
-            await run.rawHandoff()
-            run.result = .failure(error)
         }
-        runs[id] = nil
+        runs[id] = Run(work: work, rawHandoff: rawHandoff)
     }
 
-    func shutdown() async { await model.shutdown() }
-}
+    private func publish(id: UUID, operation: @escaping @Sendable () async throws -> Void) async throws {
+        guard let publication = beginPublication(id: id, operation: operation) else { throw CancellationError() }
+        try await publication.value.get()
+    }
 
-@MainActor private struct CleanupRunPublications: CleanupPublications {
-    weak var owner: CleanupRuns?
-    func cancel(_ id: UUID) { owner?.cancel(id) }
-    func publish(_ id: UUID, as publication: Publication) async { await owner?.publish(id, as: publication) }
+    private func beginPublication(
+        id: UUID, operation: @escaping @Sendable () async throws -> Void
+    ) -> Task<Result<Void, any Error>, Never>? {
+        guard var run = runs[id], run.publication == nil else { return nil }
+        let publication = Task {
+            let result: Result<Void, any Error>
+            do { try await operation(); result = .success(()) }
+            catch { result = .failure(error) }
+            self.finished(id)
+            return result
+        }
+        run.publication = publication
+        runs[id] = run
+        return publication
+    }
+
+    private func finished(_ id: UUID) { runs.removeValue(forKey: id) }
+
+    func shutdown() async {
+        stopped = true
+        for (id, run) in runs {
+            run.work.cancel()
+            _ = beginPublication(id: id, operation: run.rawHandoff)
+        }
+        let publications = runs.values.compactMap(\.publication)
+        for publication in publications { _ = await publication.value }
+    }
 }

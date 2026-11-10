@@ -1,4 +1,3 @@
-import Foundation
 import LiveText
 import Reading
 
@@ -38,8 +37,8 @@ struct SignpostedTranscriptFile: SessionTranscriptFile {
         try await base.write(state)
     }
 
-    func replaceMicrophone(in state: CallState, with segments: [TranscriptSegment], at destination: URL?) async throws {
-        try await base.replaceMicrophone(in: state, with: segments, at: destination)
+    func replaceMicrophone(in state: CallState, with segments: [TranscriptSegment]) async throws {
+        try await base.replaceMicrophone(in: state, with: segments)
     }
 
     func close() async { await base.close() }

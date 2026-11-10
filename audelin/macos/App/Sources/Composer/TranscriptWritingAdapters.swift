@@ -30,13 +30,7 @@ public protocol SessionTranscriptFile: Sendable {
     func close() async
 
     /// Replaces the closed transcript atomically; a failure keeps its previous bytes.
-    func replaceMicrophone(in state: CallState, with segments: [TranscriptSegment], at destination: URL?) async throws
-}
-
-extension SessionTranscriptFile {
-    public func replaceMicrophone(in state: CallState, with segments: [TranscriptSegment]) async throws {
-        try await replaceMicrophone(in: state, with: segments, at: nil)
-    }
+    func replaceMicrophone(in state: CallState, with segments: [TranscriptSegment]) async throws
 }
 
 struct PacedTextSaving<Value: Sendable>: TextSaving {
@@ -57,8 +51,6 @@ struct TranscriptDestination: Saving {
 /// Renders call text for the transcript; `TranscriptFormat` in the app.
 protocol TranscriptRenderer: Sendable {
 
-    mutating func renderWhole(_ segments: [TranscriptFormat.Segment], speakers: [TranscriptFormat.Speaker]) throws -> TranscriptFormat.Rendering
-
     mutating func render(count: Int, finalCount: Int, speakers: [TranscriptFormat.Speaker], segment: (Int) -> TranscriptFormat.Segment) throws -> TranscriptFormat.Rendering
 }
 
@@ -66,22 +58,11 @@ protocol TranscriptRenderer: Sendable {
 protocol TranscriptBytes: Sendable {
 
     func write(_ chunks: [Data], finalLength: Int?) async throws
-    func replace(_ chunks: [Data], finalLength: Int?, at destination: URL?) async throws
+    func replace(_ chunks: [Data], finalLength: Int?) async throws
     func close() async
 }
 
-extension TranscriptBytes {
-    func replace(_ chunks: [Data], finalLength: Int?) async throws {
-        try await replace(chunks, finalLength: finalLength, at: nil)
-    }
-}
-
-extension TranscriptFormat: TranscriptRenderer {
-    mutating func renderWhole(_ segments: [TranscriptFormat.Segment], speakers: [TranscriptFormat.Speaker]) throws -> TranscriptFormat.Rendering {
-        self = TranscriptFormat()
-        return try render(segments, speakers: speakers)
-    }
-}
+extension TranscriptFormat: TranscriptRenderer {}
 extension TranscriptFile: TranscriptBytes {}
 
 actor WritingTranscript: SessionTranscriptFile {
@@ -132,14 +113,15 @@ actor WritingTranscript: SessionTranscriptFile {
         sink.write(.init(category: .session, message: "transcript saved finalCount=\(finalCount)"))
     }
 
-    func replaceMicrophone(in state: CallState, with segments: [TranscriptSegment], at destination: URL?) async throws {
+    func replaceMicrophone(in state: CallState, with segments: [TranscriptSegment]) async throws {
 
         let board = closedNames ?? names.snapshot()
-        let rendering = try format.renderWhole(
+        var format = TranscriptFormat()
+        let rendering = try format.render(
             Composer.Transcript.replacingMicrophone(in: state, with: segments, names: board),
             speakers: Composer.Transcript.speakers(board)
         )
-        try await file.replace(rendering.chunks, finalLength: rendering.finalLength, at: destination)
+        try await file.replace(rendering.chunks, finalLength: rendering.finalLength)
     }
 
     /// Runs the after-call pass first, so confirmed names replace the live guesses before

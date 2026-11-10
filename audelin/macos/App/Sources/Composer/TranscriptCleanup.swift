@@ -1,5 +1,6 @@
 import BleedCleanup
 import Foundation
+import SummaryJobs
 
 public struct CleanupRecording: Equatable, Sendable {
     public let microphoneURL: URL
@@ -19,16 +20,20 @@ struct TranscriptCleanup: Sendable {
     let hearing: any CleanedHearing<[Float], [TranscriptSegment]>
     let sink: any LogSink
 
-    func run(_ raw: CallState, replacing replace: @escaping @Sendable ([TranscriptSegment]) async throws -> Void) async {
+    func run(_ raw: CallState, replacing replace: @escaping @Sendable ([TranscriptSegment]) async throws -> Void) async -> [Job.Entry] {
         let replacement = CleanupReplacement(replace: replace)
         let cleanup = BleedCleanup(
             gate: BleedGate(), cleaning: cleaning,
-            hearing: NonemptyHearing(base: hearing), replacing: replacement
+            hearing: NonemptyHearing(base: hearing, offset: timeline.offset(.microphone)), replacing: replacement
         )
-        _ = await LoggingCleanup(base: cleanup, sink: sink).run(
+        let outcome = await LoggingCleanup(base: cleanup, sink: sink).run(
             recording: recording,
             microphone: words(in: raw, speaker: .mine), call: words(in: raw, speaker: .theirs), duration: duration()
         )
+        if case .replaced = outcome {
+            return summaryEntries(Transcript.replacingMicrophone(in: raw, with: await replacement.heard))
+        }
+        return summaryEntries(Transcript.segments(from: raw))
     }
 
     private func words(in state: CallState, speaker: CallState.Speaker) -> [Word] {
@@ -38,25 +43,28 @@ struct TranscriptCleanup: Sendable {
     }
 }
 
-private struct CleanupReplacement: MicrophoneReplacing {
+private actor CleanupReplacement: MicrophoneReplacing {
     let replace: @Sendable ([TranscriptSegment]) async throws -> Void
+    private(set) var heard: [TranscriptSegment] = []
 
     init(replace: @escaping @Sendable ([TranscriptSegment]) async throws -> Void) { self.replace = replace }
 
     func replaceMicrophone(of recording: CleanupRecording, with text: [TranscriptSegment]) async throws {
         try Task.checkCancellation()
         try await replace(text)
+        heard = text
     }
 }
 
 private struct NonemptyHearing: CleanedHearing {
     let base: any CleanedHearing<[Float], [TranscriptSegment]>
+    let offset: Double
 
     func hear(_ samples: [Float]) async throws -> [TranscriptSegment]? {
         try Task.checkCancellation()
         guard let text = try await base.hear(samples), text.contains(where: { !$0.words.isEmpty }) else { return nil }
         try Task.checkCancellation()
-        return text
+        return text.map { $0.offset(by: offset) }
     }
 }
 

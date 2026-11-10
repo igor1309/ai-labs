@@ -16,7 +16,7 @@ public struct Word: Equatable, Sendable {
 /// Decides from a call's two transcripts whether the far side leaked into the
 /// microphone: a microphone word is leaked when the call track has the same word
 /// within `window` seconds and so does a neighbouring microphone word. The call
-/// is gated when leaked words reach `perMinute` a minute of recorded audio.
+/// is gated when leaked words reach `perMinute` a minute of microphone audio.
 public struct BleedGate: Sendable {
 
     public let window: Double

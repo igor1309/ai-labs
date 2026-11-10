@@ -31,7 +31,6 @@ TARGETS = {
     "SummaryJobs": ("machines", "coordinates durable call-note jobs", 7),
     "SummaryFiles": ("storage", "claims and publishes call notes", 9),
     "SummaryRuntime": ("capture", "executes bounded note requests", 6),
-    "CleanupPublication": ("machines", "arbitrates cleanup publication and shutdown", 10),
     "BleedCleanup": ("machines", "cleans far-side bleed from the mic after a call", 8),
     "SpeakerIdentification": ("text", "validates self-introduction evidence", 10),
     "CallDiarizer": ("text", "the call track's speakers,\nafter the call", 11),
