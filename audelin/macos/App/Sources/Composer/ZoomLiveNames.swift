@@ -21,6 +21,7 @@ actor ZoomLiveNames {
     /// `clock` gives call time in seconds, or nil before recording starts.
     func start(clock: @escaping @Sendable () async -> Double?) {
 
+        LiveNameBoard.shared.reset()
         guard poll == nil, windows.isPermitted else { return }
         poll = Task { [weak self] in
             while !Task.isCancelled {
@@ -80,6 +81,10 @@ actor ZoomLiveNames {
                 result[row.id] = name
             }
         }
+        LiveNameBoard.shared.give(result)
+        LiveNameBoard.shared.record(roster: snapshot.members.filter { !$0.isLocal }.map(\.name),
+                                    spoken: snapshot.intervals.map { ($0.memberID, $0.start, $0.end) },
+                                    through: snapshot.through)
         return result
     }
 }

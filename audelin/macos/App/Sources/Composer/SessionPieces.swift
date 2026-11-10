@@ -113,6 +113,7 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
     func openTranscript(in folder: SessionCallFolder) async throws {
 
         let made = try places(in: folder)
+        LiveNameBoard.shared.callTrack(made.callURL)
         let file = try await boundary.transcripts.open(at: made.transcriptURL, sink: boundary.log)
         transcriptFile = SummaryTranscript(base: file, folder: made.url, callbacks: summaries)
     }
