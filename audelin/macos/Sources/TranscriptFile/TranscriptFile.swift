@@ -51,7 +51,9 @@ public actor TranscriptFile {
     }
 
     /// Whole replacements remain available after close, for after-call edits.
-    public func replace(_ chunks: [Data], finalLength: Int?) throws {
+    public func replace(_ chunks: [Data], finalLength: Int?, at destination: URL? = nil) throws {
+
+        let url = destination ?? self.url
 
         keptOnDisk = nil
         let temporary = url.deletingLastPathComponent().appendingPathComponent(".transcript-\(UUID()).tmp")

@@ -138,6 +138,13 @@ final class SummaryStorage: SummaryFiles.Locations, Sendable {
     func withFolder<Value: Sendable>(call: String, _ operation: @Sendable (URL) throws -> Value) async throws -> Value {
         try await perform { try folder(call: call, operation) }
     }
+    /// Resolves ownership after taking the move transaction, retaining it through publication.
+    func withTranscriptFolder<Value: Sendable>(call: String, _ operation: @Sendable (URL) async throws -> Value) async throws -> Value {
+        await turn.take()
+        defer { turn.give() }
+        let owner = try folder(call: call) { $0 }
+        return try await operation(owner)
+    }
     private func folder<Value: Sendable>(call: String, _ operation: @Sendable (URL) throws -> Value) throws -> Value {
         try state.withLock { state in
             recover(&state, id: call)

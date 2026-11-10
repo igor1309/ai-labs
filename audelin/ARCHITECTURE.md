@@ -126,3 +126,11 @@ The root builds BleedCleanup with those answers and runs it on each recording's
 closed transcript. Summary submission waits for its outcome instead of the
 close and is handed the transcript it produced, cleaned or raw. Logging of a kept raw
 transcript is a root decorator.
+
+CleanupPublication is a sync state machine in the core. Its state records each
+run's work or chosen publication and whether shutdown has begun. Completion
+selects a publication once; shutdown selects raw for unfinished work and joins
+publications already selected. Its doer cancels model work and performs each
+handoff once. The root composes it with SyncModel, and CleanupRuns owns the
+model tasks. Transcript replacement takes the storage transaction used by folder
+moves and resolves the owning folder while holding that transaction.

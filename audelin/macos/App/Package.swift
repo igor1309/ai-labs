@@ -52,6 +52,7 @@ let package = Package(
         .target(
             name: "Composer",
             dependencies: [
+                .product(name: "CleanupPublication", package: "macos"),
                 .product(name: "BleedCleanup", package: "macos"),
                 .product(name: "SummarySettings", package: "macos"),
                 .product(name: "SummaryJobs", package: "macos"),

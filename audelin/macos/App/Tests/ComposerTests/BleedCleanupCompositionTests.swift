@@ -1,6 +1,8 @@
 import protocol BleedCleanup.MicrophoneCleaning
 import protocol BleedCleanup.CleanedHearing
 import CallAppProcesses
+import Calls
+import Synchronization
 import CallFolder
 import CallText
 import Foundation
@@ -17,7 +19,7 @@ import TranscriptFormat
 @Suite(.timeLimit(.minutes(1)))
 struct BleedCleanupCompositionTests {
     enum Scenario: CaseIterable {
-        case cleaned, ungated, differentWordTimes, longRecording, silent, emptyWords, cleaningFails, hearingFails, replacingFails, finalWriteFails
+        case cleaned, delayedThreshold, callSetsLength, ungated, differentWordTimes, longRecording, silent, emptyWords, cleaningFails, hearingFails, replacingFails, finalWriteFails
     }
 
     @Test(arguments: Scenario.allCases)
@@ -63,7 +65,11 @@ struct BleedCleanupCompositionTests {
             // Audio length, rather than the last recognised word, decides the leak rate.
             let sides = await pieces.sides
             sides[.microphone]!.audio.attach(EndedAudio(capturedThrough: scenario == .longRecording ? 120 : 60))
-            sides[.call]!.audio.attach(EndedAudio(capturedThrough: 60))
+            sides[.call]!.audio.attach(EndedAudio(capturedThrough: scenario == .callSetsLength ? 120 : 60))
+            if scenario == .delayedThreshold {
+                await pieces.timeline.started(.microphone, at: 30)
+                await pieces.timeline.started(.call, at: 30)
+            }
             try await pieces.openTranscript(in: folder)
             let file = try #require(await pieces.transcriptFile)
             let old = try await publishedCall(status: .off, mine: [.init(text: segment("obsolete words", start: 0))], theirs: [])
@@ -78,7 +84,7 @@ struct BleedCleanupCompositionTests {
             try await pieces.closeTranscript()
             var results = summaries.stream.makeAsyncIterator()
             let summary = try #require(await results.next())
-            let replaced = scenario == .cleaned
+            let replaced = scenario == .cleaned || scenario == .delayedThreshold
             let expectedSegments = replaced ? Transcript.replacingMicrophone(in: raw, with: heard) : Transcript.segments(from: raw)
             var format = TranscriptFormat()
             let expected = try format.render(expectedSegments).chunks.reduce(Data(), +)
@@ -95,7 +101,7 @@ struct BleedCleanupCompositionTests {
             ]))
             #expect(summary.final == (scenario != .finalWriteFails))
             #expect(summary.usable)
-            let gated = scenario != .ungated && scenario != .differentWordTimes && scenario != .longRecording && scenario != .finalWriteFails
+            let gated = scenario != .ungated && scenario != .differentWordTimes && scenario != .longRecording && scenario != .callSetsLength && scenario != .finalWriteFails
             #expect(cleaningCalls.all == (gated ? [.init(microphoneURL: made.microphoneURL, callURL: made.callURL)] : []))
             #expect(hearingCalls.all == (gated && scenario != .cleaningFails ? [[0.25, -0.5]] : []))
             if scenario == .replacingFails {
@@ -170,7 +176,8 @@ struct BleedCleanupCompositionTests {
         }
     }
 
-    @Test func unequalCaptureStartsGateBleedAndOffsetHeardMicrophone() async throws {
+    @Test(arguments: [(0.0, 0.0), (4, 4), (4, 14), (14, 4)])
+    func captureOffsetsOnlyAffectTheGate(microphoneOffset: Double, callOffset: Double) async throws {
         try await withComposeFolder { root in
             let clock = FixtureClock(), runs = CleanupRuns()
             let summaries = AsyncStream<SummaryResult>.makeStream()
@@ -192,37 +199,96 @@ struct BleedCleanupCompositionTests {
             let folder = try await pieces.create()
             try await pieces.openTrack(.microphone, in: folder)
             try await pieces.openTrack(.call, in: folder)
-            clock.advance(4)
-            try await pieces.startMicrophoneCapture()
-            clock.advance(10)
-            try await pieces.startCallCapture(selection: .everyAppButAudelin)
+            if microphoneOffset <= callOffset {
+                clock.advance(microphoneOffset)
+                try await pieces.startMicrophoneCapture()
+                clock.advance(callOffset - microphoneOffset)
+                try await pieces.startCallCapture(selection: .everyAppButAudelin)
+            } else {
+                clock.advance(callOffset)
+                try await pieces.startCallCapture(selection: .everyAppButAudelin)
+                clock.advance(microphoneOffset - callOffset)
+                try await pieces.startMicrophoneCapture()
+            }
             try await pieces.stopCapture(.microphone)
             try await pieces.stopCapture(.call)
             try await pieces.closeTrack(.microphone)
             try await pieces.closeTrack(.call)
+            let sides = await pieces.sides
+            sides[.microphone]!.audio.attach(EndedAudio(capturedThrough: 60))
+            sides[.call]!.audio.attach(EndedAudio(capturedThrough: 60))
             try await pieces.openTranscript(in: folder)
             let file = try #require(await pieces.transcriptFile)
             // Both sets of words occur at session second 15.
             let raw = try await publishedCall(status: .finished,
-                mine: [.init(text: segment("shared words here", start: 11))],
-                theirs: [.init(text: segment("shared words here", start: 1))])
+                mine: [.init(text: segment("shared words here", start: 15 - microphoneOffset))],
+                theirs: [.init(text: segment("shared words here", start: 15 - callOffset))])
             try await file.write(raw)
             await file.close()
             var results = summaries.stream.makeAsyncIterator()
             let summary = try #require(await results.next())
             await runs.shutdown()
             #expect(cleaningCalls.all.count == 1)
-            #expect(replacements.all == [[TranscriptSegment(id: 2, start: 6, end: 7,
-                words: [.init("cleaned", start: 6, end: 6.1), .init("answer", start: 6.1, end: 6.2)],
+            #expect(replacements.all == [[TranscriptSegment(id: 2, start: 2, end: 3,
+                words: [.init("cleaned", start: 2, end: 2.1), .init("answer", start: 2.1, end: 2.2)],
                 settledCount: 2)]])
-            #expect(summary.entries == [
-                .init(label: "Them", time: "1.0", text: "shared words here"),
-                .init(label: "Me", time: "6.0", text: "cleaned answer"),
-            ])
+            let expected = Transcript.replacingMicrophone(in: raw, with: [segment("cleaned answer", start: 2)])
+            #expect(summary.entries == summaryEntries(expected))
+            #expect(expected.map(\.start) == expected.map(\.start).sorted())
+            #expect(expected.first(where: { $0.side == .theirs })?.start == 15 - callOffset)
+            #expect(expected.first(where: { $0.side == .mine })?.start == 2)
             let made = try await pieces.places(in: folder)
-            let saved = try String(contentsOf: made.transcriptURL, encoding: .utf8)
-            #expect(saved.contains("00:00:06\ncleaned answer"))
-            #expect(!saved.contains("00:00:11"))
+            var format = TranscriptFormat()
+            #expect(try Data(contentsOf: made.transcriptURL) == format.render(expected).chunks.reduce(Data(), +))
+        }
+    }
+
+    @Test func verifiedMoveCopyAndCleanupPublicationKeepTranscriptAndSummaryTogether() async throws {
+        try await withComposeFolder { root in
+            let source = root.appendingPathComponent("source"), destination = root.appendingPathComponent("destination")
+            let id = "1970.01.01-0000", folder = source.appendingPathComponent(id)
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
+            let closed = Mutex<(any SessionTranscriptFile)?>(nil)
+            let publication = Mutex<Task<Void, Never>?>(nil)
+            let storage = SummaryStorage(folder: source, timeZone: .gmt, journal: root.appendingPathComponent("moves.json"),
+                writeJournal: { journal, url in
+                    try JSONEncoder().encode(journal).write(to: url, options: .atomic)
+                    // Publishing follows verification of both the source and its copy.
+                    if journal.moves[id]?.phase == .publishing {
+                        publication.withLock { task in
+                            guard task == nil, let file = closed.withLock({ $0 }) else { return }
+                            task = Task { await file.close() }
+                        }
+                    }
+                })
+            let transcript = try await TransactionalTranscriptStorage(base: FileTranscriptStorage(), storage: storage, timeZone: .gmt)
+                .open(at: folder.appendingPathComponent("transcript.md"), sink: TestLogSink())
+            let summaries = AsyncStream<SummaryResult>.makeStream()
+            defer { summaries.continuation.finish() }
+            let raw = try await publishedCall(status: .finished,
+                mine: [.init(text: segment("shared words here", start: 0))],
+                theirs: [.init(text: segment("shared words here", start: 1))])
+            let heard = [segment("cleaned answer", start: 2)]
+            let runs = CleanupRuns()
+            let file = SummaryTranscript(base: transcript, folder: folder,
+                callbacks: .init(waiting: { _ in }, completed: { folder, entries, final, usable in
+                    summaries.continuation.yield(.init(folder: folder, entries: entries, final: final, usable: usable))
+                }), cleanup: TranscriptCleanup(timeline: CaptureTimeline(),
+                    recording: .init(microphoneURL: folder.appendingPathComponent("microphone.caf"), callURL: folder.appendingPathComponent("call.caf")),
+                    duration: { 60 }, cleaning: CleaningStub { _ in [0] }, hearing: HearingStub { _ in heard }, sink: TestLogSink()), runs: runs)
+            try await file.write(raw)
+            closed.withLock { $0 = file }
+            _ = try await storage.move(id: id, to: destination)
+            try await #require(publication.withLock { $0 }).value
+            var results = summaries.stream.makeAsyncIterator()
+            let summary = try #require(await results.next())
+            await runs.shutdown()
+            let expected = Transcript.replacingMicrophone(in: raw, with: heard)
+            var format = TranscriptFormat()
+            #expect(try Data(contentsOf: destination.appendingPathComponent(id + "/transcript.md")) == format.render(expected).chunks.reduce(Data(), +))
+            #expect(summary.entries == summaryEntries(expected))
+            #expect(!FileManager.default.fileExists(atPath: folder.path))
         }
     }
 
@@ -280,7 +346,7 @@ struct BleedCleanupCompositionTests {
             sides.append(side)
             return RehearsalRecognizer(recognizer)
         }, missing: { [] }, load: { Task {} }))
-        let samples = Array(repeating: Float(0.25), count: 16_003)
+        let samples = (0..<16_003).map { Float($0) / 16_003 }
         let result = try #require(try await hearing.hear(samples))
         #expect(result.flatMap(\.words).map(\.text) == ["final", "answer"])
         #expect(result.allSatisfy { $0.settledCount == $0.words.count })
@@ -333,9 +399,9 @@ private struct ReplacementFile: SessionTranscriptFile {
         try await base.write(state)
     }
     func close() async { await base.close() }
-    func replaceMicrophone(in state: CallState, with segments: [TranscriptSegment]) async throws {
+    func replaceMicrophone(in state: CallState, with segments: [TranscriptSegment], at destination: URL?) async throws {
         if fails { throw CleanupFailure.failed }
-        try await base.replaceMicrophone(in: state, with: segments)
+        try await base.replaceMicrophone(in: state, with: segments, at: destination)
         replacement(segments)
         replaced()
     }
@@ -358,7 +424,7 @@ private func testBoundary() -> ComposerBoundary {
 private actor MemoryTranscriptBytes: TranscriptBytes {
     private(set) var replacement = ""
     func write(_ chunks: [Data], finalLength: Int?) {}
-    func replace(_ chunks: [Data], finalLength: Int?) {
+    func replace(_ chunks: [Data], finalLength: Int?, at destination: URL?) {
         replacement = String(decoding: chunks.reduce(Data(), +), as: UTF8.self)
     }
     func close() {}

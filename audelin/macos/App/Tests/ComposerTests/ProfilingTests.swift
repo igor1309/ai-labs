@@ -1,3 +1,4 @@
+import Foundation
 @testable import CallText
 @testable import Composer
 import LiveText
@@ -75,7 +76,7 @@ private struct ProfileFile: SessionTranscriptFile {
     let onClose: @Sendable () async -> Void
     func write(_ state: CallState) async throws { try await onWrite(state) }
     func close() async { await onClose() }
-    func replaceMicrophone(in state: CallState, with segments: [TranscriptSegment]) {
+    func replaceMicrophone(in state: CallState, with segments: [TranscriptSegment], at destination: URL?) {
         Issue.record("Unexpected microphone replacement")
     }
 }

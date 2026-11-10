@@ -213,8 +213,8 @@ private struct ControlledTranscript: SessionTranscriptFile {
         try await base.write(state)
         controls.written.send()
     }
-    func replaceMicrophone(in state: CallState, with segments: [TranscriptSegment]) async throws {
-        try await base.replaceMicrophone(in: state, with: segments)
+    func replaceMicrophone(in state: CallState, with segments: [TranscriptSegment], at destination: URL?) async throws {
+        try await base.replaceMicrophone(in: state, with: segments, at: destination)
     }
 
     func close() async { await base.close() }

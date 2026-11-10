@@ -41,6 +41,8 @@ public func compose(
         deadline: { try await boundary.time.sleep(.seconds(120)) })
     let summaries = AudelinSummaries(files: SummaryFiles.Files(locations: storage, disk: FileDisk(), ownershipDirectory: preferencesURL.deletingLastPathComponent().appendingPathComponent("summary-ownership")),
                                      runtime: runtime, preferences: preferences, sink: boundary.log)
+    var boundary = boundary
+    boundary.transcripts = TransactionalTranscriptStorage(base: boundary.transcripts, storage: storage, timeZone: timeZone)
     let cleanupRuns = CleanupRuns()
     let menu = await AudelinMenu(storage: preferences, occupiedCallNames: { try storage.occupiedCallNames() }, boundary: boundary, processes: processes, panel: panel,
         openFolder: { _ = openCallsFolder($0) }, openURL: openURL, terminate: terminate,

@@ -10,6 +10,33 @@ import TranscriptFormat
 @Suite(.timeLimit(.minutes(1)))
 struct TranscriptRenderingTests {
 
+    @Test(arguments: [false, true])
+    func replacementUsesInjectedRendererAndKeepsRawOnRenderingFailure(fails: Bool) async throws {
+        let bytes = BytesSpy(), renderer = RendererStub()
+        let writer = WritingTranscript(file: bytes, format: renderer, names: LiveNameBoard(), sink: RenderingLog())
+        let raw = CallState(status: .finished, entries: [
+            .init(speaker: .mine, text: .init(id: 0, start: 1, end: 2,
+                words: [.init("raw", start: 1, end: 2)], settledCount: 1), writtenLater: false),
+        ], finalCount: 1)
+        let heard = [Composer.TranscriptSegment(id: 1, start: 3, end: 4,
+            words: [.init("cleaned", start: 3, end: 4)], settledCount: 1)]
+        try await writer.write(raw)
+        await writer.close()
+        let before = bytes.content()
+        if fails {
+            renderer.failNext()
+            await #expect(throws: TranscriptFormat.Failure.invalidStart) { try await writer.replaceMicrophone(in: raw, with: heard) }
+            #expect(bytes.content() == before)
+            #expect(bytes.calls() == ["write", "close"])
+        } else {
+            try await writer.replaceMicrophone(in: raw, with: heard)
+            #expect(bytes.content().contains("**Me** 00:00:03\ncleaned"))
+            #expect(!bytes.content().contains("raw"))
+            #expect(bytes.calls() == ["write", "close", "replace"])
+        }
+        #expect(renderer.wholeInputs.all == [Transcript.replacingMicrophone(in: raw, with: heard)])
+    }
+
     @Test func aWriteThatFailsToRenderMakesTheNextWriteReplaceTheFileWhole() async throws {
 
         let bytes = BytesSpy()
@@ -78,9 +105,18 @@ struct TranscriptRenderingTests {
 /// The real format, failing once when asked to.
 private final class RendererStub: TranscriptRenderer {
 
+    let wholeInputs = Values<[TranscriptFormat.Segment]>()
     private let state = Mutex((format: TranscriptFormat(), fail: false))
 
     func failNext() { state.withLock { $0.fail = true } }
+
+    func renderWhole(_ segments: [TranscriptFormat.Segment], speakers: [TranscriptFormat.Speaker]) throws -> TranscriptFormat.Rendering {
+        wholeInputs.append(segments)
+        return try state.withLock { value in
+            if value.fail { value.fail = false; throw TranscriptFormat.Failure.invalidStart }
+            return try value.format.renderWhole(segments, speakers: speakers)
+        }
+    }
 
     func render(count: Int, finalCount: Int, speakers: [TranscriptFormat.Speaker], segment: (Int) -> TranscriptFormat.Segment) throws -> TranscriptFormat.Rendering {
 
@@ -94,10 +130,12 @@ private final class RendererStub: TranscriptRenderer {
 private final class BytesSpy: TranscriptBytes {
 
     private let log = Mutex<[String]>([])
+    private let bytes = Mutex("")
+    func content() -> String { bytes.withLock { $0 } }
 
     func calls() -> [String] { log.withLock { $0 } }
-    func write(_ chunks: [Data], finalLength: Int?) async throws { log.withLock { $0.append("write") } }
-    func replace(_ chunks: [Data], finalLength: Int?) async throws { log.withLock { $0.append("replace") } }
+    func write(_ chunks: [Data], finalLength: Int?) async throws { log.withLock { $0.append("write") }; bytes.withLock { $0 = String(decoding: chunks.reduce(Data(), +), as: UTF8.self) } }
+    func replace(_ chunks: [Data], finalLength: Int?, at destination: URL?) async throws { log.withLock { $0.append("replace") }; bytes.withLock { $0 = String(decoding: chunks.reduce(Data(), +), as: UTF8.self) } }
     func close() async { log.withLock { $0.append("close") } }
 }
 
