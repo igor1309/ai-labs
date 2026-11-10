@@ -67,8 +67,10 @@ before writing on (owner, 2026-10-22).
   and a departure from them needs evidence, not a preference (owner,
   2026-10-22: "do grounding first").
 - **Every `## Decided` line is challenged by Codex** before the spec is
-  committed, including lines added to a spec already done. Repeat until a
-  round finds nothing new.
+  committed, including lines added to a spec already done. At most three
+  rounds: a third round that still finds a major defect means the spec
+  was built wrong, so stop and take it to the owner instead of running a
+  fourth (owner, 2026-11-10).
 - **A number cites the run that measured it** (`docs/research/tests.md`),
   or it is a decision with its own grounds.
 - **Every wait and failure the user can see is a scenario:** loading,

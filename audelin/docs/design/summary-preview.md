@@ -11,6 +11,8 @@ Frames: "Screen 4b — Summary preview" (right of Screen 4) and the board
 - An eye button in a call's row opens a preview of that call's `summary.md`.
 - One preview at a time. It follows the selected row (click or ↑↓); the eye
   opens or focuses it.
+  On a row without a `summary.md` it hides, and shows again on the next
+  row that has one.
 - Size and position are kept when the preview moves to another row and
   across app restarts.
 - Content: a header with title, date and duration, a «Копировать» button
