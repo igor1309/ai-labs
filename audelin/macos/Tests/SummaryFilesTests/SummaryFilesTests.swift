@@ -6,6 +6,23 @@ import Synchronization
 import Testing
 
 @Suite struct SummaryFilesTests {
+    @Test func publishedNotesReadBackWithoutReceipt() async throws {
+        try await withFolder { folder, locations in
+            let files = Files(locations: locations, disk: FileDisk(), ownershipDirectory: folder.deletingLastPathComponent().appendingPathComponent("leases"))
+            let notes = "# Итоги\n\n- первое\n- second\n"
+            _ = try await files.claim(record())
+            #expect(try await files.start(record()))
+            try await files.publish(record(), notes: notes)
+            #expect(try await files.notes(call: "call") == notes)
+        }
+    }
+    @Test func callWithoutNotesReadsNone() async throws {
+        try await withFolder { folder, locations in
+            let files = Files(locations: locations, disk: FileDisk(), ownershipDirectory: folder.deletingLastPathComponent().appendingPathComponent("leases"))
+            let notes = try await files.notes(call: "call")
+            #expect(notes == nil)
+        }
+    }
     @Test func exclusiveClaimAndRunningSaveArbitrateAcrossInstances() async throws {
         try await withFolder { folder, locations in
             let files = Files(locations: locations, disk: FileDisk(), ownershipDirectory: folder.deletingLastPathComponent().appendingPathComponent("leases"))
