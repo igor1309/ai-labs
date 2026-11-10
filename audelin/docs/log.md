@@ -2,6 +2,7 @@
 
 ## 2026-11-10
 
+- Calls with microphone bleed get a background transcript cleanup; call notes use the cleaned text when it succeeds and the original text otherwise (LAB-1129).
 - LAB-1148: Appending to an existing model name keeps the caret after each character while settings edits are processed asynchronously.
 - LAB-1156: Checking unchanged call-notes settings or reverting edits keeps the saved status; actual edits remain available to save.
 

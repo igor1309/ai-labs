@@ -102,10 +102,10 @@ struct NemotronRecognizerTests {
 
         let updates = await listen(try await nemotron(ScriptedDecoder([first, next])), to: [silence(1.12), silence(1.12)])
 
-        #expect(updates[0].all.map(\.pending) == ["поэ"])
-        #expect(updates[1].all.map(\.settled) == ["поэтому"])
-        #expect(updates[1].all.map(\.pending) == ["решим"])
-        #expect(updates.last?.all.map(\.settled) == ["поэтому решим"])
+        #expect(updates[0].all.map { $0.words.dropFirst($0.settledCount).map(\.text).joined(separator: " ") } == ["поэ"])
+        #expect(updates[1].all.map { $0.words.prefix($0.settledCount).map(\.text).joined(separator: " ") } == ["поэтому"])
+        #expect(updates[1].all.map { $0.words.dropFirst($0.settledCount).map(\.text).joined(separator: " ") } == ["решим"])
+        #expect(updates.last?.all.map { $0.words.prefix($0.settledCount).map(\.text).joined(separator: " ") } == ["поэтому решим"])
         #expect(updates.last?.ending == .finished)
     }
 
@@ -114,10 +114,10 @@ struct NemotronRecognizerTests {
         let recognizer = try await nemotron(ScriptedDecoder([twoWords, twoWords]))
         let updates = await listen(recognizer, to: [silence(1.12), silence(1.12)])
 
-        #expect(updates[0].all.map(\.settled) == ["первое"])
-        #expect(updates[0].all.map(\.pending) == ["второе"])
+        #expect(updates[0].all.map { $0.words.prefix($0.settledCount).map(\.text).joined(separator: " ") } == ["первое"])
+        #expect(updates[0].all.map { $0.words.dropFirst($0.settledCount).map(\.text).joined(separator: " ") } == ["второе"])
         #expect(updates[1] == updates[0])
-        #expect(updates.last?.all.map(\.settled) == ["первое второе"])
+        #expect(updates.last?.all.map { $0.words.prefix($0.settledCount).map(\.text).joined(separator: " ") } == ["первое второе"])
     }
 
     @Test func theLastWordSettlesAfterTwoQuietChunks() async throws {
@@ -156,10 +156,10 @@ struct NemotronRecognizerTests {
 
         let updates = await listen(try await NemotronRecognizer(decoders: .shared), to: chunks)
 
-        let heard = updates.last?.all.map(\.settled).joined(separator: " ") ?? ""
+        let heard = updates.last?.all.map { $0.words.prefix($0.settledCount).map(\.text).joined(separator: " ") }.joined(separator: " ") ?? ""
         let streaming = updates.dropLast()
-        #expect(streaming.contains { $0.all.contains { !$0.settled.isEmpty } })
-        #expect(streaming.contains { $0.all.contains { !$0.pending.isEmpty } })
+        #expect(streaming.contains { $0.all.contains { $0.settledCount > 0 } })
+        #expect(streaming.contains { $0.all.contains { $0.settledCount < $0.words.count } })
         #expect(updates.last?.ending == .finished)
         #expect(letters(heard) == letters(sentence))
     }
@@ -203,13 +203,13 @@ struct NemotronRecognizerTests {
 
         let updates = await listen(try await nemotron(ScriptedDecoder([first, next, last])), to: [silence(1.12), silence(1.12), silence(1.12)])
 
-        #expect(updates[0].all.map(\.settled) == [""])
-        #expect(updates[0].all.map(\.pending) == ["долгое пока"])
-        #expect(updates[1].all.map(\.settled) == [""])
-        #expect(updates[1].all.map(\.pending) == ["долгое пока позже"])
-        #expect(updates[2].all.map(\.settled) == ["долгое пока позже"])
-        #expect(updates[2].all.map(\.pending) == ["конец"])
-        #expect(updates.last?.all.map(\.settled) == ["долгое пока позже конец"])
+        #expect(updates[0].all.map { $0.words.prefix($0.settledCount).map(\.text).joined(separator: " ") } == [""])
+        #expect(updates[0].all.map { $0.words.dropFirst($0.settledCount).map(\.text).joined(separator: " ") } == ["долгое пока"])
+        #expect(updates[1].all.map { $0.words.prefix($0.settledCount).map(\.text).joined(separator: " ") } == [""])
+        #expect(updates[1].all.map { $0.words.dropFirst($0.settledCount).map(\.text).joined(separator: " ") } == ["долгое пока позже"])
+        #expect(updates[2].all.map { $0.words.prefix($0.settledCount).map(\.text).joined(separator: " ") } == ["долгое пока позже"])
+        #expect(updates[2].all.map { $0.words.dropFirst($0.settledCount).map(\.text).joined(separator: " ") } == ["конец"])
+        #expect(updates.last?.all.map { $0.words.prefix($0.settledCount).map(\.text).joined(separator: " ") } == ["долгое пока позже конец"])
     }
 
     @Test func aWordEndingAfterThePendingWordStartsStaysPending() async throws {
@@ -219,10 +219,10 @@ struct NemotronRecognizerTests {
 
         let updates = await listen(try await nemotron(ScriptedDecoder([first, next])), to: [silence(1.12), silence(1.12)])
 
-        #expect(updates[0].all.map(\.settled) == [""])
-        #expect(updates[0].all.map(\.pending) == ["ну поэ"])
-        #expect(updates[1].all.map(\.settled) == ["ну поэтому"])
-        #expect(updates.last?.all.map(\.settled) == ["ну поэтому решим"])
+        #expect(updates[0].all.map { $0.words.prefix($0.settledCount).map(\.text).joined(separator: " ") } == [""])
+        #expect(updates[0].all.map { $0.words.dropFirst($0.settledCount).map(\.text).joined(separator: " ") } == ["ну поэ"])
+        #expect(updates[1].all.map { $0.words.prefix($0.settledCount).map(\.text).joined(separator: " ") } == ["ну поэтому"])
+        #expect(updates.last?.all.map { $0.words.prefix($0.settledCount).map(\.text).joined(separator: " ") } == ["ну поэтому решим"])
     }
 
     @Test func reportsStartAtThePreviouslyPendingWord() async throws {

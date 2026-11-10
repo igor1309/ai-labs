@@ -43,60 +43,6 @@ final class Gate: Sendable {
     }
 }
 
-/// Pauses between writes that last until the test ends them or the writer cancels them.
-final class Pauses: Sendable {
-
-    private struct State {
-        var started = 0
-        var cancelled = 0
-        var waiting: CheckedContinuation<Void, Never>?
-    }
-
-    private let state = Mutex(State())
-    private let changed: @Sendable () -> Void
-
-    init(changed: @escaping @Sendable () -> Void) { self.changed = changed }
-
-    var started: Int { state.withLock { $0.started } }
-    var cancelled: Int { state.withLock { $0.cancelled } }
-    var waiting: Bool { state.withLock { $0.waiting != nil } }
-
-    func pause() async {
-
-        await withTaskCancellationHandler {
-            await withCheckedContinuation { continuation in
-                let resume = state.withLock { state in
-                    state.started += 1
-                    if Task.isCancelled { return true }
-                    state.waiting = continuation
-                    return false
-                }
-                changed()
-                if resume { continuation.resume() }
-            }
-        } onCancel: {
-            let waiting = state.withLock { state in
-                state.cancelled += 1
-                defer { state.waiting = nil }
-                return state.waiting
-            }
-            waiting?.resume()
-            changed()
-        }
-    }
-
-    /// Ends the pause in progress.
-    func end() {
-
-        let waiting = state.withLock { state in
-            defer { state.waiting = nil }
-            return state.waiting
-        }
-        waiting?.resume()
-        changed()
-    }
-}
-
 /// Wakes a waiting test each time a fake reports a change, so it can check what the fakes recorded.
 final class Changes: Sendable {
 
@@ -212,42 +158,6 @@ struct WriteFailure: Error, Equatable {
     let message: String
 }
 
-final class FakeTranscript<Text: Hashable & Sendable>: Transcript, Sendable {
-
-    private struct State {
-        var writes: [Text] = []
-        var kept: Text?
-    }
-
-    private let state = Mutex(State())
-    private let holds: [Text: Gate]
-    private let failures: [Text: WriteFailure]
-    private let changed: @Sendable () -> Void
-
-    init(
-        holds: [Text: Gate], failures: [Text: WriteFailure] = [:],
-        changed: @escaping @Sendable () -> Void
-    ) {
-
-        self.holds = holds
-        self.failures = failures
-        self.changed = changed
-    }
-
-    var writes: [Text] { state.withLock { $0.writes } }
-    var kept: Text? { state.withLock { $0.kept } }
-
-    func write(_ text: Text) async throws {
-
-        state.withLock { $0.writes.append(text) }
-        changed()
-        await holds[text]?.wait()
-        if let failure = failures[text] { throw failure }
-        state.withLock { $0.kept = text }
-        changed()
-    }
-}
-
 enum RunEvent: Equatable {
 
     case transcriptFailed(WriteFailure?)
@@ -261,7 +171,7 @@ final class Events: Sendable {
     func record(_ event: RunEvent) { events.withLock { $0.append(event) } }
 }
 
-final class FakeFailureReport: FailureReport, Sendable {
+final class FakeFailureReport: Sendable {
 
     private let failures = Mutex<[WriteFailure?]>([])
     private let events: Events
@@ -284,6 +194,72 @@ final class FakeFailureReport: FailureReport, Sendable {
         events.record(.transcriptFailed(failure))
         changed()
         await gate?.wait()
+    }
+}
+
+/// Saves submitted texts in order; held saves never hold the immediate submission port.
+final class FakeTextSaving<Text: Hashable & Sendable>: TextSaving, Sendable {
+
+    private struct State {
+        var writes: [Text] = []
+        var kept: Text?
+        var finishCalls = 0
+    }
+
+    private final class Storage: Sendable {
+        let values = Mutex(State())
+    }
+
+    private let state: Storage
+    private let pending: AsyncStream<Text>.Continuation
+    private let worker: Task<Void, Never>
+    private let finishGate: Gate?
+    private let changed: @Sendable () -> Void
+
+    init(
+        holds: [Text: Gate], failures: [Text: WriteFailure], report: FakeFailureReport,
+        finishGate: Gate?, changed: @escaping @Sendable () -> Void
+    ) {
+
+        let state = Storage()
+        self.state = state
+        self.finishGate = finishGate
+        self.changed = changed
+        let pending = AsyncStream<Text>.makeStream()
+        self.pending = pending.continuation
+        worker = Task {
+            for await text in pending.stream {
+                state.values.withLock { $0.writes.append(text) }
+                changed()
+                await holds[text]?.wait()
+                if let failure = failures[text] {
+                    await report.transcriptFailed(failure)
+                } else {
+                    state.values.withLock { $0.kept = text }
+                    changed()
+                }
+            }
+        }
+    }
+
+    var writes: [Text] { state.values.withLock { $0.writes } }
+    var kept: Text? { state.values.withLock { $0.kept } }
+    var finishCalls: Int { state.values.withLock { $0.finishCalls } }
+
+    func submit(_ text: Text) { pending.yield(text) }
+
+    func finish() async {
+
+        state.values.withLock { $0.finishCalls += 1 }
+        changed()
+        pending.finish()
+        await worker.value
+        await finishGate?.wait()
+    }
+
+    deinit {
+        pending.finish()
+        worker.cancel()
     }
 }
 
@@ -312,7 +288,7 @@ struct Run {
     let events = Events()
     let report: FakeFailureReport
     let call: FakeCallText<String>
-    let transcript: FakeTranscript<String>
+    let saving: FakeTextSaving<String>
     let subject: TranscriptWriting<String>
     let task: Task<Void, Never>
     private let commands = AsyncStream<Bool>.makeStream()
@@ -322,7 +298,7 @@ struct Run {
         startGate: Gate? = nil, stopGate: Gate? = nil,
         startText: String? = nil, lastText: String? = nil,
         failures: [String: WriteFailure] = [:], reportGate: Gate? = nil,
-        hasTranscript: Bool = true, pauses: Pauses? = nil
+        hasTranscript: Bool = true, finishGate: Gate? = nil
     ) {
 
         call = FakeCallText(
@@ -330,12 +306,9 @@ struct Run {
             lastText: lastText, switchText: { $0 ? "live text on" : "live text off" },
             changed: changes.notify
         )
-        transcript = FakeTranscript(holds: holds, failures: failures, changed: changes.notify)
         report = FakeFailureReport(events: events, gate: reportGate, changed: changes.notify)
-        subject = TranscriptWriting(
-            callText: call, transcript: hasTranscript ? transcript : nil, failureReport: report,
-            pause: { await pauses?.pause() }
-        )
+        saving = FakeTextSaving(holds: holds, failures: failures, report: report, finishGate: finishGate, changed: changes.notify)
+        subject = TranscriptWriting(callText: call, saving: hasTranscript ? saving : nil)
         task = Task { [commands, observed, subject, events] in
             let reader = Task {
                 for await text in subject.updates {

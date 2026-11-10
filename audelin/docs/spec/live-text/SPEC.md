@@ -4,8 +4,8 @@ Observer: the client that reads Live text's segments for one track of a
 call.
 
 Live text turns what a recogniser hears on one track into segments: each
-holds settled words, which never change, and pending words, which may. It
-knows nothing of the model behind the recogniser, of speakers or of storage.
+holds its words, each with when it was heard in the track: settled words,
+which never change, then pending words, which may. It knows nothing of the model behind the recogniser, of speakers or of storage.
 
 ## Decided
 
@@ -22,6 +22,10 @@ knows nothing of the model behind the recogniser, of speakers or of storage.
   settles nothing: a recogniser may show a quick reading as pending and
   replace it with a better one, and settling at a pause would keep the
   quick one (research run 7b: three of 76 words).
+- A segment keeps each word with its times, as the recogniser reported
+  it, instead of joined text (LAB-1139): the words and when they were said
+  are what the call said, and a reader may need them word by word, as
+  bleed cleanup does to match words across the two tracks by time.
 - Segments are cut afresh from the words at each change: a cut between
   settled words never changes, and a cut between pending words goes with
   them.
@@ -75,6 +79,11 @@ Feature: Live text for one track
     Given a segment has settled words
     When the recogniser later reports other words for the same time
     Then I still read the words as they settled
+
+  Scenario: S-17 Words keep their times
+    Given the recogniser hears words
+    When some of them settle
+    Then I can read each word with when it was heard, settled or pending
 
   Scenario: S-5 A pause starts a new segment
     Given a segment has pending words

@@ -1,3 +1,4 @@
+import class SavePacing.SavePacing
 import class CallAppProcesses.CallAppProcesses
 import CallFolder
 import Foundation
@@ -27,6 +28,7 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
 
     let news = AsyncStream<SessionEvent>.makeStream()
     nonisolated let transcriptFailures: TranscriptFailureReport
+    let cleanupRuns: CleanupRuns
     let summaries: SummaryCallbacks
     let folder: CallFolder
     let folderTitle: String?
@@ -52,7 +54,8 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
     /// A long call's transcript is saved at most this often, and at once when its text stops.
     static let transcriptInterval: Duration = .seconds(5)
 
-    init(folder: CallFolder, folderTitle: String?, processes: CallAppProcesses, boundary: ComposerBoundary, summaries: SummaryCallbacks = .disabled) {
+    init(folder: CallFolder, folderTitle: String?, processes: CallAppProcesses, boundary: ComposerBoundary, cleanupRuns: CleanupRuns, summaries: SummaryCallbacks = .disabled) {
+        self.cleanupRuns = cleanupRuns
         self.summaries = summaries
         self.folder = folder
         self.folderTitle = folderTitle
@@ -114,7 +117,12 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
         let made = try places(in: folder)
         LiveNameBoard.shared.callTrack(made.callURL)
         let file = try await boundary.transcripts.open(at: made.transcriptURL, sink: boundary.log)
-        transcriptFile = SummaryTranscript(base: file, folder: made.url, callbacks: summaries)
+        transcriptFile = SummaryTranscript(base: file, folder: made.url, callbacks: summaries, cleanup: TranscriptCleanup(
+            recording: CleanupRecording(microphoneURL: made.microphoneURL, callURL: made.callURL),
+            duration: { [microphone = sides[.microphone]!.audio, call = sides[.call]!.audio] in
+                max(microphone.capturedThrough, call.capturedThrough)
+            }, cleaning: boundary.bleedCleaning, hearing: boundary.bleedHearing, sink: boundary.log
+        ), runs: cleanupRuns)
     }
 
     func closeTranscript() async throws {
@@ -134,9 +142,13 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
         let text = CallReader(microphone: microphone, call: call)
         let writing = WritingReader(
             callText: WritingCallText(text: text),
-            transcript: transcriptFile.map { TranscriptDestination(file: SignpostedTranscriptFile(base: $0, intervals: boundary.intervals)) },
-            failureReport: transcriptFailures,
-            pause: { [boundary] in try await boundary.time.sleep(SessionPieces.transcriptInterval) }
+            saving: transcriptFile.map {
+                PacedTextSaving(pacing: SavePacing(
+                    saving: TranscriptDestination(file: SignpostedTranscriptFile(base: $0, intervals: boundary.intervals)),
+                    failureReport: transcriptFailures,
+                    pause: { [boundary] in try await boundary.time.sleep(SessionPieces.transcriptInterval) }
+                ))
+            }
         )
         self.writing = writing
         if let output = readingOutput {

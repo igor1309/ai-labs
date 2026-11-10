@@ -9,6 +9,7 @@ let package = Package(
         .library(name: "SummaryJobs", targets: ["SummaryJobs"]),
         .library(name: "SummaryFiles", targets: ["SummaryFiles"]),
         .library(name: "SummaryRuntime", targets: ["SummaryRuntime"]),
+        .library(name: "BleedCleanup", targets: ["BleedCleanup"]),
         .library(name: "SpeakerIdentification", targets: ["SpeakerIdentification"]),
         .library(name: "SpeakerNaming", targets: ["SpeakerNaming"]),
         .library(name: "CallObservation", targets: ["CallObservation"]),
@@ -47,7 +48,9 @@ let package = Package(
         .library(name: "SideText", targets: ["SideText"]),
         .library(name: "SystemAudioCapture", targets: ["SystemAudioCapture"]),
         .library(name: "TrackFile", targets: ["TrackFile"]),
+        .library(name: "TranscriptFormat", targets: ["TranscriptFormat"]),
         .library(name: "TranscriptFile", targets: ["TranscriptFile"]),
+        .library(name: "SavePacing", targets: ["SavePacing"]),
         .library(name: "TranscriptWriting", targets: ["TranscriptWriting"]),
         .library(name: "TwoPassRecognizer", targets: ["TwoPassRecognizer"]),
     ],
@@ -64,6 +67,8 @@ let package = Package(
         .testTarget(name: "SummaryFilesTests", dependencies: ["SummaryFiles", "BlockingTestWork"]),
         .target(name: "SummaryRuntime"),
         .testTarget(name: "SummaryRuntimeTests", dependencies: ["SummaryRuntime", "BlockingTestWork"]),
+        .target(name: "BleedCleanup"),
+        .testTarget(name: "BleedCleanupTests", dependencies: ["BleedCleanup"]),
         .target(name: "SpeakerIdentification"),
         .testTarget(name: "SpeakerIdentificationTests", dependencies: ["SpeakerIdentification", "BlockingTestWork"]),
         .target(name: "SpeakerNaming"),
@@ -194,6 +199,10 @@ let package = Package(
             name: "TrackFileCrashWriter",
             dependencies: ["TrackFile"]
         ),
+        .target(name: "SavePacing"),
+        .testTarget(name: "SavePacingTests", dependencies: ["SavePacing"]),
+        .target(name: "TranscriptFormat"),
+        .testTarget(name: "TranscriptFormatTests", dependencies: ["TranscriptFormat"]),
         .target(
             name: "TranscriptFile"
         ),

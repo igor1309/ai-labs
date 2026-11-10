@@ -1,80 +1,21 @@
 import Foundation
 
-/// One call's latest transcript. Once some of it is final, a write keeps the final text already on
-/// disk and rewrites only what follows it; until then, and after a failure, it replaces the file whole.
+/// One file's bytes. A successful write may retain a final prefix for later rewrites.
 public actor TranscriptFile {
 
-    public enum Failure: Error, Equatable {
-
-        case writingEnded
-        case invalidStart
-    }
-
-    /// Words from one side, starting at a time in seconds from the call's beginning.
-    public struct Segment: Sendable, Equatable {
-
-        public enum Side: Sendable {
-
-            case mine, theirs
-        }
-
-        public let side: Side
-        public let start: Double
-        public let settled: String
-        public let pending: String
-        public let filledInLater: Bool
-        /// The diarized speaker's stable generic ID on the other side; never a name, so a
-        /// final row never needs rewriting when names change.
-        public let speaker: String?
-
-        public init(side: Side, start: Double, settled: String, pending: String, filledInLater: Bool = false, speaker: String? = nil) {
-
-            self.side = side
-            self.speaker = speaker
-            self.start = start
-            self.settled = settled
-            self.pending = pending
-            self.filledInLater = filledInLater
-        }
-    }
-
-    /// One remote speaker's current name, revised as evidence changes.
-    public struct Speaker: Sendable, Equatable, Codable {
-
-        public let id: String
-        public let name: String?
-        public let state: String
-
-        public init(id: String, name: String?, state: String) { self.id = id; self.name = name; self.state = state }
-    }
+    public enum Failure: Error, Equatable { case writingEnded }
 
     public nonisolated let url: URL
-
     private let binding: any TranscriptFileBinding
     private var closed = false
-    /// Every entry from `finalCount` on, kept so an unchanged one is not rendered again.
-    private var rendered: [Rendered] = []
-    /// The header and each final entry followed by its separator; only ever appended to.
-    private var finalText = Data("# Transcript\n\n".utf8)
-    private var finalCount = 0
-    private var finalHasWords = false
-    /// How many leading bytes of `finalText` the file on disk is known to hold, once it holds a final entry.
     private var keptOnDisk: Int?
-    private var speakers: [Speaker] = []
-    private var revision = 0
-    private static let noText = "# Transcript\n\nNo text was heard.\n"
 
-    /// Creates a new file exclusively; an existing path is always an error.
-    public init(url: URL) async throws {
-
-        try await self.init(url: url, binding: DiskTranscriptBinding())
-    }
-
-    public init(url: URL, binding: any TranscriptFileBinding) async throws {
+    /// Creates a new file exclusively; a failed initialization removes its creation.
+    public init(url: URL, initialBytes: [Data], binding: any TranscriptFileBinding) async throws {
 
         let file = try binding.create(at: url)
         do {
-            try file.write(Data(Self.noText.utf8))
+            for bytes in initialBytes { try file.write(bytes) }
             try file.flush()
         } catch {
             binding.remove(at: url)
@@ -84,135 +25,43 @@ public actor TranscriptFile {
         self.binding = binding
     }
 
-    /// A failed replacement leaves writing available for the next snapshot.
-    public func write(_ segments: [Segment], speakers: [Speaker] = []) throws {
-
-        try write(count: segments.count, finalCount: 0, speakers: speakers) { segments[$0] }
-    }
-
-    /// Asks only for segments after those already final, so a save does not walk
-    /// the call. The leading `finalCount` segments must never change again.
-    /// Speakers go in a block after the rows. While there are any, every write replaces the file
-    /// whole, so an interruption never leaves a half-written name mapping.
-    public func write(count: Int, finalCount: Int, speakers: [Speaker] = [], segment: @Sendable (Int) -> Segment) throws {
+    /// Chunks form one byte sequence; finalLength counts its immutable leading bytes.
+    /// A missing final length replaces whole and forgets the previously kept prefix.
+    /// After any disk failure the next write also replaces whole.
+    public func write(_ chunks: [Data], finalLength: Int?) throws {
 
         guard !closed else { throw Failure.writingEnded }
-        self.speakers = speakers
-        revision += 1
-        // Cleared first, so any failure below, rendering included, makes the next write replace the file whole.
         let kept = keptOnDisk
         keptOnDisk = nil
-        try render(count: count, finalCount: finalCount, segment: segment)
-        let (text, tail, noText) = text()
-        if let kept, !noText, speakers.isEmpty {
-            try rewrite(after: min(kept, text.count), text: text, tail: tail)
+        if let kept, let finalLength {
+            let file = try binding.open(at: url)
+            let length = min(kept, finalLength)
+            try file.truncate(to: length)
+            var skip = length
+            for bytes in chunks {
+                let omitted = min(skip, bytes.count)
+                skip -= omitted
+                try file.write(Data(bytes.dropFirst(omitted)))
+            }
+            try file.flush()
+            keptOnDisk = finalLength
         } else {
-            try replace(text: text, tail: tail)
+            try replace(chunks, finalLength: finalLength)
         }
-        if !noText, self.finalCount > 0 { keptOnDisk = text.count }
     }
 
-    /// Cuts the file back to text it already holds before writing the rest, so a crash or a
-    /// failure in between leaves every final entry whole; the next write after a failure
-    /// replaces the file whole.
-    private func rewrite(after kept: Int, text: Data, tail: Data) throws {
+    /// Whole replacements remain available after close, for after-call edits.
+    public func replace(_ chunks: [Data], finalLength: Int?) throws {
 
-        let file = try binding.open(at: url)
-        try file.truncate(to: kept)
-        try file.write(text[(text.startIndex + kept)...])
-        try file.write(tail)
-        try file.flush()
-    }
-
-    private func replace(text: Data, tail: Data) throws {
-
+        keptOnDisk = nil
         let temporary = url.deletingLastPathComponent().appendingPathComponent(".transcript-\(UUID()).tmp")
         let file = try binding.create(at: temporary)
         defer { binding.remove(at: temporary) }
-        try file.write(text)
-        try file.write(tail)
+        for bytes in chunks { try file.write(bytes) }
         try file.flush()
         try binding.rename(from: temporary, to: url)
+        keptOnDisk = finalLength
     }
 
-    /// Keeps the last whole transcript and ends further writes.
     public func close() { closed = true }
-
-    private func render(count: Int, finalCount: Int, segment: (Int) -> Segment) throws {
-
-        let tailCount = max(count - self.finalCount, 0)
-        for position in 0..<tailCount {
-            let segment = segment(self.finalCount + position)
-            if position < rendered.count, rendered[position].segment == segment { continue }
-            let part = try Rendered(segment)
-            if position < rendered.count { rendered[position] = part } else { rendered.append(part) }
-        }
-        rendered.removeLast(rendered.count - tailCount)
-        let newlyFinal = min(max(finalCount - self.finalCount, 0), tailCount)
-        for part in rendered.prefix(newlyFinal) {
-            finalText.append(contentsOf: part.text.utf8)
-            finalText.append(contentsOf: "\n\n".utf8)
-            finalHasWords = finalHasWords || part.hasWords
-        }
-        rendered.removeFirst(newlyFinal)
-        self.finalCount += newlyFinal
-    }
-
-    /// The file's two parts, so the final text is never copied into a new string.
-    private func text() -> (final: Data, tail: Data, noText: Bool) {
-
-        guard finalHasWords || rendered.contains(where: \.hasWords) else { return (Data(Self.noText.utf8), Data(), true) }
-        let block = speakerBlock()
-        if rendered.isEmpty { return block.isEmpty ? (finalText.dropLast(), Data(), false) : (finalText, Data(block.utf8), false) }
-        let rows = rendered.lazy.map(\.text).joined(separator: "\n\n") + "\n"
-        return (finalText, Data((block.isEmpty ? rows : rows + "\n" + block).utf8), false)
-    }
-
-    /// A readable Speakers section and one versioned machine-readable block after it.
-    private func speakerBlock() -> String {
-
-        guard !speakers.isEmpty else { return "" }
-        let lines = speakers.map { "- Speaker \(Self.escaped($0.id)): \($0.name.map(Self.escaped) ?? "unknown")" }
-        struct Metadata: Encodable { let schemaVersion = 1; let revision: Int; let speakers: [Speaker] }
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.sortedKeys]
-        let json = (try? encoder.encode(Metadata(revision: revision, speakers: speakers))).map { String(decoding: $0, as: UTF8.self) } ?? "{}"
-        // `>` only ever appears inside JSON strings, so escaping it keeps the comment closed.
-        let safe = json.replacingOccurrences(of: ">", with: "\\u003e")
-        return "## Speakers\n\n" + lines.joined(separator: "\n") + "\n\n<!-- audelin-speakers \(safe) -->\n"
-    }
-
-    static func escaped(_ text: String) -> String {
-
-        var out = ""
-        for character in text {
-            if character.isNewline { out.append(" "); continue }
-            if "\\`*_[]<>#|".contains(character) { out.append("\\") }
-            out.append(character)
-        }
-        return out
-    }
-
-    /// One segment's text, kept so an unchanged segment is not rendered again.
-    private struct Rendered {
-
-        let segment: Segment
-        let text: String
-        let hasWords: Bool
-
-        init(_ segment: Segment) throws {
-
-            guard segment.start.isFinite, segment.start >= 0, segment.start < Double(Int.max) else {
-                throw Failure.invalidStart
-            }
-            let seconds = Int(segment.start.rounded(.down))
-            let time = String(format: "%02lld:%02lld:%02lld", seconds / 3_600, seconds / 60 % 60, seconds % 60)
-            let side = segment.side == .mine ? "Me" : segment.speaker.map { "Speaker \(TranscriptFile.escaped($0))" } ?? "Them"
-            let later = segment.filledInLater ? " (filled in later)" : ""
-            let words = [segment.settled, segment.pending].filter { !$0.isEmpty }.joined(separator: " ")
-            self.segment = segment
-            text = "**\(side)** \(time)\(later)\n\(words)"
-            hasWords = !words.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        }
-    }
 }

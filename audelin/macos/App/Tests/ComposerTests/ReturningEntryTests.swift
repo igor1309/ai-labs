@@ -1,3 +1,4 @@
+import LiveText
 import protocol CallText.Side
 import struct CallText.SideState
 import Reading
@@ -17,16 +18,16 @@ struct ReturningEntryTests {
 
         let audio = TextAudio()
         let engine = ScriptedEngine(script: [
-            [.init(id: 0, start: 2, end: 3, pending: "old")],
-            [.init(id: 0, start: 2, end: 4, pending: "old more")],
+            [.init(id: 0, start: 2, end: 3, words: [.init("old", start: 2, end: 3)], settledCount: 0)],
+            [.init(id: 0, start: 2, end: 4, words: [.init("old", start: 2, end: 4), .init("more", start: 2, end: 4)], settledCount: 0)],
             [],
-            [.init(id: 0, start: 12, end: 13, pending: "new")],
-            [.init(id: 0, start: 12, end: 14, pending: "new more")],
+            [.init(id: 0, start: 12, end: 13, words: [.init("new", start: 12, end: 13)], settledCount: 0)],
+            [.init(id: 0, start: 12, end: 14, words: [.init("new", start: 12, end: 14), .init("more", start: 12, end: 14)], settledCount: 0)],
         ])
         let behind = Signal(), caughtUp = Signal()
         let speaking = StallingSide(
             side: CallSide(audio: audio, text: engine, written: TextTrack(chunks: []), sampleRate: 1),
-            after: { $0.entries.map(\.text.pending) == ["old more"] }, behind: behind, caughtUp: caughtUp
+            after: { $0.entries.map { $0.text.words.dropFirst($0.text.settledCount).map(\.text).joined(separator: " ") } == ["old more"] }, behind: behind, caughtUp: caughtUp
         )
         let quietAudio = TextAudio()
         let quiet = CallSide(audio: quietAudio, text: ScriptedEngine(script: []), written: TextTrack(chunks: []), sampleRate: 1)

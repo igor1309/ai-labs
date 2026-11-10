@@ -10,6 +10,7 @@ let package = Package(
     ],
     dependencies: [
         .package(path: ".."),
+        .package(path: "../Vendor/FluidAudio"),
         .package(url: "https://github.com/igor1309/swift-imrx", from: "1.1.0"),
     ],
     targets: [
@@ -18,6 +19,7 @@ let package = Package(
             dependencies: [
                 .product(name: "SettingsUI", package: "macos"),
                 "Composer",
+                .product(name: "FluidAudio", package: "FluidAudio"),
                 .product(name: "MicrophoneCapture", package: "macos"),
                 .product(name: "SystemAudioCapture", package: "macos"),
                 .product(name: "ParakeetRecognizer", package: "macos"),
@@ -45,11 +47,12 @@ let package = Package(
         ),
         .target(
             name: "SessionRehearsal",
-            dependencies: ["Composer", .product(name: "LiveText", package: "macos"), .product(name: "Preferences", package: "macos")]
+            dependencies: ["Composer", .product(name: "BleedCleanup", package: "macos"), .product(name: "LiveText", package: "macos"), .product(name: "Preferences", package: "macos")]
         ),
         .target(
             name: "Composer",
             dependencies: [
+                .product(name: "BleedCleanup", package: "macos"),
                 .product(name: "SummarySettings", package: "macos"),
                 .product(name: "SummaryJobs", package: "macos"),
                 .product(name: "SummaryFiles", package: "macos"),
@@ -77,8 +80,10 @@ let package = Package(
                 .product(name: "FillIn", package: "macos"),
                 .product(name: "LiveText", package: "macos"),
                 .product(name: "TrackFile", package: "macos"),
+                .product(name: "TranscriptFormat", package: "macos"),
                 .product(name: "TranscriptFile", package: "macos"),
                 .product(name: "TranscriptWriting", package: "macos"),
+                .product(name: "SavePacing", package: "macos"),
                 .product(name: "Reading", package: "macos"),
                 .product(name: "PanelUI", package: "macos"),
                 .product(name: "SplitRows", package: "macos"),

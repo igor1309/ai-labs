@@ -19,6 +19,8 @@ struct RehearsalLog: LogSink {
         let logger = loggers[entry.category]!
         if let error = entry.error {
             logger.error("\(entry.message, privacy: .public) error=\(error, privacy: .public) path=\(entry.path ?? "", privacy: .private)")
+        } else if entry.level == .debug {
+            logger.debug("\(entry.message, privacy: .public) path=\(entry.path ?? "", privacy: .private)")
         } else {
             logger.notice("\(entry.message, privacy: .public) path=\(entry.path ?? "", privacy: .private)")
         }
