@@ -26,6 +26,11 @@ After words settle, the fake recogniser reports other words over the same
 times. Evidence:
 `LiveTextTests.settledWordsNeverChange`.
 
+## S-17 Words keep their times
+
+The fake recogniser reports three timed words, then marks the track final
+through the first. Evidence: `LiveTextTests.wordsKeepTheirTimes`.
+
 ## S-5 A pause starts a new segment
 
 The fake recogniser reports pending words, then words starting 2 s after
