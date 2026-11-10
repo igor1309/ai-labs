@@ -1,5 +1,9 @@
 # Log
 
+## 2026-11-10
+
+- LAB-1147: Call notes use Markdown directly, with source times on actions and clearer instructions for corrections, owners and completion states.
+
 ## 2026-11-09
 
 - Nightly profiling validates both written tracks and speaker evidence before keeping a baseline, and reports matching-run deltas and descriptive memory/backlog trends for recurring review (LAB-748).

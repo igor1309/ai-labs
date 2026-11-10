@@ -9,7 +9,7 @@ import Testing
     @Test func shippedCompositionPublishesFromControlledCLI() async throws {
         try await withComposeFolder { root in
             let program = root.appendingPathComponent("fixture-cli"), input = root.appendingPathComponent("input.txt"), cwd = root.appendingPathComponent("cwd.txt")
-            let notes = #"{"language":"en","topic":"Synthetic call","keyPoints":["Synthetic spoken entries"],"decisions":[],"actions":[]}"#
+            let notes = "## What this was about\n\nSynthetic call\n\n## Key points\n\n- Synthetic spoken entries\n\n## Decisions\n\nNone recorded.\n\n## Actions\n\nNone recorded.\n"
             let envelope = String(decoding: try JSONSerialization.data(withJSONObject: ["type": "result", "subtype": "success", "is_error": false, "result": notes]), as: UTF8.self)
             let controls = "-p --safe-mode --restricted --tools --strict-mcp-config --mcp-config --no-session-persistence --output-format --max-output-tokens"
             let script = "#!/bin/sh\nif [ \"$1\" = --help ]; then printf '%s' " + quote(controls) + "; exit 0; fi\n/bin/cat > " + quote(input.path) + "\npwd > " + quote(cwd.path) + "\nprintf '%s' " + quote(envelope) + "\n"
@@ -26,7 +26,7 @@ import Testing
                 for await statuses in rig.menu.summaryStates() where statuses.values.contains("Итоги готовы") { break }
                 let bytes = try String(contentsOf: input, encoding: .utf8)
                 #expect(bytes.contains("mine final") && bytes.contains("theirs final"))
-                #expect(bytes.contains("Do not invent facts"))
+                #expect(bytes.hasPrefix(NotesResponse.prompt))
                 let path = try String(contentsOf: cwd, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines)
                 #expect(path.contains("audelin-summary-"))
                 #expect(!FileManager.default.fileExists(atPath: path))
