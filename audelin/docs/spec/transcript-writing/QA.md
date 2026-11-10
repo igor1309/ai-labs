@@ -5,7 +5,7 @@ switch and stop are recorded and can be held, and which sends updates on
 cue, also while starting and stopping; the port it hands texts to, whose
 fake saves each text handed at once unless a save is held or set to
 fail, and whose finishing saves the last text handed and can be held or
-fail, or which is absent; and a failure report that records what it is
+fail, or which is absent. The fake's failure report records what it is
 told, in order with stop's return. "Kept" means the last text the fake
 saved, never just handed. Pacing itself is save pacing's QA. Updates
 passed on are read from the decorator's own updates.
@@ -39,7 +39,7 @@ Table of three: call text's stop held; finishing held; both held, each
 released alone in either order. In each, stop has not returned until
 every held one is released, then returns with the last text kept. In
 each, call text sends a new final text while stopping, and that text is
-the one kept. The both-held case is Missing. Evidence: `TranscriptWritingTests.stoppingWaitsForCallTextAndTheLastWrite`.
+the one kept. Evidence: `TranscriptWritingTests.stoppingWaitsForCallTextAndTheLastWrite`.
 
 ## S-9 The last write failing still lets stopping return
 
@@ -72,7 +72,7 @@ or joined. Evidence: `TranscriptWritingTests.aSecondStopWaitsForTheFirst`.
 
 The transcript fails a write; live text is switched off and call text
 sends a new update; the update is read from the decorator and the next
-write keeps it. Evidence: Missing.
+write keeps it. Evidence: `TranscriptWritingTests.aFailedWriteLeavesCallTextGoing`.
 
 ## S-16 Every update reaches a slow reader
 
@@ -82,4 +82,4 @@ read, in order. Evidence: `TranscriptWritingTests.unreadUpdatesRetainEverySnapsh
 ## S-17 Updates reach me while a save is slow
 
 A save held and two more updates sent; both are read from the decorator's
-updates before the save is released. Evidence: Missing.
+updates before the save is released. Evidence: `TranscriptWritingTests.updatesReachReadersWhileASaveIsHeld`.

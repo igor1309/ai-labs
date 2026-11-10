@@ -10,24 +10,24 @@ pause the test holds and releases. Values are numbers.
 
 The first save held, two more values sent, then released; the next and
 last kept value is the third, and the second was never saved.
-Evidence: Missing.
+Evidence: `SavePacingTests.onlyTheLatestValueIsSavedAfterAHeldSave`.
 
 ## S-2 A failed save is told
 
-Value 1's save fails; the report holds that one failure. Evidence: Missing.
+Value 1's save fails; the report holds that one failure. Evidence: `SavePacingTests.aFailedSaveIsTold`.
 
 ## S-7 A save failing again is not told again
 
-Saves of 1, 2 and 3 fail; the report holds only the first. Evidence: Missing.
+Saves of 1, 2 and 3 fail; the report holds only the first. Evidence: `SavePacingTests.repeatedFailuresAreToldOnceUntilASaveSucceeds`.
 
 ## S-8 A failure after a success is told again
 
 1 fails, 2 is kept, 3 fails; the report holds the failures of 1 and 3, in
-order, and the store keeps 2. Evidence: Missing.
+order, and the store keeps 2. Evidence: `SavePacingTests.aFailureAfterASuccessIsToldAgain`.
 
 ## S-3 A save after a failed one keeps the newer value
 
-Value 1's save fails, value 2 comes; the store keeps 2. Evidence: Missing.
+Value 1's save fails, value 2 comes; the store keeps 2. Evidence: `SavePacingTests.aSaveAfterAFailedOneKeepsTheNewerValue`.
 
 ## S-4 Saves are spaced by a pause
 
@@ -35,22 +35,22 @@ Value 1 is kept and the pause held; values 2 and 3 come; the store keeps
 1 while the pause is held; released, it keeps 3, and 2 was never saved. The cycle repeats: with
 the pause after 3 held, 4 and 5 come and the store keeps 3 until it is
 released, then 5.
-Evidence: Missing.
+Evidence: `SavePacingTests.eachPauseKeepsOnlyTheLatestWaitingValue`.
 
 ## S-5 Finishing ends the pause
 
 Value 1 kept, the pause held, value 2 comes; finish without releasing the
 pause; the save of 2 starts and is held, and finish has not returned;
-released, the store keeps 2 and finish returns, the pause never released. Evidence: Missing.
+released, the store keeps 2 and finish returns, the pause never released. Evidence: `SavePacingTests.finishingEndsThePauseAndWaitsForTheLastSave`.
 
 ## S-6 Finishing after a failed last save
 
 Value 1's save fails while held; finish is called, the save released and
 the report held; finish has not returned until the report is released,
-and the report holds the failure. Evidence: Missing.
+and the report holds the failure. Evidence: `SavePacingTests.finishingWaitsUntilTheLastFailureHasBeenTold`.
 
 ## S-9 A failed save is followed by a pause too
 
 Value 1 kept, value 2's save fails and the pause after it is held; values
 3 and 4 come; the store keeps 1 while held; released, it keeps 4, and 3
-was never saved. Evidence: Missing.
+was never saved. Evidence: `SavePacingTests.aFailedSaveAlsoHasAPause`.

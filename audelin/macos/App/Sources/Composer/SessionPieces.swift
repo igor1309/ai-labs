@@ -1,3 +1,4 @@
+import class SavePacing.SavePacing
 import class CallAppProcesses.CallAppProcesses
 import CallFolder
 import Foundation
@@ -134,9 +135,13 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
         let text = CallReader(microphone: microphone, call: call)
         let writing = WritingReader(
             callText: WritingCallText(text: text),
-            transcript: transcriptFile.map { TranscriptDestination(file: SignpostedTranscriptFile(base: $0, intervals: boundary.intervals)) },
-            failureReport: transcriptFailures,
-            pause: { [boundary] in try await boundary.time.sleep(SessionPieces.transcriptInterval) }
+            saving: transcriptFile.map {
+                PacedTextSaving(pacing: SavePacing(
+                    saving: TranscriptDestination(file: SignpostedTranscriptFile(base: $0, intervals: boundary.intervals)),
+                    failureReport: transcriptFailures,
+                    pause: { [boundary] in try await boundary.time.sleep(SessionPieces.transcriptInterval) }
+                ))
+            }
         )
         self.writing = writing
         if let output = readingOutput {

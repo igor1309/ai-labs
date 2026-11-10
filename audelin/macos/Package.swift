@@ -50,6 +50,7 @@ let package = Package(
         .library(name: "TrackFile", targets: ["TrackFile"]),
         .library(name: "TranscriptFormat", targets: ["TranscriptFormat"]),
         .library(name: "TranscriptFile", targets: ["TranscriptFile"]),
+        .library(name: "SavePacing", targets: ["SavePacing"]),
         .library(name: "TranscriptWriting", targets: ["TranscriptWriting"]),
         .library(name: "TwoPassRecognizer", targets: ["TwoPassRecognizer"]),
     ],
@@ -198,6 +199,8 @@ let package = Package(
             name: "TrackFileCrashWriter",
             dependencies: ["TrackFile"]
         ),
+        .target(name: "SavePacing"),
+        .testTarget(name: "SavePacingTests", dependencies: ["SavePacing"]),
         .target(name: "TranscriptFormat"),
         .testTarget(name: "TranscriptFormatTests", dependencies: ["TranscriptFormat"]),
         .target(

@@ -1,29 +1,19 @@
-import Synchronization
-
-/// Passes call text through while keeping its complete text in a transcript.
+/// Passes call text through while handing its complete text to saving.
 public actor TranscriptWriting<Text: Sendable> {
 
     public nonisolated let updates: AsyncStream<Text>
 
     private let continuation: AsyncStream<Text>.Continuation
     private let callText: any CallText<Text>
-    private let transcript: (any Transcript<Text>)?
-    private let failureReport: any FailureReport
-    private let pause: @Sendable () async throws -> Void
+    private let saving: (any TextSaving<Text>)?
     private var listener: Task<Void, Never>?
-    private var writer: Task<Void, Never>?
     private var stopping: Task<Void, Never>?
 
-    public init(
-        callText: any CallText<Text>, transcript: (any Transcript<Text>)?,
-        failureReport: any FailureReport, pause: @escaping @Sendable () async throws -> Void = {}
-    ) {
+    public init(callText: any CallText<Text>, saving: (any TextSaving<Text>)?) {
 
         self.callText = callText
-        self.transcript = transcript
-        self.failureReport = failureReport
-        self.pause = pause
-        // Readers need every snapshot; only pending whole-file writes may coalesce.
+        self.saving = saving
+        // Readers need every snapshot, including those saving may coalesce.
         (updates, continuation) = AsyncStream.makeStream()
     }
 
@@ -31,33 +21,13 @@ public actor TranscriptWriting<Text: Sendable> {
 
         guard listener == nil else { return }
         let incoming = callText.updates
-        let pending = AsyncStream<Text>.makeStream(bufferingPolicy: .bufferingNewest(1))
-        // A pause between writes ends early once call text has stopped, so its last text is not held back.
-        let rest = Rest()
-        writer = Task { [transcript, failureReport, pause] in
-            // A transcript that keeps failing is reported once, until a write succeeds.
-            var failing = false
-            for await text in pending.stream {
-                do {
-                    try await transcript?.write(text)
-                    failing = false
-                } catch {
-                    if !failing { await failureReport.transcriptFailed(error) }
-                    failing = true
-                }
-                let resting = rest.start { _ = try? await pause() }
-                // The pause is its own task, so cancelling the writer must reach it.
-                await withTaskCancellationHandler { await resting?.value } onCancel: { resting?.cancel() }
-            }
-        }
-        listener = Task { [continuation] in
+        listener = Task { [continuation, saving] in
             for await text in incoming {
                 continuation.yield(text)
-                pending.continuation.yield(text)
+                saving?.submit(text)
             }
-            rest.end()
-            pending.continuation.finish()
             continuation.finish()
+            await saving?.finish()
         }
         await callText.start(enabled: enabled)
     }
@@ -73,10 +43,9 @@ public actor TranscriptWriting<Text: Sendable> {
             await stopping.value
             return
         }
-        let stopping = Task { [callText, listener, writer] in
+        let stopping = Task { [callText, listener] in
             await callText.stop()
             await listener?.value
-            await writer?.value
         }
         self.stopping = stopping
         await stopping.value
@@ -85,31 +54,6 @@ public actor TranscriptWriting<Text: Sendable> {
     deinit {
 
         listener?.cancel()
-        writer?.cancel()
         continuation.finish()
-    }
-
-    /// The pause in progress, which ending cancels and no later pause follows.
-    private final class Rest: Sendable {
-
-        private let state = Mutex<(ended: Bool, task: Task<Void, Never>?)>((false, nil))
-
-        func start(_ pause: @escaping @Sendable () async -> Void) -> Task<Void, Never>? {
-
-            state.withLock { state in
-                guard !state.ended else { return nil }
-                let task = Task { await pause() }
-                state.task = task
-                return task
-            }
-        }
-
-        func end() {
-
-            state.withLock { state in
-                state.ended = true
-                state.task?.cancel()
-            }
-        }
     }
 }
