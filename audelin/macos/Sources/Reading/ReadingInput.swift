@@ -79,6 +79,9 @@ public enum ReadingEvent: Equatable, Sendable {
     case letGo(ReadingState.Held)
     case scrolled(atBottom: Bool, interaction: UUID? = nil)
     case jumpToLive
+    /// The after-call pass: remote entries take these confirmed names by local ID;
+    /// every other remote entry loses its tentative name.
+    case namesConfirmed([Int: String])
 }
 
 /// A recording problem, stamped on the same elapsed clock as the text.

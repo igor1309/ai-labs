@@ -64,7 +64,8 @@ struct RecordingPiecesTests {
                 _ = try await rig.panel { if case let .lines(lines) = $0.log { lines.entries.count == 2 } else { false } }
                 try await rig.stop()
                 let reset = try await rig.panel { $0.recording == .off }
-                #expect(reset.log == .empty)
+                // The finished call stays readable until the next recording.
+                if case let .lines(lines) = reset.log { #expect(lines.entries.count == 2) } else { Issue.record("rows cleared") }
             }
             #expect(rig.microphone.starts.all == [true, true] && rig.call.starts.all == [true, true])
             #expect(rig.microphone.stops.all == [true, true] && rig.call.stops.all == [true, true])

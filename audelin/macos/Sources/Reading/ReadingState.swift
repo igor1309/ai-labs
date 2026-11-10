@@ -31,10 +31,13 @@ public struct ReadingState: Equatable, Sendable {
         public var settled: String
         public var pending: String
         public var name: String?
+        /// Confirmed after the call, not a live guess.
+        public var nameConfirmed: Bool
 
-        public init(id: Int, time: String, speaker: Speaker, settled: String = "", pending: String = "", name: String? = nil) {
+        public init(id: Int, time: String, speaker: Speaker, settled: String = "", pending: String = "", name: String? = nil, nameConfirmed: Bool = false) {
 
             self.name = name
+            self.nameConfirmed = nameConfirmed
 
             self.id = id
             self.time = time
