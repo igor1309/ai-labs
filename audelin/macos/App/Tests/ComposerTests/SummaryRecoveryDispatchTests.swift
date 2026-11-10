@@ -56,7 +56,7 @@ struct SummaryRecoveryDispatchTests {
                 #expect(record.job == job.id && record.input == "saved-input" && !record.warning)
                 #expect(try SummaryJobStore(files: files).state(record).job == job)
                 let output = try String(contentsOf: folder.appendingPathComponent("summary.md"), encoding: .utf8)
-                #expect(output.hasSuffix("# Topic\n\nRecovered meeting\n\n## Key points\n\n- Saved spoken input\n\n## Decisions\n\nNone recorded.\n\n## Actions\n\nNone recorded.\n\n"))
+                #expect(output.hasSuffix(recoveredNotes))
                 #expect(await http.requests.count == 1)
                 await summaries.shutdown()
             } catch { http.release.send(); await summaries.shutdown(); throw error }
@@ -68,7 +68,7 @@ private struct RecoveryRequest: Decodable {
     let model: String
     let messages: [Message]
 }
-private let recoveredNotes = #"{"language":"en","topic":"Recovered meeting","keyPoints":["Saved spoken input"],"decisions":[],"actions":[]}"#
+private let recoveredNotes = "## What this was about\n\nRecovered meeting\n\n## Key points\n\n- Saved spoken input\n\n## Decisions\n\nNone recorded.\n\n## Actions\n\nNone recorded.\n"
 private actor RecoveryHTTP: HTTPRequesting {
     struct Request: Sendable { let url: URL; let headers: [String: String]; let body: Data; let loopback: Bool }
     var requests: [Request] = []

@@ -20,7 +20,7 @@ struct SummaryGeneration: SummaryJobs.Generation {
             let mapping = identities.map { "\($0.label): \($0.name) (\($0.time): \($0.quote))" }.joined(separator: "\n")
             let prompt = Prompts.notes + "\nACCEPTED EVIDENCE:\n" + mapping + "\nTRANSCRIPT DATA:\n" + transcript(job)
             let output = try await runtime.generate(configuration, prompt: prompt)
-            return try NotesResponse.render(Data(output.utf8))
+            return try NotesResponse.validate(output)
         }
     }
     private func fallback<Value: Sendable>(_ job: Job, attempt: (SummaryRuntime.Configuration) async throws -> Value) async throws -> Value {
@@ -38,29 +38,39 @@ struct SummaryGeneration: SummaryJobs.Generation {
     }
 }
 
-struct NotesResponse: Decodable {
-    var language: String
-    var topic: String
-    var keyPoints: [String]
-    var decisions: [String]
-    var actions: [String]
-    var openQuestions: [String]?
-    static func render(_ data: Data) throws -> String {
-        let response = try JSONDecoder().decode(Self.self, from: data)
-        let all = [response.topic] + response.keyPoints + response.decisions + response.actions + (response.openQuestions ?? [])
-        guard ["ru", "en"].contains(response.language), !response.keyPoints.isEmpty,
-              all.allSatisfy({ !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }),
-              !["i cannot", "i can't", "i’m sorry", "i am sorry", "не могу", "отказываюсь"].contains(where: { response.topic.lowercased().hasPrefix($0) }) else { throw SummaryRuntime.Failure.invalidResponse }
-        let ru = response.language == "ru"
-        func section(_ heading: String, _ values: [String], none: Bool = false) -> String {
-            let body = values.isEmpty && none ? (ru ? "Не зафиксировано." : "None recorded.") : values.map { "- " + $0 }.joined(separator: "\n")
-            return "## " + heading + "\n\n" + body + "\n\n"
+enum NotesResponse {
+    /// Validate the document contract, not the truth of the generated claims.
+    static func validate(_ output: String) throws -> String {
+        let text = output.trimmingCharacters(in: .whitespacesAndNewlines)
+        let lines = text.components(separatedBy: .newlines)
+        var headings: [(offset: Int, element: String)] = []
+        var fence: String?
+        for (offset, line) in lines.enumerated() {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if let marker = fence {
+                if trimmed.hasPrefix(marker), trimmed.dropFirst(marker.count).allSatisfy({ $0 == marker.first || $0.isWhitespace }) {
+                    fence = nil
+                }
+            } else if trimmed.hasPrefix("```") || trimmed.hasPrefix("~~~") {
+                let character = trimmed.first!
+                fence = String(trimmed.prefix(while: { $0 == character }))
+            } else if line.hasPrefix("## ") {
+                headings.append((offset, line))
+            }
         }
-        var text = "# " + (ru ? "Тема" : "Topic") + "\n\n" + response.topic + "\n\n"
-        text += section(ru ? "Ключевые моменты" : "Key points", response.keyPoints)
-        text += section(ru ? "Решения" : "Decisions", response.decisions, none: true)
-        text += section(ru ? "Действия" : "Actions", response.actions, none: true)
-        if let questions = response.openQuestions, !questions.isEmpty { text += section(ru ? "Открытые вопросы" : "Open questions", questions) }
-        return text
+        guard fence == nil else { throw SummaryRuntime.Failure.invalidResponse }
+        let russian = ["О чём встреча", "Ключевые моменты", "Решения", "Задачи", "Открытые вопросы"]
+        let english = ["What this was about", "Key points", "Decisions", "Actions", "Open questions"]
+        let names = headings.map { String($0.element.dropFirst(3)).trimmingCharacters(in: .whitespaces) }
+        guard let expected = [russian, english].first(where: { names == Array($0.prefix(4)) || names == $0 }),
+              lines.first == "## " + expected[0] else { throw SummaryRuntime.Failure.invalidResponse }
+        for (index, heading) in headings.enumerated() {
+            let end = index + 1 < headings.count ? headings[index + 1].offset : lines.count
+            let body = lines[(heading.offset + 1)..<end].joined(separator: "\n")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            let refusal = ["i cannot", "i can't", "i’m sorry", "i am sorry", "не могу", "отказываюсь"]
+            guard !body.isEmpty, !refusal.contains(where: { body.lowercased().hasPrefix($0) }) else { throw SummaryRuntime.Failure.invalidResponse }
+        }
+        return text + "\n"
     }
 }

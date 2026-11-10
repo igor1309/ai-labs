@@ -197,7 +197,7 @@ private actor HeldSummaryHTTP: HTTPRequesting {
     var requests = 0
     func request(url: URL, headers: [String: String], body: Data, loopback: Bool) async throws -> HTTPResponse {
         requests += 1; started.send(); await release.next()
-        let notes = #"{"language":"en","topic":"Spoken topic","keyPoints":["Spoken point"],"decisions":[],"actions":[]}"#
+        let notes = "## What this was about\n\nSpoken topic\n\n## Key points\n\n- Spoken point\n\n## Decisions\n\nNone recorded.\n\n## Actions\n\nNone recorded.\n"
         return .init(status: 200, body: try JSONSerialization.data(withJSONObject: ["choices": [["finish_reason": "stop", "message": ["content": notes]]]]))
     }
 }
