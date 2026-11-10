@@ -173,15 +173,20 @@ public extension PanelState {
         public var settled: String
         /// Text still being recognised; drawn dim, with a caret after it.
         public var pending: String
+        /// The remote speaker's name or `Speaker N`, drawn on its own line above the
+        /// entry; set only where the speaker changes (design option C, LAB-1126).
+        public var label: String?
 
         public init(
             id: Int,
             time: String,
             speaker: Speaker,
             settled: String,
-            pending: String = ""
+            pending: String = "",
+            label: String? = nil
         ) {
             self.id = id
+            self.label = label
             self.time = time
             self.speaker = speaker
             self.settled = settled

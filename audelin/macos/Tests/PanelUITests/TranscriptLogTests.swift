@@ -71,6 +71,19 @@ struct TranscriptLogTests {
         #expect(attribute(.foregroundColor, of: "12:45", in: text) as? NSColor == NSColor(GlassLedger.light.them))
     }
 
+    @Test func aSpeakerNameSitsOnItsOwnLineOutsideTheSelection() throws {
+
+        let text = try #require(Offscreen.textView(in: hosted(.init(rows: [
+            .entry(.init(id: 1, time: "12:44", speaker: .them, settled: "привет", label: "Анна Королёва")),
+            .entry(.init(id: 2, time: "12:45", speaker: .them, settled: "deploy", label: nil)),
+        ]))))
+
+        #expect(text.string == "\tАнна Королёва\n\u{FFFC}\t12:44\tпривет\n\u{FFFC}\t12:45\tdeploy")
+        #expect(Transcript.text(in: NSRange(location: 0, length: text.string.utf16.count), of: text.attributedString()) == "привет\ndeploy")
+        #expect(attribute(.foregroundColor, of: "Анна", in: text) as? NSColor == NSColor(GlassLedger.light.them))
+        #expect((attribute(.font, of: "Анна", in: text) as? NSFont)?.pointSize == GlassLedger.light.typeCaption)
+    }
+
     @Test func placesALateGroupWhereItsMinutesWere() throws {
 
         let text = try #require(Offscreen.textView(in: hosted(lateLines)))
