@@ -2,28 +2,23 @@
 
 Driven through fakes of its own interfaces: a call text whose start,
 switch and stop are recorded and can be held, and which sends updates on
-cue, also while starting and stopping; a transcript that records each
-whole text written, can hold a write and fail a given one, or be absent;
-and a failure report that records what it is told, in order with stop's
-return. "Kept" means the transcript's last whole text written. Updates
+cue, also while starting and stopping; the port it hands texts to, whose
+fake saves each text handed at once unless a save is held or set to
+fail, and whose finishing saves the last text handed and can be held or
+fail, or which is absent; and a failure report that records what it is
+told, in order with stop's return. "Kept" means the last text the fake
+saved, never just handed. Pacing itself is save pacing's QA. Updates
 passed on are read from the decorator's own updates.
 
 ## S-1 Call text's text is kept as it changes
 
-Three updates sent one after another; each is written whole, in order,
-and each is passed on before its write returns (writes held, then
-released). Evidence: `TranscriptWritingTests.eachUpdateIsWrittenWholeInOrderAndPassedOnAtOnce`.
-
-## S-2 Only the latest text is kept after a slow write
-
-The first write held, two more updates sent, then released; the next and
-last write is the third text, and the second is never written. Evidence:
-`TranscriptWritingTests.updatesDuringAHeldWriteWriteOnlyTheLatest`.
+Three updates sent one after another; after each the fake has saved that
+text. Stopped, the fake keeps the last. Evidence: `TranscriptWritingTests.eachUpdateIsWrittenWholeInOrderAndPassedOnAtOnce`.
 
 ## S-3 Text while starting is kept
 
 Call text sends an update while its start is held; while still held,
-that text is read from the decorator's updates and written. Evidence:
+that text is read from the decorator's updates and written. Start released and call text stopped; the fake keeps that text. Evidence:
 `TranscriptWritingTests.textSentWhileStartingIsKept`.
 
 ## S-4 Switching off reaches call text
@@ -40,21 +35,11 @@ sends is read from the decorator's updates, and it is written. Evidence:
 
 ## S-6 Stopping returns after the last text is kept
 
-Table of two: call text's stop held after its last update is written, and
-its stop returning while that last write is held. In each, stop has not
-returned until the held one is released, then returns with the last text
-kept. Evidence: `TranscriptWritingTests.stoppingWaitsForCallTextAndTheLastWrite`.
-
-## S-7 A failed write is told as the transcript's
-
-The second and third of four writes fail; the report is told two
-transcript failures, call text's switch still reaches it, and the fourth
-text is kept. Evidence: `TranscriptWritingTests.eachFailedWriteIsToldAndWritingGoesOn`.
-
-## S-8 A write after a failed one keeps the newer text
-
-A write fails; the next update's write returns, and that newer text is
-kept. Evidence: `TranscriptWritingTests.aWriteAfterAFailedOneKeepsTheNewerText`.
+Table of three: call text's stop held; finishing held; both held, each
+released alone in either order. In each, stop has not returned until
+every held one is released, then returns with the last text kept. In
+each, call text sends a new final text while stopping, and that text is
+the one kept. The both-held case is Missing. Evidence: `TranscriptWritingTests.stoppingWaitsForCallTextAndTheLastWrite`.
 
 ## S-9 The last write failing still lets stopping return
 
@@ -64,11 +49,11 @@ failure before stop returns, and stop returns. Evidence:
 
 ## S-10 Call text failing is passed on as call text's
 
-A write held; call text sends a failed update and ends its updates. While
-the write is still held, the failed update is read unchanged from the
-decorator's updates; the held write then fails on release,
-the report is told one transcript failure and nothing of call text, and
-the failed update's text is written last. Evidence:
+A save held and set to fail; call text sends a failed update and ends its
+updates. While the save is held, the failed update is read unchanged from
+the decorator's updates; released, the save fails, the report is told one
+transcript failure and nothing of call text, and finishing saves the
+failed update's text, which the fake keeps. Evidence:
 `TranscriptWritingTests.callTextFailingIsPassedOnWhileTheTranscriptFailsApart`.
 
 ## S-11 Call text runs without a transcript
@@ -79,20 +64,22 @@ return, updates are passed on, and the report is told nothing. Evidence:
 
 ## S-12 Stopping twice
 
-The last write held; a second stop is called; neither returns until the
-write is released, then both do, and call text's stop was asked once
+Finishing held; a second stop is called; neither returns until it is
+released, then both do with the last text kept, and call text's stop was asked once
 or joined. Evidence: `TranscriptWritingTests.aSecondStopWaitsForTheFirst`.
 
-## S-13 Writes are spaced by a pause
+## S-15 A failed write leaves call text going
 
-Through a fake pause that lasts until ended: the first update is written
-and a pause starts; two more updates are passed on but not written while
-it lasts; once ended, only the third is written and the next pause
-starts. Evidence: `TranscriptWritingTests.aPauseFollowsEachWriteAndOnlyTheLatestTextIsWrittenAfterIt`.
+The transcript fails a write; live text is switched off and call text
+sends a new update; the update is read from the decorator and the next
+write keeps it. Evidence: Missing.
 
-## S-14 Stopping ends the pause
+## S-16 Every update reaches a slow reader
 
-In the pause after the first write, an update is sent and stop is asked
-for; call text sends its last text while stopping. The pause is
-cancelled, not ended, the last text is written, and stop returns.
-Evidence: `TranscriptWritingTests.stoppingEndsThePauseSoTheLastTextIsWrittenBeforeStopReturns`.
+Three updates sent before the decorator's updates are read; all three are
+read, in order. Evidence: `TranscriptWritingTests.unreadUpdatesRetainEverySnapshot`.
+
+## S-17 Updates reach me while a save is slow
+
+A save held and two more updates sent; both are read from the decorator's
+updates before the save is released. Evidence: Missing.
