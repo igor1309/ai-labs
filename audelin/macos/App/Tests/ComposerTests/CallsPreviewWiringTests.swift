@@ -58,6 +58,26 @@ struct CallsPreviewWiringTests {
         }
     }
 
+    @Test func aReloadUpdatesTheOpenPreview() async throws {
+        try await withComposition { rig in
+            let calls = try #require(rig.menu.calls)
+            try call(a, notes: "# Old", in: rig.root)
+            await rig.menu.perform(.showCalls)
+            await wait(calls) { $0.rows.map(\.hasNotes) == [true] }
+            await calls.send(.preview(a))
+            await waitPreview(calls) { $0?.notes == .text("# Old") }
+
+            try call(a, notes: "# New", in: rig.root, create: false)
+            await rig.menu.perform(.showCalls)
+            await waitPreview(calls) { $0?.notes == .text("# New") }
+
+            try FileManager.default.removeItem(at: folder(a, in: rig.root).appendingPathComponent("summary.md"))
+            await rig.menu.perform(.showCalls)
+            await wait(calls) { $0.rows.map(\.hasNotes) == [false] }
+            await waitPreview(calls) { $0 == nil }
+        }
+    }
+
     @Test func aClosedPreviewStaysClosedAndClosingTheWindowClosesIt() async throws {
         try await withComposition { rig in
             let calls = try #require(rig.menu.calls)

@@ -24,6 +24,10 @@ public struct CallsPreview: Equatable, Sendable {
     public let date: String
     public let duration: String
     public let notes: Notes
+
+    public init(id: String, title: String, date: String, duration: String, notes: Notes) {
+        self.id = id; self.title = title; self.date = date; self.duration = duration; self.notes = notes
+    }
 }
 
 @MainActor @Observable
@@ -119,6 +123,8 @@ public final class AudelinCalls {
                 }
                 if Task.isCancelled { return }
                 withNotes = found
+                // The open preview follows what the reload found.
+                updatePreview()
             }
         }
     }
