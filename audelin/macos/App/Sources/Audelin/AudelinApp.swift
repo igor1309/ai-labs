@@ -32,10 +32,12 @@ struct AudelinApp: App {
         let panel = FloatingPanel.onScreen()
         let presence = self.presence
         self.panel = panel
+        var callsNSWindow: NSWindow?
         let callsWindow = CallsWindow(makeWindow: {
             let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1000, height: 560),
                                   styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
             presence.track(window)
+            callsNSWindow = window
             return window
         }, activate: { NSApplication.shared.activate() }, shown: { presence.shown($0) })
         self.callsWindow = callsWindow
@@ -71,13 +73,34 @@ struct AudelinApp: App {
         )
         self.model = model
         settingsWindow.contentView = NSHostingView(rootView: SettingsContent(model: model, window: settingsWindow))
-        if let calls = model.calls { callsWindow.install(content: NSHostingView(rootView: CallsContent(model: calls))) }
+        if let calls = model.calls {
+            callsWindow.install(content: NSHostingView(rootView: CallsContent(model: calls)))
+            showPreviews(of: calls, closingWith: callsNSWindow)
+        }
         panel.install(model)
         appDelegate.connect(model)
         let bundle = Bundle.main.bundleURL
         if bundle.pathExtension == "app" {
             model.relaunchAfterUpdate(wait: { try await Task.sleep(for: .seconds(5)) }, replaced: bundleReplaced(at: bundle),
                                       relaunch: { try relaunchProcess(after: getpid(), bundle: bundle).run() })
+        }
+    }
+
+    /// The summary panel follows the calls list's preview. Its own close button
+    /// closes the preview, and closing the calls window closes it too.
+    @MainActor
+    private func showPreviews(of calls: AudelinCalls, closingWith callsWindow: NSWindow?) {
+
+        let window = makeSummaryPanel()
+        let panel = PreviewPanel(makePanel: { window }, copy: { copyNotes($0, to: .general) })
+        NotificationCenter.default.addObserver(forName: NSWindow.willCloseNotification, object: window, queue: .main) { [weak calls] _ in
+            MainActor.assumeIsolated { calls?.closePreview() }
+        }
+        NotificationCenter.default.addObserver(forName: NSWindow.willCloseNotification, object: callsWindow, queue: .main) { [weak calls] _ in
+            MainActor.assumeIsolated { calls?.windowClosed() }
+        }
+        Task { @MainActor in
+            for await preview in Observations({ calls.preview }) { panel.show(preview) }
         }
     }
 
