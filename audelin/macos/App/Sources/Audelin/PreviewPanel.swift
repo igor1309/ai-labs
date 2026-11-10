@@ -19,16 +19,20 @@ extension NSPanel: PreviewPanelDriver {}
 final class PreviewPanel {
     private let panel: any PreviewPanelDriver
     private let copy: (String) -> Void
+    private let makeContent: (SummaryPreviewState, @escaping () -> Void) -> NSView
+    private var shown = false
 
-    init(makePanel: () -> any PreviewPanelDriver, copy: @escaping (String) -> Void) {
+    init(makePanel: () -> any PreviewPanelDriver, copy: @escaping (String) -> Void,
+         makeContent: @escaping (SummaryPreviewState, @escaping () -> Void) -> NSView) {
         panel = makePanel()
         self.copy = copy
+        self.makeContent = makeContent
     }
 
     /// Each preview brings the panel forward, so an eye finds it behind
     /// another Audelin window.
     func show(_ preview: CallsPreview?) {
-        guard let preview else { panel.orderOut(nil); return }
+        guard let preview else { shown = false; panel.orderOut(nil); return }
         let notes: SummaryPreviewState.Notes
         switch preview.notes {
         case let .text(markdown): notes = .markdown(markdown)
@@ -37,10 +41,33 @@ final class PreviewPanel {
         let state = SummaryPreviewState(title: preview.title, date: preview.date, duration: preview.duration, notes: notes)
         panel.title = "Саммари — \(preview.title)"
         let copy = self.copy
-        let view = SummaryPreviewView(state: state) { if case let .markdown(source) = notes { copy(source) } }
-        if let host = panel.contentView as? NSHostingView<SummaryPreviewView> { host.rootView = view }
-        else { panel.contentView = NSHostingView(rootView: view) }
+        panel.contentView = makeContent(state) { if case let .markdown(source) = notes { copy(source) } }
+        shown = true
         panel.orderFront(nil)
+    }
+
+    /// The eye of the call already shown: the same content, brought forward.
+    func focus() {
+        if shown { panel.orderFront(nil) }
+    }
+}
+
+/// Connects the panel to the calls list: it follows the list's preview, its
+/// own close closes the preview, and closing the calls window closes it too.
+@MainActor
+func connectPreview(panel: PreviewPanel, preview: @escaping @MainActor () -> CallsPreview?,
+                    panelWindow: AnyObject, callsWindow: AnyObject?, center: NotificationCenter,
+                    closePreview: @escaping @MainActor () -> Void, windowClosed: @escaping @MainActor () -> Void) -> Task<Void, Never> {
+    center.addObserver(forName: NSWindow.willCloseNotification, object: panelWindow, queue: .main) { _ in
+        MainActor.assumeIsolated { closePreview() }
+    }
+    if let callsWindow {
+        center.addObserver(forName: NSWindow.willCloseNotification, object: callsWindow, queue: .main) { _ in
+            MainActor.assumeIsolated { windowClosed() }
+        }
+    }
+    return Task { @MainActor in
+        for await current in Observations({ preview() }) { panel.show(current) }
     }
 }
 
@@ -58,6 +85,12 @@ func makeSummaryPanel() -> NSPanel {
     panel.center()
     panel.setFrameAutosaveName("SummaryPreview")
     return panel
+}
+
+/// The panel's content: the preview view of one call.
+@MainActor
+func summaryContent(_ state: SummaryPreviewState, copy: @escaping () -> Void) -> NSView {
+    NSHostingView(rootView: SummaryPreviewView(state: state, copy: copy))
 }
 
 /// Puts the notes' Markdown on the pasteboard as plain text.

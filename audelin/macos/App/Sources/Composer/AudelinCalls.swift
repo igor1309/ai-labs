@@ -35,6 +35,7 @@ public final class AudelinCalls {
     /// The selected call's notes, while the preview is open and the call has them.
     public private(set) var preview: CallsPreview?
     private let notes: (String) async throws -> String?
+    private let focusPreview: () -> Void
     private var selectedID: String?
     private var previewOpen = false
     private var withNotes: Set<String> = []
@@ -55,7 +56,9 @@ public final class AudelinCalls {
     init(inputs: RecordingsInputs, timeZone: TimeZone, recordingState: @escaping () -> RecordingState,
          location: @escaping (String) async throws -> URL, openFolder: @escaping (URL) -> Bool,
          present: @escaping () -> Void, summaryStatuses: @escaping () -> [String: String] = { [:] },
-         notes: @escaping (String) async throws -> String? = { _ in nil }) {
+         notes: @escaping (String) async throws -> String? = { _ in nil },
+         focusPreview: @escaping () -> Void = {}) {
+        self.focusPreview = focusPreview
         self.summaryStatuses = summaryStatuses
         self.notes = notes
         self.inputs = inputs; self.timeZone = timeZone; self.recordingState = recordingState
@@ -189,6 +192,9 @@ public final class AudelinCalls {
         case .selectNext: move(by: 1, in: snapshot.rows)
         case .selectPrevious: move(by: -1, in: snapshot.rows)
         case let .preview(id):
+            // The eye of the call already shown changes nothing to observe,
+            // so the panel is brought forward directly.
+            if preview?.id == id { focusPreview() }
             selectedID = id
             previewOpen = true
             updatePreview()

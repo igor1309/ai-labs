@@ -49,6 +49,9 @@ struct AudelinApp: App {
         settingsWindow.center()
         presence.track(settingsWindow)
         self.settingsWindow = settingsWindow
+        let summaryWindow = makeSummaryPanel()
+        let previewPanel = PreviewPanel(makePanel: { summaryWindow }, copy: { copyNotes($0, to: .general) },
+                                        makeContent: summaryContent)
         let boundary = await makeRealBoundary()
         let model = await compose(
             boundary: boundary,
@@ -69,13 +72,15 @@ struct AudelinApp: App {
                     begin: { completion in picker.begin { completion($0 == .OK ? picker.url : nil) } },
                     isVisible: { picker.isVisible }
                 )
-            }
+            }, focusPreview: { previewPanel.focus() }
         )
         self.model = model
         settingsWindow.contentView = NSHostingView(rootView: SettingsContent(model: model, window: settingsWindow))
         if let calls = model.calls {
             callsWindow.install(content: NSHostingView(rootView: CallsContent(model: calls)))
-            showPreviews(of: calls, closingWith: callsNSWindow)
+            _ = connectPreview(panel: previewPanel, preview: { calls.preview }, panelWindow: summaryWindow,
+                               callsWindow: callsNSWindow, center: .default,
+                               closePreview: { calls.closePreview() }, windowClosed: { calls.windowClosed() })
         }
         panel.install(model)
         appDelegate.connect(model)
@@ -83,24 +88,6 @@ struct AudelinApp: App {
         if bundle.pathExtension == "app" {
             model.relaunchAfterUpdate(wait: { try await Task.sleep(for: .seconds(5)) }, replaced: bundleReplaced(at: bundle),
                                       relaunch: { try relaunchProcess(after: getpid(), bundle: bundle).run() })
-        }
-    }
-
-    /// The summary panel follows the calls list's preview. Its own close button
-    /// closes the preview, and closing the calls window closes it too.
-    @MainActor
-    private func showPreviews(of calls: AudelinCalls, closingWith callsWindow: NSWindow?) {
-
-        let window = makeSummaryPanel()
-        let panel = PreviewPanel(makePanel: { window }, copy: { copyNotes($0, to: .general) })
-        NotificationCenter.default.addObserver(forName: NSWindow.willCloseNotification, object: window, queue: .main) { [weak calls] _ in
-            MainActor.assumeIsolated { calls?.closePreview() }
-        }
-        NotificationCenter.default.addObserver(forName: NSWindow.willCloseNotification, object: callsWindow, queue: .main) { [weak calls] _ in
-            MainActor.assumeIsolated { calls?.windowClosed() }
-        }
-        Task { @MainActor in
-            for await preview in Observations({ calls.preview }) { panel.show(preview) }
         }
     }
 

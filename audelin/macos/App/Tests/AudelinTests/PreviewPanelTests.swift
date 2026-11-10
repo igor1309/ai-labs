@@ -1,25 +1,93 @@
 import AppKit
 import Composer
+import Observation
+import SummaryPreviewUI
 import Testing
 @testable import Audelin
 
 @MainActor
 struct PreviewPanelTests {
-    @Test func aPreviewShowsThePanelWithThatCallAndNoneHidesIt() throws {
+    @Test func eachPreviewInstallsThatCallsContentAndNoneHidesIt() throws {
         let window = PreviewPanelSpy()
-        let panel = PreviewPanel(makePanel: { window }, copy: { _ in })
+        let content = ContentSpy()
+        let panel = PreviewPanel(makePanel: { window }, copy: { _ in }, makeContent: content.make)
 
         panel.show(preview("A"))
         #expect(window.title == "Саммари — A")
-        #expect(window.contentView != nil)
+        #expect(window.contentView === content.views.last)
         #expect(window.orders == ["front"])
 
-        panel.show(preview("B"))
+        panel.show(preview("B", notes: .unreadable("нет доступа")))
         #expect(window.title == "Саммари — B")
+        #expect(window.contentView === content.views.last)
+        #expect(content.states == [
+            SummaryPreviewState(title: "A", date: "17.10 · 11:00", duration: "28 мин", notes: .markdown("# A")),
+            SummaryPreviewState(title: "B", date: "17.10 · 11:00", duration: "28 мин",
+                                notes: .unreadable("Заметки не читаются: нет доступа")),
+        ])
         #expect(window.orders == ["front", "front"])
 
         panel.show(nil)
         #expect(window.orders == ["front", "front", "out"])
+    }
+
+    @Test func focusBringsAShownPanelForwardOnly() {
+        let window = PreviewPanelSpy()
+        let panel = PreviewPanel(makePanel: { window }, copy: { _ in }, makeContent: ContentSpy().make)
+
+        panel.focus()
+        #expect(window.orders.isEmpty)
+        panel.show(preview("A"))
+        panel.focus()
+        #expect(window.orders == ["front", "front"])
+        panel.show(nil)
+        panel.focus()
+        #expect(window.orders == ["front", "front", "out"])
+    }
+
+    @Test func theCopyButtonPutsTheShownCallsMarkdownOnThePasteboard() throws {
+        let pasteboard = NSPasteboard.withUniqueName()
+        defer { pasteboard.releaseGlobally() }
+        let content = ContentSpy()
+        let panel = PreviewPanel(makePanel: { PreviewPanelSpy() }, copy: { copyNotes($0, to: pasteboard) },
+                                 makeContent: content.make)
+        let source = "## Итоги\n\n- **важно**\n\n| a | b |\n|---|---|\n"
+
+        panel.show(preview("A"))
+        panel.show(CallsPreview(id: "B", title: "B", date: "", duration: "", notes: .text(source)))
+        try #require(content.copies.count == 2)
+        content.copies[1]()
+
+        #expect(pasteboard.string(forType: .string) == source)
+        content.copies[0]()
+        #expect(pasteboard.string(forType: .string) == "# A")
+    }
+
+    @Test func thePanelFollowsThePreviewAndBothClosesCloseIt() async {
+        let center = NotificationCenter()
+        let window = PreviewPanelSpy()
+        let source = PreviewSource()
+        let panelWindow = NSObject(), callsWindow = NSObject()
+        let panel = PreviewPanel(makePanel: { window }, copy: { _ in }, makeContent: ContentSpy().make)
+        let following = connectPreview(panel: panel, preview: { source.preview }, panelWindow: panelWindow,
+                                       callsWindow: callsWindow, center: center,
+                                       closePreview: { source.preview = nil; source.closes.append("preview") },
+                                       windowClosed: { source.preview = nil; source.closes.append("window") })
+        defer { following.cancel() }
+
+        source.preview = preview("A")
+        await window.waitForOrders(1)
+        #expect(window.title == "Саммари — A")
+
+        center.post(name: NSWindow.willCloseNotification, object: panelWindow)
+        await window.waitForOrders(2)
+        #expect(source.closes == ["preview"] && window.orders == ["front", "out"])
+
+        source.preview = preview("B")
+        await window.waitForOrders(3)
+        center.post(name: NSWindow.willCloseNotification, object: callsWindow)
+        await window.waitForOrders(4)
+        #expect(source.closes == ["preview", "window"] && window.orders == ["front", "out", "front", "out"])
     }
 
     @Test func theUtilityPanelFloatsHidesWithTheAppAndKeepsItsPlace() {
@@ -33,26 +101,44 @@ struct PreviewPanelTests {
         #expect(!panel.isReleasedWhenClosed)
         #expect(panel.minSize.width >= 320)
     }
-
-    @Test func copyingPutsTheMarkdownSourceOnThePasteboard() {
-        let pasteboard = NSPasteboard.withUniqueName()
-        defer { pasteboard.releaseGlobally() }
-        let source = "## Итоги\n\n- **важно**\n\n| a | b |\n|---|---|\n"
-
-        copyNotes(source, to: pasteboard)
-
-        #expect(pasteboard.string(forType: .string) == source)
-    }
 }
 
-private func preview(_ title: String) -> CallsPreview {
-    CallsPreview(id: title, title: title, date: "17.10 · 11:00", duration: "28 мин", notes: .text("# \(title)"))
+private func preview(_ title: String, notes: CallsPreview.Notes? = nil) -> CallsPreview {
+    CallsPreview(id: title, title: title, date: "17.10 · 11:00", duration: "28 мин", notes: notes ?? .text("# \(title)"))
+}
+
+@MainActor @Observable private final class PreviewSource {
+    var preview: CallsPreview?
+    @ObservationIgnored var closes: [String] = []
+}
+
+@MainActor private final class ContentSpy {
+    var states: [SummaryPreviewState] = []
+    var copies: [() -> Void] = []
+    var views: [NSView] = []
+    func make(_ state: SummaryPreviewState, copy: @escaping () -> Void) -> NSView {
+        states.append(state); copies.append(copy)
+        let view = NSView()
+        views.append(view)
+        return view
+    }
 }
 
 @MainActor private final class PreviewPanelSpy: PreviewPanelDriver {
     var title = ""
     var contentView: NSView?
-    var orders: [String] = []
+    private(set) var orders: [String] = [] {
+        didSet {
+            let ready = waiters.filter { $0.count <= orders.count }
+            waiters.removeAll { $0.count <= orders.count }
+            ready.forEach { $0.resume() }
+        }
+    }
+    private var waiters: [(count: Int, resume: () -> Void)] = []
     func orderFront(_ sender: Any?) { orders.append("front") }
     func orderOut(_ sender: Any?) { orders.append("out") }
+    func waitForOrders(_ count: Int) async {
+        if orders.count >= count { return }
+        await withCheckedContinuation { continuation in waiters.append((count, { continuation.resume() })) }
+    }
 }

@@ -19,7 +19,8 @@ public func compose(
     terminate: @escaping @Sendable () async -> Void,
     presentSettings: @escaping () -> Void = {},
     chooseCallsFolder: @escaping () async throws -> URL? = { nil },
-    summaryRuntime: SummaryRuntime.Runtime? = nil
+    summaryRuntime: SummaryRuntime.Runtime? = nil,
+    focusPreview: @escaping () -> Void = {}
 ) async -> AudelinMenu {
     let preferences = PreferencesStore(fileURL: preferencesURL)
     await createDefaultCallsFolder(preferences.read().callsFolder, default: Preferences().callsFolder)
@@ -58,7 +59,7 @@ public func compose(
                                   timeZone: timeZone, recordingState: { [weak menu] in menu?.state ?? .init() },
                                   location: { try await storage.location(id: $0) }, openFolder: openCallsFolder,
                                   present: presentCalls, summaryStatuses: { summaries.statuses },
-                                  notes: { try await summaryFiles.notes(call: $0) }))
+                                  notes: { try await summaryFiles.notes(call: $0) }, focusPreview: focusPreview))
     do { await summaries.recover(calls: try await storage.list().map(\.id)) }
     catch { boundary.log.write(.init(category: .session, message: "summary recovery listing failed")) }
     return menu

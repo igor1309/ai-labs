@@ -102,6 +102,23 @@ struct CallsPreviewWiringTests {
         }
     }
 
+    @Test func theEyeOfTheShownCallBringsThePanelForward() async throws {
+        let focused = Counter()
+        try await withComposition(focusPreview: { focused.count += 1 }) { rig in
+            let calls = try #require(rig.menu.calls)
+            try call(a, notes: "# A", in: rig.root)
+            await rig.menu.perform(.showCalls)
+            await wait(calls) { $0.rows.map(\.hasNotes) == [true] }
+
+            await calls.send(.preview(a))
+            await waitPreview(calls) { $0?.notes == .text("# A") }
+            #expect(focused.count == 0)
+
+            await calls.send(.preview(a))
+            #expect(focused.count == 1)
+        }
+    }
+
     @Test func unreadableNotesCarryTheReason() async throws {
         try await withComposition { rig in
             let calls = try #require(rig.menu.calls)
@@ -135,3 +152,5 @@ private func call(_ id: String, notes: String?, in root: URL, create: Bool = tru
 @MainActor private func waitPreview(_ calls: AudelinCalls, until predicate: (CallsPreview?) -> Bool) async {
     for await preview in Observations({ calls.preview }) where predicate(preview) { return }
 }
+
+@MainActor private final class Counter { var count = 0 }
