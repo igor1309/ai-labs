@@ -97,33 +97,47 @@ struct CallNotesSuppliedStateTests {
         host.window?.makeFirstResponder(nil)
     }
 
-    @Test func typingThroughObservedStateKeepsTextAndCaretInOrder() throws {
-        let model = TypingModel(state: try state(primary: .claudeCLI, fallback: .compatibleAPI))
+    @Test func typingThroughObservedStateKeepsTextAndCaretInOrder() async throws {
+        var initial = try state(primary: .claudeCLI, fallback: .compatibleAPI)
+        try changeDraft(&initial) { $0.runtimes[0].fields[0].value = "opus" }
+        let model = TypingModel(state: initial)
         let host = Offscreen.host(TypingView(model: model))
         _ = try #require(Offscreen.snapshot(host))
         let field = try input(.primary, .model, in: host)
         field.selectText(nil)
         let editor = try #require(field.currentEditor() as? NSTextView)
-        var expected = ""
-        for character in "claude-sonnet-4-5" {
+        editor.setSelectedRange(NSRange(location: 4, length: 0))
+        var expected = "opus"
+        for character in "ab" {
             editor.insertText(String(character), replacementRange: editor.selectedRange())
             // Exercise layout before the observed SwiftUI update is delivered.
             field.layoutSubtreeIfNeeded()
             _ = try #require(Offscreen.snapshot(host))
-            RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.01))
             expected.append(character)
+            #expect(editor.string == expected)
+            #expect(editor.selectedRange() == NSRange(location: expected.utf16.count, length: 0))
+            await finishInputTurn()
+            _ = try #require(Offscreen.snapshot(host))
+            #expect(field.stringValue == expected)
             #expect(editor.string == expected)
             #expect(editor.selectedRange() == NSRange(location: (expected as NSString).length, length: 0))
         }
+        editor.setSelectedRange(NSRange(location: 0, length: editor.string.utf16.count))
+        editor.insertText("claude-sonnet-4-5", replacementRange: editor.selectedRange())
+        _ = try #require(Offscreen.snapshot(host))
+        await finishInputTurn()
+        _ = try #require(Offscreen.snapshot(host))
         editor.setSelectedRange(NSRange(location: 7, length: 6))
         editor.insertText("opus", replacementRange: editor.selectedRange())
         _ = try #require(Offscreen.snapshot(host))
-        RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.01))
+        await finishInputTurn()
+        _ = try #require(Offscreen.snapshot(host))
         #expect(editor.string == "claude-opus-4-5")
         #expect(editor.selectedRange() == NSRange(location: 11, length: 0))
         editor.deleteBackward(nil)
         _ = try #require(Offscreen.snapshot(host))
-        RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.01))
+        await finishInputTurn()
+        _ = try #require(Offscreen.snapshot(host))
         #expect(editor.string == "claude-opu-4-5")
         #expect(editor.selectedRange() == NSRange(location: 10, length: 0))
         host.window?.makeFirstResponder(nil)
@@ -145,7 +159,7 @@ struct CallNotesSuppliedStateTests {
 
     private struct TypingView: View {
         var model: TypingModel
-        var body: some View { SettingsView(state: model.state, event: model.send) }
+        var body: some View { SettingsView(state: model.state, event: { event in Task { model.send(event) } }) }
     }
 
     @Test func acceptedMenuSelectionAndSubsequentActionsUseReplacementState() async throws {
