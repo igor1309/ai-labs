@@ -15,7 +15,9 @@ How a call is built
   take turns. Four AMI speakers map to the call's N: for N < 4 the least active are
   dropped and pauses over 1.5 s are shortened; for N > 4 the most active AMI speakers'
   stretches between their own pauses of 3 s or more go alternately to a second speaker.
-  Voices: each call speaker is a distinct reader from Russian LibriSpeech (RuLS); in a
+  Voices: each call speaker is a distinct Russian speaker, from Russian LibriSpeech (RuLS,
+  13 audiobook readers) or VoxForge Russian (32 volunteers with 3 or more submissions,
+  own microphones; a speaker whose audio runs out is heard again, reshuffled); in a
   quarter of the calls one speaker reads English (LibriSpeech test-clean) instead.
   A turn is filled with that reader's speech, cut from where their voice starts; a turn
   under 0.6 s takes a single short word-like burst of their speech (back-channel stand-in).
@@ -41,6 +43,7 @@ HERE = Path(__file__).resolve().parent
 DATA = HERE / "work" / "Datasets"
 AMI = DATA / "diar-forced-alignment" / "AMI"
 RULS = DATA / "ruls_data"
+VOXFORGE = DATA / "voxforge_ru"
 LIBRI = DATA / "LibriSpeech" / "test-clean"
 
 
@@ -50,12 +53,12 @@ def load(path):
     return np.frombuffer(out, dtype=np.float32).copy()
 
 
-def readers(root, exts):
-    """speaker id -> sorted utterance files; the speaker is the directory two levels up."""
+def readers(root, exts, part):
+    """speaker id -> sorted utterance files; the speaker is path component `part` under root."""
     by = {}
     for ext in exts:
         for f in root.rglob(f"*.{ext}"):
-            by.setdefault(f"{root.name}:{f.parent.parent.name}", []).append(f)
+            by.setdefault(f"{root.name}:{f.relative_to(root).parts[part]}", []).append(f)
     return {k: sorted(v) for k, v in sorted(by.items()) if len(v) >= 20}
 
 
@@ -81,15 +84,17 @@ class Voice:
     """A reader's speech, handed out in order, each piece starting where speech starts."""
 
     def __init__(self, files, rng):
-        self.files = list(files)
-        rng.shuffle(self.files)
+        self.all = list(files)
+        self.rng = rng
+        self.files = []
         self.buf = np.zeros(0, dtype=np.float32)
         self.used = []
 
     def _fill(self, n):
         while len(self.buf) < n:
-            if not self.files:
-                raise RuntimeError("reader ran out of speech")
+            if not self.files:  # a speaker with little audio is heard again, reshuffled
+                self.files = list(self.all)
+                self.rng.shuffle(self.files)
             f = self.files.pop()
             self.used.append(str(f.relative_to(DATA)))
             x = load(f)
@@ -285,7 +290,10 @@ def main():
     args = ap.parse_args()
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    ru, en, meetings = readers(RULS, ("wav", "flac")), readers(LIBRI, ("flac",)), ami_meetings()
+    # RuLS: <split>/audio/<book>/<reader>/*.wav; VoxForge: <user>/<submission>/wav/*.wav;
+    # LibriSpeech: <reader>/<chapter>/*.flac
+    ru = {**readers(RULS, ("wav",), 3), **readers(VOXFORGE, ("wav",), 0)}
+    en, meetings = readers(LIBRI, ("flac",), 0), ami_meetings()
     print(f"{len(ru)} Russian readers, {len(en)} English readers, {len(meetings)} AMI meetings")
     for n in range(2, 7):
         for k in range(args.per_count):
