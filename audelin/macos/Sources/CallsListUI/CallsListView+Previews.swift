@@ -20,3 +20,11 @@ private var sample: CallsListState {
     state.editing = .init(id: state.rows[0].id, title: state.rows[0].title)
     return CallsListView(state: state, event: { _ in }).frame(width: 920, height: 420)
 }
+#Preview("Notes · Previewed") {
+    var state = sample
+    state.rows[0].hasNotes = true
+    state.rows[2].hasNotes = true
+    state.selectedID = state.rows[0].id
+    state.previewedID = state.rows[0].id
+    return CallsListView(state: state, event: { _ in }).frame(width: 920, height: 420)
+}

@@ -97,6 +97,7 @@ public final class AudelinCalls {
             openFailure = nil
             inputs.send(.confirmDelete)
         case .cancelDelete: inputs.send(.cancelDelete)
+        case .select, .selectNext, .selectPrevious, .preview: break
         case let .open(id):
             guard !snapshot.busy else { return }
             editing = nil
