@@ -47,6 +47,7 @@ TARGETS = {
     "Composer": ("compose", "wires one recording's pieces\nbehind Session's ports", 1),
     "Reading": ("compose", "decides what the panel shows", 2),
     "CallsListUI": ("ui", "lists, opens, renames and deletes calls", 4),
+    "NotesMarkdown": ("ui", "renders call notes from Markdown", 5),
     "Recordings": ("machines", "confirms and serialises call actions", 5),
     "Calls": ("storage", "lists and manages recorded folders", 7),
     "PanelUI": ("ui", "the live panel and its transcript", 0),

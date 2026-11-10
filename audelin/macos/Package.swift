@@ -31,6 +31,7 @@ let package = Package(
         .library(name: "CoreAudioProcessBinding", targets: ["CoreAudioProcessBinding"]),
         .library(name: "FillIn", targets: ["FillIn"]),
         .library(name: "GlassLedger", targets: ["GlassLedger"]),
+        .library(name: "NotesMarkdown", targets: ["NotesMarkdown"]),
         .library(name: "LiveAudio", targets: ["LiveAudio"]),
         .library(name: "LiveText", targets: ["LiveText"]),
         .library(name: "MenuBar", targets: ["MenuBar"]),
@@ -54,6 +55,8 @@ let package = Package(
     dependencies: [
         // Trimmed copy of FluidAudio 0.17.7: audelin/scripts/vendor-fluidaudio.sh.
         .package(path: "Vendor/FluidAudio"),
+        // Apache-2.0, with cmark-gfm under BSD-2: notices in audelin/THIRD-PARTY-NOTICES.md.
+        .package(url: "https://github.com/swiftlang/swift-markdown.git", from: "0.6.0"),
     ],
     targets: [
         .target(name: "SummarySettings"),
@@ -78,6 +81,8 @@ let package = Package(
         .target(name: "Calls", dependencies: ["CallFolderName"]),
         .target(name: "Recordings"),
         .target(name: "CallsListUI", dependencies: ["GlassLedger"]),
+        .target(name: "NotesMarkdown", dependencies: [.product(name: "Markdown", package: "swift-markdown")]),
+        .testTarget(name: "NotesMarkdownTests", dependencies: ["NotesMarkdown"]),
         .testTarget(name: "CallsTests", dependencies: ["Calls", "TrackFile", "BlockingTestWork"]),
         .testTarget(name: "RecordingsTests", dependencies: ["Recordings"]),
         .testTarget(name: "CallsListUITests", dependencies: ["CallsListUI", "GlassLedger", "RenderedText"]),
