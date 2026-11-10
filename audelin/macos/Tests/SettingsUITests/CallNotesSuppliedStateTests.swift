@@ -1,4 +1,5 @@
 import AppKit
+import Observation
 import RenderedText
 import SwiftUI
 import Testing
@@ -94,6 +95,83 @@ struct CallNotesSuppliedStateTests {
         #expect(editor.selectedRange() == NSRange(location: 3, length: 0))
         #expect(events == [.editNotesField(.primary, .model, "soxnnet")])
         host.window?.makeFirstResponder(nil)
+    }
+
+    @Test func typingThroughObservedStateKeepsTextAndCaretInOrder() async throws {
+        var initial = try state(primary: .claudeCLI, fallback: .compatibleAPI)
+        try changeDraft(&initial) { $0.runtimes[0].fields[0].value = "opus" }
+        let model = TypingModel(state: initial)
+        let host = Offscreen.host(TypingView(model: model))
+        // Offscreen.host returns the content view; retain its window across awaits.
+        let window = try #require(host.window)
+        defer { window.makeFirstResponder(nil) }
+        _ = try #require(Offscreen.snapshot(host))
+        let field = try input(.primary, .model, in: host)
+        field.selectText(nil)
+        let editor = try #require(field.currentEditor() as? NSTextView)
+        editor.setSelectedRange(NSRange(location: 4, length: 0))
+        var expected = "opus"
+        for character in "ab" {
+            editor.insertText(String(character), replacementRange: editor.selectedRange())
+            // Exercise layout before the observed SwiftUI update is delivered.
+            field.layoutSubtreeIfNeeded()
+            _ = try #require(Offscreen.snapshot(host))
+            expected.append(character)
+            #expect(editor.string == expected)
+            #expect(editor.selectedRange() == NSRange(location: expected.utf16.count, length: 0))
+            await finishInputTurn()
+            await (try #require(model.pending)).value
+            _ = try #require(Offscreen.snapshot(host))
+            #expect(try draft(model.state).runtimes[0].fields[0].value == expected)
+            #expect(field.stringValue == expected)
+            #expect(editor.string == expected)
+            #expect(editor.selectedRange() == NSRange(location: (expected as NSString).length, length: 0))
+        }
+        editor.setSelectedRange(NSRange(location: 0, length: editor.string.utf16.count))
+        editor.insertText("claude-sonnet-4-5", replacementRange: editor.selectedRange())
+        _ = try #require(Offscreen.snapshot(host))
+        await finishInputTurn()
+        await (try #require(model.pending)).value
+        _ = try #require(Offscreen.snapshot(host))
+        editor.setSelectedRange(NSRange(location: 7, length: 6))
+        editor.insertText("opus", replacementRange: editor.selectedRange())
+        _ = try #require(Offscreen.snapshot(host))
+        await finishInputTurn()
+        await (try #require(model.pending)).value
+        _ = try #require(Offscreen.snapshot(host))
+        #expect(editor.string == "claude-opus-4-5")
+        #expect(editor.selectedRange() == NSRange(location: 11, length: 0))
+        editor.deleteBackward(nil)
+        _ = try #require(Offscreen.snapshot(host))
+        await finishInputTurn()
+        await (try #require(model.pending)).value
+        _ = try #require(Offscreen.snapshot(host))
+        #expect(editor.string == "claude-opu-4-5")
+        #expect(editor.selectedRange() == NSRange(location: 10, length: 0))
+        host.window?.makeFirstResponder(nil)
+    }
+
+    @Observable @MainActor
+    final class TypingModel {
+        var state: SettingsState
+        @ObservationIgnored var pending: Task<Void, Never>?
+        init(state: SettingsState) { self.state = state }
+        func enqueue(_ event: SettingsEvent) {
+            pending = Task { send(event) }
+        }
+        func send(_ event: SettingsEvent) {
+            guard case let .editNotesField(slot, field, value) = event,
+                  case var .loaded(draft) = state.callNotes,
+                  let r = draft.runtimes.firstIndex(where: { $0.id == slot }),
+                  let f = draft.runtimes[r].fields.firstIndex(where: { $0.id == field }) else { return }
+            draft.runtimes[r].fields[f].value = value
+            state.callNotes = .loaded(draft)
+        }
+    }
+
+    private struct TypingView: View {
+        var model: TypingModel
+        var body: some View { SettingsView(state: model.state, event: model.enqueue) }
     }
 
     @Test func acceptedMenuSelectionAndSubsequentActionsUseReplacementState() async throws {

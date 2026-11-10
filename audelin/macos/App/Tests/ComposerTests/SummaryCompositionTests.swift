@@ -81,7 +81,7 @@ struct SummaryCompositionTests {
                 let transcript = try await transcriptText(of: rig)
                 #expect(transcript.contains("mine final"))
                 let output = try await read(rig.folder().appendingPathComponent("summary.md"))
-                #expect(output.contains("# Topic"))
+                #expect(output.contains("## What this was about"))
                 #expect(output.contains("None recorded."))
                 rig.menu.calls?.show()
                 for await state in Observations({ rig.menu.calls!.state }) where !state.rows.isEmpty {
@@ -189,7 +189,7 @@ private actor ControlledHTTP: HTTPRequesting {
             do { try await waitForCancellation() }
             catch { cancelled = true; throw Failure.cancelled }
         }
-        let notes = #"{"language":"en","topic":"Synthetic meeting","keyPoints":["mine final and theirs final"],"decisions":[],"actions":[]}"#
+        let notes = "## What this was about\n\nSynthetic meeting\n\n## Key points\n\n- mine final and theirs final\n\n## Decisions\n\nNone recorded.\n\n## Actions\n\nNone recorded.\n"
         return .init(status: 200, body: try JSONSerialization.data(withJSONObject: ["choices": [["finish_reason": "stop", "message": ["content": notes]]]]))
     }
 }
