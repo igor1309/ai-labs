@@ -11,30 +11,30 @@ transcript the replacing fake holds. The gate's own rule is `BleedGateTests`.
 
 ## S-1 A call without bleed is kept as recorded
 
-Microphone and call words with no shared word within 2 s. Evidence: Missing (`BleedCleanupTests.aCallWithoutBleedIsKeptAsRecorded`).
+Microphone and call words with no shared word within 2 s. Evidence: `BleedCleanupTests.aCallWithoutBleedIsKeptAsRecorded`.
 
 ## S-2 A call with bleed has its microphone side replaced
 
 Microphone words repeating the call side's at the same times, above 3 a
 minute; the replacing fake holds the call side unchanged and the heard words.
-Evidence: Missing (`BleedCleanupTests.aCallWithBleedHasItsMicrophoneSideReplaced`).
+Evidence: `BleedCleanupTests.aCallWithBleedHasItsMicrophoneSideReplaced`.
 
 ## S-3 A call of no length is kept as recorded
 
-Bleeding words with a length of zero. Evidence: Missing (`BleedCleanupTests.aCallOfNoLengthIsKeptAsRecorded`).
+Bleeding words with a length of zero. Evidence: `BleedCleanupTests.aCallOfNoLengthIsKeptAsRecorded`.
 
 ## S-4 Cleaning failing keeps the raw transcript
 
-The cleaning fake fails. Evidence: Missing (`BleedCleanupTests.cleaningFailingKeepsTheRawTranscript`).
+The cleaning fake fails. Evidence: `BleedCleanupTests.cleaningFailingKeepsTheRawTranscript`.
 
 ## S-5 Hearing failing keeps the raw transcript
 
-The hearing fake fails. Evidence: Missing (`BleedCleanupTests.hearingFailingKeepsTheRawTranscript`).
+The hearing fake fails. Evidence: `BleedCleanupTests.hearingFailingKeepsTheRawTranscript`.
 
 ## S-6 Hearing nothing keeps the raw transcript
 
-The hearing fake returns no words. Evidence: Missing (`BleedCleanupTests.hearingNothingKeepsTheRawTranscript`).
+The hearing fake returns no words. Evidence: `BleedCleanupTests.hearingNothingKeepsTheRawTranscript`.
 
 ## S-7 Replacing failing keeps the raw transcript
 
-The replacing fake fails after recording its call. Evidence: Missing (`BleedCleanupTests.replacingFailingKeepsTheRawTranscript`).
+The replacing fake fails after recording its call. Evidence: `BleedCleanupTests.replacingFailingKeepsTheRawTranscript`.
