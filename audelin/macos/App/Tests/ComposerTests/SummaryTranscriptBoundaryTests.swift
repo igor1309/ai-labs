@@ -18,7 +18,7 @@ struct SummaryTranscriptBoundaryTests {
         let captured = AsyncStream<[Job.Entry]>.makeStream()
         defer { captured.continuation.finish() }
         let runs = CleanupRuns()
-        let cleanup = TranscriptCleanup(timeline: CaptureTimeline(),
+        let cleanup = TranscriptCleanup(
             recording: .init(microphoneURL: URL(fileURLWithPath: "/mic"), callURL: URL(fileURLWithPath: "/call")),
             duration: { 60 }, cleaning: CleaningStub { _ in Issue.record("Unexpected cleaning"); return [] },
             hearing: HearingStub { _ in Issue.record("Unexpected hearing"); return nil }, sink: TestLogSink())

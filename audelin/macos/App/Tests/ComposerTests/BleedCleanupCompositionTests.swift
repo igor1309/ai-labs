@@ -170,62 +170,6 @@ struct BleedCleanupCompositionTests {
         }
     }
 
-    @Test func unequalCaptureStartsGateBleedAndOffsetHeardMicrophone() async throws {
-        try await withComposeFolder { root in
-            let clock = FixtureClock(), runs = CleanupRuns()
-            let summaries = AsyncStream<SummaryResult>.makeStream()
-            defer { summaries.continuation.finish(); clock.finish() }
-            var boundary = testBoundary()
-            boundary.time = clock.time
-            let cleaningCalls = Values<CleanupRecording>()
-            boundary.bleedCleaning = CleaningStub { cleaningCalls.append($0); return [0] }
-            boundary.bleedHearing = HearingStub { _ in [segment("cleaned answer", start: 2)] }
-            let replacements = Values<[TranscriptSegment]>()
-            boundary.transcripts = ReplacementStorage(fails: false, replacement: { replacements.append($0) })
-            let pieces = SessionPieces(
-                folder: CallFolder(callsURL: root, now: { Date(timeIntervalSince1970: 0) }, timeZone: .gmt,
-                    occupiedNames: { [] }, disk: .system), folderTitle: nil,
-                processes: CallAppProcesses(app: "", list: EmptyProcessList()), boundary: boundary, cleanupRuns: runs,
-                summaries: .init(waiting: { _ in }, completed: { folder, entries, final, usable in
-                    summaries.continuation.yield(.init(folder: folder, entries: entries, final: final, usable: usable))
-                }))
-            let folder = try await pieces.create()
-            try await pieces.openTrack(.microphone, in: folder)
-            try await pieces.openTrack(.call, in: folder)
-            clock.advance(4)
-            try await pieces.startMicrophoneCapture()
-            clock.advance(10)
-            try await pieces.startCallCapture(selection: .everyAppButAudelin)
-            try await pieces.stopCapture(.microphone)
-            try await pieces.stopCapture(.call)
-            try await pieces.closeTrack(.microphone)
-            try await pieces.closeTrack(.call)
-            try await pieces.openTranscript(in: folder)
-            let file = try #require(await pieces.transcriptFile)
-            // Both sets of words occur at session second 15.
-            let raw = try await publishedCall(status: .finished,
-                mine: [.init(text: segment("shared words here", start: 11))],
-                theirs: [.init(text: segment("shared words here", start: 1))])
-            try await file.write(raw)
-            await file.close()
-            var results = summaries.stream.makeAsyncIterator()
-            let summary = try #require(await results.next())
-            await runs.shutdown()
-            #expect(cleaningCalls.all.count == 1)
-            #expect(replacements.all == [[TranscriptSegment(id: 2, start: 6, end: 7,
-                words: [.init("cleaned", start: 6, end: 6.1), .init("answer", start: 6.1, end: 6.2)],
-                settledCount: 2)]])
-            #expect(summary.entries == [
-                .init(label: "Them", time: "1.0", text: "shared words here"),
-                .init(label: "Me", time: "6.0", text: "cleaned answer"),
-            ])
-            let made = try await pieces.places(in: folder)
-            let saved = try String(contentsOf: made.transcriptURL, encoding: .utf8)
-            #expect(saved.contains("00:00:06\ncleaned answer"))
-            #expect(!saved.contains("00:00:11"))
-        }
-    }
-
     @MainActor @Test
     func sessionClosesWhileCleanupIsHeld() async throws {
         let started = Signal(), release = Signal(), replaced = Signal()

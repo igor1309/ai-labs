@@ -13,7 +13,6 @@ public struct CleanupRecording: Equatable, Sendable {
 
 /// Runs on the closed snapshot; the summary follows the successful atomic replacement.
 struct TranscriptCleanup: Sendable {
-    let timeline: CaptureTimeline
     let recording: CleanupRecording
     let duration: @Sendable () -> Double
     let cleaning: any MicrophoneCleaning<CleanupRecording, [Float]>
@@ -24,7 +23,7 @@ struct TranscriptCleanup: Sendable {
         let replacement = CleanupReplacement(replace: replace)
         let cleanup = BleedCleanup(
             gate: BleedGate(), cleaning: cleaning,
-            hearing: NonemptyHearing(base: hearing, offset: timeline.offset(.microphone)), replacing: replacement
+            hearing: NonemptyHearing(base: hearing), replacing: replacement
         )
         let outcome = await LoggingCleanup(base: cleanup, sink: sink).run(
             recording: recording,
@@ -38,7 +37,7 @@ struct TranscriptCleanup: Sendable {
 
     private func words(in state: CallState, speaker: CallState.Speaker) -> [Word] {
         state.entries.filter { $0.speaker == speaker }.flatMap { entry in
-            entry.text.words.map { Word(start: $0.start + timeline.offset(speaker == .mine ? .microphone : .call), text: $0.text) }
+            entry.text.words.map { Word(start: $0.start, text: $0.text) }
         }
     }
 }
@@ -58,13 +57,12 @@ private actor CleanupReplacement: MicrophoneReplacing {
 
 private struct NonemptyHearing: CleanedHearing {
     let base: any CleanedHearing<[Float], [TranscriptSegment]>
-    let offset: Double
 
     func hear(_ samples: [Float]) async throws -> [TranscriptSegment]? {
         try Task.checkCancellation()
         guard let text = try await base.hear(samples), text.contains(where: { !$0.words.isEmpty }) else { return nil }
         try Task.checkCancellation()
-        return text.map { $0.offset(by: offset) }
+        return text
     }
 }
 

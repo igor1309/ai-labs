@@ -29,7 +29,6 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
     let news = AsyncStream<SessionEvent>.makeStream()
     nonisolated let transcriptFailures: TranscriptFailureReport
     let cleanupRuns: CleanupRuns
-    let timeline = CaptureTimeline()
     let summaries: SummaryCallbacks
     let folder: CallFolder
     let folderTitle: String?
@@ -119,9 +118,9 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
         LiveNameBoard.shared.callTrack(made.callURL)
         let file = try await boundary.transcripts.open(at: made.transcriptURL, sink: boundary.log)
         transcriptFile = SummaryTranscript(base: file, folder: made.url, callbacks: summaries, cleanup: TranscriptCleanup(
-            timeline: timeline, recording: CleanupRecording(microphoneURL: made.microphoneURL, callURL: made.callURL),
-            duration: { [timeline, microphone = sides[.microphone]!.audio, call = sides[.call]!.audio] in
-                max(timeline.offset(.microphone) + microphone.capturedThrough, timeline.offset(.call) + call.capturedThrough)
+            recording: CleanupRecording(microphoneURL: made.microphoneURL, callURL: made.callURL),
+            duration: { [microphone = sides[.microphone]!.audio, call = sides[.call]!.audio] in
+                max(microphone.capturedThrough, call.capturedThrough)
             }, cleaning: boundary.bleedCleaning, hearing: boundary.bleedHearing, sink: boundary.log
         ), runs: cleanupRuns)
     }
