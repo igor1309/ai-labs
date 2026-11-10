@@ -47,11 +47,51 @@ drains recording, retains pending handoffs, cancels and joins active summary
 resources, then allows termination. Root storage integration coordinates
 publication with call rename, deletion and calls-folder moves.
 
+## Transcript pipeline
+
+A call's text flows from the recogniser to its readers: Live text turns what
+the recogniser hears into segments; Fill-in and Side text make one side's text
+from missed and live audio; Call text merges the two sides in call order; the
+transcript file, the panel and the summary read the result.
+
+The components between the producer and the readers are operators, as in
+Combine: each is generic over the content it carries and constrains it only by
+what it reads. Fill-in, Side text and Call text read a segment's identity and
+its start and end, to decide what is final, to order and to merge; each
+declares that much as a requirement of its own (rule 1) and never names the
+words. Transcript writing already works this way. The content type is defined
+once, where Live text produces it, and opened only by its readers. The root
+chains the operators, as a Combine pipeline is chained where it is subscribed,
+and conforms the one content type to each operator's requirement instead of
+copying it field by field at every boundary.
+
+So a change to what a transcript holds reaches only its producer and the
+readers that use it. Rule 3 holds for what a component reads, not for content
+it relays.
+
+Live text keeps each segment's words with their times, as the recogniser
+reports them, instead of joining them into strings: they are what the call
+said and when, which a reader may need word by word.
+
+### To fix before new work
+
+The code does not yet follow this section. Measured on 2026-11-10: Fill-in,
+Side text and Call text each declare the whole text (identity, times, settled
+and pending strings), read only its identity and times, and the root rebuilds
+it field by field at seven boundaries. Live text drops word times. In order:
+
+1. Make Fill-in, Side text and Call text generic over their content, with the
+   root conforming one content type to each. No behaviour changes.
+2. Live text keeps each segment's words with their times.
+3. Split Transcript file: the adapter alone owns the Markdown and the disk, with
+   creating (never over a file) and replacing whole as separate operations; a
+   component of its own owns writing during a call.
+
 ## Bleed cleanup
 
 After a call on speakers, far-side speech heard by the microphone appears in
-the transcript as the user's. One new responsibility answers it: decide from a
-call's two finished transcripts whether the far side leaked, and if so have the
+the transcript as the user's. One new responsibility answers it: decide from the
+words of a call's two sides, with their times (Transcript pipeline), whether the far side leaked, and if so have the
 microphone side recognised again from a cleaned microphone and replaced.
 
 BleedCleanup owns that responsibility and nothing else. It is a plain component,
@@ -62,14 +102,14 @@ microphone against the call track, hear the cleaned samples, replace the
 microphone side of the saved transcript. Any port failing, or hearing nothing,
 keeps the raw transcript.
 
-No other component is added. Cleaning is one call to FluidAudio's LocalVQE
+Cleaning is one call to FluidAudio's LocalVQE
 manager, which downloads and loads its model, fits the reference to the
 microphone and returns 16 kHz samples; the root answers the port with it,
 passing the two tracks as recorded. Hearing is Live text over the Parakeet
 recogniser, composed by the root over those samples, as Fill-in hears missed
-audio. The replacement belongs to Transcript file, the transcript's only writer.
+audio. The replacement is Transcript file's replacing whole, the transcript's only writer.
 
 The root builds BleedCleanup with those answers and runs it on each recording's
 closed transcript. Summary submission waits for its outcome instead of the
-close, so notes never quote the far side as the user. Logging of a kept raw
+close and is handed the transcript it produced, cleaned or raw. Logging of a kept raw
 transcript is a root decorator.
