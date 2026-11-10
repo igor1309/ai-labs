@@ -1,4 +1,5 @@
 import Foundation
+import BleedCleanup
 
 /// Audio at the composition's edge, before recording or recognition owns it.
 public struct CaptureBuffer: Equatable, Sendable {
@@ -121,6 +122,8 @@ public protocol RecordingStorage: Sendable {
 
 /// Everything a caller replaces when running the same composition elsewhere.
 public struct ComposerBoundary: Sendable {
+    public var bleedCleaning: any MicrophoneCleaning<CleanupRecording, [Float]>
+    public var bleedHearing: any CleanedHearing<[Float], [TranscriptSegment]>
     public var capturePersistence: CapturePersistence
     public var microphone: any MicrophoneSource
     public var callAudio: any CallAudioSource
@@ -139,7 +142,10 @@ public struct ComposerBoundary: Sendable {
                 recognizers: any RecognizerSource, processes: any CallProcessSource, access: any CallAudioAccessSource,
                 microphonePermission: any MicrophonePermission, capacity: any FolderCapacity,
                 time: any ComposerClock, log: any LogSink, intervals: ProfileIntervals,
-                recordings: any RecordingStorage, transcripts: any TranscriptStorage = FileTranscriptStorage()) {
+                recordings: any RecordingStorage,
+                bleedCleaning: any MicrophoneCleaning<CleanupRecording, [Float]>,
+                bleedHearing: any CleanedHearing<[Float], [TranscriptSegment]>, transcripts: any TranscriptStorage = FileTranscriptStorage()) {
+        self.bleedCleaning = bleedCleaning; self.bleedHearing = bleedHearing
         self.transcripts = transcripts
         self.capturePersistence = capturePersistence
         self.microphone = microphone; self.callAudio = callAudio; self.recognizers = recognizers

@@ -79,6 +79,7 @@ public final class AudelinMenu {
         sink: any LogSink,
         presentPanel: @escaping (Bool) -> Void,
         sleep: @escaping @Sendable (Duration) async throws -> Void,
+        cleanupRuns: CleanupRuns,
         summaries: AudelinSummaries? = nil
     ) async {
 
@@ -89,11 +90,12 @@ public final class AudelinMenu {
         let application: MenuApplication?
         do {
             let recording = try await AudelinRecording(preferences: storage, occupiedCallNames: occupiedCallNames, boundary: boundary,
-                                                       processes: processes, panel: panel, summaries: summaries?.callbacks(timeZone: boundary.time.timeZone()) ?? .disabled)
+                                                       processes: processes, panel: panel, cleanupRuns: cleanupRuns, summaries: summaries?.callbacks(timeZone: boundary.time.timeZone()) ?? .disabled)
             application = MenuApplication(
                 states: { await recording.inputs.states() }, failures: recording.detectionFailures,
                 send: { await recording.inputs.send($0) },
                 quit: { await Composer.quit(recording.lifecycle(terminate: {
+                    await cleanupRuns.shutdown()
                     await summaries?.shutdown()
                     await terminate()
                 })) },
@@ -115,7 +117,7 @@ public final class AudelinMenu {
         self.openURL = openURL
         self.reserveStorage = application?.reserveStorage ?? { false }
         self.releaseStorage = application?.releaseStorage ?? {}
-        self.quit = application?.quit ?? { await summaries?.shutdown(); await terminate() }
+        self.quit = application?.quit ?? { await cleanupRuns.shutdown(); await summaries?.shutdown(); await terminate() }
         self.sendPanelEvent = application?.sendPanel ?? { _ in }
         if let application {
             panelObservation = Task { [weak self, states = application.panelStates] in

@@ -1,6 +1,7 @@
 import CryptoKit
 import Foundation
 import SummaryJobs
+import TranscriptFormat
 
 struct SummaryCallbacks: Sendable {
     var waiting: @Sendable (URL) async -> Void
@@ -13,20 +14,19 @@ actor SummaryTranscript: SessionTranscriptFile {
     private let folder: URL
     private let callbacks: SummaryCallbacks
     private var state = Handoff()
-    init(base: any SessionTranscriptFile, folder: URL, callbacks: SummaryCallbacks) {
+    private var last: CallState?
+    private let cleanup: TranscriptCleanup
+    private let runs: CleanupRuns
+    init(base: any SessionTranscriptFile, folder: URL, callbacks: SummaryCallbacks, cleanup: TranscriptCleanup, runs: CleanupRuns) {
+        self.cleanup = cleanup
+        self.runs = runs
         self.base = base; self.folder = folder; self.callbacks = callbacks
     }
     func write(_ text: CallState) async throws {
         do {
             try await base.write(text)
-            let entries = text.entries.compactMap { entry -> Job.Entry? in
-                let settled = entry.text.settledText
-                let pending = entry.text.pendingText
-                let words = [settled, pending].filter { !$0.isEmpty }.joined(separator: " ")
-                guard !words.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
-                return .init(label: entry.speaker == .mine ? "Me" : "Them",
-                             time: String(entry.text.start), text: words)
-            }
+            last = text
+            let entries = summaryEntries(Transcript.segments(from: text))
             // Actual recognized words remain usable even when the other track failed.
             state = Handoff.reduce(state, .wrote(entries, usable: !entries.isEmpty)).0
         } catch {
@@ -39,8 +39,23 @@ actor SummaryTranscript: SessionTranscriptFile {
         let (next, effect) = Handoff.reduce(state, .closed)
         state = next
         if case let .offer(entries, finalWrite, usable) = effect {
-            await callbacks.completed(folder, entries, finalWrite, usable)
+            if finalWrite, let last {
+                await runs.start(raw: last, cleanup: cleanup, file: base, folder: folder, callbacks: callbacks)
+            } else {
+                await callbacks.completed(folder, entries, finalWrite, usable)
+            }
         }
+    }
+    func replaceMicrophone(in state: CallState, with segments: [TranscriptSegment]) async throws {
+        try await base.replaceMicrophone(in: state, with: segments)
+    }
+}
+
+func summaryEntries(_ segments: [TranscriptFormat.Segment]) -> [Job.Entry] {
+    segments.compactMap { segment in
+        let words = [segment.settled, segment.pending].filter { !$0.isEmpty }.joined(separator: " ")
+        guard !words.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+        return .init(label: segment.side == .mine ? "Me" : "Them", time: String(segment.start), text: words)
     }
 }
 

@@ -8,7 +8,7 @@ import Synchronization
 func composeRecording(
     preferences: PreferencesStore, occupiedCallNames: @escaping @Sendable () throws -> [String],
     callApp: RecordingCallApp, processes: CoreAudioProcesses,
-    boundary: ComposerBoundary, panel: AudelinPanel, summaries: SummaryCallbacks = .disabled
+    boundary: ComposerBoundary, panel: AudelinPanel, cleanupRuns: CleanupRuns, summaries: SummaryCallbacks = .disabled
 ) async -> RecordingInputs {
     let initial = RecordingState(automatic: preferences.read().automaticRecording)
     let access = accessPolicy(boundary.access)
@@ -18,7 +18,7 @@ func composeRecording(
     let sessions = RecordingSessions(preferences: preferences, occupiedCallNames: occupiedCallNames, callApp: callApp, processes: processes, boundary: boundary, report: { id, report in
         guard let recording = destination.withLock({ $0 }) else { return }
         await recording.send(.sessionReported(id: id, report))
-    }, panel: panel, summaries: summaries)
+    }, panel: panel, cleanupRuns: cleanupRuns, summaries: summaries)
     let log = { @Sendable state in StateLog(sink: sink).recording(state) }
     log(initial)
     let model = await makeRecording(initial: initial, session: LoggingRecordingSession(base: sessions, sink: sink), log: log, callAudioReady: {

@@ -5,17 +5,21 @@ import struct CoreAudioProcessBinding.CoreAudioBinding
 import protocol CoreAudioProcesses.CallClock
 import struct CoreAudioProcesses.ContinuousCallClock
 import Foundation
+import FluidAudio
 import LiveText
 import ParakeetRecognizer
 
 func makeRealBoundary() async -> ComposerBoundary {
     let access = await makeCallAudioAccess()
+    let recognizers = RealRecognizerSource(log: SystemLogSink())
     return ComposerBoundary(
         capturePersistence: .recorded,
-        microphone: RealMicrophone(), callAudio: RealCallAudio(), recognizers: RealRecognizerSource(log: SystemLogSink()),
+        microphone: RealMicrophone(), callAudio: RealCallAudio(), recognizers: recognizers,
         processes: RealProcessSource(), access: RealCallAudioAccess(policy: access),
         microphonePermission: SystemMicrophonePermission(), capacity: DiskCapacity(), time: RealClock(), log: SystemLogSink(), intervals: .systemIntervals,
-        recordings: FileRecordingStorage()
+        recordings: FileRecordingStorage(), bleedCleaning: LocalVqeCleaning(makeManager: { try await LocalVqeManager() }, process: { manager, microphone, call in
+            try await manager.process(micURL: microphone, referenceURL: call)
+        }), bleedHearing: CleanupHearing(recognizers: recognizers)
     )
 }
 

@@ -20,6 +20,19 @@ enum Transcript {
         )
     }
 
+    static func replacingMicrophone(
+        in state: CallState, with heard: [TranscriptSegment], names: LiveNameBoard.Names? = nil
+    ) -> [TranscriptFormat.Segment] {
+
+        let call = state.entries.filter { $0.speaker == .theirs }.map { entry in
+            segment(from: entry, speaker: names.flatMap { board in board.rows[entry.text.id].flatMap { board.ids[$0] } })
+        }
+        let microphone = heard.map {
+            TranscriptFormat.Segment(side: .mine, start: $0.start, settled: $0.settledText, pending: $0.pendingText)
+        }
+        return (call + microphone).sorted { $0.start < $1.start }
+    }
+
     /// Live names go to the file as tentative speakers; the after-call pass replaces them.
     static func speakers(_ names: LiveNameBoard.Names) -> [TranscriptFormat.Speaker] {
 

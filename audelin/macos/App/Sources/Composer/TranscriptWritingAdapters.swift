@@ -28,6 +28,9 @@ public protocol SessionTranscriptFile: Sendable {
     func write(_ state: CallState) async throws
 
     func close() async
+
+    /// Replaces the closed transcript atomically; a failure keeps its previous bytes.
+    func replaceMicrophone(in state: CallState, with segments: [TranscriptSegment]) async throws
 }
 
 struct PacedTextSaving<Value: Sendable>: TextSaving {
@@ -70,6 +73,7 @@ actor WritingTranscript: SessionTranscriptFile {
     private var format: any TranscriptRenderer
     private var replaceNext = false
     private var closed = false
+    private var closedNames: LiveNameBoard.Names?
     private var last: CallState?
 
     init(file: any TranscriptBytes, format: any TranscriptRenderer, names: LiveNameBoard, sink: any LogSink) {
@@ -109,6 +113,17 @@ actor WritingTranscript: SessionTranscriptFile {
         sink.write(.init(category: .session, message: "transcript saved finalCount=\(finalCount)"))
     }
 
+    func replaceMicrophone(in state: CallState, with segments: [TranscriptSegment]) async throws {
+
+        let board = closedNames ?? names.snapshot()
+        var format = TranscriptFormat()
+        let rendering = try format.render(
+            Composer.Transcript.replacingMicrophone(in: state, with: segments, names: board),
+            speakers: Composer.Transcript.speakers(board)
+        )
+        try await file.replace(rendering.chunks, finalLength: rendering.finalLength)
+    }
+
     /// Runs the after-call pass first, so confirmed names replace the live guesses before
     /// the file is sealed. A failed pass keeps the tentative names.
     func close() async {
@@ -127,6 +142,7 @@ actor WritingTranscript: SessionTranscriptFile {
                 sink.write(.init(category: .session, message: "after-call names failed: \(error)"))
             }
         }
+        closedNames = names.snapshot()
         closed = true
         await file.close()
     }
