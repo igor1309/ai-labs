@@ -1,4 +1,3 @@
-import struct CallText.State
 import Synchronization
 
 /// Text states for a reader that may fall behind, keeping only what it needs:
@@ -9,19 +8,19 @@ final class NewestText: Sendable {
 
     private struct Buffer {
 
-        var states: [State] = []
-        var waiter: CheckedContinuation<State?, Never>?
+        var states: [CallState] = []
+        var waiter: CheckedContinuation<CallState?, Never>?
         var finished = false
     }
 
     private let buffer = Mutex(Buffer())
 
-    var stream: AsyncStream<State> {
+    var stream: AsyncStream<CallState> {
 
         AsyncStream(unfolding: { [self] in await next() })
     }
 
-    func yield(_ state: State) {
+    func yield(_ state: CallState) {
 
         buffer.withLock { buffer in
             guard !buffer.finished else { return }
@@ -45,7 +44,7 @@ final class NewestText: Sendable {
         }
     }
 
-    private func next() async -> State? {
+    private func next() async -> CallState? {
 
         await withTaskCancellationHandler {
             await withCheckedContinuation { continuation in

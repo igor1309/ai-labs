@@ -35,14 +35,14 @@ private actor ScriptedText: LiveText {
 
     init(_ script: [[Text]]) { self.script = script }
 
-    func hear(_ audio: Audio) -> TextUpdate { TextUpdate(final: [], tail: script.isEmpty ? [] : script.removeFirst()) }
+    func hear(_ audio: Audio) -> TextUpdate<Text> { TextUpdate(final: [], tail: script.isEmpty ? [] : script.removeFirst()) }
     func cancelHearing() {}
-    func finish() -> TextUpdate { TextUpdate(final: [], tail: []) }
+    func finish() -> TextUpdate<Text> { TextUpdate(final: [], tail: []) }
     func stop() {}
 }
 
 private struct NoFill: FillingIn {
 
-    func fillIn(from: Double, receive: @escaping @Sendable (FilledText) async -> Void) {}
+    func fillIn(from: Double, receive: @escaping @Sendable (FilledText<Text>) async -> Void) {}
     func abandon() {}
 }

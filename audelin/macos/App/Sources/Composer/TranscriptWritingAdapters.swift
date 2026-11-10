@@ -1,5 +1,5 @@
+import CallDiarizer
 import Foundation
-import struct CallText.State
 import Session
 import Synchronization
 import TranscriptFile
@@ -13,7 +13,7 @@ struct WritingCallText: TranscriptWriting.CallText {
 
     init(text: CallReader) { self.text = text }
 
-    var updates: AsyncStream<State> { text.updates }
+    var updates: AsyncStream<CallState> { text.updates }
     func start(enabled: Bool) async { await text.start(enabled: enabled) }
     func setEnabled(_ enabled: Bool) async { await text.setEnabled(enabled) }
     func stop() async { await text.stop() }
@@ -22,7 +22,7 @@ struct WritingCallText: TranscriptWriting.CallText {
 /// A recording's transcript destination, kept open until its text has stopped.
 public protocol SessionTranscriptFile: Sendable {
 
-    func write(_ state: State) async throws
+    func write(_ state: CallState) async throws
 
     func close() async
 }
@@ -31,28 +31,56 @@ struct TranscriptDestination: TranscriptWriting.Transcript {
 
     let file: any SessionTranscriptFile
 
-    func write(_ state: State) async throws { try await file.write(state) }
+    func write(_ state: CallState) async throws { try await file.write(state) }
 }
 
-struct WritingTranscript: SessionTranscriptFile {
+final class WritingTranscript: SessionTranscriptFile {
 
     let file: TranscriptFile
     let sink: any LogSink
+    private let last = Mutex<CallState?>(nil)
 
     init(file: TranscriptFile, sink: any LogSink) { self.file = file; self.sink = sink }
 
     /// Logs each save with the final count it wrote, so a reader of the log knows
     /// how many entries on disk will not change again.
-    func write(_ state: State) async throws {
+    func write(_ state: CallState) async throws {
+
+        last.withLock { $0 = state }
+        try await save(state)
+    }
+
+    private func save(_ state: CallState) async throws {
 
         let entries = state.entries, finalCount = state.finalCount
-        try await file.write(count: entries.count, finalCount: finalCount) {
-            Composer.Transcript.segment(from: entries[$0])
+        let names = LiveNameBoard.shared.snapshot()
+        try await file.write(count: entries.count, finalCount: finalCount, speakers: Composer.Transcript.speakers(names)) {
+            let entry = entries[$0]
+            return Composer.Transcript.segment(from: entry, speaker: names.rows[entry.text.id].flatMap { names.ids[$0] })
         }
         sink.write(.init(category: .session, message: "transcript saved finalCount=\(finalCount)"))
     }
 
-    func close() async { await file.close() }
+    /// Runs the after-call pass first, so confirmed names replace the live guesses before
+    /// the file is sealed. A failed pass keeps the tentative names.
+    func close() async {
+
+        let board = LiveNameBoard.shared.snapshot()
+        if let state = last.withLock({ $0 }), let track = board.callTrack, !board.spoken.isEmpty {
+            do {
+                let turns = try await CallDiarizer().turns(of: track)
+                let rows = state.entries.filter { $0.speaker != .mine }.map { (id: $0.text.id, start: $0.text.start, end: $0.text.end) }
+                let confirmed = AfterCallNames.names(rows: rows, turns: turns, board: board)
+                LiveNameBoard.shared.confirm(confirmed)
+                await LiveNameBoard.shared.announce(confirmed)
+                try await save(state)
+                sink.write(.init(category: .session, message: "after-call names saved turns=\(turns.count)"))
+            } catch {
+                sink.write(.init(category: .session, message: "after-call names failed: \(error)"))
+            }
+        }
+        await file.close()
+    }
 }
 
 final class TranscriptFailureReport: FailureReport, Sendable {

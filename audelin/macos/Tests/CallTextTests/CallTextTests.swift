@@ -13,8 +13,8 @@ struct CallTextTests {
         while let state = await updates.next() {
             if state.status == .listening { break }
         }
-        let original = [SideState.Entry(text: Text(id: 7, start: 2, end: 3, pending: "old"))]
-        let reused = [SideState.Entry(text: Text(id: 7, start: 12, end: 13, pending: "new"))]
+        let original = [SideState<Text>.Entry(text: Text(id: 7, start: 2, end: 3, pending: "old"))]
+        let reused = [SideState<Text>.Entry(text: Text(id: 7, start: 12, end: 13, pending: "new"))]
         await rig.microphone.revise(original)
         await rig.microphone.revise([])
         await rig.microphone.revise(reused)
@@ -171,7 +171,7 @@ struct CallTextTests {
         await rig.call.start()
         await rig.microphone.say(0)
         await rig.other.say(100, at: 0)
-        let revision = SideState.Entry(text: Text(id: 0, start: 0, end: 1, settled: "revised"), writtenLater: true)
+        let revision = SideState<Text>.Entry(text: Text(id: 0, start: 0, end: 1, settled: "revised"), writtenLater: true)
         await rig.microphone.revise([revision])
         #expect(CallOutput(await rig.call.state) == CallOutput(status: .listening, entries: [
             .init(speaker: .mine, text: revision.text, writtenLater: true),
@@ -349,7 +349,7 @@ private struct Rig {
 
     let microphone: CueSide
     let other: CueSide
-    let call: CallText
+    let call: CallText<Text>
 
     init(
         microphoneLoading: Bool = false, callLoading: Bool = false,
@@ -373,7 +373,7 @@ private actor CueSide: Side {
     }
 
     private struct Delivery {
-        let snapshot: SideState
+        let snapshot: SideState<Text>
         let received: CheckedContinuation<Void, Never>?
     }
 
@@ -381,8 +381,8 @@ private actor CueSide: Side {
     private var loading: Bool
     private(set) var enabled = false
     private var ended = false
-    private var spoken: [SideState.Entry] = []
-    private var visible: [SideState.Entry] = []
+    private var spoken: [SideState<Text>.Entry] = []
+    private var visible: [SideState<Text>.Entry] = []
     // This supplied word becomes visible only when live text finalizes.
     private let finishWord: Int?
     private let release: CueGate?
@@ -415,7 +415,7 @@ private actor CueSide: Side {
         switchHold = switching
     }
 
-    func listen(_ receive: @escaping @Sendable (SideState) async -> Void) async {
+    func listen(_ receive: @escaping @Sendable (SideState<Text>) async -> Void) async {
 
         for await item in delivery.stream {
             await receive(item.snapshot)
@@ -457,7 +457,7 @@ private actor CueSide: Side {
     }
 
     func release() async { loading = false; visible = spoken; await publish() }
-    func revise(_ entries: [SideState.Entry]) async { visible = entries; await publish() }
+    func revise(_ entries: [SideState<Text>.Entry]) async { visible = entries; await publish() }
 
     func fail() async {
 
@@ -524,7 +524,7 @@ private actor CueSide: Side {
         await emit(.init(status: !enabled ? .off : (loading ? .gettingReady : .listening), entries: visible))
     }
 
-    private func emit(_ snapshot: SideState) async {
+    private func emit(_ snapshot: SideState<Text>) async {
 
         await withCheckedContinuation { received in
             if case .terminated = delivery.continuation.yield(Delivery(snapshot: snapshot, received: received)) {
@@ -534,7 +534,7 @@ private actor CueSide: Side {
     }
 }
 
-private func entries(_ words: ClosedRange<Int>, speaker: State.Speaker, later: Bool = false) -> [CallOutput.Entry] {
+private func entries(_ words: ClosedRange<Int>, speaker: State<Text>.Speaker, later: Bool = false) -> [CallOutput.Entry] {
 
     words.map { word in
         let start = Double(word % 100)
@@ -558,7 +558,7 @@ private func settled(_ entries: [CallOutput.Entry]) -> [CallOutput.Entry] {
     }
 }
 
-private func listeningUpdates(_ call: CallText) async -> AsyncStream<State>.Iterator {
+private func listeningUpdates(_ call: CallText<Text>) async -> AsyncStream<State<Text>>.Iterator {
 
     var updates = call.updates.makeAsyncIterator()
     while let snapshot = await updates.next() {

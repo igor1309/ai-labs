@@ -21,7 +21,10 @@ public protocol WrittenTrack: Sendable {
     func read(from: Double, through: Double) async throws -> [Audio]
 }
 
-public protocol LiveText: Sendable {
+public protocol LiveText<Text>: Sendable {
+
+    associatedtype Text: Segment
+
 
     /// Readies the same live text, retaining what it has already heard.
     func prepare() async throws
@@ -49,20 +52,10 @@ public protocol LiveAudioPosition: Sendable {
 }
 
 /// A segment supplied by live text; fill in does not cut speech itself.
-public struct Text: Equatable, Sendable {
+/// Fill in reads only its identity and times; its words pass through untouched.
+public protocol Segment: Equatable, Sendable {
 
-    public let id: Int
-    public let start: Double
-    public let end: Double
-    public let settled: String
-    public let pending: String
-
-    public init(id: Int, start: Double, end: Double, settled: String = "", pending: String = "") {
-
-        self.id = id
-        self.start = start
-        self.end = end
-        self.settled = settled
-        self.pending = pending
-    }
+    var id: Int { get }
+    var start: Double { get }
+    var end: Double { get }
 }

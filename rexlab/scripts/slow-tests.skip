@@ -1,0 +1,3 @@
+# Their time is the var() resolution seam in tests/stylesheet.ts (jsdom resolves no var(), so each surface's style is resolved whole), not the test; speeding it up means rewriting that seam for the whole suite.
+tests/theme.test.tsx > a board of silhouettes keeps face-down cards, open cards and silhouettes apart from what is behind them in the dark theme
+tests/theme.test.tsx > a board of silhouettes keeps face-down cards, open cards and silhouettes apart from what is behind them in the light theme

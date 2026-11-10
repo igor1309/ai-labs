@@ -133,6 +133,18 @@ public struct ReadingReducer: Sendable {
             if let interaction { state.scrollAcknowledgement = interaction }
             state.lines.followsLive = atBottom
             if atBottom { state.lines.newBelow = 0 }
+        case let .namesConfirmed(names):
+            func confirm(_ entries: inout [ReadingTextUpdate.Entry.ID: ReadingState.Entry]) {
+                for (id, entry) in entries where id.speaker == .theirs {
+                    var entry = entry
+                    entry.name = names[id.localID]
+                    entry.nameConfirmed = entry.name != nil
+                    entries[id] = entry
+                }
+            }
+            confirm(&state.rendered.entries.sealed)
+            confirm(&state.rendered.entries.tail)
+            if state.rendered.prepared { rebuildLayout(&state) }
         case .jumpToLive:
             state.lines.followsLive = true
             state.lines.newBelow = 0
@@ -209,7 +221,7 @@ public struct ReadingReducer: Sendable {
 
         let anchor = state.anchors[text.id]!
         return .init(id: anchor.id, time: lineTime(anchor.start), speaker: text.id.speaker,
-                     settled: text.settled, pending: text.pending)
+                     settled: text.settled, pending: text.pending, name: text.name)
     }
 
     private func replaceRow(_ id: ReadingTextUpdate.Entry.ID, in state: inout ReadingState) {

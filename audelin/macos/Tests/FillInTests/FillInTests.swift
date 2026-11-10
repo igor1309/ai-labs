@@ -222,7 +222,7 @@ struct FillInTests {
 
 private func expected(
     _ words: Range<Int>, sampleRate: Double = 1, chunkStart: Int = 0, later: Range<Int> = 0..<0,
-    status: State.Status = .finished
+    status: State<Text>.Status = .finished
 ) -> FillOutput {
 
     FillOutput(

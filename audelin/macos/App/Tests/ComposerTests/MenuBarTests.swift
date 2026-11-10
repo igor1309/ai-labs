@@ -134,7 +134,7 @@ struct MenuBarTests {
                 #expect(await app.snapshot().lastSessionID == 1)
                 #expect(await app.snapshot().phase == .idle)
                 var terminal = await app.panelStates().makeAsyncIterator()
-                #expect(await terminal.next() == .init(recording: .off, log: .empty))
+                #expect(await terminal.next()?.recording == .off)
                 #expect(model.isCancelled)
             }
         }

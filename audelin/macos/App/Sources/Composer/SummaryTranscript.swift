@@ -1,4 +1,3 @@
-import struct CallText.State
 import CryptoKit
 import Foundation
 import SummaryJobs
@@ -17,7 +16,7 @@ actor SummaryTranscript: SessionTranscriptFile {
     init(base: any SessionTranscriptFile, folder: URL, callbacks: SummaryCallbacks) {
         self.base = base; self.folder = folder; self.callbacks = callbacks
     }
-    func write(_ text: State) async throws {
+    func write(_ text: CallState) async throws {
         do {
             try await base.write(text)
             let entries = text.entries.compactMap { entry -> Job.Entry? in

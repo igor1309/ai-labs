@@ -1,4 +1,4 @@
-public struct State: Equatable, Sendable {
+public struct State<Text: Segment>: Equatable, Sendable {
 
     public enum Status: Equatable, Sendable {
 
