@@ -29,6 +29,7 @@ under the working name wisper.
 | [spike/](spike/) | CLIs that run a recording through Parakeet v3: the sliding window, and Audelin's own windows (`audelin-windows`, with the stabilizer's fixtures) |
 | [vad.md](vad.md), [vad/](vad/) | FluidAudio vs reference Silero VAD on 12 recorded calls: no VAD adopted; harness to rerun it |
 | [enhance.md](enhance.md), [enhance/](enhance/) | FluidAudio LocalVQE on the microphone: echo removal with the call track as reference, denoising and its WER cost, live cost; final pass on bleed calls only |
+| [diarization.md](diarization.md), [diarization/](diarization/) | Speaker diarization of the call track on AMI and the owner's calls: Nemotron 3, VBx, live LS-EEND churn and cost; Nemotron after the call, not live |
 | [vad-hallucinations.md](vad-hallucinations.md) | Targeted silent-mic failures: FluidAudio at 0.95 and reference Silero at 0.5 reject both; speech controls and limits before adoption |
 | `gallery/` | Site captures and screenshots of the surveyed apps (inventory-a6) |
 | `../design/visual-language.pen` | Glass Ledger's design system, components and Screens 1–8, light and dark |
