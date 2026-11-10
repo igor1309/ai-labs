@@ -124,7 +124,7 @@ actor SideHearing: SideText.LiveText {
         let text = text
         let operation = Task {
             let update = try await text.hear(audio)
-            return TextUpdate(final: update.final, tail: update.tail, noTextBefore: update.noTextBefore)
+            return Self.textUpdate(update)
         }
         hearing = operation
         defer { hearing = nil }
@@ -141,8 +141,17 @@ actor SideHearing: SideText.LiveText {
 
     func finish() async throws -> TextUpdate {
 
-        let update = try await text.finish()
-        return TextUpdate(final: update.final, tail: update.tail, noTextBefore: update.noTextBefore)
+        Self.textUpdate(try await text.finish())
+    }
+
+    private static func textUpdate(_ update: TrackText.Update) -> TextUpdate {
+
+        TextUpdate(final: update.final.map(text), tail: update.tail.map(text), noTextBefore: update.noTextBefore)
+    }
+
+    private static func text(_ segment: TranscriptSegment) -> SideText.Text {
+
+        .init(id: segment.id, start: segment.start, end: segment.end, settled: segment.settled, pending: segment.pending)
     }
     func stop() async { await text.shutdown() }
 }

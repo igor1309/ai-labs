@@ -2,7 +2,6 @@ import protocol CallText.Side
 import struct CallText.SideState
 import Reading
 import struct SideText.Audio
-import struct SideText.Text
 import Synchronization
 import Testing
 @testable import Composer
@@ -110,10 +109,10 @@ private final class StallingSide: Side, Sendable {
 /// Answers each hearing with the next scripted text, then keeps the last.
 actor ScriptedEngine: TextEngine {
 
-    private var script: [[SideText.Text]]
-    private var latest: [SideText.Text] = []
+    private var script: [[TranscriptSegment]]
+    private var latest: [TranscriptSegment] = []
 
-    init(script: [[SideText.Text]]) { self.script = script }
+    init(script: [[TranscriptSegment]]) { self.script = script }
 
     func prepare() {}
 

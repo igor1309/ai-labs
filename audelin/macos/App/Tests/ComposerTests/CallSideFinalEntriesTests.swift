@@ -1,6 +1,5 @@
 import struct CallText.SideState
 import struct SideText.Audio
-import struct SideText.Text
 import Testing
 @testable import Composer
 
@@ -63,7 +62,7 @@ struct CallSideFinalEntriesTests {
     }
 }
 
-private func segment(_ id: Int, settled: String = "", pending: String = "") -> SideText.Text {
+private func segment(_ id: Int, settled: String = "", pending: String = "") -> TranscriptSegment {
 
     .init(id: id, start: Double(id), end: Double(id + 1), settled: settled, pending: pending)
 }

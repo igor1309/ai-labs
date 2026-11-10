@@ -1,8 +1,8 @@
+import struct SideText.Text
 import struct CallText.SideState
 import struct FillIn.Audio
 import protocol FillIn.WrittenTrack
 import struct SideText.Audio
-import struct SideText.Text
 import Testing
 @testable import Composer
 
@@ -252,7 +252,7 @@ private actor SideEngine: TextEngine {
     private let silent: Bool
     private let failWord: Int?
     private let finalWordCount: Int
-    private var text: [SideText.Text] = []
+    private var text: [TranscriptSegment] = []
     private(set) var samples: [Float] = []
     private(set) var preparations = 0
     private(set) var stops = 0
