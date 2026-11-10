@@ -1,5 +1,4 @@
 import Foundation
-import struct CallText.State
 import Session
 import Synchronization
 import TranscriptFile
@@ -13,7 +12,7 @@ struct WritingCallText: TranscriptWriting.CallText {
 
     init(text: CallReader) { self.text = text }
 
-    var updates: AsyncStream<State> { text.updates }
+    var updates: AsyncStream<CallState> { text.updates }
     func start(enabled: Bool) async { await text.start(enabled: enabled) }
     func setEnabled(_ enabled: Bool) async { await text.setEnabled(enabled) }
     func stop() async { await text.stop() }
@@ -22,7 +21,7 @@ struct WritingCallText: TranscriptWriting.CallText {
 /// A recording's transcript destination, kept open until its text has stopped.
 public protocol SessionTranscriptFile: Sendable {
 
-    func write(_ state: State) async throws
+    func write(_ state: CallState) async throws
 
     func close() async
 }
@@ -31,7 +30,7 @@ struct TranscriptDestination: TranscriptWriting.Transcript {
 
     let file: any SessionTranscriptFile
 
-    func write(_ state: State) async throws { try await file.write(state) }
+    func write(_ state: CallState) async throws { try await file.write(state) }
 }
 
 struct WritingTranscript: SessionTranscriptFile {
@@ -43,7 +42,7 @@ struct WritingTranscript: SessionTranscriptFile {
 
     /// Logs each save with the final count it wrote, so a reader of the log knows
     /// how many entries on disk will not change again.
-    func write(_ state: State) async throws {
+    func write(_ state: CallState) async throws {
 
         let entries = state.entries, finalCount = state.finalCount
         try await file.write(count: entries.count, finalCount: finalCount) {

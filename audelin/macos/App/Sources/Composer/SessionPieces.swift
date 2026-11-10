@@ -1,6 +1,5 @@
 import class CallAppProcesses.CallAppProcesses
 import CallFolder
-import struct CallText.State
 import Foundation
 import Session
 import TrackFile
@@ -43,7 +42,7 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
     private var readingObservation: Task<Void, Never>?
 
     // Register before Session begins so its first text state cannot be missed.
-    func readingText() -> AsyncStream<State> {
+    func readingText() -> AsyncStream<CallState> {
 
         let output = NewestText()
         readingOutput = output

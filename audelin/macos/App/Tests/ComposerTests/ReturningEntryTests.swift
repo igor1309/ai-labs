@@ -74,13 +74,13 @@ struct ReturningEntryTests {
 private final class StallingSide: Side, Sendable {
 
     private let side: CallSide
-    private let after: @Sendable (SideState) -> Bool
+    private let after: @Sendable (SideState<TranscriptSegment>) -> Bool
     private let behind: Signal
     private let caughtUp: Signal
     private let held = Mutex(false)
     private let ready = Signal()
 
-    init(side: CallSide, after: @escaping @Sendable (SideState) -> Bool, behind: Signal, caughtUp: Signal) {
+    init(side: CallSide, after: @escaping @Sendable (SideState<TranscriptSegment>) -> Bool, behind: Signal, caughtUp: Signal) {
 
         self.side = side
         self.after = after
@@ -90,7 +90,7 @@ private final class StallingSide: Side, Sendable {
 
     func listening() async { await ready.next() }
 
-    func listen(_ receive: @escaping @Sendable (SideState) async -> Void) async {
+    func listen(_ receive: @escaping @Sendable (SideState<TranscriptSegment>) async -> Void) async {
 
         await side.listen { [self] snapshot in
             await receive(snapshot)

@@ -30,6 +30,8 @@ extension TrackText: TextEngine {}
 /// readies the engine, and live audio, delivered from the call's start, is all it hears.
 struct CallSide: CallText.Side {
 
+    typealias Text = TranscriptSegment
+
     private let side: SideReader
 
     init(audio: any SideText.LiveAudio, text: any TextEngine, written: (any FillIn.WrittenTrack)?, sampleRate: Double) {
@@ -48,9 +50,9 @@ struct CallSide: CallText.Side {
 
     func stop() async { await side.stop() }
 
-    func listen(_ receive: @escaping @Sendable (SideState) async -> Void) async {
+    func listen(_ receive: @escaping @Sendable (SideState<TranscriptSegment>) async -> Void) async {
 
-        var finalEntries: [SideState.Entry] = []
+        var finalEntries: [SideState<TranscriptSegment>.Entry] = []
         var lastStatus: SideText.State<TranscriptSegment>.Status?
         var lastTail: [SideText.State<TranscriptSegment>.Entry] = []
         var lastNoTextBefore: Double?
@@ -60,7 +62,7 @@ struct CallSide: CallText.Side {
             lastNoTextBefore = snapshot.noTextBefore
             lastStatus = snapshot.status
             lastTail = snapshot.tailEntries
-            let status: SideState.Status = switch snapshot.status {
+            let status: SideState<TranscriptSegment>.Status = switch snapshot.status {
             case .off: .off
             case .fillingIn: .gettingReady
             case .listening: .listening
@@ -70,19 +72,16 @@ struct CallSide: CallText.Side {
             if snapshot.finalCount > finalEntries.count {
                 finalEntries.append(contentsOf: snapshot.finalEntries.dropFirst(finalEntries.count).map(Self.entry))
             }
-            await receive(SideState(
+            await receive(SideState<TranscriptSegment>(
                 status: status, finalEntries: finalEntries, tailEntries: snapshot.tailEntries.map(Self.entry),
                 noTextBefore: snapshot.noTextBefore
             ))
         }
     }
 
-    private static func entry(_ entry: SideText.State<TranscriptSegment>.Entry) -> SideState.Entry {
+    private static func entry(_ entry: SideText.State<TranscriptSegment>.Entry) -> SideState<TranscriptSegment>.Entry {
 
-        .init(text: .init(
-            id: entry.text.id, start: entry.text.start, end: entry.text.end,
-            settled: entry.text.settled, pending: entry.text.pending
-        ), writtenLater: entry.writtenLater)
+        .init(text: entry.text, writtenLater: entry.writtenLater)
     }
 
     private static func message(_ failure: SideText.State<TranscriptSegment>.Failure) -> String {

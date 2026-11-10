@@ -22,7 +22,7 @@ struct CallSideFinalEntriesTests {
         ], ending: .init(final: prefix + [final, segment(count + 1, settled: "next")], tail: []))
         let audio = TextAudio()
         let side = CallSide(audio: audio, text: engine, written: TextTrack(chunks: []), sampleRate: 1)
-        let snapshots = AsyncStream<SideState>.makeStream()
+        let snapshots = AsyncStream<SideState<TranscriptSegment>>.makeStream()
         let listener = Task {
             await side.listen { snapshots.continuation.yield($0) }
             snapshots.continuation.finish()
