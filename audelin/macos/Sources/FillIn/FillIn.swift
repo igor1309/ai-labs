@@ -1,20 +1,20 @@
 /// Gets one side's live text ready and fills in its missed written audio once.
-public actor FillIn {
+public actor FillIn<Text: Segment> {
 
     /// Latest snapshots, replacing unread ones, ending on completion or failure.
-    public nonisolated let updates: AsyncStream<State>
-    public private(set) var state = State(status: .idle, entries: [], heardThrough: 0)
+    public nonisolated let updates: AsyncStream<State<Text>>
+    public private(set) var state = State<Text>(status: .idle, entries: [], heardThrough: 0)
 
-    private let continuation: AsyncStream<State>.Continuation
+    private let continuation: AsyncStream<State<Text>>.Continuation
     private let written: any WrittenTrack
-    private let text: any LiveText
+    private let text: any LiveText<Text>
     private let audio: any LiveAudioPosition
     private var operation: Task<Void, Never>?
     private var ended = false
     private var later: Range<Double>?
     private var sampleRate = 1.0
 
-    public init(written: any WrittenTrack, text: any LiveText, audio: any LiveAudioPosition) {
+    public init(written: any WrittenTrack, text: any LiveText<Text>, audio: any LiveAudioPosition) {
 
         self.written = written
         self.text = text
@@ -92,7 +92,7 @@ public actor FillIn {
                     state.heardThrough = missed.end
                     sampleRate = missed.sampleRate
                     state.entries = heard.map { segment in
-                        State.Entry(text: segment, writtenLater: later.map {
+                        State<Text>.Entry(text: segment, writtenLater: later.map {
                             ((segment.end - $0.lowerBound) * sampleRate).rounded() > 0
                                 && (($0.upperBound - segment.start) * sampleRate).rounded() > 0
                         } ?? false)
@@ -133,7 +133,7 @@ public actor FillIn {
         )
     }
 
-    private func fail(_ failure: State.Failure) {
+    private func fail(_ failure: State<Text>.Failure) {
 
         guard !ended else { return }
         state.status = .failed(failure)

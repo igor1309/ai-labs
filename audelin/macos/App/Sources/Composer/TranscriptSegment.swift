@@ -1,3 +1,5 @@
+import protocol FillIn.Segment
+
 /// One segment of a side's text: the content the transcript pipeline relays
 /// from Live text to its readers. Live text cuts the segment; its end is the
 /// next segment's start, or the end of what was heard for the last one.
@@ -18,3 +20,5 @@ struct TranscriptSegment: Equatable, Sendable {
         self.pending = pending
     }
 }
+
+extension TranscriptSegment: FillIn.Segment {}

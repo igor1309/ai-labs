@@ -3,7 +3,6 @@ import struct CallText.SideState
 import struct FillIn.Position
 import struct FillIn.State
 import struct FillIn.Audio
-import struct FillIn.Text
 import protocol FillIn.LiveAudioPosition
 import protocol FillIn.LiveText
 import protocol FillIn.WrittenTrack
@@ -162,11 +161,9 @@ private struct FillHearing: FillIn.LiveText {
 
     func prepare() async throws { try await text.prepare() }
 
-    func hear(_ audio: FillIn.Audio) async throws -> [FillIn.Text] {
+    func hear(_ audio: FillIn.Audio) async throws -> [TranscriptSegment] {
 
-        try await text.hear(.init(start: audio.start, samples: audio.samples, sampleRate: audio.sampleRate)).all.map {
-            .init(id: $0.id, start: $0.start, end: $0.end, settled: $0.settled, pending: $0.pending)
-        }
+        try await text.hear(.init(start: audio.start, samples: audio.samples, sampleRate: audio.sampleRate)).all
     }
 }
 
@@ -218,7 +215,7 @@ private struct Preparing: SideText.FillingIn {
 
 private struct FillFailure: Error, CustomStringConvertible {
 
-    let failure: FillIn.State.Failure
+    let failure: FillIn.State<TranscriptSegment>.Failure
     var description: String {
         switch failure {
         case .gettingReady(let message), .reading(let message), .hearing(let message): message

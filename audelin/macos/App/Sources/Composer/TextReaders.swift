@@ -5,6 +5,6 @@ import struct CallText.State
 import class TranscriptWriting.TranscriptWriting
 
 typealias SideReader = SideText
-typealias FillReader = FillIn
+typealias FillReader = FillIn<TranscriptSegment>
 typealias CallReader = CallText
 typealias WritingReader = TranscriptWriting<State>
