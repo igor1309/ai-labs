@@ -16,6 +16,23 @@ import Testing
             #expect(try await files.notes(call: "call") == notes)
         }
     }
+    @Test(arguments: ["deleted folder", "folder named summary.md", "invalid UTF-8", "failing read"])
+    func unreadableNotesThrowRatherThanReadAsNone(_ fault: String) async throws {
+        try await withFolder { folder, locations in
+            let disk = FailingDisk()
+            let files = Files(locations: locations, disk: disk, ownershipDirectory: folder.deletingLastPathComponent().appendingPathComponent("leases"))
+            let output = folder.appendingPathComponent("summary.md")
+            switch fault {
+            case "deleted folder": try FileManager.default.removeItem(at: folder)
+            case "folder named summary.md": try FileManager.default.createDirectory(at: output, withIntermediateDirectories: false)
+            case "invalid UTF-8": try Data([0xFF, 0xFE, 0xFD]).write(to: output)
+            default:
+                try Data("# notes".utf8).write(to: output)
+                disk.readFailure.withLock { $0 = "summary.md" }
+            }
+            await #expect(throws: (any Error).self) { try await files.notes(call: "call") }
+        }
+    }
     @Test func callWithoutNotesReadsNone() async throws {
         try await withFolder { folder, locations in
             let files = Files(locations: locations, disk: FileDisk(), ownershipDirectory: folder.deletingLastPathComponent().appendingPathComponent("leases"))
@@ -280,7 +297,11 @@ private final class FailingDisk: Disk, Sendable {
     private let disk = FileDisk()
     func check(_ url: URL) throws { if failure.withLock({ $0 == url.lastPathComponent }) { throw CocoaError(.fileWriteUnknown) } }
     func exists(_ url: URL) throws -> Bool { try disk.exists(url) }
-    func read(_ url: URL) throws -> Data { try disk.read(url) }
+    let readFailure = Mutex<String?>(nil)
+    func read(_ url: URL) throws -> Data {
+        if readFailure.withLock({ $0 == url.lastPathComponent }) { throw CocoaError(.fileReadUnknown) }
+        return try disk.read(url)
+    }
     func create(_ data: Data, at url: URL) throws -> Bool { try check(url); return try disk.create(data, at: url) }
     func replace(_ data: Data, at url: URL) throws { try check(url); try disk.replace(data, at: url) }
 }
