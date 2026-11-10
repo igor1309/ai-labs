@@ -16,8 +16,27 @@ struct RecordingsInputs {
     }
 }
 
+/// The selected call's notes while the preview is open.
+public struct CallsPreview: Equatable, Sendable {
+    public enum Notes: Equatable, Sendable { case text(String), unreadable(String) }
+    public let id: String
+    public let title: String
+    public let date: String
+    public let duration: String
+    public let notes: Notes
+}
+
 @MainActor @Observable
 public final class AudelinCalls {
+    /// The selected call's notes, while the preview is open and the call has them.
+    public private(set) var preview: CallsPreview?
+    private let notes: (String) async throws -> String?
+    private var selectedID: String?
+    private var previewOpen = false
+    private var withNotes: Set<String> = []
+    private var notesScan: Task<Void, Never>?
+    private var loading: Task<Void, Never>?
+
     private let summaryStatuses: () -> [String: String]
     private let inputs: RecordingsInputs
     private let location: (String) async throws -> URL
@@ -31,8 +50,10 @@ public final class AudelinCalls {
 
     init(inputs: RecordingsInputs, timeZone: TimeZone, recordingState: @escaping () -> RecordingState,
          location: @escaping (String) async throws -> URL, openFolder: @escaping (URL) -> Bool,
-         present: @escaping () -> Void, summaryStatuses: @escaping () -> [String: String] = { [:] }) {
+         present: @escaping () -> Void, summaryStatuses: @escaping () -> [String: String] = { [:] },
+         notes: @escaping (String) async throws -> String? = { _ in nil }) {
         self.summaryStatuses = summaryStatuses
+        self.notes = notes
         self.inputs = inputs; self.timeZone = timeZone; self.recordingState = recordingState
         self.location = location; self.openFolder = openFolder; self.present = present
     }
@@ -40,7 +61,12 @@ public final class AudelinCalls {
     public var state: CallsListState {
         var state = callsListState(inputs.state(), timeZone: timeZone)
         let statuses = summaryStatuses()
-        for index in state.rows.indices { state.rows[index].summaryStatus = statuses[state.rows[index].id] ?? "" }
+        for index in state.rows.indices {
+            state.rows[index].summaryStatus = statuses[state.rows[index].id] ?? ""
+            state.rows[index].hasNotes = withNotes.contains(state.rows[index].id)
+        }
+        state.selectedID = selectedID
+        state.previewedID = preview?.id
         state.editing = editing
         state.failure = openFailure ?? state.failure
         state.busy = state.busy || opening
@@ -64,6 +90,60 @@ public final class AudelinCalls {
         editing = nil
         inputs.send(.refresh)
         present()
+        scanNotes()
+    }
+
+    /// The preview's own close; only an eye opens it again.
+    public func closePreview() {
+        previewOpen = false
+        updatePreview()
+    }
+
+    /// With the calls window closed the preview has no row to follow.
+    public func windowClosed() {
+        notesScan?.cancel()
+        notesScan = nil
+        closePreview()
+    }
+
+    /// Finds which listed calls have notes, each time the listing changes while
+    /// the window is shown; notes that are there but unreadable count, so their
+    /// reason can be shown.
+    private func scanNotes() {
+        notesScan?.cancel()
+        notesScan = Task { [notes] in
+            for await ids in Observations({ self.inputs.state().calls.map(\.id) }) {
+                var found = Set<String>()
+                for id in ids {
+                    do { if try await notes(id) != nil { found.insert(id) } } catch { found.insert(id) }
+                }
+                if Task.isCancelled { return }
+                withNotes = found
+            }
+        }
+    }
+
+    private func updatePreview() {
+        loading?.cancel()
+        guard previewOpen, let id = selectedID, let row = state.rows.first(where: { $0.id == id }) else {
+            loading = nil
+            preview = nil
+            return
+        }
+        loading = Task { [notes] in
+            let read: CallsPreview.Notes?
+            do { read = try await notes(id).map { .text($0) } } catch { read = .unreadable(error.localizedDescription) }
+            guard !Task.isCancelled else { return }
+            preview = read.map { .init(id: id, title: row.displayTitle, date: row.date, duration: row.duration, notes: $0) }
+        }
+    }
+
+    private func move(by step: Int, in rows: [CallsListState.Row]) {
+        guard !rows.isEmpty else { return }
+        let index = selectedID.flatMap { id in rows.firstIndex { $0.id == id } }
+        let next = index.map { min(max($0 + step, 0), rows.count - 1) } ?? (step > 0 ? 0 : rows.count - 1)
+        selectedID = rows[next].id
+        updatePreview()
     }
 
     func recordingChanged(_ state: RecordingState) {
@@ -97,7 +177,15 @@ public final class AudelinCalls {
             openFailure = nil
             inputs.send(.confirmDelete)
         case .cancelDelete: inputs.send(.cancelDelete)
-        case .select, .selectNext, .selectPrevious, .preview: break
+        case let .select(id):
+            selectedID = id
+            updatePreview()
+        case .selectNext: move(by: 1, in: snapshot.rows)
+        case .selectPrevious: move(by: -1, in: snapshot.rows)
+        case let .preview(id):
+            selectedID = id
+            previewOpen = true
+            updatePreview()
         case let .open(id):
             guard !snapshot.busy else { return }
             editing = nil
