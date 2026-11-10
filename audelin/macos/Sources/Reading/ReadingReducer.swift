@@ -209,7 +209,7 @@ public struct ReadingReducer: Sendable {
 
         let anchor = state.anchors[text.id]!
         return .init(id: anchor.id, time: lineTime(anchor.start), speaker: text.id.speaker,
-                     settled: text.settled, pending: text.pending)
+                     settled: text.settled, pending: text.pending, name: text.name)
     }
 
     private func replaceRow(_ id: ReadingTextUpdate.Entry.ID, in state: inout ReadingState) {

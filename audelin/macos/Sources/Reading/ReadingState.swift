@@ -30,8 +30,11 @@ public struct ReadingState: Equatable, Sendable {
         public var speaker: Speaker
         public var settled: String
         public var pending: String
+        public var name: String?
 
-        public init(id: Int, time: String, speaker: Speaker, settled: String = "", pending: String = "") {
+        public init(id: Int, time: String, speaker: Speaker, settled: String = "", pending: String = "", name: String? = nil) {
+
+            self.name = name
 
             self.id = id
             self.time = time

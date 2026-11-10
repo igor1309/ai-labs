@@ -30,11 +30,15 @@ public struct ReadingTextUpdate: Equatable, Sendable {
         public let settled: String
         public let pending: String
         public let writtenLater: Bool
+        /// A remote speaker's tentative name, when the call app showed one.
+        public let name: String?
 
         public init(
             id: ID, start: Double, end: Double,
-            settled: String = "", pending: String = "", writtenLater: Bool = false
+            settled: String = "", pending: String = "", writtenLater: Bool = false, name: String? = nil
         ) {
+
+            self.name = name
 
             self.id = id
             self.start = start

@@ -176,6 +176,8 @@ public extension PanelState {
         /// The remote speaker's name or `Speaker N`, drawn on its own line above the
         /// entry; set only where the speaker changes (design option C, LAB-1126).
         public var label: String?
+        /// A live guess: drawn in italics and dimmer than a confirmed name.
+        public var labelIsTentative: Bool
 
         public init(
             id: Int,
@@ -183,8 +185,10 @@ public extension PanelState {
             speaker: Speaker,
             settled: String,
             pending: String = "",
-            label: String? = nil
+            label: String? = nil,
+            labelIsTentative: Bool = false
         ) {
+            self.labelIsTentative = labelIsTentative
             self.id = id
             self.label = label
             self.time = time

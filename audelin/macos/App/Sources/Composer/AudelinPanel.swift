@@ -115,6 +115,7 @@ final class ReadingSubscription {
     private let text: Task<Void, Never>
     private let timer: Task<Void, Never>
     private let observation: Task<Void, Never>
+    private let names = ZoomLiveNames()
 
     init(
         reading: ReadingInputs, text: AsyncStream<State>,
@@ -135,11 +136,16 @@ final class ReadingSubscription {
                 await presenter.show(state)
             }
         }
+        let names = self.names
+        await names.start { await time.elapsed() }
         self.text = Task {
             var mapped = 0
             for await state in text {
                 guard !Task.isCancelled else { return }
-                reading.send(.textUpdated(readingText(state, from: mapped)))
+                let remote = state.entries[mapped...].filter { $0.speaker != .mine }
+                    .map { (id: $0.text.id, start: $0.text.start, end: $0.text.end) }
+                let given = remote.isEmpty ? [:] : await names.names(for: remote)
+                reading.send(.textUpdated(readingText(state, from: mapped, names: given)))
                 mapped = state.finalCount
             }
         }
@@ -164,6 +170,7 @@ final class ReadingSubscription {
 
     func end() async {
 
+        await names.stop()
         text.cancel()
         timer.cancel()
         await text.value
@@ -250,6 +257,9 @@ private final class ReadingTime {
         }
         reading.send(.problemsChanged(problems))
     }
+
+    /// Seconds since the recording began, or nil while it is off.
+    func elapsed() -> Double? { origin.map { now() - $0 } }
 
     func tick() {
 

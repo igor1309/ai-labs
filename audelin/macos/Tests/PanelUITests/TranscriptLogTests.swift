@@ -84,6 +84,15 @@ struct TranscriptLogTests {
         #expect((attribute(.font, of: "Анна", in: text) as? NSFont)?.pointSize == GlassLedger.light.typeCaption)
     }
 
+    @Test func aTentativeNameIsSlantedAndDimmer() throws {
+
+        let text = try #require(Offscreen.textView(in: hosted(.init(rows: [
+            .entry(.init(id: 1, time: "12:44", speaker: .them, settled: "привет", label: "Анна", labelIsTentative: true)),
+        ]))))
+        #expect(attribute(.obliqueness, of: "Анна", in: text) as? CGFloat == 0.2)
+        #expect(attribute(.foregroundColor, of: "Анна", in: text) as? NSColor == NSColor(GlassLedger.light.gutter))
+    }
+
     @Test func placesALateGroupWhereItsMinutesWere() throws {
 
         let text = try #require(Offscreen.textView(in: hosted(lateLines)))

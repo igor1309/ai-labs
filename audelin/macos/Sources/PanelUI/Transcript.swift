@@ -236,7 +236,7 @@ private extension Transcript {
 
         private func entry(_ entry: PanelState.Entry, alpha: CGFloat, spacing: CGFloat) {
 
-            if let label = entry.label { self.label(label, alpha: alpha) }
+            if let label = entry.label { self.label(label, tentative: entry.labelIsTentative, alpha: alpha) }
             newParagraph()
 
             let size = tokens.typeBody
@@ -284,7 +284,7 @@ private extension Transcript {
         }
 
         /// A speaker's name over the text column, in the speaker's colour and kept out of selections.
-        private func label(_ string: String, alpha: CGFloat) {
+        private func label(_ string: String, tentative: Bool, alpha: CGFloat) {
 
             newParagraph()
             let size = tokens.typeCaption
@@ -294,8 +294,10 @@ private extension Transcript {
             // The tab reaches the text column; wrapped lines hang there too.
             result.append(.init(string: "\t" + string, attributes: [
                 .font: font(size),
+                // The bundled mono has no italic face; a slant marks the guess.
+                .obliqueness: tentative ? 0.2 : 0,
                 .baselineOffset: lift(size),
-                .foregroundColor: NSColor(tokens.them).withAlphaComponent(alpha),
+                .foregroundColor: NSColor(tentative ? tokens.gutter : tokens.them).withAlphaComponent(alpha),
                 .paragraphStyle: paragraph,
                 Transcript.gutter: true,
             ]))
