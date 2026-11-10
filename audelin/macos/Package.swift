@@ -13,6 +13,7 @@ let package = Package(
         .library(name: "SpeakerNaming", targets: ["SpeakerNaming"]),
         .library(name: "CallObservation", targets: ["CallObservation"]),
         .library(name: "ZoomAccessibility", targets: ["ZoomAccessibility"]),
+        .library(name: "CallDiarizer", targets: ["CallDiarizer"]),
 
         .library(name: "BlockingTestWork", targets: ["BlockingTestWork"]),
         .library(name: "SplitRows", targets: ["SplitRows"]),
@@ -70,6 +71,7 @@ let package = Package(
         .target(name: "CallObservation"),
         .testTarget(name: "CallObservationTests", dependencies: ["CallObservation"]),
         .target(name: "ZoomAccessibility"),
+        .target(name: "CallDiarizer", dependencies: ["AudioConversion", .product(name: "FluidAudio", package: "FluidAudio")]),
         .testTarget(name: "ZoomAccessibilityTests", dependencies: ["ZoomAccessibility"], resources: [.copy("Fixtures")]),
 
         .testTarget(name: "SourceChecksTests", dependencies: ["BlockingTestWork"]),
