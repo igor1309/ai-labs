@@ -17,6 +17,11 @@ Markdown. It knows no disk.
   `transcript.md`. Text call text filled in after live text was switched
   on is marked so, as the panel groups it (design, Added late). Settled
   and pending text are rendered alike: pending is the latest heard.
+- **Their side's parts name the diarized speaker by a stable generic ID,
+  never a name,** so final text never changes when names do (LAB-1123). The
+  current names follow the parts, readable and in one versioned
+  machine-readable block, rendered again each time; while there are names,
+  the rendering tells no final length, so the block is only ever written whole.
 - **No text renders as a transcript saying no text was heard,** so a call
   recorded with live text off still has a transcript that says so. Final
   parts without words do not count as text.
@@ -72,4 +77,8 @@ Feature: Rendering a call's transcript
     Given text I rendered with final parts that have words
     When I render a replacement of that text with other final words
     Then I can read the replacement's words, and none of the earlier ones
+
+  Scenario: S-10 Their speakers are told apart and named after the text
+    When I render their parts from two speakers, with one speaker's name
+    Then I can tell the speakers apart, and read each one's current name after the text
 ```

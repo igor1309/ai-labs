@@ -60,3 +60,12 @@ Text with final parts is rendered; then a replacement whose final parts
 hold other words is rendered from nothing. Its Markdown holds the new
 words and none of the old, and tells the new final length.
 Evidence: Missing.
+
+## S-10 Their speakers are told apart and named after the text
+
+Their parts from two speaker IDs, one named and one not, render each part
+under its ID; after the text a Speakers section names the one and calls
+the other unknown, and the machine-readable block decodes to both with a
+revision that grows on each rendering. A name with Markdown characters or
+a newline cannot break the section or close the block.
+Evidence: `TranscriptFileTests` speaker tests, to move with the rendering.
