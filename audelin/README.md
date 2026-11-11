@@ -1,5 +1,7 @@
 # Audelin
 
+Landing page: index.html
+
 A native macOS companion for the owner's calls (Zoom, Telemost,
 Meet) in Russian with English professional terms. It records both sides as
 two tracks, shows a smooth, selectable live transcript in a floating panel,
