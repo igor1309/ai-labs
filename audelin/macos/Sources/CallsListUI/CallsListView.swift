@@ -6,7 +6,6 @@ public struct CallsListView: View {
     private let event: (CallsListEvent) -> Void
     @Environment(\.colorScheme) private var scheme
     @Environment(\.controlActiveState) private var activity
-    @State private var hovered: String?
     @FocusState private var editing: Bool
     private var tokens: GlassLedger { .for(scheme) }
 
@@ -57,8 +56,8 @@ public struct CallsListView: View {
         .onAppear { GlassLedger.registerFonts(); editing = state.editing != nil }
     }
 
-    /// The whole row is a button that selects it; the eye and the actions
-    /// inside it take their own clicks. Renaming starts only from the menu or ⌘R.
+    /// The whole row is a button that selects it; the eye inside it takes its
+    /// own clicks. Renaming starts only from the menu or ⌘R.
     private func callRow(_ row: CallsListState.Row) -> some View {
         Button { event(.select(row.id)) } label: { rowContent(row).contentShape(.rect) }
             .buttonStyle(.plain)
@@ -117,36 +116,18 @@ public struct CallsListView: View {
             HStack(spacing: tokens.space6) {
                 summary(row)
                 eye(row)
-                if hovered == row.id { more(row) }
             }
             .frame(width: cellWidth, alignment: .trailing)
         }
         .lineLimit(1)
         .frame(height: rowHeight)
         .padding(.horizontal, tokens.space16)
-        .background(state.selectedID == row.id ? (active ? tokens.okBg : tokens.btn) : .clear)
-        .background(hovered == row.id ? tokens.card : tokens.surface)
+        .background(state.selectedID == row.id ? (active ? tokens.okBg : tokens.btn) : tokens.surface)
         .accessibilityAddTraits(state.selectedID == row.id ? .isSelected : [])
-        .onHover { hovered = $0 ? row.id : nil }
     }
 
     /// Whether the window is the active one; selection loses its accent otherwise.
     private var active: Bool { activity != .inactive }
-
-    /// The ⋯ button a hovered row shows; it opens the row's menu.
-    private func more(_ row: CallsListState.Row) -> some View {
-        Menu { menu(row) } label: {
-            Image(systemName: "ellipsis").font(tokens.ui(tokens.typeSmall, .semibold)).foregroundStyle(tokens.sub)
-        }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
-        .fixedSize()
-        .frame(width: moreSize, height: moreSize)
-        .background(tokens.btn, in: .rect(cornerRadius: tokens.radiusControl))
-        .help("Действия")
-        .accessibilityLabel("Действия")
-        .accessibilityIdentifier("calls.more.\(row.id)")
-    }
 
     /// The title on one line, cut with an ellipsis; an untitled call shows its folder name.
     private func title(_ row: CallsListState.Row) -> some View {
@@ -185,7 +166,6 @@ public struct CallsListView: View {
     private let timeWidth: CGFloat = 40
     private let cellWidth: CGFloat = 64
     private let iconSize: CGFloat = 14
-    private let moreSize: CGFloat = 20
     private var rowHeight: CGFloat { tokens.space28 }
 
     /// The eye a call with notes shows; a call without keeps its place empty.
@@ -254,3 +234,4 @@ public struct CallsListView: View {
 
 /// What the ⌫ key types; SwiftUI's `.delete` is U+0008, which a Mac keyboard does not send.
 private extension KeyEquivalent { static let backspace = KeyEquivalent("\u{7F}") }
+
