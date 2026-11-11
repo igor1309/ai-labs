@@ -23,18 +23,16 @@ public struct CallsListView: View {
                         if let day = row.day { dayHeader(day) }
                         callRow(row)
                     }
-                    if state.rows.isEmpty {
-                        Text(state.busy ? "Загружаются звонки…" : "Пока нет записанных звонков")
-                            .foregroundStyle(tokens.gutter).padding(tokens.space24)
-                    }
                 }
             }
+            .overlay { if state.rows.isEmpty { placeholder } }
             if let failure = state.failure {
-                Text(failure)
+                Label(failure, systemImage: "exclamationmark.circle")
                     .font(tokens.ui(tokens.typeSmall))
                     .foregroundStyle(tokens.rec)
+                    .lineLimit(2)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(tokens.space16)
+                    .padding(.horizontal, tokens.space16).padding(.vertical, tokens.space8)
                     .background(tokens.errBg)
                     .accessibilityIdentifier("calls.failure")
             }
@@ -223,13 +221,23 @@ public struct CallsListView: View {
         }.buttonStyle(.plain)
     }
 
+    /// One centred message while the list loads or when it has no calls.
+    private var placeholder: some View {
+        VStack(spacing: tokens.space4) {
+            Text(state.busy ? "Загружаются звонки…" : "Пока нет записанных звонков")
+                .font(tokens.ui(tokens.typeSmall, .semibold)).foregroundStyle(tokens.sub)
+            if !state.busy {
+                Text("Звонок появится здесь, когда закончится запись")
+                    .font(tokens.ui(tokens.typeCaption)).foregroundStyle(tokens.gutter)
+            }
+        }
+        .multilineTextAlignment(.center)
+    }
+
     private func deleteAlert(_ body: String) -> some View {
         ZStack {
             tokens.shadow
             VStack(alignment: .leading, spacing: tokens.space12) {
-                Text("!").font(tokens.ui(tokens.typeTitle, .semibold)).foregroundStyle(tokens.warn)
-                    .frame(width: 40, height: 40)
-                    .background(tokens.warnBg, in: .rect(cornerRadius: tokens.radiusCard))
                 Text("Удалить звонок?").font(tokens.ui(tokens.typeTitle, .semibold)).foregroundStyle(tokens.text)
                 Text(body).font(tokens.ui(tokens.typeSmall)).foregroundStyle(tokens.sub).fixedSize(horizontal: false, vertical: true)
                 VStack(spacing: tokens.space8) {

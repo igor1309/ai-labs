@@ -28,7 +28,12 @@ public enum CallsListPreviews {
         }),
         ("notes-selected", with(notes) { $0.selectedID = $0.rows[1].id }),
         ("notes-previewed", with(notes) { $0.selectedID = $0.rows[2].id; $0.previewedID = $0.rows[2].id }),
-        ("delete", with(sample) { $0.deleteID = $0.rows[0].id }),
+        ("delete", with(sample) {
+            $0.deleteID = $0.rows[0].id
+            $0.deleteBody = "«2026.10.21-1230 Запуск: роли и SLA»: удалится вся папка звонка — аудио, расшифровки и саммари. Отменить нельзя."
+        }),
+        ("empty", CallsListState()),
+        ("loading", CallsListState(busy: true)),
         ("rename", with(sample) { $0.editing = .init(id: $0.rows[0].id, title: $0.rows[0].title) }),
     ]
 

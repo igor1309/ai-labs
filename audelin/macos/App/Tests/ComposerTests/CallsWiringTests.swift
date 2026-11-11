@@ -23,13 +23,14 @@ struct CallsWiringTests {
         let mapped = callsListState(state, timeZone: .gmt, now: .distantFuture)
         #expect(mapped.rows.map(\.editable) == [false, true])
         #expect(mapped.deleteID == "B")
-        #expect(mapped.deleteBody?.contains("«B Zoom»") == true)
+        #expect(mapped.deleteBody == "«B Zoom»: удалится вся папка звонка — аудио, расшифровки и саммари. Отменить нельзя.")
         #expect(mapped.failure == "«B»: disk denied")
         #expect(!mapped.busy)
         for phase: RecordingsState.Phase in [.renaming("A"), .deleting("B")] {
             state.phase = phase
             #expect(callsListState(state, timeZone: .gmt, now: .distantFuture).busy)
             #expect(callsListState(state, timeZone: .gmt, now: .distantFuture).deleteID == nil)
+            #expect(callsListState(state, timeZone: .gmt, now: .distantFuture).deleteBody == nil)
         }
     }
 
