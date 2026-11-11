@@ -136,6 +136,10 @@ state and send its user events. They decide nothing. Setup and the launch
 blocker draw the conditions as their merge mapping combines them;
 readiness is no machine of its own.
 
+The calls list holds the selected call, if any, and whether the preview is
+open. The preview is derived from them: the selected call's notes, or none.
+The preview's window exists only while there is one. No machine is needed.
+
 ## Data flow
 
 Compose connects one recording's pieces when they are built, translating

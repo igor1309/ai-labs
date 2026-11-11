@@ -19,7 +19,8 @@ public func compose(
     terminate: @escaping @Sendable () async -> Void,
     presentSettings: @escaping () -> Void = {},
     chooseCallsFolder: @escaping () async throws -> URL? = { nil },
-    summaryRuntime: SummaryRuntime.Runtime? = nil
+    summaryRuntime: SummaryRuntime.Runtime? = nil,
+    focusPreview: @escaping () -> Void = {}
 ) async -> AudelinMenu {
     let preferences = PreferencesStore(fileURL: preferencesURL)
     await createDefaultCallsFolder(preferences.read().callsFolder, default: Preferences().callsFolder)
@@ -39,7 +40,8 @@ public func compose(
         }, resolveProgram: summaryExecutable(path: ProcessInfo.processInfo.environment["PATH"] ?? "",
                                             home: FileManager.default.homeDirectoryForCurrentUser.path).resolve,
         deadline: { try await boundary.time.sleep(.seconds(120)) })
-    let summaries = AudelinSummaries(files: SummaryFiles.Files(locations: storage, disk: FileDisk(), ownershipDirectory: preferencesURL.deletingLastPathComponent().appendingPathComponent("summary-ownership")),
+    let summaryFiles = SummaryFiles.Files(locations: storage, disk: FileDisk(), ownershipDirectory: preferencesURL.deletingLastPathComponent().appendingPathComponent("summary-ownership"))
+    let summaries = AudelinSummaries(files: summaryFiles,
                                      runtime: runtime, preferences: preferences, sink: boundary.log)
     let cleanupRuns = CleanupRuns()
     let menu = await AudelinMenu(storage: preferences, occupiedCallNames: { try storage.occupiedCallNames() }, boundary: boundary, processes: processes, panel: panel,
@@ -57,7 +59,8 @@ public func compose(
                                       }), initial: .init(callsFolder: preferences.read().callsFolder)),
                                   timeZone: timeZone, recordingState: { [weak menu] in menu?.state ?? .init() },
                                   location: { try await storage.location(id: $0) }, openFolder: openCallsFolder,
-                                  present: presentCalls, summaryStatuses: { summaries.statuses }))
+                                  present: presentCalls, summaryStatuses: { summaries.statuses },
+                                  notes: { try await summaryFiles.notes(call: $0) }, focusPreview: focusPreview))
     do { await summaries.recover(calls: try await storage.list().map(\.id)) }
     catch { boundary.log.write(.init(category: .session, message: "summary recovery listing failed")) }
     return menu

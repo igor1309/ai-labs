@@ -1,0 +1,37 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["summary", "document", "components", "open"],
+  "properties": {
+    "summary": {"type": "string", "description": "Two or three sentences: the new responsibilities and how they split."},
+    "document": {"type": "string", "description": "Repository-relative path of the architecture document written."},
+    "components": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "responsibility", "held_by", "constructed_by"],
+        "properties": {
+          "name": {"type": "string"},
+          "responsibility": {"type": "string"},
+          "held_by": {"type": "string"},
+          "constructed_by": {"type": "string"}
+        }
+      }
+    },
+    "open": {
+      "type": "array",
+      "description": "Owner calls the architecture cannot settle alone, each with a suggested answer. Empty when none.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["question", "suggestion", "why"],
+        "properties": {
+          "question": {"type": "string", "pattern": "\\S"},
+          "suggestion": {"type": "string"},
+          "why": {"type": "string"}
+        }
+      }
+    }
+  }
+}
