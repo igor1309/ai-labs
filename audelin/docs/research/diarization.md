@@ -350,7 +350,8 @@ Not on a calendar: the AMI results change only when the models do. Rerun
 the whole measurement when
 
 - FluidAudio moves past 0.17.7, or Nemotron, VBx or LS-EEND ship new
-  models;
+  models; this includes the synthetic Russian calls (`diarization/synth-night.sh`,
+  which rebuilds the same set from seed 1130);
 - hand-labelled owner calls exist: score Nemotron and VBx on them and
   choose between them there;
 - calls of a new kind appear, such as more than eight remote speakers, or a
