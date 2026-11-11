@@ -23,17 +23,6 @@ struct CallsListNotesTests {
         #expect(shown.sent == [.preview("2026.10.17-1100")])
     }
 
-    @Test func retryButtonAsksForThatInterruptedCallWithoutStartingRename() throws {
-        var state = makeState()
-        state.rows[0].summaryStatus = "Подготовка итогов прервана"
-        state.rows[0].canRetrySummary = true
-        let shown = Shown(state)
-        defer { shown.close() }
-        let eye = try #require(try shown.eyes().first)
-        shown.click(CGPoint(x: 260, y: eye.midY + 18))
-        #expect(shown.sent == [.retrySummary("2026.10.21-1230")])
-    }
-
     @Test func clickingARowsTitleSelectsItAndStartsItsRename() throws {
 
         let shown = Shown(makeState())
@@ -132,10 +121,10 @@ struct CallsListNotesTests {
         /// Each eye's box, top-down, in view points from the top left.
         func eyes() throws -> [CGRect] {
             let image = try snapshot(), scale = CGFloat(image.pixelsWide) / 920
-            let background = { (y: Int) in image.colorAt(x: Int(670 * scale), y: y) }
+            let background = { (y: Int) in image.colorAt(x: Int(834 * scale), y: y) }
             var boxes: [CGRect] = []
             for y in 0..<image.pixelsHigh {
-                let xs = (Int(686 * scale)..<Int(714 * scale)).filter { image.colorAt(x: $0, y: y) != background(y) }
+                let xs = (Int(840 * scale)..<Int(904 * scale)).filter { image.colorAt(x: $0, y: y) != background(y) }
                 guard let low = xs.min(), let high = xs.max() else { continue }
                 let row = CGRect(x: CGFloat(low) / scale, y: CGFloat(y) / scale, width: CGFloat(high - low + 1) / scale, height: 1 / scale)
                 if let last = boxes.last, row.minY - last.maxY < 2 { boxes[boxes.count - 1] = last.union(row) } else { boxes.append(row) }

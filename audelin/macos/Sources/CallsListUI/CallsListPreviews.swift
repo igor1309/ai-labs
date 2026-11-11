@@ -6,14 +6,25 @@ public enum CallsListPreviews {
     public static let states: [(name: String, state: CallsListState)] = [
         ("calls", sample),
         ("notes", notes),
-        ("summary-retry", with(sample) {
+        ("summary", with(sample) {
+            $0.rows[0].summary = .pending
+            $0.rows[0].summaryStatus = "Готовятся итоги"
+            $0.rows[1].summary = .failed
             $0.rows[1].summaryStatus = "Подготовка итогов прервана; автоматического повтора не будет."
             $0.rows[1].canRetrySummary = true
         }),
-        ("summary-retry-failed", with(sample) {
-            $0.rows[1].summaryStatus = "Подготовка итогов прервана; автоматического повтора не будет."
+        ("summary-failed-banner", with(sample) {
+            $0.rows[1].summary = .failed
             $0.rows[1].canRetrySummary = true
             $0.failure = "Не удалось повторить подготовку итогов. Расшифровка и прежние итоги сохранены."
+        }),
+        ("long-title", with(notes) {
+            $0.rows[1] = .init(id: "2026.10.20-1600", title: long, displayTitle: long, day: .init(title: "Вчера", count: "1 звонок"),
+                               time: "16:00", duration: "1:12:40", editable: true, hasNotes: true)
+        }),
+        ("older-year", with(sample) {
+            $0.rows[2] = .init(id: "2025.12.12-1030", title: "Ретро за год", displayTitle: "Ретро за год",
+                               day: .init(title: "12 декабря 2025", count: "1 звонок"), time: "10:30", duration: "1:05:12", editable: true)
         }),
         ("notes-selected", with(notes) { $0.selectedID = $0.rows[1].id }),
         ("notes-previewed", with(notes) { $0.selectedID = $0.rows[2].id; $0.previewedID = $0.rows[2].id }),
@@ -24,6 +35,8 @@ public enum CallsListPreviews {
     public static func state(_ name: String) -> CallsListState {
         states.first { $0.name == name }!.state
     }
+
+    private static let long = "Интервью: кандидат на iOS — техническая часть, архитектура, тесты и вопросы по Swift Concurrency и SwiftUI"
 
     private static var sample: CallsListState {
         .init(rows: [
