@@ -16,6 +16,7 @@ import IMRxObservation
         feed.publish(model.state)
         doer.act(on: model.state)
     }
+    var canDispatch: Bool { model.state.dispatch && model.state.phase == .accepting }
     /// A pending call survives a quit and is recovered at the next launch.
     var busy: Bool { model.state.calls.values.contains { $0.phase != .pending && $0.phase != .installed } }
     func wait(call: String) async {

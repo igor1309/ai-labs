@@ -113,7 +113,7 @@ public struct SummaryCoordinatorReducer {
     func recover(call: String) async throws -> SummaryRecovery
     func submit(_ submission: SummarySubmission) async -> Bool
     func retry(call: String) async throws
-    func dispatch(call: String)
+    func dispatch(call: String) async
     func recoveryFailed(call: String) async
     func join() async
 }
@@ -137,7 +137,7 @@ public struct SummaryCoordinatorReducer {
             guard work.phase != .pending && work.phase != .installed,
                   started.insert(work.operation).inserted else { continue }
             switch work.phase {
-            case .recovering, .submitting, .retrying, .failing:
+            case .recovering, .submitting, .retrying, .failing, .dispatching:
                 tasks[call] = Task { [self] in
                     let event: SummaryCoordinatorEvent
                     switch work.phase {
@@ -150,6 +150,8 @@ public struct SummaryCoordinatorReducer {
                     case .retrying:
                         do { try await jobs.retry(call: call); event = .retried(call) }
                         catch { event = .retryFailed(call) }
+                    case .dispatching:
+                        await jobs.dispatch(call: call); event = .dispatched(call)
                     case .failing:
                         await jobs.recoveryFailed(call: call); event = .failureInstalled(call)
                     default: preconditionFailure("No asynchronous work for phase")
@@ -157,9 +159,6 @@ public struct SummaryCoordinatorReducer {
                     tasks[call] = nil
                     send(event)
                 }
-            case .dispatching:
-                jobs.dispatch(call: call)
-                send(.dispatched(call))
             case .pending, .installed: break
             }
         }

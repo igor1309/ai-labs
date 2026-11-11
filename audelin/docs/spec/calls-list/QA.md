@@ -57,3 +57,11 @@ preview, and the fake panel stays out.
 
 With a call previewed, the calls window closes; there is no preview, and
 the fake panel is ordered out.
+
+## S-11 Retry completion adds an eye
+
+`cd audelin/macos/App && swift test --filter SummaryCompositionTests/retryCompletionRefreshesTheOpenCallsWindowAndPreview` starts without notes, keeps the list open and its IDs unchanged, completes the held retry, then opens the new eye and asserts the published text.
+
+## S-12 Retry completion refreshes an open preview
+
+The same parameterized boundary starts with previous notes and keeps their preview open through generation. It asserts the old text remains readable until replacement, then the preview carries the newly published text.

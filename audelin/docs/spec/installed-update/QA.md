@@ -49,3 +49,7 @@ invented here. Preserve measured elapsed time in the run report for acceptance.
 Platform research and architecture must settle any additional observable failure
 behaviour before implementation; this spec does not invent failure UI absent
 from the approved oracle.
+
+## Automatic update during notes
+
+`cd audelin/macos/App && swift test --filter SummaryCompositionTests` holds local generation and an external owner's terminal save. Update requests are refused until saving finishes, then relaunch is allowed. Coordinator and job protection checks hold the asynchronous handoff and terminal write independently. Observer arbitration cases cover another instance's explicit retry and unavailable completion evidence.

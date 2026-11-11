@@ -2,6 +2,8 @@
 
 ## 2026-11-11
 
+- LAB-1177: Retried notes appear in the open calls window and replace an open preview as soon as they finish. Updates also wait for another instance’s retry and unresolved summary ownership.
+
 - LAB-1177: Automatic updates wait for active call summaries to finish. Interrupted summaries can be retried explicitly from the calls list using their saved transcript and settings.
 
 - LAB-1175: Call-notes prompts preserve handoff prerequisites, deadlines and final status, distinguish checking from doing, and request readable action timestamps.

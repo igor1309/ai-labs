@@ -94,4 +94,22 @@ Feature: Optional call notes
     Given a never-started pending job is loaded after restart
     When dispatch remains held
     Then I can read that notes are waiting to start
+
+  Scenario: S-19 Explicitly retry interrupted notes
+    Given I can see an interrupted summary in the calls list
+    When I choose to retry it
+    Then I can follow a fresh attempt using the saved transcript and settings
+    And the transcript and previous notes remain readable until complete replacement notes are saved
+
+  Scenario: S-20 Refused or failed retry
+    Given the interrupted attempt has changed or retry storage is unavailable
+    When I request a retry
+    Then I can read why retry failed without losing my transcript or previous notes
+
+  Scenario: S-21 Read retry completion in the open window
+    Given the calls window is open while an explicit retry runs
+    When replacement notes finish
+    Then I can open their eye without reopening the calls window
+    And an already open preview shows the replacement notes
+
 ```

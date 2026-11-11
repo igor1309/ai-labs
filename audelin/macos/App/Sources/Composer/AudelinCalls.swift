@@ -122,13 +122,13 @@ public final class AudelinCalls {
         closePreview()
     }
 
-    /// Finds which listed calls have notes, each time the listing changes while
-    /// the window is shown; notes that are there but unreadable count, so their
+    /// Finds which listed calls have notes as the listing or summary status changes
+    /// while the window is shown; notes that are there but unreadable count, so their
     /// reason can be shown.
     private func scanNotes() {
         notesScan?.cancel()
         notesScan = Task { [notes] in
-            for await ids in Observations({ self.inputs.state().calls.map(\.id) }) {
+            for await (ids, _) in Observations({ (self.inputs.state().calls.map(\.id), self.summaryStatuses()) }) {
                 var found = Set<String>()
                 for id in ids {
                     do { if try await notes(id) != nil { found.insert(id) } } catch { found.insert(id) }

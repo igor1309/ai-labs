@@ -182,6 +182,57 @@ struct SummaryCompositionTests {
             } catch { http.complete.send(); await rig.finish(); throw error }
         }
     }
+    @Test(arguments: [false, true])
+    func retryCompletionRefreshesTheOpenCallsWindowAndPreview(previousNotes: Bool) async throws {
+        try await withComposeFolder { root in
+            let id = "1970.01.01-0000", folder = root.appendingPathComponent("1970.01.01-0000")
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            try Data("saved transcript".utf8).write(to: folder.appendingPathComponent("transcript.md"))
+            if previousNotes { try Data("previous notes".utf8).write(to: folder.appendingPathComponent("summary.md")) }
+            let otherID = "1970.01.01-0001", otherFolder = root.appendingPathComponent("1970.01.01-0001")
+            try FileManager.default.createDirectory(at: otherFolder, withIntermediateDirectories: true)
+            try Data("other transcript".utf8).write(to: otherFolder.appendingPathComponent("transcript.md"))
+            try Data("other notes".utf8).write(to: otherFolder.appendingPathComponent("summary.md"))
+            let files = Files(locations: SummaryStorage(folder: root, timeZone: .gmt), disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("summary-ownership"))
+            let runtime = Job.Runtime(kind: "compatibleAPI", model: "saved", program: "", endpoint: "http://127.0.0.1/v1", credentialVariable: "")
+            let job = Job(id: "interrupted", call: id, input: "saved-input", entries: [.init(label: "A", time: "0", text: "saved transcript")], speakers: false, primary: runtime)
+            _ = try await files.claim(SummaryJobStore(files: files).record(job, phase: "interrupted"))
+            let http = ControlledHTTP(hold: true)
+            let rig = try await fixture(root: root, storage: ControlledTranscripts(), http: http)
+            do {
+                let calls = try #require(rig.menu.calls)
+                calls.show()
+                // The other call's eye confirms the initial scan completed even when this call has no notes.
+                for await state in Observations({ calls.state }) where !state.busy &&
+                    state.rows.first(where: { $0.id == otherID })?.hasNotes == true &&
+                    state.rows.first(where: { $0.id == id })?.hasNotes == previousNotes { break }
+                let rows = calls.state.rows.map(\.id)
+                if previousNotes {
+                    await calls.send(.preview(id))
+                    for await preview in Observations({ calls.preview }) where preview?.notes == .text("previous notes") { break }
+                } else { await calls.send(.select(id)) }
+                await calls.send(.retrySummary(id))
+                await http.started.next()
+                #expect(calls.state.rows.first(where: { $0.id == id })?.hasNotes == previousNotes)
+                if previousNotes { #expect(calls.preview?.notes == .text("previous notes")) }
+                http.complete.send()
+                _ = try await summary(rig.menu) { $0[id] == "Итоги готовы" }
+                let published = try #require(try await files.notes(call: id))
+                for await state in Observations({ calls.state }) where state.rows.first(where: { $0.id == id })?.hasNotes == true { break }
+                #expect(calls.state.rows.map(\.id) == rows)
+                if !previousNotes {
+                    #expect(calls.preview == nil)
+                    await calls.send(.preview(id))
+                }
+                for await preview in Observations({ calls.preview }) where preview?.notes == .text(published) { break }
+                #expect(calls.preview?.id == id)
+                #expect(published.contains("Synthetic meeting"))
+                #expect(calls.state.failure == nil)
+                calls.windowClosed()
+                await rig.finish()
+            } catch { http.complete.send(); rig.menu.calls?.windowClosed(); await rig.finish(); throw error }
+        }
+    }
     @Test(arguments: ["succeeded", "failed"])
     func updateObservesAnotherInstancesRunningJobUntilItsTerminalSave(terminal: String) async throws {
         try await withComposeFolder { root in

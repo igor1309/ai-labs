@@ -109,7 +109,8 @@ struct SummaryJobStore: SummaryJobs.Store {
         let saved = try JSONDecoder().decode(Snapshot.self, from: record.snapshot)
         let job = Job(id: record.job, call: record.call, input: record.input, entries: saved.entries.map(\.value), speakers: saved.speakers,
                       primary: saved.primary.value, fallback: saved.fallback?.value)
-        let phase = SummaryJobs.State.Phase(rawValue: record.phase) ?? .failed
+        guard let phase = SummaryJobs.State.Phase(rawValue: record.phase),
+              [.pending, .running, .interrupted, .succeeded, .failed].contains(phase) else { throw CocoaError(.fileReadCorruptFile) }
         return .init(phase: phase, job: job, warning: record.warning, status: summaryStatus(phase, record.warning))
     }
     func claim(_ job: Job) async throws -> (owned: Bool, state: SummaryJobs.State) {

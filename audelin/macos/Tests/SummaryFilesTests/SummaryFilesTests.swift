@@ -306,6 +306,29 @@ import Testing
             await first.release(job: next.job, call: next.call, input: next.input)
         }
     }
+    @Test(arguments: ["job", "input", "snapshot", "checkpoint", "warning"])
+    func staleInterruptedRetryCannotReplaceChangedInterruptedRecord(field: String) async throws {
+        try await withFolder { folder, locations in
+            let files = Files(locations: locations, disk: FileDisk(), ownershipDirectory: folder.deletingLastPathComponent().appendingPathComponent("leases"))
+            var stale = record(); stale.phase = "interrupted"
+            var current = stale
+            switch field {
+            case "job": current.job = "newer-attempt"
+            case "input": current.input = "newer-input"
+            case "snapshot": current.snapshot = Data("newer config".utf8)
+            case "checkpoint": current.checkpoint = Data("newer evidence".utf8)
+            case "warning": current.warning = true
+            default: Issue.record("unknown field")
+            }
+            _ = try await files.claim(current)
+            try Data("complete previous notes".utf8).write(to: folder.appendingPathComponent("summary.md"))
+            let request = stale
+            await #expect(throws: (any Error).self) { try await files.retry(request, job: "fresh") }
+            #expect(try await files.load(call: "call") == current)
+            #expect(try await files.notes(call: "call") == "complete previous notes")
+            #expect(try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8) == "original transcript")
+        }
+    }
     @Test(arguments: ["pending", "running", "succeeded", "failed"])
     func retryRefusesEveryNonInterruptedPhase(phase: String) async throws {
         try await withFolder { folder, locations in

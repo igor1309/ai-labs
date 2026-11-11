@@ -60,3 +60,15 @@ Automated boundary: `cd audelin/macos && swift test --filter SummaryFilesTests/m
 ## S-16 A call without notes
 
 Automated boundary: `cd audelin/macos && swift test --filter SummaryFilesTests/callWithoutNotesReadsNone`. Setup fixture: a call folder with a transcript and no `summary.md`; drive: read its notes; read-back oracle: the read returns none and throws nothing.
+
+## S-17 Retry the current interrupted attempt
+
+`cd audelin/macos && swift test --filter SummaryFilesTests/concurrentRetriesReplaceOnlyTheInterruptedAttemptAndPreserveOutputs` submits two retries of one interrupted record. Only one wins; its new pending identity retains the saved payload, and old notes cannot complete the fresh attempt.
+
+## S-18 Refuse a stale interrupted retry
+
+`cd audelin/macos && swift test --filter SummaryFilesTests/staleInterruptedRetryCannotReplaceChangedInterruptedRecord` varies the current interrupted job, input, configuration, checkpoint and warning. Each stale request fails and preserves the current record, previous notes and transcript. Non-interrupted phases have separate refusal coverage.
+
+## S-19 Preserve an interrupted attempt on retry failure
+
+`cd audelin/macos && swift test --filter SummaryFilesTests/failedRetryWriteLeavesTheInterruptedAttemptAndOutputIntact` fails the replacement write, reads back the unchanged record and notes, then allows a successful retry.

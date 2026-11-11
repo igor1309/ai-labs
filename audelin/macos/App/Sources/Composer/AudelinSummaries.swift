@@ -23,7 +23,7 @@ final class AudelinSummaries {
         let store = SummaryJobStore(files: files)
         let handler = SummaryJobs.EffectHandler(store: store, generation: SummaryGeneration(runtime: runtime, sink: sink), cancelled: { Task.isCancelled })
         let jobs = SummaryCoordinatorJobsAdapter(load: load ?? { try await files.load(call: $0) }, store: store,
-            handler: handler, preferences: preferences, changed: { [weak self] call, state in
+            handler: handler, preferences: preferences, canDispatch: { [weak self] in self?.coordinator?.canDispatch == true }, changed: { [weak self] call, state in
                 if state.phase == .interrupted { self?.retryable.insert(call) }
                 else { self?.retryable.remove(call) }
                 self?.statuses[call] = state.status
