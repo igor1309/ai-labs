@@ -16,6 +16,8 @@ public struct CallsListState: Equatable, Sendable {
         public var summaryStatus: String
         /// The call has published notes, so its row offers the eye.
         public var hasNotes: Bool
+        /// What the call was about, one sentence from its notes; nil without one.
+        public var gist: String?
         public let id: String
         public let title: String
         /// The start time, HH:mm.
@@ -47,13 +49,14 @@ public struct CallsListState: Equatable, Sendable {
         }
 
         public init(id: String, title: String, displayTitle: String, day: Day?, time: String, duration: String, editable: Bool,
-                    summaryStatus: String = "", hasNotes: Bool = false, canRetrySummary: Bool = false, summary: Summary = .none,
+                    summaryStatus: String = "", hasNotes: Bool = false, gist: String? = nil, canRetrySummary: Bool = false, summary: Summary = .none,
                     match: Match? = nil) {
             self.match = match
             self.summary = summary
             self.canRetrySummary = canRetrySummary
             self.summaryStatus = summaryStatus
             self.hasNotes = hasNotes
+            self.gist = gist
             self.id = id
             self.title = title
             self.displayTitle = displayTitle

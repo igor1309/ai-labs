@@ -69,6 +69,7 @@ let package = Package(
                 .product(name: "CallsSearch", package: "macos"),
                 .product(name: "Recordings", package: "macos"),
                 .product(name: "CallsListUI", package: "macos"),
+                .product(name: "NotesMarkdown", package: "macos"),
                 .product(name: "CallAudioAccess", package: "macos"),
                 .product(name: "MenuBar", package: "macos"),
                 .product(name: "Lifecycle", package: "macos"),

@@ -3,6 +3,7 @@ import Calls
 import CallsListUI
 import CallsSearch
 import Foundation
+import NotesMarkdown
 import Observation
 import Recording
 import Recordings
@@ -41,6 +42,8 @@ public final class AudelinCalls {
     private var selectedID: String?
     private var previewOpen = false
     private var withNotes: Set<String> = []
+    /// Each call's gist, read with its notes.
+    private var gists: [String: String] = [:]
     private var notesScan: Task<Void, Never>?
     private var loading: Task<Void, Never>?
 
@@ -117,6 +120,7 @@ public final class AudelinCalls {
             state.rows[index].summary = badges[state.rows[index].id] ?? .none
             state.rows[index].canRetrySummary = retryable.contains(state.rows[index].id)
             state.rows[index].hasNotes = withNotes.contains(state.rows[index].id)
+            state.rows[index].gist = gists[state.rows[index].id]
             state.rows[index].match = found[state.rows[index].id]
         }
         state.selectedID = state.rows.contains { $0.id == selectedID } ? selectedID : nil
@@ -204,19 +208,24 @@ public final class AudelinCalls {
         closePreview()
     }
 
-    /// Finds which listed calls have notes as the listing or summary status changes
+    /// Finds which listed calls have notes, and each one's gist, as the listing or summary status changes
     /// while the window is shown; notes that are there but unreadable count, so their
     /// reason can be shown.
     private func scanNotes() {
         notesScan?.cancel()
         notesScan = Task { [notes] in
             for await (ids, _) in Observations({ (self.inputs.state().calls.map(\.id), self.summaryStatuses()) }) {
-                var found = Set<String>()
+                var found = Set<String>(), gists: [String: String] = [:]
                 for id in ids {
-                    do { if try await notes(id) != nil { found.insert(id) } } catch { found.insert(id) }
+                    do {
+                        guard let text = try await notes(id) else { continue }
+                        found.insert(id)
+                        gists[id] = NotesMarkdown.gist(text)
+                    } catch { found.insert(id) }
                 }
                 if Task.isCancelled { return }
                 withNotes = found
+                self.gists = gists
                 // The open preview follows what the reload found.
                 updatePreview()
             }

@@ -9,6 +9,18 @@ import Testing
 @MainActor
 @Suite(.timeLimit(.minutes(1)))
 struct CallsPreviewWiringTests {
+    @Test func eachRowCarriesItsGist() async throws {
+        try await withComposition { rig in
+            let calls = try #require(rig.menu.calls)
+            try call(a, notes: "## О чём встреча\n\nДейли команды. Обсудили релиз.\n\n## Решения\n\nНет.", in: rig.root)
+            try call(b, notes: nil, in: rig.root)
+            try call(c, notes: "# C notes", in: rig.root)
+            await rig.menu.perform(.showCalls)
+            await wait(calls) { $0.rows.map(\.hasNotes) == [true, false, true] }
+            #expect(calls.state.rows.map(\.gist) == ["Дейли команды.", nil, nil])
+        }
+    }
+
     @Test func theEyeOpensThePreviewAndTheSelectionMovesIt() async throws {
         try await withComposition { rig in
             let calls = try #require(rig.menu.calls)
