@@ -27,11 +27,10 @@ Context menu, Alert, Rename field, Error banner).
 - Status cell, right-aligned: summary being prepared (spinner), summary
   failed (red alert), notes (eye; accent only on the selected row while the
   window is active, `sub` otherwise; a click shows the notes).
-- Hover tints the row and shows a ⋯ button at the end of the status cell,
-  in no extra space. It opens the same menu as a right-click, below the
-  button with right edges aligned: Открыть, Показать заметки, Переименовать,
-  Повторить итоги (only when the summary failed), Удалить…. Открыть shows
-  the call's folder in Finder.
+- Hover changes nothing in a row. A right-click selects the row and opens
+  its menu at the pointer, so the menu always acts on the selected call:
+  Открыть, Показать заметки, Переименовать, Повторить итоги (only when the
+  summary failed), Удалить…. Открыть shows the call's folder in Finder.
 - Keys: ↑↓ select, Return opens, Space shows notes, ⌘R renames, ⌘⌫ asks to
   delete. Double-click opens.
 
@@ -39,7 +38,7 @@ Context menu, Alert, Rename field, Error banner).
 
 | Frame | What it shows |
 |---|---|
-| Calls — wide | 900 pt, selected row, hovered failed row with its menu open |
+| Calls — wide | 900 pt, a failed row selected by a right-click with its menu open |
 | Calls — minimum width | The same at 560 pt |
 | Calls — renaming | The title cell is a field; the `yyyy.MM.dd-HHmm` prefix stays fixed. Return saves, Esc cancels |
 | Calls — confirm delete | A sheet over the list with Удалить and Отмена |
@@ -52,5 +51,5 @@ Context menu, Alert, Rename field, Error banner).
 Every colour, font, type size, gap, padding and radius is a Glass Ledger
 token; the only raw colours are the window's traffic lights and the
 transparent menu-item fill. Fixed sizes with no token are layout widths:
-time 40, duration and status cells 64, ⋯ button 20, icons 14, menu 240,
+time 40, duration and status cells 64, icons 14, menu 240,
 alert 340, minimum window 560.

@@ -240,32 +240,6 @@
                           "icon": "eye",
                           "library": "lucide",
                           "fill": "$sub"
-                        },
-                        {
-                          "type": "frame",
-                          "id": "exyCz",
-                          "x": 0,
-                          "y": 0,
-                          "name": "More",
-                          "enabled": false,
-                          "width": 20,
-                          "height": 20,
-                          "fill": "$btn",
-                          "cornerRadius": "$radius-control",
-                          "justifyContent": "center",
-                          "alignItems": "center",
-                          "children": [
-                            {
-                              "type": "icon",
-                              "id": "S0w6h1",
-                              "name": "More icon",
-                              "width": 14,
-                              "height": 14,
-                              "icon": "ellipsis",
-                              "library": "lucide",
-                              "fill": "$text"
-                            }
-                          ]
                         }
                       ]
                     }
@@ -733,7 +707,7 @@
               "ref": "g69Zqs",
               "name": "Row 1",
               "width": "fill_container",
-              "fill": "$okBg",
+              "fill": "$surface",
               "descendants": {
                 "OUVdK": {
                   "content": "12:30"
@@ -755,10 +729,7 @@
                 },
                 "k3ypSL": {
                   "enabled": true,
-                  "fill": "$me"
-                },
-                "exyCz": {
-                  "enabled": false
+                  "fill": "$sub"
                 }
               }
             },
@@ -791,9 +762,6 @@
                 "k3ypSL": {
                   "enabled": false,
                   "fill": "$sub"
-                },
-                "exyCz": {
-                  "enabled": false
                 }
               }
             },
@@ -818,7 +786,7 @@
               "ref": "g69Zqs",
               "name": "Row 3",
               "width": "fill_container",
-              "fill": "$card",
+              "fill": "$okBg",
               "descendants": {
                 "OUVdK": {
                   "content": "16:00"
@@ -841,9 +809,6 @@
                 "k3ypSL": {
                   "enabled": false,
                   "fill": "$sub"
-                },
-                "exyCz": {
-                  "enabled": true
                 }
               }
             },
@@ -876,9 +841,6 @@
                 "k3ypSL": {
                   "enabled": true,
                   "fill": "$sub"
-                },
-                "exyCz": {
-                  "enabled": false
                 }
               }
             },
@@ -926,9 +888,6 @@
                 "k3ypSL": {
                   "enabled": false,
                   "fill": "$sub"
-                },
-                "exyCz": {
-                  "enabled": false
                 }
               }
             },
@@ -976,9 +935,6 @@
                 "k3ypSL": {
                   "enabled": false,
                   "fill": "$sub"
-                },
-                "exyCz": {
-                  "enabled": false
                 }
               }
             },
@@ -1026,9 +982,6 @@
                 "k3ypSL": {
                   "enabled": true,
                   "fill": "$sub"
-                },
-                "exyCz": {
-                  "enabled": false
                 }
               }
             }
@@ -1039,8 +992,8 @@
           "type": "ref",
           "ref": "yYo9u",
           "name": "Context menu",
-          "x": 644,
-          "y": 184
+          "x": 300,
+          "y": 172
         }
       ]
     },
@@ -1112,7 +1065,7 @@
               "ref": "g69Zqs",
               "name": "Row 1",
               "width": "fill_container",
-              "fill": "$okBg",
+              "fill": "$surface",
               "descendants": {
                 "OUVdK": {
                   "content": "12:30"
@@ -1134,10 +1087,7 @@
                 },
                 "k3ypSL": {
                   "enabled": true,
-                  "fill": "$me"
-                },
-                "exyCz": {
-                  "enabled": false
+                  "fill": "$sub"
                 }
               }
             },
@@ -1170,9 +1120,6 @@
                 "k3ypSL": {
                   "enabled": false,
                   "fill": "$sub"
-                },
-                "exyCz": {
-                  "enabled": false
                 }
               }
             },
@@ -1197,7 +1144,7 @@
               "ref": "g69Zqs",
               "name": "Row 3",
               "width": "fill_container",
-              "fill": "$card",
+              "fill": "$okBg",
               "descendants": {
                 "OUVdK": {
                   "content": "16:00"
@@ -1220,9 +1167,6 @@
                 "k3ypSL": {
                   "enabled": false,
                   "fill": "$sub"
-                },
-                "exyCz": {
-                  "enabled": true
                 }
               }
             },
@@ -1255,9 +1199,6 @@
                 "k3ypSL": {
                   "enabled": true,
                   "fill": "$sub"
-                },
-                "exyCz": {
-                  "enabled": false
                 }
               }
             },
@@ -1305,9 +1246,6 @@
                 "k3ypSL": {
                   "enabled": false,
                   "fill": "$sub"
-                },
-                "exyCz": {
-                  "enabled": false
                 }
               }
             },
@@ -1355,9 +1293,6 @@
                 "k3ypSL": {
                   "enabled": false,
                   "fill": "$sub"
-                },
-                "exyCz": {
-                  "enabled": false
                 }
               }
             },
@@ -1405,9 +1340,6 @@
                 "k3ypSL": {
                   "enabled": true,
                   "fill": "$sub"
-                },
-                "exyCz": {
-                  "enabled": false
                 }
               }
             }
@@ -1418,8 +1350,8 @@
           "type": "ref",
           "ref": "yYo9u",
           "name": "Context menu",
-          "x": 304,
-          "y": 184
+          "x": 180,
+          "y": 172
         }
       ]
     },
@@ -1523,9 +1455,6 @@
                 "k3ypSL": {
                   "enabled": true,
                   "fill": "$me"
-                },
-                "exyCz": {
-                  "enabled": false
                 }
               }
             },
@@ -1558,9 +1487,6 @@
                 "k3ypSL": {
                   "enabled": false,
                   "fill": "$sub"
-                },
-                "exyCz": {
-                  "enabled": false
                 }
               }
             },
@@ -1608,9 +1534,6 @@
                 "k3ypSL": {
                   "enabled": false,
                   "fill": "$sub"
-                },
-                "exyCz": {
-                  "enabled": false
                 }
               }
             },
@@ -1643,9 +1566,6 @@
                 "k3ypSL": {
                   "enabled": true,
                   "fill": "$sub"
-                },
-                "exyCz": {
-                  "enabled": false
                 }
               }
             },
@@ -1693,9 +1613,6 @@
                 "k3ypSL": {
                   "enabled": false,
                   "fill": "$sub"
-                },
-                "exyCz": {
-                  "enabled": false
                 }
               }
             },
@@ -1743,9 +1660,6 @@
                 "k3ypSL": {
                   "enabled": false,
                   "fill": "$sub"
-                },
-                "exyCz": {
-                  "enabled": false
                 }
               }
             },
@@ -1793,9 +1707,6 @@
                 "k3ypSL": {
                   "enabled": true,
                   "fill": "$sub"
-                },
-                "exyCz": {
-                  "enabled": false
                 }
               }
             }
@@ -1894,9 +1805,6 @@
                 "k3ypSL": {
                   "enabled": true,
                   "fill": "$sub"
-                },
-                "exyCz": {
-                  "enabled": false
                 }
               }
             },
@@ -1929,9 +1837,6 @@
                 "k3ypSL": {
                   "enabled": false,
                   "fill": "$sub"
-                },
-                "exyCz": {
-                  "enabled": false
                 }
               }
             },
@@ -1979,9 +1884,6 @@
                 "k3ypSL": {
                   "enabled": false,
                   "fill": "$me"
-                },
-                "exyCz": {
-                  "enabled": false
                 }
               }
             },
@@ -2014,9 +1916,6 @@
                 "k3ypSL": {
                   "enabled": true,
                   "fill": "$sub"
-                },
-                "exyCz": {
-                  "enabled": false
                 }
               }
             },
@@ -2064,9 +1963,6 @@
                 "k3ypSL": {
                   "enabled": false,
                   "fill": "$sub"
-                },
-                "exyCz": {
-                  "enabled": false
                 }
               }
             },
@@ -2114,9 +2010,6 @@
                 "k3ypSL": {
                   "enabled": false,
                   "fill": "$sub"
-                },
-                "exyCz": {
-                  "enabled": false
                 }
               }
             },
@@ -2164,9 +2057,6 @@
                 "k3ypSL": {
                   "enabled": true,
                   "fill": "$sub"
-                },
-                "exyCz": {
-                  "enabled": false
                 }
               }
             }
@@ -2286,9 +2176,6 @@
                 "k3ypSL": {
                   "enabled": true,
                   "fill": "$sub"
-                },
-                "exyCz": {
-                  "enabled": false
                 }
               }
             },
@@ -2321,9 +2208,6 @@
                 "k3ypSL": {
                   "enabled": false,
                   "fill": "$sub"
-                },
-                "exyCz": {
-                  "enabled": false
                 }
               }
             },
@@ -2371,9 +2255,6 @@
                 "k3ypSL": {
                   "enabled": false,
                   "fill": "$me"
-                },
-                "exyCz": {
-                  "enabled": false
                 }
               }
             },
@@ -2406,9 +2287,6 @@
                 "k3ypSL": {
                   "enabled": true,
                   "fill": "$sub"
-                },
-                "exyCz": {
-                  "enabled": false
                 }
               }
             },
@@ -2456,9 +2334,6 @@
                 "k3ypSL": {
                   "enabled": false,
                   "fill": "$sub"
-                },
-                "exyCz": {
-                  "enabled": false
                 }
               }
             },
@@ -2506,9 +2381,6 @@
                 "k3ypSL": {
                   "enabled": false,
                   "fill": "$sub"
-                },
-                "exyCz": {
-                  "enabled": false
                 }
               }
             },
@@ -2556,9 +2428,6 @@
                 "k3ypSL": {
                   "enabled": true,
                   "fill": "$sub"
-                },
-                "exyCz": {
-                  "enabled": false
                 }
               }
             }
@@ -2666,9 +2535,6 @@
                 "k3ypSL": {
                   "enabled": true,
                   "fill": "$sub"
-                },
-                "exyCz": {
-                  "enabled": false
                 }
               }
             },
@@ -2701,9 +2567,6 @@
                 "k3ypSL": {
                   "enabled": false,
                   "fill": "$sub"
-                },
-                "exyCz": {
-                  "enabled": false
                 }
               }
             },
@@ -2751,9 +2614,6 @@
                 "k3ypSL": {
                   "enabled": false,
                   "fill": "$sub"
-                },
-                "exyCz": {
-                  "enabled": false
                 }
               }
             },
@@ -2786,9 +2646,6 @@
                 "k3ypSL": {
                   "enabled": true,
                   "fill": "$sub"
-                },
-                "exyCz": {
-                  "enabled": false
                 }
               }
             },
@@ -2836,9 +2693,6 @@
                 "k3ypSL": {
                   "enabled": false,
                   "fill": "$sub"
-                },
-                "exyCz": {
-                  "enabled": false
                 }
               }
             },
@@ -2886,9 +2740,6 @@
                 "k3ypSL": {
                   "enabled": false,
                   "fill": "$sub"
-                },
-                "exyCz": {
-                  "enabled": false
                 }
               }
             },
@@ -2936,9 +2787,6 @@
                 "k3ypSL": {
                   "enabled": true,
                   "fill": "$sub"
-                },
-                "exyCz": {
-                  "enabled": false
                 }
               }
             }
@@ -3133,7 +2981,7 @@
       "name": "Note actions",
       "width": 440,
       "height": 300,
-      "content": "Status cell, 64 pt, right-aligned: summary being prepared (spinner), summary failed (red alert), notes (eye; accent on the selected row, click shows notes). On hover the row tints and a ⋯ button appears at the cell's end, in no extra space; it opens the same menu as a right-click, below the button, right edges aligned. Повторить итоги appears only for a failed summary.\n\nОткрыть shows the call's folder in Finder.\n\nKeys: ↑↓ select, Return opens, Space shows notes, ⌘R renames, ⌘⌫ asks to delete. Double-click opens."
+      "content": "Status cell, 64 pt, right-aligned: summary being prepared (spinner), summary failed (red alert), notes (eye; accent on the selected row, click shows notes). Hover changes nothing in a row. A right-click selects the row and opens its menu at the pointer, so the menu acts on the selected call. Повторить итоги appears only for a failed summary.\n\nОткрыть shows the call's folder in Finder.\n\nKeys: ↑↓ select, Return opens, Space shows notes, ⌘R renames, ⌘⌫ asks to delete. Double-click opens."
     },
     {
       "type": "note",
