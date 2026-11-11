@@ -237,7 +237,8 @@ private extension Transcript {
 
         private func entry(_ entry: PanelState.Entry, alpha: CGFloat, spacing: CGFloat) {
 
-            if let label = entry.label { self.label(label, tentative: entry.labelIsTentative, alpha: alpha) }
+            let place = entry.speaker == .me ? nil : entry.remoteSpeaker
+            if let label = entry.label { self.label(label, tentative: entry.labelIsTentative, place: place, alpha: alpha) }
             newParagraph()
 
             let size = tokens.typeBody
@@ -259,10 +260,10 @@ private extension Transcript {
 
             // The speaker's symbol and the time, both in the speaker's colour,
             // mark who spoke.
-            var time = attributes(font(size), entry.speaker == .me ? tokens.me : tokens.them)
+            var time = attributes(font(size), entry.speaker == .me ? tokens.me : tokens.remoteSpeaker(place))
             time[Transcript.gutter] = true
 
-            let symbol = NSMutableAttributedString(attachment: symbol(entry.speaker, alpha: alpha, size: size))
+            let symbol = NSMutableAttributedString(attachment: symbol(entry.speaker, place: place, alpha: alpha, size: size))
             symbol.addAttributes(time, range: NSRange(location: 0, length: symbol.length))
             result.append(symbol)
             result.append(.init(string: "\t" + entry.time + "\t", attributes: time))
@@ -285,7 +286,7 @@ private extension Transcript {
         }
 
         /// A speaker's name over the text column, in the speaker's colour and kept out of selections.
-        private func label(_ string: String, tentative: Bool, alpha: CGFloat) {
+        private func label(_ string: String, tentative: Bool, place: Int?, alpha: CGFloat) {
 
             newParagraph()
             let size = tokens.typeCaption
@@ -298,7 +299,7 @@ private extension Transcript {
                 // The bundled mono has no italic face; a slant marks the guess.
                 .obliqueness: tentative ? 0.2 : 0,
                 .baselineOffset: lift(size),
-                .foregroundColor: NSColor(tentative ? tokens.gutter : tokens.them).withAlphaComponent(alpha),
+                .foregroundColor: NSColor(tentative ? tokens.gutter : tokens.remoteSpeaker(place)).withAlphaComponent(alpha),
                 .paragraphStyle: paragraph,
                 Transcript.gutter: true,
             ]))
@@ -313,14 +314,14 @@ private extension Transcript {
 
         /// The speaker's symbol, centred in the gutter's slot and on the
         /// time's capital letters, so it sits on the text's first baseline.
-        private func symbol(_ speaker: PanelState.Speaker, alpha: CGFloat, size: CGFloat) -> NSTextAttachment {
+        private func symbol(_ speaker: PanelState.Speaker, place: Int? = nil, alpha: CGFloat, size: CGFloat) -> NSTextAttachment {
 
-            let key = SymbolKey(speaker: speaker, alpha: alpha, size: size)
+            let key = SymbolKey(speaker: speaker, place: place, alpha: alpha, size: size)
             if let attachment = symbols[key] { return attachment }
 
             let name = speaker == .me ? "microphone.fill" : "speaker.wave.3.fill"
             let label = style.text(speaker == .me ? .me : .them)
-            let color = NSColor(speaker == .me ? tokens.me : tokens.them).withAlphaComponent(alpha)
+            let color = NSColor(speaker == .me ? tokens.me : tokens.remoteSpeaker(place)).withAlphaComponent(alpha)
             let configuration = NSImage.SymbolConfiguration(pointSize: Self.symbolSize, weight: .regular)
                 .applying(.init(paletteColors: [color]))
             let glyph = NSImage(systemSymbolName: name, accessibilityDescription: label)?
@@ -436,6 +437,7 @@ private extension Transcript {
     struct SymbolKey: Hashable {
 
         let speaker: PanelState.Speaker
+        let place: Int?
         let alpha: CGFloat
         let size: CGFloat
     }

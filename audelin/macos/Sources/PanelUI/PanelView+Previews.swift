@@ -27,6 +27,9 @@ extension PanelState {
             ("no-microphone", .problem(.microphonePreview(text), gap: gap(.me, .gapMicrophone))),
             ("disk-full", .problem(.diskFullPreview(text), gap: gap(.them, .gapDiskFull))),
             ("call-silent", .problem(.callSilentPreview(text))),
+            ("one-remote-speaker", .oneRemoteSpeaker),
+            ("two-remote-speakers", .twoRemoteSpeakers),
+            ("several-remote-speakers", .severalRemoteSpeakers),
         ]
     }
 
@@ -67,6 +70,39 @@ extension PanelState {
                 .init(id: 2, time: "12:32", speaker: .me, settled: "Да, и сразу по слог — кто дежурит."),
             ])),
             .entry(.init(id: 3, time: "12:34", speaker: .them, settled: "Окей. Тогда RACI соберём сегодня.")),
+        ]))
+    )
+
+    /// After the call, a lone remote speaker stays plain Them.
+    static let oneRemoteSpeaker = PanelState(
+        recording: .off,
+        log: .lines(.init(entries: [
+            .init(id: 1, time: "12:41", speaker: .them, settled: "Всем привет. Начнём с ролей по запуску."),
+            .init(id: 2, time: "12:42", speaker: .me, settled: "Accountable — я. По слог отвечает команда Ильи."),
+            .init(id: 3, time: "12:44", speaker: .them, settled: "Окей. Тогда ОКР на квартал."),
+        ]))
+    )
+
+    static let twoRemoteSpeakers = PanelState(
+        recording: .off,
+        log: .lines(.init(entries: [
+            .init(id: 1, time: "12:41", speaker: .them, settled: "Всем привет. Начнём с ролей по запуску.", label: "Анна", remoteSpeaker: 1),
+            .init(id: 2, time: "12:42", speaker: .them, settled: "Я бы сначала обсудил сроки.", label: "Them 2", remoteSpeaker: 2),
+            .init(id: 3, time: "12:43", speaker: .me, settled: "Accountable — я. По слог отвечает команда Ильи."),
+            .init(id: 4, time: "12:44", speaker: .them, settled: "Окей. Тогда ОКР на квартал.", label: "Анна", remoteSpeaker: 1),
+        ]))
+    )
+
+    /// Five speakers: the fifth takes the first one's colour again.
+    static let severalRemoteSpeakers = PanelState(
+        recording: .off,
+        log: .lines(.init(entries: [
+            .init(id: 1, time: "12:41", speaker: .them, settled: "Начнём с ролей.", label: "Анна", remoteSpeaker: 1),
+            .init(id: 2, time: "12:42", speaker: .them, settled: "Сроки — до пятницы.", label: "Борис", remoteSpeaker: 2),
+            .init(id: 3, time: "12:43", speaker: .them, settled: "Дежурит наша команда.", label: "Them 3", remoteSpeaker: 3),
+            .init(id: 4, time: "12:44", speaker: .them, settled: "Метрики соберу я.", label: "Them 4", remoteSpeaker: 4),
+            .init(id: 5, time: "12:45", speaker: .them, settled: "А дашборд кто?", label: "Them 5", remoteSpeaker: 5),
+            .init(id: 6, time: "12:46", speaker: .me, settled: "Дашборд — на мне."),
         ]))
     )
 
