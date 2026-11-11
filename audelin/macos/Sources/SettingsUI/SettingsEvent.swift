@@ -3,6 +3,7 @@ public enum SettingsEvent: Equatable, Sendable {
 
     case selectTab(SettingsState.Tab)
     case selectLanguage(SettingsState.General.Language)
+    case selectAppearance(SettingsState.General.Appearance)
     case setAutomaticNotes(Bool)
     case setIdentifySpeakers(Bool)
     case selectNotesRuntime(SettingsState.NotesRuntime.Slot, SettingsState.NotesRuntime.Kind)

@@ -40,6 +40,8 @@ public enum SettingsPhrase: String, CaseIterable, Sendable {
     case appearanceLight = "general.appearanceLight"
     case appearanceDark = "general.appearanceDark"
     case appearanceHint = "general.appearanceHint"
+    case appearanceHintLight = "general.appearanceHintLight"
+    case appearanceHintDark = "general.appearanceHintDark"
     /// System gives the macOS language, which Audelin has.
     case languageHintSystem = "general.languageHintSystem"
     /// Takes the macOS language's name, which Audelin does not have.

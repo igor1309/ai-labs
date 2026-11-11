@@ -52,6 +52,8 @@ struct PreferencesTests {
                 (Data(#"{"language":"english"}"#.utf8), Preferences(language: .english)),
                 (Data(#"{"language":"klingon","liveText":false}"#.utf8), Preferences(liveText: false, language: .system)),
                 (Data(#"{"language":7}"#.utf8), Preferences()),
+                (Data(#"{"appearance":"dark"}"#.utf8), Preferences(appearance: .dark)),
+                (Data(#"{"appearance":"sepia","liveText":false}"#.utf8), Preferences(liveText: false, appearance: .system)),
                 (try JSONSerialization.data(withJSONObject: ["callsFolder": folder.absoluteString]),
                  Preferences(callsFolder: folder)),
             ]
@@ -110,6 +112,22 @@ extension PreferencesTests {
             try store.updateLanguage(.russian)
             var expected = kept
             expected.language = .russian
+            #expect(store.read() == expected)
+            #expect(PreferencesStore(fileURL: file).read() == expected)
+        }
+    }
+
+    @Test func theAppearanceIsSystemUntilChosenAndAChoiceKeepsTheRest() async throws {
+
+        try await withPreferencesFolder { root in
+            let file = root.appendingPathComponent("preferences.json")
+            let store = PreferencesStore(fileURL: file)
+            #expect(store.read().appearance == .system)
+            let kept = Preferences(automaticRecording: false, liveText: false, callsFolder: root.appendingPathComponent("calls"), language: .english)
+            try store.write(kept)
+            try store.updateAppearance(.light)
+            var expected = kept
+            expected.appearance = .light
             #expect(store.read() == expected)
             #expect(PreferencesStore(fileURL: file).read() == expected)
         }

@@ -71,8 +71,8 @@ extension SettingsState {
                                            .init(id: .russian, title: "Русский"), .init(id: .english, title: "English")],
                                 selected: language, hint: hint),
                 appearance: .init(segments: [.init(id: .system, title: text(.appearanceSystem)),
-                                             .init(id: .light, title: text(.appearanceLight), isEnabled: false),
-                                             .init(id: .dark, title: text(.appearanceDark), isEnabled: false)],
+                                             .init(id: .light, title: text(.appearanceLight)),
+                                             .init(id: .dark, title: text(.appearanceDark))],
                                   selected: .system, hint: text(.appearanceHint)))
         }
     }

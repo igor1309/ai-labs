@@ -105,3 +105,35 @@ struct LanguageSettingTests {
         #expect(languageName(identifier) == name)
     }
 }
+
+/// The General tab's appearance picker saves the choice and applies it at once.
+@MainActor
+@Suite(.timeLimit(.minutes(1)))
+struct AppearanceSettingTests {
+
+    @Test func choosingAnAppearanceSavesItAndShowsIt() async throws {
+        try await withComposition { rig in
+            #expect(rig.menu.appearance == .system)
+            #expect(rig.menu.settingsState.general.appearance.selected == .system)
+            #expect(rig.menu.settingsState.general.appearance.hint == SettingsText(language: .russian)(.appearanceHint))
+            await rig.menu.sendSettings(.selectAppearance(.dark))
+            #expect(rig.menu.appearance == .dark)
+            #expect(PreferencesStore(fileURL: rig.root.appendingPathComponent("preferences.json")).read().appearance == .dark)
+            let appearance = rig.menu.settingsState.general.appearance
+            #expect(appearance.selected == .dark)
+            #expect(appearance.hint == "Всегда тёмное, что бы ни было в macOS.")
+            #expect(appearance.segments.allSatisfy { $0.isEnabled })
+        }
+    }
+
+    @Test func aSavedAppearanceIsShownFromLaunch() async throws {
+        try await withComposition(preferences: { root in
+            var saved = Preferences(automaticRecording: false, liveText: true, callsFolder: root)
+            saved.appearance = .light
+            return saved
+        }) { rig in
+            #expect(rig.menu.appearance == .light)
+            #expect(rig.menu.settingsState.general.appearance.selected == .light)
+        }
+    }
+}

@@ -69,7 +69,7 @@ extension SettingsView {
         VStack(alignment: .leading, spacing: tokens.space24) {
 
             row(text(.languageRow)) { segmented(state.general.language, id: "language") { event(.selectLanguage($0)) } }
-            row(text(.appearanceRow)) { segmented(state.general.appearance, id: "appearance") { _ in } }
+            row(text(.appearanceRow)) { segmented(state.general.appearance, id: "appearance") { event(.selectAppearance($0)) } }
         }
     }
 

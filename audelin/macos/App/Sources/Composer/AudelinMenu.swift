@@ -73,6 +73,9 @@ public final class AudelinMenu {
     private var languageChoice: LanguageChoice
     private let preferredLanguages: @Sendable () -> [String]
     private let saveLanguage: (Preferences.Language) throws -> Void
+    /// Light, dark or following macOS, for every window, the panel and the menu bar UI.
+    public private(set) var appearance: Preferences.Appearance
+    private let saveAppearance: (Preferences.Appearance) throws -> Void
     private var menuText: MenuBarText { MenuBarText(language: language.menuBar) }
     /// Settings' text, in the language Audelin is shown in.
     public var settingsText: SettingsText { language.settings }
@@ -122,6 +125,8 @@ public final class AudelinMenu {
         languageChoice = LanguageChoice(storage.read().language)
         preferredLanguages = boundary.preferredLanguages
         saveLanguage = storage.updateLanguage
+        appearance = storage.read().appearance
+        saveAppearance = storage.updateAppearance
         self.language = language.language
 
         self.sink = sink
@@ -201,7 +206,7 @@ public final class AudelinMenu {
                       engines: [.init(id: "parakeet", name: "Parakeet v3", note: settingsText(.localRecognition), availability: "", size: "")],
                       selectedEngine: "parakeet", explainKeys: "", selectedTab: summarySettings?.selectedTab ?? .general,
                       callNotes: summarySettings?.notes ?? .loading(settingsText(.notesLoading)),
-                      general: settingsText.general(languageChoice, preferred: preferredLanguages()))
+                      general: settingsText.general(languageChoice, appearance: appearance, preferred: preferredLanguages()))
         if pickerFailed, case .idle = result.folder.status { result.folder.status = .pickerFailed(reason: settingsText(.pickerFailedReason)) }
         if let recordings = calls?.recordingsState { applyFolderMove(recordings, text: settingsText, to: &result) }
         return result
@@ -226,6 +231,7 @@ public final class AudelinMenu {
         case let .setRecordsCalls(value): await perform(.setAutomatic(value))
         case let .setLiveText(value): await perform(.setLiveText(value))
         case let .selectLanguage(value): await chooseLanguage(LanguageChoice(rawValue: value.rawValue) ?? .system)
+        case let .selectAppearance(value): chooseAppearance(Preferences.Appearance(rawValue: value.rawValue) ?? .system)
         default: summarySettings?.send(event)
         }
     }
@@ -238,6 +244,15 @@ public final class AudelinMenu {
         }
         languageChoice = choice
         await languageChanged(uiLanguage(choice, preferred: preferredLanguages()))
+    }
+
+    /// Saves the choice and applies it at once.
+    private func chooseAppearance(_ choice: Preferences.Appearance) {
+        guard choice != appearance else { return }
+        do { try saveAppearance(choice) } catch {
+            sink.write(.init(category: .menu, message: "appearance save failed", error: String(describing: error)))
+        }
+        appearance = choice
     }
 
     func installCalls(_ calls: AudelinCalls) {
