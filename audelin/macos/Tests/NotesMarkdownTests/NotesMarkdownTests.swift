@@ -14,6 +14,24 @@ struct NotesMarkdownTests {
         #expect(font(text, "Текст") == style.body)
     }
 
+    @Test func labelLevelsAreUpperCaseTrackedAndSecondary() throws {
+
+        let layout = NotesLayout(lineHeight: 26, paragraphSpacing: 9, headingSpacing: [(28, 10), (28, 10), (20, 8)],
+                                 labelLevels: [2], labelKern: 1)
+        let styled = NotesMarkdown.Style(body: style.body, headings: style.headings, code: style.code, text: .black,
+                                         secondary: .gray, codeBackground: .lightGray, rule: .separatorColor, layout: layout)
+        let text = NotesMarkdown.render("## О чём встреча\n\nДейли команды.\n\n### Topic\n\n## Итоги\n\n### Under", style: styled)
+
+        #expect(text.string.hasPrefix("О ЧЁМ ВСТРЕЧА\n"))
+        #expect(attribute(.foregroundColor, text, "О ЧЁМ") as? NSColor == .gray)
+        #expect(attribute(.kern, text, "О ЧЁМ") as? CGFloat == 1)
+        #expect(paragraph(text, "О ЧЁМ")?.paragraphSpacing == 10)
+        #expect(paragraph(text, "Дейли")?.minimumLineHeight == 26 && paragraph(text, "Дейли")?.paragraphSpacing == 9)
+        #expect(paragraph(text, "Topic")?.paragraphSpacingBefore == 20)
+        #expect(attribute(.kern, text, "Topic") == nil)
+        #expect(paragraph(text, "Under")?.paragraphSpacingBefore == 0)
+    }
+
     @Test func emphasisAndInlineCodeKeepTheirText() throws {
 
         let text = render("Это **важно**, *очень* и `код`.")
