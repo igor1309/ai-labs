@@ -23,7 +23,7 @@ struct PreviewPanelTests {
         #expect(content.states == [
             SummaryPreviewState(title: "A", date: "17.10 · 11:00", duration: "28 мин", notes: .markdown("# A")),
             SummaryPreviewState(title: "B", date: "17.10 · 11:00", duration: "28 мин",
-                                notes: .unreadable("Заметки не читаются: нет доступа")),
+                                notes: .unreadable("Итоги не читаются: нет доступа")),
         ])
         #expect(window.orders == ["front", "front"])
 
