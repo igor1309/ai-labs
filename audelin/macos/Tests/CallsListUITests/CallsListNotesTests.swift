@@ -103,7 +103,7 @@ struct CallsListNotesTests {
         init(_ state: CallsListState, scheme: ColorScheme = .light) {
             self.scheme = scheme
             GlassLedger.registerFonts()
-            window = NSWindow(contentRect: NSRect(x: -30_000, y: -30_000, width: 920, height: 420),
+            window = QuietWindow(contentRect: NSRect(x: -30_000, y: -30_000, width: 920, height: 420),
                               styleMask: .borderless, backing: .buffered, defer: false)
             window.isReleasedWhenClosed = false
             window.appearance = NSAppearance(named: scheme == .dark ? .darkAqua : .aqua)
@@ -163,6 +163,12 @@ struct CallsListNotesTests {
             let view = try #require(window.contentView)
             return try #require(Offscreen.snapshot(view))
         }
+    }
+
+    /// A key the list ignores ends at the window, whose `noResponder(for:)`
+    /// plays the system alert; the test checks only that no event was sent.
+    private final class QuietWindow: NSWindow {
+        override func noResponder(for eventSelector: Selector) {}
     }
 
     private func makeState() -> CallsListState {
