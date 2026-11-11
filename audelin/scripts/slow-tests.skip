@@ -1,0 +1,2 @@
+NemotronRecognizerTests.NemotronRecognizerTests/audioAtAnotherSampleRateIsHeard()/NemotronRecognizerTests.swift:149:6  # contract test of the real Nemotron model; CI time is the cold model load (~1 s warm locally), which is what it checks
+ParakeetRecognizerTests.ParakeetContractTests/recognizesKnownWordsWithOrderedTimingsThroughProductionBinding()/ParakeetContractTests.swift:10:6  # contract test of the real Parakeet model; CI time is the cold model load (~0.16 s warm locally), which is what it checks
