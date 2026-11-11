@@ -2,6 +2,9 @@ import Foundation
 
 public struct CallsListState: Equatable, Sendable {
     public struct Row: Equatable, Identifiable, Sendable {
+        /// Where the call's summary stands, drawn as an icon; `summaryStatus` says it in words.
+        public enum Summary: Equatable, Sendable { case none, pending, failed }
+        public var summary: Summary
         public var canRetrySummary: Bool
         public var summaryStatus: String
         /// The call has published notes, so its row offers the eye.
@@ -14,7 +17,8 @@ public struct CallsListState: Equatable, Sendable {
         public let editable: Bool
         public var folderName: String { id + (title.isEmpty ? "" : " " + title) }
 
-        public init(id: String, title: String, start: Date, duration: TimeInterval?, timeZone: TimeZone, editable: Bool, summaryStatus: String = "", hasNotes: Bool = false, canRetrySummary: Bool = false) {
+        public init(id: String, title: String, start: Date, duration: TimeInterval?, timeZone: TimeZone, editable: Bool, summaryStatus: String = "", hasNotes: Bool = false, canRetrySummary: Bool = false, summary: Summary = .none) {
+            self.summary = summary
             self.canRetrySummary = canRetrySummary
             self.summaryStatus = summaryStatus
             self.hasNotes = hasNotes

@@ -59,7 +59,7 @@ public func compose(
                                       }), initial: .init(callsFolder: preferences.read().callsFolder)),
                                   timeZone: timeZone, recordingState: { [weak menu] in menu?.state ?? .init() },
                                   location: { try await storage.location(id: $0) }, openFolder: openCallsFolder,
-                                  present: presentCalls, summaryStatuses: { summaries.statuses },
+                                  present: presentCalls, summaryStatuses: { summaries.statuses }, summaryBadges: { summaries.badges },
                                   notes: { try await summaryFiles.notes(call: $0) }, focusPreview: focusPreview,
                                   retryableSummaries: { summaries.retryable }, retrySummary: { try await summaries.retry(call: $0) }))
     do { await summaries.recover(calls: try await storage.list().map(\.id)) }

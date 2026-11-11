@@ -1,4 +1,5 @@
 import BlockingTestWork
+import CallsListUI
 import Foundation
 import Observation
 import Preferences
@@ -157,6 +158,7 @@ struct SummaryCompositionTests {
                 calls.show()
                 for await state in Observations({ calls.state }) where !state.busy && !state.rows.isEmpty { break }
                 #expect(calls.state.rows.first?.canRetrySummary == true)
+                #expect(calls.state.rows.first?.summary == .failed)
                 #expect(await http.count == 0)
                 if retryFails { try Data("{broken".utf8).write(to: folder.appendingPathComponent(".summary-job.json")) }
                 await calls.send(.retrySummary(id))
@@ -167,6 +169,7 @@ struct SummaryCompositionTests {
                 } else {
                     await http.started.next()
                     #expect(calls.state.rows.first?.canRetrySummary == false)
+                    #expect(calls.state.rows.first?.summary == .pending)
                     await calls.send(.retrySummary(id))
                     #expect(await http.count == 1)
                     #expect(try await files.load(call: id)?.job != job.id)
@@ -176,6 +179,7 @@ struct SummaryCompositionTests {
                 if !retryFails {
                     http.complete.send()
                     _ = try await summary(rig.menu) { $0[id] == "Итоги готовы" }
+                    #expect(calls.state.rows.first?.summary == CallsListState.Row.Summary.none)
                     #expect(try await files.load(call: id)?.phase == "succeeded")
                 }
                 await rig.finish()

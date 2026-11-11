@@ -46,6 +46,7 @@ public final class AudelinCalls {
     private let retrySummary: (String) async throws -> Void
     private var retrying: Set<String> = []
     private let summaryStatuses: () -> [String: String]
+    private let summaryBadges: () -> [String: CallsListState.Row.Summary]
     private let inputs: RecordingsInputs
     private let location: (String) async throws -> URL
     private let openFolder: (URL) -> Bool
@@ -59,6 +60,7 @@ public final class AudelinCalls {
     init(inputs: RecordingsInputs, timeZone: TimeZone, recordingState: @escaping () -> RecordingState,
          location: @escaping (String) async throws -> URL, openFolder: @escaping (URL) -> Bool,
          present: @escaping () -> Void, summaryStatuses: @escaping () -> [String: String] = { [:] },
+         summaryBadges: @escaping () -> [String: CallsListState.Row.Summary] = { [:] },
          notes: @escaping (String) async throws -> String? = { _ in nil },
          focusPreview: @escaping () -> Void = {},
          retryableSummaries: @escaping () -> Set<String> = { [] },
@@ -67,6 +69,7 @@ public final class AudelinCalls {
         self.retrySummary = retrySummary
         self.focusPreview = focusPreview
         self.summaryStatuses = summaryStatuses
+        self.summaryBadges = summaryBadges
         self.notes = notes
         self.inputs = inputs; self.timeZone = timeZone; self.recordingState = recordingState
         self.location = location; self.openFolder = openFolder; self.present = present
@@ -75,9 +78,11 @@ public final class AudelinCalls {
     public var state: CallsListState {
         var state = callsListState(inputs.state(), timeZone: timeZone)
         let statuses = summaryStatuses()
+        let badges = summaryBadges()
         let retryable = retryableSummaries().subtracting(retrying)
         for index in state.rows.indices {
             state.rows[index].summaryStatus = statuses[state.rows[index].id] ?? ""
+            state.rows[index].summary = badges[state.rows[index].id] ?? .none
             state.rows[index].canRetrySummary = retryable.contains(state.rows[index].id)
             state.rows[index].hasNotes = withNotes.contains(state.rows[index].id)
         }
