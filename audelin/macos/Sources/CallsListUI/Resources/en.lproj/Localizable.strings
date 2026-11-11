@@ -22,7 +22,6 @@
 "list.emptyHint" = "A call shows up here once its recording ends";
 "row.deleteMenu" = "Delete…";
 "row.rename" = "Rename";
-"row.actions" = "Actions";
 "day.today" = "Today";
 "day.yesterday" = "Yesterday";
 "day.weekdayDate" = "EEEE, MMMM d";

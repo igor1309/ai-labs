@@ -22,7 +22,6 @@
 "list.emptyHint" = "Звонок появится здесь, когда закончится запись";
 "row.deleteMenu" = "Удалить…";
 "row.rename" = "Переименовать";
-"row.actions" = "Действия";
 "day.today" = "Сегодня";
 "day.yesterday" = "Вчера";
 "day.weekdayDate" = "EEEE, d MMMM";

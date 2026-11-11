@@ -19,7 +19,6 @@ public enum CallsListPhrase: String, CaseIterable, Sendable {
     case delete = "row.delete"
     case deleteMenu = "row.deleteMenu"
     case rename = "row.rename"
-    case actions = "row.actions"
     case showNotes = "row.showNotes"
     case deleteTitle = "delete.title"
     /// Takes the call's folder name.
