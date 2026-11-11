@@ -27,10 +27,14 @@ does. The frames are in Screen 6, "General — light" and "General — dark".
 
 ## Appearance
 
-- System follows the macOS appearance; Light and Dark force it. The grey
-  line under System says «Как в macOS.» / "As in macOS.".
-- Only System is drawn selected. Light and Dark selected, and how a forced
-  appearance reaches the panel and menu bar, are open.
+- System follows the macOS appearance; Light and Dark force it on every
+  window, the live panel and the menu bar UI. The choice is saved with the
+  other preferences, is System until chosen and applies at once.
+- The grey line says what the choice gives: «Как в macOS.» / "As in
+  macOS." under System, «Всегда светлое, что бы ни было в macOS.» /
+  "Always light, whatever macOS uses." under Light, and the same with
+  тёмное / dark under Dark.
+- Only System is drawn selected; Light and Dark selected are not drawn.
 
 ## Input
 

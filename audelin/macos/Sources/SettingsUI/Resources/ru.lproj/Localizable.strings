@@ -97,6 +97,8 @@
 "general.appearanceLight" = "Светлое";
 "general.appearanceDark" = "Тёмное";
 "general.appearanceHint" = "Как в macOS.";
+"general.appearanceHintLight" = "Всегда светлое, что бы ни было в macOS.";
+"general.appearanceHintDark" = "Всегда тёмное, что бы ни было в macOS.";
 "general.languageHintSystem" = "Сейчас русский — язык macOS. Если язык macOS не русский и не английский, Audelin на английском.";
 "general.languageHintFallback" = "Сейчас английский: в Audelin нет языка macOS — %@.";
 "general.languageHintForced" = "Язык macOS — %@.";

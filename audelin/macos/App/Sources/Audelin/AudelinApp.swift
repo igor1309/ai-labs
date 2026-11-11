@@ -78,6 +78,7 @@ struct AudelinApp: App {
         self.model = model
         settingsWindow.contentView = NSHostingView(rootView: SettingsContent(model: model, window: settingsWindow))
         observeLanguage(model, settingsWindow: settingsWindow, callsWindow: callsWindow, previewPanel: previewPanel)
+        observeAppearance(model)
         if let calls = model.calls {
             callsWindow.install(content: NSHostingView(rootView: CallsContent(model: calls)))
             _ = connectPreview(panel: previewPanel, preview: { calls.preview }, panelWindow: summaryWindow,
@@ -197,6 +198,20 @@ func observeLanguage(_ model: AudelinMenu, settingsWindow: NSWindow, callsWindow
             settingsWindow.title = model.settingsText(.windowTitle)
             callsWindow.retitle(model.callsListText(.windowTitle))
             previewPanel.languageChanged(model.previewText)
+        }
+    }
+}
+
+/// Forces light or dark on every window, the panel and the menu bar UI, or follows macOS.
+@MainActor
+func observeAppearance(_ model: AudelinMenu) {
+    Task { @MainActor in
+        for await appearance in Observations({ model.appearance }) {
+            NSApplication.shared.appearance = switch appearance {
+            case .system: nil
+            case .light: NSAppearance(named: .aqua)
+            case .dark: NSAppearance(named: .darkAqua)
+            }
         }
     }
 }

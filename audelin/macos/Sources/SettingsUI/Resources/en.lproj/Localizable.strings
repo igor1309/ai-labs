@@ -94,6 +94,8 @@
 "general.appearanceLight" = "Light";
 "general.appearanceDark" = "Dark";
 "general.appearanceHint" = "As in macOS.";
+"general.appearanceHintLight" = "Always light, whatever macOS uses.";
+"general.appearanceHintDark" = "Always dark, whatever macOS uses.";
 "general.languageHintSystem" = "Now English, the macOS language. If macOS uses neither Russian nor English, Audelin is in English.";
 "general.languageHintFallback" = "Now English: Audelin has no %@, the macOS language.";
 "general.languageHintForced" = "macOS uses %@.";

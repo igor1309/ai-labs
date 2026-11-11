@@ -66,7 +66,7 @@ func languageName(_ identifier: String) -> String {
 
 extension SettingsText {
     /// The General tab for the chosen language, its line saying what System gives or what macOS uses.
-    func general(_ choice: LanguageChoice, preferred: [String]) -> SettingsState.General {
+    func general(_ choice: LanguageChoice, appearance: Preferences.Appearance, preferred: [String]) -> SettingsState.General {
         let macOS = languageName(preferred.first ?? "en")
         let supported = preferred.contains { UILanguage(rawValue: Locale.Language(identifier: $0).languageCode?.identifier ?? "") != nil }
         let hint = switch choice {
@@ -83,9 +83,10 @@ extension SettingsText {
                                        .init(id: .russian, title: languageName("ru")), .init(id: .english, title: languageName("en"))],
                             selected: selected, hint: hint),
             appearance: .init(segments: [.init(id: .system, title: self(.appearanceSystem)),
-                                         .init(id: .light, title: self(.appearanceLight), isEnabled: false),
-                                         .init(id: .dark, title: self(.appearanceDark), isEnabled: false)],
-                              selected: .system, hint: self(.appearanceHint)))
+                                         .init(id: .light, title: self(.appearanceLight)),
+                                         .init(id: .dark, title: self(.appearanceDark))],
+                              selected: SettingsState.General.Appearance(rawValue: appearance.rawValue) ?? .system,
+                              hint: self(appearance == .light ? .appearanceHintLight : appearance == .dark ? .appearanceHintDark : .appearanceHint)))
     }
 }
 

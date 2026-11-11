@@ -27,14 +27,13 @@ struct GeneralInteractionTests {
         #expect(events == [.selectLanguage(.english), .selectLanguage(.system)])
     }
 
-    @Test func appearanceOffersOnlySystemForNow() throws {
-        let host = try host("general-system") { Issue.record("Unexpected input \($0)") }
+    @Test func pressingAnAppearanceSegmentSelectsIt() throws {
+        var events: [SettingsEvent] = []
+        let host = try host("general-system") { events.append($0) }
         let appearance = try segments("appearance", in: host)
-        try press("appearance-light", in: appearance, succeeds: false)
+        try press("appearance-dark", in: appearance)
         appearance.keyDown(with: try arrow(.rightArrow))
-        let selected = (appearance.accessibilityChildren() ?? []).compactMap { $0 as? NSAccessibilityElement }
-            .filter { ($0.accessibilityValue() as? NSNumber)?.boolValue == true }.map { $0.accessibilityIdentifier() }
-        #expect(selected == ["appearance-system"])
+        #expect(events == [.selectAppearance(.dark), .selectAppearance(.light)])
     }
 
     private func host(_ name: String, event: @escaping (SettingsEvent) -> Void) throws -> NSView {

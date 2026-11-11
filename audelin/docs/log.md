@@ -2,6 +2,7 @@
 
 ## 2026-11-11
 
+- LAB-1184: Settings General has a working Appearance picker: System, Light or Dark, saved and applied at once to every window, the live panel and the menu bar UI.
 - LAB-1220: A right-click on a calls list row selects it before its menu opens, so the menu acts on the selected call; the menu shows each action's key.
 - Choosing Settings or Calls from the menu bar brings an already open window to the front, over other apps.
 - LAB-1218: Deleting a call moves its folder to the Trash, so it can be put back from Finder; the confirm says so, and a failed move leaves the folder and shows in the calls list.
