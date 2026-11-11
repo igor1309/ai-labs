@@ -237,7 +237,7 @@ private extension PanelView {
         HStack(alignment: .top, spacing: tokens.space8) {
 
             Image(systemName: "pin.fill")
-                .font(.system(size: tokens.typeCaption))
+                .font(tokens.ui(tokens.typeCaption))
                 .foregroundStyle(tokens.me)
                 .frame(width: tokens.space16, height: tokens.space24)
                 .accessibilityHidden(true)
@@ -249,7 +249,7 @@ private extension PanelView {
             Button { event(.letGo(held)) } label: {
 
                 Image(systemName: "xmark")
-                    .font(.system(size: tokens.typeCaption))
+                    .font(tokens.ui(tokens.typeCaption))
                     .foregroundStyle(tokens.sub)
                     .frame(width: tokens.space24, height: tokens.space24)
                     .contentShape(Rectangle())

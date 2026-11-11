@@ -93,7 +93,7 @@ extension SettingsView {
     }
 
     var notesFont: NSFont {
-        NSFont(name: tokens.fontData, size: tokens.typeSmall) ?? .monospacedSystemFont(ofSize: tokens.typeSmall, weight: .regular)
+        tokens.nsData(tokens.typeSmall)
     }
 
     func runtimeCard(_ runtime: SettingsState.NotesRuntime) -> some View {

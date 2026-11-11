@@ -71,8 +71,14 @@ Each colour has a light and a dark value on the theme axis `mode`.
 |---|---|
 | Fonts | `font-data` IBM Plex Mono (transcript, times, paths, sizes); `font-ui` IBM Plex Sans (labels, titles) |
 | Type sizes | `type-caption` 11, `type-small` 12, `type-body` 13, `type-title` 18; weights normal and 600 only |
+| Reading type | For long notes (summary preview, "Reading contrast"): `type-reading` 16 on `line-reading` 26, `type-topic` 15, `type-heading` 22, `type-display` 28 |
 | Radius | `radius-bar` 2, `radius-control` 6, `radius-card` 10, `radius-panel` 16 |
-| Spacing | `space-2`, `-4`, `-6`, `-8`, `-12`, `-16`, `-24`, `-40` |
+| Spacing | `space-2`, `-4`, `-6`, `-8`, `-12`, `-16`, `-20`, `-24`, `-28`, `-40` |
+
+UI code takes every font from `tokens.ui`, `tokens.data`, `tokens.nsUi` or
+`tokens.nsData` with a `type-*` size. `macos/scripts/check-font-tokens.py`
+rejects system fonts, text styles and raw `NSFont` outside the GlassLedger
+module, and CI runs it.
 
 The app's tokens are generated from [tokens.json](tokens.json), a snapshot of
 this file's variables. A token change in the design ships in the same commit

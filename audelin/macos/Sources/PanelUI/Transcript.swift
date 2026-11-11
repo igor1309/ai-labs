@@ -374,9 +374,7 @@ private extension Transcript {
             let key = FontKey(size: size, weight: weight)
             if let font = fonts[key] { return font }
 
-            let descriptor = NSFontDescriptor(fontAttributes: [.family: tokens.fontData])
-                .addingAttributes([.traits: [NSFontDescriptor.TraitKey.weight: weight]])
-            let font = NSFont(descriptor: descriptor, size: size) ?? .monospacedSystemFont(ofSize: size, weight: weight)
+            let font = tokens.nsData(size, weight)
             fonts[key] = font
             return font
         }
