@@ -200,7 +200,7 @@ struct BleedCleanupCompositionTests {
         let bytes = MemoryTranscriptBytes()
         let names = LiveNameBoard()
         names.give([0: "Anna"])
-        let writer = WritingTranscript(file: bytes, format: TranscriptFormat(), names: names, sink: TestLogSink())
+        let writer = WritingTranscript(file: bytes, format: TranscriptFormat(), names: names, diarizer: .unused, sink: TestLogSink())
         try await writer.write(raw)
         await writer.close()
         names.reset()
@@ -263,7 +263,7 @@ private struct ReplacementStorage: TranscriptStorage {
     var replaced: @Sendable () -> Void = {}
     var replacement: @Sendable ([TranscriptSegment]) -> Void = { _ in }
     func open(at url: URL, sink: any LogSink) async throws -> any SessionTranscriptFile {
-        ReplacementFile(base: try await FileTranscriptStorage().open(at: url, sink: sink), fails: fails, failFinal: failFinal, replaced: replaced, replacement: replacement)
+        ReplacementFile(base: try await FileTranscriptStorage(diarizer: .unused).open(at: url, sink: sink), fails: fails, failFinal: failFinal, replaced: replaced, replacement: replacement)
     }
 }
 private struct ReplacementFile: SessionTranscriptFile {

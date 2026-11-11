@@ -11,7 +11,7 @@ import Testing
 struct RemoteSpeakersTests {
     @Test(arguments: [false, true])
     func onlyTheFarSideIsAttributedInTrackTime(usingVBx: Bool) async throws {
-        try await withRemoteTrack { track in
+        try await withCallTrack { track in
             let turns = [
                 EngineTurn(speaker: "4", start: 10, end: 14), EngineTurn(speaker: "9", start: 14, end: 18),
                 EngineTurn(speaker: "12", start: 30, end: 34),
@@ -57,7 +57,7 @@ struct RemoteSpeakersTests {
     }
 
     @Test func bothModelsFailingKeepsTheFarSidePlainAndLogsTheFailure() async throws {
-        try await withRemoteTrack { track in
+        try await withCallTrack { track in
             let calls = Values<String>(), logs = Values<LogEntry>()
             let binding = RemoteBinding(
                 nemotron: { _ in calls.append("nemotron"); throw RemoteFailure() },
@@ -76,7 +76,7 @@ struct RemoteSpeakersTests {
     /// The pass is cancelled while the diarizer runs; the diarizer then answers or fails.
     @Test(arguments: [false, true])
     func cancellationKeepsTheFarSidePlainWithoutAFailureLine(diarizerFails: Bool) async throws {
-        try await withRemoteTrack { track in
+        try await withCallTrack { track in
             let logs = Values<LogEntry>()
             let entered = AsyncStream<Void>.makeStream(), release = AsyncStream<Void>.makeStream()
             let binding = RemoteBinding(
@@ -121,22 +121,3 @@ private struct RemoteLog: LogSink {
     func write(_ entry: LogEntry) { entries.append(entry) }
 }
 
-private func withRemoteTrack(_ body: (URL) async throws -> Void) async throws {
-    let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false)
-    try await withCleanup {
-        let track = folder.appendingPathComponent("call.wav")
-        let format = try #require(AVAudioFormat(standardFormatWithSampleRate: 16_000, channels: 1))
-        do {
-            let file = try AVAudioFile(forWriting: track, settings: format.settings)
-            let buffer = try #require(AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 160))
-            buffer.frameLength = 160
-            let samples = try #require(buffer.floatChannelData?[0])
-            samples.initialize(repeating: 0.25, count: 160)
-            try file.write(from: buffer)
-        }
-        try await body(track)
-    } cleanup: {
-        try FileManager.default.removeItem(at: folder)
-    }
-}

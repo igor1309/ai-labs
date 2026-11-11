@@ -14,7 +14,7 @@ struct TranscriptRenderingTests {
 
         let bytes = BytesSpy()
         let renderer = RendererStub()
-        let writer = WritingTranscript(file: bytes, format: renderer, names: LiveNameBoard(), sink: RenderingLog())
+        let writer = WritingTranscript(file: bytes, format: renderer, names: LiveNameBoard(), diarizer: .unused, sink: RenderingLog())
         let state = CallState(status: .listening, entries: [
             .init(speaker: .mine, text: .init(id: 0, start: 1, end: 2, words: [.init("1", start: 1, end: 2), .init("final", start: 1, end: 2)], settledCount: 2), writtenLater: false),
         ], finalCount: 1)
@@ -33,7 +33,7 @@ struct TranscriptRenderingTests {
             let binding = RecordingTranscriptBinding()
             var initial = TranscriptFormat()
             let file = try await TranscriptFile(url: url, initialBytes: try initial.render([]).chunks, binding: binding)
-            let writer = WritingTranscript(file: file, format: TranscriptFormat(), names: LiveNameBoard(), sink: RenderingLog())
+            let writer = WritingTranscript(file: file, format: TranscriptFormat(), names: LiveNameBoard(), diarizer: .unused, sink: RenderingLog())
             let bad = CallState(status: .listening, entries: [
                 .init(speaker: .mine, text: .init(id: 1, start: .nan, end: 3, words: [.init("bad", start: .nan, end: 3)], settledCount: 1), writtenLater: false),
             ])
@@ -57,7 +57,7 @@ struct TranscriptRenderingTests {
             let file = try await TranscriptFile(url: url, initialBytes: try initial.render([]).chunks, binding: binding)
             let names = LiveNameBoard()
             names.give([1: "Anna"])
-            let writer = WritingTranscript(file: file, format: TranscriptFormat(), names: names, sink: RenderingLog())
+            let writer = WritingTranscript(file: file, format: TranscriptFormat(), names: names, diarizer: .unused, sink: RenderingLog())
             let snapshot = CallState(status: .listening, entries: [
                 .init(speaker: .theirs, text: .init(id: 1, start: 2, end: 3, words: [.init("1", start: 2, end: 3), .init("hello", start: 2, end: 3)], settledCount: 2), writtenLater: false),
             ], finalCount: 1)

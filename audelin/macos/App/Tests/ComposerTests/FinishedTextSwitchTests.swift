@@ -36,7 +36,7 @@ struct FinishedTextSwitchTests {
 
         try await withComposeFolder { folder in
             let url = folder.appendingPathComponent("transcript.md")
-            let transcript = try await FileTranscriptStorage().open(at: url, sink: SilentTranscriptLog())
+            let transcript = try await FileTranscriptStorage(diarizer: .unused).open(at: url, sink: SilentTranscriptLog())
             do {
                 let speaker: CallState.Speaker = onCallSide ? .theirs : .mine
                 var statuses: [CallState.Status] = []

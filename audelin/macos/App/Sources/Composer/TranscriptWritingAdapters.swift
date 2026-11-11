@@ -70,14 +70,15 @@ actor WritingTranscript: SessionTranscriptFile {
     let file: any TranscriptBytes
     let sink: any LogSink
     private let names: LiveNameBoard
+    private let diarizer: CallDiarizer
     private var format: any TranscriptRenderer
     private var replaceNext = false
     private var closed = false
     private var closedNames: LiveNameBoard.Names?
     private var last: CallState?
 
-    init(file: any TranscriptBytes, format: any TranscriptRenderer, names: LiveNameBoard, sink: any LogSink) {
-        self.file = file; self.format = format; self.names = names; self.sink = sink
+    init(file: any TranscriptBytes, format: any TranscriptRenderer, names: LiveNameBoard, diarizer: CallDiarizer, sink: any LogSink) {
+        self.file = file; self.format = format; self.names = names; self.diarizer = diarizer; self.sink = sink
     }
 
     /// Logs each save with the final count it wrote, so a reader of the log knows
@@ -131,7 +132,7 @@ actor WritingTranscript: SessionTranscriptFile {
         let board = names.snapshot()
         if let state = last, let track = board.callTrack, !board.spoken.isEmpty {
             do {
-                let turns = try await CallDiarizer(binding: FluidDiarizationBinding()).diarize(track).turns
+                let turns = try await diarizer.diarize(track).turns
                 let rows = state.entries.filter { $0.speaker != .mine }.map { (id: $0.text.id, start: $0.text.start, end: $0.text.end) }
                 let confirmed = AfterCallNames.names(rows: rows, turns: turns, board: board)
                 names.confirm(confirmed)
@@ -180,12 +181,14 @@ public protocol TranscriptStorage: Sendable {
     func open(at url: Foundation.URL, sink: any LogSink) async throws -> any SessionTranscriptFile
 }
 public struct FileTranscriptStorage: TranscriptStorage {
-    public init() {}
+    private let diarizer: CallDiarizer
+    /// `diarizer` runs the after-call pass over the call track.
+    public init(diarizer: CallDiarizer) { self.diarizer = diarizer }
     public func open(at url: Foundation.URL, sink: any LogSink) async throws -> any SessionTranscriptFile {
         var format = TranscriptFormat()
         let initial = try format.render([])
         let file = try await TranscriptFile(url: url, initialBytes: initial.chunks, binding: DiskTranscriptBinding())
         // Opening has no live write revision; the first saved speaker block starts at one.
-        return WritingTranscript(file: file, format: TranscriptFormat(), names: .shared, sink: sink)
+        return WritingTranscript(file: file, format: TranscriptFormat(), names: .shared, diarizer: diarizer, sink: sink)
     }
 }
