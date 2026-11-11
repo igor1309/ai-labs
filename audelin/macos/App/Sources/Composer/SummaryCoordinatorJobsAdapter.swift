@@ -83,7 +83,7 @@ import SummaryJobs
     }
     func join() async { for model in Array(models.values) { await model.cancelAndJoin() } }
     private func install(_ state: SummaryJobs.State, call: String, observing: Bool = false) -> SummaryJobModel {
-        let model = SummaryJobModel(initial: state, observesOwner: observing, canDispatch: canDispatch, handler: handler, changed: { [changed] in changed(call, $0) })
+        let model = SummaryJobModel(initial: state, observesOwner: observing, canDispatch: canDispatch, handler: handler, format: store.status, changed: { [changed] in changed(call, $0) })
         models[call] = model; changed(call, state)
         return model
     }

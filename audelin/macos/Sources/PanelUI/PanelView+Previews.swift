@@ -2,24 +2,33 @@ import SwiftUI
 
 extension PanelState {
 
-    /// One state per design frame, named after it.
-    static let previews: [(name: String, state: PanelState)] = [
-        ("not-recording", .notRecording),
-        ("recording", .recording),
-        ("preparing", .preparing),
-        ("live-text-off", .liveTextOff),
-        ("switched-off-mid-call", .switchedOffMidCall),
-        ("text-filled-in", .textFilledIn),
-        ("settling-0s", .settling0),
-        ("settling-4s", .settling4),
-        ("settling-8s", .settling8),
-        ("selection-held", .selectionHeld),
-        ("long-selection-held", .longSelectionHeld),
-        ("no-call-audio", .problem(.callAudio, gap: .init(speaker: .them, text: "— нет звука звонка с 12:45 —"))),
-        ("no-microphone", .problem(.microphone, gap: .init(speaker: .me, text: "— нет микрофона с 12:45 —"))),
-        ("disk-full", .problem(.diskFull(savedUntil: "12:45"), gap: .init(speaker: .them, text: "— диск заполнен с 12:45 —"))),
-        ("call-silent", .problem(.callSilent)),
-    ]
+    /// One state per design frame, named after it, with the Russian text.
+    static let previews = previews(in: PanelText(language: .russian))
+
+    /// One state per design frame, named after it, with the panel's fixed text in the given language.
+    static func previews(in text: PanelText) -> [(name: String, state: PanelState)] {
+
+        func gap(_ speaker: Speaker, _ phrase: PanelPhrase) -> Gap {
+            .init(speaker: speaker, text: String(format: text(phrase), "12:45"))
+        }
+        return [
+            ("not-recording", .notRecording),
+            ("recording", .recording),
+            ("preparing", .preparing),
+            ("live-text-off", .liveTextOff),
+            ("switched-off-mid-call", .switchedOffMidCall),
+            ("text-filled-in", .textFilledIn),
+            ("settling-0s", .settling0),
+            ("settling-4s", .settling4),
+            ("settling-8s", .settling8),
+            ("selection-held", .selectionHeld),
+            ("long-selection-held", .longSelectionHeld),
+            ("no-call-audio", .problem(.callAudioPreview(text), gap: gap(.them, .gapCallAudio))),
+            ("no-microphone", .problem(.microphonePreview(text), gap: gap(.me, .gapMicrophone))),
+            ("disk-full", .problem(.diskFullPreview(text), gap: gap(.them, .gapDiskFull))),
+            ("call-silent", .problem(.callSilentPreview(text))),
+        ]
+    }
 
     static let notRecording = PanelState(recording: .off, log: .empty)
 
@@ -118,10 +127,11 @@ struct PanelPreview: View {
     let state: PanelState
     let scheme: ColorScheme
     var config: PanelConfig = .glassLedger
+    var text = PanelText(language: .russian)
 
     var body: some View {
 
-        PanelView(state: state, event: { _ in }, config: config)
+        PanelView(state: state, event: { _ in }, config: config, text: text)
             .padding(config.tokens(for: scheme).space24)
             .background(config.tokens(for: scheme).back)
             .environment(\.colorScheme, scheme)
@@ -159,6 +169,39 @@ struct PanelPreview: View {
         VStack {
             ForEach(Array(PanelState.previews.suffix(4).enumerated()), id: \.offset) { _, preview in
                 PanelPreview(state: preview.state, scheme: .dark)
+            }
+        }
+    }
+}
+
+extension PanelState.Banner {
+
+    static func callAudioPreview(_ text: PanelText) -> Self {
+        .init(kind: .callAudio, title: text(.callAudioTitle), line: text(.callAudioLine),
+              button: text(.openSettings), action: .openSettings(.systemAudioRecording))
+    }
+
+    static func microphonePreview(_ text: PanelText) -> Self {
+        .init(kind: .microphone, title: text(.microphoneTitle), line: text(.microphoneLine),
+              button: text(.openSettings), action: .openSettings(.microphone))
+    }
+
+    static func diskFullPreview(_ text: PanelText) -> Self {
+        .init(kind: .diskFull, title: text(.diskFullTitle), line: String(format: text(.diskFullLine), "12:45"),
+              button: text(.openFolder), action: .openCallsFolder)
+    }
+
+    static func callSilentPreview(_ text: PanelText) -> Self {
+        .init(kind: .callSilent, title: text(.callSilentTitle), line: text(.callSilentLine),
+              button: text(.openSettings), action: .openSettings(.systemAudioRecording))
+    }
+}
+
+#Preview("Recording problems, English") {
+    ScrollView {
+        VStack {
+            ForEach(PanelState.previews(in: PanelText(language: .english)).suffix(4), id: \.name) { preview in
+                PanelPreview(state: preview.state, scheme: .light, text: PanelText(language: .english))
             }
         }
     }

@@ -10,6 +10,7 @@ public struct SettingsView: View {
     let state: SettingsState
     let event: (SettingsEvent) -> Void
     let config: SettingsConfig
+    let text: SettingsText
     var scrolls = false
     var contentHeightChanged: (CGFloat) -> Void = { _ in }
     @State var notesDetailsExpanded = false
@@ -21,11 +22,13 @@ public struct SettingsView: View {
     public init(
         state: SettingsState,
         event: @escaping (SettingsEvent) -> Void,
-        config: SettingsConfig = .glassLedger
+        config: SettingsConfig = .glassLedger,
+        text: SettingsText = .init(language: .russian)
     ) {
         self.state = state
         self.event = event
         self.config = config
+        self.text = text
     }
 
     public var body: some View {
@@ -56,31 +59,78 @@ extension SettingsView {
     @ViewBuilder
     var page: some View {
         switch state.selectedTab {
+        case .general: generalPage
         case .recording: recordingPage
         case .callNotes: callNotesPage
         }
     }
 
+    var generalPage: some View {
+        VStack(alignment: .leading, spacing: tokens.space24) {
+
+            row(text(.languageRow)) { segmented(state.general.language, id: "language") { event(.selectLanguage($0)) } }
+            row(text(.appearanceRow)) { segmented(state.general.appearance, id: "appearance") { _ in } }
+        }
+    }
+
+    /// Equal segments across the row; the selected one is raised on the track.
+    @ViewBuilder
+    func segmented<ID>(_ control: SettingsState.Segmented<ID>, id: String, select: @escaping (ID) -> Void) -> some View {
+
+        HStack(spacing: tokens.space2) {
+
+            ForEach(control.segments, id: \.id) { segment in
+
+                let isSelected = segment.id == control.selected
+
+                uiText(segment.title, tokens.typeSmall, isSelected ? tokens.text : tokens.sub, isSelected ? .semibold : .regular)
+                    .padding(.vertical, tokens.space4)
+                    .padding(.horizontal, tokens.space12)
+                    .frame(maxWidth: .infinity)
+                    .background {
+                        if isSelected {
+                            RoundedRectangle(cornerRadius: tokens.radiusControl)
+                                .fill(tokens.surface)
+                                .strokeBorder(tokens.rule, lineWidth: 1)
+                        }
+                    }
+            }
+        }
+        .padding(tokens.space2)
+        .background(tokens.btn, in: .rect(cornerRadius: tokens.radiusControl))
+        .accessibilityHidden(true)
+        .overlay {
+            SettingsSegmentsTarget(
+                titles: control.segments.map(\.title), enabled: control.segments.map(\.isEnabled),
+                selected: control.segments.firstIndex { $0.id == control.selected }, identifier: id,
+                segmentIdentifiers: control.segments.map { "\(id)-\($0.id)" },
+                select: { select(control.segments[$0].id) })
+        }
+
+        uiText(control.hint, tokens.typeSmall, tokens.gutter)
+    }
+
     var recordingPage: some View {
         VStack(alignment: .leading, spacing: tokens.space24) {
 
-            row("Запись") { recording }
-            row("Папка данных") { folder }
-            row("Финальная расшифровка") { engines }
-            row("Аудио") { audio }
-            row("Объяснить термин") { explain }
+            row(text(.recordingRow)) { recording }
+            row(text(.folderRow)) { folder }
+            row(text(.engineRow)) { engines }
+            row(text(.audioRow)) { audio }
+            row(text(.explainRow)) { explain }
 
             if let chunk = state.chunk {
 
-                row("Размер фрагмента") { chunkPicker(chunk) }
+                row(text(.chunkRow)) { chunkPicker(chunk) }
             }
         }
     }
 
     var tabs: some View {
         HStack(spacing: tokens.space4) {
-            tab("Запись", .recording)
-            tab("Итоги звонков", .callNotes)
+            tab(text(.generalTab), .general)
+            tab(text(.recordingTab), .recording)
+            tab(text(.callNotesTab), .callNotes)
         }
     }
 
@@ -144,19 +194,19 @@ extension SettingsView {
     @ViewBuilder
     var recording: some View {
 
-        checkbox("Записывать звонки автоматически", isOn: state.recordsCalls) {
+        checkbox(text(.recordsCalls), isOn: state.recordsCalls) {
             event(.setRecordsCalls($0))
         }
         uiText(
-            "Запись начинается, когда Zoom, Телемост или браузер берёт микрофон, и останавливается, когда звонок закончился.",
+            text(.recordsCallsNote),
             tokens.typeSmall,
             tokens.gutter
         )
-        checkbox("Живой текст", isOn: state.liveText) {
+        checkbox(text(.liveText), isOn: state.liveText) {
             event(.setLiveText($0))
         }
         uiText(
-            "Выключен — звонок только записывается. Включить можно и во время звонка: начало допишется из записи.",
+            text(.liveTextNote),
             tokens.typeSmall,
             tokens.gutter
         )
@@ -181,7 +231,7 @@ extension SettingsView {
                         .strokeBorder(tokens.rule, lineWidth: 1)
                 )
 
-            button("Изменить…", .secondary, isEnabled: status.allowsChange) {
+            button(text(.changeFolder), .secondary, isEnabled: status.allowsChange) {
                 event(.changeFolder)
             }
         }
@@ -189,7 +239,7 @@ extension SettingsView {
         switch status {
         case let .idle(calls):
             dataText(
-                "\(calls) (≈55 MB в час) · настройки и журналы — в ~/.audelin",
+                text(.folderIdle, calls),
                 tokens.typeSmall,
                 tokens.gutter
             )
@@ -202,18 +252,18 @@ extension SettingsView {
             }
 
         case let .failed(moved, reason):
-            dataText("часть звонков ещё здесь", tokens.typeSmall, tokens.warn)
+            dataText(text(.folderPartlyHere), tokens.typeSmall, tokens.warn)
             errorBanner(moved, reason)
             HStack(spacing: tokens.space8) {
-                button("Повторить", .secondary) { event(.retryMove) }
-                button("Отмена", .secondary) { event(.cancelMove) }
+                button(text(.retry), .secondary) { event(.retryMove) }
+                button(text(.cancel), .secondary) { event(.cancelMove) }
             }
 
         case .recording:
-            dataText("идёт запись — папку можно сменить после звонка", tokens.typeSmall, tokens.warn)
+            dataText(text(.folderRecording), tokens.typeSmall, tokens.warn)
 
         case let .pickerFailed(reason):
-            errorBanner("Не удалось открыть выбор папки", reason)
+            errorBanner(text(.pickerFailed), reason)
         }
     }
 
@@ -228,7 +278,7 @@ extension SettingsView {
     var audio: some View {
 
         uiText(
-            "Хранится 7 дней после звонка, потом удаляется — только после проверки текста. Закреплённый звонок хранит аудио, пока не открепите. Текст не удаляется.",
+            text(.audioNote),
             tokens.typeBody,
             tokens.text
         )
@@ -247,7 +297,7 @@ extension SettingsView {
                         .strokeBorder(tokens.rule, lineWidth: 1)
                 )
 
-            dataText("выделение → новый тред в bb", tokens.typeSmall, tokens.gutter)
+            dataText(text(.explainNote), tokens.typeSmall, tokens.gutter)
         }
     }
 
@@ -264,7 +314,7 @@ extension SettingsView {
 
                     Button { event(.selectChunk(seconds)) } label: {
 
-                        dataText("\(seconds) с", tokens.typeSmall, isSelected ? tokens.selText : tokens.text)
+                        dataText(text(.chunkSeconds, seconds), tokens.typeSmall, isSelected ? tokens.selText : tokens.text)
                             .padding(.vertical, tokens.space4)
                             .padding(.horizontal, tokens.space12)
                             .background(
@@ -285,7 +335,7 @@ extension SettingsView {
         }
 
         dataText(
-            "Только в debug-сборке. В релизе — \(chunk.releaseDefault) с.",
+            text(.chunkNote, chunk.releaseDefault),
             tokens.typeSmall,
             tokens.gutter
         )
@@ -447,8 +497,8 @@ extension SettingsView {
 
             VStack(spacing: tokens.space8) {
 
-                button("Перенести", .primary, fill: true) { event(.confirmMove) }
-                button("Отмена", .secondary, fill: true) { event(.cancelMove) }
+                button(text(.confirmMove), .primary, fill: true) { event(.confirmMove) }
+                button(text(.cancel), .secondary, fill: true) { event(.cancelMove) }
             }
         }
         .padding(tokens.space24)

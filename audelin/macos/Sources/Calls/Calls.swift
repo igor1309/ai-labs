@@ -62,13 +62,13 @@ public struct Calls: Sendable {
     private func location(id: String, in root: URL) throws -> URL {
         let matches = try folders(in: root).filter { $0.1.id == id }
         guard matches.count == 1, let match = matches.first else {
-            throw Failure(description: matches.isEmpty ? "Звонок «\(id)» больше не найден." : "Несколько папок имеют префикс «\(id)».")
+            throw matches.isEmpty ? CallsFailure.notFound(id: id) : CallsFailure.ambiguous(id: id)
         }
         return match.0
     }
 
     public func rename(id: String, title: String) throws {
-        guard !title.contains("\0") else { throw Failure(description: "Название содержит недопустимый символ.") }
+        guard !title.contains("\0") else { throw CallsFailure.invalidTitle }
         let source = try location(id: id)
         let target = folder.appendingPathComponent(CallFolderName.name(id: id, title: title), isDirectory: true)
         guard source != target else { return }
@@ -78,7 +78,7 @@ public struct Calls: Sendable {
     public func delete(id: String) throws {
         let source = try location(id: id)
         do { try trash(source) }
-        catch { throw Failure(description: "Не удалось переместить «\(source.lastPathComponent)» в Корзину; папка осталась на месте. \(error.localizedDescription)") }
+        catch { throw CallsFailure.trashFailed(folder: source.lastPathComponent, reason: error.localizedDescription) }
     }
 
     public func bytes(id: String) throws -> Int64 { try size(location(id: id)) }
@@ -103,7 +103,7 @@ public struct Calls: Sendable {
             let original = try manifest(source)
             try copy(source, move.temporary)
             guard try manifest(move.temporary) == original, try manifest(source) == original else {
-                throw Failure(description: "Размеры файлов копии не совпадают с исходными.")
+                throw CallsFailure.sizeMismatch
             }
             move.phase = .publishing
             try record(move)
@@ -285,10 +285,20 @@ public struct Calls: Sendable {
         CallFolderName(name, timeZone: timeZone)?.id
     }
 
-    private struct Failure: LocalizedError {
-        let description: String
-        var errorDescription: String? { description }
-    }
+}
+
+/// What `Calls` refuses or could not finish, with the data a sentence needs; the UI writes the sentence.
+public enum CallsFailure: Error, Equatable, Sendable {
+    /// No call folder has this id any more.
+    case notFound(id: String)
+    /// More than one call folder has this id.
+    case ambiguous(id: String)
+    /// The title has a character a folder name cannot hold.
+    case invalidTitle
+    /// Removing the folder stopped part way; some of it may remain.
+    case trashFailed(folder: String, reason: String)
+    /// The copy's file sizes differ from the source's.
+    case sizeMismatch
 }
 
 /// The file system as `Calls` lists, renames, copies, trashes and removes folders.

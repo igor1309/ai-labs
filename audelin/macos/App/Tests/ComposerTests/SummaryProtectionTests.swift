@@ -7,13 +7,13 @@ import Testing
 struct SummaryProtectionTests {
     @Test(arguments: [State.Phase.claiming, .running, .observed, .starting, .identifying, .checkpointing, .noting, .publishing, .saving])
     func everyActivePhaseBlocksUpdate(phase: State.Phase) {
-        let model = SummaryJobModel(initial: .init(phase: phase), observesOwner: false, canDispatch: { true }, handler: handler(store: ProtectionStore()), changed: { _ in })
+        let model = SummaryJobModel(initial: .init(phase: phase), observesOwner: false, canDispatch: { true }, handler: handler(store: ProtectionStore()), format: { _, _ in "" }, changed: { _ in })
         #expect(model.busy)
     }
 
     @Test(arguments: [State.Phase.idle, .waiting, .pending, .succeeded, .failed, .interrupted, .unavailable])
     func inactivePhasesAllowUpdate(phase: State.Phase) {
-        let model = SummaryJobModel(initial: .init(phase: phase), observesOwner: false, canDispatch: { true }, handler: handler(store: ProtectionStore()), changed: { _ in })
+        let model = SummaryJobModel(initial: .init(phase: phase), observesOwner: false, canDispatch: { true }, handler: handler(store: ProtectionStore()), format: { _, _ in "" }, changed: { _ in })
         #expect(!model.busy)
     }
 
@@ -21,7 +21,7 @@ struct SummaryProtectionTests {
         let runtime = Job.Runtime(kind: "compatibleAPI", model: "saved", program: "", endpoint: "http://127.0.0.1", credentialVariable: "")
         let job = Job(id: "attempt", call: "call", input: "input", entries: [.init(label: "A", time: "0", text: "spoken")], speakers: false, primary: runtime)
         let store = ProtectionStore(), states = AsyncStream<State>.makeStream()
-        let model = SummaryJobModel(initial: .init(phase: .pending, job: job), observesOwner: false, canDispatch: { true }, handler: handler(store: store), changed: { states.continuation.yield($0) })
+        let model = SummaryJobModel(initial: .init(phase: .pending, job: job), observesOwner: false, canDispatch: { true }, handler: handler(store: store), format: { _, _ in "" }, changed: { states.continuation.yield($0) })
         await model.dispatch()
         #expect(model.busy)
         await store.saving.next()
@@ -49,7 +49,7 @@ struct SummaryProtectionTests {
         var allowed = true
         let reduced = Signal()
         let model = SummaryJobModel(initial: .init(phase: .pending), observesOwner: false,
-                                    canDispatch: { allowed }, handler: handler(store: ProtectionStore()), changed: { _ in reduced.send() })
+                                    canDispatch: { allowed }, handler: handler(store: ProtectionStore()), format: { _, _ in "" }, changed: { _ in reduced.send() })
         model.send(.dispatch)
         allowed = false
         await reduced.next()

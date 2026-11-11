@@ -1,3 +1,4 @@
+import SettingsUI
 import Calls
 import CallsListUI
 import Foundation
@@ -57,6 +58,9 @@ public final class AudelinCalls {
     private var editing: CallsListState.Editing?
     private var openFailure: String?
     private var opening = false
+    private let describe: (any Error) -> String
+    /// The calls list's text, in the language Audelin is shown in.
+    public private(set) var listText: CallsListText
 
     init(inputs: RecordingsInputs, timeZone: TimeZone, now: @escaping () -> Date, recordingState: @escaping () -> RecordingState,
          location: @escaping (String) async throws -> URL, openFolder: @escaping (URL) -> Bool,
@@ -65,7 +69,11 @@ public final class AudelinCalls {
          notes: @escaping (String) async throws -> String? = { _ in nil },
          focusPreview: @escaping () -> Void = {},
          retryableSummaries: @escaping () -> Set<String> = { [] },
-         retrySummary: @escaping (String) async throws -> Void = { _ in throw CocoaError(.fileWriteUnknown) }) {
+         retrySummary: @escaping (String) async throws -> Void = { _ in throw CocoaError(.fileWriteUnknown) },
+         describe: @escaping (any Error) -> String = SettingsText(language: .russian).callsFailure,
+         listText: CallsListText = .init(language: .russian)) {
+        self.describe = describe
+        self.listText = listText
         self.retryableSummaries = retryableSummaries
         self.retrySummary = retrySummary
         self.focusPreview = focusPreview
@@ -77,7 +85,7 @@ public final class AudelinCalls {
     }
 
     public var state: CallsListState {
-        var state = callsListState(inputs.state(), timeZone: timeZone, now: now())
+        var state = callsListState(inputs.state(), timeZone: timeZone, now: now(), text: listText)
         let statuses = summaryStatuses()
         let badges = summaryBadges()
         let retryable = retryableSummaries().subtracting(retrying)
@@ -94,6 +102,9 @@ public final class AudelinCalls {
         state.busy = state.busy || opening
         return state
     }
+
+    /// Shows the list in the new language at once.
+    func languageChanged(_ text: CallsListText) { listText = text }
 
     var recordingsState: RecordingsState { inputs.state() }
     /// No folder move, delete or rename is under way or waiting on an answer.
@@ -224,7 +235,7 @@ public final class AudelinCalls {
             openFailure = nil
             inputs.send(.clearFailure)
             do { try await retrySummary(id) }
-            catch { openFailure = "Не удалось повторить подготовку итогов. Расшифровка и прежние итоги сохранены." }
+            catch { openFailure = listText(.summaryRetryFailed) }
         case let .open(id):
             guard !snapshot.busy else { return }
             editing = nil
@@ -234,8 +245,8 @@ public final class AudelinCalls {
             defer { opening = false }
             do {
                 let url = try await location(id)
-                if !openFolder(url) { openFailure = "Не удалось открыть «\(id)» в Finder." }
-            } catch { openFailure = "«\(id)»: \(error.localizedDescription)" }
+                if !openFolder(url) { openFailure = listText(.openFailed, id) }
+            } catch { openFailure = "«\(id)»: \(describe(error))" }
         }
     }
 }
@@ -245,7 +256,7 @@ func recordedCallID(_ state: RecordingState) -> String? {
 }
 
 /// Calls arrive newest first; each day's first row carries the day's header.
-func callsListState(_ state: RecordingsState, timeZone: TimeZone, now: Date) -> CallsListState {
+func callsListState(_ state: RecordingsState, timeZone: TimeZone, now: Date, text: CallsListText) -> CallsListState {
     let busy: Bool
     let deleteID: String?
     switch state.phase {
@@ -253,7 +264,7 @@ func callsListState(_ state: RecordingsState, timeZone: TimeZone, now: Date) -> 
     case let .askingDelete(id): busy = false; deleteID = id
     default: busy = true; deleteID = nil
     }
-    let format = CallsListFormat(timeZone: timeZone)
+    let format = CallsListFormat(timeZone: timeZone, text: text)
     let days = state.calls.map { format.day($0.start, now: now) }
     return CallsListState(rows: state.calls.indices.map { index in
         let call = state.calls[index], day = days[index]
@@ -262,7 +273,7 @@ func callsListState(_ state: RecordingsState, timeZone: TimeZone, now: Date) -> 
                      day: opens ? .init(title: day, count: format.count(days[index...].prefix { $0 == day }.count)) : nil,
                      time: format.time(call.start), duration: format.duration(call.duration), editable: call.id != state.recordingID)
     }, deleteID: deleteID, deleteBody: state.calls.first { $0.id == deleteID }.map { call in
-        "«\(call.id + (call.title.isEmpty ? "" : " " + call.title))»: вся папка звонка — аудио, расшифровки и саммари — переместится в Корзину."
+        text(.deleteBody, call.id + (call.title.isEmpty ? "" : " " + call.title))
     }, busy: busy || state.isListing, failure: state.failure.map { failure in
         (failure.id.map { "«\($0)»: " } ?? "") + failure.reason
     })

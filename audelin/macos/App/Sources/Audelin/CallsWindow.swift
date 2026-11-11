@@ -24,12 +24,12 @@ final class CallsWindow {
     private let activate: () -> Void
     private let shown: (AnyObject) -> Void
 
-    init(makeWindow: () -> any CallsWindowDriver, activate: @escaping () -> Void,
+    init(makeWindow: () -> any CallsWindowDriver, title: String, activate: @escaping () -> Void,
          shown: @escaping (AnyObject) -> Void = { _ in }) {
         window = makeWindow()
         self.activate = activate
         self.shown = shown
-        window.title = "Звонки"
+        window.title = title
         window.isReleasedWhenClosed = false
         window.minSize = NSSize(width: 560, height: 360)
         if !window.setFrameUsingName(Self.frameName) { window.center() }
@@ -39,6 +39,9 @@ final class CallsWindow {
     static let frameName = "CallsWindow"
 
     func install(content: NSView) { window.contentView = content }
+
+    /// The title, as when the language changes.
+    func retitle(_ title: String) { window.title = title }
 
     func show() {
         if window.isMiniaturized { window.deminiaturize(nil) }

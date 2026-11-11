@@ -126,7 +126,7 @@ private struct PanelContent: View {
             let binding = panelContentBinding(model)
             PanelView(state: binding.state, event: { event in
                 _ = binding.event(event)
-            }, config: config(width: geometry.size.width))
+            }, config: config(width: geometry.size.width), text: model.panelText)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
     }

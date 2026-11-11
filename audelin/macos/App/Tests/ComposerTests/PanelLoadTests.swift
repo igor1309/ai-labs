@@ -92,7 +92,7 @@ struct PanelLoadTests {
         // The call is already there: only the states after it are the cost of a late state.
         reading = ReadingReducer.reduce(reading, .textUpdated(readingText(feed[0]))).0
         var rows = MappedRows()
-        var shown = panelState(reading, rows: &rows)
+        var shown = panelState(russianPanel, reading, rows: &rows)
         var mapped = feed[0].finalCount
         for state in feed.dropFirst() {
             var times = [Duration](repeating: .zero, count: 5)
@@ -103,7 +103,7 @@ struct PanelLoadTests {
             times[1] += clock.measure { reading = ReadingReducer.reduce(reading, .textUpdated(update!)).0 }
             times[2] += clock.measure { _ = reading == previous }
             var next: PanelState?
-            times[3] += clock.measure { next = panelState(reading, rows: &rows) }
+            times[3] += clock.measure { next = panelState(russianPanel, reading, rows: &rows) }
             times[4] += clock.measure { _ = next == shown }
             shown = next!
             states.append(times)

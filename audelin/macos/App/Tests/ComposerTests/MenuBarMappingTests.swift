@@ -79,7 +79,7 @@ struct MenuBarMappingTests {
                 #expect(menuBarPreferences(stored) == MenuBarPreferences(automatic: automatic, liveText: liveText))
                 for (state, input) in variants {
                     #expect(menuBarRecording(state) == input)
-                    let menu = MenuBarModel(recording: input,
+                    let menu = MenuBarModel(text: russian, recording: input,
                         preferences: MenuBarPreferences(automatic: automatic, liveText: liveText))
                     #expect(menu.item.isRed == (state.phase == .beginning || state.phase == .recording))
                 }
@@ -87,3 +87,5 @@ struct MenuBarMappingTests {
         }
     }
 }
+
+private func russian(_ phrase: MenuBarPhrase) -> String { MenuBarText(language: .russian)(phrase) }

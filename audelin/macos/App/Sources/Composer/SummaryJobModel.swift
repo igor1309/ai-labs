@@ -11,10 +11,10 @@ final class SummaryJobModel {
     private var stopping = false
     let observesOwner: Bool
     private let handler: EffectHandler
-    init(initial: State, observesOwner: Bool, canDispatch: @escaping () -> Bool, handler: EffectHandler, changed: @escaping (State) -> Void) {
+    init(initial: State, observesOwner: Bool, canDispatch: @escaping () -> Bool, handler: EffectHandler, format: @escaping @Sendable (State.Phase, Bool) -> String, changed: @escaping (State) -> Void) {
         self.observesOwner = observesOwner
         self.handler = handler
-        let reducer = Reducer(format: summaryStatus)
+        let reducer = Reducer(format: format)
         model = ObservableModel(initialState: initial, reduce: { [weak self] state, event in
             guard let self else { return (state, nil) }
             let result = event == .dispatch && !canDispatch() ? (state, nil) : reducer.reduce(state, stopping ? .cancel : event)

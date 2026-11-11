@@ -3,6 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "Audelin",
+    defaultLocalization: "ru",
     platforms: [.macOS(.v26)],
     products: [
         .library(name: "SummarySettings", targets: ["SummarySettings"]),
@@ -90,10 +91,10 @@ let package = Package(
         .testTarget(name: "SourceChecksTests", dependencies: ["BlockingTestWork"]),
         .target(name: "Calls", dependencies: ["CallFolderName"]),
         .target(name: "Recordings"),
-        .target(name: "CallsListUI", dependencies: ["GlassLedger"]),
+        .target(name: "CallsListUI", dependencies: ["GlassLedger"], resources: [.process("Resources")]),
         .target(name: "NotesMarkdown", dependencies: [.product(name: "Markdown", package: "swift-markdown")]),
         .testTarget(name: "NotesMarkdownTests", dependencies: ["NotesMarkdown"]),
-        .target(name: "SummaryPreviewUI", dependencies: ["GlassLedger"]),
+        .target(name: "SummaryPreviewUI", dependencies: ["GlassLedger"], resources: [.process("Resources")]),
         .testTarget(name: "SummaryPreviewUITests", dependencies: ["SummaryPreviewUI", "GlassLedger", "NotesMarkdown", "RenderedText"]),
         .testTarget(name: "CallsTests", dependencies: ["Calls", "TrackFile", "BlockingTestWork"]),
         .testTarget(name: "RecordingsTests", dependencies: ["Recordings"]),
@@ -144,7 +145,8 @@ let package = Package(
             name: "LiveText"
         ),
         .target(
-            name: "MenuBar"
+            name: "MenuBar",
+            resources: [.process("Resources")]
         ),
         .target(
             name: "MicrophoneCapture"
@@ -163,7 +165,8 @@ let package = Package(
         ),
         .target(
             name: "PanelUI",
-            dependencies: ["GlassLedger", "SplitRows"]
+            dependencies: ["GlassLedger", "SplitRows"],
+            resources: [.process("Resources")]
         ),
         .target(
             name: "ParakeetRecognizer",
@@ -192,7 +195,8 @@ let package = Package(
         ),
         .target(
             name: "SettingsUI",
-            dependencies: ["GlassLedger"]
+            dependencies: ["GlassLedger"],
+            resources: [.process("Resources")]
         ),
         .target(
             name: "Session"

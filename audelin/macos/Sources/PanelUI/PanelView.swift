@@ -10,17 +10,20 @@ public struct PanelView: View {
     private let state: PanelState
     private let event: (PanelEvent) -> Void
     private let config: PanelConfig
+    private let text: PanelText
 
     @Environment(\.colorScheme) private var scheme
 
     public init(
         state: PanelState,
         event: @escaping (PanelEvent) -> Void,
-        config: PanelConfig = .glassLedger
+        config: PanelConfig = .glassLedger,
+        text: PanelText = .init(language: .russian)
     ) {
         self.state = state
         self.event = event
         self.config = config
+        self.text = text
     }
 
     public var body: some View {
@@ -80,7 +83,7 @@ private extension PanelView {
                 .fill(tokens.gutter)
                 .frame(width: 8, height: 8)
 
-            Text("не записывается")
+            Text(text(.notRecording))
                 .font(tokens.data(tokens.typeCaption))
                 .lineHeight(tokens.leading(tokens.fontData, tokens.typeCaption, config.lineHeight))
                 .foregroundStyle(tokens.gutter)
@@ -118,7 +121,7 @@ private extension PanelView {
                     .fill(tokens.selText)
                     .frame(width: 7, height: 7)
 
-                Text("Начать")
+                Text(text(.start))
                     .font(tokens.ui(tokens.typeSmall, .semibold))
                     .lineHeight(tokens.leading(tokens.fontUi, tokens.typeSmall, config.lineHeight))
                     .foregroundStyle(tokens.selText)
@@ -140,7 +143,7 @@ private extension PanelView {
                     .fill(tokens.rec)
                     .frame(width: 8, height: 8)
 
-                Text("Стоп")
+                Text(text(.stop))
                     .font(tokens.ui(tokens.typeSmall, .semibold))
                     .lineHeight(tokens.leading(tokens.fontUi, tokens.typeSmall, config.lineHeight))
                     .foregroundStyle(tokens.rec)
@@ -163,7 +166,7 @@ private extension PanelView {
 
             switch state.log {
             case .empty:
-                Text("Запись не идёт. Начать — и текст появится здесь, для обеих сторон.")
+                Text(text(.emptyLog))
                     .font(tokens.data(tokens.typeBody))
                     .lineHeight(tokens.leading(tokens.fontData, tokens.typeBody, config.looseLineHeight))
                     .foregroundStyle(tokens.gutter)
@@ -174,12 +177,12 @@ private extension PanelView {
                     linesView(kept)
                 }
 
-                Text("Живой текст выключен — звонок только записывается.")
+                Text(text(.liveTextOff))
                     .font(tokens.ui(tokens.typeBody))
                     .lineHeight(tokens.leading(tokens.fontUi, tokens.typeBody, config.lineHeight))
                     .foregroundStyle(tokens.sub)
 
-                Button("Включить живой текст") { event(.switchLiveTextOn) }
+                Button(text(.switchLiveTextOn)) { event(.switchLiveTextOn) }
                     .buttonStyle(.plain)
                     .font(tokens.ui(tokens.typeBody, .semibold))
                     .lineHeight(tokens.leading(tokens.fontUi, tokens.typeBody, config.lineHeight))
@@ -188,12 +191,12 @@ private extension PanelView {
             case let .preparing(holds):
                 holdsView(holds)
 
-                Text("Живой текст готовится — звонок уже записывается.")
+                Text(text(.preparing))
                     .font(tokens.ui(tokens.typeBody))
                     .lineHeight(tokens.leading(tokens.fontUi, tokens.typeBody, config.lineHeight))
                     .foregroundStyle(tokens.sub)
 
-                Text("Текст появится с начала звонка.")
+                Text(text(.preparingNote))
                     .font(tokens.data(tokens.typeBody))
                     .lineHeight(tokens.leading(tokens.fontData, tokens.typeBody, config.looseLineHeight))
                     .foregroundStyle(tokens.gutter)
@@ -210,7 +213,7 @@ private extension PanelView {
     @ViewBuilder
     func linesView(_ lines: PanelState.Lines) -> some View {
 
-        TranscriptLog(lines: lines, tokens: tokens, config: config, event: event)
+        TranscriptLog(lines: lines, tokens: tokens, config: config, panelText: text, event: event)
 
         holdsView(lines.holds)
 
@@ -255,8 +258,8 @@ private extension PanelView {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .help("Отпустить")
-            .accessibilityLabel("Отпустить выделенный текст")
+            .help(text(.release))
+            .accessibilityLabel(text(.releaseLabel))
         }
         .padding(.horizontal, tokens.space8)
         .padding(.vertical, tokens.space2)
@@ -271,7 +274,7 @@ private extension PanelView {
 
         Button { event(.jumpToLive) } label: {
 
-            Text("\(count) новые ↓")
+            Text(String(format: text(.newBelow), count))
                 .font(tokens.data(tokens.typeCaption, .semibold))
                 .lineHeight(tokens.leading(tokens.fontData, tokens.typeCaption, config.looseLineHeight))
                 .foregroundStyle(tokens.me)
@@ -292,12 +295,12 @@ private extension PanelView {
 
     func bannerView(_ banner: PanelState.Banner) -> some View {
 
-        let ink: Color = switch banner {
+        let ink: Color = switch banner.kind {
         case .callAudio, .microphone: tokens.warn
         case .diskFull: tokens.rec
         case .callSilent: tokens.me
         }
-        let background: Color = switch banner {
+        let background: Color = switch banner.kind {
         case .callAudio, .microphone: tokens.warnBg
         case .diskFull: tokens.errBg
         case .callSilent: tokens.okBg

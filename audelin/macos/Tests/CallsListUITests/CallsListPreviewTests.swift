@@ -12,16 +12,20 @@ struct CallsListPreviewTests {
 
     @Test(arguments: CallsListPreviews.states.map(\.name), [ColorScheme.light, .dark])
     func drawsAsItsReference(name: String, scheme: ColorScheme) throws {
+        for language in CallsListLanguage.allCases { try draws(name, scheme, CallsListText(language: language)) }
+    }
+
+    private func draws(_ name: String, _ scheme: ColorScheme, _ text: CallsListText) throws {
 
         GlassLedger.registerFonts()
         let host = Offscreen.host(
-            CallsListView(state: CallsListPreviews.state(name), event: { _ in })
+            CallsListView(state: CallsListPreviews.state(name, in: text), text: text, event: { _ in })
                 .environment(\.colorScheme, scheme).environment(\.controlActiveState, .key),
             size: CGSize(width: 920, height: 420), scheme: scheme
         )
         let image = try #require(Offscreen.snapshot(host))
         let url = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
-            .appendingPathComponent("References/\(name)-\(scheme == .dark ? "dark" : "light").png")
+            .appendingPathComponent("References/\(name)-\(scheme == .dark ? "dark" : "light")\(text.language == .russian ? "" : "-en").png")
 
         let outcome = try ReferenceImage.compare(image, with: url)
         #expect([.matches, .recorded].contains(outcome))
@@ -35,7 +39,7 @@ struct CallsListPreviewTests {
         var state = CallsListPreviews.state("notes")
         state.selectedID = state.rows[0].id
         let host = Offscreen.host(
-            CallsListView(state: state, event: { _ in })
+            CallsListView(state: state, text: .init(language: .russian), event: { _ in })
                 .environment(\.colorScheme, scheme).environment(\.controlActiveState, .inactive),
             size: CGSize(width: 920, height: 420), scheme: scheme
         )
@@ -53,7 +57,7 @@ struct CallsListPreviewTests {
 
         GlassLedger.registerFonts()
         let host = Offscreen.host(
-            CallsListView(state: CallsListPreviews.state("long-title"), event: { _ in })
+            CallsListView(state: CallsListPreviews.state("long-title"), text: .init(language: .russian), event: { _ in })
                 .environment(\.colorScheme, scheme).environment(\.controlActiveState, .key),
             size: CGSize(width: 560, height: 420), scheme: scheme
         )

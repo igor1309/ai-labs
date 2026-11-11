@@ -15,7 +15,7 @@ struct CallsListRowMenuTests {
         let menu = try #require(try target("2026.10.20-1600", in: host).menu(for: rightClick()))
 
         #expect(spy.events == [.select("2026.10.20-1600")])
-        #expect(menu.items.map(\.title) == ["Открыть", "Показать заметки", "Переименовать", "Повторить итоги", "", "Удалить…"])
+        #expect(menu.items.map(\.title) == ["Открыть", "Показать заметки", "Переименовать", "Повторить подготовку итогов", "", "Удалить…"])
     }
 
     @Test func menuShowsTheRowsKeys() throws {
@@ -71,7 +71,7 @@ struct CallsListRowMenuTests {
 
     private func view(_ state: CallsListState, _ spy: EventSpy) -> some View {
 
-        CallsListView(state: state, event: { spy.events.append($0) }).environment(\.colorScheme, .light)
+        CallsListView(state: state, text: .init(language: .russian), event: { spy.events.append($0) }).environment(\.colorScheme, .light)
     }
 
     private func target(_ id: String, in view: NSView) throws -> NSView {

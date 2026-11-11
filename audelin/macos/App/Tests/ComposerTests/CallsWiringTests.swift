@@ -20,7 +20,7 @@ struct CallsWiringTests {
         state.recordingID = "A"
         state.phase = .askingDelete("B")
         state.failure = .init(id: "B", reason: "disk denied")
-        let mapped = callsListState(state, timeZone: .gmt, now: .distantFuture)
+        let mapped = callsListState(state, timeZone: .gmt, now: .distantFuture, text: .init(language: .russian))
         #expect(mapped.rows.map(\.editable) == [false, true])
         #expect(mapped.deleteID == "B")
         #expect(mapped.deleteBody == "«B Zoom»: вся папка звонка — аудио, расшифровки и саммари — переместится в Корзину.")
@@ -28,9 +28,9 @@ struct CallsWiringTests {
         #expect(!mapped.busy)
         for phase: RecordingsState.Phase in [.renaming("A"), .deleting("B")] {
             state.phase = phase
-            #expect(callsListState(state, timeZone: .gmt, now: .distantFuture).busy)
-            #expect(callsListState(state, timeZone: .gmt, now: .distantFuture).deleteID == nil)
-            #expect(callsListState(state, timeZone: .gmt, now: .distantFuture).deleteBody == nil)
+            #expect(callsListState(state, timeZone: .gmt, now: .distantFuture, text: .init(language: .russian)).busy)
+            #expect(callsListState(state, timeZone: .gmt, now: .distantFuture, text: .init(language: .russian)).deleteID == nil)
+            #expect(callsListState(state, timeZone: .gmt, now: .distantFuture, text: .init(language: .russian)).deleteBody == nil)
         }
     }
 
@@ -40,7 +40,7 @@ struct CallsWiringTests {
         state.calls = [(3, 18), (3, 9), (2, 23), (2, 10), (2, 8), (0, 12)].map { day, hour in
             .init(id: "\(day)-\(hour)", title: "", start: Date(timeIntervalSince1970: (Double(day) * 24 + Double(hour)) * 3_600), duration: 75)
         }
-        let rows = callsListState(state, timeZone: .gmt, now: now).rows
+        let rows = callsListState(state, timeZone: .gmt, now: now, text: .init(language: .russian)).rows
         #expect(rows.map(\.day) == [.init(title: "Сегодня", count: "2 звонка"), nil,
                                      .init(title: "Вчера", count: "3 звонка"), nil, nil,
                                      .init(title: "Четверг, 1 января", count: "1 звонок")])
