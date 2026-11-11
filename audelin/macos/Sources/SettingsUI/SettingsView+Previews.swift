@@ -27,7 +27,7 @@ extension SettingsState {
                                            reason: english ? "“Zoom 2”: not enough disk space." : "«Zoom 2» — не удалось: нет места на диске.")
             }),
             ("during-recording", with(base) { $0.folder.status = .recording }),
-        ] + summaryPreviews
+        ] + summaryPreviews(in: text)
     }
 
     static let release = release(in: SettingsText(language: .russian))
@@ -37,7 +37,7 @@ extension SettingsState {
     static let moveFailed = previews[4].state
     static let duringRecording = previews[5].state
 
-    private static func release(in text: SettingsText) -> SettingsState {
+    static func release(in text: SettingsText) -> SettingsState {
 
         let english = text.language == .english
         return SettingsState(

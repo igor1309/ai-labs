@@ -2,70 +2,80 @@ import SwiftUI
 
 extension SettingsState {
 
-    static let summaryPreviews: [(name: String, state: SettingsState)] = [
-        "off", "on", "local", "invalid", "unavailable", "validating", "saving",
-        "save-failed", "saved", "loading", "load-failed", "no-fallback",
-    ].map { name in
-        var state = release
-        state.selectedTab = .callNotes
-        state.callNotes = notesPreview(name)
-        return ("summaries-\(name)", state)
+    static let summaryPreviews = summaryPreviews(in: SettingsText(language: .russian))
+
+    /// One Call notes state per design frame, with the text the composer gives in that language.
+    static func summaryPreviews(in text: SettingsText) -> [(name: String, state: SettingsState)] {
+        [
+            "off", "on", "local", "invalid", "unavailable", "validating", "saving",
+            "save-failed", "saved", "loading", "load-failed", "no-fallback",
+        ].map { name in
+            var state = release(in: text)
+            state.selectedTab = .callNotes
+            state.callNotes = notesPreview(name, text)
+            return ("summaries-\(name)", state)
+        }
     }
 
-    private static func notesPreview(_ name: String) -> CallNotes {
-        if name == "loading" { return .loading("Загружаем настройки…") }
+    private static func notesPreview(_ name: String, _ text: SettingsText) -> CallNotes {
+        let english = text.language == .english
+        func say(_ russian: String, _ inEnglish: String) -> String { english ? inEnglish : russian }
+        if name == "loading" { return .loading(text(.notesLoading)) }
         if name == "load-failed" {
-            return .loadFailed(.init(title: "Не удалось загрузить настройки",
-                                     detail: "Сохранённые значения не изменены. Попробуйте ещё раз."),
-                               .init(id: .retryLoad, title: "Повторить"))
+            return .loadFailed(.init(title: text(.notesLoadFailed),
+                                     detail: say("Сохранённые значения не изменены. Попробуйте ещё раз.", "Saved values are unchanged. Try again.")),
+                               .init(id: .retryLoad, title: text(.notesRetry)))
         }
         var draft = NotesDraft(
             automatic: name != "off", identifySpeakers: name == "on",
             runtimes: [
-                .init(id: .primary, title: "Основной сервис", kind: .claudeCLI, options: notesOptions,
-                      fields: [.init(id: .model, label: "Модель", value: "sonnet"),
-                               .init(id: .executable, label: "Программа", value: "", placeholder: "Найти автоматически")],
-                      disclosure: "Транскрипт → Anthropic · квота подписки Claude"),
-                apiPreview(.fallback, title: "Резервный сервис", local: false),
+                .init(id: .primary, title: text(.primaryService), kind: .claudeCLI, options: notesOptions(text),
+                      fields: [.init(id: .model, label: text(.modelField), value: "sonnet"),
+                               .init(id: .executable, label: text(.executableField), value: "", placeholder: text(.findAutomatically))],
+                      disclosure: text(.runtimeClaudeCLI)),
+                apiPreview(.fallback, title: text(.fallbackService), local: false, text),
             ],
-            disclosure: "Выбранный сервис получает полный транскрипт. Резервный получает его только при повторе запроса.",
-            status: "Есть несохранённые изменения",
-            validate: .init(id: .validate, title: "Проверить"),
-            save: .init(id: .save, title: "Сохранить")
+            disclosure: text(.notesDisclosureFallback),
+            status: text(.notesEditing),
+            validate: .init(id: .validate, title: text(.notesValidate)),
+            save: .init(id: .save, title: text(.notesSave))
         )
         switch name {
         case "no-fallback":
-            draft.runtimes[1] = .init(id: .fallback, title: "Резервный сервис", kind: .unconfigured,
-                                      options: [.init(id: .unconfigured, title: "Не использовать")] + notesOptions,
-                                      fields: [], disclosure: "Резервный сервис не настроен. При ошибке основного сервиса итоги не будут готовы; расшифровка и аудио сохранятся.")
-            draft.disclosure = "Выбранный сервис получает полный транскрипт."
-        case "off": draft.status = "Автосводка выключена"
+            draft.runtimes[1] = .init(id: .fallback, title: text(.fallbackService), kind: .unconfigured,
+                                      options: [.init(id: .unconfigured, title: text(.notUsed))] + notesOptions(text),
+                                      fields: [], disclosure: text(.runtimeNoFallback))
+            draft.disclosure = text(.notesDisclosure)
+        case "off": draft.status = say("Автосводка выключена", "Automatic notes are off")
         case "local":
-            draft.runtimes = [apiPreview(.primary, title: "Основной сервис", local: true),
-                              apiPreview(.fallback, title: "Резервный сервис", local: true)]
+            draft.runtimes = [apiPreview(.primary, title: text(.primaryService), local: true, text),
+                              apiPreview(.fallback, title: text(.fallbackService), local: true, text)]
 
         case "invalid":
             draft.runtimes[1].fields[0].value = ""
-            draft.runtimes[1].fields[0].placeholder = "Название модели"
+            draft.runtimes[1].fields[0].placeholder = say("Название модели", "Model name")
             draft.runtimes[1].fields[0].isInvalid = true
-            draft.banner = .init(title: "Проверьте настройки", detail: "Укажите модель резервного сервиса.")
-            draft.status = "Исправьте поле выше"
+            draft.banner = .init(title: say("Проверьте настройки", "Check the settings"),
+                                 detail: say("Укажите модель резервного сервиса.", "Enter the fallback service’s model."))
+            draft.status = say("Исправьте поле выше", "Correct the field above")
             draft.save.isEnabled = false
         case "unavailable":
-            draft.banner = .init(title: "Claude Code не найден", detail: "Укажите путь к установленному CLI и проверьте снова.")
-            draft.status = "Сервис недоступен"
+            draft.banner = .init(title: say("Claude Code не найден", "Claude Code not found"),
+                                 detail: say("Укажите путь к установленному CLI и проверьте снова.", "Enter the path to the installed CLI and check again."))
+            draft.status = say("Сервис недоступен", "Service unavailable")
         case "validating":
-            draft.status = "Проверяем…"
+            draft.status = text(.notesValidating)
             draft.save.isEnabled = false
         case "saving":
-            draft.status = "Сохраняем…"
+            draft.status = text(.notesSaving)
             draft.save.isEnabled = false
         case "save-failed":
-            draft.banner = .init(title: "Не удалось сохранить настройки", detail: "Изменения остались в окне. Повторите попытку.")
-            draft.status = "Сохранение не завершено"
-            draft.save = .init(id: .retrySave, title: "Повторить")
+            draft.banner = .init(title: text(.notesSaveFailed),
+                                 detail: say("Изменения остались в окне. Повторите попытку.", "Your changes are still in the window. Try again."))
+            draft.status = say("Сохранение не завершено", "Saving didn’t finish")
+            draft.save = .init(id: .retrySave, title: text(.notesRetry))
         case "saved":
-            draft.status = "Настройки сохранены"
+            draft.status = text(.notesSaved)
             draft.statusTone = .success
             draft.save.isEnabled = false
         default: break
@@ -73,21 +83,19 @@ extension SettingsState {
         return .loaded(draft)
     }
 
-    private static let notesOptions: [NotesRuntime.Option] = [
-        .init(id: .claudeCLI, title: "Claude Code CLI"),
-        .init(id: .compatibleAPI, title: "API · OpenAI-совместимый"),
-    ]
+    private static func notesOptions(_ text: SettingsText) -> [NotesRuntime.Option] {
+        [.init(id: .claudeCLI, title: "Claude Code CLI"), .init(id: .compatibleAPI, title: text(.compatibleAPI))]
+    }
 
-    private static func apiPreview(_ slot: NotesRuntime.Slot, title: String, local: Bool) -> NotesRuntime {
-        .init(id: slot, title: title, kind: .compatibleAPI, options: (slot == .fallback ? [.init(id: .unconfigured, title: "Не использовать")] : []) + notesOptions,
+    private static func apiPreview(_ slot: NotesRuntime.Slot, title: String, local: Bool, _ text: SettingsText) -> NotesRuntime {
+        .init(id: slot, title: title, kind: .compatibleAPI,
+              options: (slot == .fallback ? [.init(id: .unconfigured, title: text(.notUsed))] : []) + notesOptions(text),
               fields: [
-                .init(id: .model, label: "Модель", value: local ? "local-model" : "gpt-4.1-mini"),
-                .init(id: .endpoint, label: "Адрес API", value: local ? "http://127.0.0.1:8080/v1" : "https://api.openai.com/v1"),
-                .init(id: .credentialVariable, label: "Переменная ключа", value: local ? "" : "OPENAI_API_KEY", placeholder: "Имя переменной окружения"),
+                .init(id: .model, label: text(.modelField), value: local ? "local-model" : "gpt-4.1-mini"),
+                .init(id: .endpoint, label: text(.endpointField), value: local ? "http://127.0.0.1:8080/v1" : "https://api.openai.com/v1"),
+                .init(id: .credentialVariable, label: text(.credentialField), value: local ? "" : "OPENAI_API_KEY", placeholder: text(.variableName)),
               ],
-              disclosure: local
-                ? "Транскрипт → сервер на этом Mac. Сервер может пересылать данные дальше."
-                : "Транскрипт → api.openai.com · оплата по тарифу API")
+              disclosure: local ? text(.runtimeLoopback) : text(.runtimeRemote, "api.openai.com"))
     }
 }
 

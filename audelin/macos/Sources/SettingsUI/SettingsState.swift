@@ -26,7 +26,7 @@ public struct SettingsState: Equatable, Sendable {
         chunk: Chunk? = nil,
         moveConfirm: MoveConfirm? = nil,
         selectedTab: Tab = .recording,
-        callNotes: CallNotes = .loading("Загружаем настройки…")
+        callNotes: CallNotes = .loading("")
     ) {
         self.selectedTab = selectedTab
         self.callNotes = callNotes

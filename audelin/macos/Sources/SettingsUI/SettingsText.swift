@@ -82,6 +82,21 @@ public enum SettingsPhrase: String, CaseIterable, Sendable {
     case issueEndpoint = "issue.endpoint"
     case issueCredential = "issue.credentialVariable"
     case issueFormat = "issue.format"
+    case notesAutomatic = "notes.automatic"
+    case notesAutomaticNote = "notes.automaticNote"
+    case notesSpeakers = "notes.speakers"
+    case notesDetails = "notes.details"
+    case notesDetailData = "notes.detailData"
+    case notesDetailCost = "notes.detailCost"
+    case notesDetailCostBody = "notes.detailCostBody"
+    case notesDetailCheck = "notes.detailCheck"
+    case notesDetailCheckBody = "notes.detailCheckBody"
+    case notesDetailClaudeBody = "notes.detailClaudeBody"
+    case notesDetailKey = "notes.detailKey"
+    case notesDetailKeyBody = "notes.detailKeyBody"
+    case notesOptional = "notes.optional"
+    case notesService = "notes.service"
+    case notesFallbackNote = "notes.fallbackNote"
 }
 
 /// Looks up Settings text in a given language, whatever the process locale.
