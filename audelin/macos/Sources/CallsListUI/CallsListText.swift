@@ -38,6 +38,9 @@ public enum CallsListPhrase: String, CaseIterable, Sendable {
     case summaryInterrupted = "summary.interrupted"
     case summaryUnavailable = "summary.unavailable"
     case summaryRetryFailed = "summary.retryFailed"
+    case windowTitle = "window.title"
+    /// Takes the call id.
+    case openFailed = "row.openFailed"
 }
 
 /// Looks up calls list text in a given language, whatever the process locale.

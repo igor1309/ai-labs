@@ -23,3 +23,5 @@
 "summary.interrupted" = "Preparing the notes stopped; it won’t be retried automatically.";
 "summary.unavailable" = "Notes unavailable: the final transcript wasn’t saved or no speech was recognised.";
 "summary.retryFailed" = "Couldn’t retry the notes. The transcript and the earlier notes are kept.";
+"window.title" = "Calls";
+"row.openFailed" = "Couldn’t open “%@” in Finder.";

@@ -35,6 +35,10 @@ public enum MenuBarPhrase: String, CaseIterable, Sendable {
     case openCallsFolder = "action.openCallsFolder"
     case settings = "action.settings"
     case quit = "action.quit"
+    /// Takes the system's reason.
+    case watchFailedToStart = "status.watchFailedToStart"
+    /// Takes the system's reason.
+    case watchStopped = "status.watchStopped"
 }
 
 /// Looks up the menu bar's text in a given language, whatever the process locale.

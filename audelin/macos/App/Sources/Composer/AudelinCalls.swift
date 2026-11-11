@@ -232,7 +232,7 @@ public final class AudelinCalls {
             defer { opening = false }
             do {
                 let url = try await location(id)
-                if !openFolder(url) { openFailure = "Не удалось открыть «\(id)» в Finder." }
+                if !openFolder(url) { openFailure = listText(.openFailed, id) }
             } catch { openFailure = "«\(id)»: \(describe(error))" }
         }
     }

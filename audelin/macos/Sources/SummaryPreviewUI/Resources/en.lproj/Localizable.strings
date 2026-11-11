@@ -1,1 +1,3 @@
 "preview.copy" = "Copy";
+"preview.windowTitle" = "Notes — %@";
+"preview.unreadable" = "The notes can’t be read: %@";

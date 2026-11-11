@@ -153,6 +153,6 @@ func makeRecordings(handler: RecordingsEffectHandler, text: SettingsText, initia
 /// The calls list machine, with its text in the given language.
 func recordingsReducer(_ text: SettingsText) -> RecordingsReducer {
     RecordingsReducer(failureMessage: { prior, refreshError in
-        prior + " Не удалось обновить список: " + refreshError
+        text(.refreshFailed, prior, refreshError)
     }, moveText: folderMoveText(text))
 }

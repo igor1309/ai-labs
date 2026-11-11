@@ -10,7 +10,7 @@ struct PreviewPanelTests {
     @Test func eachPreviewInstallsThatCallsContentAndNoneHidesIt() throws {
         let window = PreviewPanelSpy()
         let content = ContentSpy()
-        let panel = PreviewPanel(makePanel: { window }, copy: { _ in }, makeContent: content.make)
+        let panel = PreviewPanel(makePanel: { window }, text: .init(language: .russian), copy: { _ in }, makeContent: content.make)
 
         panel.show(preview("A"))
         #expect(window.title == "Саммари — A")
@@ -33,7 +33,7 @@ struct PreviewPanelTests {
 
     @Test func focusBringsAShownPanelForwardOnly() {
         let window = PreviewPanelSpy()
-        let panel = PreviewPanel(makePanel: { window }, copy: { _ in }, makeContent: ContentSpy().make)
+        let panel = PreviewPanel(makePanel: { window }, text: .init(language: .russian), copy: { _ in }, makeContent: ContentSpy().make)
 
         panel.focus()
         #expect(window.orders.isEmpty)
@@ -49,7 +49,7 @@ struct PreviewPanelTests {
         let pasteboard = NSPasteboard.withUniqueName()
         defer { pasteboard.releaseGlobally() }
         let content = ContentSpy()
-        let panel = PreviewPanel(makePanel: { PreviewPanelSpy() }, copy: { copyNotes($0, to: pasteboard) },
+        let panel = PreviewPanel(makePanel: { PreviewPanelSpy() }, text: .init(language: .russian), copy: { copyNotes($0, to: pasteboard) },
                                  makeContent: content.make)
         let source = "## Итоги\n\n- **важно**\n\n| a | b |\n|---|---|\n"
 
@@ -68,7 +68,7 @@ struct PreviewPanelTests {
         let window = PreviewPanelSpy()
         let source = PreviewSource()
         let panelWindow = NSObject(), callsWindow = NSObject()
-        let panel = PreviewPanel(makePanel: { window }, copy: { _ in }, makeContent: ContentSpy().make)
+        let panel = PreviewPanel(makePanel: { window }, text: .init(language: .russian), copy: { _ in }, makeContent: ContentSpy().make)
         let following = connectPreview(panel: panel, preview: { source.preview }, panelWindow: panelWindow,
                                        callsWindow: callsWindow, center: center,
                                        closePreview: { source.preview = nil; source.closes.append("preview") },

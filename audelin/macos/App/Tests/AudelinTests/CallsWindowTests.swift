@@ -7,7 +7,7 @@ struct CallsWindowTests {
     @Test func showingAgainUsesTheSameWindowAndRestoresItFromTheDock() {
         let window = CallsWindowSpy()
         var creations = 0, activations = 0
-        let calls = CallsWindow(makeWindow: { creations += 1; return window }, activate: { activations += 1 })
+        let calls = CallsWindow(makeWindow: { creations += 1; return window }, title: "Звонки", activate: { activations += 1 })
         #expect(window.title == "Звонки")
         #expect(!window.isReleasedWhenClosed)
         #expect(window.minSize == NSSize(width: 860, height: 360))

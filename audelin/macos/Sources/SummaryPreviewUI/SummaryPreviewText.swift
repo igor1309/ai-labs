@@ -11,6 +11,10 @@ public enum SummaryPreviewLanguage: String, CaseIterable, Sendable {
 public enum SummaryPreviewPhrase: String, CaseIterable, Sendable {
 
     case copy = "preview.copy"
+    /// Takes the call's title.
+    case windowTitle = "preview.windowTitle"
+    /// Takes the system's reason.
+    case unreadable = "preview.unreadable"
 }
 
 /// Looks up summary preview text in a given language, whatever the process locale.

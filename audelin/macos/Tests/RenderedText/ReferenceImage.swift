@@ -30,10 +30,18 @@ public enum ReferenceImage {
             return .differs(fraction: 1)
         }
         guard let actual = rgba(image), let expected = rgba(reference) else { return .differs(fraction: 1) }
-        var changed = 0
-        for pixel in stride(from: 0, to: actual.count, by: 4) where (0..<3).contains(where: {
-            abs(Int(actual[pixel + $0]) - Int(expected[pixel + $0])) > 25
-        }) { changed += 1 }
+        // A plain loop over the raw bytes: tests run unoptimised, and a closure per pixel costs most of a second an image.
+        let changed = actual.withUnsafeBufferPointer { a in
+            expected.withUnsafeBufferPointer { e in
+                var count = 0, pixel = 0
+                while pixel < a.count {
+                    let red = Int(a[pixel]) - Int(e[pixel]), green = Int(a[pixel + 1]) - Int(e[pixel + 1]), blue = Int(a[pixel + 2]) - Int(e[pixel + 2])
+                    if red > 25 || red < -25 || green > 25 || green < -25 || blue > 25 || blue < -25 { count += 1 }
+                    pixel += 4
+                }
+                return count
+            }
+        }
         let fraction = Double(changed) / Double(image.pixelsWide * image.pixelsHigh)
         return fraction <= 0.005 ? .matches : .differs(fraction: fraction)
     }

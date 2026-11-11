@@ -23,3 +23,5 @@
 "action.openCallsFolder" = "Открыть папку звонков";
 "action.settings" = "Настройки…";
 "action.quit" = "Выйти";
+"status.watchFailedToStart" = "Не удалось начать наблюдение за звонками: %@";
+"status.watchStopped" = "Наблюдение за звонками остановлено: %@";

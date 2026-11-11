@@ -109,7 +109,7 @@ public final class AudelinMenu {
         } catch {
             sink.write(.init(category: .menu, message: "startup failed", error: String(describing: error)))
             application = nil
-            failure = "Не удалось начать наблюдение за звонками: \(error)"
+            failure = String(format: menuText(.watchFailedToStart), "\(error)")
         }
         let send = application?.send ?? { _ in }
         settings = PreferenceSettings(storage: storage, automaticChanged: { await send(.automaticChanged($0)) })
@@ -142,7 +142,7 @@ public final class AudelinMenu {
                 for await error in failures {
                     guard let self else { return }
                     sink.write(.init(category: .menu, message: "detection failed", error: String(describing: error)))
-                    self.failure = "Наблюдение за звонками остановлено: \(error)"
+                    self.failure = String(format: self.menuText(.watchStopped), "\(error)")
                 }
             }
         }
@@ -178,7 +178,7 @@ public final class AudelinMenu {
                 if let destination = try await chooseFolder() { calls?.sendRecordings(.chooseFolder(destination)) }
             } catch {
                 sink.write(.init(category: .menu, message: "folder picker failed", error: String(describing: error)))
-                pickerFailure = "Окно выбора папки не появилось. Попробуйте ещё раз; если не поможет — перезапустите Audelin."
+                pickerFailure = settingsText(.pickerFailedReason)
             }
         case .confirmMove: calls?.sendRecordings(.confirmMove)
         case .retryMove: calls?.sendRecordings(.retryMove)

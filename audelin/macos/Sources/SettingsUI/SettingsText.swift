@@ -19,6 +19,10 @@ public enum SettingsPhrase: String, CaseIterable, Sendable {
     /// Takes the moved and total call counts.
     case moveMoved = "move.moved"
     case moveCounting = "move.counting"
+    case windowTitle = "window.title"
+    case pickerFailed = "folder.pickerFailed"
+    /// Takes the earlier failure, then the refresh's reason.
+    case refreshFailed = "calls.refreshFailed"
     /// Takes the call id.
     case callNotFound = "calls.notFound"
     /// Takes the call id.
@@ -46,7 +50,7 @@ public enum SettingsPhrase: String, CaseIterable, Sendable {
     case retry = "folder.retry"
     case cancel = "folder.cancel"
     case folderRecording = "folder.recording"
-    case pickerFailed = "folder.pickerFailed"
+    case pickerFailedReason = "folder.pickerFailedReason"
     case audioNote = "audio.note"
     case explainNote = "explain.note"
     case chunkSeconds = "chunk.seconds"

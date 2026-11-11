@@ -21,12 +21,12 @@ final class CallsWindow {
     private let activate: () -> Void
     private let shown: (AnyObject) -> Void
 
-    init(makeWindow: () -> any CallsWindowDriver, activate: @escaping () -> Void,
+    init(makeWindow: () -> any CallsWindowDriver, title: String, activate: @escaping () -> Void,
          shown: @escaping (AnyObject) -> Void = { _ in }) {
         window = makeWindow()
         self.activate = activate
         self.shown = shown
-        window.title = "Звонки"
+        window.title = title
         window.isReleasedWhenClosed = false
         window.minSize = NSSize(width: 860, height: 360)
         window.center()

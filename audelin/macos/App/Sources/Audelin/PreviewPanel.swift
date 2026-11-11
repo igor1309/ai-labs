@@ -22,10 +22,12 @@ final class PreviewPanel {
     private let copy: (String) -> Void
     private let makeContent: (SummaryPreviewState, @escaping () -> Void) -> NSView
     private var shown = false
+    private let text: SummaryPreviewText
 
-    init(makePanel: () -> any PreviewPanelDriver, copy: @escaping (String) -> Void,
+    init(makePanel: () -> any PreviewPanelDriver, text: SummaryPreviewText, copy: @escaping (String) -> Void,
          makeContent: @escaping (SummaryPreviewState, @escaping () -> Void) -> NSView) {
         panel = makePanel()
+        self.text = text
         self.copy = copy
         self.makeContent = makeContent
     }
@@ -37,10 +39,10 @@ final class PreviewPanel {
         let notes: SummaryPreviewState.Notes
         switch preview.notes {
         case let .text(markdown): notes = .markdown(markdown)
-        case let .unreadable(reason): notes = .unreadable("Заметки не читаются: \(reason)")
+        case let .unreadable(reason): notes = .unreadable(text(.unreadable, reason))
         }
         let state = SummaryPreviewState(title: preview.title, date: preview.date, duration: preview.duration, notes: notes)
-        panel.title = "Саммари — \(preview.title)"
+        panel.title = text(.windowTitle, preview.title)
         let copy = self.copy
         panel.contentView = makeContent(state) { if case let .markdown(source) = notes { copy(source) } }
         shown = true

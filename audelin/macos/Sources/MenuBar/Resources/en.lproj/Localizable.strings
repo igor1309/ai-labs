@@ -23,3 +23,5 @@
 "action.openCallsFolder" = "Open Calls Folder";
 "action.settings" = "Settings…";
 "action.quit" = "Quit";
+"status.watchFailedToStart" = "Couldn’t start watching for calls: %@";
+"status.watchStopped" = "Watching for calls stopped: %@";

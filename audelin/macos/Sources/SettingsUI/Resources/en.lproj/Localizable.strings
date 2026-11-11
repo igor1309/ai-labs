@@ -83,3 +83,6 @@
 "calls.invalidTitle" = "The title contains a character that isn’t allowed.";
 "calls.partialDelete" = "Couldn’t delete all of “%1$@”; part of the folder may remain. %2$@";
 "calls.sizeMismatch" = "The copied files’ sizes don’t match the originals.";
+"window.title" = "Audelin Settings";
+"folder.pickerFailedReason" = "The folder picker didn’t appear. Try again; if that doesn’t help, restart Audelin.";
+"calls.refreshFailed" = "%1$@ Couldn’t update the list: %2$@";
