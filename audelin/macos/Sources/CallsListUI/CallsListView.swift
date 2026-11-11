@@ -130,9 +130,19 @@ public struct CallsListView: View {
             }
             .frame(height: lineHeight)
             HStack(spacing: tokens.space8) {
-                Text(row.duration).font(tokens.data(tokens.typeSmall)).foregroundStyle(ink(row, tokens.gutter))
-                    .fixedSize().frame(minWidth: durationWidth, alignment: .leading).allowsHitTesting(false)
-                about(row).frame(maxWidth: .infinity, alignment: .leading).allowsHitTesting(false)
+                if let snippet = row.match?.snippet {
+                    Text(snippet.place)
+                        .font(snippet.placeIsTime ? tokens.data(tokens.typeSmall) : tokens.ui(tokens.typeSmall))
+                        .foregroundStyle(ink(row, tokens.gutter))
+                        .fixedSize().frame(minWidth: durationWidth, alignment: .leading).allowsHitTesting(false)
+                    Text(marked(snippet.text, snippet.hits)).foregroundStyle(ink(row, tokens.sub)).truncationMode(.tail)
+                        .frame(maxWidth: .infinity, alignment: .leading).allowsHitTesting(false)
+                    if let more = snippet.more { Text(more).foregroundStyle(ink(row, tokens.gutter)).fixedSize().allowsHitTesting(false) }
+                } else {
+                    Text(row.duration).font(tokens.data(tokens.typeSmall)).foregroundStyle(ink(row, tokens.gutter))
+                        .fixedSize().frame(minWidth: durationWidth, alignment: .leading).allowsHitTesting(false)
+                    about(row).frame(maxWidth: .infinity, alignment: .leading).allowsHitTesting(false)
+                }
                 summary(row)
                 eye(row)
             }
@@ -151,7 +161,7 @@ public struct CallsListView: View {
         case .pending: Text(text(.rowPreparing)).foregroundStyle(ink(row, tokens.gutter))
         case .failed: Text(text(.rowFailed)).foregroundStyle(ink(row, tokens.rec))
         case .none:
-            if let gist = row.gist, row.match == nil { Text(gist).foregroundStyle(ink(row, tokens.sub)).truncationMode(.tail) }
+            if let gist = row.gist { Text(gist).foregroundStyle(ink(row, tokens.sub)).truncationMode(.tail) }
             else { Color.clear }
         }
     }
@@ -164,29 +174,13 @@ public struct CallsListView: View {
         state.selectedID == row.id && active ? tokens.selText : colour
     }
 
-    /// The title on one line, cut with an ellipsis; an untitled call shows its folder name.
-    /// In a search, the title's matches are marked and a snippet of the first
-    /// other match follows; the snippet's text gives way first, then «ещё N», then the title.
+    /// The title on one line, cut with an ellipsis, its search matches marked;
+    /// an untitled call shows its folder name.
     private func title(_ row: CallsListState.Row) -> some View {
-        HStack(spacing: tokens.space8) {
-            Text(marked(row.displayTitle, row.match?.title ?? []))
-                .font(row.title.isEmpty ? tokens.data(tokens.typeSmall) : tokens.ui(tokens.typeSmall, .semibold))
-                .foregroundStyle(ink(row, row.title.isEmpty ? tokens.gutter : tokens.text))
-                .truncationMode(.tail)
-                .layoutPriority(3)
-            if let snippet = row.match?.snippet {
-                Text(snippet.place)
-                    .font(snippet.placeIsTime ? tokens.data(tokens.typeSmall) : tokens.ui(tokens.typeSmall))
-                    .foregroundStyle(ink(row, tokens.gutter))
-                    .fixedSize().layoutPriority(2)
-                Text(marked(snippet.text, snippet.hits))
-                    .foregroundStyle(ink(row, tokens.sub))
-                    .truncationMode(.tail)
-                if let more = snippet.more {
-                    Text(more).foregroundStyle(ink(row, tokens.gutter)).layoutPriority(1)
-                }
-            }
-        }
+        Text(marked(row.displayTitle, row.match?.title ?? []))
+            .font(row.title.isEmpty ? tokens.data(tokens.typeSmall) : tokens.ui(tokens.typeSmall, .semibold))
+            .foregroundStyle(ink(row, row.title.isEmpty ? tokens.gutter : tokens.text))
+            .truncationMode(.tail)
     }
 
     /// The text with each range, in characters, on the `hit` colour.
