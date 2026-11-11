@@ -179,7 +179,7 @@ public struct CallsListView: View {
     private let timeWidth: CGFloat = 40
     private let cellWidth: CGFloat = 64
     private let iconSize: CGFloat = 14
-    private var rowHeight: CGFloat { tokens.space28 }
+    private var rowHeight: CGFloat { tokens.space32 }
 
     /// The eye a call with notes shows; a call without keeps its place empty.
     @ViewBuilder private func eye(_ row: CallsListState.Row) -> some View {

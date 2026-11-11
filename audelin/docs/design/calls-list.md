@@ -14,7 +14,7 @@ Context menu, Alert, Rename field, Error banner).
   (Пятница, 7 ноября); older days the date (3 сентября), with the year only
   when it is not the current one (12 декабря 2025). It shows the day's call
   count.
-- Row, about 28 pt: start time (HH:mm, `font-data`), title, duration
+- Row, 32 pt: start time (HH:mm, `font-data`), title, duration
   (right-aligned, 64 pt), status cell (64 pt). An untitled call shows its
   folder name in `font-data`, `gutter`.
 - The title is one line and truncates with an ellipsis. Nothing in a row
