@@ -293,11 +293,13 @@ private func segment(_ text: String, start: Double) -> TranscriptSegment {
 }
 private func testBoundary() -> ComposerBoundary {
     let empty = ScriptRecognizer(hearings: [], endings: [])
-    return rehearsalBoundary(capturePersistence: .recorded,
+    var boundary = rehearsalBoundary(capturePersistence: .recorded,
         microphone: { StartedCapture(stream: AsyncThrowingStream { $0.finish() }, stop: {}) },
         call: { _ in StartedCapture(stream: AsyncThrowingStream { $0.finish() }, stop: {}) },
         mine: RehearsalRecognizer(empty), theirs: RehearsalRecognizer(empty),
         now: { Date(timeIntervalSince1970: 0) }, timeZone: { .gmt }, sleep: { _ in }, intervals: testIntervals)
+    boundary.transcripts = FileTranscriptStorage(diarizer: .unavailable)
+    return boundary
 }
 
 private actor MemoryTranscriptBytes: TranscriptBytes {

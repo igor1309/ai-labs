@@ -248,7 +248,9 @@ public struct FileTranscriptStorage: TranscriptStorage {
     private let diarizer: CallDiarizer
     /// `diarizer` runs the after-call pass over the call track.
     public init(diarizer: CallDiarizer) { self.diarizer = diarizer }
+    /// Opening starts the diarizer's model loading, so it downloads during the call.
     public func open(at url: Foundation.URL, sink: any LogSink) async throws -> any SessionTranscriptFile {
+        await diarizer.prepare()
         var format = TranscriptFormat()
         let initial = try format.render([])
         let file = try await TranscriptFile(url: url, initialBytes: initial.chunks, binding: DiskTranscriptBinding())
