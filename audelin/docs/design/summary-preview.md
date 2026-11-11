@@ -62,4 +62,5 @@ and `font-data` as SF Mono.
 | Eye, Eye/Active, Eye/Disabled | — |
 | Calls row → `Eye cell` | Hidden by default; enable it and set the `Eye` fill and icon colour |
 | Calls row/Selected | As Calls row; `okBg` row, active eye |
+| Title bar/Utility | `Title`: «Саммари — <call>». A 24 pt utility-panel bar: 10 pt lights at the left, a centred regular caption in `sub` |
 | Summary preview | `Title`, `Meta`, section labels, topic titles and bullet texts |
