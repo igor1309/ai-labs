@@ -200,6 +200,21 @@ composes it.
   state, and OCR misreads.
 - Test a composition only for wiring no component test shows. A test that
   replays a reducer or effect handler through the composed app adds nothing.
+- A live test proves wiring inside the running app that no component test
+  reaches, such as which view takes a key. It is a checked-in script that
+  launches the built app on a temp folder of fixture data (a launch
+  argument overriding the app's real setting, never the owner's data),
+  drives it through the accessibility API by element identifier, waits on
+  accessibility state rather than sleeping, and asserts on what the app
+  shows and writes. It saves screenshots to `$TMPDIR` for a look, and quits
+  the app. No screen coordinates, no OCR, no fixed delays.
+- Every control and row a live test needs carries an accessibility
+  identifier, label and value; an element a script cannot find or read is
+  a gap in the app, not in the script.
+- Live tests need a logged-in session with Accessibility access, so they
+  run locally and on the self-hosted runner, not on hosted CI. A bug found
+  by hand in the running app gets a live scenario when no component test
+  can show it.
 - A test is main-actor only where the code it calls needs the main actor.
   Main-actor tests run one at a time, and each one's time limit starts with
   the suite, so needless ones push the rest past their limits.
