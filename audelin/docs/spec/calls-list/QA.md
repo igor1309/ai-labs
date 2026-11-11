@@ -3,9 +3,7 @@
 The list's state is built directly as a value, rendered and compared with
 reference images, in light and dark. What the detail shows is read back
 from the state the composition derives after each user event, with notes
-read from a temporary calls folder. The window is driven through a fake of
-its AppKit window, and on this Mac in a hands-on trial for what only the
-window server shows.
+read from a temporary calls folder.
 
 ## S-13 A row says what the call was about
 
@@ -50,27 +48,7 @@ carries the gist.
 retry with previous notes selected, asserts the old text stays readable,
 completes it, and asserts the detail carries the new text.
 
-## S-21 A narrow window shows the list alone
+## S-26 An untitled call shows its folder name
 
-The window content is laid out at 699 and 700 pt; the detail is hidden at
-699 and shown at 700.
-
-## S-22 Return opens the call in a narrow window
-
-At narrow width, Return on a call with notes; the fake summary window is
-ordered front carrying that call's notes text.
-
-## S-23 Space opens the call in a narrow window
-
-As S-22, with Space.
-
-## S-24 Widening shows the call again
-
-From S-21, the content is laid out at 700 pt; the detail is shown carrying
-the selected call's notes text.
-
-## S-25 The divider holds across restarts
-
-The fake window is given the same divider autosave name on each creation.
-Missing trial: move the divider, quit and reopen Audelin; it opens where
-it was.
+A state with a call whose title is empty; the image shows its folder name
+in the data font and the secondary colour on its first line.

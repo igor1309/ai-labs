@@ -89,4 +89,4 @@ Rendered per-call waiting, running, success, warning, failure and interruption s
 
 ## S-21 Read retry completion in the open window
 
-`cd audelin/macos/App && swift test --filter SummaryCompositionTests/retryCompletionRefreshesTheOpenCallsWindowAndPreview` holds generation with and without previous notes. Completion supplies the eye and the new preview text while the calls window stays open and listing IDs stay unchanged.
+`cd audelin/macos/App && swift test --filter SummaryCompositionTests/retryCompletionRefreshesTheOpenCallsWindowAndPreview` holds generation with and without previous notes. Completion makes the new notes text readable while the calls window stays open and listing IDs stay unchanged.

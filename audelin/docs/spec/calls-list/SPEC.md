@@ -1,8 +1,8 @@
 # Calls list — choosing a call
 
 Observer: the user, choosing which call to read in the calls window. What
-the detail beside the list offers is `../summary-preview/SPEC.md`;
-renaming and deleting a call are user S-10 and S-18 (`../SPEC.md`).
+the detail beside the list offers is `../summary-preview/SPEC.md`, the
+window around both `../calls-window/SPEC.md`; renaming and deleting a call are user S-10 and S-18 (`../SPEC.md`).
 Oracle: the design brief `../../design/calls-list.md`.
 
 ## Decided
@@ -13,10 +13,10 @@ Oracle: the design brief `../../design/calls-list.md`.
 - **The detail follows the selection, with no step to open it.** One window
   holds the list and the summary, as Mail and Notes do; the floating
   preview and its eye are gone.
-- **Below 700 pt the detail hides** and Return or Space opens the summary
-  in its own window: the list keeps 340 pt and the summary needs about 360.
 - **Notes that finish while the window is open show immediately,** in the
-  row and in the detail, including replacement notes from a retry.
+  row and in the detail, including replacement notes from a retry: the
+  user is looking at that call, and a list read on open would hide them
+  until the window is closed and opened again.
 
 ```gherkin
 Feature: Choosing a call to read
@@ -61,28 +61,8 @@ Feature: Choosing a call to read
     When replacement notes finish
     Then I can read the replacement without selecting the call again
 
-  Scenario: S-21 A narrow window shows the list alone
-    Given the calls window is narrower than 700 pt
-    When I look at it
-    Then I can see only the list
-
-  Scenario: S-22 Return opens the call in a narrow window
-    Given the calls window is narrow
-    When I press Return on a call
-    Then I can read that call in its own window
-
-  Scenario: S-23 Space opens the call in a narrow window
-    Given the calls window is narrow
-    When I press Space on a call
-    Then I can read that call in its own window
-
-  Scenario: S-24 Widening shows the call again
-    Given the calls window is narrow
-    When I make it wider than 700 pt
-    Then I can read the selected call beside the list
-
-  Scenario: S-25 The divider holds across restarts
-    Given I moved the divider between the list and the call
-    When I restart Audelin and open the calls window
-    Then I find the divider where I left it
+  Scenario: S-26 An untitled call shows its folder name
+    Given a call has no title of its own
+    When I look at the calls list
+    Then I can read its folder name in its row
 ```
