@@ -1,5 +1,9 @@
 # Log
 
+## 2026-11-11
+
+- On synthetic Russian group calls of 2–6 speakers over Opus, Nemotron's speaker error is 3.8 % against VBx's 9.2 %; Nemotron stays the after-call diarization default (LAB-1130).
+
 ## 2026-11-10
 
 - Calls with microphone bleed get a background transcript cleanup; call notes use the cleaned text when it succeeds and the original text otherwise (LAB-1129).
