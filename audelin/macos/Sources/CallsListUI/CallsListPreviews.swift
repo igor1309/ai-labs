@@ -41,6 +41,9 @@ public enum CallsListPreviews {
             ("empty", CallsListState()),
             ("loading", CallsListState(busy: true)),
             ("rename", with(sample) { $0.editing = .init(id: $0.rows[0].id, title: $0.rows[0].title) }),
+            ("search", search(words, text, searching: false)),
+            ("searching", with(search(words, text, searching: true)) { $0.rows.removeLast() }),
+            ("search-none", CallsListState(search: .init(query: "Kubernetes", searching: false))),
         ]
     }
 
@@ -77,6 +80,27 @@ public enum CallsListPreviews {
     /// A call with notes above one without, and another with notes below.
     private static func notes(_ words: Words) -> CallsListState {
         with(sample(words)) { $0.rows[0].hasNotes = true; $0.rows[2].hasNotes = true }
+    }
+
+    /// «OKR» found in one call's title, another's transcript and a third's notes.
+    private static func search(_ words: Words, _ text: CallsListText, searching: Bool) -> CallsListState {
+        let english = text.language == .english
+        var state = notes(words)
+        state.search = .init(query: "OKR", searching: searching)
+        state.selectedID = state.rows[1].id
+        state.rows[0].match = .init(title: [], snippet: .init(
+            place: "12:04", placeIsTime: true,
+            text: english ? "…then we move the OKR review to Thursday and keep the SLA as it is…"
+                : "…тогда переносим ревью OKR на четверг и SLA оставляем как есть…",
+            hits: [english ? 18 : 23].map { $0..<($0 + 3) }, more: text(.searchMore, 2)))
+        let okr = state.rows[1].displayTitle
+        let start = okr.distance(from: okr.startIndex, to: okr.range(of: "OKR")!.lowerBound)
+        state.rows[1].match = .init(title: [start..<(start + 3)], snippet: nil)
+        state.rows[2].match = .init(title: [], snippet: .init(
+            place: text(.searchNotes), placeIsTime: false,
+            text: english ? "Agreed to align the OKR wording before the review…" : "Договорились сверить формулировки OKR до ревью…",
+            hits: [english ? 20 : 34].map { $0..<($0 + 3) }, more: nil))
+        return state
     }
 
     private static func with(_ state: CallsListState, _ change: (inout CallsListState) -> Void) -> CallsListState {

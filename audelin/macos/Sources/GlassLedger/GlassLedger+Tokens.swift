@@ -25,6 +25,8 @@ public struct GlassLedger: Equatable, Sendable {
     public let rec: Color
     public let warn: Color
     public let warnBg: Color
+    /// A search match's highlight.
+    public let hit: Color
     public let errBg: Color
     public let okBg: Color
     public let shadow: Color
@@ -74,6 +76,7 @@ public struct GlassLedger: Equatable, Sendable {
         rec: .hex(0xE5484D, 0xFF),
         warn: .hex(0xB56A00, 0xFF),
         warnBg: .hex(0xC27A06, 0x1A),
+        hit: .hex(0xFFD84D, 0x8C),
         errBg: .hex(0xE5484D, 0x14),
         okBg: .hex(0x0E9F92, 0x14),
         shadow: .hex(0x000000, 0x40),
@@ -124,6 +127,7 @@ public struct GlassLedger: Equatable, Sendable {
         rec: .hex(0xF2555A, 0xFF),
         warn: .hex(0xF5B454, 0xFF),
         warnBg: .hex(0xF5B454, 0x1F),
+        hit: .hex(0xE0B020, 0x7A),
         errBg: .hex(0xF2555A, 0x1F),
         okBg: .hex(0x4FD1C5, 0x1F),
         shadow: .hex(0x000000, 0x80),

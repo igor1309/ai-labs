@@ -24,6 +24,7 @@ public struct CallsListView: View {
                         if let day = row.day { dayHeader(day) }
                         callRow(row)
                     }
+                    if state.search?.searching == true { searchingFooter }
                 }
             }
             .overlay { if state.rows.isEmpty { placeholder } }
@@ -143,11 +144,40 @@ public struct CallsListView: View {
     private var active: Bool { activity != .inactive }
 
     /// The title on one line, cut with an ellipsis; an untitled call shows its folder name.
+    /// In a search, the title's matches are marked and a snippet of the first
+    /// other match follows; the snippet's text gives way first, then «ещё N», then the title.
     private func title(_ row: CallsListState.Row) -> some View {
-        Text(row.displayTitle)
-            .font(row.title.isEmpty ? tokens.data(tokens.typeSmall) : tokens.ui(tokens.typeSmall, .semibold))
-            .foregroundStyle(row.title.isEmpty ? tokens.gutter : tokens.text)
-            .truncationMode(.tail)
+        HStack(spacing: tokens.space8) {
+            Text(marked(row.displayTitle, row.match?.title ?? []))
+                .font(row.title.isEmpty ? tokens.data(tokens.typeSmall) : tokens.ui(tokens.typeSmall, .semibold))
+                .foregroundStyle(row.title.isEmpty ? tokens.gutter : tokens.text)
+                .truncationMode(.tail)
+                .layoutPriority(3)
+            if let snippet = row.match?.snippet {
+                Text(snippet.place)
+                    .font(snippet.placeIsTime ? tokens.data(tokens.typeSmall) : tokens.ui(tokens.typeSmall))
+                    .foregroundStyle(tokens.gutter)
+                    .fixedSize().layoutPriority(2)
+                Text(marked(snippet.text, snippet.hits))
+                    .foregroundStyle(tokens.sub)
+                    .truncationMode(.tail)
+                if let more = snippet.more {
+                    Text(more).foregroundStyle(tokens.gutter).layoutPriority(1)
+                }
+            }
+        }
+    }
+
+    /// The text with each range, in characters, on the `hit` colour.
+    private func marked(_ string: String, _ ranges: [Range<Int>]) -> AttributedString {
+        var text = AttributedString(string)
+        let count = string.count
+        for range in ranges where range.lowerBound >= 0 && range.upperBound <= count && !range.isEmpty {
+            let lower = text.characters.index(text.startIndex, offsetBy: range.lowerBound)
+            let upper = text.characters.index(lower, offsetBy: range.count)
+            text[lower..<upper].backgroundColor = tokens.hit
+        }
+        return text
     }
 
     /// A spinner while the summary is prepared, a red mark when it failed.
@@ -212,17 +242,36 @@ public struct CallsListView: View {
         }.buttonStyle(.plain)
     }
 
-    /// One centred message while the list loads or when it has no calls.
-    private var placeholder: some View {
+    /// One centred message while the list loads, when it has no calls, or when a search finds none.
+    @ViewBuilder private var placeholder: some View {
+        if let search = state.search {
+            if !search.searching {
+                message(text(.noMatches), hint: text(.noMatchesHint, search.query))
+            }
+        } else {
+            message(state.busy ? text(.loading) : text(.empty), hint: state.busy ? nil : text(.emptyHint))
+        }
+    }
+
+    private func message(_ title: String, hint: String?) -> some View {
         VStack(spacing: tokens.space4) {
-            Text(state.busy ? text(.loading) : text(.empty))
-                .font(tokens.ui(tokens.typeSmall, .semibold)).foregroundStyle(tokens.sub)
-            if !state.busy {
-                Text(text(.emptyHint))
-                    .font(tokens.ui(tokens.typeCaption)).foregroundStyle(tokens.gutter)
+            Text(title).font(tokens.ui(tokens.typeSmall, .semibold)).foregroundStyle(tokens.sub)
+            if let hint {
+                Text(hint).font(tokens.ui(tokens.typeCaption)).foregroundStyle(tokens.gutter)
             }
         }
         .multilineTextAlignment(.center)
+    }
+
+    /// The list's last line while transcripts are still being read.
+    private var searchingFooter: some View {
+        HStack(spacing: tokens.space8) {
+            ProgressView().controlSize(.mini)
+            Text(text(.searching)).font(tokens.ui(tokens.typeCaption)).foregroundStyle(tokens.gutter)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, tokens.space16).padding(.vertical, tokens.space12)
+        .accessibilityIdentifier("calls.searching")
     }
 
     private func deleteAlert(_ body: String) -> some View {
