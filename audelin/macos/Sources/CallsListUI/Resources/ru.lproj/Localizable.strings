@@ -31,8 +31,8 @@
 "day.callsFew" = "%d звонка";
 "day.callsMany" = "%d звонков";
 "search.placeholder" = "Поиск";
-"search.notes" = "Заметки";
+"search.notes" = "Итоги";
 "search.more" = "ещё %d";
 "search.searching" = "Ищу в расшифровках…";
 "search.noMatches" = "Ничего не найдено";
-"search.noMatchesHint" = "«%@» нет в названиях, заметках и расшифровках";
+"search.noMatchesHint" = "«%@» нет в названиях, итогах и расшифровках";

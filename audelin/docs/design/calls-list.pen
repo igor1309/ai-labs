@@ -3531,7 +3531,7 @@
                   "content": ""
                 },
                 "ObLQk": {
-                  "content": "Заметки",
+                  "content": "Итоги",
                   "fontFamily": "$font-ui"
                 },
                 "pXvLM": {
@@ -3827,7 +3827,7 @@
                   "content": ""
                 },
                 "ObLQk": {
-                  "content": "Заметки",
+                  "content": "Итоги",
                   "fontFamily": "$font-ui"
                 },
                 "pXvLM": {
@@ -4139,7 +4139,7 @@
                   "id": "onULi",
                   "name": "Sub",
                   "fill": "$gutter",
-                  "content": "«Kubernetes» нет в названиях, заметках и расшифровках",
+                  "content": "«Kubernetes» нет в названиях, итогах и расшифровках",
                   "fontFamily": "$font-ui",
                   "fontSize": "$type-small",
                   "fontWeight": "normal"
@@ -4202,7 +4202,7 @@
       "name": "Note search",
       "width": 520,
       "height": 420,
-      "content": "Search\n\n• The search field sits at the right of the title bar, 200 pt, on every screen; the title moves to the left. ⌘F focuses it; Esc or the clear button empties it and shows the whole list again.\n• One field searches titles, notes and transcripts, as you type. There is no scope switch.\n• Results keep the list's shape: days newest first, calls newest first, one-line 28 pt rows. A day shows only its matching calls and their count; days without a match are hidden.\n• A matching row shows its title, then one snippet: where the first match is (the time in the transcript, or «Заметки») and the text around it, then «ещё N» for further matches. The title truncates first down to its natural width; the snippet takes the rest and ends with an ellipsis; «ещё N» drops first when space runs out.\n• Matches are marked with the hit colour, in the title and in the snippet. Matching ignores case and ё/е.\n• While transcripts are still being read, the field shows a spinner and the list ends with «Ищу в расшифровках…»; rows appear as they are found.\n• No match: one centred message naming the query.\n• Selection, the eye, the menu and the keys work as in the full list."
+      "content": "Search\n\n• The search field sits at the right of the title bar, 200 pt, on every screen; the title moves to the left. ⌘F focuses it; Esc or the clear button empties it and shows the whole list again.\n• One field searches titles, summaries and transcripts, as you type. There is no scope switch.\n• Results keep the list's shape: days newest first, calls newest first, one-line 32 pt rows. A day shows only its matching calls and their count; days without a match are hidden.\n• A matching row shows its title, then one snippet: where the first match is (the time in the transcript, or «Итоги») and the text around it, then «ещё N» for further matches. The title truncates first down to its natural width; the snippet takes the rest and ends with an ellipsis; «ещё N» drops first when space runs out.\n• Matches are marked with the hit colour, in the title and in the snippet. Matching ignores case and ё/е.\n• While transcripts are still being read, the field shows a spinner and the list ends with «Ищу в расшифровках…»; rows appear as they are found.\n• No match: one centred message naming the query.\n• Selection, the eye, the menu and the keys work as in the full list."
     }
   ],
   "themes": {
