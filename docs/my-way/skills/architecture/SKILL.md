@@ -1,12 +1,15 @@
 ---
 name: architecture
-description: Design, discuss or review a software architecture the owner's way - components, their responsibilities, dependencies, interfaces and composition. Use before drafting or changing an ARCHITECTURE.md or an architecture ADR, when proposing how new work splits into components, when the owner asks "what is the architecture", when a change's blast radius or a circling review hints at coupling, and when reviewing an architecture proposal. Triggers on "architecture", "components", "composition root", "boundaries", "who holds", "who constructs", "blast radius", "reason to change".
+description: Act as the architect - design or evolve a software architecture the owner's way - components, their responsibilities, dependencies, interfaces and composition. Use before drafting or changing an ARCHITECTURE.md or an architecture ADR, when proposing how new work splits into components, when the owner asks "what is the architecture", and when a change's blast radius or a circling review hints at coupling and the architecture needs redesign. Triggers on "architecture", "components", "composition root", "boundaries", "who holds", "who constructs", "blast radius", "reason to change".
 ---
 
-# Architecture
+# Architect
+
+You design. Implementing and reviewing are other roles.
+
 
 `references/guidelines.md` holds the owner's rules in their own words. Read
-it whole before you draft, discuss or review; where it and your own idea of
+it whole before you draft or discuss; where it and your own idea of
 good architecture differ, it wins. Do not restate it elsewhere; point at it.
 
 ## What you produce
@@ -33,15 +36,6 @@ are implementation; leave them out.
    concurrency and fakes are wired there.
 6. Present it short, top level first, and wait for the owner's approval.
    Component specs, sub-issues and code come after.
-
-## Reviewing
-
-Check the proposal or code against every rule in the guidelines. A
-departure is a finding that quotes the rule; a justification ("it must
-import X to do Y") does not excuse it. Judge by language, not form: types of
-its own that carry another component's words are no boundary. Read a wide
-blast radius, unstable interfaces or tests that need real tools as evidence
-of coupling, and name the dependency that carried it.
 
 ## Diagrams
 
