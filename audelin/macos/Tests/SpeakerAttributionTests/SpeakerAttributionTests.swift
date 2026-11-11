@@ -93,6 +93,32 @@ struct SpeakerAttributionTests {
     @Test func aSpeakerAtTheLeastShareThatCountsIsKept() {
         let segment = TestSegment(19, 20, words: [19...20])
         #expect(attribute([segment], [Turn(speaker: 0, start: 0, end: 19), Turn(speaker: 1, start: 19, end: 20)]) == [Piece(segment: segment, speaker: 1)])
+        // 0.3 of 6 seconds: the times do not add up to exactly 5 % in floating point.
+        let rounded = TestSegment(0, 0.3, words: [0.1...0.2])
+        #expect(attribute([rounded], [Turn(speaker: 1, start: 0, end: 0.3), Turn(speaker: 0, start: 0.3, end: 6)]) == [Piece(segment: rounded, speaker: 1)])
+    }
+
+    /// Each case's word goes to speaker 1 only when 1's share is all its turns over all turns' time.
+    @Test(arguments: [
+        // Three turns of 2 % each make 6 %.
+        [Turn(speaker: 0, start: 0, end: 94), Turn(speaker: 1, start: 100, end: 102),
+         Turn(speaker: 1, start: 104, end: 106), Turn(speaker: 1, start: 108, end: 110)],
+        // Two turns of 2.5 % make exactly 5 %.
+        [Turn(speaker: 0, start: 0, end: 95), Turn(speaker: 1, start: 100, end: 102.5), Turn(speaker: 1, start: 103, end: 105.5)],
+        // A gap: 5 % of the turns' time, 2.5 % of the time they span.
+        [Turn(speaker: 0, start: 0, end: 95), Turn(speaker: 1, start: 195, end: 200)],
+    ])
+    func aSpeakersShareSumsTheirTurnsOverAllTurnTime(turns: [Turn]) {
+        let start = turns.first { $0.speaker == 1 }!.start
+        let segment = TestSegment(start, start + 1, words: [start...(start + 1)])
+        #expect(attribute([segment], turns) == [Piece(segment: segment, speaker: 1)])
+    }
+
+    @Test func overlappingTurnsCountInTheShareEach() {
+        // Speaker 0 holds 5 of 105 seconds of turns, under 5 %, though 5 % of the 100 they span;
+        // kept, it would win the tie over the word below.
+        let segment = TestSegment(0, 5, words: [0...5])
+        #expect(attribute([segment], [Turn(speaker: 1, start: 0, end: 100), Turn(speaker: 0, start: 0, end: 5)]) == [Piece(segment: segment, speaker: 1)])
     }
 
     @Test func speakersAllUnderTheShareAreAllKept() {

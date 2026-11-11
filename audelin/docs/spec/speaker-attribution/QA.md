@@ -73,8 +73,12 @@ turns at different distances. Evidence:
 
 ## S-13 A speaker at the least share that counts is kept
 
-One speaker at exactly 5 % of the turns' time. Evidence:
-`SpeakerAttributionTests.aSpeakerAtTheLeastShareThatCountsIsKept`.
+One speaker at exactly 5 % of the turns' time, also where the times round
+below it; a share made of several turns, and of turns with gaps between them
+or overlapping another speaker's. Evidence:
+`SpeakerAttributionTests.aSpeakerAtTheLeastShareThatCountsIsKept`,
+`SpeakerAttributionTests.aSpeakersShareSumsTheirTurnsOverAllTurnTime`,
+`SpeakerAttributionTests.overlappingTurnsCountInTheShareEach`.
 
 ## S-14 Speakers all under the share are all kept
 

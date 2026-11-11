@@ -37,8 +37,10 @@ public struct SpeakerAttribution: Sendable {
     public func attribute<Segment: SpeakerSegment>(_ segments: [Segment], turns: [Turn]) -> [Piece<Segment>] {
         var durations: [Int: Double] = [:]
         for turn in turns { durations[turn.speaker, default: 0] += turn.end - turn.start }
-        let threshold = durations.values.reduce(0, +) * 0.05
-        let kept = turns.filter { durations[$0.speaker, default: 0] >= threshold }
+        // Times are subtracted and summed, so a share of exactly 5 % can come out a
+        // rounding error below it; the tolerance keeps such a speaker.
+        let least = durations.values.reduce(0, +) * 0.05 * (1 - 1e-9)
+        let kept = turns.filter { durations[$0.speaker, default: 0] >= least }
         let turns = kept.isEmpty ? turns : kept
         return segments.flatMap { attribute($0, turns: turns) }
     }

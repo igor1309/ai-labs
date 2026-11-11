@@ -73,15 +73,32 @@ struct RemoteSpeakersTests {
         }
     }
 
-    @Test func cancellationKeepsTheFarSidePlainWithoutAFailureLine() async throws {
+    /// The pass is cancelled while the diarizer runs; the diarizer then answers or fails.
+    @Test(arguments: [false, true])
+    func cancellationKeepsTheFarSidePlainWithoutAFailureLine(diarizerFails: Bool) async throws {
         try await withRemoteTrack { track in
             let logs = Values<LogEntry>()
+            let entered = AsyncStream<Void>.makeStream(), release = AsyncStream<Void>.makeStream()
             let binding = RemoteBinding(
-                nemotron: { _ in throw CancellationError() },
-                vbx: { _, _ in Issue.record("Cancellation must not fall back"); return [] }
+                nemotron: { _ in
+                    entered.continuation.yield()
+                    for await _ in release.stream { break }
+                    if diarizerFails { throw RemoteFailure() }
+                    return [EngineTurn(speaker: "1", start: 0, end: 0.01)]
+                },
+                vbx: { _, _ in throw RemoteFailure() }
             )
             let pass = RemoteSpeakers(diarizer: CallDiarizer(binding: binding), sink: RemoteLog(entries: logs))
-            #expect(await pass.attribute(CallState(status: .finished, entries: []), track: track, speakers: nil) == nil)
+            let state = CallState(status: .finished, entries: [
+                .init(speaker: .theirs, text: .init(id: 1, start: 0, end: 0.01, words: [.init("hi", start: 0, end: 0.01)], settledCount: 1), writtenLater: false),
+            ], finalCount: 1)
+            let task = Task { await pass.attribute(state, track: track, speakers: nil) }
+            for await _ in entered.stream { break }
+
+            task.cancel()
+            release.continuation.yield()
+
+            #expect(await task.value == nil)
             #expect(logs.all.isEmpty)
         }
     }
