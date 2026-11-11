@@ -62,18 +62,29 @@ public struct CallsListView: View {
         Button { event(.select(row.id)) } label: { rowContent(row).contentShape(.rect) }
             .buttonStyle(.plain)
             .simultaneousGesture(TapGesture(count: 2).onEnded { if !state.busy { event(.open(row.id)) } })
-            .contextMenu { menu(row) }
+            .overlay {
+                RowMenuTarget(identifier: "calls.row.\(row.id)", select: { event(.select(row.id)) }, items: { menu(row) })
+            }
     }
 
-    /// The row's actions, the same in its context menu and on its keys.
-    @ViewBuilder private func menu(_ row: CallsListState.Row) -> some View {
-        Button("Открыть") { event(.open(row.id)) }.disabled(state.busy)
-        if row.hasNotes { Button("Показать заметки") { event(.preview(row.id)) } }
-        Button("Переименовать") { event(.select(row.id)); event(.beginRename(row.id)) }
-            .disabled(!row.editable || state.busy)
-        if row.canRetrySummary { Button("Повторить итоги") { event(.retrySummary(row.id)) }.disabled(state.busy) }
-        Divider()
-        Button("Удалить…", role: .destructive) { event(.askDelete(row.id)) }.disabled(!row.editable || state.busy)
+    /// The row's actions, the same in its context menu and on its keys,
+    /// each shown with its key.
+    private func menu(_ row: CallsListState.Row) -> [RowMenuItem?] {
+        var items: [RowMenuItem?] = [
+            RowMenuItem(title: "Открыть", key: "\r", isEnabled: !state.busy) { event(.open(row.id)) },
+        ]
+        if row.hasNotes { items.append(RowMenuItem(title: "Показать заметки", key: " ") { event(.preview(row.id)) }) }
+        items.append(RowMenuItem(title: "Переименовать", key: "r", modifiers: .command, isEnabled: row.editable && !state.busy) {
+            event(.beginRename(row.id))
+        })
+        if row.canRetrySummary {
+            items.append(RowMenuItem(title: "Повторить итоги", isEnabled: !state.busy) { event(.retrySummary(row.id)) })
+        }
+        items.append(nil)
+        items.append(RowMenuItem(title: "Удалить…", key: "\u{8}", modifiers: .command, isEnabled: row.editable && !state.busy) {
+            event(.askDelete(row.id))
+        })
+        return items
     }
 
     /// Return opens, Space shows notes, ⌘R renames and ⌘⌫ asks to delete the selected call.
