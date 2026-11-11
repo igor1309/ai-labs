@@ -48,7 +48,7 @@ struct SummaryAcceptedEvidenceTests {
             let job = evidenceJob(), identities = acceptedIdentities()
             let folder = root.appendingPathComponent(job.call)
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-            let files = Files(locations: SummaryStorage(folder: root, timeZone: .gmt), disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("leases"))
+            let files = Files(locations: SummaryStorage(folder: root, timeZone: .gmt, trash: removeForTrash), disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("leases"))
             let store = SummaryJobStore(files: files)
             #expect(try await store.claim(job).owned)
             #expect(try await store.start(job))

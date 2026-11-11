@@ -36,16 +36,18 @@ final class SummaryStorage: SummaryFiles.Locations, Sendable {
     // so one waiting for a long folder move suspends instead of blocking a thread.
     private let turn = Turn()
 
-    convenience init(folder: URL, timeZone: TimeZone, journal: URL? = nil) {
-        self.init(folder: folder, timeZone: timeZone, journal: journal, writeJournal: { record, journal in
+    convenience init(folder: URL, timeZone: TimeZone, journal: URL? = nil, trash: @escaping @Sendable (URL) throws -> Void) {
+        self.init(folder: folder, timeZone: timeZone, journal: journal, trash: trash, writeJournal: { record, journal in
             try FileManager.default.createDirectory(at: journal.deletingLastPathComponent(), withIntermediateDirectories: true)
             try JSONEncoder().encode(record).write(to: journal, options: .atomic)
         })
     }
-    convenience init(folder: URL, timeZone: TimeZone, journal: URL?,
+    convenience init(folder: URL, timeZone: TimeZone, journal: URL?, trash: @escaping @Sendable (URL) throws -> Void,
                      writeJournal: @escaping @Sendable (Journal, URL) throws -> Void) {
+        var disk = CallsDisk.system
+        disk.trash = trash
         self.init(folder: folder, journal: journal, writeJournal: writeJournal,
-                  makeCalls: { Calls(folder: $0, timeZone: timeZone, duration: TrackFile.duration(at:), disk: .system) })
+                  makeCalls: { [disk] in Calls(folder: $0, timeZone: timeZone, duration: TrackFile.duration(at:), disk: disk) })
     }
     init(folder: URL, journal: URL?, writeJournal: @escaping @Sendable (Journal, URL) throws -> Void,
          makeCalls: @escaping @Sendable (URL) -> Calls) {

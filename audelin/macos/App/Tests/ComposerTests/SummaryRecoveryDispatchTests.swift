@@ -19,7 +19,7 @@ struct SummaryRecoveryDispatchTests {
             }
             let saved = Job.Runtime(kind: "compatibleAPI", model: "saved-model", program: "", endpoint: "http://127.0.0.1:8181/saved", credentialVariable: "")
             let job = Job(id: "never-started", call: call, input: "saved-input", entries: [.init(label: "A", time: "00:17", text: "Saved spoken input")], speakers: false, primary: saved, fallback: hasFallback ? saved : nil)
-            let initial = Files(locations: SummaryStorage(folder: root, timeZone: .gmt), disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("leases"))
+            let initial = Files(locations: SummaryStorage(folder: root, timeZone: .gmt, trash: removeForTrash), disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("leases"))
             #expect(try await SummaryJobStore(files: initial).claim(job).owned)
             if interrupted {
                 #expect(try await initial.start(SummaryJobStore(files: initial).record(job)))
@@ -30,7 +30,7 @@ struct SummaryRecoveryDispatchTests {
             let current = NotesPreferences.Runtime(kind: "compatibleAPI", model: "current-model", executable: "", endpoint: "http://127.0.0.1:9191/current", credentialVariable: "")
             let preferences = PreferencesStore(fileURL: root.appendingPathComponent("preferences.json"))
             try preferences.write(Preferences(notes: .init(enabled: true, primary: current, fallback: current), automaticRecording: false, callsFolder: root))
-            let files = Files(locations: SummaryStorage(folder: root, timeZone: .gmt), disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("leases"))
+            let files = Files(locations: SummaryStorage(folder: root, timeZone: .gmt, trash: removeForTrash), disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("leases"))
             let http = RecoveryHTTP()
             let runtime = Runtime(process: RecoveryNoProcess(), http: http, credential: { _ in nil }, resolveProgram: { $0 }, deadline: {
                 let never = AsyncStream<Void> { _ in }

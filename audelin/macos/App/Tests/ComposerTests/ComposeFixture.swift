@@ -54,6 +54,7 @@ struct ComposeFixture {
             intervals: testIntervals)
         boundary.time = clock.time
         boundary.log = log
+        boundary.trash = removeForTrash
         configure(&boundary)
         let preferencesURL = root.appendingPathComponent("preferences.json")
         do {
