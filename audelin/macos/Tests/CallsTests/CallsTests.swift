@@ -268,3 +268,55 @@ private func withFolders(_ body: (URL) async throws -> Void) async throws {
         if FileManager.default.fileExists(atPath: trash(root).path) { try FileManager.default.removeItem(at: trash(root)) }
     }
 }
+
+@Suite(.timeLimit(.minutes(1)))
+struct CallsTextTests {
+    @Test func readsNotesAndTranscriptLinesWithTheirTimes() async throws {
+        try await withFolders { root in
+            let folder = try make(root, "2026.11.10-1600 Синк по OKR")
+            try Data("# Итоги\n\nOKR закрыты.".utf8).write(to: folder.appendingPathComponent("summary.md"))
+            try Data("""
+            # Transcript
+
+            **Me** 00:00:05
+            Итак, по OKR\\_2 второго квартала
+
+            **Speaker 1** 01:02:03 (filled in later)
+            Да, \\*согласен\\*
+
+            **Them** 00:10:00
+
+
+            """.utf8).write(to: folder.appendingPathComponent("transcript.md"))
+            let text = try adapter(root).text(id: "2026.11.10-1600")
+            #expect(text == .init(notes: "# Итоги\n\nOKR закрыты.", transcript: [
+                .init(start: 5, words: "Итак, по OKR_2 второго квартала"),
+                .init(start: 3_723, words: "Да, *согласен*"),
+            ]))
+        }
+    }
+
+    @Test func aCallWithoutNotesOrTranscriptHasNoText() async throws {
+        try await withFolders { root in
+            let folder = try make(root, "2026.11.10-1600")
+            try Data().write(to: folder.appendingPathComponent("summary.md"))
+            #expect(try adapter(root).text(id: "2026.11.10-1600") == .init(notes: nil, transcript: []))
+        }
+    }
+
+    @Test func anUnknownCallIsNotFound() async throws {
+        try await withFolders { root in
+            #expect(throws: CallsFailure.notFound(id: "2026.11.10-1600")) { try adapter(root).text(id: "2026.11.10-1600") }
+        }
+    }
+
+    @Test func anUnreadableFileFails() async throws {
+        try await withFolders { root in
+            _ = try make(root, "2026.11.10-1600")
+            var disk = CallsDisk.system
+            disk.read = { _ in throw POSIXError(.EACCES) }
+            let sut = Calls(folder: root, timeZone: tokyo, duration: { _ in 0 }, disk: disk)
+            #expect(throws: POSIXError(.EACCES)) { try sut.text(id: "2026.11.10-1600") }
+        }
+    }
+}

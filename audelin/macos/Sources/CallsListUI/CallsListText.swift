@@ -46,6 +46,14 @@ public enum CallsListPhrase: String, CaseIterable, Sendable {
     case windowTitle = "window.title"
     /// Takes the call id.
     case openFailed = "row.openFailed"
+    case searchPlaceholder = "search.placeholder"
+    case searchNotes = "search.notes"
+    /// Takes the number of further matches.
+    case searchMore = "search.more"
+    case searching = "search.searching"
+    case noMatches = "search.noMatches"
+    /// Takes the query.
+    case noMatchesHint = "search.noMatchesHint"
 }
 
 /// Looks up calls list text in a given language, whatever the process locale.

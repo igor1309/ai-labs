@@ -1,6 +1,7 @@
 import SettingsUI
 import Calls
 import CallsListUI
+import CallsSearch
 import Foundation
 import Observation
 import Recording
@@ -61,6 +62,13 @@ public final class AudelinCalls {
     private let describe: (any Error) -> String
     /// The calls list's text, in the language Audelin is shown in.
     public private(set) var listText: CallsListText
+    private let callText: (String) async throws -> Calls.Text
+    private var query = ""
+    /// Each read call's transcript or notes match, nil when they hold none; a call
+    /// not yet read is absent. Titles are matched afresh, so a rename shows at once.
+    private var textMatches: [String: CallsSearch.Snippet?] = [:]
+    private var searching = false
+    private var searchTask: Task<Void, Never>?
 
     init(inputs: RecordingsInputs, timeZone: TimeZone, now: @escaping () -> Date, recordingState: @escaping () -> RecordingState,
          location: @escaping (String) async throws -> URL, openFolder: @escaping (URL) -> Bool,
@@ -71,7 +79,9 @@ public final class AudelinCalls {
          retryableSummaries: @escaping () -> Set<String> = { [] },
          retrySummary: @escaping (String) async throws -> Void = { _ in throw CocoaError(.fileWriteUnknown) },
          describe: @escaping (any Error) -> String = SettingsText(language: .russian).callsFailure,
-         listText: CallsListText = .init(language: .russian)) {
+         listText: CallsListText = .init(language: .russian),
+         callText: @escaping (String) async throws -> Calls.Text = { _ in .init(notes: nil, transcript: []) }) {
+        self.callText = callText
         self.describe = describe
         self.listText = listText
         self.retryableSummaries = retryableSummaries
@@ -85,7 +95,20 @@ public final class AudelinCalls {
     }
 
     public var state: CallsListState {
-        var state = callsListState(inputs.state(), timeZone: timeZone, now: now(), text: listText)
+        var recordings = inputs.state()
+        var found: [String: CallsListState.Row.Match] = [:]
+        let searchOn = !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        if searchOn {
+            for call in recordings.calls {
+                let title = CallsSearch.match(query, title: call.title, transcript: [], notes: nil)?.title ?? []
+                let snippet = textMatches[call.id] ?? nil
+                guard !title.isEmpty || snippet != nil else { continue }
+                found[call.id] = .init(title: title, snippet: snippet.map(rowSnippet))
+            }
+            recordings.calls = recordings.calls.filter { found[$0.id] != nil }
+        }
+        var state = callsListState(recordings, timeZone: timeZone, now: now(), text: listText)
+        state.search = searchOn ? .init(query: query, searching: searching) : nil
         let statuses = summaryStatuses()
         let badges = summaryBadges()
         let retryable = retryableSummaries().subtracting(retrying)
@@ -94,13 +117,54 @@ public final class AudelinCalls {
             state.rows[index].summary = badges[state.rows[index].id] ?? .none
             state.rows[index].canRetrySummary = retryable.contains(state.rows[index].id)
             state.rows[index].hasNotes = withNotes.contains(state.rows[index].id)
+            state.rows[index].match = found[state.rows[index].id]
         }
-        state.selectedID = selectedID
+        state.selectedID = state.rows.contains { $0.id == selectedID } ? selectedID : nil
         state.previewedID = preview?.id
         state.editing = editing
         state.failure = openFailure ?? state.failure
         state.busy = state.busy || opening
         return state
+    }
+
+    private func rowSnippet(_ snippet: CallsSearch.Snippet) -> CallsListState.Row.Match.Snippet {
+        let place: String, isTime: Bool
+        switch snippet.place {
+        case .notes: place = listText(.searchNotes); isTime = false
+        case let .transcript(seconds):
+            let whole = Int(seconds)
+            place = whole >= 3_600 ? String(format: "%d:%02d:%02d", whole / 3_600, whole / 60 % 60, whole % 60)
+                                   : String(format: "%02d:%02d", whole / 60, whole % 60)
+            isTime = true
+        }
+        return .init(place: place, placeIsTime: isTime, text: snippet.text, hits: snippet.hits,
+                     more: snippet.more > 0 ? listText(.searchMore, snippet.more) : nil)
+    }
+
+    /// Reads each listed call's transcript and notes once for the query; a newer query
+    /// cancels the older reading. Rows join as their calls are read.
+    private func search(_ text: String) {
+        searchTask?.cancel()
+        query = text
+        textMatches = [:]
+        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            searching = false
+            searchTask = nil
+            return
+        }
+        searching = true
+        let ids = inputs.state().calls.map(\.id)
+        searchTask = Task { [callText] in
+            for id in ids {
+                let read = try? await callText(id)
+                guard !Task.isCancelled else { return }
+                let match = read.flatMap { read in
+                    CallsSearch.match(text, title: "", transcript: read.transcript.map { .init(start: $0.start, words: $0.words) }, notes: read.notes)
+                }
+                textMatches[id] = .some(match?.snippet)
+            }
+            searching = false
+        }
     }
 
     /// Shows the list in the new language at once.
@@ -119,6 +183,7 @@ public final class AudelinCalls {
     }
 
     public func show() {
+        search(query)
         openFailure = nil
         editing = nil
         inputs.send(.refresh)
@@ -218,6 +283,7 @@ public final class AudelinCalls {
         case let .select(id):
             selectedID = id
             updatePreview()
+        case let .search(text): search(text)
         case .selectNext: move(by: 1, in: snapshot.rows)
         case .selectPrevious: move(by: -1, in: snapshot.rows)
         case let .preview(id):

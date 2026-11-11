@@ -16,6 +16,19 @@ public struct Calls: Sendable {
         }
     }
 
+    /// What a call says, for search: its published notes and its transcript lines.
+    public struct Text: Equatable, Sendable {
+        public struct Line: Equatable, Sendable {
+            /// Seconds from the call's start.
+            public let start: TimeInterval
+            public let words: String
+            public init(start: TimeInterval, words: String) { self.start = start; self.words = words }
+        }
+        public let notes: String?
+        public let transcript: [Line]
+        public init(notes: String?, transcript: [Line]) { self.notes = notes; self.transcript = transcript }
+    }
+
     public struct Count: Equatable, Sendable {
         public let calls: Int
         public let bytes: Int64
@@ -79,6 +92,40 @@ public struct Calls: Sendable {
         let source = try location(id: id)
         do { try trash(source) }
         catch { throw CallsFailure.trashFailed(folder: source.lastPathComponent, reason: error.localizedDescription) }
+    }
+
+    /// Reads the call's `summary.md` and `transcript.md`; a missing file reads as none.
+    public func text(id: String) throws -> Text {
+        let folder = try location(id: id)
+        func string(_ name: String) throws -> String? {
+            try disk.read(folder.appendingPathComponent(name)).map { String(decoding: $0, as: UTF8.self) }
+        }
+        let notes = try string("summary.md")
+        return Text(notes: notes.flatMap { $0.isEmpty ? nil : $0 }, transcript: Self.lines(try string("transcript.md") ?? ""))
+    }
+
+    /// Transcript entries are a `**Side** HH:MM:SS` line and a line of words; anything else is skipped.
+    private static func lines(_ markdown: String) -> [Text.Line] {
+        markdown.components(separatedBy: "\n\n").compactMap { block in
+            let rows = block.split(separator: "\n", maxSplits: 1, omittingEmptySubsequences: false)
+            guard rows.count == 2, rows[0].hasPrefix("**"),
+                  let close = rows[0].dropFirst(2).range(of: "** ") else { return nil }
+            let clock = rows[0][close.upperBound...].prefix(8).split(separator: ":")
+            guard clock.count == 3, let h = Int(clock[0]), let m = Int(clock[1]), let s = Int(clock[2]) else { return nil }
+            let words = unescaped(String(rows[1])).trimmingCharacters(in: .whitespaces)
+            guard !words.isEmpty else { return nil }
+            return Text.Line(start: TimeInterval(h * 3_600 + m * 60 + s), words: words)
+        }
+    }
+
+    private static func unescaped(_ text: String) -> String {
+        var out = "", escaping = false
+        for character in text {
+            if !escaping, character == "\\" { escaping = true; continue }
+            escaping = false
+            out.append(character)
+        }
+        return out
     }
 
     public func bytes(id: String) throws -> Int64 { try size(location(id: id)) }
@@ -311,6 +358,11 @@ public struct CallsDisk: Sendable {
     /// Moves a folder to the Trash of its volume, whole or not at all.
     public var trash: @Sendable (URL) throws -> Void
     var remove: @Sendable (URL) throws -> Void
+    /// A file's bytes, or nil when it does not exist.
+    var read: @Sendable (URL) throws -> Data? = { url in
+        do { return try Data(contentsOf: url) }
+        catch CocoaError.fileReadNoSuchFile { return nil }
+    }
 
     /// The local file system; a rename never replaces an existing folder.
     public static let system = CallsDisk(

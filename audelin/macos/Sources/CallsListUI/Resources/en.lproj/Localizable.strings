@@ -30,3 +30,9 @@
 "day.callsOne" = "%d call";
 "day.callsFew" = "%d calls";
 "day.callsMany" = "%d calls";
+"search.placeholder" = "Search";
+"search.notes" = "Notes";
+"search.more" = "%d more";
+"search.searching" = "Searching transcripts…";
+"search.noMatches" = "No matches";
+"search.noMatchesHint" = "“%@” is not in any title, notes or transcript";

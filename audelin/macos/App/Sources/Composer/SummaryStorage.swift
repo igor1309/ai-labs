@@ -193,6 +193,10 @@ final class SummaryStorage: SummaryFiles.Locations, Sendable {
         }
     }
     func location(id: String) async throws -> URL { try await perform { [self] in try folder(call: id) { $0 } } }
+    /// A call's notes and transcript lines, for search.
+    func text(id: String) async throws -> Calls.Text {
+        try await perform { [self] in try folder(call: id) { try makeCalls($0.deletingLastPathComponent()).text(id: id) } }
+    }
     private func validate(_ destination: URL, state: State) throws {
         guard destination.isFileURL else { throw CocoaError(.fileWriteInvalidFileName) }
         let target = destination.resolvingSymlinksInPath().standardizedFileURL.path
