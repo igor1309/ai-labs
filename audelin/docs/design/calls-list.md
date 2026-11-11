@@ -39,13 +39,13 @@ header, Row, Match row, Context menu, Alert, Rename field, Error banner).
 - The title bar holds the window title at the left and a 200 pt search
   field at the right, on every screen. ⌘F focuses it; Esc or its clear
   button empties it and the whole list returns.
-- One field searches titles, notes and transcripts as you type, ignoring
+- One field searches titles, summaries and transcripts as you type, ignoring
   case and ё/е. There is no scope switch.
 - Results keep the list's shape: days and calls newest first, one-line
-  28 pt rows. A day shows only its matching calls and their count; days
+  32 pt rows. A day shows only its matching calls and their count; days
   with no match are hidden.
 - A Match row shows the title, then one snippet: where the first match is
-  (its time in the transcript, or «Заметки»), the text around it, and
+  (its time in the transcript, or «Итоги»), the text around it, and
   «ещё N» for further matches. The snippet takes the space the title leaves
   and ends with an ellipsis; «ещё N» goes first when space runs out, then
   the title truncates.
@@ -67,7 +67,7 @@ header, Row, Match row, Context menu, Alert, Rename field, Error banner).
 | Calls — error | A banner pinned to the window's bottom |
 | Calls — window inactive | The selected row turns grey (`btn`) and its eye `sub` |
 | Calls — empty, Calls — loading | One centred message |
-| Calls — search | 900 pt, «OKR»: title, transcript and notes matches, one selected |
+| Calls — search | 900 pt, «OKR»: title, transcript and summary matches, one selected |
 | Calls — search, minimum width | The same at 560 pt, snippets truncated |
 | Calls — searching | Transcripts still being read: spinner in the field, rows so far |
 | Calls — search, no results | One centred message naming the query |

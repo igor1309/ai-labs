@@ -26,7 +26,7 @@ struct CallsSearchWiringTests {
             #expect(state.rows[0].match == .init(title: [8..<11], snippet: .init(
                 place: "14:32", placeIsTime: true, text: "итак, по OKR квартала", hits: [9..<12], more: nil)))
             #expect(state.rows[1].match == .init(title: [], snippet: .init(
-                place: "Заметки", placeIsTime: false, text: "Итоги из пяти OKR года", hits: [14..<17], more: nil)))
+                place: "Итоги", placeIsTime: false, text: "Итоги из пяти OKR года", hits: [14..<17], more: nil)))
             #expect(state.selectedID == nil)
 
             await calls.send(.search("Kubernetes"))
