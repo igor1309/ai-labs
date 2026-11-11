@@ -61,9 +61,11 @@ public final class AudelinMenu {
     private var detectionObservation: Task<Void, Never>?
     private var updateWatch: Task<Void, Never>?
     private var choosingFolder = false
+    private let menuText = MenuBarText(language: .russian)
 
     public var menu: MenuBarModel {
-        MenuBarModel(recording: menuBarRecording(state), preferences: menuBarPreferences(preferences), statusLine: failure,
+        MenuBarModel(text: menuText.callAsFunction, recording: menuBarRecording(state),
+                     preferences: menuBarPreferences(preferences), statusLine: failure,
                      offersPanelReopen: panelPresence.offersReopen, panelVisible: panelPresence.visible)
     }
 

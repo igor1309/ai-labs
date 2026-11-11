@@ -191,7 +191,7 @@ struct PanelPresenceTests {
                 .idle(automatic: true, unavailable: [], failure: nil),
                 .recording(call: true, faults: []), .recording(call: false, faults: []), .ending(faults: []),
             ] {
-                let menu = MenuBarModel(recording: recording,
+                let menu = MenuBarModel(text: russian, recording: recording,
                     preferences: .init(automatic: true, liveText: true),
                     offersPanelReopen: presence.offersReopen)
                 let active = if case .recording = recording { true } else { false }
@@ -218,3 +218,5 @@ private func assert(_ state: PanelPresence, _ event: PanelPresence.Event, delive
                     sourceLocation: SourceLocation = #_sourceLocation) {
     #expect(PanelPresence.reduce(state, event).1 == expected, sourceLocation: sourceLocation)
 }
+
+private func russian(_ phrase: MenuBarPhrase) -> String { MenuBarText(language: .russian)(phrase) }

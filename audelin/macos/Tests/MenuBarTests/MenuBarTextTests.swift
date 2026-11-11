@@ -13,12 +13,7 @@ struct MenuBarTextTests {
     @Test func everyKeyHasRussianAndEnglishText() {
 
         let russian = MenuBarText(language: .russian), english = MenuBarText(language: .english)
-        for key in ["item.title", "state.recording", "state.recordingCall", "state.recordingNoText", "state.ending",
-                    "state.waiting", "state.notRecording", "blocked.microphone", "blocked.callAudio",
-                    "blocked.folder", "blocked.space", "fault.microphone", "fault.callAudio", "fault.diskFull",
-                    "fault.callSilent", "action.start", "action.stop", "action.showPanel", "action.hidePanel",
-                    "action.automatic", "action.liveText", "action.calls", "action.openCallsFolder",
-                    "action.settings", "action.quit"] {
+        for key in MenuBarPhrase.allCases.map(\.rawValue) {
             #expect(russian(key) != key, "\(key) has no Russian text")
             #expect(english(key) != key, "\(key) has no English text")
             #expect(english(key) != russian(key), "\(key) is not translated")

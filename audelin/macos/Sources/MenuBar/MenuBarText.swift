@@ -7,6 +7,36 @@ public enum MenuBarLanguage: String, CaseIterable, Sendable {
     case english = "en"
 }
 
+/// A fixed piece of menu bar text; its raw value is the key in the strings tables.
+public enum MenuBarPhrase: String, CaseIterable, Sendable {
+
+    case itemTitle = "item.title"
+    case recording = "state.recording"
+    case recordingCall = "state.recordingCall"
+    case recordingNoText = "state.recordingNoText"
+    case ending = "state.ending"
+    case waiting = "state.waiting"
+    case notRecording = "state.notRecording"
+    case blockedMicrophone = "blocked.microphone"
+    case blockedCallAudio = "blocked.callAudio"
+    case blockedFolder = "blocked.folder"
+    case blockedSpace = "blocked.space"
+    case faultMicrophone = "fault.microphone"
+    case faultCallAudio = "fault.callAudio"
+    case faultDiskFull = "fault.diskFull"
+    case faultCallSilent = "fault.callSilent"
+    case start = "action.start"
+    case stop = "action.stop"
+    case showPanel = "action.showPanel"
+    case hidePanel = "action.hidePanel"
+    case automatic = "action.automatic"
+    case liveText = "action.liveText"
+    case calls = "action.calls"
+    case openCallsFolder = "action.openCallsFolder"
+    case settings = "action.settings"
+    case quit = "action.quit"
+}
+
 /// Looks up the menu bar's text in a given language, whatever the process locale.
 ///
 /// A key missing from the language's table falls back to Russian, then to the key itself.
@@ -19,7 +49,12 @@ public struct MenuBarText: Sendable {
         self.language = language
     }
 
-    public func callAsFunction(_ key: String) -> String {
+    public func callAsFunction(_ phrase: MenuBarPhrase) -> String {
+
+        self(phrase.rawValue)
+    }
+
+    func callAsFunction(_ key: String) -> String {
 
         let russian = Self.table(.russian)?.localizedString(forKey: key, value: key, table: nil) ?? key
         guard language != .russian else { return russian }
