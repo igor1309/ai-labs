@@ -60,9 +60,13 @@ public struct SummaryPreviewView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                     if case .markdown = state.notes {
                         Button(action: copy) {
-                            Text("Копировать").font(tokens.ui(tokens.typeSmall)).foregroundStyle(tokens.text)
-                                .padding(.vertical, tokens.space8).padding(.horizontal, tokens.space12)
-                                .background(tokens.btn, in: .rect(cornerRadius: tokens.radiusControl))
+                            HStack(spacing: tokens.space6) {
+                                Image(systemName: "doc.on.doc")
+                                Text("Копировать")
+                            }
+                            .font(tokens.ui(tokens.typeSmall, .semibold)).foregroundStyle(tokens.text)
+                            .padding(.vertical, tokens.space6).padding(.horizontal, tokens.space16)
+                            .background(tokens.btn, in: .rect(cornerRadius: tokens.radiusControl))
                         }
                         .buttonStyle(.plain)
                         .accessibilityIdentifier("preview.copy")

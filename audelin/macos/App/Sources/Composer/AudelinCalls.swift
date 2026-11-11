@@ -262,7 +262,7 @@ func callsListState(_ state: RecordingsState, timeZone: TimeZone, now: Date) -> 
                      day: opens ? .init(title: day, count: format.count(days[index...].prefix { $0 == day }.count)) : nil,
                      time: format.time(call.start), duration: format.duration(call.duration), editable: call.id != state.recordingID)
     }, deleteID: deleteID, deleteBody: state.calls.first { $0.id == deleteID }.map { call in
-        "«\(call.id + (call.title.isEmpty ? "" : " " + call.title))»: удалится вся папка звонка — аудио, расшифровки и саммари. Отменить нельзя."
+        "«\(call.id + (call.title.isEmpty ? "" : " " + call.title))»: вся папка звонка — аудио, расшифровки и саммари — переместится в Корзину."
     }, busy: busy || state.isListing, failure: state.failure.map { failure in
         (failure.id.map { "«\($0)»: " } ?? "") + failure.reason
     })

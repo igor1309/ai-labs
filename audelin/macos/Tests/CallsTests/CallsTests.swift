@@ -45,6 +45,7 @@ struct CallsTests {
                                 values: { try $0.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey]) },
                                 copy: { try FileManager.default.copyItem(at: $0, to: $1) },
                                 rename: { _, _ in throw POSIXError(.EIO) },
+                                trash: { _ in throw POSIXError(.EPERM) },
                                 remove: { _ in throw POSIXError(.EIO) }))
             #expect(received.withLock { $0.isEmpty })
             let calls = try sut.list()
@@ -137,7 +138,7 @@ struct CallsTests {
         }
     }
 
-    @Test func S6_aDeleteRemovesTheCall() async throws {
+    @Test func S6_aDeleteMovesTheCallToTheTrash() async throws {
         try await withFolders { root in
             let call = root.appendingPathComponent("2026.10.24-1405 Zoom")
             let other = root.appendingPathComponent("2026.10.25-1405 Other")
@@ -149,6 +150,7 @@ struct CallsTests {
             }
             try adapter(root).delete(id: "2026.10.24-1405")
             #expect(await !exists(call))
+            #expect(try await bytes(trash(root).appendingPathComponent(call.lastPathComponent + "/audio")) == Data([1]))
             #expect(try await bytes(other.appendingPathComponent("kept")) == Data([2]))
         }
     }
@@ -205,8 +207,9 @@ struct CallsTests {
         }
     }
 
-    @Test func diskFailuresReachTheCallerAndPartialDeletionIsNamed() async throws {
+    @Test func diskFailuresReachTheCallerAndAFailedTrashLeavesTheFolder() async throws {
         try await withFolders { root in
+            let trashed = Mutex<[URL]>([])
             let call = try {
                 let call = try make(root, "2026.10.24-1405 Zoom")
                 try Data([1]).write(to: call.appendingPathComponent("kept"))
@@ -219,11 +222,13 @@ struct CallsTests {
                                 values: { try $0.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey, .fileSizeKey]) },
                                 copy: { try FileManager.default.copyItem(at: $0, to: $1) },
                                 rename: { _, _ in throw POSIXError(.EACCES) },
-                                remove: { url in try FileManager.default.removeItem(at: url.appendingPathComponent("kept")); throw POSIXError(.EACCES) }))
+                                trash: { url in trashed.withLock { $0.append(url) }; throw POSIXError(.EACCES) },
+                                remove: { url in Issue.record("Deletion removed \(url)") }))
             await #expect(throws: POSIXError(.EACCES)) { try sut.rename(id: "2026.10.24-1405", title: "New") }
             do { try sut.delete(id: "2026.10.24-1405"); Issue.record("Deletion should fail") }
-            catch { #expect(error.localizedDescription.contains("часть папки могла остаться")) }
-            #expect(await exists(call))
+            catch { #expect(error.localizedDescription == "Не удалось переместить «2026.10.24-1405 Zoom» в Корзину; папка осталась на месте. \(POSIXError(.EACCES).localizedDescription)") }
+            #expect(trashed.withLock { $0.map(\.lastPathComponent) } == ["2026.10.24-1405 Zoom"])
+            #expect(try await bytes(call.appendingPathComponent("kept")) == Data([1]))
             #expect(try sut.list().map(\.title) == ["Zoom"])
         }
     }
@@ -231,7 +236,16 @@ struct CallsTests {
 
 private let tokyo = TimeZone(identifier: "Asia/Tokyo")!
 private func utc(_ value: String) -> Date { ISO8601DateFormatter().date(from: value)! }
-private func adapter(_ root: URL) -> Calls { Calls(folder: root, timeZone: tokyo, duration: TrackFile.duration(at:), disk: .system) }
+/// The system disk, except that the Trash is a folder beside `root`: tests never touch the user's Trash.
+private func adapter(_ root: URL) -> Calls {
+    var disk = CallsDisk.system
+    disk.trash = { url in
+        try FileManager.default.createDirectory(at: trash(root), withIntermediateDirectories: true)
+        try FileManager.default.moveItem(at: url, to: trash(root).appendingPathComponent(url.lastPathComponent))
+    }
+    return Calls(folder: root, timeZone: tokyo, duration: TrackFile.duration(at:), disk: disk)
+}
+private func trash(_ root: URL) -> URL { root.deletingLastPathComponent().appendingPathComponent(root.lastPathComponent + "-Trash", isDirectory: true) }
 private func bytes(_ url: URL) async throws -> Data { try Data(contentsOf: url) }
 private func exists(_ url: URL) async -> Bool { FileManager.default.fileExists(atPath: url.path) }
 private func names(_ url: URL) async throws -> [String] { try FileManager.default.contentsOfDirectory(atPath: url.path).sorted() }
@@ -248,5 +262,8 @@ private func track(_ url: URL, seconds: Double) async throws {
 private func withFolders(_ body: (URL) async throws -> Void) async throws {
     let root = FileManager.default.temporaryDirectory.resolvingSymlinksInPath().appendingPathComponent(UUID().uuidString, isDirectory: true)
     try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-    try await withCleanup { try await body(root) } cleanup: { try FileManager.default.removeItem(at: root) }
+    try await withCleanup { try await body(root) } cleanup: {
+        try FileManager.default.removeItem(at: root)
+        if FileManager.default.fileExists(atPath: trash(root).path) { try FileManager.default.removeItem(at: trash(root)) }
+    }
 }

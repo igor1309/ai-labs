@@ -42,6 +42,7 @@ public struct Calls: Sendable {
     private func rename(_ source: URL, _ target: URL) throws { try disk.rename(source, target) }
     private func copy(_ source: URL, _ target: URL) throws { try disk.copy(source, target) }
     private func remove(_ url: URL) throws { try disk.remove(url) }
+    private func trash(_ url: URL) throws { try disk.trash(url) }
 
     public func list() throws -> [Call] {
         try folders(in: folder).map { url, name in
@@ -76,8 +77,8 @@ public struct Calls: Sendable {
 
     public func delete(id: String) throws {
         let source = try location(id: id)
-        do { try remove(source) }
-        catch { throw Failure(description: "Не удалось удалить «\(source.lastPathComponent)» целиком; часть папки могла остаться. \(error.localizedDescription)") }
+        do { try trash(source) }
+        catch { throw Failure(description: "Не удалось переместить «\(source.lastPathComponent)» в Корзину; папка осталась на месте. \(error.localizedDescription)") }
     }
 
     public func bytes(id: String) throws -> Int64 { try size(location(id: id)) }
@@ -290,13 +291,15 @@ public struct Calls: Sendable {
     }
 }
 
-/// The file system as `Calls` lists, renames, copies and removes folders.
+/// The file system as `Calls` lists, renames, copies, trashes and removes folders.
 public struct CallsDisk: Sendable {
 
     var children: @Sendable (URL) throws -> [URL]
     var values: @Sendable (URL) throws -> URLResourceValues
     var copy: @Sendable (URL, URL) throws -> Void
     var rename: @Sendable (URL, URL) throws -> Void
+    /// Moves a folder to the Trash of its volume, whole or not at all.
+    public var trash: @Sendable (URL) throws -> Void
     var remove: @Sendable (URL) throws -> Void
 
     /// The local file system; a rename never replaces an existing folder.
@@ -309,6 +312,7 @@ public struct CallsDisk: Sendable {
                 throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
             }
         },
+        trash: { try FileManager.default.trashItem(at: $0, resultingItemURL: nil) },
         remove: { try FileManager.default.removeItem(at: $0) }
     )
 }

@@ -11297,6 +11297,44 @@
                       "fontWeight": "600"
                     }
                   ]
+                },
+                {
+                  "type": "frame",
+                  "id": "JVmGo",
+                  "name": "Button/Secondary/Icon",
+                  "reusable": true,
+                  "fill": "$btn",
+                  "cornerRadius": "$radius-control",
+                  "gap": "$space-6",
+                  "padding": [
+                    "$space-6",
+                    "$space-16"
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "bM7B1",
+                      "name": "Icon",
+                      "width": 14,
+                      "height": 14,
+                      "icon": "copy",
+                      "library": "lucide",
+                      "fill": "$text"
+                    },
+                    {
+                      "type": "text",
+                      "id": "KyiSu",
+                      "name": "Label",
+                      "fill": "$text",
+                      "content": "Копировать",
+                      "lineHeight": 1.45,
+                      "fontFamily": "$font-ui",
+                      "fontSize": "$type-small",
+                      "fontWeight": "600"
+                    }
+                  ]
                 }
               ]
             }
@@ -48621,15 +48659,10 @@
                       "fontWeight": "600"
                     },
                     {
-                      "id": "P5RtIy",
+                      "id": "WHRz7",
                       "type": "ref",
-                      "ref": "wmGeO",
-                      "name": "Copy",
-                      "descendants": {
-                        "EWsWH": {
-                          "content": "Копировать"
-                        }
-                      }
+                      "ref": "JVmGo",
+                      "name": "Copy"
                     }
                   ]
                 },

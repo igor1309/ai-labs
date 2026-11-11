@@ -13,7 +13,7 @@ Frames: "Screen 4b — Summary preview" (right of Screen 4) and the board
   row that has one.
 - Size and position are kept when the preview moves to another row and
   across app restarts.
-- Content: a header with title, date and duration, a «Копировать» button
+- Content: a header with title, date and duration, a «Копировать» button with a copy icon (SF Symbol `doc.on.doc`)
   (copies the Markdown source), and the summary as selectable rendered
   Markdown: headings, lists, code and tables. No transcript link.
 

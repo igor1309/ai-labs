@@ -34,7 +34,7 @@ actor ComposeCalls: RecordingsCalls {
     }
 }
 
-/// A failed mutation can leave a partially deleted folder; refresh the disk view
+/// The disk can differ from the list after a failed mutation; refresh the disk view
 /// after delivering the failure, retaining its reason until the next action.
 func handleRecordingsEffect(_ handler: RecordingsEffectHandler, _ effect: RecordingsEffect) -> AsyncStream<RecordingsEvent> {
     AsyncStream { output in

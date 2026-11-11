@@ -28,9 +28,11 @@ Observer: Recordings, which renames, deletes and moves calls through
   does; an empty title leaves the bare prefix. A name taken by anything
   fails the rename and changes nothing (rename never replaces, so no other
   call or file is lost).
-- **A delete removes the whole folder for good,** as the design's
-  confirm says ("Отменить нельзя"); the app asks first. A delete that
-  fails part way can leave part of the call, and says so.
+- **A delete moves the whole folder to the Trash,** through the system
+  file manager, so it can be put back from Finder; the confirm says so
+  and the app asks first. A move to the Trash is whole or not at all: one
+  that fails (no Trash on the volume, no permission) leaves the folder in
+  place and says so.
 - **A move takes one call into another calls folder:** copy the whole
   folder beside its place under a temporary name, check that every file's
   size matches, rename it into place, then delete the source. A failure at
@@ -71,10 +73,10 @@ Feature: Keeping recorded calls on disk
     When I rename the first to a name the second has
     Then I can tell it failed, and both are unchanged
 
-  Scenario: S-6 A delete removes the call
+  Scenario: S-6 A delete moves the call to the Trash
     Given a call
     When I delete it
-    Then its folder is gone from the calls folder, with every file
+    Then its folder is in the Trash with every file, and gone from the calls folder
 
   Scenario: S-7 A move keeps the call whole
     Given a call
