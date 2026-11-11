@@ -118,10 +118,11 @@ struct PanelPreview: View {
     let state: PanelState
     let scheme: ColorScheme
     var config: PanelConfig = .glassLedger
+    var text = PanelText(language: .russian)
 
     var body: some View {
 
-        PanelView(state: state, event: { _ in }, config: config)
+        PanelView(state: state, event: { _ in }, config: config, text: text)
             .padding(config.tokens(for: scheme).space24)
             .background(config.tokens(for: scheme).back)
             .environment(\.colorScheme, scheme)

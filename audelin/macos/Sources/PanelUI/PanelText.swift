@@ -9,7 +9,8 @@ public enum PanelLanguage: String, CaseIterable, Sendable {
 
 /// A fixed piece of panel text; its raw value is the key in the strings tables.
 ///
-/// The `diskFullLine` and `gap*` phrases are formats that take one time, `%@`.
+/// The `diskFullLine`, `gap*` and `lateSpan` phrases are formats that take one time or span, `%@`;
+/// `newBelow` takes a count, `%d`.
 public enum PanelPhrase: String, CaseIterable, Sendable {
 
     case callAudioTitle = "banner.callAudio.title"
@@ -26,12 +27,26 @@ public enum PanelPhrase: String, CaseIterable, Sendable {
     case gapMicrophone = "gap.microphone"
     case gapDiskFull = "gap.diskFull"
     case gapCallSilent = "gap.callSilent"
+    case notRecording = "status.notRecording"
+    case start = "action.start"
+    case stop = "action.stop"
+    case emptyLog = "log.empty"
+    case liveTextOff = "log.liveTextOff"
+    case switchLiveTextOn = "action.liveTextOn"
+    case preparing = "log.preparing"
+    case preparingNote = "log.preparingNote"
+    case release = "held.release"
+    case releaseLabel = "held.releaseLabel"
+    case newBelow = "log.newBelow"
+    case me = "speaker.me"
+    case them = "speaker.them"
+    case lateSpan = "log.lateSpan"
 }
 
 /// Looks up the panel's text in a given language, whatever the process locale.
 ///
 /// A key missing from the language's table falls back to Russian, then to the key itself.
-public struct PanelText: Sendable {
+public struct PanelText: Equatable, Sendable {
 
     public let language: PanelLanguage
 

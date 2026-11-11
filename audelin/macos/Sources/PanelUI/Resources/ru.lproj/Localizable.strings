@@ -12,3 +12,17 @@
 "gap.microphone" = "— нет микрофона с %@ —";
 "gap.diskFull" = "— диск заполнен с %@ —";
 "gap.callSilent" = "—  с %@ —";
+"status.notRecording" = "не записывается";
+"action.start" = "Начать";
+"action.stop" = "Стоп";
+"log.empty" = "Запись не идёт. Начать — и текст появится здесь, для обеих сторон.";
+"log.liveTextOff" = "Живой текст выключен — звонок только записывается.";
+"action.liveTextOn" = "Включить живой текст";
+"log.preparing" = "Живой текст готовится — звонок уже записывается.";
+"log.preparingNote" = "Текст появится с начала звонка.";
+"held.release" = "Отпустить";
+"held.releaseLabel" = "Отпустить выделенный текст";
+"log.newBelow" = "%d новые ↓";
+"speaker.me" = "я";
+"speaker.them" = "они";
+"log.lateSpan" = "дописано позже · %@";

@@ -11,9 +11,10 @@ struct Transcript {
 
         let tokens: GlassLedger
         let config: PanelConfig
+        var text = PanelText(language: .russian)
 
         static func == (lhs: Self, rhs: Self) -> Bool {
-            lhs.tokens == rhs.tokens && lhs.config.lineHeight == rhs.config.lineHeight
+            lhs.tokens == rhs.tokens && lhs.config.lineHeight == rhs.config.lineHeight && lhs.text == rhs.text
         }
     }
 
@@ -199,7 +200,7 @@ private extension Transcript {
                 // The design dims the whole group, spaces it tighter than the
                 // log around it, and rules it off from what follows.
                 let group = tokens.space8
-                caption("дописано позже · \(late.span)", alpha: 0.6, spacing: group)
+                caption(String(format: style.text(.lateSpan), late.span), alpha: 0.6, spacing: group)
                 for (index, entry) in late.entries.enumerated() {
                     let isLast = index == late.entries.count - 1
                     self.entry(entry, alpha: 0.6, spacing: isLast ? log + Transcript.ruleWidth + log : group)
@@ -318,7 +319,7 @@ private extension Transcript {
             if let attachment = symbols[key] { return attachment }
 
             let name = speaker == .me ? "microphone.fill" : "speaker.wave.3.fill"
-            let label = speaker == .me ? "я" : "они"
+            let label = style.text(speaker == .me ? .me : .them)
             let color = NSColor(speaker == .me ? tokens.me : tokens.them).withAlphaComponent(alpha)
             let configuration = NSImage.SymbolConfiguration(pointSize: Self.symbolSize, weight: .regular)
                 .applying(.init(paletteColors: [color]))

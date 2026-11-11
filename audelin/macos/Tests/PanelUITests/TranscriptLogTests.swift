@@ -244,6 +244,24 @@ struct TranscriptLogTests {
         #expect(edit.range.location == 0)
     }
 
+    @Test func aNewLanguageReplacesEveryRow() {
+
+        let rows = Transcript.Rows()
+        _ = rows.update(lateLines, style: .init(tokens: .light, config: .glassLedger))
+
+        let edit = rows.update(lateLines, style: .init(tokens: .light, config: .glassLedger, text: .init(language: .english)))
+
+        #expect(edit.range.location == 0)
+        #expect(edit.text.string.contains("written later · 12:41–12:42"))
+        #expect(!edit.text.string.contains("дописано позже"))
+    }
+
+    @Test func theLateCaptionIsInTheGivenLanguage() {
+
+        let russian = Transcript(lines: lateLines, style: .init(tokens: .light, config: .glassLedger)).string.string
+        #expect(russian.contains("дописано позже · 12:41–12:42"))
+    }
+
     @Test func applyEditsNothingAboveTheFirstChangedRow() {
 
         let style = Transcript.Style(tokens: .light, config: .glassLedger)
@@ -532,17 +550,17 @@ struct TranscriptLogTests {
         expectScrolls(events, [false])
 
         // An unrelated update can still carry the pre-scroll snapshot.
-        coordinator.parent = TranscriptLog(lines: .init(entries: []), tokens: .light, config: .glassLedger, event: event)
+        coordinator.parent = TranscriptLog(lines: .init(entries: []), tokens: .light, config: .glassLedger, panelText: .init(language: .russian), event: event)
         coordinator.quietly { }
         #expect(clip.bounds.origin == .zero)
 
-        coordinator.parent = TranscriptLog(lines: .init(entries: [], followsLive: false, scrollAcknowledgement: try scrollID(events.last)), tokens: .light, config: .glassLedger, event: event)
+        coordinator.parent = TranscriptLog(lines: .init(entries: [], followsLive: false, scrollAcknowledgement: try scrollID(events.last)), tokens: .light, config: .glassLedger, panelText: .init(language: .russian), event: event)
         coordinator.quietly { }
         document.setFrameSize(NSSize(width: 200, height: 1_200))
         #expect(clip.bounds.origin == .zero)
         expectScrolls(events, [false])
 
-        coordinator.parent = TranscriptLog(lines: .init(entries: [], scrollAcknowledgement: try scrollID(events.last)), tokens: .light, config: .glassLedger, event: event)
+        coordinator.parent = TranscriptLog(lines: .init(entries: [], scrollAcknowledgement: try scrollID(events.last)), tokens: .light, config: .glassLedger, panelText: .init(language: .russian), event: event)
         coordinator.quietly { }
         #expect(isAtBottom(scroll))
         document.setFrameSize(NSSize(width: 200, height: 1_400))
@@ -561,14 +579,14 @@ struct TranscriptLogTests {
         let document = try #require(scroll.documentView)
 
         clip.scroll(to: NSPoint(x: 0, y: 100))
-        coordinator.parent = TranscriptLog(lines: .init(entries: [], followsLive: false, scrollAcknowledgement: try scrollID(events.last)), tokens: .light, config: .glassLedger, event: event)
+        coordinator.parent = TranscriptLog(lines: .init(entries: [], followsLive: false, scrollAcknowledgement: try scrollID(events.last)), tokens: .light, config: .glassLedger, panelText: .init(language: .russian), event: event)
         clip.scroll(to: NSPoint(x: 0, y: document.frame.height - clip.bounds.height))
         let resume = try scrollID(events.last)
         clip.scroll(to: NSPoint(x: 0, y: 200))
         let pause = try scrollID(events.last)
         let stopped = clip.bounds.origin
 
-        coordinator.parent = TranscriptLog(lines: .init(entries: [], scrollAcknowledgement: resume), tokens: .light, config: .glassLedger, event: event)
+        coordinator.parent = TranscriptLog(lines: .init(entries: [], scrollAcknowledgement: resume), tokens: .light, config: .glassLedger, panelText: .init(language: .russian), event: event)
         coordinator.quietly { }
         #expect(clip.bounds.origin == stopped)
         document.setFrameSize(NSSize(width: 200, height: 1_000))
@@ -577,13 +595,13 @@ struct TranscriptLogTests {
 
         if jumpToLive {
             // A jump snapshot may coalesce the paused snapshot it follows.
-            coordinator.parent = TranscriptLog(lines: .init(entries: [], scrollAcknowledgement: pause), tokens: .light, config: .glassLedger, event: event)
+            coordinator.parent = TranscriptLog(lines: .init(entries: [], scrollAcknowledgement: pause), tokens: .light, config: .glassLedger, panelText: .init(language: .russian), event: event)
         } else {
-            coordinator.parent = TranscriptLog(lines: .init(entries: [], followsLive: false, scrollAcknowledgement: pause), tokens: .light, config: .glassLedger, event: event)
+            coordinator.parent = TranscriptLog(lines: .init(entries: [], followsLive: false, scrollAcknowledgement: pause), tokens: .light, config: .glassLedger, panelText: .init(language: .russian), event: event)
             coordinator.quietly { }
             #expect(clip.bounds.origin == stopped)
             clip.scroll(to: NSPoint(x: 0, y: document.frame.height - clip.bounds.height))
-            coordinator.parent = TranscriptLog(lines: .init(entries: [], scrollAcknowledgement: try scrollID(events.last)), tokens: .light, config: .glassLedger, event: event)
+            coordinator.parent = TranscriptLog(lines: .init(entries: [], scrollAcknowledgement: try scrollID(events.last)), tokens: .light, config: .glassLedger, panelText: .init(language: .russian), event: event)
         }
         coordinator.quietly { }
         #expect(isAtBottom(scroll))
@@ -807,7 +825,7 @@ struct TranscriptLogTests {
         let scroll = NSScrollView(frame: NSRect(x: 0, y: 0, width: 200, height: 160))
         scroll.contentView = ScrollingClipView(frame: scroll.contentView.frame)
         scroll.documentView = GeometryDocument(frame: NSRect(x: 0, y: 0, width: 200, height: 800))
-        let parent = TranscriptLog(lines: .init(entries: []), tokens: .light, config: .glassLedger, event: event)
+        let parent = TranscriptLog(lines: .init(entries: []), tokens: .light, config: .glassLedger, panelText: .init(language: .russian), event: event)
         let coordinator = parent.makeCoordinator()
         coordinator.observeGeometry(of: scroll)
         coordinator.quietly { }
@@ -909,7 +927,7 @@ struct TranscriptLogTests {
 
         let config = PanelConfig.glassLedger
         return AnyView(
-            TranscriptLog(lines: lines, tokens: .light, config: config, event: event)
+            TranscriptLog(lines: lines, tokens: .light, config: config, panelText: .init(language: .russian), event: event)
                 .frame(width: config.panelWidth, height: height)
                 .background(GlassLedger.light.glass)
                 .environment(\.colorScheme, .light)

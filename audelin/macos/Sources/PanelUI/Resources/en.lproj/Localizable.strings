@@ -12,3 +12,17 @@
 "gap.microphone" = "— no microphone since %@ —";
 "gap.diskFull" = "— disk full since %@ —";
 "gap.callSilent" = "—  since %@ —";
+"status.notRecording" = "not recording";
+"action.start" = "Start";
+"action.stop" = "Stop";
+"log.empty" = "Not recording. Start, and text for both sides appears here.";
+"log.liveTextOff" = "Live text is off — the call is only being recorded.";
+"action.liveTextOn" = "Turn On Live Text";
+"log.preparing" = "Live text is getting ready — the call is already being recorded.";
+"log.preparingNote" = "Text will appear from the start of the call.";
+"held.release" = "Release";
+"held.releaseLabel" = "Release the selected text";
+"log.newBelow" = "%d new ↓";
+"speaker.me" = "me";
+"speaker.them" = "them";
+"log.lateSpan" = "written later · %@";
