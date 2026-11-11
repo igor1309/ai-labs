@@ -58,6 +58,7 @@ let package = Package(
                 .product(name: "SummaryFiles", package: "macos"),
                 .product(name: "SummaryRuntime", package: "macos"),
                 .product(name: "SpeakerIdentification", package: "macos"),
+                .product(name: "SpeakerAttribution", package: "macos"),
                 .product(name: "SettingsUI", package: "macos"),
 
                 .product(name: "IMRxObservation", package: "swift-imrx"),
