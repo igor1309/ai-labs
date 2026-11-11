@@ -23,6 +23,6 @@ struct CallsListPreviewTests {
             .appendingPathComponent("References/\(name)-\(scheme == .dark ? "dark" : "light").png")
 
         let outcome = try ReferenceImage.compare(image, with: url)
-        #expect(outcome == .matches || outcome == .recorded)
+        #expect([.matches, .recorded].contains(outcome))
     }
 }

@@ -41,8 +41,15 @@ public enum Offscreen {
 
     public static func snapshot(_ view: NSView) -> NSBitmapImageRep? {
 
+        // Two pixels a point whatever the display: a CI runner's screen is 1x,
+        // and a snapshot's size must not depend on the machine.
         view.display()
-        guard let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { return nil }
+        let scale = 2
+        guard let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: Int(view.bounds.width) * scale,
+                                         pixelsHigh: Int(view.bounds.height) * scale, bitsPerSample: 8, samplesPerPixel: 4,
+                                         hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB,
+                                         bytesPerRow: 0, bitsPerPixel: 0) else { return nil }
+        rep.size = view.bounds.size
         view.cacheDisplay(in: view.bounds, to: rep)
         return rep
     }
