@@ -9,7 +9,14 @@ import Testing
 @MainActor
 struct SummaryPreviewTests {
 
-    @Test(arguments: SummaryPreviews.states.map(\.name), [ColorScheme.light, .dark])
+    /// The notes are laid out by an AppKit text view, whose glyph placement
+    /// changes between macOS releases even in the bundled Plex fonts, so their
+    /// reference images hold only on the Mac that recorded them; CI runs a
+    /// different release and checks layout instead.
+    nonisolated static let textViewDiffers = ProcessInfo.processInfo.environment["GITHUB_ACTIONS"] != nil
+
+    @Test(.disabled(if: textViewDiffers, "text views draw differently across macOS releases"),
+          arguments: SummaryPreviews.states.map(\.name), [ColorScheme.light, .dark])
     func drawsAsItsReference(name: String, scheme: ColorScheme) throws {
 
         let host = Offscreen.host(view(SummaryPreviews.state(name), scheme: scheme), size: size, scheme: scheme)
@@ -64,7 +71,8 @@ struct SummaryPreviewTests {
         #expect(text.string.contains("О ЧЁМ ВСТРЕЧА") && text.string.contains("OTP-кода"))
     }
 
-    @Test(arguments: [ColorScheme.light, .dark])
+    @Test(.disabled(if: textViewDiffers, "text views draw differently across macOS releases"),
+          arguments: [ColorScheme.light, .dark])
     func aLongSummaryDrawsInANarrowWindow(scheme: ColorScheme) throws {
 
         let narrow = CGSize(width: 320, height: 900)
