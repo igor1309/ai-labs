@@ -25,8 +25,8 @@ Context menu, Alert, Rename field, Error banner).
 ## Status and actions
 
 - Status cell, right-aligned: summary being prepared (spinner), summary
-  failed (red alert), notes (eye; accent on the selected row; a click shows
-  the notes).
+  failed (red alert), notes (eye; accent only on the selected row while the
+  window is active, `sub` otherwise; a click shows the notes).
 - Hover tints the row and shows a ⋯ button at the end of the status cell,
   in no extra space. It opens the same menu as a right-click, below the
   button with right edges aligned: Открыть, Показать заметки, Переименовать,
@@ -44,9 +44,13 @@ Context menu, Alert, Rename field, Error banner).
 | Calls — renaming | The title cell is a field; the `yyyy.MM.dd-HHmm` prefix stays fixed. Return saves, Esc cancels |
 | Calls — confirm delete | A sheet over the list with Удалить and Отмена |
 | Calls — error | A banner pinned to the window's bottom |
-| Calls — window inactive | The selected row turns grey (`btn`) |
+| Calls — window inactive | The selected row turns grey (`btn`) and its eye `sub` |
 | Calls — empty, Calls — loading | One centred message |
 
-Open:
+## Tokens
 
-- Whether the selected row's eye stays accent while the window is inactive.
+Every colour, font, type size, gap, padding and radius is a Glass Ledger
+token; the only raw colours are the window's traffic lights and the
+transparent menu-item fill. Fixed sizes with no token are layout widths:
+time 40, duration and status cells 64, ⋯ button 20, icons 14, menu 240,
+alert 340, minimum window 560.
