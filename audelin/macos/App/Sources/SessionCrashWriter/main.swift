@@ -17,7 +17,7 @@ var boundary = rehearsalBoundary(
 )
 boundary.log = SavedTranscriptReport(transcript: transcript)
 let composition = try await startRehearsal(boundary: boundary, root: root)
-let frames = 19_200
+let frames = 96_000
 while true {
     microphone.yield(.init(samples: .init(repeating: 0.25, count: frames), sampleRate: 48_000))
     call.yield(.init(samples: .init(repeating: -0.25, count: frames), sampleRate: 48_000))
