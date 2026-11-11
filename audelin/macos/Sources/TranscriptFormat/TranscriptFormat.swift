@@ -85,8 +85,9 @@ public struct TranscriptFormat: Sendable {
         let tailCount = max(count - self.finalCount, 0)
         for position in 0..<tailCount {
             let segment = segment(self.finalCount + position)
-            if position < rendered.count, rendered[position].segment == segment { continue }
-            let part = try Rendered(segment)
+            let label = label(segment)
+            if position < rendered.count, rendered[position].segment == segment, rendered[position].label == label { continue }
+            let part = try Rendered(segment, label: label)
             if position < rendered.count { rendered[position] = part } else { rendered.append(part) }
         }
         rendered.removeLast(rendered.count - tailCount)
@@ -110,11 +111,20 @@ public struct TranscriptFormat: Sendable {
         return (finalText, Data((block.isEmpty ? rows : rows + "\n" + block).utf8), false)
     }
 
+    /// A remote speaker reads as `Them N`, N being its place in the speaker list; the list
+    /// only grows, so a final row's label holds. An unlisted or absent speaker reads as `Them`.
+    private func label(_ segment: Segment) -> String {
+
+        guard segment.side == .theirs else { return "Me" }
+        guard let id = segment.speaker, let index = speakers.firstIndex(where: { $0.id == id }) else { return "Them" }
+        return "Them \(index + 1)"
+    }
+
     /// A readable Speakers section and one versioned machine-readable block after it.
     private func speakerBlock() -> String {
 
         guard !speakers.isEmpty else { return "" }
-        let lines = speakers.map { "- Speaker \(Self.escaped($0.id)): \($0.name.map(Self.escaped) ?? "unknown")" }
+        let lines = speakers.enumerated().map { "- Them \($0.offset + 1): \($0.element.name.map(Self.escaped) ?? "unknown")" }
         struct Metadata: Encodable { let schemaVersion = 1; let revision: Int; let speakers: [Speaker] }
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
@@ -139,20 +149,21 @@ public struct TranscriptFormat: Sendable {
     private struct Rendered {
 
         let segment: Segment
+        let label: String
         let text: String
         let hasWords: Bool
 
-        init(_ segment: Segment) throws {
+        init(_ segment: Segment, label side: String) throws {
 
             guard segment.start.isFinite, segment.start >= 0, segment.start < Double(Int.max) else {
                 throw Failure.invalidStart
             }
             let seconds = Int(segment.start.rounded(.down))
             let time = String(format: "%02lld:%02lld:%02lld", seconds / 3_600, seconds / 60 % 60, seconds % 60)
-            let side = segment.side == .mine ? "Me" : segment.speaker.map { "Speaker \(TranscriptFormat.escaped($0))" } ?? "Them"
             let later = segment.filledInLater ? " (filled in later)" : ""
             let words = [segment.settled, segment.pending].filter { !$0.isEmpty }.joined(separator: " ")
             self.segment = segment
+            label = side
             text = "**\(side)** \(time)\(later)\n\(words)"
             hasWords = !words.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         }

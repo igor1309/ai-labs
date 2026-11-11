@@ -281,7 +281,7 @@ struct CallsTextTests {
             **Me** 00:00:05
             Итак, по OKR\\_2 второго квартала
 
-            **Speaker 1** 01:02:03 (filled in later)
+            **Them 1** 01:02:03 (filled in later)
             Да, \\*согласен\\*
 
             **Them** 00:10:00
