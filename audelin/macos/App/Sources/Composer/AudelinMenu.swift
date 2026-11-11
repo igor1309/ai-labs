@@ -62,6 +62,7 @@ public final class AudelinMenu {
     private var updateWatch: Task<Void, Never>?
     private var choosingFolder = false
     private let menuText = MenuBarText(language: .russian)
+    private let settingsText = SettingsText(language: .russian)
 
     public var menu: MenuBarModel {
         MenuBarModel(text: menuText.callAsFunction, recording: menuBarRecording(state),
@@ -162,7 +163,7 @@ public final class AudelinMenu {
                       selectedEngine: "parakeet", explainKeys: "", selectedTab: summarySettings?.selectedTab ?? .recording,
                       callNotes: summarySettings?.notes ?? .loading("Загружаем настройки…"))
         if let pickerFailure, case .idle = result.folder.status { result.folder.status = .pickerFailed(reason: pickerFailure) }
-        if let recordings = calls?.recordingsState { applyFolderMove(recordings, to: &result) }
+        if let recordings = calls?.recordingsState { applyFolderMove(recordings, text: settingsText, to: &result) }
         return result
     }
     public func sendSettings(_ event: SettingsEvent) async {

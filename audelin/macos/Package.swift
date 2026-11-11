@@ -195,7 +195,8 @@ let package = Package(
         ),
         .target(
             name: "SettingsUI",
-            dependencies: ["GlassLedger"]
+            dependencies: ["GlassLedger"],
+            resources: [.process("Resources")]
         ),
         .target(
             name: "Session"

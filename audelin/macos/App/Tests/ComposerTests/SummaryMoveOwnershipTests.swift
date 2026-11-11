@@ -5,6 +5,7 @@ import Foundation
 import Recordings
 import SummaryFiles
 import Synchronization
+import SettingsUI
 import Testing
 @testable import Composer
 
@@ -50,7 +51,7 @@ import Testing
                 var next: RecordingsEvent? = event
                 while let event = next {
                     events.append(event)
-                    let (changed, effect) = RecordingsReducer.reduce(state, event)
+                    let (changed, effect) = recordingsReducer(SettingsText(language: .russian)).reduce(state, event)
                     state = changed; next = nil
                     if let effect { for await result in handler.handle(effect) { next = result } }
                 }

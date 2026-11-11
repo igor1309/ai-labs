@@ -1,0 +1,3 @@
+"move.detail" = "Calls: %1$d of %2$d · %3$@ of %4$@";
+"move.counting" = "Counting calls…";
+"move.refreshing" = "Updating the calls list…";

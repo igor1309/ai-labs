@@ -5,6 +5,7 @@ import Reading
 import Recording
 import Recordings
 import Session
+import SettingsUI
 
 /// Each recording's reading model, reducing on the main actor.
 @MainActor
@@ -143,8 +144,15 @@ func quit(_ handler: LifecycleEffectHandler) async {
 }
 
 @MainActor
-func makeRecordings(handler: RecordingsEffectHandler, initial: RecordingsState = .init()) -> RecordingsInputs {
-    let model = ObservableModel(initialState: initial, reduce: RecordingsReducer.reduce,
+func makeRecordings(handler: RecordingsEffectHandler, text: SettingsText, initial: RecordingsState = .init()) -> RecordingsInputs {
+    let model = ObservableModel(initialState: initial, reduce: recordingsReducer(text).reduce,
                                 handleEffect: { handleRecordingsEffect(handler, $0) })
     return RecordingsInputs(state: { model.state }, send: { model.event($0) })
+}
+
+/// The calls list machine, with its text in the given language.
+func recordingsReducer(_ text: SettingsText) -> RecordingsReducer {
+    RecordingsReducer(failureMessage: { prior, refreshError in
+        prior + " Не удалось обновить список: " + refreshError
+    }, moveText: folderMoveText(text))
 }

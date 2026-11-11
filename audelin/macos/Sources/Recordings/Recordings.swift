@@ -78,21 +78,6 @@ public struct RecordingsReducer: Sendable {
         self.moveText = moveText
     }
 
-    public static func moveText(_ move: CallsFolderMove) -> MoveText {
-        let size = ByteCountFormatter.string(fromByteCount: move.totalBytes, countStyle: .file)
-        let moved = ByteCountFormatter.string(fromByteCount: move.movedBytes, countStyle: .file)
-        return .init(title: "Перенести звонки: \(move.totalCalls) (\(size))?",
-                     body: "Звонков: \(move.totalCalls), \(size). В \(move.destination.path). Во время переноса запись не начнётся.",
-                     detail: "Звонков: \(move.completed.count) из \(move.totalCalls) · \(moved) из \(size)",
-                     moved: "Перенесено звонков: \(move.completed.count) из \(move.totalCalls)")
-    }
-
-    public static func reduce(_ state: RecordingsState, _ event: RecordingsEvent) -> (RecordingsState, RecordingsEffect?) {
-        Self(failureMessage: { prior, refreshError in
-            prior + " Не удалось обновить список: " + refreshError
-        }, moveText: Self.moveText).reduce(state, event)
-    }
-
     public func reduce(_ state: RecordingsState, _ event: RecordingsEvent) -> (RecordingsState, RecordingsEffect?) {
         if let result = reduceMove(state, event) { return result }
         var state = state

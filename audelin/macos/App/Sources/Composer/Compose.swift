@@ -6,6 +6,7 @@ import Recordings
 import TrackFile
 import SummaryRuntime
 import SummaryFiles
+import SettingsUI
 
 /// Builds the same recording, panel, menu and calls composition for every caller.
 @MainActor
@@ -56,7 +57,7 @@ public func compose(
                                       release: { [weak menu] in await menu?.releaseCallsFolder() },
                                       storeFolder: { destination in
                                           try await storage.commitFolder(destination) { try preferences.updateCallsFolder(destination) }
-                                      }), initial: .init(callsFolder: preferences.read().callsFolder)),
+                                      }), text: SettingsText(language: .russian), initial: .init(callsFolder: preferences.read().callsFolder)),
                                   timeZone: timeZone, recordingState: { [weak menu] in menu?.state ?? .init() },
                                   location: { try await storage.location(id: $0) }, openFolder: openCallsFolder,
                                   present: presentCalls, summaryStatuses: { summaries.statuses },

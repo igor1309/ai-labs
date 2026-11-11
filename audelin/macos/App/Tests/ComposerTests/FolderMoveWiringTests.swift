@@ -33,18 +33,59 @@ struct FolderMoveWiringTests {
                            totalCalls: 52, totalBytes: 135_000_000, movedBytes: 100_000_000, progress: 31.0 / 52, text: text)
         var screen = SettingsState(recordsCalls: false, liveText: false, folder: .init(path: "/old", status: .idle(calls: "")), engines: [], selectedEngine: nil, explainKeys: "")
         state.phase = .askingMove
-        applyFolderMove(state, to: &screen)
+        applyFolderMove(state, text: SettingsText(language: .russian), to: &screen)
         #expect(screen.moveConfirm == .init(title: text.title, body: text.body))
         state.phase = .moving
-        applyFolderMove(state, to: &screen)
+        applyFolderMove(state, text: SettingsText(language: .russian), to: &screen)
         #expect(screen.folder.status == .moving(done: 31.0 / 52, detail: text.detail))
         state.phase = .failedMove; state.failure = .init(id: "A", reason: "disk full")
-        applyFolderMove(state, to: &screen)
+        applyFolderMove(state, text: SettingsText(language: .russian), to: &screen)
         #expect(screen.folder.path == "/old")
         #expect(screen.folder.status == .failed(moved: text.moved, reason: "«A Zoom»: disk full"))
         state.phase = .refusedMove
-        applyFolderMove(state, to: &screen)
+        applyFolderMove(state, text: SettingsText(language: .russian), to: &screen)
         #expect(screen.folder.status == .recording)
+    }
+
+    @Test(arguments: SettingsLanguage.allCases)
+    nonisolated func moveTextNamesTheDestinationCountsAndSizesInTheLanguage(language: SettingsLanguage) {
+        let text = SettingsText(language: language)
+        let size = { (bytes: Int64) in text.size(bytes) }
+        let destination = URL(fileURLWithPath: "/destination")
+        let one = MoveCall(id: "A", title: "", bytes: 3)
+        let moveText = folderMoveText(text)
+        let single = moveText(.init(destination: destination, completed: [one], totalCalls: 1, totalBytes: 3, movedBytes: 3))
+        let many = moveText(.init(destination: destination, completed: [one], totalCalls: 2, totalBytes: 10, movedBytes: 3))
+        switch language {
+        case .russian:
+            #expect(single == MoveText(title: "Перенести звонки: 1 (\(size(3)))?",
+                                       body: "Звонков: 1, \(size(3)). В /destination. Во время переноса запись не начнётся.",
+                                       detail: "Звонков: 1 из 1 · \(size(3)) из \(size(3))", moved: "Перенесено звонков: 1 из 1"))
+            #expect(many.title == "Перенести звонки: 2 (\(size(10)))?")
+            #expect(many.moved == "Перенесено звонков: 1 из 2")
+        case .english:
+            #expect(single == MoveText(title: "Move 1 call (\(size(3)))?",
+                                       body: "1 call, \(size(3)). To /destination. Recording won’t start during the move.",
+                                       detail: "Calls: 1 of 1 · \(size(3)) of \(size(3))", moved: "Moved 1 of 1 call"))
+            #expect(many.title == "Move 2 calls (\(size(10)))?")
+            #expect(many.body.hasPrefix("2 calls, "))
+            #expect(many.moved == "Moved 1 of 2 calls")
+        }
+        #expect(text.size(10) != "")
+        #expect(SettingsText(language: .russian).size(2_000_000).contains("МБ"))
+        #expect(SettingsText(language: .english).size(2_000_000).contains("MB"))
+    }
+
+    @Test func countingAndRefreshingLinesComeFromTheGivenText() {
+        var state = RecordingsState(callsFolder: URL(fileURLWithPath: "/old"))
+        state.move = .init(destination: URL(fileURLWithPath: "/new"))
+        var screen = SettingsState(recordsCalls: false, liveText: false, folder: .init(path: "/old", status: .idle(calls: "")), engines: [], selectedEngine: nil, explainKeys: "")
+        state.phase = .countingMove
+        applyFolderMove(state, text: SettingsText(language: .english), to: &screen)
+        #expect(screen.folder.status == .moving(done: 0, detail: "Counting calls…"))
+        state.phase = .failedMove; state.isListing = true
+        applyFolderMove(state, text: SettingsText(language: .english), to: &screen)
+        #expect(screen.folder.status == .moving(done: 0, detail: "Updating the calls list…"))
     }
 
     @Test func composedMoveHoldsAStartUntilReleaseAndRefreshesTheList() async throws {
@@ -53,7 +94,7 @@ struct FolderMoveWiringTests {
             let inputs = makeRecordings(handler: .init(calls: spy,
                 reserve: { await rig.menu.reserveCallsFolder() },
                 release: { await rig.menu.releaseCallsFolder() }, storeFolder: { await spy.store($0) }),
-                initial: .init(callsFolder: rig.root))
+                text: SettingsText(language: .russian), initial: .init(callsFolder: rig.root))
             let calls = AudelinCalls(inputs: inputs, timeZone: .gmt, recordingState: { rig.menu.state },
                                     location: { _ in rig.root }, openFolder: { _ in true }, present: {})
             rig.menu.installCalls(calls)
@@ -95,7 +136,7 @@ struct FolderMoveWiringTests {
             let inputs = makeRecordings(handler: .init(calls: spy,
                 reserve: { await rig.menu.reserveCallsFolder() },
                 release: { await rig.menu.releaseCallsFolder() }, storeFolder: { await spy.store($0) }),
-                initial: .init(callsFolder: rig.root))
+                text: SettingsText(language: .russian), initial: .init(callsFolder: rig.root))
             let calls = AudelinCalls(inputs: inputs, timeZone: .gmt, recordingState: { rig.menu.state },
                                     location: { _ in rig.root }, openFolder: { _ in true }, present: {})
             rig.menu.installCalls(calls)
