@@ -149,7 +149,7 @@ top of its ARCHITECTURE.md "because you tend to ignore these grounding rules".)
   domain language outward; the supervisor has its own language and imports
   nothing; in the root, the CLI is injected into the wrapper and the wrapper is
   adapted to speak supervisor.
-- **Decorators carry behaviour without new components.** "Imagine I decorate
+- **Decorators add behaviour at the root.** A decorator is itself a component. "Imagine I decorate
   the text stream from the recognizer with a file write in the composition
   root — boom, I have text in a file; decorate audio capture and I have audio
   in a file." Tracing "does not justify type expansion — each injected closure
@@ -300,29 +300,26 @@ top of its ARCHITECTURE.md "because you tend to ignore these grounding rules".)
 - The skills were written by an LLM: "new and untested... which has bad ideas
   regarding architecture". Use their notation; do not take their layering.
 
-## 11. Gaps worth settling (added by the compiler, not the owner's words)
+## 11. Rulings on earlier gaps
 
-These came up implicitly but were never stated as a rule. Each needs an owner
-ruling before it is treated as guidance.
+- **Shared vocabulary.** Generic, reusable primitives (`Identifiable`,
+  `Tagged`) may be shared. Domain notions (Money, File and the like) may not:
+  "if you have a shared 'primitive' you force components to change not because
+  they need to change but because someone needs to change."
+- **Errors.** Same principle: a component owns its interfaces, including the
+  types those interfaces use, errors included. Adapters map outside failures
+  into them.
+- **Concurrency and lifetime.** Concurrency and threading belong to
+  composition; a component that reasons about them is drifting beyond its
+  responsibility. A component's lifetime (who holds it, until when) is stated
+  in each product's architecture doc, not in this approach doc.
+- **Constructor shape** is an implementation concern, not architecture. No
+  hard rule: 2–3 parameters are fine; 4 or more call for encapsulation, and
+  sometimes even 2 are better structured.
+- **Decorators are components**, like any other (see the many decorators in
+  the iOS repo). There is no threshold where one "becomes" a component.
 
-1. **Who owns a cross-component vocabulary that really is shared**, such as
-   IDs or money. Rule 3 forbids a shared domain module; sessions use
-   `Tagged` and per-component types. Is a tiny primitives module (IDs,
-   `Tagged`) allowed, or does every component declare its own?
-2. **Error ownership across boundaries.** The CBDC note says the
-   business-logic interface defines the error types it needs. Is that the
-   general rule (each consumer declares its failure cases; the adapter maps
-   vendor errors into them)?
-3. **Concurrency and lifetime as architecture.** Who holds a long-lived
-   component (Control in audelin, the CBDC card store on Android) and who ends
-   it came up repeatedly, but no rule says that an architecture names each
-   component's holder and lifetime. Section 1's "who would hold, who would
-   construct" suggests it does.
-4. **Constructor shape.** Positional arguments versus a dependency struct for
-   use-case constructors was left open in agister.
-5. **When a decorator becomes a component.** Persisting a text stream is a
-   decorator; at what point (state, retries, its own failures) does it earn
-   its own component and interface?
-6. **How architecture is checked.** Agister has an `archtest` package and an
-   architecture review prompt. Which rules should be machine-checked (imports, shared
-   interfaces) in every project, and which stay with review?
+## 12. Open: how architecture is checked
+
+This collection exists for that. The goal is a skill built from it, and an
+agister agent that uses the skill to design and review architecture.
