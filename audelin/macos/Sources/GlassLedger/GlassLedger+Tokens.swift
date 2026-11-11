@@ -25,8 +25,6 @@ public struct GlassLedger: Equatable, Sendable {
     public let rec: Color
     public let warn: Color
     public let warnBg: Color
-    /// A search match's highlight.
-    public let hit: Color
     public let errBg: Color
     public let okBg: Color
     public let shadow: Color
@@ -54,9 +52,13 @@ public struct GlassLedger: Equatable, Sendable {
     public let space20: CGFloat
     public let space24: CGFloat
     public let space28: CGFloat
-    public let space32: CGFloat
     public let space40: CGFloat
     public let lineBody: CGFloat
+    public let them2: Color
+    public let them3: Color
+    public let them4: Color
+    public let hit: Color
+    public let space32: CGFloat
 
     public static let light = GlassLedger(
         glass: .hex(0xFFFFFF, 0xE6),
@@ -77,7 +79,6 @@ public struct GlassLedger: Equatable, Sendable {
         rec: .hex(0xE5484D, 0xFF),
         warn: .hex(0xB56A00, 0xFF),
         warnBg: .hex(0xC27A06, 0x1A),
-        hit: .hex(0xFFD84D, 0x8C),
         errBg: .hex(0xE5484D, 0x14),
         okBg: .hex(0x0E9F92, 0x14),
         shadow: .hex(0x000000, 0x40),
@@ -105,9 +106,13 @@ public struct GlassLedger: Equatable, Sendable {
         space20: 20,
         space24: 24,
         space28: 28,
-        space32: 32,
         space40: 40,
-        lineBody: 20
+        lineBody: 20,
+        them2: .hex(0x6E56CF, 0xFF),
+        them3: .hex(0x2F6FDB, 0xFF),
+        them4: .hex(0xC2417F, 0xFF),
+        hit: .hex(0xFFD84D, 0x8C),
+        space32: 32
     )
 
     public static let dark = GlassLedger(
@@ -129,7 +134,6 @@ public struct GlassLedger: Equatable, Sendable {
         rec: .hex(0xF2555A, 0xFF),
         warn: .hex(0xF5B454, 0xFF),
         warnBg: .hex(0xF5B454, 0x1F),
-        hit: .hex(0xE0B020, 0x7A),
         errBg: .hex(0xF2555A, 0x1F),
         okBg: .hex(0x4FD1C5, 0x1F),
         shadow: .hex(0x000000, 0x80),
@@ -157,8 +161,12 @@ public struct GlassLedger: Equatable, Sendable {
         space20: 20,
         space24: 24,
         space28: 28,
-        space32: 32,
         space40: 40,
-        lineBody: 20
+        lineBody: 20,
+        them2: .hex(0xB4A2FF, 0xFF),
+        them3: .hex(0x82AAFF, 0xFF),
+        them4: .hex(0xF28CC0, 0xFF),
+        hit: .hex(0xE0B020, 0x7A),
+        space32: 32
     )
 }
