@@ -24,7 +24,17 @@ public enum Offscreen {
         window.contentView = host
         if size == nil { window.setContentSize(host.fittingSize) }
         host.layoutSubtreeIfNeeded()
+        // Scrollers follow the machine's pointing device: a CI runner has no
+        // trackpad and shows legacy ones. Draw the overlay style everywhere.
+        overlayScrollers(in: host)
+        host.layoutSubtreeIfNeeded()
         return host
+    }
+
+    private static func overlayScrollers(in view: NSView) {
+
+        (view as? NSScrollView)?.scrollerStyle = .overlay
+        view.subviews.forEach(overlayScrollers(in:))
     }
 
     public static func textView(in view: NSView) -> NSTextView? {
