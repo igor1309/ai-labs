@@ -14,7 +14,7 @@ Context menu, Alert, Rename field, Error banner).
   (Пятница, 7 ноября); older days the date (3 сентября), with the year only
   when it is not the current one (12 декабря 2025). It shows the day's call
   count.
-- Row, about 28 pt: start time (HH:mm, `font-data`), title, duration
+- Row, 32 pt: start time (HH:mm, `font-data`), title, duration
   (right-aligned, 64 pt), status cell (64 pt). An untitled call shows its
   folder name in `font-data`, `gutter`.
 - The title is one line and truncates with an ellipsis. Nothing in a row
@@ -29,7 +29,7 @@ Context menu, Alert, Rename field, Error banner).
   window is active, `sub` otherwise; a click shows the notes).
 - Hover changes nothing in a row. A right-click selects the row and opens
   its menu at the pointer, so the menu always acts on the selected call:
-  Открыть, Показать заметки, Переименовать, Повторить итоги (only when the
+  Открыть, Показать итоги, Переименовать, Повторить итоги (only when the
   summary failed), Удалить…. Открыть shows the call's folder in Finder.
 - Keys: ↑↓ select, Return opens, Space shows notes, ⌘R renames, ⌘⌫ asks to
   delete. Double-click opens.

@@ -75,7 +75,7 @@ public struct CallsListView: View {
         var items: [RowMenuItem?] = [
             RowMenuItem(title: text(.open), key: "\r", isEnabled: !state.busy) { event(.open(row.id)) },
         ]
-        if row.hasNotes { items.append(RowMenuItem(title: text(.showNotes), key: " ") { event(.preview(row.id)) }) }
+        if row.hasNotes { items.append(RowMenuItem(title: text(.showSummary), key: " ") { event(.preview(row.id)) }) }
         items.append(RowMenuItem(title: text(.rename), key: "r", modifiers: .command, isEnabled: row.editable && !state.busy) {
             event(.beginRename(row.id))
         })
@@ -179,7 +179,7 @@ public struct CallsListView: View {
     private let timeWidth: CGFloat = 40
     private let cellWidth: CGFloat = 64
     private let iconSize: CGFloat = 14
-    private var rowHeight: CGFloat { tokens.space28 }
+    private var rowHeight: CGFloat { tokens.space32 }
 
     /// The eye a call with notes shows; a call without keeps its place empty.
     @ViewBuilder private func eye(_ row: CallsListState.Row) -> some View {
@@ -193,8 +193,8 @@ public struct CallsListView: View {
                     .contentShape(.rect)
             }
             .buttonStyle(.plain)
-            .help(text(.showNotes))
-            .accessibilityLabel(text(.showNotes))
+            .help(text(.showSummary))
+            .accessibilityLabel(text(.showSummary))
             .accessibilityAddTraits(previewed ? .isSelected : [])
             .accessibilityIdentifier("calls.eye.\(row.id)")
         } else {

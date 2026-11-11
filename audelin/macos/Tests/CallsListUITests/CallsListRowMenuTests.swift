@@ -15,7 +15,7 @@ struct CallsListRowMenuTests {
         let menu = try #require(try target("2026.10.20-1600", in: host).menu(for: rightClick()))
 
         #expect(spy.events == [.select("2026.10.20-1600")])
-        #expect(menu.items.map(\.title) == ["Открыть", "Показать заметки", "Переименовать", "Повторить подготовку итогов", "", "Удалить…"])
+        #expect(menu.items.map(\.title) == ["Открыть", "Показать итоги", "Переименовать", "Повторить подготовку итогов", "", "Удалить…"])
     }
 
     @Test func menuShowsTheRowsKeys() throws {

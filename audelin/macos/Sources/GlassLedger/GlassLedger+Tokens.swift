@@ -52,6 +52,7 @@ public struct GlassLedger: Equatable, Sendable {
     public let space20: CGFloat
     public let space24: CGFloat
     public let space28: CGFloat
+    public let space32: CGFloat
     public let space40: CGFloat
     public let lineBody: CGFloat
 
@@ -101,6 +102,7 @@ public struct GlassLedger: Equatable, Sendable {
         space20: 20,
         space24: 24,
         space28: 28,
+        space32: 32,
         space40: 40,
         lineBody: 20
     )
@@ -151,6 +153,7 @@ public struct GlassLedger: Equatable, Sendable {
         space20: 20,
         space24: 24,
         space28: 28,
+        space32: 32,
         space40: 40,
         lineBody: 20
     )

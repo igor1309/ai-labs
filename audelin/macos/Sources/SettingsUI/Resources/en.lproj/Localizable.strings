@@ -2,7 +2,7 @@
 "move.counting" = "Counting calls…";
 "move.refreshing" = "Updating the calls list…";
 "tab.recording" = "Recording";
-"tab.callNotes" = "Call Notes";
+"tab.callNotes" = "Call Summaries";
 "row.recording" = "Recording";
 "row.folder" = "Data Folder";
 "row.engine" = "Final Transcript";
@@ -42,7 +42,7 @@
 "runtime.loopback" = "Transcript → a server on this Mac. The server may pass the data on.";
 "runtime.remote" = "Transcript → %@ · billed at API rates";
 "runtime.configuredAPI" = "the configured API";
-"runtime.noFallback" = "No fallback service is set up. If the main service fails, notes won’t be ready; the transcript and audio are kept.";
+"runtime.noFallback" = "No fallback service is set up. If the main service fails, the summary won’t be ready; the transcript and audio are kept.";
 "notes.disclosure" = "The chosen service receives the full transcript.";
 "notes.disclosureFallback" = "The chosen service receives the full transcript. The fallback receives it only when a request is retried.";
 "field.findAutomatically" = "Find automatically";
@@ -63,7 +63,7 @@
 "issue.endpoint" = "enter HTTPS or loopback HTTP with no login, password, query or fragment.";
 "issue.credentialVariable" = "enter only the credential variable’s name, not its value.";
 "issue.format" = "%1$@ · %2$@: %3$@";
-"notes.automatic" = "Write notes after a call";
+"notes.automatic" = "Write a summary after a call";
 "notes.automaticNote" = "Once the transcript is finished.";
 "notes.speakers" = "Identify participants’ names";
 "notes.details" = "About data, billing and checks";
