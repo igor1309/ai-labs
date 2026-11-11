@@ -50,7 +50,7 @@ public func compose(
         sink: boundary.log, presentPanel: presentPanel, sleep: boundary.time.sleep, cleanupRuns: cleanupRuns, summaries: summaries)
     menu.installFolderPicker(chooseCallsFolder)
     menu.installSettings(AudelinSettings(preferences: SummaryPreferences(storage: preferences),
-                                        availability: SummaryAvailability(runtime: runtime)), present: presentSettings)
+                                        availability: SummaryAvailability(runtime: runtime), text: SettingsText(language: .russian)), present: presentSettings)
     let disk = SummaryCalls(storage: storage, deleted: { await summaries.forget(call: $0) })
     menu.installCalls(AudelinCalls(inputs: makeRecordings(handler: RecordingsEffectHandler(calls: disk,
                                       reserve: { [weak menu] in await menu?.reserveCallsFolder() ?? false },

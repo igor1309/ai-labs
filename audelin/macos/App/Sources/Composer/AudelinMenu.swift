@@ -161,7 +161,7 @@ public final class AudelinMenu {
                       folder: .init(path: settings.callsFolder.path, status: state.phase == .idle ? .idle(calls: "") : .recording),
                       engines: [.init(id: "parakeet", name: "Parakeet v3", note: settingsText(.localRecognition), availability: "", size: "")],
                       selectedEngine: "parakeet", explainKeys: "", selectedTab: summarySettings?.selectedTab ?? .recording,
-                      callNotes: summarySettings?.notes ?? .loading("Загружаем настройки…"))
+                      callNotes: summarySettings?.notes ?? .loading(settingsText(.notesLoading)))
         if let pickerFailure, case .idle = result.folder.status { result.folder.status = .pickerFailed(reason: pickerFailure) }
         if let recordings = calls?.recordingsState { applyFolderMove(recordings, text: settingsText, to: &result) }
         return result

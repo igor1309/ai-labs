@@ -97,12 +97,12 @@ public struct Reducer: Sendable {
     private let message: @Sendable (State.Phase) -> String
     private let safety: @Sendable (Configuration) -> [ValidationIssue]
     private let issueMessage: @Sendable (ValidationIssue) -> String
-    private let runtimeDisclosure: @Sendable (Configuration.Runtime) -> String
+    private let runtimeDisclosure: @Sendable (Configuration.Runtime?) -> String
     public init(disclosure: @escaping @Sendable (Configuration) -> String,
                 message: @escaping @Sendable (State.Phase) -> String,
                 safety: @escaping @Sendable (Configuration) -> [ValidationIssue],
                 issueMessage: @escaping @Sendable (ValidationIssue) -> String,
-                runtimeDisclosure: @escaping @Sendable (Configuration.Runtime) -> String) {
+                runtimeDisclosure: @escaping @Sendable (Configuration.Runtime?) -> String) {
         self.disclosure = disclosure; self.message = message
         self.safety = safety; self.issueMessage = issueMessage; self.runtimeDisclosure = runtimeDisclosure
     }
@@ -203,7 +203,7 @@ public struct Reducer: Sendable {
         if let draft = next.draft {
             next.runtimes = [(Slot.primary, draft.primary), (.fallback, draft.fallback)].map { slot, runtime in
                 guard let runtime else {
-                    return RenderedRuntime(slot: slot, kind: nil, fields: [], disclosure: "Резервный сервис не настроен. При ошибке основного сервиса итоги не будут готовы; расшифровка и аудио сохранятся.")
+                    return RenderedRuntime(slot: slot, kind: nil, fields: [], disclosure: runtimeDisclosure(nil))
                 }
                 var fields: [(Field, String)] = [(.model, runtime.model)]
                 fields += runtime.kind == .claudeCLI ? [(.executable, runtime.executable)] : [(.endpoint, runtime.endpoint), (.credentialVariable, runtime.credentialVariable)]

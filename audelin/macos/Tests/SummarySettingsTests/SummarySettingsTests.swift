@@ -209,14 +209,14 @@ private struct AvailabilitySpy: Availability {
 private func makeReducer() -> Reducer {
     Reducer(disclosure: { "recipients: \($0.primary.endpoint), \($0.fallback?.endpoint)" },
             message: { "\($0)" }, safety: { _ in [] },
-            issueMessage: { "issue: \($0.slot) \($0.field)" }, runtimeDisclosure: { "runtime: \($0.model)" })
+            issueMessage: { "issue: \($0.slot) \($0.field)" }, runtimeDisclosure: { "runtime: \($0?.model ?? "none")" })
 }
 
 @Suite struct SummarySettingsRenderedStateTests {
     @Test func pureDependenciesReceiveExactEditsAndTheirValuesAreRendered() {
         let disclosureCalls = Mutex<[Configuration]>([])
         let safetyCalls = Mutex<[Configuration]>([])
-        let runtimeCalls = Mutex<[Configuration.Runtime]>([])
+        let runtimeCalls = Mutex<[Configuration.Runtime?]>([])
         let messageCalls = Mutex<[State.Phase]>([])
         let issueCalls = Mutex<[ValidationIssue]>([])
         let issue = ValidationIssue(slot: .fallback, field: .endpoint, hidesValue: true)
