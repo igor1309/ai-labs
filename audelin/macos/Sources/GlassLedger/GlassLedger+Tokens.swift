@@ -39,6 +39,11 @@ public struct GlassLedger: Equatable, Sendable {
     public let typeSmall: CGFloat
     public let typeBody: CGFloat
     public let typeTitle: CGFloat
+    public let typeReading: CGFloat
+    public let typeTopic: CGFloat
+    public let typeHeading: CGFloat
+    public let typeDisplay: CGFloat
+    public let lineReading: CGFloat
     public let radiusBar: CGFloat
     public let radiusControl: CGFloat
     public let radiusCard: CGFloat
@@ -49,7 +54,9 @@ public struct GlassLedger: Equatable, Sendable {
     public let space8: CGFloat
     public let space12: CGFloat
     public let space16: CGFloat
+    public let space20: CGFloat
     public let space24: CGFloat
+    public let space28: CGFloat
     public let space40: CGFloat
 
     public static let light = GlassLedger(
@@ -85,6 +92,11 @@ public struct GlassLedger: Equatable, Sendable {
         typeSmall: 12,
         typeBody: 13,
         typeTitle: 18,
+        typeReading: 16,
+        typeTopic: 15,
+        typeHeading: 22,
+        typeDisplay: 28,
+        lineReading: 26,
         radiusBar: 2,
         radiusControl: 6,
         radiusCard: 10,
@@ -95,7 +107,9 @@ public struct GlassLedger: Equatable, Sendable {
         space8: 8,
         space12: 12,
         space16: 16,
+        space20: 20,
         space24: 24,
+        space28: 28,
         space40: 40
     )
 
@@ -132,6 +146,11 @@ public struct GlassLedger: Equatable, Sendable {
         typeSmall: 12,
         typeBody: 13,
         typeTitle: 18,
+        typeReading: 16,
+        typeTopic: 15,
+        typeHeading: 22,
+        typeDisplay: 28,
+        lineReading: 26,
         radiusBar: 2,
         radiusControl: 6,
         radiusCard: 10,
@@ -142,7 +161,9 @@ public struct GlassLedger: Equatable, Sendable {
         space8: 8,
         space12: 12,
         space16: 16,
+        space20: 20,
         space24: 24,
+        space28: 28,
         space40: 40
     )
 }

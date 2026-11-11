@@ -15,6 +15,18 @@ public extension GlassLedger {
         .custom(fontUi, fixedSize: size).weight(weight)
     }
 
+    /// The transcript font for AppKit text.
+    func nsData(_ size: CGFloat, _ weight: NSFont.Weight = .regular) -> NSFont {
+
+        nsFont(fontData, size, weight) ?? .monospacedSystemFont(ofSize: size, weight: weight)
+    }
+
+    /// The interface font for AppKit text.
+    func nsUi(_ size: CGFloat, _ weight: NSFont.Weight = .regular) -> NSFont {
+
+        nsFont(fontUi, size, weight) ?? .systemFont(ofSize: size, weight: weight)
+    }
+
     /// Extra space that makes each line of the font as tall as the design's
     /// line height, a ratio of the font size.
     func leading(_ family: String, _ size: CGFloat, _ lineHeight: CGFloat) -> CGFloat {
@@ -24,6 +36,13 @@ public extension GlassLedger {
 
         return max(0, size * lineHeight - natural)
     }
+}
+
+private func nsFont(_ family: String, _ size: CGFloat, _ weight: NSFont.Weight) -> NSFont? {
+
+    let descriptor = NSFontDescriptor(fontAttributes: [.family: family])
+        .addingAttributes([.traits: [NSFontDescriptor.TraitKey.weight: weight]])
+    return NSFont(descriptor: descriptor, size: size)
 }
 
 public extension View {

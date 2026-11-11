@@ -9,13 +9,7 @@ import Testing
 @MainActor
 struct SummaryPreviewTests {
 
-    /// The preview is set in the system's SF Pro and SF Mono, whose glyphs change
-    /// between macOS releases, so its reference images hold only on the Mac that
-    /// recorded them; CI runs a different release and checks layout instead.
-    nonisolated static let systemFontsDiffer = ProcessInfo.processInfo.environment["GITHUB_ACTIONS"] != nil
-
-    @Test(.disabled(if: systemFontsDiffer, "SF Pro differs between macOS releases"),
-          arguments: SummaryPreviews.states.map(\.name), [ColorScheme.light, .dark])
+    @Test(arguments: SummaryPreviews.states.map(\.name), [ColorScheme.light, .dark])
     func drawsAsItsReference(name: String, scheme: ColorScheme) throws {
 
         let host = Offscreen.host(view(SummaryPreviews.state(name), scheme: scheme), size: size, scheme: scheme)
@@ -70,8 +64,7 @@ struct SummaryPreviewTests {
         #expect(text.string.contains("О ЧЁМ ВСТРЕЧА") && text.string.contains("OTP-кода"))
     }
 
-    @Test(.disabled(if: systemFontsDiffer, "SF Pro differs between macOS releases"),
-          arguments: [ColorScheme.light, .dark])
+    @Test(arguments: [ColorScheme.light, .dark])
     func aLongSummaryDrawsInANarrowWindow(scheme: ColorScheme) throws {
 
         let narrow = CGSize(width: 320, height: 900)
@@ -84,7 +77,7 @@ struct SummaryPreviewTests {
         #expect([.matches, .recorded].contains(outcome))
     }
 
-    @Test func theNotesAreSetInReadingContrast() throws {
+    @Test func theNotesAreSetInReadingContrastTokens() throws {
 
         var calls: [(source: String, style: NotesStyle)] = []
         let rendered = NSAttributedString(string: "отрисовано")
@@ -97,14 +90,13 @@ struct SummaryPreviewTests {
 
         let call = try #require(calls.last)
         #expect(call.source == SummaryPreviews.notes)
-        let sans = NSFont.systemFont(ofSize: 16).familyName
-        let mono = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular).familyName
-        #expect(call.style.body.familyName == sans && call.style.body.pointSize == 16)
-        #expect(call.style.lineHeight == 26)
+        let sans = tokens.fontUi, mono = tokens.fontData
+        #expect(call.style.body.familyName == sans && call.style.body.pointSize == tokens.typeReading)
+        #expect(call.style.lineHeight == tokens.lineReading)
         #expect(call.style.code.familyName == mono)
-        #expect(call.style.headings[1].familyName == mono && call.style.headings[1].pointSize == 12)
+        #expect(call.style.headings[1].familyName == mono && call.style.headings[1].pointSize == tokens.typeSmall)
         #expect(call.style.labelLevels == [2])
-        #expect(call.style.headings[2].familyName == sans && call.style.headings[2].pointSize == 15)
+        #expect(call.style.headings[2].familyName == sans && call.style.headings[2].pointSize == tokens.typeTopic)
         #expect(call.style.text == NSColor(tokens.text))
         #expect(call.style.secondary == NSColor(tokens.gutter))
         #expect(text.string == "отрисовано")
