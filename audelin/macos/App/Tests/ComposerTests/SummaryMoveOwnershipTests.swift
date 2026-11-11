@@ -5,6 +5,7 @@ import Foundation
 import Recordings
 import SummaryFiles
 import Synchronization
+import SettingsUI
 import Testing
 @testable import Composer
 
@@ -44,14 +45,14 @@ import Testing
                         }))
                 })
             let handler = RecordingsEffectHandler(calls: SummaryCalls(storage: storage, deleted: { _ in }), reserve: { true }, release: {},
-                storeFolder: { _ in stored.withLock { $0 = true } })
+                storeFolder: { _ in stored.withLock { $0 = true } }, describe: russianSettings.callsFailure)
             var state = RecordingsState(callsFolder: source)
             var events: [RecordingsEvent] = []
             func send(_ event: RecordingsEvent) async {
                 var next: RecordingsEvent? = event
                 while let event = next {
                     events.append(event)
-                    let (changed, effect) = RecordingsReducer.reduce(state, event)
+                    let (changed, effect) = recordingsReducer { SettingsText(language: .russian) }.reduce(state, event)
                     state = changed; next = nil
                     if let effect { for await result in handler.handle(effect) { next = result } }
                 }

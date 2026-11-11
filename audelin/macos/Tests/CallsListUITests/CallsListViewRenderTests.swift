@@ -21,7 +21,7 @@ struct CallsListViewRenderTests {
 
     private func view(_ state: CallsListState) -> some View {
 
-        CallsListView(state: state, event: { _ in }).environment(\.colorScheme, .light)
+        CallsListView(state: state, text: .init(language: .russian), event: { _ in }).environment(\.colorScheme, .light)
     }
 
     private func makeState() -> CallsListState {

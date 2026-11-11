@@ -44,7 +44,7 @@ struct ReadingCompositionTests {
             ]))).0
             reading = ReadingReducer.reduce(reading, event).0
             var rows = MappedRows()
-            guard case let .lines(lines) = panelState(reading, rows: &rows).log else {
+            guard case let .lines(lines) = panelState(russianPanel, reading, rows: &rows).log else {
                 Issue.record("expected a listening log")
                 return
             }
@@ -52,9 +52,9 @@ struct ReadingCompositionTests {
             #expect(lines.followsLive == atBottom)
             reading = ReadingReducer.reduce(reading, .recordingChanged(.on(elapsed: 0))).0
             reading = ReadingReducer.reduce(reading, .textUpdated(.init(status: .off, entries: []))).0
-            #expect(panelState(reading, rows: &rows).log == .liveTextOff(kept: lines))
+            #expect(panelState(russianPanel, reading, rows: &rows).log == .liveTextOff(kept: lines))
             reading = ReadingReducer.reduce(reading, .jumpToLive).0
-            guard case let .liveTextOff(kept) = panelState(reading, rows: &rows).log else {
+            guard case let .liveTextOff(kept) = panelState(russianPanel, reading, rows: &rows).log else {
                 Issue.record("expected kept text")
                 return
             }
@@ -77,7 +77,7 @@ struct ReadingCompositionTests {
             .init(text: .init(id: 4, start: 12, end: 13, words: [.init("четыре", start: 12, end: 13)], settledCount: 1)),
         ])
         send(.textUpdated(readingText(snapshot, names: [1: "Анна", 2: "Анна", 3: "Борис", 4: "Борис"])))
-        guard case let .lines(lines) = panelState(reading).log else { throw ScriptFailure.failed }
+        guard case let .lines(lines) = panelState(russianPanel, reading).log else { throw ScriptFailure.failed }
         #expect(lines.entries.map(\.label) == ["Анна", nil, "Борис", nil, "Борис"])
         #expect(lines.entries.filter { $0.label != nil }.allSatisfy { $0.labelIsTentative })
     }
@@ -100,11 +100,11 @@ struct ReadingCompositionTests {
                 .init(id: .init(speaker: .theirs, localID: 7), start: 3, end: 4, settled: "late", writtenLater: true),
             ]))
         }
-        #expect(panelState(.init()) == .init(recording: .off, log: .empty))
+        #expect(panelState(russianPanel, .init()) == .init(recording: .off, log: .empty))
         var reading = ReadingState()
         func send(_ event: ReadingEvent) { reading = ReadingReducer.reduce(reading, event).0 }
         send(.recordingChanged(.on(elapsed: 62)))
-        #expect(panelState(reading) == .init(recording: .on(elapsed: "00:01:02"), log: .liveTextOff(kept: nil)))
+        #expect(panelState(russianPanel, reading) == .init(recording: .on(elapsed: "00:01:02"), log: .liveTextOff(kept: nil)))
         send(.scrolled(atBottom: false))
         let snapshot = try await publishedCall(status: .listening, mine: [
             .init(text: .init(id: 1, start: 1, end: 2, words: [.init("settled", start: 1, end: 2), .init(" pending", start: 1, end: 2)], settledCount: 1)),
@@ -118,14 +118,40 @@ struct ReadingCompositionTests {
             .entry(.init(id: 0, time: "00:01", speaker: .me, settled: "settled", pending: " pending")),
             .late(.init(span: "00:03–00:04", entries: [.init(id: 1, time: "00:03", speaker: .them, settled: "late")])),
         ], holds: holds, newBelow: 2, followsLive: false)
-        #expect(panelState(reading) == .init(recording: .on(elapsed: "00:01:02"), log: .lines(expected)))
+        #expect(panelState(russianPanel, reading) == .init(recording: .on(elapsed: "00:01:02"), log: .lines(expected)))
         send(.textUpdated(.init(status: .off, entries: [])))
-        #expect(panelState(reading).log == .liveTextOff(kept: expected))
+        #expect(panelState(russianPanel, reading).log == .liveTextOff(kept: expected))
         send(.textUpdated(.init(status: .gettingReady, entries: [])))
-        #expect(panelState(reading).log == .preparing(holds: holds))
+        #expect(panelState(russianPanel, reading).log == .preparing(holds: holds))
         send(.recordingChanged(.off))
-        #expect(panelState(reading).recording == .off)
+        #expect(panelState(russianPanel, reading).recording == .off)
         for event in [PanelEvent.start, .stop, .switchLiveTextOn] { #expect(readingEvent(event) == nil) }
     }
 
+}
+
+func russianPanel(_ phrase: PanelPhrase) -> String {
+
+    PanelText(language: .russian)(phrase)
+}
+
+/// The banners the panel shows in Russian, as the composer fills them.
+extension PanelState.Banner {
+
+    static let callAudio = Self(kind: .callAudio, title: "Нет звука звонка",
+                                line: "Пишется только «я». Проверьте разрешение «Звук звонка».",
+                                button: "Открыть настройки macOS", action: .openSettings(.systemAudioRecording))
+    static let microphone = Self(kind: .microphone, title: "Нет микрофона",
+                                 line: "Пишутся только «они». Проверьте устройство ввода и разрешение «Микрофон».",
+                                 button: "Открыть настройки macOS", action: .openSettings(.microphone))
+    static let callSilent = Self(kind: .callSilent, title: "Звонок не слышен",
+                                 line: "5 минут тишины со стороны «они», пока вы говорите. Проверьте разрешение «Звук звонка».",
+                                 button: "Открыть настройки macOS", action: .openSettings(.systemAudioRecording))
+
+    static func diskFull(savedUntil time: String) -> Self {
+
+        Self(kind: .diskFull, title: "Диск заполнен — дорожка остановлена",
+             line: "Всё до \(time) сохранено. Освободите место, чтобы продолжить.",
+             button: "Открыть папку", action: .openCallsFolder)
+    }
 }

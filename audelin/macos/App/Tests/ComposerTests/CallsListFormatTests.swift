@@ -1,9 +1,10 @@
+import CallsListUI
 import Foundation
 import Testing
 @testable import Composer
 
 struct CallsListFormatTests {
-    private let format = CallsListFormat(timeZone: TimeZone(identifier: "Asia/Tokyo")!)
+    private let format = CallsListFormat(timeZone: TimeZone(identifier: "Asia/Tokyo")!, text: .init(language: .russian))
     private func date(_ iso: String) -> Date { ISO8601DateFormatter().date(from: iso)! }
 
     @Test(arguments: [

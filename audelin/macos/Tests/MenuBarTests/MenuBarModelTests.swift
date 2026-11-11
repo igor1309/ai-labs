@@ -3,6 +3,40 @@ import Testing
 
 struct MenuBarModelTests {
 
+    @Test func everyTitleAndLineComesFromTheTextDependency() {
+
+        var asked: [MenuBarPhrase] = []
+        let menu = MenuBarModel(text: { asked.append($0); return "<\($0.rawValue)>" },
+                                recording: .recording(call: true, faults: [.microphone]),
+                                preferences: .init(automatic: true, liveText: true),
+                                offersPanelReopen: true, panelVisible: false)
+
+        #expect(menu.item.title == "<item.title>")
+        #expect(menu.item.stateLine == "<state.recordingCall>; <fault.microphone>")
+        #expect(menu.entries == [
+            .stateLine("<state.recordingCall>; <fault.microphone>"), .divider,
+            .button("<action.stop>", .stop), .button("<action.showPanel>", .showPanel), .divider,
+            .toggle("<action.automatic>", checked: true, .setAutomatic(false)),
+            .toggle("<action.liveText>", checked: true, .setLiveText(false)), .divider,
+            .button("<action.calls>", .showCalls), .button("<action.openCallsFolder>", .openCallsFolder),
+            .button("<action.settings>", .showSettings), .divider,
+            .button("<action.quit>", .quit),
+        ])
+        #expect(Set(asked) == [.itemTitle, .recordingCall, .faultMicrophone, .stop, .showPanel, .automatic,
+                               .liveText, .calls, .openCallsFolder, .settings, .quit])
+    }
+
+    @Test func showsEnglishWhenGivenEnglishText() {
+
+        let menu = MenuBarModel(text: MenuBarText(language: .english).callAsFunction,
+                                recording: .idle(automatic: true, unavailable: [], failure: nil),
+                                preferences: .init(automatic: true, liveText: true))
+
+        #expect(menu.item.stateLine == "Waiting for a call")
+        #expect(menu.entries.contains(.button("Start Recording", .start)))
+        #expect(menu.entries.last == .button("Quit", .quit))
+    }
+
     @Test func faultsAppendToRecordingAndEndingLinesInOrder() {
 
         for (faults, suffix): (Set<MenuBarFault>, String) in [
@@ -19,7 +53,7 @@ struct MenuBarModelTests {
                     for ending in [false, true] {
                         let recording: MenuBarRecording = ending ? .ending(faults: faults) : .recording(call: call, faults: faults)
                         let base = ending ? "Завершает запись" : (!liveText ? "Запись без текста" : (call ? "Запись · звонок" : "Запись"))
-                        let menu = MenuBarModel(recording: recording, preferences: .init(automatic: true, liveText: liveText))
+                        let menu = MenuBarModel(text: russian, recording: recording, preferences: .init(automatic: true, liveText: liveText))
                         #expect(menu.item.stateLine == base + suffix)
                         #expect(menu.entries.first == .stateLine(base + suffix))
                         #expect(menu.item.symbol == "record.circle.fill")
@@ -46,7 +80,7 @@ struct MenuBarModelTests {
             for liveText in [false, true] {
                 let recording = MenuBarRecording.idle(automatic: automatic, unavailable: missing, failure: reason)
                 let preferences = MenuBarPreferences(automatic: automatic, liveText: liveText)
-                let menu = MenuBarModel(recording: recording, preferences: preferences)
+                let menu = MenuBarModel(text: russian, recording: recording, preferences: preferences)
                 #expect(menu.item.title == "Audelin")
                 #expect(menu.item.symbol == "text.alignleft")
                 #expect(menu.item.stateLine == line)
@@ -65,7 +99,7 @@ struct MenuBarModelTests {
                     let line = recording == .ending(faults: []) ? "Завершает запись" : (
                         !liveText ? "Запись без текста" : (byCall ? "Запись · звонок" : "Запись")
                     )
-                    let menu = MenuBarModel(recording: recording,
+                    let menu = MenuBarModel(text: russian, recording: recording,
                                             preferences: MenuBarPreferences(automatic: true, liveText: liveText))
                     #expect(menu.item.title == "Запись")
                     #expect(menu.item.symbol == "record.circle.fill")
@@ -85,7 +119,7 @@ struct MenuBarModelTests {
             .recording(call: false, faults: []), .ending(faults: []),
         ] {
             for visible in [false, true] {
-                let menu = MenuBarModel(recording: recording,
+                let menu = MenuBarModel(text: russian, recording: recording,
                     preferences: .init(automatic: true, liveText: true),
                     offersPanelReopen: !visible, panelVisible: visible)
                 #expect(menu.entries.contains(.button("Скрыть панель", .hidePanel)) == visible)
@@ -101,7 +135,7 @@ struct MenuBarModelTests {
             (.idle(automatic: true, unavailable: [], failure: nil), false),
             (.recording(call: false, faults: []), true), (.recording(call: true, faults: []), true), (.ending(faults: []), false),
         ] {
-            let menu = MenuBarModel(recording: recording,
+            let menu = MenuBarModel(text: russian, recording: recording,
                 preferences: MenuBarPreferences(automatic: true, liveText: true), statusLine: "Ошибка наблюдения")
             #expect(menu.item.isRed == red)
             #expect(menu.entries.first == .stateLine("Ошибка наблюдения"))
@@ -122,3 +156,5 @@ struct MenuBarModelTests {
         ]
     }
 }
+
+private func russian(_ phrase: MenuBarPhrase) -> String { MenuBarText(language: .russian)(phrase) }

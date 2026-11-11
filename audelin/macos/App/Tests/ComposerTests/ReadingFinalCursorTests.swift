@@ -78,7 +78,7 @@ struct ReadingFinalCursorTests {
             whole.finalCount = 0
             oracle = ReadingReducer.reduce(oracle, .textUpdated(readingText(whole))).0
             mapped = final
-            #expect(panelState(sealing) == panelState(oracle), "seed \(seed), entry \(id)")
+            #expect(panelState(russianPanel, sealing) == panelState(russianPanel, oracle), "seed \(seed), entry \(id)")
         }
     }
 
@@ -98,8 +98,8 @@ struct ReadingFinalCursorTests {
         var whole = ReadingReducer.reduce(ReadingState(), .recordingChanged(.on(elapsed: 0))).0
         whole = ReadingReducer.reduce(whole, .textUpdated(readingText(first))).0
         whole = ReadingReducer.reduce(whole, .textUpdated(readingText(next))).0
-        #expect(panelState(reading) == panelState(whole))
-        guard case let .lines(lines) = panelState(reading).log else { Issue.record("no lines"); return }
+        #expect(panelState(russianPanel, reading) == panelState(russianPanel, whole))
+        guard case let .lines(lines) = panelState(russianPanel, reading).log else { Issue.record("no lines"); return }
         #expect(lines.rows.count == 5)
     }
 
@@ -120,7 +120,7 @@ struct ReadingFinalCursorTests {
             whole = ReadingReducer.reduce(whole, .textUpdated(readingText(state))).0
             cursor = ReadingReducer.reduce(cursor, .textUpdated(readingText(state, from: mapped))).0
             mapped = state.finalCount
-            result.append((whole, cursor, panelState(cursor, rows: &rows)))
+            result.append((whole, cursor, panelState(russianPanel, cursor, rows: &rows)))
         }
         return result
     }
@@ -130,7 +130,7 @@ struct ReadingFinalCursorTests {
 
         for step in wholeAndCursor(later: later) {
             #expect(step.cursor.log == step.whole.log)
-            #expect(step.panel == panelState(step.whole))
+            #expect(step.panel == panelState(russianPanel, step.whole))
         }
     }
 
@@ -139,7 +139,7 @@ struct ReadingFinalCursorTests {
         let problem = ReadingEvent.problemsChanged([.init(.microphone, began: 20)])
         for step in wholeAndCursor(later: false, between: { $0 == 6 ? problem : nil }) {
             #expect(step.cursor.log == step.whole.log)
-            #expect(step.panel == panelState(step.whole))
+            #expect(step.panel == panelState(russianPanel, step.whole))
         }
     }
 

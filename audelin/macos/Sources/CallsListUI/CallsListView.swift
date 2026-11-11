@@ -4,13 +4,15 @@ import SwiftUI
 public struct CallsListView: View {
     private let state: CallsListState
     private let event: (CallsListEvent) -> Void
+    private let text: CallsListText
     @Environment(\.colorScheme) private var scheme
     @Environment(\.controlActiveState) private var activity
     @FocusState private var editing: Bool
     private var tokens: GlassLedger { .for(scheme) }
 
-    public init(state: CallsListState, event: @escaping (CallsListEvent) -> Void) {
+    public init(state: CallsListState, text: CallsListText, event: @escaping (CallsListEvent) -> Void) {
         self.state = state
+        self.text = text
         self.event = event
     }
 
@@ -67,13 +69,13 @@ public struct CallsListView: View {
 
     /// The row's actions, the same in its context menu and on its keys.
     @ViewBuilder private func menu(_ row: CallsListState.Row) -> some View {
-        Button("Открыть") { event(.open(row.id)) }.disabled(state.busy)
-        if row.hasNotes { Button("Показать заметки") { event(.preview(row.id)) } }
-        Button("Переименовать") { event(.select(row.id)); event(.beginRename(row.id)) }
+        Button(text(.open)) { event(.open(row.id)) }.disabled(state.busy)
+        if row.hasNotes { Button(text(.showNotes)) { event(.preview(row.id)) } }
+        Button(text(.rename)) { event(.select(row.id)); event(.beginRename(row.id)) }
             .disabled(!row.editable || state.busy)
-        if row.canRetrySummary { Button("Повторить итоги") { event(.retrySummary(row.id)) }.disabled(state.busy) }
+        if row.canRetrySummary { Button(text(.retrySummary)) { event(.retrySummary(row.id)) }.disabled(state.busy) }
         Divider()
-        Button("Удалить…", role: .destructive) { event(.askDelete(row.id)) }.disabled(!row.editable || state.busy)
+        Button(text(.deleteMenu), role: .destructive) { event(.askDelete(row.id)) }.disabled(!row.editable || state.busy)
     }
 
     /// Return opens, Space shows notes, ⌘R renames and ⌘⌫ asks to delete the selected call.
@@ -97,7 +99,7 @@ public struct CallsListView: View {
                 if let edit = state.editing, edit.id == row.id {
                     HStack(spacing: 0) {
                         Text(row.id + " ").font(tokens.data(tokens.typeSmall)).foregroundStyle(tokens.gutter)
-                        TextField("Название", text: Binding(get: { edit.title }, set: { event(.editTitle($0)) }))
+                        TextField(text(.titlePlaceholder), text: Binding(get: { edit.title }, set: { event(.editTitle($0)) }))
                             .textFieldStyle(.plain)
                             .focused($editing)
                             .onSubmit { event(.submitRename) }
@@ -180,8 +182,8 @@ public struct CallsListView: View {
                     .contentShape(.rect)
             }
             .buttonStyle(.plain)
-            .help("Показать заметки")
-            .accessibilityLabel("Показать заметки")
+            .help(text(.showNotes))
+            .accessibilityLabel(text(.showNotes))
             .accessibilityAddTraits(previewed ? .isSelected : [])
             .accessibilityIdentifier("calls.eye.\(row.id)")
         } else {
@@ -202,10 +204,10 @@ public struct CallsListView: View {
     /// One centred message while the list loads or when it has no calls.
     private var placeholder: some View {
         VStack(spacing: tokens.space4) {
-            Text(state.busy ? "Загружаются звонки…" : "Пока нет записанных звонков")
+            Text(state.busy ? text(.loading) : text(.empty))
                 .font(tokens.ui(tokens.typeSmall, .semibold)).foregroundStyle(tokens.sub)
             if !state.busy {
-                Text("Звонок появится здесь, когда закончится запись")
+                Text(text(.emptyHint))
                     .font(tokens.ui(tokens.typeCaption)).foregroundStyle(tokens.gutter)
             }
         }
@@ -216,12 +218,12 @@ public struct CallsListView: View {
         ZStack {
             tokens.shadow
             VStack(alignment: .leading, spacing: tokens.space12) {
-                Text("Удалить звонок?").font(tokens.ui(tokens.typeTitle, .semibold)).foregroundStyle(tokens.text)
+                Text(text(.deleteTitle)).font(tokens.ui(tokens.typeTitle, .semibold)).foregroundStyle(tokens.text)
                 Text(body).font(tokens.ui(tokens.typeSmall)).foregroundStyle(tokens.sub).fixedSize(horizontal: false, vertical: true)
                 VStack(spacing: tokens.space8) {
-                    button("Удалить", destructive: true) { event(.confirmDelete) }
+                    button(text(.delete), destructive: true) { event(.confirmDelete) }
                         .disabled(state.rows.first(where: { $0.id == state.deleteID })?.editable != true)
-                    button("Отмена", destructive: false) { event(.cancelDelete) }.keyboardShortcut(.cancelAction)
+                    button(text(.cancel), destructive: false) { event(.cancelDelete) }.keyboardShortcut(.cancelAction)
                 }
             }
             .padding(tokens.space24).frame(width: 340)

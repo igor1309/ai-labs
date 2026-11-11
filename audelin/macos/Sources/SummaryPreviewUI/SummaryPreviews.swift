@@ -43,15 +43,23 @@ public enum SummaryPreviews {
         - Ведущий вернулся на iOS. Несколько билдов прошли, MR тоже прошли. Сегодня ведущий проведёт ревью, после него часть задач перейдёт в «готово к релизу».
         """
 
-    public static let states: [(name: String, state: SummaryPreviewState)] = [
-        ("notes", .init(title: "Zoom", date: "17.10 · 11:00", duration: "28 мин", notes: .markdown(notes))),
-        ("daily", .init(title: "iOS Daily", date: "11.11 · 10:00", duration: "14 мин", notes: .markdown(daily))),
-        ("unreadable", .init(title: "Zoom", date: "17.10 · 11:00", duration: "28 мин",
-                             notes: .unreadable("Заметки не читаются: файл «summary.md» повреждён."))),
-    ]
+    public static let states = states(in: SummaryPreviewText(language: .russian))
 
-    public static func state(_ name: String) -> SummaryPreviewState {
-        states.first { $0.name == name }!.state
+    /// The named states with the header and messages the app gives in that language; the notes are the call's own.
+    public static func states(in text: SummaryPreviewText) -> [(name: String, state: SummaryPreviewState)] {
+        let english = text.language == .english
+        let minutes = { (count: Int) in english ? "\(count) min" : "\(count) мин" }
+        return [
+            ("notes", .init(title: "Zoom", date: "17.10 · 11:00", duration: minutes(28), notes: .markdown(notes))),
+            ("daily", .init(title: "iOS Daily", date: "11.11 · 10:00", duration: minutes(14), notes: .markdown(daily))),
+            ("unreadable", .init(title: "Zoom", date: "17.10 · 11:00", duration: minutes(28),
+                                 notes: .unreadable(english ? "The notes can’t be read: “summary.md” is damaged."
+                                                            : "Заметки не читаются: файл «summary.md» повреждён."))),
+        ]
+    }
+
+    public static func state(_ name: String, in text: SummaryPreviewText = .init(language: .russian)) -> SummaryPreviewState {
+        states(in: text).first { $0.name == name }!.state
     }
 
     /// The notes' source as plain text, for Xcode previews, which have no Markdown renderer.

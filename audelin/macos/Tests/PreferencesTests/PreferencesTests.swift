@@ -49,6 +49,9 @@ struct PreferencesTests {
                 (Data("{}".utf8), Preferences()),
                 (Data(#"{"automaticRecording":false}"#.utf8), Preferences(automaticRecording: false)),
                 (Data(#"{"liveText":false}"#.utf8), Preferences(liveText: false)),
+                (Data(#"{"language":"english"}"#.utf8), Preferences(language: .english)),
+                (Data(#"{"language":"klingon","liveText":false}"#.utf8), Preferences(liveText: false, language: .system)),
+                (Data(#"{"language":7}"#.utf8), Preferences()),
                 (try JSONSerialization.data(withJSONObject: ["callsFolder": folder.absoluteString]),
                  Preferences(callsFolder: folder)),
             ]
@@ -90,6 +93,25 @@ struct PreferencesTests {
             let expected = Preferences(automaticRecording: false, liveText: true, callsFolder: root)
             try PreferencesStore(fileURL: file).write(expected)
             #expect(try JSONDecoder().decode(Preferences.self, from: await contents(file)) == expected)
+        }
+    }
+}
+
+extension PreferencesTests {
+
+    @Test func theLanguageIsSystemUntilChosenAndAChoiceKeepsTheRest() async throws {
+
+        try await withPreferencesFolder { root in
+            let file = root.appendingPathComponent("preferences.json")
+            let store = PreferencesStore(fileURL: file)
+            #expect(store.read().language == .system)
+            let kept = Preferences(automaticRecording: false, liveText: false, callsFolder: root.appendingPathComponent("calls"))
+            try store.write(kept)
+            try store.updateLanguage(.russian)
+            var expected = kept
+            expected.language = .russian
+            #expect(store.read() == expected)
+            #expect(PreferencesStore(fileURL: file).read() == expected)
         }
     }
 }

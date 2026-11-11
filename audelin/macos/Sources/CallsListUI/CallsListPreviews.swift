@@ -3,57 +3,80 @@ import Foundation
 /// The list's named states, drawn by the Xcode previews and compared with
 /// reference images by the tests.
 public enum CallsListPreviews {
-    public static let states: [(name: String, state: CallsListState)] = [
-        ("calls", sample),
-        ("notes", notes),
-        ("summary", with(sample) {
-            $0.rows[0].summary = .pending
-            $0.rows[0].summaryStatus = "Готовятся итоги"
-            $0.rows[1].summary = .failed
-            $0.rows[1].summaryStatus = "Подготовка итогов прервана; автоматического повтора не будет."
-            $0.rows[1].canRetrySummary = true
-        }),
-        ("summary-failed-banner", with(sample) {
-            $0.rows[1].summary = .failed
-            $0.rows[1].canRetrySummary = true
-            $0.failure = "Не удалось повторить подготовку итогов. Расшифровка и прежние итоги сохранены."
-        }),
-        ("long-title", with(notes) {
-            $0.rows[1] = .init(id: "2026.10.20-1600", title: long, displayTitle: long, day: .init(title: "Вчера", count: "1 звонок"),
-                               time: "16:00", duration: "1:12:40", editable: true, hasNotes: true)
-        }),
-        ("older-year", with(sample) {
-            $0.rows[2] = .init(id: "2025.12.12-1030", title: "Ретро за год", displayTitle: "Ретро за год",
-                               day: .init(title: "12 декабря 2025", count: "1 звонок"), time: "10:30", duration: "1:05:12", editable: true)
-        }),
-        ("notes-selected", with(notes) { $0.selectedID = $0.rows[1].id }),
-        ("notes-previewed", with(notes) { $0.selectedID = $0.rows[2].id; $0.previewedID = $0.rows[2].id }),
-        ("delete", with(sample) {
-            $0.deleteID = $0.rows[0].id
-            $0.deleteBody = "«2026.10.21-1230 Запуск: роли и SLA»: удалится вся папка звонка — аудио, расшифровки и саммари. Отменить нельзя."
-        }),
-        ("empty", CallsListState()),
-        ("loading", CallsListState(busy: true)),
-        ("rename", with(sample) { $0.editing = .init(id: $0.rows[0].id, title: $0.rows[0].title) }),
-    ]
+    public static let states = states(in: CallsListText(language: .russian))
 
-    public static func state(_ name: String) -> CallsListState {
-        states.first { $0.name == name }!.state
+    /// The named states with their text in the given language.
+    public static func states(in text: CallsListText) -> [(name: String, state: CallsListState)] {
+        let words = Words(text)
+        let sample = sample(words), notes = notes(words)
+        return [
+            ("calls", sample),
+            ("notes", notes),
+            ("summary", with(sample) {
+                $0.rows[0].summary = .pending
+                $0.rows[0].summaryStatus = text(.summaryRunning)
+                $0.rows[1].summary = .failed
+                $0.rows[1].summaryStatus = text(.summaryInterrupted)
+                $0.rows[1].canRetrySummary = true
+            }),
+            ("summary-failed-banner", with(sample) {
+                $0.rows[1].summary = .failed
+                $0.rows[1].canRetrySummary = true
+                $0.failure = text(.summaryRetryFailed)
+            }),
+            ("long-title", with(notes) {
+                $0.rows[1] = .init(id: "2026.10.20-1600", title: words.long, displayTitle: words.long, day: .init(title: text(.yesterday), count: words.one),
+                                   time: "16:00", duration: "1:12:40", editable: true, hasNotes: true)
+            }),
+            ("older-year", with(sample) {
+                $0.rows[2] = .init(id: "2025.12.12-1030", title: words.retro, displayTitle: words.retro,
+                                   day: .init(title: words.olderDay, count: words.one), time: "10:30", duration: "1:05:12", editable: true)
+            }),
+            ("notes-selected", with(notes) { $0.selectedID = $0.rows[1].id }),
+            ("notes-previewed", with(notes) { $0.selectedID = $0.rows[2].id; $0.previewedID = $0.rows[2].id }),
+            ("delete", with(sample) {
+                $0.deleteID = $0.rows[0].id
+                $0.deleteBody = text(.deleteBody, "2026.10.21-1230 " + words.launch)
+            }),
+            ("empty", CallsListState()),
+            ("loading", CallsListState(busy: true)),
+            ("rename", with(sample) { $0.editing = .init(id: $0.rows[0].id, title: $0.rows[0].title) }),
+        ]
     }
 
-    private static let long = "Интервью: кандидат на iOS — техническая часть, архитектура, тесты и вопросы по Swift Concurrency и SwiftUI"
+    public static func state(_ name: String, in text: CallsListText = .init(language: .russian)) -> CallsListState {
+        states(in: text).first { $0.name == name }!.state
+    }
 
-    private static var sample: CallsListState {
+    /// The sample calls' titles and day headers in the list's language.
+    private struct Words {
+        let launch, okr, retro, long, friday, olderDay, one, today, yesterday: String
+        init(_ text: CallsListText) {
+            let english = text.language == .english
+            launch = english ? "Launch: roles and SLA" : "Запуск: роли и SLA"
+            okr = english ? "Quarterly OKR sync" : "Синк по OKR на квартал"
+            retro = english ? "Year in review" : "Ретро за год"
+            long = english ? "Interview: iOS candidate — technical part, architecture, tests and questions on Swift Concurrency and SwiftUI"
+                : "Интервью: кандидат на iOS — техническая часть, архитектура, тесты и вопросы по Swift Concurrency и SwiftUI"
+            friday = english ? "Friday, October 17" : "Пятница, 17 октября"
+            olderDay = english ? "December 12, 2025" : "12 декабря 2025"
+            one = text(.callsOne, 1)
+            today = text(.today)
+            yesterday = text(.yesterday)
+        }
+    }
+
+    private static func sample(_ words: Words) -> CallsListState {
         .init(rows: [
-            .init(id: "2026.10.21-1230", title: "Запуск: роли и SLA", displayTitle: "Запуск: роли и SLA", day: .init(title: "Сегодня", count: "1 звонок"), time: "12:30", duration: "47:00", editable: true),
-            .init(id: "2026.10.20-1600", title: "Синк по OKR на квартал", displayTitle: "Синк по OKR на квартал", day: .init(title: "Вчера", count: "1 звонок"), time: "16:00", duration: "1:12:00", editable: true),
-            .init(id: "2026.10.17-1100", title: "", displayTitle: "2026.10.17-1100", day: .init(title: "Пятница, 17 октября", count: "1 звонок"), time: "11:00", duration: "—", editable: true),
+            .init(id: "2026.10.21-1230", title: words.launch, displayTitle: words.launch, day: .init(title: words.today, count: words.one), time: "12:30", duration: "47:00", editable: true),
+            .init(id: "2026.10.20-1600", title: words.okr, displayTitle: words.okr, day: .init(title: words.yesterday, count: words.one), time: "16:00", duration: "1:12:00", editable: true),
+            .init(id: "2026.10.17-1100", title: "", displayTitle: "2026.10.17-1100", day: .init(title: words.friday, count: words.one), time: "11:00", duration: "—", editable: true),
         ])
     }
 
     /// A call with notes above one without, and another with notes below.
-    private static var notes: CallsListState {
-        with(sample) { $0.rows[0].hasNotes = true; $0.rows[2].hasNotes = true }
+    private static func notes(_ words: Words) -> CallsListState {
+        with(sample(words)) { $0.rows[0].hasNotes = true; $0.rows[2].hasNotes = true }
     }
 
     private static func with(_ state: CallsListState, _ change: (inout CallsListState) -> Void) -> CallsListState {

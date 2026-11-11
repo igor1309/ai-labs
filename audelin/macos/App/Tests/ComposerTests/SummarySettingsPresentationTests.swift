@@ -20,7 +20,7 @@ import Testing
         #expect(field.value.isEmpty && !field.isInvalid)
         #expect(field.placeholder == "Найти автоматически")
         #expect(view.runtimes[0].disclosure == "Транскрипт → Anthropic · квота подписки Claude")
-        #expect(settingsIssueMessage(.init(slot: .primary, field: .executable)).contains("оставьте поле пустым для автоматического поиска или укажите абсолютный путь"))
+        #expect(russianSettings.settingsIssueMessage(.init(slot: .primary, field: .executable)).contains("оставьте поле пустым для автоматического поиска или укажите абсолютный путь"))
     }
 
     @Test func legacySavedDefaultRemainsAvailableToRuntimeRecovery() throws {
@@ -36,14 +36,14 @@ import Testing
         let local = SummarySettings.Configuration.Runtime(kind: .compatibleAPI, model: "local", executable: "", endpoint: "http://127.0.0.1:8080/v1", credentialVariable: "")
         let remote = SummarySettings.Configuration.Runtime(kind: .compatibleAPI, model: "hosted", executable: "", endpoint: "https://recipient.example/v1", credentialVariable: "VARIABLE_NAME")
         let config = SummarySettings.Configuration(enabled: true, speakers: true, primary: local, fallback: remote)
-        let disclosure = notesDisclosure(config)
+        let disclosure = russianSettings.notesDisclosure(config)
         #expect(!disclosure.contains("recipient.example"))
         #expect(disclosure.contains("Резервный получает его только при повторе запроса"))
-        #expect(runtimeDisclosure(local).contains("сервер на этом Mac"))
-        #expect(runtimeDisclosure(remote).contains("recipient.example"))
-        #expect(runtimeDisclosure(remote).contains("оплата по тарифу API"))
+        #expect(russianSettings.runtimeDisclosure(local).contains("сервер на этом Mac"))
+        #expect(russianSettings.runtimeDisclosure(remote).contains("recipient.example"))
+        #expect(russianSettings.runtimeDisclosure(remote).contains("оплата по тарифу API"))
         let state = settingsReducer().reduce(.init(phase: .loading), .loaded(config)).0
-        guard case let .loaded(draft) = notesPresentation(state) else { Issue.record("missing loaded settings"); return }
+        guard case let .loaded(draft) = russianSettings.notesPresentation(state) else { Issue.record("missing loaded settings"); return }
         #expect(!draft.save.isEnabled)
         #expect(draft.runtimes[1].fields.last?.value == "VARIABLE_NAME")
         #expect(draft.runtimes[0].fields.last?.value == "")
@@ -172,7 +172,7 @@ import Testing
         let correction = try loadedPresentation(corrected)
         #expect(corrected.issues.isEmpty && corrected.validatedRevision == nil)
         #expect(correction.runtimes.flatMap(\.fields).allSatisfy { !$0.isInvalid })
-        #expect(correction.status == settingsMessage(.editing))
+        #expect(correction.status == russianSettings.settingsMessage(.editing))
         #expect(correction.save.isEnabled && correction.validate.isEnabled)
         #expect(provider.calls.withLock { $0.isEmpty })
     }
@@ -247,7 +247,7 @@ import Testing
             let (loading, load) = reducer.reduce(.init(), .load)
             let result = reducer.reduce(loading, await handler.handle(try #require(load))).0
             #expect(result.phase == .loadFailed && result.draft == nil)
-            #expect(!String(describing: notesPresentation(result)).contains("secret"))
+            #expect(!String(describing: russianSettings.notesPresentation(result)).contains("secret"))
             #expect(try Data(contentsOf: url) == data)
         }
     }
@@ -267,15 +267,14 @@ import Testing
 }
 
 private func settingsReducer() -> Reducer {
-    Reducer(disclosure: notesDisclosure, message: settingsMessage, safety: SummaryAvailability.configurationIssues,
-            issueMessage: settingsIssueMessage, runtimeDisclosure: runtimeDisclosure)
+    summarySettingsReducer { russianSettings }
 }
 private func localConfiguration() -> SummarySettings.Configuration {
     let runtime = SummarySettings.Configuration.Runtime(kind: .compatibleAPI, model: "fixture", executable: "", endpoint: "http://127.0.0.1/v1", credentialVariable: "")
     return .init(enabled: true, speakers: true, primary: runtime, fallback: runtime)
 }
 private func loadedPresentation(_ state: SummarySettings.State) throws -> SettingsState.NotesDraft {
-    guard case let .loaded(draft) = notesPresentation(state) else { throw PresentationFailure.missing }
+    guard case let .loaded(draft) = russianSettings.notesPresentation(state) else { throw PresentationFailure.missing }
     return draft
 }
 private enum PresentationFailure: Error { case missing }
@@ -291,5 +290,19 @@ private final class ProviderSpy: ProcessRunning, HTTPRequesting, Sendable {
     }
     func request(url: URL, headers: [String: String], body: Data, loopback: Bool) throws -> HTTPResponse {
         calls.withLock { $0.append("HTTP") }; throw SummaryRuntime.Failure.transport
+    }
+}
+
+let russianSettings = SettingsText(language: .russian)
+
+struct SummarySettingsEnglishTextTests {
+    @Test func messagesAndDisclosuresComeInTheGivenLanguage() {
+        let english = SettingsText(language: .english)
+        #expect(english.settingsMessage(.saved) == "Settings saved")
+        #expect(english.runtimeDisclosure(nil).hasPrefix("No fallback service is set up."))
+        #expect(russianSettings.runtimeDisclosure(nil).hasPrefix("Резервный сервис не настроен."))
+        let issue = SummarySettings.ValidationIssue(slot: .fallback, field: .model)
+        #expect(english.settingsIssueMessage(issue) == "Fallback Service · Model: enter a model.")
+        #expect(russianSettings.settingsIssueMessage(issue) == "Резервный сервис · Модель: укажите модель.")
     }
 }

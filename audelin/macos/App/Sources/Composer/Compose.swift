@@ -1,11 +1,13 @@
 import Calls
 import CoreAudioProcesses
+import CallsListUI
 import Foundation
 import Preferences
 import Recordings
 import TrackFile
 import SummaryRuntime
 import SummaryFiles
+import SettingsUI
 
 /// Builds the same recording, panel, menu and calls composition for every caller.
 @MainActor
@@ -41,27 +43,31 @@ public func compose(
                                             home: FileManager.default.homeDirectoryForCurrentUser.path).resolve,
         deadline: { try await boundary.time.sleep(.seconds(120)) })
     let summaryFiles = SummaryFiles.Files(locations: storage, disk: FileDisk(), ownershipDirectory: preferencesURL.deletingLastPathComponent().appendingPathComponent("summary-ownership"))
+    let language = CurrentLanguage(uiLanguage(LanguageChoice(preferences.read().language), preferred: boundary.preferredLanguages()))
     let summaries = AudelinSummaries(files: summaryFiles,
-                                     runtime: runtime, preferences: preferences, sink: boundary.log)
+                                     runtime: runtime, preferences: preferences, sink: boundary.log,
+                                     text: language.language.callsList, status: { language.language.callsList.summaryStatus($0, $1) })
     let cleanupRuns = CleanupRuns()
     let menu = await AudelinMenu(storage: preferences, occupiedCallNames: { try storage.occupiedCallNames() }, boundary: boundary, processes: processes, panel: panel,
         openFolder: { _ = openCallsFolder($0) }, openURL: openURL, terminate: terminate,
-        sink: boundary.log, presentPanel: presentPanel, sleep: boundary.time.sleep, cleanupRuns: cleanupRuns, summaries: summaries)
+        sink: boundary.log, presentPanel: presentPanel, sleep: boundary.time.sleep, cleanupRuns: cleanupRuns, summaries: summaries, language: language)
     menu.installFolderPicker(chooseCallsFolder)
     menu.installSettings(AudelinSettings(preferences: SummaryPreferences(storage: preferences),
-                                        availability: SummaryAvailability(runtime: runtime)), present: presentSettings)
+                                        availability: SummaryAvailability(runtime: runtime), text: { language.language.settings }), present: presentSettings)
     let disk = SummaryCalls(storage: storage, deleted: { await summaries.forget(call: $0) })
     menu.installCalls(AudelinCalls(inputs: makeRecordings(handler: RecordingsEffectHandler(calls: disk,
                                       reserve: { [weak menu] in await menu?.reserveCallsFolder() ?? false },
                                       release: { [weak menu] in await menu?.releaseCallsFolder() },
                                       storeFolder: { destination in
                                           try await storage.commitFolder(destination) { try preferences.updateCallsFolder(destination) }
-                                      }), initial: .init(callsFolder: preferences.read().callsFolder)),
+                                      }, describe: { language.language.settings.callsFailure($0) }), text: { language.language.settings }, initial: .init(callsFolder: preferences.read().callsFolder)),
                                   timeZone: timeZone, now: boundary.time.now, recordingState: { [weak menu] in menu?.state ?? .init() },
                                   location: { try await storage.location(id: $0) }, openFolder: openCallsFolder,
                                   present: presentCalls, summaryStatuses: { summaries.statuses }, summaryBadges: { summaries.badges },
                                   notes: { try await summaryFiles.notes(call: $0) }, focusPreview: focusPreview,
-                                  retryableSummaries: { summaries.retryable }, retrySummary: { try await summaries.retry(call: $0) }))
+                                  retryableSummaries: { summaries.retryable }, retrySummary: { try await summaries.retry(call: $0) },
+                                  describe: { language.language.settings.callsFailure($0) },
+                                  listText: language.language.callsList))
     do { await summaries.recover(calls: try await storage.list().map(\.id)) }
     catch { boundary.log.write(.init(category: .session, message: "summary recovery listing failed")) }
     return menu

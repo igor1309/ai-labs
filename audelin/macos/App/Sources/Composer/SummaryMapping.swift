@@ -34,16 +34,20 @@ func summaryBadge(_ phase: SummaryJobs.State.Phase) -> CallsListState.Row.Summar
     case .failed, .interrupted, .unavailable: .failed
     }
 }
-func summaryStatus(_ phase: SummaryJobs.State.Phase, _ warning: Bool) -> String {
-    switch phase {
-    case .idle: ""
-    case .waiting: "Итоги ждут финальную расшифровку"
-    case .pending, .claiming, .observed: "Итоги ожидают запуска"
-    case .running, .starting, .identifying, .checkpointing, .noting, .publishing, .saving: "Готовим итоги…"
-    case .succeeded: warning ? "Итоги готовы; имена не определены" : "Итоги готовы"
-    case .failed: "Не удалось составить или сохранить итоги. Расшифровка и аудио сохранены."
-    case .interrupted: "Подготовка итогов прервана; автоматического повтора не будет."
-    case .unavailable: "Итоги недоступны: финальная расшифровка не сохранена или нет распознанной речи."
+
+extension CallsListText {
+    /// A call's notes status as its calls list row shows it.
+    func summaryStatus(_ phase: SummaryJobs.State.Phase, _ warning: Bool) -> String {
+        switch phase {
+        case .idle: ""
+        case .waiting: self(.summaryWaiting)
+        case .pending, .claiming, .observed: self(.summaryPending)
+        case .running, .starting, .identifying, .checkpointing, .noting, .publishing, .saving: self(.summaryRunning)
+        case .succeeded: warning ? self(.summaryReadyUnnamed) : self(.summaryReady)
+        case .failed: self(.summaryFailed)
+        case .interrupted: self(.summaryInterrupted)
+        case .unavailable: self(.summaryUnavailable)
+        }
     }
 }
 
@@ -111,6 +115,8 @@ private struct Snapshot: Codable {
 }
 struct SummaryJobStore: SummaryJobs.Store {
     let files: SummaryFiles.Files
+    /// Writes a job's status in the list's language.
+    var status: @Sendable (SummaryJobs.State.Phase, Bool) -> String = { CallsListText(language: .russian).summaryStatus($0, $1) }
     func record(_ job: Job, phase: String = "running", warning: Bool = false) throws -> Record {
         .init(job: job.id, call: job.call, input: job.input, snapshot: try JSONEncoder().encode(Snapshot(job)), phase: phase, warning: warning)
     }
@@ -120,7 +126,7 @@ struct SummaryJobStore: SummaryJobs.Store {
                       primary: saved.primary.value, fallback: saved.fallback?.value)
         guard let phase = SummaryJobs.State.Phase(rawValue: record.phase),
               [.pending, .running, .interrupted, .succeeded, .failed].contains(phase) else { throw CocoaError(.fileReadCorruptFile) }
-        return .init(phase: phase, job: job, warning: record.warning, status: summaryStatus(phase, record.warning))
+        return .init(phase: phase, job: job, warning: record.warning, status: status(phase, record.warning))
     }
     func claim(_ job: Job) async throws -> (owned: Bool, state: SummaryJobs.State) {
         let result = try await files.claim(record(job, phase: "pending"))

@@ -225,8 +225,9 @@ struct CallsTests {
                                 trash: { url in trashed.withLock { $0.append(url) }; throw POSIXError(.EACCES) },
                                 remove: { url in Issue.record("Deletion removed \(url)") }))
             await #expect(throws: POSIXError(.EACCES)) { try sut.rename(id: "2026.10.24-1405", title: "New") }
-            do { try sut.delete(id: "2026.10.24-1405"); Issue.record("Deletion should fail") }
-            catch { #expect(error.localizedDescription == "Не удалось переместить «2026.10.24-1405 Zoom» в Корзину; папка осталась на месте. \(POSIXError(.EACCES).localizedDescription)") }
+            await #expect(throws: CallsFailure.trashFailed(folder: call.lastPathComponent, reason: POSIXError(.EACCES).localizedDescription)) {
+                try sut.delete(id: "2026.10.24-1405")
+            }
             #expect(trashed.withLock { $0.map(\.lastPathComponent) } == ["2026.10.24-1405 Zoom"])
             #expect(try await bytes(call.appendingPathComponent("kept")) == Data([1]))
             #expect(try sut.list().map(\.title) == ["Zoom"])

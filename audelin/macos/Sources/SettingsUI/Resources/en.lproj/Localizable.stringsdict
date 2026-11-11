@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>move.title</key>
+    <dict>
+        <key>NSStringLocalizedFormatKey</key>
+        <string>Move %#@calls@ (%2$@)?</string>
+        <key>calls</key>
+        <dict>
+            <key>NSStringFormatSpecTypeKey</key>
+            <string>NSStringPluralRuleType</string>
+            <key>NSStringFormatValueTypeKey</key>
+            <string>d</string>
+            <key>one</key>
+            <string>%1$d call</string>
+            <key>other</key>
+            <string>%1$d calls</string>
+        </dict>
+    </dict>
+    <key>move.body</key>
+    <dict>
+        <key>NSStringLocalizedFormatKey</key>
+        <string>%#@calls@, %2$@. To %3$@. Recording won’t start during the move.</string>
+        <key>calls</key>
+        <dict>
+            <key>NSStringFormatSpecTypeKey</key>
+            <string>NSStringPluralRuleType</string>
+            <key>NSStringFormatValueTypeKey</key>
+            <string>d</string>
+            <key>one</key>
+            <string>%1$d call</string>
+            <key>other</key>
+            <string>%1$d calls</string>
+        </dict>
+    </dict>
+    <key>move.moved</key>
+    <dict>
+        <key>NSStringLocalizedFormatKey</key>
+        <string>Moved %1$d of %2$#@total@</string>
+        <key>total</key>
+        <dict>
+            <key>NSStringFormatSpecTypeKey</key>
+            <string>NSStringPluralRuleType</string>
+            <key>NSStringFormatValueTypeKey</key>
+            <string>d</string>
+            <key>one</key>
+            <string>%2$d call</string>
+            <key>other</key>
+            <string>%2$d calls</string>
+        </dict>
+    </dict>
+</dict>
+</plist>

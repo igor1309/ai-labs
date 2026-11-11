@@ -6,19 +6,22 @@ public struct SettingsScrollView: View {
     private let state: SettingsState
     private let event: (SettingsEvent) -> Void
     private let config: SettingsConfig
+    private let text: SettingsText
     private let contentHeightChanged: (CGFloat) -> Void
 
     public init(state: SettingsState, event: @escaping (SettingsEvent) -> Void,
                 config: SettingsConfig = .glassLedger,
+                text: SettingsText = .init(language: .russian),
                 contentHeightChanged: @escaping (CGFloat) -> Void = { _ in }) {
         self.state = state
         self.event = event
         self.config = config
+        self.text = text
         self.contentHeightChanged = contentHeightChanged
     }
 
     public var body: some View {
-        var content = SettingsView(state: state, event: event, config: config)
+        var content = SettingsView(state: state, event: event, config: config, text: text)
         content.scrolls = true
         content.contentHeightChanged = contentHeightChanged
         return content

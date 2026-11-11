@@ -12,34 +12,48 @@ struct PanelBannerTests {
 
         let plain = Offscreen.host(PanelPreview(state: .recording, scheme: scheme), scheme: scheme)
         let original = try #require(Offscreen.textView(in: plain)?.string)
-        for banner: PanelState.Banner in [.callAudio, .microphone, .diskFull(savedUntil: "12:45"), .callSilent] {
+        let russian = PanelText(language: .russian)
+        for banner: PanelState.Banner in [.callAudioPreview(russian), .microphonePreview(russian), .diskFullPreview(russian), .callSilentPreview(russian)] {
             let host = Offscreen.host(PanelPreview(state: .problem(banner), scheme: scheme), scheme: scheme)
             #expect(host.fittingSize.height > plain.fittingSize.height)
             #expect(Offscreen.textView(in: host)?.string == original)
         }
     }
 
-    @Test nonisolated func bannerCopyAndActionsDescribeEachProblem() {
+    @Test nonisolated func everyPhraseHasRussianAndEnglishText() {
 
-        let cases: [(PanelState.Banner, String, String, String, PanelEvent)] = [
-            (.callAudio, "Нет звука звонка",
-             "Пишется только «я». Проверьте разрешение «Звук звонка».",
-             "Открыть настройки macOS", .openSettings(.systemAudioRecording)),
-            (.microphone, "Нет микрофона",
-             "Пишутся только «они». Проверьте устройство ввода и разрешение «Микрофон».",
-             "Открыть настройки macOS", .openSettings(.microphone)),
-            (.diskFull(savedUntil: "12:45"), "Диск заполнен — дорожка остановлена",
-             "Всё до 12:45 сохранено. Освободите место, чтобы продолжить.",
-             "Открыть папку", .openCallsFolder),
-            (.callSilent, "Звонок не слышен",
-             "5 минут тишины со стороны «они», пока вы говорите. Проверьте разрешение «Звук звонка».",
-             "Открыть настройки macOS", .openSettings(.systemAudioRecording)),
-        ]
-        for (banner, title, line, button, action) in cases {
-            #expect(banner.title == title)
-            #expect(banner.line == line)
-            #expect(banner.button == button)
-            #expect(banner.action == action)
+        for phrase in PanelPhrase.allCases {
+            let russian = PanelText(language: .russian)(phrase)
+            let english = PanelText(language: .english)(phrase)
+            #expect(russian != phrase.rawValue, "\(phrase)")
+            #expect(english != phrase.rawValue, "\(phrase)")
+            #expect(english != russian, "\(phrase)")
         }
+        #expect(PanelText(language: .russian)(.callAudioTitle) == "Нет звука звонка")
+        #expect(PanelText(language: .english)(.callAudioTitle) == "No call audio")
+    }
+
+    @Test nonisolated func aMissingKeyShowsTheKey() {
+
+        #expect(PanelText(language: .english)("no.such.key") == "no.such.key")
+    }
+
+    @Test nonisolated func anAppBundleFindsItsResourcesInContentsResources() throws {
+
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let app = root.appendingPathComponent("Audelin.app")
+        let bundle = app.appendingPathComponent("Contents/Resources/Audelin_PanelUI.bundle")
+        try FileManager.default.createDirectory(at: bundle, withIntermediateDirectories: true)
+        let plist = try PropertyListSerialization.data(
+            fromPropertyList: ["CFBundleIdentifier": "test.audelin", "CFBundlePackageType": "APPL"],
+            format: .xml, options: 0
+        )
+        try plist.write(to: app.appendingPathComponent("Contents/Info.plist"))
+
+        var usedFallback = false
+        let found = panelBundle(mainBundleURL: app) { usedFallback = true; return .main }
+        #expect(!usedFallback)
+        #expect(found.bundleURL.standardizedFileURL == bundle.standardizedFileURL)
     }
 }

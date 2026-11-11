@@ -3,7 +3,7 @@
 public extension SettingsState {
 
     enum Tab: String, CaseIterable, Sendable {
-        case recording, callNotes
+        case general, recording, callNotes
     }
 
     enum CallNotes: Equatable, Sendable {

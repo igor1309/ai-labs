@@ -63,6 +63,19 @@ public final class PreferencesStore: PreferenceSettingsStorage, Sendable {
         }
     }
 
+    /// Reads freshly under the same lock as writes, so a concurrent edit to another preference is kept.
+    public func updateLanguage(_ language: Preferences.Language) throws {
+        try writing.withLock { _ in
+            let loaded = Self.load(fileURL)
+            guard !loaded.failed else { throw CocoaError(.fileReadCorruptFile) }
+            var current = loaded.value
+            current.language = language
+            try FileManager.default.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try replace(JSONEncoder().encode(current), fileURL)
+            snapshot.withLock { $0 = current }
+        }
+    }
+
     public func updateCallsFolder(_ folder: URL) throws {
         try writing.withLock { _ in
             let loaded = Self.load(fileURL)

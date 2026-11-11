@@ -68,7 +68,8 @@ struct MenuBarTests {
                             return BoundaryCancellation { token.cancel() }
                         }, ticks: panelClock.ticks), log: TestLogSink(), intervals: testIntervals,
                     recordings: FileRecordingStorage(), trash: removeForTrash, bleedCleaning: CleaningStub { _ in preconditionFailure("Live text is disabled") },
-                    bleedHearing: HearingStub { _ in preconditionFailure("Live text is disabled") }
+                    bleedHearing: HearingStub { _ in preconditionFailure("Live text is disabled") },
+                    preferredLanguages: { ["ru-RU"] }
                 )
                 let app = await compose(boundary: boundary, preferencesURL: root.appendingPathComponent("preferences.json"),
                     openCallsFolder: { _ in false }, presentCalls: {}, openURL: { _ in }, presentPanel: { _ in },

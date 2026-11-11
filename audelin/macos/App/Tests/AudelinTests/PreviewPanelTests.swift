@@ -10,7 +10,7 @@ struct PreviewPanelTests {
     @Test func eachPreviewInstallsThatCallsContentAndNoneHidesIt() throws {
         let window = PreviewPanelSpy()
         let content = ContentSpy()
-        let panel = PreviewPanel(makePanel: { window }, copy: { _ in }, makeContent: content.make)
+        let panel = PreviewPanel(makePanel: { window }, text: .init(language: .russian), copy: { _ in }, makeContent: content.make)
 
         panel.show(preview("A"))
         #expect(window.title == "Саммари — A")
@@ -33,7 +33,7 @@ struct PreviewPanelTests {
 
     @Test func anEyeMakesThePanelTheActiveWindowAndARowOnlyBringsItForward() {
         let window = PreviewPanelSpy()
-        let panel = PreviewPanel(makePanel: { window }, copy: { _ in }, makeContent: ContentSpy().make)
+        let panel = PreviewPanel(makePanel: { window }, text: .init(language: .russian), copy: { _ in }, makeContent: ContentSpy().make)
 
         panel.focus()
         #expect(window.orders.isEmpty)
@@ -50,7 +50,7 @@ struct PreviewPanelTests {
         let pasteboard = NSPasteboard.withUniqueName()
         defer { pasteboard.releaseGlobally() }
         let content = ContentSpy()
-        let panel = PreviewPanel(makePanel: { PreviewPanelSpy() }, copy: { copyNotes($0, to: pasteboard) },
+        let panel = PreviewPanel(makePanel: { PreviewPanelSpy() }, text: .init(language: .russian), copy: { copyNotes($0, to: pasteboard) },
                                  makeContent: content.make)
         let source = "## Итоги\n\n- **важно**\n\n| a | b |\n|---|---|\n"
 
@@ -69,7 +69,7 @@ struct PreviewPanelTests {
         let window = PreviewPanelSpy()
         let source = PreviewSource()
         let panelWindow = NSObject(), callsWindow = NSObject()
-        let panel = PreviewPanel(makePanel: { window }, copy: { _ in }, makeContent: ContentSpy().make)
+        let panel = PreviewPanel(makePanel: { window }, text: .init(language: .russian), copy: { _ in }, makeContent: ContentSpy().make)
         let following = connectPreview(panel: panel, preview: { source.preview }, panelWindow: panelWindow,
                                        callsWindow: callsWindow, center: center,
                                        closePreview: { source.preview = nil; source.closes.append("preview") },
@@ -105,6 +105,22 @@ struct PreviewPanelTests {
         #expect(rendered.attribute(.foregroundColor, at: bodyAt, effectiveRange: nil) as? NSColor == .red)
     }
 
+    @Test func aLanguageChangeWritesTheShownPreviewAgainWhereItIs() {
+        let window = PreviewPanelSpy()
+        let content = ContentSpy()
+        let panel = PreviewPanel(makePanel: { window }, text: .init(language: .russian), copy: { _ in }, makeContent: content.make)
+        panel.languageChanged(.init(language: .english))
+        #expect(content.states.isEmpty)
+        panel.show(preview("A", notes: .unreadable("denied")))
+        panel.languageChanged(.init(language: .english))
+        let english = SummaryPreviewText(language: .english)
+        #expect(window.title == english(.windowTitle, "A"))
+        #expect(content.states.last?.notes == .unreadable(english(.unreadable, "denied")))
+        #expect(content.texts.last == english)
+        #expect(window.contentView === content.views.last)
+        #expect(window.orders == ["front"])
+    }
+
     @Test func thePanelFloatsWithAStandardTitleBarHidesWithTheAppAndKeepsItsPlace() {
         let panel = makeSummaryPanel()
         defer { panel.close() }
@@ -131,10 +147,11 @@ private func preview(_ title: String, notes: CallsPreview.Notes? = nil) -> Calls
 
 @MainActor private final class ContentSpy {
     var states: [SummaryPreviewState] = []
+    var texts: [SummaryPreviewText] = []
     var copies: [() -> Void] = []
     var views: [NSView] = []
-    func make(_ state: SummaryPreviewState, copy: @escaping () -> Void) -> NSView {
-        states.append(state); copies.append(copy)
+    func make(_ state: SummaryPreviewState, text: SummaryPreviewText, copy: @escaping () -> Void) -> NSView {
+        states.append(state); texts.append(text); copies.append(copy)
         let view = NSView()
         views.append(view)
         return view

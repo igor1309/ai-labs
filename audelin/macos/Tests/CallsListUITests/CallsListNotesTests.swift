@@ -107,7 +107,7 @@ struct CallsListNotesTests {
                               styleMask: .borderless, backing: .buffered, defer: false)
             window.isReleasedWhenClosed = false
             window.appearance = NSAppearance(named: scheme == .dark ? .darkAqua : .aqua)
-            window.contentView = NSHostingView(rootView: CallsListView(state: state, event: { [weak self] in self?.sent.append($0) })
+            window.contentView = NSHostingView(rootView: CallsListView(state: state, text: .init(language: .russian), event: { [weak self] in self?.sent.append($0) })
                 .environment(\.colorScheme, scheme))
             window.orderFrontRegardless()
             window.makeKey()

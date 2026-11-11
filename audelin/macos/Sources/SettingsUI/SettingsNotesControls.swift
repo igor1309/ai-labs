@@ -5,6 +5,7 @@ import SwiftUI
 /// authoritative, including when the caller rejects or normalizes a proposal.
 struct SettingsNotesMenu: NSViewRepresentable {
     var runtime: SettingsState.NotesRuntime
+    var serviceLabel: String
     var font: NSFont
     var action: (SettingsState.NotesRuntime.Kind) -> Void
 
@@ -34,7 +35,7 @@ struct SettingsNotesMenu: NSViewRepresentable {
             }
         }
         menu.font = font
-        menu.setAccessibilityLabel("\(runtime.title): Сервис")
+        menu.setAccessibilityLabel("\(runtime.title): \(serviceLabel)")
         menu.setAccessibilityIdentifier("notes-\(runtime.id.rawValue)-kind")
         coordinator.restoreSelection()
     }

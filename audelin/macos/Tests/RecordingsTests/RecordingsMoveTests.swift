@@ -128,28 +128,6 @@ struct RecordingsMoveTests {
         #expect(calls.withLock { $0.count } == count)
     }
 
-    @Test func generatedTextNamesTheDestinationCountsAndBytesAtEveryStage() {
-        let zero = ByteCountFormatter.string(fromByteCount: 0, countStyle: .file)
-        let three = ByteCountFormatter.string(fromByteCount: 3, countStyle: .file)
-        let ten = ByteCountFormatter.string(fromByteCount: 10, countStyle: .file)
-        let empty = RecordingsReducer.moveText(.init(destination: destination))
-        #expect(empty == MoveText(
-            title: "Перенести звонки: 0 (\(zero))?",
-            body: "Звонков: 0, \(zero). В /destination. Во время переноса запись не начнётся.",
-            detail: "Звонков: 0 из 0 · \(zero) из \(zero)", moved: "Перенесено звонков: 0 из 0"))
-        for (completed, bytes, detail, moved) in [
-            ([MoveCall](), Int64(0), "Звонков: 0 из 2 · \(zero) из \(ten)", "Перенесено звонков: 0 из 2"),
-            ([older], Int64(3), "Звонков: 1 из 2 · \(three) из \(ten)", "Перенесено звонков: 1 из 2"),
-            ([older, newer], Int64(10), "Звонков: 2 из 2 · \(ten) из \(ten)", "Перенесено звонков: 2 из 2")
-        ] {
-            let text = RecordingsReducer.moveText(.init(destination: destination, completed: completed,
-                                                      totalCalls: 2, totalBytes: 10, movedBytes: bytes))
-            #expect(text == MoveText(title: "Перенести звонки: 2 (\(ten))?",
-                body: "Звонков: 2, \(ten). В /destination. Во время переноса запись не начнётся.",
-                detail: detail, moved: moved))
-        }
-    }
-
     @Test func stoppingDrainsAnAlreadyAcceptedMoveAndRejectsNewActions() {
         let moving = makeState { $0.phase = .moving; $0.move = plan(completed: [older]); $0.callsFolderAvailable = false }
         assert(moving, .stopActions, delivers: nil) { $0.stopping = true }
@@ -172,7 +150,8 @@ struct RecordingsMoveTests {
         let handler = RecordingsEffectHandler(calls: spy,
             reserve: { if case let .reserved(value) = try? await spy.request(.reserveMove) { return value }; return false },
             release: { _ = try? await spy.request(.releaseMove) },
-            storeFolder: { _ = try await spy.request(.storeFolder($0)) })
+            storeFolder: { _ = try await spy.request(.storeFolder($0)) },
+            describe: { $0.localizedDescription })
         await expect(handler, with: test.effect, toDeliver: test.event, on: { await spy.complete(test.answer) })
         #expect(await spy.received == [test.effect])
     }
@@ -182,7 +161,7 @@ private let source = URL(fileURLWithPath: "/source")
 private let destination = URL(fileURLWithPath: "/destination")
 private let older = MoveCall(id: "A", title: "Oldest", bytes: 3)
 private let newer = MoveCall(id: "B", title: "Newest", bytes: 7)
-private func rendered(_ given: CallsFolderMove) -> CallsFolderMove { var move = given; move.text = RecordingsReducer.moveText(move); return move }
+private func rendered(_ given: CallsFolderMove) -> CallsFolderMove { var move = given; move.text = stubMoveText(move); return move }
 private func plan(completed: [MoveCall] = []) -> CallsFolderMove {
     rendered(.init(destination: destination, remaining: [older, newer].filter { !completed.contains($0) }, completed: completed,
                    totalCalls: 2, totalBytes: 10, movedBytes: completed.reduce(0) { $0 + $1.bytes }, progress: Double(completed.count) / 2))
@@ -194,7 +173,7 @@ private func assert(_ state: RecordingsState, _ event: RecordingsEvent, delivers
                     using reducer: RecordingsReducer? = nil, sourceLocation: SourceLocation = #_sourceLocation,
                     _ change: (inout RecordingsState) -> Void = { _ in }) {
     var expected = state; change(&expected)
-    let result = reducer?.reduce(state, event) ?? RecordingsReducer.reduce(state, event)
+    let result = (reducer ?? defaultReducer).reduce(state, event)
     #expect(result.0 == expected, sourceLocation: sourceLocation)
     #expect(result.1 == effect, sourceLocation: sourceLocation)
 }

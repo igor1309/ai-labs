@@ -35,34 +35,34 @@ public struct MenuBarModel: Equatable, Sendable {
     public let item: MenuBarItem
     public let entries: [MenuBarEntry]
 
-    public init(recording: MenuBarRecording, preferences: MenuBarPreferences, statusLine: String? = nil,
-                offersPanelReopen: Bool = false, panelVisible: Bool = false) {
+    public init(text: (MenuBarPhrase) -> String, recording: MenuBarRecording, preferences: MenuBarPreferences,
+                statusLine: String? = nil, offersPanelReopen: Bool = false, panelVisible: Bool = false) {
 
-        item = .from(recording, liveText: preferences.liveText)
+        item = .from(recording, liveText: preferences.liveText, text: text)
         // Sections, divided: state, recording, preferences, windows, quit (LAB-1179).
         var entries: [MenuBarEntry] = [.stateLine(statusLine ?? item.stateLine), .divider]
         switch recording {
         case let .idle(_, unavailable, _) where unavailable.isEmpty:
-            entries.append(.button("Начать запись", .start))
+            entries.append(.button(text(.start), .start))
         case .recording:
-            entries.append(.button("Остановить запись", .stop))
-            if offersPanelReopen && !panelVisible { entries.append(.button("Показать панель", .showPanel)) }
+            entries.append(.button(text(.stop), .stop))
+            if offersPanelReopen && !panelVisible { entries.append(.button(text(.showPanel), .showPanel)) }
         default: break
         }
         if panelVisible {
-            entries.append(.button("Скрыть панель", .hidePanel))
+            entries.append(.button(text(.hidePanel), .hidePanel))
         }
         if entries.last != .divider { entries.append(.divider) }
         entries += [
-            .toggle("Записывать звонки автоматически", checked: preferences.automatic,
+            .toggle(text(.automatic), checked: preferences.automatic,
                     .setAutomatic(!preferences.automatic)),
-            .toggle("Живой текст", checked: preferences.liveText, .setLiveText(!preferences.liveText)),
+            .toggle(text(.liveText), checked: preferences.liveText, .setLiveText(!preferences.liveText)),
             .divider,
-            .button("Звонки…", .showCalls),
-            .button("Открыть папку звонков", .openCallsFolder),
-            .button("Настройки…", .showSettings),
+            .button(text(.calls), .showCalls),
+            .button(text(.openCallsFolder), .openCallsFolder),
+            .button(text(.settings), .showSettings),
             .divider,
-            .button("Выйти", .quit),
+            .button(text(.quit), .quit),
         ]
         self.entries = entries
     }

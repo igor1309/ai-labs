@@ -21,13 +21,15 @@ extension NSPanel: PreviewPanelDriver {}
 final class PreviewPanel {
     private let panel: any PreviewPanelDriver
     private let copy: (String) -> Void
-    private let makeContent: (SummaryPreviewState, @escaping () -> Void) -> NSView
-    private var shown = false
+    private let makeContent: (SummaryPreviewState, SummaryPreviewText, @escaping () -> Void) -> NSView
+    private var shown: CallsPreview?
     private var focusDue = false
+    private var text: SummaryPreviewText
 
-    init(makePanel: () -> any PreviewPanelDriver, copy: @escaping (String) -> Void,
-         makeContent: @escaping (SummaryPreviewState, @escaping () -> Void) -> NSView) {
+    init(makePanel: () -> any PreviewPanelDriver, text: SummaryPreviewText, copy: @escaping (String) -> Void,
+         makeContent: @escaping (SummaryPreviewState, SummaryPreviewText, @escaping () -> Void) -> NSView) {
         panel = makePanel()
+        self.text = text
         self.copy = copy
         self.makeContent = makeContent
     }
@@ -35,24 +37,34 @@ final class PreviewPanel {
     /// Each preview brings the panel forward, so it is found behind another
     /// Audelin window; after an eye it also becomes the active window.
     func show(_ preview: CallsPreview?) {
-        guard let preview else { shown = false; focusDue = false; panel.orderOut(nil); return }
+        guard let preview else { shown = nil; focusDue = false; panel.orderOut(nil); return }
+        fill(preview)
+        shown = preview
+        if focusDue { focusDue = false; panel.makeKeyAndOrderFront(nil) } else { panel.orderFront(nil) }
+    }
+
+    /// Writes the shown preview again in the new language, where it already is.
+    func languageChanged(_ text: SummaryPreviewText) {
+        self.text = text
+        if let shown { fill(shown) }
+    }
+
+    private func fill(_ preview: CallsPreview) {
         let notes: SummaryPreviewState.Notes
         switch preview.notes {
         case let .text(markdown): notes = .markdown(markdown)
-        case let .unreadable(reason): notes = .unreadable("Заметки не читаются: \(reason)")
+        case let .unreadable(reason): notes = .unreadable(text(.unreadable, reason))
         }
         let state = SummaryPreviewState(title: preview.title, date: preview.date, duration: preview.duration, notes: notes)
-        panel.title = "Саммари — \(preview.title)"
+        panel.title = text(.windowTitle, preview.title)
         let copy = self.copy
-        panel.contentView = makeContent(state) { if case let .markdown(source) = notes { copy(source) } }
-        shown = true
-        if focusDue { focusDue = false; panel.makeKeyAndOrderFront(nil) } else { panel.orderFront(nil) }
+        panel.contentView = makeContent(state, text) { if case let .markdown(source) = notes { copy(source) } }
     }
 
     /// An eye: the panel becomes the active window, now if it shows the
     /// call already, or as the eye's preview arrives.
     func focus() {
-        if shown { panel.makeKeyAndOrderFront(nil) } else { focusDue = true }
+        if shown != nil { panel.makeKeyAndOrderFront(nil) } else { focusDue = true }
     }
 }
 
@@ -92,8 +104,8 @@ func makeSummaryPanel() -> NSPanel {
 
 /// The panel's content: the preview view of one call.
 @MainActor
-func summaryContent(_ state: SummaryPreviewState, copy: @escaping () -> Void) -> NSView {
-    NSHostingView(rootView: SummaryPreviewView(state: state, copy: copy, render: renderNotes))
+func summaryContent(_ state: SummaryPreviewState, text: SummaryPreviewText, copy: @escaping () -> Void) -> NSView {
+    NSHostingView(rootView: SummaryPreviewView(state: state, text: text, copy: copy, render: renderNotes))
 }
 
 /// The preview's notes, rendered from Markdown in the view's style.

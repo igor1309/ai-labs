@@ -21,7 +21,7 @@ struct RecordingsTests {
             $0.isListing = false
         }
         let spy = CallsSpy()
-        await expect(RecordingsEffectHandler(calls: spy, reserve: { true }, release: {}, storeFolder: { _ in }), with: .rename(id: "A", title: "New"), toDeliver: .renamed("A"), on: { await spy.complete(.success([])) })
+        await expect(RecordingsEffectHandler(calls: spy, reserve: { true }, release: {}, storeFolder: { _ in }, describe: { _ in "disk" }), with: .rename(id: "A", title: "New"), toDeliver: .renamed("A"), on: { await spy.complete(.success([])) })
         #expect(await spy.received == [.rename(id: "A", title: "New")])
     }
 
@@ -32,7 +32,7 @@ struct RecordingsTests {
             $0.failure = .init(id: "A", reason: "disk")
         }
         let spy = CallsSpy()
-        await expect(RecordingsEffectHandler(calls: spy, reserve: { true }, release: {}, storeFolder: { _ in }), with: .rename(id: "A", title: "New"), toDeliver: .renameFailed(id: "A", reason: "disk"), on: { await spy.complete(.failure(DiskFailure())) })
+        await expect(RecordingsEffectHandler(calls: spy, reserve: { true }, release: {}, storeFolder: { _ in }, describe: { $0 is DiskFailure ? "disk" : "other" }), with: .rename(id: "A", title: "New"), toDeliver: .renameFailed(id: "A", reason: "disk"), on: { await spy.complete(.failure(DiskFailure())) })
     }
 
     @Test func S3_aDeleteWaitsForTheConfirm() {
@@ -58,7 +58,7 @@ struct RecordingsTests {
         }
         for failed in [false, true] {
             let spy = CallsSpy()
-            await expect(RecordingsEffectHandler(calls: spy, reserve: { true }, release: {}, storeFolder: { _ in }), with: .delete("A"), toDeliver: failed ? .deleteFailed(id: "A", reason: "disk") : .deleted("A"), on: { await spy.complete(failed ? .failure(DiskFailure()) : .success([])) })
+            await expect(RecordingsEffectHandler(calls: spy, reserve: { true }, release: {}, storeFolder: { _ in }, describe: { _ in "disk" }), with: .delete("A"), toDeliver: failed ? .deleteFailed(id: "A", reason: "disk") : .deleted("A"), on: { await spy.complete(failed ? .failure(DiskFailure()) : .success([])) })
             #expect(await spy.received == [.delete("A")])
         }
     }
@@ -94,7 +94,7 @@ struct RecordingsTests {
         let call = RecordedCall(id: "A", title: "Zoom", start: .distantPast, duration: nil)
         for failed in [false, true] {
             let spy = CallsSpy()
-            await expect(RecordingsEffectHandler(calls: spy, reserve: { true }, release: {}, storeFolder: { _ in }), with: .list, toDeliver: failed ? .listFailed("disk") : .listed([call]), on: { await spy.complete(failed ? .failure(DiskFailure()) : .success([call])) })
+            await expect(RecordingsEffectHandler(calls: spy, reserve: { true }, release: {}, storeFolder: { _ in }, describe: { _ in "disk" }), with: .list, toDeliver: failed ? .listFailed("disk") : .listed([call]), on: { await spy.complete(failed ? .failure(DiskFailure()) : .success([call])) })
             #expect(await spy.received == [.list])
         }
     }
@@ -117,14 +117,14 @@ struct RecordingsTests {
 
     @Test func constructionDoesNotComposeFailure() {
         let spy = FailureMessageSpy(result: "unused")
-        _ = RecordingsReducer(failureMessage: spy.compose, moveText: RecordingsReducer.moveText)
+        _ = RecordingsReducer(failureMessage: spy.compose, moveText: stubMoveText)
         #expect(spy.calls == [])
     }
 
     @Test(arguments: [nil, "A"] as [String?])
     func refreshFailureUsesInjectedMessageAndKeepsFailureID(_ id: String?) {
         let spy = FailureMessageSpy(result: "composed message")
-        let reducer = RecordingsReducer(failureMessage: spy.compose, moveText: RecordingsReducer.moveText)
+        let reducer = RecordingsReducer(failureMessage: spy.compose, moveText: stubMoveText)
         let state = makeState {
             $0.isListing = true
             $0.failure = .init(id: id, reason: " prior failure ")
@@ -141,7 +141,7 @@ struct RecordingsTests {
     @Test func listFailureWithoutPriorFailureDoesNotComposeMessage() {
         let spy = FailureMessageSpy(result: "unused")
         let state = makeState { $0.isListing = true }
-        assert(state, .listFailed("denied"), delivers: nil, using: RecordingsReducer(failureMessage: spy.compose, moveText: RecordingsReducer.moveText)) {
+        assert(state, .listFailed("denied"), delivers: nil, using: RecordingsReducer(failureMessage: spy.compose, moveText: stubMoveText)) {
             $0.isListing = false
             $0.failure = .init(id: nil, reason: "denied")
         }
@@ -172,7 +172,7 @@ struct RecordingsTests {
         for (state, events) in cases {
             for event in events {
                 let spy = FailureMessageSpy(result: "unused")
-                assert(state, event, delivers: nil, using: RecordingsReducer(failureMessage: spy.compose, moveText: RecordingsReducer.moveText))
+                assert(state, event, delivers: nil, using: RecordingsReducer(failureMessage: spy.compose, moveText: stubMoveText))
                 #expect(spy.calls == [])
             }
         }
@@ -180,7 +180,7 @@ struct RecordingsTests {
 
     @Test func unrelatedTransitionsDoNotComposeFailure() {
         let spy = FailureMessageSpy(result: "unused")
-        let reducer = RecordingsReducer(failureMessage: spy.compose, moveText: RecordingsReducer.moveText)
+        let reducer = RecordingsReducer(failureMessage: spy.compose, moveText: stubMoveText)
         let failed = makeState { $0.failure = .init(id: "A", reason: "prior") }
         let asking = makeState { $0.phase = .askingDelete("A"); $0.failure = failed.failure }
         let renaming = makeState { $0.phase = .renaming("A"); $0.failure = failed.failure }
@@ -244,7 +244,7 @@ private func assert(
 ) {
     var expected = state
     change(&expected)
-    let result = reducer?.reduce(state, event) ?? RecordingsReducer.reduce(state, event)
+    let result = (reducer ?? defaultReducer).reduce(state, event)
     #expect(result.0 == expected, sourceLocation: sourceLocation)
     #expect(result.1 == effect, sourceLocation: sourceLocation)
 }
@@ -295,3 +295,13 @@ private actor CallsSpy: RecordingsCalls {
     func prepareMove(to destination: URL) async throws -> [MoveCall] { _ = try await call(.prepareMove(destination)); return [] }
     func move(id: String, to destination: URL) async throws -> Int64 { _ = try await call(.moveCall(id: id, to: destination)); return 0 }
 }
+
+/// Move text that names every value it is given, so a test sees which move it came from.
+@Sendable func stubMoveText(_ move: CallsFolderMove) -> MoveText {
+    .init(title: "\(move.totalCalls) \(move.totalBytes)", body: move.destination.path,
+          detail: "\(move.completed.count) \(move.movedBytes)", moved: "\(move.completed.count)/\(move.totalCalls)")
+}
+
+let defaultReducer = RecordingsReducer(failureMessage: { prior, refreshError in
+    prior + " Не удалось обновить список: " + refreshError
+}, moveText: stubMoveText)

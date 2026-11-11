@@ -14,12 +14,12 @@ extension SettingsView {
             notesButton(retry, .secondary)
         case let .loaded(draft):
             VStack(alignment: .leading, spacing: tokens.space6) {
-                checkbox("Составлять итоги после звонка", isOn: draft.automatic, id: "notes-automatic") {
+                checkbox(text(.notesAutomatic), isOn: draft.automatic, id: "notes-automatic") {
                     event(.setAutomaticNotes($0))
                 }
                 .accessibilityIdentifier("notes-automatic")
-                uiText("После завершения расшифровки.", tokens.typeSmall, tokens.sub)
-                checkbox("Определять имена участников", isOn: draft.identifySpeakers, id: "notes-speakers") {
+                uiText(text(.notesAutomaticNote), tokens.typeSmall, tokens.sub)
+                checkbox(text(.notesSpeakers), isOn: draft.identifySpeakers, id: "notes-speakers") {
                     event(.setIdentifySpeakers($0))
                 }
                 .accessibilityIdentifier("notes-speakers")
@@ -42,26 +42,26 @@ extension SettingsView {
 
     func notesDetails(_ draft: SettingsState.NotesDraft) -> some View {
         VStack(alignment: .leading, spacing: tokens.space12) {
-            uiText(notesDetailsExpanded ? "▾ О данных, оплате и проверке" : "▸ О данных, оплате и проверке",
+            uiText((notesDetailsExpanded ? "▾ " : "▸ ") + text(.notesDetails),
                    tokens.typeSmall, tokens.sub)
                 .padding(.vertical, tokens.space6)
                 .accessibilityHidden(true)
                 .overlay {
-                    SettingsPressTarget(title: "О данных, оплате и проверке", identifier: "notes-details",
+                    SettingsPressTarget(title: text(.notesDetails), identifier: "notes-details",
                                         isEnabled: true, selected: notesDetailsExpanded) {
                         notesDetailsExpanded.toggle()
                     }
                 }
             if notesDetailsExpanded {
                 VStack(alignment: .leading, spacing: tokens.space12) {
-                    notesDetail("Данные", draft.disclosure)
-                    notesDetail("Расходы", "Определение имён — отдельный запрос. Запрос с истёкшим временем ожидания тоже может расходовать квоту или деньги.")
-                    notesDetail("Проверка", "«Проверить» проверяет настройки и доступность сервисов. Транскрипт не отправляется. Наличие квоты не проверяется.")
+                    notesDetail(text(.notesDetailData), draft.disclosure)
+                    notesDetail(text(.notesDetailCost), text(.notesDetailCostBody))
+                    notesDetail(text(.notesDetailCheck), text(.notesDetailCheckBody))
                     if draft.runtimes.contains(where: { $0.kind == .claudeCLI }) {
-                        notesDetail("Claude", "Пустое поле «Программа» — автоматический поиск Claude в PATH и стандартных папках установки. Для другой установки укажите полный путь. Пользовательские настройки Claude не используются; политики организации действуют.")
+                        notesDetail("Claude", text(.notesDetailClaudeBody))
                     }
                     if draft.runtimes.contains(where: { $0.kind == .compatibleAPI }) {
-                        notesDetail("API-ключ", "Укажите имя переменной окружения с API-ключом, без значения ключа. Сохраняется только имя переменной. Оставьте пустым, если сервер не требует ключ.")
+                        notesDetail(text(.notesDetailKey), text(.notesDetailKeyBody))
                     }
                 }
                 .padding(tokens.space12)
@@ -102,11 +102,11 @@ extension SettingsView {
                 uiText(runtime.title, tokens.typeBody, tokens.text, .semibold)
                 Spacer()
                 if runtime.id == .fallback {
-                    uiText("Необязательно", tokens.typeSmall, tokens.sub)
+                    uiText(text(.notesOptional), tokens.typeSmall, tokens.sub)
                 }
             }
-            notesRow("Сервис") {
-                SettingsNotesMenu(runtime: runtime, font: notesFont) {
+            notesRow(text(.notesService)) {
+                SettingsNotesMenu(runtime: runtime, serviceLabel: text(.notesService), font: notesFont) {
                     event(.selectNotesRuntime(runtime.id, $0))
                 }
             }
@@ -120,7 +120,7 @@ extension SettingsView {
                 }
             }
             if runtime.id == .fallback {
-                uiText("Повторяет запрос, если основной сервис завершится ошибкой.", tokens.typeSmall, tokens.sub)
+                uiText(text(.notesFallbackNote), tokens.typeSmall, tokens.sub)
                     .fixedSize(horizontal: false, vertical: true)
             }
             if runtime.kind != .unconfigured {

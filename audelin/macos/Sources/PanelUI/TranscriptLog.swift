@@ -12,6 +12,7 @@ struct TranscriptLog: NSViewRepresentable {
     let lines: PanelState.Lines
     let tokens: GlassLedger
     let config: PanelConfig
+    let panelText: PanelText
     let event: (PanelEvent) -> Void
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
@@ -66,7 +67,7 @@ struct TranscriptLog: NSViewRepresentable {
         let storage = text.textStorage!
         // Only this path edits the storage; anything else, and the rows start over.
         if storage.length != coordinator.rows.length { coordinator.rows = Transcript.Rows() }
-        let edit = coordinator.rows.update(lines, style: .init(tokens: tokens, config: config))
+        let edit = coordinator.rows.update(lines, style: .init(tokens: tokens, config: config, text: panelText))
         coordinator.entries = edit.entries
 
         coordinator.quietly {
