@@ -2,8 +2,9 @@
 
 The design lives in one file, [mizan-ble.pen](mizan-ble.pen). This page
 indexes it: the locked design system, its components, and where each frame
-sits. The app it draws is specified in [../spec/](../spec/). How to open,
-edit and save the file through the pencil MCP is in the repo's `AGENTS.md`
+sits. The app it draws is specified in [../spec/](../spec/). How to edit
+and save the file headless with the `pen` CLI (`pen interactive`) is in the
+repo's `AGENTS.md`
 § Designing in pen.dev.
 
 ## Design system

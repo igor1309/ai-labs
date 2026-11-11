@@ -34930,6 +34930,724 @@
           "width": 1100,
           "height": 180,
           "content": "Call notes. Window content only; the native title bar is not drawn. Settings has Recording and Call notes tabs. Fields stay editable while automatic notes are off. A save affects upcoming jobs; validation sends no paid prompt. The API-key field holds an environment-variable name, never its value. Loading and a load failure show no editable defaults. Both runtime slots and models are editable. The content scrolls in a 620 pt-wide window when taller than the desktop. Mouse uses buttons and menus; keyboard uses native text editing, Tab and Return. macOS only; no phone or tablet layout."
+        },
+        {
+          "type": "frame",
+          "id": "dN9ul",
+          "name": "General — light",
+          "theme": {
+            "mode": "light"
+          },
+          "gap": "$space-40",
+          "children": [
+            {
+              "type": "frame",
+              "id": "N09b72",
+              "name": "general-system-light",
+              "theme": {
+                "mode": "light"
+              },
+              "reusable": true,
+              "width": 668,
+              "fill": "$back",
+              "layout": "vertical",
+              "padding": "$space-24",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "jJz9F",
+                  "name": "Settings content",
+                  "width": 620,
+                  "fill": "$win",
+                  "layout": "vertical",
+                  "gap": "$space-24",
+                  "padding": "$space-24",
+                  "children": [
+                    {
+                      "id": "qNm4f",
+                      "type": "ref",
+                      "ref": "Cb0Qc",
+                      "name": "Settings tabs",
+                      "width": "fill_container",
+                      "descendants": {
+                        "ctTw8": {
+                          "fill": "$selBg"
+                        },
+                        "ctTw8/EWsWH": {
+                          "content": "Основные",
+                          "fill": "$selText"
+                        },
+                        "nor3c": {
+                          "fill": "$btn"
+                        },
+                        "nor3c/EWsWH": {
+                          "content": "Запись",
+                          "fill": "$text"
+                        },
+                        "cUhH9": {
+                          "fill": "$btn"
+                        },
+                        "cUhH9/EWsWH": {
+                          "content": "Итоги звонков",
+                          "fill": "$text"
+                        }
+                      }
+                    },
+                    {
+                      "id": "N3qKiz",
+                      "type": "ref",
+                      "ref": "W8h2bZ",
+                      "name": "Row Язык",
+                      "width": "fill_container",
+                      "descendants": {
+                        "jasWr": {
+                          "content": "Язык"
+                        },
+                        "X4Fk5p": {
+                          "type": "frame",
+                          "id": "ZMHdx",
+                          "name": "Control",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "gap": "$space-6",
+                          "children": [
+                            {
+                              "id": "MACkx",
+                              "type": "ref",
+                              "ref": "rT0HO",
+                              "name": "Language picker",
+                              "width": "fill_container",
+                              "descendants": {
+                                "JMakE/uluhv": {
+                                  "content": "Системный"
+                                },
+                                "tQ8hK/OdXwE": {
+                                  "content": "Русский"
+                                },
+                                "sni1W/OdXwE": {
+                                  "content": "English"
+                                }
+                              }
+                            },
+                            {
+                              "type": "text",
+                              "id": "BN4GO",
+                              "name": "Language hint",
+                              "fill": "$gutter",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "Сейчас русский — язык macOS. Если язык macOS не русский и не английский, Audelin на английском.",
+                              "lineHeight": 1.45,
+                              "fontFamily": "$font-ui",
+                              "fontSize": "$type-small",
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        }
+                      }
+                    },
+                    {
+                      "id": "GswV1",
+                      "type": "ref",
+                      "ref": "W8h2bZ",
+                      "name": "Row Оформление",
+                      "width": "fill_container",
+                      "descendants": {
+                        "jasWr": {
+                          "content": "Оформление"
+                        },
+                        "X4Fk5p": {
+                          "type": "frame",
+                          "id": "rTDdt",
+                          "name": "Control",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "gap": "$space-6",
+                          "children": [
+                            {
+                              "id": "PEUVz",
+                              "type": "ref",
+                              "ref": "rT0HO",
+                              "name": "Appearance picker",
+                              "width": "fill_container",
+                              "descendants": {
+                                "JMakE/uluhv": {
+                                  "content": "Системное"
+                                },
+                                "tQ8hK/OdXwE": {
+                                  "content": "Светлое"
+                                },
+                                "sni1W/OdXwE": {
+                                  "content": "Тёмное"
+                                }
+                              }
+                            },
+                            {
+                              "type": "text",
+                              "id": "kHRzW",
+                              "name": "Appearance hint",
+                              "fill": "$gutter",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "Как в macOS.",
+                              "lineHeight": 1.45,
+                              "fontFamily": "$font-ui",
+                              "fontSize": "$type-small",
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "NejaA",
+              "name": "general-fallback-light",
+              "theme": {
+                "mode": "light"
+              },
+              "reusable": true,
+              "width": 668,
+              "fill": "$back",
+              "layout": "vertical",
+              "padding": "$space-24",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "W9lYm",
+                  "name": "Settings content",
+                  "width": 620,
+                  "fill": "$win",
+                  "layout": "vertical",
+                  "gap": "$space-24",
+                  "padding": "$space-24",
+                  "children": [
+                    {
+                      "id": "Y5gA8P",
+                      "type": "ref",
+                      "ref": "Cb0Qc",
+                      "name": "Settings tabs",
+                      "width": "fill_container",
+                      "descendants": {
+                        "ctTw8": {
+                          "fill": "$selBg"
+                        },
+                        "ctTw8/EWsWH": {
+                          "content": "General",
+                          "fill": "$selText"
+                        },
+                        "nor3c": {
+                          "fill": "$btn"
+                        },
+                        "nor3c/EWsWH": {
+                          "content": "Recording",
+                          "fill": "$text"
+                        },
+                        "cUhH9": {
+                          "fill": "$btn"
+                        },
+                        "cUhH9/EWsWH": {
+                          "content": "Call summaries",
+                          "fill": "$text"
+                        }
+                      }
+                    },
+                    {
+                      "id": "YAXYQ",
+                      "type": "ref",
+                      "ref": "W8h2bZ",
+                      "name": "Row Language",
+                      "width": "fill_container",
+                      "descendants": {
+                        "jasWr": {
+                          "content": "Language"
+                        },
+                        "X4Fk5p": {
+                          "type": "frame",
+                          "id": "kOJDC",
+                          "name": "Control",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "gap": "$space-6",
+                          "children": [
+                            {
+                              "id": "HuaIs",
+                              "type": "ref",
+                              "ref": "rT0HO",
+                              "name": "Language picker",
+                              "width": "fill_container",
+                              "descendants": {
+                                "JMakE/uluhv": {
+                                  "content": "System"
+                                },
+                                "tQ8hK/OdXwE": {
+                                  "content": "Русский"
+                                },
+                                "sni1W/OdXwE": {
+                                  "content": "English"
+                                }
+                              }
+                            },
+                            {
+                              "type": "text",
+                              "id": "PW3s5",
+                              "name": "Language hint",
+                              "fill": "$gutter",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "Now English: Audelin has no Deutsch, the macOS language.",
+                              "lineHeight": 1.45,
+                              "fontFamily": "$font-ui",
+                              "fontSize": "$type-small",
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        }
+                      }
+                    },
+                    {
+                      "id": "v3CSL8",
+                      "type": "ref",
+                      "ref": "W8h2bZ",
+                      "name": "Row Appearance",
+                      "width": "fill_container",
+                      "descendants": {
+                        "jasWr": {
+                          "content": "Appearance"
+                        },
+                        "X4Fk5p": {
+                          "type": "frame",
+                          "id": "nMo3e",
+                          "name": "Control",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "gap": "$space-6",
+                          "children": [
+                            {
+                              "id": "XohD0",
+                              "type": "ref",
+                              "ref": "rT0HO",
+                              "name": "Appearance picker",
+                              "width": "fill_container",
+                              "descendants": {
+                                "JMakE/uluhv": {
+                                  "content": "System"
+                                },
+                                "tQ8hK/OdXwE": {
+                                  "content": "Light"
+                                },
+                                "sni1W/OdXwE": {
+                                  "content": "Dark"
+                                }
+                              }
+                            },
+                            {
+                              "type": "text",
+                              "id": "hh14D",
+                              "name": "Appearance hint",
+                              "fill": "$gutter",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "As in macOS.",
+                              "lineHeight": 1.45,
+                              "fontFamily": "$font-ui",
+                              "fontSize": "$type-small",
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "sFj7c",
+              "name": "general-english-light",
+              "theme": {
+                "mode": "light"
+              },
+              "reusable": true,
+              "width": 668,
+              "fill": "$back",
+              "layout": "vertical",
+              "padding": "$space-24",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "IeCyE",
+                  "name": "Settings content",
+                  "width": 620,
+                  "fill": "$win",
+                  "layout": "vertical",
+                  "gap": "$space-24",
+                  "padding": "$space-24",
+                  "children": [
+                    {
+                      "id": "OePpp",
+                      "type": "ref",
+                      "ref": "Cb0Qc",
+                      "name": "Settings tabs",
+                      "width": "fill_container",
+                      "descendants": {
+                        "ctTw8": {
+                          "fill": "$selBg"
+                        },
+                        "ctTw8/EWsWH": {
+                          "content": "General",
+                          "fill": "$selText"
+                        },
+                        "nor3c": {
+                          "fill": "$btn"
+                        },
+                        "nor3c/EWsWH": {
+                          "content": "Recording",
+                          "fill": "$text"
+                        },
+                        "cUhH9": {
+                          "fill": "$btn"
+                        },
+                        "cUhH9/EWsWH": {
+                          "content": "Call summaries",
+                          "fill": "$text"
+                        }
+                      }
+                    },
+                    {
+                      "id": "NFzuw",
+                      "type": "ref",
+                      "ref": "W8h2bZ",
+                      "name": "Row Language",
+                      "width": "fill_container",
+                      "descendants": {
+                        "jasWr": {
+                          "content": "Language"
+                        },
+                        "X4Fk5p": {
+                          "type": "frame",
+                          "id": "MyCLZ",
+                          "name": "Control",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "gap": "$space-6",
+                          "children": [
+                            {
+                              "id": "S0NlN0",
+                              "type": "ref",
+                              "ref": "NkCta",
+                              "name": "Language picker",
+                              "width": "fill_container",
+                              "descendants": {
+                                "dwQBW/OdXwE": {
+                                  "content": "System"
+                                },
+                                "a6vwAN/OdXwE": {
+                                  "content": "Русский"
+                                },
+                                "ZANJ0/uluhv": {
+                                  "content": "English"
+                                }
+                              }
+                            },
+                            {
+                              "type": "text",
+                              "id": "e5hlrs",
+                              "name": "Language hint",
+                              "fill": "$gutter",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "macOS uses Русский.",
+                              "lineHeight": 1.45,
+                              "fontFamily": "$font-ui",
+                              "fontSize": "$type-small",
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        }
+                      }
+                    },
+                    {
+                      "id": "rljDH",
+                      "type": "ref",
+                      "ref": "W8h2bZ",
+                      "name": "Row Appearance",
+                      "width": "fill_container",
+                      "descendants": {
+                        "jasWr": {
+                          "content": "Appearance"
+                        },
+                        "X4Fk5p": {
+                          "type": "frame",
+                          "id": "qwBUK",
+                          "name": "Control",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "gap": "$space-6",
+                          "children": [
+                            {
+                              "id": "D5V2c",
+                              "type": "ref",
+                              "ref": "rT0HO",
+                              "name": "Appearance picker",
+                              "width": "fill_container",
+                              "descendants": {
+                                "JMakE/uluhv": {
+                                  "content": "System"
+                                },
+                                "tQ8hK/OdXwE": {
+                                  "content": "Light"
+                                },
+                                "sni1W/OdXwE": {
+                                  "content": "Dark"
+                                }
+                              }
+                            },
+                            {
+                              "type": "text",
+                              "id": "EImMB",
+                              "name": "Appearance hint",
+                              "fill": "$gutter",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "As in macOS.",
+                              "lineHeight": 1.45,
+                              "fontFamily": "$font-ui",
+                              "fontSize": "$type-small",
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "fXSJZ",
+              "name": "general-russian-light",
+              "theme": {
+                "mode": "light"
+              },
+              "reusable": true,
+              "width": 668,
+              "fill": "$back",
+              "layout": "vertical",
+              "padding": "$space-24",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "bBlim",
+                  "name": "Settings content",
+                  "width": 620,
+                  "fill": "$win",
+                  "layout": "vertical",
+                  "gap": "$space-24",
+                  "padding": "$space-24",
+                  "children": [
+                    {
+                      "id": "eAFFK",
+                      "type": "ref",
+                      "ref": "Cb0Qc",
+                      "name": "Settings tabs",
+                      "width": "fill_container",
+                      "descendants": {
+                        "ctTw8": {
+                          "fill": "$selBg"
+                        },
+                        "ctTw8/EWsWH": {
+                          "content": "Основные",
+                          "fill": "$selText"
+                        },
+                        "nor3c": {
+                          "fill": "$btn"
+                        },
+                        "nor3c/EWsWH": {
+                          "content": "Запись",
+                          "fill": "$text"
+                        },
+                        "cUhH9": {
+                          "fill": "$btn"
+                        },
+                        "cUhH9/EWsWH": {
+                          "content": "Итоги звонков",
+                          "fill": "$text"
+                        }
+                      }
+                    },
+                    {
+                      "id": "DArg8",
+                      "type": "ref",
+                      "ref": "W8h2bZ",
+                      "name": "Row Язык",
+                      "width": "fill_container",
+                      "descendants": {
+                        "jasWr": {
+                          "content": "Язык"
+                        },
+                        "X4Fk5p": {
+                          "type": "frame",
+                          "id": "pFKQ5",
+                          "name": "Control",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "gap": "$space-6",
+                          "children": [
+                            {
+                              "id": "sd304",
+                              "type": "ref",
+                              "ref": "ksNeX",
+                              "name": "Language picker",
+                              "width": "fill_container",
+                              "descendants": {
+                                "yGGGs/OdXwE": {
+                                  "content": "Системный"
+                                },
+                                "nO9lR/uluhv": {
+                                  "content": "Русский"
+                                },
+                                "C7H5c/OdXwE": {
+                                  "content": "English"
+                                }
+                              }
+                            },
+                            {
+                              "type": "text",
+                              "id": "sw1fY",
+                              "name": "Language hint",
+                              "fill": "$gutter",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "Язык macOS — English.",
+                              "lineHeight": 1.45,
+                              "fontFamily": "$font-ui",
+                              "fontSize": "$type-small",
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        }
+                      }
+                    },
+                    {
+                      "id": "z7rDYX",
+                      "type": "ref",
+                      "ref": "W8h2bZ",
+                      "name": "Row Оформление",
+                      "width": "fill_container",
+                      "descendants": {
+                        "jasWr": {
+                          "content": "Оформление"
+                        },
+                        "X4Fk5p": {
+                          "type": "frame",
+                          "id": "mH6YD",
+                          "name": "Control",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "gap": "$space-6",
+                          "children": [
+                            {
+                              "id": "BhR2H",
+                              "type": "ref",
+                              "ref": "rT0HO",
+                              "name": "Appearance picker",
+                              "width": "fill_container",
+                              "descendants": {
+                                "JMakE/uluhv": {
+                                  "content": "Системное"
+                                },
+                                "tQ8hK/OdXwE": {
+                                  "content": "Светлое"
+                                },
+                                "sni1W/OdXwE": {
+                                  "content": "Тёмное"
+                                }
+                              }
+                            },
+                            {
+                              "type": "text",
+                              "id": "e7jlOW",
+                              "name": "Appearance hint",
+                              "fill": "$gutter",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "Как в macOS.",
+                              "lineHeight": 1.45,
+                              "fontFamily": "$font-ui",
+                              "fontSize": "$type-small",
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "Xr7Ds",
+          "name": "General — dark",
+          "theme": {
+            "mode": "dark"
+          },
+          "gap": "$space-40",
+          "children": [
+            {
+              "id": "i1dkW",
+              "type": "ref",
+              "ref": "N09b72",
+              "name": "general-system-dark",
+              "theme": {
+                "mode": "dark"
+              }
+            },
+            {
+              "id": "J1i3lx",
+              "type": "ref",
+              "ref": "NejaA",
+              "name": "general-fallback-dark",
+              "theme": {
+                "mode": "dark"
+              }
+            },
+            {
+              "id": "U8rQY",
+              "type": "ref",
+              "ref": "sFj7c",
+              "name": "general-english-dark",
+              "theme": {
+                "mode": "dark"
+              }
+            },
+            {
+              "id": "HKKLR",
+              "type": "ref",
+              "ref": "fXSJZ",
+              "name": "general-russian-dark",
+              "theme": {
+                "mode": "dark"
+              }
+            }
+          ]
+        },
+        {
+          "type": "note",
+          "id": "A1boMu",
+          "name": "General behavior",
+          "width": 1100,
+          "height": 200,
+          "content": "General. Window content only; the native title bar is not drawn. The first tab holds Language (System / Русский / English) and Appearance (System / Light / Dark), each a three-part segmented control across the row; language names are written in their own language. System language uses the first macOS preferred language Audelin supports and English otherwise. A change applies at once to every window, the panel and the menu bar, with no relaunch and no confirmation. The grey line under Language names the language System gives, or the macOS language when one is forced. Language covers UI text only: transcription, summaries and call folders do not change. Mouse clicks a segment; keyboard moves between segments with the arrow keys after Tab. macOS only; no phone or tablet layout."
         }
       ]
     },
@@ -45823,6 +46541,18 @@
           "gap": "$space-4",
           "children": [
             {
+              "id": "ctTw8",
+              "type": "ref",
+              "ref": "wmGeO",
+              "name": "General tab",
+              "width": "fill_container",
+              "descendants": {
+                "EWsWH": {
+                  "content": "Основные"
+                }
+              }
+            },
+            {
               "id": "nor3c",
               "type": "ref",
               "ref": "wmGeO",
@@ -46130,6 +46860,166 @@
                   "content": "Сохранить"
                 }
               }
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "D900EE",
+          "name": "Segment/Selected",
+          "reusable": true,
+          "width": "fill_container",
+          "fill": "$surface",
+          "cornerRadius": "$radius-control",
+          "stroke": "$rule",
+          "strokeWidth": 1,
+          "padding": [
+            "$space-4",
+            "$space-12"
+          ],
+          "justifyContent": "center",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "uluhv",
+              "name": "Label",
+              "fill": "$text",
+              "content": "Системный",
+              "lineHeight": 1.45,
+              "fontFamily": "$font-ui",
+              "fontSize": "$type-small",
+              "fontWeight": "600"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "Eem0I",
+          "name": "Segment/Default",
+          "reusable": true,
+          "width": "fill_container",
+          "fill": "#00000000",
+          "cornerRadius": "$radius-control",
+          "padding": [
+            "$space-4",
+            "$space-12"
+          ],
+          "justifyContent": "center",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "OdXwE",
+              "name": "Label",
+              "fill": "$sub",
+              "content": "Русский",
+              "lineHeight": 1.45,
+              "fontFamily": "$font-ui",
+              "fontSize": "$type-small",
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "rT0HO",
+          "name": "Segmented/First",
+          "reusable": true,
+          "width": 400,
+          "fill": "$btn",
+          "cornerRadius": "$radius-control",
+          "gap": "$space-2",
+          "padding": "$space-2",
+          "children": [
+            {
+              "id": "JMakE",
+              "type": "ref",
+              "ref": "D900EE",
+              "name": "Segment 1",
+              "width": "fill_container"
+            },
+            {
+              "id": "tQ8hK",
+              "type": "ref",
+              "ref": "Eem0I",
+              "name": "Segment 2",
+              "width": "fill_container"
+            },
+            {
+              "id": "sni1W",
+              "type": "ref",
+              "ref": "Eem0I",
+              "name": "Segment 3",
+              "width": "fill_container"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "ksNeX",
+          "name": "Segmented/Second",
+          "reusable": true,
+          "width": 400,
+          "fill": "$btn",
+          "cornerRadius": "$radius-control",
+          "gap": "$space-2",
+          "padding": "$space-2",
+          "children": [
+            {
+              "id": "yGGGs",
+              "type": "ref",
+              "ref": "Eem0I",
+              "name": "Segment 1",
+              "width": "fill_container"
+            },
+            {
+              "id": "nO9lR",
+              "type": "ref",
+              "ref": "D900EE",
+              "name": "Segment 2",
+              "width": "fill_container"
+            },
+            {
+              "id": "C7H5c",
+              "type": "ref",
+              "ref": "Eem0I",
+              "name": "Segment 3",
+              "width": "fill_container"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "NkCta",
+          "name": "Segmented/Third",
+          "reusable": true,
+          "width": 400,
+          "fill": "$btn",
+          "cornerRadius": "$radius-control",
+          "gap": "$space-2",
+          "padding": "$space-2",
+          "children": [
+            {
+              "id": "dwQBW",
+              "type": "ref",
+              "ref": "Eem0I",
+              "name": "Segment 1",
+              "width": "fill_container"
+            },
+            {
+              "id": "a6vwAN",
+              "type": "ref",
+              "ref": "Eem0I",
+              "name": "Segment 2",
+              "width": "fill_container"
+            },
+            {
+              "id": "ZANJ0",
+              "type": "ref",
+              "ref": "D900EE",
+              "name": "Segment 3",
+              "width": "fill_container"
             }
           ]
         }

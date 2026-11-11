@@ -4,8 +4,8 @@ The design lives in one file, [visual-language.pen](visual-language.pen).
 This page indexes it: the locked design system, the components, and where
 each frame sits. The app it draws is specified, as far as it is yet, in
 [../spec/](../spec/). How
-to open, edit and save the file through the pencil MCP is in the repo's
-`AGENTS.md` § Designing in pen.dev.
+to edit and save the file headless with the `pen` CLI (`pen interactive`) is
+in the repo's `AGENTS.md` § Designing in pen.dev.
 
 ## Design system
 
@@ -83,7 +83,7 @@ The app's tokens are generated from [tokens.json](tokens.json), a snapshot of
 this file's variables. A token change in the design ships in the same commit
 as the refreshed snapshot and the regenerated Swift:
 
-1. Through the pencil MCP, run `execute` on this file with
+1. With `pen interactive --in visual-language.pen`, run `execute` with
    `Print(JSON.stringify(GetVariables()))`.
 2. Write the printed JSON to `tokens.json` with a 2-space indent and a final
    newline, so the diff shows only the changed tokens.
@@ -114,6 +114,7 @@ from instances.
 | Hotkey field | `ysLzd` | `Keys` |
 | Alert | `OCKfD` | `H`, `Body`; buttons "Primary action" (destructive by default; swap for Button/Primary when the action is not destructive) and "Cancel" |
 | Calls row, /Hover | `yFtkD`, `uMMD6` | `Date`, `Title`, `Duration`, `Audio`, `Dot`, pin; Hover adds the row tint and shows Delete (a Button/Destructive in the error tint) |
+| Segment/Selected, /Default; Segmented/First, /Second, /Third | on the board "Glass Ledger — call notes components" | each segment's `Label`; the variant names the selected segment ([general settings brief](general-settings.md)) |
 | Settings row | `W8h2bZ` | `Name`; replace `Control` with the row's control |
 | Live panel | `c0qJn` | The glass panel shell; replace `Body` with the header, banners and log |
 | Added late | `HIqfu` | `Late label`; the group of minutes filled in after live text is switched on mid-call |
@@ -154,7 +155,7 @@ Cards are separated by `space-8` in both appearances.
 | 3 — Live panel states | Not recording; recording; getting ready, recording while the models load; live text off; live text switched off mid-call, with the text so far kept; text filled in after live text is switched on; settling; selections held, each let go on its own; sent to bb with each card step |
 | 4 — Calls list | Hover; confirm delete; renaming inline |
 | 5 — Call after it ends | Final pass running; failed; summary pending; done; renaming the title |
-| 6 — Settings | Recording: release, debug, confirm move, moving, move failed, during recording. Call notes: off, on, local, invalid, unavailable, validating, saving, save failed, saved, loading, load failed; see [settings brief](call-notes-settings.md) |
+| 6 — Settings | Tabs General, Recording, Call summaries. General: language System, English fallback, English forced, Russian forced; see [general settings brief](general-settings.md). Recording: release, debug, confirm move, moving, move failed, during recording. Call notes: off, on, local, invalid, unavailable, validating, saving, save failed, saved, loading, load failed; see [settings brief](call-notes-settings.md) |
 | 7 — Menu bar item | Waiting for a call; recording started by the call; recording without live text |
 | 8 — Errors | No call audio; no microphone; disk full; call silent (written but zeros while the user talks) |
 | 9 — App icon | Three frames: the ledger icon (not chosen); "two tracks", the chosen flat design; and its Liquid Glass edition, whose Icon Composer layers (me, them, rec) are exported to `macos/AppIcon/Audelin.icon` |

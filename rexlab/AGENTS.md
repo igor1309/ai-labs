@@ -79,9 +79,10 @@ one pull request.
   it back with `json.dumps(..., indent=2)`, and check that no id
   repeats. A branch that changes an existing frame while another
   branch's change to it is unmerged waits for that merge.
-- The Pencil tools act on the document open in the editor, whatever
-  file path they are given: open the branch's own file first, and check
-  the editor's file before every edit.
+- Edit the branch's own `.pen` headless with `pen interactive`, as the
+  repo's `AGENTS.md` § Designing in pen.dev says. The Pencil MCP tools
+  act on whatever document the editor has open, so do not edit through
+  them.
 
 ### Spec review
 
