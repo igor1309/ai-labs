@@ -53,23 +53,23 @@ public struct SummaryPreviewView: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .top, spacing: tokens.space12) {
-                VStack(alignment: .leading, spacing: tokens.space8) {
+            VStack(alignment: .leading, spacing: tokens.space8) {
+                HStack(alignment: .center, spacing: tokens.space12) {
                     Text(state.title).font(tokens.ui(tokens.typeDisplay, .semibold)).tracking(-0.8).foregroundStyle(tokens.text)
                         .textSelection(.enabled)
-                    Text("\(state.date) · \(state.duration)").font(tokens.ui(tokens.typeCaption)).foregroundStyle(tokens.sub)
-                        .textSelection(.enabled)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                if case .markdown = state.notes {
-                    Button(action: copy) {
-                        Text("Копировать").font(tokens.ui(tokens.typeSmall)).foregroundStyle(tokens.text)
-                            .padding(.vertical, tokens.space8).padding(.horizontal, tokens.space12)
-                            .background(tokens.btn, in: .rect(cornerRadius: tokens.radiusControl))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    if case .markdown = state.notes {
+                        Button(action: copy) {
+                            Text("Копировать").font(tokens.ui(tokens.typeSmall)).foregroundStyle(tokens.text)
+                                .padding(.vertical, tokens.space8).padding(.horizontal, tokens.space12)
+                                .background(tokens.btn, in: .rect(cornerRadius: tokens.radiusControl))
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("preview.copy")
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("preview.copy")
                 }
+                Text("\(state.date) · \(state.duration)").font(tokens.ui(tokens.typeCaption)).foregroundStyle(tokens.sub)
+                    .textSelection(.enabled)
             }
             .padding(.horizontal, tokens.space28).padding(.top, tokens.space24).padding(.bottom, tokens.space24)
             Rectangle().fill(tokens.rule).frame(height: 1)
