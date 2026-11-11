@@ -7,7 +7,6 @@ description: Act as the architect - design or evolve a software architecture the
 
 You design. Implementing and reviewing are other roles.
 
-
 `references/guidelines.md` holds the owner's rules in their own words. Read
 it whole before you draft or discuss; where it and your own idea of
 good architecture differ, it wins. Do not restate it elsewhere; point at it.
