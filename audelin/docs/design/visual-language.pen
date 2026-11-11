@@ -48904,68 +48904,6 @@
               ]
             }
           ]
-        },
-        {
-          "type": "frame",
-          "id": "gIvaA",
-          "name": "Title bar/Utility",
-          "reusable": true,
-          "width": 600,
-          "height": 24,
-          "fill": "$side",
-          "stroke": "$rule",
-          "strokeWidth": {
-            "bottom": 1
-          },
-          "justifyContent": "center",
-          "alignItems": "center",
-          "children": [
-            {
-              "type": "frame",
-              "id": "Cnony",
-              "layoutPosition": "absolute",
-              "x": 8,
-              "y": 7,
-              "name": "Lights",
-              "gap": "$space-8",
-              "children": [
-                {
-                  "type": "ellipse",
-                  "id": "gK08M",
-                  "name": "Light",
-                  "fill": "#FF5F57",
-                  "width": 10,
-                  "height": 10
-                },
-                {
-                  "type": "ellipse",
-                  "id": "q5qFC",
-                  "name": "Light",
-                  "fill": "#FEBC2E",
-                  "width": 10,
-                  "height": 10
-                },
-                {
-                  "type": "ellipse",
-                  "id": "n6roHc",
-                  "name": "Light",
-                  "fill": "#28C840",
-                  "width": 10,
-                  "height": 10
-                }
-              ]
-            },
-            {
-              "type": "text",
-              "id": "oUYtV",
-              "name": "Title",
-              "fill": "$sub",
-              "content": "Саммари — iOS Daily",
-              "fontFamily": "$font-ui",
-              "fontSize": "$type-caption",
-              "fontWeight": "normal"
-            }
-          ]
         }
       ]
     },
@@ -49919,11 +49857,16 @@
                                   "layout": "vertical",
                                   "children": [
                                     {
-                                      "id": "FhOJh",
+                                      "id": "h7mdKM",
                                       "type": "ref",
-                                      "ref": "gIvaA",
+                                      "ref": "H1efZf",
                                       "name": "Title bar",
-                                      "width": "fill_container"
+                                      "width": "fill_container",
+                                      "descendants": {
+                                        "Feu5Z": {
+                                          "content": "Саммари — iOS Daily"
+                                        }
+                                      }
                                     },
                                     {
                                       "id": "vJXdE",

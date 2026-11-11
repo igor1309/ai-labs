@@ -24,14 +24,15 @@ empty slot, so the columns stay put.
 
 ## Preview window
 
-A utility panel (`NSPanel`) with a small title bar «Саммари — Zoom». It
+A floating panel (`NSPanel`) with a standard title bar «Саммари — Zoom». It
 floats above the list while Audelin is active and hides when another app
 is. It follows the selected row and keeps its size and position across rows
 and app restarts.
 
 Considered and dropped: a popover and an inspector pane, which cannot keep
 their position; a standard window, which gets lost behind the list; a
-borderless glass panel.
+borderless glass panel; a utility-style title bar, which is sized for tool
+palettes and looks out of place over a reading window.
 
 Proposed, not decided: the eye column sits just before the pin. The active
 eye uses the `okBg` tint with a `me` icon, like the selected row.
@@ -62,5 +63,4 @@ and `font-data` as SF Mono.
 | Eye, Eye/Active, Eye/Disabled | — |
 | Calls row → `Eye cell` | Hidden by default; enable it and set the `Eye` fill and icon colour |
 | Calls row/Selected | As Calls row; `okBg` row, active eye |
-| Title bar/Utility | `Title`: «Саммари — <call>». A 24 pt utility-panel bar: 10 pt lights at the left, a centred regular caption in `sub` |
 | Summary preview | `Title`, `Meta`, section labels, topic titles and bullet texts |
