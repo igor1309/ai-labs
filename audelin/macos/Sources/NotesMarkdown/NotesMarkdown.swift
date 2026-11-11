@@ -15,11 +15,13 @@ public enum NotesMarkdown {
         public let secondary: NSColor
         public let codeBackground: NSColor
         public let rule: NSColor
+        /// The rhythm the text is set in.
+        public let layout: NotesLayout
 
         public init(body: NSFont, headings: [NSFont], code: NSFont, text: NSColor, secondary: NSColor,
-                    codeBackground: NSColor, rule: NSColor) {
+                    codeBackground: NSColor, rule: NSColor, layout: NotesLayout = .init()) {
             self.body = body; self.headings = headings; self.code = code; self.text = text
-            self.secondary = secondary; self.codeBackground = codeBackground; self.rule = rule
+            self.secondary = secondary; self.codeBackground = codeBackground; self.rule = rule; self.layout = layout
         }
     }
 
@@ -27,7 +29,13 @@ public enum NotesMarkdown {
         let renderer = Renderer(style: style)
         let lines = renderer.blocks(Document(parsing: markdown, options: [.disableSmartOpts]), depth: 0)
         let text = NSMutableAttributedString()
-        for (index, line) in lines.enumerated() {
+        for (index, var line) in lines.enumerated() {
+            // A heading straight under a section label already has the label's space.
+            if index > 0, lines[index - 1].isLabel, line.isHeading {
+                let paragraph = line.paragraph.mutableCopy() as! NSMutableParagraphStyle
+                paragraph.paragraphSpacingBefore = 0
+                line.paragraph = paragraph
+            }
             line.text.addAttribute(.paragraphStyle, value: line.paragraph, range: NSRange(location: 0, length: line.text.length))
             text.append(line.text)
             // An empty paragraph, such as an empty table cell, is only its newline.
@@ -43,11 +51,40 @@ public enum NotesMarkdown {
     }
 }
 
+/// Line height, spacing and section labels: how open the notes read.
+public struct NotesLayout: Equatable, Sendable {
+    /// The height of a line of body text; nil keeps the font's own.
+    public let lineHeight: CGFloat?
+    /// Space after each paragraph and list item.
+    public let paragraphSpacing: CGFloat
+    /// Space before and after a heading, by level; the last entry serves deeper levels.
+    /// Without entries a heading takes 0.6 of its size before it.
+    public let headingSpacing: [(before: CGFloat, after: CGFloat)]
+    /// Heading levels set as section labels: upper case, tracked, in the secondary colour.
+    public let labelLevels: Set<Int>
+    /// The tracking of a section label.
+    public let labelKern: CGFloat
+
+    public init(lineHeight: CGFloat? = nil, paragraphSpacing: CGFloat = 4,
+                headingSpacing: [(before: CGFloat, after: CGFloat)] = [], labelLevels: Set<Int> = [], labelKern: CGFloat = 0) {
+        self.lineHeight = lineHeight; self.paragraphSpacing = paragraphSpacing; self.headingSpacing = headingSpacing
+        self.labelLevels = labelLevels; self.labelKern = labelKern
+    }
+
+    public static func == (a: Self, b: Self) -> Bool {
+        a.lineHeight == b.lineHeight && a.paragraphSpacing == b.paragraphSpacing && a.labelLevels == b.labelLevels
+            && a.labelKern == b.labelKern && a.headingSpacing.map(\.before) == b.headingSpacing.map(\.before)
+            && a.headingSpacing.map(\.after) == b.headingSpacing.map(\.after)
+    }
+}
+
 /// One output paragraph: its text and the paragraph style the caller applies
 /// to it and to its newline.
 private struct Line {
     let text: NSMutableAttributedString
     var paragraph: NSParagraphStyle
+    var isHeading = false
+    var isLabel = false
 }
 
 /// One paragraph per output line; the caller joins them with newlines.
@@ -60,7 +97,27 @@ private struct Renderer {
         switch markup {
         case let heading as Heading:
             let font = style.headings[min(heading.level, style.headings.count) - 1]
-            return [line(inline(heading, font: font), paragraph(depth: depth) { $0.paragraphSpacingBefore = font.pointSize * 0.6 })]
+            let layout = style.layout
+            let spacing = layout.headingSpacing.isEmpty ? nil : layout.headingSpacing[min(heading.level, layout.headingSpacing.count) - 1]
+            let text = inline(heading, font: font)
+            let isLabel = layout.labelLevels.contains(heading.level)
+            if isLabel {
+                let upper = NSMutableAttributedString()
+                text.enumerateAttributes(in: NSRange(location: 0, length: text.length)) { attributes, range, _ in
+                    upper.append(NSAttributedString(string: text.attributedSubstring(from: range).string.uppercased(), attributes: attributes))
+                }
+                let all = NSRange(location: 0, length: upper.length)
+                upper.addAttribute(.foregroundColor, value: style.secondary, range: all)
+                upper.addAttribute(.kern, value: layout.labelKern, range: all)
+                text.setAttributedString(upper)
+            }
+            var heading = line(text, paragraph(depth: depth, body: false) {
+                $0.paragraphSpacingBefore = spacing?.before ?? font.pointSize * 0.6
+                if let after = spacing?.after { $0.paragraphSpacing = after }
+            })
+            heading.isHeading = true
+            heading.isLabel = isLabel
+            return [heading]
         case let paragraph as Paragraph:
             return [line(inline(paragraph, font: style.body), self.paragraph(depth: depth))]
         case let list as UnorderedList:
@@ -132,13 +189,15 @@ private struct Renderer {
         }
     }
 
-    private func paragraph(depth: Int, _ change: (NSMutableParagraphStyle) -> Void = { _ in }) -> NSParagraphStyle {
+    private func paragraph(depth: Int, body: Bool = true,
+                           _ change: (NSMutableParagraphStyle) -> Void = { _ in }) -> NSParagraphStyle {
         let paragraph = NSMutableParagraphStyle()
+        if body, let height = style.layout.lineHeight { paragraph.minimumLineHeight = height; paragraph.maximumLineHeight = height }
         paragraph.firstLineHeadIndent = CGFloat(depth) * indent
         paragraph.headIndent = CGFloat(depth) * indent
         paragraph.tabStops = [NSTextTab(textAlignment: .left, location: CGFloat(depth) * indent)]
         paragraph.defaultTabInterval = indent
-        paragraph.paragraphSpacing = 4
+        paragraph.paragraphSpacing = style.layout.paragraphSpacing
         change(paragraph)
         return paragraph
     }
