@@ -53,9 +53,9 @@ public struct SummaryPreviewView: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            VStack(alignment: .leading, spacing: tokens.space8) {
+            VStack(alignment: .leading, spacing: tokens.space6) {
                 HStack(alignment: .center, spacing: tokens.space12) {
-                    Text(state.title).font(tokens.ui(tokens.typeDisplay, .semibold)).tracking(-0.8).foregroundStyle(tokens.text)
+                    Text(state.title).font(tokens.ui(tokens.typeTitle, .semibold)).foregroundStyle(tokens.text)
                         .textSelection(.enabled)
                         .frame(maxWidth: .infinity, alignment: .leading)
                     if case .markdown = state.notes {
@@ -71,19 +71,19 @@ public struct SummaryPreviewView: View {
                 Text("\(state.date) · \(state.duration)").font(tokens.ui(tokens.typeCaption)).foregroundStyle(tokens.sub)
                     .textSelection(.enabled)
             }
-            .padding(.horizontal, tokens.space28).padding(.top, tokens.space24).padding(.bottom, tokens.space24)
+            .padding(.horizontal, tokens.space24).padding(.vertical, tokens.space20)
             Rectangle().fill(tokens.rule).frame(height: 1)
             switch state.notes {
             case let .markdown(source):
                 NotesText(text: render(source, style), background: NSColor(tokens.surface),
-                          inset: NSSize(width: tokens.space28 - 5, height: tokens.space24))
+                          inset: NSSize(width: tokens.space24 - 5, height: tokens.space20))
             case let .unreadable(reason):
                 Text(reason)
                     .font(tokens.ui(tokens.typeSmall)).foregroundStyle(tokens.rec)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(tokens.space16)
                     .background(tokens.errBg)
-                    .padding(tokens.space28)
+                    .padding(tokens.space24)
                 Spacer(minLength: 0)
             }
         }
@@ -92,16 +92,16 @@ public struct SummaryPreviewView: View {
 
     private var style: NotesStyle {
         NotesStyle(
-            body: tokens.nsUi(tokens.typeReading),
-            headings: [tokens.nsUi(tokens.typeHeading, .semibold),
-                       tokens.nsData(tokens.typeBody, .semibold),
-                       tokens.nsUi(tokens.typeTopic, .semibold)],
+            body: tokens.nsUi(tokens.typeBody),
+            headings: [tokens.nsUi(tokens.typeTitle, .semibold),
+                       tokens.nsUi(tokens.typeCaption, .semibold),
+                       tokens.nsUi(tokens.typeBody, .semibold)],
             code: tokens.nsData(tokens.typeBody),
             text: NSColor(tokens.text), secondary: NSColor(tokens.sub),
             codeBackground: NSColor(tokens.btn), rule: NSColor(tokens.rule),
-            lineHeight: tokens.lineReading, paragraphSpacing: tokens.space8,
-            headingSpacing: [(before: tokens.space28, after: tokens.space8), (before: tokens.space28, after: tokens.space8),
-                             (before: tokens.space20, after: tokens.space8)],
+            lineHeight: tokens.lineBody, paragraphSpacing: tokens.space6,
+            headingSpacing: [(before: tokens.space20, after: tokens.space8), (before: tokens.space20, after: tokens.space8),
+                             (before: tokens.space12, after: tokens.space6)],
             labelLevels: [2]
         )
     }

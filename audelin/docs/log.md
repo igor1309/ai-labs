@@ -2,6 +2,7 @@
 
 ## 2026-11-11
 
+- The summary preview opens as the active window from the eye, and its text uses the app's type scale, matching the calls list and Settings.
 - The About panel shows the build number and commit, a short description, the copyright and a link to the public repository.
 - LAB-1177: Retried notes appear in the open calls window and replace an open preview as soon as they finish. Updates also wait for another instance’s retry and unresolved summary ownership.
 

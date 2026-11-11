@@ -102,7 +102,7 @@ struct CallsPreviewWiringTests {
         }
     }
 
-    @Test func theEyeOfTheShownCallBringsThePanelForward() async throws {
+    @Test func everyEyeAsksForThePanelToBeActive() async throws {
         let focused = Counter()
         try await withComposition(focusPreview: { focused.count += 1 }) { rig in
             let calls = try #require(rig.menu.calls)
@@ -112,10 +112,10 @@ struct CallsPreviewWiringTests {
 
             await calls.send(.preview(a))
             await waitPreview(calls) { $0?.notes == .text("# A") }
-            #expect(focused.count == 0)
+            #expect(focused.count == 1)
 
             await calls.send(.preview(a))
-            #expect(focused.count == 1)
+            #expect(focused.count == 2)
         }
     }
 

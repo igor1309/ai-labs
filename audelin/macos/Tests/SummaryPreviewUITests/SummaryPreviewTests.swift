@@ -85,7 +85,7 @@ struct SummaryPreviewTests {
         #expect([.matches, .recorded].contains(outcome))
     }
 
-    @Test func theNotesAreSetInReadingContrastTokens() throws {
+    @Test func theNotesAreSetInTheAppsTypeScale() throws {
 
         var calls: [(source: String, style: NotesStyle)] = []
         let rendered = NSAttributedString(string: "отрисовано")
@@ -99,12 +99,12 @@ struct SummaryPreviewTests {
         let call = try #require(calls.last)
         #expect(call.source == SummaryPreviews.notes)
         let sans = tokens.fontUi, mono = tokens.fontData
-        #expect(call.style.body.familyName == sans && call.style.body.pointSize == tokens.typeReading)
-        #expect(call.style.lineHeight == tokens.lineReading)
+        #expect(call.style.body.familyName == sans && call.style.body.pointSize == tokens.typeBody)
+        #expect(call.style.lineHeight == tokens.lineBody)
         #expect(call.style.code.familyName == mono)
-        #expect(call.style.headings[1].familyName == mono && call.style.headings[1].pointSize == tokens.typeBody)
+        #expect(call.style.headings[1].familyName == sans && call.style.headings[1].pointSize == tokens.typeCaption)
         #expect(call.style.labelLevels == [2])
-        #expect(call.style.headings[2].familyName == sans && call.style.headings[2].pointSize == tokens.typeTopic)
+        #expect(call.style.headings[2].familyName == sans && call.style.headings[2].pointSize == tokens.typeBody)
         #expect(call.style.text == NSColor(tokens.text))
         #expect(call.style.secondary == NSColor(tokens.sub))
         #expect(text.string == "отрисовано")

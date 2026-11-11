@@ -201,9 +201,9 @@ public final class AudelinCalls {
         case .selectNext: move(by: 1, in: snapshot.rows)
         case .selectPrevious: move(by: -1, in: snapshot.rows)
         case let .preview(id):
-            // The eye of the call already shown changes nothing to observe,
-            // so the panel is brought forward directly.
-            if preview?.id == id { focusPreview() }
+            // An eye asks for the panel to be the active window; a row
+            // selection only moves its content.
+            focusPreview()
             selectedID = id
             previewOpen = true
             updatePreview()

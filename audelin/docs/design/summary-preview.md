@@ -24,7 +24,9 @@ empty slot, so the columns stay put.
 
 ## Preview window
 
-A floating panel (`NSPanel`) with a standard title bar «Саммари — Zoom». It
+A floating panel (`NSPanel`) with a standard title bar «Саммари — Zoom». An
+eye makes it the active window; following a selected row only brings it
+forward, so ↑↓ stays in the list. It
 floats above the list while Audelin is active and hides when another app
 is. It follows the selected row and keeps its size and position across rows
 and app restarts.
@@ -39,22 +41,25 @@ eye uses the `okBg` tint with a `me` icon, like the selected row.
 
 ## Typography
 
-Reading contrast: small monospaced section labels against larger, open body
-text, on the `surface` fill.
+The preview uses the app's type scale, as the calls list and Settings do:
+the reading text is the app's body text, and section labels look like the
+calls table's column headers.
 
 | Text | Font | Size | Weight | Colour |
 |---|---|---|---|---|
-| Title | `font-ui` | `type-display` (30), tracking −0.8 | 600 | `text` |
+| Title | `font-ui` | `type-title` (18) | 600 | `text` |
 | Meta (date · time · duration) | `font-ui` | `type-caption` (11) | regular | `sub` |
-| Section label («О ЧЁМ ВСТРЕЧА») | `font-data` | `type-body` (13), line 1.6 | 600 | `sub` |
-| Topic title | `font-ui` | `type-topic` (15), line 1.6 | 600 | `text` |
-| Paragraph and bullet text | `font-ui` | `type-reading` (16), line 1.6 | regular | `text` |
-| Bullet dot | `font-ui` | `type-reading` | regular | `sub` |
+| Markdown `#` heading | `font-ui` | `type-title` (18) | 600 | `text` |
+| Section label («О ЧЁМ ВСТРЕЧА», Markdown `##`) | `font-ui` | `type-caption` (11), upper case | 600 | `sub` |
+| Topic title (Markdown `###`) | `font-ui` | `type-body` (13) on `line-body` (20) | 600 | `text` |
+| Paragraph and bullet text | `font-ui` | `type-body` (13) on `line-body` (20) | regular | `text` |
+| Bullet dot | `font-ui` | `type-body` | regular | `sub` |
+| Code | `font-data` | `type-body` | regular | `text` on `btn` |
 
-Header padding 24 × 28 with an 8 gap under the title; body padding 24 × 28,
-28 between sections, 12 under a label, 8 between bullets, 12 between dot and
-text, 12 above each topic after the first. The app sets `font-ui` as SF Pro
-and `font-data` as SF Mono.
+Header padding 20 × 24 with a 6 gap under the title; body padding 20 × 24,
+20 between sections, 8 under a label, 6 between bullets, 8 between dot and
+text, 8 above each topic after the first. `font-ui` is IBM Plex Sans and
+`font-data` IBM Plex Mono, as everywhere in the app.
 
 ## Components
 

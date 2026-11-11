@@ -9,6 +9,7 @@ protocol PreviewPanelDriver: AnyObject {
     var title: String { get set }
     var contentView: NSView? { get set }
     func orderFront(_ sender: Any?)
+    func makeKeyAndOrderFront(_ sender: Any?)
     func orderOut(_ sender: Any?)
 }
 
@@ -22,6 +23,7 @@ final class PreviewPanel {
     private let copy: (String) -> Void
     private let makeContent: (SummaryPreviewState, @escaping () -> Void) -> NSView
     private var shown = false
+    private var focusDue = false
 
     init(makePanel: () -> any PreviewPanelDriver, copy: @escaping (String) -> Void,
          makeContent: @escaping (SummaryPreviewState, @escaping () -> Void) -> NSView) {
@@ -30,10 +32,10 @@ final class PreviewPanel {
         self.makeContent = makeContent
     }
 
-    /// Each preview brings the panel forward, so an eye finds it behind
-    /// another Audelin window.
+    /// Each preview brings the panel forward, so it is found behind another
+    /// Audelin window; after an eye it also becomes the active window.
     func show(_ preview: CallsPreview?) {
-        guard let preview else { shown = false; panel.orderOut(nil); return }
+        guard let preview else { shown = false; focusDue = false; panel.orderOut(nil); return }
         let notes: SummaryPreviewState.Notes
         switch preview.notes {
         case let .text(markdown): notes = .markdown(markdown)
@@ -44,12 +46,13 @@ final class PreviewPanel {
         let copy = self.copy
         panel.contentView = makeContent(state) { if case let .markdown(source) = notes { copy(source) } }
         shown = true
-        panel.orderFront(nil)
+        if focusDue { focusDue = false; panel.makeKeyAndOrderFront(nil) } else { panel.orderFront(nil) }
     }
 
-    /// The eye of the call already shown: the same content, brought forward.
+    /// An eye: the panel becomes the active window, now if it shows the
+    /// call already, or as the eye's preview arrives.
     func focus() {
-        if shown { panel.orderFront(nil) }
+        if shown { panel.makeKeyAndOrderFront(nil) } else { focusDue = true }
     }
 }
 
@@ -80,7 +83,6 @@ func makeSummaryPanel() -> NSPanel {
                         styleMask: [.titled, .closable, .resizable], backing: .buffered, defer: true)
     panel.isFloatingPanel = true
     panel.hidesOnDeactivate = true
-    panel.becomesKeyOnlyIfNeeded = true
     panel.isReleasedWhenClosed = false
     panel.minSize = NSSize(width: 320, height: 240)
     panel.center()
