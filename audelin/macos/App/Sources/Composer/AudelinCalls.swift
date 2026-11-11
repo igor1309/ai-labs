@@ -52,12 +52,13 @@ public final class AudelinCalls {
     private let openFolder: (URL) -> Bool
     private let present: () -> Void
     private let timeZone: TimeZone
+    private let now: () -> Date
     private let recordingState: () -> RecordingState
     private var editing: CallsListState.Editing?
     private var openFailure: String?
     private var opening = false
 
-    init(inputs: RecordingsInputs, timeZone: TimeZone, recordingState: @escaping () -> RecordingState,
+    init(inputs: RecordingsInputs, timeZone: TimeZone, now: @escaping () -> Date, recordingState: @escaping () -> RecordingState,
          location: @escaping (String) async throws -> URL, openFolder: @escaping (URL) -> Bool,
          present: @escaping () -> Void, summaryStatuses: @escaping () -> [String: String] = { [:] },
          summaryBadges: @escaping () -> [String: CallsListState.Row.Summary] = { [:] },
@@ -71,12 +72,12 @@ public final class AudelinCalls {
         self.summaryStatuses = summaryStatuses
         self.summaryBadges = summaryBadges
         self.notes = notes
-        self.inputs = inputs; self.timeZone = timeZone; self.recordingState = recordingState
+        self.inputs = inputs; self.timeZone = timeZone; self.now = now; self.recordingState = recordingState
         self.location = location; self.openFolder = openFolder; self.present = present
     }
 
     public var state: CallsListState {
-        var state = callsListState(inputs.state(), timeZone: timeZone)
+        var state = callsListState(inputs.state(), timeZone: timeZone, now: now())
         let statuses = summaryStatuses()
         let badges = summaryBadges()
         let retryable = retryableSummaries().subtracting(retrying)
@@ -153,11 +154,14 @@ public final class AudelinCalls {
             preview = nil
             return
         }
+        let rows = state.rows
+        let opening = rows[...rows.firstIndex(where: { $0.id == id })!].last(where: { $0.day != nil })?.day
+        let date = [opening?.title, row.time].compactMap { $0 }.joined(separator: ", ")
         loading = Task { [notes] in
             let read: CallsPreview.Notes?
             do { read = try await notes(id).map { .text($0) } } catch { read = .unreadable(error.localizedDescription) }
             guard !Task.isCancelled else { return }
-            preview = read.map { .init(id: id, title: row.displayTitle, date: row.date, duration: row.duration, notes: $0) }
+            preview = read.map { .init(id: id, title: row.displayTitle, date: date, duration: row.duration, notes: $0) }
         }
     }
 
@@ -240,7 +244,8 @@ func recordedCallID(_ state: RecordingState) -> String? {
     state.phase == .idle ? nil : (state.callID ?? "")
 }
 
-func callsListState(_ state: RecordingsState, timeZone: TimeZone) -> CallsListState {
+/// Calls arrive newest first; each day's first row carries the day's header.
+func callsListState(_ state: RecordingsState, timeZone: TimeZone, now: Date) -> CallsListState {
     let busy: Bool
     let deleteID: String?
     switch state.phase {
@@ -249,9 +254,13 @@ func callsListState(_ state: RecordingsState, timeZone: TimeZone) -> CallsListSt
     default: busy = true; deleteID = nil
     }
     let format = CallsListFormat(timeZone: timeZone)
-    return CallsListState(rows: state.calls.map {
-        .init(id: $0.id, title: $0.title, displayTitle: $0.title.isEmpty ? format.stamp($0.start) : $0.title,
-              date: format.shortDate($0.start), duration: format.duration($0.duration), editable: $0.id != state.recordingID)
+    let days = state.calls.map { format.day($0.start, now: now) }
+    return CallsListState(rows: state.calls.indices.map { index in
+        let call = state.calls[index], day = days[index]
+        let opens = index == 0 || days[index - 1] != day
+        return .init(id: call.id, title: call.title, displayTitle: call.title.isEmpty ? format.stamp(call.start) : call.title,
+                     day: opens ? .init(title: day, count: format.count(days[index...].prefix { $0 == day }.count)) : nil,
+                     time: format.time(call.start), duration: format.duration(call.duration), editable: call.id != state.recordingID)
     }, deleteID: deleteID, busy: busy || state.isListing, failure: state.failure.map { failure in
         (failure.id.map { "«\($0)»: " } ?? "") + failure.reason
     })

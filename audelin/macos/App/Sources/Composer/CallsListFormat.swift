@@ -36,10 +36,11 @@ struct CallsListFormat {
         return String(format: "%02d:%02d", parts.hour!, parts.minute!)
     }
 
-    /// The day and time the list shows before it groups by day, dd.MM · HH:mm.
-    func shortDate(_ date: Date) -> String {
-        let parts = calendar.dateComponents([.month, .day], from: date)
-        return String(format: "%02d.%02d · ", parts.day!, parts.month!) + time(date)
+    /// A day header's call count: 1 звонок, 2 звонка, 5 звонков.
+    func count(_ calls: Int) -> String {
+        let (last, lastTwo) = (calls % 10, calls % 100)
+        let word = last == 1 && lastTwo != 11 ? "звонок" : (2...4).contains(last) && !(12...14).contains(lastTwo) ? "звонка" : "звонков"
+        return "\(calls) \(word)"
     }
 
     /// The folder's start stamp, yyyy.MM.dd-HHmm, the title of an untitled call.

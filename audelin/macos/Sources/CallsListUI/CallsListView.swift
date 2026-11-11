@@ -17,7 +17,7 @@ public struct CallsListView: View {
     public var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: tokens.space12) {
-                Text("Дата").frame(width: 130, alignment: .leading)
+                Text("Время").frame(width: 130, alignment: .leading)
                 Text("Звонок").frame(maxWidth: .infinity, alignment: .leading)
                 Text("Длит.").frame(width: 80, alignment: .leading)
                 Color.clear.frame(width: eyeWidth, height: 1)
@@ -30,7 +30,10 @@ public struct CallsListView: View {
             Divider().overlay(tokens.rule)
             ScrollView {
                 LazyVStack(spacing: 0) {
-                    ForEach(state.rows) { row in callRow(row) }
+                    ForEach(state.rows) { row in
+                        if let day = row.day { dayHeader(day) }
+                        callRow(row)
+                    }
                     if state.rows.isEmpty {
                         Text(state.busy ? "Загружаются звонки…" : "Пока нет записанных звонков")
                             .foregroundStyle(tokens.gutter).padding(tokens.space24)
@@ -75,7 +78,7 @@ public struct CallsListView: View {
 
     private func rowContent(_ row: CallsListState.Row) -> some View {
         HStack(spacing: tokens.space12) {
-            Text(row.date).font(tokens.data(tokens.typeSmall)).foregroundStyle(tokens.gutter)
+            Text(row.time).font(tokens.data(tokens.typeSmall)).foregroundStyle(tokens.gutter)
                 .frame(width: 130, alignment: .leading).allowsHitTesting(false)
             Group {
                 if let edit = state.editing, edit.id == row.id {
@@ -135,6 +138,15 @@ public struct CallsListView: View {
         .accessibilityAddTraits(state.selectedID == row.id ? .isSelected : [])
         .overlay(alignment: .bottom) { Rectangle().fill(tokens.rule).frame(height: 1) }
         .onHover { hovered = $0 ? row.id : nil }
+    }
+
+    private func dayHeader(_ day: CallsListState.Row.Day) -> some View {
+        HStack(spacing: tokens.space8) {
+            Text(day.title).font(tokens.ui(tokens.typeCaption, .semibold)).foregroundStyle(tokens.sub)
+            Text(day.count).font(tokens.ui(tokens.typeCaption)).foregroundStyle(tokens.gutter)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, tokens.space16).padding(.top, tokens.space12).padding(.bottom, tokens.space4)
     }
 
     private let eyeWidth: CGFloat = 28

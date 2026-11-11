@@ -5,19 +5,27 @@ public struct CallsListState: Equatable, Sendable {
         /// Where the call's summary stands, drawn as an icon; `summaryStatus` says it in words.
         public enum Summary: Equatable, Sendable { case none, pending, failed }
         public var summary: Summary
+        /// The header of the day this row opens; nil on a day's later rows.
+        public struct Day: Equatable, Sendable {
+            public let title: String
+            public let count: String
+            public init(title: String, count: String) { self.title = title; self.count = count }
+        }
+        public let day: Day?
         public var canRetrySummary: Bool
         public var summaryStatus: String
         /// The call has published notes, so its row offers the eye.
         public var hasNotes: Bool
         public let id: String
         public let title: String
-        public let date: String
+        /// The start time, HH:mm.
+        public let time: String
         public let displayTitle: String
         public let duration: String
         public let editable: Bool
         public var folderName: String { id + (title.isEmpty ? "" : " " + title) }
 
-        public init(id: String, title: String, displayTitle: String, date: String, duration: String, editable: Bool,
+        public init(id: String, title: String, displayTitle: String, day: Day?, time: String, duration: String, editable: Bool,
                     summaryStatus: String = "", hasNotes: Bool = false, canRetrySummary: Bool = false, summary: Summary = .none) {
             self.summary = summary
             self.canRetrySummary = canRetrySummary
@@ -26,7 +34,8 @@ public struct CallsListState: Equatable, Sendable {
             self.id = id
             self.title = title
             self.displayTitle = displayTitle
-            self.date = date
+            self.day = day
+            self.time = time
             self.duration = duration
             self.editable = editable
         }

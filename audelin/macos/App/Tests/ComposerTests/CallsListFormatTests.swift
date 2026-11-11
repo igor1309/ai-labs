@@ -22,7 +22,6 @@ struct CallsListFormatTests {
     @Test func timesAndStampsUseTheCallsTimeZone() {
         let start = date("2026-10-24T05:25:00Z")
         #expect(format.time(start) == "14:25")
-        #expect(format.shortDate(start) == "24.10 · 14:25")
         #expect(format.stamp(start) == "2026.10.24-1425")
     }
 
@@ -30,5 +29,11 @@ struct CallsListFormatTests {
                       (3_599, "59:59"), (3_600, "1:00:00"), (4_360, "1:12:40")] as [(Double?, String)])
     func durationIsMinutesAndSecondsOrHoursFromAnHour(seconds: Double?, expected: String) {
         #expect(format.duration(seconds) == expected)
+    }
+
+    @Test(arguments: [(1, "1 звонок"), (2, "2 звонка"), (4, "4 звонка"), (5, "5 звонков"), (11, "11 звонков"),
+                      (12, "12 звонков"), (21, "21 звонок"), (22, "22 звонка"), (111, "111 звонков")])
+    func countAgreesWithTheNumber(calls: Int, expected: String) {
+        #expect(format.count(calls) == expected)
     }
 }

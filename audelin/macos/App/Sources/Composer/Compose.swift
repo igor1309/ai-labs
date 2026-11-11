@@ -57,7 +57,7 @@ public func compose(
                                       storeFolder: { destination in
                                           try await storage.commitFolder(destination) { try preferences.updateCallsFolder(destination) }
                                       }), initial: .init(callsFolder: preferences.read().callsFolder)),
-                                  timeZone: timeZone, recordingState: { [weak menu] in menu?.state ?? .init() },
+                                  timeZone: timeZone, now: boundary.time.now, recordingState: { [weak menu] in menu?.state ?? .init() },
                                   location: { try await storage.location(id: $0) }, openFolder: openCallsFolder,
                                   present: presentCalls, summaryStatuses: { summaries.statuses }, summaryBadges: { summaries.badges },
                                   notes: { try await summaryFiles.notes(call: $0) }, focusPreview: focusPreview,

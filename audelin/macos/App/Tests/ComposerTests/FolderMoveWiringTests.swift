@@ -54,7 +54,7 @@ struct FolderMoveWiringTests {
                 reserve: { await rig.menu.reserveCallsFolder() },
                 release: { await rig.menu.releaseCallsFolder() }, storeFolder: { await spy.store($0) }),
                 initial: .init(callsFolder: rig.root))
-            let calls = AudelinCalls(inputs: inputs, timeZone: .gmt, recordingState: { rig.menu.state },
+            let calls = AudelinCalls(inputs: inputs, timeZone: .gmt, now: Date.init, recordingState: { rig.menu.state },
                                     location: { _ in rig.root }, openFolder: { _ in true }, present: {})
             rig.menu.installCalls(calls)
             let destination = rig.root.appendingPathComponent("new")
@@ -96,7 +96,7 @@ struct FolderMoveWiringTests {
                 reserve: { await rig.menu.reserveCallsFolder() },
                 release: { await rig.menu.releaseCallsFolder() }, storeFolder: { await spy.store($0) }),
                 initial: .init(callsFolder: rig.root))
-            let calls = AudelinCalls(inputs: inputs, timeZone: .gmt, recordingState: { rig.menu.state },
+            let calls = AudelinCalls(inputs: inputs, timeZone: .gmt, now: Date.init, recordingState: { rig.menu.state },
                                     location: { _ in rig.root }, openFolder: { _ in true }, present: {})
             rig.menu.installCalls(calls)
             let destination = rig.root.appendingPathComponent("new")

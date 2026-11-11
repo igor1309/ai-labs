@@ -20,7 +20,7 @@ struct CallsWiringTests {
         state.recordingID = "A"
         state.phase = .askingDelete("B")
         state.failure = .init(id: "B", reason: "disk denied")
-        let mapped = callsListState(state, timeZone: .gmt)
+        let mapped = callsListState(state, timeZone: .gmt, now: .distantFuture)
         #expect(mapped.rows.map(\.editable) == [false, true])
         #expect(mapped.deleteID == "B")
         #expect(mapped.deleteBody?.contains("«B Zoom»") == true)
@@ -28,9 +28,24 @@ struct CallsWiringTests {
         #expect(!mapped.busy)
         for phase: RecordingsState.Phase in [.renaming("A"), .deleting("B")] {
             state.phase = phase
-            #expect(callsListState(state, timeZone: .gmt).busy)
-            #expect(callsListState(state, timeZone: .gmt).deleteID == nil)
+            #expect(callsListState(state, timeZone: .gmt, now: .distantFuture).busy)
+            #expect(callsListState(state, timeZone: .gmt, now: .distantFuture).deleteID == nil)
         }
+    }
+
+    @Test func mappingOpensEachDayWithItsHeaderAndCount() {
+        let hour = 3_600.0, now = Date(timeIntervalSince1970: 3 * 24 * hour + 20 * hour)
+        var state = RecordingsState()
+        state.calls = [(3, 18), (3, 9), (2, 23), (2, 10), (2, 8), (0, 12)].map { day, hour in
+            .init(id: "\(day)-\(hour)", title: "", start: Date(timeIntervalSince1970: (Double(day) * 24 + Double(hour)) * 3_600), duration: 75)
+        }
+        let rows = callsListState(state, timeZone: .gmt, now: now).rows
+        #expect(rows.map(\.day) == [.init(title: "Сегодня", count: "2 звонка"), nil,
+                                     .init(title: "Вчера", count: "3 звонка"), nil, nil,
+                                     .init(title: "Четверг, 1 января", count: "1 звонок")])
+        #expect(rows.map(\.time) == ["18:00", "09:00", "23:00", "10:00", "08:00", "12:00"])
+        #expect(rows.map(\.duration) == Array(repeating: "1:15", count: 6))
+        #expect(rows.last?.displayTitle == "1970.01.01-1200")
     }
 
     @Test func menuOpeningListsAgainAndInlineRenameUsesAFreshResult() async throws {
