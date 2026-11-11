@@ -46,7 +46,7 @@ Feature: Restart into an installed update without interrupting a call
 
   Scenario: S-8 Restart becomes available after the call
     Given the restart offer was disabled during a call
-    When recording and final transcript saving finish
+    When recording, final transcript saving and any active notes finish
     Then I can choose Restart to update without reopening Audelin and can still see the badge
 
   Scenario: S-9 A new call prevents restart
@@ -60,7 +60,7 @@ Feature: Restart into an installed update without interrupting a call
     Then I can still see the badge and the restart offer appropriate to whether a call is underway
 
   Scenario: S-11 Restart into the installed build
-    Given a newer build is installed and no call is recording or finishing its transcript
+    Given a newer build is installed and no call is recording, finishing its transcript or preparing notes
     When I choose Restart to update
     Then I can use the installed build after Audelin quits and reopens, without the update badge or offer
 
@@ -73,6 +73,18 @@ Feature: Restart into an installed update without interrupting a call
     Given a newer build is installed between calls and note jobs are pending
     When I choose Restart to update
     Then I can continue with my calls and pending notes as on an ordinary launch
+
+  Scenario: S-14 Automatic update waits for active notes
+    Given an automatic update is ready while call notes are being dispatched or prepared
+    When Audelin checks whether it can restart
+    Then it waits through publication and terminal saving
+
+  Scenario: S-15 Automatic update checks observed owners
+    Given another instance can be preparing notes for a loaded call
+    When Audelin checks whether it can restart
+    Then it rereads that call, including a previously interrupted attempt
+    And it waits if ownership remains active or completion cannot be established
+
 ```
 
 Normal launch behaviour for optional notes is owned by the optional call notes

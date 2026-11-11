@@ -15,6 +15,7 @@ let package = Package(
         .library(name: "CallObservation", targets: ["CallObservation"]),
         .library(name: "ZoomAccessibility", targets: ["ZoomAccessibility"]),
         .library(name: "CallDiarizer", targets: ["CallDiarizer"]),
+        .library(name: "SpeakerAttribution", targets: ["SpeakerAttribution"]),
 
         .library(name: "BlockingTestWork", targets: ["BlockingTestWork"]),
         .library(name: "SplitRows", targets: ["SplitRows"]),
@@ -32,6 +33,8 @@ let package = Package(
         .library(name: "CoreAudioProcessBinding", targets: ["CoreAudioProcessBinding"]),
         .library(name: "FillIn", targets: ["FillIn"]),
         .library(name: "GlassLedger", targets: ["GlassLedger"]),
+        .library(name: "NotesMarkdown", targets: ["NotesMarkdown"]),
+        .library(name: "SummaryPreviewUI", targets: ["SummaryPreviewUI"]),
         .library(name: "LiveAudio", targets: ["LiveAudio"]),
         .library(name: "LiveText", targets: ["LiveText"]),
         .library(name: "MenuBar", targets: ["MenuBar"]),
@@ -57,6 +60,8 @@ let package = Package(
     dependencies: [
         // Trimmed copy of FluidAudio 0.17.7: audelin/scripts/vendor-fluidaudio.sh.
         .package(path: "Vendor/FluidAudio"),
+        // Apache-2.0, with cmark-gfm under BSD-2: notices in audelin/THIRD-PARTY-NOTICES.md.
+        .package(url: "https://github.com/swiftlang/swift-markdown.git", from: "0.6.0"),
     ],
     targets: [
         .target(name: "SummarySettings"),
@@ -67,6 +72,8 @@ let package = Package(
         .testTarget(name: "SummaryFilesTests", dependencies: ["SummaryFiles", "BlockingTestWork"]),
         .target(name: "SummaryRuntime"),
         .testTarget(name: "SummaryRuntimeTests", dependencies: ["SummaryRuntime", "BlockingTestWork"]),
+        .target(name: "SpeakerAttribution"),
+        .testTarget(name: "SpeakerAttributionTests", dependencies: ["SpeakerAttribution"]),
         .target(name: "BleedCleanup"),
         .testTarget(name: "BleedCleanupTests", dependencies: ["BleedCleanup"]),
         .target(name: "SpeakerIdentification"),
@@ -77,15 +84,20 @@ let package = Package(
         .testTarget(name: "CallObservationTests", dependencies: ["CallObservation"]),
         .target(name: "ZoomAccessibility"),
         .target(name: "CallDiarizer", dependencies: ["AudioConversion", .product(name: "FluidAudio", package: "FluidAudio")]),
+        .testTarget(name: "CallDiarizerTests", dependencies: ["CallDiarizer", "BlockingTestWork"]),
         .testTarget(name: "ZoomAccessibilityTests", dependencies: ["ZoomAccessibility"], resources: [.copy("Fixtures")]),
 
         .testTarget(name: "SourceChecksTests", dependencies: ["BlockingTestWork"]),
         .target(name: "Calls", dependencies: ["CallFolderName"]),
         .target(name: "Recordings"),
         .target(name: "CallsListUI", dependencies: ["GlassLedger"]),
+        .target(name: "NotesMarkdown", dependencies: [.product(name: "Markdown", package: "swift-markdown")]),
+        .testTarget(name: "NotesMarkdownTests", dependencies: ["NotesMarkdown"]),
+        .target(name: "SummaryPreviewUI", dependencies: ["GlassLedger"]),
+        .testTarget(name: "SummaryPreviewUITests", dependencies: ["SummaryPreviewUI", "GlassLedger", "NotesMarkdown", "RenderedText"]),
         .testTarget(name: "CallsTests", dependencies: ["Calls", "TrackFile", "BlockingTestWork"]),
         .testTarget(name: "RecordingsTests", dependencies: ["Recordings"]),
-        .testTarget(name: "CallsListUITests", dependencies: ["CallsListUI", "RenderedText"]),
+        .testTarget(name: "CallsListUITests", dependencies: ["CallsListUI", "GlassLedger", "RenderedText"]),
         .target(name: "CallAudioProbe"),
         .target(name: "CallAudioAccess"),
         .testTarget(name: "CallAudioProbeTests", dependencies: ["CallAudioProbe", "BlockingTestWork"]),

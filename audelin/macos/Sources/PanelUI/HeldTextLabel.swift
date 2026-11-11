@@ -26,10 +26,7 @@ struct HeldTextLabel: NSViewRepresentable {
         label.stringValue = text
         label.setAccessibilityLabel(text)
         label.toolTip = text
-        let descriptor = NSFontDescriptor(fontAttributes: [.family: tokens.fontData])
-            .addingAttributes([.traits: [NSFontDescriptor.TraitKey.weight: NSFont.Weight.regular]])
-        label.font = NSFont(descriptor: descriptor, size: tokens.typeSmall)
-            ?? .monospacedSystemFont(ofSize: tokens.typeSmall, weight: .regular)
+        label.font = tokens.nsData(tokens.typeSmall)
         label.textColor = NSColor(tokens.text)
     }
 

@@ -2,7 +2,10 @@ import Foundation
 
 public struct CallsListState: Equatable, Sendable {
     public struct Row: Equatable, Identifiable, Sendable {
+        public var canRetrySummary: Bool
         public var summaryStatus: String
+        /// The call has published notes, so its row offers the eye.
+        public var hasNotes: Bool
         public let id: String
         public let title: String
         public let date: String
@@ -11,8 +14,10 @@ public struct CallsListState: Equatable, Sendable {
         public let editable: Bool
         public var folderName: String { id + (title.isEmpty ? "" : " " + title) }
 
-        public init(id: String, title: String, start: Date, duration: TimeInterval?, timeZone: TimeZone, editable: Bool, summaryStatus: String = "") {
+        public init(id: String, title: String, start: Date, duration: TimeInterval?, timeZone: TimeZone, editable: Bool, summaryStatus: String = "", hasNotes: Bool = false, canRetrySummary: Bool = false) {
+            self.canRetrySummary = canRetrySummary
             self.summaryStatus = summaryStatus
+            self.hasNotes = hasNotes
             self.id = id
             self.title = title
             self.editable = editable
@@ -44,9 +49,15 @@ public struct CallsListState: Equatable, Sendable {
     public var deleteID: String?
     public var busy: Bool
     public var failure: String?
+    /// The selected call, if any.
+    public var selectedID: String?
+    /// The call whose notes the preview shows, if it is shown.
+    public var previewedID: String?
 
-    public init(rows: [Row] = [], editing: Editing? = nil, deleteID: String? = nil, busy: Bool = false, failure: String? = nil) {
+    public init(rows: [Row] = [], editing: Editing? = nil, deleteID: String? = nil, busy: Bool = false, failure: String? = nil,
+                selectedID: String? = nil, previewedID: String? = nil) {
         self.rows = rows; self.editing = editing; self.deleteID = deleteID; self.busy = busy; self.failure = failure
+        self.selectedID = selectedID; self.previewedID = previewedID
     }
 
     public var deleteBody: String? {
@@ -58,4 +69,5 @@ public struct CallsListState: Equatable, Sendable {
 public enum CallsListEvent: Equatable, Sendable {
     case open(String), beginRename(String), editTitle(String), submitRename, cancelRename
     case askDelete(String), confirmDelete, cancelDelete
+    case select(String), selectNext, selectPrevious, preview(String), retrySummary(String)
 }

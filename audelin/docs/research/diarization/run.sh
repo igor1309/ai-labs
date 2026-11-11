@@ -1,8 +1,10 @@
 #!/bin/sh
-# LAB-1103 measurements, one after another. usage: run.sh ami|calls
+# Diarization measurements, one after another. usage: run.sh ami|calls|synth
 #   ami    the 16 AMI test meetings (FluidAudio's ami-sdm download, headset mix) with
 #          the forced-alignment RTTMs in work/Datasets/diar-forced-alignment
 #   calls  the call tracks already prepared by ../enhance/run-calls.sh (16 kHz f32)
+#   synth  the synthetic Russian group calls built by synth.py (LAB-1130); Nemotron
+#          and VBx only
 # Outputs go to work/<set>/<name>.<system>.json.
 set -eu
 here=$(cd "$(dirname "$0")" && pwd)
@@ -30,5 +32,12 @@ calls)
     n=$(basename "$d")
     run "$d/call.f32" "$here/work/calls/$n"
     echo "call done: $n"
+  done ;;
+synth)
+  for f in "$here"/work/synth/*.f32; do
+    b=${f%.f32}
+    [ -f "$b.vbx.json" ] || "$bin/audelin-diarize" vbx "$f" "$b.vbx.json"
+    [ -f "$b.nemotron.json" ] || "$bin/audelin-diarize" nemotron "$f" "$b.nemotron.json"
+    echo "synth done: $(basename "$b")"
   done ;;
 esac

@@ -59,17 +59,23 @@ public struct Files: Sendable {
     public func release(job: String, call: String, input: String) async { await storage.release(job: job, call: call, input: input) }
     public func claim(_ record: Record) async throws -> (owned: Bool, record: Record) { try await storage.claim(record) }
     public func load(call: String) async throws -> Record? { try await storage.load(call: call) }
+    /// Replaces only the named interrupted attempt; its durable input and outputs survive.
+    public func retry(_ record: Record, job: String) async throws -> Record { try await storage.retry(record, job: job) }
     public func start(_ record: Record) async throws -> Bool { try await storage.start(record) }
     public func progress(_ record: Record) async throws { try await storage.progress(record) }
     public func publish(_ record: Record, notes: String) async throws { try await storage.publish(record, notes: notes) }
+    /// The call's published notes as saved, or nil when it has none.
+    public func notes(call: String) async throws -> String? { try await storage.notes(call: call) }
 }
 private protocol FilesStorage: Sendable {
     func release(job: String, call: String, input: String) async
     func claim(_ record: Record) async throws -> (owned: Bool, record: Record)
     func load(call: String) async throws -> Record?
+    func retry(_ record: Record, job: String) async throws -> Record
     func start(_ record: Record) async throws -> Bool
     func progress(_ record: Record) async throws
     func publish(_ record: Record, notes: String) async throws
+    func notes(call: String) async throws -> String?
 }
 
 private actor DiskFiles: FilesStorage {
@@ -138,6 +144,22 @@ private actor DiskFiles: FilesStorage {
             return record
         }
     }
+    public func retry(_ record: Record, job: String) async throws -> Record {
+        try await locations.withFolder(call: record.call) { [disk, ownershipDirectory] folder in
+            // The old attempt's lease serializes retries even across independent instances.
+            guard let lease = try Self.acquire(record, directory: ownershipDirectory) else { throw CocoaError(.fileWriteUnknown) }
+            defer { flock(lease, LOCK_UN); close(lease) }
+            let path = folder.appendingPathComponent(".summary-job.json")
+            let current = try Self.read(path, disk: disk, call: record.call)
+            guard current == record, current.phase == "interrupted", !job.isEmpty, job != current.job else {
+                throw CocoaError(.fileWriteUnknown)
+            }
+            var next = current
+            next.job = job; next.phase = "pending"; next.warning = false
+            try disk.replace(JSONEncoder().encode(next), at: path)
+            return next
+        }
+    }
     public func start(_ record: Record) async throws -> Bool {
         let identity = Identity(call: record.call, job: record.job, input: record.input)
         guard leases[identity] == nil else { return false }
@@ -180,6 +202,18 @@ private actor DiskFiles: FilesStorage {
             // Receipt and notes are one atomic file replacement; an old complete output survives failure.
             let data = Data(("<!-- audelin-summary:" + marker + " -->\n" + notes).utf8)
             try disk.replace(data, at: folder.appendingPathComponent("summary.md"))
+        }
+    }
+    public func notes(call: String) async throws -> String? {
+        try await locations.withFolder(call: call) { [disk] folder in
+            let output = folder.appendingPathComponent("summary.md")
+            guard try disk.exists(output) else { return nil }
+            guard let text = String(data: try disk.read(output), encoding: .utf8) else {
+                throw CocoaError(.fileReadInapplicableStringEncoding)
+            }
+            // The publication receipt is the first line; the notes follow it.
+            guard text.hasPrefix("<!-- audelin-summary:"), let newline = text.firstIndex(of: "\n") else { return text }
+            return String(text[text.index(after: newline)...])
         }
     }
     private static func read(_ url: URL, disk: any Disk, call: String) throws -> Record {

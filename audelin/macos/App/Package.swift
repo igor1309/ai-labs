@@ -29,6 +29,8 @@ let package = Package(
 
                 .product(name: "Recordings", package: "macos"),
                 .product(name: "CallsListUI", package: "macos"),
+                .product(name: "SummaryPreviewUI", package: "macos"),
+                .product(name: "NotesMarkdown", package: "macos"),
                 .product(name: "CallAudioAccess", package: "macos"),
                 .product(name: "CallAudioProbe", package: "macos"),
                 .product(name: "Lifecycle", package: "macos"),
@@ -58,6 +60,7 @@ let package = Package(
                 .product(name: "SummaryFiles", package: "macos"),
                 .product(name: "SummaryRuntime", package: "macos"),
                 .product(name: "SpeakerIdentification", package: "macos"),
+                .product(name: "SpeakerAttribution", package: "macos"),
                 .product(name: "SettingsUI", package: "macos"),
 
                 .product(name: "IMRxObservation", package: "swift-imrx"),
@@ -102,7 +105,7 @@ let package = Package(
         ),
         .testTarget(
             name: "AudelinTests",
-            dependencies: ["Audelin", "Composer", .product(name: "BlockingTestWork", package: "macos"), .product(name: "CoreAudioProcesses", package: "macos"), .product(name: "LiveText", package: "macos")]
+            dependencies: ["Audelin", "Composer", .product(name: "BlockingTestWork", package: "macos"), .product(name: "CoreAudioProcesses", package: "macos"), .product(name: "LiveText", package: "macos"), .product(name: "SummaryPreviewUI", package: "macos")]
         ),
         .testTarget(
             name: "ComposerTests",

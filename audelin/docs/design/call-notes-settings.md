@@ -1,4 +1,4 @@
-# Call notes settings — LAB-1034
+# Call notes settings
 
 The `Screen 6 — Settings` board in `visual-language.pen` is the design source.
 Call notes adds a second tab beside Recording. Existing recording controls and
@@ -7,9 +7,7 @@ runtime fields, cards and navigation use existing Glass Ledger tokens only.
 
 ## Layout and interaction
 
-Content is 620 pt wide, padded 24 pt, with 16 pt vertical gaps. Rehearsal adds
-24 pt of desktop on every side (668 pt export width). Native window chrome is
-excluded from these exports. Production scrolls the content when the desktop
+Content is 620 pt wide, padded 24 pt, with 16 pt vertical gaps. Native window chrome is not drawn. Production scrolls the content when the desktop
 cannot accommodate its height. There is no mobile layout.
 
 Automatic notes defaults off; all runtime fields remain editable while off.
@@ -38,21 +36,12 @@ are enabled it checks provider availability automatically before persisting.
 An edit during that check cancels the pending save. Validate also reports
 availability independently without a paid prompt. Loading and load
 failure never show invented editable defaults. Stale async replies must not
-replace newer edits. Runtime and validation logic belongs to the subsequent
-implementation phase, after UI rehearsal comparison.
+replace newer edits.
 
-## Rehearsal oracle
+## Rehearsal
 
-`exports/call-notes/summaries-<state>-<appearance>.png` contains all 22 exports.
-Appearances are `light` and `dark`; states are `off`, `on`, `local`, `invalid`,
-`unavailable`, `validating`, `saving`, `save-failed`, `saved`, `loading` and
-`load-failed`. Every export was visually inspected before UI implementation;
-no text or controls are clipped. Local models are illustrative user-supplied
-names, not downloaded models. Attached source prompts are examples, not a
-verbatim product contract; the reviewed specs define behavior.
-
-Run `macos/scripts/rehearsal.sh all --out <directory>` after implementing the
-view. Compare every new state in both appearances to its export before adding
-summary logic or production wiring. Include all existing Settings states in
-the rehearsal to catch tab/layout regressions. Record deviations and their
-resolution in the verification evidence.
+Run `macos/scripts/rehearsal.sh all --out <directory>` and compare every
+Settings state in both appearances with its frame in `visual-language.pen`.
+States: `off`, `on`, `local`, `invalid`, `unavailable`, `validating`,
+`saving`, `save-failed`, `saved`, `loading` and `load-failed`. Local model
+names are illustrative; attached source prompts are examples.

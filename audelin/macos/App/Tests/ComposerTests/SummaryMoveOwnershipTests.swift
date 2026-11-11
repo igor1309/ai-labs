@@ -42,7 +42,7 @@ import Testing
                             try FileManager.default.removeItem(at: url)
                         }))
                 })
-            let handler = RecordingsEffectHandler(calls: SummaryCalls(storage: storage), reserve: { true }, release: {},
+            let handler = RecordingsEffectHandler(calls: SummaryCalls(storage: storage, deleted: { _ in }), reserve: { true }, release: {},
                 storeFolder: { _ in stored.withLock { $0 = true } })
             var state = RecordingsState(callsFolder: source)
             var events: [RecordingsEvent] = []

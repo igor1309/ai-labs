@@ -37,7 +37,8 @@ import Testing
             await summaries.shutdown()
         }
     }
-    @Test func secondCompositionObservesHeldGenerationWithoutInvalidatingPublication() async throws {
+    @Test(arguments: [false, true])
+    func secondCompositionObservesHeldGenerationWithoutInvalidatingPublication(recoverObserver: Bool) async throws {
         try await withComposeFolder { root in
             let id = "1970.01.01-0000"
             try FileManager.default.createDirectory(at: root.appendingPathComponent(id), withIntermediateDirectories: true)
@@ -53,18 +54,168 @@ import Testing
             await owner.submit(call: id, input: "input", entries: [.init(label: "A", time: "0", text: "spoken")], finalWrite: true, usable: true)
             await http.started.next()
             do {
-                await observer.recover(calls: [id])
+                if recoverObserver { await observer.recover(calls: [id]) }
+                else {
+                    await observer.submit(call: id, input: "competing", entries: [.init(label: "B", time: "0", text: "competing")], finalWrite: true, usable: true)
+                }
                 #expect(observer.statuses[id] == "Готовим итоги…")
+                #expect(owner.busy && observer.busy)
+                await observer.refreshObserved()
+                #expect(observer.busy)
+                await #expect(throws: (any Error).self) { try await observer.retry(call: id) }
                 #expect(try await observerFiles.load(call: id)?.phase == "running")
                 await observer.submit(call: id, input: "duplicate", entries: [], finalWrite: false, usable: false)
                 http.release.send()
                 for await status in owner.updates() where status[id] == "Итоги готовы" { break }
                 #expect(try await observerFiles.load(call: id)?.phase == "succeeded")
+                await observer.refreshObserved()
+                #expect(!owner.busy && !observer.busy)
+                #expect(observer.statuses[id] == "Итоги готовы")
                 #expect(await http.requests == 1)
                 await owner.shutdown(); await observer.shutdown()
             } catch {
                 http.release.send(); await owner.shutdown(); await observer.shutdown(); throw error
             }
+        }
+    }
+
+    @Test(arguments: [false, true], [false, true])
+    func interruptedObserverFollowsAnotherInstancesRetry(refuseRetryFirst: Bool, recoverObserver: Bool) async throws {
+        try await withComposeFolder { root in
+            let id = "1970.01.01-0000"
+            try FileManager.default.createDirectory(at: root.appendingPathComponent(id), withIntermediateDirectories: true)
+            let preferences = PreferencesStore(fileURL: root.appendingPathComponent("preferences.json"))
+            try preferences.updateNotes(enabledNotes())
+            let directory = root.appendingPathComponent("leases")
+            let ownerFiles = Files(locations: SummaryStorage(folder: root, timeZone: .gmt), disk: FileDisk(), ownershipDirectory: directory)
+            let observerFiles = Files(locations: SummaryStorage(folder: root, timeZone: .gmt), disk: FileDisk(), ownershipDirectory: directory)
+            _ = try await ownerFiles.claim(SummaryJobStore(files: ownerFiles).record(savedJob(call: id), phase: "interrupted"))
+            let http = HeldSummaryHTTP()
+            let runtime = Runtime(process: ArbitrationProcess(), http: http, credential: { _ in nil }, resolveProgram: { $0 }, deadline: { try await waitForCancellation() })
+            let owner = AudelinSummaries(files: ownerFiles, runtime: runtime, preferences: preferences, sink: TestLogSink())
+            let observer = AudelinSummaries(files: observerFiles, runtime: runtime, preferences: preferences, sink: TestLogSink())
+            await owner.recover(calls: [id])
+            if recoverObserver { await observer.recover(calls: [id]) }
+            else {
+                await observer.submit(call: id, input: "competing", entries: [.init(label: "B", time: "0", text: "competing")], finalWrite: true, usable: true)
+            }
+            #expect(!owner.busy && !observer.busy)
+            #expect(observer.retryable == [id])
+            do {
+                try await owner.retry(call: id)
+                await http.started.next()
+                if refuseRetryFirst {
+                    await #expect(throws: (any Error).self) { try await observer.retry(call: id) }
+                    #expect(observer.busy && observer.retryable.isEmpty)
+                }
+                await observer.refreshObserved()
+                #expect(observer.busy && observer.retryable.isEmpty)
+                #expect(observer.statuses[id] == summaryStatus(.running, false))
+                http.release.send()
+                for await status in owner.updates() where status[id] == "Итоги готовы" { break }
+                await observer.refreshObserved()
+                #expect(!observer.busy && observer.statuses[id] == "Итоги готовы")
+                #expect(await http.requests == 1)
+                await owner.shutdown(); await observer.shutdown()
+            } catch { http.release.send(); await owner.shutdown(); await observer.shutdown(); throw error }
+        }
+    }
+
+    @Test(arguments: [false, true])
+    func refreshCannotReplaceALocallyRetriedJob(failedRead: Bool) async throws {
+        try await withComposeFolder { root in
+            let id = "1970.01.01-0000"
+            try FileManager.default.createDirectory(at: root.appendingPathComponent(id), withIntermediateDirectories: true)
+            let preferences = PreferencesStore(fileURL: root.appendingPathComponent("preferences.json"))
+            try preferences.updateNotes(enabledNotes())
+            let files = Files(locations: SummaryStorage(folder: root, timeZone: .gmt), disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("leases"))
+            _ = try await files.claim(SummaryJobStore(files: files).record(savedJob(call: id), phase: "interrupted"))
+            let reads = HeldObserverRead(files: files, fails: failedRead)
+            let http = HeldSummaryHTTP()
+            let runtime = Runtime(process: ArbitrationProcess(), http: http, credential: { _ in nil }, resolveProgram: { $0 }, deadline: { try await waitForCancellation() })
+            let summaries = AudelinSummaries(files: files, runtime: runtime, preferences: preferences, sink: TestLogSink(), load: { try await reads.load(call: $0) })
+            await summaries.recover(calls: [id])
+            let refresh = Task { await summaries.refreshObserved() }
+            await reads.started.next()
+            do {
+                try await summaries.retry(call: id)
+                await http.started.next()
+                reads.release.send(); await refresh.value
+                await summaries.refreshObserved()
+                #expect(await reads.count == 3)
+                #expect(summaries.busy && summaries.retryable.isEmpty)
+                #expect(summaries.statuses[id] == summaryStatus(.noting, false))
+                http.release.send()
+                for await status in summaries.updates() where status[id] == "Итоги готовы" { break }
+                #expect(!summaries.busy)
+                #expect(try await files.load(call: id)?.phase == "succeeded")
+                await summaries.shutdown()
+            } catch {
+                reads.release.send(); await refresh.value
+                http.release.send(); await summaries.shutdown(); throw error
+            }
+        }
+    }
+
+    @Test(arguments: ["running", "observed"], ["read-error", "absent", "snapshot", "phase"])
+    func unresolvedObserverRefreshBlocksUntilConfirmedCompletion(initial: String, failure: String) async throws {
+        try await withComposeFolder { root in
+            let id = "1970.01.01-0000"
+            try FileManager.default.createDirectory(at: root.appendingPathComponent(id), withIntermediateDirectories: true)
+            let preferences = PreferencesStore(fileURL: root.appendingPathComponent("preferences.json"))
+            let directory = root.appendingPathComponent("leases")
+            let owner = Files(locations: SummaryStorage(folder: root, timeZone: .gmt), disk: FileDisk(), ownershipDirectory: directory)
+            let files = Files(locations: SummaryStorage(folder: root, timeZone: .gmt), disk: FileDisk(), ownershipDirectory: directory)
+            let pending = try SummaryJobStore(files: files).record(savedJob(call: id), phase: "pending")
+            _ = try await owner.claim(pending)
+            #expect(try await owner.start(pending))
+            var running = pending; running.phase = "running"
+            var terminal = pending; terminal.phase = "succeeded"
+            var invalid = running
+            if failure == "snapshot" { invalid.snapshot = Data("invalid snapshot".utf8) }
+            else { invalid.phase = "unknown-phase" }
+            let failedRead: Result<Record?, ObserverReadFailure> = failure == "read-error" ? .failure(.unavailable) : .success(failure == "absent" ? nil : invalid)
+            let reads = ObserverReads([.success(initial == "running" ? running : pending), failedRead, .success(terminal)])
+            let runtime = Runtime(process: ArbitrationProcess(), http: ArbitrationHTTP(), credential: { _ in nil }, resolveProgram: { $0 }, deadline: { throw Failure.timeout })
+            let observer = AudelinSummaries(files: files, runtime: runtime, preferences: preferences, sink: TestLogSink(), load: { _ in try await reads.next() })
+            await observer.recover(calls: [id])
+            if initial == "observed" {
+                for await status in observer.updates() where status[id] == summaryStatus(.observed, false) { break }
+            }
+            #expect(observer.busy)
+            await observer.refreshObserved()
+            #expect(observer.busy)
+            #expect(observer.retryable.isEmpty)
+            #expect(try await owner.load(call: id)?.phase == "running")
+            try await owner.publish(pending, notes: "complete notes")
+            try await owner.progress(terminal)
+            await observer.refreshObserved()
+            #expect(!observer.busy && observer.statuses[id] == "Итоги готовы")
+            await observer.shutdown()
+            await owner.release(job: pending.job, call: id, input: pending.input)
+        }
+    }
+
+    @Test func confirmedPendingObserverKeepsWatchingForDispatch() async throws {
+        try await withComposeFolder { root in
+            let id = "1970.01.01-0000"
+            let preferences = PreferencesStore(fileURL: root.appendingPathComponent("preferences.json"))
+            let files = Files(locations: SummaryStorage(folder: root, timeZone: .gmt), disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("leases"))
+            let pending = try SummaryJobStore(files: files).record(savedJob(call: id), phase: "pending")
+            var running = pending; running.phase = "running"
+            var terminal = pending; terminal.phase = "failed"
+            let reads = ObserverReads([.success(running), .success(pending), .success(running), .success(terminal)])
+            let runtime = Runtime(process: ArbitrationProcess(), http: ArbitrationHTTP(), credential: { _ in nil }, resolveProgram: { $0 }, deadline: { throw Failure.timeout })
+            let observer = AudelinSummaries(files: files, runtime: runtime, preferences: preferences, sink: TestLogSink(), load: { _ in try await reads.next() })
+            await observer.recover(calls: [id])
+            #expect(observer.busy)
+            await observer.refreshObserved()
+            #expect(!observer.busy && observer.statuses[id] == summaryStatus(.pending, false))
+            await observer.refreshObserved()
+            #expect(observer.busy && observer.statuses[id] == summaryStatus(.running, false))
+            await observer.refreshObserved()
+            #expect(!observer.busy && observer.statuses[id] == summaryStatus(.failed, false))
+            await observer.shutdown()
         }
     }
 
@@ -222,5 +373,33 @@ private actor JoinedCancellationHTTP: HTTPRequesting {
             throw Failure.cancelled
         }
         throw Failure.cancelled
+    }
+}
+
+private enum ObserverReadFailure: Error { case unavailable }
+private actor ObserverReads {
+    private var results: [Result<Record?, ObserverReadFailure>]
+    init(_ results: [Result<Record?, ObserverReadFailure>]) { self.results = results }
+    func next() throws -> Record? {
+        guard !results.isEmpty else { Issue.record("unexpected observer read"); throw ObserverReadFailure.unavailable }
+        return try results.removeFirst().get()
+    }
+}
+
+private actor HeldObserverRead {
+    let files: Files
+    let fails: Bool
+    private(set) var count = 0
+    nonisolated let started = Signal(), release = Signal()
+    init(files: Files, fails: Bool) { self.files = files; self.fails = fails }
+    func load(call: String) async throws -> Record? {
+        count += 1
+        let held = count == 2
+        let record = try await files.load(call: call)
+        if held {
+            started.send(); await release.next()
+            if fails { throw ObserverReadFailure.unavailable }
+        }
+        return record
     }
 }

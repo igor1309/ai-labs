@@ -32,10 +32,12 @@ struct AudelinApp: App {
         let panel = FloatingPanel.onScreen()
         let presence = self.presence
         self.panel = panel
+        var callsNSWindow: NSWindow?
         let callsWindow = CallsWindow(makeWindow: {
             let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1000, height: 560),
                                   styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
             presence.track(window)
+            callsNSWindow = window
             return window
         }, activate: { NSApplication.shared.activate() }, shown: { presence.shown($0) })
         self.callsWindow = callsWindow
@@ -47,6 +49,9 @@ struct AudelinApp: App {
         settingsWindow.center()
         presence.track(settingsWindow)
         self.settingsWindow = settingsWindow
+        let summaryWindow = makeSummaryPanel()
+        let previewPanel = PreviewPanel(makePanel: { summaryWindow }, copy: { copyNotes($0, to: .general) },
+                                        makeContent: summaryContent)
         let boundary = await makeRealBoundary()
         let model = await compose(
             boundary: boundary,
@@ -67,11 +72,16 @@ struct AudelinApp: App {
                     begin: { completion in picker.begin { completion($0 == .OK ? picker.url : nil) } },
                     isVisible: { picker.isVisible }
                 )
-            }
+            }, focusPreview: { previewPanel.focus() }
         )
         self.model = model
         settingsWindow.contentView = NSHostingView(rootView: SettingsContent(model: model, window: settingsWindow))
-        if let calls = model.calls { callsWindow.install(content: NSHostingView(rootView: CallsContent(model: calls))) }
+        if let calls = model.calls {
+            callsWindow.install(content: NSHostingView(rootView: CallsContent(model: calls)))
+            _ = connectPreview(panel: previewPanel, preview: { calls.preview }, panelWindow: summaryWindow,
+                               callsWindow: callsNSWindow, center: .default,
+                               closePreview: { calls.closePreview() }, windowClosed: { calls.windowClosed() })
+        }
         panel.install(model)
         appDelegate.connect(model)
         let bundle = Bundle.main.bundleURL
@@ -92,12 +102,13 @@ struct AudelinApp: App {
                     switch entry {
                     case let .stateLine(line):
                         Text(line)
+                    case .divider:
                         Divider()
                     case let .button(title, action):
-                        Button(title) { Task { await model.perform(action) } }
+                        Button(title, systemImage: action.symbol) { Task { await model.perform(action) } }
                             .keyboardShortcut(action == .quit ? KeyboardShortcut("q") : nil)
                     case let .toggle(title, checked, action):
-                        Toggle(title, isOn: Binding(
+                        Toggle(title, systemImage: action.symbol, isOn: Binding(
                             get: { checked }, set: { _ in Task { await model.perform(action) } }
                         ))
                     }

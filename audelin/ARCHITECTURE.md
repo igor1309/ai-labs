@@ -47,6 +47,11 @@ drains recording, retains pending handoffs, cancels and joins active summary
 resources, then allows termination. Root storage integration coordinates
 publication with call rename, deletion and calls-folder moves.
 
+SummaryFiles is also the one reader of published notes: it gives a call's
+notes text, none, or why they cannot be read. The calls list holds the
+selected call; the summary preview draws that call's notes, Markdown
+included, and the app owns the window that holds it.
+
 ## Transcript pipeline
 
 A call's text flows from the recogniser to its readers: Live text turns what
@@ -126,3 +131,26 @@ The root builds BleedCleanup with those answers and runs it on each recording's
 closed transcript. Summary submission waits for its outcome instead of the
 close and is handed the transcript it produced, cleaned or raw. Logging of a kept raw
 transcript is a root decorator.
+
+## Remote speakers
+
+On a group call every far-side voice reads as "Them". After the call, the
+call track is split by speaker and the far side's text is given to the
+remote speaker who said it. The microphone track is never split: it is the
+user's.
+
+Two responsibilities answer it. Call diarizer is an adapter: it reads the
+saved call track and returns speaker turns, from FluidAudio's Nemotron 3
+diarizer by default and from VBx when Nemotron cannot load or run, or when
+the call has more speakers than Nemotron holds
+(`docs/research/diarization.md`). Speaker attribution is a plain component
+and an operator on the transcript pipeline: generic over the segment it
+carries, it reads segment and word times, gives each far-side segment the
+speaker whose turns overlap it most, and splits a segment where the speaker
+changes. It keeps no state and owns no ports.
+
+The root chains them over a closed transcript: it diarizes the call track,
+maps the turns, attributes the far side's segments and logs the outcome; a
+failed diarization leaves the far side as one "Them". When the pass runs
+in the app's flow, and how the speakers are labelled and shown, belong to
+the transcript, summary and panel.

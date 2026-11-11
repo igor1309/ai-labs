@@ -14,7 +14,7 @@ public enum Offscreen {
     ) -> NSHostingView<Content> {
 
         let host = NSHostingView(rootView: content)
-        let window = NSWindow(
+        let window = TwoXWindow(
             contentRect: NSRect(origin: .zero, size: size ?? host.fittingSize),
             styleMask: .borderless,
             backing: .buffered,
@@ -24,7 +24,17 @@ public enum Offscreen {
         window.contentView = host
         if size == nil { window.setContentSize(host.fittingSize) }
         host.layoutSubtreeIfNeeded()
+        // Scrollers follow the machine's pointing device: a CI runner has no
+        // trackpad and shows legacy ones. Draw the overlay style everywhere.
+        overlayScrollers(in: host)
+        host.layoutSubtreeIfNeeded()
         return host
+    }
+
+    private static func overlayScrollers(in view: NSView) {
+
+        (view as? NSScrollView)?.scrollerStyle = .overlay
+        view.subviews.forEach(overlayScrollers(in:))
     }
 
     public static func textView(in view: NSView) -> NSTextView? {
@@ -41,10 +51,19 @@ public enum Offscreen {
 
     public static func snapshot(_ view: NSView) -> NSBitmapImageRep? {
 
+        // Two pixels a point whatever the display: a CI runner's screen is 1x,
+        // and a snapshot's size must not depend on the machine.
         view.display()
-        guard let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { return nil }
-        view.cacheDisplay(in: view.bounds, to: rep)
-        return rep
+        let scale = 2
+        guard let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: Int(view.bounds.width) * scale,
+                                         pixelsHigh: Int(view.bounds.height) * scale, bitsPerSample: 8, samplesPerPixel: 4,
+                                         hasAlpha: true, isPlanar: false, colorSpaceName: .calibratedRGB,
+                                         bytesPerRow: 0, bitsPerPixel: 0),
+              // sRGB, not the display's profile, which differs between machines.
+              let srgb = rep.retagging(with: .sRGB) else { return nil }
+        srgb.size = view.bounds.size
+        view.cacheDisplay(in: view.bounds, to: srgb)
+        return srgb
     }
 
     /// Every text field in the view, whichever way SwiftUI hosts it.
@@ -63,4 +82,10 @@ public enum Offscreen {
 
         try png.write(to: URL(fileURLWithPath: folder).appendingPathComponent("\(name).png"))
     }
+}
+
+/// Lays views out for a 2x screen on any machine: a CI runner's screen is 1x,
+/// and text snapped to its pixel grid draws differently.
+private final class TwoXWindow: NSWindow {
+    override var backingScaleFactor: CGFloat { 2 }
 }

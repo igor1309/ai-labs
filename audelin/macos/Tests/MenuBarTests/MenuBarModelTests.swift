@@ -50,8 +50,8 @@ struct MenuBarModelTests {
                 #expect(menu.item.title == "Audelin")
                 #expect(menu.item.symbol == "text.alignleft")
                 #expect(menu.item.stateLine == line)
-                #expect(menu.entries == [.stateLine(line)]
-                    + (missing.isEmpty ? [.button("Начать запись", .start)] : [])
+                #expect(menu.entries == [.stateLine(line), .divider]
+                    + (missing.isEmpty ? [.button("Начать запись", .start), .divider] : [])
                     + controls(automatic: automatic, liveText: liveText))
             }
         }
@@ -70,8 +70,8 @@ struct MenuBarModelTests {
                     #expect(menu.item.title == "Запись")
                     #expect(menu.item.symbol == "record.circle.fill")
                     #expect(menu.item.stateLine == line)
-                    #expect(menu.entries == [.stateLine(line)]
-                        + (recording == .ending(faults: []) ? [] : [.button("Остановить запись", .stop)])
+                    #expect(menu.entries == [.stateLine(line), .divider]
+                        + (recording == .ending(faults: []) ? [] : [.button("Остановить запись", .stop), .divider])
                         + controls(automatic: true, liveText: liveText))
                 }
             }
@@ -113,9 +113,11 @@ struct MenuBarModelTests {
         [
             .toggle("Записывать звонки автоматически", checked: automatic, .setAutomatic(!automatic)),
             .toggle("Живой текст", checked: liveText, .setLiveText(!liveText)),
+            .divider,
             .button("Звонки…", .showCalls),
-            .button("Настройки…", .showSettings),
             .button("Открыть папку звонков", .openCallsFolder),
+            .button("Настройки…", .showSettings),
+            .divider,
             .button("Выйти", .quit),
         ]
     }

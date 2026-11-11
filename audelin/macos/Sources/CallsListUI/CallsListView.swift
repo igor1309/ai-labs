@@ -20,6 +20,7 @@ public struct CallsListView: View {
                 Text("Дата").frame(width: 130, alignment: .leading)
                 Text("Звонок").frame(maxWidth: .infinity, alignment: .leading)
                 Text("Длит.").frame(width: 80, alignment: .leading)
+                Color.clear.frame(width: eyeWidth, height: 1)
                 Color.clear.frame(width: 170, height: 1)
             }
             .font(tokens.ui(tokens.typeCaption, .semibold))
@@ -54,15 +55,28 @@ public struct CallsListView: View {
         }
         .font(tokens.ui(tokens.typeSmall))
         .background(tokens.win)
+        .focusable()
+        .focusEffectDisabled()
+        .onKeyPress(keys: [.downArrow, .upArrow]) { press in
+            event(press.key == .downArrow ? .selectNext : .selectPrevious)
+            return .handled
+        }
         .overlay { if let body = state.deleteBody { deleteAlert(body) } }
         .onChange(of: state.editing?.id) { _, id in editing = id != nil }
         .onAppear { GlassLedger.registerFonts(); editing = state.editing != nil }
     }
 
+    /// The whole row is a button that selects it; the title, the eye and the
+    /// actions inside it take their own clicks.
     private func callRow(_ row: CallsListState.Row) -> some View {
+        Button { event(.select(row.id)) } label: { rowContent(row).contentShape(.rect) }
+            .buttonStyle(.plain)
+    }
+
+    private func rowContent(_ row: CallsListState.Row) -> some View {
         HStack(spacing: tokens.space12) {
             Text(row.date).font(tokens.data(tokens.typeSmall)).foregroundStyle(tokens.gutter)
-                .frame(width: 130, alignment: .leading)
+                .frame(width: 130, alignment: .leading).allowsHitTesting(false)
             Group {
                 if let edit = state.editing, edit.id == row.id {
                     HStack(spacing: 0) {
@@ -77,23 +91,33 @@ public struct CallsListView: View {
                     .background(tokens.surface, in: .rect(cornerRadius: tokens.radiusControl))
                     .overlay(RoundedRectangle(cornerRadius: tokens.radiusControl).stroke(tokens.me, lineWidth: 1.5))
                 } else {
-                    Button { event(.beginRename(row.id)) } label: {
-                        VStack(alignment: .leading, spacing: tokens.space4) {
-                            Text(row.displayTitle)
-                            if !row.summaryStatus.isEmpty {
-                                Text(row.summaryStatus).font(tokens.ui(tokens.typeCaption)).foregroundStyle(tokens.sub)
-                                    .accessibilityIdentifier("calls.summary.\(row.id)")
-                            }
-                        }.frame(maxWidth: .infinity, alignment: .leading).contentShape(.rect)
+                    VStack(alignment: .leading, spacing: tokens.space4) {
+                        Button { event(.select(row.id)); event(.beginRename(row.id)) } label: {
+                            VStack(alignment: .leading, spacing: tokens.space4) {
+                                Text(row.displayTitle)
+                                if !row.summaryStatus.isEmpty {
+                                    Text(row.summaryStatus).font(tokens.ui(tokens.typeCaption)).foregroundStyle(tokens.sub)
+                                        .accessibilityIdentifier("calls.summary.\(row.id)")
+                                }
+                            }.frame(maxWidth: .infinity, alignment: .leading).contentShape(.rect)
+                        }
+                        .buttonStyle(.plain).disabled(!row.editable || state.busy)
+                        if row.canRetrySummary {
+                            Button("Повторить подготовку итогов") { event(.retrySummary(row.id)) }
+                                .buttonStyle(.plain)
+                                .font(tokens.ui(tokens.typeCaption, .semibold))
+                                .foregroundStyle(tokens.me)
+                                .accessibilityIdentifier("calls.retrySummary.\(row.id)")
+                        }
                     }
-                    .buttonStyle(.plain).disabled(!row.editable || state.busy)
                 }
             }
             .font(tokens.ui(tokens.typeSmall, .semibold)).foregroundStyle(tokens.text)
             .disabled(!row.editable || state.busy)
             .frame(maxWidth: .infinity, alignment: .leading)
             Text(row.duration).font(tokens.data(tokens.typeSmall)).foregroundStyle(tokens.sub)
-                .frame(width: 80, alignment: .leading)
+                .frame(width: 80, alignment: .leading).allowsHitTesting(false)
+            eye(row)
             HStack(spacing: tokens.space4) {
                 button("Открыть", destructive: false) { event(.open(row.id)) }
                 button("Удалить", destructive: true) { event(.askDelete(row.id)) }
@@ -106,9 +130,35 @@ public struct CallsListView: View {
             .disabled(state.busy)
         }
         .padding(.vertical, tokens.space12).padding(.horizontal, tokens.space24)
+        .background(state.selectedID == row.id ? tokens.okBg : .clear)
         .background(hovered == row.id ? tokens.card : tokens.surface)
+        .accessibilityAddTraits(state.selectedID == row.id ? .isSelected : [])
         .overlay(alignment: .bottom) { Rectangle().fill(tokens.rule).frame(height: 1) }
         .onHover { hovered = $0 ? row.id : nil }
+    }
+
+    private let eyeWidth: CGFloat = 28
+
+    /// The eye a call with notes shows; a call without keeps its place empty.
+    @ViewBuilder private func eye(_ row: CallsListState.Row) -> some View {
+        if row.hasNotes {
+            let previewed = state.previewedID == row.id
+            Button { event(.preview(row.id)) } label: {
+                Image(systemName: "eye")
+                    .font(tokens.ui(tokens.typeSmall, .semibold))
+                    .foregroundStyle(previewed ? tokens.me : tokens.sub)
+                    .frame(width: eyeWidth, height: eyeWidth)
+                    .background(previewed ? tokens.okBg : .clear, in: .rect(cornerRadius: tokens.radiusControl))
+                    .contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+            .help("Показать заметки")
+            .accessibilityLabel("Показать заметки")
+            .accessibilityAddTraits(previewed ? .isSelected : [])
+            .accessibilityIdentifier("calls.eye.\(row.id)")
+        } else {
+            Color.clear.frame(width: eyeWidth, height: eyeWidth)
+        }
     }
 
     private func button(_ title: String, destructive: Bool, action: @escaping () -> Void) -> some View {

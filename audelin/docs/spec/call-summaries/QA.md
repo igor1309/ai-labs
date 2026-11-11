@@ -78,3 +78,15 @@ Automated boundary: `cd audelin/macos && swift test --filter SummaryJobsTests/su
 Automated boundaries: `cd audelin/macos/App && swift test --filter SummaryStorageTests/pendingSnapshotRetainsConfigurationAndRunningRecoveryDoesNotReplay` and `swift test --filter SummaryRecoveryDispatchTests`. The dispatch proof asserts the exact saved configuration and transcript request, once. Setup fixture: a never-started pending job is loaded after restart; drive: dispatch remains held; read-back oracle: I can read that notes are waiting to start. Reload a durable pending record with dispatch held; OCR waiting and count zero invocations.
 
 Rendered per-call waiting, running, success, warning, failure and interruption statuses in both appearances: `cd audelin/macos && swift test --filter CallsListViewRenderTests/eachCallShowsItsOwnSummaryProgressAndOutcome`. Accepted speaker evidence checkpoint/read-back and notes payload: `cd audelin/macos/App && swift test --filter SummaryAcceptedEvidenceTests`.
+
+## S-19 Explicitly retry interrupted notes
+
+`cd audelin/macos/App && swift test --filter SummaryRecoveryDispatchTests` verifies no automatic replay of interrupted work, followed by one explicit request with the saved transcript, runtime, model and optional fallback. Current preferences and changed transcript bytes do not replace the saved request.
+
+## S-20 Refused or failed retry
+
+`cd audelin/macos/App && swift test --filter SummaryCompositionTests/callsListRetriesOnlyOnRequestAndShowsRetryErrors` checks the visible retry error and preserved transcript and notes. Active and completed attempts refuse another retry.
+
+## S-21 Read retry completion in the open window
+
+`cd audelin/macos/App && swift test --filter SummaryCompositionTests/retryCompletionRefreshesTheOpenCallsWindowAndPreview` holds generation with and without previous notes. Completion supplies the eye and the new preview text while the calls window stays open and listing IDs stay unchanged.

@@ -25,7 +25,7 @@
               "id": "Qrthd",
               "name": "Number",
               "fill": "#0E9F92",
-              "content": "PROPOSAL 4 · WINDOW SIZES",
+              "content": "WINDOW SIZES",
               "fontFamily": "Inter",
               "fontSize": 12,
               "fontWeight": "600",
@@ -62,7 +62,7 @@
               "fill": "#B4540A",
               "textGrowth": "fixed-width",
               "width": "fill_container",
-              "content": "Proposed, not decided: every width and breakpoint below is a sketch for the owner to confirm or change. Nothing in needs.md or mvp.md sets them.",
+              "content": "Open: every width and breakpoint below.",
               "lineHeight": 1.5,
               "fontFamily": "Inter",
               "fontSize": 13,
@@ -1039,7 +1039,7 @@
                       "fill": "#777777",
                       "textGrowth": "fixed-width",
                       "width": 444,
-                      "content": "As in Proposal 4: time and arrow gutter, card under the line, full footer.",
+                      "content": "Default: time and arrow gutter, card under the line, full footer.",
                       "lineHeight": 1.45,
                       "fontFamily": "Inter",
                       "fontSize": 12,
@@ -3527,7 +3527,7 @@
                       "fill": "#777777",
                       "textGrowth": "fixed-width",
                       "width": 444,
-                      "content": "As in Proposal 4: time and arrow gutter, card under the line, full footer.",
+                      "content": "Default: time and arrow gutter, card under the line, full footer.",
                       "lineHeight": 1.45,
                       "fontFamily": "Inter",
                       "fontSize": 12,
@@ -5072,7 +5072,7 @@
               "id": "N6wMSH",
               "name": "Number",
               "fill": "#0E9F92",
-              "content": "PROPOSAL 4 · NO FOOTNOTE",
+              "content": "NO FOOTNOTE",
               "fontFamily": "Inter",
               "fontSize": 12,
               "fontWeight": "600",
@@ -5096,7 +5096,7 @@
               "fill": "#444444",
               "textGrowth": "fixed-width",
               "width": "fill_container",
-              "content": "The card stays in the panel (owner, 2026-10-21) but exists only once a term is selected. Until then the log is plain: no [n] marks, no card, no highlighted chip. Terms heard still collect in the footer, and clicking a chip selects that term's latest line.",
+              "content": "The card exists only once a term is selected. Until then the log is plain: no [n] marks, no card, no highlighted chip. Terms heard still collect in the footer, and clicking a chip selects that term's latest line.",
               "lineHeight": 1.5,
               "fontFamily": "Inter",
               "fontSize": 15,
@@ -5109,7 +5109,7 @@
               "fill": "#B4540A",
               "textGrowth": "fixed-width",
               "width": "fill_container",
-              "content": "Proposed, not decided: Default inserts the card under its line when it appears, pushing later lines down (no sideways reflow). Wide keeps the margin column reserved with a quiet hint, so the log measure never changes when the first footnote lands.",
+              "content": "Open: Default inserts the card under its line when it appears, pushing later lines down (no sideways reflow). Wide keeps the margin column reserved with a quiet hint, so the log measure never changes when the first footnote lands.",
               "lineHeight": 1.5,
               "fontFamily": "Inter",
               "fontSize": 13,
@@ -7863,7 +7863,7 @@
               "fill": "#444444",
               "textGrowth": "fixed-width",
               "width": "fill_container",
-              "content": "Locked 2026-10-21 from Proposal 4. Colours are variables with a light and a dark value (theme axis «mode»); a frame set to mode: dark switches every token inside it. Type, radius and spacing are consolidated scales: build only from these. Components below use tokens only, so one instance works in both themes.",
+              "content": "Colours are variables with a light and a dark value (theme axis «mode»); a frame set to mode: dark switches every token inside it. Type, radius and spacing are consolidated scales: build only from these. Components below use tokens only, so one instance works in both themes.",
               "lineHeight": 1.5,
               "fontFamily": "Inter",
               "fontSize": 15,
@@ -16644,7 +16644,7 @@
                       "fill": "#777777",
                       "textGrowth": "fixed-width",
                       "width": 488,
-                      "content": "The path is the real file the app was using. Here it was Amanu's, reused on an exact match, and Amanu removed it.",
+                      "content": "The path is the real file the app was using: here a model reused from another app on an exact match, which that app has since deleted.",
                       "lineHeight": 1.45,
                       "fontFamily": "Inter",
                       "fontSize": 12,
@@ -17079,7 +17079,7 @@
                       "fill": "#777777",
                       "textGrowth": "fixed-width",
                       "width": 488,
-                      "content": "The path is the real file the app was using. Here it was Amanu's, reused on an exact match, and Amanu removed it.",
+                      "content": "The path is the real file the app was using: here a model reused from another app on an exact match, which that app has since deleted.",
                       "lineHeight": 1.45,
                       "fontFamily": "Inter",
                       "fontSize": 12,
@@ -17562,7 +17562,7 @@
               "fill": "#B4540A",
               "textGrowth": "fixed-width",
               "width": "fill_container",
-              "content": "Decided (agents, owner delegated, 2026-10-21; mvp.md): late-filled text is marked «дописано позже» and drawn dimmer. Decided (owner, 2026-10-22): each selection adds a hold, the selection fades from the log over 0.3 s once held, the log does not mark held text, and only × lets a hold go. Still proposed: the getting-ready wording; each hold a pinned quote row under the log; text filled in after a mid-call switch sits where its minutes were, in call order, with the line under the group only; no hotkey for start/stop; the 4 s steps follow the default chunk size; «они» covers everyone on the call until remote speakers get names (Later in mvp.md). RACI was never spoken in the spike, so its spelling here is a guess.",
+              "content": "Late-filled text is marked «дописано позже» and drawn dimmer. Each selection adds a hold; the selection fades from the log over 0.3 s once held, the log does not mark held text, and only × lets a hold go. Open: the getting-ready wording; each hold a pinned quote row under the log; text filled in after a mid-call switch sits where its minutes were, in call order, with the line under the group only; no hotkey for start/stop; the 4 s steps follow the default chunk size; «они» covers everyone on the call until remote speakers get names. The spelling of RACI is a guess.",
               "lineHeight": 1.5,
               "fontFamily": "Inter",
               "fontSize": 13,
@@ -17842,7 +17842,7 @@
                       "fill": "#777777",
                       "textGrowth": "fixed-width",
                       "width": 444,
-                      "content": "A call is recorded while the speech models load. The first launch after an install or update compiles them, about 30 s; later launches load in under a second. The audio from the call's start is kept, and the text fills in from there once they are in (S-15, S-16).",
+                      "content": "A call is recorded while the speech models load. The first launch after an install or update compiles them, about 30 s; later launches load in under a second. The audio from the call's start is kept, and the text fills in from there once they are in.",
                       "lineHeight": 1.45,
                       "fontFamily": "Inter",
                       "fontSize": 12,
@@ -19712,7 +19712,7 @@
                       "fill": "#777777",
                       "textGrowth": "fixed-width",
                       "width": 444,
-                      "content": "A call is recorded while the speech models load. The first launch after an install or update compiles them, about 30 s; later launches load in under a second. The audio from the call's start is kept, and the text fills in from there once they are in (S-15, S-16).",
+                      "content": "A call is recorded while the speech models load. The first launch after an install or update compiles them, about 30 s; later launches load in under a second. The audio from the call's start is kept, and the text fills in from there once they are in.",
                       "lineHeight": 1.45,
                       "fontFamily": "Inter",
                       "fontSize": 12,
@@ -21379,7 +21379,7 @@
               "fill": "#B4540A",
               "textGrowth": "fixed-width",
               "width": "fill_container",
-              "content": "Proposed, not decided: the app uses SF Symbols pin / pin.fill, and Phosphor's push-pin stands in here. A context menu with the same actions is not drawn.",
+              "content": "The app uses SF Symbols pin / pin.fill; Phosphor's push-pin stands in here. Open: a context menu with the same actions, not drawn.",
               "lineHeight": 1.5,
               "fontFamily": "Inter",
               "fontSize": 13,
@@ -23770,7 +23770,7 @@
               "fill": "#B4540A",
               "textGrowth": "fixed-width",
               "width": "fill_container",
-              "content": "Decided (agents, owner delegated, 2026-10-21; mvp.md): the summary sits above the transcript, collapsed to 3–4 lines with «показать всё». Still proposed: the cause wording (out of memory, model missing, decode error); where the call's log lives (Журнал ↗).",
+              "content": "The summary sits above the transcript, collapsed to 3–4 lines with «показать всё». Open: the cause wording (out of memory, model missing, decode error); where the call's log lives (Журнал ↗).",
               "lineHeight": 1.5,
               "fontFamily": "Inter",
               "fontSize": 13,
@@ -27901,7 +27901,7 @@
               "fill": "#B4540A",
               "textGrowth": "fixed-width",
               "width": "fill_container",
-              "content": "Proposed, not decided: the progress line during a move; the chunk-size steps offered in debug (2–8 s).",
+              "content": "Open: the progress line during a move; the chunk-size steps offered in debug (2–8 s).",
               "lineHeight": 1.5,
               "fontFamily": "Inter",
               "fontSize": 13,
@@ -34929,7 +34929,7 @@
           "name": "Call notes behavior",
           "width": 1100,
           "height": 180,
-          "content": "LAB-1034: The new states show window content only, matching Settings rehearsal snapshots; the native title bar is excluded. Settings has Recording and Call notes tabs. Fields remain editable while automatic notes are off. Saves affect upcoming jobs; validation makes no paid prompt. API-key field stores an environment-variable name, never its value. Loading and load failure show no editable defaults. Both runtime slots and models are editable. Production content scrolls in a 620 pt-wide window when taller than the available desktop. Mouse uses buttons/menus; keyboard uses native text editing, Tab and Return. This is a macOS-only window; no phone or tablet layout."
+          "content": "Call notes. Window content only; the native title bar is not drawn. Settings has Recording and Call notes tabs. Fields stay editable while automatic notes are off. A save affects upcoming jobs; validation sends no paid prompt. The API-key field holds an environment-variable name, never its value. Loading and a load failure show no editable defaults. Both runtime slots and models are editable. The content scrolls in a 620 pt-wide window when taller than the desktop. Mouse uses buttons and menus; keyboard uses native text editing, Tab and Return. macOS only; no phone or tablet layout."
         }
       ]
     },
@@ -34994,7 +34994,7 @@
               "fill": "#B4540A",
               "textGrowth": "fixed-width",
               "width": "fill_container",
-              "content": "Decided (owner, 2026-10-21; mvp.md): both switches on by default; a call is Zoom, Telemost or a browser taking the microphone, and it ends 30 s after the microphone is released. Still proposed: the glyph itself; whether the time shows in the bar or only in the menu.",
+              "content": "Both switches are on by default. A call is Zoom, Telemost or a browser taking the microphone, and it ends 30 s after the microphone is released. Open: the glyph itself; whether the time shows in the bar or only in the menu.",
               "lineHeight": 1.5,
               "fontFamily": "Inter",
               "fontSize": 13,
@@ -39041,7 +39041,7 @@
               "fill": "#B4540A",
               "textGrowth": "fixed-width",
               "width": "fill_container",
-              "content": "Proposed, not decided: whether a missing call track should stop the recording instead; a low-disk warning before it is full (no threshold is specified).",
+              "content": "Open: whether a missing call track should stop the recording instead; a low-disk warning before it is full, and its threshold.",
               "lineHeight": 1.5,
               "fontFamily": "Inter",
               "fontSize": 13,
@@ -41365,7 +41365,7 @@
               "fill": "#444444",
               "textGrowth": "fixed-width",
               "width": "fill_container",
-              "content": "Kept from Screen 3 for later: a row of terms found in the live text, under the log. Auto-detected term chips are in mvp.md's Later row (owner, 2026-10-21), so v1 and v2 frames do not show them.",
+              "content": "Later: a row of terms found in the live text, under the log. The v1 and v2 frames do not show it.",
               "lineHeight": 1.5,
               "fontFamily": "Inter",
               "fontSize": 15,
@@ -41378,7 +41378,7 @@
               "fill": "#B4540A",
               "textGrowth": "fixed-width",
               "width": "fill_container",
-              "content": "Open for Later: how terms are detected. needs.md rules out a hand-kept vocabulary: terms are unknown in advance.",
+              "content": "Open: how terms are detected. Terms are unknown in advance, so there is no hand-kept vocabulary.",
               "lineHeight": 1.5,
               "fontFamily": "Inter",
               "fontSize": 13,
@@ -41939,7 +41939,7 @@
               "fill": "#444444",
               "textGrowth": "fixed-width",
               "width": "fill_container",
-              "content": "Audelin's icon for Finder, the microphone and call audio permission prompts and System Settings › Privacy (LAB-609). The menu bar item is Screen 7. A Glass Ledger panel on the dark theme: four lines alternating me teal and them amber beside the time gutter, the recording dot in the gutter's first mark. Chosen over a centred dialogue layout (owner, 2026-10-26).",
+              "content": "Audelin's icon for Finder, the microphone and call audio permission prompts and System Settings › Privacy. The menu bar item is Screen 7. A Glass Ledger panel on the dark theme: four lines alternating me teal and them amber beside the time gutter, the recording dot in the gutter's first mark.",
               "lineHeight": 1.5,
               "fontFamily": "Inter",
               "fontSize": 15,
@@ -41952,7 +41952,7 @@
               "fill": "#B4540A",
               "textGrowth": "fixed-width",
               "width": "fill_container",
-              "content": "Proposed, not decided: one icon for both appearances (no separate light icon).",
+              "content": "Open: one icon for both appearances (no separate light icon).",
               "lineHeight": 1.5,
               "fontFamily": "Inter",
               "fontSize": 13,
@@ -42148,7 +42148,7 @@
               "fill": "#B4540A",
               "textGrowth": "fixed-width",
               "width": "fill_container",
-              "content": "Proposed, not decided: this composition against A and B; a five-bar master for 16 and 32 px instead of eleven bars; one icon for both appearances.",
+              "content": "Open: a five-bar master for 16 and 32 px instead of eleven bars; one icon for both appearances.",
               "lineHeight": 1.5,
               "fontFamily": "Inter",
               "fontSize": 13,
@@ -45464,7 +45464,7 @@
           "fill": "#444444",
           "textGrowth": "fixed-width",
           "width": 1100,
-          "content": "The two-tracks design (frame at left, kept as drawn) split into Icon Composer layers: my track, their track, the record dot. Audelin.icon stacks them over the system gradient with glass, shadow and translucency.",
+          "content": "The two-tracks design split into Icon Composer layers: my track, their track, the record dot. Audelin.icon stacks them over the system gradient with glass, shadow and translucency.",
           "fontFamily": "Inter",
           "fontSize": 18,
           "fontWeight": "normal"
@@ -46196,7 +46196,7 @@
               "fill": "#B4540A",
               "textGrowth": "fixed-width",
               "width": "fill_container",
-              "content": "Decided (LAB-1059; owner): a badge over the icon's corner that changes no geometry; the item, gating and wording of the issue. Proposed, not decided: the badge's colour (accent `me`); the item at the top of the menu; the Russian wording.",
+              "content": "The badge sits over the icon's corner and changes no geometry. Open: the badge's colour (accent `me`); the item at the top of the menu; the Russian wording.",
               "lineHeight": 1.5,
               "fontFamily": "Inter",
               "fontSize": 13,
@@ -48582,373 +48582,320 @@
           "name": "Summary preview",
           "reusable": true,
           "width": 440,
+          "fill": "$surface",
           "layout": "vertical",
           "children": [
             {
               "type": "frame",
-              "id": "WSt6E",
+              "id": "yWh73",
               "name": "Header",
               "width": "fill_container",
               "stroke": "$rule",
               "strokeWidth": {
                 "bottom": 1
               },
-              "gap": "$space-12",
-              "padding": "$space-16",
-              "alignItems": "center",
+              "layout": "vertical",
+              "gap": "$space-8",
+              "padding": [
+                "$space-24",
+                "$space-28"
+              ],
               "children": [
                 {
                   "type": "frame",
-                  "id": "E7hkF",
-                  "name": "Heading",
+                  "id": "TWQbJ",
+                  "name": "Title row",
                   "width": "fill_container",
-                  "layout": "vertical",
-                  "gap": "$space-2",
+                  "gap": "$space-12",
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
                   "children": [
                     {
                       "type": "text",
-                      "id": "fuCCN",
+                      "id": "mSwJV",
                       "name": "Title",
                       "fill": "$text",
-                      "textGrowth": "fixed-width",
-                      "width": "fill_container",
-                      "content": "Zoom",
-                      "lineHeight": 1.45,
+                      "content": "iOS Daily",
                       "fontFamily": "$font-ui",
-                      "fontSize": "$type-title",
-                      "fontWeight": "600"
+                      "fontSize": "$type-display",
+                      "fontWeight": "600",
+                      "letterSpacing": -0.8
                     },
                     {
-                      "type": "text",
-                      "id": "YWSdV",
-                      "name": "Meta",
-                      "fill": "$gutter",
-                      "textGrowth": "fixed-width",
-                      "width": "fill_container",
-                      "content": "17.10.2026 · 11:00 · 28 мин",
-                      "lineHeight": 1.45,
-                      "fontFamily": "$font-data",
-                      "fontSize": "$type-small",
-                      "fontWeight": "normal"
+                      "id": "P5RtIy",
+                      "type": "ref",
+                      "ref": "wmGeO",
+                      "name": "Copy",
+                      "descendants": {
+                        "EWsWH": {
+                          "content": "Копировать"
+                        }
+                      }
                     }
                   ]
                 },
                 {
-                  "id": "XSJJY",
-                  "type": "ref",
-                  "ref": "wmGeO",
-                  "name": "Copy",
-                  "descendants": {
-                    "EWsWH": {
-                      "content": "Копировать"
-                    }
-                  }
+                  "type": "text",
+                  "id": "fT5Lv",
+                  "name": "Meta",
+                  "fill": "$sub",
+                  "content": "11.11  ·  10:00  ·  14 мин",
+                  "fontFamily": "$font-ui",
+                  "fontSize": "$type-caption",
+                  "fontWeight": "normal"
                 }
               ]
             },
             {
               "type": "frame",
-              "id": "UExOg",
+              "id": "e6aLbJ",
               "name": "Body",
               "width": "fill_container",
               "layout": "vertical",
-              "gap": "$space-8",
-              "padding": "$space-16",
+              "gap": "$space-28",
+              "padding": [
+                "$space-24",
+                "$space-28"
+              ],
               "children": [
                 {
-                  "type": "text",
-                  "id": "C5uH45",
-                  "name": "H Итоги",
-                  "fill": "$text",
-                  "textGrowth": "fixed-width",
-                  "width": "fill_container",
-                  "content": "Итоги",
-                  "lineHeight": 1.45,
-                  "fontFamily": "$font-ui",
-                  "fontSize": "$type-body",
-                  "fontWeight": "600"
-                },
-                {
-                  "type": "text",
-                  "id": "k2k94J",
-                  "name": "Bullet",
-                  "fill": "$text",
-                  "textGrowth": "fixed-width",
-                  "width": "fill_container",
-                  "content": "• RACI по запуску: accountable за SLA поддержки — я, ведёт команда Ильи.",
-                  "lineHeight": 1.45,
-                  "fontFamily": "$font-ui",
-                  "fontSize": "$type-body",
-                  "fontWeight": "normal"
-                },
-                {
-                  "type": "text",
-                  "id": "wWYkP",
-                  "name": "Bullet",
-                  "fill": "$text",
-                  "textGrowth": "fixed-width",
-                  "width": "fill_container",
-                  "content": "• On-call держит та же команда; ротация — понедельная.",
-                  "lineHeight": 1.45,
-                  "fontFamily": "$font-ui",
-                  "fontSize": "$type-body",
-                  "fontWeight": "normal"
-                },
-                {
-                  "type": "text",
-                  "id": "UqO9r",
-                  "name": "Bullet",
-                  "fill": "$text",
-                  "textGrowth": "fixed-width",
-                  "width": "fill_container",
-                  "content": "• Дашборд NPS никто не собирал; Илья проверит.",
-                  "lineHeight": 1.45,
-                  "fontFamily": "$font-ui",
-                  "fontSize": "$type-body",
-                  "fontWeight": "normal"
-                },
-                {
-                  "type": "text",
-                  "id": "pGdAd",
-                  "name": "H Решения",
-                  "fill": "$text",
-                  "textGrowth": "fixed-width",
-                  "width": "fill_container",
-                  "content": "Решения",
-                  "lineHeight": 1.45,
-                  "fontFamily": "$font-ui",
-                  "fontSize": "$type-body",
-                  "fontWeight": "600"
-                },
-                {
-                  "type": "text",
-                  "id": "HVI8C",
-                  "name": "Item",
-                  "fill": "$text",
-                  "textGrowth": "fixed-width",
-                  "width": "fill_container",
-                  "content": "1. OKR на квартал синхронизируем до пятницы.",
-                  "lineHeight": 1.45,
-                  "fontFamily": "$font-ui",
-                  "fontSize": "$type-body",
-                  "fontWeight": "normal"
-                },
-                {
-                  "type": "text",
-                  "id": "ekTN3",
-                  "name": "Item",
-                  "fill": "$text",
-                  "textGrowth": "fixed-width",
-                  "width": "fill_container",
-                  "content": "2. Релиз 2.4 выкатываем после ревью SLA.",
-                  "lineHeight": 1.45,
-                  "fontFamily": "$font-ui",
-                  "fontSize": "$type-body",
-                  "fontWeight": "normal"
-                },
-                {
                   "type": "frame",
-                  "id": "cn5jE",
-                  "name": "Code",
+                  "id": "YuVow",
+                  "name": "Section",
                   "width": "fill_container",
-                  "fill": "$card",
-                  "cornerRadius": "$radius-control",
-                  "padding": [
-                    "$space-8",
-                    "$space-12"
-                  ],
+                  "layout": "vertical",
+                  "gap": "$space-12",
                   "children": [
                     {
                       "type": "text",
-                      "id": "qB1RP",
-                      "name": "Code text",
-                      "fill": "$cardText",
+                      "id": "HBDE5",
+                      "name": "Label",
+                      "fill": "$sub",
                       "textGrowth": "fixed-width",
                       "width": "fill_container",
-                      "content": "make release VERSION=2.4",
-                      "lineHeight": 1.45,
+                      "content": "О ЧЁМ ВСТРЕЧА",
+                      "lineHeight": 1.6,
                       "fontFamily": "$font-data",
-                      "fontSize": "$type-small",
+                      "fontSize": "$type-body",
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "nVTji",
+                      "name": "Paragraph",
+                      "fill": "$text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Ежедневный дейли мобильной команды. Участники прошли по статусам задач и тестированию. Миша представил новую задачу по печатной форме в профиле карты, по ней обсудили показ ошибок на iOS и необходимость переделки лендинга. Также затронули отказ от OTP-кода для операций СБП, который зависит от бэка.",
+                      "lineHeight": 1.6,
+                      "fontFamily": "$font-ui",
+                      "fontSize": "$type-reading",
                       "fontWeight": "normal"
                     }
                   ]
                 },
                 {
                   "type": "frame",
-                  "id": "CsvdG",
-                  "name": "Table",
-                  "clip": true,
+                  "id": "B6ja9",
+                  "name": "Section",
                   "width": "fill_container",
-                  "cornerRadius": "$radius-control",
-                  "stroke": "$rule",
-                  "strokeWidth": 1,
                   "layout": "vertical",
+                  "gap": "$space-12",
                   "children": [
                     {
-                      "type": "frame",
-                      "id": "gfCVV",
-                      "name": "Row 0",
+                      "type": "text",
+                      "id": "I0Xe1C",
+                      "name": "Label",
+                      "fill": "$sub",
+                      "textGrowth": "fixed-width",
                       "width": "fill_container",
-                      "fill": "$card",
-                      "stroke": "$rule",
-                      "strokeWidth": {
-                        "bottom": 1
-                      },
-                      "gap": "$space-12",
-                      "padding": [
-                        "$space-6",
-                        "$space-12"
-                      ],
+                      "content": "КЛЮЧЕВЫЕ МОМЕНТЫ",
+                      "lineHeight": 1.6,
+                      "fontFamily": "$font-data",
+                      "fontSize": "$type-body",
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "kZyIn",
+                      "name": "Topic",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": "$space-8",
                       "children": [
                         {
                           "type": "text",
-                          "id": "c9Wz0",
-                          "name": "Cell",
-                          "fill": "$text",
-                          "textGrowth": "fixed-width",
-                          "width": 80,
-                          "content": "Кто",
-                          "lineHeight": 1.45,
-                          "fontFamily": "$font-ui",
-                          "fontSize": "$type-small",
-                          "fontWeight": "600"
-                        },
-                        {
-                          "type": "text",
-                          "id": "ylj8r",
-                          "name": "Cell",
+                          "id": "o6fQa",
+                          "name": "Topic title",
                           "fill": "$text",
                           "textGrowth": "fixed-width",
                           "width": "fill_container",
-                          "content": "Что",
-                          "lineHeight": 1.45,
+                          "content": "Текущие задачи (Дима)",
+                          "lineHeight": 1.6,
                           "fontFamily": "$font-ui",
-                          "fontSize": "$type-small",
+                          "fontSize": "$type-topic",
                           "fontWeight": "600"
                         },
                         {
-                          "type": "text",
-                          "id": "sLTGv",
-                          "name": "Cell",
-                          "fill": "$text",
-                          "textGrowth": "fixed-width",
-                          "width": 80,
-                          "content": "Срок",
-                          "lineHeight": 1.45,
-                          "fontFamily": "$font-ui",
-                          "fontSize": "$type-small",
-                          "fontWeight": "600"
+                          "type": "frame",
+                          "id": "CLTV2",
+                          "name": "Bullet",
+                          "width": "fill_container",
+                          "gap": "$space-12",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "zAHlw",
+                              "name": "Dot",
+                              "fill": "$sub",
+                              "content": "•",
+                              "lineHeight": 1.6,
+                              "fontFamily": "$font-ui",
+                              "fontSize": "$type-reading",
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "text",
+                              "id": "k32OX",
+                              "name": "Text",
+                              "fill": "$text",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "Номер задачи в работе распознан неоднозначно: 1773 / 177733 / 733. Дима сегодня на ней, только начал погружаться.",
+                              "lineHeight": 1.6,
+                              "fontFamily": "$font-ui",
+                              "fontSize": "$type-reading",
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "eP9iV",
+                          "name": "Bullet",
+                          "width": "fill_container",
+                          "gap": "$space-12",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "zPbDR",
+                              "name": "Dot",
+                              "fill": "$sub",
+                              "content": "•",
+                              "lineHeight": 1.6,
+                              "fontFamily": "$font-ui",
+                              "fontSize": "$type-reading",
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "text",
+                              "id": "Oxpqw",
+                              "name": "Text",
+                              "fill": "$text",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "По 1781 билд выпущен. Ведущий спросил, почему MR не влит. Дима считает, что MR, вероятно, влиты, и обещал проверить. Факт мержа на встрече не подтверждён.",
+                              "lineHeight": 1.6,
+                              "fontFamily": "$font-ui",
+                              "fontSize": "$type-reading",
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "DfSo8",
+                          "name": "Bullet",
+                          "width": "fill_container",
+                          "gap": "$space-12",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "aSHjC",
+                              "name": "Dot",
+                              "fill": "$sub",
+                              "content": "•",
+                              "lineHeight": 1.6,
+                              "fontFamily": "$font-ui",
+                              "fontSize": "$type-reading",
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "text",
+                              "id": "y7VR2",
+                              "name": "Text",
+                              "fill": "$text",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "Две задачи на тестировании ждут фидбэка от Ники. Ника не может открыть приложение, ей нужны скриншоты от тестировщиков. Она писала Диме лично, а не в общую группу.",
+                              "lineHeight": 1.6,
+                              "fontFamily": "$font-ui",
+                              "fontSize": "$type-reading",
+                              "fontWeight": "normal"
+                            }
+                          ]
                         }
                       ]
                     },
                     {
                       "type": "frame",
-                      "id": "nnsCv",
-                      "name": "Row 1",
+                      "id": "Fkykj",
+                      "name": "Topic",
                       "width": "fill_container",
-                      "fill": "#00000000",
-                      "stroke": "$rule",
-                      "strokeWidth": {
-                        "bottom": 1
-                      },
-                      "gap": "$space-12",
+                      "layout": "vertical",
+                      "gap": "$space-8",
                       "padding": [
-                        "$space-6",
-                        "$space-12"
+                        "$space-12",
+                        0,
+                        0,
+                        0
                       ],
                       "children": [
                         {
                           "type": "text",
-                          "id": "t107NW",
-                          "name": "Cell",
-                          "fill": "$text",
-                          "textGrowth": "fixed-width",
-                          "width": 80,
-                          "content": "Илья",
-                          "lineHeight": 1.45,
-                          "fontFamily": "$font-ui",
-                          "fontSize": "$type-small",
-                          "fontWeight": "normal"
-                        },
-                        {
-                          "type": "text",
-                          "id": "DE13Z",
-                          "name": "Cell",
+                          "id": "Bds9d",
+                          "name": "Topic title",
                           "fill": "$text",
                           "textGrowth": "fixed-width",
                           "width": "fill_container",
-                          "content": "дашборд NPS",
-                          "lineHeight": 1.45,
+                          "content": "iOS (ведущий, «Me»)",
+                          "lineHeight": 1.6,
                           "fontFamily": "$font-ui",
-                          "fontSize": "$type-small",
-                          "fontWeight": "normal"
+                          "fontSize": "$type-topic",
+                          "fontWeight": "600"
                         },
                         {
-                          "type": "text",
-                          "id": "Tf6aD",
-                          "name": "Cell",
-                          "fill": "$text",
-                          "textGrowth": "fixed-width",
-                          "width": 80,
-                          "content": "пт",
-                          "lineHeight": 1.45,
-                          "fontFamily": "$font-ui",
-                          "fontSize": "$type-small",
-                          "fontWeight": "normal"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "frame",
-                      "id": "o09Zm",
-                      "name": "Row 2",
-                      "width": "fill_container",
-                      "fill": "#00000000",
-                      "stroke": "$rule",
-                      "gap": "$space-12",
-                      "padding": [
-                        "$space-6",
-                        "$space-12"
-                      ],
-                      "children": [
-                        {
-                          "type": "text",
-                          "id": "Zgk6z",
-                          "name": "Cell",
-                          "fill": "$text",
-                          "textGrowth": "fixed-width",
-                          "width": 80,
-                          "content": "я",
-                          "lineHeight": 1.45,
-                          "fontFamily": "$font-ui",
-                          "fontSize": "$type-small",
-                          "fontWeight": "normal"
-                        },
-                        {
-                          "type": "text",
-                          "id": "Q852ot",
-                          "name": "Cell",
-                          "fill": "$text",
-                          "textGrowth": "fixed-width",
+                          "type": "frame",
+                          "id": "CGEbD",
+                          "name": "Bullet",
                           "width": "fill_container",
-                          "content": "SLA-документ",
-                          "lineHeight": 1.45,
-                          "fontFamily": "$font-ui",
-                          "fontSize": "$type-small",
-                          "fontWeight": "normal"
-                        },
-                        {
-                          "type": "text",
-                          "id": "hT3Hm",
-                          "name": "Cell",
-                          "fill": "$text",
-                          "textGrowth": "fixed-width",
-                          "width": 80,
-                          "content": "чт",
-                          "lineHeight": 1.45,
-                          "fontFamily": "$font-ui",
-                          "fontSize": "$type-small",
-                          "fontWeight": "normal"
+                          "gap": "$space-12",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "Dj8nV",
+                              "name": "Dot",
+                              "fill": "$sub",
+                              "content": "•",
+                              "lineHeight": 1.6,
+                              "fontFamily": "$font-ui",
+                              "fontSize": "$type-reading",
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "text",
+                              "id": "ocstU",
+                              "name": "Text",
+                              "fill": "$text",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "Ведущий вернулся на iOS. Несколько билдов прошли, MR тоже прошли. Сегодня ведущий проведёт ревью, после него часть задач перейдёт в «готово к релизу».",
+                              "lineHeight": 1.6,
+                              "fontFamily": "$font-ui",
+                              "fontSize": "$type-reading",
+                              "fontWeight": "normal"
+                            }
+                          ]
                         }
                       ]
                     }
@@ -49021,7 +48968,7 @@
               "fill": "#B4540A",
               "textGrowth": "fixed-width",
               "width": "fill_container",
-              "content": "Picked by the owner: A1, the eye only on rows with a summary, and B1, a utility panel that follows the selected row and keeps its size and position across restarts. Proposed, not decided: the eye column sits before the pin.",
+              "content": "The eye shows only on rows with a summary. The preview is a utility panel that follows the selected row and keeps its size and position across restarts. Open: the eye column sits before the pin.",
               "lineHeight": 1.5,
               "fontFamily": "Inter",
               "fontSize": 13,
@@ -49075,7 +49022,7 @@
                       "id": "EzOWV",
                       "name": "Group",
                       "fill": "$text",
-                      "content": "A — Eye button (A1, picked)",
+                      "content": "A — Eye button",
                       "lineHeight": 1.45,
                       "fontFamily": "$font-ui",
                       "fontSize": "$type-title",
@@ -49488,7 +49435,7 @@
                       "id": "A7ejR",
                       "name": "Group",
                       "fill": "$text",
-                      "content": "B — Preview window (B1, picked)",
+                      "content": "B — Preview window",
                       "lineHeight": 1.45,
                       "fontFamily": "$font-ui",
                       "fontSize": "$type-title",
@@ -49535,7 +49482,7 @@
                               "id": "T2gzL",
                               "name": "Desktop",
                               "width": 1388,
-                              "height": 640,
+                              "height": 1000,
                               "fill": "$back",
                               "cornerRadius": "$radius-card",
                               "layout": "none",
@@ -49888,11 +49835,11 @@
                                 {
                                   "type": "frame",
                                   "id": "EKFHD",
-                                  "x": 924,
+                                  "x": 764,
                                   "y": 96,
                                   "name": "Preview panel",
                                   "clip": true,
-                                  "width": 440,
+                                  "width": 600,
                                   "fill": "$win",
                                   "cornerRadius": "$radius-card",
                                   "stroke": "$rule",
@@ -49910,14 +49857,14 @@
                                   "layout": "vertical",
                                   "children": [
                                     {
-                                      "id": "U7p5A",
+                                      "id": "h7mdKM",
                                       "type": "ref",
                                       "ref": "H1efZf",
                                       "name": "Title bar",
                                       "width": "fill_container",
                                       "descendants": {
                                         "Feu5Z": {
-                                          "content": "Саммари — Zoom"
+                                          "content": "Саммари — iOS Daily"
                                         }
                                       }
                                     },
@@ -49983,7 +49930,7 @@
       "name": "Summary preview — behaviour",
       "width": 900,
       "height": 200,
-      "content": "Summary preview (LAB-1162). The preview follows the selected row; the eye opens or focuses it. Size and position persist across rows and restarts. Text is selectable (needed for bb term explain); Копировать copies the Markdown source. Renderer to be chosen in the Markdown evaluation sub-issue; the mock shows headings, lists, code and a table."
+      "content": "Summary preview. The preview follows the selected row; the eye opens or focuses it. Size and position persist across rows and restarts. Text is selectable, for term explain; Копировать copies the Markdown source. The mock shows headings, lists, code and a table."
     }
   ],
   "themes": {
@@ -50459,6 +50406,26 @@
       "type": "number",
       "value": 18
     },
+    "type-reading": {
+      "type": "number",
+      "value": 16
+    },
+    "type-topic": {
+      "type": "number",
+      "value": 15
+    },
+    "type-heading": {
+      "type": "number",
+      "value": 22
+    },
+    "type-display": {
+      "type": "number",
+      "value": 30
+    },
+    "line-reading": {
+      "type": "number",
+      "value": 26
+    },
     "radius-bar": {
       "type": "number",
       "value": 2
@@ -50499,9 +50466,17 @@
       "type": "number",
       "value": 16
     },
+    "space-20": {
+      "type": "number",
+      "value": 20
+    },
     "space-24": {
       "type": "number",
       "value": 24
+    },
+    "space-28": {
+      "type": "number",
+      "value": 28
     },
     "space-40": {
       "type": "number",

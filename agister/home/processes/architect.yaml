@@ -1,0 +1,44 @@
+schema: agister.process/v1alpha1
+prompt: architect
+instruction: >-
+  Design the architecture for the brief given as input brief, following
+  the prompt given as input prompt and the guidelines given as input
+  guidelines, and write it into the document the brief names.
+
+params:
+  candidate: {default: HEAD}
+  brief: {}
+  guidelines: {}
+inputs:
+  candidate_revision: {source: git.revision, rev: {from: params.candidate}}
+  brief: {source: file, path: {from: params.brief}}
+  guidelines: {source: file, path: {from: params.guidelines}}
+
+workspace:
+  access: read-write
+  revision: {from: inputs.candidate_revision}
+  clean: true
+
+permissions:
+  require:
+    - repository.read
+    - repository.write
+  allow:
+    - repository.read
+    - repository.search
+    - repository.diff
+    - repository.history.read
+    - repository.write
+    - repository.history.write
+    - process.execute
+    - host.read
+
+limits:
+  time: 30m
+  stale:
+    no_event: 15m
+    tool_command: 10m
+    repeated_tool_calls: 5
+
+output:
+  schema: architecture
