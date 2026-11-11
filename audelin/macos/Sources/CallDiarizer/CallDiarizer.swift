@@ -29,7 +29,8 @@ public struct CallDiarizer: Sendable {
 
         let samples = try Self.samples(of: track)
         guard !samples.isEmpty else { return Diarization(model: .nemotron, turns: []) }
-        if speakers.map({ $0 > binding.nemotronSlots }) != true {
+        let beyondNemotron = speakers.map { $0 > binding.nemotronSlots } ?? false
+        if !beyondNemotron {
             do {
                 let run = try await binding.loadNemotron()
                 let turns = try await run(samples).sorted { $0.start < $1.start }.map { turn in
@@ -40,7 +41,8 @@ public struct CallDiarizer: Sendable {
             } catch let error as CancellationError {
                 throw error
             } catch {
-                // VBx can still recover speakers when Nemotron is unavailable.
+                // Nemotron failing to load or run, or naming a speaker that is
+                // not a slot number, leaves the pass to VBx.
             }
         }
         let engineTurns = try await binding.vbx(samples, speakers: speakers).sorted { $0.start < $1.start }

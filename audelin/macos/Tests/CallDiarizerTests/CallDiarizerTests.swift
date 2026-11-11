@@ -60,6 +60,18 @@ struct CallDiarizerTests {
         }
     }
 
+    @Test func aNemotronSpeakerThatIsNotANumberFallsBackToVBx() async throws {
+
+        try await withTrack { track in
+            let binding = FakeBinding(nemotron: .success([EngineTurn(speaker: "A", start: 0.2, end: 0.7)]), vbx: .success(vbxTurns))
+
+            let result = try await CallDiarizer(binding: binding).diarize(track)
+
+            #expect(result == .init(model: .vbx, turns: numberedVBxTurns))
+            #expect(await binding.requests.map(\.kind) == [.load, .nemotron, .vbx])
+        }
+    }
+
     @Test(arguments: [(8, 9), (2, 3)])
     func moreSpeakersThanNemotronHoldsGoToVBx(slots: Int, speakers: Int) async throws {
 

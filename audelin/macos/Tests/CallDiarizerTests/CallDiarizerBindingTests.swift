@@ -33,6 +33,20 @@ struct CallDiarizerBindingTests {
         }
     }
 
+    /// Asking for one speaker and then two shows the count reaches VBx either way.
+    @Test func vbxKeepsToAKnownCount() async throws {
+
+        try await withTwoVoices { samples, _ in
+            let binding = FluidDiarizationBinding()
+            for speakers in [1, 2] {
+                let turns = try await binding.vbx(samples, speakers: speakers)
+
+                try expectTurnsInsideTrack(turns, samples: samples)
+                #expect(Set(turns.map(\.speaker)).count == speakers)
+            }
+        }
+    }
+
     @Test(arguments: [CallDiarizer.Model.nemotron, .vbx])
     func aTrackWithoutSpeechHasNoTurns(model: CallDiarizer.Model) async throws {
 
