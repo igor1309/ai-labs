@@ -2,21 +2,13 @@ import Markdown
 
 extension NotesMarkdown {
     /// What the call was about, in one line: the first sentence of the first
-    /// paragraph under the notes' first heading (the notes open with what the
+    /// paragraph straight under the notes' first heading (the notes open with what the
     /// call was about), as plain text. Nil when that paragraph is missing or empty.
     public static func gist(_ markdown: String) -> String? {
-        let document = Document(parsing: markdown)
-        var seenHeading = false
-        for child in document.children {
-            if child is Heading {
-                if seenHeading { return nil }
-                seenHeading = true
-                continue
-            }
-            guard seenHeading, let paragraph = child as? Paragraph else { continue }
-            return firstSentence(text(paragraph))
-        }
-        return nil
+        let blocks = Array(Document(parsing: markdown, options: [.disableSmartOpts]).children)
+        guard let heading = blocks.firstIndex(where: { $0 is Heading }), heading + 1 < blocks.count,
+              let paragraph = blocks[heading + 1] as? Paragraph else { return nil }
+        return firstSentence(text(paragraph))
     }
 
     /// The words a reader sees: inline marks and code ticks dropped, line breaks as spaces.

@@ -39,4 +39,16 @@ struct NotesGistTests {
         #expect(NotesMarkdown.gist("## О чём встреча\n\n- Список, не абзац.") == nil)
         #expect(NotesMarkdown.gist("") == nil)
     }
+
+    @Test func aSectionOpeningWithAnotherBlockHasNoGist() {
+
+        for opening in ["- Пункт.", "1. Пункт.", "> Цитата.", "```\ncode\n```"] {
+            #expect(NotesMarkdown.gist("## О чём встреча\n\n\(opening)\n\nПотом абзац.") == nil)
+        }
+    }
+
+    @Test func dashesAndQuotesStayAsWritten() {
+
+        #expect(NotesMarkdown.gist("## Итоги\n\nA -- B \"C\".") == "A -- B \"C\".")
+    }
 }
