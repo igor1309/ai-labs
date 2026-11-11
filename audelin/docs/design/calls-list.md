@@ -3,8 +3,8 @@
 [calls-list.pen](calls-list.pen) draws the calls list: calls grouped by day,
 newest first. Each screen is a light component with a dark instance
 (`theme: {mode: "dark"}`); the tokens are those in [tokens.json](tokens.json),
-and the parts are on the "Components" board (Title bar, Day header, Row,
-Context menu, Alert, Rename field, Error banner).
+and the parts are on the "Components" board (Title bar, Search field, Day
+header, Row, Match row, Context menu, Alert, Rename field, Error banner).
 
 ## Layout
 
@@ -34,6 +34,28 @@ Context menu, Alert, Rename field, Error banner).
 - Keys: ↑↓ select, Return opens, Space shows notes, ⌘R renames, ⌘⌫ asks to
   delete. Double-click opens.
 
+## Search
+
+- The title bar holds the window title at the left and a 200 pt search
+  field at the right, on every screen. ⌘F focuses it; Esc or its clear
+  button empties it and the whole list returns.
+- One field searches titles, notes and transcripts as you type, ignoring
+  case and ё/е. There is no scope switch.
+- Results keep the list's shape: days and calls newest first, one-line
+  28 pt rows. A day shows only its matching calls and their count; days
+  with no match are hidden.
+- A Match row shows the title, then one snippet: where the first match is
+  (its time in the transcript, or «Заметки»), the text around it, and
+  «ещё N» for further matches. The snippet takes the space the title leaves
+  and ends with an ellipsis; «ещё N» goes first when space runs out, then
+  the title truncates.
+- Every match, in the title and in the snippet, is marked with `hit`.
+- While transcripts are still being read, the field shows a spinner and the
+  list ends with «Ищу в расшифровках…»; rows join as they are found.
+- With no match, one centred message names the query.
+- Selection, the eye, the context menu and the keys work as in the full
+  list.
+
 ## States
 
 | Frame | What it shows |
@@ -45,11 +67,15 @@ Context menu, Alert, Rename field, Error banner).
 | Calls — error | A banner pinned to the window's bottom |
 | Calls — window inactive | The selected row turns grey (`btn`) and its eye `sub` |
 | Calls — empty, Calls — loading | One centred message |
+| Calls — search | 900 pt, «OKR»: title, transcript and notes matches, one selected |
+| Calls — search, minimum width | The same at 560 pt, snippets truncated |
+| Calls — searching | Transcripts still being read: spinner in the field, rows so far |
+| Calls — search, no results | One centred message naming the query |
 
 ## Tokens
 
 Every colour, font, type size, gap, padding and radius is a Glass Ledger
 token; the only raw colours are the window's traffic lights and the
 transparent menu-item fill. Fixed sizes with no token are layout widths:
-time 40, duration and status cells 64, icons 14, menu 240,
+time 40, duration and status cells 64, icons 14, search field 200, menu 240,
 alert 340, minimum window 560.
