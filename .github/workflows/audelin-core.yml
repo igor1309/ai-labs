@@ -39,7 +39,7 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ~/Library/Application Support/FluidAudio/Models
-          key: audelin-models-${{ hashFiles('audelin/macos/Vendor/FluidAudio/Package.swift') }}
+          key: audelin-models-diarizer-${{ hashFiles('audelin/macos/Vendor/FluidAudio/Package.swift') }}
 
       # All three test packages build in one scratch directory with the same
       # flags, so each module compiles once. FluidAudio is vendored, trimmed to
@@ -68,25 +68,25 @@ jobs:
         working-directory: audelin/macos
         run: swift build --build-tests -Xswiftc -O
 
-      # Without the cache, the recognizer tests download the models first:
-      # that alone can take longer than the tests' limit.
+      # Without the cache, the recognizer and diarizer tests download the
+      # models first: that alone can take longer than the tests' limit.
       - name: Fetch the speech models
         if: steps.models.outputs.cache-hit != 'true'
         working-directory: audelin/macos
-        run: sh ../scripts/swift-test-bounded.sh 900 -Xswiftc -O --filter ParakeetContractTests
+        run: sh ../scripts/swift-test-bounded.sh 900 -Xswiftc -O --filter 'ParakeetContractTests|CallDiarizerBindingTests'
 
-      # The recognizer tests run their speech models on the CPU here (the
+      # The recognizer and diarizer tests run their models on the CPU here (the
       # runner has no Neural Engine), which takes the runner's few cores
       # from every suite running beside them and pushed tight file and
       # process tests past their time limits (LAB-1078). They run in a step
       # of their own, after the rest.
       - name: Run tests
         working-directory: audelin/macos
-        run: sh ../scripts/swift-test-bounded.sh 180 -Xswiftc -O --skip '^(NemotronRecognizerTests|ParakeetRecognizerTests)\.'
+        run: sh ../scripts/swift-test-bounded.sh 180 -Xswiftc -O --skip '^(NemotronRecognizerTests|ParakeetRecognizerTests)\.|CallDiarizerBindingTests'
 
-      - name: Run recognizer tests
+      - name: Run recognizer and diarizer tests
         working-directory: audelin/macos
-        run: sh ../scripts/swift-test-bounded.sh 180 -Xswiftc -O --filter '^(NemotronRecognizerTests|ParakeetRecognizerTests)\.'
+        run: sh ../scripts/swift-test-bounded.sh 180 -Xswiftc -O --filter '^(NemotronRecognizerTests|ParakeetRecognizerTests)\.|CallDiarizerBindingTests'
 
       - name: Build app tests
         working-directory: audelin/macos/App

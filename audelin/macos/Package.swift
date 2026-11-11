@@ -15,6 +15,7 @@ let package = Package(
         .library(name: "CallObservation", targets: ["CallObservation"]),
         .library(name: "ZoomAccessibility", targets: ["ZoomAccessibility"]),
         .library(name: "CallDiarizer", targets: ["CallDiarizer"]),
+        .library(name: "SpeakerAttribution", targets: ["SpeakerAttribution"]),
 
         .library(name: "BlockingTestWork", targets: ["BlockingTestWork"]),
         .library(name: "SplitRows", targets: ["SplitRows"]),
@@ -71,6 +72,8 @@ let package = Package(
         .testTarget(name: "SummaryFilesTests", dependencies: ["SummaryFiles", "BlockingTestWork"]),
         .target(name: "SummaryRuntime"),
         .testTarget(name: "SummaryRuntimeTests", dependencies: ["SummaryRuntime", "BlockingTestWork"]),
+        .target(name: "SpeakerAttribution"),
+        .testTarget(name: "SpeakerAttributionTests", dependencies: ["SpeakerAttribution"]),
         .target(name: "BleedCleanup"),
         .testTarget(name: "BleedCleanupTests", dependencies: ["BleedCleanup"]),
         .target(name: "SpeakerIdentification"),
@@ -81,6 +84,7 @@ let package = Package(
         .testTarget(name: "CallObservationTests", dependencies: ["CallObservation"]),
         .target(name: "ZoomAccessibility"),
         .target(name: "CallDiarizer", dependencies: ["AudioConversion", .product(name: "FluidAudio", package: "FluidAudio")]),
+        .testTarget(name: "CallDiarizerTests", dependencies: ["CallDiarizer", "BlockingTestWork"]),
         .testTarget(name: "ZoomAccessibilityTests", dependencies: ["ZoomAccessibility"], resources: [.copy("Fixtures")]),
 
         .testTarget(name: "SourceChecksTests", dependencies: ["BlockingTestWork"]),
