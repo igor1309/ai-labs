@@ -43,7 +43,7 @@ struct RemoteSpeakersTests {
                 .init(speaker: .theirs, text: remote, writtenLater: false),
                 .init(speaker: .theirs, text: whole, writtenLater: false),
             ], finalCount: 3)
-            let pieces = await pass.attribute(state, track: track, speakers: usingVBx ? 9 : 2)
+            let pieces = await pass.attribute(state, track: track, speakers: usingVBx ? 9 : 2)?.pieces
             // VBx numbers names in encounter order; Nemotron keeps its numbers.
             let first = usingVBx ? 0 : 4, second = usingVBx ? 1 : 9
             #expect(pieces == [

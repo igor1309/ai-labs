@@ -11,31 +11,93 @@ import TranscriptFormat
 @Suite(.timeLimit(.minutes(1)))
 struct AfterCallPassTests {
 
-    @Test func closeDiarizesTheCallTrackWithTheGivenDiarizer() async throws {
+    @Test func aZoomCallIsDiarizedOnceForBothItsNamesAndItsSpeakers() async throws {
         try await withCallTrack { track in
             let samples = Values<Int>()
             let binding = PassBinding(nemotron: {
                 samples.append($0.count)
-                return [EngineTurn(speaker: "0", start: 0, end: 1)]
+                return [0, 4, 8, 12].enumerated().map { EngineTurn(speaker: "\($0.offset % 2)", start: Double($0.element), end: Double($0.element + 4)) }
             })
-            let (logs, bytes, writer) = try await closedWriter(track: track, binding: binding)
+            let (logs, bytes, writer) = try await zoomWriter(track: track, binding: binding)
             await writer.close()
             #expect(samples.all == [160])
-            #expect(await bytes.calls == ["write", "write", "close"])
-            #expect(logs.all.map(\.message).contains("after-call names saved turns=1"))
+            #expect(await bytes.calls == ["write", "replace", "close"])
+            let text = try #require(await bytes.replaced.last)
+            #expect(text.contains("**Them 1** 00:00:00\nfar1\n\n**Them 2** 00:00:04\nfar2\n\n**Them 1** 00:00:08\nfar3\n"))
+            #expect(text.contains("- Them 1: Anna\n- Them 2: Boris\n"))
+            #expect(logs.all.map(\.message).contains("after-call names confirmed=2 turns=4"))
         }
     }
 
-    @Test func aFailedPassKeepsTheFileAndLogsTheFailure() async throws {
+    @Test func aFailedPassOnAZoomCallKeepsTheTentativeNames() async throws {
         try await withCallTrack { track in
             let binding = PassBinding(nemotron: { _ in throw PassFailure() }, vbx: { throw PassFailure() })
-            let (logs, bytes, writer) = try await closedWriter(track: track, binding: binding)
+            let (logs, bytes, writer) = try await zoomWriter(track: track, binding: binding)
             await writer.close()
-            #expect(logs.all.map(\.message).contains { $0.hasPrefix("after-call names failed") })
+            #expect(logs.all.map(\.message).contains { $0.hasPrefix("remote speakers failed") })
             #expect(await bytes.calls == ["write", "close"])
             await #expect(throws: (any Error).self) { try await writer.write(.init(status: .finished, entries: [], finalCount: 0)) }
         }
     }
+
+    @Test func aZoomCallConfirmsItsRowNamesAndAnnouncesThem() async throws {
+        try await withCallTrack { track in
+            let names = LiveNameBoard()
+            let heard = Values<[Int: String]>()
+            names.listen { heard.append($0) }
+            let (_, _, writer) = try await zoomWriter(track: track, binding: Self.alternating, names: names)
+            await writer.close()
+            let board = names.snapshot()
+            #expect(board.rows == [1: "Anna", 2: "Boris", 3: "Anna"])
+            #expect(board.confirmed)
+            #expect(heard.all == [[1: "Anna", 2: "Boris", 3: "Anna"]])
+        }
+    }
+
+    @Test func aFailedAttributedSaveStillWritesTheCorrectedNamesOnEveryRow() async throws {
+        try await withCallTrack { track in
+            let bytes = PassBytes(failingReplaces: 1)
+            let (logs, _, writer) = try await zoomWriter(track: track, binding: Self.alternating, given: [1: "Boris", 2: "Anna", 3: "Boris"], bytes: bytes)
+            await writer.close()
+            #expect(await bytes.calls == ["write", "replace", "replace", "close"])
+            let text = try #require(await bytes.replaced.last)
+            let anna = try #require(text.firstMatch(of: /- Them (\d): Anna/)?.1)
+            let boris = try #require(text.firstMatch(of: /- Them (\d): Boris/)?.1)
+            #expect(text.contains("**Them \(anna)** 00:00:00\nfar1\n\n**Them \(boris)** 00:00:04\nfar2\n\n**Them \(anna)** 00:00:08\nfar3\n"))
+            #expect(text.contains("\"state\":\"confirmed\""))
+            #expect(!text.contains("tentative"))
+            #expect(logs.all.map(\.message).contains("after-call names saved"))
+        }
+    }
+
+    @Test func aFailedRenderingOnAZoomCallReplacesNothingAndCloses() async throws {
+        try await withCallTrack { track in
+            let (logs, bytes, writer) = try await zoomWriter(track: track, binding: Self.alternating, format: WholeFailingFormat())
+            await writer.close()
+            #expect(await bytes.calls == ["write", "close"])
+            #expect(logs.all.map(\.message).contains { $0.hasPrefix("after-call names not saved") })
+        }
+    }
+
+    @Test func tentativeNamesSurviveAFailedDiarizationAndALaterRewrite() async throws {
+        try await withCallTrack { track in
+            let binding = PassBinding(nemotron: { _ in throw PassFailure() }, vbx: { throw PassFailure() })
+            let names = LiveNameBoard()
+            let (_, bytes, writer) = try await zoomWriter(track: track, binding: binding, given: [1: "Anna", 2: "Boris"], names: names)
+            await writer.close()
+            #expect(names.snapshot().rows == [1: "Anna", 2: "Boris"])
+            let state = CallState(status: .finished, entries: .init(tail: [far(1, 0, 3), far(2, 4, 7), far(3, 8, 11)]), finalCount: 3)
+            try await writer.replaceMicrophone(in: state, with: [])
+            let text = try #require(await bytes.replaced.last)
+            #expect(text.contains("**Them 1** 00:00:00\nfar1\n\n**Them 2** 00:00:04\nfar2\n\n**Them** 00:00:08\nfar3\n"))
+            #expect(text.contains("- Them 1: Anna\n- Them 2: Boris\n"))
+            #expect(text.contains("\"state\":\"tentative\""))
+        }
+    }
+
+    private static let alternating = PassBinding(nemotron: { _ in
+        [0, 4, 8, 12].enumerated().map { EngineTurn(speaker: "\($0.offset % 2)", start: Double($0.element), end: Double($0.element + 4)) }
+    })
 
     @Test func aCallWithoutZoomNamesGivesTheFarSideToItsSpeakers() async throws {
         try await withCallTrack { track in
@@ -165,18 +227,18 @@ struct AfterCallPassTests {
         return (logs, bytes, writer)
     }
 
-    private func closedWriter(track: URL, binding: PassBinding) async throws -> (Values<LogEntry>, PassBytes, WritingTranscript) {
-        let names = LiveNameBoard()
-        names.record(roster: ["Anna"], spoken: [(name: "Anna", start: 0, end: 1)], through: 1)
+    /// Anna and Boris take turns for four seconds each, as Zoom showed and the diarizer finds.
+    private func zoomWriter(track: URL, binding: PassBinding, given: [Int: String] = [:],
+                            format: any TranscriptRenderer = TranscriptFormat(), bytes: PassBytes = PassBytes(),
+                            names: LiveNameBoard = LiveNameBoard()) async throws -> (Values<LogEntry>, PassBytes, WritingTranscript) {
+        names.record(roster: ["Anna", "Boris"], spoken: [("Anna", 0, 4), ("Boris", 4, 8), ("Anna", 8, 12), ("Boris", 12, 16)], through: 30)
         names.callTrack(track)
+        names.give(given)
         let logs = Values<LogEntry>()
-        let bytes = PassBytes()
-        let writer = WritingTranscript(file: bytes, format: TranscriptFormat(), names: names,
+        let writer = WritingTranscript(file: bytes, format: format, names: names,
                                        diarizer: CallDiarizer(binding: binding), sink: PassLog(entries: logs))
-        let state = CallState(status: .finished, entries: [
-            .init(speaker: .theirs, text: .init(id: 1, start: 0, end: 1, words: [.init("hello", start: 0, end: 1)], settledCount: 1), writtenLater: false),
-        ], finalCount: 1)
-        try await writer.write(state)
+        let entries = [far(1, 0, 3), far(2, 4, 7), far(3, 8, 11)]
+        try await writer.write(CallState(status: .finished, entries: .init(tail: entries), finalCount: entries.count))
         return (logs, bytes, writer)
     }
 }

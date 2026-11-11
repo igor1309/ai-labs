@@ -24,9 +24,14 @@ struct RemoteSpeakers: Sendable {
         self.diarizer = diarizer; self.sink = sink
     }
 
+    struct Attribution: Sendable {
+
+        let turns: [CallDiarizer.Turn]
+        let pieces: [SpeakerAttribution.Piece<TranscriptSegment>]
+    }
+
     /// nil when diarizing failed: the far side stays plain "Them".
-    func attribute(_ state: CallState, track: URL, speakers: Int?) async
-        -> [SpeakerAttribution.Piece<TranscriptSegment>]? {
+    func attribute(_ state: CallState, track: URL, speakers: Int?) async -> Attribution? {
         do {
             try Task.checkCancellation()
             let result = try await diarizer.diarize(track, speakers: speakers)
@@ -38,7 +43,7 @@ struct RemoteSpeakers: Sendable {
             let model = result.model == .nemotron ? "nemotron" : "vbx"
             let count = Set(pieces.compactMap(\.speaker)).count
             sink.write(.init(category: .session, message: "remote speakers model=\(model) turns=\(result.turns.count) speakers=\(count)"))
-            return pieces
+            return Attribution(turns: result.turns, pieces: pieces)
         } catch is CancellationError {
             return nil
         } catch {

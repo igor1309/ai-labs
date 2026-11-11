@@ -44,13 +44,18 @@ enum Transcript {
         var speakers: [TranscriptFormat.Speaker]
     }
 
-    static func attributed(_ pieces: [SpeakerAttribution.Piece<TranscriptSegment>], in state: CallState) -> Attributed {
+    /// `names`: each diarized speaker the Zoom evidence confirmed.
+    static func attributed(_ pieces: [SpeakerAttribution.Piece<TranscriptSegment>], in state: CallState,
+                           names: [Int: String] = [:]) -> Attributed {
 
         let later = Dictionary(state.entries.filter { $0.speaker == .theirs }.map { ($0.text.id, $0.writtenLater) }, uniquingKeysWith: { $0 || $1 })
         var speakers: [TranscriptFormat.Speaker] = []
         let far = pieces.map { piece in
             let id = piece.speaker.map { "d\($0)" }
-            if let id, !speakers.contains(where: { $0.id == id }) { speakers.append(.init(id: id, name: nil, state: "diarized")) }
+            if let speaker = piece.speaker, let id, !speakers.contains(where: { $0.id == id }) {
+                let name = names[speaker]
+                speakers.append(.init(id: id, name: name, state: name == nil ? "diarized" : "confirmed"))
+            }
             return TranscriptFormat.Segment(
                 side: .theirs, start: piece.segment.start, settled: piece.segment.settledText, pending: piece.segment.pendingText,
                 filledInLater: later[piece.segment.id] ?? false, speaker: id

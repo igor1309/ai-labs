@@ -14,5 +14,6 @@ import Testing
             + [CallDiarizer.Turn(speaker: 2, start: 20, end: 24)]
         let names = AfterCallNames.names(rows: [(1, 0, 4), (2, 4, 8), (3, 20, 24)], turns: turns, board: board)
         #expect(names == [1: "Anna", 2: "Boris"])
+        #expect(AfterCallNames.clusterNames(turns: turns, board: board) == [0: "Anna", 1: "Boris"])
     }
 }
