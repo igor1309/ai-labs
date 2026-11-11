@@ -9,7 +9,13 @@ import Testing
 @MainActor
 struct SummaryPreviewTests {
 
-    @Test(arguments: SummaryPreviews.states.map(\.name), [ColorScheme.light, .dark])
+    /// The preview is set in the system's SF Pro and SF Mono, whose glyphs change
+    /// between macOS releases, so its reference images hold only on the Mac that
+    /// recorded them; CI runs a different release and checks layout instead.
+    nonisolated static let systemFontsDiffer = ProcessInfo.processInfo.environment["GITHUB_ACTIONS"] != nil
+
+    @Test(.disabled(if: systemFontsDiffer, "SF Pro differs between macOS releases"),
+          arguments: SummaryPreviews.states.map(\.name), [ColorScheme.light, .dark])
     func drawsAsItsReference(name: String, scheme: ColorScheme) throws {
 
         let host = Offscreen.host(view(SummaryPreviews.state(name), scheme: scheme), size: size, scheme: scheme)
@@ -51,7 +57,21 @@ struct SummaryPreviewTests {
         #expect(copies == 0)
     }
 
-    @Test(arguments: [ColorScheme.light, .dark])
+    @Test func aLongSummaryWrapsInsideANarrowWindow() throws {
+
+        let narrow = CGSize(width: 320, height: 900)
+        let host = Offscreen.host(view(SummaryPreviews.state("daily")), size: narrow)
+        let text = try #require(Offscreen.textView(in: host))
+        let used = try #require(text.layoutManager.map { $0.usedRect(for: text.textContainer!) })
+
+        #expect(text.isSelectable && !text.isEditable)
+        #expect(text.frame.width <= narrow.width)
+        #expect(used.maxX + text.textContainerInset.width <= narrow.width)
+        #expect(text.string.contains("О ЧЁМ ВСТРЕЧА") && text.string.contains("OTP-кода"))
+    }
+
+    @Test(.disabled(if: systemFontsDiffer, "SF Pro differs between macOS releases"),
+          arguments: [ColorScheme.light, .dark])
     func aLongSummaryDrawsInANarrowWindow(scheme: ColorScheme) throws {
 
         let narrow = CGSize(width: 320, height: 900)
