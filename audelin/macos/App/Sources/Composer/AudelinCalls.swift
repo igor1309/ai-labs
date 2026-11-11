@@ -57,7 +57,8 @@ public final class AudelinCalls {
     private var openFailure: String?
     private var opening = false
     private let describe: (any Error) -> String
-    private let listText: CallsListText
+    /// The calls list's text, in the language Audelin is shown in.
+    public private(set) var listText: CallsListText
 
     init(inputs: RecordingsInputs, timeZone: TimeZone, recordingState: @escaping () -> RecordingState,
          location: @escaping (String) async throws -> URL, openFolder: @escaping (URL) -> Bool,
@@ -95,6 +96,9 @@ public final class AudelinCalls {
         state.busy = state.busy || opening
         return state
     }
+
+    /// Shows the list in the new language at once.
+    func languageChanged(_ text: CallsListText) { listText = text }
 
     var recordingsState: RecordingsState { inputs.state() }
     /// No folder move, delete or rename is under way or waiting on an answer.

@@ -77,6 +77,7 @@ struct AudelinApp: App {
         )
         self.model = model
         settingsWindow.contentView = NSHostingView(rootView: SettingsContent(model: model, window: settingsWindow))
+        observeLanguage(model, settingsWindow: settingsWindow, callsWindow: callsWindow, previewPanel: previewPanel)
         if let calls = model.calls {
             callsWindow.install(content: NSHostingView(rootView: CallsContent(model: calls)))
             _ = connectPreview(panel: previewPanel, preview: { calls.preview }, panelWindow: summaryWindow,
@@ -173,10 +174,22 @@ final class AudelinAppDelegate: NSObject, NSApplicationDelegate {
     func handleReopen() { reopen?() }
 }
 
+/// Keeps the window titles and the preview in the language Audelin is shown in.
+@MainActor
+func observeLanguage(_ model: AudelinMenu, settingsWindow: NSWindow, callsWindow: CallsWindow, previewPanel: PreviewPanel) {
+    Task { @MainActor in
+        for await _ in Observations({ model.language }) {
+            settingsWindow.title = model.settingsText(.windowTitle)
+            callsWindow.retitle(model.callsListText(.windowTitle))
+            previewPanel.languageChanged(model.previewText)
+        }
+    }
+}
+
 private struct CallsContent: View {
     let model: AudelinCalls
     var body: some View {
-        CallsListView(state: model.state, text: CallsListText(language: .russian), event: { event in Task { await model.send(event) } })
+        CallsListView(state: model.state, text: model.listText, event: { event in Task { await model.send(event) } })
     }
 }
 
@@ -185,7 +198,7 @@ private struct SettingsContent: View {
     let window: NSWindow
     var body: some View {
         SettingsScrollView(state: model.settingsState, event: { event in Task { await model.sendSettings(event) } },
-                           text: SettingsText(language: .russian),
+                           text: model.settingsText,
                            contentHeightChanged: { height in
             // Keep the title bar in place when a tab or its contents changes height.
             let visible = window.screen?.visibleFrame ?? NSScreen.main?.visibleFrame ?? window.frame

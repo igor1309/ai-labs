@@ -53,7 +53,7 @@ struct FolderMoveWiringTests {
         let size = { (bytes: Int64) in text.size(bytes) }
         let destination = URL(fileURLWithPath: "/destination")
         let one = MoveCall(id: "A", title: "", bytes: 3)
-        let moveText = folderMoveText(text)
+        let moveText = folderMoveText { text }
         let single = moveText(.init(destination: destination, completed: [one], totalCalls: 1, totalBytes: 3, movedBytes: 3))
         let many = moveText(.init(destination: destination, completed: [one], totalCalls: 2, totalBytes: 10, movedBytes: 3))
         switch language {
@@ -94,7 +94,7 @@ struct FolderMoveWiringTests {
             let inputs = makeRecordings(handler: .init(calls: spy,
                 reserve: { await rig.menu.reserveCallsFolder() },
                 release: { await rig.menu.releaseCallsFolder() }, storeFolder: { await spy.store($0) }, describe: russianSettings.callsFailure),
-                text: SettingsText(language: .russian), initial: .init(callsFolder: rig.root))
+                text: russianSettingsText, initial: .init(callsFolder: rig.root))
             let calls = AudelinCalls(inputs: inputs, timeZone: .gmt, recordingState: { rig.menu.state },
                                     location: { _ in rig.root }, openFolder: { _ in true }, present: {})
             rig.menu.installCalls(calls)
@@ -136,7 +136,7 @@ struct FolderMoveWiringTests {
             let inputs = makeRecordings(handler: .init(calls: spy,
                 reserve: { await rig.menu.reserveCallsFolder() },
                 release: { await rig.menu.releaseCallsFolder() }, storeFolder: { await spy.store($0) }, describe: russianSettings.callsFailure),
-                text: SettingsText(language: .russian), initial: .init(callsFolder: rig.root))
+                text: russianSettingsText, initial: .init(callsFolder: rig.root))
             let calls = AudelinCalls(inputs: inputs, timeZone: .gmt, recordingState: { rig.menu.state },
                                     location: { _ in rig.root }, openFolder: { _ in true }, present: {})
             rig.menu.installCalls(calls)
@@ -285,3 +285,5 @@ private actor CallsMoveSpy: RecordingsCalls {
 }
 
 private struct MoveFailure: LocalizedError { var errorDescription: String? { "disk" } }
+
+@Sendable private func russianSettingsText() -> SettingsText { SettingsText(language: .russian) }

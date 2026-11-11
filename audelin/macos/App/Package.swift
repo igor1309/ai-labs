@@ -56,6 +56,7 @@ let package = Package(
             dependencies: [
                 .product(name: "BleedCleanup", package: "macos"),
                 .product(name: "SummarySettings", package: "macos"),
+                .product(name: "SummaryPreviewUI", package: "macos"),
                 .product(name: "SummaryJobs", package: "macos"),
                 .product(name: "SummaryFiles", package: "macos"),
                 .product(name: "SummaryRuntime", package: "macos"),

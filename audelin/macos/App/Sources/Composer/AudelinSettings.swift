@@ -10,10 +10,10 @@ import SummaryRuntime
 public final class AudelinSettings {
     private let model: ObservableModel<SummarySettings.State, SummarySettings.Event, SummarySettings.Effect>
     public var selectedTab: SettingsState.Tab = .recording
-    private let text: SettingsText
-    init(preferences: any SummarySettings.Preferences, availability: any SummarySettings.Availability, text: SettingsText) {
+    private let text: @Sendable () -> SettingsText
+    init(preferences: any SummarySettings.Preferences, availability: any SummarySettings.Availability, text: @escaping @Sendable () -> SettingsText) {
         self.text = text
-        let reducer = text.summarySettingsReducer()
+        let reducer = summarySettingsReducer(text)
         let handler = SummarySettings.EffectHandler(preferences: preferences, availability: availability)
         model = ObservableModel(initialState: .init(), reduce: reducer.reduce, handleEffect: { effect in
             AsyncStream { output in
@@ -24,7 +24,9 @@ public final class AudelinSettings {
         model.event(.load)
     }
     var snapshot: SummarySettings.State { model.state }
-    public var notes: SettingsState.CallNotes { text.notesPresentation(model.state) }
+    public var notes: SettingsState.CallNotes { text().notesPresentation(model.state) }
+    /// Writes the call notes text again, in the language Audelin is shown in now.
+    func languageChanged() { model.event(.render) }
     public func send(_ event: SettingsEvent) {
         if case let .selectTab(tab) = event { selectedTab = tab; return }
         if case let .notesAction(action) = event {
@@ -166,9 +168,11 @@ extension SettingsText {
         return self(.issueFormat, slot, settingsFieldLabel(issue.field), detail)
     }
 
-    /// The call notes settings machine, with its text in this language.
-    func summarySettingsReducer() -> SummarySettings.Reducer {
-        SummarySettings.Reducer(disclosure: notesDisclosure, message: settingsMessage, safety: SummaryAvailability.configurationIssues,
-                                issueMessage: settingsIssueMessage, runtimeDisclosure: runtimeDisclosure)
-    }
+}
+
+/// The call notes settings machine, with its text in the language `text` gives when it writes.
+func summarySettingsReducer(_ text: @escaping @Sendable () -> SettingsText) -> SummarySettings.Reducer {
+    SummarySettings.Reducer(disclosure: { text().notesDisclosure($0) }, message: { text().settingsMessage($0) },
+                            safety: SummaryAvailability.configurationIssues,
+                            issueMessage: { text().settingsIssueMessage($0) }, runtimeDisclosure: { text().runtimeDisclosure($0) })
 }

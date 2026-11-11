@@ -87,6 +87,8 @@ public enum Event: Equatable, Sendable {
     case load, loaded(Configuration), loadFailed
     case edit(Configuration), validate, validated(UInt64, [ValidationIssue]), save
     case saved(UInt64, Configuration), saveFailed(UInt64)
+    /// The text dependencies now answer differently, as after a language change: write the shown text again.
+    case render
 }
 public enum Effect: Equatable, Sendable {
     case load, validate(UInt64, Configuration), save(UInt64, Configuration)
@@ -152,6 +154,8 @@ public struct Reducer: Sendable {
             next.disclosure = disclosure(config)
             next.issues = safety(config)
         case .loadFailed where state.phase == .loading: next.phase = .loadFailed
+        case .render:
+            if let draft = state.draft { next.disclosure = disclosure(draft) }
         case let .edit(config) where state.draft != nil:
             next.draft = config; next.revision += 1; next.validatedRevision = nil
             next.saveAfterValidation = false

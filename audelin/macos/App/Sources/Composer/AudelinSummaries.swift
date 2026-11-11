@@ -13,31 +13,35 @@ import SummaryRuntime
 @MainActor @Observable
 final class AudelinSummaries {
     private let feed = StateFeed<[String: String]>()
-    private(set) var statuses: [String: String] = [:] { didSet { feed.publish(statuses) } }
+    /// Each call's job phase and whether its notes lack speaker names, shown as `statuses`.
+    private var progress: [String: (phase: SummaryJobs.State.Phase, warning: Bool)] = [:] { didSet { feed.publish(statuses) } }
+    /// Each call's notes status, in the language Audelin is shown in.
+    var statuses: [String: String] { progress.mapValues { text.summaryStatus($0.phase, $0.warning) } }
     func updates() -> AsyncStream<[String: String]> { feed.subscribe(from: statuses) }
     private var coordinator: SummaryCoordinatorModel!
     private var jobs: SummaryCoordinatorJobsAdapter!
     private(set) var retryable: Set<String> = []
     private let preferences: PreferencesStore
-    private let text: CallsListText
+    private var text: CallsListText { didSet { feed.publish(statuses) } }
     init(files: SummaryFiles.Files, runtime: SummaryRuntime.Runtime, preferences: PreferencesStore, sink: any LogSink, load: (@Sendable (String) async throws -> SummaryFiles.Record?)? = nil,
-         text: CallsListText = .init(language: .russian)) {
+         text: CallsListText = .init(language: .russian),
+         status: @escaping @Sendable (SummaryJobs.State.Phase, Bool) -> String = { CallsListText(language: .russian).summaryStatus($0, $1) }) {
         self.preferences = preferences
         self.text = text
-        let store = SummaryJobStore(files: files, status: { text.summaryStatus($0, $1) })
+        let store = SummaryJobStore(files: files, status: status)
         let handler = SummaryJobs.EffectHandler(store: store, generation: SummaryGeneration(runtime: runtime, sink: sink), cancelled: { Task.isCancelled })
         let jobs = SummaryCoordinatorJobsAdapter(load: load ?? { try await files.load(call: $0) }, store: store,
             handler: handler, preferences: preferences, canDispatch: { [weak self] in self?.coordinator?.canDispatch == true }, changed: { [weak self] call, state in
                 if state.phase == .interrupted { self?.retryable.insert(call) }
                 else { self?.retryable.remove(call) }
-                self?.statuses[call] = state.status
+                self?.progress[call] = (state.phase, state.warning)
             })
         self.jobs = jobs
         coordinator = SummaryCoordinatorModel(jobs: jobs)
     }
     func waiting(call: String) {
         guard preferences.read().notes.enabled else { return }
-        statuses[call] = text.summaryStatus(.waiting, false)
+        progress[call] = (.waiting, false)
     }
     func callbacks(timeZone: TimeZone) -> SummaryCallbacks {
         SummaryCallbacks(waiting: { [weak self] folder in
@@ -65,8 +69,10 @@ final class AudelinSummaries {
     func forget(call: String) async {
         await jobs.forget(call: call)
         retryable.remove(call)
-        statuses.removeValue(forKey: call)
+        progress.removeValue(forKey: call)
     }
+    /// Shows every status in the new language at once.
+    func languageChanged(_ text: CallsListText) { self.text = text }
     func stopDispatch() { coordinator.send(.stopDispatch) }
     func shutdown() async { await coordinator.shutdown() }
 }

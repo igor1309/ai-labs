@@ -20,12 +20,12 @@ extension NSPanel: PreviewPanelDriver {}
 final class PreviewPanel {
     private let panel: any PreviewPanelDriver
     private let copy: (String) -> Void
-    private let makeContent: (SummaryPreviewState, @escaping () -> Void) -> NSView
-    private var shown = false
-    private let text: SummaryPreviewText
+    private let makeContent: (SummaryPreviewState, SummaryPreviewText, @escaping () -> Void) -> NSView
+    private var shown: CallsPreview?
+    private var text: SummaryPreviewText
 
     init(makePanel: () -> any PreviewPanelDriver, text: SummaryPreviewText, copy: @escaping (String) -> Void,
-         makeContent: @escaping (SummaryPreviewState, @escaping () -> Void) -> NSView) {
+         makeContent: @escaping (SummaryPreviewState, SummaryPreviewText, @escaping () -> Void) -> NSView) {
         panel = makePanel()
         self.text = text
         self.copy = copy
@@ -35,7 +35,19 @@ final class PreviewPanel {
     /// Each preview brings the panel forward, so an eye finds it behind
     /// another Audelin window.
     func show(_ preview: CallsPreview?) {
-        guard let preview else { shown = false; panel.orderOut(nil); return }
+        guard let preview else { shown = nil; panel.orderOut(nil); return }
+        fill(preview)
+        shown = preview
+        panel.orderFront(nil)
+    }
+
+    /// Writes the shown preview again in the new language, where it already is.
+    func languageChanged(_ text: SummaryPreviewText) {
+        self.text = text
+        if let shown { fill(shown) }
+    }
+
+    private func fill(_ preview: CallsPreview) {
         let notes: SummaryPreviewState.Notes
         switch preview.notes {
         case let .text(markdown): notes = .markdown(markdown)
@@ -44,14 +56,12 @@ final class PreviewPanel {
         let state = SummaryPreviewState(title: preview.title, date: preview.date, duration: preview.duration, notes: notes)
         panel.title = text(.windowTitle, preview.title)
         let copy = self.copy
-        panel.contentView = makeContent(state) { if case let .markdown(source) = notes { copy(source) } }
-        shown = true
-        panel.orderFront(nil)
+        panel.contentView = makeContent(state, text) { if case let .markdown(source) = notes { copy(source) } }
     }
 
     /// The eye of the call already shown: the same content, brought forward.
     func focus() {
-        if shown { panel.orderFront(nil) }
+        if shown != nil { panel.orderFront(nil) }
     }
 }
 
@@ -92,8 +102,8 @@ func makeSummaryPanel() -> NSPanel {
 
 /// The panel's content: the preview view of one call.
 @MainActor
-func summaryContent(_ state: SummaryPreviewState, copy: @escaping () -> Void) -> NSView {
-    NSHostingView(rootView: SummaryPreviewView(state: state, text: SummaryPreviewText(language: .russian), copy: copy, render: renderNotes))
+func summaryContent(_ state: SummaryPreviewState, text: SummaryPreviewText, copy: @escaping () -> Void) -> NSView {
+    NSHostingView(rootView: SummaryPreviewView(state: state, text: text, copy: copy, render: renderNotes))
 }
 
 /// The preview's notes, rendered from Markdown in the view's style.

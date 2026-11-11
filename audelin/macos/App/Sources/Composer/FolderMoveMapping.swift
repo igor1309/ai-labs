@@ -1,9 +1,10 @@
 import Recordings
 import SettingsUI
 
-/// The move sheet's and progress lines' text, from Settings' catalog in its language.
-func folderMoveText(_ text: SettingsText) -> @Sendable (CallsFolderMove) -> MoveText {
+/// The move sheet's and progress lines' text, from Settings' catalog in the language `text` gives when it writes.
+func folderMoveText(_ text: @escaping @Sendable () -> SettingsText) -> @Sendable (CallsFolderMove) -> MoveText {
     { move in
+        let text = text()
         let size = text.size(move.totalBytes)
         return .init(title: text(.moveTitle, move.totalCalls, size),
                      body: text(.moveBody, move.totalCalls, size, move.destination.path),

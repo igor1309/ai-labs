@@ -34,6 +34,9 @@ final class CallsWindow {
 
     func install(content: NSView) { window.contentView = content }
 
+    /// The title, as when the language changes.
+    func retitle(_ title: String) { window.title = title }
+
     func show() {
         if window.isMiniaturized { window.deminiaturize(nil) }
         shown(window)

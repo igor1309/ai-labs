@@ -1,6 +1,8 @@
 import MenuBar
 import PanelUI
+import SettingsUI
 import Session
+import Observation
 import Testing
 @testable import Composer
 
@@ -16,6 +18,19 @@ struct LanguageSwitchTests {
             #expect(rig.menu.language == .english)
             #expect(rig.menu.menu.entries.contains(.button(MenuBarText(language: .english)(.quit), .quit)))
             #expect(rig.menu.panelText == PanelText(language: .english))
+        }
+    }
+
+    @MainActor
+    @Test func settingsCallNotesTextFollowsTheLanguage() async throws {
+        try await withComposition { rig in
+            let settings = try #require(rig.menu.summarySettings)
+            for await state in Observations({ settings.snapshot }) where state.phase == .saved { break }
+            #expect(settings.snapshot.message == SettingsText(language: .russian).settingsMessage(.saved))
+            await rig.menu.languageChanged(.english)
+            for await state in Observations({ settings.snapshot })
+            where state.message == SettingsText(language: .english).settingsMessage(.saved) { break }
+            #expect(settings.snapshot.phase == .saved)
         }
     }
 

@@ -319,6 +319,35 @@ private func makeReducer() -> Reducer {
     }
 }
 
+@Suite struct SummarySettingsRenderTests {
+    @Test func renderWritesTheShownTextAgainWithTheDependenciesAnswersNow() {
+        let disclosureCalls = Mutex<[Configuration]>([])
+        let reducer = Reducer(disclosure: { config in
+            disclosureCalls.withLock { $0.append(config) }; return "disclosure now"
+        }, message: { "message now: \($0)" }, safety: { _ in [] },
+            issueMessage: { _ in "" }, runtimeDisclosure: { _ in "runtime now" })
+        let given = makeState()
+        assert(reducer, given, .render, delivers: nil) {
+            $0.disclosure = "disclosure now"; $0.message = "message now: saved"
+            $0.canValidate = true; $0.statusTone = .success
+            $0.runtimes = [.init(slot: .primary, kind: .compatibleAPI, fields: [
+                .init(field: .model, value: "fixture", isInvalid: false),
+                .init(field: .endpoint, value: "http://127.0.0.1/v1", isInvalid: false),
+                .init(field: .credentialVariable, value: "", isInvalid: false)
+            ], disclosure: "runtime now"), .init(slot: .fallback, kind: .compatibleAPI, fields: [
+                .init(field: .model, value: "fixture", isInvalid: false),
+                .init(field: .endpoint, value: "http://127.0.0.1/v1", isInvalid: false),
+                .init(field: .credentialVariable, value: "", isInvalid: false)
+            ], disclosure: "runtime now")]
+        }
+        #expect(disclosureCalls.withLock { $0 } == [given.draft!])
+    }
+
+    @Test func renderBeforeLoadWritesOnlyTheMessage() {
+        assert(makeReducer(), makeEmptyState(), .render, delivers: nil) { $0.message = "idle" }
+    }
+}
+
 private func makeState() -> State {
     let config = configuration(enabled: false)
     return State(phase: .saved, draft: config, saved: config)

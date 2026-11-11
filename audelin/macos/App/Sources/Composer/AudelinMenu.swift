@@ -10,6 +10,8 @@ import PanelUI
 import Preferences
 import Recording
 import SettingsUI
+import CallsListUI
+import SummaryPreviewUI
 
 private struct MenuApplication {
 
@@ -38,7 +40,7 @@ public final class AudelinMenu {
     private(set) var panelPresence = PanelPresence()
     public private(set) var summarySettings: AudelinSettings?
     private var chooseFolder: () async throws -> URL? = { nil }
-    private var pickerFailure: String?
+    private var pickerFailed = false
     private var summaries: AudelinSummaries?
     private var presentSettings: () -> Void = {}
     private let presentPanel: (Bool) -> Void
@@ -63,10 +65,17 @@ public final class AudelinMenu {
     private var updateWatch: Task<Void, Never>?
     private var choosingFolder = false
     private let panel: AudelinPanel
+    /// The language machines read when they write text.
+    let currentLanguage: CurrentLanguage
     /// The language Audelin's text is shown in.
-    public private(set) var language = UILanguage.russian
+    public private(set) var language: UILanguage
     private var menuText: MenuBarText { MenuBarText(language: language.menuBar) }
-    private var settingsText: SettingsText { SettingsText(language: .russian) }
+    /// Settings' text, in the language Audelin is shown in.
+    public var settingsText: SettingsText { language.settings }
+    /// The calls list's text, in the language Audelin is shown in.
+    public var callsListText: CallsListText { language.callsList }
+    /// The notes preview's text, in the language Audelin is shown in.
+    public var previewText: SummaryPreviewText { language.preview }
     /// The panel's text, in the language Audelin is shown in.
     public var panelText: PanelText { PanelText(language: language.panel) }
 
@@ -77,10 +86,14 @@ public final class AudelinMenu {
                      offersPanelReopen: panelPresence.offersReopen, panelVisible: panelPresence.visible)
     }
 
-    /// Shows the menu bar and the panel in the new language at once.
+    /// Shows all of Audelin's text in the new language at once.
     public func languageChanged(_ language: UILanguage) async {
         guard language != self.language else { return }
+        currentLanguage.language = language
         self.language = language
+        summarySettings?.languageChanged()
+        calls?.languageChanged(callsListText)
+        summaries?.languageChanged(callsListText)
         await panel.languageChanged(panelText)
     }
 
@@ -97,8 +110,12 @@ public final class AudelinMenu {
         presentPanel: @escaping (Bool) -> Void,
         sleep: @escaping @Sendable (Duration) async throws -> Void,
         cleanupRuns: CleanupRuns,
-        summaries: AudelinSummaries? = nil
+        summaries: AudelinSummaries? = nil,
+        language: CurrentLanguage = CurrentLanguage(.russian)
     ) async {
+
+        currentLanguage = language
+        self.language = language.language
 
         self.sink = sink
         self.panel = panel
@@ -177,7 +194,7 @@ public final class AudelinMenu {
                       engines: [.init(id: "parakeet", name: "Parakeet v3", note: settingsText(.localRecognition), availability: "", size: "")],
                       selectedEngine: "parakeet", explainKeys: "", selectedTab: summarySettings?.selectedTab ?? .recording,
                       callNotes: summarySettings?.notes ?? .loading(settingsText(.notesLoading)))
-        if let pickerFailure, case .idle = result.folder.status { result.folder.status = .pickerFailed(reason: pickerFailure) }
+        if pickerFailed, case .idle = result.folder.status { result.folder.status = .pickerFailed(reason: settingsText(.pickerFailedReason)) }
         if let recordings = calls?.recordingsState { applyFolderMove(recordings, text: settingsText, to: &result) }
         return result
     }
@@ -188,12 +205,12 @@ public final class AudelinMenu {
             choosingFolder = true
             defer { choosingFolder = false }
             sink.write(.init(category: .menu, message: "folder picker requested"))
-            pickerFailure = nil
+            pickerFailed = false
             do {
                 if let destination = try await chooseFolder() { calls?.sendRecordings(.chooseFolder(destination)) }
             } catch {
                 sink.write(.init(category: .menu, message: "folder picker failed", error: String(describing: error)))
-                pickerFailure = settingsText(.pickerFailedReason)
+                pickerFailed = true
             }
         case .confirmMove: calls?.sendRecordings(.confirmMove)
         case .retryMove: calls?.sendRecordings(.retryMove)

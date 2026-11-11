@@ -267,7 +267,7 @@ import Testing
 }
 
 private func settingsReducer() -> Reducer {
-    russianSettings.summarySettingsReducer()
+    summarySettingsReducer { russianSettings }
 }
 private func localConfiguration() -> SummarySettings.Configuration {
     let runtime = SummarySettings.Configuration.Runtime(kind: .compatibleAPI, model: "fixture", executable: "", endpoint: "http://127.0.0.1/v1", credentialVariable: "")

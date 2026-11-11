@@ -328,6 +328,24 @@ import Testing
         }
     }
 
+    @Test func statusesFollowTheLanguage() async throws {
+        try await withComposeFolder { root in
+            let preferences = PreferencesStore(fileURL: root.appendingPathComponent("preferences.json"))
+            try preferences.updateNotes(.init(enabled: true))
+            let files = Files(locations: SummaryStorage(folder: root, timeZone: .gmt), disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("leases"))
+            let runtime = Runtime(process: ArbitrationProcess(), http: ArbitrationHTTP(), credential: { _ in nil }, resolveProgram: { $0 }, deadline: { throw Failure.timeout })
+            let summaries = AudelinSummaries(files: files, runtime: runtime, preferences: preferences, sink: TestLogSink())
+            summaries.waiting(call: "call")
+            #expect(summaries.statuses == ["call": CallsListText(language: .russian).summaryStatus(.waiting, false)])
+            var updates = summaries.updates().makeAsyncIterator()
+            _ = await updates.next()
+            summaries.languageChanged(CallsListText(language: .english))
+            let english = ["call": CallsListText(language: .english).summaryStatus(.waiting, false)]
+            #expect(summaries.statuses == english)
+            #expect(await updates.next() == english)
+            await summaries.shutdown()
+        }
+    }
 }
 private struct ArbitrationProcess: ProcessRunning {
     func run(program: String, arguments: [String], input: Data) throws -> ProcessOutput { Issue.record("unexpected runtime dispatch"); throw Failure.unavailable }

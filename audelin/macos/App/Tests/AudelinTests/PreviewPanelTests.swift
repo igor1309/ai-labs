@@ -104,6 +104,22 @@ struct PreviewPanelTests {
         #expect(rendered.attribute(.foregroundColor, at: bodyAt, effectiveRange: nil) as? NSColor == .red)
     }
 
+    @Test func aLanguageChangeWritesTheShownPreviewAgainWhereItIs() {
+        let window = PreviewPanelSpy()
+        let content = ContentSpy()
+        let panel = PreviewPanel(makePanel: { window }, text: .init(language: .russian), copy: { _ in }, makeContent: content.make)
+        panel.languageChanged(.init(language: .english))
+        #expect(content.states.isEmpty)
+        panel.show(preview("A", notes: .unreadable("denied")))
+        panel.languageChanged(.init(language: .english))
+        let english = SummaryPreviewText(language: .english)
+        #expect(window.title == english(.windowTitle, "A"))
+        #expect(content.states.last?.notes == .unreadable(english(.unreadable, "denied")))
+        #expect(content.texts.last == english)
+        #expect(window.contentView === content.views.last)
+        #expect(window.orders == ["front"])
+    }
+
     @Test func theUtilityPanelFloatsHidesWithTheAppAndKeepsItsPlace() {
         let panel = makeSummaryPanel()
         defer { panel.close() }
@@ -128,10 +144,11 @@ private func preview(_ title: String, notes: CallsPreview.Notes? = nil) -> Calls
 
 @MainActor private final class ContentSpy {
     var states: [SummaryPreviewState] = []
+    var texts: [SummaryPreviewText] = []
     var copies: [() -> Void] = []
     var views: [NSView] = []
-    func make(_ state: SummaryPreviewState, copy: @escaping () -> Void) -> NSView {
-        states.append(state); copies.append(copy)
+    func make(_ state: SummaryPreviewState, text: SummaryPreviewText, copy: @escaping () -> Void) -> NSView {
+        states.append(state); texts.append(text); copies.append(copy)
         let view = NSView()
         views.append(view)
         return view

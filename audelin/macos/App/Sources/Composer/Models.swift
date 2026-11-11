@@ -144,15 +144,15 @@ func quit(_ handler: LifecycleEffectHandler) async {
 }
 
 @MainActor
-func makeRecordings(handler: RecordingsEffectHandler, text: SettingsText, initial: RecordingsState = .init()) -> RecordingsInputs {
+func makeRecordings(handler: RecordingsEffectHandler, text: @escaping @Sendable () -> SettingsText, initial: RecordingsState = .init()) -> RecordingsInputs {
     let model = ObservableModel(initialState: initial, reduce: recordingsReducer(text).reduce,
                                 handleEffect: { handleRecordingsEffect(handler, $0) })
     return RecordingsInputs(state: { model.state }, send: { model.event($0) })
 }
 
-/// The calls list machine, with its text in the given language.
-func recordingsReducer(_ text: SettingsText) -> RecordingsReducer {
+/// The calls list machine, with its text in the language `text` gives when it writes.
+func recordingsReducer(_ text: @escaping @Sendable () -> SettingsText) -> RecordingsReducer {
     RecordingsReducer(failureMessage: { prior, refreshError in
-        text(.refreshFailed, prior, refreshError)
+        text()(.refreshFailed, prior, refreshError)
     }, moveText: folderMoveText(text))
 }
