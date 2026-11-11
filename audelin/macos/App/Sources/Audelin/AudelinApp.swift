@@ -39,7 +39,7 @@ struct AudelinApp: App {
             presence.track(window)
             callsNSWindow = window
             return window
-        }, activate: { NSApplication.shared.activate() }, shown: { presence.shown($0) })
+        }, activate: { NSApplication.shared.activate(ignoringOtherApps: true) }, shown: { presence.shown($0) })
         self.callsWindow = callsWindow
         let settingsWindow = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 668, height: 700),
                                       styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
@@ -62,7 +62,7 @@ struct AudelinApp: App {
             terminate: { await MainActor.run { appDelegate.terminationReady = true; NSApplication.shared.terminate(nil) } },
             presentSettings: {
                 presence.shown(settingsWindow)
-                NSApplication.shared.activate()
+                NSApplication.shared.activate(ignoringOtherApps: true)
                 settingsWindow.deminiaturize(nil)
                 settingsWindow.makeKeyAndOrderFront(nil)
             }, chooseCallsFolder: {
