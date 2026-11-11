@@ -1,0 +1,43 @@
+schema: agister.process/v1alpha1
+prompt: architecture-proposal-review
+instruction: >-
+  Review the architecture proposal given as input proposal against the
+  guidelines given as input guidelines, following the prompt given as
+  input prompt. Your working directory is a read-only checkout of the
+  revision: read its code and architecture documents yourself. Report
+  material findings only, with repository-relative paths and line numbers
+  of the proposal.
+
+params:
+  proposal: {}
+  guidelines: {}
+  revision: {default: HEAD}
+inputs:
+  revision: {source: git.revision, rev: {from: params.revision}}
+  proposal: {source: file, path: {from: params.proposal}}
+  guidelines: {source: file, path: {from: params.guidelines}}
+
+workspace:
+  access: read-only
+  revision: {from: inputs.revision}
+
+permissions:
+  require:
+    - repository.read
+  allow:
+    - repository.read
+    - repository.diff
+    - repository.search
+    - repository.history.read
+    - process.execute
+    - host.read
+
+limits:
+  time: 20m
+  stale:
+    no_event: 10m
+    tool_command: 8m
+    repeated_tool_calls: 5
+
+output:
+  schema: review-result

@@ -318,8 +318,3 @@ top of its ARCHITECTURE.md "because you tend to ignore these grounding rules".)
   sometimes even 2 are better structured.
 - **Decorators are components**, like any other (see the many decorators in
   the iOS repo). There is no threshold where one "becomes" a component.
-
-## 12. Open: how architecture is checked
-
-This collection exists for that. The goal is a skill built from it, and an
-agister agent that uses the skill to design and review architecture.
