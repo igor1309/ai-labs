@@ -103,42 +103,57 @@ public struct CallsListView: View {
         }
     }
 
-    /// One line at a fixed height: start time, title, duration and the status cell.
+    /// Two lines at a fixed height: the title and start time; then the duration
+    /// and what the call was about, or where its summary stands.
     private func rowContent(_ row: CallsListState.Row) -> some View {
-        HStack(spacing: tokens.space12) {
-            Text(row.time).font(tokens.data(tokens.typeSmall)).foregroundStyle(tokens.gutter)
-                .frame(width: timeWidth, alignment: .leading).allowsHitTesting(false)
-            Group {
-                if let edit = state.editing, edit.id == row.id {
-                    HStack(spacing: 0) {
-                        Text(row.id + " ").font(tokens.data(tokens.typeSmall)).foregroundStyle(tokens.gutter)
-                        TextField(text(.titlePlaceholder), text: Binding(get: { edit.title }, set: { event(.editTitle($0)) }))
-                            .textFieldStyle(.plain)
-                            .focused($editing)
-                            .onSubmit { event(.submitRename) }
-                            .onExitCommand { event(.cancelRename) }
+        VStack(alignment: .leading, spacing: tokens.space2) {
+            HStack(spacing: tokens.space8) {
+                Group {
+                    if let edit = state.editing, edit.id == row.id {
+                        HStack(spacing: 0) {
+                            Text(row.id + " ").font(tokens.data(tokens.typeSmall)).foregroundStyle(tokens.gutter)
+                            TextField(text(.titlePlaceholder), text: Binding(get: { edit.title }, set: { event(.editTitle($0)) }))
+                                .textFieldStyle(.plain)
+                                .focused($editing)
+                                .onSubmit { event(.submitRename) }
+                                .onExitCommand { event(.cancelRename) }
+                        }
+                        .padding(.horizontal, tokens.space4)
+                        .background(tokens.surface, in: .rect(cornerRadius: tokens.radiusControl))
+                        .overlay(RoundedRectangle(cornerRadius: tokens.radiusControl).stroke(tokens.me, lineWidth: 1.5))
+                    } else {
+                        title(row).allowsHitTesting(false)
                     }
-                    .padding(.horizontal, tokens.space4).padding(.vertical, tokens.space4)
-                    .background(tokens.surface, in: .rect(cornerRadius: tokens.radiusControl))
-                    .overlay(RoundedRectangle(cornerRadius: tokens.radiusControl).stroke(tokens.me, lineWidth: 1.5))
-                } else {
-                    title(row).frame(maxWidth: .infinity, alignment: .leading).allowsHitTesting(false)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                Text(row.time).font(tokens.data(tokens.typeSmall)).foregroundStyle(tokens.sub).allowsHitTesting(false)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            Text(row.duration).font(tokens.data(tokens.typeSmall)).foregroundStyle(tokens.sub)
-                .frame(width: cellWidth, alignment: .trailing).allowsHitTesting(false)
-            HStack(spacing: tokens.space6) {
+            .frame(height: lineHeight)
+            HStack(spacing: tokens.space8) {
+                Text(row.duration).font(tokens.data(tokens.typeSmall)).foregroundStyle(tokens.gutter)
+                    .fixedSize().frame(minWidth: durationWidth, alignment: .leading).allowsHitTesting(false)
+                about(row).frame(maxWidth: .infinity, alignment: .leading).allowsHitTesting(false)
                 summary(row)
                 eye(row)
             }
-            .frame(width: cellWidth, alignment: .trailing)
+            .frame(height: lineHeight)
         }
         .lineLimit(1)
-        .frame(height: rowHeight)
-        .padding(.horizontal, tokens.space16)
+        .padding(.horizontal, tokens.space16).padding(.vertical, tokens.space8)
         .background(state.selectedID == row.id ? (active ? tokens.okBg : tokens.btn) : tokens.surface)
+        .overlay(alignment: .bottom) { Rectangle().fill(tokens.rule).frame(height: 1) }
         .accessibilityAddTraits(state.selectedID == row.id ? .isSelected : [])
+    }
+
+    /// The second line's text: the gist, or that the summary is being prepared or failed.
+    @ViewBuilder private func about(_ row: CallsListState.Row) -> some View {
+        switch row.summary {
+        case .pending: Text(text(.rowPreparing)).foregroundStyle(tokens.gutter)
+        case .failed: Text(text(.rowFailed)).foregroundStyle(tokens.rec)
+        case .none:
+            if let gist = row.gist, row.match == nil { Text(gist).foregroundStyle(tokens.sub).truncationMode(.tail) }
+            else { Color.clear }
+        }
     }
 
     /// Whether the window is the active one; selection loses its accent otherwise.
@@ -207,10 +222,9 @@ public struct CallsListView: View {
         .background(tokens.win)
     }
 
-    private let timeWidth: CGFloat = 40
-    private let cellWidth: CGFloat = 64
+    private let durationWidth: CGFloat = 48
     private let iconSize: CGFloat = 14
-    private var rowHeight: CGFloat { tokens.space32 }
+    private var lineHeight: CGFloat { tokens.space16 }
 
     /// The eye a call with notes shows; a call without keeps its place empty.
     @ViewBuilder private func eye(_ row: CallsListState.Row) -> some View {

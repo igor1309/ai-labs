@@ -41,6 +41,8 @@ public enum CallsListPhrase: String, CaseIterable, Sendable {
     case summaryReadyUnnamed = "summary.readyUnnamed"
     case summaryFailed = "summary.failed"
     case summaryInterrupted = "summary.interrupted"
+    case rowPreparing = "row.preparing"
+    case rowFailed = "row.failed"
     case summaryUnavailable = "summary.unavailable"
     case summaryRetryFailed = "summary.retryFailed"
     case windowTitle = "window.title"

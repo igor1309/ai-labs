@@ -36,3 +36,5 @@
 "search.searching" = "Searching transcripts…";
 "search.noMatches" = "No matches";
 "search.noMatchesHint" = "“%@” is not in any title, summary or transcript";
+"row.preparing" = "Preparing the summary…";
+"row.failed" = "Couldn’t prepare the summary";
