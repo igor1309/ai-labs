@@ -14,6 +14,14 @@ public enum UILanguage: String, CaseIterable, Sendable {
     case english = "en"
 }
 
+import MenuBar
+import PanelUI
+
+extension UILanguage {
+    var menuBar: MenuBarLanguage { self == .russian ? .russian : .english }
+    var panel: PanelLanguage { self == .russian ? .russian : .english }
+}
+
 /// The language Audelin shows, from the choice and macOS's preferred languages, most preferred first.
 public func uiLanguage(_ choice: LanguageChoice, preferred: [String]) -> UILanguage {
     switch choice {

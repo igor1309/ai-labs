@@ -46,7 +46,8 @@ public final class AudelinMenu {
     private let sendPanelEvent: (PanelEvent) async -> Void
     private var panelObservation: Task<Void, Never>?
     private var hideDelay: Task<Void, Never>?
-    private var failure: String?
+    /// What stopped call watching, written in the menu's language when shown.
+    private var failure: (phrase: MenuBarPhrase, reason: String)?
     private let sink: any LogSink
     private let settings: PreferenceSettings
     private let recordingStates: () async -> AsyncStream<RecordingState>
@@ -61,13 +62,26 @@ public final class AudelinMenu {
     private var detectionObservation: Task<Void, Never>?
     private var updateWatch: Task<Void, Never>?
     private var choosingFolder = false
-    private let menuText = MenuBarText(language: .russian)
-    private let settingsText = SettingsText(language: .russian)
+    private let panel: AudelinPanel
+    /// The language Audelin's text is shown in.
+    public private(set) var language = UILanguage.russian
+    private var menuText: MenuBarText { MenuBarText(language: language.menuBar) }
+    private var settingsText: SettingsText { SettingsText(language: .russian) }
+    /// The panel's text, in the language Audelin is shown in.
+    public var panelText: PanelText { PanelText(language: language.panel) }
 
     public var menu: MenuBarModel {
         MenuBarModel(text: menuText.callAsFunction, recording: menuBarRecording(state),
-                     preferences: menuBarPreferences(preferences), statusLine: failure,
+                     preferences: menuBarPreferences(preferences),
+                     statusLine: failure.map { String(format: menuText($0.phrase), $0.reason) },
                      offersPanelReopen: panelPresence.offersReopen, panelVisible: panelPresence.visible)
+    }
+
+    /// Shows the menu bar and the panel in the new language at once.
+    public func languageChanged(_ language: UILanguage) async {
+        guard language != self.language else { return }
+        self.language = language
+        await panel.languageChanged(panelText)
     }
 
     init(
@@ -87,6 +101,7 @@ public final class AudelinMenu {
     ) async {
 
         self.sink = sink
+        self.panel = panel
         self.summaries = summaries
         self.presentPanel = presentPanel
         self.sleep = sleep
@@ -109,7 +124,7 @@ public final class AudelinMenu {
         } catch {
             sink.write(.init(category: .menu, message: "startup failed", error: String(describing: error)))
             application = nil
-            failure = String(format: menuText(.watchFailedToStart), "\(error)")
+            failure = (.watchFailedToStart, "\(error)")
         }
         let send = application?.send ?? { _ in }
         settings = PreferenceSettings(storage: storage, automaticChanged: { await send(.automaticChanged($0)) })
@@ -142,7 +157,7 @@ public final class AudelinMenu {
                 for await error in failures {
                     guard let self else { return }
                     sink.write(.init(category: .menu, message: "detection failed", error: String(describing: error)))
-                    self.failure = String(format: self.menuText(.watchStopped), "\(error)")
+                    self.failure = (.watchStopped, "\(error)")
                 }
             }
         }

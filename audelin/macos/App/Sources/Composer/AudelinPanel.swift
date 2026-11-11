@@ -28,7 +28,9 @@ actor AudelinPanel {
     private var current: (id: UInt64, reading: ReadingInputs, enableLiveText: @Sendable () async -> Void)?
     private var state = PanelState(recording: .off, log: .empty)
     private var mappedRows = MappedRows()
-    private let panelText = PanelText(language: .russian)
+    private var panelText = PanelText(language: .russian)
+    /// The reading state last mapped, so a new language can map it again.
+    private var lastReading: ReadingState?
     private var subscribers: [UInt64: AsyncStream<PanelState>.Continuation] = [:]
     private var nextSubscriber: UInt64 = 0
 
@@ -67,6 +69,7 @@ actor AudelinPanel {
         let reading = await makeReading()
         current = (id, reading, enableLiveText)
         mappedRows = .init()
+        lastReading = nil
         let update = SignpostedPanelUpdate(receive: { [weak self] state in
             await self?.receive(state, id: id)
         }, intervals: intervals)
@@ -86,7 +89,19 @@ actor AudelinPanel {
     private func receive(_ state: ReadingState, id: UInt64) {
 
         guard current?.id == id else { return }
+        lastReading = state
         publish(panelState(panelText.callAsFunction, state, rows: &mappedRows))
+    }
+
+    /// Maps what the panel shows again, from scratch, in the new language.
+    func languageChanged(_ text: PanelText) {
+
+        guard text != panelText else { return }
+        panelText = text
+        mappedRows = .init()
+        guard let lastReading else { return }
+        let next = panelState(panelText.callAsFunction, lastReading, rows: &mappedRows)
+        publish(current == nil ? .init(recording: .off, log: next.log) : next)
     }
 
     private func publish(_ next: PanelState) {
