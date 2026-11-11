@@ -1053,84 +1053,6 @@
             },
             {
               "type": "frame",
-              "id": "s022x",
-              "name": "Compact row",
-              "reusable": true,
-              "width": 340,
-              "fill": "$surface",
-              "gap": "$space-12",
-              "padding": [
-                "$space-8",
-                "$space-16"
-              ],
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "text",
-                  "id": "s017x",
-                  "name": "Time",
-                  "fill": "$gutter",
-                  "textGrowth": "fixed-width",
-                  "width": 40,
-                  "content": "12:58",
-                  "fontFamily": "$font-data",
-                  "fontSize": "$type-small",
-                  "fontWeight": "normal"
-                },
-                {
-                  "type": "text",
-                  "id": "s018x",
-                  "name": "Title",
-                  "fill": "$text",
-                  "textGrowth": "fixed-width-height",
-                  "width": "fill_container",
-                  "height": 16,
-                  "content": "ЦР ID",
-                  "fontFamily": "$font-ui",
-                  "fontSize": "$type-small",
-                  "fontWeight": "600"
-                },
-                {
-                  "type": "frame",
-                  "id": "s021x",
-                  "name": "Status",
-                  "width": 16,
-                  "height": 16,
-                  "justifyContent": "end",
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "icon",
-                      "id": "s019x",
-                      "x": 0,
-                      "y": 0,
-                      "name": "Pending",
-                      "enabled": false,
-                      "width": 14,
-                      "height": 14,
-                      "icon": "loader-circle",
-                      "library": "lucide",
-                      "fill": "$sub"
-                    },
-                    {
-                      "type": "icon",
-                      "id": "s020x",
-                      "x": 0,
-                      "y": 0,
-                      "name": "Failed",
-                      "enabled": false,
-                      "width": 14,
-                      "height": 14,
-                      "icon": "circle-alert",
-                      "library": "lucide",
-                      "fill": "$rec"
-                    }
-                  ]
-                }
-              ]
-            },
-            {
-              "type": "frame",
               "id": "s030x",
               "name": "Two-line row",
               "reusable": true,
@@ -1225,6 +1147,199 @@
                       "icon": "circle-alert",
                       "library": "lucide",
                       "fill": "$rec"
+                    },
+                    {
+                      "type": "icon",
+                      "id": "s057x",
+                      "x": 0,
+                      "y": 0,
+                      "name": "Pending",
+                      "enabled": false,
+                      "width": 14,
+                      "height": 14,
+                      "icon": "loader-circle",
+                      "library": "lucide",
+                      "fill": "$sub"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "s073x",
+              "name": "Two-line match row",
+              "reusable": true,
+              "width": 340,
+              "fill": "$surface",
+              "stroke": "$rule",
+              "strokeWidth": {
+                "bottom": 1
+              },
+              "layout": "vertical",
+              "gap": "$space-2",
+              "padding": [
+                "$space-8",
+                "$space-16"
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "s064x",
+                  "name": "Top",
+                  "width": "fill_container",
+                  "gap": "$space-8",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "s062x",
+                      "name": "Title",
+                      "clip": true,
+                      "width": "fill_container",
+                      "height": 16,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "s058x",
+                          "name": "T1",
+                          "fill": "$text",
+                          "content": "Синк по ",
+                          "fontFamily": "$font-ui",
+                          "fontSize": "$type-small",
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "s060x",
+                          "name": "Hit",
+                          "fill": "$hit",
+                          "cornerRadius": "$radius-bar",
+                          "padding": [
+                            0,
+                            "$space-2"
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "s059x",
+                              "name": "H",
+                              "fill": "$text",
+                              "content": "OKR",
+                              "fontFamily": "$font-ui",
+                              "fontSize": "$type-small",
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "s061x",
+                          "name": "T2",
+                          "fill": "$text",
+                          "content": " на квартал",
+                          "fontFamily": "$font-ui",
+                          "fontSize": "$type-small",
+                          "fontWeight": "600"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "s063x",
+                      "name": "Time",
+                      "fill": "$sub",
+                      "content": "16:00",
+                      "fontFamily": "$font-data",
+                      "fontSize": "$type-small",
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "s072x",
+                  "name": "Bottom",
+                  "width": "fill_container",
+                  "gap": "$space-8",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "s065x",
+                      "name": "At",
+                      "fill": "$gutter",
+                      "textGrowth": "fixed-width",
+                      "width": 48,
+                      "content": "14:32",
+                      "fontFamily": "$font-data",
+                      "fontSize": "$type-small",
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "s070x",
+                      "name": "Snippet",
+                      "clip": true,
+                      "width": "fill_container",
+                      "height": 16,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "s066x",
+                          "name": "S1",
+                          "fill": "$sub",
+                          "content": "…итак, по ",
+                          "fontFamily": "$font-ui",
+                          "fontSize": "$type-small",
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "s068x",
+                          "name": "Hit",
+                          "fill": "$hit",
+                          "cornerRadius": "$radius-bar",
+                          "padding": [
+                            0,
+                            "$space-2"
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "s067x",
+                              "name": "H",
+                              "fill": "$text",
+                              "content": "OKR",
+                              "fontFamily": "$font-ui",
+                              "fontSize": "$type-small",
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "s069x",
+                          "name": "S2",
+                          "fill": "$sub",
+                          "content": " второго квартала закрываем два из трёх…",
+                          "fontFamily": "$font-ui",
+                          "fontSize": "$type-small",
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "s071x",
+                      "name": "More",
+                      "fill": "$gutter",
+                      "content": "ещё 4",
+                      "fontFamily": "$font-ui",
+                      "fontSize": "$type-small",
+                      "fontWeight": "normal"
                     }
                   ]
                 }
@@ -1487,112 +1602,63 @@
             },
             {
               "type": "frame",
-              "id": "s052x",
-              "name": "Transcript line",
+              "id": "s079x",
+              "name": "Detail message",
               "reusable": true,
-              "width": 760,
-              "gap": "$space-12",
-              "padding": [
-                "$space-6",
-                "$space-28"
-              ],
+              "width": 360,
+              "layout": "vertical",
+              "gap": "$space-8",
+              "padding": "$space-24",
+              "alignItems": "center",
               "children": [
                 {
+                  "type": "icon",
+                  "id": "s076x",
+                  "name": "Icon",
+                  "width": 20,
+                  "height": 20,
+                  "icon": "loader-circle",
+                  "library": "lucide",
+                  "fill": "$sub"
+                },
+                {
                   "type": "text",
-                  "id": "s048x",
-                  "name": "Time",
-                  "fill": "$gutter",
-                  "textGrowth": "fixed-width",
-                  "width": 40,
-                  "content": "04:41",
-                  "fontFamily": "$font-data",
+                  "id": "s077x",
+                  "name": "H",
+                  "fill": "$text",
+                  "content": "Подготовка итогов…",
+                  "fontFamily": "$font-ui",
+                  "fontSize": "$type-body",
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "text",
+                  "id": "s078x",
+                  "name": "Sub",
+                  "fill": "$sub",
+                  "content": "Итоги появятся здесь, когда будут готовы",
+                  "textAlign": "center",
+                  "fontFamily": "$font-ui",
                   "fontSize": "$type-small",
                   "fontWeight": "normal"
                 },
                 {
                   "type": "frame",
-                  "id": "s051x",
-                  "name": "Body",
-                  "width": "fill_container",
-                  "layout": "vertical",
-                  "gap": "$space-2",
-                  "children": [
-                    {
-                      "type": "text",
-                      "id": "s049x",
-                      "name": "Speaker",
-                      "fill": "$them",
-                      "content": "Андрей",
-                      "fontFamily": "$font-ui",
-                      "fontSize": "$type-small",
-                      "fontWeight": "600"
-                    },
-                    {
-                      "type": "text",
-                      "id": "s050x",
-                      "name": "Text",
-                      "fill": "$text",
-                      "textGrowth": "fixed-width",
-                      "width": "fill_container",
-                      "content": "…",
-                      "lineHeight": 1.5,
-                      "fontFamily": "$font-ui",
-                      "fontSize": "$type-body",
-                      "fontWeight": "normal"
-                    }
-                  ]
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "s047x",
-              "name": "Segmented",
-              "reusable": true,
-              "fill": "$chip",
-              "cornerRadius": "$radius-control",
-              "gap": "$space-2",
-              "padding": "$space-2",
-              "children": [
-                {
-                  "type": "frame",
-                  "id": "s044x",
-                  "name": "Итоги",
-                  "fill": "$surface",
+                  "id": "s075x",
+                  "name": "Button",
+                  "fill": "$btn",
                   "cornerRadius": "$radius-control",
                   "padding": [
                     "$space-4",
-                    "$space-16"
+                    "$space-12"
                   ],
                   "children": [
                     {
                       "type": "text",
-                      "id": "s043x",
+                      "id": "s074x",
                       "name": "Label",
                       "fill": "$text",
-                      "content": "Итоги",
-                      "fontFamily": "$font-ui",
-                      "fontSize": "$type-small",
-                      "fontWeight": "600"
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "s046x",
-                  "name": "Транскрипт",
-                  "cornerRadius": "$radius-control",
-                  "padding": [
-                    "$space-4",
-                    "$space-16"
-                  ],
-                  "children": [
-                    {
-                      "type": "text",
-                      "id": "s045x",
-                      "name": "Label",
-                      "fill": "$sub",
-                      "content": "Транскрипт",
+                      "content": "Повторить итоги",
                       "fontFamily": "$font-ui",
                       "fontSize": "$type-small",
                       "fontWeight": "normal"
@@ -1607,10 +1673,10 @@
     },
     {
       "type": "frame",
-      "id": "s089x",
+      "id": "s112x",
       "x": 0,
       "y": 0,
-      "name": "Split A — list and summary",
+      "name": "Calls — summary",
       "theme": {
         "mode": "light"
       },
@@ -1625,14 +1691,18 @@
       "children": [
         {
           "type": "frame",
-          "id": "s086x",
+          "id": "s109x",
           "name": "List pane",
           "width": 340,
           "height": "fill_container",
+          "stroke": "$rule",
+          "strokeWidth": {
+            "right": 1
+          },
           "layout": "vertical",
           "children": [
             {
-              "id": "s085x",
+              "id": "s108x",
               "type": "ref",
               "ref": "s006x",
               "name": "List bar",
@@ -1640,24 +1710,16 @@
             },
             {
               "type": "frame",
-              "id": "s084x",
+              "id": "s107x",
               "name": "List",
               "clip": true,
-              "width": 340,
+              "width": "fill_container",
               "height": "fill_container",
               "fill": "$win",
-              "stroke": "$rule",
-              "strokeWidth": {
-                "right": 1
-              },
               "layout": "vertical",
-              "padding": [
-                0,
-                "$space-8"
-              ],
               "children": [
                 {
-                  "id": "s069x",
+                  "id": "s080x",
                   "type": "ref",
                   "ref": "s016x",
                   "name": "Day Сегодня",
@@ -1668,480 +1730,11 @@
                     },
                     "s015x": {
                       "content": "3 звонка"
-                    }
-                  }
-                },
-                {
-                  "id": "s070x",
-                  "type": "ref",
-                  "ref": "s022x",
-                  "name": "Row ЦР ID",
-                  "width": "fill_container",
-                  "fill": "$selBg",
-                  "cornerRadius": "$radius-control",
-                  "descendants": {
-                    "s017x": {
-                      "content": "12:58",
-                      "fill": "$selText"
-                    },
-                    "s018x": {
-                      "content": "ЦР ID",
-                      "fill": "$selText"
-                    }
-                  }
-                },
-                {
-                  "id": "s071x",
-                  "type": "ref",
-                  "ref": "s022x",
-                  "name": "Row ЦР",
-                  "width": "fill_container",
-                  "descendants": {
-                    "s017x": {
-                      "content": "11:00"
-                    },
-                    "s018x": {
-                      "content": "ЦР"
-                    }
-                  }
-                },
-                {
-                  "id": "s072x",
-                  "type": "ref",
-                  "ref": "s022x",
-                  "name": "Row iOS Daily",
-                  "width": "fill_container",
-                  "descendants": {
-                    "s017x": {
-                      "content": "10:00"
-                    },
-                    "s018x": {
-                      "content": "iOS Daily"
-                    },
-                    "s019x": {
-                      "enabled": true
-                    }
-                  }
-                },
-                {
-                  "id": "s073x",
-                  "type": "ref",
-                  "ref": "s016x",
-                  "name": "Day Вчера",
-                  "width": "fill_container",
-                  "descendants": {
-                    "s014x": {
-                      "content": "Вчера"
-                    },
-                    "s015x": {
-                      "content": "2 звонка"
-                    }
-                  }
-                },
-                {
-                  "id": "s074x",
-                  "type": "ref",
-                  "ref": "s022x",
-                  "name": "Row Люда — передача дел",
-                  "width": "fill_container",
-                  "descendants": {
-                    "s017x": {
-                      "content": "17:00"
-                    },
-                    "s018x": {
-                      "content": "Люда — передача дел"
-                    }
-                  }
-                },
-                {
-                  "id": "s075x",
-                  "type": "ref",
-                  "ref": "s022x",
-                  "name": "Row iOS & Android daily",
-                  "width": "fill_container",
-                  "descendants": {
-                    "s017x": {
-                      "content": "09:59"
-                    },
-                    "s018x": {
-                      "content": "iOS & Android daily"
-                    },
-                    "s020x": {
-                      "enabled": true
-                    }
-                  }
-                },
-                {
-                  "id": "s076x",
-                  "type": "ref",
-                  "ref": "s016x",
-                  "name": "Day Понедельник, 9 ноября",
-                  "width": "fill_container",
-                  "descendants": {
-                    "s014x": {
-                      "content": "Понедельник, 9 ноября"
-                    },
-                    "s015x": {
-                      "content": "2 звонка"
-                    }
-                  }
-                },
-                {
-                  "id": "s077x",
-                  "type": "ref",
-                  "ref": "s022x",
-                  "name": "Row ЦР Статус",
-                  "width": "fill_container",
-                  "descendants": {
-                    "s017x": {
-                      "content": "11:02"
-                    },
-                    "s018x": {
-                      "content": "ЦР Статус"
-                    }
-                  }
-                },
-                {
-                  "id": "s078x",
-                  "type": "ref",
-                  "ref": "s022x",
-                  "name": "Row iOS Daily",
-                  "width": "fill_container",
-                  "descendants": {
-                    "s017x": {
-                      "content": "10:00"
-                    },
-                    "s018x": {
-                      "content": "iOS Daily"
-                    }
-                  }
-                },
-                {
-                  "id": "s079x",
-                  "type": "ref",
-                  "ref": "s016x",
-                  "name": "Day Пятница, 6 ноября",
-                  "width": "fill_container",
-                  "descendants": {
-                    "s014x": {
-                      "content": "Пятница, 6 ноября"
-                    },
-                    "s015x": {
-                      "content": "2 звонка"
-                    }
-                  }
-                },
-                {
-                  "id": "s080x",
-                  "type": "ref",
-                  "ref": "s022x",
-                  "name": "Row Лера 17820",
-                  "width": "fill_container",
-                  "descendants": {
-                    "s017x": {
-                      "content": "14:59"
-                    },
-                    "s018x": {
-                      "content": "Лера 17820"
                     }
                   }
                 },
                 {
                   "id": "s081x",
-                  "type": "ref",
-                  "ref": "s022x",
-                  "name": "Row iOS Daily",
-                  "width": "fill_container",
-                  "descendants": {
-                    "s017x": {
-                      "content": "09:59"
-                    },
-                    "s018x": {
-                      "content": "iOS Daily"
-                    }
-                  }
-                },
-                {
-                  "id": "s082x",
-                  "type": "ref",
-                  "ref": "s016x",
-                  "name": "Day Четверг, 5 ноября",
-                  "width": "fill_container",
-                  "descendants": {
-                    "s014x": {
-                      "content": "Четверг, 5 ноября"
-                    },
-                    "s015x": {
-                      "content": "8 звонков"
-                    }
-                  }
-                },
-                {
-                  "id": "s083x",
-                  "type": "ref",
-                  "ref": "s022x",
-                  "name": "Row Планирование",
-                  "width": "fill_container",
-                  "descendants": {
-                    "s017x": {
-                      "content": "17:34"
-                    },
-                    "s018x": {
-                      "content": "Планирование"
-                    }
-                  }
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "type": "frame",
-          "id": "s088x",
-          "name": "Detail pane",
-          "width": "fill_container",
-          "height": "fill_container",
-          "layout": "vertical",
-          "children": [
-            {
-              "id": "s068x",
-              "type": "ref",
-              "ref": "s013x",
-              "name": "Detail bar",
-              "width": "fill_container"
-            },
-            {
-              "type": "frame",
-              "id": "s087x",
-              "name": "Scroll",
-              "clip": true,
-              "width": "fill_container",
-              "height": "fill_container",
-              "fill": "$surface",
-              "layout": "vertical",
-              "padding": [
-                0,
-                0,
-                "$space-24",
-                0
-              ],
-              "children": [
-                {
-                  "id": "s057x",
-                  "type": "ref",
-                  "ref": "s033x",
-                  "name": "Header",
-                  "width": "fill_container",
-                  "descendants": {
-                    "s031x": {
-                      "content": "ЦР ID"
-                    },
-                    "s032x": {
-                      "content": "Сегодня, 12:58 · 41:11"
-                    }
-                  }
-                },
-                {
-                  "id": "s058x",
-                  "type": "ref",
-                  "ref": "s035x",
-                  "name": "S О ЧЁМ ВСТРЕЧА",
-                  "width": "fill_container",
-                  "descendants": {
-                    "s034x": {
-                      "content": "О ЧЁМ ВСТРЕЧА"
-                    }
-                  }
-                },
-                {
-                  "id": "s059x",
-                  "type": "ref",
-                  "ref": "s039x",
-                  "name": "P Встреча была пос",
-                  "width": "fill_container",
-                  "descendants": {
-                    "s038x": {
-                      "content": "Встреча была посвящена идентификаторам в сообщениях (application message ID, Oper ID, message ID, doc ID, correlation message ID) и тому, как связывать ответы с запросами между шиной, бэком и фронтом. Также обсудили пополнение счёта и классификацию асинхронных сообщений."
-                    }
-                  }
-                },
-                {
-                  "id": "s060x",
-                  "type": "ref",
-                  "ref": "s035x",
-                  "name": "S КЛЮЧЕВЫЕ МОМЕНТЫ",
-                  "width": "fill_container",
-                  "descendants": {
-                    "s034x": {
-                      "content": "КЛЮЧЕВЫЕ МОМЕНТЫ"
-                    }
-                  }
-                },
-                {
-                  "id": "s061x",
-                  "type": "ref",
-                  "ref": "s037x",
-                  "name": "H Пополнение счёта",
-                  "width": "fill_container",
-                  "descendants": {
-                    "s036x": {
-                      "content": "Пополнение счёта"
-                    }
-                  }
-                },
-                {
-                  "id": "s062x",
-                  "type": "ref",
-                  "ref": "s042x",
-                  "name": "B Пополнение работ",
-                  "width": "fill_container",
-                  "descendants": {
-                    "s041x": {
-                      "content": "Пополнение работает, открыты лишь вопросы по ответам [02:02–03:10]."
-                    }
-                  }
-                },
-                {
-                  "id": "s063x",
-                  "type": "ref",
-                  "ref": "s042x",
-                  "name": "B Отдельные вопрос",
-                  "width": "fill_container",
-                  "descendants": {
-                    "s041x": {
-                      "content": "Отдельные вопросы остаются по C2C и по Oper ID в пополнении [03:10]."
-                    }
-                  }
-                },
-                {
-                  "id": "s064x",
-                  "type": "ref",
-                  "ref": "s037x",
-                  "name": "H Идентификаторы с",
-                  "width": "fill_container",
-                  "descendants": {
-                    "s036x": {
-                      "content": "Идентификаторы сообщений"
-                    }
-                  }
-                },
-                {
-                  "id": "s065x",
-                  "type": "ref",
-                  "ref": "s042x",
-                  "name": "B Application mess",
-                  "width": "fill_container",
-                  "descendants": {
-                    "s041x": {
-                      "content": "Application message ID — поле ЦБ; operation ID — поле адаптера [04:41–08:08]."
-                    }
-                  }
-                },
-                {
-                  "id": "s066x",
-                  "type": "ref",
-                  "ref": "s042x",
-                  "name": "B По correlation m",
-                  "width": "fill_container",
-                  "descendants": {
-                    "s041x": {
-                      "content": "По correlation message ID есть расхождение между примерами XML и XSD-схемой; нужно выяснить у смежных систем [07:38–08:08]."
-                    }
-                  }
-                },
-                {
-                  "id": "s067x",
-                  "type": "ref",
-                  "ref": "s042x",
-                  "name": "B Предложение: Ope",
-                  "width": "fill_container",
-                  "descendants": {
-                    "s041x": {
-                      "content": "Предложение: Oper ID как ключ верхнего уровня для всех ответов на запрос [08:08–10:04]."
-                    }
-                  }
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "s128x",
-      "type": "ref",
-      "ref": "s089x",
-      "name": "Split A — list and summary (dark)",
-      "x": 0,
-      "y": 740,
-      "theme": {
-        "mode": "dark"
-      }
-    },
-    {
-      "type": "frame",
-      "id": "s124x",
-      "x": 1180,
-      "y": 0,
-      "name": "Split B — rows with gist, transcript tab",
-      "theme": {
-        "mode": "light"
-      },
-      "reusable": true,
-      "clip": true,
-      "width": 1100,
-      "height": 680,
-      "fill": "$win",
-      "cornerRadius": "$radius-card",
-      "stroke": "$rule",
-      "strokeWidth": 1,
-      "children": [
-        {
-          "type": "frame",
-          "id": "s121x",
-          "name": "List pane",
-          "width": 340,
-          "height": "fill_container",
-          "layout": "vertical",
-          "children": [
-            {
-              "id": "s120x",
-              "type": "ref",
-              "ref": "s006x",
-              "name": "List bar",
-              "width": "fill_container"
-            },
-            {
-              "type": "frame",
-              "id": "s119x",
-              "name": "List",
-              "clip": true,
-              "width": 340,
-              "height": "fill_container",
-              "fill": "$win",
-              "stroke": "$rule",
-              "strokeWidth": {
-                "right": 1
-              },
-              "layout": "vertical",
-              "children": [
-                {
-                  "id": "s104x",
-                  "type": "ref",
-                  "ref": "s016x",
-                  "name": "Day Сегодня",
-                  "width": "fill_container",
-                  "descendants": {
-                    "s014x": {
-                      "content": "Сегодня"
-                    },
-                    "s015x": {
-                      "content": "3 звонка"
-                    }
-                  }
-                },
-                {
-                  "id": "s105x",
                   "type": "ref",
                   "ref": "s030x",
                   "name": "Row ЦР ID",
@@ -2167,7 +1760,7 @@
                   }
                 },
                 {
-                  "id": "s106x",
+                  "id": "s082x",
                   "type": "ref",
                   "ref": "s030x",
                   "name": "Row ЦР",
@@ -2188,7 +1781,7 @@
                   }
                 },
                 {
-                  "id": "s107x",
+                  "id": "s083x",
                   "type": "ref",
                   "ref": "s030x",
                   "name": "Row iOS Daily",
@@ -2206,11 +1799,14 @@
                     "s027x": {
                       "content": "Подготовка итогов…",
                       "fill": "$gutter"
+                    },
+                    "s057x": {
+                      "enabled": true
                     }
                   }
                 },
                 {
-                  "id": "s108x",
+                  "id": "s084x",
                   "type": "ref",
                   "ref": "s016x",
                   "name": "Day Вчера",
@@ -2225,7 +1821,7 @@
                   }
                 },
                 {
-                  "id": "s109x",
+                  "id": "s085x",
                   "type": "ref",
                   "ref": "s030x",
                   "name": "Row Люда — передача дел",
@@ -2246,7 +1842,7 @@
                   }
                 },
                 {
-                  "id": "s110x",
+                  "id": "s086x",
                   "type": "ref",
                   "ref": "s030x",
                   "name": "Row iOS & Android daily",
@@ -2271,7 +1867,7 @@
                   }
                 },
                 {
-                  "id": "s111x",
+                  "id": "s087x",
                   "type": "ref",
                   "ref": "s016x",
                   "name": "Day Понедельник, 9 ноября",
@@ -2286,7 +1882,7 @@
                   }
                 },
                 {
-                  "id": "s112x",
+                  "id": "s088x",
                   "type": "ref",
                   "ref": "s030x",
                   "name": "Row ЦР Статус",
@@ -2307,14 +1903,17 @@
                   }
                 },
                 {
-                  "id": "s113x",
+                  "id": "s089x",
                   "type": "ref",
                   "ref": "s030x",
-                  "name": "Row iOS Daily",
+                  "name": "Row 2026.11.09-1000",
                   "width": "fill_container",
                   "descendants": {
                     "s023x": {
-                      "content": "iOS Daily"
+                      "content": "2026.11.09-1000",
+                      "fill": "$gutter",
+                      "fontFamily": "$font-data",
+                      "fontWeight": "normal"
                     },
                     "s024x": {
                       "content": "10:00"
@@ -2323,12 +1922,12 @@
                       "content": "16:10"
                     },
                     "s027x": {
-                      "content": "Ревью, блокеры и дежурство"
+                      "content": ""
                     }
                   }
                 },
                 {
-                  "id": "s114x",
+                  "id": "s090x",
                   "type": "ref",
                   "ref": "s016x",
                   "name": "Day Пятница, 6 ноября",
@@ -2343,7 +1942,7 @@
                   }
                 },
                 {
-                  "id": "s115x",
+                  "id": "s091x",
                   "type": "ref",
                   "ref": "s030x",
                   "name": "Row Лера 17820",
@@ -2364,7 +1963,7 @@
                   }
                 },
                 {
-                  "id": "s116x",
+                  "id": "s092x",
                   "type": "ref",
                   "ref": "s030x",
                   "name": "Row iOS Daily",
@@ -2385,7 +1984,7 @@
                   }
                 },
                 {
-                  "id": "s117x",
+                  "id": "s093x",
                   "type": "ref",
                   "ref": "s016x",
                   "name": "Day Четверг, 5 ноября",
@@ -2400,7 +1999,7 @@
                   }
                 },
                 {
-                  "id": "s118x",
+                  "id": "s094x",
                   "type": "ref",
                   "ref": "s030x",
                   "name": "Row Планирование",
@@ -2426,99 +2025,22 @@
         },
         {
           "type": "frame",
-          "id": "s123x",
+          "id": "s111x",
           "name": "Detail pane",
           "width": "fill_container",
           "height": "fill_container",
           "layout": "vertical",
           "children": [
             {
-              "type": "frame",
-              "id": "s096x",
+              "id": "s106x",
+              "type": "ref",
+              "ref": "s013x",
               "name": "Detail bar",
-              "width": "fill_container",
-              "height": 44,
-              "fill": "$side",
-              "stroke": "$rule",
-              "strokeWidth": {
-                "bottom": 1
-              },
-              "gap": "$space-8",
-              "padding": [
-                "$space-8",
-                "$space-16"
-              ],
-              "alignItems": "center",
-              "children": [
-                {
-                  "id": "s090x",
-                  "type": "ref",
-                  "ref": "s047x",
-                  "name": "Tabs",
-                  "descendants": {
-                    "s044x": {
-                      "fill": "#00000000"
-                    },
-                    "s043x": {
-                      "fill": "$sub",
-                      "fontWeight": "normal"
-                    },
-                    "s046x": {
-                      "fill": "$surface"
-                    },
-                    "s045x": {
-                      "fill": "$text",
-                      "fontWeight": "600"
-                    }
-                  }
-                },
-                {
-                  "type": "frame",
-                  "id": "s092x",
-                  "name": "Spacer",
-                  "width": "fill_container",
-                  "height": 1
-                },
-                {
-                  "type": "frame",
-                  "id": "s095x",
-                  "name": "Copy",
-                  "fill": "$btn",
-                  "cornerRadius": "$radius-control",
-                  "gap": "$space-6",
-                  "padding": [
-                    "$space-4",
-                    "$space-12"
-                  ],
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "icon",
-                      "id": "s093x",
-                      "name": "copy",
-                      "width": 13,
-                      "height": 13,
-                      "icon": "copy",
-                      "library": "lucide",
-                      "fill": "$text"
-                    },
-                    {
-                      "type": "text",
-                      "id": "s094x",
-                      "name": "Label",
-                      "fill": "$text",
-                      "content": "Копировать",
-                      "fontFamily": "$font-ui",
-                      "fontSize": "$type-small",
-                      "fontWeight": "normal"
-                    }
-                  ]
-                }
-              ]
+              "width": "fill_container"
             },
             {
               "type": "frame",
-              "id": "s122x",
+              "id": "s110x",
               "name": "Scroll",
               "clip": true,
               "width": "fill_container",
@@ -2533,7 +2055,7 @@
               ],
               "children": [
                 {
-                  "id": "s103x",
+                  "id": "s095x",
                   "type": "ref",
                   "ref": "s033x",
                   "name": "Header",
@@ -2548,116 +2070,122 @@
                   }
                 },
                 {
-                  "id": "s097x",
+                  "id": "s096x",
                   "type": "ref",
-                  "ref": "s052x",
-                  "name": "Line 04:41",
+                  "ref": "s035x",
+                  "name": "S О ЧЁМ ВСТРЕЧА",
                   "width": "fill_container",
                   "descendants": {
-                    "s048x": {
-                      "content": "04:41"
-                    },
-                    "s049x": {
-                      "content": "Андрей",
-                      "fill": "$them"
-                    },
-                    "s050x": {
-                      "content": "Смотрите, application message ID — это поле ЦБ, оно приходит в каждом пакете."
+                    "s034x": {
+                      "content": "О ЧЁМ ВСТРЕЧА"
+                    }
+                  }
+                },
+                {
+                  "id": "s097x",
+                  "type": "ref",
+                  "ref": "s039x",
+                  "name": "P Встреча была пос",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s038x": {
+                      "content": "Встреча была посвящена идентификаторам в сообщениях (application message ID, Oper ID, message ID, doc ID, correlation message ID) и тому, как связывать ответы с запросами между шиной, бэком и фронтом. Также обсудили пополнение счёта и классификацию асинхронных сообщений."
                     }
                   }
                 },
                 {
                   "id": "s098x",
                   "type": "ref",
-                  "ref": "s052x",
-                  "name": "Line 05:02",
+                  "ref": "s035x",
+                  "name": "S КЛЮЧЕВЫЕ МОМЕНТЫ",
                   "width": "fill_container",
                   "descendants": {
-                    "s048x": {
-                      "content": "05:02"
-                    },
-                    "s049x": {
-                      "content": "Я",
-                      "fill": "$me"
-                    },
-                    "s050x": {
-                      "content": "А operation ID тогда откуда? Это ведь поле адаптера?"
+                    "s034x": {
+                      "content": "КЛЮЧЕВЫЕ МОМЕНТЫ"
                     }
                   }
                 },
                 {
                   "id": "s099x",
                   "type": "ref",
-                  "ref": "s052x",
-                  "name": "Line 05:10",
+                  "ref": "s037x",
+                  "name": "H Пополнение счёта",
                   "width": "fill_container",
                   "descendants": {
-                    "s048x": {
-                      "content": "05:10"
-                    },
-                    "s049x": {
-                      "content": "Андрей",
-                      "fill": "$them"
-                    },
-                    "s050x": {
-                      "content": "Да, в адаптере Oper ID равен application message ID, поэтому их часто путают."
+                    "s036x": {
+                      "content": "Пополнение счёта"
                     }
                   }
                 },
                 {
                   "id": "s100x",
                   "type": "ref",
-                  "ref": "s052x",
-                  "name": "Line 07:38",
+                  "ref": "s042x",
+                  "name": "B Пополнение работ",
                   "width": "fill_container",
                   "descendants": {
-                    "s048x": {
-                      "content": "07:38"
-                    },
-                    "s049x": {
-                      "content": "Женя",
-                      "fill": "$them"
-                    },
-                    "s050x": {
-                      "content": "По correlation message ID в примерах XML ссылка на doc ID, а в XSD-схеме заголовка — на message ID запроса."
+                    "s041x": {
+                      "content": "Пополнение работает, открыты лишь вопросы по ответам [02:02–03:10]."
                     }
                   }
                 },
                 {
                   "id": "s101x",
                   "type": "ref",
-                  "ref": "s052x",
-                  "name": "Line 08:08",
+                  "ref": "s042x",
+                  "name": "B Отдельные вопрос",
                   "width": "fill_container",
                   "descendants": {
-                    "s048x": {
-                      "content": "08:08"
-                    },
-                    "s049x": {
-                      "content": "Я",
-                      "fill": "$me"
-                    },
-                    "s050x": {
-                      "content": "Предлагаю Oper ID брать ключом верхнего уровня для всех ответов на запрос, а correlation — максимум на втором уровне."
+                    "s041x": {
+                      "content": "Отдельные вопросы остаются по C2C и по Oper ID в пополнении [03:10]."
                     }
                   }
                 },
                 {
                   "id": "s102x",
                   "type": "ref",
-                  "ref": "s052x",
-                  "name": "Line 08:32",
+                  "ref": "s037x",
+                  "name": "H Идентификаторы с",
                   "width": "fill_container",
                   "descendants": {
-                    "s048x": {
-                      "content": "08:32"
-                    },
-                    "s049x": {
-                      "content": "Андрей",
-                      "fill": "$them"
-                    },
-                    "s050x": {
-                      "content": "В C2C SDK как раз формируется один Oper ID на оба запроса."
+                    "s036x": {
+                      "content": "Идентификаторы сообщений"
+                    }
+                  }
+                },
+                {
+                  "id": "s103x",
+                  "type": "ref",
+                  "ref": "s042x",
+                  "name": "B Application mess",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s041x": {
+                      "content": "Application message ID — поле ЦБ; operation ID — поле адаптера [04:41–08:08]."
+                    }
+                  }
+                },
+                {
+                  "id": "s104x",
+                  "type": "ref",
+                  "ref": "s042x",
+                  "name": "B По correlation m",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s041x": {
+                      "content": "По correlation message ID есть расхождение между примерами XML и XSD-схемой; нужно выяснить у смежных систем [07:38–08:08]."
+                    }
+                  }
+                },
+                {
+                  "id": "s105x",
+                  "type": "ref",
+                  "ref": "s042x",
+                  "name": "B Предложение: Ope",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s041x": {
+                      "content": "Предложение: Oper ID как ключ верхнего уровня для всех ответов на запрос [08:08–10:04]."
                     }
                   }
                 }
@@ -2668,10 +2196,3540 @@
       ]
     },
     {
-      "id": "s129x",
+      "type": "frame",
+      "id": "s137x",
+      "x": 1180,
+      "y": 0,
+      "name": "Calls — preparing",
+      "theme": {
+        "mode": "light"
+      },
+      "reusable": true,
+      "clip": true,
+      "width": 1100,
+      "height": 680,
+      "fill": "$win",
+      "cornerRadius": "$radius-card",
+      "stroke": "$rule",
+      "strokeWidth": 1,
+      "children": [
+        {
+          "type": "frame",
+          "id": "s134x",
+          "name": "List pane",
+          "width": 340,
+          "height": "fill_container",
+          "stroke": "$rule",
+          "strokeWidth": {
+            "right": 1
+          },
+          "layout": "vertical",
+          "children": [
+            {
+              "id": "s133x",
+              "type": "ref",
+              "ref": "s006x",
+              "name": "List bar",
+              "width": "fill_container"
+            },
+            {
+              "type": "frame",
+              "id": "s132x",
+              "name": "List",
+              "clip": true,
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$win",
+              "layout": "vertical",
+              "children": [
+                {
+                  "id": "s113x",
+                  "type": "ref",
+                  "ref": "s016x",
+                  "name": "Day Сегодня",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s014x": {
+                      "content": "Сегодня"
+                    },
+                    "s015x": {
+                      "content": "3 звонка"
+                    }
+                  }
+                },
+                {
+                  "id": "s114x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row ЦР ID",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s023x": {
+                      "content": "ЦР ID"
+                    },
+                    "s024x": {
+                      "content": "12:58"
+                    },
+                    "s026x": {
+                      "content": "41:11"
+                    },
+                    "s027x": {
+                      "content": "Идентификаторы и связка ответов"
+                    }
+                  }
+                },
+                {
+                  "id": "s115x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row ЦР",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s023x": {
+                      "content": "ЦР"
+                    },
+                    "s024x": {
+                      "content": "11:00"
+                    },
+                    "s026x": {
+                      "content": "38:20"
+                    },
+                    "s027x": {
+                      "content": "Статус задач и план релиза"
+                    }
+                  }
+                },
+                {
+                  "id": "s116x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row iOS Daily",
+                  "width": "fill_container",
+                  "fill": "$selBg",
+                  "descendants": {
+                    "s023x": {
+                      "content": "iOS Daily",
+                      "fill": "$selText"
+                    },
+                    "s024x": {
+                      "content": "10:00",
+                      "fill": "$selText"
+                    },
+                    "s026x": {
+                      "content": "15:02",
+                      "fill": "$selText"
+                    },
+                    "s027x": {
+                      "content": "Подготовка итогов…",
+                      "fill": "$selText"
+                    },
+                    "s057x": {
+                      "enabled": true,
+                      "fill": "$selText"
+                    }
+                  }
+                },
+                {
+                  "id": "s117x",
+                  "type": "ref",
+                  "ref": "s016x",
+                  "name": "Day Вчера",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s014x": {
+                      "content": "Вчера"
+                    },
+                    "s015x": {
+                      "content": "2 звонка"
+                    }
+                  }
+                },
+                {
+                  "id": "s118x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row Люда — передача дел",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s023x": {
+                      "content": "Люда — передача дел"
+                    },
+                    "s024x": {
+                      "content": "17:00"
+                    },
+                    "s026x": {
+                      "content": "52:40"
+                    },
+                    "s027x": {
+                      "content": "Передача задач и доступов перед отпуском"
+                    }
+                  }
+                },
+                {
+                  "id": "s119x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row iOS & Android daily",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s023x": {
+                      "content": "iOS & Android daily"
+                    },
+                    "s024x": {
+                      "content": "09:59"
+                    },
+                    "s026x": {
+                      "content": "14:51"
+                    },
+                    "s027x": {
+                      "content": "Не удалось подготовить итоги",
+                      "fill": "$rec"
+                    },
+                    "s028x": {
+                      "enabled": true
+                    }
+                  }
+                },
+                {
+                  "id": "s120x",
+                  "type": "ref",
+                  "ref": "s016x",
+                  "name": "Day Понедельник, 9 ноября",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s014x": {
+                      "content": "Понедельник, 9 ноября"
+                    },
+                    "s015x": {
+                      "content": "2 звонка"
+                    }
+                  }
+                },
+                {
+                  "id": "s121x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row ЦР Статус",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s023x": {
+                      "content": "ЦР Статус"
+                    },
+                    "s024x": {
+                      "content": "11:02"
+                    },
+                    "s026x": {
+                      "content": "29:45"
+                    },
+                    "s027x": {
+                      "content": "Сроки по пополнению и открытые вопросы"
+                    }
+                  }
+                },
+                {
+                  "id": "s122x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row 2026.11.09-1000",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s023x": {
+                      "content": "2026.11.09-1000",
+                      "fill": "$gutter",
+                      "fontFamily": "$font-data",
+                      "fontWeight": "normal"
+                    },
+                    "s024x": {
+                      "content": "10:00"
+                    },
+                    "s026x": {
+                      "content": "16:10"
+                    },
+                    "s027x": {
+                      "content": ""
+                    }
+                  }
+                },
+                {
+                  "id": "s123x",
+                  "type": "ref",
+                  "ref": "s016x",
+                  "name": "Day Пятница, 6 ноября",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s014x": {
+                      "content": "Пятница, 6 ноября"
+                    },
+                    "s015x": {
+                      "content": "2 звонка"
+                    }
+                  }
+                },
+                {
+                  "id": "s124x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row Лера 17820",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s023x": {
+                      "content": "Лера 17820"
+                    },
+                    "s024x": {
+                      "content": "14:59"
+                    },
+                    "s026x": {
+                      "content": "33:05"
+                    },
+                    "s027x": {
+                      "content": "Разбор заявки 17820 и следующие шаги"
+                    }
+                  }
+                },
+                {
+                  "id": "s125x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row iOS Daily",
+                  "width": "fill_container",
+                  "fill": "$selBg",
+                  "descendants": {
+                    "s023x": {
+                      "content": "iOS Daily",
+                      "fill": "$selText"
+                    },
+                    "s024x": {
+                      "content": "09:59",
+                      "fill": "$selText"
+                    },
+                    "s026x": {
+                      "content": "15:30",
+                      "fill": "$selText"
+                    },
+                    "s027x": {
+                      "content": "Короткий синк по задачам спринта",
+                      "fill": "$selText"
+                    }
+                  }
+                },
+                {
+                  "id": "s126x",
+                  "type": "ref",
+                  "ref": "s016x",
+                  "name": "Day Четверг, 5 ноября",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s014x": {
+                      "content": "Четверг, 5 ноября"
+                    },
+                    "s015x": {
+                      "content": "8 звонков"
+                    }
+                  }
+                },
+                {
+                  "id": "s127x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row Планирование",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s023x": {
+                      "content": "Планирование"
+                    },
+                    "s024x": {
+                      "content": "17:34"
+                    },
+                    "s026x": {
+                      "content": "58:00"
+                    },
+                    "s027x": {
+                      "content": "Цели спринта и оценки"
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "s136x",
+          "name": "Detail pane",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "children": [
+            {
+              "id": "s131x",
+              "type": "ref",
+              "ref": "s013x",
+              "name": "Detail bar",
+              "width": "fill_container",
+              "descendants": {
+                "s010x": {
+                  "enabled": false
+                },
+                "s012x": {
+                  "enabled": false
+                }
+              }
+            },
+            {
+              "type": "frame",
+              "id": "s135x",
+              "name": "Scroll",
+              "clip": true,
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$surface",
+              "layout": "vertical",
+              "padding": [
+                0,
+                0,
+                "$space-24",
+                0
+              ],
+              "children": [
+                {
+                  "id": "s128x",
+                  "type": "ref",
+                  "ref": "s033x",
+                  "name": "Header",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s031x": {
+                      "content": "iOS Daily"
+                    },
+                    "s032x": {
+                      "content": "Сегодня, 10:00 · 15:02"
+                    }
+                  }
+                },
+                {
+                  "type": "frame",
+                  "id": "s130x",
+                  "name": "Centre",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$surface",
+                  "layout": "vertical",
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "id": "s129x",
+                      "type": "ref",
+                      "ref": "s079x",
+                      "name": "Message",
+                      "descendants": {
+                        "s076x": {
+                          "icon": "loader-circle",
+                          "fill": "$sub"
+                        },
+                        "s077x": {
+                          "content": "Подготовка итогов…"
+                        },
+                        "s078x": {
+                          "content": "Итоги появятся здесь, когда будут готовы"
+                        },
+                        "s075x": {
+                          "enabled": false
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "s162x",
+      "x": 2360,
+      "y": 0,
+      "name": "Calls — summary failed",
+      "theme": {
+        "mode": "light"
+      },
+      "reusable": true,
+      "clip": true,
+      "width": 1100,
+      "height": 680,
+      "fill": "$win",
+      "cornerRadius": "$radius-card",
+      "stroke": "$rule",
+      "strokeWidth": 1,
+      "children": [
+        {
+          "type": "frame",
+          "id": "s159x",
+          "name": "List pane",
+          "width": 340,
+          "height": "fill_container",
+          "stroke": "$rule",
+          "strokeWidth": {
+            "right": 1
+          },
+          "layout": "vertical",
+          "children": [
+            {
+              "id": "s158x",
+              "type": "ref",
+              "ref": "s006x",
+              "name": "List bar",
+              "width": "fill_container"
+            },
+            {
+              "type": "frame",
+              "id": "s157x",
+              "name": "List",
+              "clip": true,
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$win",
+              "layout": "vertical",
+              "children": [
+                {
+                  "id": "s138x",
+                  "type": "ref",
+                  "ref": "s016x",
+                  "name": "Day Сегодня",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s014x": {
+                      "content": "Сегодня"
+                    },
+                    "s015x": {
+                      "content": "3 звонка"
+                    }
+                  }
+                },
+                {
+                  "id": "s139x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row ЦР ID",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s023x": {
+                      "content": "ЦР ID"
+                    },
+                    "s024x": {
+                      "content": "12:58"
+                    },
+                    "s026x": {
+                      "content": "41:11"
+                    },
+                    "s027x": {
+                      "content": "Идентификаторы и связка ответов"
+                    }
+                  }
+                },
+                {
+                  "id": "s140x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row ЦР",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s023x": {
+                      "content": "ЦР"
+                    },
+                    "s024x": {
+                      "content": "11:00"
+                    },
+                    "s026x": {
+                      "content": "38:20"
+                    },
+                    "s027x": {
+                      "content": "Статус задач и план релиза"
+                    }
+                  }
+                },
+                {
+                  "id": "s141x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row iOS Daily",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s023x": {
+                      "content": "iOS Daily"
+                    },
+                    "s024x": {
+                      "content": "10:00"
+                    },
+                    "s026x": {
+                      "content": "15:02"
+                    },
+                    "s027x": {
+                      "content": "Подготовка итогов…",
+                      "fill": "$gutter"
+                    },
+                    "s057x": {
+                      "enabled": true
+                    }
+                  }
+                },
+                {
+                  "id": "s142x",
+                  "type": "ref",
+                  "ref": "s016x",
+                  "name": "Day Вчера",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s014x": {
+                      "content": "Вчера"
+                    },
+                    "s015x": {
+                      "content": "2 звонка"
+                    }
+                  }
+                },
+                {
+                  "id": "s143x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row Люда — передача дел",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s023x": {
+                      "content": "Люда — передача дел"
+                    },
+                    "s024x": {
+                      "content": "17:00"
+                    },
+                    "s026x": {
+                      "content": "52:40"
+                    },
+                    "s027x": {
+                      "content": "Передача задач и доступов перед отпуском"
+                    }
+                  }
+                },
+                {
+                  "id": "s144x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row iOS & Android daily",
+                  "width": "fill_container",
+                  "fill": "$selBg",
+                  "descendants": {
+                    "s023x": {
+                      "content": "iOS & Android daily",
+                      "fill": "$selText"
+                    },
+                    "s024x": {
+                      "content": "09:59",
+                      "fill": "$selText"
+                    },
+                    "s026x": {
+                      "content": "14:51",
+                      "fill": "$selText"
+                    },
+                    "s027x": {
+                      "content": "Не удалось подготовить итоги",
+                      "fill": "$selText"
+                    },
+                    "s028x": {
+                      "enabled": true,
+                      "fill": "$selText"
+                    }
+                  }
+                },
+                {
+                  "id": "s145x",
+                  "type": "ref",
+                  "ref": "s016x",
+                  "name": "Day Понедельник, 9 ноября",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s014x": {
+                      "content": "Понедельник, 9 ноября"
+                    },
+                    "s015x": {
+                      "content": "2 звонка"
+                    }
+                  }
+                },
+                {
+                  "id": "s146x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row ЦР Статус",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s023x": {
+                      "content": "ЦР Статус"
+                    },
+                    "s024x": {
+                      "content": "11:02"
+                    },
+                    "s026x": {
+                      "content": "29:45"
+                    },
+                    "s027x": {
+                      "content": "Сроки по пополнению и открытые вопросы"
+                    }
+                  }
+                },
+                {
+                  "id": "s147x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row 2026.11.09-1000",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s023x": {
+                      "content": "2026.11.09-1000",
+                      "fill": "$gutter",
+                      "fontFamily": "$font-data",
+                      "fontWeight": "normal"
+                    },
+                    "s024x": {
+                      "content": "10:00"
+                    },
+                    "s026x": {
+                      "content": "16:10"
+                    },
+                    "s027x": {
+                      "content": ""
+                    }
+                  }
+                },
+                {
+                  "id": "s148x",
+                  "type": "ref",
+                  "ref": "s016x",
+                  "name": "Day Пятница, 6 ноября",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s014x": {
+                      "content": "Пятница, 6 ноября"
+                    },
+                    "s015x": {
+                      "content": "2 звонка"
+                    }
+                  }
+                },
+                {
+                  "id": "s149x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row Лера 17820",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s023x": {
+                      "content": "Лера 17820"
+                    },
+                    "s024x": {
+                      "content": "14:59"
+                    },
+                    "s026x": {
+                      "content": "33:05"
+                    },
+                    "s027x": {
+                      "content": "Разбор заявки 17820 и следующие шаги"
+                    }
+                  }
+                },
+                {
+                  "id": "s150x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row iOS Daily",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s023x": {
+                      "content": "iOS Daily"
+                    },
+                    "s024x": {
+                      "content": "09:59"
+                    },
+                    "s026x": {
+                      "content": "15:30"
+                    },
+                    "s027x": {
+                      "content": "Короткий синк по задачам спринта"
+                    }
+                  }
+                },
+                {
+                  "id": "s151x",
+                  "type": "ref",
+                  "ref": "s016x",
+                  "name": "Day Четверг, 5 ноября",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s014x": {
+                      "content": "Четверг, 5 ноября"
+                    },
+                    "s015x": {
+                      "content": "8 звонков"
+                    }
+                  }
+                },
+                {
+                  "id": "s152x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row Планирование",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s023x": {
+                      "content": "Планирование"
+                    },
+                    "s024x": {
+                      "content": "17:34"
+                    },
+                    "s026x": {
+                      "content": "58:00"
+                    },
+                    "s027x": {
+                      "content": "Цели спринта и оценки"
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "s161x",
+          "name": "Detail pane",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "children": [
+            {
+              "id": "s156x",
+              "type": "ref",
+              "ref": "s013x",
+              "name": "Detail bar",
+              "width": "fill_container",
+              "descendants": {
+                "s010x": {
+                  "enabled": false
+                },
+                "s012x": {
+                  "enabled": false
+                }
+              }
+            },
+            {
+              "type": "frame",
+              "id": "s160x",
+              "name": "Scroll",
+              "clip": true,
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$surface",
+              "layout": "vertical",
+              "padding": [
+                0,
+                0,
+                "$space-24",
+                0
+              ],
+              "children": [
+                {
+                  "id": "s153x",
+                  "type": "ref",
+                  "ref": "s033x",
+                  "name": "Header",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s031x": {
+                      "content": "iOS & Android daily"
+                    },
+                    "s032x": {
+                      "content": "Вчера, 09:59 · 14:51"
+                    }
+                  }
+                },
+                {
+                  "type": "frame",
+                  "id": "s155x",
+                  "name": "Centre",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$surface",
+                  "layout": "vertical",
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "id": "s154x",
+                      "type": "ref",
+                      "ref": "s079x",
+                      "name": "Message",
+                      "descendants": {
+                        "s076x": {
+                          "icon": "circle-alert",
+                          "fill": "$rec"
+                        },
+                        "s077x": {
+                          "content": "Не удалось подготовить итоги"
+                        },
+                        "s078x": {
+                          "content": "Claude CLI завершился с ошибкой: превышен лимит запросов"
+                        },
+                        "s074x": {
+                          "content": "Повторить итоги"
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "s187x",
+      "x": 3540,
+      "y": 0,
+      "name": "Calls — no summary",
+      "theme": {
+        "mode": "light"
+      },
+      "reusable": true,
+      "clip": true,
+      "width": 1100,
+      "height": 680,
+      "fill": "$win",
+      "cornerRadius": "$radius-card",
+      "stroke": "$rule",
+      "strokeWidth": 1,
+      "children": [
+        {
+          "type": "frame",
+          "id": "s184x",
+          "name": "List pane",
+          "width": 340,
+          "height": "fill_container",
+          "stroke": "$rule",
+          "strokeWidth": {
+            "right": 1
+          },
+          "layout": "vertical",
+          "children": [
+            {
+              "id": "s183x",
+              "type": "ref",
+              "ref": "s006x",
+              "name": "List bar",
+              "width": "fill_container"
+            },
+            {
+              "type": "frame",
+              "id": "s182x",
+              "name": "List",
+              "clip": true,
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$win",
+              "layout": "vertical",
+              "children": [
+                {
+                  "id": "s163x",
+                  "type": "ref",
+                  "ref": "s016x",
+                  "name": "Day Сегодня",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s014x": {
+                      "content": "Сегодня"
+                    },
+                    "s015x": {
+                      "content": "3 звонка"
+                    }
+                  }
+                },
+                {
+                  "id": "s164x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row ЦР ID",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s023x": {
+                      "content": "ЦР ID"
+                    },
+                    "s024x": {
+                      "content": "12:58"
+                    },
+                    "s026x": {
+                      "content": "41:11"
+                    },
+                    "s027x": {
+                      "content": "Идентификаторы и связка ответов"
+                    }
+                  }
+                },
+                {
+                  "id": "s165x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row ЦР",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s023x": {
+                      "content": "ЦР"
+                    },
+                    "s024x": {
+                      "content": "11:00"
+                    },
+                    "s026x": {
+                      "content": "38:20"
+                    },
+                    "s027x": {
+                      "content": "Статус задач и план релиза"
+                    }
+                  }
+                },
+                {
+                  "id": "s166x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row iOS Daily",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s023x": {
+                      "content": "iOS Daily"
+                    },
+                    "s024x": {
+                      "content": "10:00"
+                    },
+                    "s026x": {
+                      "content": "15:02"
+                    },
+                    "s027x": {
+                      "content": "Подготовка итогов…",
+                      "fill": "$gutter"
+                    },
+                    "s057x": {
+                      "enabled": true
+                    }
+                  }
+                },
+                {
+                  "id": "s167x",
+                  "type": "ref",
+                  "ref": "s016x",
+                  "name": "Day Вчера",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s014x": {
+                      "content": "Вчера"
+                    },
+                    "s015x": {
+                      "content": "2 звонка"
+                    }
+                  }
+                },
+                {
+                  "id": "s168x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row Люда — передача дел",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s023x": {
+                      "content": "Люда — передача дел"
+                    },
+                    "s024x": {
+                      "content": "17:00"
+                    },
+                    "s026x": {
+                      "content": "52:40"
+                    },
+                    "s027x": {
+                      "content": "Передача задач и доступов перед отпуском"
+                    }
+                  }
+                },
+                {
+                  "id": "s169x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row iOS & Android daily",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s023x": {
+                      "content": "iOS & Android daily"
+                    },
+                    "s024x": {
+                      "content": "09:59"
+                    },
+                    "s026x": {
+                      "content": "14:51"
+                    },
+                    "s027x": {
+                      "content": "Не удалось подготовить итоги",
+                      "fill": "$rec"
+                    },
+                    "s028x": {
+                      "enabled": true
+                    }
+                  }
+                },
+                {
+                  "id": "s170x",
+                  "type": "ref",
+                  "ref": "s016x",
+                  "name": "Day Понедельник, 9 ноября",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s014x": {
+                      "content": "Понедельник, 9 ноября"
+                    },
+                    "s015x": {
+                      "content": "2 звонка"
+                    }
+                  }
+                },
+                {
+                  "id": "s171x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row ЦР Статус",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s023x": {
+                      "content": "ЦР Статус"
+                    },
+                    "s024x": {
+                      "content": "11:02"
+                    },
+                    "s026x": {
+                      "content": "29:45"
+                    },
+                    "s027x": {
+                      "content": "Сроки по пополнению и открытые вопросы"
+                    }
+                  }
+                },
+                {
+                  "id": "s172x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row 2026.11.09-1000",
+                  "width": "fill_container",
+                  "fill": "$selBg",
+                  "descendants": {
+                    "s023x": {
+                      "content": "2026.11.09-1000",
+                      "fill": "$selText",
+                      "fontFamily": "$font-data",
+                      "fontWeight": "normal"
+                    },
+                    "s024x": {
+                      "content": "10:00",
+                      "fill": "$selText"
+                    },
+                    "s026x": {
+                      "content": "16:10",
+                      "fill": "$selText"
+                    },
+                    "s027x": {
+                      "content": "",
+                      "fill": "$selText"
+                    }
+                  }
+                },
+                {
+                  "id": "s173x",
+                  "type": "ref",
+                  "ref": "s016x",
+                  "name": "Day Пятница, 6 ноября",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s014x": {
+                      "content": "Пятница, 6 ноября"
+                    },
+                    "s015x": {
+                      "content": "2 звонка"
+                    }
+                  }
+                },
+                {
+                  "id": "s174x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row Лера 17820",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s023x": {
+                      "content": "Лера 17820"
+                    },
+                    "s024x": {
+                      "content": "14:59"
+                    },
+                    "s026x": {
+                      "content": "33:05"
+                    },
+                    "s027x": {
+                      "content": "Разбор заявки 17820 и следующие шаги"
+                    }
+                  }
+                },
+                {
+                  "id": "s175x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row iOS Daily",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s023x": {
+                      "content": "iOS Daily"
+                    },
+                    "s024x": {
+                      "content": "09:59"
+                    },
+                    "s026x": {
+                      "content": "15:30"
+                    },
+                    "s027x": {
+                      "content": "Короткий синк по задачам спринта"
+                    }
+                  }
+                },
+                {
+                  "id": "s176x",
+                  "type": "ref",
+                  "ref": "s016x",
+                  "name": "Day Четверг, 5 ноября",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s014x": {
+                      "content": "Четверг, 5 ноября"
+                    },
+                    "s015x": {
+                      "content": "8 звонков"
+                    }
+                  }
+                },
+                {
+                  "id": "s177x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row Планирование",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s023x": {
+                      "content": "Планирование"
+                    },
+                    "s024x": {
+                      "content": "17:34"
+                    },
+                    "s026x": {
+                      "content": "58:00"
+                    },
+                    "s027x": {
+                      "content": "Цели спринта и оценки"
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "s186x",
+          "name": "Detail pane",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "children": [
+            {
+              "id": "s181x",
+              "type": "ref",
+              "ref": "s013x",
+              "name": "Detail bar",
+              "width": "fill_container",
+              "descendants": {
+                "s010x": {
+                  "enabled": false
+                },
+                "s012x": {
+                  "enabled": false
+                }
+              }
+            },
+            {
+              "type": "frame",
+              "id": "s185x",
+              "name": "Scroll",
+              "clip": true,
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$surface",
+              "layout": "vertical",
+              "padding": [
+                0,
+                0,
+                "$space-24",
+                0
+              ],
+              "children": [
+                {
+                  "id": "s178x",
+                  "type": "ref",
+                  "ref": "s033x",
+                  "name": "Header",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s031x": {
+                      "content": "2026.11.09-1000"
+                    },
+                    "s032x": {
+                      "content": "Понедельник, 9 ноября, 10:00 · 16:10"
+                    }
+                  }
+                },
+                {
+                  "type": "frame",
+                  "id": "s180x",
+                  "name": "Centre",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$surface",
+                  "layout": "vertical",
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "id": "s179x",
+                      "type": "ref",
+                      "ref": "s079x",
+                      "name": "Message",
+                      "descendants": {
+                        "s076x": {
+                          "icon": "file-text",
+                          "fill": "$gutter"
+                        },
+                        "s077x": {
+                          "content": "Итогов нет"
+                        },
+                        "s078x": {
+                          "content": "Подготовка итогов выключена в Настройках"
+                        },
+                        "s075x": {
+                          "enabled": false
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "s220x",
+      "x": 4720,
+      "y": 0,
+      "name": "Calls — inactive window",
+      "theme": {
+        "mode": "light"
+      },
+      "reusable": true,
+      "clip": true,
+      "width": 1100,
+      "height": 680,
+      "fill": "$win",
+      "cornerRadius": "$radius-card",
+      "stroke": "$rule",
+      "strokeWidth": 1,
+      "children": [
+        {
+          "type": "frame",
+          "id": "s217x",
+          "name": "List pane",
+          "width": 340,
+          "height": "fill_container",
+          "stroke": "$rule",
+          "strokeWidth": {
+            "right": 1
+          },
+          "layout": "vertical",
+          "children": [
+            {
+              "id": "s216x",
+              "type": "ref",
+              "ref": "s006x",
+              "name": "List bar",
+              "width": "fill_container"
+            },
+            {
+              "type": "frame",
+              "id": "s215x",
+              "name": "List",
+              "clip": true,
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$win",
+              "layout": "vertical",
+              "children": [
+                {
+                  "id": "s188x",
+                  "type": "ref",
+                  "ref": "s016x",
+                  "name": "Day Сегодня",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s014x": {
+                      "content": "Сегодня"
+                    },
+                    "s015x": {
+                      "content": "3 звонка"
+                    }
+                  }
+                },
+                {
+                  "id": "s189x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row ЦР ID",
+                  "width": "fill_container",
+                  "fill": "$chip",
+                  "descendants": {
+                    "s023x": {
+                      "content": "ЦР ID"
+                    },
+                    "s024x": {
+                      "content": "12:58"
+                    },
+                    "s026x": {
+                      "content": "41:11"
+                    },
+                    "s027x": {
+                      "content": "Идентификаторы и связка ответов"
+                    }
+                  }
+                },
+                {
+                  "id": "s190x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row ЦР",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s023x": {
+                      "content": "ЦР"
+                    },
+                    "s024x": {
+                      "content": "11:00"
+                    },
+                    "s026x": {
+                      "content": "38:20"
+                    },
+                    "s027x": {
+                      "content": "Статус задач и план релиза"
+                    }
+                  }
+                },
+                {
+                  "id": "s191x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row iOS Daily",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s023x": {
+                      "content": "iOS Daily"
+                    },
+                    "s024x": {
+                      "content": "10:00"
+                    },
+                    "s026x": {
+                      "content": "15:02"
+                    },
+                    "s027x": {
+                      "content": "Подготовка итогов…",
+                      "fill": "$gutter"
+                    },
+                    "s057x": {
+                      "enabled": true
+                    }
+                  }
+                },
+                {
+                  "id": "s192x",
+                  "type": "ref",
+                  "ref": "s016x",
+                  "name": "Day Вчера",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s014x": {
+                      "content": "Вчера"
+                    },
+                    "s015x": {
+                      "content": "2 звонка"
+                    }
+                  }
+                },
+                {
+                  "id": "s193x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row Люда — передача дел",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s023x": {
+                      "content": "Люда — передача дел"
+                    },
+                    "s024x": {
+                      "content": "17:00"
+                    },
+                    "s026x": {
+                      "content": "52:40"
+                    },
+                    "s027x": {
+                      "content": "Передача задач и доступов перед отпуском"
+                    }
+                  }
+                },
+                {
+                  "id": "s194x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row iOS & Android daily",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s023x": {
+                      "content": "iOS & Android daily"
+                    },
+                    "s024x": {
+                      "content": "09:59"
+                    },
+                    "s026x": {
+                      "content": "14:51"
+                    },
+                    "s027x": {
+                      "content": "Не удалось подготовить итоги",
+                      "fill": "$rec"
+                    },
+                    "s028x": {
+                      "enabled": true
+                    }
+                  }
+                },
+                {
+                  "id": "s195x",
+                  "type": "ref",
+                  "ref": "s016x",
+                  "name": "Day Понедельник, 9 ноября",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s014x": {
+                      "content": "Понедельник, 9 ноября"
+                    },
+                    "s015x": {
+                      "content": "2 звонка"
+                    }
+                  }
+                },
+                {
+                  "id": "s196x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row ЦР Статус",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s023x": {
+                      "content": "ЦР Статус"
+                    },
+                    "s024x": {
+                      "content": "11:02"
+                    },
+                    "s026x": {
+                      "content": "29:45"
+                    },
+                    "s027x": {
+                      "content": "Сроки по пополнению и открытые вопросы"
+                    }
+                  }
+                },
+                {
+                  "id": "s197x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row 2026.11.09-1000",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s023x": {
+                      "content": "2026.11.09-1000",
+                      "fill": "$gutter",
+                      "fontFamily": "$font-data",
+                      "fontWeight": "normal"
+                    },
+                    "s024x": {
+                      "content": "10:00"
+                    },
+                    "s026x": {
+                      "content": "16:10"
+                    },
+                    "s027x": {
+                      "content": ""
+                    }
+                  }
+                },
+                {
+                  "id": "s198x",
+                  "type": "ref",
+                  "ref": "s016x",
+                  "name": "Day Пятница, 6 ноября",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s014x": {
+                      "content": "Пятница, 6 ноября"
+                    },
+                    "s015x": {
+                      "content": "2 звонка"
+                    }
+                  }
+                },
+                {
+                  "id": "s199x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row Лера 17820",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s023x": {
+                      "content": "Лера 17820"
+                    },
+                    "s024x": {
+                      "content": "14:59"
+                    },
+                    "s026x": {
+                      "content": "33:05"
+                    },
+                    "s027x": {
+                      "content": "Разбор заявки 17820 и следующие шаги"
+                    }
+                  }
+                },
+                {
+                  "id": "s200x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row iOS Daily",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s023x": {
+                      "content": "iOS Daily"
+                    },
+                    "s024x": {
+                      "content": "09:59"
+                    },
+                    "s026x": {
+                      "content": "15:30"
+                    },
+                    "s027x": {
+                      "content": "Короткий синк по задачам спринта"
+                    }
+                  }
+                },
+                {
+                  "id": "s201x",
+                  "type": "ref",
+                  "ref": "s016x",
+                  "name": "Day Четверг, 5 ноября",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s014x": {
+                      "content": "Четверг, 5 ноября"
+                    },
+                    "s015x": {
+                      "content": "8 звонков"
+                    }
+                  }
+                },
+                {
+                  "id": "s202x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row Планирование",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s023x": {
+                      "content": "Планирование"
+                    },
+                    "s024x": {
+                      "content": "17:34"
+                    },
+                    "s026x": {
+                      "content": "58:00"
+                    },
+                    "s027x": {
+                      "content": "Цели спринта и оценки"
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "s219x",
+          "name": "Detail pane",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "children": [
+            {
+              "id": "s214x",
+              "type": "ref",
+              "ref": "s013x",
+              "name": "Detail bar",
+              "width": "fill_container"
+            },
+            {
+              "type": "frame",
+              "id": "s218x",
+              "name": "Scroll",
+              "clip": true,
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$surface",
+              "layout": "vertical",
+              "padding": [
+                0,
+                0,
+                "$space-24",
+                0
+              ],
+              "children": [
+                {
+                  "id": "s203x",
+                  "type": "ref",
+                  "ref": "s033x",
+                  "name": "Header",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s031x": {
+                      "content": "ЦР ID"
+                    },
+                    "s032x": {
+                      "content": "Сегодня, 12:58 · 41:11"
+                    }
+                  }
+                },
+                {
+                  "id": "s204x",
+                  "type": "ref",
+                  "ref": "s035x",
+                  "name": "S О ЧЁМ ВСТРЕЧА",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s034x": {
+                      "content": "О ЧЁМ ВСТРЕЧА"
+                    }
+                  }
+                },
+                {
+                  "id": "s205x",
+                  "type": "ref",
+                  "ref": "s039x",
+                  "name": "P Встреча была пос",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s038x": {
+                      "content": "Встреча была посвящена идентификаторам в сообщениях (application message ID, Oper ID, message ID, doc ID, correlation message ID) и тому, как связывать ответы с запросами между шиной, бэком и фронтом. Также обсудили пополнение счёта и классификацию асинхронных сообщений."
+                    }
+                  }
+                },
+                {
+                  "id": "s206x",
+                  "type": "ref",
+                  "ref": "s035x",
+                  "name": "S КЛЮЧЕВЫЕ МОМЕНТЫ",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s034x": {
+                      "content": "КЛЮЧЕВЫЕ МОМЕНТЫ"
+                    }
+                  }
+                },
+                {
+                  "id": "s207x",
+                  "type": "ref",
+                  "ref": "s037x",
+                  "name": "H Пополнение счёта",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s036x": {
+                      "content": "Пополнение счёта"
+                    }
+                  }
+                },
+                {
+                  "id": "s208x",
+                  "type": "ref",
+                  "ref": "s042x",
+                  "name": "B Пополнение работ",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s041x": {
+                      "content": "Пополнение работает, открыты лишь вопросы по ответам [02:02–03:10]."
+                    }
+                  }
+                },
+                {
+                  "id": "s209x",
+                  "type": "ref",
+                  "ref": "s042x",
+                  "name": "B Отдельные вопрос",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s041x": {
+                      "content": "Отдельные вопросы остаются по C2C и по Oper ID в пополнении [03:10]."
+                    }
+                  }
+                },
+                {
+                  "id": "s210x",
+                  "type": "ref",
+                  "ref": "s037x",
+                  "name": "H Идентификаторы с",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s036x": {
+                      "content": "Идентификаторы сообщений"
+                    }
+                  }
+                },
+                {
+                  "id": "s211x",
+                  "type": "ref",
+                  "ref": "s042x",
+                  "name": "B Application mess",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s041x": {
+                      "content": "Application message ID — поле ЦБ; operation ID — поле адаптера [04:41–08:08]."
+                    }
+                  }
+                },
+                {
+                  "id": "s212x",
+                  "type": "ref",
+                  "ref": "s042x",
+                  "name": "B По correlation m",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s041x": {
+                      "content": "По correlation message ID есть расхождение между примерами XML и XSD-схемой; нужно выяснить у смежных систем [07:38–08:08]."
+                    }
+                  }
+                },
+                {
+                  "id": "s213x",
+                  "type": "ref",
+                  "ref": "s042x",
+                  "name": "B Предложение: Ope",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s041x": {
+                      "content": "Предложение: Oper ID как ключ верхнего уровня для всех ответов на запрос [08:08–10:04]."
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "s244x",
+      "x": 5900,
+      "y": 0,
+      "name": "Calls — no selection",
+      "theme": {
+        "mode": "light"
+      },
+      "reusable": true,
+      "clip": true,
+      "width": 1100,
+      "height": 680,
+      "fill": "$win",
+      "cornerRadius": "$radius-card",
+      "stroke": "$rule",
+      "strokeWidth": 1,
+      "children": [
+        {
+          "type": "frame",
+          "id": "s241x",
+          "name": "List pane",
+          "width": 340,
+          "height": "fill_container",
+          "stroke": "$rule",
+          "strokeWidth": {
+            "right": 1
+          },
+          "layout": "vertical",
+          "children": [
+            {
+              "id": "s240x",
+              "type": "ref",
+              "ref": "s006x",
+              "name": "List bar",
+              "width": "fill_container"
+            },
+            {
+              "type": "frame",
+              "id": "s239x",
+              "name": "List",
+              "clip": true,
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$win",
+              "layout": "vertical",
+              "children": [
+                {
+                  "id": "s221x",
+                  "type": "ref",
+                  "ref": "s016x",
+                  "name": "Day Сегодня",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s014x": {
+                      "content": "Сегодня"
+                    },
+                    "s015x": {
+                      "content": "3 звонка"
+                    }
+                  }
+                },
+                {
+                  "id": "s222x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row ЦР ID",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s023x": {
+                      "content": "ЦР ID"
+                    },
+                    "s024x": {
+                      "content": "12:58"
+                    },
+                    "s026x": {
+                      "content": "41:11"
+                    },
+                    "s027x": {
+                      "content": "Идентификаторы и связка ответов"
+                    }
+                  }
+                },
+                {
+                  "id": "s223x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row ЦР",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s023x": {
+                      "content": "ЦР"
+                    },
+                    "s024x": {
+                      "content": "11:00"
+                    },
+                    "s026x": {
+                      "content": "38:20"
+                    },
+                    "s027x": {
+                      "content": "Статус задач и план релиза"
+                    }
+                  }
+                },
+                {
+                  "id": "s224x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row iOS Daily",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s023x": {
+                      "content": "iOS Daily"
+                    },
+                    "s024x": {
+                      "content": "10:00"
+                    },
+                    "s026x": {
+                      "content": "15:02"
+                    },
+                    "s027x": {
+                      "content": "Подготовка итогов…",
+                      "fill": "$gutter"
+                    },
+                    "s057x": {
+                      "enabled": true
+                    }
+                  }
+                },
+                {
+                  "id": "s225x",
+                  "type": "ref",
+                  "ref": "s016x",
+                  "name": "Day Вчера",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s014x": {
+                      "content": "Вчера"
+                    },
+                    "s015x": {
+                      "content": "2 звонка"
+                    }
+                  }
+                },
+                {
+                  "id": "s226x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row Люда — передача дел",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s023x": {
+                      "content": "Люда — передача дел"
+                    },
+                    "s024x": {
+                      "content": "17:00"
+                    },
+                    "s026x": {
+                      "content": "52:40"
+                    },
+                    "s027x": {
+                      "content": "Передача задач и доступов перед отпуском"
+                    }
+                  }
+                },
+                {
+                  "id": "s227x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row iOS & Android daily",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s023x": {
+                      "content": "iOS & Android daily"
+                    },
+                    "s024x": {
+                      "content": "09:59"
+                    },
+                    "s026x": {
+                      "content": "14:51"
+                    },
+                    "s027x": {
+                      "content": "Не удалось подготовить итоги",
+                      "fill": "$rec"
+                    },
+                    "s028x": {
+                      "enabled": true
+                    }
+                  }
+                },
+                {
+                  "id": "s228x",
+                  "type": "ref",
+                  "ref": "s016x",
+                  "name": "Day Понедельник, 9 ноября",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s014x": {
+                      "content": "Понедельник, 9 ноября"
+                    },
+                    "s015x": {
+                      "content": "2 звонка"
+                    }
+                  }
+                },
+                {
+                  "id": "s229x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row ЦР Статус",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s023x": {
+                      "content": "ЦР Статус"
+                    },
+                    "s024x": {
+                      "content": "11:02"
+                    },
+                    "s026x": {
+                      "content": "29:45"
+                    },
+                    "s027x": {
+                      "content": "Сроки по пополнению и открытые вопросы"
+                    }
+                  }
+                },
+                {
+                  "id": "s230x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row 2026.11.09-1000",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s023x": {
+                      "content": "2026.11.09-1000",
+                      "fill": "$gutter",
+                      "fontFamily": "$font-data",
+                      "fontWeight": "normal"
+                    },
+                    "s024x": {
+                      "content": "10:00"
+                    },
+                    "s026x": {
+                      "content": "16:10"
+                    },
+                    "s027x": {
+                      "content": ""
+                    }
+                  }
+                },
+                {
+                  "id": "s231x",
+                  "type": "ref",
+                  "ref": "s016x",
+                  "name": "Day Пятница, 6 ноября",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s014x": {
+                      "content": "Пятница, 6 ноября"
+                    },
+                    "s015x": {
+                      "content": "2 звонка"
+                    }
+                  }
+                },
+                {
+                  "id": "s232x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row Лера 17820",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s023x": {
+                      "content": "Лера 17820"
+                    },
+                    "s024x": {
+                      "content": "14:59"
+                    },
+                    "s026x": {
+                      "content": "33:05"
+                    },
+                    "s027x": {
+                      "content": "Разбор заявки 17820 и следующие шаги"
+                    }
+                  }
+                },
+                {
+                  "id": "s233x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row iOS Daily",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s023x": {
+                      "content": "iOS Daily"
+                    },
+                    "s024x": {
+                      "content": "09:59"
+                    },
+                    "s026x": {
+                      "content": "15:30"
+                    },
+                    "s027x": {
+                      "content": "Короткий синк по задачам спринта"
+                    }
+                  }
+                },
+                {
+                  "id": "s234x",
+                  "type": "ref",
+                  "ref": "s016x",
+                  "name": "Day Четверг, 5 ноября",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s014x": {
+                      "content": "Четверг, 5 ноября"
+                    },
+                    "s015x": {
+                      "content": "8 звонков"
+                    }
+                  }
+                },
+                {
+                  "id": "s235x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row Планирование",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s023x": {
+                      "content": "Планирование"
+                    },
+                    "s024x": {
+                      "content": "17:34"
+                    },
+                    "s026x": {
+                      "content": "58:00"
+                    },
+                    "s027x": {
+                      "content": "Цели спринта и оценки"
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "s243x",
+          "name": "Detail pane",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "children": [
+            {
+              "id": "s238x",
+              "type": "ref",
+              "ref": "s013x",
+              "name": "Detail bar",
+              "width": "fill_container",
+              "descendants": {
+                "s010x": {
+                  "enabled": false
+                },
+                "s012x": {
+                  "enabled": false
+                }
+              }
+            },
+            {
+              "type": "frame",
+              "id": "s242x",
+              "name": "Scroll",
+              "clip": true,
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$surface",
+              "layout": "vertical",
+              "padding": [
+                0,
+                0,
+                "$space-24",
+                0
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "s237x",
+                  "name": "Centre",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$surface",
+                  "layout": "vertical",
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "id": "s236x",
+                      "type": "ref",
+                      "ref": "s079x",
+                      "name": "Message",
+                      "descendants": {
+                        "s076x": {
+                          "enabled": false
+                        },
+                        "s077x": {
+                          "content": "Звонок не выбран"
+                        },
+                        "s078x": {
+                          "content": "Выберите звонок, чтобы увидеть итоги"
+                        },
+                        "s075x": {
+                          "enabled": false
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "s268x",
+      "x": 7080,
+      "y": 0,
+      "name": "Calls — search",
+      "theme": {
+        "mode": "light"
+      },
+      "reusable": true,
+      "clip": true,
+      "width": 1100,
+      "height": 680,
+      "fill": "$win",
+      "cornerRadius": "$radius-card",
+      "stroke": "$rule",
+      "strokeWidth": 1,
+      "children": [
+        {
+          "type": "frame",
+          "id": "s265x",
+          "name": "List pane",
+          "width": 340,
+          "height": "fill_container",
+          "stroke": "$rule",
+          "strokeWidth": {
+            "right": 1
+          },
+          "layout": "vertical",
+          "children": [
+            {
+              "id": "s263x",
+              "type": "ref",
+              "ref": "s006x",
+              "name": "List bar",
+              "width": "fill_container",
+              "descendants": {
+                "s005x/jw3kq": {
+                  "content": "correlation",
+                  "fill": "$text"
+                },
+                "s005x/kHRgz": {
+                  "enabled": false
+                },
+                "s005x/SwwNh": {
+                  "enabled": true
+                }
+              }
+            },
+            {
+              "type": "frame",
+              "id": "s264x",
+              "name": "List",
+              "clip": true,
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$win",
+              "layout": "vertical",
+              "children": [
+                {
+                  "id": "s245x",
+                  "type": "ref",
+                  "ref": "s016x",
+                  "name": "Day Сегодня",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s014x": {
+                      "content": "Сегодня"
+                    },
+                    "s015x": {
+                      "content": "1 звонок"
+                    }
+                  }
+                },
+                {
+                  "id": "s246x",
+                  "type": "ref",
+                  "ref": "s073x",
+                  "name": "Match ЦР ID",
+                  "width": "fill_container",
+                  "fill": "$selBg",
+                  "descendants": {
+                    "s058x": {
+                      "content": "ЦР ID",
+                      "fill": "$selText"
+                    },
+                    "s060x": {
+                      "enabled": false
+                    },
+                    "s059x": {
+                      "content": ""
+                    },
+                    "s061x": {
+                      "content": "",
+                      "fill": "$selText"
+                    },
+                    "s063x": {
+                      "content": "12:58",
+                      "fill": "$selText"
+                    },
+                    "s065x": {
+                      "content": "07:38",
+                      "fill": "$selText"
+                    },
+                    "s066x": {
+                      "content": "…по ",
+                      "fill": "$selText"
+                    },
+                    "s067x": {
+                      "content": "correlation"
+                    },
+                    "s069x": {
+                      "content": " ID в XML…",
+                      "fill": "$selText"
+                    },
+                    "s071x": {
+                      "content": "ещё 3",
+                      "enabled": true,
+                      "fill": "$selText"
+                    }
+                  }
+                },
+                {
+                  "id": "s247x",
+                  "type": "ref",
+                  "ref": "s016x",
+                  "name": "Day Понедельник, 9 ноября",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s014x": {
+                      "content": "Понедельник, 9 ноября"
+                    },
+                    "s015x": {
+                      "content": "1 звонок"
+                    }
+                  }
+                },
+                {
+                  "id": "s248x",
+                  "type": "ref",
+                  "ref": "s073x",
+                  "name": "Match ЦР Статус",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s058x": {
+                      "content": "ЦР Статус"
+                    },
+                    "s060x": {
+                      "enabled": false
+                    },
+                    "s059x": {
+                      "content": ""
+                    },
+                    "s061x": {
+                      "content": ""
+                    },
+                    "s063x": {
+                      "content": "11:02"
+                    },
+                    "s065x": {
+                      "content": "Итоги"
+                    },
+                    "s066x": {
+                      "content": "…уточнить "
+                    },
+                    "s067x": {
+                      "content": "correlation"
+                    },
+                    "s069x": {
+                      "content": " ID у смежных…"
+                    },
+                    "s071x": {
+                      "content": "",
+                      "enabled": false
+                    }
+                  }
+                },
+                {
+                  "id": "s249x",
+                  "type": "ref",
+                  "ref": "s016x",
+                  "name": "Day Пятница, 6 ноября",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s014x": {
+                      "content": "Пятница, 6 ноября"
+                    },
+                    "s015x": {
+                      "content": "1 звонок"
+                    }
+                  }
+                },
+                {
+                  "id": "s250x",
+                  "type": "ref",
+                  "ref": "s073x",
+                  "name": "Match Лера 17820",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s058x": {
+                      "content": "Лера 17820"
+                    },
+                    "s060x": {
+                      "enabled": false
+                    },
+                    "s059x": {
+                      "content": ""
+                    },
+                    "s061x": {
+                      "content": ""
+                    },
+                    "s063x": {
+                      "content": "14:59"
+                    },
+                    "s065x": {
+                      "content": "21:10"
+                    },
+                    "s066x": {
+                      "content": "…без "
+                    },
+                    "s067x": {
+                      "content": "correlation"
+                    },
+                    "s069x": {
+                      "content": " не связать…"
+                    },
+                    "s071x": {
+                      "content": "ещё 1",
+                      "enabled": true
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "s267x",
+          "name": "Detail pane",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "children": [
+            {
+              "id": "s262x",
+              "type": "ref",
+              "ref": "s013x",
+              "name": "Detail bar",
+              "width": "fill_container"
+            },
+            {
+              "type": "frame",
+              "id": "s266x",
+              "name": "Scroll",
+              "clip": true,
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$surface",
+              "layout": "vertical",
+              "padding": [
+                0,
+                0,
+                "$space-24",
+                0
+              ],
+              "children": [
+                {
+                  "id": "s251x",
+                  "type": "ref",
+                  "ref": "s033x",
+                  "name": "Header",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s031x": {
+                      "content": "ЦР ID"
+                    },
+                    "s032x": {
+                      "content": "Сегодня, 12:58 · 41:11"
+                    }
+                  }
+                },
+                {
+                  "id": "s252x",
+                  "type": "ref",
+                  "ref": "s035x",
+                  "name": "S О ЧЁМ ВСТРЕЧА",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s034x": {
+                      "content": "О ЧЁМ ВСТРЕЧА"
+                    }
+                  }
+                },
+                {
+                  "id": "s253x",
+                  "type": "ref",
+                  "ref": "s039x",
+                  "name": "P Встреча была пос",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s038x": {
+                      "content": "Встреча была посвящена идентификаторам в сообщениях (application message ID, Oper ID, message ID, doc ID, correlation message ID) и тому, как связывать ответы с запросами между шиной, бэком и фронтом. Также обсудили пополнение счёта и классификацию асинхронных сообщений."
+                    }
+                  }
+                },
+                {
+                  "id": "s254x",
+                  "type": "ref",
+                  "ref": "s035x",
+                  "name": "S КЛЮЧЕВЫЕ МОМЕНТЫ",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s034x": {
+                      "content": "КЛЮЧЕВЫЕ МОМЕНТЫ"
+                    }
+                  }
+                },
+                {
+                  "id": "s255x",
+                  "type": "ref",
+                  "ref": "s037x",
+                  "name": "H Пополнение счёта",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s036x": {
+                      "content": "Пополнение счёта"
+                    }
+                  }
+                },
+                {
+                  "id": "s256x",
+                  "type": "ref",
+                  "ref": "s042x",
+                  "name": "B Пополнение работ",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s041x": {
+                      "content": "Пополнение работает, открыты лишь вопросы по ответам [02:02–03:10]."
+                    }
+                  }
+                },
+                {
+                  "id": "s257x",
+                  "type": "ref",
+                  "ref": "s042x",
+                  "name": "B Отдельные вопрос",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s041x": {
+                      "content": "Отдельные вопросы остаются по C2C и по Oper ID в пополнении [03:10]."
+                    }
+                  }
+                },
+                {
+                  "id": "s258x",
+                  "type": "ref",
+                  "ref": "s037x",
+                  "name": "H Идентификаторы с",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s036x": {
+                      "content": "Идентификаторы сообщений"
+                    }
+                  }
+                },
+                {
+                  "id": "s259x",
+                  "type": "ref",
+                  "ref": "s042x",
+                  "name": "B Application mess",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s041x": {
+                      "content": "Application message ID — поле ЦБ; operation ID — поле адаптера [04:41–08:08]."
+                    }
+                  }
+                },
+                {
+                  "id": "s260x",
+                  "type": "ref",
+                  "ref": "s042x",
+                  "name": "B По correlation m",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s041x": {
+                      "content": "По correlation message ID есть расхождение между примерами XML и XSD-схемой; нужно выяснить у смежных систем [07:38–08:08]."
+                    }
+                  }
+                },
+                {
+                  "id": "s261x",
+                  "type": "ref",
+                  "ref": "s042x",
+                  "name": "B Предложение: Ope",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s041x": {
+                      "content": "Предложение: Oper ID как ключ верхнего уровня для всех ответов на запрос [08:08–10:04]."
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "s279x",
+      "x": 8260,
+      "y": 0,
+      "name": "Calls — search, no results",
+      "theme": {
+        "mode": "light"
+      },
+      "reusable": true,
+      "clip": true,
+      "width": 1100,
+      "height": 680,
+      "fill": "$win",
+      "cornerRadius": "$radius-card",
+      "stroke": "$rule",
+      "strokeWidth": 1,
+      "children": [
+        {
+          "type": "frame",
+          "id": "s276x",
+          "name": "List pane",
+          "width": 340,
+          "height": "fill_container",
+          "stroke": "$rule",
+          "strokeWidth": {
+            "right": 1
+          },
+          "layout": "vertical",
+          "children": [
+            {
+              "id": "s274x",
+              "type": "ref",
+              "ref": "s006x",
+              "name": "List bar",
+              "width": "fill_container",
+              "descendants": {
+                "s005x/jw3kq": {
+                  "content": "Kubernetes",
+                  "fill": "$text"
+                },
+                "s005x/kHRgz": {
+                  "enabled": false
+                },
+                "s005x/SwwNh": {
+                  "enabled": true
+                }
+              }
+            },
+            {
+              "type": "frame",
+              "id": "s275x",
+              "name": "List",
+              "clip": true,
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$win",
+              "layout": "vertical",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "s270x",
+                  "name": "Centre",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$win",
+                  "layout": "vertical",
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "id": "s269x",
+                      "type": "ref",
+                      "ref": "s079x",
+                      "name": "Message",
+                      "descendants": {
+                        "s076x": {
+                          "enabled": false
+                        },
+                        "s077x": {
+                          "content": "Ничего не найдено"
+                        },
+                        "s078x": {
+                          "content": "«Kubernetes» нет в названиях, итогах и расшифровках"
+                        },
+                        "s075x": {
+                          "enabled": false
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "s278x",
+          "name": "Detail pane",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "children": [
+            {
+              "id": "s273x",
+              "type": "ref",
+              "ref": "s013x",
+              "name": "Detail bar",
+              "width": "fill_container",
+              "descendants": {
+                "s010x": {
+                  "enabled": false
+                },
+                "s012x": {
+                  "enabled": false
+                }
+              }
+            },
+            {
+              "type": "frame",
+              "id": "s277x",
+              "name": "Scroll",
+              "clip": true,
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$surface",
+              "layout": "vertical",
+              "padding": [
+                0,
+                0,
+                "$space-24",
+                0
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "s272x",
+                  "name": "Centre",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$surface",
+                  "layout": "vertical",
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "id": "s271x",
+                      "type": "ref",
+                      "ref": "s079x",
+                      "name": "Message",
+                      "descendants": {
+                        "s076x": {
+                          "enabled": false
+                        },
+                        "s077x": {
+                          "content": "Звонок не выбран"
+                        },
+                        "s078x": {
+                          "content": "Выберите звонок, чтобы увидеть итоги"
+                        },
+                        "s075x": {
+                          "enabled": false
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "s290x",
+      "x": 9440,
+      "y": 0,
+      "name": "Calls — empty",
+      "theme": {
+        "mode": "light"
+      },
+      "reusable": true,
+      "clip": true,
+      "width": 1100,
+      "height": 680,
+      "fill": "$win",
+      "cornerRadius": "$radius-card",
+      "stroke": "$rule",
+      "strokeWidth": 1,
+      "children": [
+        {
+          "type": "frame",
+          "id": "s287x",
+          "name": "List pane",
+          "width": 340,
+          "height": "fill_container",
+          "stroke": "$rule",
+          "strokeWidth": {
+            "right": 1
+          },
+          "layout": "vertical",
+          "children": [
+            {
+              "id": "s286x",
+              "type": "ref",
+              "ref": "s006x",
+              "name": "List bar",
+              "width": "fill_container"
+            },
+            {
+              "type": "frame",
+              "id": "s285x",
+              "name": "List",
+              "clip": true,
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$win",
+              "layout": "vertical",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "s281x",
+                  "name": "Centre",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$win",
+                  "layout": "vertical",
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "id": "s280x",
+                      "type": "ref",
+                      "ref": "s079x",
+                      "name": "Message",
+                      "descendants": {
+                        "s076x": {
+                          "enabled": false
+                        },
+                        "s077x": {
+                          "content": "Пока нет записанных звонков"
+                        },
+                        "s078x": {
+                          "content": "Звонок появится здесь, когда закончится запись"
+                        },
+                        "s075x": {
+                          "enabled": false
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "s289x",
+          "name": "Detail pane",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "children": [
+            {
+              "id": "s284x",
+              "type": "ref",
+              "ref": "s013x",
+              "name": "Detail bar",
+              "width": "fill_container",
+              "descendants": {
+                "s010x": {
+                  "enabled": false
+                },
+                "s012x": {
+                  "enabled": false
+                }
+              }
+            },
+            {
+              "type": "frame",
+              "id": "s288x",
+              "name": "Scroll",
+              "clip": true,
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$surface",
+              "layout": "vertical",
+              "padding": [
+                0,
+                0,
+                "$space-24",
+                0
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "s283x",
+                  "name": "Centre",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$surface",
+                  "layout": "vertical",
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "s282x",
+                      "name": "Blank",
+                      "width": 1,
+                      "height": 1
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "s301x",
+      "x": 10620,
+      "y": 0,
+      "name": "Calls — loading",
+      "theme": {
+        "mode": "light"
+      },
+      "reusable": true,
+      "clip": true,
+      "width": 1100,
+      "height": 680,
+      "fill": "$win",
+      "cornerRadius": "$radius-card",
+      "stroke": "$rule",
+      "strokeWidth": 1,
+      "children": [
+        {
+          "type": "frame",
+          "id": "s298x",
+          "name": "List pane",
+          "width": 340,
+          "height": "fill_container",
+          "stroke": "$rule",
+          "strokeWidth": {
+            "right": 1
+          },
+          "layout": "vertical",
+          "children": [
+            {
+              "id": "s297x",
+              "type": "ref",
+              "ref": "s006x",
+              "name": "List bar",
+              "width": "fill_container"
+            },
+            {
+              "type": "frame",
+              "id": "s296x",
+              "name": "List",
+              "clip": true,
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$win",
+              "layout": "vertical",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "s292x",
+                  "name": "Centre",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$win",
+                  "layout": "vertical",
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "id": "s291x",
+                      "type": "ref",
+                      "ref": "s079x",
+                      "name": "Message",
+                      "descendants": {
+                        "s076x": {
+                          "icon": "loader-circle",
+                          "fill": "$sub"
+                        },
+                        "s077x": {
+                          "content": "Загружаются звонки…"
+                        },
+                        "s078x": {
+                          "content": ""
+                        },
+                        "s075x": {
+                          "enabled": false
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "s300x",
+          "name": "Detail pane",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "children": [
+            {
+              "id": "s295x",
+              "type": "ref",
+              "ref": "s013x",
+              "name": "Detail bar",
+              "width": "fill_container",
+              "descendants": {
+                "s010x": {
+                  "enabled": false
+                },
+                "s012x": {
+                  "enabled": false
+                }
+              }
+            },
+            {
+              "type": "frame",
+              "id": "s299x",
+              "name": "Scroll",
+              "clip": true,
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$surface",
+              "layout": "vertical",
+              "padding": [
+                0,
+                0,
+                "$space-24",
+                0
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "s294x",
+                  "name": "Centre",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$surface",
+                  "layout": "vertical",
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "s293x",
+                      "name": "Blank",
+                      "width": 1,
+                      "height": 1
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "s320x",
+      "x": 11800,
+      "y": 0,
+      "name": "Calls — narrow",
+      "theme": {
+        "mode": "light"
+      },
+      "reusable": true,
+      "clip": true,
+      "width": 560,
+      "height": 680,
+      "fill": "$win",
+      "cornerRadius": "$radius-card",
+      "stroke": "$rule",
+      "strokeWidth": 1,
+      "children": [
+        {
+          "type": "frame",
+          "id": "s319x",
+          "name": "List pane",
+          "width": "fill_container",
+          "height": "fill_container",
+          "stroke": "$rule",
+          "layout": "vertical",
+          "children": [
+            {
+              "id": "s318x",
+              "type": "ref",
+              "ref": "s006x",
+              "name": "List bar",
+              "width": "fill_container"
+            },
+            {
+              "type": "frame",
+              "id": "s317x",
+              "name": "List",
+              "clip": true,
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$win",
+              "layout": "vertical",
+              "children": [
+                {
+                  "id": "s302x",
+                  "type": "ref",
+                  "ref": "s016x",
+                  "name": "Day Сегодня",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s014x": {
+                      "content": "Сегодня"
+                    },
+                    "s015x": {
+                      "content": "3 звонка"
+                    }
+                  }
+                },
+                {
+                  "id": "s303x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row ЦР ID",
+                  "width": "fill_container",
+                  "fill": "$selBg",
+                  "descendants": {
+                    "s023x": {
+                      "content": "ЦР ID",
+                      "fill": "$selText"
+                    },
+                    "s024x": {
+                      "content": "12:58",
+                      "fill": "$selText"
+                    },
+                    "s026x": {
+                      "content": "41:11",
+                      "fill": "$selText"
+                    },
+                    "s027x": {
+                      "content": "Идентификаторы и связка ответов",
+                      "fill": "$selText"
+                    }
+                  }
+                },
+                {
+                  "id": "s304x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row ЦР",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s023x": {
+                      "content": "ЦР"
+                    },
+                    "s024x": {
+                      "content": "11:00"
+                    },
+                    "s026x": {
+                      "content": "38:20"
+                    },
+                    "s027x": {
+                      "content": "Статус задач и план релиза"
+                    }
+                  }
+                },
+                {
+                  "id": "s305x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row iOS Daily",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s023x": {
+                      "content": "iOS Daily"
+                    },
+                    "s024x": {
+                      "content": "10:00"
+                    },
+                    "s026x": {
+                      "content": "15:02"
+                    },
+                    "s027x": {
+                      "content": "Подготовка итогов…",
+                      "fill": "$gutter"
+                    },
+                    "s057x": {
+                      "enabled": true
+                    }
+                  }
+                },
+                {
+                  "id": "s306x",
+                  "type": "ref",
+                  "ref": "s016x",
+                  "name": "Day Вчера",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s014x": {
+                      "content": "Вчера"
+                    },
+                    "s015x": {
+                      "content": "2 звонка"
+                    }
+                  }
+                },
+                {
+                  "id": "s307x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row Люда — передача дел",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s023x": {
+                      "content": "Люда — передача дел"
+                    },
+                    "s024x": {
+                      "content": "17:00"
+                    },
+                    "s026x": {
+                      "content": "52:40"
+                    },
+                    "s027x": {
+                      "content": "Передача задач и доступов перед отпуском"
+                    }
+                  }
+                },
+                {
+                  "id": "s308x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row iOS & Android daily",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s023x": {
+                      "content": "iOS & Android daily"
+                    },
+                    "s024x": {
+                      "content": "09:59"
+                    },
+                    "s026x": {
+                      "content": "14:51"
+                    },
+                    "s027x": {
+                      "content": "Не удалось подготовить итоги",
+                      "fill": "$rec"
+                    },
+                    "s028x": {
+                      "enabled": true
+                    }
+                  }
+                },
+                {
+                  "id": "s309x",
+                  "type": "ref",
+                  "ref": "s016x",
+                  "name": "Day Понедельник, 9 ноября",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s014x": {
+                      "content": "Понедельник, 9 ноября"
+                    },
+                    "s015x": {
+                      "content": "2 звонка"
+                    }
+                  }
+                },
+                {
+                  "id": "s310x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row ЦР Статус",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s023x": {
+                      "content": "ЦР Статус"
+                    },
+                    "s024x": {
+                      "content": "11:02"
+                    },
+                    "s026x": {
+                      "content": "29:45"
+                    },
+                    "s027x": {
+                      "content": "Сроки по пополнению и открытые вопросы"
+                    }
+                  }
+                },
+                {
+                  "id": "s311x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row 2026.11.09-1000",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s023x": {
+                      "content": "2026.11.09-1000",
+                      "fill": "$gutter",
+                      "fontFamily": "$font-data",
+                      "fontWeight": "normal"
+                    },
+                    "s024x": {
+                      "content": "10:00"
+                    },
+                    "s026x": {
+                      "content": "16:10"
+                    },
+                    "s027x": {
+                      "content": ""
+                    }
+                  }
+                },
+                {
+                  "id": "s312x",
+                  "type": "ref",
+                  "ref": "s016x",
+                  "name": "Day Пятница, 6 ноября",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s014x": {
+                      "content": "Пятница, 6 ноября"
+                    },
+                    "s015x": {
+                      "content": "2 звонка"
+                    }
+                  }
+                },
+                {
+                  "id": "s313x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row Лера 17820",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s023x": {
+                      "content": "Лера 17820"
+                    },
+                    "s024x": {
+                      "content": "14:59"
+                    },
+                    "s026x": {
+                      "content": "33:05"
+                    },
+                    "s027x": {
+                      "content": "Разбор заявки 17820 и следующие шаги"
+                    }
+                  }
+                },
+                {
+                  "id": "s314x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row iOS Daily",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s023x": {
+                      "content": "iOS Daily"
+                    },
+                    "s024x": {
+                      "content": "09:59"
+                    },
+                    "s026x": {
+                      "content": "15:30"
+                    },
+                    "s027x": {
+                      "content": "Короткий синк по задачам спринта"
+                    }
+                  }
+                },
+                {
+                  "id": "s315x",
+                  "type": "ref",
+                  "ref": "s016x",
+                  "name": "Day Четверг, 5 ноября",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s014x": {
+                      "content": "Четверг, 5 ноября"
+                    },
+                    "s015x": {
+                      "content": "8 звонков"
+                    }
+                  }
+                },
+                {
+                  "id": "s316x",
+                  "type": "ref",
+                  "ref": "s030x",
+                  "name": "Row Планирование",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s023x": {
+                      "content": "Планирование"
+                    },
+                    "s024x": {
+                      "content": "17:34"
+                    },
+                    "s026x": {
+                      "content": "58:00"
+                    },
+                    "s027x": {
+                      "content": "Цели спринта и оценки"
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "s324x",
       "type": "ref",
-      "ref": "s124x",
-      "name": "Split B — rows with gist, transcript tab (dark)",
+      "ref": "s112x",
+      "name": "Calls — summary (dark)",
+      "x": 0,
+      "y": 740,
+      "theme": {
+        "mode": "dark"
+      }
+    },
+    {
+      "id": "s325x",
+      "type": "ref",
+      "ref": "s137x",
+      "name": "Calls — preparing (dark)",
       "x": 1180,
       "y": 740,
       "theme": {
@@ -2679,34 +5737,133 @@
       }
     },
     {
+      "id": "s326x",
+      "type": "ref",
+      "ref": "s162x",
+      "name": "Calls — summary failed (dark)",
+      "x": 2360,
+      "y": 740,
+      "theme": {
+        "mode": "dark"
+      }
+    },
+    {
+      "id": "s327x",
+      "type": "ref",
+      "ref": "s187x",
+      "name": "Calls — no summary (dark)",
+      "x": 3540,
+      "y": 740,
+      "theme": {
+        "mode": "dark"
+      }
+    },
+    {
+      "id": "s328x",
+      "type": "ref",
+      "ref": "s220x",
+      "name": "Calls — inactive window (dark)",
+      "x": 4720,
+      "y": 740,
+      "theme": {
+        "mode": "dark"
+      }
+    },
+    {
+      "id": "s329x",
+      "type": "ref",
+      "ref": "s244x",
+      "name": "Calls — no selection (dark)",
+      "x": 5900,
+      "y": 740,
+      "theme": {
+        "mode": "dark"
+      }
+    },
+    {
+      "id": "s330x",
+      "type": "ref",
+      "ref": "s268x",
+      "name": "Calls — search (dark)",
+      "x": 7080,
+      "y": 740,
+      "theme": {
+        "mode": "dark"
+      }
+    },
+    {
+      "id": "s331x",
+      "type": "ref",
+      "ref": "s279x",
+      "name": "Calls — search, no results (dark)",
+      "x": 8260,
+      "y": 740,
+      "theme": {
+        "mode": "dark"
+      }
+    },
+    {
+      "id": "s332x",
+      "type": "ref",
+      "ref": "s290x",
+      "name": "Calls — empty (dark)",
+      "x": 9440,
+      "y": 740,
+      "theme": {
+        "mode": "dark"
+      }
+    },
+    {
+      "id": "s333x",
+      "type": "ref",
+      "ref": "s301x",
+      "name": "Calls — loading (dark)",
+      "x": 10620,
+      "y": 740,
+      "theme": {
+        "mode": "dark"
+      }
+    },
+    {
+      "id": "s334x",
+      "type": "ref",
+      "ref": "s320x",
+      "name": "Calls — narrow (dark)",
+      "x": 11800,
+      "y": 740,
+      "theme": {
+        "mode": "dark"
+      }
+    },
+    {
       "type": "note",
-      "id": "s125x",
+      "id": "s321x",
       "x": 0,
       "y": 1480,
-      "name": "Note A",
+      "name": "Note layout",
       "width": 520,
-      "height": 360,
-      "content": "Split A — list and summary\n\nOne window replaces the list plus the floating summary panel. List column 340 pt (resizable 280–420), 32 pt one-line rows: time, title, status. Duration moves to the detail header. The detail shows the selected call's summary as rendered Markdown; Копировать copies its source; ⋯ holds Открыть в Finder, Переименовать, Повторить итоги, Удалить….\n\n↑↓ in the list updates the detail at once; Tab moves focus into the detail for selection and copying. A call without a summary shows its status in the detail (preparing, failed with Повторить).\n\nOpen: whether the transcript is reachable from here at all; the minimum width (list 280 + detail 420 = 700)."
+      "height": 380,
+      "content": "Layout\n\nOne window: the calls list on the left (340 pt, divider 280–420, kept across restarts), the selected call's summary on the right. It replaces the calls list window and the floating summary panel.\n\nRow, two lines: title and start time; then duration and the gist, the first sentence of «О чём встреча». Preparing: «Подготовка итогов…» and a spinner. Failed: «Не удалось подготовить итоги» in `rec` and the alert. No summary: an empty second line. An untitled call shows its folder name in `font-data`, `gutter`.\n\nBelow 700 pt the detail hides and the list fills the window (Calls — narrow); Return or Space opens the summary in its own window."
     },
     {
       "type": "note",
-      "id": "s126x",
-      "x": 1180,
+      "id": "s322x",
+      "x": 560,
       "y": 1480,
-      "name": "Note B",
+      "name": "Note detail",
       "width": 520,
-      "height": 360,
-      "content": "Split B — rows with gist, transcript tab\n\nMail-style two-line rows: title and time, then duration and a one-line gist (the first sentence of «О чём встреча»; «Подготовка итогов…» or a red «Не удалось…» otherwise). Rows are taller (~48 pt), so fewer calls fit, but a call is recognisable without opening it.\n\nThe detail toolbar has Итоги | Транскрипт (⌘1, ⌘2). The transcript shows each line's time and speaker in `them`/`me` colours; a timestamp in the summary ([04:41]) jumps to the transcript at that line.\n\nOpen: where the gist comes from (a separate field in summary.md, or its first sentence); whether search matches open the transcript tab at the hit."
+      "height": 380,
+      "content": "Detail\n\nHeader: title, then day, start time · duration. The summary is rendered Markdown, selectable. Toolbar: Копировать (the Markdown source) and ⋯ with the row's menu: Открыть, Переименовать, Повторить итоги (failed only), Удалить….\n\nWithout a summary the detail shows one centred message under the header: preparing, failed with the error and Повторить итоги, or «Итогов нет» when notes are off. With no call selected: «Звонок не выбран». Copy and ⋯ are hidden whenever there is no summary.\n\n↑↓ moves the selection and the detail follows at once; Tab moves focus into the detail."
     },
     {
       "type": "note",
-      "id": "s127x",
-      "x": 2360,
-      "y": 0,
-      "name": "Note common",
-      "width": 440,
-      "height": 480,
-      "content": "Common to both\n\n• Narrow window: below 700 pt the detail hides and the list fills the window; Return or double-click opens the summary in its own window (today's panel).\n• Each split has a visible divider; its position is kept across restarts.\n• Search stays above the list and filters it; the detail follows the selection.\n• Inactive window: selection turns `chip`, as in the current list.\n\nNot drawn yet: empty selection («Выберите звонок»), no-summary states in the detail, search, narrow width."
+      "id": "s323x",
+      "x": 1120,
+      "y": 1480,
+      "name": "Note search",
+      "width": 520,
+      "height": 380,
+      "content": "Search\n\nThe field sits in the list's title bar and works as in the calls list: titles, summaries and transcripts, as you type, ignoring case and ё/е; days with no match hide.\n\nA match row keeps the two-line shape: title and time, then where the first match is (its time in the transcript, or «Итоги»), the text around it with the hit tinted `hit`, and «ещё N». The detail shows the selected call's summary. No results: the list says so and the detail shows «Звонок не выбран».\n\nEmpty, loading and the inactive window (selection in `chip`) are as in the calls list."
     }
   ],
   "themes": {
@@ -3260,5 +6417,5 @@
       ]
     }
   },
-  "fileToken": "d23acf5f-6d08-49b8-ac60-3f60b01552ea"
+  "fileToken": "bac5cd31-61c9-4e5d-ac71-ae5f54732a90"
 }
