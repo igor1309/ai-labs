@@ -38,11 +38,7 @@ enum Transcript {
     /// The far side after the call, given to its diarized speakers. Each speaker's ID is
     /// `d` and its cluster number, listed in order of first speech so the file numbers
     /// them `Them 1`, `Them 2`… as they spoke.
-    struct Attributed: Sendable, Equatable {
-
-        var far: [TranscriptFormat.Segment]
-        var speakers: [TranscriptFormat.Speaker]
-    }
+    typealias Attributed = AttributedFar
 
     /// `names`: each diarized speaker the Zoom evidence confirmed.
     static func attributed(_ pieces: [SpeakerAttribution.Piece<TranscriptSegment>], in state: CallState,
@@ -75,4 +71,11 @@ enum Transcript {
 
         names.order.map { .init(id: names.ids[$0]!, name: $0, state: names.confirmed ? "confirmed" : "tentative") }
     }
+}
+
+/// The far side after the call, given to its diarized speakers (`Transcript.attributed`).
+public struct AttributedFar: Sendable, Equatable {
+
+    public var far: [TranscriptFormat.Segment]
+    public var speakers: [TranscriptFormat.Speaker]
 }

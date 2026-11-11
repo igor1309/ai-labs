@@ -277,6 +277,7 @@ private struct ReplacementFile: SessionTranscriptFile {
         try await base.write(state)
     }
     func close() async { await base.close() }
+    func attributeSpeakers() async -> AttributedFar? { await base.attributeSpeakers() }
     func replaceMicrophone(in state: CallState, with segments: [TranscriptSegment]) async throws {
         if fails { throw CleanupFailure.failed }
         try await base.replaceMicrophone(in: state, with: segments)

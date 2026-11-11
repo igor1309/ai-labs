@@ -391,6 +391,8 @@ private struct ControlledTranscript: SessionTranscriptFile {
     }
 
     func close() async { await base.close() }
+
+    func attributeSpeakers() async -> AttributedFar? { await base.attributeSpeakers() }
 }
 
 private func waitForCancellation() async throws {

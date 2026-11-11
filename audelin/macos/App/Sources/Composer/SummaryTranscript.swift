@@ -37,14 +37,16 @@ actor SummaryTranscript: SessionTranscriptFile {
     func close() async {
         await base.close()
         var (next, effect) = Handoff.reduce(state, .closed)
-        if effect == .diarize {
-            // Remote speakers are found when the file closes; the entries keep their labels.
-            (next, effect) = Handoff.reduce(next, .diarized(nil))
+        var attributed: Transcript.Attributed?
+        if effect == .diarize, let last {
+            state = next
+            attributed = await base.attributeSpeakers()
+            (next, effect) = Handoff.reduce(state, .diarized(attributed.map { summaryEntries(last, attributed: $0) }))
         }
         state = next
         if case let .offer(entries, finalWrite, usable) = effect {
             if finalWrite, let last {
-                await runs.start(raw: last, cleanup: cleanup, file: base, folder: folder, callbacks: callbacks)
+                await runs.start(raw: last, attributed: attributed, cleanup: cleanup, file: base, folder: folder, callbacks: callbacks)
             } else {
                 await callbacks.completed(folder, entries, finalWrite, usable)
             }
@@ -53,6 +55,18 @@ actor SummaryTranscript: SessionTranscriptFile {
     func replaceMicrophone(in state: CallState, with segments: [TranscriptSegment]) async throws {
         try await base.replaceMicrophone(in: state, with: segments)
     }
+    func attributeSpeakers() async -> Transcript.Attributed? { await base.attributeSpeakers() }
+}
+
+/// The closed call's entries for a summary: `heard` replaces the microphone side, and
+/// `attributed` the far side, with each remote speaker labelled as in the file.
+func summaryEntries(_ raw: CallState, heard: [TranscriptSegment]? = nil, attributed: Transcript.Attributed?) -> [Job.Entry] {
+    guard let attributed else {
+        return summaryEntries(heard.map { Transcript.replacingMicrophone(in: raw, with: $0) } ?? Transcript.segments(from: raw))
+    }
+    let microphone = heard.map { $0.map { TranscriptFormat.Segment(side: .mine, start: $0.start, settled: $0.settledText, pending: $0.pendingText) } }
+        ?? raw.entries.filter { $0.speaker == .mine }.map { Transcript.segment(from: $0) }
+    return summaryEntries(Transcript.merging(microphone, with: attributed.far), speakerIDs: attributed.speakers.map(\.id))
 }
 
 /// `speakerIDs` is the transcript's speaker list, so each remote speaker reads as in the file.

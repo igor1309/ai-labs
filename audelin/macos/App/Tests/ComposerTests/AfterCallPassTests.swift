@@ -7,9 +7,28 @@ import TranscriptFormat
 @testable import CallText
 @testable import Composer
 
-/// The transcript's close runs the after-call pass on the diarizer it was given.
+/// After close, the transcript runs the after-call pass on the diarizer it was given.
 @Suite(.timeLimit(.minutes(1)))
 struct AfterCallPassTests {
+
+    @Test func onlyAClosedFileIsDiarizedAndOnlyOnce() async throws {
+        try await withCallTrack { track in
+            let samples = Values<Int>()
+            let binding = PassBinding(nemotron: {
+                samples.append($0.count)
+                return [0, 4, 8, 12].enumerated().map { EngineTurn(speaker: "\($0.offset % 2)", start: Double($0.element), end: Double($0.element + 4)) }
+            })
+            let (_, bytes, writer) = try await zoomWriter(track: track, binding: binding)
+            #expect(await writer.attributeSpeakers() == nil)
+            #expect(samples.all.isEmpty)
+            await writer.close()
+            let attributed = try #require(await writer.attributeSpeakers())
+            #expect(attributed.speakers.map(\.id) == ["d0", "d1"])
+            #expect(await writer.attributeSpeakers() == nil)
+            #expect(samples.all == [160])
+            #expect(await bytes.calls == ["write", "close", "replace"])
+        }
+    }
 
     @Test func aZoomCallIsDiarizedOnceForBothItsNamesAndItsSpeakers() async throws {
         try await withCallTrack { track in
@@ -20,8 +39,9 @@ struct AfterCallPassTests {
             })
             let (logs, bytes, writer) = try await zoomWriter(track: track, binding: binding)
             await writer.close()
+            _ = await writer.attributeSpeakers()
             #expect(samples.all == [160])
-            #expect(await bytes.calls == ["write", "replace", "close"])
+            #expect(await bytes.calls == ["write", "close", "replace"])
             let text = try #require(await bytes.replaced.last)
             #expect(text.contains("**Them 1** 00:00:00\nfar1\n\n**Them 2** 00:00:04\nfar2\n\n**Them 1** 00:00:08\nfar3\n"))
             #expect(text.contains("- Them 1: Anna\n- Them 2: Boris\n"))
@@ -34,6 +54,7 @@ struct AfterCallPassTests {
             let binding = PassBinding(nemotron: { _ in throw PassFailure() }, vbx: { throw PassFailure() })
             let (logs, bytes, writer) = try await zoomWriter(track: track, binding: binding)
             await writer.close()
+            _ = await writer.attributeSpeakers()
             #expect(logs.all.map(\.message).contains { $0.hasPrefix("remote speakers failed") })
             #expect(await bytes.calls == ["write", "close"])
             await #expect(throws: (any Error).self) { try await writer.write(.init(status: .finished, entries: [], finalCount: 0)) }
@@ -47,6 +68,7 @@ struct AfterCallPassTests {
             names.listen { heard.append($0) }
             let (_, _, writer) = try await zoomWriter(track: track, binding: Self.alternating, names: names)
             await writer.close()
+            _ = await writer.attributeSpeakers()
             let board = names.snapshot()
             #expect(board.rows == [1: "Anna", 2: "Boris", 3: "Anna"])
             #expect(board.confirmed)
@@ -59,10 +81,17 @@ struct AfterCallPassTests {
             let bytes = PassBytes(failingReplaces: 1)
             let (logs, _, writer) = try await zoomWriter(track: track, binding: Self.alternating, given: [1: "Boris", 2: "Anna", 3: "Boris"], bytes: bytes)
             await writer.close()
-            #expect(await bytes.calls == ["write", "replace", "replace", "close"])
+            let returned = try #require(await writer.attributeSpeakers())
+            #expect(await bytes.calls == ["write", "close", "replace", "replace"])
+            let ids = Dictionary(uniqueKeysWithValues: returned.speakers.map { ($0.name, $0.id) })
+            #expect(returned.far.map(\.settled) == ["far1", "far2", "far3"])
+            #expect(returned.far.map(\.speaker) == [ids["Anna"], ids["Boris"], ids["Anna"]])
+            #expect(returned.speakers.map(\.state) == ["confirmed", "confirmed"])
             let text = try #require(await bytes.replaced.last)
             let anna = try #require(text.firstMatch(of: /- Them (\d): Anna/)?.1)
             let boris = try #require(text.firstMatch(of: /- Them (\d): Boris/)?.1)
+            let offered = summaryEntries(.init(status: .finished, entries: [], finalCount: 0), attributed: returned)
+            #expect(offered.map(\.label) == ["Them \(anna)", "Them \(boris)", "Them \(anna)"])
             #expect(text.contains("**Them \(anna)** 00:00:00\nfar1\n\n**Them \(boris)** 00:00:04\nfar2\n\n**Them \(anna)** 00:00:08\nfar3\n"))
             #expect(text.contains("\"state\":\"confirmed\""))
             #expect(!text.contains("tentative"))
@@ -74,6 +103,7 @@ struct AfterCallPassTests {
         try await withCallTrack { track in
             let (logs, bytes, writer) = try await zoomWriter(track: track, binding: Self.alternating, format: WholeFailingFormat())
             await writer.close()
+            _ = await writer.attributeSpeakers()
             #expect(await bytes.calls == ["write", "close"])
             #expect(logs.all.map(\.message).contains { $0.hasPrefix("after-call names not saved") })
         }
@@ -85,6 +115,7 @@ struct AfterCallPassTests {
             let names = LiveNameBoard()
             let (_, bytes, writer) = try await zoomWriter(track: track, binding: binding, given: [1: "Anna", 2: "Boris"], names: names)
             await writer.close()
+            _ = await writer.attributeSpeakers()
             #expect(names.snapshot().rows == [1: "Anna", 2: "Boris"])
             let state = CallState(status: .finished, entries: .init(tail: [far(1, 0, 3), far(2, 4, 7), far(3, 8, 11)]), finalCount: 3)
             try await writer.replaceMicrophone(in: state, with: [])
@@ -106,10 +137,11 @@ struct AfterCallPassTests {
             })
             let (_, bytes, writer) = try await unnamedWriter(track: track, binding: binding, theirs: [(1, 0, 1), (2, 2, 3), (3, 4, 5)])
             await writer.close()
+            _ = await writer.attributeSpeakers()
             let text = try #require(await bytes.replaced.last)
             #expect(text.contains("**Them 1** 00:00:00\nfar1\n\n**Them 2** 00:00:02\nfar2\n\n**Them 1** 00:00:04\nfar3\n"))
             #expect(text.contains("- Them 1: unknown\n- Them 2: unknown\n"))
-            #expect(await bytes.calls.suffix(2) == ["replace", "close"])
+            #expect(await bytes.calls.suffix(2) == ["close", "replace"])
         }
     }
 
@@ -118,6 +150,7 @@ struct AfterCallPassTests {
             let binding = PassBinding(nemotron: { _ in [EngineTurn(speaker: "0", start: 0, end: 6)] })
             let (_, bytes, writer) = try await unnamedWriter(track: track, binding: binding, theirs: [(1, 0, 1), (2, 2, 3)])
             await writer.close()
+            _ = await writer.attributeSpeakers()
             let text = try #require(await bytes.replaced.last)
             #expect(text.contains("**Them** 00:00:00\nfar1\n\n**Them** 00:00:02\nfar2\n"))
             #expect(!text.contains("Them 1"))
@@ -129,6 +162,7 @@ struct AfterCallPassTests {
             let binding = PassBinding(nemotron: { _ in throw PassFailure() }, vbx: { throw PassFailure() })
             let (logs, bytes, writer) = try await unnamedWriter(track: track, binding: binding, theirs: [(1, 0, 1)])
             await writer.close()
+            _ = await writer.attributeSpeakers()
             #expect(await bytes.calls == ["write", "close"])
             #expect(logs.all.map(\.message).contains { $0.hasPrefix("remote speakers failed") })
         }
@@ -139,6 +173,7 @@ struct AfterCallPassTests {
             let binding = PassBinding(nemotron: { _ in [EngineTurn(speaker: "0", start: 0, end: 2), EngineTurn(speaker: "1", start: 2, end: 4)] })
             let (_, bytes, writer) = try await unnamedWriter(track: track, binding: binding, theirs: [(1, 0, 1), (2, 2, 3)])
             await writer.close()
+            _ = await writer.attributeSpeakers()
             let state = CallState(status: .finished, entries: [], finalCount: 0)
             try await writer.replaceMicrophone(in: state, with: [.init(id: 9, start: 1, end: 2, words: [.init("mine", start: 1, end: 2)], settledCount: 1)])
             let text = try #require(await bytes.replaced.last)
@@ -155,6 +190,13 @@ struct AfterCallPassTests {
             let entries = [far(1, 0, 1, later: true), mine(10, 1, 1.5), split]
             let (_, bytes, writer) = try await unnamedWriter(track: track, binding: binding, entries: entries)
             await writer.close()
+            let returned = try #require(await writer.attributeSpeakers())
+            #expect(returned.far.map(\.settled) == ["far1", "a", "b"])
+            #expect(returned.far.map(\.start) == [0, 2, 4])
+            #expect(returned.far.map(\.filledInLater) == [true, true, true])
+            #expect(returned.speakers.map(\.state) == ["diarized", "diarized"])
+            let ids = returned.speakers.map(\.id)
+            #expect(returned.far.map(\.speaker) == [ids.first, ids.first, ids.last])
             let text = try #require(await bytes.replaced.last)
             #expect(text.contains("""
                 **Them 1** 00:00:00 (filled in later)
@@ -179,7 +221,8 @@ struct AfterCallPassTests {
             let bytes = PassBytes(failingReplaces: 1)
             let (logs, _, writer) = try await unnamedWriter(track: track, binding: binding, entries: [far(1, 0, 1), far(2, 2, 3)], bytes: bytes)
             await writer.close()
-            #expect(await bytes.calls == ["write", "replace", "close"])
+            _ = await writer.attributeSpeakers()
+            #expect(await bytes.calls == ["write", "close", "replace"])
             #expect(await bytes.replaced.isEmpty)
             #expect(logs.all.map(\.message).contains { $0.hasPrefix("remote speakers not saved") })
             let state = CallState(status: .finished, entries: .init(tail: [far(1, 0, 1), far(2, 2, 3)]), finalCount: 2)
@@ -195,6 +238,7 @@ struct AfterCallPassTests {
             let (logs, bytes, writer) = try await unnamedWriter(track: track, binding: binding, entries: [far(1, 0, 1), far(2, 2, 3)],
                                                                 format: WholeFailingFormat())
             await writer.close()
+            _ = await writer.attributeSpeakers()
             #expect(await bytes.calls == ["write", "close"])
             #expect(logs.all.map(\.message).contains { $0.hasPrefix("remote speakers not saved") })
         }

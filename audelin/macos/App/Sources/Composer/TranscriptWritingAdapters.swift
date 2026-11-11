@@ -29,6 +29,10 @@ public protocol SessionTranscriptFile: Sendable {
 
     func close() async
 
+    /// After close: gives the far side to its diarized speakers and saves it in the file;
+    /// nil when there is no call track or the pass failed.
+    func attributeSpeakers() async -> AttributedFar?
+
     /// Replaces the closed transcript atomically; a failure keeps its previous bytes.
     func replaceMicrophone(in state: CallState, with segments: [TranscriptSegment]) async throws
 }
@@ -142,18 +146,23 @@ actor WritingTranscript: SessionTranscriptFile {
         try await file.replace(rendering.chunks, finalLength: rendering.finalLength)
     }
 
-    /// Runs the after-call pass before the file is sealed: one diarization of the call track
-    /// gives the far side to its speakers and, on a Zoom call, confirms the names Zoom showed.
-    /// A failed diarization keeps the far side as plain Them and Zoom's names tentative.
     func close() async {
 
-        let board = names.snapshot()
-        if let state = last, let track = board.callTrack {
-            await afterCall(state, track: track, board: board)
-        }
         closedNames = names.snapshot()
         closed = true
         await file.close()
+    }
+
+    /// One diarization of the call track gives the far side to its speakers and, on a Zoom
+    /// call, confirms the names Zoom showed. A failed diarization keeps the far side as plain
+    /// Them and Zoom's names tentative.
+    func attributeSpeakers() async -> Composer.Transcript.Attributed? {
+
+        let board = names.snapshot()
+        guard closed, attributed == nil, let state = last, let track = board.callTrack else { return nil }
+        await afterCall(state, track: track, board: board)
+        closedNames = names.snapshot()
+        return attributed
     }
 
     private func afterCall(_ state: CallState, track: URL, board: LiveNameBoard.Names) async {
@@ -184,15 +193,19 @@ actor WritingTranscript: SessionTranscriptFile {
 
     /// Without the attributed far side, the confirmed names still reach the file on the
     /// call's own rows, rendered afresh so rows already final take their corrected names.
+    /// Once saved, those rows are the far side the pass returns.
     private func saveConfirmedNames(_ state: CallState) async {
 
         let board = names.snapshot()
         let rows = state.entries.map { entry in
             Composer.Transcript.segment(from: entry, speaker: board.rows[entry.text.id].flatMap { board.ids[$0] })
         }
+        let speakers = Composer.Transcript.speakers(board)
         do {
-            let rendering = try format.renderWhole(rows, speakers: Composer.Transcript.speakers(board))
+            let rendering = try format.renderWhole(rows, speakers: speakers)
             try await file.replace(rendering.chunks, finalLength: rendering.finalLength)
+            // What the file now holds is the far side later readers and replacements take.
+            attributed = .init(far: rows.filter { $0.side == .theirs }, speakers: speakers)
             sink.write(.init(category: .session, message: "after-call names saved"))
         } catch {
             sink.write(.init(category: .session, message: "after-call names not saved: \(error)"))
