@@ -1,5 +1,6 @@
 import Foundation
 import BleedCleanup
+import Calls
 
 /// Audio at the composition's edge, before recording or recognition owns it.
 public struct CaptureBuffer: Equatable, Sendable {
@@ -137,12 +138,14 @@ public struct ComposerBoundary: Sendable {
     public var intervals: ProfileIntervals
     public var transcripts: any TranscriptStorage
     public var recordings: any RecordingStorage
+    /// Moves a deleted call's folder to the Trash.
+    public var trash: @Sendable (URL) throws -> Void
 
     public init(capturePersistence: CapturePersistence, microphone: any MicrophoneSource, callAudio: any CallAudioSource,
                 recognizers: any RecognizerSource, processes: any CallProcessSource, access: any CallAudioAccessSource,
                 microphonePermission: any MicrophonePermission, capacity: any FolderCapacity,
                 time: any ComposerClock, log: any LogSink, intervals: ProfileIntervals,
-                recordings: any RecordingStorage,
+                recordings: any RecordingStorage, trash: @escaping @Sendable (URL) throws -> Void,
                 bleedCleaning: any MicrophoneCleaning<CleanupRecording, [Float]>,
                 bleedHearing: any CleanedHearing<[Float], [TranscriptSegment]>, transcripts: any TranscriptStorage = FileTranscriptStorage()) {
         self.bleedCleaning = bleedCleaning; self.bleedHearing = bleedHearing
@@ -151,8 +154,11 @@ public struct ComposerBoundary: Sendable {
         self.microphone = microphone; self.callAudio = callAudio; self.recognizers = recognizers
         self.processes = processes; self.access = access; self.microphonePermission = microphonePermission
         self.capacity = capacity; self.time = time; self.log = log; self.intervals = intervals
-        self.recordings = recordings
+        self.recordings = recordings; self.trash = trash
     }
+
+    /// The user's Trash on the folder's volume, through the system file manager.
+    public static let systemTrash: @Sendable (URL) throws -> Void = CallsDisk.system.trash
 }
 
 /// One started capture and the operation that ends its stream.

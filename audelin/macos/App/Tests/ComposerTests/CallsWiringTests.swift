@@ -23,7 +23,7 @@ struct CallsWiringTests {
         let mapped = callsListState(state, timeZone: .gmt, now: .distantFuture)
         #expect(mapped.rows.map(\.editable) == [false, true])
         #expect(mapped.deleteID == "B")
-        #expect(mapped.deleteBody == "«B Zoom»: удалится вся папка звонка — аудио, расшифровки и саммари. Отменить нельзя.")
+        #expect(mapped.deleteBody == "«B Zoom»: вся папка звонка — аудио, расшифровки и саммари — переместится в Корзину.")
         #expect(mapped.failure == "«B»: disk denied")
         #expect(!mapped.busy)
         for phase: RecordingsState.Phase in [.renaming("A"), .deleting("B")] {
@@ -77,43 +77,47 @@ struct CallsWiringTests {
         }
     }
 
-    @Test func deleteNeedsConfirmationAndAFailureRefreshesPartialDiskContents() async throws {
-        try await withComposition { rig in
+    @Test func deleteNeedsConfirmationMovesToTheTrashAndAFailureLeavesTheFolder() async throws {
+        let trashed = Values<String>()
+        try await withComposition(configure: { boundary in
+            boundary.trash = { url in
+                trashed.append(url.lastPathComponent)
+                // No Trash on the call's volume: the folder stays whole.
+                if url.lastPathComponent.hasPrefix(a) { throw CocoaError(.featureUnsupported) }
+                try FileManager.default.removeItem(at: url)
+            }
+        }) { rig in
             let calls = try #require(rig.menu.calls)
             try await make("2024.01.01-1000 Zoom", in: rig.root)
             try await make("2024.01.01-0900 Other", in: rig.root)
-            // A folder inside that cannot be emptied stops the delete partway.
-            let stuck = rig.root.appendingPathComponent("2024.01.01-1000 Zoom/stuck")
-            try await make("stuck", in: stuck.deletingLastPathComponent())
-            try await make("kept", in: stuck)
-            try await setMode(0o500, of: stuck)
-            do {
-                await rig.menu.perform(.showCalls)
-                await wait(calls) { !$0.busy && $0.rows.map(\.id) == [a, b] }
-                await calls.send(.askDelete(a))
-                await wait(calls) { $0.deleteID == a }
-                await calls.send(.cancelDelete)
-                await wait(calls) { $0.deleteID == nil }
-                #expect(try await names(in: rig.root).count == 2)
+            try await make("kept", in: rig.root.appendingPathComponent("2024.01.01-1000 Zoom"))
+            await rig.menu.perform(.showCalls)
+            await wait(calls) { !$0.busy && $0.rows.map(\.id) == [a, b] }
+            await calls.send(.askDelete(a))
+            await wait(calls) { $0.deleteID == a }
+            #expect(calls.state.deleteBody == "«\(a) Zoom»: вся папка звонка — аудио, расшифровки и саммари — переместится в Корзину.")
+            await calls.send(.cancelDelete)
+            await wait(calls) { $0.deleteID == nil }
+            #expect(trashed.all.isEmpty)
 
-                await calls.send(.askDelete(a))
-                await wait(calls) { $0.deleteID == a }
-                // Only a fresh listing after the failure can show this one.
-                try await make("2024.01.01-0800 New", in: rig.root)
-                await calls.send(.confirmDelete)
-                await wait(calls) { !$0.busy && $0.failure != nil && $0.rows.map(\.id) == [a, b, c] }
-                #expect(calls.state.failure?.hasPrefix("«\(a)»: ") == true)
+            await calls.send(.askDelete(a))
+            await wait(calls) { $0.deleteID == a }
+            // Only a fresh listing after the failure can show this one.
+            try await make("2024.01.01-0800 New", in: rig.root)
+            await calls.send(.confirmDelete)
+            await wait(calls) { !$0.busy && $0.failure != nil && $0.rows.map(\.id) == [a, b, c] }
+            #expect(calls.state.failure == "«\(a)»: Не удалось переместить «2024.01.01-1000 Zoom» в Корзину; папка осталась на месте. \(CocoaError(.featureUnsupported).localizedDescription)")
+            #expect(await isFolder(rig.root.appendingPathComponent("2024.01.01-1000 Zoom/kept")))
 
-                // The reason stays until the next action.
-                await calls.send(.open(b))
-                await wait(calls) { $0.failure == "Не удалось открыть «\(b)» в Finder." }
-                await calls.send(.askDelete(b))
-                await wait(calls) { $0.deleteID == b }
-                await calls.send(.confirmDelete)
-                await wait(calls) { !$0.busy && $0.rows.map(\.id) == [a, c] }
-                #expect(try await names(in: rig.root).sorted() == ["2024.01.01-0800 New", "2024.01.01-1000 Zoom"])
-            } catch { try await setMode(0o700, of: stuck); throw error }
-            try await setMode(0o700, of: stuck)
+            // The reason stays until the next action.
+            await calls.send(.open(b))
+            await wait(calls) { $0.failure == "Не удалось открыть «\(b)» в Finder." }
+            await calls.send(.askDelete(b))
+            await wait(calls) { $0.deleteID == b }
+            await calls.send(.confirmDelete)
+            await wait(calls) { !$0.busy && $0.rows.map(\.id) == [a, c] }
+            #expect(trashed.all == ["2024.01.01-1000 Zoom", "2024.01.01-0900 Other"])
+            #expect(try await names(in: rig.root).sorted() == ["2024.01.01-0800 New", "2024.01.01-1000 Zoom"])
         }
     }
 

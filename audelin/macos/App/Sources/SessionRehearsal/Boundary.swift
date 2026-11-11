@@ -47,7 +47,7 @@ public func rehearsalBoundary(
                 }
                 output.onTermination = { _ in task.cancel() }
             }
-        }), log: RehearsalLog(), intervals: intervals, recordings: FileRecordingStorage(), bleedCleaning: RehearsalCleaning(),
+        }), log: RehearsalLog(), intervals: intervals, recordings: FileRecordingStorage(), trash: ComposerBoundary.systemTrash, bleedCleaning: RehearsalCleaning(),
         bleedHearing: CleanupHearing(recognizers: RehearsalRecognizers(mine: mine, theirs: theirs)))
 }
 

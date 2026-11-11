@@ -61,6 +61,7 @@ struct CallsMoveTests {
                        from.deletingLastPathComponent().lastPathComponent == "source" { throw POSIXError(.EACCES) }
                     guard renamex_np(from.path, to.path, UInt32(RENAME_EXCL)) == 0 else { throw POSIXError(.EIO) }
                 },
+                    trash: { _ in throw POSIXError(.EPERM) },
                     remove: { try FileManager.default.removeItem(at: $0) }))
             await #expect(throws: (any Error).self) { try disk.move(id: id, to: target) }
             #expect(renames.withLock { $0 } == (["copy", "sizes", "read", "missing"].contains(step) ? 0 : step == "retire" ? 2 : 1))
@@ -314,6 +315,7 @@ private func testCalls(folder: URL,
               rename: { from, to in
               guard renamex_np(from.path, to.path, UInt32(RENAME_EXCL)) == 0 else { throw POSIXError(.EIO) }
           },
+              trash: { _ in throw POSIXError(.EPERM) },
               remove: remove))
 }
 private func withMoveFolders(_ work: @escaping @Sendable (URL, URL) async throws -> Void) async throws {

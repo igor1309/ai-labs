@@ -16,6 +16,9 @@ func withComposeFolder(isolation: isolated (any Actor)? = #isolation, _ body: (U
     try outcome.get()
 }
 
+/// Stands in for the Trash: tests never move anything into the user's own.
+let removeForTrash: @Sendable (URL) throws -> Void = { try FileManager.default.removeItem(at: $0) }
+
 final class Values<Value: Sendable>: Sendable {
 
     private let stored = Mutex<[Value]>([])
