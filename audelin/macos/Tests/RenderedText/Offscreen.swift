@@ -14,7 +14,7 @@ public enum Offscreen {
     ) -> NSHostingView<Content> {
 
         let host = NSHostingView(rootView: content)
-        let window = NSWindow(
+        let window = TwoXWindow(
             contentRect: NSRect(origin: .zero, size: size ?? host.fittingSize),
             styleMask: .borderless,
             backing: .buffered,
@@ -47,11 +47,13 @@ public enum Offscreen {
         let scale = 2
         guard let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: Int(view.bounds.width) * scale,
                                          pixelsHigh: Int(view.bounds.height) * scale, bitsPerSample: 8, samplesPerPixel: 4,
-                                         hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB,
-                                         bytesPerRow: 0, bitsPerPixel: 0) else { return nil }
-        rep.size = view.bounds.size
-        view.cacheDisplay(in: view.bounds, to: rep)
-        return rep
+                                         hasAlpha: true, isPlanar: false, colorSpaceName: .calibratedRGB,
+                                         bytesPerRow: 0, bitsPerPixel: 0),
+              // sRGB, not the display's profile, which differs between machines.
+              let srgb = rep.retagging(with: .sRGB) else { return nil }
+        srgb.size = view.bounds.size
+        view.cacheDisplay(in: view.bounds, to: srgb)
+        return srgb
     }
 
     /// Every text field in the view, whichever way SwiftUI hosts it.
@@ -70,4 +72,10 @@ public enum Offscreen {
 
         try png.write(to: URL(fileURLWithPath: folder).appendingPathComponent("\(name).png"))
     }
+}
+
+/// Lays views out for a 2x screen on any machine: a CI runner's screen is 1x,
+/// and text snapped to its pixel grid draws differently.
+private final class TwoXWindow: NSWindow {
+    override var backingScaleFactor: CGFloat { 2 }
 }
