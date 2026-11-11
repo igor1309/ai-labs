@@ -51240,188 +51240,6 @@
                       ]
                     }
                   ]
-                },
-                {
-                  "type": "frame",
-                  "id": "VmIE5",
-                  "name": "Alert",
-                  "reusable": true,
-                  "width": 340,
-                  "fill": "$win",
-                  "cornerRadius": "$radius-card",
-                  "effect": {
-                    "type": "shadow",
-                    "shadowType": "outer",
-                    "color": "$shadow",
-                    "offset": {
-                      "x": 0,
-                      "y": 12
-                    },
-                    "blur": 32
-                  },
-                  "layout": "vertical",
-                  "gap": "$space-12",
-                  "padding": "$space-24",
-                  "children": [
-                    {
-                      "type": "text",
-                      "id": "HCntq",
-                      "name": "H",
-                      "fill": "$text",
-                      "content": "Удалить звонок?",
-                      "fontFamily": "$font-ui",
-                      "fontSize": "$type-title",
-                      "fontWeight": "600"
-                    },
-                    {
-                      "type": "text",
-                      "id": "BteBa",
-                      "name": "Body",
-                      "fill": "$sub",
-                      "textGrowth": "fixed-width",
-                      "width": "fill_container",
-                      "content": "Папка «2026.10.20-1600 Синк по OKR на квартал» с записью, расшифровкой и итогами будет перемещена в Корзину.",
-                      "fontFamily": "$font-ui",
-                      "fontSize": "$type-small",
-                      "fontWeight": "normal"
-                    },
-                    {
-                      "type": "frame",
-                      "id": "rUE07",
-                      "name": "Buttons",
-                      "width": "fill_container",
-                      "layout": "vertical",
-                      "gap": "$space-8",
-                      "children": [
-                        {
-                          "type": "frame",
-                          "id": "I1uoqI",
-                          "name": "Button/Destructive",
-                          "width": "fill_container",
-                          "fill": "$errBg",
-                          "cornerRadius": "$radius-control",
-                          "padding": [
-                            "$space-6",
-                            "$space-12"
-                          ],
-                          "justifyContent": "center",
-                          "children": [
-                            {
-                              "type": "text",
-                              "id": "Y0Wfz",
-                              "name": "Label",
-                              "fill": "$rec",
-                              "content": "Удалить",
-                              "fontFamily": "$font-ui",
-                              "fontSize": "$type-small",
-                              "fontWeight": "600"
-                            }
-                          ]
-                        },
-                        {
-                          "type": "frame",
-                          "id": "WiqFY",
-                          "name": "Button/Secondary",
-                          "width": "fill_container",
-                          "fill": "$btn",
-                          "cornerRadius": "$radius-control",
-                          "padding": [
-                            "$space-6",
-                            "$space-12"
-                          ],
-                          "justifyContent": "center",
-                          "children": [
-                            {
-                              "type": "text",
-                              "id": "b0h8y",
-                              "name": "Label",
-                              "fill": "$text",
-                              "content": "Отмена",
-                              "fontFamily": "$font-ui",
-                              "fontSize": "$type-small",
-                              "fontWeight": "600"
-                            }
-                          ]
-                        }
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "bmW3Z",
-                  "name": "Rename field",
-                  "reusable": true,
-                  "width": "fill_container",
-                  "fill": "$surface",
-                  "cornerRadius": "$radius-control",
-                  "stroke": "$me",
-                  "strokeWidth": 1.5,
-                  "padding": [
-                    "$space-2",
-                    "$space-8"
-                  ],
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "text",
-                      "id": "S5yyBG",
-                      "name": "Prefix",
-                      "fill": "$gutter",
-                      "content": "2026.11.11-1230 ",
-                      "fontFamily": "$font-data",
-                      "fontSize": "$type-small",
-                      "fontWeight": "normal"
-                    },
-                    {
-                      "type": "text",
-                      "id": "X5t9I",
-                      "name": "Title",
-                      "fill": "$text",
-                      "content": "Запуск: роли и SLA|",
-                      "fontFamily": "$font-ui",
-                      "fontSize": "$type-small",
-                      "fontWeight": "600"
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "RHrYH",
-                  "name": "Error banner",
-                  "reusable": true,
-                  "width": 400,
-                  "fill": "$errBg",
-                  "gap": "$space-8",
-                  "padding": [
-                    "$space-12",
-                    "$space-16"
-                  ],
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "icon",
-                      "id": "J0hD4m",
-                      "name": "Icon",
-                      "width": 14,
-                      "height": 14,
-                      "icon": "circle-alert",
-                      "library": "lucide",
-                      "fill": "$rec"
-                    },
-                    {
-                      "type": "text",
-                      "id": "VOryR",
-                      "name": "Text",
-                      "fill": "$rec",
-                      "textGrowth": "fixed-width",
-                      "width": "fill_container",
-                      "content": "Не удалось повторить подготовку итогов. Расшифровка и прежние итоги сохранены.",
-                      "fontFamily": "$font-ui",
-                      "fontSize": "$type-small",
-                      "fontWeight": "normal"
-                    }
-                  ]
                 }
               ]
             }
@@ -56423,15 +56241,23 @@
                         "s023x": {
                           "id": "s364x",
                           "type": "ref",
-                          "ref": "bmW3Z",
+                          "ref": "MsvSg",
                           "name": "Rename",
                           "width": "fill_container",
+                          "padding": [
+                            "$space-2",
+                            "$space-8"
+                          ],
                           "descendants": {
-                            "S5yyBG": {
+                            "y0hAi": {
                               "content": "2026.11.11-1258 "
                             },
-                            "X5t9I": {
-                              "content": "ЦР ID|"
+                            "Z4pGar": {
+                              "content": "ЦР ID",
+                              "fontSize": "$type-small"
+                            },
+                            "wbXBQ": {
+                              "height": 16
                             }
                           }
                         },
@@ -57428,30 +57254,19 @@
           ]
         },
         {
-          "type": "frame",
           "id": "s401x",
+          "type": "ref",
+          "ref": "w9b9LL",
+          "name": "Sheet",
           "x": 0,
           "y": 44,
-          "name": "Scrim",
           "width": 1100,
           "height": 636,
-          "fill": "$shadow",
-          "layout": "vertical",
-          "justifyContent": "center",
-          "alignItems": "center",
-          "children": [
-            {
-              "id": "s400x",
-              "type": "ref",
-              "ref": "VmIE5",
-              "name": "Alert",
-              "descendants": {
-                "BteBa": {
-                  "content": "Папка «2026.11.11-1258 ЦР ID» с записью, расшифровкой и итогами будет перемещена в Корзину."
-                }
-              }
+          "descendants": {
+            "HMOgX/vPdox": {
+              "content": "«ЦР ID», 11.11 · 12:58. Удалятся аудио, расшифровка и итоги."
             }
-          ]
+          }
         }
       ]
     },
@@ -57824,9 +57639,17 @@
                 {
                   "id": "s436x",
                   "type": "ref",
-                  "ref": "RHrYH",
+                  "ref": "qAImO",
                   "name": "Banner",
-                  "width": "fill_container"
+                  "width": "fill_container",
+                  "descendants": {
+                    "uxXzz": {
+                      "content": "Не удалось повторить подготовку итогов"
+                    },
+                    "q9Ta7": {
+                      "content": "Расшифровка и прежние итоги сохранены."
+                    }
+                  }
                 }
               ]
             },

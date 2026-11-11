@@ -5,8 +5,9 @@ the calls window: the calls list on the left and the selected call's summary on 
 replaces the list window and the floating summary panel. Each screen is a
 light component with a dark instance (`theme: {mode: "dark"}`); the tokens
 are the file's variables. Shared parts are on the
-"Calls window — shared components" board (Title bar, Search field, Day header, Context menu,
-Alert, Rename field, Error banner); the window's own parts on the "Calls window —
+"Calls window — shared components" board (Title bar, Search field, Day
+header, Context menu); delete, rename and errors use the Glass Ledger
+Sheet, Rename field and Banner/Error; the window's own parts on the "Calls window —
 components" board (Detail bar, Two-line row, Two-line match row, Detail
 header, Section, Subhead, Paragraph, Bullet, Detail message).
 
@@ -78,7 +79,7 @@ header, Section, Subhead, Paragraph, Bullet, Detail message).
 | Calls — inactive window | The selected row turns grey (`btn`) |
 | Calls — no selection | «Звонок не выбран» |
 | Calls — renaming | The title is a field; the `yyyy.MM.dd-HHmm` prefix stays fixed. Return saves, Esc cancels |
-| Calls — confirm delete | A sheet over the window with Удалить and Отмена |
+| Calls — confirm delete | The Glass Ledger Sheet over the window: Удалить and Отмена |
 | Calls — error | A banner pinned to the bottom of the list |
 | Calls — search | «correlation»: transcript and summary matches, one selected |
 | Calls — searching | Transcripts still being read: spinner in the field, rows so far |
