@@ -236,12 +236,12 @@ struct TranscriptFormatTests {
             **Me** 00:00:01
             привет
 
-            **Them 1** 00:00:02
+            **Them** 00:00:02
             hello
 
             ## Speakers
 
-            - Them 1: Anna
+            - Them: Anna
 
             <!-- audelin-speakers {"revision":1,"schemaVersion":1,"speakers":[{"id":"s3","name":"Anna","state":"confirmed"}]} -->
 
@@ -268,6 +268,17 @@ struct TranscriptFormatTests {
         let row = TranscriptFormat.Segment(side: .theirs, start: 2, settled: "hello", pending: "", speaker: "z1")
         _ = try format.render(count: 1, finalCount: 0) { _ in row }
         let rendering = try format.render(count: 1, finalCount: 0, speakers: [.init(id: "z1", name: nil, state: "tentative")]) { _ in row }
+        #expect(markdown(rendering).contains("**Them** 00:00:02\nhello\n"))
+    }
+
+    @Test(arguments: [0, 1]) func aCachedRowTakesItsNumberWhenASecondSpeakerIsListed(finalCount: Int) throws {
+
+        var format = TranscriptFormat()
+        let row = TranscriptFormat.Segment(side: .theirs, start: 2, settled: "hello", pending: "", speaker: "z1")
+        let first: TranscriptFormat.Speaker = .init(id: "z1", name: nil, state: "tentative")
+        _ = try format.render(count: 1, finalCount: 0, speakers: [first]) { _ in row }
+        let rendering = try format.render(count: 1, finalCount: finalCount,
+                                          speakers: [first, .init(id: "z2", name: nil, state: "tentative")]) { _ in row }
         #expect(markdown(rendering).contains("**Them 1** 00:00:02\nhello\n"))
     }
 
@@ -284,6 +295,22 @@ struct TranscriptFormatTests {
         #expect(markdown(rendering).contains("**Them 1** 00:00:01\na\n\n**Them 2** 00:00:02\nb\n"))
     }
 
+    @Test func finalRowsOfALoneSpeakerTakeNumbersWhenASecondIsListed() throws {
+
+        var format = TranscriptFormat()
+        let rows: [TranscriptFormat.Segment] = [
+            .init(side: .mine, start: 0, settled: "hi", pending: ""),
+            .init(side: .theirs, start: 1, settled: "a", pending: "", speaker: "z1"),
+            .init(side: .theirs, start: 2, settled: "b", pending: "", speaker: "z2"),
+        ]
+        let first: TranscriptFormat.Speaker = .init(id: "z1", name: "Anna", state: "tentative")
+        var rendering = try format.render(count: 2, finalCount: 2, speakers: [first]) { rows[$0] }
+        #expect(markdown(rendering).hasPrefix("# Transcript\n\n**Me** 00:00:00\nhi\n\n**Them** 00:00:01\na\n\n## Speakers\n\n- Them: Anna\n"))
+        rendering = try format.render(count: 3, finalCount: 3, speakers: [first, .init(id: "z2", name: nil, state: "tentative")]) { rows[$0] }
+        #expect(markdown(rendering).hasPrefix(
+            "# Transcript\n\n**Me** 00:00:00\nhi\n\n**Them 1** 00:00:01\na\n\n**Them 2** 00:00:02\nb\n\n## Speakers\n\n- Them 1: Anna\n- Them 2: unknown\n"))
+    }
+
     @Test func renamingRewritesOnlyTheBlockAndFinalRowsStay() throws {
 
         var format = TranscriptFormat()
@@ -292,8 +319,8 @@ struct TranscriptFormatTests {
         rendering = try format.render(count: 1, finalCount: 1, speakers: [.init(id: "s3", name: "Anna", state: "confirmed")]) { _ in row }
         rendering = try format.render(count: 1, finalCount: 1, speakers: [.init(id: "s3", name: nil, state: "disputed")]) { _ in row }
         let text = markdown(rendering)
-        #expect(text.contains("**Them 1** 00:00:02\nhello\n"))
-        #expect(text.contains("- Them 1: unknown"))
+        #expect(text.contains("**Them** 00:00:02\nhello\n"))
+        #expect(text.contains("- Them: unknown"))
         #expect(!text.contains("Anna"))
         #expect(text.contains("\"revision\":2"))
     }
@@ -305,7 +332,7 @@ struct TranscriptFormatTests {
         rendering = try format.render([.init(side: .theirs, start: 0, settled: "hi", pending: "", speaker: "s1")],
                              speakers: [.init(id: "s1", name: "**Eve** -->\n# x", state: "confirmed")])
         let text = markdown(rendering)
-        #expect(text.contains("- Them 1: \\*\\*Eve\\*\\* --\\> \\# x\n"))
+        #expect(text.contains("- Them: \\*\\*Eve\\*\\* --\\> \\# x\n"))
         #expect(text.components(separatedBy: "-->").count == 2)
     }
 

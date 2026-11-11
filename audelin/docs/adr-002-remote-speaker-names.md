@@ -30,7 +30,7 @@ come in two tiers:
 - **After the call, confirmed:** Nemotron diarizes the call track, `SpeakerNaming` matches its
   turns against the recorded indicator timeline, and confirmed names replace the tentative
   ones in the amber caption and in the transcript file. Unconfirmed speakers stay
-  `Them N`. Live names reach the file marked tentative, so a quit before the pass keeps
+  `Speaker N`. Live names reach the file marked tentative, so a quit before the pass keeps
   them as guesses.
 
 The live tier needs no Accessibility prompt of its own yet: it runs only when the
@@ -85,7 +85,7 @@ recalibrate them (`Policy`):
 | disputed | ≥ 2 s of another participant over ≥ 2 turns |
 | per-turn cap | 3 s |
 
-States: unknown → candidate → confirmed; contradiction → disputed (shown as `Them N`);
+States: unknown → candidate → confirmed; contradiction → disputed (shown as `Speaker N`);
 disputed → confirmed only on evidence after the dispute, so a name never flips straight to
 another. Candidate names stay internal. A stale source stops new evidence but keeps earlier
 names. A rename changes the text, not the identity; a rejoin is a new epoch. There is no
@@ -95,8 +95,7 @@ tie-breaker against timing.
 
 ## Transcript file
 
-Markdown keeps a stable generic speaker label on rows (`**Them 1** 00:01:12`, numbered by the
-speaker's place in the Speakers list, which only grows; an unlisted speaker reads `Them`) and one
+Markdown keeps stable generic speaker IDs on rows (`**Speaker s3** 00:01:12`) and one
 versioned metadata block after the transcript: `schemaVersion`, `callID`, snapshot revision,
 participants, speaker epochs, assignment states with evidence summaries, and per-row
 `{id, start, end, speakerID, diarizationRevision}`. A readable Speakers section shows the

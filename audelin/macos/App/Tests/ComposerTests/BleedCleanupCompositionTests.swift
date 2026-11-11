@@ -207,8 +207,8 @@ struct BleedCleanupCompositionTests {
         names.give([0: "Boris"])
         try await writer.replaceMicrophone(in: raw, with: [segment("my words", start: 1)])
         let replacement = await bytes.replacement
-        #expect(replacement.contains("**Them 1** 00:00:00\ntheir words"))
-        #expect(replacement.contains("- Them 1: Anna"))
+        #expect(replacement.contains("**Them** 00:00:00\ntheir words"))
+        #expect(replacement.contains("- Them: Anna"))
         #expect(!replacement.contains("Boris"))
         #expect(replacement.contains("my words"))
     }

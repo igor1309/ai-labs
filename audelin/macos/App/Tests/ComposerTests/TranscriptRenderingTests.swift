@@ -66,8 +66,8 @@ struct TranscriptRenderingTests {
                 try await writer.write(snapshot)
                 #expect(binding.take() == ["create", "rename"])
                 let text = try String(contentsOf: url, encoding: .utf8)
-                #expect(text.contains("**Them 1** 00:00:02\n1 hello\n"))
-                #expect(text.contains("- Them 1: Anna\n"))
+                #expect(text.contains("**Them** 00:00:02\n1 hello\n"))
+                #expect(text.contains("- Them: Anna\n"))
                 #expect(text.contains("\"revision\":\(revision)"))
             }
             await writer.close()

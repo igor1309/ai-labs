@@ -55,9 +55,14 @@ public struct TranscriptFormat: Sendable {
     /// Every entry from `finalCount` on, kept so an unchanged one is not rendered again.
     private var rendered: [Rendered] = []
     /// The header and each final entry followed by its separator; only ever appended to.
-    private var finalText = Data("# Transcript\n\n".utf8)
+    private static let header = "# Transcript\n\n"
+    private var finalText = Data(header.utf8)
     private var finalCount = 0
     private var finalHasWords = false
+    /// Final segments, kept to rebuild the final text when the lone remote speaker gains a second.
+    private var finalSegments: [Segment] = []
+    /// Whether the final text was labelled for a lone remote speaker.
+    private var finalLone = false
     private var speakers: [Speaker] = []
     private var revision = 0
     private static let noText = "# Transcript\n\nNo text was heard.\n"
@@ -74,6 +79,7 @@ public struct TranscriptFormat: Sendable {
 
         self.speakers = speakers
         revision += 1
+        if lone != finalLone { try rebuildFinalText() }
         try renderSegments(count: count, finalCount: finalCount, segment: segment)
         let (prefix, suffix, noText) = text()
         let length = !noText && self.finalCount > 0 && speakers.isEmpty ? prefix.count : nil
@@ -92,11 +98,7 @@ public struct TranscriptFormat: Sendable {
         }
         rendered.removeLast(rendered.count - tailCount)
         let newlyFinal = min(max(finalCount - self.finalCount, 0), tailCount)
-        for part in rendered.prefix(newlyFinal) {
-            finalText.append(contentsOf: part.text.utf8)
-            finalText.append(contentsOf: "\n\n".utf8)
-            finalHasWords = finalHasWords || part.hasWords
-        }
+        for part in rendered.prefix(newlyFinal) { appendFinal(part) }
         rendered.removeFirst(newlyFinal)
         self.finalCount += newlyFinal
     }
@@ -111,20 +113,42 @@ public struct TranscriptFormat: Sendable {
         return (finalText, Data((block.isEmpty ? rows : rows + "\n" + block).utf8), false)
     }
 
+    private mutating func appendFinal(_ part: Rendered) {
+
+        finalText.append(contentsOf: part.text.utf8)
+        finalText.append(contentsOf: "\n\n".utf8)
+        finalHasWords = finalHasWords || part.hasWords
+        finalSegments.append(part.segment)
+    }
+
+    /// Relabels every final row; runs only when the speaker count crosses one.
+    private mutating func rebuildFinalText() throws {
+
+        let segments = finalSegments
+        finalText = Data(Self.header.utf8)
+        finalHasWords = false
+        finalSegments = []
+        for segment in segments { appendFinal(try Rendered(segment, label: label(segment))) }
+        finalLone = lone
+    }
+
+    /// One listed remote speaker reads as plain `Them`, as a call without diarization does.
+    private var lone: Bool { speakers.count == 1 }
+
     /// A remote speaker reads as `Them N`, N being its place in the speaker list; the list
     /// only grows, so a final row's label holds. An unlisted or absent speaker reads as `Them`.
     private func label(_ segment: Segment) -> String {
 
         guard segment.side == .theirs else { return "Me" }
         guard let id = segment.speaker, let index = speakers.firstIndex(where: { $0.id == id }) else { return "Them" }
-        return "Them \(index + 1)"
+        return lone ? "Them" : "Them \(index + 1)"
     }
 
     /// A readable Speakers section and one versioned machine-readable block after it.
     private func speakerBlock() -> String {
 
         guard !speakers.isEmpty else { return "" }
-        let lines = speakers.enumerated().map { "- Them \($0.offset + 1): \($0.element.name.map(Self.escaped) ?? "unknown")" }
+        let lines = speakers.enumerated().map { "- Them\(lone ? "" : " \($0.offset + 1)"): \($0.element.name.map(Self.escaped) ?? "unknown")" }
         struct Metadata: Encodable { let schemaVersion = 1; let revision: Int; let speakers: [Speaker] }
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
