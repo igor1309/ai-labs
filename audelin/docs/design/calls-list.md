@@ -29,7 +29,7 @@ Context menu, Alert, Rename field, Error banner).
   window is active, `sub` otherwise; a click shows the notes).
 - Hover changes nothing in a row. A right-click selects the row and opens
   its menu at the pointer, so the menu always acts on the selected call:
-  Открыть, Показать заметки, Переименовать, Повторить итоги (only when the
+  Открыть, Показать итоги, Переименовать, Повторить итоги (only when the
   summary failed), Удалить…. Открыть shows the call's folder in Finder.
 - Keys: ↑↓ select, Return opens, Space shows notes, ⌘R renames, ⌘⌫ asks to
   delete. Double-click opens.
