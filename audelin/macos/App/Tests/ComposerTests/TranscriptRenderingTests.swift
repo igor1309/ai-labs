@@ -89,6 +89,11 @@ private final class RendererStub: TranscriptRenderer {
             return try value.format.render(count: count, finalCount: finalCount, speakers: speakers, segment: segment)
         }
     }
+
+    func renderWhole(_ segments: [TranscriptFormat.Segment], speakers: [TranscriptFormat.Speaker]) throws -> TranscriptFormat.Rendering {
+
+        try TranscriptFormat().renderWhole(segments, speakers: speakers)
+    }
 }
 
 private final class BytesSpy: TranscriptBytes {

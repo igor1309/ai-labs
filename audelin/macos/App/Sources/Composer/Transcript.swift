@@ -1,4 +1,6 @@
 import CallText
+import LiveText
+import SpeakerAttribution
 import TranscriptFormat
 
 enum Transcript {
@@ -31,6 +33,36 @@ enum Transcript {
             TranscriptFormat.Segment(side: .mine, start: $0.start, settled: $0.settledText, pending: $0.pendingText)
         }
         return (call + microphone).sorted { $0.start < $1.start }
+    }
+
+    /// The far side after the call, given to its diarized speakers. Each speaker's ID is
+    /// `d` and its cluster number, listed in order of first speech so the file numbers
+    /// them `Them 1`, `Them 2`… as they spoke.
+    struct Attributed: Sendable, Equatable {
+
+        var far: [TranscriptFormat.Segment]
+        var speakers: [TranscriptFormat.Speaker]
+    }
+
+    static func attributed(_ pieces: [SpeakerAttribution.Piece<TranscriptSegment>], in state: CallState) -> Attributed {
+
+        let later = Dictionary(state.entries.filter { $0.speaker == .theirs }.map { ($0.text.id, $0.writtenLater) }, uniquingKeysWith: { $0 || $1 })
+        var speakers: [TranscriptFormat.Speaker] = []
+        let far = pieces.map { piece in
+            let id = piece.speaker.map { "d\($0)" }
+            if let id, !speakers.contains(where: { $0.id == id }) { speakers.append(.init(id: id, name: nil, state: "diarized")) }
+            return TranscriptFormat.Segment(
+                side: .theirs, start: piece.segment.start, settled: piece.segment.settledText, pending: piece.segment.pendingText,
+                filledInLater: later[piece.segment.id] ?? false, speaker: id
+            )
+        }
+        return Attributed(far: far, speakers: speakers)
+    }
+
+    /// The microphone's rows with an attributed far side, in time order.
+    static func merging(_ microphone: [TranscriptFormat.Segment], with far: [TranscriptFormat.Segment]) -> [TranscriptFormat.Segment] {
+
+        (microphone + far).sorted { $0.start < $1.start }
     }
 
     /// Live names go to the file as tentative speakers; the after-call pass replaces them.

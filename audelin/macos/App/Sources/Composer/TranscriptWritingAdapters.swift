@@ -52,6 +52,9 @@ struct TranscriptDestination: Saving {
 protocol TranscriptRenderer: Sendable {
 
     mutating func render(count: Int, finalCount: Int, speakers: [TranscriptFormat.Speaker], segment: (Int) -> TranscriptFormat.Segment) throws -> TranscriptFormat.Rendering
+
+    /// Renders a whole replacement from nothing, leaving the live rendering as it was.
+    func renderWhole(_ segments: [TranscriptFormat.Segment], speakers: [TranscriptFormat.Speaker]) throws -> TranscriptFormat.Rendering
 }
 
 /// Keeps rendered bytes on disk; `TranscriptFile` in the app.
@@ -62,7 +65,14 @@ protocol TranscriptBytes: Sendable {
     func close() async
 }
 
-extension TranscriptFormat: TranscriptRenderer {}
+extension TranscriptFormat: TranscriptRenderer {
+
+    func renderWhole(_ segments: [TranscriptFormat.Segment], speakers: [TranscriptFormat.Speaker]) throws -> TranscriptFormat.Rendering {
+
+        var fresh = TranscriptFormat()
+        return try fresh.render(segments, speakers: speakers)
+    }
+}
 extension TranscriptFile: TranscriptBytes {}
 
 actor WritingTranscript: SessionTranscriptFile {
@@ -75,6 +85,8 @@ actor WritingTranscript: SessionTranscriptFile {
     private var replaceNext = false
     private var closed = false
     private var closedNames: LiveNameBoard.Names?
+    /// The far side as the after-call pass gave it to diarized speakers; nil keeps plain Them.
+    private var attributed: Composer.Transcript.Attributed?
     private var last: CallState?
 
     init(file: any TranscriptBytes, format: any TranscriptRenderer, names: LiveNameBoard, diarizer: CallDiarizer, sink: any LogSink) {
@@ -116,12 +128,17 @@ actor WritingTranscript: SessionTranscriptFile {
 
     func replaceMicrophone(in state: CallState, with segments: [TranscriptSegment]) async throws {
 
-        let board = closedNames ?? names.snapshot()
-        var format = TranscriptFormat()
-        let rendering = try format.render(
-            Composer.Transcript.replacingMicrophone(in: state, with: segments, names: board),
-            speakers: Composer.Transcript.speakers(board)
-        )
+        let rendering: TranscriptFormat.Rendering
+        if let attributed {
+            let microphone = segments.map { TranscriptFormat.Segment(side: .mine, start: $0.start, settled: $0.settledText, pending: $0.pendingText) }
+            rendering = try format.renderWhole(Composer.Transcript.merging(microphone, with: attributed.far), speakers: attributed.speakers)
+        } else {
+            let board = closedNames ?? names.snapshot()
+            rendering = try format.renderWhole(
+                Composer.Transcript.replacingMicrophone(in: state, with: segments, names: board),
+                speakers: Composer.Transcript.speakers(board)
+            )
+        }
         try await file.replace(rendering.chunks, finalLength: rendering.finalLength)
     }
 
@@ -142,10 +159,29 @@ actor WritingTranscript: SessionTranscriptFile {
             } catch {
                 sink.write(.init(category: .session, message: "after-call names failed: \(error)"))
             }
+        } else if let state = last, let track = board.callTrack {
+            await attribute(state, track: track)
         }
         closedNames = names.snapshot()
         closed = true
         await file.close()
+    }
+
+    /// Gives the far side to its diarized speakers and saves it whole. A failed diarization
+    /// or save keeps the far side as plain Them.
+    private func attribute(_ state: CallState, track: URL) async {
+
+        guard let pieces = await RemoteSpeakers(diarizer: diarizer, sink: sink).attribute(state, track: track, speakers: nil) else { return }
+        let result = Composer.Transcript.attributed(pieces, in: state)
+        let microphone = state.entries.filter { $0.speaker == .mine }.map { Composer.Transcript.segment(from: $0) }
+        do {
+            let rendering = try format.renderWhole(Composer.Transcript.merging(microphone, with: result.far), speakers: result.speakers)
+            try await file.replace(rendering.chunks, finalLength: rendering.finalLength)
+            attributed = result
+            sink.write(.init(category: .session, message: "remote speakers saved speakers=\(result.speakers.count)"))
+        } catch {
+            sink.write(.init(category: .session, message: "remote speakers not saved: \(error)"))
+        }
     }
 }
 

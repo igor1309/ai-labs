@@ -11,6 +11,22 @@ extension CallDiarizer {
     static let unused = CallDiarizer(binding: UnusedDiarization())
 }
 
+extension CallDiarizer {
+
+    /// For composition tests: a recorded call reaches the after-call pass, which finds no
+    /// model and leaves the far side as plain Them.
+    static let unavailable = CallDiarizer(binding: UnavailableDiarization())
+}
+
+private struct UnavailableDiarization: DiarizationBinding {
+
+    struct Unavailable: Error {}
+
+    var nemotronSlots: Int { 8 }
+    func loadNemotron() async throws -> @Sendable ([Float]) async throws -> [EngineTurn] { throw Unavailable() }
+    func vbx(_ samples: [Float], speakers: Int?) async throws -> [EngineTurn] { throw Unavailable() }
+}
+
 private struct UnusedDiarization: DiarizationBinding {
 
     struct Unused: Error {}

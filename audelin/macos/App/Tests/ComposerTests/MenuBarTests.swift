@@ -69,7 +69,7 @@ struct MenuBarTests {
                         }, ticks: panelClock.ticks), log: TestLogSink(), intervals: testIntervals,
                     recordings: FileRecordingStorage(), trash: removeForTrash, bleedCleaning: CleaningStub { _ in preconditionFailure("Live text is disabled") },
                     bleedHearing: HearingStub { _ in preconditionFailure("Live text is disabled") },
-                    transcripts: FileTranscriptStorage(diarizer: .unused),
+                    transcripts: FileTranscriptStorage(diarizer: .unavailable),
                     preferredLanguages: { ["ru-RU"] }
                 )
                 let app = await compose(boundary: boundary, preferencesURL: root.appendingPathComponent("preferences.json"),

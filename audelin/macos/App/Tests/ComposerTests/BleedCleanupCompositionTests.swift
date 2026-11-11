@@ -263,7 +263,7 @@ private struct ReplacementStorage: TranscriptStorage {
     var replaced: @Sendable () -> Void = {}
     var replacement: @Sendable ([TranscriptSegment]) -> Void = { _ in }
     func open(at url: URL, sink: any LogSink) async throws -> any SessionTranscriptFile {
-        ReplacementFile(base: try await FileTranscriptStorage(diarizer: .unused).open(at: url, sink: sink), fails: fails, failFinal: failFinal, replaced: replaced, replacement: replacement)
+        ReplacementFile(base: try await FileTranscriptStorage(diarizer: .unavailable).open(at: url, sink: sink), fails: fails, failFinal: failFinal, replaced: replaced, replacement: replacement)
     }
 }
 private struct ReplacementFile: SessionTranscriptFile {

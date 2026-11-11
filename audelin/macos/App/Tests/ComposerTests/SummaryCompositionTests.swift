@@ -373,7 +373,7 @@ private final class ControlledTranscripts: TranscriptStorage, Sendable {
         self.holdFinal = holdFinal; self.failEarly = failEarly; self.failFinal = failFinal
     }
     func open(at url: URL, sink: any LogSink) async throws -> any SessionTranscriptFile {
-        ControlledTranscript(base: try await FileTranscriptStorage(diarizer: .unused).open(at: url, sink: sink), controls: self)
+        ControlledTranscript(base: try await FileTranscriptStorage(diarizer: .unavailable).open(at: url, sink: sink), controls: self)
     }
 }
 private struct ControlledTranscript: SessionTranscriptFile {
