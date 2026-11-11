@@ -2,6 +2,7 @@
 
 ## 2026-11-11
 
+- The app menu has Settings… (⌘,), titled in the system language.
 - LAB-1204: The calls list groups calls by day, newest first, in one-line rows of a fixed height; summary status is an icon, actions are in a context menu, a hover ⋯ button and keys (Return, Space, ⌘R, ⌘⌫), and the window's minimum width is 560 pt.
 - The summary preview opens as the active window from the eye, and its text uses the app's type scale, matching the calls list and Settings.
 - The About panel shows the build number and commit, a short description, the copyright and a link to the public repository.
