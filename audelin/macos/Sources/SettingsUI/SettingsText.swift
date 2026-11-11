@@ -19,6 +19,14 @@ public enum SettingsPhrase: String, CaseIterable, Sendable {
     /// Takes the moved and total call counts.
     case moveMoved = "move.moved"
     case moveCounting = "move.counting"
+    /// Takes the call id.
+    case callNotFound = "calls.notFound"
+    /// Takes the call id.
+    case callAmbiguous = "calls.ambiguous"
+    case callInvalidTitle = "calls.invalidTitle"
+    /// Takes the folder name and the system's reason.
+    case callPartialDelete = "calls.partialDelete"
+    case callSizeMismatch = "calls.sizeMismatch"
     case moveRefreshing = "move.refreshing"
     case recordingTab = "tab.recording"
     case callNotesTab = "tab.callNotes"

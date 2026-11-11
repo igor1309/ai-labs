@@ -1,3 +1,4 @@
+import Calls
 import Foundation
 import IMRxObservation
 import Observation
@@ -54,6 +55,18 @@ public final class AudelinSettings {
 
 /// Call notes settings text, in the language of the Settings catalog.
 extension SettingsText {
+    /// The sentence a failed call operation shows; a failure `Calls` does not type keeps the system's text.
+    func callsFailure(_ error: any Error) -> String {
+        switch error as? CallsFailure {
+        case let .notFound(id): self(.callNotFound, id)
+        case let .ambiguous(id): self(.callAmbiguous, id)
+        case .invalidTitle: self(.callInvalidTitle)
+        case let .partialDelete(folder, reason): self(.callPartialDelete, folder, reason)
+        case .sizeMismatch: self(.callSizeMismatch)
+        case nil: error.localizedDescription
+        }
+    }
+
     func settingsMessage(_ phase: SummarySettings.State.Phase) -> String {
         switch phase {
         case .idle, .loading: self(.notesLoading)

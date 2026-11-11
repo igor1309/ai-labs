@@ -57,12 +57,13 @@ public func compose(
                                       release: { [weak menu] in await menu?.releaseCallsFolder() },
                                       storeFolder: { destination in
                                           try await storage.commitFolder(destination) { try preferences.updateCallsFolder(destination) }
-                                      }), text: SettingsText(language: .russian), initial: .init(callsFolder: preferences.read().callsFolder)),
+                                      }, describe: SettingsText(language: .russian).callsFailure), text: SettingsText(language: .russian), initial: .init(callsFolder: preferences.read().callsFolder)),
                                   timeZone: timeZone, recordingState: { [weak menu] in menu?.state ?? .init() },
                                   location: { try await storage.location(id: $0) }, openFolder: openCallsFolder,
                                   present: presentCalls, summaryStatuses: { summaries.statuses },
                                   notes: { try await summaryFiles.notes(call: $0) }, focusPreview: focusPreview,
-                                  retryableSummaries: { summaries.retryable }, retrySummary: { try await summaries.retry(call: $0) }))
+                                  retryableSummaries: { summaries.retryable }, retrySummary: { try await summaries.retry(call: $0) },
+                                  describe: SettingsText(language: .russian).callsFailure))
     do { await summaries.recover(calls: try await storage.list().map(\.id)) }
     catch { boundary.log.write(.init(category: .session, message: "summary recovery listing failed")) }
     return menu

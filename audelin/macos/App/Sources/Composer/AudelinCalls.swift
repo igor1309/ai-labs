@@ -1,3 +1,4 @@
+import SettingsUI
 import Calls
 import CallsListUI
 import Foundation
@@ -55,6 +56,7 @@ public final class AudelinCalls {
     private var editing: CallsListState.Editing?
     private var openFailure: String?
     private var opening = false
+    private let describe: (any Error) -> String
 
     init(inputs: RecordingsInputs, timeZone: TimeZone, recordingState: @escaping () -> RecordingState,
          location: @escaping (String) async throws -> URL, openFolder: @escaping (URL) -> Bool,
@@ -62,7 +64,9 @@ public final class AudelinCalls {
          notes: @escaping (String) async throws -> String? = { _ in nil },
          focusPreview: @escaping () -> Void = {},
          retryableSummaries: @escaping () -> Set<String> = { [] },
-         retrySummary: @escaping (String) async throws -> Void = { _ in throw CocoaError(.fileWriteUnknown) }) {
+         retrySummary: @escaping (String) async throws -> Void = { _ in throw CocoaError(.fileWriteUnknown) },
+         describe: @escaping (any Error) -> String = SettingsText(language: .russian).callsFailure) {
+        self.describe = describe
         self.retryableSummaries = retryableSummaries
         self.retrySummary = retrySummary
         self.focusPreview = focusPreview
@@ -226,7 +230,7 @@ public final class AudelinCalls {
             do {
                 let url = try await location(id)
                 if !openFolder(url) { openFailure = "Не удалось открыть «\(id)» в Finder." }
-            } catch { openFailure = "«\(id)»: \(error.localizedDescription)" }
+            } catch { openFailure = "«\(id)»: \(describe(error))" }
         }
     }
 }

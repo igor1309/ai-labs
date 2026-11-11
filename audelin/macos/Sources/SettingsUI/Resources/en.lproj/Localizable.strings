@@ -78,3 +78,8 @@
 "notes.optional" = "Optional";
 "notes.service" = "Service";
 "notes.fallbackNote" = "Retries the request if the main service fails.";
+"calls.notFound" = "Call “%@” can no longer be found.";
+"calls.ambiguous" = "Several folders start with “%@”.";
+"calls.invalidTitle" = "The title contains a character that isn’t allowed.";
+"calls.partialDelete" = "Couldn’t delete all of “%1$@”; part of the folder may remain. %2$@";
+"calls.sizeMismatch" = "The copied files’ sizes don’t match the originals.";

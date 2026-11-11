@@ -150,7 +150,7 @@ import Testing
             })
             var state = RecordingsState(callsFolder: source)
             let handler = RecordingsEffectHandler(calls: SummaryCalls(storage: storage, deleted: { _ in }), reserve: { true }, release: {},
-                storeFolder: { folder in try await storage.commitFolder(folder) { try preferences.updateCallsFolder(folder) } })
+                storeFolder: { folder in try await storage.commitFolder(folder) { try preferences.updateCallsFolder(folder) } }, describe: russianSettings.callsFailure)
             func send(_ event: RecordingsEvent) async {
                 var next: RecordingsEvent? = event
                 while let event = next {
@@ -238,7 +238,7 @@ import Testing
             let storage = SummaryStorage(folder: source, timeZone: .gmt, journal: root.appendingPathComponent("roots.json"))
             var state = RecordingsState(callsFolder: source)
             let handler = RecordingsEffectHandler(calls: SummaryCalls(storage: storage, deleted: { _ in }), reserve: { true }, release: {},
-                storeFolder: { folder in try await storage.commitFolder(folder, commit: {}) })
+                storeFolder: { folder in try await storage.commitFolder(folder, commit: {}) }, describe: russianSettings.callsFailure)
             var observedMoves: [CallsFolderMove] = []
             func send(_ event: RecordingsEvent) async {
                 var next: RecordingsEvent? = event

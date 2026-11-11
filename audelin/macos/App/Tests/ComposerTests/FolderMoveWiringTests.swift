@@ -93,7 +93,7 @@ struct FolderMoveWiringTests {
             let spy = CallsMoveSpy()
             let inputs = makeRecordings(handler: .init(calls: spy,
                 reserve: { await rig.menu.reserveCallsFolder() },
-                release: { await rig.menu.releaseCallsFolder() }, storeFolder: { await spy.store($0) }),
+                release: { await rig.menu.releaseCallsFolder() }, storeFolder: { await spy.store($0) }, describe: russianSettings.callsFailure),
                 text: SettingsText(language: .russian), initial: .init(callsFolder: rig.root))
             let calls = AudelinCalls(inputs: inputs, timeZone: .gmt, recordingState: { rig.menu.state },
                                     location: { _ in rig.root }, openFolder: { _ in true }, present: {})
@@ -135,7 +135,7 @@ struct FolderMoveWiringTests {
             let spy = CallsMoveSpy()
             let inputs = makeRecordings(handler: .init(calls: spy,
                 reserve: { await rig.menu.reserveCallsFolder() },
-                release: { await rig.menu.releaseCallsFolder() }, storeFolder: { await spy.store($0) }),
+                release: { await rig.menu.releaseCallsFolder() }, storeFolder: { await spy.store($0) }, describe: russianSettings.callsFailure),
                 text: SettingsText(language: .russian), initial: .init(callsFolder: rig.root))
             let calls = AudelinCalls(inputs: inputs, timeZone: .gmt, recordingState: { rig.menu.state },
                                     location: { _ in rig.root }, openFolder: { _ in true }, present: {})

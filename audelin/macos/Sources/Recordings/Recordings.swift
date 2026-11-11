@@ -163,9 +163,12 @@ public struct RecordingsEffectHandler: Sendable {
     private let reserve: @Sendable () async -> Bool
     private let release: @Sendable () async -> Void
     private let storeFolder: @Sendable (URL) async throws -> Void
+    private let describe: @Sendable (any Error) -> String
+    /// `describe` writes the sentence a failure shows, in the language the UI chose.
     public init(calls: any RecordingsCalls, reserve: @escaping @Sendable () async -> Bool,
-                release: @escaping @Sendable () async -> Void, storeFolder: @escaping @Sendable (URL) async throws -> Void) {
-        self.calls = calls; self.reserve = reserve; self.release = release; self.storeFolder = storeFolder
+                release: @escaping @Sendable () async -> Void, storeFolder: @escaping @Sendable (URL) async throws -> Void,
+                describe: @escaping @Sendable (any Error) -> String) {
+        self.calls = calls; self.reserve = reserve; self.release = release; self.storeFolder = storeFolder; self.describe = describe
     }
 
     public func handle(_ effect: RecordingsEffect) -> AsyncStream<RecordingsEvent> {
@@ -184,22 +187,22 @@ public struct RecordingsEffectHandler: Sendable {
         case .releaseMove: await release(); return .moveReleased
         case let .prepareMove(destination):
             do { return .movePrepared(try await calls.prepareMove(to: destination)) }
-            catch { return .movePreparationFailed(error.localizedDescription) }
+            catch { return .movePreparationFailed(describe(error)) }
         case let .moveCall(id, destination):
             do { return .callMoved(id: id, bytes: try await calls.move(id: id, to: destination)) }
-            catch { return .callMoveFailed(id: id, reason: error.localizedDescription) }
+            catch { return .callMoveFailed(id: id, reason: describe(error)) }
         case let .storeFolder(destination):
             do { try await storeFolder(destination); return .folderStored }
-            catch { return .folderStoreFailed(error.localizedDescription) }
+            catch { return .folderStoreFailed(describe(error)) }
         case .list:
             do { return .listed(try await calls.list()) }
-            catch { return .listFailed(error.localizedDescription) }
+            catch { return .listFailed(describe(error)) }
         case let .rename(id, title):
             do { try await calls.rename(id: id, title: title); return .renamed(id) }
-            catch { return .renameFailed(id: id, reason: error.localizedDescription) }
+            catch { return .renameFailed(id: id, reason: describe(error)) }
         case let .delete(id):
             do { try await calls.delete(id: id); return .deleted(id) }
-            catch { return .deleteFailed(id: id, reason: error.localizedDescription) }
+            catch { return .deleteFailed(id: id, reason: describe(error)) }
         }
     }
 }

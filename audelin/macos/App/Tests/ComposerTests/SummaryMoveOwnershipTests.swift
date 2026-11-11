@@ -44,7 +44,7 @@ import Testing
                         }))
                 })
             let handler = RecordingsEffectHandler(calls: SummaryCalls(storage: storage, deleted: { _ in }), reserve: { true }, release: {},
-                storeFolder: { _ in stored.withLock { $0 = true } })
+                storeFolder: { _ in stored.withLock { $0 = true } }, describe: russianSettings.callsFailure)
             var state = RecordingsState(callsFolder: source)
             var events: [RecordingsEvent] = []
             func send(_ event: RecordingsEvent) async {

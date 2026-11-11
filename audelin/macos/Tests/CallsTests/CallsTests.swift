@@ -221,8 +221,9 @@ struct CallsTests {
                                 rename: { _, _ in throw POSIXError(.EACCES) },
                                 remove: { url in try FileManager.default.removeItem(at: url.appendingPathComponent("kept")); throw POSIXError(.EACCES) }))
             await #expect(throws: POSIXError(.EACCES)) { try sut.rename(id: "2026.10.24-1405", title: "New") }
-            do { try sut.delete(id: "2026.10.24-1405"); Issue.record("Deletion should fail") }
-            catch { #expect(error.localizedDescription.contains("часть папки могла остаться")) }
+            await #expect(throws: CallsFailure.partialDelete(folder: call.lastPathComponent, reason: POSIXError(.EACCES).localizedDescription)) {
+                try sut.delete(id: "2026.10.24-1405")
+            }
             #expect(await exists(call))
             #expect(try sut.list().map(\.title) == ["Zoom"])
         }

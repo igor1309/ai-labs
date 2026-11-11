@@ -150,7 +150,8 @@ struct RecordingsMoveTests {
         let handler = RecordingsEffectHandler(calls: spy,
             reserve: { if case let .reserved(value) = try? await spy.request(.reserveMove) { return value }; return false },
             release: { _ = try? await spy.request(.releaseMove) },
-            storeFolder: { _ = try await spy.request(.storeFolder($0)) })
+            storeFolder: { _ = try await spy.request(.storeFolder($0)) },
+            describe: { $0.localizedDescription })
         await expect(handler, with: test.effect, toDeliver: test.event, on: { await spy.complete(test.answer) })
         #expect(await spy.received == [test.effect])
     }
