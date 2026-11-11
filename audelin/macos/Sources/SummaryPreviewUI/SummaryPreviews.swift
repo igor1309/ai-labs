@@ -1,3 +1,4 @@
+import AppKit
 /// The preview's named states, drawn by the Xcode previews and compared with
 /// reference images by the tests.
 public enum SummaryPreviews {
@@ -31,5 +32,10 @@ public enum SummaryPreviews {
 
     public static func state(_ name: String) -> SummaryPreviewState {
         states.first { $0.name == name }!.state
+    }
+
+    /// The notes' source as plain text, for Xcode previews, which have no Markdown renderer.
+    public static func plain(_ source: String, _ style: NotesStyle) -> NSAttributedString {
+        NSAttributedString(string: source, attributes: [.font: style.body, .foregroundColor: style.text])
     }
 }

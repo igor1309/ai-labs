@@ -1,5 +1,6 @@
 import AppKit
 import Composer
+import NotesMarkdown
 import SummaryPreviewUI
 import SwiftUI
 
@@ -90,7 +91,13 @@ func makeSummaryPanel() -> NSPanel {
 /// The panel's content: the preview view of one call.
 @MainActor
 func summaryContent(_ state: SummaryPreviewState, copy: @escaping () -> Void) -> NSView {
-    NSHostingView(rootView: SummaryPreviewView(state: state, copy: copy))
+    NSHostingView(rootView: SummaryPreviewView(state: state, copy: copy, render: renderNotes))
+}
+
+/// The preview's notes, rendered from Markdown in the view's style.
+func renderNotes(_ source: String, _ style: NotesStyle) -> NSAttributedString {
+    NotesMarkdown.render(source, style: .init(body: style.body, headings: style.headings, code: style.code, text: style.text,
+                                              secondary: style.secondary, codeBackground: style.codeBackground, rule: style.rule))
 }
 
 /// Puts the notes' Markdown on the pasteboard as plain text.

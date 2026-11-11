@@ -90,6 +90,20 @@ struct PreviewPanelTests {
         #expect(source.closes == ["preview", "window"] && window.orders == ["front", "out", "front", "out"])
     }
 
+    @Test func theNotesRendererDrawsMarkdownInTheViewsStyle() throws {
+        let heading = NSFont.boldSystemFont(ofSize: 20), body = NSFont.systemFont(ofSize: 13)
+        let style = NotesStyle(body: body, headings: [heading], code: .monospacedSystemFont(ofSize: 12, weight: .regular),
+                               text: .red, secondary: .gray, codeBackground: .white, rule: .gray)
+
+        let rendered = renderNotes("# Итоги\n\nтекст", style)
+
+        #expect(rendered.string == "Итоги\nтекст")
+        #expect(rendered.attribute(.font, at: 0, effectiveRange: nil) as? NSFont == heading)
+        let bodyAt = (rendered.string as NSString).range(of: "текст").location
+        #expect(rendered.attribute(.font, at: bodyAt, effectiveRange: nil) as? NSFont == body)
+        #expect(rendered.attribute(.foregroundColor, at: bodyAt, effectiveRange: nil) as? NSColor == .red)
+    }
+
     @Test func theUtilityPanelFloatsHidesWithTheAppAndKeepsItsPlace() {
         let panel = makeSummaryPanel()
         defer { panel.close() }

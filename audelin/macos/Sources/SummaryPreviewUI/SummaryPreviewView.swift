@@ -1,19 +1,41 @@
 import AppKit
 import GlassLedger
-import NotesMarkdown
 import SwiftUI
+
+/// The fonts and colours the notes are drawn with.
+public struct NotesStyle {
+    public let body: NSFont
+    public let headings: [NSFont]
+    public let code: NSFont
+    public let text: NSColor
+    public let secondary: NSColor
+    public let codeBackground: NSColor
+    public let rule: NSColor
+
+    public init(body: NSFont, headings: [NSFont], code: NSFont, text: NSColor, secondary: NSColor,
+                codeBackground: NSColor, rule: NSColor) {
+        self.body = body; self.headings = headings; self.code = code; self.text = text
+        self.secondary = secondary; self.codeBackground = codeBackground; self.rule = rule
+    }
+}
 
 /// One call's notes: a header with its title, date and duration, the copy
 /// button, and the notes as selectable formatted text.
 public struct SummaryPreviewView: View {
     private let state: SummaryPreviewState
     private let copy: () -> Void
+    private let render: (String, NotesStyle) -> NSAttributedString
     @Environment(\.colorScheme) private var scheme
     private var tokens: GlassLedger { .for(scheme) }
 
-    public init(state: SummaryPreviewState, copy: @escaping () -> Void) {
+    /// `render` turns the notes' Markdown into formatted text in the given style.
+    public init(state: SummaryPreviewState, copy: @escaping () -> Void,
+                render: @escaping (String, NotesStyle) -> NSAttributedString) {
+        // The style resolves the bundled fonts as the body is first built.
+        GlassLedger.registerFonts()
         self.state = state
         self.copy = copy
+        self.render = render
     }
 
     public var body: some View {
@@ -38,7 +60,7 @@ public struct SummaryPreviewView: View {
             Rectangle().fill(tokens.rule).frame(height: 1)
             switch state.notes {
             case let .markdown(source):
-                NotesText(text: NotesMarkdown.render(source, style: style), background: NSColor(tokens.surface))
+                NotesText(text: render(source, style), background: NSColor(tokens.surface))
             case let .unreadable(reason):
                 Text(reason)
                     .font(tokens.ui(tokens.typeSmall)).foregroundStyle(tokens.rec)
@@ -50,11 +72,10 @@ public struct SummaryPreviewView: View {
             }
         }
         .background(tokens.surface)
-        .onAppear { GlassLedger.registerFonts() }
     }
 
-    private var style: NotesMarkdown.Style {
-        NotesMarkdown.Style(
+    private var style: NotesStyle {
+        NotesStyle(
             body: font(tokens.fontUi, tokens.typeBody),
             headings: [font(tokens.fontUi, tokens.typeTitle, .semibold), font(tokens.fontUi, tokens.typeBody, .semibold),
                        font(tokens.fontUi, tokens.typeSmall, .semibold)],
