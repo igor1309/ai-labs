@@ -53,6 +53,7 @@ TARGETS = {
     "SummaryPreviewUI": ("ui", "shows one call's notes", 6),
     "Recordings": ("machines", "confirms and serialises call actions", 5),
     "Calls": ("storage", "lists and manages recorded folders", 7),
+    "CallsSearch": ("machines", "finds a query in a call's\ntitle, transcript and notes", 1),
     "PanelUI": ("ui", "the live panel and its transcript", 0),
     "SettingsUI": ("ui", "the Settings window", 1),
     "GlassLedger": ("ui", "design tokens for both views", 2),
