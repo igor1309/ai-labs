@@ -80,7 +80,12 @@ struct AudelinApp: App {
         observeLanguage(model, settingsWindow: settingsWindow, callsWindow: callsWindow, previewPanel: previewPanel)
         observeAppearance(model)
         if let calls = model.calls {
-            callsWindow.install(content: NSHostingView(rootView: CallsContent(model: calls)))
+            let search = CallsSearchToolbar(placeholder: model.callsListText(.searchPlaceholder),
+                                            send: { text in Task { await calls.send(.search(text)) } })
+            callsNSWindow?.toolbar = search.toolbar
+            callsNSWindow?.toolbarStyle = .unified
+            callsWindow.install(content: NSHostingView(rootView: CallsContent(model: calls, focusSearch: { search.focus() })))
+            observeSearchLanguage(model, search: search)
             _ = connectPreview(panel: previewPanel, preview: { calls.preview }, panelWindow: summaryWindow,
                                callsWindow: callsNSWindow, center: .default,
                                closePreview: { calls.closePreview() }, windowClosed: { calls.windowClosed() })
@@ -216,10 +221,25 @@ func observeAppearance(_ model: AudelinMenu) {
     }
 }
 
+/// Keeps the search field's placeholder in the language Audelin is shown in.
+@MainActor
+func observeSearchLanguage(_ model: AudelinMenu, search: CallsSearchToolbar) {
+    Task { @MainActor in
+        for await _ in Observations({ model.language }) {
+            search.retitle(placeholder: model.callsListText(.searchPlaceholder))
+        }
+    }
+}
+
 private struct CallsContent: View {
     let model: AudelinCalls
+    let focusSearch: () -> Void
     var body: some View {
         CallsListView(state: model.state, text: model.listText, event: { event in Task { await model.send(event) } })
+            .background {
+                // ⌘F moves the keyboard into the toolbar's search field.
+                Button("", action: focusSearch).keyboardShortcut("f").opacity(0).accessibilityHidden(true)
+            }
     }
 }
 
