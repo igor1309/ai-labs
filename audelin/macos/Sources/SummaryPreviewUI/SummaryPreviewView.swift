@@ -54,24 +54,24 @@ public struct SummaryPreviewView: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .top, spacing: tokens.space12) {
-                VStack(alignment: .leading, spacing: tokens.space6) {
-                    Text(state.title).font(tokens.ui(tokens.typeDisplay, .semibold)).foregroundStyle(tokens.text)
+                VStack(alignment: .leading, spacing: tokens.space8) {
+                    Text(state.title).font(tokens.ui(tokens.typeDisplay, .semibold)).tracking(-0.8).foregroundStyle(tokens.text)
                         .textSelection(.enabled)
-                    Text("\(state.date) · \(state.duration)").font(tokens.data(tokens.typeBody)).foregroundStyle(tokens.gutter)
+                    Text("\(state.date) · \(state.duration)").font(tokens.ui(tokens.typeCaption)).foregroundStyle(tokens.sub)
                         .textSelection(.enabled)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 if case .markdown = state.notes {
                     Button(action: copy) {
-                        Text("Копировать").font(tokens.ui(tokens.typeBody, .semibold)).foregroundStyle(tokens.text)
-                            .padding(.vertical, tokens.space6).padding(.horizontal, tokens.space12)
+                        Text("Копировать").font(tokens.ui(tokens.typeSmall)).foregroundStyle(tokens.text)
+                            .padding(.vertical, tokens.space8).padding(.horizontal, tokens.space12)
                             .background(tokens.btn, in: .rect(cornerRadius: tokens.radiusControl))
                     }
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("preview.copy")
                 }
             }
-            .padding(.horizontal, tokens.space28).padding(.top, tokens.space28).padding(.bottom, tokens.space24)
+            .padding(.horizontal, tokens.space28).padding(.top, tokens.space24).padding(.bottom, tokens.space24)
             Rectangle().fill(tokens.rule).frame(height: 1)
             switch state.notes {
             case let .markdown(source):
@@ -94,15 +94,15 @@ public struct SummaryPreviewView: View {
         NotesStyle(
             body: tokens.nsUi(tokens.typeReading),
             headings: [tokens.nsUi(tokens.typeHeading, .semibold),
-                       tokens.nsData(tokens.typeSmall, .semibold),
+                       tokens.nsData(tokens.typeBody, .semibold),
                        tokens.nsUi(tokens.typeTopic, .semibold)],
             code: tokens.nsData(tokens.typeBody),
-            text: NSColor(tokens.text), secondary: NSColor(tokens.gutter),
+            text: NSColor(tokens.text), secondary: NSColor(tokens.sub),
             codeBackground: NSColor(tokens.btn), rule: NSColor(tokens.rule),
             lineHeight: tokens.lineReading, paragraphSpacing: tokens.space8,
             headingSpacing: [(before: tokens.space28, after: tokens.space8), (before: tokens.space28, after: tokens.space8),
                              (before: tokens.space20, after: tokens.space8)],
-            labelLevels: [2], labelKern: 1
+            labelLevels: [2]
         )
     }
 }
