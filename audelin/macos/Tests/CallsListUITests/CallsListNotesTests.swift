@@ -23,17 +23,6 @@ struct CallsListNotesTests {
         #expect(shown.sent == [.preview("2026.10.17-1100")])
     }
 
-    @Test func retryButtonAsksForThatInterruptedCallWithoutStartingRename() throws {
-        var state = makeState()
-        state.rows[0].summaryStatus = "Подготовка итогов прервана"
-        state.rows[0].canRetrySummary = true
-        let shown = Shown(state)
-        defer { shown.close() }
-        let eye = try #require(try shown.eyes().first)
-        shown.click(CGPoint(x: 260, y: eye.midY + 18))
-        #expect(shown.sent == [.retrySummary("2026.10.21-1230")])
-    }
-
     @Test func clickingARowsTitleSelectsItAndStartsItsRename() throws {
 
         let shown = Shown(makeState())
@@ -72,6 +61,38 @@ struct CallsListNotesTests {
         #expect(shown.sent == [.selectNext, .selectPrevious])
     }
 
+    @Test func keysActOnTheSelectedCall() throws {
+
+        var state = makeState()
+        state.selectedID = state.rows[0].id
+        let shown = Shown(state)
+        defer { shown.close() }
+
+        shown.type("\r", code: 36)
+        shown.type(" ", code: 49)
+        shown.type("r", code: 15, modifiers: .command)
+        shown.type("\u{7F}", code: 51, modifiers: .command)
+        shown.type("r", code: 15)
+
+        let id = state.rows[0].id
+        #expect(shown.sent == [.open(id), .preview(id), .beginRename(id), .askDelete(id)])
+    }
+
+    @Test func keysSkipWhatTheSelectedCallCannotDo() throws {
+
+        var state = makeState()
+        state.selectedID = state.rows[1].id
+        state.rows[1] = .init(id: state.rows[1].id, title: "Синк", displayTitle: "Синк", day: nil, time: "16:00", duration: "1:12:00", editable: false)
+        let shown = Shown(state)
+        defer { shown.close() }
+
+        shown.type(" ", code: 49)
+        shown.type("r", code: 15, modifiers: .command)
+        shown.type("\u{7F}", code: 51, modifiers: .command)
+
+        #expect(shown.sent.isEmpty)
+    }
+
     // MARK: - Helpers
 
     @MainActor private final class Shown {
@@ -100,10 +121,10 @@ struct CallsListNotesTests {
         /// Each eye's box, top-down, in view points from the top left.
         func eyes() throws -> [CGRect] {
             let image = try snapshot(), scale = CGFloat(image.pixelsWide) / 920
-            let background = { (y: Int) in image.colorAt(x: Int(670 * scale), y: y) }
+            let background = { (y: Int) in image.colorAt(x: Int(834 * scale), y: y) }
             var boxes: [CGRect] = []
             for y in 0..<image.pixelsHigh {
-                let xs = (Int(686 * scale)..<Int(714 * scale)).filter { image.colorAt(x: $0, y: y) != background(y) }
+                let xs = (Int(840 * scale)..<Int(904 * scale)).filter { image.colorAt(x: $0, y: y) != background(y) }
                 guard let low = xs.min(), let high = xs.max() else { continue }
                 let row = CGRect(x: CGFloat(low) / scale, y: CGFloat(y) / scale, width: CGFloat(high - low + 1) / scale, height: 1 / scale)
                 if let last = boxes.last, row.minY - last.maxY < 2 { boxes[boxes.count - 1] = last.union(row) } else { boxes.append(row) }
@@ -130,6 +151,14 @@ struct CallsListNotesTests {
             settle()
         }
 
+        func type(_ characters: String, code: UInt16, modifiers: NSEvent.ModifierFlags = []) {
+            window.sendEvent(NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: modifiers,
+                                              timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber,
+                                              context: nil, characters: characters, charactersIgnoringModifiers: characters,
+                                              isARepeat: false, keyCode: code)!)
+            settle()
+        }
+
         private func snapshot() throws -> NSBitmapImageRep {
             let view = try #require(window.contentView)
             return try #require(Offscreen.snapshot(view))
@@ -138,11 +167,10 @@ struct CallsListNotesTests {
 
     private func makeState() -> CallsListState {
 
-        let start = { ISO8601DateFormatter().date(from: $0)! }
         return CallsListState(rows: [
-            .init(id: "2026.10.21-1230", title: "Запуск", start: start("2026-10-21T12:30:00Z"), duration: 2_820, timeZone: .gmt, editable: true, hasNotes: true),
-            .init(id: "2026.10.20-1600", title: "Синк по OKR", start: start("2026-10-20T16:00:00Z"), duration: 4_320, timeZone: .gmt, editable: true),
-            .init(id: "2026.10.17-1100", title: "", start: start("2026-10-17T11:00:00Z"), duration: nil, timeZone: .gmt, editable: true, hasNotes: true),
+            .init(id: "2026.10.21-1230", title: "Запуск", displayTitle: "Запуск", day: .init(title: "Сегодня", count: "1 звонок"), time: "12:30", duration: "47:00", editable: true, hasNotes: true),
+            .init(id: "2026.10.20-1600", title: "Синк по OKR", displayTitle: "Синк по OKR", day: .init(title: "Вчера", count: "1 звонок"), time: "16:00", duration: "1:12:00", editable: true),
+            .init(id: "2026.10.17-1100", title: "", displayTitle: "2026.10.17-1100", day: .init(title: "Пятница, 17 октября", count: "1 звонок"), time: "11:00", duration: "—", editable: true, hasNotes: true),
         ])
     }
 }

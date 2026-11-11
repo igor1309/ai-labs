@@ -1,5 +1,6 @@
 import Foundation
 import Calls
+import CallsListUI
 import IMRxObservation
 import Observation
 import Preferences
@@ -17,6 +18,7 @@ final class AudelinSummaries {
     private var coordinator: SummaryCoordinatorModel!
     private var jobs: SummaryCoordinatorJobsAdapter!
     private(set) var retryable: Set<String> = []
+    private(set) var badges: [String: CallsListState.Row.Summary] = [:]
     private let preferences: PreferencesStore
     init(files: SummaryFiles.Files, runtime: SummaryRuntime.Runtime, preferences: PreferencesStore, sink: any LogSink, load: (@Sendable (String) async throws -> SummaryFiles.Record?)? = nil) {
         self.preferences = preferences
@@ -26,6 +28,7 @@ final class AudelinSummaries {
             handler: handler, preferences: preferences, canDispatch: { [weak self] in self?.coordinator?.canDispatch == true }, changed: { [weak self] call, state in
                 if state.phase == .interrupted { self?.retryable.insert(call) }
                 else { self?.retryable.remove(call) }
+                self?.badges[call] = summaryBadge(state.phase)
                 self?.statuses[call] = state.status
             })
         self.jobs = jobs
@@ -33,6 +36,7 @@ final class AudelinSummaries {
     }
     func waiting(call: String) {
         guard preferences.read().notes.enabled else { return }
+        badges[call] = summaryBadge(.waiting)
         statuses[call] = summaryStatus(.waiting, false)
     }
     func callbacks(timeZone: TimeZone) -> SummaryCallbacks {
@@ -61,6 +65,7 @@ final class AudelinSummaries {
     func forget(call: String) async {
         await jobs.forget(call: call)
         retryable.remove(call)
+        badges.removeValue(forKey: call)
         statuses.removeValue(forKey: call)
     }
     func stopDispatch() { coordinator.send(.stopDispatch) }

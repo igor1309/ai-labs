@@ -2,39 +2,41 @@ import Foundation
 
 public struct CallsListState: Equatable, Sendable {
     public struct Row: Equatable, Identifiable, Sendable {
+        /// Where the call's summary stands, drawn as an icon; `summaryStatus` says it in words.
+        public enum Summary: Equatable, Sendable { case none, pending, failed }
+        public var summary: Summary
+        /// The header of the day this row opens; nil on a day's later rows.
+        public struct Day: Equatable, Sendable {
+            public let title: String
+            public let count: String
+            public init(title: String, count: String) { self.title = title; self.count = count }
+        }
+        public let day: Day?
         public var canRetrySummary: Bool
         public var summaryStatus: String
         /// The call has published notes, so its row offers the eye.
         public var hasNotes: Bool
         public let id: String
         public let title: String
-        public let date: String
+        /// The start time, HH:mm.
+        public let time: String
         public let displayTitle: String
         public let duration: String
         public let editable: Bool
-        public var folderName: String { id + (title.isEmpty ? "" : " " + title) }
 
-        public init(id: String, title: String, start: Date, duration: TimeInterval?, timeZone: TimeZone, editable: Bool, summaryStatus: String = "", hasNotes: Bool = false, canRetrySummary: Bool = false) {
+        public init(id: String, title: String, displayTitle: String, day: Day?, time: String, duration: String, editable: Bool,
+                    summaryStatus: String = "", hasNotes: Bool = false, canRetrySummary: Bool = false, summary: Summary = .none) {
+            self.summary = summary
             self.canRetrySummary = canRetrySummary
             self.summaryStatus = summaryStatus
             self.hasNotes = hasNotes
             self.id = id
             self.title = title
+            self.displayTitle = displayTitle
+            self.day = day
+            self.time = time
+            self.duration = duration
             self.editable = editable
-            let formatter = DateFormatter()
-            formatter.locale = Locale(identifier: "en_US_POSIX")
-            formatter.calendar = Calendar(identifier: .gregorian)
-            formatter.timeZone = timeZone
-            formatter.dateFormat = "dd.MM · HH:mm"
-            date = formatter.string(from: start)
-            formatter.dateFormat = "yyyy.MM.dd-HHmm"
-            displayTitle = title.isEmpty ? formatter.string(from: start) : title
-            if let duration, duration.isFinite, duration >= 0 {
-                let minutes = Int(min(duration / 60, Double(Int.max / 60)))
-                self.duration = minutes < 60 ? "\(minutes) мин" : "\(minutes / 60) ч \(minutes % 60) мин"
-            } else {
-                self.duration = "—"
-            }
         }
     }
 
@@ -47,6 +49,8 @@ public struct CallsListState: Equatable, Sendable {
     public var rows: [Row]
     public var editing: Editing?
     public var deleteID: String?
+    /// What the delete sheet says about the call it would delete.
+    public var deleteBody: String?
     public var busy: Bool
     public var failure: String?
     /// The selected call, if any.
@@ -54,16 +58,12 @@ public struct CallsListState: Equatable, Sendable {
     /// The call whose notes the preview shows, if it is shown.
     public var previewedID: String?
 
-    public init(rows: [Row] = [], editing: Editing? = nil, deleteID: String? = nil, busy: Bool = false, failure: String? = nil,
+    public init(rows: [Row] = [], editing: Editing? = nil, deleteID: String? = nil, deleteBody: String? = nil, busy: Bool = false, failure: String? = nil,
                 selectedID: String? = nil, previewedID: String? = nil) {
-        self.rows = rows; self.editing = editing; self.deleteID = deleteID; self.busy = busy; self.failure = failure
+        self.rows = rows; self.editing = editing; self.deleteID = deleteID; self.deleteBody = deleteBody; self.busy = busy; self.failure = failure
         self.selectedID = selectedID; self.previewedID = previewedID
     }
 
-    public var deleteBody: String? {
-        guard let row = rows.first(where: { $0.id == deleteID }) else { return nil }
-        return "«\(row.folderName)»: удалится вся папка звонка — аудио, расшифровки и саммари. Отменить нельзя."
-    }
 }
 
 public enum CallsListEvent: Equatable, Sendable {
