@@ -77,6 +77,28 @@ struct CallsWiringTests {
         }
     }
 
+    @Test func selectingAnotherCallSavesTheRenameUnderWay() async throws {
+        try await withComposition { rig in
+            let calls = try #require(rig.menu.calls)
+            try await make("2024.01.01-1000 Zoom", in: rig.root)
+            try await make("2024.01.01-0900 Meet", in: rig.root)
+            await rig.menu.perform(.showCalls)
+            await wait(calls) { !$0.busy && $0.rows.count == 2 }
+            await calls.send(.beginRename(a))
+            await calls.send(.editTitle("Picked"))
+            await calls.send(.select(b))
+            #expect(calls.state.editing == nil)
+            #expect(calls.state.selectedID == b)
+            await wait(calls) { state in !state.busy && state.rows.first { $0.id == a }?.title == "Picked" }
+
+            await calls.send(.beginRename(b))
+            await calls.send(.editTitle("Moved"))
+            await calls.send(.selectPrevious)
+            await wait(calls) { state in !state.busy && state.rows.first { $0.id == b }?.title == "Moved" }
+            #expect(try await names(in: rig.root) == ["2024.01.01-0900 Moved", "2024.01.01-1000 Picked"])
+        }
+    }
+
     @Test func deleteNeedsConfirmationMovesToTheTrashAndAFailureLeavesTheFolder() async throws {
         let trashed = Values<String>()
         try await withComposition(configure: { boundary in
