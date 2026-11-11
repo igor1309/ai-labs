@@ -1,10 +1,9 @@
 # Summary preview — QA
 
-The panel's view is driven by states built directly, rendered and compared
-with reference images, in light and dark. The Markdown rendering is
-checked on its attributed text. The AppKit panel is driven through a fake
-of its window, and on this Mac in a hands-on trial for what only the
-window server shows: ordering, app switching and a restart.
+The view is driven by states built directly, rendered and compared with
+reference images, in light and dark. The Markdown rendering is checked on
+its attributed text. Events the view sends are read back from its event
+closure. The call's own window is driven through a fake of its window.
 
 ## S-1 The header names the call
 
@@ -15,13 +14,13 @@ three in the header.
 
 A summary with two heading levels, nested and ordered lists, fenced code
 and a table renders to attributed text with heading fonts, list markers, a
-monospaced code run and a text table; a panel image shows them.
+monospaced code run and a text table; an image shows them.
 
 ## S-3 Any part can be selected
 
-The panel's text view is selectable and not editable; a range of it is
-selected and copied to a private pasteboard, which reads back exactly
-that range's text.
+The text view is selectable and not editable; a range of it is selected
+and copied to a private pasteboard, which reads back exactly that range's
+text.
 
 ## S-4 Copying the notes
 
@@ -34,37 +33,44 @@ for byte.
 A state carrying a read failure; the image shows the reason in place of
 the notes.
 
-## S-6 The panel stays above the list
+## S-13 Notes being prepared
 
-The fake window is made a floating utility panel. Missing trial: click and
-arrow through the calls list with the panel open, captured on screen.
+A preparing state; the image shows the spinner and «Подготовка итогов…».
 
-## S-7 The eye brings the panel forward
+## S-14 Notes that failed
 
-Pressing an eye orders the fake window front. Missing trial: the panel
-behind Settings comes in front on an eye, captured on screen.
+A failed state with a reason; the image shows the alert, «Не удалось
+подготовить итоги» and the reason.
 
-## S-8 Another app hides the panel
+## S-15 Retrying failed notes
 
-The fake window is set to hide when the app is inactive. Missing trial:
-switch to Finder, captured on screen.
+Pressing «Повторить итоги» sends the retry event for the call; the
+composition then derives the preparing state for it.
 
-## S-9 Coming back shows the panel
+## S-16 No notes while notes are off
 
-Missing trial: from S-8, switch back to Audelin; the panel shows at the
-same frame, captured on screen.
+A no-notes state with notes off; the image shows «Итогов нет» and the
+Settings hint.
 
-## S-10 The place holds across calls
+## S-17 No notes while notes are on
 
-The fake window keeps one panel for every call; showing another call
-changes its content and never its frame.
+A no-notes state with notes on; the image shows «Итогов нет» alone.
 
-## S-11 The place holds across restarts
+## S-18 Nothing selected
 
-The fake window is given the same frame autosave name on each creation.
-Missing trial: move and resize the panel, quit and reopen Audelin, open
-the panel; it opens at the same frame.
+A no-selection state; the image shows «Звонок не выбран».
 
-## S-12 The close button closes the panel
+## S-19 The call's actions
+
+The ⋯ menu's items are built from a state with failed notes and from one
+with notes; each item sends its event: open, rename, delete, and retry
+only for failed notes.
+
+## S-20 Nothing to copy
+
+Preparing, failed, no-notes and no-selection states; each image shows no
+«Копировать» and no ⋯.
+
+## S-12 The close button closes the call's own window
 
 The window's close sends close; the fake window is ordered out.
