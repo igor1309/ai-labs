@@ -41,6 +41,7 @@ public struct CallsListView: View {
         .background(tokens.win)
         .focusable()
         .focusEffectDisabled()
+        .onExitCommand { if state.editing != nil { event(.cancelRename) } }
         .onKeyPress(keys: [.downArrow, .upArrow]) { press in
             event(press.key == .downArrow ? .selectNext : .selectPrevious)
             return .handled
@@ -56,8 +57,8 @@ public struct CallsListView: View {
         .onAppear { GlassLedger.registerFonts(); editing = state.editing != nil }
     }
 
-    /// The whole row is a button that selects it; the title, the eye and the
-    /// actions inside it take their own clicks.
+    /// The whole row is a button that selects it; the eye and the actions
+    /// inside it take their own clicks. Renaming starts only from the menu or ⌘R.
     private func callRow(_ row: CallsListState.Row) -> some View {
         Button { event(.select(row.id)) } label: { rowContent(row).contentShape(.rect) }
             .buttonStyle(.plain)
@@ -107,10 +108,7 @@ public struct CallsListView: View {
                     .background(tokens.surface, in: .rect(cornerRadius: tokens.radiusControl))
                     .overlay(RoundedRectangle(cornerRadius: tokens.radiusControl).stroke(tokens.me, lineWidth: 1.5))
                 } else {
-                    Button { event(.select(row.id)); event(.beginRename(row.id)) } label: {
-                        title(row).frame(maxWidth: .infinity, alignment: .leading).contentShape(.rect)
-                    }
-                    .buttonStyle(.plain).disabled(!row.editable || state.busy)
+                    title(row).frame(maxWidth: .infinity, alignment: .leading).allowsHitTesting(false)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
