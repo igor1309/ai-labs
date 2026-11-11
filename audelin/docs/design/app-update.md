@@ -1,8 +1,7 @@
 # Brief: installed update in the menu bar
 
 Frames: "Screen 7b — Installed update" in
-[visual-language.pen](visual-language.pen), with an export in
-[exports/screen-7b-installed-update.png](exports/screen-7b-installed-update.png).
+[visual-language.pen](visual-language.pen).
 
 ## What the owner sees
 
