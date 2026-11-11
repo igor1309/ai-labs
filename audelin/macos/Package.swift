@@ -3,6 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "Audelin",
+    defaultLocalization: "ru",
     platforms: [.macOS(.v26)],
     products: [
         .library(name: "SummarySettings", targets: ["SummarySettings"]),
@@ -144,7 +145,8 @@ let package = Package(
             name: "LiveText"
         ),
         .target(
-            name: "MenuBar"
+            name: "MenuBar",
+            resources: [.process("Resources")]
         ),
         .target(
             name: "MicrophoneCapture"
