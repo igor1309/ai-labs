@@ -2,6 +2,8 @@
 
 ## 2026-11-11
 
+- LAB-1180: Settings opens on a General tab with a language picker (System, Русский, English). The menu bar, live panel, Settings, calls list and notes preview switch at once with no relaunch; System follows macOS and falls back to English. Transcription and summaries are unchanged.
+
 - LAB-1177: Retried notes appear in the open calls window and replace an open preview as soon as they finish. Updates also wait for another instance’s retry and unresolved summary ownership.
 
 - LAB-1177: Automatic updates wait for active call summaries to finish. Interrupted summaries can be retried explicitly from the calls list using their saved transcript and settings.
