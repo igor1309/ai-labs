@@ -31,7 +31,7 @@ final class CallsWindow {
         self.shown = shown
         window.title = "Звонки"
         window.isReleasedWhenClosed = false
-        window.minSize = NSSize(width: 860, height: 360)
+        window.minSize = NSSize(width: 560, height: 360)
         if !window.setFrameUsingName(Self.frameName) { window.center() }
         window.setFrameAutosaveName(Self.frameName)
     }

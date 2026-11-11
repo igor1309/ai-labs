@@ -46,4 +46,22 @@ struct CallsListPreviewTests {
         let outcome = try ReferenceImage.compare(image, with: url)
         #expect([.matches, .recorded].contains(outcome))
     }
+
+    /// At the window's minimum width every column still shows; a long title gives way with an ellipsis.
+    @Test(arguments: [ColorScheme.light, .dark])
+    func minimumWidthKeepsEveryColumn(scheme: ColorScheme) throws {
+
+        GlassLedger.registerFonts()
+        let host = Offscreen.host(
+            CallsListView(state: CallsListPreviews.state("long-title"), event: { _ in })
+                .environment(\.colorScheme, scheme).environment(\.controlActiveState, .key),
+            size: CGSize(width: 560, height: 420), scheme: scheme
+        )
+        let image = try #require(Offscreen.snapshot(host))
+        let url = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .appendingPathComponent("References/minimum-width-\(scheme == .dark ? "dark" : "light").png")
+
+        let outcome = try ReferenceImage.compare(image, with: url)
+        #expect([.matches, .recorded].contains(outcome))
+    }
 }
