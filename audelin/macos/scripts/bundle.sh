@@ -11,7 +11,12 @@ mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 bin=$(swift build --package-path App --scratch-path "$scratch" -c release --show-bin-path)
 cp "$bin/Audelin" "$app/Contents/MacOS/Audelin"
 cp -R "$bin"/Audelin_*.bundle "$app/Contents/Resources/"
-cat > "$app/Contents/Info.plist" <<'PLIST'
+# The build number is trunk's commit count, so each installed update reads
+# higher than the last; the About panel names the commit it was built from.
+build=$(git rev-list --count HEAD 2>/dev/null || echo 0)
+commit=$(git rev-parse --short HEAD 2>/dev/null || echo unknown)
+built=$(date +%Y-%m-%d)
+cat > "$app/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -20,8 +25,9 @@ cat > "$app/Contents/Info.plist" <<'PLIST'
     <key>CFBundleIdentifier</key><string>dev.igor1309.audelin</string>
     <key>CFBundleName</key><string>Audelin</string>
     <key>CFBundlePackageType</key><string>APPL</string>
-    <key>CFBundleShortVersionString</key><string>0.1</string>
-    <key>CFBundleVersion</key><string>1</string>
+    <key>CFBundleShortVersionString</key><string>0.1.$build</string>
+    <key>CFBundleVersion</key><string>$commit</string>
+    <key>NSHumanReadableCopyright</key><string>© 2026 Igor Malyarov · сборка $built</string>
     <key>LSMinimumSystemVersion</key><string>26.0</string>
     <key>LSUIElement</key><true/>
     <key>NSMicrophoneUsageDescription</key><string>Audelin записывает вашу сторону звонка.</string>
@@ -29,6 +35,16 @@ cat > "$app/Contents/Info.plist" <<'PLIST'
 </dict>
 </plist>
 PLIST
+
+# The About panel shows Credits.html under the version: what Audelin is and
+# where its source lives.
+cat > "$app/Contents/Resources/Credits.html" <<'HTML'
+<html><head><meta charset="utf-8"></head>
+<body style="font: 11px -apple-system; text-align: center">
+<p>Запись звонков в два трека, живая расшифровка и заметки после звонка.</p>
+<p><a href="https://github.com/igor1309/audelin">github.com/igor1309/audelin</a></p>
+</body></html>
+HTML
 
 partial=$(mktemp)
 trap 'rm -f "$partial"' EXIT

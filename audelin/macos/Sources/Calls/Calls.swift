@@ -42,6 +42,7 @@ public struct Calls: Sendable {
     private func rename(_ source: URL, _ target: URL) throws { try disk.rename(source, target) }
     private func copy(_ source: URL, _ target: URL) throws { try disk.copy(source, target) }
     private func remove(_ url: URL) throws { try disk.remove(url) }
+    private func trash(_ url: URL) throws { try disk.trash(url) }
 
     public func list() throws -> [Call] {
         try folders(in: folder).map { url, name in
@@ -76,8 +77,8 @@ public struct Calls: Sendable {
 
     public func delete(id: String) throws {
         let source = try location(id: id)
-        do { try remove(source) }
-        catch { throw CallsFailure.partialDelete(folder: source.lastPathComponent, reason: error.localizedDescription) }
+        do { try trash(source) }
+        catch { throw CallsFailure.trashFailed(folder: source.lastPathComponent, reason: error.localizedDescription) }
     }
 
     public func bytes(id: String) throws -> Int64 { try size(location(id: id)) }
@@ -295,18 +296,20 @@ public enum CallsFailure: Error, Equatable, Sendable {
     /// The title has a character a folder name cannot hold.
     case invalidTitle
     /// Removing the folder stopped part way; some of it may remain.
-    case partialDelete(folder: String, reason: String)
+    case trashFailed(folder: String, reason: String)
     /// The copy's file sizes differ from the source's.
     case sizeMismatch
 }
 
-/// The file system as `Calls` lists, renames, copies and removes folders.
+/// The file system as `Calls` lists, renames, copies, trashes and removes folders.
 public struct CallsDisk: Sendable {
 
     var children: @Sendable (URL) throws -> [URL]
     var values: @Sendable (URL) throws -> URLResourceValues
     var copy: @Sendable (URL, URL) throws -> Void
     var rename: @Sendable (URL, URL) throws -> Void
+    /// Moves a folder to the Trash of its volume, whole or not at all.
+    public var trash: @Sendable (URL) throws -> Void
     var remove: @Sendable (URL) throws -> Void
 
     /// The local file system; a rename never replaces an existing folder.
@@ -319,6 +322,7 @@ public struct CallsDisk: Sendable {
                 throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
             }
         },
+        trash: { try FileManager.default.trashItem(at: $0, resultingItemURL: nil) },
         remove: { try FileManager.default.removeItem(at: $0) }
     )
 }

@@ -1,5 +1,7 @@
 # Mizan BLE
 
+Landing page: index.html
+
 A proof of concept for paying in Mizan between two iOS devices over
 Bluetooth Low Energy. One app has two modes: the host (an iPad at the
 till) enters an amount and advertises it; the client (an iPhone) finds the

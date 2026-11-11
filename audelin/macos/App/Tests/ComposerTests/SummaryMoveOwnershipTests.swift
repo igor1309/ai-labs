@@ -38,6 +38,7 @@ import Testing
                                 retired.withLock { $0 = to }
                             }
                         },
+                            trash: { _ in throw POSIXError(.EPERM) },
                             remove: { url in
                             if retired.withLock({ $0 }) == url { throw POSIXError(.EIO) }
                             try FileManager.default.removeItem(at: url)
@@ -83,11 +84,11 @@ import Testing
                     try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
                 }
             }
-            let storage = SummaryStorage(folder: source, timeZone: .gmt, journal: journal)
+            let storage = SummaryStorage(folder: source, timeZone: .gmt, journal: journal, trash: removeForTrash)
             _ = try await storage.move(id: moved, to: target)
             try FileManager.default.moveItem(at: target, to: root.appendingPathComponent("offline"))
             await #expect(throws: (any Error).self) { _ = try await storage.move(id: remaining, to: target) }
-            let recovered = SummaryStorage(folder: source, timeZone: .gmt, journal: journal)
+            let recovered = SummaryStorage(folder: source, timeZone: .gmt, journal: journal, trash: removeForTrash)
             try await recovered.restore()
             #expect(try recovered.occupiedCallNames() == [moved])
             #expect(try await sameDirectory(recovered.location(id: remaining).deletingLastPathComponent(), source))
@@ -122,7 +123,7 @@ import Testing
                 try JSONEncoder().encode(SummaryStorage.Journal(moves: [id: move])).write(to: journal)
                 try FileManager.default.moveItem(at: cleanup, to: offline)
             }
-            let storage = SummaryStorage(folder: configured, timeZone: .gmt, journal: journal)
+            let storage = SummaryStorage(folder: configured, timeZone: .gmt, journal: journal, trash: removeForTrash)
             try await storage.restore()
             #expect(try await sameDirectory(storage.location(id: id).deletingLastPathComponent(), configured))
             let saved = try JSONDecoder().decode(SummaryStorage.Journal.self, from: Data(contentsOf: journal))
@@ -157,7 +158,7 @@ import Testing
                 try JSONEncoder().encode(SummaryStorage.Journal(moves: [id: move])).write(to: journal)
                 try FileManager.default.moveItem(at: owner, to: offline)
             }
-            let storage = SummaryStorage(folder: source, timeZone: .gmt, journal: journal)
+            let storage = SummaryStorage(folder: source, timeZone: .gmt, journal: journal, trash: removeForTrash)
             try await storage.restore()
             #expect(try String(contentsOf: other.appendingPathComponent("transcript.md"), encoding: .utf8) == "whole")
             try FileManager.default.moveItem(at: offline, to: owner)
@@ -179,7 +180,7 @@ import Testing
                 try JSONEncoder().encode(SummaryStorage.Journal(moves: [id: move])).write(to: journal)
                 try FileManager.default.moveItem(at: copied, to: renamed)
             }
-            let storage = SummaryStorage(folder: source, timeZone: .gmt, journal: journal)
+            let storage = SummaryStorage(folder: source, timeZone: .gmt, journal: journal, trash: removeForTrash)
             try await storage.restore()
             #expect(try await sameDirectory(storage.location(id: id), renamed))
             #expect(try await storage.list().map(\.title) == ["renamed"])
@@ -199,7 +200,7 @@ import Testing
                                       temporary: nested.deletingLastPathComponent().appendingPathComponent(".audelin-move-test"), phase: .removingSource)
                 try JSONEncoder().encode(SummaryStorage.Journal(moves: [id: move])).write(to: journal)
             }
-            let storage = SummaryStorage(folder: original.deletingLastPathComponent(), timeZone: .gmt, journal: journal)
+            let storage = SummaryStorage(folder: original.deletingLastPathComponent(), timeZone: .gmt, journal: journal, trash: removeForTrash)
             await #expect(throws: (any Error).self) { try await storage.restore() }
             #expect(try String(contentsOf: nested.appendingPathComponent("transcript.md"), encoding: .utf8) == "whole")
         }
@@ -222,10 +223,10 @@ import Testing
                 }
             }
             let journal = root.appendingPathComponent("moves.json")
-            let storage = SummaryStorage(folder: source, timeZone: .gmt, journal: journal)
+            let storage = SummaryStorage(folder: source, timeZone: .gmt, journal: journal, trash: removeForTrash)
             _ = try await storage.move(id: moved, to: target)
             await #expect(throws: (any Error).self) { _ = try await storage.move(id: id, to: target) }
-            let recovered = SummaryStorage(folder: source, timeZone: .gmt, journal: journal)
+            let recovered = SummaryStorage(folder: source, timeZone: .gmt, journal: journal, trash: removeForTrash)
             try await recovered.restore()
             #expect(try await recovered.list().map(\.id) == [moved, id])
             let files = Files(locations: recovered, disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("leases"))
@@ -261,7 +262,7 @@ import Testing
                 let move = Calls.Move(source: original, target: copied, temporary: temporary, phase: phase)
                 try JSONEncoder().encode(SummaryStorage.Journal(moves: [id: move])).write(to: journal)
             }
-            let recovered = SummaryStorage(folder: source, timeZone: .gmt, journal: journal)
+            let recovered = SummaryStorage(folder: source, timeZone: .gmt, journal: journal, trash: removeForTrash)
             try await recovered.restore()
             let expected = phase == .removingSource ? copied : original
             #expect(try await sameDirectory(recovered.location(id: id), expected))
@@ -312,6 +313,7 @@ import Testing
                             try FileManager.default.copyItem(at: from, to: to)
                         },
                             rename: { try FileManager.default.moveItem(at: $0, to: $1) },
+                            trash: { _ in throw POSIXError(.EPERM) },
                             remove: { try FileManager.default.removeItem(at: $0) }))
                 })
             try await storage.restore()
@@ -326,7 +328,7 @@ import Testing
             let pending = try JSONDecoder().decode(SummaryStorage.Journal.self, from: Data(contentsOf: journal))
             #expect(pending.moves[id]?.phase == .restoringSource)
             fail.withLock { $0 = false }
-            let recovered = SummaryStorage(folder: source, timeZone: .gmt, journal: journal)
+            let recovered = SummaryStorage(folder: source, timeZone: .gmt, journal: journal, trash: removeForTrash)
             try await #require(throws: Never.self) { try await recovered.restore() }
             #expect(try await sameDirectory(recovered.location(id: id).deletingLastPathComponent(), source))
             #expect(try String(contentsOf: source.appendingPathComponent(id + "/summary.md"), encoding: .utf8).hasSuffix("published to owner"))
@@ -348,12 +350,12 @@ import Testing
                 let move = Calls.Move(source: original, target: other, temporary: temporary, phase: .publishing)
                 try JSONEncoder().encode(SummaryStorage.Journal(moves: [id: move])).write(to: journal)
             }
-            let failing = SummaryStorage(folder: source, timeZone: .gmt, journal: journal, writeJournal: { record, url in
+            let failing = SummaryStorage(folder: source, timeZone: .gmt, journal: journal, trash: removeForTrash, writeJournal: { record, url in
                 if record.moves[id]?.phase == .source { throw CocoaError(.fileWriteNoPermission) }
                 try JSONEncoder().encode(record).write(to: url, options: .atomic)
             })
             try await failing.restore()
-            let recovered = SummaryStorage(folder: source, timeZone: .gmt, journal: journal)
+            let recovered = SummaryStorage(folder: source, timeZone: .gmt, journal: journal, trash: removeForTrash)
             try await recovered.restore()
             #expect(try await sameDirectory(recovered.location(id: id), original))
             #expect(try String(contentsOf: other.appendingPathComponent("transcript.md"), encoding: .utf8) == "unrelated")
@@ -384,6 +386,7 @@ import Testing
                             if fail.withLock({ $0 }) { throw CocoaError(.fileWriteOutOfSpace) }
                         },
                             rename: { try FileManager.default.moveItem(at: $0, to: $1) },
+                            trash: { _ in throw POSIXError(.EPERM) },
                             remove: {
                             if fail.withLock({ $0 }) { throw CocoaError(.fileWriteNoPermission) }
                             try FileManager.default.removeItem(at: $0)
@@ -428,6 +431,7 @@ import Testing
                                from.deletingLastPathComponent().lastPathComponent == "source", fail.withLock({ $0 }) { throw POSIXError(.EIO) }
                             guard renamex_np(from.path, to.path, UInt32(RENAME_EXCL)) == 0 else { throw POSIXError(.EIO) }
                         },
+                            trash: { _ in throw POSIXError(.EPERM) },
                             remove: { url in
                             if fail.withLock({ $0 }) {
                                 if step == "rollbackCleanup", url.lastPathComponent == id,
@@ -457,7 +461,7 @@ import Testing
             _ = try await files.claim(job); _ = try await files.start(job)
             try await files.publish(job, notes: "published to owner")
             fail.withLock { $0 = false }
-            let recovered = SummaryStorage(folder: source, timeZone: .gmt, journal: journal)
+            let recovered = SummaryStorage(folder: source, timeZone: .gmt, journal: journal, trash: removeForTrash)
             try await recovered.restore()
             #expect(try await sameDirectory(recovered.location(id: id), owner))
             #expect(try FileManager.default.contentsOfDirectory(atPath: source.path) == [id])

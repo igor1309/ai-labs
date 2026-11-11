@@ -26,6 +26,15 @@ func runtimeConfiguration(_ value: SummaryJobs.Job.Runtime) throws -> SummaryRun
     guard let kind = SummaryRuntime.Configuration.Kind(rawValue: value.kind) else { throw SummaryRuntime.Failure.configuration }
     return .init(kind: kind, model: value.model, program: value.program, endpoint: value.endpoint, credentialVariable: value.credentialVariable)
 }
+/// The calls list's icon for a summary phase.
+func summaryBadge(_ phase: SummaryJobs.State.Phase) -> CallsListState.Row.Summary {
+    switch phase {
+    case .idle, .succeeded: .none
+    case .waiting, .pending, .claiming, .observed, .running, .starting, .identifying, .checkpointing, .noting, .publishing, .saving: .pending
+    case .failed, .interrupted, .unavailable: .failed
+    }
+}
+
 extension CallsListText {
     /// A call's notes status as its calls list row shows it.
     func summaryStatus(_ phase: SummaryJobs.State.Phase, _ warning: Bool) -> String {

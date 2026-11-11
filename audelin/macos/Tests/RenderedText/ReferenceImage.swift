@@ -30,20 +30,29 @@ public enum ReferenceImage {
             return .differs(fraction: 1)
         }
         guard let actual = rgba(image), let expected = rgba(reference) else { return .differs(fraction: 1) }
-        // A plain loop over the raw bytes: tests run unoptimised, and a closure per pixel costs most of a second an image.
-        let changed = actual.withUnsafeBufferPointer { a in
-            expected.withUnsafeBufferPointer { e in
-                var count = 0, pixel = 0
-                while pixel < a.count {
-                    let red = Int(a[pixel]) - Int(e[pixel]), green = Int(a[pixel + 1]) - Int(e[pixel + 1]), blue = Int(a[pixel + 2]) - Int(e[pixel + 2])
-                    if red > 25 || red < -25 || green > 25 || green < -25 || blue > 25 || blue < -25 { count += 1 }
-                    pixel += 4
-                }
-                return count
-            }
-        }
+        let changed = changedPixels(actual, expected)
         let fraction = Double(changed) / Double(image.pixelsWide * image.pixelsHigh)
         return fraction <= 0.005 ? .matches : .differs(fraction: fraction)
+    }
+
+    /// Pixels whose red, green or blue moved past a tenth of a channel. A
+    /// plain loop over raw buffers: the tests run unoptimised, where a
+    /// closure per pixel costs most of a second an image on the main actor.
+    private static func changedPixels(_ actual: [UInt8], _ expected: [UInt8]) -> Int {
+
+        actual.withUnsafeBufferPointer { a in
+            expected.withUnsafeBufferPointer { e in
+                var changed = 0, pixel = 0
+                let count = a.count
+                while pixel < count {
+                    let r = Int(a[pixel]) &- Int(e[pixel]), g = Int(a[pixel &+ 1]) &- Int(e[pixel &+ 1])
+                    let b = Int(a[pixel &+ 2]) &- Int(e[pixel &+ 2])
+                    if r > 25 || r < -25 || g > 25 || g < -25 || b > 25 || b < -25 { changed &+= 1 }
+                    pixel &+= 4
+                }
+                return changed
+            }
+        }
     }
 
     /// The image's pixels as sRGB bytes, four to a pixel.

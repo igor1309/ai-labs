@@ -38,9 +38,12 @@ rename to an empty title gives the bare prefix.
 A folder `2026.10.24-1405 Синк` exists beside the call; renaming the call
 to `Синк` fails, and both folders keep their names and bytes.
 
-## S-6 A delete removes the call
+## S-6 A delete moves the call to the Trash
 
-The call's folder and its files are gone; a call beside it is unchanged.
+The call's folder is in the Trash with its files and gone from the calls
+folder; a call beside it is unchanged. The Trash is a stand-in folder
+through the disk binding, never the user's. A failed move to the Trash
+leaves the folder and its files where they were, and names the folder.
 
 ## S-7 A move keeps the call whole
 

@@ -55,6 +55,7 @@ struct ComposeFixture {
         boundary.time = clock.time
         boundary.preferredLanguages = { ["ru-RU"] }
         boundary.log = log
+        boundary.trash = removeForTrash
         configure(&boundary)
         let preferencesURL = root.appendingPathComponent("preferences.json")
         do {

@@ -7,27 +7,40 @@ public enum CallsListPreviews {
 
     /// The named states with their text in the given language.
     public static func states(in text: CallsListText) -> [(name: String, state: CallsListState)] {
-        let english = text.language == .english
-        let interrupted = english ? "Preparing the notes stopped; it won’t be retried automatically."
-            : "Подготовка итогов прервана; автоматического повтора не будет."
-        let sample = sample(text), notes = notes(text)
+        let words = Words(text)
+        let sample = sample(words), notes = notes(words)
         return [
-        ("calls", sample),
-        ("notes", notes),
-        ("summary-retry", with(sample) {
-            $0.rows[1].summaryStatus = interrupted
-            $0.rows[1].canRetrySummary = true
-        }),
-        ("summary-retry-failed", with(sample) {
-            $0.rows[1].summaryStatus = interrupted
-            $0.rows[1].canRetrySummary = true
-            $0.failure = english ? "Couldn’t retry the notes. The transcript and the earlier notes are kept."
-                : "Не удалось повторить подготовку итогов. Расшифровка и прежние итоги сохранены."
-        }),
-        ("notes-selected", with(notes) { $0.selectedID = $0.rows[1].id }),
-        ("notes-previewed", with(notes) { $0.selectedID = $0.rows[2].id; $0.previewedID = $0.rows[2].id }),
-        ("delete", with(sample) { $0.deleteID = $0.rows[0].id }),
-        ("rename", with(sample) { $0.editing = .init(id: $0.rows[0].id, title: $0.rows[0].title) }),
+            ("calls", sample),
+            ("notes", notes),
+            ("summary", with(sample) {
+                $0.rows[0].summary = .pending
+                $0.rows[0].summaryStatus = text(.summaryRunning)
+                $0.rows[1].summary = .failed
+                $0.rows[1].summaryStatus = text(.summaryInterrupted)
+                $0.rows[1].canRetrySummary = true
+            }),
+            ("summary-failed-banner", with(sample) {
+                $0.rows[1].summary = .failed
+                $0.rows[1].canRetrySummary = true
+                $0.failure = text(.summaryRetryFailed)
+            }),
+            ("long-title", with(notes) {
+                $0.rows[1] = .init(id: "2026.10.20-1600", title: words.long, displayTitle: words.long, day: .init(title: text(.yesterday), count: words.one),
+                                   time: "16:00", duration: "1:12:40", editable: true, hasNotes: true)
+            }),
+            ("older-year", with(sample) {
+                $0.rows[2] = .init(id: "2025.12.12-1030", title: words.retro, displayTitle: words.retro,
+                                   day: .init(title: words.olderDay, count: words.one), time: "10:30", duration: "1:05:12", editable: true)
+            }),
+            ("notes-selected", with(notes) { $0.selectedID = $0.rows[1].id }),
+            ("notes-previewed", with(notes) { $0.selectedID = $0.rows[2].id; $0.previewedID = $0.rows[2].id }),
+            ("delete", with(sample) {
+                $0.deleteID = $0.rows[0].id
+                $0.deleteBody = text(.deleteBody, "2026.10.21-1230 " + words.launch)
+            }),
+            ("empty", CallsListState()),
+            ("loading", CallsListState(busy: true)),
+            ("rename", with(sample) { $0.editing = .init(id: $0.rows[0].id, title: $0.rows[0].title) }),
         ]
     }
 
@@ -35,19 +48,35 @@ public enum CallsListPreviews {
         states(in: text).first { $0.name == name }!.state
     }
 
-    private static func sample(_ text: CallsListText) -> CallsListState {
-        let start = { ISO8601DateFormatter().date(from: $0)! }
-        let english = text.language == .english
-        return .init(rows: [
-            .init(id: "2026.10.21-1230", title: english ? "Launch: roles and SLA" : "Запуск: роли и SLA", start: start("2026-10-21T12:30:00Z"), duration: 2_820, timeZone: .gmt, text: text, editable: true),
-            .init(id: "2026.10.20-1600", title: english ? "Quarterly OKR sync" : "Синк по OKR на квартал", start: start("2026-10-20T16:00:00Z"), duration: 4_320, timeZone: .gmt, text: text, editable: true),
-            .init(id: "2026.10.17-1100", title: "", start: start("2026-10-17T11:00:00Z"), duration: nil, timeZone: .gmt, text: text, editable: true),
+    /// The sample calls' titles and day headers in the list's language.
+    private struct Words {
+        let launch, okr, retro, long, friday, olderDay, one, today, yesterday: String
+        init(_ text: CallsListText) {
+            let english = text.language == .english
+            launch = english ? "Launch: roles and SLA" : "Запуск: роли и SLA"
+            okr = english ? "Quarterly OKR sync" : "Синк по OKR на квартал"
+            retro = english ? "Year in review" : "Ретро за год"
+            long = english ? "Interview: iOS candidate — technical part, architecture, tests and questions on Swift Concurrency and SwiftUI"
+                : "Интервью: кандидат на iOS — техническая часть, архитектура, тесты и вопросы по Swift Concurrency и SwiftUI"
+            friday = english ? "Friday, October 17" : "Пятница, 17 октября"
+            olderDay = english ? "December 12, 2025" : "12 декабря 2025"
+            one = text(.callsOne, 1)
+            today = text(.today)
+            yesterday = text(.yesterday)
+        }
+    }
+
+    private static func sample(_ words: Words) -> CallsListState {
+        .init(rows: [
+            .init(id: "2026.10.21-1230", title: words.launch, displayTitle: words.launch, day: .init(title: words.today, count: words.one), time: "12:30", duration: "47:00", editable: true),
+            .init(id: "2026.10.20-1600", title: words.okr, displayTitle: words.okr, day: .init(title: words.yesterday, count: words.one), time: "16:00", duration: "1:12:00", editable: true),
+            .init(id: "2026.10.17-1100", title: "", displayTitle: "2026.10.17-1100", day: .init(title: words.friday, count: words.one), time: "11:00", duration: "—", editable: true),
         ])
     }
 
     /// A call with notes above one without, and another with notes below.
-    private static func notes(_ text: CallsListText) -> CallsListState {
-        with(sample(text)) { $0.rows[0].hasNotes = true; $0.rows[2].hasNotes = true }
+    private static func notes(_ words: Words) -> CallsListState {
+        with(sample(words)) { $0.rows[0].hasNotes = true; $0.rows[2].hasNotes = true }
     }
 
     private static func with(_ state: CallsListState, _ change: (inout CallsListState) -> Void) -> CallsListState {

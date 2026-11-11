@@ -63,7 +63,7 @@ extension SettingsText {
         case let .notFound(id): self(.callNotFound, id)
         case let .ambiguous(id): self(.callAmbiguous, id)
         case .invalidTitle: self(.callInvalidTitle)
-        case let .partialDelete(folder, reason): self(.callPartialDelete, folder, reason)
+        case let .trashFailed(folder, reason): self(.callTrashFailed, folder, reason)
         case .sizeMismatch: self(.callSizeMismatch)
         case nil: error.localizedDescription
         }

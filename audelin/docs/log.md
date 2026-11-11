@@ -2,6 +2,11 @@
 
 ## 2026-11-11
 
+- LAB-1218: Deleting a call moves its folder to the Trash, so it can be put back from Finder; the confirm says so, and a failed move leaves the folder and shows in the calls list.
+- The app menu has Settings… (⌘,), titled in the system language.
+- LAB-1204: The calls list groups calls by day, newest first, in one-line rows of a fixed height; summary status is an icon, actions are in a context menu, a hover ⋯ button and keys (Return, Space, ⌘R, ⌘⌫), and the window's minimum width is 560 pt.
+- The summary preview opens as the active window from the eye, and its text uses the app's type scale, matching the calls list and Settings.
+- The About panel shows the build number and commit, a short description, the copyright and a link to the public repository.
 - LAB-1180: Settings opens on a General tab with a language picker (System, Русский, English). The menu bar, live panel, Settings, calls list and notes preview switch at once with no relaunch; System follows macOS and falls back to English. Transcription and summaries are unchanged.
 
 - LAB-1177: Retried notes appear in the open calls window and replace an open preview as soon as they finish. Updates also wait for another instance’s retry and unresolved summary ownership.

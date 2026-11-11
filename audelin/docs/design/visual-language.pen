@@ -11297,6 +11297,44 @@
                       "fontWeight": "600"
                     }
                   ]
+                },
+                {
+                  "type": "frame",
+                  "id": "JVmGo",
+                  "name": "Button/Secondary/Icon",
+                  "reusable": true,
+                  "fill": "$btn",
+                  "cornerRadius": "$radius-control",
+                  "gap": "$space-6",
+                  "padding": [
+                    "$space-6",
+                    "$space-16"
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "bM7B1",
+                      "name": "Icon",
+                      "width": 14,
+                      "height": 14,
+                      "icon": "copy",
+                      "library": "lucide",
+                      "fill": "$text"
+                    },
+                    {
+                      "type": "text",
+                      "id": "KyiSu",
+                      "name": "Label",
+                      "fill": "$text",
+                      "content": "Копировать",
+                      "lineHeight": 1.45,
+                      "fontFamily": "$font-ui",
+                      "fontSize": "$type-small",
+                      "fontWeight": "600"
+                    }
+                  ]
                 }
               ]
             }
@@ -49472,373 +49510,316 @@
           "name": "Summary preview",
           "reusable": true,
           "width": 440,
+          "fill": "$surface",
           "layout": "vertical",
           "children": [
             {
               "type": "frame",
-              "id": "WSt6E",
+              "id": "yWh73",
               "name": "Header",
               "width": "fill_container",
               "stroke": "$rule",
               "strokeWidth": {
                 "bottom": 1
               },
-              "gap": "$space-12",
-              "padding": "$space-16",
-              "alignItems": "center",
+              "layout": "vertical",
+              "gap": "$space-6",
+              "padding": [
+                "$space-20",
+                "$space-24"
+              ],
               "children": [
                 {
                   "type": "frame",
-                  "id": "E7hkF",
-                  "name": "Heading",
+                  "id": "TWQbJ",
+                  "name": "Title row",
                   "width": "fill_container",
-                  "layout": "vertical",
-                  "gap": "$space-2",
+                  "gap": "$space-12",
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
                   "children": [
                     {
                       "type": "text",
-                      "id": "fuCCN",
+                      "id": "mSwJV",
                       "name": "Title",
                       "fill": "$text",
-                      "textGrowth": "fixed-width",
-                      "width": "fill_container",
-                      "content": "Zoom",
-                      "lineHeight": 1.45,
+                      "content": "iOS Daily",
                       "fontFamily": "$font-ui",
                       "fontSize": "$type-title",
                       "fontWeight": "600"
                     },
                     {
-                      "type": "text",
-                      "id": "YWSdV",
-                      "name": "Meta",
-                      "fill": "$gutter",
-                      "textGrowth": "fixed-width",
-                      "width": "fill_container",
-                      "content": "17.10.2026 · 11:00 · 28 мин",
-                      "lineHeight": 1.45,
-                      "fontFamily": "$font-data",
-                      "fontSize": "$type-small",
-                      "fontWeight": "normal"
+                      "id": "WHRz7",
+                      "type": "ref",
+                      "ref": "JVmGo",
+                      "name": "Copy"
                     }
                   ]
                 },
                 {
-                  "id": "XSJJY",
-                  "type": "ref",
-                  "ref": "wmGeO",
-                  "name": "Copy",
-                  "descendants": {
-                    "EWsWH": {
-                      "content": "Копировать"
-                    }
-                  }
+                  "type": "text",
+                  "id": "fT5Lv",
+                  "name": "Meta",
+                  "fill": "$sub",
+                  "content": "11.11  ·  10:00  ·  14 мин",
+                  "fontFamily": "$font-ui",
+                  "fontSize": "$type-caption",
+                  "fontWeight": "normal"
                 }
               ]
             },
             {
               "type": "frame",
-              "id": "UExOg",
+              "id": "e6aLbJ",
               "name": "Body",
               "width": "fill_container",
               "layout": "vertical",
-              "gap": "$space-8",
-              "padding": "$space-16",
+              "gap": "$space-20",
+              "padding": [
+                "$space-20",
+                "$space-24"
+              ],
               "children": [
                 {
-                  "type": "text",
-                  "id": "C5uH45",
-                  "name": "H Итоги",
-                  "fill": "$text",
-                  "textGrowth": "fixed-width",
-                  "width": "fill_container",
-                  "content": "Итоги",
-                  "lineHeight": 1.45,
-                  "fontFamily": "$font-ui",
-                  "fontSize": "$type-body",
-                  "fontWeight": "600"
-                },
-                {
-                  "type": "text",
-                  "id": "k2k94J",
-                  "name": "Bullet",
-                  "fill": "$text",
-                  "textGrowth": "fixed-width",
-                  "width": "fill_container",
-                  "content": "• RACI по запуску: accountable за SLA поддержки — я, ведёт команда Ильи.",
-                  "lineHeight": 1.45,
-                  "fontFamily": "$font-ui",
-                  "fontSize": "$type-body",
-                  "fontWeight": "normal"
-                },
-                {
-                  "type": "text",
-                  "id": "wWYkP",
-                  "name": "Bullet",
-                  "fill": "$text",
-                  "textGrowth": "fixed-width",
-                  "width": "fill_container",
-                  "content": "• On-call держит та же команда; ротация — понедельная.",
-                  "lineHeight": 1.45,
-                  "fontFamily": "$font-ui",
-                  "fontSize": "$type-body",
-                  "fontWeight": "normal"
-                },
-                {
-                  "type": "text",
-                  "id": "UqO9r",
-                  "name": "Bullet",
-                  "fill": "$text",
-                  "textGrowth": "fixed-width",
-                  "width": "fill_container",
-                  "content": "• Дашборд NPS никто не собирал; Илья проверит.",
-                  "lineHeight": 1.45,
-                  "fontFamily": "$font-ui",
-                  "fontSize": "$type-body",
-                  "fontWeight": "normal"
-                },
-                {
-                  "type": "text",
-                  "id": "pGdAd",
-                  "name": "H Решения",
-                  "fill": "$text",
-                  "textGrowth": "fixed-width",
-                  "width": "fill_container",
-                  "content": "Решения",
-                  "lineHeight": 1.45,
-                  "fontFamily": "$font-ui",
-                  "fontSize": "$type-body",
-                  "fontWeight": "600"
-                },
-                {
-                  "type": "text",
-                  "id": "HVI8C",
-                  "name": "Item",
-                  "fill": "$text",
-                  "textGrowth": "fixed-width",
-                  "width": "fill_container",
-                  "content": "1. OKR на квартал синхронизируем до пятницы.",
-                  "lineHeight": 1.45,
-                  "fontFamily": "$font-ui",
-                  "fontSize": "$type-body",
-                  "fontWeight": "normal"
-                },
-                {
-                  "type": "text",
-                  "id": "ekTN3",
-                  "name": "Item",
-                  "fill": "$text",
-                  "textGrowth": "fixed-width",
-                  "width": "fill_container",
-                  "content": "2. Релиз 2.4 выкатываем после ревью SLA.",
-                  "lineHeight": 1.45,
-                  "fontFamily": "$font-ui",
-                  "fontSize": "$type-body",
-                  "fontWeight": "normal"
-                },
-                {
                   "type": "frame",
-                  "id": "cn5jE",
-                  "name": "Code",
+                  "id": "YuVow",
+                  "name": "Section",
                   "width": "fill_container",
-                  "fill": "$card",
-                  "cornerRadius": "$radius-control",
-                  "padding": [
-                    "$space-8",
-                    "$space-12"
-                  ],
+                  "layout": "vertical",
+                  "gap": "$space-8",
                   "children": [
                     {
                       "type": "text",
-                      "id": "qB1RP",
-                      "name": "Code text",
-                      "fill": "$cardText",
+                      "id": "HBDE5",
+                      "name": "Label",
+                      "fill": "$sub",
                       "textGrowth": "fixed-width",
                       "width": "fill_container",
-                      "content": "make release VERSION=2.4",
-                      "lineHeight": 1.45,
-                      "fontFamily": "$font-data",
-                      "fontSize": "$type-small",
+                      "content": "О ЧЁМ ВСТРЕЧА",
+                      "lineHeight": 1.5,
+                      "fontFamily": "$font-ui",
+                      "fontSize": "$type-caption",
+                      "fontWeight": "600",
+                      "letterSpacing": 0.6
+                    },
+                    {
+                      "type": "text",
+                      "id": "nVTji",
+                      "name": "Paragraph",
+                      "fill": "$text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Ежедневный дейли мобильной команды. Участники прошли по статусам задач и тестированию. Миша представил новую задачу по печатной форме в профиле карты, по ней обсудили показ ошибок на iOS и необходимость переделки лендинга. Также затронули отказ от OTP-кода для операций СБП, который зависит от бэка.",
+                      "lineHeight": 1.54,
+                      "fontFamily": "$font-ui",
+                      "fontSize": "$type-body",
                       "fontWeight": "normal"
                     }
                   ]
                 },
                 {
                   "type": "frame",
-                  "id": "CsvdG",
-                  "name": "Table",
-                  "clip": true,
+                  "id": "B6ja9",
+                  "name": "Section",
                   "width": "fill_container",
-                  "cornerRadius": "$radius-control",
-                  "stroke": "$rule",
-                  "strokeWidth": 1,
                   "layout": "vertical",
+                  "gap": "$space-8",
                   "children": [
                     {
-                      "type": "frame",
-                      "id": "gfCVV",
-                      "name": "Row 0",
+                      "type": "text",
+                      "id": "I0Xe1C",
+                      "name": "Label",
+                      "fill": "$sub",
+                      "textGrowth": "fixed-width",
                       "width": "fill_container",
-                      "fill": "$card",
-                      "stroke": "$rule",
-                      "strokeWidth": {
-                        "bottom": 1
-                      },
-                      "gap": "$space-12",
-                      "padding": [
-                        "$space-6",
-                        "$space-12"
-                      ],
+                      "content": "КЛЮЧЕВЫЕ МОМЕНТЫ",
+                      "lineHeight": 1.5,
+                      "fontFamily": "$font-ui",
+                      "fontSize": "$type-caption",
+                      "fontWeight": "600",
+                      "letterSpacing": 0.6
+                    },
+                    {
+                      "type": "frame",
+                      "id": "kZyIn",
+                      "name": "Topic",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": "$space-6",
                       "children": [
                         {
                           "type": "text",
-                          "id": "c9Wz0",
-                          "name": "Cell",
-                          "fill": "$text",
-                          "textGrowth": "fixed-width",
-                          "width": 80,
-                          "content": "Кто",
-                          "lineHeight": 1.45,
-                          "fontFamily": "$font-ui",
-                          "fontSize": "$type-small",
-                          "fontWeight": "600"
-                        },
-                        {
-                          "type": "text",
-                          "id": "ylj8r",
-                          "name": "Cell",
+                          "id": "o6fQa",
+                          "name": "Topic title",
                           "fill": "$text",
                           "textGrowth": "fixed-width",
                           "width": "fill_container",
-                          "content": "Что",
-                          "lineHeight": 1.45,
+                          "content": "Текущие задачи (Дима)",
+                          "lineHeight": 1.54,
                           "fontFamily": "$font-ui",
-                          "fontSize": "$type-small",
+                          "fontSize": "$type-body",
                           "fontWeight": "600"
                         },
                         {
-                          "type": "text",
-                          "id": "sLTGv",
-                          "name": "Cell",
-                          "fill": "$text",
-                          "textGrowth": "fixed-width",
-                          "width": 80,
-                          "content": "Срок",
-                          "lineHeight": 1.45,
-                          "fontFamily": "$font-ui",
-                          "fontSize": "$type-small",
-                          "fontWeight": "600"
+                          "type": "frame",
+                          "id": "CLTV2",
+                          "name": "Bullet",
+                          "width": "fill_container",
+                          "gap": "$space-8",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "zAHlw",
+                              "name": "Dot",
+                              "fill": "$sub",
+                              "content": "•",
+                              "lineHeight": 1.54,
+                              "fontFamily": "$font-ui",
+                              "fontSize": "$type-body",
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "text",
+                              "id": "k32OX",
+                              "name": "Text",
+                              "fill": "$text",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "Номер задачи в работе распознан неоднозначно: 1773 / 177733 / 733. Дима сегодня на ней, только начал погружаться.",
+                              "lineHeight": 1.54,
+                              "fontFamily": "$font-ui",
+                              "fontSize": "$type-body",
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "eP9iV",
+                          "name": "Bullet",
+                          "width": "fill_container",
+                          "gap": "$space-8",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "zPbDR",
+                              "name": "Dot",
+                              "fill": "$sub",
+                              "content": "•",
+                              "lineHeight": 1.54,
+                              "fontFamily": "$font-ui",
+                              "fontSize": "$type-body",
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "text",
+                              "id": "Oxpqw",
+                              "name": "Text",
+                              "fill": "$text",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "По 1781 билд выпущен. Ведущий спросил, почему MR не влит. Дима считает, что MR, вероятно, влиты, и обещал проверить. Факт мержа на встрече не подтверждён.",
+                              "lineHeight": 1.54,
+                              "fontFamily": "$font-ui",
+                              "fontSize": "$type-body",
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "DfSo8",
+                          "name": "Bullet",
+                          "width": "fill_container",
+                          "gap": "$space-8",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "aSHjC",
+                              "name": "Dot",
+                              "fill": "$sub",
+                              "content": "•",
+                              "lineHeight": 1.54,
+                              "fontFamily": "$font-ui",
+                              "fontSize": "$type-body",
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "text",
+                              "id": "y7VR2",
+                              "name": "Text",
+                              "fill": "$text",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "Две задачи на тестировании ждут фидбэка от Ники. Ника не может открыть приложение, ей нужны скриншоты от тестировщиков. Она писала Диме лично, а не в общую группу.",
+                              "lineHeight": 1.54,
+                              "fontFamily": "$font-ui",
+                              "fontSize": "$type-body",
+                              "fontWeight": "normal"
+                            }
+                          ]
                         }
                       ]
                     },
                     {
                       "type": "frame",
-                      "id": "nnsCv",
-                      "name": "Row 1",
+                      "id": "Fkykj",
+                      "name": "Topic",
                       "width": "fill_container",
-                      "fill": "#00000000",
-                      "stroke": "$rule",
-                      "strokeWidth": {
-                        "bottom": 1
-                      },
-                      "gap": "$space-12",
+                      "layout": "vertical",
+                      "gap": "$space-6",
                       "padding": [
-                        "$space-6",
-                        "$space-12"
+                        "$space-8",
+                        0,
+                        0,
+                        0
                       ],
                       "children": [
                         {
                           "type": "text",
-                          "id": "t107NW",
-                          "name": "Cell",
-                          "fill": "$text",
-                          "textGrowth": "fixed-width",
-                          "width": 80,
-                          "content": "Илья",
-                          "lineHeight": 1.45,
-                          "fontFamily": "$font-ui",
-                          "fontSize": "$type-small",
-                          "fontWeight": "normal"
-                        },
-                        {
-                          "type": "text",
-                          "id": "DE13Z",
-                          "name": "Cell",
+                          "id": "Bds9d",
+                          "name": "Topic title",
                           "fill": "$text",
                           "textGrowth": "fixed-width",
                           "width": "fill_container",
-                          "content": "дашборд NPS",
-                          "lineHeight": 1.45,
+                          "content": "iOS (ведущий, «Me»)",
+                          "lineHeight": 1.54,
                           "fontFamily": "$font-ui",
-                          "fontSize": "$type-small",
-                          "fontWeight": "normal"
+                          "fontSize": "$type-body",
+                          "fontWeight": "600"
                         },
                         {
-                          "type": "text",
-                          "id": "Tf6aD",
-                          "name": "Cell",
-                          "fill": "$text",
-                          "textGrowth": "fixed-width",
-                          "width": 80,
-                          "content": "пт",
-                          "lineHeight": 1.45,
-                          "fontFamily": "$font-ui",
-                          "fontSize": "$type-small",
-                          "fontWeight": "normal"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "frame",
-                      "id": "o09Zm",
-                      "name": "Row 2",
-                      "width": "fill_container",
-                      "fill": "#00000000",
-                      "stroke": "$rule",
-                      "gap": "$space-12",
-                      "padding": [
-                        "$space-6",
-                        "$space-12"
-                      ],
-                      "children": [
-                        {
-                          "type": "text",
-                          "id": "Zgk6z",
-                          "name": "Cell",
-                          "fill": "$text",
-                          "textGrowth": "fixed-width",
-                          "width": 80,
-                          "content": "я",
-                          "lineHeight": 1.45,
-                          "fontFamily": "$font-ui",
-                          "fontSize": "$type-small",
-                          "fontWeight": "normal"
-                        },
-                        {
-                          "type": "text",
-                          "id": "Q852ot",
-                          "name": "Cell",
-                          "fill": "$text",
-                          "textGrowth": "fixed-width",
+                          "type": "frame",
+                          "id": "CGEbD",
+                          "name": "Bullet",
                           "width": "fill_container",
-                          "content": "SLA-документ",
-                          "lineHeight": 1.45,
-                          "fontFamily": "$font-ui",
-                          "fontSize": "$type-small",
-                          "fontWeight": "normal"
-                        },
-                        {
-                          "type": "text",
-                          "id": "hT3Hm",
-                          "name": "Cell",
-                          "fill": "$text",
-                          "textGrowth": "fixed-width",
-                          "width": 80,
-                          "content": "чт",
-                          "lineHeight": 1.45,
-                          "fontFamily": "$font-ui",
-                          "fontSize": "$type-small",
-                          "fontWeight": "normal"
+                          "gap": "$space-8",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "Dj8nV",
+                              "name": "Dot",
+                              "fill": "$sub",
+                              "content": "•",
+                              "lineHeight": 1.54,
+                              "fontFamily": "$font-ui",
+                              "fontSize": "$type-body",
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "text",
+                              "id": "ocstU",
+                              "name": "Text",
+                              "fill": "$text",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "Ведущий вернулся на iOS. Несколько билдов прошли, MR тоже прошли. Сегодня ведущий проведёт ревью, после него часть задач перейдёт в «готово к релизу».",
+                              "lineHeight": 1.54,
+                              "fontFamily": "$font-ui",
+                              "fontSize": "$type-body",
+                              "fontWeight": "normal"
+                            }
+                          ]
                         }
                       ]
                     }
@@ -49911,7 +49892,7 @@
               "fill": "#B4540A",
               "textGrowth": "fixed-width",
               "width": "fill_container",
-              "content": "The eye shows only on rows with a summary. The preview is a utility panel that follows the selected row and keeps its size and position across restarts. Open: the eye column sits before the pin.",
+              "content": "The eye shows only on rows with a summary. The preview is a floating panel with a standard title bar that follows the selected row and keeps its size and position across restarts. Open: the eye column sits before the pin.",
               "lineHeight": 1.5,
               "fontFamily": "Inter",
               "fontSize": 13,
@@ -50403,7 +50384,7 @@
                               "id": "Bsqfd",
                               "name": "State",
                               "fill": "#333333",
-                              "content": "B1 — Utility panel",
+                              "content": "B1 — Floating panel",
                               "fontFamily": "Inter",
                               "fontSize": 13,
                               "fontWeight": "600"
@@ -50415,7 +50396,7 @@
                               "fill": "#777777",
                               "textGrowth": "fixed-width",
                               "width": "fill_container",
-                              "content": "An NSPanel with a small title bar «Саммари — Zoom». Floats above the list while Audelin is active and hides when another app is. Follows the selected row; size and position are kept across rows and restarts.",
+                              "content": "An NSPanel with a standard title bar «Саммари — Zoom». Floats above the list while Audelin is active and hides when another app is. Follows the selected row; size and position are kept across rows and restarts.",
                               "fontFamily": "Inter",
                               "fontSize": 12,
                               "fontWeight": "normal"
@@ -50425,7 +50406,7 @@
                               "id": "T2gzL",
                               "name": "Desktop",
                               "width": 1388,
-                              "height": 640,
+                              "height": 1000,
                               "fill": "$back",
                               "cornerRadius": "$radius-card",
                               "layout": "none",
@@ -50778,11 +50759,11 @@
                                 {
                                   "type": "frame",
                                   "id": "EKFHD",
-                                  "x": 924,
+                                  "x": 764,
                                   "y": 96,
                                   "name": "Preview panel",
                                   "clip": true,
-                                  "width": 440,
+                                  "width": 600,
                                   "fill": "$win",
                                   "cornerRadius": "$radius-card",
                                   "stroke": "$rule",
@@ -50800,14 +50781,14 @@
                                   "layout": "vertical",
                                   "children": [
                                     {
-                                      "id": "U7p5A",
+                                      "id": "h7mdKM",
                                       "type": "ref",
                                       "ref": "H1efZf",
                                       "name": "Title bar",
                                       "width": "fill_container",
                                       "descendants": {
                                         "Feu5Z": {
-                                          "content": "Саммари — Zoom"
+                                          "content": "Саммари — iOS Daily"
                                         }
                                       }
                                     },
@@ -51349,26 +51330,6 @@
       "type": "number",
       "value": 18
     },
-    "type-reading": {
-      "type": "number",
-      "value": 16
-    },
-    "type-topic": {
-      "type": "number",
-      "value": 15
-    },
-    "type-heading": {
-      "type": "number",
-      "value": 22
-    },
-    "type-display": {
-      "type": "number",
-      "value": 30
-    },
-    "line-reading": {
-      "type": "number",
-      "value": 26
-    },
     "radius-bar": {
       "type": "number",
       "value": 2
@@ -51424,6 +51385,10 @@
     "space-40": {
       "type": "number",
       "value": 40
+    },
+    "line-body": {
+      "type": "number",
+      "value": 20
     }
   },
   "fileToken": "11d61027-99ea-4c6c-bc5c-f6eff236c8bd"

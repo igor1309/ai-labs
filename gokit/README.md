@@ -62,5 +62,5 @@ module's test events reach its report.
 gokit/scripts/test.sh
 ```
 
-Agister's check (`agister/scripts/test.sh`) ends by running it, and Agister's
+Agister's check (`agister/scripts/test.sh`) starts by running it, and Agister's
 CI runs that on every change under `gokit/`.

@@ -1,4 +1,5 @@
 import BlockingTestWork
+import CallsListUI
 import Foundation
 import Observation
 import Preferences
@@ -146,7 +147,7 @@ struct SummaryCompositionTests {
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
             try Data("saved transcript".utf8).write(to: folder.appendingPathComponent("transcript.md"))
             try Data("previous notes".utf8).write(to: folder.appendingPathComponent("summary.md"))
-            let files = Files(locations: SummaryStorage(folder: root, timeZone: .gmt), disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("summary-ownership"))
+            let files = Files(locations: SummaryStorage(folder: root, timeZone: .gmt, trash: removeForTrash), disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("summary-ownership"))
             let runtime = Job.Runtime(kind: "compatibleAPI", model: "saved", program: "", endpoint: "http://127.0.0.1/v1", credentialVariable: "")
             let job = Job(id: "interrupted", call: id, input: "saved-input", entries: [.init(label: "A", time: "0", text: "saved transcript")], speakers: false, primary: runtime)
             _ = try await files.claim(SummaryJobStore(files: files).record(job, phase: "interrupted"))
@@ -157,6 +158,7 @@ struct SummaryCompositionTests {
                 calls.show()
                 for await state in Observations({ calls.state }) where !state.busy && !state.rows.isEmpty { break }
                 #expect(calls.state.rows.first?.canRetrySummary == true)
+                #expect(calls.state.rows.first?.summary == .failed)
                 #expect(await http.count == 0)
                 if retryFails { try Data("{broken".utf8).write(to: folder.appendingPathComponent(".summary-job.json")) }
                 await calls.send(.retrySummary(id))
@@ -167,6 +169,7 @@ struct SummaryCompositionTests {
                 } else {
                     await http.started.next()
                     #expect(calls.state.rows.first?.canRetrySummary == false)
+                    #expect(calls.state.rows.first?.summary == .pending)
                     await calls.send(.retrySummary(id))
                     #expect(await http.count == 1)
                     #expect(try await files.load(call: id)?.job != job.id)
@@ -176,6 +179,7 @@ struct SummaryCompositionTests {
                 if !retryFails {
                     http.complete.send()
                     _ = try await summary(rig.menu) { $0[id] == "Итоги готовы" }
+                    #expect(calls.state.rows.first?.summary == CallsListState.Row.Summary.none)
                     #expect(try await files.load(call: id)?.phase == "succeeded")
                 }
                 await rig.finish()
@@ -186,7 +190,7 @@ struct SummaryCompositionTests {
         try await withComposeFolder { root in
             let id = "1970.01.01-0000", folder = root.appendingPathComponent("1970.01.01-0000")
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-            let files = Files(locations: SummaryStorage(folder: root, timeZone: .gmt), disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("summary-ownership"))
+            let files = Files(locations: SummaryStorage(folder: root, timeZone: .gmt, trash: removeForTrash), disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("summary-ownership"))
             let runtime = Job.Runtime(kind: "compatibleAPI", model: "saved", program: "", endpoint: "http://127.0.0.1/v1", credentialVariable: "")
             let job = Job(id: "interrupted", call: id, input: "saved", entries: [.init(label: "A", time: "0", text: "spoken")], speakers: false, primary: runtime)
             _ = try await files.claim(SummaryJobStore(files: files).record(job, phase: "interrupted"))
@@ -219,7 +223,7 @@ struct SummaryCompositionTests {
             try FileManager.default.createDirectory(at: otherFolder, withIntermediateDirectories: true)
             try Data("other transcript".utf8).write(to: otherFolder.appendingPathComponent("transcript.md"))
             try Data("other notes".utf8).write(to: otherFolder.appendingPathComponent("summary.md"))
-            let files = Files(locations: SummaryStorage(folder: root, timeZone: .gmt), disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("summary-ownership"))
+            let files = Files(locations: SummaryStorage(folder: root, timeZone: .gmt, trash: removeForTrash), disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("summary-ownership"))
             let runtime = Job.Runtime(kind: "compatibleAPI", model: "saved", program: "", endpoint: "http://127.0.0.1/v1", credentialVariable: "")
             let job = Job(id: "interrupted", call: id, input: "saved-input", entries: [.init(label: "A", time: "0", text: "saved transcript")], speakers: false, primary: runtime)
             _ = try await files.claim(SummaryJobStore(files: files).record(job, phase: "interrupted"))
@@ -264,7 +268,7 @@ struct SummaryCompositionTests {
         try await withComposeFolder { root in
             let id = "1970.01.01-0000", folder = root.appendingPathComponent("1970.01.01-0000")
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-            let owner = Files(locations: SummaryStorage(folder: root, timeZone: .gmt), disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("summary-ownership"))
+            let owner = Files(locations: SummaryStorage(folder: root, timeZone: .gmt, trash: removeForTrash), disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("summary-ownership"))
             let runtime = Job.Runtime(kind: "compatibleAPI", model: "saved", program: "", endpoint: "http://127.0.0.1/v1", credentialVariable: "")
             let job = Job(id: "other-owner", call: id, input: "saved-input", entries: [.init(label: "A", time: "0", text: "saved transcript")], speakers: false, primary: runtime)
             let record = try SummaryJobStore(files: owner).record(job, phase: "pending")

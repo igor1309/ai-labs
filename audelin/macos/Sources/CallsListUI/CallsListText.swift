@@ -10,25 +10,31 @@ public enum CallsListLanguage: String, CaseIterable, Sendable {
 /// A fixed piece of calls list text; its raw value is the key in the strings tables.
 public enum CallsListPhrase: String, CaseIterable, Sendable {
 
-    case dateColumn = "column.date"
-    case callColumn = "column.call"
-    case durationColumn = "column.duration"
     case loading = "list.loading"
     case empty = "list.empty"
-    case footer = "list.footer"
+    case emptyHint = "list.emptyHint"
     case titlePlaceholder = "row.titlePlaceholder"
     case retrySummary = "row.retrySummary"
     case open = "row.open"
     case delete = "row.delete"
+    case deleteMenu = "row.deleteMenu"
+    case rename = "row.rename"
+    case actions = "row.actions"
     case showNotes = "row.showNotes"
     case deleteTitle = "delete.title"
     /// Takes the call's folder name.
     case deleteBody = "delete.body"
     case cancel = "delete.cancel"
-    /// Takes the minutes.
-    case minutes = "duration.minutes"
-    /// Takes the hours, then the minutes.
-    case hoursMinutes = "duration.hoursMinutes"
+    case today = "day.today"
+    case yesterday = "day.yesterday"
+    /// Date patterns for a day's header.
+    case weekdayDate = "day.weekdayDate"
+    case dayMonth = "day.dayMonth"
+    case dayMonthYear = "day.dayMonthYear"
+    /// Each takes the number of calls.
+    case callsOne = "day.callsOne"
+    case callsFew = "day.callsFew"
+    case callsMany = "day.callsMany"
     case summaryWaiting = "summary.waiting"
     case summaryPending = "summary.pending"
     case summaryRunning = "summary.running"

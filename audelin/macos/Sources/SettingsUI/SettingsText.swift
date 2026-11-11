@@ -29,7 +29,7 @@ public enum SettingsPhrase: String, CaseIterable, Sendable {
     case callAmbiguous = "calls.ambiguous"
     case callInvalidTitle = "calls.invalidTitle"
     /// Takes the folder name and the system's reason.
-    case callPartialDelete = "calls.partialDelete"
+    case callTrashFailed = "calls.trashFailed"
     case callSizeMismatch = "calls.sizeMismatch"
     case moveRefreshing = "move.refreshing"
     case generalTab = "tab.general"

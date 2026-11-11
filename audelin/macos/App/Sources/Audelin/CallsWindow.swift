@@ -8,6 +8,8 @@ protocol CallsWindowDriver: AnyObject {
     var contentView: NSView? { get set }
     var isMiniaturized: Bool { get }
     func center()
+    func setFrameUsingName(_ name: NSWindow.FrameAutosaveName) -> Bool
+    @discardableResult func setFrameAutosaveName(_ name: NSWindow.FrameAutosaveName) -> Bool
     func deminiaturize(_ sender: Any?)
     func makeKeyAndOrderFront(_ sender: Any?)
 }
@@ -15,6 +17,7 @@ protocol CallsWindowDriver: AnyObject {
 extension NSWindow: CallsWindowDriver {}
 
 /// Retains the same window after close; another menu action brings it forward.
+/// Its position and size are saved under one autosave name and restored on launch.
 @MainActor
 final class CallsWindow {
     private let window: any CallsWindowDriver
@@ -28,9 +31,12 @@ final class CallsWindow {
         self.shown = shown
         window.title = title
         window.isReleasedWhenClosed = false
-        window.minSize = NSSize(width: 860, height: 360)
-        window.center()
+        window.minSize = NSSize(width: 560, height: 360)
+        if !window.setFrameUsingName(Self.frameName) { window.center() }
+        window.setFrameAutosaveName(Self.frameName)
     }
+
+    static let frameName = "CallsWindow"
 
     func install(content: NSView) { window.contentView = content }
 

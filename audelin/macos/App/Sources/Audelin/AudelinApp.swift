@@ -123,6 +123,21 @@ struct AudelinApp: App {
                 .accessibilityLabel(model?.menu.item.title ?? "Audelin")
                 .task { await start() }
         }
+        .commands {
+            CommandGroup(replacing: .appSettings) {
+                Button(settingsTitle) { Task { await model?.perform(.showSettings) } }
+                    .keyboardShortcut(",")
+                    .disabled(model == nil || model?.quitting == true)
+            }
+        }
+    }
+
+    /// AppKit's own title for the item, in the system's preferred language.
+    /// The app ships no localizations, so the plain lookup would always pick English.
+    private var settingsTitle: String {
+        Bundle(for: NSApplication.self).localizedString(
+            forKey: "Settings\\U2026", value: "Settings…", table: "MenuCommands",
+            localizations: Locale.preferredLanguages.map { Locale.Language(identifier: $0) })
     }
 
     private var menuBarImage: NSImage {

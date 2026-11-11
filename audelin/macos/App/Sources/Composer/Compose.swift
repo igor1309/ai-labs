@@ -31,7 +31,7 @@ public func compose(
     let processes = CoreAudioProcesses(binding: BoundaryProcesses(base: boundary.processes),
                                        clock: BoundaryCallClock(time: boundary.time))
     let timeZone = boundary.time.timeZone()
-    let storage = SummaryStorage(folder: preferences.read().callsFolder, timeZone: timeZone, journal: preferencesURL.deletingLastPathComponent().appendingPathComponent("summary-folders.json"))
+    let storage = SummaryStorage(folder: preferences.read().callsFolder, timeZone: timeZone, journal: preferencesURL.deletingLastPathComponent().appendingPathComponent("summary-folders.json"), trash: boundary.trash)
     do { try await storage.restore() } catch { boundary.log.write(.init(category: .calls, message: "calls-folder recovery failed")) }
     let runtime = summaryRuntime ?? SummaryRuntime.Runtime(
         process: ProcessRunner(now: boundary.time.monotonicNow, deadline: 120, outputLimit: 4 * 1024 * 1024, observe: { _ in }),
@@ -61,9 +61,9 @@ public func compose(
                                       storeFolder: { destination in
                                           try await storage.commitFolder(destination) { try preferences.updateCallsFolder(destination) }
                                       }, describe: { language.language.settings.callsFailure($0) }), text: { language.language.settings }, initial: .init(callsFolder: preferences.read().callsFolder)),
-                                  timeZone: timeZone, recordingState: { [weak menu] in menu?.state ?? .init() },
+                                  timeZone: timeZone, now: boundary.time.now, recordingState: { [weak menu] in menu?.state ?? .init() },
                                   location: { try await storage.location(id: $0) }, openFolder: openCallsFolder,
-                                  present: presentCalls, summaryStatuses: { summaries.statuses },
+                                  present: presentCalls, summaryStatuses: { summaries.statuses }, summaryBadges: { summaries.badges },
                                   notes: { try await summaryFiles.notes(call: $0) }, focusPreview: focusPreview,
                                   retryableSummaries: { summaries.retryable }, retrySummary: { try await summaries.retry(call: $0) },
                                   describe: { language.language.settings.callsFailure($0) },

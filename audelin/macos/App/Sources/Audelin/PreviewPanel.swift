@@ -9,6 +9,7 @@ protocol PreviewPanelDriver: AnyObject {
     var title: String { get set }
     var contentView: NSView? { get set }
     func orderFront(_ sender: Any?)
+    func makeKeyAndOrderFront(_ sender: Any?)
     func orderOut(_ sender: Any?)
 }
 
@@ -22,6 +23,7 @@ final class PreviewPanel {
     private let copy: (String) -> Void
     private let makeContent: (SummaryPreviewState, SummaryPreviewText, @escaping () -> Void) -> NSView
     private var shown: CallsPreview?
+    private var focusDue = false
     private var text: SummaryPreviewText
 
     init(makePanel: () -> any PreviewPanelDriver, text: SummaryPreviewText, copy: @escaping (String) -> Void,
@@ -32,13 +34,13 @@ final class PreviewPanel {
         self.makeContent = makeContent
     }
 
-    /// Each preview brings the panel forward, so an eye finds it behind
-    /// another Audelin window.
+    /// Each preview brings the panel forward, so it is found behind another
+    /// Audelin window; after an eye it also becomes the active window.
     func show(_ preview: CallsPreview?) {
-        guard let preview else { shown = nil; panel.orderOut(nil); return }
+        guard let preview else { shown = nil; focusDue = false; panel.orderOut(nil); return }
         fill(preview)
         shown = preview
-        panel.orderFront(nil)
+        if focusDue { focusDue = false; panel.makeKeyAndOrderFront(nil) } else { panel.orderFront(nil) }
     }
 
     /// Writes the shown preview again in the new language, where it already is.
@@ -59,9 +61,10 @@ final class PreviewPanel {
         panel.contentView = makeContent(state, text) { if case let .markdown(source) = notes { copy(source) } }
     }
 
-    /// The eye of the call already shown: the same content, brought forward.
+    /// An eye: the panel becomes the active window, now if it shows the
+    /// call already, or as the eye's preview arrives.
     func focus() {
-        if shown != nil { panel.orderFront(nil) }
+        if shown != nil { panel.makeKeyAndOrderFront(nil) } else { focusDue = true }
     }
 }
 
@@ -84,15 +87,14 @@ func connectPreview(panel: PreviewPanel, preview: @escaping @MainActor () -> Cal
     }
 }
 
-/// The utility panel the preview lives in: it floats above the calls list,
+/// The floating panel the preview lives in, with a standard title bar: it floats above the calls list,
 /// hides while another app is active, and keeps its frame across restarts.
 @MainActor
 func makeSummaryPanel() -> NSPanel {
     let panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 440, height: 560),
-                        styleMask: [.titled, .closable, .resizable, .utilityWindow], backing: .buffered, defer: true)
+                        styleMask: [.titled, .closable, .resizable], backing: .buffered, defer: true)
     panel.isFloatingPanel = true
     panel.hidesOnDeactivate = true
-    panel.becomesKeyOnlyIfNeeded = true
     panel.isReleasedWhenClosed = false
     panel.minSize = NSSize(width: 320, height: 240)
     panel.center()

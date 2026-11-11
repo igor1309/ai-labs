@@ -31,18 +31,19 @@ struct PreviewPanelTests {
         #expect(window.orders == ["front", "front", "out"])
     }
 
-    @Test func focusBringsAShownPanelForwardOnly() {
+    @Test func anEyeMakesThePanelTheActiveWindowAndARowOnlyBringsItForward() {
         let window = PreviewPanelSpy()
         let panel = PreviewPanel(makePanel: { window }, text: .init(language: .russian), copy: { _ in }, makeContent: ContentSpy().make)
 
         panel.focus()
         #expect(window.orders.isEmpty)
         panel.show(preview("A"))
+        panel.show(preview("B"))
         panel.focus()
-        #expect(window.orders == ["front", "front"])
+        #expect(window.orders == ["key", "front", "key"])
         panel.show(nil)
-        panel.focus()
-        #expect(window.orders == ["front", "front", "out"])
+        panel.show(preview("C"))
+        #expect(window.orders == ["key", "front", "key", "out", "front"])
     }
 
     @Test func theCopyButtonPutsTheShownCallsMarkdownOnThePasteboard() throws {
@@ -120,16 +121,18 @@ struct PreviewPanelTests {
         #expect(window.orders == ["front"])
     }
 
-    @Test func theUtilityPanelFloatsHidesWithTheAppAndKeepsItsPlace() {
+    @Test func thePanelFloatsWithAStandardTitleBarHidesWithTheAppAndKeepsItsPlace() {
         let panel = makeSummaryPanel()
         defer { panel.close() }
 
         #expect(panel.isFloatingPanel)
         #expect(panel.hidesOnDeactivate)
-        #expect(panel.styleMask.isSuperset(of: [.titled, .closable, .resizable, .utilityWindow]))
+        #expect(panel.styleMask.isSuperset(of: [.titled, .closable, .resizable]))
+        #expect(!panel.styleMask.contains(.utilityWindow))
         #expect(panel.frameAutosaveName == "SummaryPreview")
         #expect(!panel.isReleasedWhenClosed)
         #expect(panel.minSize.width >= 320)
+        #expect(!panel.becomesKeyOnlyIfNeeded)
     }
 }
 
@@ -167,6 +170,7 @@ private func preview(_ title: String, notes: CallsPreview.Notes? = nil) -> Calls
     }
     private var waiters: [(count: Int, resume: () -> Void)] = []
     func orderFront(_ sender: Any?) { orders.append("front") }
+    func makeKeyAndOrderFront(_ sender: Any?) { orders.append("key") }
     func orderOut(_ sender: Any?) { orders.append("out") }
     func waitForOrders(_ count: Int) async {
         if orders.count >= count { return }

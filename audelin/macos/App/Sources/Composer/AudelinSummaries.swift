@@ -21,6 +21,7 @@ final class AudelinSummaries {
     private var coordinator: SummaryCoordinatorModel!
     private var jobs: SummaryCoordinatorJobsAdapter!
     private(set) var retryable: Set<String> = []
+    private(set) var badges: [String: CallsListState.Row.Summary] = [:]
     private let preferences: PreferencesStore
     private var text: CallsListText { didSet { feed.publish(statuses) } }
     init(files: SummaryFiles.Files, runtime: SummaryRuntime.Runtime, preferences: PreferencesStore, sink: any LogSink, load: (@Sendable (String) async throws -> SummaryFiles.Record?)? = nil,
@@ -35,6 +36,7 @@ final class AudelinSummaries {
                 if state.phase == .interrupted { self?.retryable.insert(call) }
                 else { self?.retryable.remove(call) }
                 self?.progress[call] = (state.phase, state.warning)
+                self?.badges[call] = summaryBadge(state.phase)
             })
         self.jobs = jobs
         coordinator = SummaryCoordinatorModel(jobs: jobs)
@@ -42,6 +44,7 @@ final class AudelinSummaries {
     func waiting(call: String) {
         guard preferences.read().notes.enabled else { return }
         progress[call] = (.waiting, false)
+        badges[call] = summaryBadge(.waiting)
     }
     func callbacks(timeZone: TimeZone) -> SummaryCallbacks {
         SummaryCallbacks(waiting: { [weak self] folder in
@@ -70,6 +73,7 @@ final class AudelinSummaries {
         await jobs.forget(call: call)
         retryable.remove(call)
         progress.removeValue(forKey: call)
+        badges.removeValue(forKey: call)
     }
     /// Shows every status in the new language at once.
     func languageChanged(_ text: CallsListText) { self.text = text }

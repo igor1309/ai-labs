@@ -47,11 +47,13 @@ public final class AudelinCalls {
     private let retrySummary: (String) async throws -> Void
     private var retrying: Set<String> = []
     private let summaryStatuses: () -> [String: String]
+    private let summaryBadges: () -> [String: CallsListState.Row.Summary]
     private let inputs: RecordingsInputs
     private let location: (String) async throws -> URL
     private let openFolder: (URL) -> Bool
     private let present: () -> Void
     private let timeZone: TimeZone
+    private let now: () -> Date
     private let recordingState: () -> RecordingState
     private var editing: CallsListState.Editing?
     private var openFailure: String?
@@ -60,9 +62,10 @@ public final class AudelinCalls {
     /// The calls list's text, in the language Audelin is shown in.
     public private(set) var listText: CallsListText
 
-    init(inputs: RecordingsInputs, timeZone: TimeZone, recordingState: @escaping () -> RecordingState,
+    init(inputs: RecordingsInputs, timeZone: TimeZone, now: @escaping () -> Date, recordingState: @escaping () -> RecordingState,
          location: @escaping (String) async throws -> URL, openFolder: @escaping (URL) -> Bool,
          present: @escaping () -> Void, summaryStatuses: @escaping () -> [String: String] = { [:] },
+         summaryBadges: @escaping () -> [String: CallsListState.Row.Summary] = { [:] },
          notes: @escaping (String) async throws -> String? = { _ in nil },
          focusPreview: @escaping () -> Void = {},
          retryableSummaries: @escaping () -> Set<String> = { [] },
@@ -75,17 +78,20 @@ public final class AudelinCalls {
         self.retrySummary = retrySummary
         self.focusPreview = focusPreview
         self.summaryStatuses = summaryStatuses
+        self.summaryBadges = summaryBadges
         self.notes = notes
-        self.inputs = inputs; self.timeZone = timeZone; self.recordingState = recordingState
+        self.inputs = inputs; self.timeZone = timeZone; self.now = now; self.recordingState = recordingState
         self.location = location; self.openFolder = openFolder; self.present = present
     }
 
     public var state: CallsListState {
-        var state = callsListState(inputs.state(), timeZone: timeZone, text: listText)
+        var state = callsListState(inputs.state(), timeZone: timeZone, now: now(), text: listText)
         let statuses = summaryStatuses()
+        let badges = summaryBadges()
         let retryable = retryableSummaries().subtracting(retrying)
         for index in state.rows.indices {
             state.rows[index].summaryStatus = statuses[state.rows[index].id] ?? ""
+            state.rows[index].summary = badges[state.rows[index].id] ?? .none
             state.rows[index].canRetrySummary = retryable.contains(state.rows[index].id)
             state.rows[index].hasNotes = withNotes.contains(state.rows[index].id)
         }
@@ -159,11 +165,14 @@ public final class AudelinCalls {
             preview = nil
             return
         }
+        let rows = state.rows
+        let opening = rows[...rows.firstIndex(where: { $0.id == id })!].last(where: { $0.day != nil })?.day
+        let date = [opening?.title, row.time].compactMap { $0 }.joined(separator: ", ")
         loading = Task { [notes] in
             let read: CallsPreview.Notes?
             do { read = try await notes(id).map { .text($0) } } catch { read = .unreadable(error.localizedDescription) }
             guard !Task.isCancelled else { return }
-            preview = read.map { .init(id: id, title: row.displayTitle, date: row.date, duration: row.duration, notes: $0) }
+            preview = read.map { .init(id: id, title: row.displayTitle, date: date, duration: row.duration, notes: $0) }
         }
     }
 
@@ -212,9 +221,9 @@ public final class AudelinCalls {
         case .selectNext: move(by: 1, in: snapshot.rows)
         case .selectPrevious: move(by: -1, in: snapshot.rows)
         case let .preview(id):
-            // The eye of the call already shown changes nothing to observe,
-            // so the panel is brought forward directly.
-            if preview?.id == id { focusPreview() }
+            // An eye asks for the panel to be the active window; a row
+            // selection only moves its content.
+            focusPreview()
             selectedID = id
             previewOpen = true
             updatePreview()
@@ -246,7 +255,8 @@ func recordedCallID(_ state: RecordingState) -> String? {
     state.phase == .idle ? nil : (state.callID ?? "")
 }
 
-func callsListState(_ state: RecordingsState, timeZone: TimeZone, text: CallsListText) -> CallsListState {
+/// Calls arrive newest first; each day's first row carries the day's header.
+func callsListState(_ state: RecordingsState, timeZone: TimeZone, now: Date, text: CallsListText) -> CallsListState {
     let busy: Bool
     let deleteID: String?
     switch state.phase {
@@ -254,10 +264,17 @@ func callsListState(_ state: RecordingsState, timeZone: TimeZone, text: CallsLis
     case let .askingDelete(id): busy = false; deleteID = id
     default: busy = true; deleteID = nil
     }
-    return CallsListState(rows: state.calls.map {
-        .init(id: $0.id, title: $0.title, start: $0.start, duration: $0.duration,
-              timeZone: timeZone, text: text, editable: $0.id != state.recordingID)
-    }, deleteID: deleteID, busy: busy || state.isListing, failure: state.failure.map { failure in
+    let format = CallsListFormat(timeZone: timeZone, text: text)
+    let days = state.calls.map { format.day($0.start, now: now) }
+    return CallsListState(rows: state.calls.indices.map { index in
+        let call = state.calls[index], day = days[index]
+        let opens = index == 0 || days[index - 1] != day
+        return .init(id: call.id, title: call.title, displayTitle: call.title.isEmpty ? format.stamp(call.start) : call.title,
+                     day: opens ? .init(title: day, count: format.count(days[index...].prefix { $0 == day }.count)) : nil,
+                     time: format.time(call.start), duration: format.duration(call.duration), editable: call.id != state.recordingID)
+    }, deleteID: deleteID, deleteBody: state.calls.first { $0.id == deleteID }.map { call in
+        text(.deleteBody, call.id + (call.title.isEmpty ? "" : " " + call.title))
+    }, busy: busy || state.isListing, failure: state.failure.map { failure in
         (failure.id.map { "«\($0)»: " } ?? "") + failure.reason
     })
 }
