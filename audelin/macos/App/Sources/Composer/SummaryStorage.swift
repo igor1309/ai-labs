@@ -255,11 +255,15 @@ final class SummaryStorage: SummaryFiles.Locations, Sendable {
 
 struct SummaryCalls: RecordingsCalls {
     let storage: SummaryStorage
+    let deleted: @Sendable (String) async -> Void
     func list() async throws -> [RecordedCall] {
         try await storage.list().map { .init(id: $0.id, title: $0.title, start: $0.start, duration: $0.duration) }
     }
     func rename(id: String, title: String) async throws { try await storage.rename(id: id, title: title) }
-    func delete(id: String) async throws { try await storage.delete(id: id) }
+    func delete(id: String) async throws {
+        try await storage.delete(id: id)
+        await deleted(id)
+    }
     func prepareMove(to destination: URL) async throws -> [MoveCall] { try await storage.prepareMove(to: destination) }
     func move(id: String, to destination: URL) async throws -> Int64 { try await storage.move(id: id, to: destination) }
 }

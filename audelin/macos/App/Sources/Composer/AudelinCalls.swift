@@ -42,6 +42,9 @@ public final class AudelinCalls {
     private var notesScan: Task<Void, Never>?
     private var loading: Task<Void, Never>?
 
+    private let retryableSummaries: () -> Set<String>
+    private let retrySummary: (String) async throws -> Void
+    private var retrying: Set<String> = []
     private let summaryStatuses: () -> [String: String]
     private let inputs: RecordingsInputs
     private let location: (String) async throws -> URL
@@ -57,7 +60,11 @@ public final class AudelinCalls {
          location: @escaping (String) async throws -> URL, openFolder: @escaping (URL) -> Bool,
          present: @escaping () -> Void, summaryStatuses: @escaping () -> [String: String] = { [:] },
          notes: @escaping (String) async throws -> String? = { _ in nil },
-         focusPreview: @escaping () -> Void = {}) {
+         focusPreview: @escaping () -> Void = {},
+         retryableSummaries: @escaping () -> Set<String> = { [] },
+         retrySummary: @escaping (String) async throws -> Void = { _ in throw CocoaError(.fileWriteUnknown) }) {
+        self.retryableSummaries = retryableSummaries
+        self.retrySummary = retrySummary
         self.focusPreview = focusPreview
         self.summaryStatuses = summaryStatuses
         self.notes = notes
@@ -68,8 +75,10 @@ public final class AudelinCalls {
     public var state: CallsListState {
         var state = callsListState(inputs.state(), timeZone: timeZone)
         let statuses = summaryStatuses()
+        let retryable = retryableSummaries().subtracting(retrying)
         for index in state.rows.indices {
             state.rows[index].summaryStatus = statuses[state.rows[index].id] ?? ""
+            state.rows[index].canRetrySummary = retryable.contains(state.rows[index].id)
             state.rows[index].hasNotes = withNotes.contains(state.rows[index].id)
         }
         state.selectedID = selectedID
@@ -113,13 +122,13 @@ public final class AudelinCalls {
         closePreview()
     }
 
-    /// Finds which listed calls have notes, each time the listing changes while
-    /// the window is shown; notes that are there but unreadable count, so their
+    /// Finds which listed calls have notes as the listing or summary status changes
+    /// while the window is shown; notes that are there but unreadable count, so their
     /// reason can be shown.
     private func scanNotes() {
         notesScan?.cancel()
         notesScan = Task { [notes] in
-            for await ids in Observations({ self.inputs.state().calls.map(\.id) }) {
+            for await (ids, _) in Observations({ (self.inputs.state().calls.map(\.id), self.summaryStatuses()) }) {
                 var found = Set<String>()
                 for id in ids {
                     do { if try await notes(id) != nil { found.insert(id) } } catch { found.insert(id) }
@@ -198,6 +207,15 @@ public final class AudelinCalls {
             selectedID = id
             previewOpen = true
             updatePreview()
+        case let .retrySummary(id):
+            guard !snapshot.busy, let row = snapshot.rows.first(where: { $0.id == id }),
+                  row.editable, row.canRetrySummary else { return }
+            retrying.insert(id)
+            defer { retrying.remove(id) }
+            openFailure = nil
+            inputs.send(.clearFailure)
+            do { try await retrySummary(id) }
+            catch { openFailure = "Не удалось повторить подготовку итогов. Расшифровка и прежние итоги сохранены." }
         case let .open(id):
             guard !snapshot.busy else { return }
             editing = nil

@@ -148,7 +148,7 @@ import Testing
                 try JSONEncoder().encode(record).write(to: url, options: .atomic)
             })
             var state = RecordingsState(callsFolder: source)
-            let handler = RecordingsEffectHandler(calls: SummaryCalls(storage: storage), reserve: { true }, release: {},
+            let handler = RecordingsEffectHandler(calls: SummaryCalls(storage: storage, deleted: { _ in }), reserve: { true }, release: {},
                 storeFolder: { folder in try await storage.commitFolder(folder) { try preferences.updateCallsFolder(folder) } })
             func send(_ event: RecordingsEvent) async {
                 var next: RecordingsEvent? = event
@@ -236,7 +236,7 @@ import Testing
             }
             let storage = SummaryStorage(folder: source, timeZone: .gmt, journal: root.appendingPathComponent("roots.json"))
             var state = RecordingsState(callsFolder: source)
-            let handler = RecordingsEffectHandler(calls: SummaryCalls(storage: storage), reserve: { true }, release: {},
+            let handler = RecordingsEffectHandler(calls: SummaryCalls(storage: storage, deleted: { _ in }), reserve: { true }, release: {},
                 storeFolder: { folder in try await storage.commitFolder(folder, commit: {}) })
             var observedMoves: [CallsFolderMove] = []
             func send(_ event: RecordingsEvent) async {

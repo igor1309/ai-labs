@@ -11,9 +11,13 @@ the design brief `../../design/summary-preview.md` (eye A1).
   proposed "just before the pin"; the list has no pin, and its Open and
   Delete buttons show only on hover, so the eye goes right before them and
   stays visible on every row that has notes.
-- **Notes that finish while their call is selected show at the list's
-  next reload,** as the row's summary status already does; the list
-  reloads when the calls window is shown.
+- **Notes that finish while the window is open show immediately.** Summary
+  status changes reread the listed calls' notes and refresh an open preview,
+  including replacement notes from an explicit retry. Showing the window
+  also rereads notes that finished while it was closed.
+- **Interrupted summaries offer explicit retry.** A request disables its retry
+  action while in progress. A refused or failed retry displays an error and
+  preserves existing notes and the transcript.
 - **A closed preview stays closed** while the selection moves; only an eye
   opens it again.
 - **Closing the calls window closes the preview,** which has no row to
@@ -71,4 +75,15 @@ Feature: Choosing a call's notes to read
     Given the preview is open
     When I close the calls window
     Then I cannot see the preview
+
+  Scenario: S-11 Retry completion adds an eye
+    Given the calls window stays open on an interrupted call without notes
+    When I retry and its notes finish
+    Then I can see its eye and open the completed notes without reloading the list
+
+  Scenario: S-12 Retry completion refreshes an open preview
+    Given I am reading a call's previous notes while its retry runs
+    When replacement notes finish
+    Then I can read the replacement in the same preview without reopening either window
+
 ```

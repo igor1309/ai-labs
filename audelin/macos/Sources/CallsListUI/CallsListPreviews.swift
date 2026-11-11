@@ -6,6 +6,15 @@ public enum CallsListPreviews {
     public static let states: [(name: String, state: CallsListState)] = [
         ("calls", sample),
         ("notes", notes),
+        ("summary-retry", with(sample) {
+            $0.rows[1].summaryStatus = "Подготовка итогов прервана; автоматического повтора не будет."
+            $0.rows[1].canRetrySummary = true
+        }),
+        ("summary-retry-failed", with(sample) {
+            $0.rows[1].summaryStatus = "Подготовка итогов прервана; автоматического повтора не будет."
+            $0.rows[1].canRetrySummary = true
+            $0.failure = "Не удалось повторить подготовку итогов. Расшифровка и прежние итоги сохранены."
+        }),
         ("notes-selected", with(notes) { $0.selectedID = $0.rows[1].id }),
         ("notes-previewed", with(notes) { $0.selectedID = $0.rows[2].id; $0.previewedID = $0.rows[2].id }),
         ("delete", with(sample) { $0.deleteID = $0.rows[0].id }),

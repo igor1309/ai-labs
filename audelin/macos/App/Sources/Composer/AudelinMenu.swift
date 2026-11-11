@@ -242,6 +242,7 @@ public final class AudelinMenu {
     /// recording can start behind this check and be cut short by the quit.
     func relaunchIfIdle(_ relaunch: () throws -> Void) async -> Bool {
 
+        await summaries?.refreshObserved()
         guard !quitting, updateCanInterrupt, await reserveStorage() else { return false }
         do {
             guard !quitting, updateCanInterrupt else { throw CancellationError() }

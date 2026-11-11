@@ -1,3 +1,4 @@
+import Foundation
 import IMRxObservation
 
 /// Stop-dispatch reduces synchronously before recording cleanup can offer another call.
@@ -15,15 +16,23 @@ import IMRxObservation
         feed.publish(model.state)
         doer.act(on: model.state)
     }
+    var canDispatch: Bool { model.state.dispatch && model.state.phase == .accepting }
     /// A pending call survives a quit and is recovered at the next launch.
     var busy: Bool { model.state.calls.values.contains { $0.phase != .pending && $0.phase != .installed } }
     func wait(call: String) async {
         for await state in feed.subscribe(from: model.state) {
             switch state.calls[call]?.phase {
-            case .recovering, .submitting, .dispatching, .failing: continue
+            case .recovering, .submitting, .retrying, .dispatching, .failing: continue
             default: return
             }
         }
+    }
+    func retry(call: String) async throws {
+        guard model.state.phase == .accepting, model.state.dispatch,
+              model.state.calls[call]?.phase == .installed else { throw CocoaError(.fileWriteUnknown) }
+        send(.retry(call))
+        await wait(call: call)
+        if model.state.retryFailures.contains(call) { throw CocoaError(.fileWriteUnknown) }
     }
     func shutdown() async {
         send(.shutdown)

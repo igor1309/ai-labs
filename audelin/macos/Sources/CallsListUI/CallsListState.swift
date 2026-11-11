@@ -2,6 +2,7 @@ import Foundation
 
 public struct CallsListState: Equatable, Sendable {
     public struct Row: Equatable, Identifiable, Sendable {
+        public var canRetrySummary: Bool
         public var summaryStatus: String
         /// The call has published notes, so its row offers the eye.
         public var hasNotes: Bool
@@ -13,7 +14,8 @@ public struct CallsListState: Equatable, Sendable {
         public let editable: Bool
         public var folderName: String { id + (title.isEmpty ? "" : " " + title) }
 
-        public init(id: String, title: String, start: Date, duration: TimeInterval?, timeZone: TimeZone, editable: Bool, summaryStatus: String = "", hasNotes: Bool = false) {
+        public init(id: String, title: String, start: Date, duration: TimeInterval?, timeZone: TimeZone, editable: Bool, summaryStatus: String = "", hasNotes: Bool = false, canRetrySummary: Bool = false) {
+            self.canRetrySummary = canRetrySummary
             self.summaryStatus = summaryStatus
             self.hasNotes = hasNotes
             self.id = id
@@ -67,5 +69,5 @@ public struct CallsListState: Equatable, Sendable {
 public enum CallsListEvent: Equatable, Sendable {
     case open(String), beginRename(String), editTitle(String), submitRename, cancelRename
     case askDelete(String), confirmDelete, cancelDelete
-    case select(String), selectNext, selectPrevious, preview(String)
+    case select(String), selectNext, selectPrevious, preview(String), retrySummary(String)
 }

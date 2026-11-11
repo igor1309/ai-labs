@@ -50,7 +50,7 @@ public func compose(
     menu.installFolderPicker(chooseCallsFolder)
     menu.installSettings(AudelinSettings(preferences: SummaryPreferences(storage: preferences),
                                         availability: SummaryAvailability(runtime: runtime)), present: presentSettings)
-    let disk = SummaryCalls(storage: storage)
+    let disk = SummaryCalls(storage: storage, deleted: { await summaries.forget(call: $0) })
     menu.installCalls(AudelinCalls(inputs: makeRecordings(handler: RecordingsEffectHandler(calls: disk,
                                       reserve: { [weak menu] in await menu?.reserveCallsFolder() ?? false },
                                       release: { [weak menu] in await menu?.releaseCallsFolder() },
@@ -60,7 +60,8 @@ public func compose(
                                   timeZone: timeZone, recordingState: { [weak menu] in menu?.state ?? .init() },
                                   location: { try await storage.location(id: $0) }, openFolder: openCallsFolder,
                                   present: presentCalls, summaryStatuses: { summaries.statuses },
-                                  notes: { try await summaryFiles.notes(call: $0) }, focusPreview: focusPreview))
+                                  notes: { try await summaryFiles.notes(call: $0) }, focusPreview: focusPreview,
+                                  retryableSummaries: { summaries.retryable }, retrySummary: { try await summaries.retry(call: $0) }))
     do { await summaries.recover(calls: try await storage.list().map(\.id)) }
     catch { boundary.log.write(.init(category: .session, message: "summary recovery listing failed")) }
     return menu
