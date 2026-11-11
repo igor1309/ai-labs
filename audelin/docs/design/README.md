@@ -9,9 +9,8 @@ to open, edit and save the file through the pencil MCP is in the repo's
 
 ## Design system
 
-Glass Ledger is Proposal 4 (owner, 2026-10-21): Ledger Mono's time gutter,
-arrows and footnote card on Night Glass's blurred floating panel. Its tokens
-were locked on 2026-10-21 as the file's variables. The frame
+Glass Ledger is Ledger Mono's time gutter, arrows and footnote card on Night
+Glass's blurred floating panel. Its tokens are the file's variables. The frame
 "Glass Ledger — design system" shows them.
 
 Rules for new frames:
@@ -28,7 +27,7 @@ Rules for new frames:
   `theme: {mode: "dark"}`. Every token switches, so nothing is recoloured by
   hand.
 - A value neither the spec nor the owner set goes in the frame's "Open" line
-  as "Proposed, not decided".
+  as "Open: …". The file states what a frame is, not who decided it or when.
 - Change a screen in place. Git keeps the history; the file holds only
   current frames.
 
@@ -106,7 +105,7 @@ from instances.
 | Pin/Off, /On | `w24st`, `S5zLs` | — |
 | Title bar | `H1efZf` | `Title` |
 | Banner/Error, /Warn, /Info | `qAImO`, `XK4si`, `jjhu5` | `H`, `Sub` |
-| Entry/Me, /Them, /Pending | `Nescm`, `ysZuS`, `Dl07G` | `Symbol` (`microphone.fill` for me, `speaker.wave.3.fill` for them, LAB-1127; stand-in vectors redrawn to match, the app draws the SF Symbols) on the time's first baseline, `Time` in the same `me` or `them` colour (LAB-933), `Confirmed`; Pending adds `Pending` |
+| Entry/Me, /Them, /Pending | `Nescm`, `ysZuS`, `Dl07G` | `Symbol` (`microphone.fill` for me, `speaker.wave.3.fill` for them ; stand-in vectors redrawn to match, the app draws the SF Symbols) on the time's first baseline, `Time` in the same `me` or `them` colour, `Confirmed`; Pending adds `Pending` |
 | Footnote card | `bMU2S` | `Term`, `Hint`, `Text` |
 | Panel header/Idle, /Recording | `MaM9e`, `rVa43` | `Status` |
 | File chip | `U4MdJG` | `Name` |
@@ -128,7 +127,7 @@ from instances.
 |---|---|
 | Top, y < 0 | Glass Ledger — design system, Glass Ledger — components |
 | x = 0, y ≥ 0 | One frame each, Light and Dark: Glass Ledger — window sizes (how the resizable panel adapts), Glass Ledger — no footnote (the panel before any term is selected), Screens 1–8, then "Later — term chips" |
-| Right of Screen 4, x = 4100 | Screen 4b — Summary preview: eye button A1 and window B1, both picked, Light and Dark ([brief](summary-preview.md)) |
+| Right of Screen 4, x = 4100 | Screen 4b — Summary preview: eye button and preview window, Light and Dark ([brief](summary-preview.md)) |
 | Right of Screen 7, x = 2160 | Screen 7b — Installed update: the menu bar item and menu with no update, an update available, and an update during a call, Light and Dark ([brief](app-update.md)) |
 
 Current screens:
@@ -155,10 +154,10 @@ Cards are separated by `space-8` in both appearances.
 | 3 — Live panel states | Not recording; recording; getting ready, recording while the models load; live text off; live text switched off mid-call, with the text so far kept; text filled in after live text is switched on; settling; selections held, each let go on its own; sent to bb with each card step |
 | 4 — Calls list | Hover; confirm delete; renaming inline |
 | 5 — Call after it ends | Final pass running; failed; summary pending; done; renaming the title |
-| 6 — Settings | Recording: release, debug, confirm move, moving, move failed, during recording. Call notes: off, on, local, invalid, unavailable, validating, saving, save failed, saved, loading, load failed; see [settings brief](call-notes-settings.md) and [rehearsal comparison](call-notes-rehearsal.md) |
+| 6 — Settings | Recording: release, debug, confirm move, moving, move failed, during recording. Call notes: off, on, local, invalid, unavailable, validating, saving, save failed, saved, loading, load failed; see [settings brief](call-notes-settings.md) |
 | 7 — Menu bar item | Waiting for a call; recording started by the call; recording without live text |
 | 8 — Errors | No call audio; no microphone; disk full; call silent (written but zeros while the user talks) |
-| 9 — App icon | Three frames: the ledger icon (not chosen); "two tracks", the chosen flat design (owner, 2026-10-26); and its Liquid Glass edition, whose Icon Composer layers (me, them, rec) are exported to `macos/AppIcon/Audelin.icon` |
+| 9 — App icon | Three frames: the ledger icon (not chosen); "two tracks", the chosen flat design; and its Liquid Glass edition, whose Icon Composer layers (me, them, rec) are exported to `macos/AppIcon/Audelin.icon` |
 
 Earlier frames are in git history: the four proposals and the brief at
 d5542163, the original Screens 1–8 at 32626465, v2 at dbd22607, v3 at

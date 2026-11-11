@@ -1,10 +1,8 @@
 # Summary preview — brief
 
 Frames: "Screen 4b — Summary preview" (right of Screen 4) and the board
-"Glass Ledger — summary preview components". Exports:
-[light](exports/summary-preview/light.png),
-[dark](exports/summary-preview/dark.png),
-[components](exports/summary-preview/components.png).
+"Glass Ledger — summary preview components" in
+[visual-language.pen](visual-language.pen).
 
 ## What is settled
 
@@ -19,12 +17,12 @@ Frames: "Screen 4b — Summary preview" (right of Screen 4) and the board
   (copies the Markdown source), and the summary as selectable rendered
   Markdown: headings, lists, code and tables. No transcript link.
 
-## Eye button: A1 (picked)
+## Eye button
 
 The eye shows only on rows with a `summary.md`. Rows without one keep an
 empty slot, so the columns stay put.
 
-## Preview window: B1 (picked)
+## Preview window
 
 A utility panel (`NSPanel`) with a small title bar «Саммари — Zoom». It
 floats above the list while Audelin is active and hides when another app

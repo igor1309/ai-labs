@@ -58,16 +58,19 @@
   separately how touch, mouse and keyboard differ, and the iPhone safe area.
 - Put design notes in the file as `note` nodes beside the frames they
   explain, and keep the brief, a Markdown file next to the `.pen`, in step.
-- Export every frame to PNG with a readable name, next to the `.pen`, and
-  look at each image before reporting. Fix what `c.problems` and the run's
-  issues list report (clipping, collapsed sizes, unknown icons).
+- Export every frame you changed to PNG in `$TMPDIR` and look at each image
+  before reporting; do not commit exports. Fix what `c.problems` and the
+  run's issues list report (clipping, collapsed sizes, unknown icons).
+- Notes and briefs say what the design is and what is open. They hold no
+  history: no dates, who decided or picked what, proposal letters, issue
+  numbers or work reports.
 
 ### pen interactive pitfalls
 
 - Write a long script to a file and pipe it as
   `execute({ input: <JSON.stringify(script)> })`; hand-quoting breaks.
 - Paths in `Export` resolve against the shell's directory; `$TMPDIR`
-  differs outside the sandbox, so export into the design folder.
+  differs outside the sandbox, so pass an absolute path.
 - `Copy` of a reusable node makes a linked instance with no editable
   children. To detach, `Get` the node, delete every `id`, and `Insert` it.
 - A `fit_content` parent with a `fill_container` child on the same axis
