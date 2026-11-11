@@ -1,6 +1,7 @@
 import Composer
 import Foundation
 import TranscriptFile
+import TranscriptFormat
 import os
 import PanelUI
 import SessionRehearsal
@@ -34,17 +35,20 @@ if mode == "savecost" {
     let dir = FileManager.default.temporaryDirectory.appendingPathComponent("audelin-savecost-\(getpid())")
     try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
     let url = dir.appendingPathComponent("transcript.md")
-    let file = try await TranscriptFile(url: url)
-    var segs = (0..<n).map { i in TranscriptFile.Segment(side: i % 2 == 0 ? .mine : .theirs, start: Double(i) * 6.6,
+    var format = TranscriptFormat()
+    let file = try await TranscriptFile(url: url, initialBytes: try format.render([]).chunks, binding: DiskTranscriptBinding())
+    var segs = (0..<n).map { i in TranscriptFormat.Segment(side: i % 2 == 0 ? .mine : .theirs, start: Double(i) * 6.6,
         settled: (0..<16).map { "mine\($0 + i * 16)" }.joined(separator: " "), pending: "") }
     let all = segs
-    try await file.write(count: n, finalCount: n - 1) { all[$0] }
+    let initial = try format.render(count: n, finalCount: n - 1) { all[$0] }
+    try await file.write(initial.chunks, finalLength: initial.finalLength)
     let c0 = cpuSeconds(); let t0 = ContinuousClock.now; let b0 = bytesWritten()
     for k in 0..<m {
         let last = segs[n - 1]
         segs[n - 1] = .init(side: last.side, start: last.start, settled: last.settled, pending: "w\(k)")
         let current = segs
-        try await file.write(count: n, finalCount: n - 1) { current[$0] }
+        let rendering = try format.render(count: n, finalCount: n - 1) { current[$0] }
+        try await file.write(rendering.chunks, finalLength: rendering.finalLength)
     }
     let wall = ContinuousClock.now - t0
     let size = (try FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int) ?? 0

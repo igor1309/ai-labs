@@ -5,15 +5,19 @@ import Session
 // Keep private fields separate so a caller cannot accidentally make a path public.
 public struct LogEntry: Sendable, Equatable {
 
+    public enum Level: Sendable { case debug, notice }
+
     public enum Category: String, CaseIterable, Sendable {
         case calls, recording, session, capture, conditions, model, menu, reading, panel
     }
 
     public let category: Category
     public let message: String
+    public let level: Level
     public var error: String? = nil
     public var path: String? = nil
-    public init(category: Category, message: String, error: String? = nil, path: String? = nil) {
+    public init(category: Category, message: String, error: String? = nil, path: String? = nil, level: Level = .notice) {
+        self.level = level
         self.category = category; self.message = message; self.error = error; self.path = path
     }
 

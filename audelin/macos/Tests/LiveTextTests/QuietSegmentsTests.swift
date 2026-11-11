@@ -13,7 +13,8 @@ struct QuietSegmentsTests {
 
         segments.hear(Hearing(words: [], finalThrough: 8, noWordBefore: 5.5))
         #expect(segments.finalCount == 1)
-        #expect(segments.all.map(\.settled) == ["word0 word1 word2 word3"])
+        #expect(segments.all.map(\.words) == [sentence])
+        #expect(segments.all.map(\.settledCount) == [4])
         #expect(segments.end == 3.5)
     }
 
@@ -34,7 +35,8 @@ struct QuietSegmentsTests {
         segments.hear(Hearing(words: [Word("yes", start: 0, end: 0.5)], finalThrough: 100, noWordBefore: 100))
         segments.hear(Hearing(words: [Word("well", start: 100, end: 100.5)], finalThrough: 101))
         // Two words either side of a pause, as today: the fragment is not cut.
-        #expect(segments.all.map(\.settled) == ["yes well"])
+        #expect(segments.all.map(\.words) == [[Word("yes", start: 0, end: 0.5), Word("well", start: 100, end: 100.5)]])
+        #expect(segments.all.map(\.settledCount) == [2])
     }
 
     @Test func aPendingWordKeepsTheSegmentOpen() {
@@ -73,7 +75,7 @@ struct QuietSegmentsTests {
         early.hear(Hearing(words: next, finalThrough: next[3].end))
         late.hear(Hearing(words: next, finalThrough: next[3].end))
 
-        #expect(early.all.map(\.settled) == late.all.map(\.settled))
+        #expect(early.all == late.all)
         #expect(early.all.map(\.start) == late.all.map(\.start))
         #expect(early.all.map(\.id) == late.all.map(\.id))
     }

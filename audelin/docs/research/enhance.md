@@ -261,14 +261,66 @@ and the pass with a reference takes owner words where there is no bleed
   mic-only test recording lost was the owner, who should be kept, needs a
   listener.
 
+## Track alignment (LAB-1133)
+
+Measured on 2026-11-10. **No correction is needed: feed the call track as
+recorded, starting with the microphone, and never delay it.**
+
+- **The offset.** GCC-PHAT over 8 s windows of the two 48 kHz tracks
+  (`align.py`) finds a clear echo path only on the speaker call: the far side
+  reaches the microphone 128.2 ms after the call track (128.14–128.24 ms
+  over its windows, no drift). Headphone calls show either an exact 0 ms
+  peak or peaks scattered over ±250 ms, with no echo path behind them.
+  The tracks start together; the microphone ends 0–150 ms later, so the
+  pass trims or pads the reference to the microphone's length.
+- **What the model tolerates.** On the speaker call, the reference was
+  shifted before LocalVQE v1.3 ran (`shift.sh`, `shift.py`):
+
+  | Reference shift | Echo delay the model sees | Leaked words/min | Solo words kept |
+  |---|---:|---:|---:|
+  | none (raw mic) | – | 15.3 | – |
+  | 200 ms earlier | 328 ms | 0.0 | 77 % |
+  | 100 ms earlier | 228 ms | 0.0 | 77 % |
+  | 50 ms earlier | 178 ms | 0.0 | 77 % |
+  | as recorded | 128 ms | 0.0 | 77 % |
+  | 64 ms later | 64 ms | 0.0 | 77 % |
+  | 128 ms later | 0 ms | 0.0 | 77 % |
+  | 148 ms later | −20 ms | 8.3 | 76 % |
+
+  The model aligns any echo from 0 to at least 328 ms behind the reference
+  itself; it fails only when the reference comes after the echo. The call
+  track is captured before it is played, so as recorded it always comes
+  first. Delaying it to "align" the tracks can only bring the leakage back.
+  The few-millisecond sensitivity MacParakeet reports belongs to a canceller
+  without this internal alignment.
+- **Limits.** One speaker call, one output device (the Mac's built-in
+  speakers). A Bluetooth speaker's delay can exceed 328 ms; rerun
+  `shift.sh` with larger shifts on such a call when one turns up.
+
+## The gate needs word times (LAB-1134)
+
+Measured on 2026-11-10. Parakeet v3 heard each whole track of 16 owner calls
+(`seg.sh`), and the gate (leaked mic words, two or more in a row heard on the call
+track within 2 s) was scored twice (`gate.py`): with each word's own time, and with
+times spread evenly over segments split at 2 s pauses, as the live transcript keeps
+them.
+
+| | Leaked words/min, word times | Spread over segments |
+|---|---:|---:|
+| Speaker call (10.29-1525) | 15.3 | 2.7 |
+| The other 15 calls | 0.0–2.1 | 0.0–2.4 |
+
+On segments the speaker call falls under the 3/min threshold and the margin to
+other calls is gone: the gate must read real word times. Hearing both tracks of a
+58-minute call took 28 s.
+
 ## Before adopting
 
 - Prefer an echo-only model if FluidAudio adds one, and rerun this set; the
   harm measured here is the denoiser's.
 - Gate the pass on bleed measured from the two tracks, as MacParakeet does,
   not on the output device.
-- Check the alignment of the two tracks in Audelin's recordings; a few
-  milliseconds of offset decides whether cancellation works.
+- Feed the call track unshifted (see Track alignment above).
 
 ## When to rerun
 
@@ -294,4 +346,5 @@ then in `enhance/` `uv sync`, `uv run python labelled.py build <LibriSpeech test
 `fluidaudiocli enhance-benchmark --no-reference` and `--chunk 16ms --variants v1.3`, from FluidAudio's checkout. The live
 test: `audelin-enhance live <mic.f32> <call.f32> 300` beside
 `macos/Benchmarks`' `AudelinBaseline`. Outputs go under `enhance/work/`,
-which is not committed.
+which is not committed. Track alignment: `uv run python align.py "<call folder>"...`,
+`./shift.sh "<call folder>" <ms>...` and `uv run python shift.py`. Gate: `./seg.sh "<call folder>"...`, then `uv run python gate.py`.

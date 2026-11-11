@@ -12,8 +12,8 @@ struct TranscriptFileSyncTests {
         try await withTranscriptFolder { folder in
             let url = folder.appendingPathComponent("transcript.md")
             let sync = ScriptedSync([])
-            let file = try await TranscriptFile(url: url, binding: DiskTranscriptBinding(sync: sync.call))
-            try await file.write(numberedSegments(1))
+            let file = try await TranscriptFile(url: url, initialBytes: initialBytes, binding: DiskTranscriptBinding(sync: sync.call))
+            try await file.write(numberedBytes(1), finalLength: nil)
             #expect(sync.calls == 2)
             #expect(try await transcriptText(url) == numberedTranscript(1))
         }
@@ -24,9 +24,9 @@ struct TranscriptFileSyncTests {
         try await withTranscriptFolder { folder in
             let url = folder.appendingPathComponent("transcript.md")
             let sync = ScriptedSync([])
-            let file = try await TranscriptFile(url: url, binding: DiskTranscriptBinding(sync: sync.call))
+            let file = try await TranscriptFile(url: url, initialBytes: initialBytes, binding: DiskTranscriptBinding(sync: sync.call))
             sync.script([EINTR, EINTR])
-            try await file.write(numberedSegments(1))
+            try await file.write(numberedBytes(1), finalLength: nil)
             #expect(sync.calls == 4)
             #expect(try await transcriptText(url) == numberedTranscript(1))
         }
@@ -37,10 +37,10 @@ struct TranscriptFileSyncTests {
         try await withTranscriptFolder { folder in
             let url = folder.appendingPathComponent("transcript.md")
             let sync = ScriptedSync([])
-            let file = try await TranscriptFile(url: url, binding: DiskTranscriptBinding(sync: sync.call))
-            try await file.write(numberedSegments(1))
+            let file = try await TranscriptFile(url: url, initialBytes: initialBytes, binding: DiskTranscriptBinding(sync: sync.call))
+            try await file.write(numberedBytes(1), finalLength: nil)
             sync.script([EIO])
-            await #expect(throws: POSIXError(.EIO)) { try await file.write(numberedSegments(2)) }
+            await #expect(throws: POSIXError(.EIO)) { try await file.write(numberedBytes(2), finalLength: nil) }
             #expect(try await transcriptText(url) == numberedTranscript(1))
             #expect(try await folderNames(folder) == ["transcript.md"])
         }

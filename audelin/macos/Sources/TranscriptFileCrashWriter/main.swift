@@ -30,7 +30,7 @@ private final class PausingBinding: TranscriptFileBinding {
     func rename(from source: URL, to target: URL) throws {
 
         let text = try String(contentsOf: source, encoding: .utf8)
-        let chosen = text.contains("3 mine settled")
+        let chosen = text.contains("3 first")
         if chosen && point == "before" { try pause() }
         try disk.rename(from: source, to: target)
         if chosen && point == "after" { try pause() }
@@ -70,22 +70,17 @@ private struct PausingHandle: TranscriptFileHandle {
 
 let url = URL(fileURLWithPath: CommandLine.arguments[1])
 let point = CommandLine.arguments[2]
-let file = try await TranscriptFile(url: url, binding: PausingBinding(point: point))
+let file = try await TranscriptFile(url: url, initialBytes: [Data("0 initial\n".utf8)], binding: PausingBinding(point: point))
 for number in 1...3 {
-    let segments: [TranscriptFile.Segment] = [
-        .init(side: .mine, start: 1, settled: "\(number) mine settled", pending: "\(number) mine pending"),
-        .init(side: .theirs, start: 2, settled: "\(number) theirs settled", pending: "\(number) theirs pending"),
-    ]
-    let final = TranscriptFile.Segment(side: .mine, start: 1, settled: "final", pending: "")
+    let final = "1 final\n"
+    let tail = "\(number) second\n"
     if point == "truncated" || point == "written" {
-        // The first segment is final and never changes; only the second is rewritten.
-        try await file.write(count: 2, finalCount: 1) { $0 == 0 ? final : segments[1] }
+        try await file.write([Data(final.utf8), Data(tail.utf8)], finalLength: final.utf8.count)
     } else if point == "truncated after all final" {
-        // Until the last write the file holds only the final segment, ending in one newline.
-        let count = number == 3 ? 2 : 1
-        try await file.write(count: count, finalCount: 1) { $0 == 0 ? final : segments[1] }
+        let prefix = number == 3 ? final + "\n" : final
+        try await file.write([Data(prefix.utf8), Data((number == 3 ? tail : "").utf8)], finalLength: prefix.utf8.count)
     } else {
-        try await file.write(segments)
+        try await file.write([Data("\(number) first\n\(number) second\n".utf8)], finalLength: nil)
     }
     try FileHandle.standardOutput.write(contentsOf: Data("returned \(number)\n".utf8))
 }

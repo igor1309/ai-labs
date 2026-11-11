@@ -7,7 +7,7 @@ struct LiveTextTests {
 
         let updates = await run([.init(words: [a, b])])
 
-        #expect(updates.first?.all == [segment(0, start: 0, pending: "по запуску")])
+        #expect(updates.first?.all == [segment(0, start: 0, pending: [a, b])])
     }
 
     @Test func pendingWordsChangeInPlace() async {
@@ -17,7 +17,7 @@ struct LiveTextTests {
             .init(words: [word("подпуску", 0.5, 1), word("кто", 1, 1.5)]),
         ])
 
-        #expect(updates.dropFirst().first?.all == [segment(0, start: 0, settled: "по", pending: "подпуску кто")])
+        #expect(updates.dropFirst().first?.all == [segment(0, start: 0, settled: [a], pending: [word("подпуску", 0.5, 1), word("кто", 1, 1.5)])])
     }
 
     @Test func pendingWordsNoLongerHeardAreGone() async {
@@ -27,7 +27,7 @@ struct LiveTextTests {
             .init(words: [], from: b.start),
         ])
 
-        #expect(updates.dropFirst().first?.all == [segment(0, start: 0, settled: "по")])
+        #expect(updates.dropFirst().first?.all == [segment(0, start: 0, settled: [a])])
     }
 
     @Test func aPendingSegmentNoLongerHeardIsGone() async {
@@ -39,10 +39,10 @@ struct LiveTextTests {
         ])
 
         #expect(updates[0].all == [
-            segment(0, start: 0, pending: "Да."),
-            segment(1, start: 3, pending: "кто"),
+            segment(0, start: 0, pending: [before]),
+            segment(1, start: 3, pending: [word("кто", 3, 3.5)]),
         ])
-        #expect(updates.dropFirst().first?.all == [segment(0, start: 0, pending: "Да.")])
+        #expect(updates.dropFirst().first?.all == [segment(0, start: 0, pending: [before])])
     }
 
     @Test func wordsSettle() async {
@@ -52,7 +52,19 @@ struct LiveTextTests {
             .init(words: [a, b], finalThrough: b.end),
         ])
 
-        #expect(updates.dropFirst().first?.all == [segment(0, start: 0, settled: "по запуску")])
+        #expect(updates.dropFirst().first?.all == [segment(0, start: 0, settled: [a, b])])
+    }
+
+    @Test func wordsKeepTheirTimes() async {
+
+        let words = [word("First,", 0.125, 0.375), word("second", 0.6, 0.95), word("third!", 1.1, 1.875)]
+        let updates = await run([
+            .init(words: words),
+            .init(words: [], finalThrough: words[0].end),
+        ])
+
+        #expect(updates[0].all == [segment(0, start: words[0].start, pending: words)])
+        #expect(updates[1].all == [segment(0, start: words[0].start, settled: [words[0]], pending: Array(words.dropFirst()))])
     }
 
     @Test func settledWordsNeverChange() async {
@@ -62,7 +74,7 @@ struct LiveTextTests {
             .init(words: [word("подпуску", 0, 1)]),
         ])
 
-        #expect(updates.dropFirst().first?.all == [segment(0, start: 0, settled: "по запуску")])
+        #expect(updates.dropFirst().first?.all == [segment(0, start: 0, settled: [a, b])])
     }
 
     @Test func aPauseStartsANewSegment() async {
@@ -74,8 +86,8 @@ struct LiveTextTests {
         ])
 
         #expect(updates.dropFirst().first?.all == [
-            segment(0, start: 0, pending: "по запуску."),
-            segment(1, start: b.end + 2, pending: "кто"),
+            segment(0, start: 0, pending: [a, last]),
+            segment(1, start: b.end + 2, pending: [word("кто", b.end + 2, b.end + 2.4)]),
         ])
     }
 
@@ -89,10 +101,10 @@ struct LiveTextTests {
             .init(words: [], finalThrough: b.end),
         ])
 
-        #expect(updates[1].all.map(\.settled) == ["", ""])
+        #expect(updates[1].all.map(\.settledCount) == [0, 0])
         #expect(updates[2].all == [
-            segment(0, start: 0, settled: "по запуску."),
-            segment(1, start: after.start, pending: "кто"),
+            segment(0, start: 0, settled: [a, last]),
+            segment(1, start: after.start, pending: [after]),
         ])
     }
 
@@ -105,7 +117,7 @@ struct LiveTextTests {
         ])
 
         #expect(updates[0].all.count == 2)
-        #expect(updates[1].all == [segment(0, start: 0, pending: "Да. кто")])
+        #expect(updates[1].all == [segment(0, start: 0, pending: [before, word("кто", 1, 1.5)])])
     }
 
     @Test func aPauseBetweenSettledWordsStays() async {
@@ -118,8 +130,8 @@ struct LiveTextTests {
         ])
 
         #expect(updates[1].all == [
-            segment(0, start: 0, settled: "по запуску."),
-            segment(1, start: after.start, settled: "кто", pending: "там"),
+            segment(0, start: 0, settled: [a, last]),
+            segment(1, start: after.start, settled: [after], pending: [word("там", after.end, after.end + 0.4)]),
         ])
     }
 
@@ -130,14 +142,14 @@ struct LiveTextTests {
             .init(words: [word("кто", b.end + 1.99, b.end + 2.4)]),
         ])
 
-        #expect(updates.dropFirst().first?.all == [segment(0, start: 0, pending: "по запуску кто")])
+        #expect(updates.dropFirst().first?.all == [segment(0, start: 0, pending: [a, b, word("кто", b.end + 1.99, b.end + 2.4)])])
     }
 
     @Test func aGapShorterThanAPauseKeepsThreeWordsTogether() async {
 
         let updates = await run([.init(words: [a, b, word("кто", 1, 1.5), word("там", 3.49, 4)])])
 
-        #expect(updates[0].all == [segment(0, start: 0, pending: "по запуску кто там")])
+        #expect(updates[0].all == [segment(0, start: 0, pending: [a, b, word("кто", 1, 1.5), word("там", 3.49, 4)])])
     }
 
     @Test(arguments: [".", "?", "!", "…"])
@@ -149,8 +161,8 @@ struct LiveTextTests {
         let updates = await run([.init(words: words, finalThrough: 28)])
 
         #expect(updates[0].all == [
-            segment(0, start: 7, settled: text(words[..<16])),
-            segment(1, start: 23, settled: text(words[16...])),
+            segment(0, start: 7, settled: Array(words[..<16])),
+            segment(1, start: 23, settled: Array(words[16...])),
         ])
     }
 
@@ -161,9 +173,9 @@ struct LiveTextTests {
         words[seconds - 1] = word("конец.", Double(seconds - 1), Double(seconds))
         let updates = await run([.init(words: words, finalThrough: 17)])
         let expected = seconds == 15 ? [
-            segment(0, start: 0, settled: text(words[..<15])),
-            segment(1, start: 15, settled: text(words[15...])),
-        ] : [segment(0, start: 0, settled: text(words[...]))]
+            segment(0, start: 0, settled: Array(words[..<15])),
+            segment(1, start: 15, settled: Array(words[15...])),
+        ] : [segment(0, start: 0, settled: Array(words[...]))]
 
         #expect(updates[0].all == expected)
     }
@@ -179,9 +191,9 @@ struct LiveTextTests {
         let updates = await run([.init(words: words, finalThrough: 78 + overrun)])
 
         #expect(updates[0].all == [
-            segment(0, start: 7, settled: text(words[..<30])),
-            segment(1, start: 37 + overrun, settled: text(words[30..<60])),
-            segment(2, start: 67 + overrun, settled: text(words[60...])),
+            segment(0, start: 7, settled: Array(words[..<30])),
+            segment(1, start: 37 + overrun, settled: Array(words[30..<60])),
+            segment(2, start: 67 + overrun, settled: Array(words[60...])),
         ])
     }
 
@@ -195,13 +207,13 @@ struct LiveTextTests {
             .init(words: [], finalThrough: 17),
         ])
 
-        #expect(updates[0].all == [segment(0, start: 0, pending: text(words[...]))])
+        #expect(updates[0].all == [segment(0, start: 0, pending: Array(words[...]))])
         #expect(updates[1].all == [
-            segment(0, start: 0, settled: text(words[..<16]), pending: text(words[16...])),
+            segment(0, start: 0, settled: Array(words[..<16]), pending: Array(words[16...])),
         ])
         #expect(updates[2].all == [
-            segment(0, start: 0, settled: text(words[..<16])),
-            segment(1, start: 16, settled: words[16].text, pending: text(words[17...])),
+            segment(0, start: 0, settled: Array(words[..<16])),
+            segment(1, start: 16, settled: [words[16]], pending: Array(words[17...])),
         ])
     }
 
@@ -214,11 +226,11 @@ struct LiveTextTests {
         ])
 
         #expect(updates[0].all == [
-            segment(0, start: 0, settled: text(words[..<30]), pending: text(words[30...])),
+            segment(0, start: 0, settled: Array(words[..<30]), pending: Array(words[30...])),
         ])
         #expect(updates[1].all == [
-            segment(0, start: 0, settled: text(words[..<30])),
-            segment(1, start: 30, settled: words[30].text, pending: text(words[31...])),
+            segment(0, start: 0, settled: Array(words[..<30])),
+            segment(1, start: 30, settled: [words[30]], pending: Array(words[31...])),
         ])
     }
 
@@ -232,19 +244,19 @@ struct LiveTextTests {
             .init(words: [word("замена.", 0, 1), word("дальше!", 35, 36)], from: 0),
             .init(words: [], finalThrough: 36),
         ])
-        let prefix = segment(0, start: 0, settled: text(words[..<cut]))
+        let prefix = segment(0, start: 0, settled: Array(words[..<cut]))
 
         #expect(updates[0].all == [
             prefix,
-            segment(1, start: Double(cut), settled: text(words[cut..<35]), pending: text(words[35...])),
+            segment(1, start: Double(cut), settled: Array(words[cut..<35]), pending: Array(words[35...])),
         ])
         #expect(updates[1].all == [
             prefix,
-            segment(1, start: Double(cut), settled: text(words[cut..<35]), pending: "дальше!"),
+            segment(1, start: Double(cut), settled: Array(words[cut..<35]), pending: [word("дальше!", 35, 36)]),
         ])
         #expect(updates[2].all == [
             prefix,
-            segment(1, start: Double(cut), settled: text(words[cut..<35]) + " дальше!"),
+            segment(1, start: Double(cut), settled: Array(words[cut..<35]) + [word("дальше!", 35, 36)]),
         ])
     }
 
@@ -255,10 +267,10 @@ struct LiveTextTests {
         let after = word("продолжение.", Double(count) + 2, Double(count) + 3)
         let updates = await run([.init(words: before), .init(words: [after])])
         let expected = count < 3 ? [
-            segment(0, start: 0, pending: text(before[...]) + " продолжение."),
+            segment(0, start: 0, pending: before + [after]),
         ] : [
-            segment(0, start: 0, pending: text(before[...])),
-            segment(1, start: after.start, pending: "продолжение."),
+            segment(0, start: 0, pending: Array(before[...])),
+            segment(1, start: after.start, pending: [after]),
         ]
 
         #expect(updates[1].all == expected)
@@ -270,7 +282,7 @@ struct LiveTextTests {
             .init(words: [word("ээ", 0, 0.5), word("продолжение.", 31, 31.5)], finalThrough: 31.5),
         ])
 
-        #expect(updates[0].all == [segment(0, start: 0, settled: "ээ продолжение.")])
+        #expect(updates[0].all == [segment(0, start: 0, settled: [word("ээ", 0, 0.5), word("продолжение.", 31, 31.5)])])
     }
 
     @Test func aShortFragmentAfterASentenceJoinsTheNextWords() async {
@@ -280,8 +292,8 @@ struct LiveTextTests {
         ])
 
         #expect(updates[0].all == [
-            segment(0, start: 0, pending: "Да."),
-            segment(1, start: 3, pending: "фрагмент дальше"),
+            segment(0, start: 0, pending: [word("Да.", 0, 0.5)]),
+            segment(1, start: 3, pending: [word("фрагмент", 3, 3.5), word("дальше", 6, 6.5)]),
         ])
     }
 
@@ -293,8 +305,8 @@ struct LiveTextTests {
         let updates = await run([.init(words: before + [after])])
 
         #expect(updates[0].all == [
-            segment(0, start: 0, pending: "по запуску" + ending),
-            segment(1, start: 3, pending: "дальше"),
+            segment(0, start: 0, pending: before),
+            segment(1, start: 3, pending: [word("дальше", 3, 3.5)]),
         ])
     }
 
@@ -303,8 +315,8 @@ struct LiveTextTests {
         let updates = await run([.init(words: [word("Да.", 0, 0.5), b, word("дальше", 3, 3.5)])])
 
         #expect(updates[0].all == [
-            segment(0, start: 0, pending: "Да. запуску"),
-            segment(1, start: 3, pending: "дальше"),
+            segment(0, start: 0, pending: [word("Да.", 0, 0.5), b]),
+            segment(1, start: 3, pending: [word("дальше", 3, 3.5)]),
         ])
     }
 
@@ -322,7 +334,7 @@ struct LiveTextTests {
 
         var last: SegmentSnapshot?
         while let update = await updates.next() { last = (all: update.segments, ending: update.ending) }
-        #expect(last?.all == [segment(0, start: 0, settled: "по запуску кто")])
+        #expect(last?.all == [segment(0, start: 0, settled: [a, b, word("кто", 1, 1.5)])])
         #expect(last?.ending == .finished)
     }
 
@@ -330,7 +342,7 @@ struct LiveTextTests {
 
         let updates = await run([.init(words: [a, b])], failing: true)
 
-        #expect(updates.last?.all == [segment(0, start: 0, settled: "по запуску")])
+        #expect(updates.last?.all == [segment(0, start: 0, settled: [a, b])])
         #expect(updates.last?.ending == .failed)
     }
 
@@ -338,7 +350,7 @@ struct LiveTextTests {
 
         let updates = await run([.init(words: [a, b])])
 
-        #expect(updates.last?.all == [segment(0, start: 0, settled: "по запуску кто")])
+        #expect(updates.last?.all == [segment(0, start: 0, settled: [a, b, word("кто", 1, 1.5)])])
         #expect(updates.last?.ending == .finished)
     }
 
@@ -363,14 +375,9 @@ struct LiveTextTests {
         (0..<seconds).map { word("слово\($0)", start + Double($0), start + Double($0 + 1)) }
     }
 
-    private func text(_ words: ArraySlice<Word>) -> String {
+    private func segment(_ id: Int, start: Double, settled: [Word] = [], pending: [Word] = []) -> Segments.Segment {
 
-        words.map(\.text).joined(separator: " ")
-    }
-
-    private func segment(_ id: Int, start: Double, settled: String = "", pending: String = "") -> Segments.Segment {
-
-        .init(id: id, start: start, settled: settled, pending: pending)
+        .init(id: id, start: start, words: settled + pending, settledCount: settled.count)
     }
 
     /// Feeds one chunk per hearing, then ends the audio, and returns every

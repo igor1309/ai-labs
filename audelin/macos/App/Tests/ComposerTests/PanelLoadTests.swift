@@ -119,13 +119,13 @@ struct PanelLoadTests {
         var history: [CallState.Entry] = []
         for index in 0..<count - 1 {
             let begins = Double(index) * 6
-            let text = TranscriptSegment(id: index / 2, start: begins, end: begins + 5, settled: words, pending: "")
+            let text = TranscriptSegment(id: index / 2, start: begins, end: begins + 5, words: words.split(separator: " ").map { .init(String($0), start: begins, end: begins + 5) }, settledCount: words.split(separator: " ").count)
             history.append(CallState.Entry(speaker: index % 2 == 0 ? .mine : .theirs, text: text, writtenLater: false))
         }
         let start = Double(count) * 6
         var feed: [CallState] = []
         for step in 0..<Self.states {
-            let text = TranscriptSegment(id: count, start: start, end: start + Double(step) / Self.todaysRate, settled: "", pending: "w\(step)")
+            let text = TranscriptSegment(id: count, start: start, end: start + Double(step) / Self.todaysRate, words: [.init("w\(step)", start: start, end: start + Double(step) / Self.todaysRate)], settledCount: 0)
             var state = CallState(status: .listening, entries: history + [CallState.Entry(speaker: .mine, text: text, writtenLater: false)])
             state.finalCount = history.count
             feed.append(state)

@@ -8,6 +8,7 @@ let package = Package(
         .product(name: "Composer", package: "App"),
         .product(name: "PanelUI", package: "macos"),
         .product(name: "SessionRehearsal", package: "App"),
+        .product(name: "TranscriptFormat", package: "macos"),
         .product(name: "TranscriptFile", package: "macos"),
     ])]
 )

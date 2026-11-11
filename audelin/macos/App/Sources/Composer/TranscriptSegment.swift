@@ -1,3 +1,4 @@
+import struct LiveText.Word
 import protocol CallText.Segment
 import struct CallText.State
 import protocol FillIn.Segment
@@ -11,16 +12,17 @@ public struct TranscriptSegment: Equatable, Sendable {
     public let id: Int
     public let start: Double
     public let end: Double
-    public let settled: String
-    public let pending: String
+    public let words: [Word]
+    /// How many words, from the first, are settled.
+    public let settledCount: Int
 
-    public init(id: Int, start: Double, end: Double, settled: String = "", pending: String = "") {
+    public init(id: Int, start: Double, end: Double, words: [Word], settledCount: Int) {
 
         self.id = id
         self.start = start
         self.end = end
-        self.settled = settled
-        self.pending = pending
+        self.words = words
+        self.settledCount = settledCount
     }
 }
 
@@ -32,9 +34,18 @@ extension TranscriptSegment: SideText.Segment {
 
     public func identified(as id: Int) -> TranscriptSegment {
 
-        TranscriptSegment(id: id, start: start, end: end, settled: settled, pending: pending)
+        TranscriptSegment(id: id, start: start, end: end, words: words, settledCount: settledCount)
     }
 }
 
 /// The call's text as call text merges it from the two sides.
 public typealias CallState = CallText.State<TranscriptSegment>
+
+extension TranscriptSegment {
+
+    /// The settled words as readers show them: joined with single spaces.
+    var settledText: String { words.prefix(settledCount).map(\.text).joined(separator: " ") }
+
+    /// The pending words as readers show them: joined with single spaces.
+    var pendingText: String { words.dropFirst(settledCount).map(\.text).joined(separator: " ") }
+}

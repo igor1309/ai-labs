@@ -167,8 +167,7 @@ private func hear(_ recognizer: ParakeetRecognizer, seconds: Double) async -> (w
     }
     await live.listen(to: ClockAudio(pieces: Int(seconds * 10)))
     let segments = await last.value
-    let words = { (text: String) in text.split(separator: " ").map(String.init) }
-    return (segments.flatMap { words($0.settled) + words($0.pending) }, segments.flatMap { words($0.pending) })
+    return (segments.flatMap { $0.words.map(\.text) }, segments.flatMap { $0.words.dropFirst($0.settledCount).map(\.text) })
 }
 
 /// Audio whose every sample is its own time in seconds, so a reader knows

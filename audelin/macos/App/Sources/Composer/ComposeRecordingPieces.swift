@@ -24,7 +24,7 @@ final class RecordingCallApp: Sendable {
 func composeRecordingPieces(
     preferences: PreferencesStore, occupiedCallNames: @escaping @Sendable () throws -> [String],
     callApp: RecordingCallApp, processes: CoreAudioProcesses,
-    boundary: ComposerBoundary, summaries: SummaryCallbacks = .disabled
+    boundary: ComposerBoundary, cleanupRuns: CleanupRuns, summaries: SummaryCallbacks = .disabled
 ) -> @Sendable (UInt64) -> SessionPieces {
 
     return { _ in
@@ -36,7 +36,7 @@ func composeRecordingPieces(
             processes: CallAppProcesses(app: app ?? "", list: RecordingProcessList(
                 source: processes, appKnown: app != nil
             )),
-            boundary: boundary, summaries: summaries
+            boundary: boundary, cleanupRuns: cleanupRuns, summaries: summaries
         )
     }
 }

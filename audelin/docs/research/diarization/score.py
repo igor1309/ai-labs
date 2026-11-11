@@ -11,6 +11,10 @@ usage (from audelin/docs/research/diarization):
       (COLLAR=<seconds> in the environment overrides the 0.25 s collar)
       tables over work/ami (DER pooled over meetings, speaker counts, cost) and
       work/calls (speaker counts per system, calls with more than one remote speaker)
+  uv run python score.py synth
+      tables over work/synth, the synthetic Russian group calls built by synth.py: DER and
+      speaker error pooled per system and per speaker count, overlap left out and
+      included, and speaker-count accuracy; writes work/synth-summary.json
 
 Scoring is frame-based at 10 ms. Hypothesis speakers are mapped to reference speakers
 one-to-one to maximise matched time (Hungarian); unmapped hypothesis speech under a
@@ -183,6 +187,49 @@ def summary():
         print(f"{system}: {sum(x > 1 for x in c)}/{len(c)} calls with more than one remote speaker")
 
 
+def synth():
+    folder = WORK / "synth"
+    calls = sorted(p.stem for p in folder.glob("*.rttm"))
+    meta = {c: json.loads((folder / f"{c}.json").read_text()) for c in calls}
+    minutes = sum(m["minutes"] for m in meta.values())
+    print(f"Synthetic Russian group calls, {len(calls)} calls, {minutes / 60:.1f} h, {COLLAR:g} s collar\n")
+    print("| System | Speakers | Calls | DER, overlap ignored | SE, ignored | DER, overlap included |"
+          " miss / FA / SE, included | Count right | Count right (≥ 5 %) | Mean count | Overlap |")
+    print("|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|")
+    out = {}
+    for system in ("nemotron", "vbx"):
+        per = {}
+        for c in calls:
+            f = folder / f"{c}.{system}.json"
+            if not f.exists():
+                continue
+            ref_segs = rttm(folder / f"{c}.rttm")
+            hyp_segs, _ = hyp(f)
+            st = stats(f)
+            n = meta[c]["speakers"]
+            _, rm = matrix(ref_segs, int(max(b for _, _, b in ref_segs) / STEP) + 2)
+            talk = rm.sum(axis=0)
+            per.setdefault(n, []).append({
+                "call": c, "ignored": der(ref_segs, hyp_segs, True), "included": der(ref_segs, hyp_segs, False),
+                "speakers": st["speakers"], "speakers5pct": st["speakers5pct"], "refSpeakers": n,
+                "overlap": float((talk > 1).sum() / max(1, (talk > 0).sum()))})
+        groups = [(str(n), per[n]) for n in sorted(per)] + [("all", [r for n in sorted(per) for r in per[n]])]
+        for label, rows in groups:
+            if not rows:
+                continue
+            i, x = pooled(rows, "ignored"), pooled(rows, "included")
+            right = sum(r["speakers"] == r["refSpeakers"] for r in rows)
+            right5 = sum(r["speakers5pct"] == r["refSpeakers"] for r in rows)
+            mean = sum(r["speakers5pct"] for r in rows) / len(rows)
+            ov = 100 * sum(r["overlap"] for r in rows) / len(rows)
+            print(f"| {system} | {label} | {len(rows)} | {i['der']:.1f} % | {i['se']:.1f} % | {x['der']:.1f} % | "
+                  f"{x['miss']:.1f} / {x['fa']:.1f} / {x['se']:.1f} | {right}/{len(rows)} | {right5}/{len(rows)} |"
+                  f" {mean:.1f} | {ov:.1f} % |")
+            out[f"{system}/{label}"] = {"ignored": i, "included": x, "countRight": right,
+                                        "countRight5pct": right5, "calls": rows}
+    (WORK / "synth-summary.json").write_text(json.dumps(out, indent=1))
+
+
 if __name__ == "__main__":
     cmd = sys.argv[1]
     if cmd == "der":
@@ -197,3 +244,5 @@ if __name__ == "__main__":
         print(json.dumps(stats(sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else "segments")))
     elif cmd == "summary":
         summary()
+    elif cmd == "synth":
+        synth()

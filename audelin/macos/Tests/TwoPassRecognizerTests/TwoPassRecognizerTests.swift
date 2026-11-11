@@ -103,7 +103,7 @@ struct TwoPassRecognizerTests {
 
     private func read(_ segments: SegmentSnapshot?) -> [String] {
 
-        segments?.all.map { segment(start: $0.start, settled: $0.settled, pending: $0.pending) } ?? []
+        segments?.all.map { segment(start: $0.start, settled: $0.words.prefix($0.settledCount).map(\.text).joined(separator: " "), pending: $0.words.dropFirst($0.settledCount).map(\.text).joined(separator: " ")) } ?? []
     }
 
     /// Feeds one chunk per draft hearing, or `chunks`, then ends the audio,

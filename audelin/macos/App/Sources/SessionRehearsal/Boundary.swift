@@ -1,4 +1,5 @@
 import Composer
+import BleedCleanup
 import Foundation
 import LiveText
 import Preferences
@@ -46,7 +47,8 @@ public func rehearsalBoundary(
                 }
                 output.onTermination = { _ in task.cancel() }
             }
-        }), log: RehearsalLog(), intervals: intervals, recordings: FileRecordingStorage())
+        }), log: RehearsalLog(), intervals: intervals, recordings: FileRecordingStorage(), bleedCleaning: RehearsalCleaning(),
+        bleedHearing: CleanupHearing(recognizers: RehearsalRecognizers(mine: mine, theirs: theirs)))
 }
 
 private struct RehearsalMicrophone: MicrophoneSource {
@@ -117,3 +119,9 @@ public func endRehearsalCall(_ composition: AudelinMenu, call: RehearsalCallApp)
     return nil
 }
 private enum RehearsalFailure: Error { case cannotRecord(String), ended }
+
+/// Synthetic captures have no acoustic bleed to remove.
+private struct RehearsalCleaning: MicrophoneCleaning {
+    enum Failure: Error { case syntheticRecording }
+    func clean(_ recording: CleanupRecording) throws -> [Float] { throw Failure.syntheticRecording }
+}
