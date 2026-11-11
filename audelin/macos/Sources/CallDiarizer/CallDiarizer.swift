@@ -1,12 +1,12 @@
 import AVFoundation
 import AudioConversion
-import FluidAudio
 
-/// The after-call speaker pass: diarizes a finished call track with Nemotron 3 (`fast128`),
-/// which LAB-1103 measured at 2.7 % DER and about 11 s per hour of call.
+/// Reads a finished call track and chooses an offline speaker diarizer.
 public struct CallDiarizer: Sendable {
 
-    /// One speaker turn on the call track, in seconds from the track's first sample.
+    public enum Model: Equatable, Sendable { case nemotron, vbx }
+
+    /// One speaker turn, in seconds from the track's first sample.
     public struct Turn: Equatable, Sendable {
         public let speaker: Int
         public let start: Double
@@ -14,22 +14,49 @@ public struct CallDiarizer: Sendable {
         public init(speaker: Int, start: Double, end: Double) { self.speaker = speaker; self.start = start; self.end = end }
     }
 
-    public init() {}
-
-    public func turns(of track: URL) async throws -> [Turn] {
-
-        let samples = try Self.samples(of: track)
-        guard !samples.isEmpty else { return [] }
-        let config = Nemotron3Config.fast128
-        let models = try await Nemotron3Models.loadFromHuggingFace(config: config)
-        let diarizer = Nemotron3Diarizer(config: config, models: models)
-        let (probabilities, frames) = try diarizer.processComplete(samples)
-        return Nemotron3Diarizer.segments(probabilities: probabilities, frameCount: frames, numSpeakers: config.numSpeakers)
-            .map { Turn(speaker: $0.speakerIndex, start: Double($0.startSeconds), end: Double($0.endSeconds)) }
+    public struct Diarization: Equatable, Sendable {
+        public let model: Model
+        public let turns: [Turn]
+        public init(model: Model, turns: [Turn]) { self.model = model; self.turns = turns }
     }
 
+    private let binding: any DiarizationBinding
+
+    public init(binding: any DiarizationBinding) { self.binding = binding }
+
+    /// `speakers`: the number of remote speakers when the caller knows it.
+    public func diarize(_ track: URL, speakers: Int? = nil) async throws -> Diarization {
+
+        let samples = try Self.samples(of: track)
+        guard !samples.isEmpty else { return Diarization(model: .nemotron, turns: []) }
+        if speakers.map({ $0 > binding.nemotronSlots }) != true {
+            do {
+                let run = try await binding.loadNemotron()
+                let turns = try await run(samples).sorted { $0.start < $1.start }.map { turn in
+                    guard let speaker = Int(turn.speaker) else { throw InvalidSpeaker() }
+                    return Turn(speaker: speaker, start: turn.start, end: turn.end)
+                }
+                return Diarization(model: .nemotron, turns: turns)
+            } catch let error as CancellationError {
+                throw error
+            } catch {
+                // VBx can still recover speakers when Nemotron is unavailable.
+            }
+        }
+        let engineTurns = try await binding.vbx(samples, speakers: speakers).sorted { $0.start < $1.start }
+        var speakersByName: [String: Int] = [:]
+        let turns = engineTurns.map { turn in
+            let speaker = speakersByName[turn.speaker] ?? speakersByName.count
+            speakersByName[turn.speaker] = speaker
+            return Turn(speaker: speaker, start: turn.start, end: turn.end)
+        }
+        return Diarization(model: .vbx, turns: turns)
+    }
+
+    private struct InvalidSpeaker: Error {}
+
     /// The track as 16 kHz mono floats, the model's input.
-    static func samples(of url: URL) throws -> [Float] {
+    private static func samples(of url: URL) throws -> [Float] {
 
         let file = try AVAudioFile(forReading: url, commonFormat: .pcmFormatFloat32, interleaved: false)
         let rate = file.processingFormat.sampleRate
@@ -39,8 +66,14 @@ public struct CallDiarizer: Sendable {
         while file.framePosition < file.length {
             guard let buffer = AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: chunk) else { break }
             try file.read(into: buffer, frameCount: chunk)
-            guard buffer.frameLength > 0, let channel = buffer.floatChannelData?[0] else { break }
-            result += try converter.convertAvailable(Array(UnsafeBufferPointer(start: channel, count: Int(buffer.frameLength))))
+            guard buffer.frameLength > 0, let channels = buffer.floatChannelData else { break }
+            let count = Int(buffer.frameLength)
+            let channelCount = Int(buffer.format.channelCount)
+            var mono = [Float](repeating: 0, count: count)
+            for channel in 0..<channelCount {
+                for frame in 0..<count { mono[frame] += channels[channel][frame] / Float(channelCount) }
+            }
+            result += try converter.convertAvailable(mono)
         }
         return result + (try converter.flush())
     }

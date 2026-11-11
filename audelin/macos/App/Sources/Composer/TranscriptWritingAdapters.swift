@@ -131,7 +131,7 @@ actor WritingTranscript: SessionTranscriptFile {
         let board = names.snapshot()
         if let state = last, let track = board.callTrack, !board.spoken.isEmpty {
             do {
-                let turns = try await CallDiarizer().turns(of: track)
+                let turns = try await CallDiarizer(binding: FluidDiarizationBinding()).diarize(track).turns
                 let rows = state.entries.filter { $0.speaker != .mine }.map { (id: $0.text.id, start: $0.text.start, end: $0.text.end) }
                 let confirmed = AfterCallNames.names(rows: rows, turns: turns, board: board)
                 names.confirm(confirmed)
