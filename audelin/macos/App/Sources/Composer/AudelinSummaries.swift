@@ -15,13 +15,20 @@ final class AudelinSummaries {
     private(set) var statuses: [String: String] = [:] { didSet { feed.publish(statuses) } }
     func updates() -> AsyncStream<[String: String]> { feed.subscribe(from: statuses) }
     private var coordinator: SummaryCoordinatorModel!
+    private var jobs: SummaryCoordinatorJobsAdapter!
+    private(set) var retryable: Set<String> = []
     private let preferences: PreferencesStore
     init(files: SummaryFiles.Files, runtime: SummaryRuntime.Runtime, preferences: PreferencesStore, sink: any LogSink, load: (@Sendable (String) async throws -> SummaryFiles.Record?)? = nil) {
         self.preferences = preferences
         let store = SummaryJobStore(files: files)
         let handler = SummaryJobs.EffectHandler(store: store, generation: SummaryGeneration(runtime: runtime, sink: sink), cancelled: { Task.isCancelled })
         let jobs = SummaryCoordinatorJobsAdapter(load: load ?? { try await files.load(call: $0) }, store: store,
-            handler: handler, preferences: preferences, changed: { [weak self] call, status in self?.statuses[call] = status })
+            handler: handler, preferences: preferences, changed: { [weak self] call, state in
+                if state.phase == .interrupted { self?.retryable.insert(call) }
+                else { self?.retryable.remove(call) }
+                self?.statuses[call] = state.status
+            })
+        self.jobs = jobs
         coordinator = SummaryCoordinatorModel(jobs: jobs)
     }
     func waiting(call: String) {
@@ -48,7 +55,9 @@ final class AudelinSummaries {
             await coordinator.wait(call: call)
         }
     }
-    var busy: Bool { coordinator.busy }
+    var busy: Bool { coordinator.busy || jobs.busy }
+    func refreshObserved() async { await jobs.refreshObserved() }
+    func retry(call: String) async throws { try await coordinator.retry(call: call) }
     func stopDispatch() { coordinator.send(.stopDispatch) }
     func shutdown() async { await coordinator.shutdown() }
 }

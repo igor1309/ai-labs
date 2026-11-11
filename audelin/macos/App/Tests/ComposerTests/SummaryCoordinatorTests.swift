@@ -200,6 +200,39 @@ import Testing
         #expect(spy.joins == 1)
     }
 
+    @Test(arguments: [false, true])
+    func explicitRetryRunsOnceAndDeliversItsResult(fails: Bool) async {
+        let given = makeState(calls: ["call": .init(phase: .installed, operation: 1)])
+        let retrying = assert(given, .retry("call")) {
+            $0.sequence = 2; $0.calls["call"] = .init(phase: .retrying, operation: 2)
+        }
+        _ = assert(retrying, .retry("call"))
+        _ = assert(makeState(), .retry("call"))
+        let spy = CoordinatorJobsSpy(), events = EventSpy()
+        let doer = SummaryCoordinatorDoer(jobs: spy, send: events.send)
+        doer.act(on: retrying); doer.act(on: retrying)
+        await spy.retryStarted.next()
+        #expect(spy.retried == ["call"])
+        spy.completeRetry(fails ? .failure(CoordinatorFailure()) : .success(()))
+        await doer.join()
+        let event: SummaryCoordinatorEvent = fails ? .retryFailed("call") : .retried("call")
+        #expect(events.values == [event])
+        let finished = assert(retrying, event) {
+            $0.sequence = 3
+            $0.calls["call"] = .init(phase: fails ? .installed : .dispatching, operation: 3)
+            if fails { $0.retryFailures.insert("call") }
+        }
+        doer.act(on: finished)
+        #expect(spy.dispatched == (fails ? [] : ["call"]))
+        _ = assert(assert(given, .stopDispatch) { $0.dispatch = false }, .retry("call"))
+        if !fails {
+            let stopped = assert(retrying, .stopDispatch) { $0.dispatch = false }
+            _ = assert(stopped, .retried("call")) {
+                $0.sequence = 3; $0.calls["call"] = .init(phase: .pending, operation: 3)
+            }
+        }
+    }
+
     @discardableResult private func assert(_ state: SummaryCoordinatorState, _ event: SummaryCoordinatorEvent,
                                            changes: (inout SummaryCoordinatorState) -> Void = { _ in }) -> SummaryCoordinatorState {
         var expected = state; changes(&expected)
@@ -237,6 +270,15 @@ private struct CoordinatorFailure: Error {}
         var values = submission.stream.makeAsyncIterator()
         return await values.next()!
     }
+    func retry(call: String) async throws {
+        retried.append(call); retryStarted.send()
+        var values = retryResult.stream.makeAsyncIterator()
+        try await values.next()!.get()
+    }
+    var retried: [String] = []
+    let retryStarted = Signal()
+    private let retryResult = AsyncStream<Result<Void, CoordinatorFailure>>.makeStream()
+    func completeRetry(_ result: Result<Void, CoordinatorFailure>) { retryResult.continuation.yield(result) }
     func dispatch(call: String) { dispatched.append(call) }
     func recoveryFailed(call: String) async { failed.append(call) }
     func join() async { joins += 1; joinStarted.send(); await joined.next() }

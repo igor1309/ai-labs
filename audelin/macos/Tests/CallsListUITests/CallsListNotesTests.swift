@@ -23,6 +23,17 @@ struct CallsListNotesTests {
         #expect(shown.sent == [.preview("2026.10.17-1100")])
     }
 
+    @Test func retryButtonAsksForThatInterruptedCallWithoutStartingRename() throws {
+        var state = makeState()
+        state.rows[0].summaryStatus = "Подготовка итогов прервана"
+        state.rows[0].canRetrySummary = true
+        let shown = Shown(state)
+        defer { shown.close() }
+        let eye = try #require(try shown.eyes().first)
+        shown.click(CGPoint(x: 260, y: eye.midY + 18))
+        #expect(shown.sent == [.retrySummary("2026.10.21-1230")])
+    }
+
     @Test func clickingARowsTitleSelectsItAndStartsItsRename() throws {
 
         let shown = Shown(makeState())

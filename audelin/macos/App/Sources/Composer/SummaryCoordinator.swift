@@ -20,7 +20,7 @@ public struct SummarySubmission: Equatable, Sendable {
 public struct SummaryCoordinatorState: Equatable, Sendable {
     public enum Phase: Equatable, Sendable { case accepting, draining, joining, ended }
     public struct Call: Equatable, Sendable {
-        public enum Phase: Equatable, Sendable { case recovering, submitting, pending, dispatching, installed, failing }
+        public enum Phase: Equatable, Sendable { case recovering, submitting, retrying, pending, dispatching, installed, failing }
         public var phase: Phase
         public var operation: UInt64
         public var submission: SummarySubmission?
@@ -31,9 +31,10 @@ public struct SummaryCoordinatorState: Equatable, Sendable {
     public var phase: Phase
     public var dispatch: Bool
     public var sequence: UInt64
+    public var retryFailures: Set<String>
     public var calls: [String: Call]
-    public init(phase: Phase = .accepting, dispatch: Bool = true, sequence: UInt64 = 0, calls: [String: Call] = [:]) {
-        self.phase = phase; self.dispatch = dispatch; self.sequence = sequence; self.calls = calls
+    public init(phase: Phase = .accepting, dispatch: Bool = true, sequence: UInt64 = 0, calls: [String: Call] = [:], retryFailures: Set<String> = []) {
+        self.phase = phase; self.dispatch = dispatch; self.sequence = sequence; self.calls = calls; self.retryFailures = retryFailures
     }
 }
 
@@ -42,6 +43,7 @@ public enum SummaryCoordinatorEvent: Equatable, Sendable {
     case recover(String), submit(SummarySubmission)
     case recovered(String, SummaryRecovery), recoveryFailed(String)
     case submitted(String, pending: Bool), dispatched(String), failureInstalled(String)
+    case retry(String), retried(String), retryFailed(String)
     case stopDispatch, shutdown, joined
 }
 
@@ -75,6 +77,14 @@ public struct SummaryCoordinatorReducer {
             next.calls[call] = .init(phase: .installed)
         case let .failureInstalled(call) where state.calls[call]?.phase == .failing:
             next.calls[call] = .init(phase: .installed)
+        case let .retry(call) where state.phase == .accepting && state.dispatch && state.calls[call]?.phase == .installed:
+            next.retryFailures.remove(call)
+            next.calls[call] = .init(phase: .retrying)
+        case let .retried(call) where state.calls[call]?.phase == .retrying:
+            next.calls[call] = .init(phase: state.dispatch ? .dispatching : .pending)
+        case let .retryFailed(call) where state.calls[call]?.phase == .retrying:
+            next.retryFailures.insert(call)
+            next.calls[call] = .init(phase: .installed)
         case .stopDispatch:
             next.dispatch = false
         case .shutdown where state.phase == .accepting:
@@ -102,6 +112,7 @@ public struct SummaryCoordinatorReducer {
 @MainActor public protocol SummaryCoordinatorJobs {
     func recover(call: String) async throws -> SummaryRecovery
     func submit(_ submission: SummarySubmission) async -> Bool
+    func retry(call: String) async throws
     func dispatch(call: String)
     func recoveryFailed(call: String) async
     func join() async
@@ -126,7 +137,7 @@ public struct SummaryCoordinatorReducer {
             guard work.phase != .pending && work.phase != .installed,
                   started.insert(work.operation).inserted else { continue }
             switch work.phase {
-            case .recovering, .submitting, .failing:
+            case .recovering, .submitting, .retrying, .failing:
                 tasks[call] = Task { [self] in
                     let event: SummaryCoordinatorEvent
                     switch work.phase {
@@ -136,6 +147,9 @@ public struct SummaryCoordinatorReducer {
                     case .submitting:
                         guard let submission = work.submission else { preconditionFailure("Submission phase requires input") }
                         event = .submitted(call, pending: await jobs.submit(submission))
+                    case .retrying:
+                        do { try await jobs.retry(call: call); event = .retried(call) }
+                        catch { event = .retryFailed(call) }
                     case .failing:
                         await jobs.recoveryFailed(call: call); event = .failureInstalled(call)
                     default: preconditionFailure("No asynchronous work for phase")

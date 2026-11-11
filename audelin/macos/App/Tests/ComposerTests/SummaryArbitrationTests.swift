@@ -55,11 +55,18 @@ import Testing
             do {
                 await observer.recover(calls: [id])
                 #expect(observer.statuses[id] == "Готовим итоги…")
+                #expect(owner.busy && observer.busy)
+                await observer.refreshObserved()
+                #expect(observer.busy)
+                await #expect(throws: (any Error).self) { try await observer.retry(call: id) }
                 #expect(try await observerFiles.load(call: id)?.phase == "running")
                 await observer.submit(call: id, input: "duplicate", entries: [], finalWrite: false, usable: false)
                 http.release.send()
                 for await status in owner.updates() where status[id] == "Итоги готовы" { break }
                 #expect(try await observerFiles.load(call: id)?.phase == "succeeded")
+                await observer.refreshObserved()
+                #expect(!owner.busy && !observer.busy)
+                #expect(observer.statuses[id] == "Итоги готовы")
                 #expect(await http.requests == 1)
                 await owner.shutdown(); await observer.shutdown()
             } catch {

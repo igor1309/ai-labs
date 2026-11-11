@@ -59,6 +59,8 @@ public struct Files: Sendable {
     public func release(job: String, call: String, input: String) async { await storage.release(job: job, call: call, input: input) }
     public func claim(_ record: Record) async throws -> (owned: Bool, record: Record) { try await storage.claim(record) }
     public func load(call: String) async throws -> Record? { try await storage.load(call: call) }
+    /// Replaces only the named interrupted attempt; its durable input and outputs survive.
+    public func retry(_ record: Record, job: String) async throws -> Record { try await storage.retry(record, job: job) }
     public func start(_ record: Record) async throws -> Bool { try await storage.start(record) }
     public func progress(_ record: Record) async throws { try await storage.progress(record) }
     public func publish(_ record: Record, notes: String) async throws { try await storage.publish(record, notes: notes) }
@@ -69,6 +71,7 @@ private protocol FilesStorage: Sendable {
     func release(job: String, call: String, input: String) async
     func claim(_ record: Record) async throws -> (owned: Bool, record: Record)
     func load(call: String) async throws -> Record?
+    func retry(_ record: Record, job: String) async throws -> Record
     func start(_ record: Record) async throws -> Bool
     func progress(_ record: Record) async throws
     func publish(_ record: Record, notes: String) async throws
@@ -139,6 +142,22 @@ private actor DiskFiles: FilesStorage {
                 try disk.replace(JSONEncoder().encode(record), at: path)
             }
             return record
+        }
+    }
+    public func retry(_ record: Record, job: String) async throws -> Record {
+        try await locations.withFolder(call: record.call) { [disk, ownershipDirectory] folder in
+            // The old attempt's lease serializes retries even across independent instances.
+            guard let lease = try Self.acquire(record, directory: ownershipDirectory) else { throw CocoaError(.fileWriteUnknown) }
+            defer { flock(lease, LOCK_UN); close(lease) }
+            let path = folder.appendingPathComponent(".summary-job.json")
+            let current = try Self.read(path, disk: disk, call: record.call)
+            guard current == record, current.phase == "interrupted", !job.isEmpty, job != current.job else {
+                throw CocoaError(.fileWriteUnknown)
+            }
+            var next = current
+            next.job = job; next.phase = "pending"; next.warning = false
+            try disk.replace(JSONEncoder().encode(next), at: path)
+            return next
         }
     }
     public func start(_ record: Record) async throws -> Bool {
