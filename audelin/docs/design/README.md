@@ -113,6 +113,7 @@ from instances.
 | Live panel | `c0qJn` | The glass panel shell; replace `Body` with the header, banners and log |
 | Added late | `HIqfu` | `Late label`; the group of minutes filled in after live text is switched on mid-call |
 | Checkbox/On, /Off | `ufHXu`, `zhXsW` | `Label` |
+| Eye, /Active, /Disabled; Calls row/Selected; Summary preview | on the board "Glass Ledger — summary preview components" | see [summary preview brief](summary-preview.md); Calls row has a hidden `Eye cell` |
 | Sheet | `w9b9LL` | Scrim with a centred Alert; set x, y and size to the window under the title bar, and override the Alert through `Alert/<id>` |
 
 ## Frames
@@ -121,6 +122,7 @@ from instances.
 |---|---|
 | Top, y < 0 | Glass Ledger — design system, Glass Ledger — components |
 | x = 0, y ≥ 0 | One frame each, Light and Dark: Glass Ledger — window sizes (how the resizable panel adapts), Glass Ledger — no footnote (the panel before any term is selected), Screens 1–8, then "Later — term chips" |
+| Right of Screen 4, x = 4100 | Screen 4b — Summary preview: eye button A1 and window B1, both picked, Light and Dark ([brief](summary-preview.md)) |
 | Right of Screen 7, x = 2160 | Screen 7b — Installed update: the menu bar item and menu with no update, an update available, and an update during a call, Light and Dark ([brief](app-update.md)) |
 
 Current screens:

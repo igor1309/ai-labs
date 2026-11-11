@@ -19,7 +19,7 @@ struct ProfilingTests {
             let failure = ProfileFailure()
             let hearing = Hearing(words: [.init("word", start: 0, end: 1)])
             let chunk = AudioChunk(samples: [0.25], sampleRate: 48_000)
-            let state = State(status: .listening, entries: [])
+            let state = CallState(status: .listening, entries: [])
             let reading = ReadingReducer.reduce(ReadingState(), .recordingChanged(.on(elapsed: 2))).0
             let recognizer = ProfileRecognizer(
                 onHear: { value in
@@ -71,10 +71,13 @@ private struct ProfileRecognizer: Recognizer {
 }
 
 private struct ProfileFile: SessionTranscriptFile {
-    let onWrite: @Sendable (State) async throws -> Void
+    let onWrite: @Sendable (CallState) async throws -> Void
     let onClose: @Sendable () async -> Void
-    func write(_ state: State) async throws { try await onWrite(state) }
+    func write(_ state: CallState) async throws { try await onWrite(state) }
     func close() async { await onClose() }
+    func replaceMicrophone(in state: CallState, with segments: [TranscriptSegment]) {
+        Issue.record("Unexpected microphone replacement")
+    }
 }
 
 final class ProfileIntervalSpy: Sendable {

@@ -210,7 +210,7 @@ private func withSessions(_ body: @Sendable (SessionsRig) async throws -> Void) 
         app.started("us.zoom.xos")
         let panel = await AudelinPanel(now: clock.time.monotonicNow, ticks: clock.ticks, sink: log, intervals: testIntervals)
         let sessions = RecordingSessions(preferences: preferences, occupiedCallNames: { [] }, callApp: app, processes: processes, boundary: boundary,
-                                         report: { id, report in reports.append(.init(id: id, report: report)) }, panel: panel)
+                                         report: { id, report in reports.append(.init(id: id, report: report)) }, panel: panel, cleanupRuns: CleanupRuns())
         try await body(SessionsRig(sessions: sessions, panel: panel, microphones: microphones, calls: calls, reports: reports, log: log))
         await processes.stop()
     }

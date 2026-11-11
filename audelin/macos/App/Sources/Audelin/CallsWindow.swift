@@ -19,10 +19,13 @@ extension NSWindow: CallsWindowDriver {}
 final class CallsWindow {
     private let window: any CallsWindowDriver
     private let activate: () -> Void
+    private let shown: (AnyObject) -> Void
 
-    init(makeWindow: () -> any CallsWindowDriver, activate: @escaping () -> Void) {
+    init(makeWindow: () -> any CallsWindowDriver, activate: @escaping () -> Void,
+         shown: @escaping (AnyObject) -> Void = { _ in }) {
         window = makeWindow()
         self.activate = activate
+        self.shown = shown
         window.title = "Звонки"
         window.isReleasedWhenClosed = false
         window.minSize = NSSize(width: 860, height: 360)
@@ -33,6 +36,7 @@ final class CallsWindow {
 
     func show() {
         if window.isMiniaturized { window.deminiaturize(nil) }
+        shown(window)
         activate()
         window.makeKeyAndOrderFront(nil)
     }

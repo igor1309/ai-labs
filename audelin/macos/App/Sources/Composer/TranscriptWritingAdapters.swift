@@ -1,11 +1,14 @@
+import CallDiarizer
 import Foundation
-import struct CallText.State
 import Session
 import Synchronization
 import TranscriptFile
+import TranscriptFormat
 import protocol TranscriptWriting.CallText
-import protocol TranscriptWriting.Transcript
-import protocol TranscriptWriting.FailureReport
+import protocol TranscriptWriting.TextSaving
+import class SavePacing.SavePacing
+import protocol SavePacing.Saving
+import protocol SavePacing.FailureReport
 
 struct WritingCallText: TranscriptWriting.CallText {
 
@@ -13,7 +16,7 @@ struct WritingCallText: TranscriptWriting.CallText {
 
     init(text: CallReader) { self.text = text }
 
-    var updates: AsyncStream<State> { text.updates }
+    var updates: AsyncStream<CallState> { text.updates }
     func start(enabled: Bool) async { await text.start(enabled: enabled) }
     func setEnabled(_ enabled: Bool) async { await text.setEnabled(enabled) }
     func stop() async { await text.stop() }
@@ -22,37 +25,127 @@ struct WritingCallText: TranscriptWriting.CallText {
 /// A recording's transcript destination, kept open until its text has stopped.
 public protocol SessionTranscriptFile: Sendable {
 
-    func write(_ state: State) async throws
+    func write(_ state: CallState) async throws
 
     func close() async
+
+    /// Replaces the closed transcript atomically; a failure keeps its previous bytes.
+    func replaceMicrophone(in state: CallState, with segments: [TranscriptSegment]) async throws
 }
 
-struct TranscriptDestination: TranscriptWriting.Transcript {
+struct PacedTextSaving<Value: Sendable>: TextSaving {
+
+    let pacing: SavePacing<Value>
+
+    func submit(_ text: Value) { pacing.submit(text) }
+    func finish() async { await pacing.finish() }
+}
+
+struct TranscriptDestination: Saving {
 
     let file: any SessionTranscriptFile
 
-    func write(_ state: State) async throws { try await file.write(state) }
+    func save(_ state: CallState) async throws { try await file.write(state) }
 }
 
-struct WritingTranscript: SessionTranscriptFile {
+/// Renders call text for the transcript; `TranscriptFormat` in the app.
+protocol TranscriptRenderer: Sendable {
 
-    let file: TranscriptFile
+    mutating func render(count: Int, finalCount: Int, speakers: [TranscriptFormat.Speaker], segment: (Int) -> TranscriptFormat.Segment) throws -> TranscriptFormat.Rendering
+}
+
+/// Keeps rendered bytes on disk; `TranscriptFile` in the app.
+protocol TranscriptBytes: Sendable {
+
+    func write(_ chunks: [Data], finalLength: Int?) async throws
+    func replace(_ chunks: [Data], finalLength: Int?) async throws
+    func close() async
+}
+
+extension TranscriptFormat: TranscriptRenderer {}
+extension TranscriptFile: TranscriptBytes {}
+
+actor WritingTranscript: SessionTranscriptFile {
+
+    let file: any TranscriptBytes
     let sink: any LogSink
+    private let names: LiveNameBoard
+    private var format: any TranscriptRenderer
+    private var replaceNext = false
+    private var closed = false
+    private var closedNames: LiveNameBoard.Names?
+    private var last: CallState?
 
-    init(file: TranscriptFile, sink: any LogSink) { self.file = file; self.sink = sink }
+    init(file: any TranscriptBytes, format: any TranscriptRenderer, names: LiveNameBoard, sink: any LogSink) {
+        self.file = file; self.format = format; self.names = names; self.sink = sink
+    }
 
     /// Logs each save with the final count it wrote, so a reader of the log knows
     /// how many entries on disk will not change again.
-    func write(_ state: State) async throws {
+    func write(_ state: CallState) async throws {
+
+        guard !closed else { throw TranscriptFile.Failure.writingEnded }
+        last = state
+        try await save(state)
+    }
+
+    private func save(_ state: CallState) async throws {
 
         let entries = state.entries, finalCount = state.finalCount
-        try await file.write(count: entries.count, finalCount: finalCount) {
-            Composer.Transcript.segment(from: entries[$0])
+        let names = names.snapshot()
+        let rendering: TranscriptFormat.Rendering
+        do {
+            rendering = try format.render(count: entries.count, finalCount: finalCount, speakers: Composer.Transcript.speakers(names)) {
+                let entry = entries[$0]
+                return Composer.Transcript.segment(from: entry, speaker: names.rows[entry.text.id].flatMap { names.ids[$0] })
+            }
+        } catch {
+            replaceNext = true
+            throw error
+        }
+        let replace = replaceNext
+        replaceNext = false
+        if replace {
+            try await file.replace(rendering.chunks, finalLength: rendering.finalLength)
+        } else {
+            try await file.write(rendering.chunks, finalLength: rendering.finalLength)
         }
         sink.write(.init(category: .session, message: "transcript saved finalCount=\(finalCount)"))
     }
 
-    func close() async { await file.close() }
+    func replaceMicrophone(in state: CallState, with segments: [TranscriptSegment]) async throws {
+
+        let board = closedNames ?? names.snapshot()
+        var format = TranscriptFormat()
+        let rendering = try format.render(
+            Composer.Transcript.replacingMicrophone(in: state, with: segments, names: board),
+            speakers: Composer.Transcript.speakers(board)
+        )
+        try await file.replace(rendering.chunks, finalLength: rendering.finalLength)
+    }
+
+    /// Runs the after-call pass first, so confirmed names replace the live guesses before
+    /// the file is sealed. A failed pass keeps the tentative names.
+    func close() async {
+
+        let board = names.snapshot()
+        if let state = last, let track = board.callTrack, !board.spoken.isEmpty {
+            do {
+                let turns = try await CallDiarizer().turns(of: track)
+                let rows = state.entries.filter { $0.speaker != .mine }.map { (id: $0.text.id, start: $0.text.start, end: $0.text.end) }
+                let confirmed = AfterCallNames.names(rows: rows, turns: turns, board: board)
+                names.confirm(confirmed)
+                await names.announce(confirmed)
+                try await save(state)
+                sink.write(.init(category: .session, message: "after-call names saved turns=\(turns.count)"))
+            } catch {
+                sink.write(.init(category: .session, message: "after-call names failed: \(error)"))
+            }
+        }
+        closedNames = names.snapshot()
+        closed = true
+        await file.close()
+    }
 }
 
 final class TranscriptFailureReport: FailureReport, Sendable {
@@ -75,7 +168,7 @@ final class TranscriptFailureReport: FailureReport, Sendable {
         delivery.withLock { $0 = Delivery(deliver: deliver) }
     }
 
-    func transcriptFailed(_ error: any Error) async {
+    func saveFailed(_ error: any Error) async {
 
         let deliver = delivery.withLock { $0.deliver }
         await deliver(.pieceFailed(.transcript, error: String(describing: error)))
@@ -89,6 +182,10 @@ public protocol TranscriptStorage: Sendable {
 public struct FileTranscriptStorage: TranscriptStorage {
     public init() {}
     public func open(at url: Foundation.URL, sink: any LogSink) async throws -> any SessionTranscriptFile {
-        try await WritingTranscript(file: TranscriptFile(url: url), sink: sink)
+        var format = TranscriptFormat()
+        let initial = try format.render([])
+        let file = try await TranscriptFile(url: url, initialBytes: initial.chunks, binding: DiskTranscriptBinding())
+        // Opening has no live write revision; the first saved speaker block starts at one.
+        return WritingTranscript(file: file, format: TranscriptFormat(), names: .shared, sink: sink)
     }
 }

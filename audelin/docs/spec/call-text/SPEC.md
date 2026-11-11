@@ -35,6 +35,9 @@ window.
   call text's (user spec S-9).
 - Call text ends once both sides have ended and let go of their live
   text: each ends with its audio, and stopping stops both (LAB-554).
+- Generic over the segments it carries, which it reads only for identity,
+  start and end, to order and merge the sides; the composition chooses
+  what else a segment holds (LAB-1144).
 
 ```gherkin
 Feature: Reading a call's text as it is recorded

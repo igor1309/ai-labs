@@ -30,11 +30,15 @@ public struct ReadingTextUpdate: Equatable, Sendable {
         public let settled: String
         public let pending: String
         public let writtenLater: Bool
+        /// A remote speaker's tentative name, when the call app showed one.
+        public let name: String?
 
         public init(
             id: ID, start: Double, end: Double,
-            settled: String = "", pending: String = "", writtenLater: Bool = false
+            settled: String = "", pending: String = "", writtenLater: Bool = false, name: String? = nil
         ) {
+
+            self.name = name
 
             self.id = id
             self.start = start
@@ -75,6 +79,9 @@ public enum ReadingEvent: Equatable, Sendable {
     case letGo(ReadingState.Held)
     case scrolled(atBottom: Bool, interaction: UUID? = nil)
     case jumpToLive
+    /// The after-call pass: remote entries take these confirmed names by local ID;
+    /// every other remote entry loses its tentative name.
+    case namesConfirmed([Int: String])
 }
 
 /// A recording problem, stamped on the same elapsed clock as the text.

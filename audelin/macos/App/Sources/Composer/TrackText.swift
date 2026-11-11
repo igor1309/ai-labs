@@ -1,18 +1,17 @@
 import struct SideText.Audio
-import struct SideText.Text
 import LiveText
 
 actor TrackText {
 
     struct Update: Equatable, Sendable {
 
-        let final: [Text]
-        let tail: [Text]
+        let final: [TranscriptSegment]
+        let tail: [TranscriptSegment]
         /// No text still to come starts before this.
         var noTextBefore: Double? = nil
 
         /// The downstream text stores still consume whole-call snapshots.
-        var all: [Text] { final + tail }
+        var all: [TranscriptSegment] { final + tail }
     }
 
     enum Failure: Error, Equatable {
@@ -123,8 +122,8 @@ actor TrackText {
     private var loading: (reply: RecognizerReply, task: Task<Void, Never>)?
     private var listening: Listening?
     private var accepted: Accepted?
-    private var finalText: [Text] = []
-    private var tail: [Text] = []
+    private var finalText: [TranscriptSegment] = []
+    private var tail: [TranscriptSegment] = []
     private var noTextBefore: Double?
     private var appliedReply: Reply?
 
@@ -275,15 +274,15 @@ actor TrackText {
     }
 
     /// A segment runs to the next one's start, and the last to `end`.
-    static func text(from segments: [Segments.Segment], through end: Double) -> [Text] {
+    static func text(from segments: [Segments.Segment], through end: Double) -> [TranscriptSegment] {
 
         segments.enumerated().map { index, segment in
             text(segment, index + 1 < segments.count ? segments[index + 1].start : end)
         }
     }
 
-    private static func text(_ segment: Segments.Segment, _ end: Double) -> Text {
+    private static func text(_ segment: Segments.Segment, _ end: Double) -> TranscriptSegment {
 
-        Text(id: segment.id, start: segment.start, end: end, settled: segment.settled, pending: segment.pending)
+        TranscriptSegment(id: segment.id, start: segment.start, end: end, words: segment.words, settledCount: segment.settledCount)
     }
 }

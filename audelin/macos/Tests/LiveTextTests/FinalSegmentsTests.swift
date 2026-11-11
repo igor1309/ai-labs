@@ -31,7 +31,7 @@ struct FinalSegmentsTests {
         #expect(Array(segments.all.prefix(count)) == final)
         #expect(Array(segments.all.dropFirst().prefix(count).map(\.start)) == ends)
         #expect(segments.finalCount == segments.all.count)
-        #expect(segments.all.allSatisfy { $0.pending.isEmpty })
+        #expect(segments.all.allSatisfy { $0.settledCount == $0.words.count })
         #expect(segments.ending == (failing ? .failed : .finished))
     }
 
@@ -59,8 +59,8 @@ struct FinalSegmentsTests {
         #expect(updates.map(\.finalCount) == [0, 0, 1, 2, 3])
         #expect(updates.map { $0.segments.map(\.id) } == [[0, 1], [0, 1], [0, 1, 2], [1, 2], [2]])
         #expect(updates[3].segments == [
-            .init(id: 1, start: 3, settled: "two.", pending: ""),
-            .init(id: 2, start: 7, settled: "three", pending: ""),
+            .init(id: 1, start: 3, words: [b], settledCount: 1),
+            .init(id: 2, start: 7, words: [revision], settledCount: 1),
         ])
         #expect(updates.last?.end == revision.end)
         #expect(updates.last?.ending == (failing ? .failed : .finished))
@@ -92,13 +92,14 @@ struct FinalSegmentsTests {
             finalCount = update.finalCount
         }
         #expect(all.count == count + 1)
-        #expect(all.last?.pending == "revision")
+        #expect(all.last.map { $0.words.dropFirst($0.settledCount).map(\.text) } == ["revision"])
         source.chunks.continuation.finish()
         let finished = try #require(await updates.next())
         #expect(finished.from == count)
         #expect(finished.finalCount == count + 1)
         #expect(finished.segments.count == 1)
-        #expect(finished.segments[0].settled == "word\(count). revision")
+        #expect(finished.segments[0].words == [words[count], Word("revision", start: Double(count * 3) + 0.5, end: Double(count * 3) + 1)])
+        #expect(finished.segments[0].settledCount == 2)
         #expect(finished.ending == .finished)
         await listening.value
     }

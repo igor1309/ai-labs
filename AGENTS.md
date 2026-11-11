@@ -11,6 +11,10 @@
 - `issue children LAB-<n>` lists a parent's sub-issues with their status;
   `issue create --parent LAB-<n> --title ... --description-file ...`
   adds one; `issue status LAB-<n> <status>` moves it.
+- Write the full `multica --workspace-id ...` in each call, one command per
+  call, with no `cd`, shell function or variable around it. Permission
+  rules match the command's start, so a wrapped call is not allowed and
+  is refused. The same holds for `gh`.
 
 ## Designing in pen.dev
 

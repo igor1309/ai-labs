@@ -36,8 +36,8 @@ struct TranscriptFileCrashTests {
                     let leftovers = try await folderNames(folder).filter { $0 != "transcript.md" }
                     #expect(leftovers.count == (point == "before" ? 1 : 0))
                     let other = folder.appendingPathComponent("another.md")
-                    let file = try await TranscriptFile(url: other)
-                    try await file.write(numberedSegments(4))
+                    let file = try await TranscriptFile(url: other, initialBytes: initialBytes, binding: DiskTranscriptBinding())
+                    try await file.write(numberedBytes(4), finalLength: nil)
                     await file.close()
                     #expect(try await transcriptText(other) == numberedTranscript(4))
                     #expect(try await transcriptText(url) == numberedTranscript(point == "before" ? 2 : 3))
@@ -59,15 +59,14 @@ struct TranscriptFileCrashTests {
             let url = folder.appendingPathComponent("transcript.md")
             let lines = try await killedWriterLines(url: url, point: point)
             #expect(lines == ["returned 1", "returned 2", "paused \(point)"])
-            let final = "# Transcript\n\n**Me** 00:00:01\nfinal\n\n"
+            let final = "1 final\n"
             #expect(try await transcriptText(url)
-                == (point == "truncated" ? final : final + "**Them** 00:00:02\n3 theirs settled 3 theirs pending\n"))
+                == (point == "truncated" ? final : final + "3 second\n"))
             #expect(try await folderNames(folder) == ["transcript.md"])
         }
     }
 
-    /// A file holding only final text ends in one newline, not the blank line
-    /// that will separate it from what follows; a cut back to it keeps that.
+    /// A growing final prefix retains the exact bytes already on disk.
     @Test func sigkillWhileRewritingAfterOnlyFinalTextKeepsItWhole() async throws {
 
         try await withTranscriptFolder { folder in
@@ -75,7 +74,7 @@ struct TranscriptFileCrashTests {
             let point = "truncated after all final"
             let lines = try await killedWriterLines(url: url, point: point)
             #expect(lines == ["returned 1", "returned 2", "paused \(point)"])
-            #expect(try await transcriptText(url) == "# Transcript\n\n**Me** 00:00:01\nfinal\n")
+            #expect(try await transcriptText(url) == "1 final\n")
             #expect(try await folderNames(folder) == ["transcript.md"])
         }
     }

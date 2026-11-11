@@ -28,7 +28,7 @@ struct CallFolderTests {
                 let track = try await TrackFile(url: place)
                 try await track.close()
             }
-            let transcript = try await TranscriptFile(url: made.transcriptURL)
+            let transcript = try await TranscriptFile(url: made.transcriptURL, initialBytes: [Data("initial bytes\n".utf8)], binding: DiskTranscriptBinding())
             await transcript.close()
             #expect(try await names(made.url) == ["call.caf", "microphone.caf", "transcript.md"])
             for place in places {

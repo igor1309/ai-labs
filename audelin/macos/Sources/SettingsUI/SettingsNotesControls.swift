@@ -91,6 +91,8 @@ struct SettingsNotesText: NSViewRepresentable {
         input.textColor = color
         input.setAccessibilityLabel("\(slotTitle): \(field.label)")
         input.setAccessibilityIdentifier("notes-\(slot.rawValue)-\(field.id.rawValue)")
+        // Reconcile only when the caller supplies a presentation. Invalidating
+        // this view for an edit races the asynchronous reducer acknowledgement.
         input.reconcile()
     }
 
@@ -110,9 +112,7 @@ struct SettingsNotesText: NSViewRepresentable {
         func controlTextDidChange(_ notification: Notification) {
             guard let input = notification.object as? SuppliedTextField, input.isEnabled else { return }
             action?(input.stringValue)
-            input.needsLayout = true
-            input.needsDisplay = true
-
+            if input.currentEditor() == nil { input.reconcile() }
         }
     }
 }
@@ -135,13 +135,4 @@ final class SuppliedTextField: NSTextField {
         }
     }
 
-    override func layout() {
-        super.layout()
-        reconcile()
-    }
-
-    override func draw(_ dirtyRect: NSRect) {
-        reconcile()
-        super.draw(dirtyRect)
-    }
 }

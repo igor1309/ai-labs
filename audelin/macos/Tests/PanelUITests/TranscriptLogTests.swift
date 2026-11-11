@@ -71,6 +71,28 @@ struct TranscriptLogTests {
         #expect(attribute(.foregroundColor, of: "12:45", in: text) as? NSColor == NSColor(GlassLedger.light.them))
     }
 
+    @Test func aSpeakerNameSitsOnItsOwnLineOutsideTheSelection() throws {
+
+        let text = try #require(Offscreen.textView(in: hosted(.init(rows: [
+            .entry(.init(id: 1, time: "12:44", speaker: .them, settled: "привет", label: "Анна Королёва")),
+            .entry(.init(id: 2, time: "12:45", speaker: .them, settled: "deploy", label: nil)),
+        ]))))
+
+        #expect(text.string == "\tАнна Королёва\n\u{FFFC}\t12:44\tпривет\n\u{FFFC}\t12:45\tdeploy")
+        #expect(Transcript.text(in: NSRange(location: 0, length: text.string.utf16.count), of: text.attributedString()) == "привет\ndeploy")
+        #expect(attribute(.foregroundColor, of: "Анна", in: text) as? NSColor == NSColor(GlassLedger.light.them))
+        #expect((attribute(.font, of: "Анна", in: text) as? NSFont)?.pointSize == GlassLedger.light.typeCaption)
+    }
+
+    @Test func aTentativeNameIsSlantedAndDimmer() throws {
+
+        let text = try #require(Offscreen.textView(in: hosted(.init(rows: [
+            .entry(.init(id: 1, time: "12:44", speaker: .them, settled: "привет", label: "Анна", labelIsTentative: true)),
+        ]))))
+        #expect(attribute(.obliqueness, of: "Анна", in: text) as? CGFloat == 0.2)
+        #expect(attribute(.foregroundColor, of: "Анна", in: text) as? NSColor == NSColor(GlassLedger.light.gutter))
+    }
+
     @Test func placesALateGroupWhereItsMinutesWere() throws {
 
         let text = try #require(Offscreen.textView(in: hosted(lateLines)))
@@ -930,55 +952,5 @@ struct TranscriptLogTests {
 
         guard let document = scroll.documentView else { return false }
         return scroll.contentView.documentVisibleRect.maxY >= document.bounds.height - 1
-    }
-}
-
-private final class GeometryDocument: NSView {
-
-    override var isFlipped: Bool { true }
-}
-
-private final class ScrollingClipView: NSClipView {
-
-    var didScroll: (() -> Void)?
-
-    override func scroll(to newOrigin: NSPoint) {
-
-        super.scroll(to: newOrigin)
-        didScroll?()
-    }
-}
-
-/// A text storage that records every range it is asked to style.
-private final class RecordingStorage: NSTextStorage {
-
-    private let backing: NSMutableAttributedString
-    private(set) var styled: [NSRange] = []
-    private(set) var replaced: [NSRange] = []
-
-    init(_ string: NSAttributedString) {
-        backing = NSMutableAttributedString(attributedString: string)
-        super.init()
-    }
-
-    required init?(coder: NSCoder) { fatalError() }
-    required init?(pasteboardPropertyList propertyList: Any, ofType type: NSPasteboard.PasteboardType) { fatalError() }
-
-    override var string: String { backing.string }
-
-    override func attributes(at location: Int, effectiveRange range: NSRangePointer?) -> [NSAttributedString.Key: Any] {
-        backing.attributes(at: location, effectiveRange: range)
-    }
-
-    override func replaceCharacters(in range: NSRange, with str: String) {
-        replaced.append(range)
-        backing.replaceCharacters(in: range, with: str)
-        edited(.editedCharacters, range: range, changeInLength: (str as NSString).length - range.length)
-    }
-
-    override func setAttributes(_ attrs: [NSAttributedString.Key: Any]?, range: NSRange) {
-        styled.append(range)
-        backing.setAttributes(attrs, range: range)
-        edited(.editedAttributes, range: range, changeInLength: 0)
     }
 }

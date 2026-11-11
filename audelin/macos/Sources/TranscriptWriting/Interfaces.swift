@@ -10,15 +10,13 @@ public protocol CallText<Text>: Sendable {
     func stop() async
 }
 
-public protocol Transcript<Text>: Sendable {
+public protocol TextSaving<Text>: Sendable {
 
     associatedtype Text: Sendable
 
-    /// Replaces the whole transcript; returns once that text can be read.
-    func write(_ text: Text) async throws
-}
+    /// Accepts text immediately, without waiting for a save.
+    func submit(_ text: Text)
 
-public protocol FailureReport: Sendable {
-
-    func transcriptFailed(_ error: any Error) async
+    /// Returns after the last submitted text is saved or its failure is told.
+    func finish() async
 }
