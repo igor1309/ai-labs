@@ -126,11 +126,11 @@ public struct CallsListView: View {
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                Text(row.time).font(tokens.data(tokens.typeSmall)).foregroundStyle(tokens.sub).allowsHitTesting(false)
+                Text(row.time).font(tokens.data(tokens.typeSmall)).foregroundStyle(ink(row, tokens.sub)).allowsHitTesting(false)
             }
             .frame(height: lineHeight)
             HStack(spacing: tokens.space8) {
-                Text(row.duration).font(tokens.data(tokens.typeSmall)).foregroundStyle(tokens.gutter)
+                Text(row.duration).font(tokens.data(tokens.typeSmall)).foregroundStyle(ink(row, tokens.gutter))
                     .fixedSize().frame(minWidth: durationWidth, alignment: .leading).allowsHitTesting(false)
                 about(row).frame(maxWidth: .infinity, alignment: .leading).allowsHitTesting(false)
                 summary(row)
@@ -140,7 +140,7 @@ public struct CallsListView: View {
         }
         .lineLimit(1)
         .padding(.horizontal, tokens.space16).padding(.vertical, tokens.space8)
-        .background(state.selectedID == row.id ? (active ? tokens.okBg : tokens.btn) : tokens.surface)
+        .background(state.selectedID == row.id ? (active ? tokens.selBg : tokens.btn) : tokens.surface)
         .overlay(alignment: .bottom) { Rectangle().fill(tokens.rule).frame(height: 1) }
         .accessibilityAddTraits(state.selectedID == row.id ? .isSelected : [])
     }
@@ -148,16 +148,21 @@ public struct CallsListView: View {
     /// The second line's text: the gist, or that the summary is being prepared or failed.
     @ViewBuilder private func about(_ row: CallsListState.Row) -> some View {
         switch row.summary {
-        case .pending: Text(text(.rowPreparing)).foregroundStyle(tokens.gutter)
-        case .failed: Text(text(.rowFailed)).foregroundStyle(tokens.rec)
+        case .pending: Text(text(.rowPreparing)).foregroundStyle(ink(row, tokens.gutter))
+        case .failed: Text(text(.rowFailed)).foregroundStyle(ink(row, tokens.rec))
         case .none:
-            if let gist = row.gist, row.match == nil { Text(gist).foregroundStyle(tokens.sub).truncationMode(.tail) }
+            if let gist = row.gist, row.match == nil { Text(gist).foregroundStyle(ink(row, tokens.sub)).truncationMode(.tail) }
             else { Color.clear }
         }
     }
 
     /// Whether the window is the active one; selection loses its accent otherwise.
     private var active: Bool { activity != .inactive }
+
+    /// A selected row in the active window draws everything in `selText` on `selBg`.
+    private func ink(_ row: CallsListState.Row, _ colour: Color) -> Color {
+        state.selectedID == row.id && active ? tokens.selText : colour
+    }
 
     /// The title on one line, cut with an ellipsis; an untitled call shows its folder name.
     /// In a search, the title's matches are marked and a snippet of the first
@@ -166,19 +171,19 @@ public struct CallsListView: View {
         HStack(spacing: tokens.space8) {
             Text(marked(row.displayTitle, row.match?.title ?? []))
                 .font(row.title.isEmpty ? tokens.data(tokens.typeSmall) : tokens.ui(tokens.typeSmall, .semibold))
-                .foregroundStyle(row.title.isEmpty ? tokens.gutter : tokens.text)
+                .foregroundStyle(ink(row, row.title.isEmpty ? tokens.gutter : tokens.text))
                 .truncationMode(.tail)
                 .layoutPriority(3)
             if let snippet = row.match?.snippet {
                 Text(snippet.place)
                     .font(snippet.placeIsTime ? tokens.data(tokens.typeSmall) : tokens.ui(tokens.typeSmall))
-                    .foregroundStyle(tokens.gutter)
+                    .foregroundStyle(ink(row, tokens.gutter))
                     .fixedSize().layoutPriority(2)
                 Text(marked(snippet.text, snippet.hits))
-                    .foregroundStyle(tokens.sub)
+                    .foregroundStyle(ink(row, tokens.sub))
                     .truncationMode(.tail)
                 if let more = snippet.more {
-                    Text(more).foregroundStyle(tokens.gutter).layoutPriority(1)
+                    Text(more).foregroundStyle(ink(row, tokens.gutter)).layoutPriority(1)
                 }
             }
         }
@@ -201,11 +206,11 @@ public struct CallsListView: View {
         switch row.summary {
         case .none: EmptyView()
         case .pending:
-            ProgressView().controlSize(.mini).frame(width: iconSize, height: iconSize)
+            ProgressView().controlSize(.mini).tint(ink(row, tokens.sub)).frame(width: iconSize, height: iconSize)
                 .help(row.summaryStatus).accessibilityLabel(row.summaryStatus)
                 .accessibilityIdentifier("calls.summary.\(row.id)")
         case .failed:
-            Image(systemName: "exclamationmark.circle").font(tokens.ui(tokens.typeSmall, .semibold)).foregroundStyle(tokens.rec)
+            Image(systemName: "exclamationmark.circle").font(tokens.ui(tokens.typeSmall, .semibold)).foregroundStyle(ink(row, tokens.rec))
                 .frame(width: iconSize, height: iconSize)
                 .help(row.summaryStatus).accessibilityLabel(row.summaryStatus)
                 .accessibilityIdentifier("calls.summary.\(row.id)")
@@ -233,7 +238,7 @@ public struct CallsListView: View {
             Button { event(.preview(row.id)) } label: {
                 Image(systemName: "eye")
                     .font(tokens.ui(tokens.typeSmall, .semibold))
-                    .foregroundStyle(state.selectedID == row.id && active ? tokens.me : tokens.sub)
+                    .foregroundStyle(ink(row, tokens.sub))
                     .frame(width: iconSize, height: iconSize)
                     .contentShape(.rect)
             }
