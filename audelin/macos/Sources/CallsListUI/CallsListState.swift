@@ -14,7 +14,7 @@ public struct CallsListState: Equatable, Sendable {
         public let editable: Bool
         public var folderName: String { id + (title.isEmpty ? "" : " " + title) }
 
-        public init(id: String, title: String, start: Date, duration: TimeInterval?, timeZone: TimeZone, editable: Bool, summaryStatus: String = "", hasNotes: Bool = false, canRetrySummary: Bool = false) {
+        public init(id: String, title: String, start: Date, duration: TimeInterval?, timeZone: TimeZone, text: CallsListText, editable: Bool, summaryStatus: String = "", hasNotes: Bool = false, canRetrySummary: Bool = false) {
             self.canRetrySummary = canRetrySummary
             self.summaryStatus = summaryStatus
             self.hasNotes = hasNotes
@@ -31,7 +31,7 @@ public struct CallsListState: Equatable, Sendable {
             displayTitle = title.isEmpty ? formatter.string(from: start) : title
             if let duration, duration.isFinite, duration >= 0 {
                 let minutes = Int(min(duration / 60, Double(Int.max / 60)))
-                self.duration = minutes < 60 ? "\(minutes) мин" : "\(minutes / 60) ч \(minutes % 60) мин"
+                self.duration = minutes < 60 ? text(.minutes, minutes) : text(.hoursMinutes, minutes / 60, minutes % 60)
             } else {
                 self.duration = "—"
             }
@@ -60,9 +60,10 @@ public struct CallsListState: Equatable, Sendable {
         self.selectedID = selectedID; self.previewedID = previewedID
     }
 
-    public var deleteBody: String? {
+    /// The delete confirmation's sentence in the given language, while a delete is asked.
+    public func deleteBody(_ text: CallsListText) -> String? {
         guard let row = rows.first(where: { $0.id == deleteID }) else { return nil }
-        return "«\(row.folderName)»: удалится вся папка звонка — аудио, расшифровки и саммари. Отменить нельзя."
+        return text(.deleteBody, row.folderName)
     }
 }
 

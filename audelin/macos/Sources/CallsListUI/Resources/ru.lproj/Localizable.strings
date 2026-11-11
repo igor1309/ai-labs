@@ -1,0 +1,16 @@
+"column.date" = "Дата";
+"column.call" = "Звонок";
+"column.duration" = "Длит.";
+"list.loading" = "Загружаются звонки…";
+"list.empty" = "Пока нет записанных звонков";
+"list.footer" = "название = имя папки звонка · переименовать: клик по названию или в Finder";
+"row.titlePlaceholder" = "Название";
+"row.retrySummary" = "Повторить подготовку итогов";
+"row.open" = "Открыть";
+"row.delete" = "Удалить";
+"row.showNotes" = "Показать заметки";
+"delete.title" = "Удалить звонок?";
+"delete.body" = "«%@»: удалится вся папка звонка — аудио, расшифровки и саммари. Отменить нельзя.";
+"delete.cancel" = "Отмена";
+"duration.minutes" = "%d мин";
+"duration.hoursMinutes" = "%1$d ч %2$d мин";

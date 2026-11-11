@@ -57,6 +57,7 @@ public final class AudelinCalls {
     private var openFailure: String?
     private var opening = false
     private let describe: (any Error) -> String
+    private let listText: CallsListText
 
     init(inputs: RecordingsInputs, timeZone: TimeZone, recordingState: @escaping () -> RecordingState,
          location: @escaping (String) async throws -> URL, openFolder: @escaping (URL) -> Bool,
@@ -65,8 +66,10 @@ public final class AudelinCalls {
          focusPreview: @escaping () -> Void = {},
          retryableSummaries: @escaping () -> Set<String> = { [] },
          retrySummary: @escaping (String) async throws -> Void = { _ in throw CocoaError(.fileWriteUnknown) },
-         describe: @escaping (any Error) -> String = SettingsText(language: .russian).callsFailure) {
+         describe: @escaping (any Error) -> String = SettingsText(language: .russian).callsFailure,
+         listText: CallsListText = .init(language: .russian)) {
         self.describe = describe
+        self.listText = listText
         self.retryableSummaries = retryableSummaries
         self.retrySummary = retrySummary
         self.focusPreview = focusPreview
@@ -77,7 +80,7 @@ public final class AudelinCalls {
     }
 
     public var state: CallsListState {
-        var state = callsListState(inputs.state(), timeZone: timeZone)
+        var state = callsListState(inputs.state(), timeZone: timeZone, text: listText)
         let statuses = summaryStatuses()
         let retryable = retryableSummaries().subtracting(retrying)
         for index in state.rows.indices {
@@ -239,7 +242,7 @@ func recordedCallID(_ state: RecordingState) -> String? {
     state.phase == .idle ? nil : (state.callID ?? "")
 }
 
-func callsListState(_ state: RecordingsState, timeZone: TimeZone) -> CallsListState {
+func callsListState(_ state: RecordingsState, timeZone: TimeZone, text: CallsListText) -> CallsListState {
     let busy: Bool
     let deleteID: String?
     switch state.phase {
@@ -249,7 +252,7 @@ func callsListState(_ state: RecordingsState, timeZone: TimeZone) -> CallsListSt
     }
     return CallsListState(rows: state.calls.map {
         .init(id: $0.id, title: $0.title, start: $0.start, duration: $0.duration,
-              timeZone: timeZone, editable: $0.id != state.recordingID)
+              timeZone: timeZone, text: text, editable: $0.id != state.recordingID)
     }, deleteID: deleteID, busy: busy || state.isListing, failure: state.failure.map { failure in
         (failure.id.map { "«\($0)»: " } ?? "") + failure.reason
     })

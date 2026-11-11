@@ -4,22 +4,24 @@ import SwiftUI
 public struct CallsListView: View {
     private let state: CallsListState
     private let event: (CallsListEvent) -> Void
+    private let text: CallsListText
     @Environment(\.colorScheme) private var scheme
     @State private var hovered: String?
     @FocusState private var editing: Bool
     private var tokens: GlassLedger { .for(scheme) }
 
-    public init(state: CallsListState, event: @escaping (CallsListEvent) -> Void) {
+    public init(state: CallsListState, text: CallsListText = .init(language: .russian), event: @escaping (CallsListEvent) -> Void) {
         self.state = state
+        self.text = text
         self.event = event
     }
 
     public var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: tokens.space12) {
-                Text("Дата").frame(width: 130, alignment: .leading)
-                Text("Звонок").frame(maxWidth: .infinity, alignment: .leading)
-                Text("Длит.").frame(width: 80, alignment: .leading)
+                Text(text(.dateColumn)).frame(width: 130, alignment: .leading)
+                Text(text(.callColumn)).frame(maxWidth: .infinity, alignment: .leading)
+                Text(text(.durationColumn)).frame(width: 80, alignment: .leading)
                 Color.clear.frame(width: eyeWidth, height: 1)
                 Color.clear.frame(width: 170, height: 1)
             }
@@ -32,7 +34,7 @@ public struct CallsListView: View {
                 LazyVStack(spacing: 0) {
                     ForEach(state.rows) { row in callRow(row) }
                     if state.rows.isEmpty {
-                        Text(state.busy ? "Загружаются звонки…" : "Пока нет записанных звонков")
+                        Text(state.busy ? text(.loading) : text(.empty))
                             .foregroundStyle(tokens.gutter).padding(tokens.space24)
                     }
                 }
@@ -46,7 +48,7 @@ public struct CallsListView: View {
                     .background(tokens.errBg)
                     .accessibilityIdentifier("calls.failure")
             }
-            Text("название = имя папки звонка · переименовать: клик по названию или в Finder")
+            Text(text(.footer))
                 .font(tokens.ui(tokens.typeCaption))
                 .foregroundStyle(tokens.gutter)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -61,7 +63,7 @@ public struct CallsListView: View {
             event(press.key == .downArrow ? .selectNext : .selectPrevious)
             return .handled
         }
-        .overlay { if let body = state.deleteBody { deleteAlert(body) } }
+        .overlay { if let body = state.deleteBody(text) { deleteAlert(body) } }
         .onChange(of: state.editing?.id) { _, id in editing = id != nil }
         .onAppear { GlassLedger.registerFonts(); editing = state.editing != nil }
     }
@@ -81,7 +83,7 @@ public struct CallsListView: View {
                 if let edit = state.editing, edit.id == row.id {
                     HStack(spacing: 0) {
                         Text(row.id + " ").font(tokens.data(tokens.typeSmall)).foregroundStyle(tokens.gutter)
-                        TextField("Название", text: Binding(get: { edit.title }, set: { event(.editTitle($0)) }))
+                        TextField(text(.titlePlaceholder), text: Binding(get: { edit.title }, set: { event(.editTitle($0)) }))
                             .textFieldStyle(.plain)
                             .focused($editing)
                             .onSubmit { event(.submitRename) }
@@ -103,7 +105,7 @@ public struct CallsListView: View {
                         }
                         .buttonStyle(.plain).disabled(!row.editable || state.busy)
                         if row.canRetrySummary {
-                            Button("Повторить подготовку итогов") { event(.retrySummary(row.id)) }
+                            Button(text(.retrySummary)) { event(.retrySummary(row.id)) }
                                 .buttonStyle(.plain)
                                 .font(tokens.ui(tokens.typeCaption, .semibold))
                                 .foregroundStyle(tokens.me)
@@ -119,8 +121,8 @@ public struct CallsListView: View {
                 .frame(width: 80, alignment: .leading).allowsHitTesting(false)
             eye(row)
             HStack(spacing: tokens.space4) {
-                button("Открыть", destructive: false) { event(.open(row.id)) }
-                button("Удалить", destructive: true) { event(.askDelete(row.id)) }
+                button(text(.open), destructive: false) { event(.open(row.id)) }
+                button(text(.delete), destructive: true) { event(.askDelete(row.id)) }
                     .disabled(!row.editable)
             }
             .frame(width: 170)
@@ -152,8 +154,8 @@ public struct CallsListView: View {
                     .contentShape(.rect)
             }
             .buttonStyle(.plain)
-            .help("Показать заметки")
-            .accessibilityLabel("Показать заметки")
+            .help(text(.showNotes))
+            .accessibilityLabel(text(.showNotes))
             .accessibilityAddTraits(previewed ? .isSelected : [])
             .accessibilityIdentifier("calls.eye.\(row.id)")
         } else {
@@ -178,12 +180,12 @@ public struct CallsListView: View {
                 Text("!").font(tokens.ui(tokens.typeTitle, .semibold)).foregroundStyle(tokens.warn)
                     .frame(width: 40, height: 40)
                     .background(tokens.warnBg, in: .rect(cornerRadius: tokens.radiusCard))
-                Text("Удалить звонок?").font(tokens.ui(tokens.typeTitle, .semibold)).foregroundStyle(tokens.text)
+                Text(text(.deleteTitle)).font(tokens.ui(tokens.typeTitle, .semibold)).foregroundStyle(tokens.text)
                 Text(body).font(tokens.ui(tokens.typeSmall)).foregroundStyle(tokens.sub).fixedSize(horizontal: false, vertical: true)
                 VStack(spacing: tokens.space8) {
-                    button("Удалить", destructive: true) { event(.confirmDelete) }
+                    button(text(.delete), destructive: true) { event(.confirmDelete) }
                         .disabled(state.rows.first(where: { $0.id == state.deleteID })?.editable != true)
-                    button("Отмена", destructive: false) { event(.cancelDelete) }.keyboardShortcut(.cancelAction)
+                    button(text(.cancel), destructive: false) { event(.cancelDelete) }.keyboardShortcut(.cancelAction)
                 }
             }
             .padding(tokens.space24).frame(width: 340)

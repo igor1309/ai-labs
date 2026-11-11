@@ -1,5 +1,6 @@
 import Calls
 import CoreAudioProcesses
+import CallsListUI
 import Foundation
 import Preferences
 import Recordings
@@ -63,7 +64,8 @@ public func compose(
                                   present: presentCalls, summaryStatuses: { summaries.statuses },
                                   notes: { try await summaryFiles.notes(call: $0) }, focusPreview: focusPreview,
                                   retryableSummaries: { summaries.retryable }, retrySummary: { try await summaries.retry(call: $0) },
-                                  describe: SettingsText(language: .russian).callsFailure))
+                                  describe: SettingsText(language: .russian).callsFailure,
+                                  listText: CallsListText(language: .russian)))
     do { await summaries.recover(calls: try await storage.list().map(\.id)) }
     catch { boundary.log.write(.init(category: .session, message: "summary recovery listing failed")) }
     return menu

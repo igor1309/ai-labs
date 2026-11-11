@@ -91,7 +91,7 @@ let package = Package(
         .testTarget(name: "SourceChecksTests", dependencies: ["BlockingTestWork"]),
         .target(name: "Calls", dependencies: ["CallFolderName"]),
         .target(name: "Recordings"),
-        .target(name: "CallsListUI", dependencies: ["GlassLedger"]),
+        .target(name: "CallsListUI", dependencies: ["GlassLedger"], resources: [.process("Resources")]),
         .target(name: "NotesMarkdown", dependencies: [.product(name: "Markdown", package: "swift-markdown")]),
         .testTarget(name: "NotesMarkdownTests", dependencies: ["NotesMarkdown"]),
         .target(name: "SummaryPreviewUI", dependencies: ["GlassLedger"]),

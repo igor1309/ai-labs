@@ -175,7 +175,7 @@ final class AudelinAppDelegate: NSObject, NSApplicationDelegate {
 private struct CallsContent: View {
     let model: AudelinCalls
     var body: some View {
-        CallsListView(state: model.state, event: { event in Task { await model.send(event) } })
+        CallsListView(state: model.state, text: CallsListText(language: .russian), event: { event in Task { await model.send(event) } })
     }
 }
 

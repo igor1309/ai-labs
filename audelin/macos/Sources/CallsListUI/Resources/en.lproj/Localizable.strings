@@ -1,0 +1,16 @@
+"column.date" = "Date";
+"column.call" = "Call";
+"column.duration" = "Length";
+"list.loading" = "Loading calls…";
+"list.empty" = "No recorded calls yet";
+"list.footer" = "title = the call’s folder name · rename: click the title or use Finder";
+"row.titlePlaceholder" = "Title";
+"row.retrySummary" = "Retry the notes";
+"row.open" = "Open";
+"row.delete" = "Delete";
+"row.showNotes" = "Show notes";
+"delete.title" = "Delete the call?";
+"delete.body" = "“%@”: the whole call folder will be deleted — audio, transcripts and notes. This can’t be undone.";
+"delete.cancel" = "Cancel";
+"duration.minutes" = "%d min";
+"duration.hoursMinutes" = "%1$d h %2$d min";
