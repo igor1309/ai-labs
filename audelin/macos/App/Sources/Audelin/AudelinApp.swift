@@ -184,6 +184,7 @@ private struct SettingsContent: View {
     let window: NSWindow
     var body: some View {
         SettingsScrollView(state: model.settingsState, event: { event in Task { await model.sendSettings(event) } },
+                           text: SettingsText(language: .russian),
                            contentHeightChanged: { height in
             // Keep the title bar in place when a tab or its contents changes height.
             let visible = window.screen?.visibleFrame ?? NSScreen.main?.visibleFrame ?? window.frame

@@ -159,7 +159,7 @@ public final class AudelinMenu {
     public var settingsState: SettingsState {
         var result = SettingsState(recordsCalls: preferences.automaticRecording, liveText: preferences.liveText,
                       folder: .init(path: settings.callsFolder.path, status: state.phase == .idle ? .idle(calls: "") : .recording),
-                      engines: [.init(id: "parakeet", name: "Parakeet v3", note: "Локальное распознавание", availability: "", size: "")],
+                      engines: [.init(id: "parakeet", name: "Parakeet v3", note: settingsText(.localRecognition), availability: "", size: "")],
                       selectedEngine: "parakeet", explainKeys: "", selectedTab: summarySettings?.selectedTab ?? .recording,
                       callNotes: summarySettings?.notes ?? .loading("Загружаем настройки…"))
         if let pickerFailure, case .idle = result.folder.status { result.folder.status = .pickerFailed(reason: pickerFailure) }

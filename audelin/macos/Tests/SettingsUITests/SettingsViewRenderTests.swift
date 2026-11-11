@@ -91,17 +91,18 @@ struct SettingsViewRenderTests {
         #expect(SettingsState.previews.count == required.count)
     }
 
-    @Test(arguments: [ColorScheme.light, .dark])
-    func everyPreviewFillsTheWindow(scheme: ColorScheme) throws {
+    @Test(arguments: [ColorScheme.light, .dark], SettingsLanguage.allCases)
+    func everyPreviewFillsTheWindow(scheme: ColorScheme, language: SettingsLanguage) throws {
 
-        for (name, state) in SettingsState.previews {
+        let text = SettingsText(language: language)
+        for (name, state) in SettingsState.previews(in: text) {
 
-            let host = Offscreen.host(SettingsPreview(state: state, scheme: scheme), scheme: scheme)
+            let host = Offscreen.host(SettingsPreview(state: state, scheme: scheme, text: text), scheme: scheme)
             let image = try #require(Offscreen.snapshot(host), "\(name) did not render")
             #expect(host.bounds.width == SettingsConfig.glassLedger.windowWidth + 2 * SettingsConfig.glassLedger.light.space24, "\(name)")
             #expect(host.bounds.height > 0, "\(name)")
 
-            try Offscreen.save(image, "settings-\(name)-\(scheme == .dark ? "dark" : "light")")
+            try Offscreen.save(image, "settings-\(name)-\(scheme == .dark ? "dark" : "light")\(language == .russian ? "" : "-en")")
         }
     }
 }
