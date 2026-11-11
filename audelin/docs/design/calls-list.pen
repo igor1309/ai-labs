@@ -3,11 +3,11 @@
   "children": [
     {
       "type": "frame",
-      "id": "uusNl",
+      "id": "CIXKZ",
       "x": 0,
-      "y": -900,
+      "y": -760,
       "name": "Components",
-      "width": 1300,
+      "width": 1440,
       "fill": "$back",
       "layout": "vertical",
       "gap": "$space-24",
@@ -15,7 +15,7 @@
       "children": [
         {
           "type": "text",
-          "id": "q3fW9i",
+          "id": "B7pfu",
           "name": "Board title",
           "fill": "$text",
           "content": "Calls list — components",
@@ -25,576 +25,116 @@
         },
         {
           "type": "frame",
-          "id": "i4iQV",
+          "id": "tOyye",
           "name": "Comp row",
           "width": "fill_container",
           "gap": "$space-24",
           "children": [
             {
               "type": "frame",
-              "id": "NIxhj",
-              "name": "Context menu",
-              "reusable": true,
-              "width": 240,
-              "fill": "$surface",
-              "cornerRadius": "$radius-card",
-              "stroke": "$rule",
-              "strokeWidth": 1,
-              "effect": {
-                "type": "shadow",
-                "shadowType": "outer",
-                "color": "$shadow",
-                "offset": {
-                  "x": 0,
-                  "y": 8
-                },
-                "blur": 24
-              },
+              "id": "L1oVL",
+              "name": "Comp col",
+              "width": 900,
               "layout": "vertical",
-              "gap": "$space-2",
-              "padding": "$space-4",
-              "children": [
-                {
-                  "type": "frame",
-                  "id": "MmtvE",
-                  "name": "Item Открыть",
-                  "width": "fill_container",
-                  "fill": "$okBg",
-                  "cornerRadius": "$radius-control",
-                  "padding": [
-                    "$space-4",
-                    "$space-8"
-                  ],
-                  "justifyContent": "space_between",
-                  "children": [
-                    {
-                      "type": "text",
-                      "id": "Ziucc",
-                      "name": "Label",
-                      "fill": "$text",
-                      "content": "Открыть",
-                      "fontFamily": "$font-ui",
-                      "fontSize": "$type-small",
-                      "fontWeight": "normal"
-                    },
-                    {
-                      "type": "text",
-                      "id": "W8WNZ",
-                      "name": "Key",
-                      "fill": "$gutter",
-                      "content": "↩",
-                      "fontFamily": "$font-data",
-                      "fontSize": "$type-caption",
-                      "fontWeight": "normal"
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "BcIzS",
-                  "name": "Item Показать заметки",
-                  "width": "fill_container",
-                  "fill": "#00000000",
-                  "cornerRadius": "$radius-control",
-                  "padding": [
-                    "$space-4",
-                    "$space-8"
-                  ],
-                  "justifyContent": "space_between",
-                  "children": [
-                    {
-                      "type": "text",
-                      "id": "rEQpF",
-                      "name": "Label",
-                      "fill": "$text",
-                      "content": "Показать заметки",
-                      "fontFamily": "$font-ui",
-                      "fontSize": "$type-small",
-                      "fontWeight": "normal"
-                    },
-                    {
-                      "type": "text",
-                      "id": "i3NYK",
-                      "name": "Key",
-                      "fill": "$gutter",
-                      "content": "Пробел",
-                      "fontFamily": "$font-data",
-                      "fontSize": "$type-caption",
-                      "fontWeight": "normal"
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "DVAFX",
-                  "name": "Item Переименовать",
-                  "width": "fill_container",
-                  "fill": "#00000000",
-                  "cornerRadius": "$radius-control",
-                  "padding": [
-                    "$space-4",
-                    "$space-8"
-                  ],
-                  "justifyContent": "space_between",
-                  "children": [
-                    {
-                      "type": "text",
-                      "id": "eU6Vr",
-                      "name": "Label",
-                      "fill": "$text",
-                      "content": "Переименовать",
-                      "fontFamily": "$font-ui",
-                      "fontSize": "$type-small",
-                      "fontWeight": "normal"
-                    },
-                    {
-                      "type": "text",
-                      "id": "aM19g",
-                      "name": "Key",
-                      "fill": "$gutter",
-                      "content": "⌘R",
-                      "fontFamily": "$font-data",
-                      "fontSize": "$type-caption",
-                      "fontWeight": "normal"
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "x5ADJs",
-                  "name": "Item Повторить итоги",
-                  "width": "fill_container",
-                  "fill": "#00000000",
-                  "cornerRadius": "$radius-control",
-                  "padding": [
-                    "$space-4",
-                    "$space-8"
-                  ],
-                  "justifyContent": "space_between",
-                  "children": [
-                    {
-                      "type": "text",
-                      "id": "G2pNA",
-                      "name": "Label",
-                      "fill": "$text",
-                      "content": "Повторить итоги",
-                      "fontFamily": "$font-ui",
-                      "fontSize": "$type-small",
-                      "fontWeight": "normal"
-                    },
-                    {
-                      "type": "text",
-                      "id": "x78c2",
-                      "name": "Key",
-                      "fill": "$gutter",
-                      "fontFamily": "$font-data",
-                      "fontSize": "$type-caption",
-                      "fontWeight": "normal"
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "G5sHMi",
-                  "name": "Item Показать в Finder",
-                  "width": "fill_container",
-                  "fill": "#00000000",
-                  "cornerRadius": "$radius-control",
-                  "padding": [
-                    "$space-4",
-                    "$space-8"
-                  ],
-                  "justifyContent": "space_between",
-                  "children": [
-                    {
-                      "type": "text",
-                      "id": "Yhlp1",
-                      "name": "Label",
-                      "fill": "$text",
-                      "content": "Показать в Finder",
-                      "fontFamily": "$font-ui",
-                      "fontSize": "$type-small",
-                      "fontWeight": "normal"
-                    },
-                    {
-                      "type": "text",
-                      "id": "eq0to",
-                      "name": "Key",
-                      "fill": "$gutter",
-                      "content": "⇧⌘R",
-                      "fontFamily": "$font-data",
-                      "fontSize": "$type-caption",
-                      "fontWeight": "normal"
-                    }
-                  ]
-                },
-                {
-                  "type": "rectangle",
-                  "id": "v0Hmur",
-                  "name": "Separator",
-                  "fill": "$rule",
-                  "width": "fill_container",
-                  "height": 1
-                },
-                {
-                  "type": "frame",
-                  "id": "aSNqK",
-                  "name": "Item Удалить…",
-                  "width": "fill_container",
-                  "fill": "#00000000",
-                  "cornerRadius": "$radius-control",
-                  "padding": [
-                    "$space-4",
-                    "$space-8"
-                  ],
-                  "justifyContent": "space_between",
-                  "children": [
-                    {
-                      "type": "text",
-                      "id": "GBEFd",
-                      "name": "Label",
-                      "fill": "$rec",
-                      "content": "Удалить…",
-                      "fontFamily": "$font-ui",
-                      "fontSize": "$type-small",
-                      "fontWeight": "normal"
-                    },
-                    {
-                      "type": "text",
-                      "id": "ntRLy",
-                      "name": "Key",
-                      "fill": "$gutter",
-                      "content": "⌘⌫",
-                      "fontFamily": "$font-data",
-                      "fontSize": "$type-caption",
-                      "fontWeight": "normal"
-                    }
-                  ]
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "kftay",
-              "name": "Title bar",
-              "reusable": true,
-              "width": 900,
-              "fill": "$side",
-              "stroke": "$rule",
-              "strokeWidth": {
-                "bottom": 1
-              },
-              "gap": "$space-8",
-              "padding": [
-                "$space-8",
-                "$space-16"
-              ],
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "ellipse",
-                  "id": "qcV5p",
-                  "name": "Light",
-                  "fill": "#FF5F57",
-                  "width": 12,
-                  "height": 12
-                },
-                {
-                  "type": "ellipse",
-                  "id": "idXHq",
-                  "name": "Light",
-                  "fill": "#FEBC2E",
-                  "width": 12,
-                  "height": 12
-                },
-                {
-                  "type": "ellipse",
-                  "id": "BnR5y",
-                  "name": "Light",
-                  "fill": "#28C840",
-                  "width": 12,
-                  "height": 12
-                },
-                {
-                  "type": "text",
-                  "id": "LozVr",
-                  "name": "Title",
-                  "fill": "$text",
-                  "textGrowth": "fixed-width",
-                  "width": "fill_container",
-                  "content": "Звонки",
-                  "textAlign": "center",
-                  "fontFamily": "$font-ui",
-                  "fontSize": "$type-small",
-                  "fontWeight": "600"
-                },
-                {
-                  "type": "frame",
-                  "id": "g4Hpx",
-                  "name": "Balance",
-                  "width": 52,
-                  "height": 12
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "type": "frame",
-          "id": "ACtkN",
-          "name": "Comp col",
-          "width": 900,
-          "layout": "vertical",
-          "gap": "$space-12",
-          "children": [
-            {
-              "type": "frame",
-              "id": "Z9bpNT",
-              "name": "A/Row",
-              "reusable": true,
-              "width": 900,
-              "fill": "$surface",
-              "stroke": "$rule",
-              "strokeWidth": {
-                "bottom": 1
-              },
               "gap": "$space-12",
-              "padding": [
-                "$space-8",
-                "$space-16"
-              ],
-              "alignItems": "center",
               "children": [
                 {
-                  "type": "text",
-                  "id": "x69OK",
-                  "name": "Date",
-                  "fill": "$gutter",
-                  "textGrowth": "fixed-width",
-                  "width": 120,
-                  "content": "21.10.2026 12:30",
-                  "fontFamily": "$font-data",
-                  "fontSize": "$type-small",
-                  "fontWeight": "normal"
-                },
-                {
-                  "type": "text",
-                  "id": "qN2K9",
-                  "name": "Title",
-                  "fill": "$text",
-                  "textGrowth": "fixed-width-height",
-                  "width": "fill_container",
-                  "height": 16,
-                  "content": "Запуск: роли и SLA",
-                  "fontFamily": "$font-ui",
-                  "fontSize": "$type-small",
-                  "fontWeight": "600"
-                },
-                {
-                  "type": "text",
-                  "id": "K4KtD",
-                  "name": "Duration",
-                  "fill": "$sub",
-                  "textGrowth": "fixed-width",
-                  "width": 64,
-                  "content": "47:00",
-                  "textAlign": "right",
-                  "fontFamily": "$font-data",
-                  "fontSize": "$type-small",
-                  "fontWeight": "normal"
-                },
-                {
                   "type": "frame",
-                  "id": "y3kpkT",
-                  "name": "Status",
-                  "width": 64,
-                  "height": "fit_content(0)",
-                  "gap": "$space-4",
-                  "justifyContent": "end",
+                  "id": "A87z6I",
+                  "name": "Title bar",
+                  "reusable": true,
+                  "width": 900,
+                  "fill": "$side",
+                  "stroke": "$rule",
+                  "strokeWidth": {
+                    "bottom": 1
+                  },
+                  "gap": "$space-8",
+                  "padding": [
+                    "$space-8",
+                    "$space-16"
+                  ],
                   "alignItems": "center",
                   "children": [
                     {
-                      "type": "icon",
-                      "id": "LxJsu",
-                      "x": 0,
-                      "y": 0,
-                      "name": "Pending",
-                      "enabled": false,
-                      "width": 14,
-                      "height": 14,
-                      "icon": "loader-circle",
-                      "library": "lucide",
-                      "fill": "$sub"
+                      "type": "ellipse",
+                      "id": "Uf7DG",
+                      "name": "Light",
+                      "fill": "#FF5F57",
+                      "width": 12,
+                      "height": 12
                     },
                     {
-                      "type": "icon",
-                      "id": "F8KYWb",
-                      "x": 0,
-                      "y": 0,
-                      "name": "Failed",
-                      "enabled": false,
-                      "width": 14,
-                      "height": 14,
-                      "icon": "circle-alert",
-                      "library": "lucide",
-                      "fill": "$rec"
+                      "type": "ellipse",
+                      "id": "VET0C",
+                      "name": "Light",
+                      "fill": "#FEBC2E",
+                      "width": 12,
+                      "height": 12
                     },
                     {
-                      "type": "icon",
-                      "id": "J1l99",
-                      "x": 0,
-                      "y": 0,
-                      "name": "Notes",
-                      "enabled": false,
-                      "width": 14,
-                      "height": 14,
-                      "icon": "eye",
-                      "library": "lucide",
-                      "fill": "$sub"
+                      "type": "ellipse",
+                      "id": "E3hpEI",
+                      "name": "Light",
+                      "fill": "#28C840",
+                      "width": 12,
+                      "height": 12
+                    },
+                    {
+                      "type": "text",
+                      "id": "yRV7K",
+                      "name": "Title",
+                      "fill": "$text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Звонки",
+                      "textAlign": "center",
+                      "fontFamily": "$font-ui",
+                      "fontSize": "$type-small",
+                      "fontWeight": "600"
                     },
                     {
                       "type": "frame",
-                      "id": "UHLgm",
-                      "x": 0,
-                      "y": 0,
-                      "name": "More",
-                      "enabled": false,
-                      "width": 20,
-                      "height": 20,
-                      "fill": "$btn",
-                      "cornerRadius": "$radius-control",
-                      "justifyContent": "center",
-                      "alignItems": "center",
-                      "children": [
-                        {
-                          "type": "icon",
-                          "id": "q3sLlt",
-                          "name": "More icon",
-                          "width": 14,
-                          "height": 14,
-                          "icon": "ellipsis",
-                          "library": "lucide",
-                          "fill": "$text"
-                        }
-                      ]
+                      "id": "xKEud",
+                      "name": "Balance",
+                      "width": 52,
+                      "height": 12
                     }
                   ]
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "RLdUF",
-              "name": "A/Header",
-              "reusable": true,
-              "width": 900,
-              "fill": "$win",
-              "stroke": "$rule",
-              "strokeWidth": {
-                "bottom": 1
-              },
-              "gap": "$space-12",
-              "padding": [
-                "$space-6",
-                "$space-16"
-              ],
-              "children": [
-                {
-                  "type": "text",
-                  "id": "ue4wl",
-                  "name": "Date",
-                  "fill": "$gutter",
-                  "textGrowth": "fixed-width",
-                  "width": 120,
-                  "content": "Дата ↓",
-                  "fontFamily": "$font-ui",
-                  "fontSize": "$type-caption",
-                  "fontWeight": "600"
                 },
-                {
-                  "type": "text",
-                  "id": "JSPSP",
-                  "name": "Title",
-                  "fill": "$gutter",
-                  "textGrowth": "fixed-width",
-                  "width": "fill_container",
-                  "content": "Название",
-                  "fontFamily": "$font-ui",
-                  "fontSize": "$type-caption",
-                  "fontWeight": "600"
-                },
-                {
-                  "type": "text",
-                  "id": "hyFIH",
-                  "name": "Duration",
-                  "fill": "$gutter",
-                  "textGrowth": "fixed-width",
-                  "width": 64,
-                  "content": "Длит.",
-                  "textAlign": "right",
-                  "fontFamily": "$font-ui",
-                  "fontSize": "$type-caption",
-                  "fontWeight": "600"
-                },
-                {
-                  "type": "text",
-                  "id": "U9sUfR",
-                  "name": "Status",
-                  "fill": "$gutter",
-                  "textGrowth": "fixed-width",
-                  "width": 64,
-                  "fontFamily": "$font-ui",
-                  "fontSize": "$type-caption",
-                  "fontWeight": "600"
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "ijCsx",
-              "name": "B/Row",
-              "reusable": true,
-              "width": 900,
-              "fill": "$surface",
-              "stroke": "$rule",
-              "strokeWidth": {
-                "bottom": 1
-              },
-              "layout": "vertical",
-              "gap": "$space-2",
-              "padding": [
-                "$space-8",
-                "$space-16"
-              ],
-              "children": [
                 {
                   "type": "frame",
-                  "id": "ZUTVi",
-                  "name": "Line 1",
-                  "width": "fill_container",
-                  "gap": "$space-12",
+                  "id": "pEV3k",
+                  "name": "Day header",
+                  "reusable": true,
+                  "width": 900,
+                  "fill": "$win",
+                  "gap": "$space-8",
+                  "padding": [
+                    "$space-12",
+                    "$space-16",
+                    "$space-4",
+                    "$space-16"
+                  ],
                   "alignItems": "center",
                   "children": [
                     {
                       "type": "text",
-                      "id": "GnyKC",
-                      "name": "Title",
-                      "fill": "$text",
-                      "textGrowth": "fixed-width-height",
-                      "width": "fill_container",
-                      "height": 18,
-                      "content": "Запуск: роли и SLA",
+                      "id": "EzQW1",
+                      "name": "Day",
+                      "fill": "$sub",
+                      "content": "Сегодня",
                       "fontFamily": "$font-ui",
-                      "fontSize": "$type-body",
+                      "fontSize": "$type-caption",
                       "fontWeight": "600"
                     },
                     {
                       "type": "text",
-                      "id": "RnWOA",
-                      "name": "When",
+                      "id": "zxLiP",
+                      "name": "Count",
                       "fill": "$gutter",
-                      "content": "Сегодня, 12:30",
-                      "fontFamily": "$font-data",
+                      "content": "3 звонка",
+                      "fontFamily": "$font-ui",
                       "fontSize": "$type-caption",
                       "fontWeight": "normal"
                     }
@@ -602,37 +142,69 @@
                 },
                 {
                   "type": "frame",
-                  "id": "x48qY",
-                  "name": "Line 2",
-                  "width": "fill_container",
-                  "gap": "$space-8",
+                  "id": "T8WPz",
+                  "name": "Row",
+                  "reusable": true,
+                  "width": 900,
+                  "fill": "$surface",
+                  "gap": "$space-12",
+                  "padding": [
+                    "$space-6",
+                    "$space-16"
+                  ],
                   "alignItems": "center",
                   "children": [
                     {
                       "type": "text",
-                      "id": "tBzba",
-                      "name": "Meta",
-                      "fill": "$sub",
+                      "id": "E32yp4",
+                      "name": "Time",
+                      "fill": "$gutter",
+                      "textGrowth": "fixed-width",
+                      "width": 40,
+                      "content": "12:30",
+                      "fontFamily": "$font-data",
+                      "fontSize": "$type-small",
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "cxyjK",
+                      "name": "Title",
+                      "fill": "$text",
                       "textGrowth": "fixed-width-height",
                       "width": "fill_container",
                       "height": 16,
-                      "content": "47:00 · итоги готовы",
+                      "content": "Запуск: роли и SLA",
+                      "fontFamily": "$font-ui",
+                      "fontSize": "$type-small",
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "vFoFZ",
+                      "name": "Duration",
+                      "fill": "$sub",
+                      "textGrowth": "fixed-width",
+                      "width": 64,
+                      "content": "47:00",
+                      "textAlign": "right",
                       "fontFamily": "$font-data",
-                      "fontSize": "$type-caption",
+                      "fontSize": "$type-small",
                       "fontWeight": "normal"
                     },
                     {
                       "type": "frame",
-                      "id": "S0o86",
+                      "id": "nC0Bu",
                       "name": "Status",
-                      "width": "fit_content(0)",
+                      "width": 64,
                       "height": "fit_content(0)",
                       "gap": "$space-4",
+                      "justifyContent": "end",
                       "alignItems": "center",
                       "children": [
                         {
                           "type": "icon",
-                          "id": "Egepd",
+                          "id": "h7VVzS",
                           "x": 0,
                           "y": 0,
                           "name": "Pending",
@@ -645,7 +217,7 @@
                         },
                         {
                           "type": "icon",
-                          "id": "vkRcB",
+                          "id": "Q83FSh",
                           "x": 0,
                           "y": 0,
                           "name": "Failed",
@@ -658,7 +230,7 @@
                         },
                         {
                           "type": "icon",
-                          "id": "iabxb",
+                          "id": "t6qkK",
                           "x": 0,
                           "y": 0,
                           "name": "Notes",
@@ -671,7 +243,7 @@
                         },
                         {
                           "type": "frame",
-                          "id": "aPHsf",
+                          "id": "r0Gsyp",
                           "x": 0,
                           "y": 0,
                           "name": "More",
@@ -685,7 +257,7 @@
                           "children": [
                             {
                               "type": "icon",
-                              "id": "CSE7c",
+                              "id": "aIz7R",
                               "name": "More icon",
                               "width": 14,
                               "height": 14,
@@ -703,124 +275,416 @@
             },
             {
               "type": "frame",
-              "id": "bi9Zk",
-              "name": "C/Day",
-              "reusable": true,
-              "width": 900,
-              "fill": "$win",
-              "gap": "$space-8",
-              "padding": [
-                "$space-12",
-                "$space-16",
-                "$space-4",
-                "$space-16"
-              ],
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "text",
-                  "id": "y9TMt8",
-                  "name": "Day",
-                  "fill": "$sub",
-                  "content": "Сегодня",
-                  "fontFamily": "$font-ui",
-                  "fontSize": "$type-caption",
-                  "fontWeight": "600"
-                },
-                {
-                  "type": "text",
-                  "id": "i1hrnY",
-                  "name": "Count",
-                  "fill": "$gutter",
-                  "content": "3 звонка",
-                  "fontFamily": "$font-ui",
-                  "fontSize": "$type-caption",
-                  "fontWeight": "normal"
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "OJM6A",
-              "name": "C/Row",
-              "reusable": true,
-              "width": 900,
-              "fill": "$surface",
+              "id": "WSNHn",
+              "name": "Comp side",
+              "layout": "vertical",
               "gap": "$space-12",
-              "padding": [
-                "$space-6",
-                "$space-16"
-              ],
-              "alignItems": "center",
               "children": [
                 {
-                  "type": "text",
-                  "id": "u5ptgY",
-                  "name": "Time",
-                  "fill": "$gutter",
-                  "textGrowth": "fixed-width",
-                  "width": 40,
-                  "content": "12:30",
-                  "fontFamily": "$font-data",
-                  "fontSize": "$type-small",
-                  "fontWeight": "normal"
-                },
-                {
-                  "type": "text",
-                  "id": "K8jqSu",
-                  "name": "Title",
-                  "fill": "$text",
-                  "textGrowth": "fixed-width-height",
-                  "width": "fill_container",
-                  "height": 16,
-                  "content": "Запуск: роли и SLA",
-                  "fontFamily": "$font-ui",
-                  "fontSize": "$type-small",
-                  "fontWeight": "600"
-                },
-                {
-                  "type": "text",
-                  "id": "t0R6oA",
-                  "name": "Duration",
-                  "fill": "$sub",
-                  "textGrowth": "fixed-width",
-                  "width": 64,
-                  "content": "47:00",
-                  "textAlign": "right",
-                  "fontFamily": "$font-data",
-                  "fontSize": "$type-small",
-                  "fontWeight": "normal"
+                  "type": "frame",
+                  "id": "gzqJR",
+                  "name": "Context menu",
+                  "reusable": true,
+                  "width": 240,
+                  "fill": "$surface",
+                  "cornerRadius": "$radius-card",
+                  "stroke": "$rule",
+                  "strokeWidth": 1,
+                  "effect": {
+                    "type": "shadow",
+                    "shadowType": "outer",
+                    "color": "$shadow",
+                    "offset": {
+                      "x": 0,
+                      "y": 8
+                    },
+                    "blur": 24
+                  },
+                  "layout": "vertical",
+                  "gap": "$space-2",
+                  "padding": "$space-4",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "Aas52",
+                      "name": "Открыть",
+                      "width": "fill_container",
+                      "fill": "$okBg",
+                      "cornerRadius": "$radius-control",
+                      "padding": [
+                        "$space-4",
+                        "$space-8"
+                      ],
+                      "justifyContent": "space_between",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "C5w3IY",
+                          "name": "Label",
+                          "fill": "$text",
+                          "content": "Открыть",
+                          "fontFamily": "$font-ui",
+                          "fontSize": "$type-small",
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "JIJzU",
+                          "name": "Key",
+                          "fill": "$gutter",
+                          "content": "↩",
+                          "fontFamily": "$font-data",
+                          "fontSize": "$type-caption",
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "I5bEqt",
+                      "name": "Показать заметки",
+                      "width": "fill_container",
+                      "fill": "#00000000",
+                      "cornerRadius": "$radius-control",
+                      "padding": [
+                        "$space-4",
+                        "$space-8"
+                      ],
+                      "justifyContent": "space_between",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "dz3ch",
+                          "name": "Label",
+                          "fill": "$text",
+                          "content": "Показать заметки",
+                          "fontFamily": "$font-ui",
+                          "fontSize": "$type-small",
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "XQixC",
+                          "name": "Key",
+                          "fill": "$gutter",
+                          "content": "Пробел",
+                          "fontFamily": "$font-data",
+                          "fontSize": "$type-caption",
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "aaWyV",
+                      "name": "Переименовать",
+                      "width": "fill_container",
+                      "fill": "#00000000",
+                      "cornerRadius": "$radius-control",
+                      "padding": [
+                        "$space-4",
+                        "$space-8"
+                      ],
+                      "justifyContent": "space_between",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "No7cb",
+                          "name": "Label",
+                          "fill": "$text",
+                          "content": "Переименовать",
+                          "fontFamily": "$font-ui",
+                          "fontSize": "$type-small",
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "H05NT",
+                          "name": "Key",
+                          "fill": "$gutter",
+                          "content": "⌘R",
+                          "fontFamily": "$font-data",
+                          "fontSize": "$type-caption",
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "W1nVe",
+                      "name": "Повторить итоги",
+                      "width": "fill_container",
+                      "fill": "#00000000",
+                      "cornerRadius": "$radius-control",
+                      "padding": [
+                        "$space-4",
+                        "$space-8"
+                      ],
+                      "justifyContent": "space_between",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "VMkAl",
+                          "name": "Label",
+                          "fill": "$text",
+                          "content": "Повторить итоги",
+                          "fontFamily": "$font-ui",
+                          "fontSize": "$type-small",
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "Dvkh9",
+                          "name": "Key",
+                          "fill": "$gutter",
+                          "fontFamily": "$font-data",
+                          "fontSize": "$type-caption",
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "qJCRe",
+                      "name": "Показать в Finder",
+                      "width": "fill_container",
+                      "fill": "#00000000",
+                      "cornerRadius": "$radius-control",
+                      "padding": [
+                        "$space-4",
+                        "$space-8"
+                      ],
+                      "justifyContent": "space_between",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "dpOcT",
+                          "name": "Label",
+                          "fill": "$text",
+                          "content": "Показать в Finder",
+                          "fontFamily": "$font-ui",
+                          "fontSize": "$type-small",
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "s0DoMG",
+                          "name": "Key",
+                          "fill": "$gutter",
+                          "content": "⇧⌘R",
+                          "fontFamily": "$font-data",
+                          "fontSize": "$type-caption",
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "IfDRY",
+                      "name": "Separator",
+                      "fill": "$rule",
+                      "width": "fill_container",
+                      "height": 1
+                    },
+                    {
+                      "type": "frame",
+                      "id": "N3fc61",
+                      "name": "Удалить…",
+                      "width": "fill_container",
+                      "fill": "#00000000",
+                      "cornerRadius": "$radius-control",
+                      "padding": [
+                        "$space-4",
+                        "$space-8"
+                      ],
+                      "justifyContent": "space_between",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "CeJnG",
+                          "name": "Label",
+                          "fill": "$rec",
+                          "content": "Удалить…",
+                          "fontFamily": "$font-ui",
+                          "fontSize": "$type-small",
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "xL5oH",
+                          "name": "Key",
+                          "fill": "$gutter",
+                          "content": "⌘⌫",
+                          "fontFamily": "$font-data",
+                          "fontSize": "$type-caption",
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
                 },
                 {
                   "type": "frame",
-                  "id": "x4EgYY",
-                  "name": "Status",
-                  "width": 64,
-                  "height": "fit_content(0)",
-                  "gap": "$space-4",
-                  "justifyContent": "end",
+                  "id": "KcmOK",
+                  "name": "Alert",
+                  "reusable": true,
+                  "width": 340,
+                  "fill": "$win",
+                  "cornerRadius": "$radius-card",
+                  "effect": {
+                    "type": "shadow",
+                    "shadowType": "outer",
+                    "color": "$shadow",
+                    "offset": {
+                      "x": 0,
+                      "y": 12
+                    },
+                    "blur": 32
+                  },
+                  "layout": "vertical",
+                  "gap": "$space-12",
+                  "padding": "$space-24",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "UxAkl",
+                      "name": "H",
+                      "fill": "$text",
+                      "content": "Удалить звонок?",
+                      "fontFamily": "$font-ui",
+                      "fontSize": "$type-title",
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "SdNX4",
+                      "name": "Body",
+                      "fill": "$sub",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Папка «2026.10.20-1600 Синк по OKR на квартал» с записью, расшифровкой и итогами будет перемещена в Корзину.",
+                      "fontFamily": "$font-ui",
+                      "fontSize": "$type-small",
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Lv4mh",
+                      "name": "Buttons",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": "$space-8",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "ARDat",
+                          "name": "Button/Destructive",
+                          "width": "fill_container",
+                          "fill": "$errBg",
+                          "cornerRadius": "$radius-control",
+                          "padding": [
+                            "$space-6",
+                            "$space-12"
+                          ],
+                          "justifyContent": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "nqo44",
+                              "name": "Label",
+                              "fill": "$rec",
+                              "content": "Удалить",
+                              "fontFamily": "$font-ui",
+                              "fontSize": "$type-small",
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "KyTnD",
+                          "name": "Button/Secondary",
+                          "width": "fill_container",
+                          "fill": "$btn",
+                          "cornerRadius": "$radius-control",
+                          "padding": [
+                            "$space-6",
+                            "$space-12"
+                          ],
+                          "justifyContent": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "BWdO4",
+                              "name": "Label",
+                              "fill": "$text",
+                              "content": "Отмена",
+                              "fontFamily": "$font-ui",
+                              "fontSize": "$type-small",
+                              "fontWeight": "600"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "aly9x",
+                  "name": "Rename field",
+                  "reusable": true,
+                  "width": "fill_container",
+                  "fill": "$surface",
+                  "cornerRadius": "$radius-control",
+                  "stroke": "$me",
+                  "strokeWidth": 1.5,
+                  "padding": [
+                    "$space-2",
+                    "$space-8"
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "QA0dW",
+                      "name": "Prefix",
+                      "fill": "$gutter",
+                      "content": "2026.11.11-1230 ",
+                      "fontFamily": "$font-data",
+                      "fontSize": "$type-small",
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "CfDOJ",
+                      "name": "Title",
+                      "fill": "$text",
+                      "content": "Запуск: роли и SLA|",
+                      "fontFamily": "$font-ui",
+                      "fontSize": "$type-small",
+                      "fontWeight": "600"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "I1z2K",
+                  "name": "Error banner",
+                  "reusable": true,
+                  "width": 400,
+                  "fill": "$errBg",
+                  "gap": "$space-8",
+                  "padding": [
+                    "$space-12",
+                    "$space-16"
+                  ],
                   "alignItems": "center",
                   "children": [
                     {
                       "type": "icon",
-                      "id": "Z9xfQI",
-                      "x": 0,
-                      "y": 0,
-                      "name": "Pending",
-                      "enabled": false,
-                      "width": 14,
-                      "height": 14,
-                      "icon": "loader-circle",
-                      "library": "lucide",
-                      "fill": "$sub"
-                    },
-                    {
-                      "type": "icon",
-                      "id": "TyUn0",
-                      "x": 0,
-                      "y": 0,
-                      "name": "Failed",
-                      "enabled": false,
+                      "id": "JMGLJ",
+                      "name": "Icon",
                       "width": 14,
                       "height": 14,
                       "icon": "circle-alert",
@@ -828,43 +692,16 @@
                       "fill": "$rec"
                     },
                     {
-                      "type": "icon",
-                      "id": "s4afm6",
-                      "x": 0,
-                      "y": 0,
-                      "name": "Notes",
-                      "enabled": false,
-                      "width": 14,
-                      "height": 14,
-                      "icon": "eye",
-                      "library": "lucide",
-                      "fill": "$sub"
-                    },
-                    {
-                      "type": "frame",
-                      "id": "BIXQt",
-                      "x": 0,
-                      "y": 0,
-                      "name": "More",
-                      "enabled": false,
-                      "width": 20,
-                      "height": 20,
-                      "fill": "$btn",
-                      "cornerRadius": "$radius-control",
-                      "justifyContent": "center",
-                      "alignItems": "center",
-                      "children": [
-                        {
-                          "type": "icon",
-                          "id": "hgUMe",
-                          "name": "More icon",
-                          "width": 14,
-                          "height": 14,
-                          "icon": "ellipsis",
-                          "library": "lucide",
-                          "fill": "$text"
-                        }
-                      ]
+                      "type": "text",
+                      "id": "ecKRn",
+                      "name": "Text",
+                      "fill": "$rec",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Не удалось повторить подготовку итогов. Расшифровка и прежние итоги сохранены.",
+                      "fontFamily": "$font-ui",
+                      "fontSize": "$type-small",
+                      "fontWeight": "normal"
                     }
                   ]
                 }
@@ -876,17 +713,17 @@
     },
     {
       "type": "frame",
-      "id": "qYGnR",
+      "id": "adv4d",
       "x": 0,
       "y": 0,
-      "name": "A — wide",
+      "name": "Calls — wide",
       "theme": {
         "mode": "light"
       },
       "reusable": true,
       "clip": true,
       "width": 900,
-      "height": 420,
+      "height": 520,
       "fill": "$win",
       "cornerRadius": "$radius-card",
       "stroke": "$rule",
@@ -895,255 +732,337 @@
       "children": [
         {
           "type": "frame",
-          "id": "w9hmU",
+          "id": "GAP1F",
           "x": 0,
           "y": 0,
           "name": "Content",
           "width": 900,
+          "height": 520,
           "layout": "vertical",
           "children": [
             {
-              "id": "N1XgXg",
+              "id": "y9Ue2",
               "type": "ref",
-              "ref": "kftay",
+              "ref": "A87z6I",
               "name": "Title bar",
               "width": "fill_container"
             },
             {
-              "id": "p7C2T",
+              "id": "Avtwc",
               "type": "ref",
-              "ref": "RLdUF",
-              "name": "Header",
+              "ref": "pEV3k",
+              "name": "Day Сегодня",
               "width": "fill_container",
               "descendants": {
-                "ue4wl": {
-                  "enabled": true,
-                  "content": "Дата ↓",
-                  "width": 120
+                "EzQW1": {
+                  "content": "Сегодня"
                 },
-                "hyFIH": {
-                  "enabled": true
+                "zxLiP": {
+                  "content": "2 звонка"
                 }
               }
             },
             {
-              "id": "U2mqlt",
+              "id": "UdXaq",
               "type": "ref",
-              "ref": "Z9bpNT",
+              "ref": "T8WPz",
               "name": "Row 1",
               "width": "fill_container",
               "fill": "$okBg",
               "descendants": {
-                "x69OK": {
-                  "content": "21.10.2026 12:30",
-                  "width": 120
+                "E32yp4": {
+                  "content": "12:30"
                 },
-                "qN2K9": {
+                "cxyjK": {
                   "content": "Запуск: роли и SLA",
                   "fill": "$text",
                   "fontFamily": "$font-ui",
                   "fontWeight": "600"
                 },
-                "K4KtD": {
-                  "content": "47:00",
-                  "enabled": true
+                "vFoFZ": {
+                  "content": "47:00"
                 },
-                "LxJsu": {
+                "h7VVzS": {
                   "enabled": false
                 },
-                "F8KYWb": {
+                "Q83FSh": {
                   "enabled": false
                 },
-                "J1l99": {
+                "t6qkK": {
                   "enabled": true,
                   "fill": "$me"
                 },
-                "UHLgm": {
+                "r0Gsyp": {
                   "enabled": false
                 }
               }
             },
             {
-              "id": "Pjegg",
+              "id": "keM3q",
               "type": "ref",
-              "ref": "Z9bpNT",
+              "ref": "T8WPz",
               "name": "Row 2",
               "width": "fill_container",
               "fill": "$surface",
               "descendants": {
-                "x69OK": {
-                  "content": "21.10.2026 09:05",
-                  "width": 120
+                "E32yp4": {
+                  "content": "09:05"
                 },
-                "qN2K9": {
-                  "content": "Интервью: кандидат на iOS — техническая часть, архитектура, тесты и вопросы по…",
+                "cxyjK": {
+                  "content": "Интервью: кандидат на iOS — техническая часть, архитектура, тесты и вопросы по Swift Concurren…",
                   "fill": "$text",
                   "fontFamily": "$font-ui",
                   "fontWeight": "600"
                 },
-                "K4KtD": {
-                  "content": "1:12:40",
+                "vFoFZ": {
+                  "content": "1:12:40"
+                },
+                "h7VVzS": {
                   "enabled": true
                 },
-                "LxJsu": {
-                  "enabled": true
-                },
-                "F8KYWb": {
+                "Q83FSh": {
                   "enabled": false
                 },
-                "J1l99": {
+                "t6qkK": {
                   "enabled": false,
                   "fill": "$sub"
                 },
-                "UHLgm": {
+                "r0Gsyp": {
                   "enabled": false
                 }
               }
             },
             {
-              "id": "r7pqLZ",
+              "id": "G0QFn",
               "type": "ref",
-              "ref": "Z9bpNT",
+              "ref": "pEV3k",
+              "name": "Day Вчера",
+              "width": "fill_container",
+              "descendants": {
+                "EzQW1": {
+                  "content": "Вчера"
+                },
+                "zxLiP": {
+                  "content": "2 звонка"
+                }
+              }
+            },
+            {
+              "id": "kmpVy",
+              "type": "ref",
+              "ref": "T8WPz",
               "name": "Row 3",
               "width": "fill_container",
               "fill": "$card",
               "descendants": {
-                "x69OK": {
-                  "content": "20.10.2026 16:00",
-                  "width": 120
+                "E32yp4": {
+                  "content": "16:00"
                 },
-                "qN2K9": {
+                "cxyjK": {
                   "content": "Синк по OKR на квартал",
                   "fill": "$text",
                   "fontFamily": "$font-ui",
                   "fontWeight": "600"
                 },
-                "K4KtD": {
-                  "content": "1:12:00",
-                  "enabled": true
+                "vFoFZ": {
+                  "content": "1:12:00"
                 },
-                "LxJsu": {
+                "h7VVzS": {
                   "enabled": false
                 },
-                "F8KYWb": {
+                "Q83FSh": {
                   "enabled": true
                 },
-                "J1l99": {
+                "t6qkK": {
                   "enabled": false,
                   "fill": "$sub"
                 },
-                "UHLgm": {
+                "r0Gsyp": {
                   "enabled": true
                 }
               }
             },
             {
-              "id": "L1L6lM",
+              "id": "rEl73",
               "type": "ref",
-              "ref": "Z9bpNT",
+              "ref": "T8WPz",
               "name": "Row 4",
               "width": "fill_container",
               "fill": "$surface",
               "descendants": {
-                "x69OK": {
-                  "content": "20.10.2026 11:15",
-                  "width": 120
+                "E32yp4": {
+                  "content": "11:15"
                 },
-                "qN2K9": {
+                "cxyjK": {
                   "content": "1:1 с Анной",
                   "fill": "$text",
                   "fontFamily": "$font-ui",
                   "fontWeight": "600"
                 },
-                "K4KtD": {
-                  "content": "28:44",
-                  "enabled": true
+                "vFoFZ": {
+                  "content": "28:44"
                 },
-                "LxJsu": {
+                "h7VVzS": {
                   "enabled": false
                 },
-                "F8KYWb": {
+                "Q83FSh": {
                   "enabled": false
                 },
-                "J1l99": {
+                "t6qkK": {
                   "enabled": true,
                   "fill": "$sub"
                 },
-                "UHLgm": {
+                "r0Gsyp": {
                   "enabled": false
                 }
               }
             },
             {
-              "id": "MBIyL",
+              "id": "Zn2sU",
               "type": "ref",
-              "ref": "Z9bpNT",
+              "ref": "pEV3k",
+              "name": "Day Пятница, 7 ноября",
+              "width": "fill_container",
+              "descendants": {
+                "EzQW1": {
+                  "content": "Пятница, 7 ноября"
+                },
+                "zxLiP": {
+                  "content": "1 звонок"
+                }
+              }
+            },
+            {
+              "id": "yXRSD",
+              "type": "ref",
+              "ref": "T8WPz",
               "name": "Row 5",
               "width": "fill_container",
               "fill": "$surface",
               "descendants": {
-                "x69OK": {
-                  "content": "17.10.2026 11:00",
-                  "width": 120
+                "E32yp4": {
+                  "content": "11:00"
                 },
-                "qN2K9": {
-                  "content": "2026.10.17-1100",
+                "cxyjK": {
+                  "content": "2026.11.07-1100",
                   "fill": "$gutter",
                   "fontFamily": "$font-data",
                   "fontWeight": "normal"
                 },
-                "K4KtD": {
-                  "content": "—",
-                  "enabled": true
+                "vFoFZ": {
+                  "content": "—"
                 },
-                "LxJsu": {
+                "h7VVzS": {
                   "enabled": false
                 },
-                "F8KYWb": {
+                "Q83FSh": {
                   "enabled": false
                 },
-                "J1l99": {
+                "t6qkK": {
                   "enabled": false,
                   "fill": "$sub"
                 },
-                "UHLgm": {
+                "r0Gsyp": {
                   "enabled": false
                 }
               }
             },
             {
-              "id": "zdouF",
+              "id": "FUBr4",
               "type": "ref",
-              "ref": "Z9bpNT",
+              "ref": "pEV3k",
+              "name": "Day 3 сентября",
+              "width": "fill_container",
+              "descendants": {
+                "EzQW1": {
+                  "content": "3 сентября"
+                },
+                "zxLiP": {
+                  "content": "1 звонок"
+                }
+              }
+            },
+            {
+              "id": "raPZ7",
+              "type": "ref",
+              "ref": "T8WPz",
               "name": "Row 6",
               "width": "fill_container",
               "fill": "$surface",
               "descendants": {
-                "x69OK": {
-                  "content": "16.10.2026 18:00",
-                  "width": 120
+                "E32yp4": {
+                  "content": "18:00"
                 },
-                "qN2K9": {
+                "cxyjK": {
                   "content": "Клиент Альфа: демо и вопросы по интеграции",
                   "fill": "$text",
                   "fontFamily": "$font-ui",
                   "fontWeight": "600"
                 },
-                "K4KtD": {
-                  "content": "52:10",
-                  "enabled": true
+                "vFoFZ": {
+                  "content": "52:10"
                 },
-                "LxJsu": {
+                "h7VVzS": {
                   "enabled": false
                 },
-                "F8KYWb": {
+                "Q83FSh": {
                   "enabled": false
                 },
-                "J1l99": {
+                "t6qkK": {
                   "enabled": false,
                   "fill": "$sub"
                 },
-                "UHLgm": {
+                "r0Gsyp": {
+                  "enabled": false
+                }
+              }
+            },
+            {
+              "id": "npuxs",
+              "type": "ref",
+              "ref": "pEV3k",
+              "name": "Day 12 декабря 2025",
+              "width": "fill_container",
+              "descendants": {
+                "EzQW1": {
+                  "content": "12 декабря 2025"
+                },
+                "zxLiP": {
+                  "content": "1 звонок"
+                }
+              }
+            },
+            {
+              "id": "c3bKUe",
+              "type": "ref",
+              "ref": "T8WPz",
+              "name": "Row 7",
+              "width": "fill_container",
+              "fill": "$surface",
+              "descendants": {
+                "E32yp4": {
+                  "content": "10:30"
+                },
+                "cxyjK": {
+                  "content": "Ретро за год",
+                  "fill": "$text",
+                  "fontFamily": "$font-ui",
+                  "fontWeight": "600"
+                },
+                "vFoFZ": {
+                  "content": "1:05:12"
+                },
+                "h7VVzS": {
+                  "enabled": false
+                },
+                "Q83FSh": {
+                  "enabled": false
+                },
+                "t6qkK": {
+                  "enabled": true,
+                  "fill": "$sub"
+                },
+                "r0Gsyp": {
                   "enabled": false
                 }
               }
@@ -1151,39 +1070,39 @@
           ]
         },
         {
-          "id": "A5F08",
+          "id": "n0CCT",
           "type": "ref",
-          "ref": "NIxhj",
+          "ref": "gzqJR",
           "name": "Context menu",
-          "x": 600,
-          "y": 150
+          "x": 644,
+          "y": 184
         }
       ]
     },
     {
-      "id": "Y5nSpY",
+      "id": "OHgUP",
       "type": "ref",
-      "ref": "qYGnR",
-      "name": "A — wide (dark)",
+      "ref": "adv4d",
+      "name": "Calls — wide (dark)",
       "x": 0,
-      "y": 460,
+      "y": 560,
       "theme": {
         "mode": "dark"
       }
     },
     {
       "type": "frame",
-      "id": "h47Wf4",
+      "id": "ghLWp",
       "x": 960,
       "y": 0,
-      "name": "A — narrow",
+      "name": "Calls — minimum width",
       "theme": {
         "mode": "light"
       },
       "reusable": true,
       "clip": true,
-      "width": 440,
-      "height": 420,
+      "width": 560,
+      "height": 520,
       "fill": "$win",
       "cornerRadius": "$radius-card",
       "stroke": "$rule",
@@ -1192,1145 +1111,377 @@
       "children": [
         {
           "type": "frame",
-          "id": "pRxGh",
+          "id": "MO37n",
           "x": 0,
           "y": 0,
           "name": "Content",
-          "width": 440,
+          "width": 560,
+          "height": 520,
           "layout": "vertical",
           "children": [
             {
-              "id": "yLSnO",
+              "id": "yMZxI",
               "type": "ref",
-              "ref": "kftay",
+              "ref": "A87z6I",
               "name": "Title bar",
               "width": "fill_container"
             },
             {
-              "id": "M9tyHb",
+              "id": "jD3rg",
               "type": "ref",
-              "ref": "RLdUF",
-              "name": "Header",
-              "width": "fill_container",
-              "descendants": {
-                "ue4wl": {
-                  "enabled": true,
-                  "content": "Дата ↓",
-                  "width": 72
-                },
-                "hyFIH": {
-                  "enabled": false
-                }
-              }
-            },
-            {
-              "id": "zqphE",
-              "type": "ref",
-              "ref": "Z9bpNT",
-              "name": "Row 1",
-              "width": "fill_container",
-              "fill": "$okBg",
-              "descendants": {
-                "x69OK": {
-                  "content": "21.10",
-                  "width": 72
-                },
-                "qN2K9": {
-                  "content": "Запуск: роли и SLA",
-                  "fill": "$text",
-                  "fontFamily": "$font-ui",
-                  "fontWeight": "600"
-                },
-                "K4KtD": {
-                  "content": "47:00",
-                  "enabled": false
-                },
-                "LxJsu": {
-                  "enabled": false
-                },
-                "F8KYWb": {
-                  "enabled": false
-                },
-                "J1l99": {
-                  "enabled": true,
-                  "fill": "$me"
-                },
-                "UHLgm": {
-                  "enabled": false
-                }
-              }
-            },
-            {
-              "id": "OAOAH",
-              "type": "ref",
-              "ref": "Z9bpNT",
-              "name": "Row 2",
-              "width": "fill_container",
-              "fill": "$surface",
-              "descendants": {
-                "x69OK": {
-                  "content": "21.10",
-                  "width": 72
-                },
-                "qN2K9": {
-                  "content": "Интервью: кандидат на iOS — тех…",
-                  "fill": "$text",
-                  "fontFamily": "$font-ui",
-                  "fontWeight": "600"
-                },
-                "K4KtD": {
-                  "content": "1:12:40",
-                  "enabled": false
-                },
-                "LxJsu": {
-                  "enabled": true
-                },
-                "F8KYWb": {
-                  "enabled": false
-                },
-                "J1l99": {
-                  "enabled": false,
-                  "fill": "$sub"
-                },
-                "UHLgm": {
-                  "enabled": false
-                }
-              }
-            },
-            {
-              "id": "Ad658",
-              "type": "ref",
-              "ref": "Z9bpNT",
-              "name": "Row 3",
-              "width": "fill_container",
-              "fill": "$card",
-              "descendants": {
-                "x69OK": {
-                  "content": "20.10",
-                  "width": 72
-                },
-                "qN2K9": {
-                  "content": "Синк по OKR на квартал",
-                  "fill": "$text",
-                  "fontFamily": "$font-ui",
-                  "fontWeight": "600"
-                },
-                "K4KtD": {
-                  "content": "1:12:00",
-                  "enabled": false
-                },
-                "LxJsu": {
-                  "enabled": false
-                },
-                "F8KYWb": {
-                  "enabled": true
-                },
-                "J1l99": {
-                  "enabled": false,
-                  "fill": "$sub"
-                },
-                "UHLgm": {
-                  "enabled": true
-                }
-              }
-            },
-            {
-              "id": "J0zSY",
-              "type": "ref",
-              "ref": "Z9bpNT",
-              "name": "Row 4",
-              "width": "fill_container",
-              "fill": "$surface",
-              "descendants": {
-                "x69OK": {
-                  "content": "20.10",
-                  "width": 72
-                },
-                "qN2K9": {
-                  "content": "1:1 с Анной",
-                  "fill": "$text",
-                  "fontFamily": "$font-ui",
-                  "fontWeight": "600"
-                },
-                "K4KtD": {
-                  "content": "28:44",
-                  "enabled": false
-                },
-                "LxJsu": {
-                  "enabled": false
-                },
-                "F8KYWb": {
-                  "enabled": false
-                },
-                "J1l99": {
-                  "enabled": true,
-                  "fill": "$sub"
-                },
-                "UHLgm": {
-                  "enabled": false
-                }
-              }
-            },
-            {
-              "id": "rkl4j",
-              "type": "ref",
-              "ref": "Z9bpNT",
-              "name": "Row 5",
-              "width": "fill_container",
-              "fill": "$surface",
-              "descendants": {
-                "x69OK": {
-                  "content": "17.10",
-                  "width": 72
-                },
-                "qN2K9": {
-                  "content": "2026.10.17-1100",
-                  "fill": "$gutter",
-                  "fontFamily": "$font-data",
-                  "fontWeight": "normal"
-                },
-                "K4KtD": {
-                  "content": "—",
-                  "enabled": false
-                },
-                "LxJsu": {
-                  "enabled": false
-                },
-                "F8KYWb": {
-                  "enabled": false
-                },
-                "J1l99": {
-                  "enabled": false,
-                  "fill": "$sub"
-                },
-                "UHLgm": {
-                  "enabled": false
-                }
-              }
-            },
-            {
-              "id": "IeHN5",
-              "type": "ref",
-              "ref": "Z9bpNT",
-              "name": "Row 6",
-              "width": "fill_container",
-              "fill": "$surface",
-              "descendants": {
-                "x69OK": {
-                  "content": "16.10",
-                  "width": 72
-                },
-                "qN2K9": {
-                  "content": "Клиент Альфа: демо и вопросы по…",
-                  "fill": "$text",
-                  "fontFamily": "$font-ui",
-                  "fontWeight": "600"
-                },
-                "K4KtD": {
-                  "content": "52:10",
-                  "enabled": false
-                },
-                "LxJsu": {
-                  "enabled": false
-                },
-                "F8KYWb": {
-                  "enabled": false
-                },
-                "J1l99": {
-                  "enabled": false,
-                  "fill": "$sub"
-                },
-                "UHLgm": {
-                  "enabled": false
-                }
-              }
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "B3wpxF",
-      "type": "ref",
-      "ref": "h47Wf4",
-      "name": "A — narrow (dark)",
-      "x": 960,
-      "y": 460,
-      "theme": {
-        "mode": "dark"
-      }
-    },
-    {
-      "type": "frame",
-      "id": "gZJyF",
-      "x": 0,
-      "y": 1000,
-      "name": "B — wide",
-      "theme": {
-        "mode": "light"
-      },
-      "reusable": true,
-      "clip": true,
-      "width": 900,
-      "height": 420,
-      "fill": "$win",
-      "cornerRadius": "$radius-card",
-      "stroke": "$rule",
-      "strokeWidth": 1,
-      "layout": "none",
-      "children": [
-        {
-          "type": "frame",
-          "id": "L05tP",
-          "x": 0,
-          "y": 0,
-          "name": "Content",
-          "width": 900,
-          "layout": "vertical",
-          "children": [
-            {
-              "id": "jbuMz",
-              "type": "ref",
-              "ref": "kftay",
-              "name": "Title bar",
-              "width": "fill_container"
-            },
-            {
-              "id": "Bf2AQ",
-              "type": "ref",
-              "ref": "ijCsx",
-              "name": "Row 1",
-              "width": "fill_container",
-              "fill": "$okBg",
-              "descendants": {
-                "GnyKC": {
-                  "content": "Запуск: роли и SLA",
-                  "fill": "$text",
-                  "fontFamily": "$font-ui",
-                  "fontWeight": "600"
-                },
-                "RnWOA": {
-                  "content": "Сегодня, 12:30"
-                },
-                "tBzba": {
-                  "content": "47:00 · итоги готовы",
-                  "fill": "$sub"
-                },
-                "Egepd": {
-                  "enabled": false
-                },
-                "vkRcB": {
-                  "enabled": false
-                },
-                "iabxb": {
-                  "enabled": true,
-                  "fill": "$me"
-                },
-                "aPHsf": {
-                  "enabled": false
-                }
-              }
-            },
-            {
-              "id": "qmOjE",
-              "type": "ref",
-              "ref": "ijCsx",
-              "name": "Row 2",
-              "width": "fill_container",
-              "fill": "$surface",
-              "descendants": {
-                "GnyKC": {
-                  "content": "Интервью: кандидат на iOS — техническая часть, архитектура, тесты и вопросы по Swift Concurren…",
-                  "fill": "$text",
-                  "fontFamily": "$font-ui",
-                  "fontWeight": "600"
-                },
-                "RnWOA": {
-                  "content": "Сегодня, 09:05"
-                },
-                "tBzba": {
-                  "content": "1:12:40 · готовятся итоги…",
-                  "fill": "$sub"
-                },
-                "Egepd": {
-                  "enabled": true
-                },
-                "vkRcB": {
-                  "enabled": false
-                },
-                "iabxb": {
-                  "enabled": false,
-                  "fill": "$sub"
-                },
-                "aPHsf": {
-                  "enabled": false
-                }
-              }
-            },
-            {
-              "id": "V8y8oK",
-              "type": "ref",
-              "ref": "ijCsx",
-              "name": "Row 3",
-              "width": "fill_container",
-              "fill": "$card",
-              "descendants": {
-                "GnyKC": {
-                  "content": "Синк по OKR на квартал",
-                  "fill": "$text",
-                  "fontFamily": "$font-ui",
-                  "fontWeight": "600"
-                },
-                "RnWOA": {
-                  "content": "Вчера, 16:00"
-                },
-                "tBzba": {
-                  "content": "1:12:00 · итоги прерваны",
-                  "fill": "$rec"
-                },
-                "Egepd": {
-                  "enabled": false
-                },
-                "vkRcB": {
-                  "enabled": true
-                },
-                "iabxb": {
-                  "enabled": false,
-                  "fill": "$sub"
-                },
-                "aPHsf": {
-                  "enabled": true
-                }
-              }
-            },
-            {
-              "id": "SlGtv",
-              "type": "ref",
-              "ref": "ijCsx",
-              "name": "Row 4",
-              "width": "fill_container",
-              "fill": "$surface",
-              "descendants": {
-                "GnyKC": {
-                  "content": "1:1 с Анной",
-                  "fill": "$text",
-                  "fontFamily": "$font-ui",
-                  "fontWeight": "600"
-                },
-                "RnWOA": {
-                  "content": "Вчера, 11:15"
-                },
-                "tBzba": {
-                  "content": "28:44 · итоги готовы",
-                  "fill": "$sub"
-                },
-                "Egepd": {
-                  "enabled": false
-                },
-                "vkRcB": {
-                  "enabled": false
-                },
-                "iabxb": {
-                  "enabled": true,
-                  "fill": "$sub"
-                },
-                "aPHsf": {
-                  "enabled": false
-                }
-              }
-            },
-            {
-              "id": "Tz11Y",
-              "type": "ref",
-              "ref": "ijCsx",
-              "name": "Row 5",
-              "width": "fill_container",
-              "fill": "$surface",
-              "descendants": {
-                "GnyKC": {
-                  "content": "2026.10.17-1100",
-                  "fill": "$gutter",
-                  "fontFamily": "$font-data",
-                  "fontWeight": "normal"
-                },
-                "RnWOA": {
-                  "content": "17 окт., 11:00"
-                },
-                "tBzba": {
-                  "content": "без длительности",
-                  "fill": "$sub"
-                },
-                "Egepd": {
-                  "enabled": false
-                },
-                "vkRcB": {
-                  "enabled": false
-                },
-                "iabxb": {
-                  "enabled": false,
-                  "fill": "$sub"
-                },
-                "aPHsf": {
-                  "enabled": false
-                }
-              }
-            },
-            {
-              "id": "gItWv",
-              "type": "ref",
-              "ref": "ijCsx",
-              "name": "Row 6",
-              "width": "fill_container",
-              "fill": "$surface",
-              "descendants": {
-                "GnyKC": {
-                  "content": "Клиент Альфа: демо и вопросы по интеграции",
-                  "fill": "$text",
-                  "fontFamily": "$font-ui",
-                  "fontWeight": "600"
-                },
-                "RnWOA": {
-                  "content": "16 окт., 18:00"
-                },
-                "tBzba": {
-                  "content": "52:10 · итоги готовы",
-                  "fill": "$sub"
-                },
-                "Egepd": {
-                  "enabled": false
-                },
-                "vkRcB": {
-                  "enabled": false
-                },
-                "iabxb": {
-                  "enabled": false,
-                  "fill": "$sub"
-                },
-                "aPHsf": {
-                  "enabled": false
-                }
-              }
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "f8ozAM",
-      "type": "ref",
-      "ref": "gZJyF",
-      "name": "B — wide (dark)",
-      "x": 0,
-      "y": 1460,
-      "theme": {
-        "mode": "dark"
-      }
-    },
-    {
-      "type": "frame",
-      "id": "k1kYh",
-      "x": 960,
-      "y": 1000,
-      "name": "B — narrow",
-      "theme": {
-        "mode": "light"
-      },
-      "reusable": true,
-      "clip": true,
-      "width": 440,
-      "height": 420,
-      "fill": "$win",
-      "cornerRadius": "$radius-card",
-      "stroke": "$rule",
-      "strokeWidth": 1,
-      "layout": "none",
-      "children": [
-        {
-          "type": "frame",
-          "id": "GAFqT",
-          "x": 0,
-          "y": 0,
-          "name": "Content",
-          "width": 440,
-          "layout": "vertical",
-          "children": [
-            {
-              "id": "mNs3P",
-              "type": "ref",
-              "ref": "kftay",
-              "name": "Title bar",
-              "width": "fill_container"
-            },
-            {
-              "id": "cmyRo",
-              "type": "ref",
-              "ref": "ijCsx",
-              "name": "Row 1",
-              "width": "fill_container",
-              "fill": "$okBg",
-              "descendants": {
-                "GnyKC": {
-                  "content": "Запуск: роли и SLA",
-                  "fill": "$text",
-                  "fontFamily": "$font-ui",
-                  "fontWeight": "600"
-                },
-                "RnWOA": {
-                  "content": "Сегодня, 12:30"
-                },
-                "tBzba": {
-                  "content": "47:00 · итоги готовы",
-                  "fill": "$sub"
-                },
-                "Egepd": {
-                  "enabled": false
-                },
-                "vkRcB": {
-                  "enabled": false
-                },
-                "iabxb": {
-                  "enabled": true,
-                  "fill": "$me"
-                },
-                "aPHsf": {
-                  "enabled": false
-                }
-              }
-            },
-            {
-              "id": "WQObO",
-              "type": "ref",
-              "ref": "ijCsx",
-              "name": "Row 2",
-              "width": "fill_container",
-              "fill": "$surface",
-              "descendants": {
-                "GnyKC": {
-                  "content": "Интервью: кандидат на iOS — техниче…",
-                  "fill": "$text",
-                  "fontFamily": "$font-ui",
-                  "fontWeight": "600"
-                },
-                "RnWOA": {
-                  "content": "Сегодня, 09:05"
-                },
-                "tBzba": {
-                  "content": "1:12:40 · готовятся итоги…",
-                  "fill": "$sub"
-                },
-                "Egepd": {
-                  "enabled": true
-                },
-                "vkRcB": {
-                  "enabled": false
-                },
-                "iabxb": {
-                  "enabled": false,
-                  "fill": "$sub"
-                },
-                "aPHsf": {
-                  "enabled": false
-                }
-              }
-            },
-            {
-              "id": "SaeWF",
-              "type": "ref",
-              "ref": "ijCsx",
-              "name": "Row 3",
-              "width": "fill_container",
-              "fill": "$card",
-              "descendants": {
-                "GnyKC": {
-                  "content": "Синк по OKR на квартал",
-                  "fill": "$text",
-                  "fontFamily": "$font-ui",
-                  "fontWeight": "600"
-                },
-                "RnWOA": {
-                  "content": "Вчера, 16:00"
-                },
-                "tBzba": {
-                  "content": "1:12:00 · итоги прерваны",
-                  "fill": "$rec"
-                },
-                "Egepd": {
-                  "enabled": false
-                },
-                "vkRcB": {
-                  "enabled": true
-                },
-                "iabxb": {
-                  "enabled": false,
-                  "fill": "$sub"
-                },
-                "aPHsf": {
-                  "enabled": true
-                }
-              }
-            },
-            {
-              "id": "G3Bw2p",
-              "type": "ref",
-              "ref": "ijCsx",
-              "name": "Row 4",
-              "width": "fill_container",
-              "fill": "$surface",
-              "descendants": {
-                "GnyKC": {
-                  "content": "1:1 с Анной",
-                  "fill": "$text",
-                  "fontFamily": "$font-ui",
-                  "fontWeight": "600"
-                },
-                "RnWOA": {
-                  "content": "Вчера, 11:15"
-                },
-                "tBzba": {
-                  "content": "28:44 · итоги готовы",
-                  "fill": "$sub"
-                },
-                "Egepd": {
-                  "enabled": false
-                },
-                "vkRcB": {
-                  "enabled": false
-                },
-                "iabxb": {
-                  "enabled": true,
-                  "fill": "$sub"
-                },
-                "aPHsf": {
-                  "enabled": false
-                }
-              }
-            },
-            {
-              "id": "zvzMd",
-              "type": "ref",
-              "ref": "ijCsx",
-              "name": "Row 5",
-              "width": "fill_container",
-              "fill": "$surface",
-              "descendants": {
-                "GnyKC": {
-                  "content": "2026.10.17-1100",
-                  "fill": "$gutter",
-                  "fontFamily": "$font-data",
-                  "fontWeight": "normal"
-                },
-                "RnWOA": {
-                  "content": "17 окт., 11:00"
-                },
-                "tBzba": {
-                  "content": "без длительности",
-                  "fill": "$sub"
-                },
-                "Egepd": {
-                  "enabled": false
-                },
-                "vkRcB": {
-                  "enabled": false
-                },
-                "iabxb": {
-                  "enabled": false,
-                  "fill": "$sub"
-                },
-                "aPHsf": {
-                  "enabled": false
-                }
-              }
-            },
-            {
-              "id": "x8kmmA",
-              "type": "ref",
-              "ref": "ijCsx",
-              "name": "Row 6",
-              "width": "fill_container",
-              "fill": "$surface",
-              "descendants": {
-                "GnyKC": {
-                  "content": "Клиент Альфа: демо и вопросы по инт…",
-                  "fill": "$text",
-                  "fontFamily": "$font-ui",
-                  "fontWeight": "600"
-                },
-                "RnWOA": {
-                  "content": "16 окт., 18:00"
-                },
-                "tBzba": {
-                  "content": "52:10 · итоги готовы",
-                  "fill": "$sub"
-                },
-                "Egepd": {
-                  "enabled": false
-                },
-                "vkRcB": {
-                  "enabled": false
-                },
-                "iabxb": {
-                  "enabled": false,
-                  "fill": "$sub"
-                },
-                "aPHsf": {
-                  "enabled": false
-                }
-              }
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "JrweB",
-      "type": "ref",
-      "ref": "k1kYh",
-      "name": "B — narrow (dark)",
-      "x": 960,
-      "y": 1460,
-      "theme": {
-        "mode": "dark"
-      }
-    },
-    {
-      "type": "frame",
-      "id": "nn4jI",
-      "x": 0,
-      "y": 2000,
-      "name": "C — wide",
-      "theme": {
-        "mode": "light"
-      },
-      "reusable": true,
-      "clip": true,
-      "width": 900,
-      "height": 420,
-      "fill": "$win",
-      "cornerRadius": "$radius-card",
-      "stroke": "$rule",
-      "strokeWidth": 1,
-      "layout": "none",
-      "children": [
-        {
-          "type": "frame",
-          "id": "abMjS",
-          "x": 0,
-          "y": 0,
-          "name": "Content",
-          "width": 900,
-          "layout": "vertical",
-          "children": [
-            {
-              "id": "YzIgJ",
-              "type": "ref",
-              "ref": "kftay",
-              "name": "Title bar",
-              "width": "fill_container"
-            },
-            {
-              "id": "l6VJGs",
-              "type": "ref",
-              "ref": "bi9Zk",
+              "ref": "pEV3k",
               "name": "Day Сегодня",
               "width": "fill_container",
               "descendants": {
-                "y9TMt8": {
+                "EzQW1": {
                   "content": "Сегодня"
                 },
-                "i1hrnY": {
+                "zxLiP": {
                   "content": "2 звонка"
                 }
               }
             },
             {
-              "id": "oncbd",
+              "id": "zslxM",
               "type": "ref",
-              "ref": "OJM6A",
+              "ref": "T8WPz",
               "name": "Row 1",
               "width": "fill_container",
               "fill": "$okBg",
               "descendants": {
-                "u5ptgY": {
+                "E32yp4": {
                   "content": "12:30"
                 },
-                "K8jqSu": {
+                "cxyjK": {
                   "content": "Запуск: роли и SLA",
                   "fill": "$text",
                   "fontFamily": "$font-ui",
                   "fontWeight": "600"
                 },
-                "t0R6oA": {
-                  "content": "47:00",
-                  "enabled": true
+                "vFoFZ": {
+                  "content": "47:00"
                 },
-                "Z9xfQI": {
+                "h7VVzS": {
                   "enabled": false
                 },
-                "TyUn0": {
+                "Q83FSh": {
                   "enabled": false
                 },
-                "s4afm6": {
+                "t6qkK": {
                   "enabled": true,
                   "fill": "$me"
                 },
-                "BIXQt": {
+                "r0Gsyp": {
                   "enabled": false
                 }
               }
             },
             {
-              "id": "gDcdO",
+              "id": "l8XYY",
               "type": "ref",
-              "ref": "OJM6A",
+              "ref": "T8WPz",
               "name": "Row 2",
               "width": "fill_container",
               "fill": "$surface",
               "descendants": {
-                "u5ptgY": {
+                "E32yp4": {
                   "content": "09:05"
                 },
-                "K8jqSu": {
-                  "content": "Интервью: кандидат на iOS — техническая часть, архитектура, тесты и вопросы по Swift Conc…",
+                "cxyjK": {
+                  "content": "Интервью: кандидат на iOS — техническая…",
                   "fill": "$text",
                   "fontFamily": "$font-ui",
                   "fontWeight": "600"
                 },
-                "t0R6oA": {
-                  "content": "1:12:40",
+                "vFoFZ": {
+                  "content": "1:12:40"
+                },
+                "h7VVzS": {
                   "enabled": true
                 },
-                "Z9xfQI": {
-                  "enabled": true
-                },
-                "TyUn0": {
+                "Q83FSh": {
                   "enabled": false
                 },
-                "s4afm6": {
+                "t6qkK": {
                   "enabled": false,
                   "fill": "$sub"
                 },
-                "BIXQt": {
+                "r0Gsyp": {
                   "enabled": false
                 }
               }
             },
             {
-              "id": "Y1ItK",
+              "id": "XgYjM",
               "type": "ref",
-              "ref": "bi9Zk",
+              "ref": "pEV3k",
               "name": "Day Вчера",
               "width": "fill_container",
               "descendants": {
-                "y9TMt8": {
+                "EzQW1": {
                   "content": "Вчера"
                 },
-                "i1hrnY": {
+                "zxLiP": {
                   "content": "2 звонка"
                 }
               }
             },
             {
-              "id": "a201t2",
+              "id": "Q5JyB3",
               "type": "ref",
-              "ref": "OJM6A",
+              "ref": "T8WPz",
               "name": "Row 3",
               "width": "fill_container",
               "fill": "$card",
               "descendants": {
-                "u5ptgY": {
+                "E32yp4": {
                   "content": "16:00"
                 },
-                "K8jqSu": {
+                "cxyjK": {
                   "content": "Синк по OKR на квартал",
                   "fill": "$text",
                   "fontFamily": "$font-ui",
                   "fontWeight": "600"
                 },
-                "t0R6oA": {
-                  "content": "1:12:00",
-                  "enabled": true
+                "vFoFZ": {
+                  "content": "1:12:00"
                 },
-                "Z9xfQI": {
+                "h7VVzS": {
                   "enabled": false
                 },
-                "TyUn0": {
+                "Q83FSh": {
                   "enabled": true
                 },
-                "s4afm6": {
+                "t6qkK": {
                   "enabled": false,
                   "fill": "$sub"
                 },
-                "BIXQt": {
+                "r0Gsyp": {
                   "enabled": true
                 }
               }
             },
             {
-              "id": "p6Z3wI",
+              "id": "K2ijI",
               "type": "ref",
-              "ref": "OJM6A",
+              "ref": "T8WPz",
               "name": "Row 4",
               "width": "fill_container",
               "fill": "$surface",
               "descendants": {
-                "u5ptgY": {
+                "E32yp4": {
                   "content": "11:15"
                 },
-                "K8jqSu": {
+                "cxyjK": {
                   "content": "1:1 с Анной",
                   "fill": "$text",
                   "fontFamily": "$font-ui",
                   "fontWeight": "600"
                 },
-                "t0R6oA": {
-                  "content": "28:44",
-                  "enabled": true
+                "vFoFZ": {
+                  "content": "28:44"
                 },
-                "Z9xfQI": {
+                "h7VVzS": {
                   "enabled": false
                 },
-                "TyUn0": {
+                "Q83FSh": {
                   "enabled": false
                 },
-                "s4afm6": {
+                "t6qkK": {
                   "enabled": true,
                   "fill": "$sub"
                 },
-                "BIXQt": {
+                "r0Gsyp": {
                   "enabled": false
                 }
               }
             },
             {
-              "id": "bCi9r",
+              "id": "NpEbS",
               "type": "ref",
-              "ref": "bi9Zk",
-              "name": "Day Пятница, 17 октября",
+              "ref": "pEV3k",
+              "name": "Day Пятница, 7 ноября",
               "width": "fill_container",
               "descendants": {
-                "y9TMt8": {
-                  "content": "Пятница, 17 октября"
+                "EzQW1": {
+                  "content": "Пятница, 7 ноября"
                 },
-                "i1hrnY": {
+                "zxLiP": {
                   "content": "1 звонок"
                 }
               }
             },
             {
-              "id": "P4TmqB",
+              "id": "j8Ori",
               "type": "ref",
-              "ref": "OJM6A",
+              "ref": "T8WPz",
               "name": "Row 5",
               "width": "fill_container",
               "fill": "$surface",
               "descendants": {
-                "u5ptgY": {
+                "E32yp4": {
                   "content": "11:00"
                 },
-                "K8jqSu": {
-                  "content": "2026.10.17-1100",
+                "cxyjK": {
+                  "content": "2026.11.07-1100",
                   "fill": "$gutter",
                   "fontFamily": "$font-data",
                   "fontWeight": "normal"
                 },
-                "t0R6oA": {
-                  "content": "—",
-                  "enabled": true
+                "vFoFZ": {
+                  "content": "—"
                 },
-                "Z9xfQI": {
+                "h7VVzS": {
                   "enabled": false
                 },
-                "TyUn0": {
+                "Q83FSh": {
                   "enabled": false
                 },
-                "s4afm6": {
+                "t6qkK": {
                   "enabled": false,
                   "fill": "$sub"
                 },
-                "BIXQt": {
+                "r0Gsyp": {
                   "enabled": false
                 }
               }
             },
             {
-              "id": "o3IxZg",
+              "id": "IagzV",
               "type": "ref",
-              "ref": "bi9Zk",
-              "name": "Day Четверг, 16 октября",
+              "ref": "pEV3k",
+              "name": "Day 3 сентября",
               "width": "fill_container",
               "descendants": {
-                "y9TMt8": {
-                  "content": "Четверг, 16 октября"
+                "EzQW1": {
+                  "content": "3 сентября"
                 },
-                "i1hrnY": {
+                "zxLiP": {
                   "content": "1 звонок"
                 }
               }
             },
             {
-              "id": "WiXP3",
+              "id": "ACPIB",
               "type": "ref",
-              "ref": "OJM6A",
+              "ref": "T8WPz",
               "name": "Row 6",
               "width": "fill_container",
               "fill": "$surface",
               "descendants": {
-                "u5ptgY": {
+                "E32yp4": {
                   "content": "18:00"
                 },
-                "K8jqSu": {
-                  "content": "Клиент Альфа: демо и вопросы по интеграции",
+                "cxyjK": {
+                  "content": "Клиент Альфа: демо и вопросы по интегра…",
                   "fill": "$text",
                   "fontFamily": "$font-ui",
                   "fontWeight": "600"
                 },
-                "t0R6oA": {
-                  "content": "52:10",
-                  "enabled": true
+                "vFoFZ": {
+                  "content": "52:10"
                 },
-                "Z9xfQI": {
+                "h7VVzS": {
                   "enabled": false
                 },
-                "TyUn0": {
+                "Q83FSh": {
                   "enabled": false
                 },
-                "s4afm6": {
+                "t6qkK": {
                   "enabled": false,
                   "fill": "$sub"
                 },
-                "BIXQt": {
+                "r0Gsyp": {
+                  "enabled": false
+                }
+              }
+            },
+            {
+              "id": "y1cbxW",
+              "type": "ref",
+              "ref": "pEV3k",
+              "name": "Day 12 декабря 2025",
+              "width": "fill_container",
+              "descendants": {
+                "EzQW1": {
+                  "content": "12 декабря 2025"
+                },
+                "zxLiP": {
+                  "content": "1 звонок"
+                }
+              }
+            },
+            {
+              "id": "E5rkAJ",
+              "type": "ref",
+              "ref": "T8WPz",
+              "name": "Row 7",
+              "width": "fill_container",
+              "fill": "$surface",
+              "descendants": {
+                "E32yp4": {
+                  "content": "10:30"
+                },
+                "cxyjK": {
+                  "content": "Ретро за год",
+                  "fill": "$text",
+                  "fontFamily": "$font-ui",
+                  "fontWeight": "600"
+                },
+                "vFoFZ": {
+                  "content": "1:05:12"
+                },
+                "h7VVzS": {
+                  "enabled": false
+                },
+                "Q83FSh": {
+                  "enabled": false
+                },
+                "t6qkK": {
+                  "enabled": true,
+                  "fill": "$sub"
+                },
+                "r0Gsyp": {
                   "enabled": false
                 }
               }
             }
           ]
+        },
+        {
+          "id": "fMAxB",
+          "type": "ref",
+          "ref": "gzqJR",
+          "name": "Context menu",
+          "x": 304,
+          "y": 184
         }
       ]
     },
     {
-      "id": "DP7N7",
+      "id": "RQyLN",
       "type": "ref",
-      "ref": "nn4jI",
-      "name": "C — wide (dark)",
-      "x": 0,
-      "y": 2460,
+      "ref": "ghLWp",
+      "name": "Calls — minimum width (dark)",
+      "x": 960,
+      "y": 560,
       "theme": {
         "mode": "dark"
       }
     },
     {
       "type": "frame",
-      "id": "s8yt3C",
-      "x": 960,
-      "y": 2000,
-      "name": "C — narrow",
+      "id": "MJAk5",
+      "x": 1580,
+      "y": 0,
+      "name": "Calls — renaming",
       "theme": {
         "mode": "light"
       },
       "reusable": true,
       "clip": true,
-      "width": 440,
-      "height": 420,
+      "width": 560,
+      "height": 520,
       "fill": "$win",
       "cornerRadius": "$radius-card",
       "stroke": "$rule",
@@ -2339,292 +1490,346 @@
       "children": [
         {
           "type": "frame",
-          "id": "b7lrM",
+          "id": "WMZf4",
           "x": 0,
           "y": 0,
           "name": "Content",
-          "width": 440,
+          "width": 560,
+          "height": 520,
           "layout": "vertical",
           "children": [
             {
-              "id": "zpYBq",
+              "id": "Q5Erb",
               "type": "ref",
-              "ref": "kftay",
+              "ref": "A87z6I",
               "name": "Title bar",
               "width": "fill_container"
             },
             {
-              "id": "bKBdc",
+              "id": "m0gsia",
               "type": "ref",
-              "ref": "bi9Zk",
+              "ref": "pEV3k",
               "name": "Day Сегодня",
               "width": "fill_container",
               "descendants": {
-                "y9TMt8": {
+                "EzQW1": {
                   "content": "Сегодня"
                 },
-                "i1hrnY": {
+                "zxLiP": {
                   "content": "2 звонка"
                 }
               }
             },
             {
-              "id": "I9uLg",
+              "id": "lcJiI",
               "type": "ref",
-              "ref": "OJM6A",
+              "ref": "T8WPz",
               "name": "Row 1",
               "width": "fill_container",
               "fill": "$okBg",
               "descendants": {
-                "u5ptgY": {
+                "E32yp4": {
                   "content": "12:30"
                 },
-                "K8jqSu": {
-                  "content": "Запуск: роли и SLA",
-                  "fill": "$text",
-                  "fontFamily": "$font-ui",
-                  "fontWeight": "600"
+                "cxyjK": {
+                  "id": "AFePe",
+                  "type": "ref",
+                  "ref": "aly9x",
+                  "name": "Rename",
+                  "width": "fill_container",
+                  "descendants": {
+                    "QA0dW": {
+                      "content": "2026.11.11-1230 "
+                    },
+                    "CfDOJ": {
+                      "content": "Запуск: роли и SLA|"
+                    }
+                  }
                 },
-                "t0R6oA": {
-                  "content": "47:00",
+                "vFoFZ": {
+                  "content": "47:00"
+                },
+                "h7VVzS": {
                   "enabled": false
                 },
-                "Z9xfQI": {
+                "Q83FSh": {
                   "enabled": false
                 },
-                "TyUn0": {
-                  "enabled": false
-                },
-                "s4afm6": {
+                "t6qkK": {
                   "enabled": true,
                   "fill": "$me"
                 },
-                "BIXQt": {
+                "r0Gsyp": {
                   "enabled": false
                 }
               }
             },
             {
-              "id": "zwriQ",
+              "id": "L4cwhc",
               "type": "ref",
-              "ref": "OJM6A",
+              "ref": "T8WPz",
               "name": "Row 2",
               "width": "fill_container",
               "fill": "$surface",
               "descendants": {
-                "u5ptgY": {
+                "E32yp4": {
                   "content": "09:05"
                 },
-                "K8jqSu": {
-                  "content": "Интервью: кандидат на iOS — техниче…",
+                "cxyjK": {
+                  "content": "Интервью: кандидат на iOS — техническая…",
                   "fill": "$text",
                   "fontFamily": "$font-ui",
                   "fontWeight": "600"
                 },
-                "t0R6oA": {
-                  "content": "1:12:40",
-                  "enabled": false
+                "vFoFZ": {
+                  "content": "1:12:40"
                 },
-                "Z9xfQI": {
+                "h7VVzS": {
                   "enabled": true
                 },
-                "TyUn0": {
+                "Q83FSh": {
                   "enabled": false
                 },
-                "s4afm6": {
+                "t6qkK": {
                   "enabled": false,
                   "fill": "$sub"
                 },
-                "BIXQt": {
+                "r0Gsyp": {
                   "enabled": false
                 }
               }
             },
             {
-              "id": "bgnhP",
+              "id": "kYiN0",
               "type": "ref",
-              "ref": "bi9Zk",
+              "ref": "pEV3k",
               "name": "Day Вчера",
               "width": "fill_container",
               "descendants": {
-                "y9TMt8": {
+                "EzQW1": {
                   "content": "Вчера"
                 },
-                "i1hrnY": {
+                "zxLiP": {
                   "content": "2 звонка"
                 }
               }
             },
             {
-              "id": "ncAuS",
+              "id": "V7FdE",
               "type": "ref",
-              "ref": "OJM6A",
+              "ref": "T8WPz",
               "name": "Row 3",
               "width": "fill_container",
-              "fill": "$card",
+              "fill": "$surface",
               "descendants": {
-                "u5ptgY": {
+                "E32yp4": {
                   "content": "16:00"
                 },
-                "K8jqSu": {
+                "cxyjK": {
                   "content": "Синк по OKR на квартал",
                   "fill": "$text",
                   "fontFamily": "$font-ui",
                   "fontWeight": "600"
                 },
-                "t0R6oA": {
-                  "content": "1:12:00",
+                "vFoFZ": {
+                  "content": "1:12:00"
+                },
+                "h7VVzS": {
                   "enabled": false
                 },
-                "Z9xfQI": {
-                  "enabled": false
-                },
-                "TyUn0": {
+                "Q83FSh": {
                   "enabled": true
                 },
-                "s4afm6": {
+                "t6qkK": {
                   "enabled": false,
                   "fill": "$sub"
                 },
-                "BIXQt": {
-                  "enabled": true
+                "r0Gsyp": {
+                  "enabled": false
                 }
               }
             },
             {
-              "id": "VZ2ie",
+              "id": "bJSfI",
               "type": "ref",
-              "ref": "OJM6A",
+              "ref": "T8WPz",
               "name": "Row 4",
               "width": "fill_container",
               "fill": "$surface",
               "descendants": {
-                "u5ptgY": {
+                "E32yp4": {
                   "content": "11:15"
                 },
-                "K8jqSu": {
+                "cxyjK": {
                   "content": "1:1 с Анной",
                   "fill": "$text",
                   "fontFamily": "$font-ui",
                   "fontWeight": "600"
                 },
-                "t0R6oA": {
-                  "content": "28:44",
+                "vFoFZ": {
+                  "content": "28:44"
+                },
+                "h7VVzS": {
                   "enabled": false
                 },
-                "Z9xfQI": {
+                "Q83FSh": {
                   "enabled": false
                 },
-                "TyUn0": {
-                  "enabled": false
-                },
-                "s4afm6": {
+                "t6qkK": {
                   "enabled": true,
                   "fill": "$sub"
                 },
-                "BIXQt": {
+                "r0Gsyp": {
                   "enabled": false
                 }
               }
             },
             {
-              "id": "nIo9N",
+              "id": "lpFyL",
               "type": "ref",
-              "ref": "bi9Zk",
-              "name": "Day Пятница, 17 октября",
+              "ref": "pEV3k",
+              "name": "Day Пятница, 7 ноября",
               "width": "fill_container",
               "descendants": {
-                "y9TMt8": {
-                  "content": "Пятница, 17 октября"
+                "EzQW1": {
+                  "content": "Пятница, 7 ноября"
                 },
-                "i1hrnY": {
+                "zxLiP": {
                   "content": "1 звонок"
                 }
               }
             },
             {
-              "id": "a3PMJ",
+              "id": "J8uoyQ",
               "type": "ref",
-              "ref": "OJM6A",
+              "ref": "T8WPz",
               "name": "Row 5",
               "width": "fill_container",
               "fill": "$surface",
               "descendants": {
-                "u5ptgY": {
+                "E32yp4": {
                   "content": "11:00"
                 },
-                "K8jqSu": {
-                  "content": "2026.10.17-1100",
+                "cxyjK": {
+                  "content": "2026.11.07-1100",
                   "fill": "$gutter",
                   "fontFamily": "$font-data",
                   "fontWeight": "normal"
                 },
-                "t0R6oA": {
-                  "content": "—",
+                "vFoFZ": {
+                  "content": "—"
+                },
+                "h7VVzS": {
                   "enabled": false
                 },
-                "Z9xfQI": {
+                "Q83FSh": {
                   "enabled": false
                 },
-                "TyUn0": {
-                  "enabled": false
-                },
-                "s4afm6": {
+                "t6qkK": {
                   "enabled": false,
                   "fill": "$sub"
                 },
-                "BIXQt": {
+                "r0Gsyp": {
                   "enabled": false
                 }
               }
             },
             {
-              "id": "X9LUnT",
+              "id": "xg7fp",
               "type": "ref",
-              "ref": "bi9Zk",
-              "name": "Day Четверг, 16 октября",
+              "ref": "pEV3k",
+              "name": "Day 3 сентября",
               "width": "fill_container",
               "descendants": {
-                "y9TMt8": {
-                  "content": "Четверг, 16 октября"
+                "EzQW1": {
+                  "content": "3 сентября"
                 },
-                "i1hrnY": {
+                "zxLiP": {
                   "content": "1 звонок"
                 }
               }
             },
             {
-              "id": "tT5UI",
+              "id": "QXcg8",
               "type": "ref",
-              "ref": "OJM6A",
+              "ref": "T8WPz",
               "name": "Row 6",
               "width": "fill_container",
               "fill": "$surface",
               "descendants": {
-                "u5ptgY": {
+                "E32yp4": {
                   "content": "18:00"
                 },
-                "K8jqSu": {
-                  "content": "Клиент Альфа: демо и вопросы по инт…",
+                "cxyjK": {
+                  "content": "Клиент Альфа: демо и вопросы по интегра…",
                   "fill": "$text",
                   "fontFamily": "$font-ui",
                   "fontWeight": "600"
                 },
-                "t0R6oA": {
-                  "content": "52:10",
+                "vFoFZ": {
+                  "content": "52:10"
+                },
+                "h7VVzS": {
                   "enabled": false
                 },
-                "Z9xfQI": {
+                "Q83FSh": {
                   "enabled": false
                 },
-                "TyUn0": {
-                  "enabled": false
-                },
-                "s4afm6": {
+                "t6qkK": {
                   "enabled": false,
                   "fill": "$sub"
                 },
-                "BIXQt": {
+                "r0Gsyp": {
+                  "enabled": false
+                }
+              }
+            },
+            {
+              "id": "X2IvA",
+              "type": "ref",
+              "ref": "pEV3k",
+              "name": "Day 12 декабря 2025",
+              "width": "fill_container",
+              "descendants": {
+                "EzQW1": {
+                  "content": "12 декабря 2025"
+                },
+                "zxLiP": {
+                  "content": "1 звонок"
+                }
+              }
+            },
+            {
+              "id": "UHGfg",
+              "type": "ref",
+              "ref": "T8WPz",
+              "name": "Row 7",
+              "width": "fill_container",
+              "fill": "$surface",
+              "descendants": {
+                "E32yp4": {
+                  "content": "10:30"
+                },
+                "cxyjK": {
+                  "content": "Ретро за год",
+                  "fill": "$text",
+                  "fontFamily": "$font-ui",
+                  "fontWeight": "600"
+                },
+                "vFoFZ": {
+                  "content": "1:05:12"
+                },
+                "h7VVzS": {
+                  "enabled": false
+                },
+                "Q83FSh": {
+                  "enabled": false
+                },
+                "t6qkK": {
+                  "enabled": true,
+                  "fill": "$sub"
+                },
+                "r0Gsyp": {
                   "enabled": false
                 }
               }
@@ -2634,55 +1839,1346 @@
       ]
     },
     {
-      "id": "FsABw",
+      "id": "x3HM67",
       "type": "ref",
-      "ref": "s8yt3C",
-      "name": "C — narrow (dark)",
-      "x": 960,
-      "y": 2460,
+      "ref": "MJAk5",
+      "name": "Calls — renaming (dark)",
+      "x": 1580,
+      "y": 560,
+      "theme": {
+        "mode": "dark"
+      }
+    },
+    {
+      "type": "frame",
+      "id": "B54hp",
+      "x": 2200,
+      "y": 0,
+      "name": "Calls — confirm delete",
+      "theme": {
+        "mode": "light"
+      },
+      "reusable": true,
+      "clip": true,
+      "width": 560,
+      "height": 520,
+      "fill": "$win",
+      "cornerRadius": "$radius-card",
+      "stroke": "$rule",
+      "strokeWidth": 1,
+      "layout": "none",
+      "children": [
+        {
+          "type": "frame",
+          "id": "MKRHk",
+          "x": 0,
+          "y": 0,
+          "name": "Content",
+          "width": 560,
+          "height": 520,
+          "layout": "vertical",
+          "children": [
+            {
+              "id": "ldOzq",
+              "type": "ref",
+              "ref": "A87z6I",
+              "name": "Title bar",
+              "width": "fill_container"
+            },
+            {
+              "id": "pLxZB",
+              "type": "ref",
+              "ref": "pEV3k",
+              "name": "Day Сегодня",
+              "width": "fill_container",
+              "descendants": {
+                "EzQW1": {
+                  "content": "Сегодня"
+                },
+                "zxLiP": {
+                  "content": "2 звонка"
+                }
+              }
+            },
+            {
+              "id": "cT7Ab",
+              "type": "ref",
+              "ref": "T8WPz",
+              "name": "Row 1",
+              "width": "fill_container",
+              "fill": "$surface",
+              "descendants": {
+                "E32yp4": {
+                  "content": "12:30"
+                },
+                "cxyjK": {
+                  "content": "Запуск: роли и SLA",
+                  "fill": "$text",
+                  "fontFamily": "$font-ui",
+                  "fontWeight": "600"
+                },
+                "vFoFZ": {
+                  "content": "47:00"
+                },
+                "h7VVzS": {
+                  "enabled": false
+                },
+                "Q83FSh": {
+                  "enabled": false
+                },
+                "t6qkK": {
+                  "enabled": true,
+                  "fill": "$sub"
+                },
+                "r0Gsyp": {
+                  "enabled": false
+                }
+              }
+            },
+            {
+              "id": "cc7R1",
+              "type": "ref",
+              "ref": "T8WPz",
+              "name": "Row 2",
+              "width": "fill_container",
+              "fill": "$surface",
+              "descendants": {
+                "E32yp4": {
+                  "content": "09:05"
+                },
+                "cxyjK": {
+                  "content": "Интервью: кандидат на iOS — техническая…",
+                  "fill": "$text",
+                  "fontFamily": "$font-ui",
+                  "fontWeight": "600"
+                },
+                "vFoFZ": {
+                  "content": "1:12:40"
+                },
+                "h7VVzS": {
+                  "enabled": true
+                },
+                "Q83FSh": {
+                  "enabled": false
+                },
+                "t6qkK": {
+                  "enabled": false,
+                  "fill": "$sub"
+                },
+                "r0Gsyp": {
+                  "enabled": false
+                }
+              }
+            },
+            {
+              "id": "jM723",
+              "type": "ref",
+              "ref": "pEV3k",
+              "name": "Day Вчера",
+              "width": "fill_container",
+              "descendants": {
+                "EzQW1": {
+                  "content": "Вчера"
+                },
+                "zxLiP": {
+                  "content": "2 звонка"
+                }
+              }
+            },
+            {
+              "id": "b8PdfB",
+              "type": "ref",
+              "ref": "T8WPz",
+              "name": "Row 3",
+              "width": "fill_container",
+              "fill": "$okBg",
+              "descendants": {
+                "E32yp4": {
+                  "content": "16:00"
+                },
+                "cxyjK": {
+                  "content": "Синк по OKR на квартал",
+                  "fill": "$text",
+                  "fontFamily": "$font-ui",
+                  "fontWeight": "600"
+                },
+                "vFoFZ": {
+                  "content": "1:12:00"
+                },
+                "h7VVzS": {
+                  "enabled": false
+                },
+                "Q83FSh": {
+                  "enabled": true
+                },
+                "t6qkK": {
+                  "enabled": false,
+                  "fill": "$me"
+                },
+                "r0Gsyp": {
+                  "enabled": false
+                }
+              }
+            },
+            {
+              "id": "qjZ6y",
+              "type": "ref",
+              "ref": "T8WPz",
+              "name": "Row 4",
+              "width": "fill_container",
+              "fill": "$surface",
+              "descendants": {
+                "E32yp4": {
+                  "content": "11:15"
+                },
+                "cxyjK": {
+                  "content": "1:1 с Анной",
+                  "fill": "$text",
+                  "fontFamily": "$font-ui",
+                  "fontWeight": "600"
+                },
+                "vFoFZ": {
+                  "content": "28:44"
+                },
+                "h7VVzS": {
+                  "enabled": false
+                },
+                "Q83FSh": {
+                  "enabled": false
+                },
+                "t6qkK": {
+                  "enabled": true,
+                  "fill": "$sub"
+                },
+                "r0Gsyp": {
+                  "enabled": false
+                }
+              }
+            },
+            {
+              "id": "kjLce",
+              "type": "ref",
+              "ref": "pEV3k",
+              "name": "Day Пятница, 7 ноября",
+              "width": "fill_container",
+              "descendants": {
+                "EzQW1": {
+                  "content": "Пятница, 7 ноября"
+                },
+                "zxLiP": {
+                  "content": "1 звонок"
+                }
+              }
+            },
+            {
+              "id": "D5rmoQ",
+              "type": "ref",
+              "ref": "T8WPz",
+              "name": "Row 5",
+              "width": "fill_container",
+              "fill": "$surface",
+              "descendants": {
+                "E32yp4": {
+                  "content": "11:00"
+                },
+                "cxyjK": {
+                  "content": "2026.11.07-1100",
+                  "fill": "$gutter",
+                  "fontFamily": "$font-data",
+                  "fontWeight": "normal"
+                },
+                "vFoFZ": {
+                  "content": "—"
+                },
+                "h7VVzS": {
+                  "enabled": false
+                },
+                "Q83FSh": {
+                  "enabled": false
+                },
+                "t6qkK": {
+                  "enabled": false,
+                  "fill": "$sub"
+                },
+                "r0Gsyp": {
+                  "enabled": false
+                }
+              }
+            },
+            {
+              "id": "o5iGh",
+              "type": "ref",
+              "ref": "pEV3k",
+              "name": "Day 3 сентября",
+              "width": "fill_container",
+              "descendants": {
+                "EzQW1": {
+                  "content": "3 сентября"
+                },
+                "zxLiP": {
+                  "content": "1 звонок"
+                }
+              }
+            },
+            {
+              "id": "Kq33L",
+              "type": "ref",
+              "ref": "T8WPz",
+              "name": "Row 6",
+              "width": "fill_container",
+              "fill": "$surface",
+              "descendants": {
+                "E32yp4": {
+                  "content": "18:00"
+                },
+                "cxyjK": {
+                  "content": "Клиент Альфа: демо и вопросы по интегра…",
+                  "fill": "$text",
+                  "fontFamily": "$font-ui",
+                  "fontWeight": "600"
+                },
+                "vFoFZ": {
+                  "content": "52:10"
+                },
+                "h7VVzS": {
+                  "enabled": false
+                },
+                "Q83FSh": {
+                  "enabled": false
+                },
+                "t6qkK": {
+                  "enabled": false,
+                  "fill": "$sub"
+                },
+                "r0Gsyp": {
+                  "enabled": false
+                }
+              }
+            },
+            {
+              "id": "dzXU3",
+              "type": "ref",
+              "ref": "pEV3k",
+              "name": "Day 12 декабря 2025",
+              "width": "fill_container",
+              "descendants": {
+                "EzQW1": {
+                  "content": "12 декабря 2025"
+                },
+                "zxLiP": {
+                  "content": "1 звонок"
+                }
+              }
+            },
+            {
+              "id": "Fx4tp",
+              "type": "ref",
+              "ref": "T8WPz",
+              "name": "Row 7",
+              "width": "fill_container",
+              "fill": "$surface",
+              "descendants": {
+                "E32yp4": {
+                  "content": "10:30"
+                },
+                "cxyjK": {
+                  "content": "Ретро за год",
+                  "fill": "$text",
+                  "fontFamily": "$font-ui",
+                  "fontWeight": "600"
+                },
+                "vFoFZ": {
+                  "content": "1:05:12"
+                },
+                "h7VVzS": {
+                  "enabled": false
+                },
+                "Q83FSh": {
+                  "enabled": false
+                },
+                "t6qkK": {
+                  "enabled": true,
+                  "fill": "$sub"
+                },
+                "r0Gsyp": {
+                  "enabled": false
+                }
+              }
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "f1u2C",
+          "x": 0,
+          "y": 33,
+          "name": "Scrim",
+          "width": 560,
+          "height": 487,
+          "fill": "$shadow",
+          "layout": "vertical",
+          "justifyContent": "center",
+          "alignItems": "center",
+          "children": [
+            {
+              "id": "Sf89b",
+              "type": "ref",
+              "ref": "KcmOK",
+              "name": "Alert"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "crmRn",
+      "type": "ref",
+      "ref": "B54hp",
+      "name": "Calls — confirm delete (dark)",
+      "x": 2200,
+      "y": 560,
+      "theme": {
+        "mode": "dark"
+      }
+    },
+    {
+      "type": "frame",
+      "id": "kXde1",
+      "x": 2820,
+      "y": 0,
+      "name": "Calls — error",
+      "theme": {
+        "mode": "light"
+      },
+      "reusable": true,
+      "clip": true,
+      "width": 560,
+      "height": 520,
+      "fill": "$win",
+      "cornerRadius": "$radius-card",
+      "stroke": "$rule",
+      "strokeWidth": 1,
+      "layout": "none",
+      "children": [
+        {
+          "type": "frame",
+          "id": "jdKsi",
+          "x": 0,
+          "y": 0,
+          "name": "Content",
+          "width": 560,
+          "height": 520,
+          "layout": "vertical",
+          "children": [
+            {
+              "id": "p3wNRU",
+              "type": "ref",
+              "ref": "A87z6I",
+              "name": "Title bar",
+              "width": "fill_container"
+            },
+            {
+              "id": "n5duC2",
+              "type": "ref",
+              "ref": "pEV3k",
+              "name": "Day Сегодня",
+              "width": "fill_container",
+              "descendants": {
+                "EzQW1": {
+                  "content": "Сегодня"
+                },
+                "zxLiP": {
+                  "content": "2 звонка"
+                }
+              }
+            },
+            {
+              "id": "MwqgW",
+              "type": "ref",
+              "ref": "T8WPz",
+              "name": "Row 1",
+              "width": "fill_container",
+              "fill": "$surface",
+              "descendants": {
+                "E32yp4": {
+                  "content": "12:30"
+                },
+                "cxyjK": {
+                  "content": "Запуск: роли и SLA",
+                  "fill": "$text",
+                  "fontFamily": "$font-ui",
+                  "fontWeight": "600"
+                },
+                "vFoFZ": {
+                  "content": "47:00"
+                },
+                "h7VVzS": {
+                  "enabled": false
+                },
+                "Q83FSh": {
+                  "enabled": false
+                },
+                "t6qkK": {
+                  "enabled": true,
+                  "fill": "$sub"
+                },
+                "r0Gsyp": {
+                  "enabled": false
+                }
+              }
+            },
+            {
+              "id": "VvWlf",
+              "type": "ref",
+              "ref": "T8WPz",
+              "name": "Row 2",
+              "width": "fill_container",
+              "fill": "$surface",
+              "descendants": {
+                "E32yp4": {
+                  "content": "09:05"
+                },
+                "cxyjK": {
+                  "content": "Интервью: кандидат на iOS — техническая…",
+                  "fill": "$text",
+                  "fontFamily": "$font-ui",
+                  "fontWeight": "600"
+                },
+                "vFoFZ": {
+                  "content": "1:12:40"
+                },
+                "h7VVzS": {
+                  "enabled": true
+                },
+                "Q83FSh": {
+                  "enabled": false
+                },
+                "t6qkK": {
+                  "enabled": false,
+                  "fill": "$sub"
+                },
+                "r0Gsyp": {
+                  "enabled": false
+                }
+              }
+            },
+            {
+              "id": "KGPmO",
+              "type": "ref",
+              "ref": "pEV3k",
+              "name": "Day Вчера",
+              "width": "fill_container",
+              "descendants": {
+                "EzQW1": {
+                  "content": "Вчера"
+                },
+                "zxLiP": {
+                  "content": "2 звонка"
+                }
+              }
+            },
+            {
+              "id": "toWD9",
+              "type": "ref",
+              "ref": "T8WPz",
+              "name": "Row 3",
+              "width": "fill_container",
+              "fill": "$okBg",
+              "descendants": {
+                "E32yp4": {
+                  "content": "16:00"
+                },
+                "cxyjK": {
+                  "content": "Синк по OKR на квартал",
+                  "fill": "$text",
+                  "fontFamily": "$font-ui",
+                  "fontWeight": "600"
+                },
+                "vFoFZ": {
+                  "content": "1:12:00"
+                },
+                "h7VVzS": {
+                  "enabled": false
+                },
+                "Q83FSh": {
+                  "enabled": true
+                },
+                "t6qkK": {
+                  "enabled": false,
+                  "fill": "$me"
+                },
+                "r0Gsyp": {
+                  "enabled": false
+                }
+              }
+            },
+            {
+              "id": "NW74j",
+              "type": "ref",
+              "ref": "T8WPz",
+              "name": "Row 4",
+              "width": "fill_container",
+              "fill": "$surface",
+              "descendants": {
+                "E32yp4": {
+                  "content": "11:15"
+                },
+                "cxyjK": {
+                  "content": "1:1 с Анной",
+                  "fill": "$text",
+                  "fontFamily": "$font-ui",
+                  "fontWeight": "600"
+                },
+                "vFoFZ": {
+                  "content": "28:44"
+                },
+                "h7VVzS": {
+                  "enabled": false
+                },
+                "Q83FSh": {
+                  "enabled": false
+                },
+                "t6qkK": {
+                  "enabled": true,
+                  "fill": "$sub"
+                },
+                "r0Gsyp": {
+                  "enabled": false
+                }
+              }
+            },
+            {
+              "id": "TmOT6",
+              "type": "ref",
+              "ref": "pEV3k",
+              "name": "Day Пятница, 7 ноября",
+              "width": "fill_container",
+              "descendants": {
+                "EzQW1": {
+                  "content": "Пятница, 7 ноября"
+                },
+                "zxLiP": {
+                  "content": "1 звонок"
+                }
+              }
+            },
+            {
+              "id": "B1wuP",
+              "type": "ref",
+              "ref": "T8WPz",
+              "name": "Row 5",
+              "width": "fill_container",
+              "fill": "$surface",
+              "descendants": {
+                "E32yp4": {
+                  "content": "11:00"
+                },
+                "cxyjK": {
+                  "content": "2026.11.07-1100",
+                  "fill": "$gutter",
+                  "fontFamily": "$font-data",
+                  "fontWeight": "normal"
+                },
+                "vFoFZ": {
+                  "content": "—"
+                },
+                "h7VVzS": {
+                  "enabled": false
+                },
+                "Q83FSh": {
+                  "enabled": false
+                },
+                "t6qkK": {
+                  "enabled": false,
+                  "fill": "$sub"
+                },
+                "r0Gsyp": {
+                  "enabled": false
+                }
+              }
+            },
+            {
+              "id": "xLWrR",
+              "type": "ref",
+              "ref": "pEV3k",
+              "name": "Day 3 сентября",
+              "width": "fill_container",
+              "descendants": {
+                "EzQW1": {
+                  "content": "3 сентября"
+                },
+                "zxLiP": {
+                  "content": "1 звонок"
+                }
+              }
+            },
+            {
+              "id": "TQTGX",
+              "type": "ref",
+              "ref": "T8WPz",
+              "name": "Row 6",
+              "width": "fill_container",
+              "fill": "$surface",
+              "descendants": {
+                "E32yp4": {
+                  "content": "18:00"
+                },
+                "cxyjK": {
+                  "content": "Клиент Альфа: демо и вопросы по интегра…",
+                  "fill": "$text",
+                  "fontFamily": "$font-ui",
+                  "fontWeight": "600"
+                },
+                "vFoFZ": {
+                  "content": "52:10"
+                },
+                "h7VVzS": {
+                  "enabled": false
+                },
+                "Q83FSh": {
+                  "enabled": false
+                },
+                "t6qkK": {
+                  "enabled": false,
+                  "fill": "$sub"
+                },
+                "r0Gsyp": {
+                  "enabled": false
+                }
+              }
+            },
+            {
+              "id": "e5xkdY",
+              "type": "ref",
+              "ref": "pEV3k",
+              "name": "Day 12 декабря 2025",
+              "width": "fill_container",
+              "descendants": {
+                "EzQW1": {
+                  "content": "12 декабря 2025"
+                },
+                "zxLiP": {
+                  "content": "1 звонок"
+                }
+              }
+            },
+            {
+              "id": "OYmrb",
+              "type": "ref",
+              "ref": "T8WPz",
+              "name": "Row 7",
+              "width": "fill_container",
+              "fill": "$surface",
+              "descendants": {
+                "E32yp4": {
+                  "content": "10:30"
+                },
+                "cxyjK": {
+                  "content": "Ретро за год",
+                  "fill": "$text",
+                  "fontFamily": "$font-ui",
+                  "fontWeight": "600"
+                },
+                "vFoFZ": {
+                  "content": "1:05:12"
+                },
+                "h7VVzS": {
+                  "enabled": false
+                },
+                "Q83FSh": {
+                  "enabled": false
+                },
+                "t6qkK": {
+                  "enabled": true,
+                  "fill": "$sub"
+                },
+                "r0Gsyp": {
+                  "enabled": false
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "KnBBe",
+          "type": "ref",
+          "ref": "I1z2K",
+          "name": "Banner",
+          "x": 0,
+          "width": 560,
+          "y": 480
+        }
+      ]
+    },
+    {
+      "id": "BbnDY",
+      "type": "ref",
+      "ref": "kXde1",
+      "name": "Calls — error (dark)",
+      "x": 2820,
+      "y": 560,
+      "theme": {
+        "mode": "dark"
+      }
+    },
+    {
+      "type": "frame",
+      "id": "NJbQa",
+      "x": 3440,
+      "y": 0,
+      "name": "Calls — window inactive",
+      "theme": {
+        "mode": "light"
+      },
+      "reusable": true,
+      "clip": true,
+      "width": 560,
+      "height": 520,
+      "fill": "$win",
+      "cornerRadius": "$radius-card",
+      "stroke": "$rule",
+      "strokeWidth": 1,
+      "layout": "none",
+      "children": [
+        {
+          "type": "frame",
+          "id": "X7cbe",
+          "x": 0,
+          "y": 0,
+          "name": "Content",
+          "width": 560,
+          "height": 520,
+          "layout": "vertical",
+          "children": [
+            {
+              "id": "u5hCjs",
+              "type": "ref",
+              "ref": "A87z6I",
+              "name": "Title bar",
+              "width": "fill_container"
+            },
+            {
+              "id": "NyDuf",
+              "type": "ref",
+              "ref": "pEV3k",
+              "name": "Day Сегодня",
+              "width": "fill_container",
+              "descendants": {
+                "EzQW1": {
+                  "content": "Сегодня"
+                },
+                "zxLiP": {
+                  "content": "2 звонка"
+                }
+              }
+            },
+            {
+              "id": "phTpT",
+              "type": "ref",
+              "ref": "T8WPz",
+              "name": "Row 1",
+              "width": "fill_container",
+              "fill": "$btn",
+              "descendants": {
+                "E32yp4": {
+                  "content": "12:30"
+                },
+                "cxyjK": {
+                  "content": "Запуск: роли и SLA",
+                  "fill": "$text",
+                  "fontFamily": "$font-ui",
+                  "fontWeight": "600"
+                },
+                "vFoFZ": {
+                  "content": "47:00"
+                },
+                "h7VVzS": {
+                  "enabled": false
+                },
+                "Q83FSh": {
+                  "enabled": false
+                },
+                "t6qkK": {
+                  "enabled": true,
+                  "fill": "$me"
+                },
+                "r0Gsyp": {
+                  "enabled": false
+                }
+              }
+            },
+            {
+              "id": "BKYaA",
+              "type": "ref",
+              "ref": "T8WPz",
+              "name": "Row 2",
+              "width": "fill_container",
+              "fill": "$surface",
+              "descendants": {
+                "E32yp4": {
+                  "content": "09:05"
+                },
+                "cxyjK": {
+                  "content": "Интервью: кандидат на iOS — техническая…",
+                  "fill": "$text",
+                  "fontFamily": "$font-ui",
+                  "fontWeight": "600"
+                },
+                "vFoFZ": {
+                  "content": "1:12:40"
+                },
+                "h7VVzS": {
+                  "enabled": true
+                },
+                "Q83FSh": {
+                  "enabled": false
+                },
+                "t6qkK": {
+                  "enabled": false,
+                  "fill": "$sub"
+                },
+                "r0Gsyp": {
+                  "enabled": false
+                }
+              }
+            },
+            {
+              "id": "ZSgry",
+              "type": "ref",
+              "ref": "pEV3k",
+              "name": "Day Вчера",
+              "width": "fill_container",
+              "descendants": {
+                "EzQW1": {
+                  "content": "Вчера"
+                },
+                "zxLiP": {
+                  "content": "2 звонка"
+                }
+              }
+            },
+            {
+              "id": "oXAXC",
+              "type": "ref",
+              "ref": "T8WPz",
+              "name": "Row 3",
+              "width": "fill_container",
+              "fill": "$surface",
+              "descendants": {
+                "E32yp4": {
+                  "content": "16:00"
+                },
+                "cxyjK": {
+                  "content": "Синк по OKR на квартал",
+                  "fill": "$text",
+                  "fontFamily": "$font-ui",
+                  "fontWeight": "600"
+                },
+                "vFoFZ": {
+                  "content": "1:12:00"
+                },
+                "h7VVzS": {
+                  "enabled": false
+                },
+                "Q83FSh": {
+                  "enabled": true
+                },
+                "t6qkK": {
+                  "enabled": false,
+                  "fill": "$sub"
+                },
+                "r0Gsyp": {
+                  "enabled": false
+                }
+              }
+            },
+            {
+              "id": "EcsE1",
+              "type": "ref",
+              "ref": "T8WPz",
+              "name": "Row 4",
+              "width": "fill_container",
+              "fill": "$surface",
+              "descendants": {
+                "E32yp4": {
+                  "content": "11:15"
+                },
+                "cxyjK": {
+                  "content": "1:1 с Анной",
+                  "fill": "$text",
+                  "fontFamily": "$font-ui",
+                  "fontWeight": "600"
+                },
+                "vFoFZ": {
+                  "content": "28:44"
+                },
+                "h7VVzS": {
+                  "enabled": false
+                },
+                "Q83FSh": {
+                  "enabled": false
+                },
+                "t6qkK": {
+                  "enabled": true,
+                  "fill": "$sub"
+                },
+                "r0Gsyp": {
+                  "enabled": false
+                }
+              }
+            },
+            {
+              "id": "GzwbK",
+              "type": "ref",
+              "ref": "pEV3k",
+              "name": "Day Пятница, 7 ноября",
+              "width": "fill_container",
+              "descendants": {
+                "EzQW1": {
+                  "content": "Пятница, 7 ноября"
+                },
+                "zxLiP": {
+                  "content": "1 звонок"
+                }
+              }
+            },
+            {
+              "id": "aTPro",
+              "type": "ref",
+              "ref": "T8WPz",
+              "name": "Row 5",
+              "width": "fill_container",
+              "fill": "$surface",
+              "descendants": {
+                "E32yp4": {
+                  "content": "11:00"
+                },
+                "cxyjK": {
+                  "content": "2026.11.07-1100",
+                  "fill": "$gutter",
+                  "fontFamily": "$font-data",
+                  "fontWeight": "normal"
+                },
+                "vFoFZ": {
+                  "content": "—"
+                },
+                "h7VVzS": {
+                  "enabled": false
+                },
+                "Q83FSh": {
+                  "enabled": false
+                },
+                "t6qkK": {
+                  "enabled": false,
+                  "fill": "$sub"
+                },
+                "r0Gsyp": {
+                  "enabled": false
+                }
+              }
+            },
+            {
+              "id": "YpzKk",
+              "type": "ref",
+              "ref": "pEV3k",
+              "name": "Day 3 сентября",
+              "width": "fill_container",
+              "descendants": {
+                "EzQW1": {
+                  "content": "3 сентября"
+                },
+                "zxLiP": {
+                  "content": "1 звонок"
+                }
+              }
+            },
+            {
+              "id": "ppk1Y",
+              "type": "ref",
+              "ref": "T8WPz",
+              "name": "Row 6",
+              "width": "fill_container",
+              "fill": "$surface",
+              "descendants": {
+                "E32yp4": {
+                  "content": "18:00"
+                },
+                "cxyjK": {
+                  "content": "Клиент Альфа: демо и вопросы по интегра…",
+                  "fill": "$text",
+                  "fontFamily": "$font-ui",
+                  "fontWeight": "600"
+                },
+                "vFoFZ": {
+                  "content": "52:10"
+                },
+                "h7VVzS": {
+                  "enabled": false
+                },
+                "Q83FSh": {
+                  "enabled": false
+                },
+                "t6qkK": {
+                  "enabled": false,
+                  "fill": "$sub"
+                },
+                "r0Gsyp": {
+                  "enabled": false
+                }
+              }
+            },
+            {
+              "id": "IFGoH",
+              "type": "ref",
+              "ref": "pEV3k",
+              "name": "Day 12 декабря 2025",
+              "width": "fill_container",
+              "descendants": {
+                "EzQW1": {
+                  "content": "12 декабря 2025"
+                },
+                "zxLiP": {
+                  "content": "1 звонок"
+                }
+              }
+            },
+            {
+              "id": "xbqqC",
+              "type": "ref",
+              "ref": "T8WPz",
+              "name": "Row 7",
+              "width": "fill_container",
+              "fill": "$surface",
+              "descendants": {
+                "E32yp4": {
+                  "content": "10:30"
+                },
+                "cxyjK": {
+                  "content": "Ретро за год",
+                  "fill": "$text",
+                  "fontFamily": "$font-ui",
+                  "fontWeight": "600"
+                },
+                "vFoFZ": {
+                  "content": "1:05:12"
+                },
+                "h7VVzS": {
+                  "enabled": false
+                },
+                "Q83FSh": {
+                  "enabled": false
+                },
+                "t6qkK": {
+                  "enabled": true,
+                  "fill": "$sub"
+                },
+                "r0Gsyp": {
+                  "enabled": false
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pX6TC",
+      "type": "ref",
+      "ref": "NJbQa",
+      "name": "Calls — window inactive (dark)",
+      "x": 3440,
+      "y": 560,
+      "theme": {
+        "mode": "dark"
+      }
+    },
+    {
+      "type": "frame",
+      "id": "pWXuq",
+      "x": 4060,
+      "y": 0,
+      "name": "Calls — empty",
+      "theme": {
+        "mode": "light"
+      },
+      "reusable": true,
+      "clip": true,
+      "width": 560,
+      "height": 520,
+      "fill": "$win",
+      "cornerRadius": "$radius-card",
+      "stroke": "$rule",
+      "strokeWidth": 1,
+      "layout": "none",
+      "children": [
+        {
+          "type": "frame",
+          "id": "ZaimM",
+          "x": 0,
+          "y": 0,
+          "name": "Content",
+          "width": 560,
+          "height": 520,
+          "layout": "vertical",
+          "children": [
+            {
+              "id": "ZaFql",
+              "type": "ref",
+              "ref": "A87z6I",
+              "name": "Title bar",
+              "width": "fill_container"
+            },
+            {
+              "type": "frame",
+              "id": "GVAYX",
+              "name": "Message",
+              "width": "fill_container",
+              "height": "fill_container",
+              "layout": "vertical",
+              "gap": "$space-4",
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "I05uIi",
+                  "name": "H",
+                  "fill": "$sub",
+                  "content": "Пока нет записанных звонков",
+                  "fontFamily": "$font-ui",
+                  "fontSize": "$type-body",
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "text",
+                  "id": "hkZXt",
+                  "name": "Sub",
+                  "fill": "$gutter",
+                  "content": "Звонок появится здесь, когда закончится запись",
+                  "fontFamily": "$font-ui",
+                  "fontSize": "$type-small",
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pdAFl",
+      "type": "ref",
+      "ref": "pWXuq",
+      "name": "Calls — empty (dark)",
+      "x": 4060,
+      "y": 560,
+      "theme": {
+        "mode": "dark"
+      }
+    },
+    {
+      "type": "frame",
+      "id": "S2t0f",
+      "x": 4680,
+      "y": 0,
+      "name": "Calls — loading",
+      "theme": {
+        "mode": "light"
+      },
+      "reusable": true,
+      "clip": true,
+      "width": 560,
+      "height": 520,
+      "fill": "$win",
+      "cornerRadius": "$radius-card",
+      "stroke": "$rule",
+      "strokeWidth": 1,
+      "layout": "none",
+      "children": [
+        {
+          "type": "frame",
+          "id": "iDcse",
+          "x": 0,
+          "y": 0,
+          "name": "Content",
+          "width": 560,
+          "height": 520,
+          "layout": "vertical",
+          "children": [
+            {
+              "id": "CdO4d",
+              "type": "ref",
+              "ref": "A87z6I",
+              "name": "Title bar",
+              "width": "fill_container"
+            },
+            {
+              "type": "frame",
+              "id": "gUxLa",
+              "name": "Message",
+              "width": "fill_container",
+              "height": "fill_container",
+              "layout": "vertical",
+              "gap": "$space-4",
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "LTQO1",
+                  "name": "H",
+                  "fill": "$sub",
+                  "content": "Загружаются звонки…",
+                  "fontFamily": "$font-ui",
+                  "fontSize": "$type-body",
+                  "fontWeight": "600"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "DfBYI",
+      "type": "ref",
+      "ref": "S2t0f",
+      "name": "Calls — loading (dark)",
+      "x": 4680,
+      "y": 560,
       "theme": {
         "mode": "dark"
       }
     },
     {
       "type": "note",
-      "id": "k01A4M",
-      "x": 1460,
-      "y": 0,
-      "name": "Note A",
-      "width": 360,
-      "height": 220,
-      "content": "A — Плотная таблица. One line, about 32 pt at every width. Columns: date, title, duration, a 64 pt status cell (summary pending, failed, notes eye; the ⋯ button takes its place on hover). The title truncates with an ellipsis and never wraps. Narrow (< 600): duration column drops, date shortens to dd.MM. Actions: double-click or Return opens; context menu (shown) holds everything else; ⌘⌫ deletes. Header sorts by column. Closest to native Table / Finder list."
+      "id": "t7k4p",
+      "x": 0,
+      "y": 1160,
+      "name": "Note layout",
+      "width": 440,
+      "height": 300,
+      "content": "Calls grouped by day, newest first; no sorting and no column header. Row about 28 pt: start time (HH:mm), title, duration, status cell. Every column shows at every width: the window's minimum width is 560 pt, where the title still has about 330 pt. The title is one line and truncates with an ellipsis; nothing in a row wraps.\n\nDay header: Сегодня, Вчера; then weekday and date inside the last 7 days (Пятница, 7 ноября); older days the date (3 сентября), with the year only when it is not the current one (12 декабря 2025). The header counts the day's calls."
     },
     {
       "type": "note",
-      "id": "YzMTV",
-      "x": 1460,
-      "y": 1000,
-      "name": "Note B",
-      "width": 360,
-      "height": 220,
-      "content": "B — Две строки (Mail). Fixed two-line row, about 48 pt: title + relative time on line 1, duration and summary state as text on line 2 (failed in red). Same layout at every width, so narrow costs nothing. Less dense: ~11 calls per 600 pt vs ~17 for A. Status reads as words, not icons."
+      "id": "DyFVH",
+      "x": 480,
+      "y": 1160,
+      "name": "Note actions",
+      "width": 440,
+      "height": 300,
+      "content": "Status cell, 64 pt, right-aligned: summary being prepared (spinner), summary failed (red alert), notes (eye; accent on the selected row, click shows notes). On hover the row tints and a ⋯ button appears at the cell's end, in no extra space; it opens the same menu as a right-click, below the button, right edges aligned. Повторить итоги appears only for a failed summary.\n\nKeys: ↑↓ select, Return opens, Space shows notes, ⌘R renames, ⇧⌘R shows in Finder, ⌘⌫ asks to delete. Double-click opens."
     },
     {
       "type": "note",
-      "id": "VQI1x",
-      "x": 1460,
-      "y": 2000,
-      "name": "Note C",
-      "width": 360,
-      "height": 220,
-      "content": "C — По дням (Notes). Day headers ‘Сегодня / Вчера / Пятница, 17 октября’ replace the date column; rows show only the time (40 pt), title, duration, status, about 28 pt. Most title width of the three. Narrow drops duration. Sorting is chronological only."
-    },
-    {
-      "type": "note",
-      "id": "zFSZf",
-      "x": 1460,
-      "y": 3000,
-      "name": "Note shared",
-      "width": 360,
-      "height": 260,
-      "content": "Shared in every direction: no reserved action column; actions live in the context menu, on keys (Return, Space for notes, ⌘R rename, ⌘⌫ delete) and in one ⋯ button that shows on hover inside the status cell. Retry summary moves from a link under the title to the context menu and the failed icon. The footer hint about renaming goes away. A row's height never depends on the title or status. Open: whether A's narrow layout should switch to B's two-line row instead of dropping columns."
+      "id": "kN0qO",
+      "x": 960,
+      "y": 1160,
+      "name": "Note states",
+      "width": 440,
+      "height": 300,
+      "content": "Renaming: the title cell becomes a field; the folder prefix (yyyy.MM.dd-HHmm) stays fixed. Return saves, Esc cancels.\nConfirm delete: a sheet over the list with Удалить and Отмена.\nError: a banner pinned to the window's bottom, the list above it.\nWindow inactive: the selected row turns grey.\nEmpty and loading: one centred message.\n\nOpen: whether the selected row's eye stays accent when the window is inactive."
     }
   ],
   "themes": {
@@ -3219,5 +3715,5 @@
       "value": 20
     }
   },
-  "fileToken": "312f8ecb-98ed-4077-b52a-96e1cfccfbcd"
+  "fileToken": "ce3729a5-8a4e-47b3-a9e5-799f1e38ca35"
 }

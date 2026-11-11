@@ -1,33 +1,52 @@
-# Calls list — design directions
+# Calls list
 
-[calls-list.pen](calls-list.pen) draws three directions for the calls list,
-each at a wide (900) and a narrow (440) window, light and dark (the dark
-frame is an instance of the light one with `theme: {mode: "dark"}`). Its
-tokens are the ones in [tokens.json](tokens.json); the components sit on the
-"Components" board.
+[calls-list.pen](calls-list.pen) draws the calls list: calls grouped by day,
+newest first. Each screen is a light component with a dark instance
+(`theme: {mode: "dark"}`); the tokens are those in [tokens.json](tokens.json),
+and the parts are on the "Components" board (Title bar, Day header, Row,
+Context menu, Alert, Rename field, Error banner).
 
-All three share:
+## Layout
 
-- Fixed row height at every width. The title is one line and truncates with
-  an ellipsis; status never adds a line.
-- No reserved action column. Actions are in a context menu (Открыть,
-  Показать заметки, Переименовать, Повторить итоги, Показать в Finder,
-  Удалить…), on keys (Return opens, Space shows notes, ⌘R renames, ⌘⌫
-  deletes) and in one ⋯ button that appears on hover inside the status cell.
-- A status cell with icons: summary pending (spinner), summary failed (red
-  alert), notes (eye, accent when previewed).
-- Retry summary moves from a link under the title to the context menu. The
-  footer hint about renaming is removed.
+- No sorting and no column header. Days run newest first, calls within a
+  day newest first.
+- Day header: Сегодня, Вчера; then weekday and date within the last 7 days
+  (Пятница, 7 ноября); older days the date (3 сентября), with the year only
+  when it is not the current one (12 декабря 2025). It shows the day's call
+  count.
+- Row, about 28 pt: start time (HH:mm, `font-data`), title, duration
+  (right-aligned, 64 pt), status cell (64 pt). An untitled call shows its
+  folder name in `font-data`, `gutter`.
+- The title is one line and truncates with an ellipsis. Nothing in a row
+  wraps, so every row has the same height.
+- The window's minimum width is 560 pt. Every column shows at every width;
+  at the minimum the title keeps about 330 pt.
 
-| Direction | Row | Narrow window | Trade-off |
-|---|---|---|---|
-| A — Dense table | One line, ~32 pt: date, title, duration, status; sortable header | Duration drops, date shortens to dd.MM | Most native (Finder / `Table`); date column costs title width |
-| B — Two lines (Mail) | ~48 pt: title + relative time; duration and summary state as words | Unchanged | Readable status, works at any width; about a third fewer rows per screen |
-| C — By day (Notes) | ~28 pt: time, title, duration, status under day headers | Duration drops | Most title width and density; chronological order only |
+## Status and actions
+
+- Status cell, right-aligned: summary being prepared (spinner), summary
+  failed (red alert), notes (eye; accent on the selected row; a click shows
+  the notes).
+- Hover tints the row and shows a ⋯ button at the end of the status cell,
+  in no extra space. It opens the same menu as a right-click, below the
+  button with right edges aligned: Открыть, Показать заметки, Переименовать,
+  Повторить итоги (only when the summary failed), Показать в Finder,
+  Удалить….
+- Keys: ↑↓ select, Return opens, Space shows notes, ⌘R renames, ⇧⌘R shows in
+  Finder, ⌘⌫ asks to delete. Double-click opens.
+
+## States
+
+| Frame | What it shows |
+|---|---|
+| Calls — wide | 900 pt, selected row, hovered failed row with its menu open |
+| Calls — minimum width | The same at 560 pt |
+| Calls — renaming | The title cell is a field; the `yyyy.MM.dd-HHmm` prefix stays fixed. Return saves, Esc cancels |
+| Calls — confirm delete | A sheet over the list with Удалить and Отмена |
+| Calls — error | A banner pinned to the window's bottom |
+| Calls — window inactive | The selected row turns grey (`btn`) |
+| Calls — empty, Calls — loading | One centred message |
 
 Open:
 
-- Which direction, or a mix (for example A wide switching to B's row when
-  narrow).
-- Whether the list needs search or column sorting at all.
-- The narrow breakpoint and the window's minimum width.
+- Whether the selected row's eye stays accent while the window is inactive.
