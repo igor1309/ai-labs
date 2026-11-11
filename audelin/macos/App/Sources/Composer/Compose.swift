@@ -50,7 +50,7 @@ public func compose(
     menu.installFolderPicker(chooseCallsFolder)
     menu.installSettings(AudelinSettings(preferences: SummaryPreferences(storage: preferences),
                                         availability: SummaryAvailability(runtime: runtime)), present: presentSettings)
-    let disk = SummaryCalls(storage: storage)
+    let disk = SummaryCalls(storage: storage, deleted: { await summaries.forget(call: $0) })
     menu.installCalls(AudelinCalls(inputs: makeRecordings(handler: RecordingsEffectHandler(calls: disk,
                                       reserve: { [weak menu] in await menu?.reserveCallsFolder() ?? false },
                                       release: { [weak menu] in await menu?.releaseCallsFolder() },

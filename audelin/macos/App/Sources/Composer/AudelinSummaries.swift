@@ -58,6 +58,11 @@ final class AudelinSummaries {
     var busy: Bool { coordinator.busy || jobs.busy }
     func refreshObserved() async { await jobs.refreshObserved() }
     func retry(call: String) async throws { try await coordinator.retry(call: call) }
+    func forget(call: String) async {
+        await jobs.forget(call: call)
+        retryable.remove(call)
+        statuses.removeValue(forKey: call)
+    }
     func stopDispatch() { coordinator.send(.stopDispatch) }
     func shutdown() async { await coordinator.shutdown() }
 }

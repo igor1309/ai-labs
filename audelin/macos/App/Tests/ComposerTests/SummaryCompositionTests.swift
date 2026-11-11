@@ -182,6 +182,32 @@ struct SummaryCompositionTests {
             } catch { http.complete.send(); await rig.finish(); throw error }
         }
     }
+    @Test func deletingInterruptedCallReleasesUpdateProtection() async throws {
+        try await withComposeFolder { root in
+            let id = "1970.01.01-0000", folder = root.appendingPathComponent("1970.01.01-0000")
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            let files = Files(locations: SummaryStorage(folder: root, timeZone: .gmt), disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("summary-ownership"))
+            let runtime = Job.Runtime(kind: "compatibleAPI", model: "saved", program: "", endpoint: "http://127.0.0.1/v1", credentialVariable: "")
+            let job = Job(id: "interrupted", call: id, input: "saved", entries: [.init(label: "A", time: "0", text: "spoken")], speakers: false, primary: runtime)
+            _ = try await files.claim(SummaryJobStore(files: files).record(job, phase: "interrupted"))
+            let rig = try await fixture(root: root, storage: ControlledTranscripts(), http: ControlledHTTP(hold: false))
+            do {
+                let calls = try #require(rig.menu.calls)
+                calls.show()
+                for await state in Observations({ calls.state }) where !state.busy && state.rows.count == 1 { break }
+                #expect(calls.state.rows.first?.canRetrySummary == true)
+                await calls.send(.askDelete(id)); await calls.send(.confirmDelete)
+                for await state in Observations({ calls.state }) where !state.busy && state.rows.isEmpty { break }
+                #expect(!FileManager.default.fileExists(atPath: folder.path))
+                var relaunched = false
+                #expect(await rig.menu.relaunchIfIdle { relaunched = true })
+                #expect(relaunched)
+                calls.windowClosed()
+                await rig.finish()
+            } catch { await rig.finish(); throw error }
+        }
+    }
+
     @Test(arguments: [false, true])
     func retryCompletionRefreshesTheOpenCallsWindowAndPreview(previousNotes: Bool) async throws {
         try await withComposeFolder { root in

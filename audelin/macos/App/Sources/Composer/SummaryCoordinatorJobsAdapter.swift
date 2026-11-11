@@ -77,6 +77,10 @@ import SummaryJobs
         model.send(.storageFailed)
         await model.waitForClaim()
     }
+    func forget(call: String) async {
+        let removed = models.removeValue(forKey: call)
+        await removed?.cancelAndJoin()
+    }
     func join() async { for model in Array(models.values) { await model.cancelAndJoin() } }
     private func install(_ state: SummaryJobs.State, call: String, observing: Bool = false) -> SummaryJobModel {
         let model = SummaryJobModel(initial: state, observesOwner: observing, canDispatch: canDispatch, handler: handler, changed: { [changed] in changed(call, $0) })
