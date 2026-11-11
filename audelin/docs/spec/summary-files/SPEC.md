@@ -91,4 +91,9 @@ Feature: Keep notes and job records durably
     When I acquire its released ownership lease and load the call
     Then I observe interruption without permission to repeat the request
 
+  Scenario: S-16 A call without notes
+    Given a call has no published notes
+    When I read its notes
+    Then I learn it has none, not a failure
+
 ```

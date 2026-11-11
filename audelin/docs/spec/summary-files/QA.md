@@ -15,7 +15,7 @@ Automated boundary: `cd audelin/macos && swift test --filter SummaryFilesTests/c
 
 ## S-3 Publish notes atomically
 
-Automated boundary: `cd audelin/macos && swift test --filter SummaryFilesTests/publicationReceiptRecoversExactJobAndInputAfterTerminalSaveFailure`. Setup fixture: a call has a transcript; drive: I save notes; read-back oracle: I can read complete notes beside the unchanged transcript. Use temporary call folders and job/input receipts; inject failure at the named claim/progress/publication/read/move operation and inspect on-disk bytes.
+Automated boundary: `cd audelin/macos && swift test --filter SummaryFilesTests/publicationReceiptRecoversExactJobAndInputAfterTerminalSaveFailure`. Setup fixture: a call has a transcript; drive: I save notes; read-back oracle: I can read complete notes beside the unchanged transcript. Also `SummaryFilesTests/publishedNotesReadBackWithoutReceipt`: the notes read through the adapter equal the saved notes, byte for byte, with no receipt line. Use temporary call folders and job/input receipts; inject failure at the named claim/progress/publication/read/move operation and inspect on-disk bytes.
 
 ## S-4 Preserve files on write failure
 
@@ -56,3 +56,7 @@ Automated boundary: `cd audelin/macos && swift test --filter SummaryFilesTests/d
 ## S-13 Reject mismatched input receipt
 
 Automated boundary: `cd audelin/macos && swift test --filter SummaryFilesTests/mismatchedReceiptNeverCompletesNewRunningClaim`. Setup fixture: existing output names the current job but another input; drive: I recover the current job; read-back oracle: I cannot mistake that output for current success. Use temporary call folders and job/input receipts; inject failure at the named claim/progress/publication/read/move operation and inspect on-disk bytes.
+
+## S-16 A call without notes
+
+Automated boundary: `cd audelin/macos && swift test --filter SummaryFilesTests/callWithoutNotesReadsNone`. Setup fixture: a call folder with a transcript and no `summary.md`; drive: read its notes; read-back oracle: the read returns none and throws nothing.

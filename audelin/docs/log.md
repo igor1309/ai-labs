@@ -2,6 +2,7 @@
 
 ## 2026-11-11
 
+- LAB-1164: The calls list shows an eye on calls with notes; it opens a floating preview of the selected call's notes, formatted and copyable, that follows the selection and keeps its place.
 - On synthetic Russian group calls of 2–6 speakers over Opus, Nemotron's speaker error is 3.8 % against VBx's 9.2 %; Nemotron stays the after-call diarization default (LAB-1130).
 
 ## 2026-11-10
