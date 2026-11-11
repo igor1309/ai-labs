@@ -26,11 +26,10 @@ public enum CallsListPreviews {
     }
 
     private static var sample: CallsListState {
-        let start = { ISO8601DateFormatter().date(from: $0)! }
-        return .init(rows: [
-            .init(id: "2026.10.21-1230", title: "Запуск: роли и SLA", start: start("2026-10-21T12:30:00Z"), duration: 2_820, timeZone: .gmt, editable: true),
-            .init(id: "2026.10.20-1600", title: "Синк по OKR на квартал", start: start("2026-10-20T16:00:00Z"), duration: 4_320, timeZone: .gmt, editable: true),
-            .init(id: "2026.10.17-1100", title: "", start: start("2026-10-17T11:00:00Z"), duration: nil, timeZone: .gmt, editable: true),
+        .init(rows: [
+            .init(id: "2026.10.21-1230", title: "Запуск: роли и SLA", displayTitle: "Запуск: роли и SLA", date: "21.10 · 12:30", duration: "47:00", editable: true),
+            .init(id: "2026.10.20-1600", title: "Синк по OKR на квартал", displayTitle: "Синк по OKR на квартал", date: "20.10 · 16:00", duration: "1:12:00", editable: true),
+            .init(id: "2026.10.17-1100", title: "", displayTitle: "2026.10.17-1100", date: "17.10 · 11:00", duration: "—", editable: true),
         ])
     }
 

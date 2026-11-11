@@ -248,9 +248,10 @@ func callsListState(_ state: RecordingsState, timeZone: TimeZone) -> CallsListSt
     case let .askingDelete(id): busy = false; deleteID = id
     default: busy = true; deleteID = nil
     }
+    let format = CallsListFormat(timeZone: timeZone)
     return CallsListState(rows: state.calls.map {
-        .init(id: $0.id, title: $0.title, start: $0.start, duration: $0.duration,
-              timeZone: timeZone, editable: $0.id != state.recordingID)
+        .init(id: $0.id, title: $0.title, displayTitle: $0.title.isEmpty ? format.stamp($0.start) : $0.title,
+              date: format.shortDate($0.start), duration: format.duration($0.duration), editable: $0.id != state.recordingID)
     }, deleteID: deleteID, busy: busy || state.isListing, failure: state.failure.map { failure in
         (failure.id.map { "«\($0)»: " } ?? "") + failure.reason
     })

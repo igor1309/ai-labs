@@ -138,11 +138,10 @@ struct CallsListNotesTests {
 
     private func makeState() -> CallsListState {
 
-        let start = { ISO8601DateFormatter().date(from: $0)! }
         return CallsListState(rows: [
-            .init(id: "2026.10.21-1230", title: "Запуск", start: start("2026-10-21T12:30:00Z"), duration: 2_820, timeZone: .gmt, editable: true, hasNotes: true),
-            .init(id: "2026.10.20-1600", title: "Синк по OKR", start: start("2026-10-20T16:00:00Z"), duration: 4_320, timeZone: .gmt, editable: true),
-            .init(id: "2026.10.17-1100", title: "", start: start("2026-10-17T11:00:00Z"), duration: nil, timeZone: .gmt, editable: true, hasNotes: true),
+            .init(id: "2026.10.21-1230", title: "Запуск", displayTitle: "Запуск", date: "21.10 · 12:30", duration: "47:00", editable: true, hasNotes: true),
+            .init(id: "2026.10.20-1600", title: "Синк по OKR", displayTitle: "Синк по OKR", date: "20.10 · 16:00", duration: "1:12:00", editable: true),
+            .init(id: "2026.10.17-1100", title: "", displayTitle: "2026.10.17-1100", date: "17.10 · 11:00", duration: "—", editable: true, hasNotes: true),
         ])
     }
 }

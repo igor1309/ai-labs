@@ -17,28 +17,18 @@ public struct CallsListState: Equatable, Sendable {
         public let editable: Bool
         public var folderName: String { id + (title.isEmpty ? "" : " " + title) }
 
-        public init(id: String, title: String, start: Date, duration: TimeInterval?, timeZone: TimeZone, editable: Bool, summaryStatus: String = "", hasNotes: Bool = false, canRetrySummary: Bool = false, summary: Summary = .none) {
+        public init(id: String, title: String, displayTitle: String, date: String, duration: String, editable: Bool,
+                    summaryStatus: String = "", hasNotes: Bool = false, canRetrySummary: Bool = false, summary: Summary = .none) {
             self.summary = summary
             self.canRetrySummary = canRetrySummary
             self.summaryStatus = summaryStatus
             self.hasNotes = hasNotes
             self.id = id
             self.title = title
+            self.displayTitle = displayTitle
+            self.date = date
+            self.duration = duration
             self.editable = editable
-            let formatter = DateFormatter()
-            formatter.locale = Locale(identifier: "en_US_POSIX")
-            formatter.calendar = Calendar(identifier: .gregorian)
-            formatter.timeZone = timeZone
-            formatter.dateFormat = "dd.MM · HH:mm"
-            date = formatter.string(from: start)
-            formatter.dateFormat = "yyyy.MM.dd-HHmm"
-            displayTitle = title.isEmpty ? formatter.string(from: start) : title
-            if let duration, duration.isFinite, duration >= 0 {
-                let minutes = Int(min(duration / 60, Double(Int.max / 60)))
-                self.duration = minutes < 60 ? "\(minutes) мин" : "\(minutes / 60) ч \(minutes % 60) мин"
-            } else {
-                self.duration = "—"
-            }
         }
     }
 
