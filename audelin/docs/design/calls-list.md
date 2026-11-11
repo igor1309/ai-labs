@@ -1,12 +1,12 @@
 # Calls window
 
-[calls-list.pen](calls-list.pen) draws the calls window: the calls list on
-the left and the selected call's summary on the right, Mail-style. It
+The "Calls — …" frames in [visual-language.pen](visual-language.pen) draw
+the calls window: the calls list on the left and the selected call's summary on the right, Mail-style. It
 replaces the list window and the floating summary panel. Each screen is a
 light component with a dark instance (`theme: {mode: "dark"}`); the tokens
-are those in [tokens.json](tokens.json). Shared parts are on the
-"Components" board (Title bar, Search field, Day header, Context menu,
-Alert, Rename field, Error banner); the window's own parts on the "Window
+are the file's variables. Shared parts are on the
+"Calls window — shared components" board (Title bar, Search field, Day header, Context menu,
+Alert, Rename field, Error banner); the window's own parts on the "Calls window —
 components" board (Detail bar, Two-line row, Two-line match row, Detail
 header, Section, Subhead, Paragraph, Bullet, Detail message).
 
