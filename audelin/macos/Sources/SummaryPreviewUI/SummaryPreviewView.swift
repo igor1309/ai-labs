@@ -37,17 +37,19 @@ public struct NotesStyle {
 public struct SummaryPreviewView: View {
     private let state: SummaryPreviewState
     private let copy: () -> Void
+    private let text: SummaryPreviewText
     private let render: (String, NotesStyle) -> NSAttributedString
     @Environment(\.colorScheme) private var scheme
     private var tokens: GlassLedger { .for(scheme) }
 
     /// `render` turns the notes' Markdown into formatted text in the given style.
-    public init(state: SummaryPreviewState, copy: @escaping () -> Void,
+    public init(state: SummaryPreviewState, text: SummaryPreviewText = .init(language: .russian), copy: @escaping () -> Void,
                 render: @escaping (String, NotesStyle) -> NSAttributedString) {
         // The style resolves the bundled fonts as the body is first built.
         GlassLedger.registerFonts()
         self.state = state
         self.copy = copy
+        self.text = text
         self.render = render
     }
 
@@ -63,7 +65,7 @@ public struct SummaryPreviewView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 if case .markdown = state.notes {
                     Button(action: copy) {
-                        Text("Копировать").font(tokens.ui(tokens.typeSmall)).foregroundStyle(tokens.text)
+                        Text(text(.copy)).font(tokens.ui(tokens.typeSmall)).foregroundStyle(tokens.text)
                             .padding(.vertical, tokens.space8).padding(.horizontal, tokens.space12)
                             .background(tokens.btn, in: .rect(cornerRadius: tokens.radiusControl))
                     }

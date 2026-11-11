@@ -91,7 +91,7 @@ func makeSummaryPanel() -> NSPanel {
 /// The panel's content: the preview view of one call.
 @MainActor
 func summaryContent(_ state: SummaryPreviewState, copy: @escaping () -> Void) -> NSView {
-    NSHostingView(rootView: SummaryPreviewView(state: state, copy: copy, render: renderNotes))
+    NSHostingView(rootView: SummaryPreviewView(state: state, text: SummaryPreviewText(language: .russian), copy: copy, render: renderNotes))
 }
 
 /// The preview's notes, rendered from Markdown in the view's style.

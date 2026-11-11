@@ -19,10 +19,15 @@ struct SummaryPreviewTests {
           arguments: SummaryPreviews.states.map(\.name), [ColorScheme.light, .dark])
     func drawsAsItsReference(name: String, scheme: ColorScheme) throws {
 
-        let host = Offscreen.host(view(SummaryPreviews.state(name), scheme: scheme), size: size, scheme: scheme)
+        for language in SummaryPreviewLanguage.allCases { try draws(name, scheme, SummaryPreviewText(language: language)) }
+    }
+
+    private func draws(_ name: String, _ scheme: ColorScheme, _ text: SummaryPreviewText) throws {
+
+        let host = Offscreen.host(view(SummaryPreviews.state(name, in: text), text: text, scheme: scheme), size: size, scheme: scheme)
         let image = try #require(Offscreen.snapshot(host))
         let url = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
-            .appendingPathComponent("References/\(name)-\(scheme == .dark ? "dark" : "light").png")
+            .appendingPathComponent("References/\(name)-\(scheme == .dark ? "dark" : "light")\(text.language == .russian ? "" : "-en").png")
 
         let outcome = try ReferenceImage.compare(image, with: url)
         #expect([.matches, .recorded].contains(outcome))
@@ -133,8 +138,8 @@ struct SummaryPreviewTests {
     // The header's top right, inside its 28-point margin, where the copy button sits.
     private var copyLocation: NSPoint { NSPoint(x: size.width - 28 - 20, y: size.height - 28 - 12) }
 
-    private func view(_ state: SummaryPreviewState, scheme: ColorScheme = .light) -> some View {
-        SummaryPreviewView(state: state, copy: {}, render: markdown).environment(\.colorScheme, scheme)
+    private func view(_ state: SummaryPreviewState, text: SummaryPreviewText = .init(language: .russian), scheme: ColorScheme = .light) -> some View {
+        SummaryPreviewView(state: state, text: text, copy: {}, render: markdown).environment(\.colorScheme, scheme)
     }
 
     private func click(_ location: NSPoint, on view: SummaryPreviewView) {

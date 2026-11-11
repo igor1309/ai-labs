@@ -29,6 +29,15 @@ public enum CallsListPhrase: String, CaseIterable, Sendable {
     case minutes = "duration.minutes"
     /// Takes the hours, then the minutes.
     case hoursMinutes = "duration.hoursMinutes"
+    case summaryWaiting = "summary.waiting"
+    case summaryPending = "summary.pending"
+    case summaryRunning = "summary.running"
+    case summaryReady = "summary.ready"
+    case summaryReadyUnnamed = "summary.readyUnnamed"
+    case summaryFailed = "summary.failed"
+    case summaryInterrupted = "summary.interrupted"
+    case summaryUnavailable = "summary.unavailable"
+    case summaryRetryFailed = "summary.retryFailed"
 }
 
 /// Looks up calls list text in a given language, whatever the process locale.

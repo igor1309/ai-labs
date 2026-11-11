@@ -1,3 +1,4 @@
+import CallsListUI
 import BlockingTestWork
 import Foundation
 import Preferences
@@ -110,7 +111,7 @@ import Testing
                 }
                 await observer.refreshObserved()
                 #expect(observer.busy && observer.retryable.isEmpty)
-                #expect(observer.statuses[id] == summaryStatus(.running, false))
+                #expect(observer.statuses[id] == CallsListText(language: .russian).summaryStatus(.running, false))
                 http.release.send()
                 for await status in owner.updates() where status[id] == "Итоги готовы" { break }
                 await observer.refreshObserved()
@@ -144,7 +145,7 @@ import Testing
                 await summaries.refreshObserved()
                 #expect(await reads.count == 3)
                 #expect(summaries.busy && summaries.retryable.isEmpty)
-                #expect(summaries.statuses[id] == summaryStatus(.noting, false))
+                #expect(summaries.statuses[id] == CallsListText(language: .russian).summaryStatus(.noting, false))
                 http.release.send()
                 for await status in summaries.updates() where status[id] == "Итоги готовы" { break }
                 #expect(!summaries.busy)
@@ -180,7 +181,7 @@ import Testing
             let observer = AudelinSummaries(files: files, runtime: runtime, preferences: preferences, sink: TestLogSink(), load: { _ in try await reads.next() })
             await observer.recover(calls: [id])
             if initial == "observed" {
-                for await status in observer.updates() where status[id] == summaryStatus(.observed, false) { break }
+                for await status in observer.updates() where status[id] == CallsListText(language: .russian).summaryStatus(.observed, false) { break }
             }
             #expect(observer.busy)
             await observer.refreshObserved()
@@ -210,11 +211,11 @@ import Testing
             await observer.recover(calls: [id])
             #expect(observer.busy)
             await observer.refreshObserved()
-            #expect(!observer.busy && observer.statuses[id] == summaryStatus(.pending, false))
+            #expect(!observer.busy && observer.statuses[id] == CallsListText(language: .russian).summaryStatus(.pending, false))
             await observer.refreshObserved()
-            #expect(observer.busy && observer.statuses[id] == summaryStatus(.running, false))
+            #expect(observer.busy && observer.statuses[id] == CallsListText(language: .russian).summaryStatus(.running, false))
             await observer.refreshObserved()
-            #expect(!observer.busy && observer.statuses[id] == summaryStatus(.failed, false))
+            #expect(!observer.busy && observer.statuses[id] == CallsListText(language: .russian).summaryStatus(.failed, false))
             await observer.shutdown()
         }
     }
@@ -294,10 +295,10 @@ import Testing
             let runtime = Runtime(process: ArbitrationProcess(), http: ArbitrationHTTP(), credential: { _ in nil }, resolveProgram: { $0 }, deadline: { throw Failure.timeout })
             let summaries = AudelinSummaries(files: files, runtime: runtime, preferences: preferences, sink: TestLogSink())
             await summaries.recover(calls: [id])
-            #expect(summaries.statuses[id] == summaryStatus(.failed, false))
+            #expect(summaries.statuses[id] == CallsListText(language: .russian).summaryStatus(.failed, false))
             await summaries.submit(call: id, input: "input", entries: [.init(label: "A", time: "0", text: "spoken")], finalWrite: true, usable: true)
             #expect(try Data(contentsOf: folder.appendingPathComponent(".summary-job.json")) == corrupt)
-            #expect(summaries.statuses[id] == summaryStatus(.failed, false))
+            #expect(summaries.statuses[id] == CallsListText(language: .russian).summaryStatus(.failed, false))
             await summaries.shutdown()
         }
     }

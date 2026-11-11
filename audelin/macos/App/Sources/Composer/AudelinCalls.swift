@@ -222,7 +222,7 @@ public final class AudelinCalls {
             openFailure = nil
             inputs.send(.clearFailure)
             do { try await retrySummary(id) }
-            catch { openFailure = "Не удалось повторить подготовку итогов. Расшифровка и прежние итоги сохранены." }
+            catch { openFailure = listText(.summaryRetryFailed) }
         case let .open(id):
             guard !snapshot.busy else { return }
             editing = nil

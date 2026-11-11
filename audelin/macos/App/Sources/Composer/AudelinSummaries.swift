@@ -1,5 +1,6 @@
 import Foundation
 import Calls
+import CallsListUI
 import IMRxObservation
 import Observation
 import Preferences
@@ -18,9 +19,12 @@ final class AudelinSummaries {
     private var jobs: SummaryCoordinatorJobsAdapter!
     private(set) var retryable: Set<String> = []
     private let preferences: PreferencesStore
-    init(files: SummaryFiles.Files, runtime: SummaryRuntime.Runtime, preferences: PreferencesStore, sink: any LogSink, load: (@Sendable (String) async throws -> SummaryFiles.Record?)? = nil) {
+    private let text: CallsListText
+    init(files: SummaryFiles.Files, runtime: SummaryRuntime.Runtime, preferences: PreferencesStore, sink: any LogSink, load: (@Sendable (String) async throws -> SummaryFiles.Record?)? = nil,
+         text: CallsListText = .init(language: .russian)) {
         self.preferences = preferences
-        let store = SummaryJobStore(files: files)
+        self.text = text
+        let store = SummaryJobStore(files: files, status: { text.summaryStatus($0, $1) })
         let handler = SummaryJobs.EffectHandler(store: store, generation: SummaryGeneration(runtime: runtime, sink: sink), cancelled: { Task.isCancelled })
         let jobs = SummaryCoordinatorJobsAdapter(load: load ?? { try await files.load(call: $0) }, store: store,
             handler: handler, preferences: preferences, canDispatch: { [weak self] in self?.coordinator?.canDispatch == true }, changed: { [weak self] call, state in
@@ -33,7 +37,7 @@ final class AudelinSummaries {
     }
     func waiting(call: String) {
         guard preferences.read().notes.enabled else { return }
-        statuses[call] = summaryStatus(.waiting, false)
+        statuses[call] = text.summaryStatus(.waiting, false)
     }
     func callbacks(timeZone: TimeZone) -> SummaryCallbacks {
         SummaryCallbacks(waiting: { [weak self] folder in

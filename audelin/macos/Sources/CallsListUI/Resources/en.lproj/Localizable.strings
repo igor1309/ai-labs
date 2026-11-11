@@ -14,3 +14,12 @@
 "delete.cancel" = "Cancel";
 "duration.minutes" = "%d min";
 "duration.hoursMinutes" = "%1$d h %2$d min";
+"summary.waiting" = "Notes are waiting for the final transcript";
+"summary.pending" = "Notes are waiting to start";
+"summary.running" = "Writing notes…";
+"summary.ready" = "Notes are ready";
+"summary.readyUnnamed" = "Notes are ready; names not identified";
+"summary.failed" = "Couldn’t write or save the notes. The transcript and audio are kept.";
+"summary.interrupted" = "Preparing the notes stopped; it won’t be retried automatically.";
+"summary.unavailable" = "Notes unavailable: the final transcript wasn’t saved or no speech was recognised.";
+"summary.retryFailed" = "Couldn’t retry the notes. The transcript and the earlier notes are kept.";
