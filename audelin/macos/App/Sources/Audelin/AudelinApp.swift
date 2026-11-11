@@ -102,12 +102,13 @@ struct AudelinApp: App {
                     switch entry {
                     case let .stateLine(line):
                         Text(line)
+                    case .divider:
                         Divider()
                     case let .button(title, action):
-                        Button(title) { Task { await model.perform(action) } }
+                        Button(title, systemImage: action.symbol) { Task { await model.perform(action) } }
                             .keyboardShortcut(action == .quit ? KeyboardShortcut("q") : nil)
                     case let .toggle(title, checked, action):
-                        Toggle(title, isOn: Binding(
+                        Toggle(title, systemImage: action.symbol, isOn: Binding(
                             get: { checked }, set: { _ in Task { await model.perform(action) } }
                         ))
                     }
