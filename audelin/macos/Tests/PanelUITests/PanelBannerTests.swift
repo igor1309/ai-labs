@@ -12,7 +12,8 @@ struct PanelBannerTests {
 
         let plain = Offscreen.host(PanelPreview(state: .recording, scheme: scheme), scheme: scheme)
         let original = try #require(Offscreen.textView(in: plain)?.string)
-        for banner: PanelState.Banner in [.callAudioPreview, .microphonePreview, .diskFullPreview, .callSilentPreview] {
+        let russian = PanelText(language: .russian)
+        for banner: PanelState.Banner in [.callAudioPreview(russian), .microphonePreview(russian), .diskFullPreview(russian), .callSilentPreview(russian)] {
             let host = Offscreen.host(PanelPreview(state: .problem(banner), scheme: scheme), scheme: scheme)
             #expect(host.fittingSize.height > plain.fittingSize.height)
             #expect(Offscreen.textView(in: host)?.string == original)
