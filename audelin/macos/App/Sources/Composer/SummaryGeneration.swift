@@ -52,7 +52,11 @@ enum NotesResponse {
     headings: What this was about (2–3 sentences), Key points (group by workstream), Decisions, Actions, and
     optional Open questions. If no decisions or actions were recorded, say so. Each action names the
     explicitly supported owner (otherwise “owner unclear”), action, stated deadline/condition, and source
-    timestamp. Retain important review/testing/handoff commitments across the whole meeting. Do not
+    timestamp formatted as [mm:ss] or [hh:mm:ss]. Before writing Actions, reconcile each explicit commitment
+    with later statements. Preserve its prerequisites, stated deadline and final status. Keep distinct
+    people's steps separate, including handoff steps mentioned near the end. A request to check whether
+    something is done is not an instruction to do it.
+    Retain important review/testing/handoff commitments across the whole meeting. Do not
     manufacture a decision or action. Omit filler, speculation about people, and repetition. Aim for 500–800
     words for a long meeting; shorter for a short meeting. Before answering, check owners, corrected times,
     actual completion states, and missed commitments against the whole transcript. Use exactly these level-two
