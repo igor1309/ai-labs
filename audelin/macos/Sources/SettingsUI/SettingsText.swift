@@ -32,6 +32,20 @@ public enum SettingsPhrase: String, CaseIterable, Sendable {
     case callPartialDelete = "calls.partialDelete"
     case callSizeMismatch = "calls.sizeMismatch"
     case moveRefreshing = "move.refreshing"
+    case generalTab = "tab.general"
+    case languageRow = "general.languageRow"
+    case appearanceRow = "general.appearanceRow"
+    case languageSystem = "general.languageSystem"
+    case appearanceSystem = "general.appearanceSystem"
+    case appearanceLight = "general.appearanceLight"
+    case appearanceDark = "general.appearanceDark"
+    case appearanceHint = "general.appearanceHint"
+    /// System gives the macOS language, which Audelin has.
+    case languageHintSystem = "general.languageHintSystem"
+    /// Takes the macOS language's name, which Audelin does not have.
+    case languageHintFallback = "general.languageHintFallback"
+    /// Takes the macOS language's name, while another language is chosen.
+    case languageHintForced = "general.languageHintForced"
     case recordingTab = "tab.recording"
     case callNotesTab = "tab.callNotes"
     case recordingRow = "row.recording"

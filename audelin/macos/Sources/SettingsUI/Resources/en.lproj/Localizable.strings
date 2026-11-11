@@ -86,3 +86,14 @@
 "window.title" = "Audelin Settings";
 "folder.pickerFailedReason" = "The folder picker didn’t appear. Try again; if that doesn’t help, restart Audelin.";
 "calls.refreshFailed" = "%1$@ Couldn’t update the list: %2$@";
+"tab.general" = "General";
+"general.languageRow" = "Language";
+"general.appearanceRow" = "Appearance";
+"general.languageSystem" = "System";
+"general.appearanceSystem" = "System";
+"general.appearanceLight" = "Light";
+"general.appearanceDark" = "Dark";
+"general.appearanceHint" = "As in macOS.";
+"general.languageHintSystem" = "Now English, the macOS language. If macOS uses neither Russian nor English, Audelin is in English.";
+"general.languageHintFallback" = "Now English: Audelin has no %@, the macOS language.";
+"general.languageHintForced" = "macOS uses %@.";

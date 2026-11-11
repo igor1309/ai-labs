@@ -83,6 +83,7 @@ struct SettingsViewRenderTests {
     @Test nonisolated func exportRegistryContainsExactlyTheRequiredStates() {
         let required: Set<String> = [
             "release", "debug", "confirm-move", "moving", "move-failed", "during-recording",
+            "general-system", "general-fallback", "general-english", "general-russian",
             "summaries-off", "summaries-on", "summaries-local", "summaries-invalid", "summaries-unavailable",
             "summaries-validating", "summaries-saving", "summaries-save-failed", "summaries-saved",
             "summaries-loading", "summaries-load-failed", "summaries-no-fallback",

@@ -102,7 +102,7 @@ struct CallNotesInteractionTests {
         #expect(Offscreen.textFields(in: host).isEmpty)
         #expect(descendants(host, of: NSPopUpButton.self).isEmpty)
         #expect(descendants(host, of: NSButton.self).allSatisfy {
-            ["tab-recording", "tab-callNotes", "notes-retryLoad"].contains($0.accessibilityIdentifier() ?? "")
+            ["tab-general", "tab-recording", "tab-callNotes", "notes-retryLoad"].contains($0.accessibilityIdentifier() ?? "")
         })
     }
 

@@ -27,6 +27,10 @@ extension SettingsState {
                                            reason: english ? "“Zoom 2”: not enough disk space." : "«Zoom 2» — не удалось: нет места на диске.")
             }),
             ("during-recording", with(base) { $0.folder.status = .recording }),
+            ("general-system", general(.system, hint: text(.languageHintSystem), base: base, in: text)),
+            ("general-fallback", general(.system, hint: text(.languageHintFallback, "Deutsch"), base: base, in: text)),
+            ("general-english", general(.english, hint: text(.languageHintForced, "Русский"), base: base, in: text)),
+            ("general-russian", general(.russian, hint: text(.languageHintForced, "English"), base: base, in: text)),
         ] + summaryPreviews(in: text)
     }
 
@@ -55,6 +59,22 @@ extension SettingsState {
             selectedEngine: "parakeet",
             explainKeys: "⌃⌥⌘E"
         )
+    }
+
+    /// The General tab with a language picked; appearance follows macOS.
+    private static func general(_ language: General.Language, hint: String, base: SettingsState, in text: SettingsText) -> SettingsState {
+
+        with(base) {
+            $0.selectedTab = .general
+            $0.general = .init(
+                language: .init(segments: [.init(id: .system, title: text(.languageSystem)),
+                                           .init(id: .russian, title: "Русский"), .init(id: .english, title: "English")],
+                                selected: language, hint: hint),
+                appearance: .init(segments: [.init(id: .system, title: text(.appearanceSystem)),
+                                             .init(id: .light, title: text(.appearanceLight), isEnabled: false),
+                                             .init(id: .dark, title: text(.appearanceDark), isEnabled: false)],
+                                  selected: .system, hint: text(.appearanceHint)))
+        }
     }
 
     private struct CallsMove {
@@ -96,5 +116,6 @@ struct SettingsPreview: View {
 #Preview("Moving") { SettingsPreview(state: .moving, scheme: .light) }
 #Preview("Move failed") { SettingsPreview(state: .moveFailed, scheme: .light) }
 #Preview("During a recording") { SettingsPreview(state: .duringRecording, scheme: .light) }
+#Preview("General") { SettingsPreview(state: SettingsState.previews.first { $0.name == "general-system" }!.state, scheme: .light) }
 #Preview("Release, dark") { SettingsPreview(state: .release, scheme: .dark) }
 #Preview("Move failed, dark") { SettingsPreview(state: .moveFailed, scheme: .dark) }

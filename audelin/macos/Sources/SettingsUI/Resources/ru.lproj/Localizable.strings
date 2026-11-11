@@ -89,3 +89,14 @@
 "window.title" = "Настройки Audelin";
 "folder.pickerFailedReason" = "Окно выбора папки не появилось. Попробуйте ещё раз; если не поможет — перезапустите Audelin.";
 "calls.refreshFailed" = "%1$@ Не удалось обновить список: %2$@";
+"tab.general" = "Основные";
+"general.languageRow" = "Язык";
+"general.appearanceRow" = "Оформление";
+"general.languageSystem" = "Системный";
+"general.appearanceSystem" = "Системное";
+"general.appearanceLight" = "Светлое";
+"general.appearanceDark" = "Тёмное";
+"general.appearanceHint" = "Как в macOS.";
+"general.languageHintSystem" = "Сейчас русский — язык macOS. Если язык macOS не русский и не английский, Audelin на английском.";
+"general.languageHintFallback" = "Сейчас английский: в Audelin нет языка macOS — %@.";
+"general.languageHintForced" = "Язык macOS — %@.";

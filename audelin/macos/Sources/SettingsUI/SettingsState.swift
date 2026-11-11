@@ -3,6 +3,7 @@
 public struct SettingsState: Equatable, Sendable {
 
     public var selectedTab: Tab
+    public var general: General
     public var callNotes: CallNotes
     public var recordsCalls: Bool
     public var liveText: Bool
@@ -26,9 +27,11 @@ public struct SettingsState: Equatable, Sendable {
         chunk: Chunk? = nil,
         moveConfirm: MoveConfirm? = nil,
         selectedTab: Tab = .recording,
-        callNotes: CallNotes = .loading("")
+        callNotes: CallNotes = .loading(""),
+        general: General = .empty
     ) {
         self.selectedTab = selectedTab
+        self.general = general
         self.callNotes = callNotes
         self.recordsCalls = recordsCalls
         self.liveText = liveText

@@ -59,9 +59,55 @@ extension SettingsView {
     @ViewBuilder
     var page: some View {
         switch state.selectedTab {
+        case .general: generalPage
         case .recording: recordingPage
         case .callNotes: callNotesPage
         }
+    }
+
+    var generalPage: some View {
+        VStack(alignment: .leading, spacing: tokens.space24) {
+
+            row(text(.languageRow)) { segmented(state.general.language, id: "language") { event(.selectLanguage($0)) } }
+            row(text(.appearanceRow)) { segmented(state.general.appearance, id: "appearance") { _ in } }
+        }
+    }
+
+    /// Equal segments across the row; the selected one is raised on the track.
+    @ViewBuilder
+    func segmented<ID>(_ control: SettingsState.Segmented<ID>, id: String, select: @escaping (ID) -> Void) -> some View {
+
+        HStack(spacing: tokens.space2) {
+
+            ForEach(control.segments, id: \.id) { segment in
+
+                let isSelected = segment.id == control.selected
+
+                uiText(segment.title, tokens.typeSmall, isSelected ? tokens.text : tokens.sub, isSelected ? .semibold : .regular)
+                    .padding(.vertical, tokens.space4)
+                    .padding(.horizontal, tokens.space12)
+                    .frame(maxWidth: .infinity)
+                    .background {
+                        if isSelected {
+                            RoundedRectangle(cornerRadius: tokens.radiusControl)
+                                .fill(tokens.surface)
+                                .strokeBorder(tokens.rule, lineWidth: 1)
+                        }
+                    }
+            }
+        }
+        .padding(tokens.space2)
+        .background(tokens.btn, in: .rect(cornerRadius: tokens.radiusControl))
+        .accessibilityHidden(true)
+        .overlay {
+            SettingsSegmentsTarget(
+                titles: control.segments.map(\.title), enabled: control.segments.map(\.isEnabled),
+                selected: control.segments.firstIndex { $0.id == control.selected }, identifier: id,
+                segmentIdentifiers: control.segments.map { "\(id)-\($0.id)" },
+                select: { select(control.segments[$0].id) })
+        }
+
+        uiText(control.hint, tokens.typeSmall, tokens.gutter)
     }
 
     var recordingPage: some View {
@@ -82,6 +128,7 @@ extension SettingsView {
 
     var tabs: some View {
         HStack(spacing: tokens.space4) {
+            tab(text(.generalTab), .general)
             tab(text(.recordingTab), .recording)
             tab(text(.callNotesTab), .callNotes)
         }
