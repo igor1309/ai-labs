@@ -57,7 +57,40 @@ struct NotesMarkdownTests {
         #expect(font(text, "Кто").map { NSFontManager.shared.traits(of: $0).contains(.boldFontMask) } == true)
     }
 
+    @Test func emptyCellsKeepTheirPlaceInTheTable() throws {
+
+        let text = render("| A | B |\n|---|---|\n|   | x |\n| y |   |")
+
+        let cells = blocks(text)
+        #expect(cells.map(\.startingRow) == [0, 0, 1, 1, 2, 2])
+        #expect(cells.map(\.startingColumn) == [0, 1, 0, 1, 0, 1])
+    }
+
+    @Test func aTableInAListItemStaysATable() throws {
+
+        let text = render("- Решения\n\n  | Кто | Что |\n  | --- | --- |\n  | Аня | План |")
+
+        let cells = blocks(text)
+        #expect(cells.map(\.startingRow) == [0, 0, 1, 1])
+        #expect(cells.map(\.startingColumn) == [0, 1, 0, 1])
+        #expect(font(text, "Кто").map { NSFontManager.shared.traits(of: $0).contains(.boldFontMask) } == true)
+    }
+
     // MARK: - Helpers
+
+    /// Each paragraph's table cell, in order, read from the paragraphs themselves.
+    private func blocks(_ text: NSAttributedString) -> [NSTextTableBlock] {
+        var found: [NSTextTableBlock] = []
+        var location = 0
+        let string = text.string as NSString
+        while location < string.length {
+            let range = string.paragraphRange(for: NSRange(location: location, length: 0))
+            if let style = text.attribute(.paragraphStyle, at: range.location, effectiveRange: nil) as? NSParagraphStyle,
+               let block = style.textBlocks.first as? NSTextTableBlock { found.append(block) }
+            location = NSMaxRange(range)
+        }
+        return found
+    }
 
     private let style = NotesMarkdown.Style(
         body: .systemFont(ofSize: 13), headings: [.systemFont(ofSize: 20, weight: .semibold), .systemFont(ofSize: 16, weight: .semibold), .systemFont(ofSize: 14, weight: .semibold)],

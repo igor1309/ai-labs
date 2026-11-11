@@ -28,15 +28,26 @@ public enum NotesMarkdown {
         let lines = renderer.blocks(Document(parsing: markdown, options: [.disableSmartOpts]), depth: 0)
         let text = NSMutableAttributedString()
         for (index, line) in lines.enumerated() {
-            text.append(line)
-            guard index < lines.count - 1, line.length > 0 else { continue }
+            line.text.addAttribute(.paragraphStyle, value: line.paragraph, range: NSRange(location: 0, length: line.text.length))
+            text.append(line.text)
+            // An empty paragraph, such as an empty table cell, is only its newline.
+            guard index < lines.count - 1 || line.text.length == 0 else { continue }
             // A paragraph's newline belongs to it and carries its paragraph style.
-            var ending = line.attributes(at: line.length - 1, effectiveRange: nil)
+            var ending = line.text.length > 0 ? line.text.attributes(at: line.text.length - 1, effectiveRange: nil)
+                : [.font: style.body, .foregroundColor: style.text]
             ending[.backgroundColor] = nil
+            ending[.paragraphStyle] = line.paragraph
             text.append(NSAttributedString(string: "\n", attributes: ending))
         }
         return text
     }
+}
+
+/// One output paragraph: its text and the paragraph style the caller applies
+/// to it and to its newline.
+private struct Line {
+    let text: NSMutableAttributedString
+    var paragraph: NSParagraphStyle
 }
 
 /// One paragraph per output line; the caller joins them with newlines.
@@ -45,7 +56,7 @@ private struct Renderer {
     typealias Style = NotesMarkdown.Style
     private let indent: CGFloat = 20
 
-    func blocks(_ markup: Markup, depth: Int) -> [NSAttributedString] {
+    func blocks(_ markup: Markup, depth: Int) -> [Line] {
         switch markup {
         case let heading as Heading:
             let font = style.headings[min(heading.level, style.headings.count) - 1]
@@ -65,9 +76,8 @@ private struct Renderer {
             return cells(table)
         case let quote as BlockQuote:
             return quote.children.flatMap { blocks($0, depth: depth + 1) }.map { line in
-                let quoted = NSMutableAttributedString(attributedString: line)
-                quoted.addAttribute(.foregroundColor, value: style.secondary, range: NSRange(location: 0, length: quoted.length))
-                return quoted
+                line.text.addAttribute(.foregroundColor, value: style.secondary, range: NSRange(location: 0, length: line.text.length))
+                return line
             }
         case is ThematicBreak:
             return [line(NSMutableAttributedString(string: "———", attributes: [.font: style.body, .foregroundColor: style.rule]),
@@ -79,20 +89,25 @@ private struct Renderer {
 
     /// Each item's first line carries its marker before a tab; its own lines
     /// and nested lists sit one indent further in.
-    private func items(_ items: [ListItem], depth: Int, marker: (Int) -> String) -> [NSAttributedString] {
+    private func items(_ items: [ListItem], depth: Int, marker: (Int) -> String) -> [Line] {
         items.enumerated().flatMap { index, item in
-            item.children.enumerated().flatMap { position, child -> [NSAttributedString] in
+            item.children.enumerated().flatMap { position, child -> [Line] in
                 if child is UnorderedList || child is OrderedList { return blocks(child, depth: depth + 1) }
                 return blocks(child, depth: depth + 1).enumerated().map { offset, line in
-                    let marked = NSMutableAttributedString(attributedString: line)
                     let first = position == 0 && offset == 0
-                    let style = paragraph(depth: depth + 1) { if first { $0.firstLineHeadIndent = CGFloat(depth) * indent } }
                     if first {
-                        marked.insert(NSAttributedString(string: marker(index) + "\t", attributes: [
+                        line.text.insert(NSAttributedString(string: marker(index) + "\t", attributes: [
                             .font: self.style.body, .foregroundColor: self.style.secondary,
                         ]), at: 0)
                     }
-                    marked.addAttribute(.paragraphStyle, value: style, range: NSRange(location: 0, length: marked.length))
+                    // Only the item's indent and marker change; a table cell keeps its block.
+                    let indented = line.paragraph.mutableCopy() as! NSMutableParagraphStyle
+                    let depthStyle = paragraph(depth: depth + 1)
+                    indented.headIndent = depthStyle.headIndent
+                    indented.firstLineHeadIndent = first ? CGFloat(depth) * indent : depthStyle.firstLineHeadIndent
+                    indented.tabStops = depthStyle.tabStops
+                    var marked = line
+                    marked.paragraph = indented
                     return marked
                 }
             }
@@ -100,7 +115,7 @@ private struct Renderer {
     }
 
     /// Head and body cells in reading order, each its own block of one text table.
-    private func cells(_ table: Markdown.Table) -> [NSAttributedString] {
+    private func cells(_ table: Markdown.Table) -> [Line] {
         let rows = [Array(table.head.cells)] + table.body.rows.map { Array($0.cells) }
         let textTable = NSTextTable()
         textTable.numberOfColumns = max(rows.map(\.count).max() ?? 1, 1)
@@ -128,9 +143,8 @@ private struct Renderer {
         return paragraph
     }
 
-    private func line(_ text: NSMutableAttributedString, _ paragraph: NSParagraphStyle) -> NSAttributedString {
-        text.addAttribute(.paragraphStyle, value: paragraph, range: NSRange(location: 0, length: text.length))
-        return text
+    private func line(_ text: NSMutableAttributedString, _ paragraph: NSParagraphStyle) -> Line {
+        Line(text: text, paragraph: paragraph)
     }
 
     private func inline(_ markup: Markup, font: NSFont) -> NSMutableAttributedString {
