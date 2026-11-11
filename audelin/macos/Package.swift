@@ -165,7 +165,8 @@ let package = Package(
         ),
         .target(
             name: "PanelUI",
-            dependencies: ["GlassLedger", "SplitRows"]
+            dependencies: ["GlassLedger", "SplitRows"],
+            resources: [.process("Resources")]
         ),
         .target(
             name: "ParakeetRecognizer",

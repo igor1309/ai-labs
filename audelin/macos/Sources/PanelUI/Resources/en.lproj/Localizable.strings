@@ -1,0 +1,14 @@
+"banner.callAudio.title" = "No call audio";
+"banner.callAudio.line" = "Only “me” is being recorded. Check the Call Audio permission.";
+"banner.microphone.title" = "No microphone";
+"banner.microphone.line" = "Only “them” is being recorded. Check the input device and the Microphone permission.";
+"banner.diskFull.title" = "Disk full — track stopped";
+"banner.diskFull.line" = "Everything up to %@ is saved. Free up space to continue.";
+"banner.callSilent.title" = "Call not heard";
+"banner.callSilent.line" = "5 minutes of silence from “them” while you speak. Check the Call Audio permission.";
+"banner.openSettings" = "Open macOS Settings";
+"banner.openFolder" = "Open Folder";
+"gap.callAudio" = "— no call audio since %@ —";
+"gap.microphone" = "— no microphone since %@ —";
+"gap.diskFull" = "— disk full since %@ —";
+"gap.callSilent" = "—  since %@ —";

@@ -15,10 +15,10 @@ extension PanelState {
         ("settling-8s", .settling8),
         ("selection-held", .selectionHeld),
         ("long-selection-held", .longSelectionHeld),
-        ("no-call-audio", .problem(.callAudio, gap: .init(speaker: .them, text: "— нет звука звонка с 12:45 —"))),
-        ("no-microphone", .problem(.microphone, gap: .init(speaker: .me, text: "— нет микрофона с 12:45 —"))),
-        ("disk-full", .problem(.diskFull(savedUntil: "12:45"), gap: .init(speaker: .them, text: "— диск заполнен с 12:45 —"))),
-        ("call-silent", .problem(.callSilent)),
+        ("no-call-audio", .problem(.callAudioPreview, gap: .init(speaker: .them, text: "— нет звука звонка с 12:45 —"))),
+        ("no-microphone", .problem(.microphonePreview, gap: .init(speaker: .me, text: "— нет микрофона с 12:45 —"))),
+        ("disk-full", .problem(.diskFullPreview, gap: .init(speaker: .them, text: "— диск заполнен с 12:45 —"))),
+        ("call-silent", .problem(.callSilentPreview)),
     ]
 
     static let notRecording = PanelState(recording: .off, log: .empty)
@@ -162,4 +162,20 @@ struct PanelPreview: View {
             }
         }
     }
+}
+
+extension PanelState.Banner {
+
+    static let callAudioPreview = Self(kind: .callAudio, title: "Нет звука звонка",
+                                       line: "Пишется только «я». Проверьте разрешение «Звук звонка».",
+                                       button: "Открыть настройки macOS", action: .openSettings(.systemAudioRecording))
+    static let microphonePreview = Self(kind: .microphone, title: "Нет микрофона",
+                                        line: "Пишутся только «они». Проверьте устройство ввода и разрешение «Микрофон».",
+                                        button: "Открыть настройки macOS", action: .openSettings(.microphone))
+    static let diskFullPreview = Self(kind: .diskFull, title: "Диск заполнен — дорожка остановлена",
+                                      line: "Всё до 12:45 сохранено. Освободите место, чтобы продолжить.",
+                                      button: "Открыть папку", action: .openCallsFolder)
+    static let callSilentPreview = Self(kind: .callSilent, title: "Звонок не слышен",
+                                        line: "5 минут тишины со стороны «они», пока вы говорите. Проверьте разрешение «Звук звонка».",
+                                        button: "Открыть настройки macOS", action: .openSettings(.systemAudioRecording))
 }

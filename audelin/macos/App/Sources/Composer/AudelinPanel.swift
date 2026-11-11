@@ -28,6 +28,7 @@ actor AudelinPanel {
     private var current: (id: UInt64, reading: ReadingInputs, enableLiveText: @Sendable () async -> Void)?
     private var state = PanelState(recording: .off, log: .empty)
     private var mappedRows = MappedRows()
+    private let panelText = PanelText(language: .russian)
     private var subscribers: [UInt64: AsyncStream<PanelState>.Continuation] = [:]
     private var nextSubscriber: UInt64 = 0
 
@@ -85,7 +86,7 @@ actor AudelinPanel {
     private func receive(_ state: ReadingState, id: UInt64) {
 
         guard current?.id == id else { return }
-        publish(panelState(state, rows: &mappedRows))
+        publish(panelState(panelText.callAsFunction, state, rows: &mappedRows))
     }
 
     private func publish(_ next: PanelState) {

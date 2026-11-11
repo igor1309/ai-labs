@@ -292,12 +292,12 @@ private extension PanelView {
 
     func bannerView(_ banner: PanelState.Banner) -> some View {
 
-        let ink: Color = switch banner {
+        let ink: Color = switch banner.kind {
         case .callAudio, .microphone: tokens.warn
         case .diskFull: tokens.rec
         case .callSilent: tokens.me
         }
-        let background: Color = switch banner {
+        let background: Color = switch banner.kind {
         case .callAudio, .microphone: tokens.warnBg
         case .diskFull: tokens.errBg
         case .callSilent: tokens.okBg

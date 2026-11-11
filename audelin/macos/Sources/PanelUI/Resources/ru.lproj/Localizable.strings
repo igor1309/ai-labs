@@ -1,0 +1,14 @@
+"banner.callAudio.title" = "Нет звука звонка";
+"banner.callAudio.line" = "Пишется только «я». Проверьте разрешение «Звук звонка».";
+"banner.microphone.title" = "Нет микрофона";
+"banner.microphone.line" = "Пишутся только «они». Проверьте устройство ввода и разрешение «Микрофон».";
+"banner.diskFull.title" = "Диск заполнен — дорожка остановлена";
+"banner.diskFull.line" = "Всё до %@ сохранено. Освободите место, чтобы продолжить.";
+"banner.callSilent.title" = "Звонок не слышен";
+"banner.callSilent.line" = "5 минут тишины со стороны «они», пока вы говорите. Проверьте разрешение «Звук звонка».";
+"banner.openSettings" = "Открыть настройки macOS";
+"banner.openFolder" = "Открыть папку";
+"gap.callAudio" = "— нет звука звонка с %@ —";
+"gap.microphone" = "— нет микрофона с %@ —";
+"gap.diskFull" = "— диск заполнен с %@ —";
+"gap.callSilent" = "—  с %@ —";

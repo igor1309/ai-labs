@@ -113,41 +113,27 @@ public extension PanelState {
         }
     }
 
-    enum Banner: Equatable, Sendable {
+    /// A problem shown above the log, with its text already in the panel's language.
+    struct Banner: Equatable, Sendable {
 
-        case callAudio, microphone, diskFull(savedUntil: String), callSilent
+        public enum Kind: Equatable, Sendable {
 
-        public var title: String {
-            switch self {
-            case .callAudio: "Нет звука звонка"
-            case .microphone: "Нет микрофона"
-            case .diskFull: "Диск заполнен — дорожка остановлена"
-            case .callSilent: "Звонок не слышен"
-            }
+            case callAudio, microphone, diskFull, callSilent
         }
 
-        public var line: String {
-            switch self {
-            case .callAudio: "Пишется только «я». Проверьте разрешение «Звук звонка»."
-            case .microphone: "Пишутся только «они». Проверьте устройство ввода и разрешение «Микрофон»."
-            case let .diskFull(time): "Всё до \(time) сохранено. Освободите место, чтобы продолжить."
-            case .callSilent: "5 минут тишины со стороны «они», пока вы говорите. Проверьте разрешение «Звук звонка»."
-            }
-        }
+        public var kind: Kind
+        public var title: String
+        public var line: String
+        public var button: String
+        public var action: PanelEvent
 
-        public var button: String {
-            switch self {
-            case .diskFull: "Открыть папку"
-            default: "Открыть настройки macOS"
-            }
-        }
+        public init(kind: Kind, title: String, line: String, button: String, action: PanelEvent) {
 
-        public var action: PanelEvent {
-            switch self {
-            case .microphone: .openSettings(.microphone)
-            case .callAudio, .callSilent: .openSettings(.systemAudioRecording)
-            case .diskFull: .openCallsFolder
-            }
+            self.kind = kind
+            self.title = title
+            self.line = line
+            self.button = button
+            self.action = action
         }
     }
 
