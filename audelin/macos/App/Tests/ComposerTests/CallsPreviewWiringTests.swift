@@ -73,19 +73,23 @@ struct CallsPreviewWiringTests {
     @Test func aReloadUpdatesTheOpenPreview() async throws {
         try await withComposition { rig in
             let calls = try #require(rig.menu.calls)
-            try call(a, notes: "# Old", in: rig.root)
+            let old = "# Old\n\nСтарый смысл.", new = "# New\n\nНовый смысл."
+            try call(a, notes: old, in: rig.root)
             await rig.menu.perform(.showCalls)
             await wait(calls) { $0.rows.map(\.hasNotes) == [true] }
+            #expect(calls.state.rows.map(\.gist) == ["Старый смысл."])
             await calls.send(.preview(a))
-            await waitPreview(calls) { $0?.notes == .text("# Old") }
+            await waitPreview(calls) { $0?.notes == .text(old) }
 
-            try call(a, notes: "# New", in: rig.root, create: false)
+            try call(a, notes: new, in: rig.root, create: false)
             await rig.menu.perform(.showCalls)
-            await waitPreview(calls) { $0?.notes == .text("# New") }
+            await waitPreview(calls) { $0?.notes == .text(new) }
+            await wait(calls) { $0.rows.map(\.gist) == ["Новый смысл."] }
 
             try FileManager.default.removeItem(at: folder(a, in: rig.root).appendingPathComponent("summary.md"))
             await rig.menu.perform(.showCalls)
             await wait(calls) { $0.rows.map(\.hasNotes) == [false] }
+            #expect(calls.state.rows.map(\.gist) == [nil])
             await waitPreview(calls) { $0 == nil }
         }
     }
