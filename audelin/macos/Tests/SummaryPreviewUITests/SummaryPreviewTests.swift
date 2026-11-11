@@ -102,11 +102,11 @@ struct SummaryPreviewTests {
         #expect(call.style.body.familyName == sans && call.style.body.pointSize == tokens.typeReading)
         #expect(call.style.lineHeight == tokens.lineReading)
         #expect(call.style.code.familyName == mono)
-        #expect(call.style.headings[1].familyName == mono && call.style.headings[1].pointSize == tokens.typeSmall)
+        #expect(call.style.headings[1].familyName == mono && call.style.headings[1].pointSize == tokens.typeBody)
         #expect(call.style.labelLevels == [2])
         #expect(call.style.headings[2].familyName == sans && call.style.headings[2].pointSize == tokens.typeTopic)
         #expect(call.style.text == NSColor(tokens.text))
-        #expect(call.style.secondary == NSColor(tokens.gutter))
+        #expect(call.style.secondary == NSColor(tokens.sub))
         #expect(text.string == "отрисовано")
     }
 
