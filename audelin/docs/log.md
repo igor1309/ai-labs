@@ -2,6 +2,7 @@
 
 ## 2026-11-11
 
+- Choosing Settings or Calls from the menu bar brings an already open window to the front, over other apps.
 - LAB-1218: Deleting a call moves its folder to the Trash, so it can be put back from Finder; the confirm says so, and a failed move leaves the folder and shows in the calls list.
 - The app menu has Settings… (⌘,), titled in the system language.
 - LAB-1204: The calls list groups calls by day, newest first, in one-line rows of a fixed height; summary status is an icon, actions are in a context menu, a hover ⋯ button and keys (Return, Space, ⌘R, ⌘⌫), and the window's minimum width is 560 pt.
