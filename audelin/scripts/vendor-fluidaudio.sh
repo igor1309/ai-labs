@@ -1,11 +1,12 @@
 #!/bin/sh
 # Writes audelin/macos/Vendor/FluidAudio: FluidAudio's library at one
 # upstream tag, trimmed to what Audelin uses, Parakeet and Nemotron speech
-# recognition with their shared code, and the Nemotron 3 diarizer for the
-# after-call speaker pass (LAB-1123). Speech synthesis, diarization,
-# enhancement, speaker and the other recognition models never ship in
-# Audelin, yet were most of every build. The files kept from those areas
-# define types the remaining code names.
+# recognition with their shared code, and the Nemotron 3 and VBx
+# (offline) diarizers for the after-call speaker pass (LAB-1123, LAB-1131).
+# Speech synthesis, the other diarizers, enhancement, speaker and the
+# other recognition models never ship in Audelin, yet were most of every
+# build. The files kept from those areas define types the remaining code
+# names.
 #
 # Usage: vendor-fluidaudio.sh <tag>   (for example v0.17.7)
 # Rerun on each upgrade; if the build then names a missing type, add the
@@ -27,10 +28,28 @@ ASR/Canary/CanaryConfig.swift
 Diarizer/Core/DiarizerTypes.swift
 Diarizer/DiarizerProtocol.swift
 Diarizer/DiarizerTimeline.swift
+Diarizer/HungarianAssignment.swift
 Diarizer/Nemotron3/Nemotron3Diarizer.swift
 Diarizer/Nemotron3/Nemotron3Models.swift
 Diarizer/Nemotron3/Nemotron3StateUpdater.swift
 Diarizer/Nemotron3/Nemotron3Types.swift
+Diarizer/Offline/Clustering/AHCClustering.swift
+Diarizer/Offline/Clustering/ConstrainedClusterAssignment.swift
+Diarizer/Offline/Clustering/KMeansClustering.swift
+Diarizer/Offline/Clustering/SpeakerCountConstraints.swift
+Diarizer/Offline/Clustering/VBxClustering.swift
+Diarizer/Offline/Core/OfflineDiarizerManager.swift
+Diarizer/Offline/Core/OfflineDiarizerModels.swift
+Diarizer/Offline/Core/OfflineDiarizerTypes.swift
+Diarizer/Offline/Core/PreparedDiarization.swift
+Diarizer/Offline/Extraction/OfflineEmbeddingExtractor.swift
+Diarizer/Offline/Extraction/PLDATransform.swift
+Diarizer/Offline/Extraction/SilenceAwareFbank.swift
+Diarizer/Offline/Extraction/WeightInterpolation.swift
+Diarizer/Offline/Segmentation/OfflineSegmentationProcessor.swift
+Diarizer/Offline/Utils/OfflineReconstruction.swift
+Diarizer/Offline/Utils/VDSPOperations.swift
+Diarizer/Offline/Utils/ZeroVoteReembedder.swift
 Diarizer/Sortformer/SortformerTypes.swift
 Enhancement/LocalVQE/LocalVqeManager.swift
 Enhancement/LocalVQE/LocalVqeStream.swift
