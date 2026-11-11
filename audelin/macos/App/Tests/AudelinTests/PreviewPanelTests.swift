@@ -104,13 +104,14 @@ struct PreviewPanelTests {
         #expect(rendered.attribute(.foregroundColor, at: bodyAt, effectiveRange: nil) as? NSColor == .red)
     }
 
-    @Test func theUtilityPanelFloatsHidesWithTheAppAndKeepsItsPlace() {
+    @Test func thePanelFloatsWithAStandardTitleBarHidesWithTheAppAndKeepsItsPlace() {
         let panel = makeSummaryPanel()
         defer { panel.close() }
 
         #expect(panel.isFloatingPanel)
         #expect(panel.hidesOnDeactivate)
-        #expect(panel.styleMask.isSuperset(of: [.titled, .closable, .resizable, .utilityWindow]))
+        #expect(panel.styleMask.isSuperset(of: [.titled, .closable, .resizable]))
+        #expect(!panel.styleMask.contains(.utilityWindow))
         #expect(panel.frameAutosaveName == "SummaryPreview")
         #expect(!panel.isReleasedWhenClosed)
         #expect(panel.minSize.width >= 320)

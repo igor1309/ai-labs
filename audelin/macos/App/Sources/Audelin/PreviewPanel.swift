@@ -72,12 +72,12 @@ func connectPreview(panel: PreviewPanel, preview: @escaping @MainActor () -> Cal
     }
 }
 
-/// The utility panel the preview lives in: it floats above the calls list,
+/// The floating panel the preview lives in, with a standard title bar: it floats above the calls list,
 /// hides while another app is active, and keeps its frame across restarts.
 @MainActor
 func makeSummaryPanel() -> NSPanel {
     let panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 440, height: 560),
-                        styleMask: [.titled, .closable, .resizable, .utilityWindow], backing: .buffered, defer: true)
+                        styleMask: [.titled, .closable, .resizable], backing: .buffered, defer: true)
     panel.isFloatingPanel = true
     panel.hidesOnDeactivate = true
     panel.becomesKeyOnlyIfNeeded = true
