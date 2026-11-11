@@ -1,5 +1,6 @@
 import MenuBar
 import PanelUI
+import Preferences
 import SettingsUI
 import Session
 import Observation
@@ -53,5 +54,54 @@ struct LanguageSwitchTests {
         await panel.end(id: 1)
         text.continuation.finish()
         clock.finish()
+    }
+}
+
+/// The General tab's language picker saves the choice and switches Audelin live.
+@MainActor
+@Suite(.timeLimit(.minutes(1)))
+struct LanguageSettingTests {
+
+    @Test func choosingALanguageSavesItAndSwitchesAtOnce() async throws {
+        try await withComposition { rig in
+            #expect(rig.menu.language == .russian)
+            #expect(rig.menu.settingsState.selectedTab == .general)
+            #expect(rig.menu.settingsState.general.language.selected == .system)
+            #expect(rig.menu.settingsState.general.language.hint == SettingsText(language: .russian)(.languageHintSystem))
+            await rig.menu.sendSettings(.selectLanguage(.english))
+            #expect(rig.menu.language == .english)
+            #expect(PreferencesStore(fileURL: rig.root.appendingPathComponent("preferences.json")).read().language == .english)
+            let general = rig.menu.settingsState.general
+            #expect(general.language.selected == .english)
+            #expect(general.language.hint == "macOS uses Русский.")
+            #expect(general.language.segments.map(\.title) == ["System", "Русский", "English"])
+        }
+    }
+
+    @Test func aSavedChoiceIsShownFromLaunch() async throws {
+        try await withComposition(preferences: { root in
+            var saved = Preferences(automaticRecording: false, liveText: true, callsFolder: root)
+            saved.language = .english
+            return saved
+        }) { rig in
+            #expect(rig.menu.language == .english)
+            #expect(rig.menu.panelText == PanelText(language: .english))
+            #expect(rig.menu.settingsState.general.language.selected == .english)
+        }
+    }
+
+    @Test func systemFallsBackToEnglishAndNamesTheMacOSLanguage() async throws {
+        try await withComposition(configure: { $0.preferredLanguages = { ["de-DE"] } }) { rig in
+            #expect(rig.menu.language == .english)
+            #expect(rig.menu.settingsState.general.language.hint == "Now English: Audelin has no Deutsch, the macOS language.")
+            await rig.menu.sendSettings(.selectLanguage(.russian))
+            #expect(rig.menu.language == .russian)
+            #expect(rig.menu.settingsState.general.language.hint == "Язык macOS — Deutsch.")
+        }
+    }
+
+    @Test(arguments: [("de", "Deutsch"), ("ru-RU", "Русский"), ("en-GB", "English"), ("fr", "Français")])
+    func languagesAreNamedInTheirOwnLanguage(identifier: String, name: String) {
+        #expect(languageName(identifier) == name)
     }
 }

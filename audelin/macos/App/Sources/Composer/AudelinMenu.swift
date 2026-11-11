@@ -69,6 +69,10 @@ public final class AudelinMenu {
     let currentLanguage: CurrentLanguage
     /// The language Audelin's text is shown in.
     public private(set) var language: UILanguage
+    /// What the person picked in General, which `language` resolves.
+    private var languageChoice: LanguageChoice
+    private let preferredLanguages: @Sendable () -> [String]
+    private let saveLanguage: (Preferences.Language) throws -> Void
     private var menuText: MenuBarText { MenuBarText(language: language.menuBar) }
     /// Settings' text, in the language Audelin is shown in.
     public var settingsText: SettingsText { language.settings }
@@ -111,10 +115,13 @@ public final class AudelinMenu {
         sleep: @escaping @Sendable (Duration) async throws -> Void,
         cleanupRuns: CleanupRuns,
         summaries: AudelinSummaries? = nil,
-        language: CurrentLanguage = CurrentLanguage(.russian)
+        language: CurrentLanguage
     ) async {
 
         currentLanguage = language
+        languageChoice = LanguageChoice(storage.read().language)
+        preferredLanguages = boundary.preferredLanguages
+        saveLanguage = storage.updateLanguage
         self.language = language.language
 
         self.sink = sink
@@ -192,8 +199,9 @@ public final class AudelinMenu {
         var result = SettingsState(recordsCalls: preferences.automaticRecording, liveText: preferences.liveText,
                       folder: .init(path: settings.callsFolder.path, status: state.phase == .idle ? .idle(calls: "") : .recording),
                       engines: [.init(id: "parakeet", name: "Parakeet v3", note: settingsText(.localRecognition), availability: "", size: "")],
-                      selectedEngine: "parakeet", explainKeys: "", selectedTab: summarySettings?.selectedTab ?? .recording,
-                      callNotes: summarySettings?.notes ?? .loading(settingsText(.notesLoading)))
+                      selectedEngine: "parakeet", explainKeys: "", selectedTab: summarySettings?.selectedTab ?? .general,
+                      callNotes: summarySettings?.notes ?? .loading(settingsText(.notesLoading)),
+                      general: settingsText.general(languageChoice, preferred: preferredLanguages()))
         if pickerFailed, case .idle = result.folder.status { result.folder.status = .pickerFailed(reason: settingsText(.pickerFailedReason)) }
         if let recordings = calls?.recordingsState { applyFolderMove(recordings, text: settingsText, to: &result) }
         return result
@@ -217,8 +225,19 @@ public final class AudelinMenu {
         case .cancelMove: calls?.sendRecordings(.cancelMove)
         case let .setRecordsCalls(value): await perform(.setAutomatic(value))
         case let .setLiveText(value): await perform(.setLiveText(value))
+        case let .selectLanguage(value): await chooseLanguage(LanguageChoice(rawValue: value.rawValue) ?? .system)
         default: summarySettings?.send(event)
         }
+    }
+
+    /// Saves the choice, then shows Audelin in the language it gives.
+    private func chooseLanguage(_ choice: LanguageChoice) async {
+        guard choice != languageChoice else { return }
+        do { try saveLanguage(choice.saved) } catch {
+            sink.write(.init(category: .menu, message: "language save failed", error: String(describing: error)))
+        }
+        languageChoice = choice
+        await languageChanged(uiLanguage(choice, preferred: preferredLanguages()))
     }
 
     func installCalls(_ calls: AudelinCalls) {

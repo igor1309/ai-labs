@@ -137,6 +137,8 @@ public struct ComposerBoundary: Sendable {
     public var intervals: ProfileIntervals
     public var transcripts: any TranscriptStorage
     public var recordings: any RecordingStorage
+    /// macOS's preferred languages, most preferred first, as BCP 47 identifiers.
+    public var preferredLanguages: @Sendable () -> [String]
 
     public init(capturePersistence: CapturePersistence, microphone: any MicrophoneSource, callAudio: any CallAudioSource,
                 recognizers: any RecognizerSource, processes: any CallProcessSource, access: any CallAudioAccessSource,
@@ -144,7 +146,9 @@ public struct ComposerBoundary: Sendable {
                 time: any ComposerClock, log: any LogSink, intervals: ProfileIntervals,
                 recordings: any RecordingStorage,
                 bleedCleaning: any MicrophoneCleaning<CleanupRecording, [Float]>,
-                bleedHearing: any CleanedHearing<[Float], [TranscriptSegment]>, transcripts: any TranscriptStorage = FileTranscriptStorage()) {
+                bleedHearing: any CleanedHearing<[Float], [TranscriptSegment]>, transcripts: any TranscriptStorage = FileTranscriptStorage(),
+                preferredLanguages: @escaping @Sendable () -> [String] = { Locale.preferredLanguages }) {
+        self.preferredLanguages = preferredLanguages
         self.bleedCleaning = bleedCleaning; self.bleedHearing = bleedHearing
         self.transcripts = transcripts
         self.capturePersistence = capturePersistence

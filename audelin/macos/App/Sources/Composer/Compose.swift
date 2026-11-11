@@ -43,7 +43,7 @@ public func compose(
                                             home: FileManager.default.homeDirectoryForCurrentUser.path).resolve,
         deadline: { try await boundary.time.sleep(.seconds(120)) })
     let summaryFiles = SummaryFiles.Files(locations: storage, disk: FileDisk(), ownershipDirectory: preferencesURL.deletingLastPathComponent().appendingPathComponent("summary-ownership"))
-    let language = CurrentLanguage(.russian)
+    let language = CurrentLanguage(uiLanguage(LanguageChoice(preferences.read().language), preferred: boundary.preferredLanguages()))
     let summaries = AudelinSummaries(files: summaryFiles,
                                      runtime: runtime, preferences: preferences, sink: boundary.log,
                                      text: language.language.callsList, status: { language.language.callsList.summaryStatus($0, $1) })

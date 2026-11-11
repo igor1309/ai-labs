@@ -9,7 +9,7 @@ import SummaryRuntime
 @MainActor @Observable
 public final class AudelinSettings {
     private let model: ObservableModel<SummarySettings.State, SummarySettings.Event, SummarySettings.Effect>
-    public var selectedTab: SettingsState.Tab = .recording
+    public var selectedTab: SettingsState.Tab = .general
     private let text: @Sendable () -> SettingsText
     init(preferences: any SummarySettings.Preferences, availability: any SummarySettings.Availability, text: @escaping @Sendable () -> SettingsText) {
         self.text = text

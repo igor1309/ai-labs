@@ -2,6 +2,7 @@ import CallsListUI
 import Foundation
 import MenuBar
 import PanelUI
+import Preferences
 import SettingsUI
 import SummaryPreviewUI
 import Synchronization
@@ -36,6 +37,55 @@ final class CurrentLanguage: Sendable {
     var language: UILanguage {
         get { value.withLock { $0 } }
         set { value.withLock { $0 = newValue } }
+    }
+}
+
+extension LanguageChoice {
+    init(_ saved: Preferences.Language) {
+        switch saved {
+        case .system: self = .system
+        case .russian: self = .russian
+        case .english: self = .english
+        }
+    }
+    var saved: Preferences.Language {
+        switch self {
+        case .system: .system
+        case .russian: .russian
+        case .english: .english
+        }
+    }
+}
+
+/// A language's name in that language, as macOS writes it: "Deutsch" for German.
+func languageName(_ identifier: String) -> String {
+    let code = Locale.Language(identifier: identifier).languageCode?.identifier ?? identifier
+    let own = Locale(identifier: code)
+    return (own.localizedString(forLanguageCode: code) ?? code).capitalized(with: own)
+}
+
+extension SettingsText {
+    /// The General tab for the chosen language, its line saying what System gives or what macOS uses.
+    func general(_ choice: LanguageChoice, preferred: [String]) -> SettingsState.General {
+        let macOS = languageName(preferred.first ?? "en")
+        let supported = preferred.contains { UILanguage(rawValue: Locale.Language(identifier: $0).languageCode?.identifier ?? "") != nil }
+        let hint = switch choice {
+        case .system: supported ? self(.languageHintSystem) : self(.languageHintFallback, macOS)
+        case .russian, .english: self(.languageHintForced, macOS)
+        }
+        let selected: SettingsState.General.Language = switch choice {
+        case .system: .system
+        case .russian: .russian
+        case .english: .english
+        }
+        return .init(
+            language: .init(segments: [.init(id: .system, title: self(.languageSystem)),
+                                       .init(id: .russian, title: languageName("ru")), .init(id: .english, title: languageName("en"))],
+                            selected: selected, hint: hint),
+            appearance: .init(segments: [.init(id: .system, title: self(.appearanceSystem)),
+                                         .init(id: .light, title: self(.appearanceLight), isEnabled: false),
+                                         .init(id: .dark, title: self(.appearanceDark), isEnabled: false)],
+                              selected: .system, hint: self(.appearanceHint)))
     }
 }
 
