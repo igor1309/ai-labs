@@ -36,7 +36,11 @@ actor SummaryTranscript: SessionTranscriptFile {
     }
     func close() async {
         await base.close()
-        let (next, effect) = Handoff.reduce(state, .closed)
+        var (next, effect) = Handoff.reduce(state, .closed)
+        if effect == .diarize {
+            // Remote speakers are found when the file closes; the entries keep their labels.
+            (next, effect) = Handoff.reduce(next, .diarized(nil))
+        }
         state = next
         if case let .offer(entries, finalWrite, usable) = effect {
             if finalWrite, let last {
