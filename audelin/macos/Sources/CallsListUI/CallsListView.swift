@@ -45,11 +45,12 @@ public struct CallsListView: View {
         .focusEffectDisabled()
         .onExitCommand { if state.editing != nil { event(.cancelRename) } }
         .onKeyPress(keys: [.downArrow, .upArrow]) { press in
+            guard state.editing == nil else { return .ignored }
             event(press.key == .downArrow ? .selectNext : .selectPrevious)
             return .handled
         }
         .onKeyPress(keys: [.return, .space, "r", .delete, .backspace]) { press in
-            guard let row = state.rows.first(where: { $0.id == state.selectedID }),
+            guard state.editing == nil, let row = state.rows.first(where: { $0.id == state.selectedID }),
                   let action = keyAction(press, row) else { return .ignored }
             event(action)
             return .handled
@@ -117,7 +118,7 @@ public struct CallsListView: View {
                             .onSubmit { event(.submitRename) }
                             .onExitCommand { event(.cancelRename) }
                     }
-                    .padding(.horizontal, tokens.space4)
+                    .padding(.horizontal, tokens.space4).padding(.vertical, tokens.space4)
                     .background(tokens.surface, in: .rect(cornerRadius: tokens.radiusControl))
                     .overlay(RoundedRectangle(cornerRadius: tokens.radiusControl).stroke(tokens.me, lineWidth: 1.5))
                 } else {

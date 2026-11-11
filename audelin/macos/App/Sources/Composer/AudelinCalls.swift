@@ -249,6 +249,14 @@ public final class AudelinCalls {
         updatePreview()
     }
 
+    /// Ends an inline rename by saving its title, as leaving the field does in Finder.
+    private func commitRename() {
+        guard let edit = editing else { return }
+        editing = nil
+        openFailure = nil
+        inputs.send(.rename(id: edit.id, title: edit.title))
+    }
+
     func recordingChanged(_ state: RecordingState) {
         let id = recordedCallID(state)
         if editing?.id == id { editing = nil }
@@ -267,11 +275,7 @@ public final class AudelinCalls {
             editing = .init(id: id, title: row.title)
         case let .editTitle(title): editing?.title = title
         case .cancelRename: editing = nil
-        case .submitRename:
-            guard let edit = editing else { return }
-            editing = nil
-            openFailure = nil
-            inputs.send(.rename(id: edit.id, title: edit.title))
+        case .submitRename: commitRename()
         case let .askDelete(id):
             editing = nil
             openFailure = nil
@@ -281,12 +285,14 @@ public final class AudelinCalls {
             inputs.send(.confirmDelete)
         case .cancelDelete: inputs.send(.cancelDelete)
         case let .select(id):
+            if editing?.id != id { commitRename() }
             selectedID = id
             updatePreview()
         case let .search(text): search(text)
-        case .selectNext: move(by: 1, in: snapshot.rows)
-        case .selectPrevious: move(by: -1, in: snapshot.rows)
+        case .selectNext: commitRename(); move(by: 1, in: snapshot.rows)
+        case .selectPrevious: commitRename(); move(by: -1, in: snapshot.rows)
         case let .preview(id):
+            if editing?.id != id { commitRename() }
             // An eye asks for the panel to be the active window; a row
             // selection only moves its content.
             focusPreview()
