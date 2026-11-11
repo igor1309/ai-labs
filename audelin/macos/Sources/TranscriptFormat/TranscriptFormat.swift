@@ -135,13 +135,20 @@ public struct TranscriptFormat: Sendable {
     /// One listed remote speaker reads as plain `Them`, as a call without diarization does.
     private var lone: Bool { speakers.count == 1 }
 
-    /// A remote speaker reads as `Them N`, N being its place in the speaker list; the list
-    /// only grows, so a final row's label holds. An unlisted or absent speaker reads as `Them`.
     private func label(_ segment: Segment) -> String {
 
+        Self.label(segment, speakerIDs: speakers.map(\.id))
+    }
+
+    /// A row's speaker label, shared with every other text that names speakers. A remote
+    /// speaker reads as `Them N`, N being its place in the speaker list, which only grows, so
+    /// N never changes. An unlisted or absent speaker, or the only listed one, reads as `Them`;
+    /// the lone speaker's rows become `Them 1` when a second is listed.
+    public static func label(_ segment: Segment, speakerIDs: [String]) -> String {
+
         guard segment.side == .theirs else { return "Me" }
-        guard let id = segment.speaker, let index = speakers.firstIndex(where: { $0.id == id }) else { return "Them" }
-        return lone ? "Them" : "Them \(index + 1)"
+        guard speakerIDs.count > 1, let id = segment.speaker, let index = speakerIDs.firstIndex(of: id) else { return "Them" }
+        return "Them \(index + 1)"
     }
 
     /// A readable Speakers section and one versioned machine-readable block after it.

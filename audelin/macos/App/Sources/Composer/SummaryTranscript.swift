@@ -51,11 +51,12 @@ actor SummaryTranscript: SessionTranscriptFile {
     }
 }
 
-func summaryEntries(_ segments: [TranscriptFormat.Segment]) -> [Job.Entry] {
+/// `speakerIDs` is the transcript's speaker list, so each remote speaker reads as in the file.
+func summaryEntries(_ segments: [TranscriptFormat.Segment], speakerIDs: [String] = []) -> [Job.Entry] {
     segments.compactMap { segment in
         let words = [segment.settled, segment.pending].filter { !$0.isEmpty }.joined(separator: " ")
         guard !words.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
-        return .init(label: segment.side == .mine ? "Me" : "Them", time: String(segment.start), text: words)
+        return .init(label: TranscriptFormat.label(segment, speakerIDs: speakerIDs), time: String(segment.start), text: words)
     }
 }
 
