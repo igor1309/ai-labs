@@ -23,7 +23,7 @@ struct CallsListNotesTests {
         #expect(shown.sent == [.preview("2026.10.17-1100")])
     }
 
-    @Test func clickingARowsTitleSelectsItAndStartsItsRename() throws {
+    @Test func clickingARowsTitleOnlySelectsIt() throws {
 
         let shown = Shown(makeState())
         defer { shown.close() }
@@ -32,7 +32,7 @@ struct CallsListNotesTests {
 
         shown.click(CGPoint(x: 200, y: (first.midY + last.midY) / 2))
 
-        #expect(shown.sent == [.select("2026.10.20-1600"), .beginRename("2026.10.20-1600")])
+        #expect(shown.sent == [.select("2026.10.20-1600")])
     }
 
     @Test func clickingARowSelectsIt() throws {
