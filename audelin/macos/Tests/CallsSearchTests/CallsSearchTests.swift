@@ -29,7 +29,7 @@ struct CallsSearchTests {
     }
 
     @Test func notesMatchAsPlainTextWhenTheTranscriptDoesNot() {
-        let match = CallsSearch.match("okr", title: "Ретро", transcript: [.init(start: 1, words: "привет")], notes: "# Итоги\n\n- из пяти **OKR** года")
+        let match = CallsSearch.match("okr", title: "Ретро", transcript: [.init(start: 1, words: "привет")], notes: "<!-- audelin-summary:okr -->\n# Итоги\n\n- из пяти **OKR** года")
         #expect(match == .init(title: [], snippet: .init(place: .notes, text: "Итоги из пяти OKR года", hits: [14..<17], more: 0)))
     }
 

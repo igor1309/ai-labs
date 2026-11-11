@@ -93,9 +93,10 @@ public enum CallsSearch {
         }
     }
 
-    /// Notes as running text: Markdown marks dropped and lines joined.
+    /// Notes as running text: comment lines and Markdown marks dropped, lines joined.
     private static func plain(_ markdown: String) -> String {
         markdown.split(whereSeparator: \.isNewline)
+            .filter { !$0.hasPrefix("<!--") }
             .map { $0.filter { !"*_`#>".contains($0) }.trimmingCharacters(in: .whitespaces) }
             .map { $0.hasPrefix("- ") ? String($0.dropFirst(2)) : $0 }
             .filter { !$0.isEmpty }
