@@ -72,6 +72,38 @@ struct CallsListNotesTests {
         #expect(shown.sent == [.selectNext, .selectPrevious])
     }
 
+    @Test func keysActOnTheSelectedCall() throws {
+
+        var state = makeState()
+        state.selectedID = state.rows[0].id
+        let shown = Shown(state)
+        defer { shown.close() }
+
+        shown.type("\r", code: 36)
+        shown.type(" ", code: 49)
+        shown.type("r", code: 15, modifiers: .command)
+        shown.type("\u{7F}", code: 51, modifiers: .command)
+        shown.type("r", code: 15)
+
+        let id = state.rows[0].id
+        #expect(shown.sent == [.open(id), .preview(id), .beginRename(id), .askDelete(id)])
+    }
+
+    @Test func keysSkipWhatTheSelectedCallCannotDo() throws {
+
+        var state = makeState()
+        state.selectedID = state.rows[1].id
+        state.rows[1] = .init(id: state.rows[1].id, title: "Синк", displayTitle: "Синк", day: nil, time: "16:00", duration: "1:12:00", editable: false)
+        let shown = Shown(state)
+        defer { shown.close() }
+
+        shown.type(" ", code: 49)
+        shown.type("r", code: 15, modifiers: .command)
+        shown.type("\u{7F}", code: 51, modifiers: .command)
+
+        #expect(shown.sent.isEmpty)
+    }
+
     // MARK: - Helpers
 
     @MainActor private final class Shown {
@@ -124,6 +156,14 @@ struct CallsListNotesTests {
         func press(_ key: Int, code: UInt16) {
             let characters = String(Character(UnicodeScalar(key)!))
             window.sendEvent(NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [.function, .numericPad],
+                                              timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber,
+                                              context: nil, characters: characters, charactersIgnoringModifiers: characters,
+                                              isARepeat: false, keyCode: code)!)
+            settle()
+        }
+
+        func type(_ characters: String, code: UInt16, modifiers: NSEvent.ModifierFlags = []) {
+            window.sendEvent(NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: modifiers,
                                               timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber,
                                               context: nil, characters: characters, charactersIgnoringModifiers: characters,
                                               isARepeat: false, keyCode: code)!)

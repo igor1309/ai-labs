@@ -3,7 +3,7 @@
   "children": [
     {
       "type": "frame",
-      "id": "icg5C",
+      "id": "QAdcr",
       "x": 0,
       "y": -760,
       "name": "Components",
@@ -15,7 +15,7 @@
       "children": [
         {
           "type": "text",
-          "id": "QRbD4",
+          "id": "XvnrT",
           "name": "Board title",
           "fill": "$text",
           "content": "Calls list — components",
@@ -25,14 +25,14 @@
         },
         {
           "type": "frame",
-          "id": "uEdTj",
+          "id": "As5Xf",
           "name": "Comp row",
           "width": "fill_container",
           "gap": "$space-24",
           "children": [
             {
               "type": "frame",
-              "id": "cSzGL",
+              "id": "sO1jp",
               "name": "Comp col",
               "width": 900,
               "layout": "vertical",
@@ -40,7 +40,7 @@
               "children": [
                 {
                   "type": "frame",
-                  "id": "gJG4t",
+                  "id": "bncv0",
                   "name": "Title bar",
                   "reusable": true,
                   "width": 900,
@@ -58,7 +58,7 @@
                   "children": [
                     {
                       "type": "ellipse",
-                      "id": "D62e4n",
+                      "id": "v37sZ",
                       "name": "Light",
                       "fill": "#FF5F57",
                       "width": 12,
@@ -66,7 +66,7 @@
                     },
                     {
                       "type": "ellipse",
-                      "id": "a3QWRy",
+                      "id": "iCvyA",
                       "name": "Light",
                       "fill": "#FEBC2E",
                       "width": 12,
@@ -74,7 +74,7 @@
                     },
                     {
                       "type": "ellipse",
-                      "id": "B9XKgu",
+                      "id": "gRamA",
                       "name": "Light",
                       "fill": "#28C840",
                       "width": 12,
@@ -82,7 +82,7 @@
                     },
                     {
                       "type": "text",
-                      "id": "l2Aeb",
+                      "id": "TYPTp",
                       "name": "Title",
                       "fill": "$text",
                       "textGrowth": "fixed-width",
@@ -95,7 +95,7 @@
                     },
                     {
                       "type": "frame",
-                      "id": "n7H4tT",
+                      "id": "DSpcP",
                       "name": "Balance",
                       "width": 52,
                       "height": 12
@@ -104,7 +104,7 @@
                 },
                 {
                   "type": "frame",
-                  "id": "e3SwZe",
+                  "id": "pmtOb",
                   "name": "Day header",
                   "reusable": true,
                   "width": 900,
@@ -120,7 +120,7 @@
                   "children": [
                     {
                       "type": "text",
-                      "id": "lCYBS",
+                      "id": "OPQgF",
                       "name": "Day",
                       "fill": "$sub",
                       "content": "Сегодня",
@@ -130,7 +130,7 @@
                     },
                     {
                       "type": "text",
-                      "id": "jmtGe",
+                      "id": "u0i8d",
                       "name": "Count",
                       "fill": "$gutter",
                       "content": "3 звонка",
@@ -142,7 +142,7 @@
                 },
                 {
                   "type": "frame",
-                  "id": "UVznt",
+                  "id": "g69Zqs",
                   "name": "Row",
                   "reusable": true,
                   "width": 900,
@@ -156,7 +156,7 @@
                   "children": [
                     {
                       "type": "text",
-                      "id": "pZS2W",
+                      "id": "OUVdK",
                       "name": "Time",
                       "fill": "$gutter",
                       "textGrowth": "fixed-width",
@@ -168,7 +168,7 @@
                     },
                     {
                       "type": "text",
-                      "id": "PxTs0",
+                      "id": "g0Vusi",
                       "name": "Title",
                       "fill": "$text",
                       "textGrowth": "fixed-width-height",
@@ -181,7 +181,7 @@
                     },
                     {
                       "type": "text",
-                      "id": "sfjxq",
+                      "id": "g3og3",
                       "name": "Duration",
                       "fill": "$sub",
                       "textGrowth": "fixed-width",
@@ -194,7 +194,7 @@
                     },
                     {
                       "type": "frame",
-                      "id": "ZswPC",
+                      "id": "nIQ82",
                       "name": "Status",
                       "width": 64,
                       "height": "fit_content(0)",
@@ -204,7 +204,7 @@
                       "children": [
                         {
                           "type": "icon",
-                          "id": "ns8dS",
+                          "id": "o8kcr",
                           "x": 0,
                           "y": 0,
                           "name": "Pending",
@@ -217,7 +217,7 @@
                         },
                         {
                           "type": "icon",
-                          "id": "c2YAFU",
+                          "id": "qGv7w",
                           "x": 0,
                           "y": 0,
                           "name": "Failed",
@@ -230,7 +230,7 @@
                         },
                         {
                           "type": "icon",
-                          "id": "e7ly1",
+                          "id": "k3ypSL",
                           "x": 0,
                           "y": 0,
                           "name": "Notes",
@@ -243,7 +243,7 @@
                         },
                         {
                           "type": "frame",
-                          "id": "uqDCA",
+                          "id": "exyCz",
                           "x": 0,
                           "y": 0,
                           "name": "More",
@@ -257,7 +257,7 @@
                           "children": [
                             {
                               "type": "icon",
-                              "id": "jgHuy",
+                              "id": "S0w6h1",
                               "name": "More icon",
                               "width": 14,
                               "height": 14,
@@ -275,14 +275,14 @@
             },
             {
               "type": "frame",
-              "id": "fG41b",
+              "id": "S9NrrG",
               "name": "Comp side",
               "layout": "vertical",
               "gap": "$space-12",
               "children": [
                 {
                   "type": "frame",
-                  "id": "gutJe",
+                  "id": "yYo9u",
                   "name": "Context menu",
                   "reusable": true,
                   "width": 240,
@@ -306,7 +306,7 @@
                   "children": [
                     {
                       "type": "frame",
-                      "id": "BJZpq",
+                      "id": "G7LfGk",
                       "name": "Открыть",
                       "width": "fill_container",
                       "fill": "$okBg",
@@ -319,7 +319,7 @@
                       "children": [
                         {
                           "type": "text",
-                          "id": "VtpWa",
+                          "id": "R2Ox5D",
                           "name": "Label",
                           "fill": "$text",
                           "content": "Открыть",
@@ -329,7 +329,7 @@
                         },
                         {
                           "type": "text",
-                          "id": "X8WF6",
+                          "id": "yQmbg",
                           "name": "Key",
                           "fill": "$gutter",
                           "content": "↩",
@@ -341,7 +341,7 @@
                     },
                     {
                       "type": "frame",
-                      "id": "I0p2i",
+                      "id": "JVyxh",
                       "name": "Показать заметки",
                       "width": "fill_container",
                       "fill": "#00000000",
@@ -354,7 +354,7 @@
                       "children": [
                         {
                           "type": "text",
-                          "id": "JjwOJ",
+                          "id": "pyHdH",
                           "name": "Label",
                           "fill": "$text",
                           "content": "Показать заметки",
@@ -364,7 +364,7 @@
                         },
                         {
                           "type": "text",
-                          "id": "Uxueh",
+                          "id": "adszq",
                           "name": "Key",
                           "fill": "$gutter",
                           "content": "Пробел",
@@ -376,7 +376,7 @@
                     },
                     {
                       "type": "frame",
-                      "id": "WHlX5",
+                      "id": "u8ULIU",
                       "name": "Переименовать",
                       "width": "fill_container",
                       "fill": "#00000000",
@@ -389,7 +389,7 @@
                       "children": [
                         {
                           "type": "text",
-                          "id": "G6EtE",
+                          "id": "ykcOs",
                           "name": "Label",
                           "fill": "$text",
                           "content": "Переименовать",
@@ -399,7 +399,7 @@
                         },
                         {
                           "type": "text",
-                          "id": "vuZht",
+                          "id": "unvnl",
                           "name": "Key",
                           "fill": "$gutter",
                           "content": "⌘R",
@@ -411,7 +411,7 @@
                     },
                     {
                       "type": "frame",
-                      "id": "LRtac",
+                      "id": "dQH5z",
                       "name": "Повторить итоги",
                       "width": "fill_container",
                       "fill": "#00000000",
@@ -424,7 +424,7 @@
                       "children": [
                         {
                           "type": "text",
-                          "id": "vHwXI",
+                          "id": "mjaHu",
                           "name": "Label",
                           "fill": "$text",
                           "content": "Повторить итоги",
@@ -434,44 +434,9 @@
                         },
                         {
                           "type": "text",
-                          "id": "GWAfv",
+                          "id": "XkaMQ",
                           "name": "Key",
                           "fill": "$gutter",
-                          "fontFamily": "$font-data",
-                          "fontSize": "$type-caption",
-                          "fontWeight": "normal"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "frame",
-                      "id": "JRhdR",
-                      "name": "Показать в Finder",
-                      "width": "fill_container",
-                      "fill": "#00000000",
-                      "cornerRadius": "$radius-control",
-                      "padding": [
-                        "$space-4",
-                        "$space-8"
-                      ],
-                      "justifyContent": "space_between",
-                      "children": [
-                        {
-                          "type": "text",
-                          "id": "wfZT0",
-                          "name": "Label",
-                          "fill": "$text",
-                          "content": "Показать в Finder",
-                          "fontFamily": "$font-ui",
-                          "fontSize": "$type-small",
-                          "fontWeight": "normal"
-                        },
-                        {
-                          "type": "text",
-                          "id": "O0Meww",
-                          "name": "Key",
-                          "fill": "$gutter",
-                          "content": "⇧⌘R",
                           "fontFamily": "$font-data",
                           "fontSize": "$type-caption",
                           "fontWeight": "normal"
@@ -480,7 +445,7 @@
                     },
                     {
                       "type": "rectangle",
-                      "id": "xiIlT",
+                      "id": "w5UZb",
                       "name": "Separator",
                       "fill": "$rule",
                       "width": "fill_container",
@@ -488,7 +453,7 @@
                     },
                     {
                       "type": "frame",
-                      "id": "X5KFqt",
+                      "id": "jd278",
                       "name": "Удалить…",
                       "width": "fill_container",
                       "fill": "#00000000",
@@ -501,7 +466,7 @@
                       "children": [
                         {
                           "type": "text",
-                          "id": "PQ2h0",
+                          "id": "ZbL3v",
                           "name": "Label",
                           "fill": "$rec",
                           "content": "Удалить…",
@@ -511,7 +476,7 @@
                         },
                         {
                           "type": "text",
-                          "id": "QqJH3",
+                          "id": "zeeNs",
                           "name": "Key",
                           "fill": "$gutter",
                           "content": "⌘⌫",
@@ -525,7 +490,7 @@
                 },
                 {
                   "type": "frame",
-                  "id": "lF22M",
+                  "id": "VmIE5",
                   "name": "Alert",
                   "reusable": true,
                   "width": 340,
@@ -547,7 +512,7 @@
                   "children": [
                     {
                       "type": "text",
-                      "id": "V1eCqL",
+                      "id": "HCntq",
                       "name": "H",
                       "fill": "$text",
                       "content": "Удалить звонок?",
@@ -557,7 +522,7 @@
                     },
                     {
                       "type": "text",
-                      "id": "ElwBE",
+                      "id": "BteBa",
                       "name": "Body",
                       "fill": "$sub",
                       "textGrowth": "fixed-width",
@@ -569,7 +534,7 @@
                     },
                     {
                       "type": "frame",
-                      "id": "QFkuT",
+                      "id": "rUE07",
                       "name": "Buttons",
                       "width": "fill_container",
                       "layout": "vertical",
@@ -577,7 +542,7 @@
                       "children": [
                         {
                           "type": "frame",
-                          "id": "hOIs7",
+                          "id": "I1uoqI",
                           "name": "Button/Destructive",
                           "width": "fill_container",
                           "fill": "$errBg",
@@ -590,7 +555,7 @@
                           "children": [
                             {
                               "type": "text",
-                              "id": "E2A9Lz",
+                              "id": "Y0Wfz",
                               "name": "Label",
                               "fill": "$rec",
                               "content": "Удалить",
@@ -602,7 +567,7 @@
                         },
                         {
                           "type": "frame",
-                          "id": "v4dMyd",
+                          "id": "WiqFY",
                           "name": "Button/Secondary",
                           "width": "fill_container",
                           "fill": "$btn",
@@ -615,7 +580,7 @@
                           "children": [
                             {
                               "type": "text",
-                              "id": "oVlyx",
+                              "id": "b0h8y",
                               "name": "Label",
                               "fill": "$text",
                               "content": "Отмена",
@@ -631,7 +596,7 @@
                 },
                 {
                   "type": "frame",
-                  "id": "oREfI",
+                  "id": "bmW3Z",
                   "name": "Rename field",
                   "reusable": true,
                   "width": "fill_container",
@@ -647,7 +612,7 @@
                   "children": [
                     {
                       "type": "text",
-                      "id": "dYbkV",
+                      "id": "S5yyBG",
                       "name": "Prefix",
                       "fill": "$gutter",
                       "content": "2026.11.11-1230 ",
@@ -657,7 +622,7 @@
                     },
                     {
                       "type": "text",
-                      "id": "l8jSkm",
+                      "id": "X5t9I",
                       "name": "Title",
                       "fill": "$text",
                       "content": "Запуск: роли и SLA|",
@@ -669,7 +634,7 @@
                 },
                 {
                   "type": "frame",
-                  "id": "Pz7Rg",
+                  "id": "RHrYH",
                   "name": "Error banner",
                   "reusable": true,
                   "width": 400,
@@ -683,7 +648,7 @@
                   "children": [
                     {
                       "type": "icon",
-                      "id": "wvYrU",
+                      "id": "J0hD4m",
                       "name": "Icon",
                       "width": 14,
                       "height": 14,
@@ -693,7 +658,7 @@
                     },
                     {
                       "type": "text",
-                      "id": "aRSD7",
+                      "id": "VOryR",
                       "name": "Text",
                       "fill": "$rec",
                       "textGrowth": "fixed-width",
@@ -713,7 +678,7 @@
     },
     {
       "type": "frame",
-      "id": "NzEpL",
+      "id": "QV3nx",
       "x": 0,
       "y": 0,
       "name": "Calls — wide",
@@ -732,7 +697,7 @@
       "children": [
         {
           "type": "frame",
-          "id": "NWB2l",
+          "id": "AUib7",
           "x": 0,
           "y": 0,
           "name": "Content",
@@ -741,328 +706,328 @@
           "layout": "vertical",
           "children": [
             {
-              "id": "jO43W",
+              "id": "GH04N",
               "type": "ref",
-              "ref": "gJG4t",
+              "ref": "bncv0",
               "name": "Title bar",
               "width": "fill_container"
             },
             {
-              "id": "pmFOw",
+              "id": "EJ2eF",
               "type": "ref",
-              "ref": "e3SwZe",
+              "ref": "pmtOb",
               "name": "Day Сегодня",
               "width": "fill_container",
               "descendants": {
-                "lCYBS": {
+                "OPQgF": {
                   "content": "Сегодня"
                 },
-                "jmtGe": {
+                "u0i8d": {
                   "content": "2 звонка"
                 }
               }
             },
             {
-              "id": "tQQPQ",
+              "id": "gWDx7",
               "type": "ref",
-              "ref": "UVznt",
+              "ref": "g69Zqs",
               "name": "Row 1",
               "width": "fill_container",
               "fill": "$okBg",
               "descendants": {
-                "pZS2W": {
+                "OUVdK": {
                   "content": "12:30"
                 },
-                "PxTs0": {
+                "g0Vusi": {
                   "content": "Запуск: роли и SLA",
                   "fill": "$text",
                   "fontFamily": "$font-ui",
                   "fontWeight": "600"
                 },
-                "sfjxq": {
+                "g3og3": {
                   "content": "47:00"
                 },
-                "ns8dS": {
+                "o8kcr": {
                   "enabled": false
                 },
-                "c2YAFU": {
+                "qGv7w": {
                   "enabled": false
                 },
-                "e7ly1": {
+                "k3ypSL": {
                   "enabled": true,
                   "fill": "$me"
                 },
-                "uqDCA": {
+                "exyCz": {
                   "enabled": false
                 }
               }
             },
             {
-              "id": "s1vkw",
+              "id": "tVt29",
               "type": "ref",
-              "ref": "UVznt",
+              "ref": "g69Zqs",
               "name": "Row 2",
               "width": "fill_container",
               "fill": "$surface",
               "descendants": {
-                "pZS2W": {
+                "OUVdK": {
                   "content": "09:05"
                 },
-                "PxTs0": {
+                "g0Vusi": {
                   "content": "Интервью: кандидат на iOS — техническая часть, архитектура, тесты и вопросы по Swift Concurren…",
                   "fill": "$text",
                   "fontFamily": "$font-ui",
                   "fontWeight": "600"
                 },
-                "sfjxq": {
+                "g3og3": {
                   "content": "1:12:40"
                 },
-                "ns8dS": {
+                "o8kcr": {
                   "enabled": true
                 },
-                "c2YAFU": {
+                "qGv7w": {
                   "enabled": false
                 },
-                "e7ly1": {
+                "k3ypSL": {
                   "enabled": false,
                   "fill": "$sub"
                 },
-                "uqDCA": {
+                "exyCz": {
                   "enabled": false
                 }
               }
             },
             {
-              "id": "ZOmJm",
+              "id": "C9fynt",
               "type": "ref",
-              "ref": "e3SwZe",
+              "ref": "pmtOb",
               "name": "Day Вчера",
               "width": "fill_container",
               "descendants": {
-                "lCYBS": {
+                "OPQgF": {
                   "content": "Вчера"
                 },
-                "jmtGe": {
+                "u0i8d": {
                   "content": "2 звонка"
                 }
               }
             },
             {
-              "id": "u9iQC",
+              "id": "vr7a9",
               "type": "ref",
-              "ref": "UVznt",
+              "ref": "g69Zqs",
               "name": "Row 3",
               "width": "fill_container",
               "fill": "$card",
               "descendants": {
-                "pZS2W": {
+                "OUVdK": {
                   "content": "16:00"
                 },
-                "PxTs0": {
+                "g0Vusi": {
                   "content": "Синк по OKR на квартал",
                   "fill": "$text",
                   "fontFamily": "$font-ui",
                   "fontWeight": "600"
                 },
-                "sfjxq": {
+                "g3og3": {
                   "content": "1:12:00"
                 },
-                "ns8dS": {
+                "o8kcr": {
                   "enabled": false
                 },
-                "c2YAFU": {
+                "qGv7w": {
                   "enabled": true
                 },
-                "e7ly1": {
+                "k3ypSL": {
                   "enabled": false,
                   "fill": "$sub"
                 },
-                "uqDCA": {
+                "exyCz": {
                   "enabled": true
                 }
               }
             },
             {
-              "id": "SpLPS",
+              "id": "gmNq5",
               "type": "ref",
-              "ref": "UVznt",
+              "ref": "g69Zqs",
               "name": "Row 4",
               "width": "fill_container",
               "fill": "$surface",
               "descendants": {
-                "pZS2W": {
+                "OUVdK": {
                   "content": "11:15"
                 },
-                "PxTs0": {
+                "g0Vusi": {
                   "content": "1:1 с Анной",
                   "fill": "$text",
                   "fontFamily": "$font-ui",
                   "fontWeight": "600"
                 },
-                "sfjxq": {
+                "g3og3": {
                   "content": "28:44"
                 },
-                "ns8dS": {
+                "o8kcr": {
                   "enabled": false
                 },
-                "c2YAFU": {
+                "qGv7w": {
                   "enabled": false
                 },
-                "e7ly1": {
+                "k3ypSL": {
                   "enabled": true,
                   "fill": "$sub"
                 },
-                "uqDCA": {
+                "exyCz": {
                   "enabled": false
                 }
               }
             },
             {
-              "id": "m529p",
+              "id": "P1PGc",
               "type": "ref",
-              "ref": "e3SwZe",
+              "ref": "pmtOb",
               "name": "Day Пятница, 7 ноября",
               "width": "fill_container",
               "descendants": {
-                "lCYBS": {
+                "OPQgF": {
                   "content": "Пятница, 7 ноября"
                 },
-                "jmtGe": {
+                "u0i8d": {
                   "content": "1 звонок"
                 }
               }
             },
             {
-              "id": "ofgpI",
+              "id": "ZOQJS",
               "type": "ref",
-              "ref": "UVznt",
+              "ref": "g69Zqs",
               "name": "Row 5",
               "width": "fill_container",
               "fill": "$surface",
               "descendants": {
-                "pZS2W": {
+                "OUVdK": {
                   "content": "11:00"
                 },
-                "PxTs0": {
+                "g0Vusi": {
                   "content": "2026.11.07-1100",
                   "fill": "$gutter",
                   "fontFamily": "$font-data",
                   "fontWeight": "normal"
                 },
-                "sfjxq": {
+                "g3og3": {
                   "content": "—"
                 },
-                "ns8dS": {
+                "o8kcr": {
                   "enabled": false
                 },
-                "c2YAFU": {
+                "qGv7w": {
                   "enabled": false
                 },
-                "e7ly1": {
+                "k3ypSL": {
                   "enabled": false,
                   "fill": "$sub"
                 },
-                "uqDCA": {
+                "exyCz": {
                   "enabled": false
                 }
               }
             },
             {
-              "id": "qGwK4",
+              "id": "N6exf",
               "type": "ref",
-              "ref": "e3SwZe",
+              "ref": "pmtOb",
               "name": "Day 3 сентября",
               "width": "fill_container",
               "descendants": {
-                "lCYBS": {
+                "OPQgF": {
                   "content": "3 сентября"
                 },
-                "jmtGe": {
+                "u0i8d": {
                   "content": "1 звонок"
                 }
               }
             },
             {
-              "id": "qVcJR",
+              "id": "c2bYq",
               "type": "ref",
-              "ref": "UVznt",
+              "ref": "g69Zqs",
               "name": "Row 6",
               "width": "fill_container",
               "fill": "$surface",
               "descendants": {
-                "pZS2W": {
+                "OUVdK": {
                   "content": "18:00"
                 },
-                "PxTs0": {
+                "g0Vusi": {
                   "content": "Клиент Альфа: демо и вопросы по интеграции",
                   "fill": "$text",
                   "fontFamily": "$font-ui",
                   "fontWeight": "600"
                 },
-                "sfjxq": {
+                "g3og3": {
                   "content": "52:10"
                 },
-                "ns8dS": {
+                "o8kcr": {
                   "enabled": false
                 },
-                "c2YAFU": {
+                "qGv7w": {
                   "enabled": false
                 },
-                "e7ly1": {
+                "k3ypSL": {
                   "enabled": false,
                   "fill": "$sub"
                 },
-                "uqDCA": {
+                "exyCz": {
                   "enabled": false
                 }
               }
             },
             {
-              "id": "wkYYF",
+              "id": "LD3iQ",
               "type": "ref",
-              "ref": "e3SwZe",
+              "ref": "pmtOb",
               "name": "Day 12 декабря 2025",
               "width": "fill_container",
               "descendants": {
-                "lCYBS": {
+                "OPQgF": {
                   "content": "12 декабря 2025"
                 },
-                "jmtGe": {
+                "u0i8d": {
                   "content": "1 звонок"
                 }
               }
             },
             {
-              "id": "PiWId",
+              "id": "rchWL",
               "type": "ref",
-              "ref": "UVznt",
+              "ref": "g69Zqs",
               "name": "Row 7",
               "width": "fill_container",
               "fill": "$surface",
               "descendants": {
-                "pZS2W": {
+                "OUVdK": {
                   "content": "10:30"
                 },
-                "PxTs0": {
+                "g0Vusi": {
                   "content": "Ретро за год",
                   "fill": "$text",
                   "fontFamily": "$font-ui",
                   "fontWeight": "600"
                 },
-                "sfjxq": {
+                "g3og3": {
                   "content": "1:05:12"
                 },
-                "ns8dS": {
+                "o8kcr": {
                   "enabled": false
                 },
-                "c2YAFU": {
+                "qGv7w": {
                   "enabled": false
                 },
-                "e7ly1": {
+                "k3ypSL": {
                   "enabled": true,
                   "fill": "$sub"
                 },
-                "uqDCA": {
+                "exyCz": {
                   "enabled": false
                 }
               }
@@ -1070,9 +1035,9 @@
           ]
         },
         {
-          "id": "Wr1sr",
+          "id": "mLct7",
           "type": "ref",
-          "ref": "gutJe",
+          "ref": "yYo9u",
           "name": "Context menu",
           "x": 644,
           "y": 184
@@ -1080,9 +1045,9 @@
       ]
     },
     {
-      "id": "z3m96U",
+      "id": "GkHPr",
       "type": "ref",
-      "ref": "NzEpL",
+      "ref": "QV3nx",
       "name": "Calls — wide (dark)",
       "x": 0,
       "y": 560,
@@ -1092,7 +1057,7 @@
     },
     {
       "type": "frame",
-      "id": "Lk9kp",
+      "id": "jgPIn",
       "x": 960,
       "y": 0,
       "name": "Calls — minimum width",
@@ -1111,7 +1076,7 @@
       "children": [
         {
           "type": "frame",
-          "id": "b0RRq",
+          "id": "Hs5n0",
           "x": 0,
           "y": 0,
           "name": "Content",
@@ -1120,328 +1085,328 @@
           "layout": "vertical",
           "children": [
             {
-              "id": "cGQdP",
+              "id": "dPxPM",
               "type": "ref",
-              "ref": "gJG4t",
+              "ref": "bncv0",
               "name": "Title bar",
               "width": "fill_container"
             },
             {
-              "id": "eXH9c",
+              "id": "tlouw",
               "type": "ref",
-              "ref": "e3SwZe",
+              "ref": "pmtOb",
               "name": "Day Сегодня",
               "width": "fill_container",
               "descendants": {
-                "lCYBS": {
+                "OPQgF": {
                   "content": "Сегодня"
                 },
-                "jmtGe": {
+                "u0i8d": {
                   "content": "2 звонка"
                 }
               }
             },
             {
-              "id": "klLRT",
+              "id": "w2BNqL",
               "type": "ref",
-              "ref": "UVznt",
+              "ref": "g69Zqs",
               "name": "Row 1",
               "width": "fill_container",
               "fill": "$okBg",
               "descendants": {
-                "pZS2W": {
+                "OUVdK": {
                   "content": "12:30"
                 },
-                "PxTs0": {
+                "g0Vusi": {
                   "content": "Запуск: роли и SLA",
                   "fill": "$text",
                   "fontFamily": "$font-ui",
                   "fontWeight": "600"
                 },
-                "sfjxq": {
+                "g3og3": {
                   "content": "47:00"
                 },
-                "ns8dS": {
+                "o8kcr": {
                   "enabled": false
                 },
-                "c2YAFU": {
+                "qGv7w": {
                   "enabled": false
                 },
-                "e7ly1": {
+                "k3ypSL": {
                   "enabled": true,
                   "fill": "$me"
                 },
-                "uqDCA": {
+                "exyCz": {
                   "enabled": false
                 }
               }
             },
             {
-              "id": "jo85x",
+              "id": "E55HS",
               "type": "ref",
-              "ref": "UVznt",
+              "ref": "g69Zqs",
               "name": "Row 2",
               "width": "fill_container",
               "fill": "$surface",
               "descendants": {
-                "pZS2W": {
+                "OUVdK": {
                   "content": "09:05"
                 },
-                "PxTs0": {
+                "g0Vusi": {
                   "content": "Интервью: кандидат на iOS — техническая…",
                   "fill": "$text",
                   "fontFamily": "$font-ui",
                   "fontWeight": "600"
                 },
-                "sfjxq": {
+                "g3og3": {
                   "content": "1:12:40"
                 },
-                "ns8dS": {
+                "o8kcr": {
                   "enabled": true
                 },
-                "c2YAFU": {
+                "qGv7w": {
                   "enabled": false
                 },
-                "e7ly1": {
+                "k3ypSL": {
                   "enabled": false,
                   "fill": "$sub"
                 },
-                "uqDCA": {
+                "exyCz": {
                   "enabled": false
                 }
               }
             },
             {
-              "id": "JE5JP",
+              "id": "aRSBX",
               "type": "ref",
-              "ref": "e3SwZe",
+              "ref": "pmtOb",
               "name": "Day Вчера",
               "width": "fill_container",
               "descendants": {
-                "lCYBS": {
+                "OPQgF": {
                   "content": "Вчера"
                 },
-                "jmtGe": {
+                "u0i8d": {
                   "content": "2 звонка"
                 }
               }
             },
             {
-              "id": "SLbb6",
+              "id": "eyuNs",
               "type": "ref",
-              "ref": "UVznt",
+              "ref": "g69Zqs",
               "name": "Row 3",
               "width": "fill_container",
               "fill": "$card",
               "descendants": {
-                "pZS2W": {
+                "OUVdK": {
                   "content": "16:00"
                 },
-                "PxTs0": {
+                "g0Vusi": {
                   "content": "Синк по OKR на квартал",
                   "fill": "$text",
                   "fontFamily": "$font-ui",
                   "fontWeight": "600"
                 },
-                "sfjxq": {
+                "g3og3": {
                   "content": "1:12:00"
                 },
-                "ns8dS": {
+                "o8kcr": {
                   "enabled": false
                 },
-                "c2YAFU": {
+                "qGv7w": {
                   "enabled": true
                 },
-                "e7ly1": {
+                "k3ypSL": {
                   "enabled": false,
                   "fill": "$sub"
                 },
-                "uqDCA": {
+                "exyCz": {
                   "enabled": true
                 }
               }
             },
             {
-              "id": "Z5NV4Z",
+              "id": "upd4R",
               "type": "ref",
-              "ref": "UVznt",
+              "ref": "g69Zqs",
               "name": "Row 4",
               "width": "fill_container",
               "fill": "$surface",
               "descendants": {
-                "pZS2W": {
+                "OUVdK": {
                   "content": "11:15"
                 },
-                "PxTs0": {
+                "g0Vusi": {
                   "content": "1:1 с Анной",
                   "fill": "$text",
                   "fontFamily": "$font-ui",
                   "fontWeight": "600"
                 },
-                "sfjxq": {
+                "g3og3": {
                   "content": "28:44"
                 },
-                "ns8dS": {
+                "o8kcr": {
                   "enabled": false
                 },
-                "c2YAFU": {
+                "qGv7w": {
                   "enabled": false
                 },
-                "e7ly1": {
+                "k3ypSL": {
                   "enabled": true,
                   "fill": "$sub"
                 },
-                "uqDCA": {
+                "exyCz": {
                   "enabled": false
                 }
               }
             },
             {
-              "id": "cRWcm",
+              "id": "gFEpr",
               "type": "ref",
-              "ref": "e3SwZe",
+              "ref": "pmtOb",
               "name": "Day Пятница, 7 ноября",
               "width": "fill_container",
               "descendants": {
-                "lCYBS": {
+                "OPQgF": {
                   "content": "Пятница, 7 ноября"
                 },
-                "jmtGe": {
+                "u0i8d": {
                   "content": "1 звонок"
                 }
               }
             },
             {
-              "id": "vw1hi",
+              "id": "zIi7C",
               "type": "ref",
-              "ref": "UVznt",
+              "ref": "g69Zqs",
               "name": "Row 5",
               "width": "fill_container",
               "fill": "$surface",
               "descendants": {
-                "pZS2W": {
+                "OUVdK": {
                   "content": "11:00"
                 },
-                "PxTs0": {
+                "g0Vusi": {
                   "content": "2026.11.07-1100",
                   "fill": "$gutter",
                   "fontFamily": "$font-data",
                   "fontWeight": "normal"
                 },
-                "sfjxq": {
+                "g3og3": {
                   "content": "—"
                 },
-                "ns8dS": {
+                "o8kcr": {
                   "enabled": false
                 },
-                "c2YAFU": {
+                "qGv7w": {
                   "enabled": false
                 },
-                "e7ly1": {
+                "k3ypSL": {
                   "enabled": false,
                   "fill": "$sub"
                 },
-                "uqDCA": {
+                "exyCz": {
                   "enabled": false
                 }
               }
             },
             {
-              "id": "KMua5",
+              "id": "v2mwOq",
               "type": "ref",
-              "ref": "e3SwZe",
+              "ref": "pmtOb",
               "name": "Day 3 сентября",
               "width": "fill_container",
               "descendants": {
-                "lCYBS": {
+                "OPQgF": {
                   "content": "3 сентября"
                 },
-                "jmtGe": {
+                "u0i8d": {
                   "content": "1 звонок"
                 }
               }
             },
             {
-              "id": "XBxqV",
+              "id": "SdXsi",
               "type": "ref",
-              "ref": "UVznt",
+              "ref": "g69Zqs",
               "name": "Row 6",
               "width": "fill_container",
               "fill": "$surface",
               "descendants": {
-                "pZS2W": {
+                "OUVdK": {
                   "content": "18:00"
                 },
-                "PxTs0": {
+                "g0Vusi": {
                   "content": "Клиент Альфа: демо и вопросы по интегра…",
                   "fill": "$text",
                   "fontFamily": "$font-ui",
                   "fontWeight": "600"
                 },
-                "sfjxq": {
+                "g3og3": {
                   "content": "52:10"
                 },
-                "ns8dS": {
+                "o8kcr": {
                   "enabled": false
                 },
-                "c2YAFU": {
+                "qGv7w": {
                   "enabled": false
                 },
-                "e7ly1": {
+                "k3ypSL": {
                   "enabled": false,
                   "fill": "$sub"
                 },
-                "uqDCA": {
+                "exyCz": {
                   "enabled": false
                 }
               }
             },
             {
-              "id": "bXV2y",
+              "id": "RI3Yl",
               "type": "ref",
-              "ref": "e3SwZe",
+              "ref": "pmtOb",
               "name": "Day 12 декабря 2025",
               "width": "fill_container",
               "descendants": {
-                "lCYBS": {
+                "OPQgF": {
                   "content": "12 декабря 2025"
                 },
-                "jmtGe": {
+                "u0i8d": {
                   "content": "1 звонок"
                 }
               }
             },
             {
-              "id": "XX9aC",
+              "id": "V6RP4x",
               "type": "ref",
-              "ref": "UVznt",
+              "ref": "g69Zqs",
               "name": "Row 7",
               "width": "fill_container",
               "fill": "$surface",
               "descendants": {
-                "pZS2W": {
+                "OUVdK": {
                   "content": "10:30"
                 },
-                "PxTs0": {
+                "g0Vusi": {
                   "content": "Ретро за год",
                   "fill": "$text",
                   "fontFamily": "$font-ui",
                   "fontWeight": "600"
                 },
-                "sfjxq": {
+                "g3og3": {
                   "content": "1:05:12"
                 },
-                "ns8dS": {
+                "o8kcr": {
                   "enabled": false
                 },
-                "c2YAFU": {
+                "qGv7w": {
                   "enabled": false
                 },
-                "e7ly1": {
+                "k3ypSL": {
                   "enabled": true,
                   "fill": "$sub"
                 },
-                "uqDCA": {
+                "exyCz": {
                   "enabled": false
                 }
               }
@@ -1449,9 +1414,9 @@
           ]
         },
         {
-          "id": "v1UY2l",
+          "id": "F0uXxA",
           "type": "ref",
-          "ref": "gutJe",
+          "ref": "yYo9u",
           "name": "Context menu",
           "x": 304,
           "y": 184
@@ -1459,9 +1424,9 @@
       ]
     },
     {
-      "id": "rOsT0",
+      "id": "DdmM2",
       "type": "ref",
-      "ref": "Lk9kp",
+      "ref": "jgPIn",
       "name": "Calls — minimum width (dark)",
       "x": 960,
       "y": 560,
@@ -1471,7 +1436,7 @@
     },
     {
       "type": "frame",
-      "id": "hCPEx",
+      "id": "q2VSX",
       "x": 1580,
       "y": 0,
       "name": "Calls — renaming",
@@ -1490,7 +1455,7 @@
       "children": [
         {
           "type": "frame",
-          "id": "ceLUF",
+          "id": "E0XT4Q",
           "x": 0,
           "y": 0,
           "name": "Content",
@@ -1499,337 +1464,337 @@
           "layout": "vertical",
           "children": [
             {
-              "id": "AQwOP",
+              "id": "qclFz",
               "type": "ref",
-              "ref": "gJG4t",
+              "ref": "bncv0",
               "name": "Title bar",
               "width": "fill_container"
             },
             {
-              "id": "MPyiX",
+              "id": "bpoBr",
               "type": "ref",
-              "ref": "e3SwZe",
+              "ref": "pmtOb",
               "name": "Day Сегодня",
               "width": "fill_container",
               "descendants": {
-                "lCYBS": {
+                "OPQgF": {
                   "content": "Сегодня"
                 },
-                "jmtGe": {
+                "u0i8d": {
                   "content": "2 звонка"
                 }
               }
             },
             {
-              "id": "Zpbj5",
+              "id": "jvIX6",
               "type": "ref",
-              "ref": "UVznt",
+              "ref": "g69Zqs",
               "name": "Row 1",
               "width": "fill_container",
               "fill": "$okBg",
               "descendants": {
-                "pZS2W": {
+                "OUVdK": {
                   "content": "12:30"
                 },
-                "PxTs0": {
-                  "id": "f95HDP",
+                "g0Vusi": {
+                  "id": "tLjtw",
                   "type": "ref",
-                  "ref": "oREfI",
+                  "ref": "bmW3Z",
                   "name": "Rename",
                   "width": "fill_container",
                   "descendants": {
-                    "dYbkV": {
+                    "S5yyBG": {
                       "content": "2026.11.11-1230 "
                     },
-                    "l8jSkm": {
+                    "X5t9I": {
                       "content": "Запуск: роли и SLA|"
                     }
                   }
                 },
-                "sfjxq": {
+                "g3og3": {
                   "content": "47:00"
                 },
-                "ns8dS": {
+                "o8kcr": {
                   "enabled": false
                 },
-                "c2YAFU": {
+                "qGv7w": {
                   "enabled": false
                 },
-                "e7ly1": {
+                "k3ypSL": {
                   "enabled": true,
                   "fill": "$me"
                 },
-                "uqDCA": {
+                "exyCz": {
                   "enabled": false
                 }
               }
             },
             {
-              "id": "e6NXC4",
+              "id": "x1ZGeS",
               "type": "ref",
-              "ref": "UVznt",
+              "ref": "g69Zqs",
               "name": "Row 2",
               "width": "fill_container",
               "fill": "$surface",
               "descendants": {
-                "pZS2W": {
+                "OUVdK": {
                   "content": "09:05"
                 },
-                "PxTs0": {
+                "g0Vusi": {
                   "content": "Интервью: кандидат на iOS — техническая…",
                   "fill": "$text",
                   "fontFamily": "$font-ui",
                   "fontWeight": "600"
                 },
-                "sfjxq": {
+                "g3og3": {
                   "content": "1:12:40"
                 },
-                "ns8dS": {
+                "o8kcr": {
                   "enabled": true
                 },
-                "c2YAFU": {
+                "qGv7w": {
                   "enabled": false
                 },
-                "e7ly1": {
+                "k3ypSL": {
                   "enabled": false,
                   "fill": "$sub"
                 },
-                "uqDCA": {
+                "exyCz": {
                   "enabled": false
                 }
               }
             },
             {
-              "id": "suWxE",
+              "id": "ZtGBU",
               "type": "ref",
-              "ref": "e3SwZe",
+              "ref": "pmtOb",
               "name": "Day Вчера",
               "width": "fill_container",
               "descendants": {
-                "lCYBS": {
+                "OPQgF": {
                   "content": "Вчера"
                 },
-                "jmtGe": {
+                "u0i8d": {
                   "content": "2 звонка"
                 }
               }
             },
             {
-              "id": "xaOJn",
+              "id": "zXV6C",
               "type": "ref",
-              "ref": "UVznt",
+              "ref": "g69Zqs",
               "name": "Row 3",
               "width": "fill_container",
               "fill": "$surface",
               "descendants": {
-                "pZS2W": {
+                "OUVdK": {
                   "content": "16:00"
                 },
-                "PxTs0": {
+                "g0Vusi": {
                   "content": "Синк по OKR на квартал",
                   "fill": "$text",
                   "fontFamily": "$font-ui",
                   "fontWeight": "600"
                 },
-                "sfjxq": {
+                "g3og3": {
                   "content": "1:12:00"
                 },
-                "ns8dS": {
+                "o8kcr": {
                   "enabled": false
                 },
-                "c2YAFU": {
+                "qGv7w": {
                   "enabled": true
                 },
-                "e7ly1": {
+                "k3ypSL": {
                   "enabled": false,
                   "fill": "$sub"
                 },
-                "uqDCA": {
+                "exyCz": {
                   "enabled": false
                 }
               }
             },
             {
-              "id": "gn82f",
+              "id": "JueGz",
               "type": "ref",
-              "ref": "UVznt",
+              "ref": "g69Zqs",
               "name": "Row 4",
               "width": "fill_container",
               "fill": "$surface",
               "descendants": {
-                "pZS2W": {
+                "OUVdK": {
                   "content": "11:15"
                 },
-                "PxTs0": {
+                "g0Vusi": {
                   "content": "1:1 с Анной",
                   "fill": "$text",
                   "fontFamily": "$font-ui",
                   "fontWeight": "600"
                 },
-                "sfjxq": {
+                "g3og3": {
                   "content": "28:44"
                 },
-                "ns8dS": {
+                "o8kcr": {
                   "enabled": false
                 },
-                "c2YAFU": {
+                "qGv7w": {
                   "enabled": false
                 },
-                "e7ly1": {
+                "k3ypSL": {
                   "enabled": true,
                   "fill": "$sub"
                 },
-                "uqDCA": {
+                "exyCz": {
                   "enabled": false
                 }
               }
             },
             {
-              "id": "oKT59",
+              "id": "X4LO1",
               "type": "ref",
-              "ref": "e3SwZe",
+              "ref": "pmtOb",
               "name": "Day Пятница, 7 ноября",
               "width": "fill_container",
               "descendants": {
-                "lCYBS": {
+                "OPQgF": {
                   "content": "Пятница, 7 ноября"
                 },
-                "jmtGe": {
+                "u0i8d": {
                   "content": "1 звонок"
                 }
               }
             },
             {
-              "id": "Q39YLQ",
+              "id": "CeT9g",
               "type": "ref",
-              "ref": "UVznt",
+              "ref": "g69Zqs",
               "name": "Row 5",
               "width": "fill_container",
               "fill": "$surface",
               "descendants": {
-                "pZS2W": {
+                "OUVdK": {
                   "content": "11:00"
                 },
-                "PxTs0": {
+                "g0Vusi": {
                   "content": "2026.11.07-1100",
                   "fill": "$gutter",
                   "fontFamily": "$font-data",
                   "fontWeight": "normal"
                 },
-                "sfjxq": {
+                "g3og3": {
                   "content": "—"
                 },
-                "ns8dS": {
+                "o8kcr": {
                   "enabled": false
                 },
-                "c2YAFU": {
+                "qGv7w": {
                   "enabled": false
                 },
-                "e7ly1": {
+                "k3ypSL": {
                   "enabled": false,
                   "fill": "$sub"
                 },
-                "uqDCA": {
+                "exyCz": {
                   "enabled": false
                 }
               }
             },
             {
-              "id": "c1Bgtm",
+              "id": "BHjWc",
               "type": "ref",
-              "ref": "e3SwZe",
+              "ref": "pmtOb",
               "name": "Day 3 сентября",
               "width": "fill_container",
               "descendants": {
-                "lCYBS": {
+                "OPQgF": {
                   "content": "3 сентября"
                 },
-                "jmtGe": {
+                "u0i8d": {
                   "content": "1 звонок"
                 }
               }
             },
             {
-              "id": "F0LsAY",
+              "id": "E6P6S",
               "type": "ref",
-              "ref": "UVznt",
+              "ref": "g69Zqs",
               "name": "Row 6",
               "width": "fill_container",
               "fill": "$surface",
               "descendants": {
-                "pZS2W": {
+                "OUVdK": {
                   "content": "18:00"
                 },
-                "PxTs0": {
+                "g0Vusi": {
                   "content": "Клиент Альфа: демо и вопросы по интегра…",
                   "fill": "$text",
                   "fontFamily": "$font-ui",
                   "fontWeight": "600"
                 },
-                "sfjxq": {
+                "g3og3": {
                   "content": "52:10"
                 },
-                "ns8dS": {
+                "o8kcr": {
                   "enabled": false
                 },
-                "c2YAFU": {
+                "qGv7w": {
                   "enabled": false
                 },
-                "e7ly1": {
+                "k3ypSL": {
                   "enabled": false,
                   "fill": "$sub"
                 },
-                "uqDCA": {
+                "exyCz": {
                   "enabled": false
                 }
               }
             },
             {
-              "id": "k4X2K",
+              "id": "BfIIS",
               "type": "ref",
-              "ref": "e3SwZe",
+              "ref": "pmtOb",
               "name": "Day 12 декабря 2025",
               "width": "fill_container",
               "descendants": {
-                "lCYBS": {
+                "OPQgF": {
                   "content": "12 декабря 2025"
                 },
-                "jmtGe": {
+                "u0i8d": {
                   "content": "1 звонок"
                 }
               }
             },
             {
-              "id": "SndZW",
+              "id": "Evt48",
               "type": "ref",
-              "ref": "UVznt",
+              "ref": "g69Zqs",
               "name": "Row 7",
               "width": "fill_container",
               "fill": "$surface",
               "descendants": {
-                "pZS2W": {
+                "OUVdK": {
                   "content": "10:30"
                 },
-                "PxTs0": {
+                "g0Vusi": {
                   "content": "Ретро за год",
                   "fill": "$text",
                   "fontFamily": "$font-ui",
                   "fontWeight": "600"
                 },
-                "sfjxq": {
+                "g3og3": {
                   "content": "1:05:12"
                 },
-                "ns8dS": {
+                "o8kcr": {
                   "enabled": false
                 },
-                "c2YAFU": {
+                "qGv7w": {
                   "enabled": false
                 },
-                "e7ly1": {
+                "k3ypSL": {
                   "enabled": true,
                   "fill": "$sub"
                 },
-                "uqDCA": {
+                "exyCz": {
                   "enabled": false
                 }
               }
@@ -1839,9 +1804,9 @@
       ]
     },
     {
-      "id": "yrdye",
+      "id": "ohsjq",
       "type": "ref",
-      "ref": "hCPEx",
+      "ref": "q2VSX",
       "name": "Calls — renaming (dark)",
       "x": 1580,
       "y": 560,
@@ -1851,7 +1816,7 @@
     },
     {
       "type": "frame",
-      "id": "DOjkM",
+      "id": "Li5DW",
       "x": 2200,
       "y": 0,
       "name": "Calls — confirm delete",
@@ -1870,7 +1835,7 @@
       "children": [
         {
           "type": "frame",
-          "id": "tPYur",
+          "id": "tThuK",
           "x": 0,
           "y": 0,
           "name": "Content",
@@ -1879,328 +1844,328 @@
           "layout": "vertical",
           "children": [
             {
-              "id": "ZUoiQ",
+              "id": "Ffxxb",
               "type": "ref",
-              "ref": "gJG4t",
+              "ref": "bncv0",
               "name": "Title bar",
               "width": "fill_container"
             },
             {
-              "id": "dyY2v",
+              "id": "w65KQ",
               "type": "ref",
-              "ref": "e3SwZe",
+              "ref": "pmtOb",
               "name": "Day Сегодня",
               "width": "fill_container",
               "descendants": {
-                "lCYBS": {
+                "OPQgF": {
                   "content": "Сегодня"
                 },
-                "jmtGe": {
+                "u0i8d": {
                   "content": "2 звонка"
                 }
               }
             },
             {
-              "id": "rOIpa",
+              "id": "DUSjr",
               "type": "ref",
-              "ref": "UVznt",
+              "ref": "g69Zqs",
               "name": "Row 1",
               "width": "fill_container",
               "fill": "$surface",
               "descendants": {
-                "pZS2W": {
+                "OUVdK": {
                   "content": "12:30"
                 },
-                "PxTs0": {
+                "g0Vusi": {
                   "content": "Запуск: роли и SLA",
                   "fill": "$text",
                   "fontFamily": "$font-ui",
                   "fontWeight": "600"
                 },
-                "sfjxq": {
+                "g3og3": {
                   "content": "47:00"
                 },
-                "ns8dS": {
+                "o8kcr": {
                   "enabled": false
                 },
-                "c2YAFU": {
+                "qGv7w": {
                   "enabled": false
                 },
-                "e7ly1": {
+                "k3ypSL": {
                   "enabled": true,
                   "fill": "$sub"
                 },
-                "uqDCA": {
+                "exyCz": {
                   "enabled": false
                 }
               }
             },
             {
-              "id": "PeRZJ",
+              "id": "MBKd0",
               "type": "ref",
-              "ref": "UVznt",
+              "ref": "g69Zqs",
               "name": "Row 2",
               "width": "fill_container",
               "fill": "$surface",
               "descendants": {
-                "pZS2W": {
+                "OUVdK": {
                   "content": "09:05"
                 },
-                "PxTs0": {
+                "g0Vusi": {
                   "content": "Интервью: кандидат на iOS — техническая…",
                   "fill": "$text",
                   "fontFamily": "$font-ui",
                   "fontWeight": "600"
                 },
-                "sfjxq": {
+                "g3og3": {
                   "content": "1:12:40"
                 },
-                "ns8dS": {
+                "o8kcr": {
                   "enabled": true
                 },
-                "c2YAFU": {
+                "qGv7w": {
                   "enabled": false
                 },
-                "e7ly1": {
+                "k3ypSL": {
                   "enabled": false,
                   "fill": "$sub"
                 },
-                "uqDCA": {
+                "exyCz": {
                   "enabled": false
                 }
               }
             },
             {
-              "id": "W9Fvmw",
+              "id": "n16AG",
               "type": "ref",
-              "ref": "e3SwZe",
+              "ref": "pmtOb",
               "name": "Day Вчера",
               "width": "fill_container",
               "descendants": {
-                "lCYBS": {
+                "OPQgF": {
                   "content": "Вчера"
                 },
-                "jmtGe": {
+                "u0i8d": {
                   "content": "2 звонка"
                 }
               }
             },
             {
-              "id": "oj3ER",
+              "id": "qYehN",
               "type": "ref",
-              "ref": "UVznt",
+              "ref": "g69Zqs",
               "name": "Row 3",
               "width": "fill_container",
               "fill": "$okBg",
               "descendants": {
-                "pZS2W": {
+                "OUVdK": {
                   "content": "16:00"
                 },
-                "PxTs0": {
+                "g0Vusi": {
                   "content": "Синк по OKR на квартал",
                   "fill": "$text",
                   "fontFamily": "$font-ui",
                   "fontWeight": "600"
                 },
-                "sfjxq": {
+                "g3og3": {
                   "content": "1:12:00"
                 },
-                "ns8dS": {
+                "o8kcr": {
                   "enabled": false
                 },
-                "c2YAFU": {
+                "qGv7w": {
                   "enabled": true
                 },
-                "e7ly1": {
+                "k3ypSL": {
                   "enabled": false,
                   "fill": "$me"
                 },
-                "uqDCA": {
+                "exyCz": {
                   "enabled": false
                 }
               }
             },
             {
-              "id": "p1K5D",
+              "id": "xujnl",
               "type": "ref",
-              "ref": "UVznt",
+              "ref": "g69Zqs",
               "name": "Row 4",
               "width": "fill_container",
               "fill": "$surface",
               "descendants": {
-                "pZS2W": {
+                "OUVdK": {
                   "content": "11:15"
                 },
-                "PxTs0": {
+                "g0Vusi": {
                   "content": "1:1 с Анной",
                   "fill": "$text",
                   "fontFamily": "$font-ui",
                   "fontWeight": "600"
                 },
-                "sfjxq": {
+                "g3og3": {
                   "content": "28:44"
                 },
-                "ns8dS": {
+                "o8kcr": {
                   "enabled": false
                 },
-                "c2YAFU": {
+                "qGv7w": {
                   "enabled": false
                 },
-                "e7ly1": {
+                "k3ypSL": {
                   "enabled": true,
                   "fill": "$sub"
                 },
-                "uqDCA": {
+                "exyCz": {
                   "enabled": false
                 }
               }
             },
             {
-              "id": "E3JQn",
+              "id": "X3KkaJ",
               "type": "ref",
-              "ref": "e3SwZe",
+              "ref": "pmtOb",
               "name": "Day Пятница, 7 ноября",
               "width": "fill_container",
               "descendants": {
-                "lCYBS": {
+                "OPQgF": {
                   "content": "Пятница, 7 ноября"
                 },
-                "jmtGe": {
+                "u0i8d": {
                   "content": "1 звонок"
                 }
               }
             },
             {
-              "id": "CckUl",
+              "id": "XMQcl",
               "type": "ref",
-              "ref": "UVznt",
+              "ref": "g69Zqs",
               "name": "Row 5",
               "width": "fill_container",
               "fill": "$surface",
               "descendants": {
-                "pZS2W": {
+                "OUVdK": {
                   "content": "11:00"
                 },
-                "PxTs0": {
+                "g0Vusi": {
                   "content": "2026.11.07-1100",
                   "fill": "$gutter",
                   "fontFamily": "$font-data",
                   "fontWeight": "normal"
                 },
-                "sfjxq": {
+                "g3og3": {
                   "content": "—"
                 },
-                "ns8dS": {
+                "o8kcr": {
                   "enabled": false
                 },
-                "c2YAFU": {
+                "qGv7w": {
                   "enabled": false
                 },
-                "e7ly1": {
+                "k3ypSL": {
                   "enabled": false,
                   "fill": "$sub"
                 },
-                "uqDCA": {
+                "exyCz": {
                   "enabled": false
                 }
               }
             },
             {
-              "id": "rKcnI",
+              "id": "nXnBF",
               "type": "ref",
-              "ref": "e3SwZe",
+              "ref": "pmtOb",
               "name": "Day 3 сентября",
               "width": "fill_container",
               "descendants": {
-                "lCYBS": {
+                "OPQgF": {
                   "content": "3 сентября"
                 },
-                "jmtGe": {
+                "u0i8d": {
                   "content": "1 звонок"
                 }
               }
             },
             {
-              "id": "uWe3G",
+              "id": "GX6Gg",
               "type": "ref",
-              "ref": "UVznt",
+              "ref": "g69Zqs",
               "name": "Row 6",
               "width": "fill_container",
               "fill": "$surface",
               "descendants": {
-                "pZS2W": {
+                "OUVdK": {
                   "content": "18:00"
                 },
-                "PxTs0": {
+                "g0Vusi": {
                   "content": "Клиент Альфа: демо и вопросы по интегра…",
                   "fill": "$text",
                   "fontFamily": "$font-ui",
                   "fontWeight": "600"
                 },
-                "sfjxq": {
+                "g3og3": {
                   "content": "52:10"
                 },
-                "ns8dS": {
+                "o8kcr": {
                   "enabled": false
                 },
-                "c2YAFU": {
+                "qGv7w": {
                   "enabled": false
                 },
-                "e7ly1": {
+                "k3ypSL": {
                   "enabled": false,
                   "fill": "$sub"
                 },
-                "uqDCA": {
+                "exyCz": {
                   "enabled": false
                 }
               }
             },
             {
-              "id": "CAVek",
+              "id": "cmRvc",
               "type": "ref",
-              "ref": "e3SwZe",
+              "ref": "pmtOb",
               "name": "Day 12 декабря 2025",
               "width": "fill_container",
               "descendants": {
-                "lCYBS": {
+                "OPQgF": {
                   "content": "12 декабря 2025"
                 },
-                "jmtGe": {
+                "u0i8d": {
                   "content": "1 звонок"
                 }
               }
             },
             {
-              "id": "iQLjF",
+              "id": "lzU9D",
               "type": "ref",
-              "ref": "UVznt",
+              "ref": "g69Zqs",
               "name": "Row 7",
               "width": "fill_container",
               "fill": "$surface",
               "descendants": {
-                "pZS2W": {
+                "OUVdK": {
                   "content": "10:30"
                 },
-                "PxTs0": {
+                "g0Vusi": {
                   "content": "Ретро за год",
                   "fill": "$text",
                   "fontFamily": "$font-ui",
                   "fontWeight": "600"
                 },
-                "sfjxq": {
+                "g3og3": {
                   "content": "1:05:12"
                 },
-                "ns8dS": {
+                "o8kcr": {
                   "enabled": false
                 },
-                "c2YAFU": {
+                "qGv7w": {
                   "enabled": false
                 },
-                "e7ly1": {
+                "k3ypSL": {
                   "enabled": true,
                   "fill": "$sub"
                 },
-                "uqDCA": {
+                "exyCz": {
                   "enabled": false
                 }
               }
@@ -2209,7 +2174,7 @@
         },
         {
           "type": "frame",
-          "id": "hIxi0",
+          "id": "BEthM",
           "x": 0,
           "y": 33,
           "name": "Scrim",
@@ -2221,9 +2186,9 @@
           "alignItems": "center",
           "children": [
             {
-              "id": "JQAQx",
+              "id": "jvtEU",
               "type": "ref",
-              "ref": "lF22M",
+              "ref": "VmIE5",
               "name": "Alert"
             }
           ]
@@ -2231,9 +2196,9 @@
       ]
     },
     {
-      "id": "yxrIw",
+      "id": "W3bxBG",
       "type": "ref",
-      "ref": "DOjkM",
+      "ref": "Li5DW",
       "name": "Calls — confirm delete (dark)",
       "x": 2200,
       "y": 560,
@@ -2243,7 +2208,7 @@
     },
     {
       "type": "frame",
-      "id": "HvVpx",
+      "id": "koZGY",
       "x": 2820,
       "y": 0,
       "name": "Calls — error",
@@ -2262,7 +2227,7 @@
       "children": [
         {
           "type": "frame",
-          "id": "DTsBI",
+          "id": "I5NprQ",
           "x": 0,
           "y": 0,
           "name": "Content",
@@ -2271,328 +2236,328 @@
           "layout": "vertical",
           "children": [
             {
-              "id": "DWO66",
+              "id": "EVc8Z",
               "type": "ref",
-              "ref": "gJG4t",
+              "ref": "bncv0",
               "name": "Title bar",
               "width": "fill_container"
             },
             {
-              "id": "G4ntA",
+              "id": "XRdQn",
               "type": "ref",
-              "ref": "e3SwZe",
+              "ref": "pmtOb",
               "name": "Day Сегодня",
               "width": "fill_container",
               "descendants": {
-                "lCYBS": {
+                "OPQgF": {
                   "content": "Сегодня"
                 },
-                "jmtGe": {
+                "u0i8d": {
                   "content": "2 звонка"
                 }
               }
             },
             {
-              "id": "u2l38z",
+              "id": "U8Ur6h",
               "type": "ref",
-              "ref": "UVznt",
+              "ref": "g69Zqs",
               "name": "Row 1",
               "width": "fill_container",
               "fill": "$surface",
               "descendants": {
-                "pZS2W": {
+                "OUVdK": {
                   "content": "12:30"
                 },
-                "PxTs0": {
+                "g0Vusi": {
                   "content": "Запуск: роли и SLA",
                   "fill": "$text",
                   "fontFamily": "$font-ui",
                   "fontWeight": "600"
                 },
-                "sfjxq": {
+                "g3og3": {
                   "content": "47:00"
                 },
-                "ns8dS": {
+                "o8kcr": {
                   "enabled": false
                 },
-                "c2YAFU": {
+                "qGv7w": {
                   "enabled": false
                 },
-                "e7ly1": {
+                "k3ypSL": {
                   "enabled": true,
                   "fill": "$sub"
                 },
-                "uqDCA": {
+                "exyCz": {
                   "enabled": false
                 }
               }
             },
             {
-              "id": "j6q1Q4",
+              "id": "QOA1z",
               "type": "ref",
-              "ref": "UVznt",
+              "ref": "g69Zqs",
               "name": "Row 2",
               "width": "fill_container",
               "fill": "$surface",
               "descendants": {
-                "pZS2W": {
+                "OUVdK": {
                   "content": "09:05"
                 },
-                "PxTs0": {
+                "g0Vusi": {
                   "content": "Интервью: кандидат на iOS — техническая…",
                   "fill": "$text",
                   "fontFamily": "$font-ui",
                   "fontWeight": "600"
                 },
-                "sfjxq": {
+                "g3og3": {
                   "content": "1:12:40"
                 },
-                "ns8dS": {
+                "o8kcr": {
                   "enabled": true
                 },
-                "c2YAFU": {
+                "qGv7w": {
                   "enabled": false
                 },
-                "e7ly1": {
+                "k3ypSL": {
                   "enabled": false,
                   "fill": "$sub"
                 },
-                "uqDCA": {
+                "exyCz": {
                   "enabled": false
                 }
               }
             },
             {
-              "id": "nHwQE",
+              "id": "oVEcc",
               "type": "ref",
-              "ref": "e3SwZe",
+              "ref": "pmtOb",
               "name": "Day Вчера",
               "width": "fill_container",
               "descendants": {
-                "lCYBS": {
+                "OPQgF": {
                   "content": "Вчера"
                 },
-                "jmtGe": {
+                "u0i8d": {
                   "content": "2 звонка"
                 }
               }
             },
             {
-              "id": "GzJ8a",
+              "id": "PCDG6",
               "type": "ref",
-              "ref": "UVznt",
+              "ref": "g69Zqs",
               "name": "Row 3",
               "width": "fill_container",
               "fill": "$okBg",
               "descendants": {
-                "pZS2W": {
+                "OUVdK": {
                   "content": "16:00"
                 },
-                "PxTs0": {
+                "g0Vusi": {
                   "content": "Синк по OKR на квартал",
                   "fill": "$text",
                   "fontFamily": "$font-ui",
                   "fontWeight": "600"
                 },
-                "sfjxq": {
+                "g3og3": {
                   "content": "1:12:00"
                 },
-                "ns8dS": {
+                "o8kcr": {
                   "enabled": false
                 },
-                "c2YAFU": {
+                "qGv7w": {
                   "enabled": true
                 },
-                "e7ly1": {
+                "k3ypSL": {
                   "enabled": false,
                   "fill": "$me"
                 },
-                "uqDCA": {
+                "exyCz": {
                   "enabled": false
                 }
               }
             },
             {
-              "id": "i8hxo4",
+              "id": "UvzL0",
               "type": "ref",
-              "ref": "UVznt",
+              "ref": "g69Zqs",
               "name": "Row 4",
               "width": "fill_container",
               "fill": "$surface",
               "descendants": {
-                "pZS2W": {
+                "OUVdK": {
                   "content": "11:15"
                 },
-                "PxTs0": {
+                "g0Vusi": {
                   "content": "1:1 с Анной",
                   "fill": "$text",
                   "fontFamily": "$font-ui",
                   "fontWeight": "600"
                 },
-                "sfjxq": {
+                "g3og3": {
                   "content": "28:44"
                 },
-                "ns8dS": {
+                "o8kcr": {
                   "enabled": false
                 },
-                "c2YAFU": {
+                "qGv7w": {
                   "enabled": false
                 },
-                "e7ly1": {
+                "k3ypSL": {
                   "enabled": true,
                   "fill": "$sub"
                 },
-                "uqDCA": {
+                "exyCz": {
                   "enabled": false
                 }
               }
             },
             {
-              "id": "vIFMG",
+              "id": "ZZ5N2",
               "type": "ref",
-              "ref": "e3SwZe",
+              "ref": "pmtOb",
               "name": "Day Пятница, 7 ноября",
               "width": "fill_container",
               "descendants": {
-                "lCYBS": {
+                "OPQgF": {
                   "content": "Пятница, 7 ноября"
                 },
-                "jmtGe": {
+                "u0i8d": {
                   "content": "1 звонок"
                 }
               }
             },
             {
-              "id": "Hrboz",
+              "id": "HNg9A",
               "type": "ref",
-              "ref": "UVznt",
+              "ref": "g69Zqs",
               "name": "Row 5",
               "width": "fill_container",
               "fill": "$surface",
               "descendants": {
-                "pZS2W": {
+                "OUVdK": {
                   "content": "11:00"
                 },
-                "PxTs0": {
+                "g0Vusi": {
                   "content": "2026.11.07-1100",
                   "fill": "$gutter",
                   "fontFamily": "$font-data",
                   "fontWeight": "normal"
                 },
-                "sfjxq": {
+                "g3og3": {
                   "content": "—"
                 },
-                "ns8dS": {
+                "o8kcr": {
                   "enabled": false
                 },
-                "c2YAFU": {
+                "qGv7w": {
                   "enabled": false
                 },
-                "e7ly1": {
+                "k3ypSL": {
                   "enabled": false,
                   "fill": "$sub"
                 },
-                "uqDCA": {
+                "exyCz": {
                   "enabled": false
                 }
               }
             },
             {
-              "id": "qASjA",
+              "id": "NYogb",
               "type": "ref",
-              "ref": "e3SwZe",
+              "ref": "pmtOb",
               "name": "Day 3 сентября",
               "width": "fill_container",
               "descendants": {
-                "lCYBS": {
+                "OPQgF": {
                   "content": "3 сентября"
                 },
-                "jmtGe": {
+                "u0i8d": {
                   "content": "1 звонок"
                 }
               }
             },
             {
-              "id": "rhoFR",
+              "id": "HEnxN",
               "type": "ref",
-              "ref": "UVznt",
+              "ref": "g69Zqs",
               "name": "Row 6",
               "width": "fill_container",
               "fill": "$surface",
               "descendants": {
-                "pZS2W": {
+                "OUVdK": {
                   "content": "18:00"
                 },
-                "PxTs0": {
+                "g0Vusi": {
                   "content": "Клиент Альфа: демо и вопросы по интегра…",
                   "fill": "$text",
                   "fontFamily": "$font-ui",
                   "fontWeight": "600"
                 },
-                "sfjxq": {
+                "g3og3": {
                   "content": "52:10"
                 },
-                "ns8dS": {
+                "o8kcr": {
                   "enabled": false
                 },
-                "c2YAFU": {
+                "qGv7w": {
                   "enabled": false
                 },
-                "e7ly1": {
+                "k3ypSL": {
                   "enabled": false,
                   "fill": "$sub"
                 },
-                "uqDCA": {
+                "exyCz": {
                   "enabled": false
                 }
               }
             },
             {
-              "id": "h26ydp",
+              "id": "B9Clre",
               "type": "ref",
-              "ref": "e3SwZe",
+              "ref": "pmtOb",
               "name": "Day 12 декабря 2025",
               "width": "fill_container",
               "descendants": {
-                "lCYBS": {
+                "OPQgF": {
                   "content": "12 декабря 2025"
                 },
-                "jmtGe": {
+                "u0i8d": {
                   "content": "1 звонок"
                 }
               }
             },
             {
-              "id": "wY0tU",
+              "id": "O6r4W",
               "type": "ref",
-              "ref": "UVznt",
+              "ref": "g69Zqs",
               "name": "Row 7",
               "width": "fill_container",
               "fill": "$surface",
               "descendants": {
-                "pZS2W": {
+                "OUVdK": {
                   "content": "10:30"
                 },
-                "PxTs0": {
+                "g0Vusi": {
                   "content": "Ретро за год",
                   "fill": "$text",
                   "fontFamily": "$font-ui",
                   "fontWeight": "600"
                 },
-                "sfjxq": {
+                "g3og3": {
                   "content": "1:05:12"
                 },
-                "ns8dS": {
+                "o8kcr": {
                   "enabled": false
                 },
-                "c2YAFU": {
+                "qGv7w": {
                   "enabled": false
                 },
-                "e7ly1": {
+                "k3ypSL": {
                   "enabled": true,
                   "fill": "$sub"
                 },
-                "uqDCA": {
+                "exyCz": {
                   "enabled": false
                 }
               }
@@ -2600,9 +2565,9 @@
           ]
         },
         {
-          "id": "Cpklm",
+          "id": "ZkO3i",
           "type": "ref",
-          "ref": "Pz7Rg",
+          "ref": "RHrYH",
           "name": "Banner",
           "x": 0,
           "width": 560,
@@ -2611,9 +2576,9 @@
       ]
     },
     {
-      "id": "q3umP",
+      "id": "iKWYj",
       "type": "ref",
-      "ref": "HvVpx",
+      "ref": "koZGY",
       "name": "Calls — error (dark)",
       "x": 2820,
       "y": 560,
@@ -2623,7 +2588,7 @@
     },
     {
       "type": "frame",
-      "id": "LvEbn",
+      "id": "o1wAIr",
       "x": 3440,
       "y": 0,
       "name": "Calls — window inactive",
@@ -2642,7 +2607,7 @@
       "children": [
         {
           "type": "frame",
-          "id": "AzA8O",
+          "id": "IUXRF",
           "x": 0,
           "y": 0,
           "name": "Content",
@@ -2651,328 +2616,328 @@
           "layout": "vertical",
           "children": [
             {
-              "id": "tQTsu",
+              "id": "q7u0wN",
               "type": "ref",
-              "ref": "gJG4t",
+              "ref": "bncv0",
               "name": "Title bar",
               "width": "fill_container"
             },
             {
-              "id": "NuqeV",
+              "id": "jl02i",
               "type": "ref",
-              "ref": "e3SwZe",
+              "ref": "pmtOb",
               "name": "Day Сегодня",
               "width": "fill_container",
               "descendants": {
-                "lCYBS": {
+                "OPQgF": {
                   "content": "Сегодня"
                 },
-                "jmtGe": {
+                "u0i8d": {
                   "content": "2 звонка"
                 }
               }
             },
             {
-              "id": "i3zeV",
+              "id": "k8HPR5",
               "type": "ref",
-              "ref": "UVznt",
+              "ref": "g69Zqs",
               "name": "Row 1",
               "width": "fill_container",
               "fill": "$btn",
               "descendants": {
-                "pZS2W": {
+                "OUVdK": {
                   "content": "12:30"
                 },
-                "PxTs0": {
+                "g0Vusi": {
                   "content": "Запуск: роли и SLA",
                   "fill": "$text",
                   "fontFamily": "$font-ui",
                   "fontWeight": "600"
                 },
-                "sfjxq": {
+                "g3og3": {
                   "content": "47:00"
                 },
-                "ns8dS": {
+                "o8kcr": {
                   "enabled": false
                 },
-                "c2YAFU": {
+                "qGv7w": {
                   "enabled": false
                 },
-                "e7ly1": {
+                "k3ypSL": {
                   "enabled": true,
                   "fill": "$sub"
                 },
-                "uqDCA": {
+                "exyCz": {
                   "enabled": false
                 }
               }
             },
             {
-              "id": "s3QXoa",
+              "id": "HEEyB",
               "type": "ref",
-              "ref": "UVznt",
+              "ref": "g69Zqs",
               "name": "Row 2",
               "width": "fill_container",
               "fill": "$surface",
               "descendants": {
-                "pZS2W": {
+                "OUVdK": {
                   "content": "09:05"
                 },
-                "PxTs0": {
+                "g0Vusi": {
                   "content": "Интервью: кандидат на iOS — техническая…",
                   "fill": "$text",
                   "fontFamily": "$font-ui",
                   "fontWeight": "600"
                 },
-                "sfjxq": {
+                "g3og3": {
                   "content": "1:12:40"
                 },
-                "ns8dS": {
+                "o8kcr": {
                   "enabled": true
                 },
-                "c2YAFU": {
+                "qGv7w": {
                   "enabled": false
                 },
-                "e7ly1": {
+                "k3ypSL": {
                   "enabled": false,
                   "fill": "$sub"
                 },
-                "uqDCA": {
+                "exyCz": {
                   "enabled": false
                 }
               }
             },
             {
-              "id": "EQOsC",
+              "id": "x3yUz",
               "type": "ref",
-              "ref": "e3SwZe",
+              "ref": "pmtOb",
               "name": "Day Вчера",
               "width": "fill_container",
               "descendants": {
-                "lCYBS": {
+                "OPQgF": {
                   "content": "Вчера"
                 },
-                "jmtGe": {
+                "u0i8d": {
                   "content": "2 звонка"
                 }
               }
             },
             {
-              "id": "qyvlL",
+              "id": "PQpwE",
               "type": "ref",
-              "ref": "UVznt",
+              "ref": "g69Zqs",
               "name": "Row 3",
               "width": "fill_container",
               "fill": "$surface",
               "descendants": {
-                "pZS2W": {
+                "OUVdK": {
                   "content": "16:00"
                 },
-                "PxTs0": {
+                "g0Vusi": {
                   "content": "Синк по OKR на квартал",
                   "fill": "$text",
                   "fontFamily": "$font-ui",
                   "fontWeight": "600"
                 },
-                "sfjxq": {
+                "g3og3": {
                   "content": "1:12:00"
                 },
-                "ns8dS": {
+                "o8kcr": {
                   "enabled": false
                 },
-                "c2YAFU": {
+                "qGv7w": {
                   "enabled": true
                 },
-                "e7ly1": {
+                "k3ypSL": {
                   "enabled": false,
                   "fill": "$sub"
                 },
-                "uqDCA": {
+                "exyCz": {
                   "enabled": false
                 }
               }
             },
             {
-              "id": "sForO",
+              "id": "jy9Eg",
               "type": "ref",
-              "ref": "UVznt",
+              "ref": "g69Zqs",
               "name": "Row 4",
               "width": "fill_container",
               "fill": "$surface",
               "descendants": {
-                "pZS2W": {
+                "OUVdK": {
                   "content": "11:15"
                 },
-                "PxTs0": {
+                "g0Vusi": {
                   "content": "1:1 с Анной",
                   "fill": "$text",
                   "fontFamily": "$font-ui",
                   "fontWeight": "600"
                 },
-                "sfjxq": {
+                "g3og3": {
                   "content": "28:44"
                 },
-                "ns8dS": {
+                "o8kcr": {
                   "enabled": false
                 },
-                "c2YAFU": {
+                "qGv7w": {
                   "enabled": false
                 },
-                "e7ly1": {
+                "k3ypSL": {
                   "enabled": true,
                   "fill": "$sub"
                 },
-                "uqDCA": {
+                "exyCz": {
                   "enabled": false
                 }
               }
             },
             {
-              "id": "ten0t",
+              "id": "uNbgT",
               "type": "ref",
-              "ref": "e3SwZe",
+              "ref": "pmtOb",
               "name": "Day Пятница, 7 ноября",
               "width": "fill_container",
               "descendants": {
-                "lCYBS": {
+                "OPQgF": {
                   "content": "Пятница, 7 ноября"
                 },
-                "jmtGe": {
+                "u0i8d": {
                   "content": "1 звонок"
                 }
               }
             },
             {
-              "id": "hk3Qr",
+              "id": "Pcv3Q",
               "type": "ref",
-              "ref": "UVznt",
+              "ref": "g69Zqs",
               "name": "Row 5",
               "width": "fill_container",
               "fill": "$surface",
               "descendants": {
-                "pZS2W": {
+                "OUVdK": {
                   "content": "11:00"
                 },
-                "PxTs0": {
+                "g0Vusi": {
                   "content": "2026.11.07-1100",
                   "fill": "$gutter",
                   "fontFamily": "$font-data",
                   "fontWeight": "normal"
                 },
-                "sfjxq": {
+                "g3og3": {
                   "content": "—"
                 },
-                "ns8dS": {
+                "o8kcr": {
                   "enabled": false
                 },
-                "c2YAFU": {
+                "qGv7w": {
                   "enabled": false
                 },
-                "e7ly1": {
+                "k3ypSL": {
                   "enabled": false,
                   "fill": "$sub"
                 },
-                "uqDCA": {
+                "exyCz": {
                   "enabled": false
                 }
               }
             },
             {
-              "id": "yjNDo",
+              "id": "JV0Ya",
               "type": "ref",
-              "ref": "e3SwZe",
+              "ref": "pmtOb",
               "name": "Day 3 сентября",
               "width": "fill_container",
               "descendants": {
-                "lCYBS": {
+                "OPQgF": {
                   "content": "3 сентября"
                 },
-                "jmtGe": {
+                "u0i8d": {
                   "content": "1 звонок"
                 }
               }
             },
             {
-              "id": "i32E7D",
+              "id": "Udp4s",
               "type": "ref",
-              "ref": "UVznt",
+              "ref": "g69Zqs",
               "name": "Row 6",
               "width": "fill_container",
               "fill": "$surface",
               "descendants": {
-                "pZS2W": {
+                "OUVdK": {
                   "content": "18:00"
                 },
-                "PxTs0": {
+                "g0Vusi": {
                   "content": "Клиент Альфа: демо и вопросы по интегра…",
                   "fill": "$text",
                   "fontFamily": "$font-ui",
                   "fontWeight": "600"
                 },
-                "sfjxq": {
+                "g3og3": {
                   "content": "52:10"
                 },
-                "ns8dS": {
+                "o8kcr": {
                   "enabled": false
                 },
-                "c2YAFU": {
+                "qGv7w": {
                   "enabled": false
                 },
-                "e7ly1": {
+                "k3ypSL": {
                   "enabled": false,
                   "fill": "$sub"
                 },
-                "uqDCA": {
+                "exyCz": {
                   "enabled": false
                 }
               }
             },
             {
-              "id": "w7jZLv",
+              "id": "YmcHA",
               "type": "ref",
-              "ref": "e3SwZe",
+              "ref": "pmtOb",
               "name": "Day 12 декабря 2025",
               "width": "fill_container",
               "descendants": {
-                "lCYBS": {
+                "OPQgF": {
                   "content": "12 декабря 2025"
                 },
-                "jmtGe": {
+                "u0i8d": {
                   "content": "1 звонок"
                 }
               }
             },
             {
-              "id": "nPt2e",
+              "id": "KPRYk",
               "type": "ref",
-              "ref": "UVznt",
+              "ref": "g69Zqs",
               "name": "Row 7",
               "width": "fill_container",
               "fill": "$surface",
               "descendants": {
-                "pZS2W": {
+                "OUVdK": {
                   "content": "10:30"
                 },
-                "PxTs0": {
+                "g0Vusi": {
                   "content": "Ретро за год",
                   "fill": "$text",
                   "fontFamily": "$font-ui",
                   "fontWeight": "600"
                 },
-                "sfjxq": {
+                "g3og3": {
                   "content": "1:05:12"
                 },
-                "ns8dS": {
+                "o8kcr": {
                   "enabled": false
                 },
-                "c2YAFU": {
+                "qGv7w": {
                   "enabled": false
                 },
-                "e7ly1": {
+                "k3ypSL": {
                   "enabled": true,
                   "fill": "$sub"
                 },
-                "uqDCA": {
+                "exyCz": {
                   "enabled": false
                 }
               }
@@ -2982,9 +2947,9 @@
       ]
     },
     {
-      "id": "wfXAW",
+      "id": "Q6Gq5I",
       "type": "ref",
-      "ref": "LvEbn",
+      "ref": "o1wAIr",
       "name": "Calls — window inactive (dark)",
       "x": 3440,
       "y": 560,
@@ -2994,7 +2959,7 @@
     },
     {
       "type": "frame",
-      "id": "RoJTf",
+      "id": "aN4Cm",
       "x": 4060,
       "y": 0,
       "name": "Calls — empty",
@@ -3013,7 +2978,7 @@
       "children": [
         {
           "type": "frame",
-          "id": "BGpx2",
+          "id": "BSii7",
           "x": 0,
           "y": 0,
           "name": "Content",
@@ -3022,15 +2987,15 @@
           "layout": "vertical",
           "children": [
             {
-              "id": "oOfSg",
+              "id": "WJBTE",
               "type": "ref",
-              "ref": "gJG4t",
+              "ref": "bncv0",
               "name": "Title bar",
               "width": "fill_container"
             },
             {
               "type": "frame",
-              "id": "D6JFj",
+              "id": "m8hof",
               "name": "Message",
               "width": "fill_container",
               "height": "fill_container",
@@ -3041,7 +3006,7 @@
               "children": [
                 {
                   "type": "text",
-                  "id": "PnRYZ",
+                  "id": "rgsSX",
                   "name": "H",
                   "fill": "$sub",
                   "content": "Пока нет записанных звонков",
@@ -3051,7 +3016,7 @@
                 },
                 {
                   "type": "text",
-                  "id": "NWvb6",
+                  "id": "M2NOqO",
                   "name": "Sub",
                   "fill": "$gutter",
                   "content": "Звонок появится здесь, когда закончится запись",
@@ -3066,9 +3031,9 @@
       ]
     },
     {
-      "id": "VZDq1",
+      "id": "nkTCD",
       "type": "ref",
-      "ref": "RoJTf",
+      "ref": "aN4Cm",
       "name": "Calls — empty (dark)",
       "x": 4060,
       "y": 560,
@@ -3078,7 +3043,7 @@
     },
     {
       "type": "frame",
-      "id": "jXFKp",
+      "id": "f1KD1p",
       "x": 4680,
       "y": 0,
       "name": "Calls — loading",
@@ -3097,7 +3062,7 @@
       "children": [
         {
           "type": "frame",
-          "id": "C2WYd",
+          "id": "Wxjdd",
           "x": 0,
           "y": 0,
           "name": "Content",
@@ -3106,15 +3071,15 @@
           "layout": "vertical",
           "children": [
             {
-              "id": "njKrZ",
+              "id": "im2zx",
               "type": "ref",
-              "ref": "gJG4t",
+              "ref": "bncv0",
               "name": "Title bar",
               "width": "fill_container"
             },
             {
               "type": "frame",
-              "id": "zo4oJ",
+              "id": "Ck5ox",
               "name": "Message",
               "width": "fill_container",
               "height": "fill_container",
@@ -3125,7 +3090,7 @@
               "children": [
                 {
                   "type": "text",
-                  "id": "S1eISA",
+                  "id": "yX4is",
                   "name": "H",
                   "fill": "$sub",
                   "content": "Загружаются звонки…",
@@ -3140,9 +3105,9 @@
       ]
     },
     {
-      "id": "k5swZi",
+      "id": "icU2M",
       "type": "ref",
-      "ref": "jXFKp",
+      "ref": "f1KD1p",
       "name": "Calls — loading (dark)",
       "x": 4680,
       "y": 560,
@@ -3152,7 +3117,7 @@
     },
     {
       "type": "note",
-      "id": "e5gmu",
+      "id": "WlBsG",
       "x": 0,
       "y": 1160,
       "name": "Note layout",
@@ -3162,17 +3127,17 @@
     },
     {
       "type": "note",
-      "id": "zk1Tu",
+      "id": "puGEr",
       "x": 480,
       "y": 1160,
       "name": "Note actions",
       "width": 440,
       "height": 300,
-      "content": "Status cell, 64 pt, right-aligned: summary being prepared (spinner), summary failed (red alert), notes (eye; accent on the selected row, click shows notes). On hover the row tints and a ⋯ button appears at the cell's end, in no extra space; it opens the same menu as a right-click, below the button, right edges aligned. Повторить итоги appears only for a failed summary.\n\nKeys: ↑↓ select, Return opens, Space shows notes, ⌘R renames, ⇧⌘R shows in Finder, ⌘⌫ asks to delete. Double-click opens."
+      "content": "Status cell, 64 pt, right-aligned: summary being prepared (spinner), summary failed (red alert), notes (eye; accent on the selected row, click shows notes). On hover the row tints and a ⋯ button appears at the cell's end, in no extra space; it opens the same menu as a right-click, below the button, right edges aligned. Повторить итоги appears only for a failed summary.\n\nОткрыть shows the call's folder in Finder.\n\nKeys: ↑↓ select, Return opens, Space shows notes, ⌘R renames, ⌘⌫ asks to delete. Double-click opens."
     },
     {
       "type": "note",
-      "id": "RTBJM",
+      "id": "G1goNU",
       "x": 960,
       "y": 1160,
       "name": "Note states",
@@ -3715,5 +3680,5 @@
       "value": 20
     }
   },
-  "fileToken": "e3354910-270a-4f21-ac14-6cf5749a0a74"
+  "fileToken": "783cd48a-39db-4ab5-83c9-94d7241eca0c"
 }

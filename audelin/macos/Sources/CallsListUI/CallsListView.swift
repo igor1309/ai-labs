@@ -64,6 +64,12 @@ public struct CallsListView: View {
             event(press.key == .downArrow ? .selectNext : .selectPrevious)
             return .handled
         }
+        .onKeyPress(keys: [.return, .space, "r", .delete, .backspace]) { press in
+            guard let row = state.rows.first(where: { $0.id == state.selectedID }),
+                  let action = keyAction(press, row) else { return .ignored }
+            event(action)
+            return .handled
+        }
         .overlay { if let body = state.deleteBody { deleteAlert(body) } }
         .onChange(of: state.editing?.id) { _, id in editing = id != nil }
         .onAppear { GlassLedger.registerFonts(); editing = state.editing != nil }
@@ -74,6 +80,31 @@ public struct CallsListView: View {
     private func callRow(_ row: CallsListState.Row) -> some View {
         Button { event(.select(row.id)) } label: { rowContent(row).contentShape(.rect) }
             .buttonStyle(.plain)
+            .simultaneousGesture(TapGesture(count: 2).onEnded { if !state.busy { event(.open(row.id)) } })
+            .contextMenu { menu(row) }
+    }
+
+    /// The row's actions, the same in its context menu and on its keys.
+    @ViewBuilder private func menu(_ row: CallsListState.Row) -> some View {
+        Button("Открыть") { event(.open(row.id)) }.disabled(state.busy)
+        if row.hasNotes { Button("Показать заметки") { event(.preview(row.id)) } }
+        Button("Переименовать") { event(.select(row.id)); event(.beginRename(row.id)) }
+            .disabled(!row.editable || state.busy)
+        if row.canRetrySummary { Button("Повторить итоги") { event(.retrySummary(row.id)) }.disabled(state.busy) }
+        Divider()
+        Button("Удалить…", role: .destructive) { event(.askDelete(row.id)) }.disabled(!row.editable || state.busy)
+    }
+
+    /// Return opens, Space shows notes, ⌘R renames and ⌘⌫ asks to delete the selected call.
+    private func keyAction(_ press: KeyPress, _ row: CallsListState.Row) -> CallsListEvent? {
+        let command = press.modifiers.contains(.command)
+        switch press.key {
+        case .return where !command && !state.busy: return .open(row.id)
+        case .space where !command && row.hasNotes: return .preview(row.id)
+        case "r" where command && row.editable && !state.busy: return .beginRename(row.id)
+        case .delete where command && row.editable && !state.busy, .backspace where command && row.editable && !state.busy: return .askDelete(row.id)
+        default: return nil
+        }
     }
 
     private func rowContent(_ row: CallsListState.Row) -> some View {
@@ -205,3 +236,6 @@ public struct CallsListView: View {
         }
     }
 }
+
+/// What the ⌫ key types; SwiftUI's `.delete` is U+0008, which a Mac keyboard does not send.
+private extension KeyEquivalent { static let backspace = KeyEquivalent("\u{7F}") }

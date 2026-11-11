@@ -30,10 +30,10 @@ Context menu, Alert, Rename field, Error banner).
 - Hover tints the row and shows a ⋯ button at the end of the status cell,
   in no extra space. It opens the same menu as a right-click, below the
   button with right edges aligned: Открыть, Показать заметки, Переименовать,
-  Повторить итоги (only when the summary failed), Показать в Finder,
-  Удалить….
-- Keys: ↑↓ select, Return opens, Space shows notes, ⌘R renames, ⇧⌘R shows in
-  Finder, ⌘⌫ asks to delete. Double-click opens.
+  Повторить итоги (only when the summary failed), Удалить…. Открыть shows
+  the call's folder in Finder.
+- Keys: ↑↓ select, Return opens, Space shows notes, ⌘R renames, ⌘⌫ asks to
+  delete. Double-click opens.
 
 ## States
 
