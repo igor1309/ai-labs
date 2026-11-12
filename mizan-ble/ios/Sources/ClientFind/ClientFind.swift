@@ -105,17 +105,16 @@ public enum ClientFind {
             self.scanner = scanner
         }
 
-        public func handle(_ effect: Effect) -> AsyncStream<Event> {
-            AsyncStream { continuation in
-                switch effect {
-                case .startScanning:
-                    scanner.start()
-                    continuation.yield(.scanningStarted)
-                case .stopScanning:
-                    scanner.stop()
-                    continuation.yield(.scanningStopped)
-                }
-                continuation.finish()
+        /// Runs the scanner command before it returns, so the scan has started or
+        /// stopped by the time its event is delivered.
+        public func handle(_ effect: Effect) -> Event {
+            switch effect {
+            case .startScanning:
+                scanner.start()
+                return .scanningStarted
+            case .stopScanning:
+                scanner.stop()
+                return .scanningStopped
             }
         }
     }

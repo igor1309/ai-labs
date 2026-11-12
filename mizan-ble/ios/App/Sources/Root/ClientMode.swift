@@ -52,7 +52,7 @@ import Observation
                      reduce: loggedReducer(ClientFind.reduce, initial: initial, category: .clientFind, log: log,
                                            changed: { [weak self] _, state in
             Task { @MainActor [weak self] in self?.findChanged(state) }
-        }), handleEffect: handler.handle)
+        }), handleEffect: delivering(handler.handle))
         discovery.send = { [weak self] in self?.find?.event($0) }
         find?.event(.bluetoothChanged(bluetooth.findAvailability))
     }
