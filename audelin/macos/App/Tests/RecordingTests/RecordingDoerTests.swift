@@ -153,6 +153,28 @@ struct RecordingDoerTests {
         #expect(await spies.released.count == 1)
     }
 
+    @Test func aSecondSessionIsBegunAndEndedOnceAfterTheFirst() async {
+
+        let (sut, spies) = await makeBegun()
+        sut.act(on: makeEnding())
+        await spies.session.completeEnd()
+        await spies.released.complete()
+        #expect(await spies.sent.next() == .sessionReported(id: 1, .ended))
+        sut.act(on: makeBeginning(id: 2))
+        sut.act(on: makeBeginning(id: 2))
+        await spies.ready.complete(with: true)
+        await spies.session.completeBegin(with: .cannotRecord("no mic"))
+        #expect(await spies.sent.next() == .sessionReported(id: 2, .cannotRecord("no mic")))
+        sut.act(on: makeEnding(id: 2))
+        sut.act(on: makeEnding(id: 2))
+        await spies.session.completeEnd()
+        await spies.released.complete()
+        #expect(await spies.sent.next() == .sessionReported(id: 2, .ended))
+        #expect(await spies.session.beginIDs == [1, 2])
+        #expect(await spies.session.endIDs == [1, 2])
+        #expect(await spies.ready.count == 2)
+    }
+
     @Test func endedIsSentOnlyAfterTheSessionEndsAndAudioIsReleased() async {
 
         let (sut, spies) = await makeBegun()
