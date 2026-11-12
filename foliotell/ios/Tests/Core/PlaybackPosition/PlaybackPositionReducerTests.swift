@@ -111,51 +111,72 @@ struct PlaybackPositionReducerTests {
         )
     }
 
-    @Test func test_reduce_shouldAnchorNextSentenceAndPersist_onIdleJumpNext() {
+    @Test func test_reduce_shouldAnchorNextSentence_onIdleJumpNext() {
 
-        let (state, effect) = reduce(makeState(), .idleJumpRequested(.next))
-
-        #expect(state == makeState(storedAnchor: 16))
-        #expect(effect == .persistAnchor(documentPath: "/doc.md", anchor: 16))
+        assert(makeState(), .idleJumpRequested(.next)) {
+            $0.storedAnchor = 16
+        }
     }
 
-    @Test func test_reduce_shouldIgnoreIdleJumpNext_onLastSentence() {
+    @Test func test_reduce_shouldDeliverPersistAnchor_onIdleJumpNext() {
 
-        let lastSentence = makeState(storedAnchor: 16)
-
-        let (state, effect) = reduce(lastSentence, .idleJumpRequested(.next))
-
-        #expect(state == lastSentence)
-        #expect(effect == nil)
+        assert(makeState(), .idleJumpRequested(.next), delivers: .persistAnchor(documentPath: "/doc.md", anchor: 16))
     }
 
-    @Test func test_reduce_shouldAnchorPreviousSentenceAndPersist_onIdleJumpPrevious() {
+    @Test func test_reduce_shouldNotChange_onIdleJumpNextOnLastSentence() {
 
-        let (state, effect) = reduce(
+        assert(makeState(storedAnchor: 16), .idleJumpRequested(.next))
+    }
+
+    @Test func test_reduce_shouldDeliverNothing_onIdleJumpNextOnLastSentence() {
+
+        assert(makeState(storedAnchor: 16), .idleJumpRequested(.next), delivers: nil)
+    }
+
+    @Test func test_reduce_shouldAnchorPreviousSentenceAndDropLiveOffset_onIdleJumpPrevious() {
+
+        assert(makeState(storedAnchor: 16, liveDocumentUTF16Offset: 20), .idleJumpRequested(.previous)) {
+            $0.storedAnchor = 0
+            $0.liveDocumentUTF16Offset = nil
+        }
+    }
+
+    @Test func test_reduce_shouldDeliverPersistAnchor_onIdleJumpPrevious() {
+
+        assert(
             makeState(storedAnchor: 16, liveDocumentUTF16Offset: 20),
-            .idleJumpRequested(.previous)
+            .idleJumpRequested(.previous),
+            delivers: .persistAnchor(documentPath: "/doc.md", anchor: 0)
         )
-
-        #expect(state == makeState(storedAnchor: 0))
-        #expect(effect == .persistAnchor(documentPath: "/doc.md", anchor: 0))
     }
 
-    @Test func test_reduce_shouldDropLiveOffset_onIdleJump() {
+    @Test func test_reduce_shouldAnchorNextSentenceAndDropLiveOffset_onIdleJumpNextWithLiveOffset() {
 
-        let (state, _) = reduce(
+        assert(makeState(liveDocumentUTF16Offset: 3), .idleJumpRequested(.next)) {
+            $0.storedAnchor = 16
+            $0.liveDocumentUTF16Offset = nil
+        }
+    }
+
+    @Test func test_reduce_shouldDeliverPersistAnchor_onIdleJumpNextWithLiveOffset() {
+
+        assert(
             makeState(liveDocumentUTF16Offset: 3),
-            .idleJumpRequested(.next)
+            .idleJumpRequested(.next),
+            delivers: .persistAnchor(documentPath: "/doc.md", anchor: 16)
         )
-
-        #expect(state.liveDocumentUTF16Offset == nil)
     }
 
-    @Test func test_reduce_shouldAnchorWithoutStoreEffect_onIdleJumpWithoutDocumentPath() {
+    @Test func test_reduce_shouldAnchorNextSentence_onIdleJumpWithoutDocumentPath() {
 
-        let (state, effect) = reduce(makeState(documentPath: nil), .idleJumpRequested(.next))
+        assert(makeState(documentPath: nil), .idleJumpRequested(.next)) {
+            $0.storedAnchor = 16
+        }
+    }
 
-        #expect(state == makeState(documentPath: nil, storedAnchor: 16))
-        #expect(effect == nil)
+    @Test func test_reduce_shouldDeliverNothing_onIdleJumpWithoutDocumentPath() {
+
+        assert(makeState(documentPath: nil), .idleJumpRequested(.next), delivers: nil)
     }
 
     @Test func test_reduce_shouldRebuildDerivationAndKeepAnchor_onFrontMatterModeChanged() {
