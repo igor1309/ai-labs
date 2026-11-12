@@ -95,82 +95,142 @@ struct PlaybackTransportReducerTests {
         )
     }
 
-    @Test func test_reduce_shouldPause_onAcceptedPauseWhileSpeaking() {
+    @Test func test_reduce_shouldPauseAndClearRequest_onAcceptedPauseWhileSpeaking() {
 
-        let (state, effect) = reduce(.speaking(makeSession()), .pauseResolved(accepted: true, utteranceToken: 1))
-
-        #expect(state == .paused(makeSession()))
-        #expect(effect == nil)
+        assert(.speaking(makeSession(isPauseRequested: true)), .pauseResolved(accepted: true, utteranceToken: 1)) {
+            $0.becomePaused()
+            $0.session.isPauseRequested = false
+        }
     }
 
-    @Test func test_reduce_shouldStaySpeaking_onRejectedPauseWhileSpeaking() {
+    @Test func test_reduce_shouldDeliverNothing_onAcceptedPauseWhileSpeaking() {
 
-        let (state, effect) = reduce(.speaking(makeSession()), .pauseResolved(accepted: false, utteranceToken: 1))
-
-        #expect(state == .speaking(makeSession()))
-        #expect(effect == nil)
+        assert(.speaking(makeSession(isPauseRequested: true)), .pauseResolved(accepted: true, utteranceToken: 1), delivers: nil)
     }
 
-    @Test func test_reduce_shouldRetryPause_onWordBoundaryAfterRejectedPause() {
+    @Test func test_reduce_shouldStaySpeakingWithPauseRequested_onRejectedPauseWhileSpeaking() {
 
-        let (pauseRequestedState, _) = reduce(.speaking(makeSession()), .primaryTapped(makeRequest()))
-        let (rejectedPauseState, _) = reduce(
-            pauseRequestedState,
-            .pauseResolved(accepted: false, utteranceToken: 1)
-        )
-        let (_, effect) = reduce(
-            rejectedPauseState,
+        assert(.speaking(makeSession(isPauseRequested: true)), .pauseResolved(accepted: false, utteranceToken: 1))
+    }
+
+    @Test func test_reduce_shouldDeliverNothing_onRejectedPauseWhileSpeaking() {
+
+        assert(.speaking(makeSession(isPauseRequested: true)), .pauseResolved(accepted: false, utteranceToken: 1), delivers: nil)
+    }
+
+    @Test func test_reduce_shouldKeepPauseRequested_onWordBoundaryAfterRejectedPause() {
+
+        assert(
+            .speaking(makeSession(isPauseRequested: true)),
             .willSpeakRange(utteranceToken: 1, utteranceUTF16Offset: 0)
         )
-
-        #expect(effect == .pause(utteranceToken: 1))
     }
 
-    @Test func test_reduce_shouldIgnorePauseResolution_onIdleAndPaused() {
+    @Test func test_reduce_shouldDeliverPauseRetry_onWordBoundaryAfterRejectedPause() {
 
-        let results = [
-            reduce(.idle(lastUtteranceToken: 0),.pauseResolved(accepted: true, utteranceToken: 1)),
-            reduce(.paused(makeSession()), .pauseResolved(accepted: true, utteranceToken: 1)),
-        ]
+        assert(
+            .speaking(makeSession(isPauseRequested: true)),
+            .willSpeakRange(utteranceToken: 1, utteranceUTF16Offset: 0),
+            delivers: .pause(utteranceToken: 1)
+        )
+    }
 
-        #expect(results.map(\.0) == [.idle(lastUtteranceToken: 0), .paused(makeSession())])
-        #expect(results.map(\.1) == [nil, nil])
+    @Test func test_reduce_shouldNotChange_onPauseResolutionInIdle() {
+
+        assert(.idle(lastUtteranceToken: 0), .pauseResolved(accepted: true, utteranceToken: 1))
+    }
+
+    @Test func test_reduce_shouldNotChange_onPauseResolutionWhilePaused() {
+
+        assert(.paused(makeSession()), .pauseResolved(accepted: true, utteranceToken: 1))
+    }
+
+    @Test func test_reduce_shouldDeliverNothing_onPauseResolutionInIdle() {
+
+        assert(.idle(lastUtteranceToken: 0), .pauseResolved(accepted: true, utteranceToken: 1), delivers: nil)
+    }
+
+    @Test func test_reduce_shouldDeliverNothing_onPauseResolutionWhilePaused() {
+
+        assert(.paused(makeSession()), .pauseResolved(accepted: true, utteranceToken: 1), delivers: nil)
+    }
+
+    @Test func test_reduce_shouldNotChange_onPauseResolutionWithStaleToken() {
+
+        assert(.speaking(makeSession(utteranceToken: 2, isPauseRequested: true)), .pauseResolved(accepted: true, utteranceToken: 1))
+    }
+
+    @Test func test_reduce_shouldDeliverNothing_onPauseResolutionWithStaleToken() {
+
+        assert(
+            .speaking(makeSession(utteranceToken: 2, isPauseRequested: true)),
+            .pauseResolved(accepted: true, utteranceToken: 1),
+            delivers: nil
+        )
     }
 
     @Test func test_reduce_shouldResumeSpeaking_onAcceptedResumeWhilePaused() {
 
-        let (state, effect) = reduce(.paused(makeSession()), .resumeResolved(accepted: true, utteranceToken: 1))
+        assert(.paused(makeSession()), .resumeResolved(accepted: true, utteranceToken: 1)) {
+            $0.becomeSpeaking()
+        }
+    }
 
-        #expect(state == .speaking(makeSession()))
-        #expect(effect == nil)
+    @Test func test_reduce_shouldDeliverNothing_onAcceptedResumeWhilePaused() {
+
+        assert(.paused(makeSession()), .resumeResolved(accepted: true, utteranceToken: 1), delivers: nil)
     }
 
     @Test func test_reduce_shouldSpeakFreshUtteranceFromSpokenOffset_onRejectedResumeWhilePaused() {
 
-        let paused = makeSession(spokenUTF16Offset: 16)
-
-        let (state, effect) = reduce(.paused(paused), .resumeResolved(accepted: false, utteranceToken: 1))
-
-        #expect(state == .speaking(makeSession(
-            utteranceToken: 2,
-            utteranceStartUTF16Offset: 16,
-            spokenUTF16Offset: 16
-        )))
-        #expect(effect == .beginSpeaking(
-            makeCommand(utteranceToken: 2, text: "Frost and sun."),
-            replacingCurrentUtterance: true
-        ))
+        assert(.paused(makeSession(spokenUTF16Offset: 16)), .resumeResolved(accepted: false, utteranceToken: 1)) {
+            $0.becomeSpeaking()
+            $0.session.utteranceToken = 2
+            $0.session.utteranceStartUTF16Offset = 16
+        }
     }
 
-    @Test func test_reduce_shouldIgnoreResumeResolution_onIdleAndSpeaking() {
+    @Test func test_reduce_shouldDeliverReplacingUtterance_onRejectedResumeWhilePaused() {
 
-        let results = [
-            reduce(.idle(lastUtteranceToken: 0),.resumeResolved(accepted: true, utteranceToken: 1)),
-            reduce(.speaking(makeSession()), .resumeResolved(accepted: true, utteranceToken: 1)),
-        ]
+        assert(
+            .paused(makeSession(spokenUTF16Offset: 16)),
+            .resumeResolved(accepted: false, utteranceToken: 1),
+            delivers: .beginSpeaking(makeCommand(utteranceToken: 2, text: "Frost and sun."), replacingCurrentUtterance: true)
+        )
+    }
 
-        #expect(results.map(\.0) == [.idle(lastUtteranceToken: 0), .speaking(makeSession())])
-        #expect(results.map(\.1) == [nil, nil])
+    @Test func test_reduce_shouldNotChange_onResumeResolutionInIdle() {
+
+        assert(.idle(lastUtteranceToken: 0), .resumeResolved(accepted: true, utteranceToken: 1))
+    }
+
+    @Test func test_reduce_shouldNotChange_onResumeResolutionWhileSpeaking() {
+
+        assert(.speaking(makeSession()), .resumeResolved(accepted: true, utteranceToken: 1))
+    }
+
+    @Test func test_reduce_shouldDeliverNothing_onResumeResolutionInIdle() {
+
+        assert(.idle(lastUtteranceToken: 0), .resumeResolved(accepted: true, utteranceToken: 1), delivers: nil)
+    }
+
+    @Test func test_reduce_shouldDeliverNothing_onResumeResolutionWhileSpeaking() {
+
+        assert(.speaking(makeSession()), .resumeResolved(accepted: true, utteranceToken: 1), delivers: nil)
+    }
+
+    @Test func test_reduce_shouldNotChange_onResumeResolutionWithStaleToken() {
+
+        assert(.paused(makeSession(utteranceToken: 2, hasActiveUtterance: false)), .resumeResolved(accepted: true, utteranceToken: 1))
+    }
+
+    @Test func test_reduce_shouldDeliverNothing_onResumeResolutionWithStaleToken() {
+
+        assert(
+            .paused(makeSession(utteranceToken: 2, hasActiveUtterance: false)),
+            .resumeResolved(accepted: true, utteranceToken: 1),
+            delivers: nil
+        )
     }
 
     @Test func test_reduce_shouldStopPlayback_onStopTappedWhileSpeaking() {
@@ -445,26 +505,6 @@ struct PlaybackTransportReducerTests {
         )
 
         #expect(state == .paused(makeSession(spokenUTF16Offset: 6)))
-        #expect(effect == nil)
-    }
-
-    @Test func test_reduce_shouldIgnorePauseResolution_onStaleUtteranceToken() {
-
-        let replaced = makeSession(utteranceToken: 2)
-
-        let (state, effect) = reduce(.speaking(replaced), .pauseResolved(accepted: true, utteranceToken: 1))
-
-        #expect(state == .speaking(replaced))
-        #expect(effect == nil)
-    }
-
-    @Test func test_reduce_shouldIgnoreResumeResolution_onStaleUtteranceToken() {
-
-        let repositioned = makeSession(utteranceToken: 2, hasActiveUtterance: false)
-
-        let (state, effect) = reduce(.paused(repositioned), .resumeResolved(accepted: true, utteranceToken: 1))
-
-        #expect(state == .paused(repositioned))
         #expect(effect == nil)
     }
 
