@@ -91,34 +91,36 @@ call that was made.
 
 ## Building
 
-Every change to behaviour goes the same way, a fix to a component already
-built included: spec change, brief, `agister run implement_tested`, then
-`code_review`, then one commit for its findings. A hand-built change skips
-the red runs, and its review finds the missing tests afterwards (six on
-2026-10-22).
+Every change to behaviour starts with the affected components' `SPEC.md`
+and `QA.md`, a fix to a component already built included. Implement directly,
+test-first. Run one Agister code review per substantive commit; trivial
+changes need self-review only. Fix upheld findings and run the affected checks.
 
-A review runs on a detached worktree at the candidate commit, and nothing
-is committed to the reviewed branch while it runs. Start builders with
-`scripts/build-step.sh` and reviews with `scripts/review-step.sh`, never by
-hand. The first checks the brief's parts and adds `scripts/brief-rules.md`,
-so no builder edits another target after an unrelated test times out. The
-second reviews from the branch's merge-base with trunk, so no review reports
-trunk's newer work as removed (each happened three times on 2026-10-27). A
-brief's `## Open` reads exactly "None."; a rule for the builder goes in Intent.
+A review runs on a detached worktree at the committed candidate, which stays
+unchanged during review. Start reviews with `scripts/review-step.sh`. For the
+first step, use the branch's merge-base with trunk; for later steps, pass the
+previous reviewed commit as the explicit base. A failed reviewer is incomplete
+coverage and must be reported. A brief's `## Open` reads exactly "None.";
+a rule for the implementation goes in Intent.
 
-Gate a step with `scripts/gate-step.sh` and land it with
-`scripts/land-step.sh <issue> <title>`, never with a hand-written chain:
-on 2026-10-27 such chains waited for lines never printed, wrote to a
-`/tmp` that was cleared, and landed branches behind trunk.
+Gate implementation steps with `scripts/gate-step.sh`, subject to the
+real-audio safety rules in the project instructions.
+
+Complete the parent PR through the repository's pr-merge workflow. Merge trunk
+only to resolve reported conflicts or when explicitly requested. Watch CI with
+`scripts/watch-pr.sh`; wait for GitHub to report MERGED and the remote branch
+to be deleted before running `scripts/finish-merged-pr.sh` from the feature
+worktree and closing the parent issue. Stop on a failed or stuck check or an
+unsafe cleanup condition. Do not use `scripts/land-step.sh`: it merges trunk
+unconditionally and creates a PR per step.
 
 A test orders concurrent work only by handshakes on events: a gate, a
 received snapshot, an awaited call. A `TaskExecutor` preference does not
 reach a plain `Task { }`, so it fixes no order (LAB-684, 2026-10-28).
 
-Never wait for CI. Once a step passes its gate, the next step branches from
-that step's branch and its builder starts at once; its PR goes up after
-the earlier one lands, and a fix CI asks for is merged forward (owner,
-2026-10-27). Only a step whose predecessor is still in review waits.
+Divide the approved plan into small steps, each ending in one locally green
+commit. Push each commit and wait for its review findings to be resolved and
+CI to pass before starting the next step.
 
 A run left unattended goes through `scripts/agister-retry.sh`: it runs again
 only after a rate limit, stops on any other end, and prints a line per try
@@ -126,9 +128,11 @@ for a watcher. Capacity is agister's to wait out, in the run's session. A run th
 read, not run again: the build's own sandbox may fail what the test step
 passes (2026-10-23).
 
-A hands-on trial, such as a preview app, states before it runs what it can
-and cannot show: the live text preview heard only the microphone, which
-was said after the trial.
+A hands-on trial states before it runs what it can and cannot show.
+A requested running-app verification is complete only after exercising the
+behaviour in the built app. Record repeatable coverage as a checked-in
+accessibility scenario using fixture data. Report component-test results and
+live verification separately.
 
 Code is built test-first: each test is run red before the code exists,
 failing on its assertion rather than a compile error (the API is stubbed
@@ -160,6 +164,10 @@ something did not happen by sleeping; it asserts the state that says so
 3. A spec is done when the review is clean.
 
 ## Tracking
+
+A feature has one parent issue and one PR. Track its implementation steps as
+sub-issues on the same branch. Open a draft PR after the first locally green
+commit so subsequent pushes receive CI. Close the parent after the PR merges.
 
 In Multica, project Audelin:
 
