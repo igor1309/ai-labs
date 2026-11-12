@@ -24,7 +24,7 @@ text.
 
 ## S-4 Copying the notes
 
-Pressing «Копировать» through the real clipboard binding, given a private
+The copy action through the real clipboard binding, given a private
 pasteboard; the pasteboard reads back the summary's Markdown source, byte
 for byte.
 
@@ -62,14 +62,16 @@ A no-selection state; the image shows «Звонок не выбран».
 
 ## S-19 The call's actions
 
-The ⋯ menu's items are built from a state with failed notes and from one
-with notes; each item sends its event: open, rename, delete, and retry
-only for failed notes.
+The toolbar's buttons are named Копировать, Открыть, Переименовать and
+Удалить… in their tooltips, in Russian and English, and each sends its
+event: copy, open, rename, delete. The calls window's toolbar ends with the
+search field; the call's own window has the buttons and no field.
 
 ## S-20 Nothing to copy
 
-Preparing, failed, no-notes and no-selection states; each image shows no
-«Копировать» and no ⋯.
+The buttons' enabled state is derived from the detail: with notes all four
+act; without notes Копировать is disabled and the rest act; with no call
+selected all four are disabled.
 
 ## S-12 The close button closes the call's own window
 

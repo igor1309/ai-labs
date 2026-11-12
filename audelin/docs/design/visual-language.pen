@@ -51194,6 +51194,140 @@
                       "fontWeight": "600"
                     },
                     {
+                      "type": "frame",
+                      "id": "GUfAH",
+                      "x": 0,
+                      "y": 0,
+                      "name": "Actions",
+                      "enabled": false,
+                      "fill": "$btn",
+                      "cornerRadius": "$radius-control",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "H4DTU",
+                          "name": "Копировать",
+                          "cornerRadius": "$radius-control",
+                          "padding": [
+                            "$space-4",
+                            "$space-8"
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "FGeAM",
+                              "name": "Icon",
+                              "width": 14,
+                              "height": 14,
+                              "icon": "copy",
+                              "library": "lucide",
+                              "fill": "$text"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "rectangle",
+                          "id": "B5U84",
+                          "name": "Separator",
+                          "fill": "$rule",
+                          "width": 1,
+                          "height": 14
+                        },
+                        {
+                          "type": "frame",
+                          "id": "RChlE",
+                          "name": "Открыть",
+                          "cornerRadius": "$radius-control",
+                          "padding": [
+                            "$space-4",
+                            "$space-8"
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "R9ZIZb",
+                              "name": "Icon",
+                              "width": 14,
+                              "height": 14,
+                              "icon": "folder-open",
+                              "library": "lucide",
+                              "fill": "$text"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "rectangle",
+                          "id": "aThqD",
+                          "name": "Separator",
+                          "fill": "$rule",
+                          "width": 1,
+                          "height": 14
+                        },
+                        {
+                          "type": "frame",
+                          "id": "g49Dr",
+                          "name": "Переименовать",
+                          "cornerRadius": "$radius-control",
+                          "padding": [
+                            "$space-4",
+                            "$space-8"
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "b4tx6d",
+                              "name": "Icon",
+                              "width": 14,
+                              "height": 14,
+                              "icon": "pencil",
+                              "library": "lucide",
+                              "fill": "$text"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "GYNka",
+                      "x": 0,
+                      "y": 0,
+                      "name": "Delete group",
+                      "enabled": false,
+                      "fill": "$btn",
+                      "cornerRadius": "$radius-control",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "gycko",
+                          "name": "Удалить…",
+                          "cornerRadius": "$radius-control",
+                          "padding": [
+                            "$space-4",
+                            "$space-8"
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "NfFhZ",
+                              "name": "Icon",
+                              "width": 14,
+                              "height": 14,
+                              "icon": "trash-2",
+                              "library": "lucide",
+                              "fill": "$text"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
                       "id": "b33sH",
                       "type": "ref",
                       "ref": "IcwnO",
@@ -51829,7 +51963,7 @@
               "strokeWidth": {
                 "bottom": 1
               },
-              "gap": "$space-8",
+              "gap": "$space-12",
               "padding": [
                 "$space-8",
                 "$space-16"
@@ -51849,61 +51983,207 @@
                 },
                 {
                   "type": "frame",
-                  "id": "s010x",
-                  "name": "Copy",
+                  "id": "aWWXS",
+                  "name": "Actions",
                   "fill": "$btn",
                   "cornerRadius": "$radius-control",
-                  "gap": "$space-6",
-                  "padding": [
-                    "$space-4",
-                    "$space-12"
-                  ],
                   "alignItems": "center",
                   "children": [
                     {
-                      "type": "icon",
-                      "id": "s008x",
-                      "name": "copy",
-                      "width": 13,
-                      "height": 13,
-                      "icon": "copy",
-                      "library": "lucide",
-                      "fill": "$text"
+                      "type": "frame",
+                      "id": "UuRF1",
+                      "name": "Копировать",
+                      "cornerRadius": "$radius-control",
+                      "padding": [
+                        "$space-4",
+                        "$space-8"
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "V69J6",
+                          "name": "Icon",
+                          "width": 14,
+                          "height": 14,
+                          "icon": "copy",
+                          "library": "lucide",
+                          "fill": "$text"
+                        }
+                      ]
                     },
                     {
-                      "type": "text",
-                      "id": "s009x",
-                      "name": "Label",
-                      "fill": "$text",
-                      "content": "Копировать",
-                      "fontFamily": "$font-ui",
-                      "fontSize": "$type-small",
-                      "fontWeight": "normal"
+                      "type": "rectangle",
+                      "id": "odhwR",
+                      "name": "Separator",
+                      "fill": "$rule",
+                      "width": 1,
+                      "height": 14
+                    },
+                    {
+                      "type": "frame",
+                      "id": "byVYR",
+                      "name": "Открыть",
+                      "cornerRadius": "$radius-control",
+                      "padding": [
+                        "$space-4",
+                        "$space-8"
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "KI0Qf",
+                          "name": "Icon",
+                          "width": 14,
+                          "height": 14,
+                          "icon": "folder-open",
+                          "library": "lucide",
+                          "fill": "$text"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "Q1VOc",
+                      "name": "Separator",
+                      "fill": "$rule",
+                      "width": 1,
+                      "height": 14
+                    },
+                    {
+                      "type": "frame",
+                      "id": "gluOm",
+                      "name": "Переименовать",
+                      "cornerRadius": "$radius-control",
+                      "padding": [
+                        "$space-4",
+                        "$space-8"
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "BqCG1",
+                          "name": "Icon",
+                          "width": 14,
+                          "height": 14,
+                          "icon": "pencil",
+                          "library": "lucide",
+                          "fill": "$text"
+                        }
+                      ]
                     }
                   ]
                 },
                 {
                   "type": "frame",
-                  "id": "s012x",
-                  "name": "More",
+                  "id": "C5sn1",
+                  "name": "Delete group",
                   "fill": "$btn",
                   "cornerRadius": "$radius-control",
-                  "padding": [
-                    "$space-4",
-                    "$space-8"
-                  ],
+                  "alignItems": "center",
                   "children": [
                     {
-                      "type": "icon",
-                      "id": "s011x",
-                      "name": "ellipsis",
-                      "width": 14,
-                      "height": 14,
-                      "icon": "ellipsis",
-                      "library": "lucide",
-                      "fill": "$text"
+                      "type": "frame",
+                      "id": "vQ0TO",
+                      "name": "Удалить…",
+                      "cornerRadius": "$radius-control",
+                      "padding": [
+                        "$space-4",
+                        "$space-8"
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "RMjRQ",
+                          "name": "Icon",
+                          "width": 14,
+                          "height": 14,
+                          "icon": "trash-2",
+                          "library": "lucide",
+                          "fill": "$text"
+                        }
+                      ]
                     }
                   ]
+                },
+                {
+                  "id": "KF91q",
+                  "type": "ref",
+                  "ref": "IcwnO",
+                  "name": "Search",
+                  "width": 200
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "V5Mw7p",
+              "name": "Tooltip",
+              "reusable": true,
+              "fill": "$surface",
+              "cornerRadius": "$radius-control",
+              "stroke": "$rule",
+              "strokeWidth": 1,
+              "effect": {
+                "type": "shadow",
+                "shadowType": "outer",
+                "color": "$shadow",
+                "offset": {
+                  "x": 0,
+                  "y": 2
+                },
+                "blur": 6
+              },
+              "padding": [
+                "$space-2",
+                "$space-6"
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "dL7qb",
+                  "name": "Label",
+                  "fill": "$text",
+                  "content": "Переименовать",
+                  "fontFamily": "$font-ui",
+                  "fontSize": "$type-caption",
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "Kvrah",
+              "name": "Detail bar · hover",
+              "width": 760,
+              "height": 80,
+              "layout": "none",
+              "children": [
+                {
+                  "id": "iclxY",
+                  "type": "ref",
+                  "ref": "s013x",
+                  "name": "Detail bar",
+                  "width": "fill_container(760)",
+                  "x": 0,
+                  "y": 0,
+                  "descendants": {
+                    "gluOm": {
+                      "fill": "$rule"
+                    }
+                  }
+                },
+                {
+                  "id": "TSgeV",
+                  "type": "ref",
+                  "ref": "V5Mw7p",
+                  "name": "Tooltip",
+                  "width": "fit_content",
+                  "x": 437,
+                  "y": 50
                 }
               ]
             },
@@ -52181,7 +52461,8 @@
                   "height": 44,
                   "descendants": {
                     "b33sH": {
-                      "width": 160
+                      "width": 160,
+                      "enabled": false
                     }
                   }
                 },
@@ -52723,7 +53004,8 @@
                   "height": 44,
                   "descendants": {
                     "b33sH": {
-                      "width": 160
+                      "width": 160,
+                      "enabled": false
                     }
                   }
                 },
@@ -53057,11 +53339,8 @@
                   "name": "Detail bar",
                   "width": "fill_container",
                   "descendants": {
-                    "s010x": {
-                      "enabled": false
-                    },
-                    "s012x": {
-                      "enabled": false
+                    "V69J6": {
+                      "fill": "$disText"
                     }
                   }
                 },
@@ -53187,7 +53466,8 @@
                   "height": 44,
                   "descendants": {
                     "b33sH": {
-                      "width": 160
+                      "width": 160,
+                      "enabled": false
                     }
                   }
                 },
@@ -53521,11 +53801,8 @@
                   "name": "Detail bar",
                   "width": "fill_container",
                   "descendants": {
-                    "s010x": {
-                      "enabled": false
-                    },
-                    "s012x": {
-                      "enabled": false
+                    "V69J6": {
+                      "fill": "$disText"
                     }
                   }
                 },
@@ -53651,7 +53928,8 @@
                   "height": 44,
                   "descendants": {
                     "b33sH": {
-                      "width": 160
+                      "width": 160,
+                      "enabled": false
                     }
                   }
                 },
@@ -53984,11 +54262,8 @@
                   "name": "Detail bar",
                   "width": "fill_container",
                   "descendants": {
-                    "s010x": {
-                      "enabled": false
-                    },
-                    "s012x": {
-                      "enabled": false
+                    "V69J6": {
+                      "fill": "$disText"
                     }
                   }
                 },
@@ -54114,7 +54389,8 @@
                   "height": 44,
                   "descendants": {
                     "b33sH": {
-                      "width": 160
+                      "width": 160,
+                      "enabled": false
                     }
                   }
                 },
@@ -54652,7 +54928,8 @@
                   "height": 44,
                   "descendants": {
                     "b33sH": {
-                      "width": 160
+                      "width": 160,
+                      "enabled": false
                     }
                   }
                 },
@@ -54981,11 +55258,17 @@
                   "name": "Detail bar",
                   "width": "fill_container",
                   "descendants": {
-                    "s010x": {
-                      "enabled": false
+                    "V69J6": {
+                      "fill": "$disText"
                     },
-                    "s012x": {
-                      "enabled": false
+                    "KI0Qf": {
+                      "fill": "$disText"
+                    },
+                    "BqCG1": {
+                      "fill": "$disText"
+                    },
+                    "RMjRQ": {
+                      "fill": "$disText"
                     }
                   }
                 },
@@ -55095,7 +55378,8 @@
                   "height": 44,
                   "descendants": {
                     "b33sH": {
-                      "width": 160
+                      "width": 160,
+                      "enabled": false
                     },
                     "b33sH/jw3kq": {
                       "content": "correlation",
@@ -55309,7 +55593,19 @@
                   "type": "ref",
                   "ref": "s013x",
                   "name": "Detail bar",
-                  "width": "fill_container"
+                  "width": "fill_container",
+                  "descendants": {
+                    "KF91q/jw3kq": {
+                      "content": "correlation",
+                      "fill": "$text"
+                    },
+                    "KF91q/kHRgz": {
+                      "enabled": false
+                    },
+                    "KF91q/SwwNh": {
+                      "enabled": true
+                    }
+                  }
                 },
                 {
                   "type": "frame",
@@ -55519,7 +55815,8 @@
                   "height": 44,
                   "descendants": {
                     "b33sH": {
-                      "width": 160
+                      "width": 160,
+                      "enabled": false
                     },
                     "b33sH/jw3kq": {
                       "content": "correlation",
@@ -55712,7 +56009,19 @@
                   "type": "ref",
                   "ref": "s013x",
                   "name": "Detail bar",
-                  "width": "fill_container"
+                  "width": "fill_container",
+                  "descendants": {
+                    "KF91q/jw3kq": {
+                      "content": "correlation",
+                      "fill": "$text"
+                    },
+                    "KF91q/kHRgz": {
+                      "enabled": true
+                    },
+                    "KF91q/SwwNh": {
+                      "enabled": false
+                    }
+                  }
                 },
                 {
                   "type": "frame",
@@ -55922,7 +56231,8 @@
                   "height": 44,
                   "descendants": {
                     "b33sH": {
-                      "width": 160
+                      "width": 160,
+                      "enabled": false
                     },
                     "b33sH/jw3kq": {
                       "content": "Kubernetes",
@@ -55998,11 +56308,27 @@
                   "name": "Detail bar",
                   "width": "fill_container",
                   "descendants": {
-                    "s010x": {
+                    "V69J6": {
+                      "fill": "$disText"
+                    },
+                    "KI0Qf": {
+                      "fill": "$disText"
+                    },
+                    "BqCG1": {
+                      "fill": "$disText"
+                    },
+                    "RMjRQ": {
+                      "fill": "$disText"
+                    },
+                    "KF91q/jw3kq": {
+                      "content": "Kubernetes",
+                      "fill": "$text"
+                    },
+                    "KF91q/kHRgz": {
                       "enabled": false
                     },
-                    "s012x": {
-                      "enabled": false
+                    "KF91q/SwwNh": {
+                      "enabled": true
                     }
                   }
                 },
@@ -56112,7 +56438,8 @@
                   "height": 44,
                   "descendants": {
                     "b33sH": {
-                      "width": 160
+                      "width": 160,
+                      "enabled": false
                     }
                   }
                 },
@@ -56178,11 +56505,17 @@
                   "name": "Detail bar",
                   "width": "fill_container",
                   "descendants": {
-                    "s010x": {
-                      "enabled": false
+                    "V69J6": {
+                      "fill": "$disText"
                     },
-                    "s012x": {
-                      "enabled": false
+                    "KI0Qf": {
+                      "fill": "$disText"
+                    },
+                    "BqCG1": {
+                      "fill": "$disText"
+                    },
+                    "RMjRQ": {
+                      "fill": "$disText"
                     }
                   }
                 },
@@ -56279,7 +56612,8 @@
                   "height": 44,
                   "descendants": {
                     "b33sH": {
-                      "width": 160
+                      "width": 160,
+                      "enabled": false
                     }
                   }
                 },
@@ -56346,11 +56680,17 @@
                   "name": "Detail bar",
                   "width": "fill_container",
                   "descendants": {
-                    "s010x": {
-                      "enabled": false
+                    "V69J6": {
+                      "fill": "$disText"
                     },
-                    "s012x": {
-                      "enabled": false
+                    "KI0Qf": {
+                      "fill": "$disText"
+                    },
+                    "BqCG1": {
+                      "fill": "$disText"
+                    },
+                    "RMjRQ": {
+                      "fill": "$disText"
                     }
                   }
                 },
@@ -56447,7 +56787,8 @@
                   "height": 44,
                   "descendants": {
                     "b33sH": {
-                      "width": 160
+                      "width": 160,
+                      "enabled": false
                     }
                   }
                 },
@@ -57008,7 +57349,8 @@
                   "height": 44,
                   "descendants": {
                     "b33sH": {
-                      "width": 160
+                      "width": 160,
+                      "enabled": false
                     }
                   }
                 },
@@ -57565,7 +57907,8 @@
                   "height": 44,
                   "descendants": {
                     "b33sH": {
-                      "width": 160
+                      "width": 160,
+                      "enabled": false
                     }
                   }
                 },
@@ -58118,6 +58461,12 @@
                   "width": "fill_container",
                   "height": 44,
                   "descendants": {
+                    "GUfAH": {
+                      "enabled": true
+                    },
+                    "GYNka": {
+                      "enabled": true
+                    },
                     "b33sH": {
                       "width": 160
                     }
@@ -58625,7 +58974,7 @@
       "name": "Note detail",
       "width": 520,
       "height": 380,
-      "content": "Detail\n\nHeader: title, then day, start time · duration. The summary is rendered Markdown, selectable. Toolbar: Копировать (the Markdown source) and ⋯ with the row's menu: Открыть, Переименовать, Повторить итоги (failed only), Удалить….\n\nWithout a summary the detail shows one centred message under the header: preparing, failed with the error and Повторить итоги, or «Итогов нет» when notes are off. With no call selected: «Звонок не выбран». Copy and ⋯ are hidden whenever there is no summary.\n\n↑↓ moves the selection and the detail follows at once; Tab moves focus into the detail."
+      "content": "Detail\n\nHeader: title, then day, start time · duration. The summary is rendered Markdown, selectable.\n\nToolbar, right of the list over the detail, before the search field: icon-only buttons in two groups, Mail-style. Копировать (the Markdown source), Открыть (the folder in Finder), Переименовать; then Удалить… on its own. Each shows its name as a tooltip on hover. Повторить итоги stays in the failed message and the row menu.\n\nThe buttons act on the selected call. Копировать is disabled without a summary; with no call selected all four are disabled. Disabled, not hidden: the toolbar never shifts.\n\nWithout a summary the detail shows one centred message under the header: preparing, failed with the error and Повторить итоги, or «Итогов нет» when notes are off. With no call selected: «Звонок не выбран».\n\n↑↓ moves the selection and the detail follows at once; Tab moves focus into the detail."
     },
     {
       "type": "note",
@@ -58635,7 +58984,7 @@
       "name": "Note search",
       "width": 520,
       "height": 380,
-      "content": "Search\n\nThe field sits in the list's title bar and works as in the calls list: titles, summaries and transcripts, as you type, ignoring case and ё/е; days with no match hide.\n\nA match row keeps the two-line shape: title and time, then where the first match is (its time in the transcript, or «Итоги»), the text around it with the hit tinted `hit`, and «ещё N». The detail shows the selected call's summary. No results: the list says so and the detail shows «Звонок не выбран».\n\nEmpty, loading and the inactive window (selection in `chip`) are as in the calls list."
+      "content": "Search\n\nThe field ends the window's toolbar (over the list when narrow) and works as in the calls list: titles, summaries and transcripts, as you type, ignoring case and ё/е; days with no match hide.\n\nA match row keeps the two-line shape: title and time, then where the first match is (its time in the transcript, or «Итоги»), the text around it with the hit tinted `hit`, and «ещё N». The detail shows the selected call's summary. No results: the list says so and the detail shows «Звонок не выбран».\n\nEmpty, loading and the inactive window (selection in `chip`) are as in the calls list."
     }
   ],
   "themes": {

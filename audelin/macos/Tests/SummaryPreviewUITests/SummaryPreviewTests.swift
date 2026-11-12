@@ -47,41 +47,6 @@ struct SummaryPreviewTests {
         #expect(pasteboard.string(forType: .string) == "дашборд NPS")
     }
 
-    @Test func pressingCopyAsksToCopyTheNotes() throws {
-
-        var copies = 0
-        click(copyLocation, on: SummaryPreviewView(state: SummaryPreviews.state("notes"), event: { if $0 == .copy { copies += 1 } }, render: markdown))
-
-        #expect(copies == 1)
-    }
-
-    @Test(arguments: [false, true])
-    func theMoreMenuListsTheCallsActionsInTheLedgerTypeAndReportsEach(canRetry: Bool) throws {
-
-        var state = try #require(SummaryPreviews.state("notes"))
-        state.canRetry = canRetry
-        var events: [SummaryPreviewEvent] = []
-        let host = Offscreen.host(SummaryPreviewView(state: state, event: { events.append($0) }, render: markdown), size: size)
-        let menu = try #require(popUps(in: host).first)
-        let entries = menu.itemArray.dropFirst().filter { !$0.isSeparatorItem }
-        let tokens = GlassLedger.for(.light)
-
-        #expect(menu.pullsDown && popUps(in: host).count == 1)
-        let titles: [String] = canRetry ? ["Открыть", "Переименовать", "Повторить итоги", "Удалить…"] : ["Открыть", "Переименовать", "Удалить…"]
-        let separators: [Bool] = canRetry ? [false, false, false, true, false] : [false, false, true, false]
-        #expect(entries.map(\.title) == titles)
-        #expect(menu.itemArray.dropFirst().map(\.isSeparatorItem) == separators)
-        for entry in entries {
-            let ink = entry.attributedTitle?.attribute(.foregroundColor, at: 0, effectiveRange: nil) as? NSColor
-            #expect(entry.attributedTitle?.attribute(.font, at: 0, effectiveRange: nil) as? NSFont == tokens.nsUi(tokens.typeSmall))
-            #expect(ink == NSColor(entry.title == "Удалить…" ? tokens.rec : tokens.text))
-        }
-        for entry in entries { menu.menu?.performActionForItem(at: menu.menu!.index(of: entry)) }
-
-        let expected: [SummaryPreviewEvent] = canRetry ? [.open, .rename, .retrySummary, .delete] : [.open, .rename, .delete]
-        #expect(events == expected)
-    }
-
     @Test func aFailedSummaryOffersToRetryIt() throws {
 
         var events: [SummaryPreviewEvent] = []
@@ -91,31 +56,11 @@ struct SummaryPreviewTests {
     }
 
     @Test(arguments: ["preparing", "failed", "no-summary", "notes-off", "no-selection"])
-    func aMessageInPlaceOfNotesHasNoCopyNoMenuAndNoText(name: String) throws {
+    func aMessageInPlaceOfNotesHasNoText(name: String) throws {
 
-        var events: [SummaryPreviewEvent] = []
-        let state = SummaryPreviews.state(name)
-        let host = Offscreen.host(SummaryPreviewView(state: state, event: { events.append($0) }, render: markdown), size: size)
-        click(copyLocation, on: SummaryPreviewView(state: state, event: { events.append($0) }, render: markdown))
+        let host = Offscreen.host(view(SummaryPreviews.state(name)), size: size)
 
-        #expect(popUps(in: host).isEmpty)
         #expect(Offscreen.textView(in: host) == nil)
-        #expect(events.isEmpty)
-    }
-
-    @Test func unreadableNotesHaveNoMoreMenu() throws {
-
-        let host = Offscreen.host(view(SummaryPreviews.state("unreadable")), size: size)
-
-        #expect(popUps(in: host).isEmpty)
-    }
-
-    @Test func unreadableNotesHaveNoCopyButton() throws {
-
-        var copies = 0
-        click(copyLocation, on: SummaryPreviewView(state: SummaryPreviews.state("unreadable"), event: { if $0 == .copy { copies += 1 } }, render: markdown))
-
-        #expect(copies == 0)
     }
 
     @Test func aLongSummaryWrapsInsideANarrowWindow() throws {
@@ -179,7 +124,7 @@ struct SummaryPreviewTests {
         #expect(calls == 0)
     }
 
-    @Test func unreadableNotesOfferNoTextAndNoCopy() throws {
+    @Test func unreadableNotesOfferNoText() throws {
 
         let host = Offscreen.host(view(SummaryPreviews.state("unreadable")), size: size)
 
@@ -190,18 +135,11 @@ struct SummaryPreviewTests {
 
     private let size = CGSize(width: 440, height: 560)
 
-    /// Inside Копировать, left of ⋯ at the bar's right end.
-    private var copyLocation: NSPoint { NSPoint(x: size.width - 16 - 30 - 8 - 40, y: size.height - 22) }
-
     /// Повторить итоги, the last line of the failed message centred below the header.
-    private var retryLocation: NSPoint { NSPoint(x: size.width / 2, y: 172) }
+    private var retryLocation: NSPoint { NSPoint(x: size.width / 2, y: 194) }
 
     private func view(_ state: SummaryPreviewState?, text: SummaryPreviewText = .init(language: .russian), scheme: ColorScheme = .light) -> some View {
         SummaryPreviewView(state: state, text: text, event: { _ in }, render: markdown).environment(\.colorScheme, scheme)
-    }
-
-    private func popUps(in view: NSView) -> [NSPopUpButton] {
-        ((view as? NSPopUpButton).map { [$0] } ?? []) + view.subviews.flatMap { popUps(in: $0) }
     }
 
     private func click(_ location: NSPoint, on view: SummaryPreviewView) {
