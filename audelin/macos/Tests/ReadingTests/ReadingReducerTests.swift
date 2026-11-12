@@ -895,7 +895,30 @@ func assert(
     let result = reducer.reduce(state, event)
     #expect(result.0 == expected, sourceLocation: sourceLocation)
     #expect(sealedParts(result.0) == sealedParts(expected), "sealed parts", sourceLocation: sourceLocation)
+    #expect(renderedParts(result.0) == renderedParts(expected), "rendered cache and layout", sourceLocation: sourceLocation)
     #expect(result.1 == effect, sourceLocation: sourceLocation)
+}
+
+/// The rendered cache and the layout count, which state equality also ignores.
+private struct RenderedParts: Equatable {
+    let prepared: Bool
+    let ordered: [ReadingTextUpdate.Entry.ID]
+    let entries: [ReadingTextUpdate.Entry.ID: ReadingState.Entry]
+    let locations: [ReadingTextUpdate.Entry.ID: ReadingState.Rendered.Location]
+    let layout: Int
+    let logLayout: Int?
+}
+
+private func renderedParts(_ state: ReadingState) -> RenderedParts {
+
+    let logLayout: Int? = switch state.log {
+    case let .lines(lines): lines.layout
+    case let .liveTextOff(kept): kept?.layout
+    default: nil
+    }
+    return .init(prepared: state.rendered.prepared, ordered: state.rendered.ordered,
+                 entries: state.rendered.entries.tail, locations: state.rendered.locations.tail,
+                 layout: state.lines.layout, logLayout: logLayout)
 }
 
 /// What the state holds as sealed, and how many rendered entries its sealed rows
