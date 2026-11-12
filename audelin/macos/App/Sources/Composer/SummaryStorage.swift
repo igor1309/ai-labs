@@ -5,6 +5,7 @@ import Preferences
 import SummaryFiles
 import Synchronization
 import TrackFile
+import TranscriptFormat
 
 /// One transaction boundary for call mutations and note publication.
 final class SummaryStorage: SummaryFiles.Locations, Sendable {
@@ -47,8 +48,14 @@ final class SummaryStorage: SummaryFiles.Locations, Sendable {
         var disk = CallsDisk.system
         disk.trash = trash
         self.init(folder: folder, journal: journal, writeJournal: writeJournal,
-                  makeCalls: { [disk] in Calls(folder: $0, timeZone: timeZone, duration: TrackFile.duration(at:), disk: disk) })
+                  makeCalls: { [disk] in Calls(folder: $0, timeZone: timeZone, duration: TrackFile.duration(at:),
+                                               transcript: Self.transcriptLines, disk: disk) })
     }
+    /// A saved transcript's lines, read by the format's one reader.
+    static func transcriptLines(_ markdown: String) -> [Calls.Text.Line] {
+        TranscriptFormat.entries(markdown).map { .init(start: $0.start, words: $0.words) }
+    }
+
     init(folder: URL, journal: URL?, writeJournal: @escaping @Sendable (Journal, URL) throws -> Void,
          makeCalls: @escaping @Sendable (URL) -> Calls) {
         state = Mutex(State(recordingFolder: Self.directory(folder)))

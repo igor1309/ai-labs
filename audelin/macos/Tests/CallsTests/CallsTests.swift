@@ -40,6 +40,7 @@ struct CallsTests {
                                 if failing == "*" || failing == url.lastPathComponent { throw POSIXError(.EACCES) }
                                 return url.lastPathComponent == "microphone.caf" ? 12.5 : 3.25
                             },
+                            transcript: { _ in [] },
                             disk: CallsDisk(
                                 children: { _ in [folder] },
                                 values: { try $0.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey]) },
@@ -65,7 +66,7 @@ struct CallsTests {
             }
             let sut = Calls(folder: root, timeZone: tokyo, duration: { url in
                 url.lastPathComponent == "microphone.caf" ? length : 2.25
-            }, disk: .system)
+            }, transcript: { _ in [] }, disk: .system)
             let calls = try sut.list()
             #expect(calls == [.init(id: "2026.10.24-1405", title: "Zoom", start: utc("2026-10-24T05:05:00Z"), duration: length.isFinite && length >= 0 ? max(length, 2.25) : 2.25)])
         }
@@ -217,6 +218,7 @@ struct CallsTests {
             }()
             let sut = Calls(folder: root, timeZone: tokyo,
                             duration: { _ in throw POSIXError(.EIO) },
+                            transcript: { _ in [] },
                             disk: CallsDisk(
                                 children: { try FileManager.default.contentsOfDirectory(at: $0, includingPropertiesForKeys: nil) },
                                 values: { try $0.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey, .fileSizeKey]) },
@@ -238,13 +240,13 @@ struct CallsTests {
 private let tokyo = TimeZone(identifier: "Asia/Tokyo")!
 private func utc(_ value: String) -> Date { ISO8601DateFormatter().date(from: value)! }
 /// The system disk, except that the Trash is a folder beside `root`: tests never touch the user's Trash.
-private func adapter(_ root: URL) -> Calls {
+private func adapter(_ root: URL, transcript: @escaping @Sendable (String) -> [Calls.Text.Line] = { _ in [] }) -> Calls {
     var disk = CallsDisk.system
     disk.trash = { url in
         try FileManager.default.createDirectory(at: trash(root), withIntermediateDirectories: true)
         try FileManager.default.moveItem(at: url, to: trash(root).appendingPathComponent(url.lastPathComponent))
     }
-    return Calls(folder: root, timeZone: tokyo, duration: TrackFile.duration(at:), disk: disk)
+    return Calls(folder: root, timeZone: tokyo, duration: TrackFile.duration(at:), transcript: transcript, disk: disk)
 }
 private func trash(_ root: URL) -> URL { root.deletingLastPathComponent().appendingPathComponent(root.lastPathComponent + "-Trash", isDirectory: true) }
 private func bytes(_ url: URL) async throws -> Data { try Data(contentsOf: url) }
@@ -271,28 +273,16 @@ private func withFolders(_ body: (URL) async throws -> Void) async throws {
 
 @Suite(.timeLimit(.minutes(1)))
 struct CallsTextTests {
-    @Test func readsNotesAndTranscriptLinesWithTheirTimes() async throws {
+    @Test func readsNotesAndHandsTheTranscriptToItsReader() async throws {
         try await withFolders { root in
             let folder = try make(root, "2026.11.10-1600 Синк по OKR")
             try Data("# Итоги\n\nOKR закрыты.".utf8).write(to: folder.appendingPathComponent("summary.md"))
-            try Data("""
-            # Transcript
-
-            **Me** 00:00:05
-            Итак, по OKR\\_2 второго квартала
-
-            **Them 1** 01:02:03 (filled in later)
-            Да, \\*согласен\\*
-
-            **Them** 00:10:00
-
-
-            """.utf8).write(to: folder.appendingPathComponent("transcript.md"))
-            let text = try adapter(root).text(id: "2026.11.10-1600")
-            #expect(text == .init(notes: "# Итоги\n\nOKR закрыты.", transcript: [
-                .init(start: 5, words: "Итак, по OKR_2 второго квартала"),
-                .init(start: 3_723, words: "Да, *согласен*"),
-            ]))
+            try Data("**Me** 00:00:05\nИтак".utf8).write(to: folder.appendingPathComponent("transcript.md"))
+            let read = Mutex<[String]>([])
+            let lines = [Calls.Text.Line(start: 5, words: "Итак")]
+            let text = try adapter(root, transcript: { markdown in read.withLock { $0.append(markdown) }; return lines }).text(id: "2026.11.10-1600")
+            #expect(text == .init(notes: "# Итоги\n\nOKR закрыты.", transcript: lines))
+            #expect(read.withLock { $0 } == ["**Me** 00:00:05\nИтак"])
         }
     }
 
@@ -315,7 +305,7 @@ struct CallsTextTests {
             _ = try make(root, "2026.11.10-1600")
             var disk = CallsDisk.system
             disk.read = { _ in throw POSIXError(.EACCES) }
-            let sut = Calls(folder: root, timeZone: tokyo, duration: { _ in 0 }, disk: disk)
+            let sut = Calls(folder: root, timeZone: tokyo, duration: { _ in 0 }, transcript: { _ in [] }, disk: disk)
             #expect(throws: POSIXError(.EACCES)) { try sut.text(id: "2026.11.10-1600") }
         }
     }

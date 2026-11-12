@@ -29,6 +29,13 @@ struct TranscriptReadingTests {
         ])
     }
 
+    @Test func anHourTooLargeForWholeSecondsReadsWithoutTrapping() {
+
+        let entries = TranscriptFormat.entries("**Me** 99999999999999999999:00:00\nслова\n")
+        #expect(entries.map(\.words) == ["слова"])
+        #expect(entries.map(\.start) == [Double(99999999999999999999.0) * 3_600])
+    }
+
     @Test func noTextReadsAsNoParts() throws {
 
         #expect(TranscriptFormat.entries(try rendered([])) == [])

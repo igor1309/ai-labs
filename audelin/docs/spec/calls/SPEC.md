@@ -1,9 +1,8 @@
 # Calls
 
-Observer: Recordings, which renames, deletes and moves calls through
-`RecordingsCalls`, and the calls list, which reads them through compose
-(`../../app-shape.md`). Together they keep user S-10, S-18 and S-19
-(`../SPEC.md`). An adapter over the file system.
+Observer: Recordings, which renames, deletes and moves calls, and the
+calls list, which reads them through compose; they keep user S-10, S-18
+and S-19. An adapter over the file system.
 
 ## Decided
 
@@ -12,38 +11,29 @@ Observer: Recordings, which renames, deletes and moves calls through
   folder makes it. Anything else there (a file, a link, a folder without
   the prefix) is not a call: it is not listed and never changed.
 - **The prefix is the call's id.** Call folder never reuses a name and a
-  rename keeps the prefix, so the id survives a rename and a move, and two
-  calls never share one. No meta file is kept: the name already says when
-  the call was made, and a file beside the audio could be lost or edited
-  apart from it.
-- **The title is what follows the prefix and one space,** empty when
-  there is none. The list shows an empty title as the bare date and time.
+  rename keeps the prefix, so the id survives a rename and a move. No meta
+  file is kept: the name says when the call was made.
+- **The title is what follows the prefix and one space,** or empty.
 - **Listing gives each call its id, title, start and duration,** newest
-  first by id. The start is read from the prefix in the local time zone
-  given to the adapter. The duration is the longer of the two tracks'
-  lengths, supplied by an injected duration reader; a call with no readable
-  track has none, and still lists.
-- **A rename takes a title, never a name.** The new name is the prefix,
-  a space and the title, with `/` and `:` replaced by `-` as call folder
-  does; an empty title leaves the bare prefix. A name taken by anything
-  fails the rename and changes nothing (rename never replaces, so no other
-  call or file is lost).
+  first. The start is the prefix in the given time zone; the duration is
+  the longer track's, from an injected reader, or none, and it still lists.
+- **A rename takes a title, never a name:** the prefix, a space and the
+  title, `/` and `:` made `-`; an empty title leaves the bare prefix. A
+  name taken by anything fails the rename and changes nothing.
 - **A delete moves the whole folder to the Trash,** through the system
-  file manager, so it can be put back from Finder; the confirm says so
-  and the app asks first. A move to the Trash is whole or not at all: one
-  that fails (no Trash on the volume, no permission) leaves the folder in
-  place and says so.
+  file manager, so it can be put back from Finder. It is whole or not at
+  all: one that fails leaves the folder in place and says so.
 - **A move takes one call into another calls folder:** copy the whole
-  folder beside its place under a temporary name, check that every file's
-  size matches, rename it into place, then delete the source. A failure at
-  any step removes the copy and leaves the source, so a call is always
-  whole in one of the two folders. A call already in the target under its
-  name fails the move.
-- **Counting gives the number of calls and their size in bytes,** for
-  the move's confirm.
+  folder in under a temporary name, check every file's size, rename it into
+  place, then delete the source. A failure removes the copy and leaves the
+  source; a call already in the target fails the move.
+- **Counting gives the calls' number and size in bytes.**
+- **A call's text is its notes and its transcript lines,** for search.
+  Notes are `summary.md` as written, none when missing or empty. The
+  transcript's lines come from an injected reader given `transcript.md`
+  as written; the root passes Transcript format's, the format's one reader.
 - **Every action finds its call by id at the time it runs,** so a call
-  renamed in Finder is still found; a call no longer there fails the
-  action.
+  renamed in Finder is still found; one no longer there fails.
 
 ```gherkin
 Feature: Keeping recorded calls on disk
@@ -102,4 +92,9 @@ Feature: Keeping recorded calls on disk
     Given calls in the calls folder
     When I count them
     Then I get their number and their size in bytes
+
+  Scenario: S-12 A call's text is read by its readers
+    Given a call with notes and a transcript
+    When I read its text
+    Then I get the notes and the lines the transcript reader gives for the file
 ```

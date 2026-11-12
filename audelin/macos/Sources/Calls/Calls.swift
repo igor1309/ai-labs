@@ -38,15 +38,19 @@ public struct Calls: Sendable {
     private let timeZone: TimeZone
     private let duration: @Sendable (URL) throws -> TimeInterval
     private let disk: CallsDisk
+    private let transcript: @Sendable (String) -> [Text.Line]
 
-    /// Reads track durations with `duration` and touches folders through
-    /// `disk`. Listing performs blocking disk work.
+    /// Reads track durations with `duration`, a saved transcript's lines with
+    /// `transcript`, and touches folders through `disk`. Listing performs
+    /// blocking disk work.
     public init(folder: URL, timeZone: TimeZone,
                 duration: @escaping @Sendable (URL) throws -> TimeInterval,
+                transcript: @escaping @Sendable (String) -> [Text.Line],
                 disk: CallsDisk) {
         self.folder = folder
         self.timeZone = timeZone
         self.duration = duration
+        self.transcript = transcript
         self.disk = disk
     }
 
@@ -101,31 +105,7 @@ public struct Calls: Sendable {
             try disk.read(folder.appendingPathComponent(name)).map { String(decoding: $0, as: UTF8.self) }
         }
         let notes = try string("summary.md")
-        return Text(notes: notes.flatMap { $0.isEmpty ? nil : $0 }, transcript: Self.lines(try string("transcript.md") ?? ""))
-    }
-
-    /// Transcript entries are a `**Side** HH:MM:SS` line and a line of words; anything else is skipped.
-    private static func lines(_ markdown: String) -> [Text.Line] {
-        markdown.components(separatedBy: "\n\n").compactMap { block in
-            let rows = block.split(separator: "\n", maxSplits: 1, omittingEmptySubsequences: false)
-            guard rows.count == 2, rows[0].hasPrefix("**"),
-                  let close = rows[0].dropFirst(2).range(of: "** ") else { return nil }
-            let clock = rows[0][close.upperBound...].prefix(8).split(separator: ":")
-            guard clock.count == 3, let h = Int(clock[0]), let m = Int(clock[1]), let s = Int(clock[2]) else { return nil }
-            let words = unescaped(String(rows[1])).trimmingCharacters(in: .whitespaces)
-            guard !words.isEmpty else { return nil }
-            return Text.Line(start: TimeInterval(h * 3_600 + m * 60 + s), words: words)
-        }
-    }
-
-    private static func unescaped(_ text: String) -> String {
-        var out = "", escaping = false
-        for character in text {
-            if !escaping, character == "\\" { escaping = true; continue }
-            escaping = false
-            out.append(character)
-        }
-        return out
+        return Text(notes: notes.flatMap { $0.isEmpty ? nil : $0 }, transcript: transcript(try string("transcript.md") ?? ""))
     }
 
     public func bytes(id: String) throws -> Int64 { try size(location(id: id)) }

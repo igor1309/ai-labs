@@ -14,6 +14,14 @@ import Testing
 @MainActor
 @Suite(.timeLimit(.minutes(1)))
 struct CallsWiringTests {
+    @Test func callsReadTranscriptLinesThroughTranscriptFormatWithWordsAsWritten() {
+        let markdown = "# Transcript\n\n**Me** 00:00:05\nпо OKR\\_2 и *да*\n\n**Them 1** 01:02:03 (filled in later)\nСогласен\n"
+        #expect(SummaryStorage.transcriptLines(markdown) == [
+            .init(start: 5, words: "по OKR\\_2 и *да*"),
+            .init(start: 3_723, words: "Согласен"),
+        ])
+    }
+
     @Test func mappingNamesTheFailedCallAndProtectsOnlyTheRecording() {
         var state = RecordingsState()
         state.calls = [call("A"), call("B")]
@@ -196,7 +204,7 @@ struct CallsWiringTests {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("CallsWiringTests-\(UUID())", isDirectory: true)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: false)
         try await withCleanup {
-            let calls = Calls(folder: root, timeZone: .gmt, duration: { _ in 0 }, disk: .system)
+            let calls = Calls(folder: root, timeZone: .gmt, duration: { _ in 0 }, transcript: { _ in [] }, disk: .system)
             let cases: [(minute: Double, made: String?, id: String, title: String)] = [
                 (0, "Zoom", "1970.01.01-0000", "Zoom"),
                 (0, "Zoom", "1970.01.01-0000-2", "Zoom"),

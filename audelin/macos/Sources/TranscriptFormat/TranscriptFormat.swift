@@ -195,8 +195,8 @@ public struct TranscriptFormat: Sendable {
     private static func header(_ line: Substring) -> (label: String, start: Double)? {
 
         guard let match = line.wholeMatch(of: /\*\*(Me|Them|Them [1-9][0-9]*)\*\* ([0-9]{2,}):([0-5][0-9]):([0-5][0-9])( \(filled in later\))?/),
-              let h = Int(match.2), let m = Int(match.3), let s = Int(match.4) else { return nil }
-        return (String(match.1), Double(h * 3_600 + m * 60 + s))
+              let h = Double(match.2), let m = Double(match.3), let s = Double(match.4) else { return nil }
+        return (String(match.1), h * 3_600 + m * 60 + s)
     }
 
     /// A readable Speakers section and one versioned machine-readable block after it.
