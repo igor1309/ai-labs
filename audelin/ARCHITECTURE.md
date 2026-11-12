@@ -35,20 +35,26 @@ wording are preserved as that responsibility is separated from the overview.
 SummaryJobs owns the generation state machine and its consumer-owned ports.
 SpeakerIdentification accepts supported identity evidence without rewriting the
 transcript. SummaryRuntime adapts one bounded process or compatible HTTP
-attempt; SummaryFiles owns durable job records and complete note publication.
-Each keeps its own types. Settings owns editable configuration, rendered
+attempt; SummaryFiles owns a call's durable job record: claiming it, which
+process owns it, recovery after a crash, retry and progress. Published notes
+owns the notes file: it publishes notes whole, marked with the job that made
+them and when, and reads them back. Neither knows the other: SummaryFiles asks
+its own port whether a job's notes were published, and the root answers it
+with Published notes. Each keeps its own types. Settings owns editable configuration, rendered
 validation/save/load outcomes and its preference/availability ports.
 
 The root maps those ports and decorates attempts with fallback and logging.
 It submits only after the latest final transcript snapshot has been written
-successfully and closed, with usable spoken text. Submission does not await
+successfully and closed, with usable spoken text. Only the job that owns a
+call publishes its notes: the root checks ownership and publishes in one
+transaction on the call's folder. Submission does not await
 LLM work on recording cleanup. Root lifecycle integration stops dispatch,
 drains recording, retains pending handoffs, cancels and joins active summary
 resources, then allows termination. Root storage integration coordinates
 publication with call rename, deletion and calls-folder moves.
 
-SummaryFiles is also the one reader of published notes: it gives a call's
-notes text, none, or why they cannot be read. The calls list holds the
+Published notes is the one reader and writer of a call's notes: it gives
+their text and when they were published, none, or why they cannot be read. The calls list holds the
 selected call; that call's Call notes machine (below) holds its notes, and
 the summary view draws them, Markdown included, beside the list. The app owns the calls window, its
 split and, for a narrow window, the call's own window.
@@ -70,15 +76,21 @@ The root answers that port. Transcript format, the format's one writer, is
 also its one reader: it reads a saved transcript back into labelled entries,
 so the root can submit them to SummaryJobs as a closed call's entries are
 submitted. A cancel by the user stops the job and SummaryFiles drops its
-record, leaving the transcript and any earlier notes. SummaryFiles records
+record, leaving the transcript and any earlier notes. Published notes gives
 when notes were published, for the date shown under them.
 
 The root holds one Call notes machine per call, so making goes on while
-another call is selected. It starts each machine from what SummaryFiles
-reads: made with the published notes and their date, none, or failed; and
+another call is selected. It starts each machine from what Published notes and SummaryFiles
+read: made with the published notes and their date, none, or failed; and
 in being made when notes are submitted after a call ends. The calls list draws the selected
-call's state and sends make, cancel and retry; it decides nothing. Calls
-lists folders and reads transcripts through Transcript format.
+call's state and sends make, cancel and retry; it decides nothing.
+
+Calls keeps the call folders: it lists, renames, deletes, moves and counts
+them, and reads no file inside. Search in the calls window reads a call's
+text through its own port; the root answers it by finding the call's folder
+and reading the notes through Published notes and the transcript through
+Transcript file, which owns its bytes and reads them back, and Transcript
+format, which turns them into entries. That is wiring: it decides nothing.
 
 ## Transcript pipeline
 
