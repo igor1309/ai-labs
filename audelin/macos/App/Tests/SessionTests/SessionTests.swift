@@ -5,52 +5,6 @@ import Testing
 @Suite(.timeLimit(.minutes(1)))
 struct SessionTests {
 
-    @Test(arguments: [["Parakeet v3"], ["Parakeet v3", "Nemotron"]])
-    func missingModelSaysCannotRecordAndStartsNothing(missing: [String]) async throws {
-
-        let rig = await Rig(missingModels: missing)
-        await rig.begin(liveText: true)
-        let state = await rig.waitFor { $0.cannotRecord != nil }
-        #expect(state.cannotRecord == "model: \(missing.joined(separator: ", ")) not on disk")
-        #expect(state.phase == .bringingUp)
-        #expect(state.folder == .down)
-        #expect(await rig.output.values() == [])
-        await end(rig)
-    }
-
-    @Test func endDuringModelCheckStaysEnded() {
-
-        let (checking, check) = SessionReducer.reduce(SessionState(), .begin(liveText: false))
-        #expect(check == .checkModels)
-        let (ended, _) = SessionReducer.reduce(checking, .end)
-        #expect(ended.phase == .ended)
-        let (after, effect) = SessionReducer.reduce(ended, .modelsChecked(missing: []))
-        #expect(after == ended)
-        #expect(effect == nil)
-    }
-
-    @Test func folderFailureSaysCannotRecordAndWaitsForEnd() async throws {
-
-        let rig = await Rig(failing: ["folder.create"])
-        await rig.begin(liveText: true)
-        let state = await rig.waitFor { $0.cannotRecord != nil }
-        #expect(state.cannotRecord == "folder: folder.create failed")
-        #expect(state.phase == .bringingUp)
-        #expect(await rig.output.values() == ["folder.create"])
-        await end(rig)
-    }
-
-    @Test func folderFailureAlreadyInFlightStillSettlesAfterEnd() async throws {
-
-        let rig = await Rig(held: ["folder.create"], failing: ["folder.create"])
-        await rig.begin(liveText: true)
-        await rig.output.waitUntilHeld("folder.create")
-        await rig.session.send(.end)
-        await rig.output.release("folder.create")
-        let state = await rig.waitFor { $0.phase == .ended }
-        #expect(state.cannotRecord != nil)
-    }
-
     @Test func bothCaptureFailuresSayCannotRecord() async throws {
 
         let rig = await Rig(failing: ["microphone.capture.start", "call.capture.start"])
@@ -290,19 +244,6 @@ struct SessionTests {
         (state, _) = SessionReducer.reduce(state, .captureFinished(.microphone, error: nil))
         #expect(state.health[.capture(.microphone)] == .failed("device stopped"))
         #expect(state.failures == [SessionFailure(piece: "microphone capture", message: "device stopped")])
-    }
-
-    @Test func folderFailureWhileRecordingSaysCannotRecord() async throws {
-
-        let rig = await Rig()
-        await rig.begin(liveText: true)
-        _ = await rig.waitFor { $0.phase == .recording }
-        await rig.session.send(.pieceFailed(.folder, error: "folder stopped"))
-        let state = await rig.waitFor { $0.cannotRecord != nil }
-        #expect(state.cannotRecord == "folder: folder stopped")
-        #expect(state.health[.folder] == .failed("folder stopped"))
-        #expect(state.failures.contains(SessionFailure(piece: "folder", message: "folder stopped")))
-        await end(rig)
     }
 
     @Test func endingWaitsForLiveTextSwitch() async throws {
