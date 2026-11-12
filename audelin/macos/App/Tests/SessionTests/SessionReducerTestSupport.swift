@@ -149,8 +149,8 @@ func eventsInTheWrongPhase() -> [(SessionState, SessionEvent)] {
         cases.append((makeScrambled(phase), .begin(liveText: .random())))
     }
     for phase in phases where phase != .bringingUp {
-        cases.append((makeScrambled(phase), .modelsChecked(missing: [])))
-        cases.append((makeScrambled(phase), .modelsChecked(missing: [anyError()])))
+        cases.append((makeScrambled(phase).with { $0.folder = .down }, .modelsChecked(missing: [])))
+        cases.append((makeScrambled(phase).with { $0.folder = .down }, .modelsChecked(missing: [anyError()])))
     }
     for status in statuses where status != .down {
         cases.append((makeScrambled(.bringingUp).with { $0.folder = status }, .modelsChecked(missing: [])))
