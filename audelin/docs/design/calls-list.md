@@ -42,7 +42,7 @@ line, Link/Make, Making line, Summary skeleton, Summary date).
   («Сделано 12 ноября, 14:05»). Toolbar: Копировать (the Markdown source)
   and ⋯ with the row menu.
 - No summary: one line under the header, «Нет итогов» in `gutter` and the
-  link «✨ Сделать» in `me`. The word «итоги» is not repeated in the button.
+  link «✨ Сделать» in `me`.
 - Making: the line becomes a spinner, «Делаю…», the elapsed time
   (`font-data`) and «Отменить» in `sub`, over a grey skeleton of the summary
   (`btn` bars). The user may select another call meanwhile; the row keeps
