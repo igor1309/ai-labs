@@ -30,6 +30,8 @@ struct ReadingIncrementalTests {
                 $0.lines.rows[precedingCount] = .entry(entry)
             }
             $0.log = .lines($0.lines)
+            $0.rendered.entries[revised[precedingCount].id]?.settled = "settled"
+            $0.rendered.entries[revised[precedingCount].id]?.pending = ""
         }
         #expect(spy.calls == [.line(Double(precedingCount))])
     }
@@ -45,6 +47,12 @@ struct ReadingIncrementalTests {
             $0.nextDisplayID = 4
             $0.lines.rows = [late("span[line(2.0)|line(12.0)]", [firstRow]), .entry(middleRow), .entry(sameTimeRow), late("span[line(6.0)|line(7.0)]", [lastRow])]
             $0.log = .lines($0.lines)
+            $0.rendered.ordered = [first.id, middle.id, sameTime.id, last.id]
+            $0.rendered.entries[middle.id] = middleRow
+            $0.rendered.entries[sameTime.id] = sameTimeRow
+            $0.rendered.locations[middle.id] = .init(row: 1)
+            $0.rendered.locations[sameTime.id] = .init(row: 2)
+            $0.rendered.locations[last.id] = .init(row: 3, lateEntry: 0)
         }
         #expect(spy.calls == [.line(4), .line(4), .line(2), .line(12), .span("line(2.0)", "line(12.0)"), .line(6),
                              .line(7), .span("line(6.0)", "line(7.0)")])
@@ -54,10 +62,12 @@ struct ReadingIncrementalTests {
 
         let spy = RenderingSpy()
         assert(makeInitial(), .problemsChanged([gap]), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.problems = [gap]
             $0.banners = [.init(kind: .microphone, time: "line(4.0)")]
             $0.lines.rows = [late("span[line(2.0)|line(12.0)]", [firstRow]), gapRow, late("span[line(6.0)|line(7.0)]", [lastRow])]
             $0.log = .lines($0.lines)
+            $0.rendered.locations[last.id] = .init(row: 2, lateEntry: 0)
         }
         #expect(spy.calls == [.line(4), .line(2), .line(12), .span("line(2.0)", "line(12.0)"), .line(4), .line(6),
                              .line(7), .span("line(6.0)", "line(7.0)")])
@@ -67,11 +77,13 @@ struct ReadingIncrementalTests {
 
         let spy = RenderingSpy()
         assert(makeCachedSplit(), .recordingChanged(.off), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.recording = .off
             $0.problems = []
             $0.banners = []
             $0.lines.rows = [late("span[line(2.0)|line(12.0)]", [firstRow, lastRow])]
             $0.log = .lines($0.lines)
+            $0.rendered.locations[last.id] = .init(row: 0, lateEntry: 1)
         }
         #expect(spy.calls == [.line(2), .line(12), .span("line(2.0)", "line(12.0)")])
     }
@@ -84,6 +96,10 @@ struct ReadingIncrementalTests {
             $0.anchors[middle.id] = nil
             $0.lines.rows = [late("span[line(2.0)|line(12.0)]", [firstRow, lastRow])]
             $0.log = .lines($0.lines)
+            $0.rendered.ordered = [first.id, last.id]
+            $0.rendered.entries[middle.id] = nil
+            $0.rendered.locations[middle.id] = nil
+            $0.rendered.locations[last.id] = .init(row: 0, lateEntry: 1)
         }
         #expect(spy.calls == [.line(2), .line(12), .span("line(2.0)", "line(12.0)")])
     }
@@ -95,6 +111,8 @@ struct ReadingIncrementalTests {
             $0.text[middle.id] = middleLate
             $0.lines.rows = [late("span[line(2.0)|line(12.0)]", [firstRow, middleRow, lastRow])]
             $0.log = .lines($0.lines)
+            $0.rendered.locations[middle.id] = .init(row: 0, lateEntry: 1)
+            $0.rendered.locations[last.id] = .init(row: 0, lateEntry: 2)
         }
         #expect(spy.calls == [.line(4), .line(2), .line(12), .span("line(2.0)", "line(12.0)")])
     }
@@ -106,6 +124,8 @@ struct ReadingIncrementalTests {
             $0.text[middle.id] = middle
             $0.lines.rows = [late("span[line(2.0)|line(12.0)]", [firstRow]), .entry(middleRow), late("span[line(6.0)|line(7.0)]", [lastRow])]
             $0.log = .lines($0.lines)
+            $0.rendered.locations[middle.id] = .init(row: 1)
+            $0.rendered.locations[last.id] = .init(row: 2, lateEntry: 0)
         }
         #expect(spy.calls == [.line(4), .line(2), .line(12), .span("line(2.0)", "line(12.0)"), .line(6), .line(7),
                              .span("line(6.0)", "line(7.0)")])
@@ -142,6 +162,7 @@ struct ReadingIncrementalTests {
             $0.text[middle.id] = movedMiddle
             $0.lines.rows[1] = .entry(shown(2, "line(4.0)", settled: "revised"))
             $0.log = .lines($0.lines)
+            $0.rendered.entries[middle.id]?.settled = "revised"
         }
         #expect(spy.calls == [.line(4)])
     }
@@ -153,6 +174,7 @@ struct ReadingIncrementalTests {
             $0.text[first.id] = revisedFirst
             $0.lines.rows[0] = late("span[line(2.0)|line(12.0)]", [shown(0, "line(2.0)", settled: "revised")])
             $0.log = .lines($0.lines)
+            $0.rendered.entries[first.id]?.settled = "revised"
         }
         #expect(spy.calls == [.line(2)])
     }
@@ -165,6 +187,8 @@ struct ReadingIncrementalTests {
             $0.text[last.id] = revisedLast
             $0.lines.rows[0] = late("span[line(2.0)|line(12.0)]", [shown(0, "line(2.0)", settled: "revised"), shown(1, "line(6.0)", settled: "revised last")])
             $0.log = .lines($0.lines)
+            $0.rendered.entries[first.id]?.settled = "revised"
+            $0.rendered.entries[last.id]?.settled = "revised last"
         }
         #expect(spy.calls == [.line(2), .line(6)])
     }
@@ -173,11 +197,16 @@ struct ReadingIncrementalTests {
 
         let spy = RenderingSpy()
         assert(makeCachedSplit(), .textUpdated(update([first, atGap, last])), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.text[atGap.id] = atGap
             $0.anchors[atGap.id] = .init(id: 2, start: 4)
             $0.nextDisplayID = 3
             $0.lines.rows[2] = late("span[line(4.0)|line(7.0)]", [shown(2, "line(4.0)"), lastRow])
             $0.log = .lines($0.lines)
+            $0.rendered.ordered = [first.id, atGap.id, last.id]
+            $0.rendered.entries[atGap.id] = shown(2, "line(4.0)")
+            $0.rendered.locations[atGap.id] = .init(row: 2, lateEntry: 0)
+            $0.rendered.locations[last.id] = .init(row: 2, lateEntry: 1)
         }
         #expect(spy.calls == [.line(4), .line(2), .line(12), .span("line(2.0)", "line(12.0)"), .line(4), .line(4),
                              .line(7), .span("line(4.0)", "line(7.0)")])
@@ -194,6 +223,10 @@ struct ReadingIncrementalTests {
             $0.anchors[omitted.id] = nil
             $0.lines.rows.remove(at: 2)
             $0.log = .lines($0.lines)
+            $0.rendered.ordered.removeAll { $0 == omitted.id }
+            $0.rendered.entries[omitted.id] = nil
+            $0.rendered.locations[omitted.id] = nil
+            $0.rendered.locations[remaining.id] = .init(row: 2)
         }
         #expect(spy.calls == [])
     }
@@ -213,6 +246,11 @@ struct ReadingIncrementalTests {
             $0.anchors[middle.id] = nil
             $0.lines.rows = [late("span[line(2.0)|line(12.0)]", [firstRow]), .entry(sameTimeRow), late("span[line(6.0)|line(7.0)]", [lastRow])]
             $0.log = .lines($0.lines)
+            $0.rendered.ordered = [first.id, sameTime.id, last.id]
+            $0.rendered.entries[middle.id] = nil
+            $0.rendered.locations[middle.id] = nil
+            $0.rendered.locations[sameTime.id] = .init(row: 1)
+            $0.rendered.locations[last.id] = .init(row: 2, lateEntry: 0)
         }
         #expect(spy.calls == [.line(2), .line(12), .span("line(2.0)", "line(12.0)"), .line(6), .line(7),
                              .span("line(6.0)", "line(7.0)")])
@@ -225,6 +263,9 @@ struct ReadingIncrementalTests {
             $0.text[middle.id] = middleLate
             $0.lines.rows = [late("span[line(2.0)|line(12.0)]", [firstRow, middleRow]), .entry(sameTimeRow), late("span[line(6.0)|line(7.0)]", [lastRow])]
             $0.log = .lines($0.lines)
+            $0.rendered.locations[middle.id] = .init(row: 0, lateEntry: 1)
+            $0.rendered.locations[sameTime.id] = .init(row: 1)
+            $0.rendered.locations[last.id] = .init(row: 2, lateEntry: 0)
         }
         #expect(spy.calls == [.line(4), .line(2), .line(12), .span("line(2.0)", "line(12.0)"), .line(6), .line(7),
                              .span("line(6.0)", "line(7.0)")])
@@ -237,6 +278,9 @@ struct ReadingIncrementalTests {
             $0.text[middle.id] = middle
             $0.lines.rows = [late("span[line(2.0)|line(12.0)]", [firstRow]), .entry(middleRow), .entry(sameTimeRow), late("span[line(6.0)|line(7.0)]", [lastRow])]
             $0.log = .lines($0.lines)
+            $0.rendered.locations[middle.id] = .init(row: 1)
+            $0.rendered.locations[sameTime.id] = .init(row: 2)
+            $0.rendered.locations[last.id] = .init(row: 3, lateEntry: 0)
         }
         #expect(spy.calls == [.line(4), .line(2), .line(12), .span("line(2.0)", "line(12.0)"), .line(6), .line(7),
                              .span("line(6.0)", "line(7.0)")])
