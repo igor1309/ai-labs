@@ -108,16 +108,33 @@ public enum ClientConnect {
 
     public struct State: Equatable, Sendable {
         public let host: Host
-        public fileprivate(set) var phase: Phase = .idle
-        fileprivate var largestWrite = 0
-        fileprivate var pendingAmount: SealedAmount?
-        fileprivate var handover: Handover?
-        fileprivate var cleanup: Cleanup = .none
-        fileprivate var outstanding: Set<Work> = []
+        public var phase: Phase
+        public var largestWrite: Int
+        /// An amount that arrived before the key write was acknowledged.
+        public var pendingAmount: SealedAmount?
+        /// The opened amount, held while the deadline stops.
+        public var handover: Handover?
+        public var cleanup: Cleanup
+        /// Resource work issued and not yet answered; cleanup waits for it.
+        public var outstanding: Set<Work>
 
-        /// The chosen host is handed in by the root; `start` begins this transaction.
-        public init(host: Host) {
+        /// With the defaults it holds the host the root chose; `start` begins this transaction.
+        public init(
+            host: Host,
+            phase: Phase = .idle,
+            largestWrite: Int = 0,
+            pendingAmount: SealedAmount? = nil,
+            handover: Handover? = nil,
+            cleanup: Cleanup = .none,
+            outstanding: Set<Work> = []
+        ) {
             self.host = host
+            self.phase = phase
+            self.largestWrite = largestWrite
+            self.pendingAmount = pendingAmount
+            self.handover = handover
+            self.cleanup = cleanup
+            self.outstanding = outstanding
         }
 
         public var canCancel: Bool {
@@ -138,11 +155,11 @@ public enum ClientConnect {
         }
     }
 
-    fileprivate enum Cleanup: Equatable, Sendable {
+    public enum Cleanup: Equatable, Sendable {
         case none, stoppingDeadline, waitingForWork, droppingLink, closingSession, done
     }
 
-    fileprivate enum Work: Hashable, Sendable {
+    public enum Work: Hashable, Sendable {
         case startDeadline, connect, derive, writeKey, open
     }
 
