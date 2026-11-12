@@ -50,17 +50,16 @@ public enum SummaryPreviews {
         let english = text.language == .english
         let minutes = { (count: Int) in english ? "\(count) min" : "\(count) мин" }
         return [
-            ("notes", .init(title: "Zoom", date: "17.10 · 11:00", duration: minutes(28), notes: .markdown(notes))),
-            ("daily", .init(title: "iOS Daily", date: "11.11 · 10:00", duration: minutes(14), notes: .markdown(daily))),
+            ("notes", .init(title: "Zoom", date: "17.10 · 11:00", duration: minutes(28), notes: .markdown(notes, made: english ? "October 17, 11:42" : "17 октября, 11:42"))),
+            ("daily", .init(title: "iOS Daily", date: "11.11 · 10:00", duration: minutes(14), notes: .markdown(daily, made: english ? "November 11, 10:31" : "11 ноября, 10:31"))),
             ("unreadable", .init(title: "Zoom", date: "17.10 · 11:00", duration: minutes(28),
                                  notes: .unreadable(english ? "The notes can’t be read: “summary.md” is damaged."
                                                             : "Заметки не читаются: файл «summary.md» повреждён."))),
-            ("preparing", .init(title: "iOS Daily", date: "11.11 · 10:00", duration: minutes(15), notes: .preparing)),
+            ("making", .init(title: "iOS Daily", date: "11.11 · 10:00", duration: minutes(15), notes: .making)),
             ("failed", .init(title: "iOS & Android daily", date: "10.11 · 09:59", duration: minutes(14),
                              notes: .failed(english ? "Claude CLI exited with an error: request limit exceeded"
                                                     : "Claude CLI завершился с ошибкой: превышен лимит запросов"), canRetry: true)),
-            ("no-summary", .init(title: "Zoom", date: "17.10 · 11:00", duration: minutes(28), notes: .none(notesOff: false))),
-            ("notes-off", .init(title: "2026.11.09-1000", date: "09.11 · 10:00", duration: minutes(16), notes: .none(notesOff: true))),
+            ("no-summary", .init(title: "Zoom", date: "17.10 · 11:00", duration: minutes(28), notes: .none)),
             ("no-selection", nil),
         ]
     }

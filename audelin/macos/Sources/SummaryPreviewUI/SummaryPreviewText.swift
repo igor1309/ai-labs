@@ -15,11 +15,13 @@ public enum SummaryPreviewPhrase: String, CaseIterable, Sendable {
     case rename = "preview.rename"
     case retrySummary = "preview.retrySummary"
     case delete = "preview.delete"
-    case preparing = "preview.preparing"
-    case preparingHint = "preview.preparingHint"
+    case making = "preview.making"
+    case cancel = "preview.cancel"
     case failed = "preview.failed"
     case noSummary = "preview.noSummary"
-    case notesOff = "preview.notesOff"
+    case make = "preview.make"
+    /// Takes when the summary was made.
+    case made = "preview.made"
     case noSelection = "preview.noSelection"
     /// Takes the system's reason.
     case unreadable = "preview.unreadable"

@@ -4,9 +4,10 @@
 "preview.rename" = "Переименовать";
 "preview.retrySummary" = "Повторить итоги";
 "preview.delete" = "Удалить…";
-"preview.preparing" = "Подготовка итогов…";
-"preview.preparingHint" = "Итоги появятся здесь, когда будут готовы";
+"preview.making" = "Делаю…";
+"preview.cancel" = "Отменить";
+"preview.make" = "Сделать";
+"preview.made" = "Сделано %@";
 "preview.failed" = "Не удалось подготовить итоги";
-"preview.noSummary" = "Итогов нет";
-"preview.notesOff" = "Подготовка итогов выключена в Настройках";
+"preview.noSummary" = "Нет итогов";
 "preview.noSelection" = "Звонок не выбран";

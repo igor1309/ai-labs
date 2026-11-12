@@ -1,16 +1,16 @@
 /// What the detail shows: one call's header, its notes and the actions on it.
 public struct SummaryPreviewState: Equatable, Sendable {
     public enum Notes: Equatable, Sendable {
-        /// The notes' Markdown source, drawn formatted.
-        case markdown(String)
+        /// The notes' Markdown source, drawn formatted, and when they were made, ready to show; nil while it is not known.
+        case markdown(String, made: String?)
         /// Why the notes cannot be shown.
         case unreadable(String)
-        /// The summary is being prepared.
-        case preparing
+        /// The summary is being made, asked for or after a call.
+        case making
         /// Preparing the summary failed, for the given reason.
         case failed(String)
-        /// There is no summary; `notesOff` when preparing summaries is off in Settings.
-        case none(notesOff: Bool)
+        /// There is no summary.
+        case none
     }
 
     public var title: String
@@ -33,5 +33,9 @@ public enum SummaryPreviewEvent: Equatable, Sendable {
     case open
     case rename
     case retrySummary
+    /// Make a summary for a call that has none.
+    case makeSummary
+    /// Stop making the summary.
+    case cancelSummary
     case delete
 }

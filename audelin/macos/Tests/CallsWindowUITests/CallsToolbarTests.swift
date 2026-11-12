@@ -75,8 +75,8 @@ struct CallsToolbarTests {
         }
 
         #expect(callActions(nil) == .init(call: false, copy: false))
-        #expect(callActions(state(.markdown("# A"))) == .init(call: true, copy: true))
-        for notes in [SummaryPreviewState.Notes.unreadable("x"), .preparing, .failed("x"), .none(notesOff: true)] {
+        #expect(callActions(state(.markdown("# A", made: nil))) == .init(call: true, copy: true))
+        for notes in [SummaryPreviewState.Notes.unreadable("x"), .making, .failed("x"), .none] {
             #expect(callActions(state(notes)) == .init(call: true, copy: false))
         }
     }

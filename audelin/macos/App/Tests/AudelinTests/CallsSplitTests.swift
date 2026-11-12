@@ -56,17 +56,18 @@ struct CallsSplitTests {
         }
 
         #expect(detailState(nil, text: russian) == nil)
-        #expect(detailState(detail(.notes("# A")), text: russian) == state(.markdown("# A")))
+        #expect(detailState(detail(.notes("# A")), text: russian) == state(.markdown("# A", made: nil)))
         #expect(detailState(detail(.unreadable("нет доступа")), text: russian) == state(.unreadable("Итоги не читаются: нет доступа")))
-        #expect(detailState(detail(.preparing), text: russian) == state(.preparing))
+        #expect(detailState(detail(.preparing), text: russian) == state(.making))
         #expect(detailState(detail(.failed(reason: "лимит", canRetry: true)), text: russian) == state(.failed("лимит"), canRetry: true))
         #expect(detailState(detail(.failed(reason: "лимит", canRetry: false)), text: russian) == state(.failed("лимит")))
-        #expect(detailState(detail(.none(notesOff: true)), text: russian) == state(.none(notesOff: true)))
+        #expect(detailState(detail(.none(notesOff: true)), text: russian) == state(.none))
+        #expect(detailState(detail(.none(notesOff: false)), text: russian) == state(.none))
     }
 
     @Test func eachDetailButtonIsTheSameActionOnTheShownCall() {
-        let events: [SummaryPreviewEvent] = [.copy, .open, .rename, .retrySummary, .delete]
-        #expect(events.map(detailEvent) == [.copy, .open, .rename, .retrySummary, .delete])
+        let events: [SummaryPreviewEvent] = [.copy, .open, .rename, .retrySummary, .delete, .makeSummary, .cancelSummary]
+        #expect(events.map(detailEvent) == [.copy, .open, .rename, .retrySummary, .delete, nil, nil])
     }
 
     @Test func closingTheCallsWindowTellsTheList() {
