@@ -61,6 +61,8 @@ struct RecordingReducerTests {
 
     @Test func cannotRecordWhileRecordingKeepsTheFailureAndEnds() { assert(makeRunning(), .sessionReported(id: 1, .cannotRecord("cannot keep audio"))) { $0.phase = .ending; $0.cannotRecord = "cannot keep audio" } }
 
+    @Test func cannotRecordWhileBeginningKeepsTheFailureAndEnds() { assert(makeBeginning(), .sessionReported(id: 1, .cannotRecord("cannot keep audio"))) { $0.phase = .ending; $0.cannotRecord = "cannot keep audio" } }
+
     @Test func endedFailedSessionGoesIdleKeepingTheFailure() { assert(makeFailed(), .sessionReported(id: 1, .ended)) { $0.phase = .idle; $0.session = nil } }
 
     @Test func userStartAfterFailureBeginsSessionTwo() { assert(makeEnded(), .userStart) { $0.phase = .beginning; $0.lastSessionID = 2; $0.session = .init(id: 2, origin: .hand); $0.cannotRecord = nil } }
