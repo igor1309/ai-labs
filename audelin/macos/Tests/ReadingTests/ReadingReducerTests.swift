@@ -812,16 +812,6 @@ private func makeSlotReused() -> ReadingState {
     )
 }
 
-/// The rendered cache after the reducer prepared it: each shown entry, in order, and where its row is.
-private func prepared(
-    _ shown: (ReadingTextUpdate.Entry.ID, ReadingState.Entry, ReadingState.Rendered.Location)...
-) -> ReadingState.Rendered {
-
-    .init(prepared: true, ordered: shown.map(\.0),
-          entries: .init(uniqueKeysWithValues: shown.map { ($0.0, $0.1) }),
-          locations: .init(uniqueKeysWithValues: shown.map { ($0.0, $0.2) }))
-}
-
 private func text(
     _ speaker: ReadingState.Speaker, _ id: Int, start: Double, end: Double? = nil,
     settled: String = "", pending: String = "", late: Bool = false

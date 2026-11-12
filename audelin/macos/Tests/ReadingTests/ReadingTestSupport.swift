@@ -86,3 +86,13 @@ func counted(_ calls: [RenderingSpy.Call]) -> [String: Int] {
 
     calls.reduce(into: [:]) { $0[String(describing: $1), default: 0] += 1 }
 }
+
+/// The rendered cache after the reducer prepared it: each shown entry, in order, and where its row is.
+func prepared(
+    _ shown: (ReadingTextUpdate.Entry.ID, ReadingState.Entry, ReadingState.Rendered.Location)...
+) -> ReadingState.Rendered {
+
+    .init(prepared: true, ordered: shown.map(\.0),
+          entries: .init(uniqueKeysWithValues: shown.map { ($0.0, $0.1) }),
+          locations: .init(uniqueKeysWithValues: shown.map { ($0.0, $0.2) }))
+}
