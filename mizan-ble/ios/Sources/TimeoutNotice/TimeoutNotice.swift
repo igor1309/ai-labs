@@ -12,11 +12,14 @@ public enum TimeoutNotice {
 
     public struct State: Equatable, Sendable {
         /// The notice drawn now, or nil when none shows.
-        public fileprivate(set) var showing: Notice?
+        public var showing: Notice?
         /// The newest timeout accepted, kept after its notice hides.
-        public fileprivate(set) var newest: Notice?
+        public var newest: Notice?
 
-        public init() {}
+        public init(showing: Notice? = nil, newest: Notice? = nil) {
+            self.showing = showing
+            self.newest = newest
+        }
     }
 
     public enum Event: Equatable, Sendable {
