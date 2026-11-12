@@ -150,7 +150,10 @@ struct HostBroadcastReducerTests {
 
     // MARK: - Countdown
 
-    @Test(arguments: [HostBroadcast.Phase.advertising, .handshake(.derivingKey), .handshake(.sendingAmount)])
+    @Test(arguments: [
+        HostBroadcast.Phase.advertising, .handshake(.stoppingAdvertising), .handshake(.derivingKey),
+        .handshake(.sealingAmount), .handshake(.sendingAmount),
+    ])
     func tickShowsTheSecondsLeft(phase: HostBroadcast.Phase) {
         let state = makeState(phase: phase, secondsLeft: 40)
 
@@ -158,7 +161,10 @@ struct HostBroadcastReducerTests {
         assert(state, .secondsLeft(current, 39), delivers: nil)
     }
 
-    @Test(arguments: [HostBroadcast.Phase.advertising, .handshake(.stoppingAdvertising), .handshake(.sealingAmount)])
+    @Test(arguments: [
+        HostBroadcast.Phase.advertising, .handshake(.stoppingAdvertising), .handshake(.derivingKey),
+        .handshake(.sealingAmount),
+    ])
     func expiryClearsTheAmountAndRetiresTheAttempt(phase: HostBroadcast.Phase) {
         let state = makeState(phase: phase, secondsLeft: 1, session: session)
 
@@ -268,6 +274,260 @@ struct HostBroadcastReducerTests {
         assert(state, .sessionOpened(stale, session), delivers: .closeSession(stale))
     }
 
+    // MARK: - Handshake
+
+    @Test func firstClientKeyStopsAdvertisingAndKeepsTheCountdown() {
+        let state = makeState(phase: .advertising, secondsLeft: 22, session: session)
+
+        assert(state, .clientKey(current, client, key: [7, 8])) {
+            $0.phase = .handshake(.stoppingAdvertising)
+            $0.link = client
+            $0.clientKey = [7, 8]
+        }
+        assert(state, .clientKey(current, client, key: [7, 8]), delivers: .stopAdvertising(current))
+    }
+
+    @Test(arguments: [
+        HostBroadcast.HandshakeStep.stoppingAdvertising, .derivingKey, .sealingAmount, .sendingAmount,
+    ])
+    func secondClientKeyDuringTheHandshakeIsIgnored(step: HostBroadcast.HandshakeStep) {
+        let state = makeState(phase: .handshake(step), secondsLeft: 22, session: session, link: client, clientKey: [7, 8])
+        let other = HostBroadcast.Link(id: "other")
+
+        assert(state, .clientKey(current, other, key: [1]))
+        assert(state, .clientKey(current, other, key: [1]), delivers: nil)
+    }
+
+    @Test func stoppedAdvertisingDerivesTheKey() {
+        let state = makeState(phase: .handshake(.stoppingAdvertising), secondsLeft: 22, session: session, link: client, clientKey: [7, 8])
+
+        assert(state, .advertisingStopped(current)) { $0.phase = .handshake(.derivingKey) }
+        assert(state, .advertisingStopped(current), delivers: .deriveKey(current, [7, 8]))
+    }
+
+    @Test(arguments: lockedAmounts)
+    func derivedKeySealsTheSealedAmount(locked: SealedAmount) {
+        let state = makeState(
+            phase: .handshake(.derivingKey), amount: locked.amount, secondsLeft: 22, session: session, link: client,
+            clientKey: [7, 8]
+        )
+
+        assert(state, .keyDerived(current)) { $0.phase = .handshake(.sealingAmount) }
+        assert(state, .keyDerived(current), delivers: .sealAmount(current, locked.amount))
+    }
+
+    @Test(arguments: lockedAmounts)
+    func sealedAmountIsSentToTheClient(locked: SealedAmount) {
+        let state = makeState(
+            phase: .handshake(.sealingAmount), amount: locked.amount, secondsLeft: 22, session: session, link: client,
+            clientKey: [7, 8]
+        )
+
+        assert(state, .amountSealed(current, locked.sealed)) { $0.phase = .handshake(.sendingAmount) }
+        assert(state, .amountSealed(current, locked.sealed), delivers: .sendAmount(current, client, locked.sealed))
+    }
+
+    @Test(arguments: lockedAmounts, [false, true])
+    func sentAmountHandsOverTheSecureLinkAndStopsTheCountdown(locked: SealedAmount, expiryPending: Bool) {
+        let state = makeState(
+            phase: .handshake(.sendingAmount), amount: locked.amount, secondsLeft: expiryPending ? 0 : 12,
+            session: session, link: client, clientKey: [7, 8], expiryPending: expiryPending
+        )
+        let secure = HostBroadcast.SecureLink(attempt: current, session: session, link: client, amount: locked.amount)
+
+        assert(state, .amountSent(current)) {
+            $0.phase = .handedOver(secure)
+            $0.secondsLeft = nil
+            $0.expiryPending = false
+        }
+        assert(state, .amountSent(current), delivers: .stopCountdown(current, retire: false))
+    }
+
+    @Test func expiryWhileSendingWaitsForTheSendsResult() {
+        let state = makeState(phase: .handshake(.sendingAmount), secondsLeft: 1, session: session, link: client)
+
+        assert(state, .secondsLeft(current, 0)) {
+            $0.expiryPending = true
+            $0.secondsLeft = 0
+        }
+        assert(state, .secondsLeft(current, 0), delivers: nil)
+    }
+
+    @Test func ticksAfterAPendingExpiryAreIgnored() {
+        let state = makeState(
+            phase: .handshake(.sendingAmount), secondsLeft: 0, session: session, link: client, expiryPending: true
+        )
+
+        assert(state, .secondsLeft(current, -1))
+        assert(state, .secondsLeft(current, -1), delivers: nil)
+    }
+
+    @Test(arguments: [
+        HostBroadcast.HandshakeStep.stoppingAdvertising, .derivingKey, .sealingAmount, .sendingAmount,
+    ])
+    func handshakeFailureOffersRetryAndANewAmount(step: HostBroadcast.HandshakeStep) {
+        let state = makeState(phase: .handshake(step), secondsLeft: 12, session: session, link: client, clientKey: [7, 8])
+
+        assert(state, .handshakeFailed(current, reason: "invalid client key")) {
+            $0.phase = .failed
+            $0.reason = "invalid client key"
+            $0.secondsLeft = nil
+            $0.attempt = nil
+            $0.duration = nil
+            $0.session = nil
+            $0.link = nil
+            $0.clientKey = nil
+        }
+        assert(state, .handshakeFailed(current, reason: "invalid client key"), delivers: .stopCountdown(current, retire: true))
+    }
+
+    @Test(arguments: [
+        HostBroadcast.HandshakeStep.stoppingAdvertising, .derivingKey, .sealingAmount, .sendingAmount,
+    ])
+    func lostClientLinkDuringTheHandshakeFails(step: HostBroadcast.HandshakeStep) {
+        let state = makeState(phase: .handshake(step), secondsLeft: 12, session: session, link: client, clientKey: [7, 8])
+
+        assert(state, .linkLost(current, client)) {
+            $0.phase = .failed
+            $0.reason = "Client link lost"
+            $0.secondsLeft = nil
+            $0.attempt = nil
+            $0.duration = nil
+            $0.session = nil
+            $0.link = nil
+            $0.clientKey = nil
+        }
+        assert(state, .linkLost(current, client), delivers: .stopCountdown(current, retire: true))
+    }
+
+    @Test(arguments: [
+        HostBroadcast.HandshakeStep.stoppingAdvertising, .derivingKey, .sealingAmount, .sendingAmount,
+    ])
+    func bluetoothLossDuringTheHandshakeFails(step: HostBroadcast.HandshakeStep) {
+        let state = makeState(phase: .handshake(step), secondsLeft: 12, session: session, link: client, clientKey: [7, 8])
+
+        assert(state, .bluetoothUnavailable(current, reason: "off")) {
+            $0.phase = .failed
+            $0.reason = "off"
+            $0.secondsLeft = nil
+            $0.attempt = nil
+            $0.duration = nil
+            $0.session = nil
+            $0.link = nil
+            $0.clientKey = nil
+        }
+        assert(state, .bluetoothUnavailable(current, reason: "off"), delivers: .stopCountdown(current, retire: true))
+    }
+
+    @Test(arguments: [
+        HostBroadcast.HandshakeStep.stoppingAdvertising, .derivingKey, .sealingAmount, .sendingAmount,
+    ])
+    func unrelatedLinkLossLeavesTheHandshakeIntact(step: HostBroadcast.HandshakeStep) {
+        let state = makeState(phase: .handshake(step), secondsLeft: 12, session: session, link: client, clientKey: [7, 8])
+        let other = HostBroadcast.Link(id: "other")
+
+        assert(state, .linkLost(current, other))
+        assert(state, .linkLost(current, other), delivers: nil)
+    }
+
+    @Test(arguments: LossAfterExpiry.allCases)
+    func lossAfterExpiryDuringTheSendTimesOut(loss: LossAfterExpiry) {
+        let state = makeState(
+            phase: .handshake(.sendingAmount), secondsLeft: 0, session: session, link: client, clientKey: [7, 8],
+            expiryPending: true
+        )
+
+        assert(state, loss.event) {
+            $0.phase = .timedOut
+            $0.amount = ""
+            $0.secondsLeft = nil
+            $0.attempt = nil
+            $0.duration = nil
+            $0.session = nil
+            $0.link = nil
+            $0.clientKey = nil
+            $0.expiryPending = false
+        }
+        assert(state, loss.event, delivers: .stopCountdown(current, retire: true))
+    }
+
+    @Test(arguments: [
+        HostBroadcast.HandshakeStep.stoppingAdvertising, .derivingKey, .sealingAmount, .sendingAmount,
+    ])
+    func handshakeOffersNoCancelRetryOrNewAmount(step: HostBroadcast.HandshakeStep) {
+        let state = makeState(phase: .handshake(step), secondsLeft: 12, session: session, link: client, clientKey: [7, 8])
+
+        #expect(!state.canCancel && !state.canRetry && !state.canChooseNewAmount)
+    }
+
+    @Test(arguments: [
+        HostBroadcast.HandshakeStep.stoppingAdvertising, .derivingKey, .sealingAmount, .sendingAmount,
+    ], [Event.cancel, .retry, .newAmount, .lock(amount: "1.00")])
+    func handshakeRejectsCancelRetryNewAmountAndLock(step: HostBroadcast.HandshakeStep, event: HostBroadcast.Event) {
+        let state = makeState(phase: .handshake(step), secondsLeft: 12, session: session, link: client, clientKey: [7, 8])
+
+        assert(state, event)
+        assert(state, event, delivers: nil)
+    }
+
+    @Test(arguments: HandshakeOutOfTurn.all)
+    func handshakeResultsOutOfTurnAreIgnored(late: HandshakeOutOfTurn) {
+        let state = makeState(phase: late.phase, secondsLeft: 12, session: session, link: client, clientKey: [7, 8])
+
+        assert(state, late.event)
+        assert(state, late.event, delivers: nil)
+    }
+
+    @Test(arguments: [HostBroadcast.Phase.timedOut, .failed, .ready], [
+        Event.advertisingStopped(current), .keyDerived(current), .amountSealed(current, .init(bytes: [1])),
+        .amountSent(current), .handshakeFailed(current, reason: "late"), .linkLost(current, client),
+    ])
+    func handshakeResultsAfterTheAttemptEndedAreIgnored(phase: HostBroadcast.Phase, event: HostBroadcast.Event) {
+        let state = State(phase: phase, amount: phase == .timedOut ? "" : "124.50", nextAttempt: 2)
+
+        assert(state, event)
+        assert(state, event, delivers: nil)
+    }
+
+    // MARK: - Handed over
+
+    @Test func transactionEndAfterHandoverAcceptsANewAmount() {
+        let secure = HostBroadcast.SecureLink(attempt: current, session: session, link: client, amount: "124.50")
+        let state = makeState(phase: .handedOver(secure), session: session, link: client, clientKey: [7, 8])
+
+        assert(state, .transactionEnded(current)) {
+            $0.phase = .ready
+            $0.amount = ""
+            $0.attempt = nil
+            $0.duration = nil
+            $0.session = nil
+            $0.link = nil
+            $0.clientKey = nil
+        }
+        assert(state, .transactionEnded(current), delivers: nil)
+    }
+
+    @Test(arguments: [
+        Event.transactionEnded(stale), .lock(amount: "1.00"), .cancel, .retry, .newAmount,
+        .secondsLeft(current, 0), .linkLost(current, client), .bluetoothUnavailable(current, reason: "off"),
+        .onAir(current), .couldNotGoOnAir(current, reason: "late"), .clientKey(current, client, key: [1]),
+    ])
+    func handedOverWaitsForItsOwnTransactionEnd(event: HostBroadcast.Event) {
+        let secure = HostBroadcast.SecureLink(attempt: current, session: session, link: client, amount: "124.50")
+        let state = makeState(phase: .handedOver(secure), session: session, link: client, clientKey: [7, 8])
+
+        assert(state, event)
+        assert(state, event, delivers: nil)
+    }
+
+    @Test(arguments: [HostBroadcast.Phase.ready, .advertising, .failed])
+    func transactionEndBeforeHandoverIsIgnored(phase: HostBroadcast.Phase) {
+        let state = makeState(phase: phase)
+
+        assert(state, .transactionEnded(current))
+        assert(state, .transactionEnded(current), delivers: nil)
+    }
+
     // MARK: - Failed, retry and a new amount
 
     @Test func retryStartsAFreshAttemptWithTheSameAmount() {
@@ -370,11 +630,57 @@ private let livePhases: [HostBroadcast.Phase] = [
     .handshake(.sealingAmount), .handshake(.sendingAmount),
 ]
 
+enum LossAfterExpiry: CaseIterable, Sendable {
+    case sendFailed, linkLost, bluetooth
+
+    var event: HostBroadcast.Event {
+        switch self {
+        case .sendFailed: .handshakeFailed(current, reason: "send failed")
+        case .linkLost: .linkLost(current, client)
+        case .bluetooth: .bluetoothUnavailable(current, reason: "off")
+        }
+    }
+}
+
+struct HandshakeOutOfTurn: Sendable, CustomTestStringConvertible {
+    let phase: HostBroadcast.Phase
+    let event: HostBroadcast.Event
+    var testDescription: String { "\(event) during \(phase)" }
+
+    static let all: [HandshakeOutOfTurn] = {
+        let secure = HostBroadcast.SecureLink(attempt: current, session: session, link: client, amount: "124.50")
+        return [
+            .init(phase: .advertising, event: .advertisingStopped(current)),
+            .init(phase: .handshake(.stoppingAdvertising), event: .keyDerived(current)),
+            .init(phase: .handshake(.derivingKey), event: .amountSealed(current, .init(bytes: [1]))),
+            .init(phase: .handshake(.sealingAmount), event: .amountSent(current)),
+            .init(phase: .handedOver(secure), event: .amountSealed(current, .init(bytes: [1]))),
+            .init(phase: .handedOver(secure), event: .amountSent(current)),
+            .init(phase: .handedOver(secure), event: .handshakeFailed(current, reason: "late")),
+            .init(phase: .advertising, event: .handshakeFailed(current, reason: "late")),
+            .init(phase: .advertising, event: .linkLost(current, client)),
+        ]
+    }()
+}
+
+struct SealedAmount: Sendable, CustomTestStringConvertible {
+    let amount: String
+    let sealed: HostBroadcast.ProtectedAmount
+    var testDescription: String { amount }
+}
+
+private let lockedAmounts: [SealedAmount] = [
+    .init(amount: "124.50", sealed: .init(bytes: [91, 37, 206])),
+    .init(amount: "99", sealed: .init(bytes: [6, 43, 128])),
+    .init(amount: "0.01", sealed: .init(bytes: [8, 19, 71, 254])),
+]
+
 // MARK: - Helpers
 
 /// A live attempt `current` locking "124.50"; pass what the scenario changes.
 private func makeState(
     phase: HostBroadcast.Phase,
+    amount: String = "124.50",
     secondsLeft: Int? = nil,
     duration: Int? = 90,
     session: HostBroadcast.Session? = nil,
@@ -384,7 +690,7 @@ private func makeState(
     expiryPending: Bool = false
 ) -> State {
     State(
-        phase: phase, amount: "124.50", secondsLeft: secondsLeft, attempt: current, nextAttempt: 2,
+        phase: phase, amount: amount, secondsLeft: secondsLeft, attempt: current, nextAttempt: 2,
         duration: duration, session: session, link: link, clientKey: clientKey, preparation: preparation,
         expiryPending: expiryPending
     )
