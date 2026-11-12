@@ -51809,43 +51809,6 @@
             },
             {
               "type": "frame",
-              "id": "xLJOq",
-              "name": "Button/Make",
-              "reusable": true,
-              "fill": "$selBg",
-              "cornerRadius": "$radius-control",
-              "gap": "$space-6",
-              "padding": [
-                "$space-6",
-                "$space-16"
-              ],
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "icon",
-                  "id": "u2diG6",
-                  "name": "Icon",
-                  "width": 14,
-                  "height": 14,
-                  "icon": "sparkles",
-                  "library": "lucide",
-                  "fill": "$selText"
-                },
-                {
-                  "type": "text",
-                  "id": "OGXPv",
-                  "name": "Label",
-                  "fill": "$selText",
-                  "content": "Сделать",
-                  "lineHeight": 1.45,
-                  "fontFamily": "$font-ui",
-                  "fontSize": "$type-small",
-                  "fontWeight": "600"
-                }
-              ]
-            },
-            {
-              "type": "frame",
               "id": "YCPQX",
               "name": "Link/Make",
               "reusable": true,
@@ -51871,52 +51834,6 @@
                   "fontFamily": "$font-ui",
                   "fontSize": "$type-small",
                   "fontWeight": "600"
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "tIvTU",
-              "name": "Making pill",
-              "reusable": true,
-              "fill": "$btn",
-              "cornerRadius": "$radius-control",
-              "gap": "$space-6",
-              "padding": [
-                "$space-6",
-                "$space-12"
-              ],
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "icon",
-                  "id": "y8aPWo",
-                  "name": "Spinner",
-                  "width": 14,
-                  "height": 14,
-                  "icon": "loader-circle",
-                  "library": "lucide",
-                  "fill": "$sub"
-                },
-                {
-                  "type": "text",
-                  "id": "u86voI",
-                  "name": "Time",
-                  "fill": "$sub",
-                  "content": "0:24",
-                  "fontFamily": "$font-data",
-                  "fontSize": "$type-small",
-                  "fontWeight": "normal"
-                },
-                {
-                  "type": "icon",
-                  "id": "cjHnY",
-                  "name": "Cancel",
-                  "width": 14,
-                  "height": 14,
-                  "icon": "x",
-                  "library": "lucide",
-                  "fill": "$gutter"
                 }
               ]
             }
@@ -52238,6 +52155,255 @@
                       "fontWeight": "normal"
                     }
                   ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "LIFH7",
+              "name": "No summary line",
+              "reusable": true,
+              "width": 760,
+              "gap": "$space-8",
+              "padding": [
+                "$space-8",
+                "$space-28"
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "RzvXS",
+                  "name": "Text",
+                  "fill": "$gutter",
+                  "content": "Нет итогов",
+                  "fontFamily": "$font-ui",
+                  "fontSize": "$type-small",
+                  "fontWeight": "normal"
+                },
+                {
+                  "id": "EXaFz",
+                  "type": "ref",
+                  "ref": "YCPQX",
+                  "name": "Сделать"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "Km7Zn",
+              "name": "Making line",
+              "reusable": true,
+              "width": 760,
+              "gap": "$space-8",
+              "padding": [
+                "$space-8",
+                "$space-28"
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "PR2Qf",
+                  "name": "Spinner",
+                  "width": 14,
+                  "height": 14,
+                  "icon": "loader-circle",
+                  "library": "lucide",
+                  "fill": "$gutter"
+                },
+                {
+                  "type": "text",
+                  "id": "FM9Mo",
+                  "name": "Text",
+                  "fill": "$gutter",
+                  "content": "Делаю…",
+                  "fontFamily": "$font-ui",
+                  "fontSize": "$type-small",
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "k35aVC",
+                  "name": "Time",
+                  "fill": "$gutter",
+                  "content": "0:24",
+                  "fontFamily": "$font-data",
+                  "fontSize": "$type-small",
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "s3KNX",
+                  "name": "Cancel",
+                  "fill": "$sub",
+                  "content": "Отменить",
+                  "fontFamily": "$font-ui",
+                  "fontSize": "$type-small",
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "nzrGX",
+              "name": "Summary skeleton",
+              "reusable": true,
+              "width": 760,
+              "layout": "vertical",
+              "gap": "$space-4",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "ROghh",
+                  "name": "Block",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": "$space-8",
+                  "padding": [
+                    "$space-12",
+                    "$space-28",
+                    "$space-4",
+                    "$space-28"
+                  ],
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "fHsli",
+                      "name": "Line",
+                      "width": 640,
+                      "height": 8,
+                      "fill": "$btn",
+                      "cornerRadius": "$radius-bar"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "hnXIO",
+                      "name": "Line",
+                      "width": 600,
+                      "height": 8,
+                      "fill": "$btn",
+                      "cornerRadius": "$radius-bar"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "tZFSu",
+                      "name": "Line",
+                      "width": 380,
+                      "height": 8,
+                      "fill": "$btn",
+                      "cornerRadius": "$radius-bar"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "T4dKW9",
+                  "name": "Block",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": "$space-8",
+                  "padding": [
+                    "$space-12",
+                    "$space-28",
+                    "$space-4",
+                    "$space-28"
+                  ],
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "t8aaVV",
+                      "name": "Line",
+                      "width": 520,
+                      "height": 8,
+                      "fill": "$btn",
+                      "cornerRadius": "$radius-bar"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "l8sVZP",
+                      "name": "Line",
+                      "width": 560,
+                      "height": 8,
+                      "fill": "$btn",
+                      "cornerRadius": "$radius-bar"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "iaZDL",
+                      "name": "Line",
+                      "width": 440,
+                      "height": 8,
+                      "fill": "$btn",
+                      "cornerRadius": "$radius-bar"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "H3kx4",
+                      "name": "Line",
+                      "width": 300,
+                      "height": 8,
+                      "fill": "$btn",
+                      "cornerRadius": "$radius-bar"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "e8bJ9z",
+                  "name": "Block",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": "$space-8",
+                  "padding": [
+                    "$space-12",
+                    "$space-28",
+                    "$space-4",
+                    "$space-28"
+                  ],
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "y420tZ",
+                      "name": "Line",
+                      "width": 480,
+                      "height": 8,
+                      "fill": "$btn",
+                      "cornerRadius": "$radius-bar"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "duEPd",
+                      "name": "Line",
+                      "width": 360,
+                      "height": 8,
+                      "fill": "$btn",
+                      "cornerRadius": "$radius-bar"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "ahKkV",
+              "name": "Summary date",
+              "reusable": true,
+              "width": 760,
+              "padding": [
+                "$space-16",
+                "$space-28"
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "uCzZj",
+                  "name": "Text",
+                  "fill": "$gutter",
+                  "content": "Сделано 12 ноября, 14:05",
+                  "fontFamily": "$font-ui",
+                  "fontSize": "$type-caption",
+                  "fontWeight": "normal"
                 }
               ]
             }
@@ -52778,6 +52944,13 @@
                           "content": "Предложение: Oper ID как ключ верхнего уровня для всех ответов на запрос [08:08–10:04]."
                         }
                       }
+                    },
+                    {
+                      "id": "kw4YG",
+                      "type": "ref",
+                      "ref": "ahKkV",
+                      "name": "Date",
+                      "width": "fill_container"
                     }
                   ]
                 }
@@ -54138,35 +54311,20 @@
                     },
                     {
                       "type": "frame",
-                      "id": "s183x",
-                      "name": "Centre",
+                      "id": "fgGKC",
+                      "name": "Body",
                       "width": "fill_container",
                       "height": "fill_container",
                       "fill": "$surface",
                       "layout": "vertical",
-                      "justifyContent": "center",
-                      "alignItems": "center",
+                      "gap": "$space-4",
                       "children": [
                         {
-                          "id": "s182x",
+                          "id": "rvK3K",
                           "type": "ref",
-                          "ref": "s079x",
-                          "name": "Message",
-                          "descendants": {
-                            "s076x": {
-                              "icon": "file-text",
-                              "fill": "$gutter"
-                            },
-                            "s077x": {
-                              "content": "Итогов нет"
-                            },
-                            "s078x": {
-                              "content": "Подготовка итогов выключена в Настройках"
-                            },
-                            "s075x": {
-                              "enabled": false
-                            }
-                          }
+                          "ref": "LIFH7",
+                          "name": "No summary",
+                          "width": "fill_container"
                         }
                       ]
                     }
@@ -58737,8 +58895,8 @@
       "y": 23480,
       "name": "Note detail",
       "width": 520,
-      "height": 380,
-      "content": "Detail\n\nHeader: title, then day, start time · duration. The summary is rendered Markdown, selectable. Toolbar: Копировать (the Markdown source) and ⋯ with the row's menu: Открыть, Переименовать, Повторить итоги (failed only), Удалить….\n\nWithout a summary the detail shows one centred message under the header: preparing, failed with the error and Повторить итоги, or «Итогов нет» when notes are off. With no call selected: «Звонок не выбран». Copy and ⋯ are hidden whenever there is no summary.\n\n↑↓ moves the selection and the detail follows at once; Tab moves focus into the detail."
+      "height": 470,
+      "content": "Detail\n\nHeader: title, then day, start time · duration. The summary is rendered Markdown, selectable, with the date it was made under its last line in `gutter`. Toolbar: Копировать (the Markdown source) and ⋯ with the row's menu: Открыть, Переименовать, Сделать итоги (no summary), Повторить итоги (failed only), Удалить….\n\nNo summary: one line under the header, «Нет итогов» and the link «✨ Сделать». Making: the line becomes a spinner, «Делаю…», the elapsed time and «Отменить», over a grey skeleton of the summary; the row shows «Подготовка итогов…». Done: the summary replaces both. Preparing after a call and failed: one centred message under the header. With no call selected: «Звонок не выбран». Copy and ⋯ are hidden whenever there is no summary.\n\n↑↓ moves the selection and the detail follows at once; Tab moves focus into the detail."
     },
     {
       "type": "note",
@@ -58751,1219 +58909,474 @@
       "content": "Search\n\nThe field sits in the list's title bar and works as in the calls list: titles, summaries and transcripts, as you type, ignoring case and ё/е; days with no match hide.\n\nA match row keeps the two-line shape: title and time, then where the first match is (its time in the transcript, or «Итоги»), the text around it with the hit tinted `hit`, and «ещё N». The detail shows the selected call's summary. No results: the list says so and the detail shows «Звонок не выбран».\n\nEmpty, loading and the inactive window (selection in `chip`) are as in the calls list."
     },
     {
-      "id": "uzWzn",
-      "type": "ref",
-      "ref": "s191x",
-      "name": "Make summary — 1 Нет итогов — A Button alone, centred",
-      "x": 0,
-      "y": 24100,
-      "descendants": {
-        "s175x/s027x": {
-          "content": ""
-        },
-        "s184x": {
-          "id": "mxSaf",
-          "type": "ref",
-          "ref": "s013x",
-          "name": "Detail bar",
-          "width": "fill_container",
-          "descendants": {
-            "s010x": {
-              "enabled": false
-            },
-            "s012x": {
-              "enabled": false
-            }
-          }
-        },
-        "s183x": {
+      "type": "frame",
+      "id": "OFoX0",
+      "x": 17660,
+      "y": 22000,
+      "name": "Calls — making summary",
+      "theme": {
+        "mode": "light"
+      },
+      "reusable": true,
+      "clip": true,
+      "width": 1100,
+      "height": 680,
+      "fill": "$win",
+      "cornerRadius": "$radius-card",
+      "stroke": "$rule",
+      "strokeWidth": 1,
+      "layout": "none",
+      "children": [
+        {
           "type": "frame",
-          "id": "m2q3lZ",
-          "name": "Centre",
-          "width": "fill_container",
-          "height": "fill_container",
-          "fill": "$surface",
-          "layout": "vertical",
-          "gap": "$space-8",
-          "justifyContent": "center",
-          "alignItems": "center",
-          "children": [
-            {
-              "id": "FZjuc",
-              "type": "ref",
-              "ref": "xLJOq",
-              "name": "Сделать"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "id": "znLy1",
-      "type": "ref",
-      "ref": "s191x",
-      "name": "Make summary — 1 Нет итогов — B Button in the header",
-      "x": 1180,
-      "y": 24100,
-      "descendants": {
-        "s175x/s027x": {
-          "content": ""
-        },
-        "s184x": {
-          "id": "vizOu",
-          "type": "ref",
-          "ref": "s013x",
-          "name": "Detail bar",
-          "width": "fill_container",
-          "descendants": {
-            "s010x": {
-              "enabled": false
-            },
-            "s012x": {
-              "enabled": false
-            }
-          }
-        },
-        "s181x": {
-          "type": "frame",
-          "id": "RQ4rG",
-          "name": "Header row",
-          "width": "fill_container",
-          "padding": [
-            0,
-            "$space-28",
-            0,
-            0
-          ],
-          "alignItems": "center",
-          "children": [
-            {
-              "id": "a0cmLI",
-              "type": "ref",
-              "ref": "s033x",
-              "name": "Header",
-              "width": "fill_container",
-              "descendants": {
-                "s031x": {
-                  "content": "2026.11.09-1000"
-                },
-                "s032x": {
-                  "content": "Понедельник, 9 ноября, 10:00 · 16:10"
-                }
-              }
-            },
-            {
-              "id": "tH6V6",
-              "type": "ref",
-              "ref": "xLJOq",
-              "name": "Сделать"
-            }
-          ]
-        },
-        "s183x": {
-          "type": "frame",
-          "id": "GTSzQ",
-          "name": "Centre",
-          "width": "fill_container",
-          "height": "fill_container",
-          "fill": "$surface",
-          "layout": "vertical",
-          "gap": "$space-8"
-        }
-      }
-    },
-    {
-      "id": "axQP6",
-      "type": "ref",
-      "ref": "s191x",
-      "name": "Make summary — 1 Нет итогов — C Quiet line with a link",
-      "x": 2360,
-      "y": 24100,
-      "descendants": {
-        "s175x/s027x": {
-          "content": ""
-        },
-        "s184x": {
-          "id": "GkBOC",
-          "type": "ref",
-          "ref": "s013x",
-          "name": "Detail bar",
-          "width": "fill_container",
-          "descendants": {
-            "s010x": {
-              "enabled": false
-            },
-            "s012x": {
-              "enabled": false
-            }
-          }
-        },
-        "s183x": {
-          "type": "frame",
-          "id": "fzmxx",
-          "name": "Centre",
-          "width": "fill_container",
-          "height": "fill_container",
-          "fill": "$surface",
-          "layout": "vertical",
-          "gap": "$space-8",
+          "id": "NMbRP",
+          "x": 0,
+          "y": 0,
+          "name": "Content",
+          "width": 1100,
+          "height": 680,
           "children": [
             {
               "type": "frame",
-              "id": "L88a5",
-              "name": "Line",
-              "gap": "$space-8",
-              "padding": [
-                "$space-8",
-                "$space-28"
-              ],
-              "alignItems": "center",
+              "id": "yHiyc",
+              "name": "List pane",
+              "width": 340,
+              "height": "fill_container",
+              "stroke": "$rule",
+              "strokeWidth": {
+                "right": 1
+              },
+              "layout": "vertical",
               "children": [
                 {
-                  "type": "text",
-                  "id": "ThHye",
-                  "name": "Text",
-                  "fill": "$gutter",
-                  "content": "Нет итогов",
-                  "fontFamily": "$font-ui",
-                  "fontSize": "$type-small",
-                  "fontWeight": "normal"
-                },
-                {
-                  "id": "tc8VC",
+                  "id": "j3ERs",
                   "type": "ref",
-                  "ref": "YCPQX",
-                  "name": "Сделать"
+                  "ref": "bncv0",
+                  "name": "List bar",
+                  "width": "fill_container",
+                  "height": 44,
+                  "descendants": {
+                    "b33sH": {
+                      "width": 160
+                    }
+                  }
+                },
+                {
+                  "type": "frame",
+                  "id": "x1z3Y",
+                  "name": "List",
+                  "clip": true,
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$win",
+                  "layout": "vertical",
+                  "children": [
+                    {
+                      "id": "MCfjU",
+                      "type": "ref",
+                      "ref": "pmtOb",
+                      "name": "Day Сегодня",
+                      "width": "fill_container",
+                      "descendants": {
+                        "OPQgF": {
+                          "content": "Сегодня"
+                        },
+                        "u0i8d": {
+                          "content": "3 звонка"
+                        }
+                      }
+                    },
+                    {
+                      "id": "H3tYUv",
+                      "type": "ref",
+                      "ref": "s030x",
+                      "name": "Row ЦР ID",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s023x": {
+                          "content": "ЦР ID"
+                        },
+                        "s024x": {
+                          "content": "12:58"
+                        },
+                        "s026x": {
+                          "content": "41:11"
+                        },
+                        "s027x": {
+                          "content": "Идентификаторы и связка ответов"
+                        }
+                      }
+                    },
+                    {
+                      "id": "PQvL4",
+                      "type": "ref",
+                      "ref": "s030x",
+                      "name": "Row ЦР",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s023x": {
+                          "content": "ЦР"
+                        },
+                        "s024x": {
+                          "content": "11:00"
+                        },
+                        "s026x": {
+                          "content": "38:20"
+                        },
+                        "s027x": {
+                          "content": "Статус задач и план релиза"
+                        }
+                      }
+                    },
+                    {
+                      "id": "U50Qh",
+                      "type": "ref",
+                      "ref": "s030x",
+                      "name": "Row iOS Daily",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s023x": {
+                          "content": "iOS Daily"
+                        },
+                        "s024x": {
+                          "content": "10:00"
+                        },
+                        "s026x": {
+                          "content": "15:02"
+                        },
+                        "s027x": {
+                          "content": "Подготовка итогов…",
+                          "fill": "$gutter"
+                        },
+                        "s057x": {
+                          "enabled": true
+                        }
+                      }
+                    },
+                    {
+                      "id": "uuv24",
+                      "type": "ref",
+                      "ref": "pmtOb",
+                      "name": "Day Вчера",
+                      "width": "fill_container",
+                      "descendants": {
+                        "OPQgF": {
+                          "content": "Вчера"
+                        },
+                        "u0i8d": {
+                          "content": "2 звонка"
+                        }
+                      }
+                    },
+                    {
+                      "id": "vyYhO",
+                      "type": "ref",
+                      "ref": "s030x",
+                      "name": "Row Люда — передача дел",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s023x": {
+                          "content": "Люда — передача дел"
+                        },
+                        "s024x": {
+                          "content": "17:00"
+                        },
+                        "s026x": {
+                          "content": "52:40"
+                        },
+                        "s027x": {
+                          "content": "Передача задач и доступов перед отпуском"
+                        }
+                      }
+                    },
+                    {
+                      "id": "bbx87",
+                      "type": "ref",
+                      "ref": "s030x",
+                      "name": "Row iOS & Android daily",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s023x": {
+                          "content": "iOS & Android daily"
+                        },
+                        "s024x": {
+                          "content": "09:59"
+                        },
+                        "s026x": {
+                          "content": "14:51"
+                        },
+                        "s027x": {
+                          "content": "Не удалось подготовить итоги",
+                          "fill": "$rec"
+                        },
+                        "s028x": {
+                          "enabled": true
+                        }
+                      }
+                    },
+                    {
+                      "id": "TT0UP",
+                      "type": "ref",
+                      "ref": "pmtOb",
+                      "name": "Day Понедельник, 9 ноября",
+                      "width": "fill_container",
+                      "descendants": {
+                        "OPQgF": {
+                          "content": "Понедельник, 9 ноября"
+                        },
+                        "u0i8d": {
+                          "content": "2 звонка"
+                        }
+                      }
+                    },
+                    {
+                      "id": "FlrqA",
+                      "type": "ref",
+                      "ref": "s030x",
+                      "name": "Row ЦР Статус",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s023x": {
+                          "content": "ЦР Статус"
+                        },
+                        "s024x": {
+                          "content": "11:02"
+                        },
+                        "s026x": {
+                          "content": "29:45"
+                        },
+                        "s027x": {
+                          "content": "Сроки по пополнению и открытые вопросы"
+                        }
+                      }
+                    },
+                    {
+                      "id": "ttzC6",
+                      "type": "ref",
+                      "ref": "s030x",
+                      "name": "Row 2026.11.09-1000",
+                      "width": "fill_container",
+                      "fill": "$selBg",
+                      "descendants": {
+                        "s023x": {
+                          "content": "2026.11.09-1000",
+                          "fill": "$selText",
+                          "fontFamily": "$font-data",
+                          "fontWeight": "normal"
+                        },
+                        "s024x": {
+                          "content": "10:00",
+                          "fill": "$selText"
+                        },
+                        "s026x": {
+                          "content": "16:10",
+                          "fill": "$selText"
+                        },
+                        "s027x": {
+                          "content": "Подготовка итогов…",
+                          "fill": "$selText"
+                        },
+                        "s057x": {
+                          "enabled": true,
+                          "fill": "$selText"
+                        }
+                      }
+                    },
+                    {
+                      "id": "u0v22",
+                      "type": "ref",
+                      "ref": "pmtOb",
+                      "name": "Day Пятница, 6 ноября",
+                      "width": "fill_container",
+                      "descendants": {
+                        "OPQgF": {
+                          "content": "Пятница, 6 ноября"
+                        },
+                        "u0i8d": {
+                          "content": "2 звонка"
+                        }
+                      }
+                    },
+                    {
+                      "id": "FJH7q",
+                      "type": "ref",
+                      "ref": "s030x",
+                      "name": "Row Лера 17820",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s023x": {
+                          "content": "Лера 17820"
+                        },
+                        "s024x": {
+                          "content": "14:59"
+                        },
+                        "s026x": {
+                          "content": "33:05"
+                        },
+                        "s027x": {
+                          "content": "Разбор заявки 17820 и следующие шаги"
+                        }
+                      }
+                    },
+                    {
+                      "id": "WfDI3",
+                      "type": "ref",
+                      "ref": "s030x",
+                      "name": "Row iOS Daily",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s023x": {
+                          "content": "iOS Daily"
+                        },
+                        "s024x": {
+                          "content": "09:59"
+                        },
+                        "s026x": {
+                          "content": "15:30"
+                        },
+                        "s027x": {
+                          "content": "Короткий синк по задачам спринта"
+                        }
+                      }
+                    },
+                    {
+                      "id": "t8XwYe",
+                      "type": "ref",
+                      "ref": "pmtOb",
+                      "name": "Day Четверг, 5 ноября",
+                      "width": "fill_container",
+                      "descendants": {
+                        "OPQgF": {
+                          "content": "Четверг, 5 ноября"
+                        },
+                        "u0i8d": {
+                          "content": "8 звонков"
+                        }
+                      }
+                    },
+                    {
+                      "id": "muvqn",
+                      "type": "ref",
+                      "ref": "s030x",
+                      "name": "Row Планирование",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s023x": {
+                          "content": "Планирование"
+                        },
+                        "s024x": {
+                          "content": "17:34"
+                        },
+                        "s026x": {
+                          "content": "58:00"
+                        },
+                        "s027x": {
+                          "content": "Цели спринта и оценки"
+                        }
+                      }
+                    }
+                  ]
                 }
               ]
-            }
-          ]
-        }
-      }
-    },
-    {
-      "id": "O7rIx",
-      "type": "ref",
-      "ref": "s191x",
-      "name": "Make summary — 2 Делаю — A Spinner and time, centred",
-      "x": 0,
-      "y": 24920,
-      "descendants": {
-        "s175x/s027x": {
-          "content": "Подготовка итогов…"
-        },
-        "s175x/s057x": {
-          "enabled": true,
-          "fill": "$selText"
-        },
-        "s184x": {
-          "id": "T3OAE",
-          "type": "ref",
-          "ref": "s013x",
-          "name": "Detail bar",
-          "width": "fill_container",
-          "descendants": {
-            "s010x": {
-              "enabled": false
-            },
-            "s012x": {
-              "enabled": false
-            }
-          }
-        },
-        "s183x": {
-          "type": "frame",
-          "id": "H14J1c",
-          "name": "Centre",
-          "width": "fill_container",
-          "height": "fill_container",
-          "fill": "$surface",
-          "layout": "vertical",
-          "gap": "$space-8",
-          "justifyContent": "center",
-          "alignItems": "center",
-          "children": [
-            {
-              "type": "icon",
-              "id": "k9tu0",
-              "name": "Spinner",
-              "width": 20,
-              "height": 20,
-              "icon": "loader-circle",
-              "library": "lucide",
-              "fill": "$sub"
-            },
-            {
-              "type": "text",
-              "id": "Bq48h",
-              "name": "Time",
-              "fill": "$gutter",
-              "content": "0:24",
-              "fontFamily": "$font-data",
-              "fontSize": "$type-small",
-              "fontWeight": "normal"
-            },
-            {
-              "type": "text",
-              "id": "CdOML",
-              "name": "Cancel",
-              "fill": "$sub",
-              "content": "Отменить",
-              "fontFamily": "$font-ui",
-              "fontSize": "$type-small",
-              "fontWeight": "normal"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "id": "bYOKJ",
-      "type": "ref",
-      "ref": "s191x",
-      "name": "Make summary — 2 Делаю — B Pill in the header",
-      "x": 1180,
-      "y": 24920,
-      "descendants": {
-        "s175x/s027x": {
-          "content": "Подготовка итогов…"
-        },
-        "s175x/s057x": {
-          "enabled": true,
-          "fill": "$selText"
-        },
-        "s184x": {
-          "id": "LRIim",
-          "type": "ref",
-          "ref": "s013x",
-          "name": "Detail bar",
-          "width": "fill_container",
-          "descendants": {
-            "s010x": {
-              "enabled": false
-            },
-            "s012x": {
-              "enabled": false
-            }
-          }
-        },
-        "s181x": {
-          "type": "frame",
-          "id": "bh3Bv",
-          "name": "Header row",
-          "width": "fill_container",
-          "padding": [
-            0,
-            "$space-28",
-            0,
-            0
-          ],
-          "alignItems": "center",
-          "children": [
-            {
-              "id": "eZLcV",
-              "type": "ref",
-              "ref": "s033x",
-              "name": "Header",
-              "width": "fill_container",
-              "descendants": {
-                "s031x": {
-                  "content": "2026.11.09-1000"
-                },
-                "s032x": {
-                  "content": "Понедельник, 9 ноября, 10:00 · 16:10"
-                }
-              }
-            },
-            {
-              "id": "xBrmu",
-              "type": "ref",
-              "ref": "tIvTU",
-              "name": "Making"
-            }
-          ]
-        },
-        "s183x": {
-          "type": "frame",
-          "id": "vPvdj",
-          "name": "Centre",
-          "width": "fill_container",
-          "height": "fill_container",
-          "fill": "$surface",
-          "layout": "vertical",
-          "gap": "$space-8"
-        }
-      }
-    },
-    {
-      "id": "ScEc3",
-      "type": "ref",
-      "ref": "s191x",
-      "name": "Make summary — 2 Делаю — C Line over a skeleton",
-      "x": 2360,
-      "y": 24920,
-      "descendants": {
-        "s175x/s027x": {
-          "content": "Подготовка итогов…"
-        },
-        "s175x/s057x": {
-          "enabled": true,
-          "fill": "$selText"
-        },
-        "s184x": {
-          "id": "JB5oF",
-          "type": "ref",
-          "ref": "s013x",
-          "name": "Detail bar",
-          "width": "fill_container",
-          "descendants": {
-            "s010x": {
-              "enabled": false
-            },
-            "s012x": {
-              "enabled": false
-            }
-          }
-        },
-        "s183x": {
-          "type": "frame",
-          "id": "kwvz0",
-          "name": "Centre",
-          "width": "fill_container",
-          "height": "fill_container",
-          "fill": "$surface",
-          "layout": "vertical",
-          "gap": "$space-4",
-          "children": [
-            {
-              "type": "frame",
-              "id": "MXpzp",
-              "name": "Line",
-              "gap": "$space-8",
-              "padding": [
-                "$space-8",
-                "$space-28"
-              ],
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "icon",
-                  "id": "Cbu0Z",
-                  "name": "Spinner",
-                  "width": 14,
-                  "height": 14,
-                  "icon": "loader-circle",
-                  "library": "lucide",
-                  "fill": "$gutter"
-                },
-                {
-                  "type": "text",
-                  "id": "M5xzih",
-                  "name": "Text",
-                  "fill": "$gutter",
-                  "content": "Делаю…",
-                  "fontFamily": "$font-ui",
-                  "fontSize": "$type-small",
-                  "fontWeight": "normal"
-                },
-                {
-                  "type": "text",
-                  "id": "Eqtxh",
-                  "name": "Time",
-                  "fill": "$gutter",
-                  "content": "0:24",
-                  "fontFamily": "$font-data",
-                  "fontSize": "$type-small",
-                  "fontWeight": "normal"
-                },
-                {
-                  "type": "text",
-                  "id": "mQIP3",
-                  "name": "Cancel",
-                  "fill": "$sub",
-                  "content": "Отменить",
-                  "fontFamily": "$font-ui",
-                  "fontSize": "$type-small",
-                  "fontWeight": "normal"
-                }
-              ]
             },
             {
               "type": "frame",
-              "id": "b9idzH",
-              "name": "Ghost block",
+              "id": "A0rsus",
+              "name": "Detail pane",
               "width": "fill_container",
+              "height": "fill_container",
               "layout": "vertical",
-              "gap": "$space-8",
-              "padding": [
-                "$space-12",
-                "$space-28",
-                "$space-4",
-                "$space-28"
-              ],
               "children": [
                 {
-                  "type": "rectangle",
-                  "cornerRadius": "$radius-bar",
-                  "id": "rrUlK",
-                  "name": "Ghost line",
-                  "fill": "$btn",
-                  "width": 640,
-                  "height": 8
+                  "id": "HEncS",
+                  "type": "ref",
+                  "ref": "s013x",
+                  "name": "Detail bar",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s010x": {
+                      "enabled": false
+                    },
+                    "s012x": {
+                      "enabled": false
+                    }
+                  }
                 },
                 {
-                  "type": "rectangle",
-                  "cornerRadius": "$radius-bar",
-                  "id": "p1vIB4",
-                  "name": "Ghost line",
-                  "fill": "$btn",
-                  "width": 600,
-                  "height": 8
-                },
-                {
-                  "type": "rectangle",
-                  "cornerRadius": "$radius-bar",
-                  "id": "Q5gTi",
-                  "name": "Ghost line",
-                  "fill": "$btn",
-                  "width": 380,
-                  "height": 8
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "ZSQVv",
-              "name": "Ghost block",
-              "width": "fill_container",
-              "layout": "vertical",
-              "gap": "$space-8",
-              "padding": [
-                "$space-12",
-                "$space-28",
-                "$space-4",
-                "$space-28"
-              ],
-              "children": [
-                {
-                  "type": "rectangle",
-                  "cornerRadius": "$radius-bar",
-                  "id": "CRUtt",
-                  "name": "Ghost line",
-                  "fill": "$btn",
-                  "width": 520,
-                  "height": 8
-                },
-                {
-                  "type": "rectangle",
-                  "cornerRadius": "$radius-bar",
-                  "id": "Zm4vx",
-                  "name": "Ghost line",
-                  "fill": "$btn",
-                  "width": 560,
-                  "height": 8
-                },
-                {
-                  "type": "rectangle",
-                  "cornerRadius": "$radius-bar",
-                  "id": "Fumny",
-                  "name": "Ghost line",
-                  "fill": "$btn",
-                  "width": 440,
-                  "height": 8
-                },
-                {
-                  "type": "rectangle",
-                  "cornerRadius": "$radius-bar",
-                  "id": "P5j6Y",
-                  "name": "Ghost line",
-                  "fill": "$btn",
-                  "width": 300,
-                  "height": 8
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "rH5QX",
-              "name": "Ghost block",
-              "width": "fill_container",
-              "layout": "vertical",
-              "gap": "$space-8",
-              "padding": [
-                "$space-12",
-                "$space-28",
-                "$space-4",
-                "$space-28"
-              ],
-              "children": [
-                {
-                  "type": "rectangle",
-                  "cornerRadius": "$radius-bar",
-                  "id": "c0H5F2",
-                  "name": "Ghost line",
-                  "fill": "$btn",
-                  "width": 480,
-                  "height": 8
-                },
-                {
-                  "type": "rectangle",
-                  "cornerRadius": "$radius-bar",
-                  "id": "U5no6",
-                  "name": "Ghost line",
-                  "fill": "$btn",
-                  "width": 360,
-                  "height": 8
+                  "type": "frame",
+                  "id": "ec1ga",
+                  "name": "Scroll",
+                  "clip": true,
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$surface",
+                  "layout": "vertical",
+                  "padding": [
+                    0,
+                    0,
+                    "$space-24",
+                    0
+                  ],
+                  "children": [
+                    {
+                      "id": "s5mUN",
+                      "type": "ref",
+                      "ref": "s033x",
+                      "name": "Header",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s031x": {
+                          "content": "2026.11.09-1000"
+                        },
+                        "s032x": {
+                          "content": "Понедельник, 9 ноября, 10:00 · 16:10"
+                        }
+                      }
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Tk1en",
+                      "name": "Body",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": "$surface",
+                      "layout": "vertical",
+                      "gap": "$space-4",
+                      "children": [
+                        {
+                          "id": "hrDEg",
+                          "type": "ref",
+                          "ref": "Km7Zn",
+                          "name": "Making",
+                          "width": "fill_container"
+                        },
+                        {
+                          "id": "dPRfG",
+                          "type": "ref",
+                          "ref": "nzrGX",
+                          "name": "Skeleton",
+                          "width": "fill_container"
+                        }
+                      ]
+                    }
+                  ]
                 }
               ]
             }
           ]
         }
-      }
+      ]
     },
     {
-      "id": "HORRU",
+      "id": "sdgNY",
       "type": "ref",
-      "ref": "s191x",
-      "name": "Make summary — 3 Готово: дата итогов — A Date under the summary",
-      "x": 0,
-      "y": 25740,
-      "descendants": {
-        "s175x/s027x": {
-          "content": "Встреча была посвящена идентификаторам в сообщениях"
-        },
-        "s184x": {
-          "id": "I66Dw",
-          "type": "ref",
-          "ref": "s013x",
-          "name": "Detail bar",
-          "width": "fill_container"
-        },
-        "s183x": {
-          "type": "frame",
-          "id": "XsOHx",
-          "name": "Centre",
-          "width": "fill_container",
-          "height": "fill_container",
-          "fill": "$surface",
-          "layout": "vertical",
-          "gap": "$space-8",
-          "children": [
-            {
-              "id": "yI66K",
-              "type": "ref",
-              "ref": "s035x",
-              "name": "S О ЧЁМ ВСТРЕЧА",
-              "width": "fill_container",
-              "descendants": {
-                "s034x": {
-                  "content": "О ЧЁМ ВСТРЕЧА"
-                }
-              }
-            },
-            {
-              "id": "V5WrZ",
-              "type": "ref",
-              "ref": "s039x",
-              "name": "P Встреча была пос",
-              "width": "fill_container",
-              "descendants": {
-                "s038x": {
-                  "content": "Встреча была посвящена идентификаторам в сообщениях (application message ID, Oper ID, message ID, doc ID, correlation message ID) и тому, как связывать ответы с запросами между шиной, бэком и фронтом. Также обсудили пополнение счёта и классификацию асинхронных сообщений."
-                }
-              }
-            },
-            {
-              "id": "e7JIJ",
-              "type": "ref",
-              "ref": "s035x",
-              "name": "S КЛЮЧЕВЫЕ МОМЕНТЫ",
-              "width": "fill_container",
-              "descendants": {
-                "s034x": {
-                  "content": "КЛЮЧЕВЫЕ МОМЕНТЫ"
-                }
-              }
-            },
-            {
-              "id": "AXeRA",
-              "type": "ref",
-              "ref": "s037x",
-              "name": "H Пополнение счёта",
-              "width": "fill_container",
-              "descendants": {
-                "s036x": {
-                  "content": "Пополнение счёта"
-                }
-              }
-            },
-            {
-              "id": "YGmBB",
-              "type": "ref",
-              "ref": "s042x",
-              "name": "B Пополнение работ",
-              "width": "fill_container",
-              "descendants": {
-                "s041x": {
-                  "content": "Пополнение работает, открыты лишь вопросы по ответам [02:02–03:10]."
-                }
-              }
-            },
-            {
-              "id": "rFtHt",
-              "type": "ref",
-              "ref": "s042x",
-              "name": "B Отдельные вопрос",
-              "width": "fill_container",
-              "descendants": {
-                "s041x": {
-                  "content": "Отдельные вопросы остаются по C2C и по Oper ID в пополнении [03:10]."
-                }
-              }
-            },
-            {
-              "id": "R3u4U9",
-              "type": "ref",
-              "ref": "s037x",
-              "name": "H Идентификаторы с",
-              "width": "fill_container",
-              "descendants": {
-                "s036x": {
-                  "content": "Идентификаторы сообщений"
-                }
-              }
-            },
-            {
-              "id": "tuqBh",
-              "type": "ref",
-              "ref": "s042x",
-              "name": "B Application mess",
-              "width": "fill_container",
-              "descendants": {
-                "s041x": {
-                  "content": "Application message ID — поле ЦБ; operation ID — поле адаптера [04:41–08:08]."
-                }
-              }
-            },
-            {
-              "id": "M44ExC",
-              "type": "ref",
-              "ref": "s042x",
-              "name": "B По correlation m",
-              "width": "fill_container",
-              "descendants": {
-                "s041x": {
-                  "content": "По correlation message ID есть расхождение между примерами XML и XSD-схемой; нужно выяснить у смежных систем [07:38–08:08]."
-                }
-              }
-            },
-            {
-              "id": "r4Uu5",
-              "type": "ref",
-              "ref": "s042x",
-              "name": "B Предложение: Ope",
-              "width": "fill_container",
-              "descendants": {
-                "s041x": {
-                  "content": "Предложение: Oper ID как ключ верхнего уровня для всех ответов на запрос [08:08–10:04]."
-                }
-              }
-            },
-            {
-              "type": "frame",
-              "id": "qOAbF",
-              "name": "Stamp",
-              "padding": [
-                "$space-16",
-                "$space-28"
-              ],
-              "children": [
-                {
-                  "type": "text",
-                  "id": "W2Dcqc",
-                  "name": "Stamp",
-                  "fill": "$gutter",
-                  "content": "Сделано 12 ноября, 14:05",
-                  "fontFamily": "$font-ui",
-                  "fontSize": "$type-caption",
-                  "fontWeight": "normal"
-                }
-              ]
-            }
-          ]
-        }
+      "ref": "OFoX0",
+      "name": "Calls — making summary (dark)",
+      "x": 17660,
+      "y": 22740,
+      "theme": {
+        "mode": "dark"
       }
-    },
-    {
-      "id": "vvPAo",
-      "type": "ref",
-      "ref": "s191x",
-      "name": "Make summary — 3 Готово: дата итогов — B Date in the header, right",
-      "x": 1180,
-      "y": 25740,
-      "descendants": {
-        "s175x/s027x": {
-          "content": "Встреча была посвящена идентификаторам в сообщениях"
-        },
-        "s184x": {
-          "id": "ekAjw",
-          "type": "ref",
-          "ref": "s013x",
-          "name": "Detail bar",
-          "width": "fill_container"
-        },
-        "s181x": {
-          "type": "frame",
-          "id": "MH4jf",
-          "name": "Header row",
-          "width": "fill_container",
-          "padding": [
-            0,
-            "$space-28",
-            0,
-            0
-          ],
-          "alignItems": "end",
-          "children": [
-            {
-              "id": "CneVz",
-              "type": "ref",
-              "ref": "s033x",
-              "name": "Header",
-              "width": "fill_container",
-              "descendants": {
-                "s031x": {
-                  "content": "2026.11.09-1000"
-                },
-                "s032x": {
-                  "content": "Понедельник, 9 ноября, 10:00 · 16:10"
-                }
-              }
-            },
-            {
-              "type": "frame",
-              "id": "M6UXng",
-              "name": "Stamp",
-              "padding": [
-                0,
-                0,
-                "$space-16",
-                0
-              ],
-              "children": [
-                {
-                  "type": "text",
-                  "id": "bMXEY",
-                  "name": "Stamp",
-                  "fill": "$gutter",
-                  "content": "Сделано 12 ноября, 14:05",
-                  "fontFamily": "$font-ui",
-                  "fontSize": "$type-caption",
-                  "fontWeight": "normal"
-                }
-              ]
-            }
-          ]
-        },
-        "s183x": {
-          "type": "frame",
-          "id": "vesCA",
-          "name": "Centre",
-          "width": "fill_container",
-          "height": "fill_container",
-          "fill": "$surface",
-          "layout": "vertical",
-          "gap": "$space-8",
-          "children": [
-            {
-              "id": "ZP8R7",
-              "type": "ref",
-              "ref": "s035x",
-              "name": "S О ЧЁМ ВСТРЕЧА",
-              "width": "fill_container",
-              "descendants": {
-                "s034x": {
-                  "content": "О ЧЁМ ВСТРЕЧА"
-                }
-              }
-            },
-            {
-              "id": "CZin4",
-              "type": "ref",
-              "ref": "s039x",
-              "name": "P Встреча была пос",
-              "width": "fill_container",
-              "descendants": {
-                "s038x": {
-                  "content": "Встреча была посвящена идентификаторам в сообщениях (application message ID, Oper ID, message ID, doc ID, correlation message ID) и тому, как связывать ответы с запросами между шиной, бэком и фронтом. Также обсудили пополнение счёта и классификацию асинхронных сообщений."
-                }
-              }
-            },
-            {
-              "id": "DWByg",
-              "type": "ref",
-              "ref": "s035x",
-              "name": "S КЛЮЧЕВЫЕ МОМЕНТЫ",
-              "width": "fill_container",
-              "descendants": {
-                "s034x": {
-                  "content": "КЛЮЧЕВЫЕ МОМЕНТЫ"
-                }
-              }
-            },
-            {
-              "id": "I4OSzH",
-              "type": "ref",
-              "ref": "s037x",
-              "name": "H Пополнение счёта",
-              "width": "fill_container",
-              "descendants": {
-                "s036x": {
-                  "content": "Пополнение счёта"
-                }
-              }
-            },
-            {
-              "id": "Cwsft",
-              "type": "ref",
-              "ref": "s042x",
-              "name": "B Пополнение работ",
-              "width": "fill_container",
-              "descendants": {
-                "s041x": {
-                  "content": "Пополнение работает, открыты лишь вопросы по ответам [02:02–03:10]."
-                }
-              }
-            },
-            {
-              "id": "kOynF",
-              "type": "ref",
-              "ref": "s042x",
-              "name": "B Отдельные вопрос",
-              "width": "fill_container",
-              "descendants": {
-                "s041x": {
-                  "content": "Отдельные вопросы остаются по C2C и по Oper ID в пополнении [03:10]."
-                }
-              }
-            },
-            {
-              "id": "A8LgVY",
-              "type": "ref",
-              "ref": "s037x",
-              "name": "H Идентификаторы с",
-              "width": "fill_container",
-              "descendants": {
-                "s036x": {
-                  "content": "Идентификаторы сообщений"
-                }
-              }
-            },
-            {
-              "id": "fPA7u",
-              "type": "ref",
-              "ref": "s042x",
-              "name": "B Application mess",
-              "width": "fill_container",
-              "descendants": {
-                "s041x": {
-                  "content": "Application message ID — поле ЦБ; operation ID — поле адаптера [04:41–08:08]."
-                }
-              }
-            },
-            {
-              "id": "H6eHI",
-              "type": "ref",
-              "ref": "s042x",
-              "name": "B По correlation m",
-              "width": "fill_container",
-              "descendants": {
-                "s041x": {
-                  "content": "По correlation message ID есть расхождение между примерами XML и XSD-схемой; нужно выяснить у смежных систем [07:38–08:08]."
-                }
-              }
-            },
-            {
-              "id": "BSEOb",
-              "type": "ref",
-              "ref": "s042x",
-              "name": "B Предложение: Ope",
-              "width": "fill_container",
-              "descendants": {
-                "s041x": {
-                  "content": "Предложение: Oper ID как ключ верхнего уровня для всех ответов на запрос [08:08–10:04]."
-                }
-              }
-            }
-          ]
-        }
-      }
-    },
-    {
-      "id": "VeAfl",
-      "type": "ref",
-      "ref": "s191x",
-      "name": "Make summary — 3 Готово: дата итогов — C Date in the detail bar",
-      "x": 2360,
-      "y": 25740,
-      "descendants": {
-        "s175x/s027x": {
-          "content": "Встреча была посвящена идентификаторам в сообщениях"
-        },
-        "s184x": {
-          "id": "lmntI",
-          "type": "ref",
-          "ref": "s013x",
-          "name": "Detail bar",
-          "width": "fill_container",
-          "descendants": {
-            "s007x": {
-              "content": "Сделано 12 ноября, 14:05",
-              "fill": "$gutter",
-              "fontSize": "$type-caption"
-            }
-          }
-        },
-        "s183x": {
-          "type": "frame",
-          "id": "m2Mxtl",
-          "name": "Centre",
-          "width": "fill_container",
-          "height": "fill_container",
-          "fill": "$surface",
-          "layout": "vertical",
-          "gap": "$space-8",
-          "children": [
-            {
-              "id": "Y27c6G",
-              "type": "ref",
-              "ref": "s035x",
-              "name": "S О ЧЁМ ВСТРЕЧА",
-              "width": "fill_container",
-              "descendants": {
-                "s034x": {
-                  "content": "О ЧЁМ ВСТРЕЧА"
-                }
-              }
-            },
-            {
-              "id": "sgMw5",
-              "type": "ref",
-              "ref": "s039x",
-              "name": "P Встреча была пос",
-              "width": "fill_container",
-              "descendants": {
-                "s038x": {
-                  "content": "Встреча была посвящена идентификаторам в сообщениях (application message ID, Oper ID, message ID, doc ID, correlation message ID) и тому, как связывать ответы с запросами между шиной, бэком и фронтом. Также обсудили пополнение счёта и классификацию асинхронных сообщений."
-                }
-              }
-            },
-            {
-              "id": "pR5Ld",
-              "type": "ref",
-              "ref": "s035x",
-              "name": "S КЛЮЧЕВЫЕ МОМЕНТЫ",
-              "width": "fill_container",
-              "descendants": {
-                "s034x": {
-                  "content": "КЛЮЧЕВЫЕ МОМЕНТЫ"
-                }
-              }
-            },
-            {
-              "id": "q0eONT",
-              "type": "ref",
-              "ref": "s037x",
-              "name": "H Пополнение счёта",
-              "width": "fill_container",
-              "descendants": {
-                "s036x": {
-                  "content": "Пополнение счёта"
-                }
-              }
-            },
-            {
-              "id": "laDHk",
-              "type": "ref",
-              "ref": "s042x",
-              "name": "B Пополнение работ",
-              "width": "fill_container",
-              "descendants": {
-                "s041x": {
-                  "content": "Пополнение работает, открыты лишь вопросы по ответам [02:02–03:10]."
-                }
-              }
-            },
-            {
-              "id": "gON10",
-              "type": "ref",
-              "ref": "s042x",
-              "name": "B Отдельные вопрос",
-              "width": "fill_container",
-              "descendants": {
-                "s041x": {
-                  "content": "Отдельные вопросы остаются по C2C и по Oper ID в пополнении [03:10]."
-                }
-              }
-            },
-            {
-              "id": "W3yKOg",
-              "type": "ref",
-              "ref": "s037x",
-              "name": "H Идентификаторы с",
-              "width": "fill_container",
-              "descendants": {
-                "s036x": {
-                  "content": "Идентификаторы сообщений"
-                }
-              }
-            },
-            {
-              "id": "vJ42S",
-              "type": "ref",
-              "ref": "s042x",
-              "name": "B Application mess",
-              "width": "fill_container",
-              "descendants": {
-                "s041x": {
-                  "content": "Application message ID — поле ЦБ; operation ID — поле адаптера [04:41–08:08]."
-                }
-              }
-            },
-            {
-              "id": "MdP7W",
-              "type": "ref",
-              "ref": "s042x",
-              "name": "B По correlation m",
-              "width": "fill_container",
-              "descendants": {
-                "s041x": {
-                  "content": "По correlation message ID есть расхождение между примерами XML и XSD-схемой; нужно выяснить у смежных систем [07:38–08:08]."
-                }
-              }
-            },
-            {
-              "id": "fOejb",
-              "type": "ref",
-              "ref": "s042x",
-              "name": "B Предложение: Ope",
-              "width": "fill_container",
-              "descendants": {
-                "s041x": {
-                  "content": "Предложение: Oper ID как ключ верхнего уровня для всех ответов на запрос [08:08–10:04]."
-                }
-              }
-            }
-          ]
-        }
-      }
-    },
-    {
-      "id": "M9PPXl",
-      "type": "ref",
-      "ref": "s191x",
-      "name": "Make summary — 4 Не удалось — A Centred error",
-      "x": 0,
-      "y": 26560,
-      "descendants": {
-        "s175x/s027x": {
-          "content": "Не удалось подготовить итоги"
-        },
-        "s175x/s028x": {
-          "enabled": true,
-          "fill": "$selText"
-        },
-        "s184x": {
-          "id": "ucY8b",
-          "type": "ref",
-          "ref": "s013x",
-          "name": "Detail bar",
-          "width": "fill_container",
-          "descendants": {
-            "s010x": {
-              "enabled": false
-            },
-            "s012x": {
-              "enabled": false
-            }
-          }
-        },
-        "s183x": {
-          "type": "frame",
-          "id": "bXAlu",
-          "name": "Centre",
-          "width": "fill_container",
-          "height": "fill_container",
-          "fill": "$surface",
-          "layout": "vertical",
-          "gap": "$space-8",
-          "justifyContent": "center",
-          "alignItems": "center",
-          "children": [
-            {
-              "id": "uGbVw",
-              "type": "ref",
-              "ref": "s079x",
-              "name": "Message",
-              "descendants": {
-                "s076x": {
-                  "icon": "circle-alert",
-                  "fill": "$rec"
-                },
-                "s077x": {
-                  "content": "Не удалось сделать итоги"
-                },
-                "s078x": {
-                  "content": "Claude CLI завершился с ошибкой: превышен лимит запросов"
-                },
-                "s074x": {
-                  "content": "Повторить"
-                }
-              }
-            }
-          ]
-        }
-      }
-    },
-    {
-      "type": "note",
-      "id": "rmves",
-      "x": 3540,
-      "y": 24100,
-      "name": "Note make summary 1",
-      "width": 520,
-      "height": 260,
-      "content": "Нет итогов\n\nA: one «✨ Сделать» button in the middle of the empty detail.\nB: the button at the right of the header, beside the call's title; the body stays empty.\nC: one quiet line under the header, «Нет итогов», with «✨ Сделать» as a link.\n\nThe row's second line holds the duration alone. ⋯ and the row menu offer the same action."
-    },
-    {
-      "type": "note",
-      "id": "GCzlk",
-      "x": 3540,
-      "y": 24920,
-      "name": "Note make summary 2",
-      "width": 520,
-      "height": 260,
-      "content": "Делаю\n\nEach option keeps the place of its button.\nA: a spinner and the elapsed time where the button was; «Отменить» below.\nB: the button becomes a pill: spinner, elapsed time, ✕ to cancel.\nC: the line says «Делаю…» with the time and «Отменить»; a grey skeleton of the summary below.\n\nThe row shows «Подготовка итогов…» with a spinner; another call can be selected meanwhile."
-    },
-    {
-      "type": "note",
-      "id": "XDxaM",
-      "x": 3540,
-      "y": 25740,
-      "name": "Note make summary 3",
-      "width": 520,
-      "height": 260,
-      "content": "Готово\n\nThe summary is rendered as for any call. Its date is in `gutter`, caption size:\nA: under the last line of the summary.\nB: at the right of the header, on the meta line.\nC: at the left of the detail bar."
-    },
-    {
-      "type": "note",
-      "id": "o7RW0q",
-      "x": 3540,
-      "y": 26560,
-      "name": "Note make summary 4",
-      "width": 520,
-      "height": 260,
-      "content": "Не удалось\n\nThe error in the middle with Повторить, as an after-call failure.\n\nThe narrow window shows no detail, so these states have no narrow frame."
     }
   ],
   "themes": {
