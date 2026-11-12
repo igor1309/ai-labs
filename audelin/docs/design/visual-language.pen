@@ -51806,6 +51806,119 @@
                   ]
                 }
               ]
+            },
+            {
+              "type": "frame",
+              "id": "xLJOq",
+              "name": "Button/Make",
+              "reusable": true,
+              "fill": "$selBg",
+              "cornerRadius": "$radius-control",
+              "gap": "$space-6",
+              "padding": [
+                "$space-6",
+                "$space-16"
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "u2diG6",
+                  "name": "Icon",
+                  "width": 14,
+                  "height": 14,
+                  "icon": "sparkles",
+                  "library": "lucide",
+                  "fill": "$selText"
+                },
+                {
+                  "type": "text",
+                  "id": "OGXPv",
+                  "name": "Label",
+                  "fill": "$selText",
+                  "content": "Сделать",
+                  "lineHeight": 1.45,
+                  "fontFamily": "$font-ui",
+                  "fontSize": "$type-small",
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "YCPQX",
+              "name": "Link/Make",
+              "reusable": true,
+              "gap": "$space-4",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "uCZg4",
+                  "name": "Icon",
+                  "width": 14,
+                  "height": 14,
+                  "icon": "sparkles",
+                  "library": "lucide",
+                  "fill": "$me"
+                },
+                {
+                  "type": "text",
+                  "id": "OLNBW",
+                  "name": "Label",
+                  "fill": "$me",
+                  "content": "Сделать",
+                  "fontFamily": "$font-ui",
+                  "fontSize": "$type-small",
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "tIvTU",
+              "name": "Making pill",
+              "reusable": true,
+              "fill": "$btn",
+              "cornerRadius": "$radius-control",
+              "gap": "$space-6",
+              "padding": [
+                "$space-6",
+                "$space-12"
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "y8aPWo",
+                  "name": "Spinner",
+                  "width": 14,
+                  "height": 14,
+                  "icon": "loader-circle",
+                  "library": "lucide",
+                  "fill": "$sub"
+                },
+                {
+                  "type": "text",
+                  "id": "u86voI",
+                  "name": "Time",
+                  "fill": "$sub",
+                  "content": "0:24",
+                  "fontFamily": "$font-data",
+                  "fontSize": "$type-small",
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "icon",
+                  "id": "cjHnY",
+                  "name": "Cancel",
+                  "width": 14,
+                  "height": 14,
+                  "icon": "x",
+                  "library": "lucide",
+                  "fill": "$gutter"
+                }
+              ]
             }
           ]
         },
@@ -58638,10 +58751,10 @@
       "content": "Search\n\nThe field sits in the list's title bar and works as in the calls list: titles, summaries and transcripts, as you type, ignoring case and ё/е; days with no match hide.\n\nA match row keeps the two-line shape: title and time, then where the first match is (its time in the transcript, or «Итоги»), the text around it with the hit tinted `hit`, and «ещё N». The detail shows the selected call's summary. No results: the list says so and the detail shows «Звонок не выбран».\n\nEmpty, loading and the inactive window (selection in `chip`) are as in the calls list."
     },
     {
-      "id": "FC8C9",
+      "id": "uzWzn",
       "type": "ref",
       "ref": "s191x",
-      "name": "Make summary — 1 Нет итогов — A Centred button",
+      "name": "Make summary — 1 Нет итогов — A Button alone, centred",
       "x": 0,
       "y": 24100,
       "descendants": {
@@ -58649,7 +58762,7 @@
           "content": ""
         },
         "s184x": {
-          "id": "eDJcl",
+          "id": "mxSaf",
           "type": "ref",
           "ref": "s013x",
           "name": "Detail bar",
@@ -58665,55 +58778,31 @@
         },
         "s183x": {
           "type": "frame",
-          "id": "XRPoq",
+          "id": "m2q3lZ",
           "name": "Centre",
           "width": "fill_container",
           "height": "fill_container",
           "fill": "$surface",
           "layout": "vertical",
-          "gap": "$space-12",
+          "gap": "$space-8",
           "justifyContent": "center",
           "alignItems": "center",
           "children": [
             {
-              "id": "DTOWu",
+              "id": "FZjuc",
               "type": "ref",
-              "ref": "s079x",
-              "name": "Message",
-              "descendants": {
-                "s076x": {
-                  "icon": "sparkles",
-                  "fill": "$sub"
-                },
-                "s077x": {
-                  "content": "Итогов нет"
-                },
-                "s078x": {
-                  "content": "Итоги можно сделать из расшифровки звонка"
-                },
-                "s075x": {
-                  "fill": "$selBg",
-                  "padding": [
-                    "$space-6",
-                    "$space-16"
-                  ]
-                },
-                "s074x": {
-                  "content": "Сделать итоги",
-                  "fill": "$selText",
-                  "fontWeight": "600"
-                }
-              }
+              "ref": "xLJOq",
+              "name": "Сделать"
             }
           ]
         }
       }
     },
     {
-      "id": "QPFjw",
+      "id": "znLy1",
       "type": "ref",
       "ref": "s191x",
-      "name": "Make summary — 1 Нет итогов — B Toolbar button",
+      "name": "Make summary — 1 Нет итогов — B Button in the header",
       "x": 1180,
       "y": 24100,
       "descendants": {
@@ -58721,71 +58810,73 @@
           "content": ""
         },
         "s184x": {
-          "id": "rX4CM",
+          "id": "vizOu",
           "type": "ref",
           "ref": "s013x",
           "name": "Detail bar",
           "width": "fill_container",
           "descendants": {
             "s010x": {
-              "fill": "$selBg"
-            },
-            "s008x": {
-              "icon": "sparkles",
-              "fill": "$selText"
-            },
-            "s009x": {
-              "content": "Сделать итоги",
-              "fill": "$selText",
-              "fontWeight": "600"
+              "enabled": false
             },
             "s012x": {
-              "enabled": true
+              "enabled": false
             }
           }
         },
+        "s181x": {
+          "type": "frame",
+          "id": "RQ4rG",
+          "name": "Header row",
+          "width": "fill_container",
+          "padding": [
+            0,
+            "$space-28",
+            0,
+            0
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "id": "a0cmLI",
+              "type": "ref",
+              "ref": "s033x",
+              "name": "Header",
+              "width": "fill_container",
+              "descendants": {
+                "s031x": {
+                  "content": "2026.11.09-1000"
+                },
+                "s032x": {
+                  "content": "Понедельник, 9 ноября, 10:00 · 16:10"
+                }
+              }
+            },
+            {
+              "id": "tH6V6",
+              "type": "ref",
+              "ref": "xLJOq",
+              "name": "Сделать"
+            }
+          ]
+        },
         "s183x": {
           "type": "frame",
-          "id": "Ht2gt",
+          "id": "GTSzQ",
           "name": "Centre",
           "width": "fill_container",
           "height": "fill_container",
           "fill": "$surface",
           "layout": "vertical",
-          "gap": "$space-12",
-          "justifyContent": "center",
-          "alignItems": "center",
-          "children": [
-            {
-              "id": "O1awVL",
-              "type": "ref",
-              "ref": "s079x",
-              "name": "Message",
-              "descendants": {
-                "s076x": {
-                  "icon": "file-text",
-                  "fill": "$gutter"
-                },
-                "s077x": {
-                  "content": "Итогов нет"
-                },
-                "s078x": {
-                  "content": "Сделать итоги — кнопка вверху или ⌘⇧S"
-                },
-                "s075x": {
-                  "enabled": false
-                }
-              }
-            }
-          ]
+          "gap": "$space-8"
         }
       }
     },
     {
-      "id": "c5DJi",
+      "id": "axQP6",
       "type": "ref",
       "ref": "s191x",
-      "name": "Make summary — 1 Нет итогов — C Card over an outline",
+      "name": "Make summary — 1 Нет итогов — C Quiet line with a link",
       "x": 2360,
       "y": 24100,
       "descendants": {
@@ -58793,7 +58884,7 @@
           "content": ""
         },
         "s184x": {
-          "id": "Jmbm1",
+          "id": "GkBOC",
           "type": "ref",
           "ref": "s013x",
           "name": "Detail bar",
@@ -58809,540 +58900,40 @@
         },
         "s183x": {
           "type": "frame",
-          "id": "bynbd",
+          "id": "fzmxx",
           "name": "Centre",
           "width": "fill_container",
           "height": "fill_container",
           "fill": "$surface",
           "layout": "vertical",
-          "gap": "$space-4",
+          "gap": "$space-8",
           "children": [
             {
               "type": "frame",
-              "id": "UekgI",
-              "name": "Card",
-              "width": "fill_container",
-              "layout": "vertical",
+              "id": "L88a5",
+              "name": "Line",
+              "gap": "$space-8",
               "padding": [
                 "$space-8",
                 "$space-28"
               ],
-              "children": [
-                {
-                  "type": "frame",
-                  "id": "OF6AS",
-                  "name": "Card body",
-                  "width": "fill_container",
-                  "fill": "$card",
-                  "cornerRadius": "$radius-card",
-                  "gap": "$space-12",
-                  "padding": [
-                    "$space-12",
-                    "$space-16"
-                  ],
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "icon",
-                      "id": "Bxic9",
-                      "name": "Icon",
-                      "width": 20,
-                      "height": 20,
-                      "icon": "sparkles",
-                      "library": "lucide",
-                      "fill": "$me"
-                    },
-                    {
-                      "type": "frame",
-                      "id": "i9fjWI",
-                      "name": "Text",
-                      "width": "fill_container",
-                      "layout": "vertical",
-                      "gap": "$space-2",
-                      "children": [
-                        {
-                          "type": "text",
-                          "id": "E88UQ",
-                          "name": "H",
-                          "fill": "$text",
-                          "content": "У звонка нет итогов",
-                          "fontFamily": "$font-ui",
-                          "fontSize": "$type-small",
-                          "fontWeight": "600"
-                        },
-                        {
-                          "type": "text",
-                          "id": "IrYuv",
-                          "name": "Sub",
-                          "fill": "$sub",
-                          "textGrowth": "fixed-width",
-                          "width": "fill_container",
-                          "content": "Расшифровка готова: 16:10. Итоги займут около минуты.",
-                          "fontFamily": "$font-ui",
-                          "fontSize": "$type-small",
-                          "fontWeight": "normal"
-                        }
-                      ]
-                    },
-                    {
-                      "id": "jh659",
-                      "type": "ref",
-                      "ref": "f7Y4eS",
-                      "name": "Button Сделать итоги",
-                      "descendants": {
-                        "Wz52g": {
-                          "content": "Сделать итоги"
-                        }
-                      }
-                    }
-                  ]
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "ijjdL",
-              "name": "Ghost О ЧЁМ ВСТРЕЧА",
-              "width": "fill_container",
-              "layout": "vertical",
-              "gap": "$space-8",
-              "padding": [
-                "$space-16",
-                "$space-28",
-                "$space-4",
-                "$space-28"
-              ],
+              "alignItems": "center",
               "children": [
                 {
                   "type": "text",
-                  "id": "YJKJj",
-                  "name": "Label",
-                  "fill": "$disText",
-                  "content": "О ЧЁМ ВСТРЕЧА",
+                  "id": "ThHye",
+                  "name": "Text",
+                  "fill": "$gutter",
+                  "content": "Нет итогов",
                   "fontFamily": "$font-ui",
-                  "fontSize": "$type-caption",
-                  "fontWeight": "600"
+                  "fontSize": "$type-small",
+                  "fontWeight": "normal"
                 },
                 {
-                  "type": "rectangle",
-                  "cornerRadius": "$radius-bar",
-                  "id": "NGAsA",
-                  "name": "Ghost line",
-                  "fill": "$btn",
-                  "width": 640,
-                  "height": 8
-                },
-                {
-                  "type": "rectangle",
-                  "cornerRadius": "$radius-bar",
-                  "id": "Y5i4H6",
-                  "name": "Ghost line",
-                  "fill": "$btn",
-                  "width": 600,
-                  "height": 8
-                },
-                {
-                  "type": "rectangle",
-                  "cornerRadius": "$radius-bar",
-                  "id": "A4zhYY",
-                  "name": "Ghost line",
-                  "fill": "$btn",
-                  "width": 380,
-                  "height": 8
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "H59wkG",
-              "name": "Ghost КЛЮЧЕВЫЕ МОМЕНТЫ",
-              "width": "fill_container",
-              "layout": "vertical",
-              "gap": "$space-8",
-              "padding": [
-                "$space-16",
-                "$space-28",
-                "$space-4",
-                "$space-28"
-              ],
-              "children": [
-                {
-                  "type": "text",
-                  "id": "fk7WQ",
-                  "name": "Label",
-                  "fill": "$disText",
-                  "content": "КЛЮЧЕВЫЕ МОМЕНТЫ",
-                  "fontFamily": "$font-ui",
-                  "fontSize": "$type-caption",
-                  "fontWeight": "600"
-                },
-                {
-                  "type": "rectangle",
-                  "cornerRadius": "$radius-bar",
-                  "id": "zlUa9",
-                  "name": "Ghost line",
-                  "fill": "$btn",
-                  "width": 520,
-                  "height": 8
-                },
-                {
-                  "type": "rectangle",
-                  "cornerRadius": "$radius-bar",
-                  "id": "WrorZ",
-                  "name": "Ghost line",
-                  "fill": "$btn",
-                  "width": 560,
-                  "height": 8
-                },
-                {
-                  "type": "rectangle",
-                  "cornerRadius": "$radius-bar",
-                  "id": "hNf06",
-                  "name": "Ghost line",
-                  "fill": "$btn",
-                  "width": 440,
-                  "height": 8
-                },
-                {
-                  "type": "rectangle",
-                  "cornerRadius": "$radius-bar",
-                  "id": "a8ltw",
-                  "name": "Ghost line",
-                  "fill": "$btn",
-                  "width": 300,
-                  "height": 8
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "a8hb4h",
-              "name": "Ghost РЕШЕНИЯ И ЗАДАЧИ",
-              "width": "fill_container",
-              "layout": "vertical",
-              "gap": "$space-8",
-              "padding": [
-                "$space-16",
-                "$space-28",
-                "$space-4",
-                "$space-28"
-              ],
-              "children": [
-                {
-                  "type": "text",
-                  "id": "dZGsY",
-                  "name": "Label",
-                  "fill": "$disText",
-                  "content": "РЕШЕНИЯ И ЗАДАЧИ",
-                  "fontFamily": "$font-ui",
-                  "fontSize": "$type-caption",
-                  "fontWeight": "600"
-                },
-                {
-                  "type": "rectangle",
-                  "cornerRadius": "$radius-bar",
-                  "id": "VF7BN",
-                  "name": "Ghost line",
-                  "fill": "$btn",
-                  "width": 480,
-                  "height": 8
-                },
-                {
-                  "type": "rectangle",
-                  "cornerRadius": "$radius-bar",
-                  "id": "oIDU6",
-                  "name": "Ghost line",
-                  "fill": "$btn",
-                  "width": 360,
-                  "height": 8
-                }
-              ]
-            }
-          ]
-        }
-      }
-    },
-    {
-      "id": "WnOH7",
-      "type": "ref",
-      "ref": "s191x",
-      "name": "Make summary — 2 Делаю итоги — A Centred progress",
-      "x": 0,
-      "y": 24920,
-      "descendants": {
-        "s175x/s027x": {
-          "content": "Подготовка итогов…"
-        },
-        "s175x/s057x": {
-          "enabled": true,
-          "fill": "$selText"
-        },
-        "s184x": {
-          "id": "F5n04",
-          "type": "ref",
-          "ref": "s013x",
-          "name": "Detail bar",
-          "width": "fill_container",
-          "descendants": {
-            "s010x": {
-              "enabled": false
-            },
-            "s012x": {
-              "enabled": false
-            }
-          }
-        },
-        "s183x": {
-          "type": "frame",
-          "id": "qLS5H",
-          "name": "Centre",
-          "width": "fill_container",
-          "height": "fill_container",
-          "fill": "$surface",
-          "layout": "vertical",
-          "gap": "$space-12",
-          "justifyContent": "center",
-          "alignItems": "center",
-          "children": [
-            {
-              "id": "CSUap",
-              "type": "ref",
-              "ref": "s079x",
-              "name": "Message",
-              "descendants": {
-                "s076x": {
-                  "icon": "loader-circle",
-                  "fill": "$sub"
-                },
-                "s077x": {
-                  "content": "Делаю итоги…"
-                },
-                "s078x": {
-                  "content": "Читаю расшифровку · 0:24"
-                },
-                "s075x": {
-                  "enabled": false
-                }
-              }
-            },
-            {
-              "id": "SXrrj",
-              "type": "ref",
-              "ref": "GQV4X",
-              "name": "Progress",
-              "width": 200
-            },
-            {
-              "id": "Z4R4V",
-              "type": "ref",
-              "ref": "wmGeO",
-              "name": "Button Отмена",
-              "descendants": {
-                "EWsWH": {
-                  "content": "Отмена"
-                }
-              }
-            }
-          ]
-        }
-      }
-    },
-    {
-      "id": "LUcsE",
-      "type": "ref",
-      "ref": "s191x",
-      "name": "Make summary — 2 Делаю итоги — B Banner and skeleton",
-      "x": 1180,
-      "y": 24920,
-      "descendants": {
-        "s175x/s027x": {
-          "content": "Подготовка итогов…"
-        },
-        "s175x/s057x": {
-          "enabled": true,
-          "fill": "$selText"
-        },
-        "s184x": {
-          "id": "A60xD",
-          "type": "ref",
-          "ref": "s013x",
-          "name": "Detail bar",
-          "width": "fill_container",
-          "descendants": {
-            "s008x": {
-              "icon": "x"
-            },
-            "s009x": {
-              "content": "Отмена"
-            },
-            "s012x": {
-              "enabled": true
-            }
-          }
-        },
-        "s183x": {
-          "type": "frame",
-          "id": "eHsgd",
-          "name": "Centre",
-          "width": "fill_container",
-          "height": "fill_container",
-          "fill": "$surface",
-          "layout": "vertical",
-          "gap": "$space-4",
-          "children": [
-            {
-              "type": "frame",
-              "id": "nyimB",
-              "name": "Banner wrap",
-              "width": "fill_container",
-              "padding": [
-                "$space-8",
-                "$space-28"
-              ],
-              "children": [
-                {
-                  "id": "w9wS9s",
+                  "id": "tc8VC",
                   "type": "ref",
-                  "ref": "jjhu5",
-                  "name": "Banner",
-                  "width": "fill_container",
-                  "descendants": {
-                    "XbvpQ": {
-                      "content": "Делаю итоги…"
-                    },
-                    "P4t1H": {
-                      "content": "Около минуты. Можно открыть другой звонок: итоги появятся в списке."
-                    }
-                  }
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "QvdKP",
-              "name": "Ghost ",
-              "width": "fill_container",
-              "layout": "vertical",
-              "gap": "$space-8",
-              "padding": [
-                "$space-16",
-                "$space-28",
-                "$space-4",
-                "$space-28"
-              ],
-              "children": [
-                {
-                  "type": "rectangle",
-                  "cornerRadius": "$radius-bar",
-                  "id": "SVq6d",
-                  "name": "Ghost line",
-                  "fill": "$btn",
-                  "width": 640,
-                  "height": 8
-                },
-                {
-                  "type": "rectangle",
-                  "cornerRadius": "$radius-bar",
-                  "id": "OJwnZ",
-                  "name": "Ghost line",
-                  "fill": "$btn",
-                  "width": 600,
-                  "height": 8
-                },
-                {
-                  "type": "rectangle",
-                  "cornerRadius": "$radius-bar",
-                  "id": "TDfNZ",
-                  "name": "Ghost line",
-                  "fill": "$btn",
-                  "width": 380,
-                  "height": 8
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "OZGbn",
-              "name": "Ghost ",
-              "width": "fill_container",
-              "layout": "vertical",
-              "gap": "$space-8",
-              "padding": [
-                "$space-16",
-                "$space-28",
-                "$space-4",
-                "$space-28"
-              ],
-              "children": [
-                {
-                  "type": "rectangle",
-                  "cornerRadius": "$radius-bar",
-                  "id": "f2EcxJ",
-                  "name": "Ghost line",
-                  "fill": "$btn",
-                  "width": 520,
-                  "height": 8
-                },
-                {
-                  "type": "rectangle",
-                  "cornerRadius": "$radius-bar",
-                  "id": "XHeyW",
-                  "name": "Ghost line",
-                  "fill": "$btn",
-                  "width": 560,
-                  "height": 8
-                },
-                {
-                  "type": "rectangle",
-                  "cornerRadius": "$radius-bar",
-                  "id": "g4aQZu",
-                  "name": "Ghost line",
-                  "fill": "$btn",
-                  "width": 440,
-                  "height": 8
-                },
-                {
-                  "type": "rectangle",
-                  "cornerRadius": "$radius-bar",
-                  "id": "K0D6p",
-                  "name": "Ghost line",
-                  "fill": "$btn",
-                  "width": 300,
-                  "height": 8
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "k6pUF",
-              "name": "Ghost ",
-              "width": "fill_container",
-              "layout": "vertical",
-              "gap": "$space-8",
-              "padding": [
-                "$space-16",
-                "$space-28",
-                "$space-4",
-                "$space-28"
-              ],
-              "children": [
-                {
-                  "type": "rectangle",
-                  "cornerRadius": "$radius-bar",
-                  "id": "Sftvd",
-                  "name": "Ghost line",
-                  "fill": "$btn",
-                  "width": 480,
-                  "height": 8
-                },
-                {
-                  "type": "rectangle",
-                  "cornerRadius": "$radius-bar",
-                  "id": "KhDvL",
-                  "name": "Ghost line",
-                  "fill": "$btn",
-                  "width": 360,
-                  "height": 8
+                  "ref": "YCPQX",
+                  "name": "Сделать"
                 }
               ]
             }
@@ -59351,11 +58942,11 @@
       }
     },
     {
-      "id": "JqA0T",
+      "id": "O7rIx",
       "type": "ref",
       "ref": "s191x",
-      "name": "Make summary — 2 Делаю итоги — C Streaming text",
-      "x": 2360,
+      "name": "Make summary — 2 Делаю — A Spinner and time, centred",
+      "x": 0,
       "y": 24920,
       "descendants": {
         "s175x/s027x": {
@@ -59366,21 +58957,168 @@
           "fill": "$selText"
         },
         "s184x": {
-          "id": "Mg5dO",
+          "id": "T3OAE",
           "type": "ref",
           "ref": "s013x",
           "name": "Detail bar",
           "width": "fill_container",
           "descendants": {
-            "s007x": {
-              "content": "Пишу итоги…",
+            "s010x": {
+              "enabled": false
+            },
+            "s012x": {
+              "enabled": false
+            }
+          }
+        },
+        "s183x": {
+          "type": "frame",
+          "id": "H14J1c",
+          "name": "Centre",
+          "width": "fill_container",
+          "height": "fill_container",
+          "fill": "$surface",
+          "layout": "vertical",
+          "gap": "$space-8",
+          "justifyContent": "center",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "icon",
+              "id": "k9tu0",
+              "name": "Spinner",
+              "width": 20,
+              "height": 20,
+              "icon": "loader-circle",
+              "library": "lucide",
               "fill": "$sub"
             },
-            "s008x": {
-              "icon": "square"
+            {
+              "type": "text",
+              "id": "Bq48h",
+              "name": "Time",
+              "fill": "$gutter",
+              "content": "0:24",
+              "fontFamily": "$font-data",
+              "fontSize": "$type-small",
+              "fontWeight": "normal"
             },
-            "s009x": {
-              "content": "Остановить"
+            {
+              "type": "text",
+              "id": "CdOML",
+              "name": "Cancel",
+              "fill": "$sub",
+              "content": "Отменить",
+              "fontFamily": "$font-ui",
+              "fontSize": "$type-small",
+              "fontWeight": "normal"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "bYOKJ",
+      "type": "ref",
+      "ref": "s191x",
+      "name": "Make summary — 2 Делаю — B Pill in the header",
+      "x": 1180,
+      "y": 24920,
+      "descendants": {
+        "s175x/s027x": {
+          "content": "Подготовка итогов…"
+        },
+        "s175x/s057x": {
+          "enabled": true,
+          "fill": "$selText"
+        },
+        "s184x": {
+          "id": "LRIim",
+          "type": "ref",
+          "ref": "s013x",
+          "name": "Detail bar",
+          "width": "fill_container",
+          "descendants": {
+            "s010x": {
+              "enabled": false
+            },
+            "s012x": {
+              "enabled": false
+            }
+          }
+        },
+        "s181x": {
+          "type": "frame",
+          "id": "bh3Bv",
+          "name": "Header row",
+          "width": "fill_container",
+          "padding": [
+            0,
+            "$space-28",
+            0,
+            0
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "id": "eZLcV",
+              "type": "ref",
+              "ref": "s033x",
+              "name": "Header",
+              "width": "fill_container",
+              "descendants": {
+                "s031x": {
+                  "content": "2026.11.09-1000"
+                },
+                "s032x": {
+                  "content": "Понедельник, 9 ноября, 10:00 · 16:10"
+                }
+              }
+            },
+            {
+              "id": "xBrmu",
+              "type": "ref",
+              "ref": "tIvTU",
+              "name": "Making"
+            }
+          ]
+        },
+        "s183x": {
+          "type": "frame",
+          "id": "vPvdj",
+          "name": "Centre",
+          "width": "fill_container",
+          "height": "fill_container",
+          "fill": "$surface",
+          "layout": "vertical",
+          "gap": "$space-8"
+        }
+      }
+    },
+    {
+      "id": "ScEc3",
+      "type": "ref",
+      "ref": "s191x",
+      "name": "Make summary — 2 Делаю — C Line over a skeleton",
+      "x": 2360,
+      "y": 24920,
+      "descendants": {
+        "s175x/s027x": {
+          "content": "Подготовка итогов…"
+        },
+        "s175x/s057x": {
+          "enabled": true,
+          "fill": "$selText"
+        },
+        "s184x": {
+          "id": "JB5oF",
+          "type": "ref",
+          "ref": "s013x",
+          "name": "Detail bar",
+          "width": "fill_container",
+          "descendants": {
+            "s010x": {
+              "enabled": false
             },
             "s012x": {
               "enabled": false
@@ -59389,7 +59127,7 @@
         },
         "s183x": {
           "type": "frame",
-          "id": "pYe1b",
+          "id": "kwvz0",
           "name": "Centre",
           "width": "fill_container",
           "height": "fill_container",
@@ -59398,69 +59136,9 @@
           "gap": "$space-4",
           "children": [
             {
-              "id": "T4pgc",
-              "type": "ref",
-              "ref": "s035x",
-              "name": "S О ЧЁМ ВСТРЕЧА",
-              "width": "fill_container",
-              "descendants": {
-                "s034x": {
-                  "content": "О ЧЁМ ВСТРЕЧА"
-                }
-              }
-            },
-            {
-              "id": "fbgC3",
-              "type": "ref",
-              "ref": "s039x",
-              "name": "P Встреча была пос",
-              "width": "fill_container",
-              "descendants": {
-                "s038x": {
-                  "content": "Встреча была посвящена идентификаторам в сообщениях (application message ID, Oper ID, message ID, doc ID, correlation message ID) и тому, как связывать ответы с запросами между шиной, бэком и фронтом. Также обсудили пополнение счёта и классификацию асинхронных сообщений."
-                }
-              }
-            },
-            {
-              "id": "tNCdd",
-              "type": "ref",
-              "ref": "s035x",
-              "name": "S КЛЮЧЕВЫЕ МОМЕНТЫ",
-              "width": "fill_container",
-              "descendants": {
-                "s034x": {
-                  "content": "КЛЮЧЕВЫЕ МОМЕНТЫ"
-                }
-              }
-            },
-            {
-              "id": "TLQVz",
-              "type": "ref",
-              "ref": "s037x",
-              "name": "H Пополнение счёта",
-              "width": "fill_container",
-              "descendants": {
-                "s036x": {
-                  "content": "Пополнение счёта"
-                }
-              }
-            },
-            {
-              "id": "X4cn9",
-              "type": "ref",
-              "ref": "s042x",
-              "name": "B Пополнение работ",
-              "width": "fill_container",
-              "descendants": {
-                "s041x": {
-                  "content": "Пополнение работает, открыты лишь вопросы по ответам [02:02–03:10]."
-                }
-              }
-            },
-            {
               "type": "frame",
-              "id": "SBRec",
-              "name": "Writing",
+              "id": "MXpzp",
+              "name": "Line",
               "gap": "$space-8",
               "padding": [
                 "$space-8",
@@ -59470,7 +59148,7 @@
               "children": [
                 {
                   "type": "icon",
-                  "id": "T4D3Uu",
+                  "id": "Cbu0Z",
                   "name": "Spinner",
                   "width": 14,
                   "height": 14,
@@ -59480,12 +59158,334 @@
                 },
                 {
                   "type": "text",
-                  "id": "f9t0y",
+                  "id": "M5xzih",
                   "name": "Text",
                   "fill": "$gutter",
-                  "content": "Пишу дальше…",
+                  "content": "Делаю…",
                   "fontFamily": "$font-ui",
                   "fontSize": "$type-small",
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "Eqtxh",
+                  "name": "Time",
+                  "fill": "$gutter",
+                  "content": "0:24",
+                  "fontFamily": "$font-data",
+                  "fontSize": "$type-small",
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "mQIP3",
+                  "name": "Cancel",
+                  "fill": "$sub",
+                  "content": "Отменить",
+                  "fontFamily": "$font-ui",
+                  "fontSize": "$type-small",
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "b9idzH",
+              "name": "Ghost block",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": "$space-8",
+              "padding": [
+                "$space-12",
+                "$space-28",
+                "$space-4",
+                "$space-28"
+              ],
+              "children": [
+                {
+                  "type": "rectangle",
+                  "cornerRadius": "$radius-bar",
+                  "id": "rrUlK",
+                  "name": "Ghost line",
+                  "fill": "$btn",
+                  "width": 640,
+                  "height": 8
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": "$radius-bar",
+                  "id": "p1vIB4",
+                  "name": "Ghost line",
+                  "fill": "$btn",
+                  "width": 600,
+                  "height": 8
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": "$radius-bar",
+                  "id": "Q5gTi",
+                  "name": "Ghost line",
+                  "fill": "$btn",
+                  "width": 380,
+                  "height": 8
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "ZSQVv",
+              "name": "Ghost block",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": "$space-8",
+              "padding": [
+                "$space-12",
+                "$space-28",
+                "$space-4",
+                "$space-28"
+              ],
+              "children": [
+                {
+                  "type": "rectangle",
+                  "cornerRadius": "$radius-bar",
+                  "id": "CRUtt",
+                  "name": "Ghost line",
+                  "fill": "$btn",
+                  "width": 520,
+                  "height": 8
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": "$radius-bar",
+                  "id": "Zm4vx",
+                  "name": "Ghost line",
+                  "fill": "$btn",
+                  "width": 560,
+                  "height": 8
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": "$radius-bar",
+                  "id": "Fumny",
+                  "name": "Ghost line",
+                  "fill": "$btn",
+                  "width": 440,
+                  "height": 8
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": "$radius-bar",
+                  "id": "P5j6Y",
+                  "name": "Ghost line",
+                  "fill": "$btn",
+                  "width": 300,
+                  "height": 8
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "rH5QX",
+              "name": "Ghost block",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": "$space-8",
+              "padding": [
+                "$space-12",
+                "$space-28",
+                "$space-4",
+                "$space-28"
+              ],
+              "children": [
+                {
+                  "type": "rectangle",
+                  "cornerRadius": "$radius-bar",
+                  "id": "c0H5F2",
+                  "name": "Ghost line",
+                  "fill": "$btn",
+                  "width": 480,
+                  "height": 8
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": "$radius-bar",
+                  "id": "U5no6",
+                  "name": "Ghost line",
+                  "fill": "$btn",
+                  "width": 360,
+                  "height": 8
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "HORRU",
+      "type": "ref",
+      "ref": "s191x",
+      "name": "Make summary — 3 Готово: дата итогов — A Date under the summary",
+      "x": 0,
+      "y": 25740,
+      "descendants": {
+        "s175x/s027x": {
+          "content": "Встреча была посвящена идентификаторам в сообщениях"
+        },
+        "s184x": {
+          "id": "I66Dw",
+          "type": "ref",
+          "ref": "s013x",
+          "name": "Detail bar",
+          "width": "fill_container"
+        },
+        "s183x": {
+          "type": "frame",
+          "id": "XsOHx",
+          "name": "Centre",
+          "width": "fill_container",
+          "height": "fill_container",
+          "fill": "$surface",
+          "layout": "vertical",
+          "gap": "$space-8",
+          "children": [
+            {
+              "id": "yI66K",
+              "type": "ref",
+              "ref": "s035x",
+              "name": "S О ЧЁМ ВСТРЕЧА",
+              "width": "fill_container",
+              "descendants": {
+                "s034x": {
+                  "content": "О ЧЁМ ВСТРЕЧА"
+                }
+              }
+            },
+            {
+              "id": "V5WrZ",
+              "type": "ref",
+              "ref": "s039x",
+              "name": "P Встреча была пос",
+              "width": "fill_container",
+              "descendants": {
+                "s038x": {
+                  "content": "Встреча была посвящена идентификаторам в сообщениях (application message ID, Oper ID, message ID, doc ID, correlation message ID) и тому, как связывать ответы с запросами между шиной, бэком и фронтом. Также обсудили пополнение счёта и классификацию асинхронных сообщений."
+                }
+              }
+            },
+            {
+              "id": "e7JIJ",
+              "type": "ref",
+              "ref": "s035x",
+              "name": "S КЛЮЧЕВЫЕ МОМЕНТЫ",
+              "width": "fill_container",
+              "descendants": {
+                "s034x": {
+                  "content": "КЛЮЧЕВЫЕ МОМЕНТЫ"
+                }
+              }
+            },
+            {
+              "id": "AXeRA",
+              "type": "ref",
+              "ref": "s037x",
+              "name": "H Пополнение счёта",
+              "width": "fill_container",
+              "descendants": {
+                "s036x": {
+                  "content": "Пополнение счёта"
+                }
+              }
+            },
+            {
+              "id": "YGmBB",
+              "type": "ref",
+              "ref": "s042x",
+              "name": "B Пополнение работ",
+              "width": "fill_container",
+              "descendants": {
+                "s041x": {
+                  "content": "Пополнение работает, открыты лишь вопросы по ответам [02:02–03:10]."
+                }
+              }
+            },
+            {
+              "id": "rFtHt",
+              "type": "ref",
+              "ref": "s042x",
+              "name": "B Отдельные вопрос",
+              "width": "fill_container",
+              "descendants": {
+                "s041x": {
+                  "content": "Отдельные вопросы остаются по C2C и по Oper ID в пополнении [03:10]."
+                }
+              }
+            },
+            {
+              "id": "R3u4U9",
+              "type": "ref",
+              "ref": "s037x",
+              "name": "H Идентификаторы с",
+              "width": "fill_container",
+              "descendants": {
+                "s036x": {
+                  "content": "Идентификаторы сообщений"
+                }
+              }
+            },
+            {
+              "id": "tuqBh",
+              "type": "ref",
+              "ref": "s042x",
+              "name": "B Application mess",
+              "width": "fill_container",
+              "descendants": {
+                "s041x": {
+                  "content": "Application message ID — поле ЦБ; operation ID — поле адаптера [04:41–08:08]."
+                }
+              }
+            },
+            {
+              "id": "M44ExC",
+              "type": "ref",
+              "ref": "s042x",
+              "name": "B По correlation m",
+              "width": "fill_container",
+              "descendants": {
+                "s041x": {
+                  "content": "По correlation message ID есть расхождение между примерами XML и XSD-схемой; нужно выяснить у смежных систем [07:38–08:08]."
+                }
+              }
+            },
+            {
+              "id": "r4Uu5",
+              "type": "ref",
+              "ref": "s042x",
+              "name": "B Предложение: Ope",
+              "width": "fill_container",
+              "descendants": {
+                "s041x": {
+                  "content": "Предложение: Oper ID как ключ верхнего уровня для всех ответов на запрос [08:08–10:04]."
+                }
+              }
+            },
+            {
+              "type": "frame",
+              "id": "qOAbF",
+              "name": "Stamp",
+              "padding": [
+                "$space-16",
+                "$space-28"
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "W2Dcqc",
+                  "name": "Stamp",
+                  "fill": "$gutter",
+                  "content": "Сделано 12 ноября, 14:05",
+                  "fontFamily": "$font-ui",
+                  "fontSize": "$type-caption",
                   "fontWeight": "normal"
                 }
               ]
@@ -59495,138 +59495,10 @@
       }
     },
     {
-      "id": "wqrQl",
+      "id": "vvPAo",
       "type": "ref",
       "ref": "s191x",
-      "name": "Make summary — 3 Итоги готовы — A Summary in place",
-      "x": 0,
-      "y": 25740,
-      "descendants": {
-        "s175x/s027x": {
-          "content": "Встреча была посвящена идентификаторам в сообщениях"
-        },
-        "s184x": {
-          "id": "L8qOOJ",
-          "type": "ref",
-          "ref": "s013x",
-          "name": "Detail bar",
-          "width": "fill_container"
-        },
-        "s183x": {
-          "type": "frame",
-          "id": "MEs0K",
-          "name": "Centre",
-          "width": "fill_container",
-          "height": "fill_container",
-          "fill": "$surface",
-          "layout": "vertical",
-          "gap": "$space-4",
-          "children": [
-            {
-              "id": "KVzXa",
-              "type": "ref",
-              "ref": "s035x",
-              "name": "S О ЧЁМ ВСТРЕЧА",
-              "width": "fill_container",
-              "descendants": {
-                "s034x": {
-                  "content": "О ЧЁМ ВСТРЕЧА"
-                }
-              }
-            },
-            {
-              "id": "ImG3D",
-              "type": "ref",
-              "ref": "s039x",
-              "name": "P Встреча была пос",
-              "width": "fill_container",
-              "descendants": {
-                "s038x": {
-                  "content": "Встреча была посвящена идентификаторам в сообщениях (application message ID, Oper ID, message ID, doc ID, correlation message ID) и тому, как связывать ответы с запросами между шиной, бэком и фронтом. Также обсудили пополнение счёта и классификацию асинхронных сообщений."
-                }
-              }
-            },
-            {
-              "id": "ppueY",
-              "type": "ref",
-              "ref": "s035x",
-              "name": "S КЛЮЧЕВЫЕ МОМЕНТЫ",
-              "width": "fill_container",
-              "descendants": {
-                "s034x": {
-                  "content": "КЛЮЧЕВЫЕ МОМЕНТЫ"
-                }
-              }
-            },
-            {
-              "id": "nNWkO",
-              "type": "ref",
-              "ref": "s037x",
-              "name": "H Пополнение счёта",
-              "width": "fill_container",
-              "descendants": {
-                "s036x": {
-                  "content": "Пополнение счёта"
-                }
-              }
-            },
-            {
-              "id": "zzIMg",
-              "type": "ref",
-              "ref": "s042x",
-              "name": "B Пополнение работ",
-              "width": "fill_container",
-              "descendants": {
-                "s041x": {
-                  "content": "Пополнение работает, открыты лишь вопросы по ответам [02:02–03:10]."
-                }
-              }
-            },
-            {
-              "id": "DxKgy",
-              "type": "ref",
-              "ref": "s042x",
-              "name": "B Отдельные вопрос",
-              "width": "fill_container",
-              "descendants": {
-                "s041x": {
-                  "content": "Отдельные вопросы остаются по C2C и по Oper ID в пополнении [03:10]."
-                }
-              }
-            },
-            {
-              "id": "WbmUo",
-              "type": "ref",
-              "ref": "s037x",
-              "name": "H Идентификаторы с",
-              "width": "fill_container",
-              "descendants": {
-                "s036x": {
-                  "content": "Идентификаторы сообщений"
-                }
-              }
-            },
-            {
-              "id": "n2iOJ",
-              "type": "ref",
-              "ref": "s042x",
-              "name": "B Application mess",
-              "width": "fill_container",
-              "descendants": {
-                "s041x": {
-                  "content": "Application message ID — поле ЦБ; operation ID — поле адаптера [04:41–08:08]."
-                }
-              }
-            }
-          ]
-        }
-      }
-    },
-    {
-      "id": "AgSBU",
-      "type": "ref",
-      "ref": "s191x",
-      "name": "Make summary — 3 Итоги готовы — B Summary with a done banner",
+      "name": "Make summary — 3 Готово: дата итогов — B Date in the header, right",
       "x": 1180,
       "y": 25740,
       "descendants": {
@@ -59634,51 +59506,77 @@
           "content": "Встреча была посвящена идентификаторам в сообщениях"
         },
         "s184x": {
-          "id": "UnjlQ",
+          "id": "ekAjw",
           "type": "ref",
           "ref": "s013x",
           "name": "Detail bar",
           "width": "fill_container"
         },
+        "s181x": {
+          "type": "frame",
+          "id": "MH4jf",
+          "name": "Header row",
+          "width": "fill_container",
+          "padding": [
+            0,
+            "$space-28",
+            0,
+            0
+          ],
+          "alignItems": "end",
+          "children": [
+            {
+              "id": "CneVz",
+              "type": "ref",
+              "ref": "s033x",
+              "name": "Header",
+              "width": "fill_container",
+              "descendants": {
+                "s031x": {
+                  "content": "2026.11.09-1000"
+                },
+                "s032x": {
+                  "content": "Понедельник, 9 ноября, 10:00 · 16:10"
+                }
+              }
+            },
+            {
+              "type": "frame",
+              "id": "M6UXng",
+              "name": "Stamp",
+              "padding": [
+                0,
+                0,
+                "$space-16",
+                0
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "bMXEY",
+                  "name": "Stamp",
+                  "fill": "$gutter",
+                  "content": "Сделано 12 ноября, 14:05",
+                  "fontFamily": "$font-ui",
+                  "fontSize": "$type-caption",
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        },
         "s183x": {
           "type": "frame",
-          "id": "L7vpR4",
+          "id": "vesCA",
           "name": "Centre",
           "width": "fill_container",
           "height": "fill_container",
           "fill": "$surface",
           "layout": "vertical",
-          "gap": "$space-4",
+          "gap": "$space-8",
           "children": [
             {
-              "type": "frame",
-              "id": "fTpSs",
-              "name": "Banner wrap",
-              "width": "fill_container",
-              "padding": [
-                "$space-8",
-                "$space-28"
-              ],
-              "children": [
-                {
-                  "id": "wHGGk",
-                  "type": "ref",
-                  "ref": "jjhu5",
-                  "name": "Banner",
-                  "width": "fill_container",
-                  "descendants": {
-                    "XbvpQ": {
-                      "content": "Итоги готовы"
-                    },
-                    "P4t1H": {
-                      "content": "Сделаны из расшифровки. Переделать — в меню ⋯."
-                    }
-                  }
-                }
-              ]
-            },
-            {
-              "id": "p5Bgw",
+              "id": "ZP8R7",
               "type": "ref",
               "ref": "s035x",
               "name": "S О ЧЁМ ВСТРЕЧА",
@@ -59690,7 +59588,7 @@
               }
             },
             {
-              "id": "DrlE3",
+              "id": "CZin4",
               "type": "ref",
               "ref": "s039x",
               "name": "P Встреча была пос",
@@ -59702,7 +59600,7 @@
               }
             },
             {
-              "id": "b4nnFP",
+              "id": "DWByg",
               "type": "ref",
               "ref": "s035x",
               "name": "S КЛЮЧЕВЫЕ МОМЕНТЫ",
@@ -59714,7 +59612,7 @@
               }
             },
             {
-              "id": "nCVG6",
+              "id": "I4OSzH",
               "type": "ref",
               "ref": "s037x",
               "name": "H Пополнение счёта",
@@ -59726,7 +59624,7 @@
               }
             },
             {
-              "id": "qSOfi",
+              "id": "Cwsft",
               "type": "ref",
               "ref": "s042x",
               "name": "B Пополнение работ",
@@ -59738,7 +59636,7 @@
               }
             },
             {
-              "id": "LG7lZ",
+              "id": "kOynF",
               "type": "ref",
               "ref": "s042x",
               "name": "B Отдельные вопрос",
@@ -59750,7 +59648,7 @@
               }
             },
             {
-              "id": "U8ATcI",
+              "id": "A8LgVY",
               "type": "ref",
               "ref": "s037x",
               "name": "H Идентификаторы с",
@@ -59762,7 +59660,7 @@
               }
             },
             {
-              "id": "n8rBOW",
+              "id": "fPA7u",
               "type": "ref",
               "ref": "s042x",
               "name": "B Application mess",
@@ -59772,16 +59670,40 @@
                   "content": "Application message ID — поле ЦБ; operation ID — поле адаптера [04:41–08:08]."
                 }
               }
+            },
+            {
+              "id": "H6eHI",
+              "type": "ref",
+              "ref": "s042x",
+              "name": "B По correlation m",
+              "width": "fill_container",
+              "descendants": {
+                "s041x": {
+                  "content": "По correlation message ID есть расхождение между примерами XML и XSD-схемой; нужно выяснить у смежных систем [07:38–08:08]."
+                }
+              }
+            },
+            {
+              "id": "BSEOb",
+              "type": "ref",
+              "ref": "s042x",
+              "name": "B Предложение: Ope",
+              "width": "fill_container",
+              "descendants": {
+                "s041x": {
+                  "content": "Предложение: Oper ID как ключ верхнего уровня для всех ответов на запрос [08:08–10:04]."
+                }
+              }
             }
           ]
         }
       }
     },
     {
-      "id": "MF0k6",
+      "id": "VeAfl",
       "type": "ref",
       "ref": "s191x",
-      "name": "Make summary — 3 Итоги готовы — C Summary with a toolbar status",
+      "name": "Make summary — 3 Готово: дата итогов — C Date in the detail bar",
       "x": 2360,
       "y": 25740,
       "descendants": {
@@ -59789,31 +59711,31 @@
           "content": "Встреча была посвящена идентификаторам в сообщениях"
         },
         "s184x": {
-          "id": "fwSMU",
+          "id": "lmntI",
           "type": "ref",
           "ref": "s013x",
           "name": "Detail bar",
           "width": "fill_container",
           "descendants": {
             "s007x": {
-              "content": "✓ Итоги готовы · только что",
-              "fill": "$me",
-              "fontWeight": "600"
+              "content": "Сделано 12 ноября, 14:05",
+              "fill": "$gutter",
+              "fontSize": "$type-caption"
             }
           }
         },
         "s183x": {
           "type": "frame",
-          "id": "t9fvKP",
+          "id": "m2Mxtl",
           "name": "Centre",
           "width": "fill_container",
           "height": "fill_container",
           "fill": "$surface",
           "layout": "vertical",
-          "gap": "$space-4",
+          "gap": "$space-8",
           "children": [
             {
-              "id": "d2KG6",
+              "id": "Y27c6G",
               "type": "ref",
               "ref": "s035x",
               "name": "S О ЧЁМ ВСТРЕЧА",
@@ -59825,7 +59747,7 @@
               }
             },
             {
-              "id": "mlgRx",
+              "id": "sgMw5",
               "type": "ref",
               "ref": "s039x",
               "name": "P Встреча была пос",
@@ -59837,7 +59759,7 @@
               }
             },
             {
-              "id": "p1P72c",
+              "id": "pR5Ld",
               "type": "ref",
               "ref": "s035x",
               "name": "S КЛЮЧЕВЫЕ МОМЕНТЫ",
@@ -59849,7 +59771,7 @@
               }
             },
             {
-              "id": "jP3Zo",
+              "id": "q0eONT",
               "type": "ref",
               "ref": "s037x",
               "name": "H Пополнение счёта",
@@ -59861,7 +59783,7 @@
               }
             },
             {
-              "id": "zCBts",
+              "id": "laDHk",
               "type": "ref",
               "ref": "s042x",
               "name": "B Пополнение работ",
@@ -59873,7 +59795,7 @@
               }
             },
             {
-              "id": "UOiIT",
+              "id": "gON10",
               "type": "ref",
               "ref": "s042x",
               "name": "B Отдельные вопрос",
@@ -59885,7 +59807,7 @@
               }
             },
             {
-              "id": "EWICT",
+              "id": "W3yKOg",
               "type": "ref",
               "ref": "s037x",
               "name": "H Идентификаторы с",
@@ -59897,7 +59819,7 @@
               }
             },
             {
-              "id": "b7bFX",
+              "id": "vJ42S",
               "type": "ref",
               "ref": "s042x",
               "name": "B Application mess",
@@ -59907,13 +59829,37 @@
                   "content": "Application message ID — поле ЦБ; operation ID — поле адаптера [04:41–08:08]."
                 }
               }
+            },
+            {
+              "id": "MdP7W",
+              "type": "ref",
+              "ref": "s042x",
+              "name": "B По correlation m",
+              "width": "fill_container",
+              "descendants": {
+                "s041x": {
+                  "content": "По correlation message ID есть расхождение между примерами XML и XSD-схемой; нужно выяснить у смежных систем [07:38–08:08]."
+                }
+              }
+            },
+            {
+              "id": "fOejb",
+              "type": "ref",
+              "ref": "s042x",
+              "name": "B Предложение: Ope",
+              "width": "fill_container",
+              "descendants": {
+                "s041x": {
+                  "content": "Предложение: Oper ID как ключ верхнего уровня для всех ответов на запрос [08:08–10:04]."
+                }
+              }
             }
           ]
         }
       }
     },
     {
-      "id": "ONsDn",
+      "id": "M9PPXl",
       "type": "ref",
       "ref": "s191x",
       "name": "Make summary — 4 Не удалось — A Centred error",
@@ -59928,7 +59874,7 @@
           "fill": "$selText"
         },
         "s184x": {
-          "id": "GoOGp",
+          "id": "ucY8b",
           "type": "ref",
           "ref": "s013x",
           "name": "Detail bar",
@@ -59944,18 +59890,18 @@
         },
         "s183x": {
           "type": "frame",
-          "id": "cJArf",
+          "id": "bXAlu",
           "name": "Centre",
           "width": "fill_container",
           "height": "fill_container",
           "fill": "$surface",
           "layout": "vertical",
-          "gap": "$space-12",
+          "gap": "$space-8",
           "justifyContent": "center",
           "alignItems": "center",
           "children": [
             {
-              "id": "Nptbi",
+              "id": "uGbVw",
               "type": "ref",
               "ref": "s079x",
               "name": "Message",
@@ -59980,409 +59926,44 @@
       }
     },
     {
-      "id": "U4TTHx",
-      "type": "ref",
-      "ref": "s191x",
-      "name": "Make summary — 4 Не удалось — B Error banner, toolbar retry",
-      "x": 1180,
-      "y": 26560,
-      "descendants": {
-        "s175x/s027x": {
-          "content": "Не удалось подготовить итоги"
-        },
-        "s175x/s028x": {
-          "enabled": true,
-          "fill": "$selText"
-        },
-        "s184x": {
-          "id": "W45AAF",
-          "type": "ref",
-          "ref": "s013x",
-          "name": "Detail bar",
-          "width": "fill_container",
-          "descendants": {
-            "s010x": {
-              "fill": "$selBg"
-            },
-            "s008x": {
-              "icon": "rotate-ccw",
-              "fill": "$selText"
-            },
-            "s009x": {
-              "content": "Повторить",
-              "fill": "$selText",
-              "fontWeight": "600"
-            },
-            "s012x": {
-              "enabled": true
-            }
-          }
-        },
-        "s183x": {
-          "type": "frame",
-          "id": "LxCBq",
-          "name": "Centre",
-          "width": "fill_container",
-          "height": "fill_container",
-          "fill": "$surface",
-          "layout": "vertical",
-          "gap": "$space-4",
-          "children": [
-            {
-              "type": "frame",
-              "id": "K48WS",
-              "name": "Banner wrap",
-              "width": "fill_container",
-              "padding": [
-                "$space-8",
-                "$space-28"
-              ],
-              "children": [
-                {
-                  "id": "eGG9F",
-                  "type": "ref",
-                  "ref": "qAImO",
-                  "name": "Banner",
-                  "width": "fill_container",
-                  "descendants": {
-                    "uxXzz": {
-                      "content": "Не удалось сделать итоги"
-                    },
-                    "q9Ta7": {
-                      "content": "Claude CLI завершился с ошибкой: превышен лимит запросов"
-                    }
-                  }
-                }
-              ]
-            }
-          ]
-        }
-      }
-    },
-    {
-      "id": "Kc1pc",
-      "type": "ref",
-      "ref": "s191x",
-      "name": "Make summary — 4 Не удалось — C Error card over the outline",
-      "x": 2360,
-      "y": 26560,
-      "descendants": {
-        "s175x/s027x": {
-          "content": "Не удалось подготовить итоги"
-        },
-        "s175x/s028x": {
-          "enabled": true,
-          "fill": "$selText"
-        },
-        "s184x": {
-          "id": "V3vQZw",
-          "type": "ref",
-          "ref": "s013x",
-          "name": "Detail bar",
-          "width": "fill_container",
-          "descendants": {
-            "s010x": {
-              "enabled": false
-            },
-            "s012x": {
-              "enabled": false
-            }
-          }
-        },
-        "s183x": {
-          "type": "frame",
-          "id": "qjDje",
-          "name": "Centre",
-          "width": "fill_container",
-          "height": "fill_container",
-          "fill": "$surface",
-          "layout": "vertical",
-          "gap": "$space-4",
-          "children": [
-            {
-              "type": "frame",
-              "id": "AESq2",
-              "name": "Card",
-              "width": "fill_container",
-              "layout": "vertical",
-              "padding": [
-                "$space-8",
-                "$space-28"
-              ],
-              "children": [
-                {
-                  "type": "frame",
-                  "id": "pm9DJ",
-                  "name": "Card body",
-                  "width": "fill_container",
-                  "fill": "$errBg",
-                  "cornerRadius": "$radius-card",
-                  "gap": "$space-12",
-                  "padding": [
-                    "$space-12",
-                    "$space-16"
-                  ],
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "icon",
-                      "id": "k3Q3l",
-                      "name": "Icon",
-                      "width": 20,
-                      "height": 20,
-                      "icon": "circle-alert",
-                      "library": "lucide",
-                      "fill": "$rec"
-                    },
-                    {
-                      "type": "frame",
-                      "id": "s3ttt",
-                      "name": "Text",
-                      "width": "fill_container",
-                      "layout": "vertical",
-                      "gap": "$space-2",
-                      "children": [
-                        {
-                          "type": "text",
-                          "id": "J0GaA",
-                          "name": "H",
-                          "fill": "$rec",
-                          "content": "Не удалось сделать итоги",
-                          "fontFamily": "$font-ui",
-                          "fontSize": "$type-small",
-                          "fontWeight": "600"
-                        },
-                        {
-                          "type": "text",
-                          "id": "uxCIM",
-                          "name": "Sub",
-                          "fill": "$sub",
-                          "textGrowth": "fixed-width",
-                          "width": "fill_container",
-                          "content": "Claude CLI завершился с ошибкой: превышен лимит запросов",
-                          "fontFamily": "$font-ui",
-                          "fontSize": "$type-small",
-                          "fontWeight": "normal"
-                        }
-                      ]
-                    },
-                    {
-                      "id": "R0O3v2",
-                      "type": "ref",
-                      "ref": "f7Y4eS",
-                      "name": "Button Повторить",
-                      "descendants": {
-                        "Wz52g": {
-                          "content": "Повторить"
-                        }
-                      }
-                    }
-                  ]
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "XMlDi",
-              "name": "Ghost О ЧЁМ ВСТРЕЧА",
-              "width": "fill_container",
-              "layout": "vertical",
-              "gap": "$space-8",
-              "padding": [
-                "$space-16",
-                "$space-28",
-                "$space-4",
-                "$space-28"
-              ],
-              "children": [
-                {
-                  "type": "text",
-                  "id": "VMUD4",
-                  "name": "Label",
-                  "fill": "$disText",
-                  "content": "О ЧЁМ ВСТРЕЧА",
-                  "fontFamily": "$font-ui",
-                  "fontSize": "$type-caption",
-                  "fontWeight": "600"
-                },
-                {
-                  "type": "rectangle",
-                  "cornerRadius": "$radius-bar",
-                  "id": "oGYPU",
-                  "name": "Ghost line",
-                  "fill": "$btn",
-                  "width": 640,
-                  "height": 8
-                },
-                {
-                  "type": "rectangle",
-                  "cornerRadius": "$radius-bar",
-                  "id": "jRbZy",
-                  "name": "Ghost line",
-                  "fill": "$btn",
-                  "width": 600,
-                  "height": 8
-                },
-                {
-                  "type": "rectangle",
-                  "cornerRadius": "$radius-bar",
-                  "id": "E74KR",
-                  "name": "Ghost line",
-                  "fill": "$btn",
-                  "width": 380,
-                  "height": 8
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "b13No",
-              "name": "Ghost КЛЮЧЕВЫЕ МОМЕНТЫ",
-              "width": "fill_container",
-              "layout": "vertical",
-              "gap": "$space-8",
-              "padding": [
-                "$space-16",
-                "$space-28",
-                "$space-4",
-                "$space-28"
-              ],
-              "children": [
-                {
-                  "type": "text",
-                  "id": "VEPTS",
-                  "name": "Label",
-                  "fill": "$disText",
-                  "content": "КЛЮЧЕВЫЕ МОМЕНТЫ",
-                  "fontFamily": "$font-ui",
-                  "fontSize": "$type-caption",
-                  "fontWeight": "600"
-                },
-                {
-                  "type": "rectangle",
-                  "cornerRadius": "$radius-bar",
-                  "id": "aw58F",
-                  "name": "Ghost line",
-                  "fill": "$btn",
-                  "width": 520,
-                  "height": 8
-                },
-                {
-                  "type": "rectangle",
-                  "cornerRadius": "$radius-bar",
-                  "id": "SdzBR",
-                  "name": "Ghost line",
-                  "fill": "$btn",
-                  "width": 560,
-                  "height": 8
-                },
-                {
-                  "type": "rectangle",
-                  "cornerRadius": "$radius-bar",
-                  "id": "PUND6",
-                  "name": "Ghost line",
-                  "fill": "$btn",
-                  "width": 440,
-                  "height": 8
-                },
-                {
-                  "type": "rectangle",
-                  "cornerRadius": "$radius-bar",
-                  "id": "FUBuP",
-                  "name": "Ghost line",
-                  "fill": "$btn",
-                  "width": 300,
-                  "height": 8
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "iSFe5",
-              "name": "Ghost РЕШЕНИЯ И ЗАДАЧИ",
-              "width": "fill_container",
-              "layout": "vertical",
-              "gap": "$space-8",
-              "padding": [
-                "$space-16",
-                "$space-28",
-                "$space-4",
-                "$space-28"
-              ],
-              "children": [
-                {
-                  "type": "text",
-                  "id": "hA5pP",
-                  "name": "Label",
-                  "fill": "$disText",
-                  "content": "РЕШЕНИЯ И ЗАДАЧИ",
-                  "fontFamily": "$font-ui",
-                  "fontSize": "$type-caption",
-                  "fontWeight": "600"
-                },
-                {
-                  "type": "rectangle",
-                  "cornerRadius": "$radius-bar",
-                  "id": "UsRDI",
-                  "name": "Ghost line",
-                  "fill": "$btn",
-                  "width": 480,
-                  "height": 8
-                },
-                {
-                  "type": "rectangle",
-                  "cornerRadius": "$radius-bar",
-                  "id": "q6kG5",
-                  "name": "Ghost line",
-                  "fill": "$btn",
-                  "width": 360,
-                  "height": 8
-                }
-              ]
-            }
-          ]
-        }
-      }
-    },
-    {
       "type": "note",
-      "id": "gRiZe",
+      "id": "rmves",
       "x": 3540,
       "y": 24100,
       "name": "Note make summary 1",
       "width": 520,
-      "height": 300,
-      "content": "Нет итогов — options\n\nA: centred message with the primary «Сделать итоги» in the detail.\nB: «Сделать итоги» in the detail bar where Копировать sits; the body only says there are none. ⋯ holds the same action.\nC: a card under the header with the button, over a grey outline of the sections the summary will have.\n\nThe row's second line stays the duration alone."
+      "height": 260,
+      "content": "Нет итогов\n\nA: one «✨ Сделать» button in the middle of the empty detail.\nB: the button at the right of the header, beside the call's title; the body stays empty.\nC: one quiet line under the header, «Нет итогов», with «✨ Сделать» as a link.\n\nThe row's second line holds the duration alone. ⋯ and the row menu offer the same action."
     },
     {
       "type": "note",
-      "id": "a2cfDQ",
+      "id": "GCzlk",
       "x": 3540,
       "y": 24920,
       "name": "Note make summary 2",
       "width": 520,
-      "height": 300,
-      "content": "Делаю итоги — options\n\nA: centred spinner, stage and elapsed time, a progress bar and Отмена.\nB: an info banner under the header, a grey skeleton below; Отмена in the detail bar.\nC: the summary appears as it is written; the detail bar says «Пишу итоги…» and offers Остановить.\n\nIn all three the row shows «Подготовка итогов…» with a spinner, and the user may select another call meanwhile."
+      "height": 260,
+      "content": "Делаю\n\nEach option keeps the place of its button.\nA: a spinner and the elapsed time where the button was; «Отменить» below.\nB: the button becomes a pill: spinner, elapsed time, ✕ to cancel.\nC: the line says «Делаю…» with the time and «Отменить»; a grey skeleton of the summary below.\n\nThe row shows «Подготовка итогов…» with a spinner; another call can be selected meanwhile."
     },
     {
       "type": "note",
-      "id": "Nz4d3",
+      "id": "XDxaM",
       "x": 3540,
       "y": 25740,
       "name": "Note make summary 3",
       "width": 520,
-      "height": 300,
-      "content": "Итоги готовы — options\n\nA: the summary replaces the progress, nothing else; Копировать and ⋯ return.\nB: as A with an «Итоги готовы» banner above the summary until the call is left.\nC: as A with «✓ Итоги готовы · только что» in the detail bar.\n\nThe row's gist becomes the first sentence of «О чём встреча»."
+      "height": 260,
+      "content": "Готово\n\nThe summary is rendered as for any call. Its date is in `gutter`, caption size:\nA: under the last line of the summary.\nB: at the right of the header, on the meta line.\nC: at the left of the detail bar."
     },
     {
       "type": "note",
-      "id": "VbcQ0",
+      "id": "o7RW0q",
       "x": 3540,
       "y": 26560,
       "name": "Note make summary 4",
       "width": 520,
-      "height": 300,
-      "content": "Не удалось — options\n\nA: centred error with Повторить, as the after-call failure looks today.\nB: an error banner under the header; Повторить in the detail bar.\nC: the card from Нет итогов C turns into an error card with Повторить, over the same outline.\n\nOpen: one option per state, or one column (A, B or C) for the whole flow; dark instances and the narrow window follow the choice."
+      "height": 260,
+      "content": "Не удалось\n\nThe error in the middle with Повторить, as an after-call failure.\n\nThe narrow window shows no detail, so these states have no narrow frame."
     }
   ],
   "themes": {
