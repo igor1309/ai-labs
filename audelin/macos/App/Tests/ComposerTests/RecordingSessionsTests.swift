@@ -45,6 +45,16 @@ struct RecordingSessionsTests {
         }
     }
 
+    /// The session's reading feed ends with it even when no transcript opened to close it.
+    @Test func aRecordingWhoseTranscriptNeverOpenedStillEnds() async throws {
+
+        try await withSessions(folderFails: true) { rig in
+            #expect(await rig.sessions.begin(id: 3) != .ready)
+            await rig.sessions.end(id: 3)
+            #expect(await rig.panel.states().first(where: { _ in true })?.recording == .off)
+        }
+    }
+
     @Test func repeatingABeginAnswersFromTheSameSession() async throws {
 
         try await withSessions { rig in
@@ -187,7 +197,7 @@ private struct SessionsRig: Sendable {
     let log: FixtureLog
 }
 
-private func withSessions(_ body: @Sendable (SessionsRig) async throws -> Void) async throws {
+private func withSessions(folderFails: Bool = false, _ body: @Sendable (SessionsRig) async throws -> Void) async throws {
 
     try await withComposeFolder { root in
         let microphones = Captures(), calls = Captures(), reports = Reports(), log = FixtureLog(), clock = FixtureClock()
@@ -203,7 +213,10 @@ private func withSessions(_ body: @Sendable (SessionsRig) async throws -> Void) 
         let url = root.appendingPathComponent("preferences.json")
         let preferences = try {
             let store = PreferencesStore(fileURL: url)
-            try store.write(Preferences(liveText: false, callsFolder: root))
+            // A plain file where the calls folder should be: no call folder, so no transcript, can open.
+            let calls = folderFails ? root.appendingPathComponent("calls-file") : root
+            if folderFails { try Data().write(to: calls) }
+            try store.write(Preferences(liveText: false, callsFolder: calls))
             return store
         }()
         let processes = CoreAudioProcesses(binding: BoundaryProcesses(base: boundary.processes), clock: BoundaryCallClock(time: boundary.time))

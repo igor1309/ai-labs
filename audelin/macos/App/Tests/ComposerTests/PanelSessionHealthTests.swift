@@ -32,9 +32,9 @@ struct PanelSessionHealthTests {
                 ])))
                 break
             }
+            text.continuation.finish()
             await reading.end()
             await panel.end(id: 1)
-            text.continuation.finish()
             clock.finish()
         }
     }
@@ -50,9 +50,9 @@ struct PanelSessionHealthTests {
             #expect(shown.log == .liveTextOff(kept: nil))
             break
         }
+        text.continuation.finish()
         await reading.end()
         await panel.end(id: 1)
-        text.continuation.finish()
         clock.finish()
     }
 }

@@ -26,6 +26,7 @@ actor AudelinPanel {
     private let intervals: ProfileIntervals
     private let sink: any LogSink
     private var current: (id: UInt64, reading: ReadingInputs, enableLiveText: @Sendable () async -> Void)?
+    private var subscription: (id: UInt64, value: ReadingSubscription)?
     private var state = PanelState(recording: .off, log: .empty)
     private var mappedRows = MappedRows()
     private var panelText = PanelText(language: .russian)
@@ -74,15 +75,22 @@ actor AudelinPanel {
         let update = SignpostedPanelUpdate(receive: { [weak self] state in
             await self?.receive(state, id: id)
         }, intervals: intervals)
-        return await ReadingSubscription(reading: reading, text: text, speakers: speakers, now: now, ticks: ticks(), sink: sink) { state in
+        let made = await ReadingSubscription(reading: reading, text: text, speakers: speakers, now: now, ticks: ticks(), sink: sink) { state in
             await update(state)
         }
+        if current?.id == id { subscription = (id, made) }
+        return made
     }
 
-    func end(id: UInt64) {
+    /// Takes the recording's reading feed to its end first, so its last text and speakers are shown;
+    /// the feed's streams must finish for this to return.
+    func end(id: UInt64) async {
 
         guard current?.id == id else { return }
+        if let subscription, subscription.id == id { await subscription.value.end() }
+        guard current?.id == id else { return }
         current = nil
+        subscription = nil
         // The finished call stays readable, with its confirmed names, until the next recording.
         publish(.init(recording: .off, log: state.log))
     }
@@ -133,6 +141,7 @@ final class ReadingSubscription {
     private let timer: Task<Void, Never>
     private let observation: Task<Void, Never>
     private let names = ZoomLiveNames()
+    private var ended = false
 
     init(
         reading: ReadingInputs, text: AsyncStream<CallState>, speakers: AsyncStream<[Int: Int]>,
@@ -191,12 +200,14 @@ final class ReadingSubscription {
         time.problemsChanged(readingFaultKinds(state), callSilent: state.audioWarning == .callSilent)
     }
 
+    /// Waits for the text and speaker streams to finish, so every state they sent is reduced.
     func end() async {
 
+        guard !ended else { return }
+        ended = true
         await names.stop()
-        text.cancel()
-        timer.cancel()
         await text.value
+        timer.cancel()
         await timer.value
         time.recordingChanged(.off)
         // The model reduces the event later; wait until the state shows it.
