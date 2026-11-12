@@ -124,17 +124,15 @@ public enum ClientPayment {
             self.link = link
         }
 
-        public func handle(_ effect: Effect) -> AsyncStream<Event> {
-            AsyncStream { continuation in
-                switch effect {
-                case .open(let message):
-                    continuation.yield(.opened(session.open(message)))
-                case .finish:
-                    session.close()
-                    link.drop()
-                    continuation.yield(.finished)
-                }
-                continuation.finish()
+        /// Runs the effect's work before it returns.
+        public func handle(_ effect: Effect) -> Event {
+            switch effect {
+            case .open(let message):
+                return .opened(session.open(message))
+            case .finish:
+                session.close()
+                link.drop()
+                return .finished
             }
         }
     }

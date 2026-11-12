@@ -186,7 +186,7 @@ import Observation
                     if state.status == .over { self?.endTransaction() }
                     self?.restChanged()
                 }
-            }), handleEffect: handler.handle)
+            }), handleEffect: delivering(handler.handle))
             review = nil
             let pending = pendingPayment
             pendingPayment.removeAll()
