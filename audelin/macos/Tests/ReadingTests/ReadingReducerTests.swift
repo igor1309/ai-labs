@@ -17,8 +17,10 @@ struct ReadingReducerTests {
 
         let spy = RenderingSpy()
         assert(makeRecording(.on(elapsed: "recording(12.0)")), .recordingChanged(.off), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.recording = .off
             $0.log = .empty
+            $0.rendered = prepared()
         }
         #expect(spy.calls == [])
     }
@@ -27,12 +29,14 @@ struct ReadingReducerTests {
 
         let spy = RenderingSpy()
         assert(makeState(), .textUpdated(listening(entry)), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.status = .listening
             $0.anchors[entry.id] = .init(id: 0, start: 2)
             $0.text[entry.id] = entry
             $0.nextDisplayID = 1
             $0.lines.rows = [row(0, "line(2.0)", .mine, settled: "words")]
             $0.log = .lines($0.lines)
+            $0.rendered = prepared((entry.id, shown(0, "line(2.0)", .mine, settled: "words"), .init(row: 0)))
         }
         #expect(spy.calls == [.line(2.0)])
     }
@@ -90,6 +94,7 @@ struct ReadingReducerTests {
 
         let spy = RenderingSpy()
         assert(makeState(), .textUpdated(listening(draft, first)), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.status = .listening
             $0.anchors[draft.id] = .init(id: 0, start: 8)
             $0.anchors[first.id] = .init(id: 1, start: 2)
@@ -98,6 +103,7 @@ struct ReadingReducerTests {
             $0.nextDisplayID = 2
             $0.lines.rows = [row(1, "line(2.0)", .theirs, settled: "first"), row(0, "line(8.0)", .mine, pending: "draft")]
             $0.log = .lines($0.lines)
+            $0.rendered = prepared((first.id, shown(1, "line(2.0)", .theirs, settled: "first"), .init(row: 0)), (draft.id, shown(0, "line(8.0)", .mine, pending: "draft"), .init(row: 1)))
         }
         #expect(counted(spy.calls) == counted([.line(8.0), .line(2.0)]))
     }
@@ -106,9 +112,11 @@ struct ReadingReducerTests {
 
         let spy = RenderingSpy()
         assert(makeCalled(), .textUpdated(listening(firm, first)), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.text[firm.id] = firm
             $0.lines.rows[1] = row(0, "line(8.0)", .mine, settled: "firm", pending: " next")
             $0.log = .lines($0.lines)
+            $0.rendered = prepared((first.id, shown(1, "line(2.0)", .theirs, settled: "first"), .init(row: 0)), (firm.id, shown(0, "line(8.0)", .mine, settled: "firm", pending: " next"), .init(row: 1)))
         }
         #expect(counted(spy.calls) == counted([.line(2.0), .line(8.0), .line(8.0)]))
     }
@@ -126,6 +134,7 @@ struct ReadingReducerTests {
 
         let spy = RenderingSpy()
         assert(makeState(), .textUpdated(listening(late4, on3, late2, late1, early)), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.status = .listening
             for (id, text) in [late4, on3, late2, late1, early].enumerated() {
                 $0.anchors[text.id] = .init(id: id, start: text.start)
@@ -139,6 +148,7 @@ struct ReadingReducerTests {
                 .late(.init(span: "span[line(3607.0)|line(3610.0)]", entries: [shown(0, "line(3607.0)", .mine)])),
             ]
             $0.log = .lines($0.lines)
+            $0.rendered = prepared((early.id, shown(4, "line(59.9)", .theirs), .init(row: 0)), (late1.id, shown(3, "line(3600.9)", .mine), .init(row: 1, lateEntry: 0)), (late2.id, shown(2, "line(3602.0)", .theirs), .init(row: 1, lateEntry: 1)), (on3.id, shown(1, "line(3606.0)", .mine), .init(row: 2)), (late4.id, shown(0, "line(3607.0)", .mine), .init(row: 3, lateEntry: 0)))
         }
         #expect(counted(spy.calls) == counted([.line(3607.0), .line(3606.0), .line(3602.0), .line(3600.9), .line(59.9), .line(3600.9), .line(3608.0), .span("line(3600.9)", "line(3608.0)"), .line(3607.0), .line(3610.0), .span("line(3607.0)", "line(3610.0)")]))
     }
@@ -164,9 +174,11 @@ struct ReadingReducerTests {
 
         let spy = RenderingSpy()
         assert(makeHolding(heldFirst, heldSecond), .textUpdated(listening(different)), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.text[different.id] = different
             $0.lines.rows[0] = row(0, "line(1.0)", .mine, settled: "different text")
             $0.log = .lines($0.lines)
+            $0.rendered = prepared((different.id, shown(0, "line(1.0)", .mine, settled: "different text"), .init(row: 0)))
         }
         #expect(counted(spy.calls) == counted([.line(1.0), .line(1.0)]))
     }
@@ -175,10 +187,12 @@ struct ReadingReducerTests {
 
         let spy = RenderingSpy()
         assert(makeHolding(heldFirst, heldSecond), .textUpdated(listening()), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.text[uncertain.id] = nil
             $0.anchors[uncertain.id] = nil
             $0.lines.rows = []
             $0.log = .lines($0.lines)
+            $0.rendered = prepared()
         }
         #expect(spy.calls == [.line(1.0)])
     }
@@ -206,7 +220,11 @@ struct ReadingReducerTests {
     @Test func holdsSurviveRecordingOff() {
 
         let spy = RenderingSpy()
-        assert(makeHeldOnly(), .recordingChanged(.off), delivers: nil, using: makeReducer(spy))
+        assert(makeHeldOnly(), .recordingChanged(.off), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
+            $0.log = .lines($0.lines)
+            $0.rendered = prepared()
+        }
         #expect(spy.calls == [])
     }
 
@@ -214,7 +232,10 @@ struct ReadingReducerTests {
 
         let spy = RenderingSpy()
         assert(makeHeldOnly(), .textUpdated(.init(status: .off, entries: [])), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.status = .off
+            $0.log = .lines($0.lines)
+            $0.rendered = prepared()
         }
         #expect(spy.calls == [])
     }
@@ -233,8 +254,10 @@ struct ReadingReducerTests {
 
         let spy = RenderingSpy()
         assert(makeHeldOnly(.off, recording: .on(elapsed: "recording(12.0)")), .recordingChanged(.off), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.recording = .off
             $0.log = .lines($0.lines)
+            $0.rendered = prepared()
         }
         #expect(spy.calls == [])
     }
@@ -243,8 +266,10 @@ struct ReadingReducerTests {
 
         let spy = RenderingSpy()
         assert(makeHeldOnly(.off), .textUpdated(.init(status: .gettingReady, entries: [])), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.status = .gettingReady
             $0.log = .preparing(holds: $0.lines.holds)
+            $0.rendered = prepared()
         }
         #expect(spy.calls == [])
     }
@@ -253,8 +278,10 @@ struct ReadingReducerTests {
 
         let spy = RenderingSpy()
         assert(makeHeldOnly(.gettingReady), .textUpdated(.init(status: .failed("unavailable"), entries: [])), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.status = .failed("unavailable")
             $0.log = .lines($0.lines)
+            $0.rendered = prepared()
         }
         #expect(spy.calls == [])
     }
@@ -263,7 +290,10 @@ struct ReadingReducerTests {
 
         let spy = RenderingSpy()
         assert(makeHeldOnly(.failed("unavailable")), .textUpdated(.init(status: .finished, entries: [])), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.status = .finished
+            $0.log = .lines($0.lines)
+            $0.rendered = prepared()
         }
         #expect(spy.calls == [])
     }
@@ -299,9 +329,11 @@ struct ReadingReducerTests {
 
         let spy = RenderingSpy()
         assert(makeAwayDraft(), .textUpdated(listening(settledDraft)), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.text[settledDraft.id] = settledDraft
             $0.lines.rows[0] = row(0, "line(10.0)", .mine, settled: "settled")
             $0.log = .lines($0.lines)
+            $0.rendered = prepared((settledDraft.id, shown(0, "line(10.0)", .mine, settled: "settled"), .init(row: 0)))
         }
         #expect(counted(spy.calls) == counted([.line(10.0), .line(10.0)]))
     }
@@ -310,6 +342,7 @@ struct ReadingReducerTests {
 
         let spy = RenderingSpy()
         assert(makeAwaySettled(), .textUpdated(listening(next, lateTheirs, settledDraft)), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.text[next.id] = next
             $0.text[lateTheirs.id] = lateTheirs
             $0.anchors[next.id] = .init(id: 1, start: 12)
@@ -319,6 +352,7 @@ struct ReadingReducerTests {
             $0.lines.rows.insert(.late(.init(span: "span[line(2.0)|line(3.0)]", entries: [shown(2, "line(2.0)", .theirs)])), at: 0)
             $0.lines.rows.append(row(1, "line(12.0)", .mine))
             $0.log = .lines($0.lines)
+            $0.rendered = prepared((lateTheirs.id, shown(2, "line(2.0)", .theirs), .init(row: 0, lateEntry: 0)), (settledDraft.id, shown(0, "line(10.0)", .mine, settled: "settled"), .init(row: 1)), (next.id, shown(1, "line(12.0)", .mine), .init(row: 2)))
         }
         #expect(counted(spy.calls) == counted([.line(10.0), .line(12.0), .line(2.0), .line(2.0), .line(3.0), .span("line(2.0)", "line(3.0)")]))
     }
@@ -326,7 +360,11 @@ struct ReadingReducerTests {
     @Test func reorderedEntriesAreNotNew() {
 
         let spy = RenderingSpy()
-        assert(makeArrivals(), .textUpdated(listening(settledDraft, lateTheirs, next)), delivers: nil, using: makeReducer(spy))
+        assert(makeArrivals(), .textUpdated(listening(settledDraft, lateTheirs, next)), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
+            $0.log = .lines($0.lines)
+            $0.rendered = prepared((lateTheirs.id, shown(2, "line(2.0)", .theirs), .init(row: 0, lateEntry: 0)), (settledDraft.id, shown(0, "line(10.0)", .mine, settled: "settled"), .init(row: 1)), (next.id, shown(1, "line(12.0)", .mine), .init(row: 2)))
+        }
         #expect(counted(spy.calls) == counted([.line(2.0), .line(10.0), .line(12.0), .line(2.0), .line(3.0), .span("line(2.0)", "line(3.0)")]))
     }
 
@@ -334,7 +372,10 @@ struct ReadingReducerTests {
 
         let spy = RenderingSpy()
         assert(makeArrivals(), .textUpdated(.init(status: .off, entries: [])), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.status = .off
+            $0.log = .lines($0.lines)
+            $0.rendered = prepared((lateTheirs.id, shown(2, "line(2.0)", .theirs), .init(row: 0, lateEntry: 0)), (settledDraft.id, shown(0, "line(10.0)", .mine, settled: "settled"), .init(row: 1)), (next.id, shown(1, "line(12.0)", .mine), .init(row: 2)))
         }
         #expect(counted(spy.calls) == counted([.line(2.0), .line(12.0), .line(10.0), .line(2.0), .line(3.0), .span("line(2.0)", "line(3.0)")]))
     }
@@ -354,8 +395,10 @@ struct ReadingReducerTests {
 
         let spy = RenderingSpy()
         assert(makeRecording(.on(elapsed: "recording(12.0)")), .textUpdated(.init(status: .gettingReady, entries: [])), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.status = .gettingReady
             $0.log = .preparing(holds: [])
+            $0.rendered = prepared()
         }
         #expect(spy.calls == [])
     }
@@ -364,8 +407,10 @@ struct ReadingReducerTests {
 
         let spy = RenderingSpy()
         assert(makeGiven(next: 0, status: .gettingReady, recording: twelve), .textUpdated(listening()), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.status = .listening
             $0.log = .lines($0.lines)
+            $0.rendered = prepared()
         }
         #expect(spy.calls == [])
     }
@@ -374,8 +419,10 @@ struct ReadingReducerTests {
 
         let spy = RenderingSpy()
         assert(makeReadSoFar(), .textUpdated(.init(status: .off, entries: [])), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.status = .off
             $0.log = .liveTextOff(kept: $0.lines)
+            $0.rendered = prepared((readEntry.id, shown(0, "line(1.0)", .mine, settled: "read so far"), .init(row: 0)))
         }
         #expect(spy.calls == [.line(1.0)])
     }
@@ -384,8 +431,10 @@ struct ReadingReducerTests {
 
         let spy = RenderingSpy()
         assert(makeReadSoFar(.off), .textUpdated(.init(status: .gettingReady, entries: [])), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.status = .gettingReady
             $0.log = .preparing(holds: [])
+            $0.rendered = prepared((readEntry.id, shown(0, "line(1.0)", .mine, settled: "read so far"), .init(row: 0)))
         }
         #expect(spy.calls == [.line(1.0)])
     }
@@ -394,8 +443,10 @@ struct ReadingReducerTests {
 
         let spy = RenderingSpy()
         assert(makeReadSoFar(.gettingReady), .textUpdated(.init(status: .failed("could not restart"), entries: [])), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.status = .failed("could not restart")
             $0.log = .lines($0.lines)
+            $0.rendered = prepared((readEntry.id, shown(0, "line(1.0)", .mine, settled: "read so far"), .init(row: 0)))
         }
         #expect(spy.calls == [.line(1.0)])
     }
@@ -404,7 +455,10 @@ struct ReadingReducerTests {
 
         let spy = RenderingSpy()
         assert(makeReadSoFar(.failed("could not restart")), .textUpdated(listening(readEntry)), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.status = .listening
+            $0.log = .lines($0.lines)
+            $0.rendered = prepared((readEntry.id, shown(0, "line(1.0)", .mine, settled: "read so far"), .init(row: 0)))
         }
         #expect(spy.calls == [.line(1.0)])
     }
@@ -413,7 +467,10 @@ struct ReadingReducerTests {
 
         let spy = RenderingSpy()
         assert(makeReadSoFar(), .textUpdated(.init(status: .failed("recognition failed"), entries: [])), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.status = .failed("recognition failed")
+            $0.log = .lines($0.lines)
+            $0.rendered = prepared((readEntry.id, shown(0, "line(1.0)", .mine, settled: "read so far"), .init(row: 0)))
         }
         #expect(spy.calls == [.line(1.0)])
     }
@@ -422,7 +479,10 @@ struct ReadingReducerTests {
 
         let spy = RenderingSpy()
         assert(makeReadSoFar(.failed("recognition failed")), .textUpdated(.init(status: .finished, entries: [])), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.status = .finished
+            $0.log = .lines($0.lines)
+            $0.rendered = prepared((readEntry.id, shown(0, "line(1.0)", .mine, settled: "read so far"), .init(row: 0)))
         }
         #expect(spy.calls == [.line(1.0)])
     }
@@ -431,7 +491,10 @@ struct ReadingReducerTests {
 
         let spy = RenderingSpy()
         assert(makeReadSoFar(.finished), .recordingChanged(.off), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.recording = .off
+            $0.log = .lines($0.lines)
+            $0.rendered = prepared((readEntry.id, shown(0, "line(1.0)", .mine, settled: "read so far"), .init(row: 0)))
         }
         #expect(spy.calls == [.line(1.0)])
     }
@@ -440,7 +503,10 @@ struct ReadingReducerTests {
 
         let spy = RenderingSpy()
         assert(makeReadSoFar(.finished, recording: .off), .textUpdated(.init(status: .off, entries: [])), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.status = .off
+            $0.log = .lines($0.lines)
+            $0.rendered = prepared((readEntry.id, shown(0, "line(1.0)", .mine, settled: "read so far"), .init(row: 0)))
         }
         #expect(spy.calls == [.line(1.0)])
     }
@@ -449,6 +515,7 @@ struct ReadingReducerTests {
 
         let spy = RenderingSpy()
         assert(makeBeforeRevision(), .textUpdated(.init(status: status, entries: [revised, added])), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.status = status
             $0.text[revised.id] = revised
             $0.text[added.id] = added
@@ -457,6 +524,7 @@ struct ReadingReducerTests {
             $0.lines.rows[0] = row(0, "line(1.0)", .mine, settled: "final words")
             $0.lines.rows.append(row(2, "line(3.0)", .mine, settled: "new words"))
             $0.log = status == .gettingReady ? .preparing(holds: []) : .lines($0.lines)
+            $0.rendered = prepared((revised.id, shown(0, "line(1.0)", .mine, settled: "final words"), .init(row: 0)), (keep.id, shown(1, "line(2.0)", .theirs, settled: "keep this"), .init(row: 1)), (added.id, shown(2, "line(3.0)", .mine, settled: "new words"), .init(row: 2)))
         }
         #expect(counted(spy.calls) == counted([.line(1.0), .line(2.0), .line(1.0), .line(3.0)]))
     }
@@ -465,10 +533,12 @@ struct ReadingReducerTests {
 
         let spy = RenderingSpy()
         assert(makeAwayAtFour(), .textUpdated(listening()), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.text[atFour.id] = nil
             $0.anchors[atFour.id] = nil
             $0.lines.rows = []
             $0.log = .lines($0.lines)
+            $0.rendered = prepared()
         }
         #expect(spy.calls == [.line(4.0)])
     }
@@ -477,12 +547,14 @@ struct ReadingReducerTests {
 
         let spy = RenderingSpy()
         assert(makeGiven(next: 1, followsLive: false), .textUpdated(listening(atFour)), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.text[atFour.id] = atFour
             $0.anchors[atFour.id] = .init(id: 1, start: 4)
             $0.nextDisplayID = 2
             $0.lines.rows = [row(1, "line(4.0)", .mine)]
             $0.lines.newBelow = 1
             $0.log = .lines($0.lines)
+            $0.rendered = prepared((atFour.id, shown(1, "line(4.0)", .mine), .init(row: 0)))
         }
         #expect(spy.calls == [.line(4.0)])
     }
@@ -491,10 +563,12 @@ struct ReadingReducerTests {
 
         let spy = RenderingSpy()
         assert(makeSlotTaken(), .textUpdated(listening(still)), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.text[heldDraft.id] = nil
             $0.anchors[heldDraft.id] = nil
             $0.lines.rows.removeFirst()
             $0.log = .lines($0.lines)
+            $0.rendered = prepared((still.id, shown(1, "line(5.0)", .theirs, settled: "still here"), .init(row: 0)))
         }
         #expect(counted(spy.calls) == counted([.line(2.0), .line(5.0)]))
     }
@@ -503,12 +577,14 @@ struct ReadingReducerTests {
 
         let spy = RenderingSpy()
         assert(makeSlotFreed(), .textUpdated(listening(reused, still)), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.text[reused.id] = reused
             $0.anchors[reused.id] = .init(id: 2, start: 12)
             $0.nextDisplayID = 3
             $0.lines.newBelow = 1
             $0.lines.rows.append(row(2, "line(12.0)", .mine, pending: "new speech"))
             $0.log = .lines($0.lines)
+            $0.rendered = prepared((still.id, shown(1, "line(5.0)", .theirs, settled: "still here"), .init(row: 0)), (reused.id, shown(2, "line(12.0)", .mine, pending: "new speech"), .init(row: 1)))
         }
         #expect(counted(spy.calls) == counted([.line(5.0), .line(12.0)]))
     }
@@ -517,9 +593,11 @@ struct ReadingReducerTests {
 
         let spy = RenderingSpy()
         assert(makeSlotReused(), .textUpdated(listening(still, reusedSettled)), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.text[reusedSettled.id] = reusedSettled
             $0.lines.rows[1] = row(2, "line(12.0)", .mine, settled: "new speech")
             $0.log = .lines($0.lines)
+            $0.rendered = prepared((still.id, shown(1, "line(5.0)", .theirs, settled: "still here"), .init(row: 0)), (reusedSettled.id, shown(2, "line(12.0)", .mine, settled: "new speech"), .init(row: 1)))
         }
         #expect(counted(spy.calls) == counted([.line(12.0), .line(5.0), .line(12.0)]))
     }
@@ -732,6 +810,16 @@ private func makeSlotReused() -> ReadingState {
         [anchored(still, 1), anchored(reused, 2)], rows: [stillRow, row(2, "line(12.0)", .mine, pending: "new speech")],
         next: 3, holds: [slotHeld], newBelow: 1, followsLive: false
     )
+}
+
+/// The rendered cache after the reducer prepared it: each shown entry, in order, and where its row is.
+private func prepared(
+    _ shown: (ReadingTextUpdate.Entry.ID, ReadingState.Entry, ReadingState.Rendered.Location)...
+) -> ReadingState.Rendered {
+
+    .init(prepared: true, ordered: shown.map(\.0),
+          entries: .init(uniqueKeysWithValues: shown.map { ($0.0, $0.1) }),
+          locations: .init(uniqueKeysWithValues: shown.map { ($0.0, $0.2) }))
 }
 
 private func text(
