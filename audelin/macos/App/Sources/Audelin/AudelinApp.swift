@@ -24,6 +24,7 @@ struct AudelinApp: App {
     @State private var panel: FloatingPanel?
     @State private var settingsWindow: NSWindow?
     @State private var callsWindow: CallsWindow?
+    @State private var callsSplit: NSSplitViewController?
     @State private var presence = WindowPresence(setPolicy: { NSApplication.shared.setActivationPolicy($0) })
 
     @MainActor
@@ -84,7 +85,10 @@ struct AudelinApp: App {
                                             send: { text in Task { await calls.send(.search(text)) } })
             callsNSWindow?.toolbar = search.toolbar
             callsNSWindow?.toolbarStyle = .unified
-            callsWindow.install(content: NSHostingView(rootView: CallsContent(model: calls, focusSearch: { search.focus() })))
+            let split = makeCallsSplit(list: NSHostingView(rootView: CallsContent(model: calls, focusSearch: { search.focus() })),
+                                       detail: NSHostingView(rootView: CallsDetailContent(model: calls, text: { model.previewText })))
+            callsSplit = split
+            callsWindow.install(content: split.view)
             observeSearchLanguage(model, search: search)
             _ = connectPreview(panel: previewPanel, preview: { calls.preview }, panelWindow: summaryWindow,
                                callsWindow: callsNSWindow, center: .default,
