@@ -5,59 +5,6 @@ import Testing
 @Suite(.timeLimit(.minutes(1)))
 struct SessionTests {
 
-    @Test(arguments: [
-        "folder", "processes", "microphone.track", "call.track", "transcript", "callText",
-        "microphone.capture", "call.capture", "microphone.access", "call.access"
-    ])
-    func healthChangesDuringStartDoNotErasePendingWork(_ caseName: String) async throws {
-
-        let label = startLabel(for: caseName)
-        let rig = await Rig(held: [label])
-        await rig.begin(liveText: true)
-        await rig.output.waitUntilHeld(label)
-        let failure = runtimeFailure(for: caseName)
-        await rig.session.send(failure.event)
-        await rig.session.send(.end)
-        let pending = await rig.waitFor { $0.phase == .ending && $0.failures.contains(failure.expected) }
-        #expect(pending.phase == .ending)
-        #expect(pending.lifecycles.contains(.starting))
-        #expect(pending.failures.contains(failure.expected))
-        #expect(!(await rig.output.values()).contains { $0.hasSuffix(".close") || $0.hasSuffix(".stop") })
-        await rig.output.release(label)
-        let ended = await rig.waitFor { $0.phase == .ended }
-        #expect(ended.lifecycles.allSatisfy { $0 == .closed || $0 == .down })
-        #expect(ended.failures.contains(failure.expected))
-        if let cleanup = cleanupLabel(for: label) {
-            #expect(await rig.output.values().contains(cleanup))
-        }
-    }
-
-    @Test(arguments: [
-        "microphone.capture.stop", "call.capture.stop", "microphone.track.close",
-        "call.track.close", "callText.stop", "transcript.close",
-        "microphone.access", "call.access"
-    ])
-    func healthChangesDuringStopDoNotErasePendingWork(_ caseName: String) async throws {
-
-        let label = caseName.hasSuffix("access") ? caseName.replacingOccurrences(of: "access", with: "capture.stop") : caseName
-        let rig = await Rig(held: [label])
-        await rig.begin(liveText: true)
-        _ = await rig.waitFor { $0.phase == .recording }
-        await rig.session.send(.end)
-        await rig.output.waitUntilHeld(label)
-        let failure = runtimeFailure(for: caseName.replacingOccurrences(of: ".stop", with: "").replacingOccurrences(of: ".close", with: ""))
-        await rig.session.send(failure.event)
-        let pending = await rig.waitFor { $0.failures.contains(failure.expected) }
-        #expect(pending.phase == .ending)
-        #expect(pending.lifecycles.contains(.stopping))
-        #expect(pending.failures.contains(failure.expected))
-        #expect(await rig.output.values().last == label)
-        await rig.output.release(label)
-        let ended = await rig.waitFor { $0.phase == .ended }
-        #expect(ended.lifecycles.allSatisfy { $0 == .closed || $0 == .down })
-        #expect(ended.failures.contains(failure.expected))
-    }
-
     @Test(arguments: [["Parakeet v3"], ["Parakeet v3", "Nemotron"]])
     func missingModelSaysCannotRecordAndStartsNothing(missing: [String]) async throws {
 
@@ -650,28 +597,6 @@ private extension SessionState {
     var lifecycles: [PieceStatus] {
 
         [folder, processes, microphoneTrack, callTrack, microphoneCapture, callCapture, transcript, callText]
-    }
-}
-
-private func startLabel(for name: String) -> String {
-
-    switch name {
-    case "folder": "folder.create"
-    case "processes": "processes.select"
-    case "microphone.track", "call.track", "transcript": name + ".open"
-    case "callText": "callText.start(on)"
-    case "microphone.access": "microphone.capture.start"
-    case "call.access": "call.capture.start"
-    default: name + ".start"
-    }
-}
-
-private func cleanupLabel(for start: String) -> String? {
-
-    switch start {
-    case "folder.create", "processes.select": nil
-    case "callText.start(on)": "callText.stop"
-    default: start.replacingOccurrences(of: ".start", with: ".stop").replacingOccurrences(of: ".open", with: ".close")
     }
 }
 

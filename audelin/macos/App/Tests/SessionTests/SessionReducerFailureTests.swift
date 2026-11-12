@@ -132,6 +132,49 @@ extension SessionReducerTests {
         assert(makeStopping(piece), .pieceFailed(piece, error: anyError()), delivers: nil)
     }
 
+    @Test(arguments: bringUpOrder)
+    func failureWhileEndingKeepsAPieceStarting_state(_ piece: SessionState.Piece) {
+
+        let state = makeEndingWhileStarting(piece)
+        let error = anyError()
+        assert(state, .pieceFailed(piece, error: error)) {
+            $0.fail(piece, error)
+            if piece == .folder { $0.cannotRecord = "folder: \(error)" }
+        }
+    }
+
+    @Test(arguments: bringUpOrder)
+    func failureWhileEndingKeepsAPieceStarting_effect(_ piece: SessionState.Piece) {
+
+        assert(makeEndingWhileStarting(piece), .pieceFailed(piece, error: anyError()), delivers: nil)
+    }
+
+    @Test(arguments: sides)
+    func accessLossWhileEndingKeepsACaptureStarting_state(_ side: SessionSide) {
+
+        let state = makeEndingWhileStarting(.capture(side))
+        assert(state, .accessChanged(side, available: false)) { $0.loseAccess(side) }
+    }
+
+    @Test(arguments: sides)
+    func accessLossWhileEndingKeepsACaptureStarting_effect(_ side: SessionSide) {
+
+        assert(makeEndingWhileStarting(.capture(side)), .accessChanged(side, available: false), delivers: nil)
+    }
+
+    @Test(arguments: sides)
+    func accessLossWhileACaptureStopsKeepsItStopping_state(_ side: SessionSide) {
+
+        let state = makeStopping(.capture(side))
+        assert(state, .accessChanged(side, available: false)) { $0.loseAccess(side) }
+    }
+
+    @Test(arguments: sides)
+    func accessLossWhileACaptureStopsKeepsItStopping_effect(_ side: SessionSide) {
+
+        assert(makeStopping(.capture(side)), .accessChanged(side, available: false), delivers: nil)
+    }
+
     @Test(arguments: stopOrder)
     func heldStopAfterAFailureStillGoesOn_state(_ piece: SessionState.Piece) {
 
