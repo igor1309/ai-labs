@@ -85,7 +85,7 @@ let package = Package(
         .target(name: "CallObservation"),
         .testTarget(name: "CallObservationTests", dependencies: ["CallObservation"]),
         .target(name: "ZoomAccessibility"),
-        .target(name: "CallDiarizer", dependencies: ["AudioConversion", .product(name: "FluidAudio", package: "FluidAudio")]),
+        .target(name: "CallDiarizer", dependencies: ["AudioConversion", "ModelLoading", .product(name: "FluidAudio", package: "FluidAudio")]),
         .testTarget(name: "CallDiarizerTests", dependencies: ["CallDiarizer", "BlockingTestWork"]),
         .testTarget(name: "ZoomAccessibilityTests", dependencies: ["ZoomAccessibility"], resources: [.copy("Fixtures")]),
 

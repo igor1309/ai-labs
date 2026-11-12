@@ -200,15 +200,15 @@ struct BleedCleanupCompositionTests {
         let bytes = MemoryTranscriptBytes()
         let names = LiveNameBoard()
         names.give([0: "Anna"])
-        let writer = WritingTranscript(file: bytes, format: TranscriptFormat(), names: names, sink: TestLogSink())
+        let writer = WritingTranscript(file: bytes, format: TranscriptFormat(), names: names, diarizer: .unused, sink: TestLogSink())
         try await writer.write(raw)
         await writer.close()
         names.reset()
         names.give([0: "Boris"])
         try await writer.replaceMicrophone(in: raw, with: [segment("my words", start: 1)])
         let replacement = await bytes.replacement
-        #expect(replacement.contains("**Speaker z1** 00:00:00\ntheir words"))
-        #expect(replacement.contains("- Speaker z1: Anna"))
+        #expect(replacement.contains("**Them** 00:00:00\ntheir words"))
+        #expect(replacement.contains("- Them: Anna"))
         #expect(!replacement.contains("Boris"))
         #expect(replacement.contains("my words"))
     }
@@ -263,7 +263,7 @@ private struct ReplacementStorage: TranscriptStorage {
     var replaced: @Sendable () -> Void = {}
     var replacement: @Sendable ([TranscriptSegment]) -> Void = { _ in }
     func open(at url: URL, sink: any LogSink) async throws -> any SessionTranscriptFile {
-        ReplacementFile(base: try await FileTranscriptStorage().open(at: url, sink: sink), fails: fails, failFinal: failFinal, replaced: replaced, replacement: replacement)
+        ReplacementFile(base: try await FileTranscriptStorage(diarizer: .unavailable).open(at: url, sink: sink), fails: fails, failFinal: failFinal, replaced: replaced, replacement: replacement)
     }
 }
 private struct ReplacementFile: SessionTranscriptFile {
@@ -277,6 +277,7 @@ private struct ReplacementFile: SessionTranscriptFile {
         try await base.write(state)
     }
     func close() async { await base.close() }
+    func attributeSpeakers() async -> AttributedFar? { await base.attributeSpeakers() }
     func replaceMicrophone(in state: CallState, with segments: [TranscriptSegment]) async throws {
         if fails { throw CleanupFailure.failed }
         try await base.replaceMicrophone(in: state, with: segments)
@@ -292,11 +293,13 @@ private func segment(_ text: String, start: Double) -> TranscriptSegment {
 }
 private func testBoundary() -> ComposerBoundary {
     let empty = ScriptRecognizer(hearings: [], endings: [])
-    return rehearsalBoundary(capturePersistence: .recorded,
+    var boundary = rehearsalBoundary(capturePersistence: .recorded,
         microphone: { StartedCapture(stream: AsyncThrowingStream { $0.finish() }, stop: {}) },
         call: { _ in StartedCapture(stream: AsyncThrowingStream { $0.finish() }, stop: {}) },
         mine: RehearsalRecognizer(empty), theirs: RehearsalRecognizer(empty),
         now: { Date(timeIntervalSince1970: 0) }, timeZone: { .gmt }, sleep: { _ in }, intervals: testIntervals)
+    boundary.transcripts = FileTranscriptStorage(diarizer: .unavailable)
+    return boundary
 }
 
 private actor MemoryTranscriptBytes: TranscriptBytes {

@@ -11,20 +11,20 @@ actor CleanupRuns {
     private var runs: [UUID: Run] = [:]
     private var stopped = false
 
-    func start(raw: CallState, cleanup: TranscriptCleanup, file: any SessionTranscriptFile,
+    func start(raw: CallState, attributed: Transcript.Attributed?, cleanup: TranscriptCleanup, file: any SessionTranscriptFile,
                folder: URL, callbacks: SummaryCallbacks) async {
         let rawHandoff: @Sendable () async -> Void = {
-            let entries = summaryEntries(Transcript.segments(from: raw))
+            let entries = summaryEntries(raw, attributed: attributed)
             await callbacks.completed(folder, entries, true, !entries.isEmpty)
         }
         guard !stopped else { await rawHandoff(); return }
         let id = UUID()
         let work = Task {
-            let entries = await cleanup.run(raw, replacing: { heard in
+            let entries = await cleanup.run(raw, attributed: attributed, replacing: { heard in
                 try await self.publish(id: id) {
                     do {
                         try await file.replaceMicrophone(in: raw, with: heard)
-                        let entries = summaryEntries(Transcript.replacingMicrophone(in: raw, with: heard))
+                        let entries = summaryEntries(raw, heard: heard, attributed: attributed)
                         await callbacks.completed(folder, entries, true, !entries.isEmpty)
                     } catch {
                         await rawHandoff()

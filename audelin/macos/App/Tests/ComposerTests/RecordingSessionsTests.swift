@@ -197,6 +197,7 @@ private func withSessions(_ body: @Sendable (SessionsRig) async throws -> Void) 
             mine: RehearsalRecognizer(SessionRecognizer(name: "mine")), theirs: RehearsalRecognizer(SessionRecognizer(name: "theirs")),
             now: { Date(timeIntervalSince1970: 0) }, timeZone: { .gmt }, sleep: clock.sleep, intervals: testIntervals)
         boundary.time = clock.time
+        boundary.transcripts = FileTranscriptStorage(diarizer: .unavailable)
         boundary.log = log
         boundary.processes = FixtureProcesses(binding: CallBinding(fails: false))
         let url = root.appendingPathComponent("preferences.json")

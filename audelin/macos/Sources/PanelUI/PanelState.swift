@@ -164,6 +164,9 @@ public extension PanelState {
         public var label: String?
         /// A live guess: drawn in italics and dimmer than a confirmed name.
         public var labelIsTentative: Bool
+        /// The remote speaker's 1-based place in the call's speakers, drawn in that
+        /// speaker's colour; nil draws plain Them.
+        public var remoteSpeaker: Int?
 
         public init(
             id: Int,
@@ -172,9 +175,11 @@ public extension PanelState {
             settled: String,
             pending: String = "",
             label: String? = nil,
-            labelIsTentative: Bool = false
+            labelIsTentative: Bool = false,
+            remoteSpeaker: Int? = nil
         ) {
             self.labelIsTentative = labelIsTentative
+            self.remoteSpeaker = remoteSpeaker
             self.id = id
             self.label = label
             self.time = time

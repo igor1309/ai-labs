@@ -53,6 +53,7 @@ struct ComposeFixture {
             now: { Date(timeIntervalSince1970: 0) }, timeZone: { .gmt }, sleep: clock.sleep,
             intervals: testIntervals)
         boundary.time = clock.time
+        boundary.transcripts = FileTranscriptStorage(diarizer: .unavailable)
         boundary.preferredLanguages = { ["ru-RU"] }
         boundary.log = log
         boundary.trash = removeForTrash
