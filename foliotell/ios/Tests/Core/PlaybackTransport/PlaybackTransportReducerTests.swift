@@ -3,56 +3,96 @@ import Testing
 
 struct PlaybackTransportReducerTests {
 
-    @Test func test_reduce_shouldStartSpeakingAndBeginSpeaking_onPrimaryTappedInIdle() {
+    @Test func test_reduce_shouldStartSpeakingFromRequest_onPrimaryTappedInIdle() {
 
-        let (state, effect) = reduce(.idle(lastUtteranceToken: 0),.primaryTapped(makeRequest()))
+        assert(.idle(lastUtteranceToken: 0), .primaryTapped(makeRequest())) {
+            $0 = .speaking(makeSession())
+        }
+    }
 
-        #expect(state == .speaking(makeSession()))
-        #expect(effect == .beginSpeaking(makeCommand(), replacingCurrentUtterance: false))
+    @Test func test_reduce_shouldDeliverBeginSpeaking_onPrimaryTappedInIdle() {
+
+        assert(
+            .idle(lastUtteranceToken: 0),
+            .primaryTapped(makeRequest()),
+            delivers: .beginSpeaking(makeCommand(), replacingCurrentUtterance: false)
+        )
     }
 
     @Test func test_reduce_shouldClampStartOffsetToTextLength_onPrimaryTappedInIdleWithExcessiveOffset() {
 
-        let (state, _) = reduce(.idle(lastUtteranceToken: 0),.primaryTapped(makeRequest(text: "Short.", startUTF16Offset: 1000)))
+        assert(.idle(lastUtteranceToken: 0), .primaryTapped(makeRequest(text: "Short.", startUTF16Offset: 1000))) {
+            $0 = .speaking(makeSession(text: "Short.", utteranceStartUTF16Offset: 6, spokenUTF16Offset: 6))
+        }
+    }
 
-        #expect(state == .speaking(makeSession(
-            text: "Short.",
-            utteranceStartUTF16Offset: 6,
-            spokenUTF16Offset: 6
-        )))
+    @Test func test_reduce_shouldDeliverEmptyUtterance_onPrimaryTappedInIdleWithExcessiveOffset() {
+
+        assert(
+            .idle(lastUtteranceToken: 0),
+            .primaryTapped(makeRequest(text: "Short.", startUTF16Offset: 1000)),
+            delivers: .beginSpeaking(makeCommand(text: ""), replacingCurrentUtterance: false)
+        )
+    }
+
+    @Test func test_reduce_shouldIssueFreshToken_onPrimaryTappedInIdleAfterEarlierPlayback() {
+
+        // Tokens stay monotonic across idle: a replay after stop must not
+        // reuse the stopped utterance's token, or its late didCancel would
+        // kill the new session.
+        assert(.idle(lastUtteranceToken: 1), .primaryTapped(makeRequest())) {
+            $0 = .speaking(makeSession(utteranceToken: 2))
+        }
+    }
+
+    @Test func test_reduce_shouldDeliverFreshToken_onPrimaryTappedInIdleAfterEarlierPlayback() {
+
+        assert(
+            .idle(lastUtteranceToken: 1),
+            .primaryTapped(makeRequest()),
+            delivers: .beginSpeaking(makeCommand(utteranceToken: 2), replacingCurrentUtterance: false)
+        )
     }
 
     @Test func test_reduce_shouldRequestPause_onPrimaryTappedWhileSpeaking() {
 
-        let (state, effect) = reduce(.speaking(makeSession()), .primaryTapped(makeRequest()))
-
-        #expect(state == .speaking(makeSession(isPauseRequested: true)))
-        #expect(effect == .pause(utteranceToken: 1))
+        assert(.speaking(makeSession()), .primaryTapped(makeRequest())) {
+            $0.session.isPauseRequested = true
+        }
     }
 
-    @Test func test_reduce_shouldRequestResume_onPrimaryTappedWhilePausedWithActiveUtterance() {
+    @Test func test_reduce_shouldDeliverPause_onPrimaryTappedWhileSpeaking() {
 
-        let (state, effect) = reduce(.paused(makeSession()), .primaryTapped(makeRequest()))
-
-        #expect(state == .paused(makeSession()))
-        #expect(effect == .resume(utteranceToken: 1))
+        assert(.speaking(makeSession()), .primaryTapped(makeRequest()), delivers: .pause(utteranceToken: 1))
     }
 
-    @Test func test_reduce_shouldSpeakFreshUtterance_onPrimaryTappedWhilePausedWithoutActiveUtterance() {
+    @Test func test_reduce_shouldNotChange_onPrimaryTappedWhilePausedWithActiveUtterance() {
 
-        let paused = makeSession(spokenUTF16Offset: 16, hasActiveUtterance: false)
+        assert(.paused(makeSession()), .primaryTapped(makeRequest()))
+    }
 
-        let (state, effect) = reduce(.paused(paused), .primaryTapped(makeRequest()))
+    @Test func test_reduce_shouldDeliverResume_onPrimaryTappedWhilePausedWithActiveUtterance() {
 
-        #expect(state == .speaking(makeSession(
-            utteranceToken: 2,
-            utteranceStartUTF16Offset: 16,
-            spokenUTF16Offset: 16
-        )))
-        #expect(effect == .beginSpeaking(
-            makeCommand(utteranceToken: 2, text: "Frost and sun."),
-            replacingCurrentUtterance: false
-        ))
+        assert(.paused(makeSession()), .primaryTapped(makeRequest()), delivers: .resume(utteranceToken: 1))
+    }
+
+    @Test func test_reduce_shouldSpeakFreshUtteranceFromSpokenOffset_onPrimaryTappedWhilePausedWithoutActiveUtterance() {
+
+        assert(.paused(makeSession(spokenUTF16Offset: 16, hasActiveUtterance: false)), .primaryTapped(makeRequest())) {
+            $0.becomeSpeaking()
+            $0.session.utteranceToken = 2
+            $0.session.utteranceStartUTF16Offset = 16
+            $0.session.hasActiveUtterance = true
+        }
+    }
+
+    @Test func test_reduce_shouldDeliverFreshUtteranceFromSpokenOffset_onPrimaryTappedWhilePausedWithoutActiveUtterance() {
+
+        assert(
+            .paused(makeSession(spokenUTF16Offset: 16, hasActiveUtterance: false)),
+            .primaryTapped(makeRequest()),
+            delivers: .beginSpeaking(makeCommand(utteranceToken: 2, text: "Frost and sun."), replacingCurrentUtterance: false)
+        )
     }
 
     @Test func test_reduce_shouldPause_onAcceptedPauseWhileSpeaking() {
@@ -408,17 +448,6 @@ struct PlaybackTransportReducerTests {
         #expect(effect == nil)
     }
 
-    @Test func test_reduce_shouldIssueFreshToken_onPrimaryTappedInIdleAfterEarlierPlayback() {
-
-        // Tokens stay monotonic across idle: a replay after stop must not
-        // reuse the stopped utterance's token, or its late didCancel would
-        // kill the new session.
-        let (state, effect) = reduce(.idle(lastUtteranceToken: 1), .primaryTapped(makeRequest()))
-
-        #expect(state == .speaking(makeSession(utteranceToken: 2)))
-        #expect(effect == .beginSpeaking(makeCommand(utteranceToken: 2), replacingCurrentUtterance: false))
-    }
-
     @Test func test_reduce_shouldIgnorePauseResolution_onStaleUtteranceToken() {
 
         let replaced = makeSession(utteranceToken: 2)
@@ -511,6 +540,33 @@ struct PlaybackTransportReducerTests {
 
     // MARK: - Helpers
 
+    private typealias State = PlaybackTransportState
+    private typealias Event = PlaybackTransportEvent
+    private typealias Effect = PlaybackTransportEffect
+
+    private func assert(
+        _ state: State,
+        _ event: Event,
+        sourceLocation: SourceLocation = #_sourceLocation,
+        updateStateToExpected: ((inout State) -> Void)? = nil
+    ) {
+
+        var expected = state
+        updateStateToExpected?(&expected)
+
+        #expect(reduce(state, event).0 == expected, sourceLocation: sourceLocation)
+    }
+
+    private func assert(
+        _ state: State,
+        _ event: Event,
+        delivers expected: Effect?,
+        sourceLocation: SourceLocation = #_sourceLocation
+    ) {
+
+        #expect(reduce(state, event).1 == expected, sourceLocation: sourceLocation)
+    }
+
     private func reduce(
         _ state: PlaybackTransportState,
         _ event: PlaybackTransportEvent
@@ -572,5 +628,53 @@ struct PlaybackTransportReducerTests {
             voiceIdentifier: voiceIdentifier,
             languageCode: languageCode
         )
+    }
+}
+
+/// Test-only access to the session a speaking or paused state carries, and
+/// the case changes the reducer makes, so an expected state is the given state
+/// plus a mutation.
+private extension PlaybackTransportState {
+
+    var session: PlaybackSession {
+
+        get {
+            switch self {
+            case .idle:
+                Issue.record("no session in idle")
+                return PlaybackSession(
+                    text: "", speed: .one, voiceIdentifier: nil, utteranceToken: 0,
+                    utteranceStartUTF16Offset: 0, spokenUTF16Offset: 0, hasActiveUtterance: false
+                )
+            case let .speaking(session), let .paused(session):
+                return session
+            }
+        }
+
+        set {
+            switch self {
+            case .idle:
+                Issue.record("no session in idle")
+            case .speaking:
+                self = .speaking(newValue)
+            case .paused:
+                self = .paused(newValue)
+            }
+        }
+    }
+
+    mutating func becomeSpeaking() {
+
+        self = .speaking(session)
+    }
+
+    mutating func becomePaused() {
+
+        self = .paused(session)
+    }
+
+    mutating func becomeIdle() {
+
+        self = .idle(lastUtteranceToken: session.utteranceToken)
     }
 }
