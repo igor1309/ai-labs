@@ -52504,16 +52504,6 @@
                 },
                 {
                   "type": "text",
-                  "id": "toSgq",
-                  "name": "Time",
-                  "fill": "$gutter",
-                  "content": "0:24",
-                  "fontFamily": "$font-data",
-                  "fontSize": "$type-small",
-                  "fontWeight": "normal"
-                },
-                {
-                  "type": "text",
                   "id": "Ztkd8",
                   "name": "Cancel",
                   "fill": "$sub",
@@ -59237,7 +59227,7 @@
       "name": "Note detail",
       "width": 520,
       "height": 560,
-      "content": "Detail\n\nHeader: title, then day, start time · duration. The summary is rendered Markdown, selectable, with the date it was made under its last line in `gutter`.\n\nToolbar, right of the list over the detail, before the search field: icon-only buttons in two groups, Mail-style. Копировать (the Markdown source), Открыть (the folder in Finder), Переименовать; then Удалить… on its own. Each shows its name as a tooltip on hover. Повторить итоги stays in the failed message and the row menu.\n\nThe buttons act on the selected call. Копировать is disabled without a summary; with no call selected all four are disabled. Disabled, not hidden: the toolbar never shifts.\n\nNo summary: one line under the header, «Нет итогов» and the link «✨ Сделать». Making, or preparing after a call: a spinner, «Делаю…», the elapsed time and «Отменить», over a grey skeleton of the summary; the row shows «Подготовка итогов…». Done: the summary replaces both. Failed: one centred message under the header, with Повторить итоги. With no call selected: «Звонок не выбран».\n\n↑↓ moves the selection and the detail follows at once; Tab moves focus into the detail."
+      "content": "Detail\n\nHeader: title, then day, start time · duration. The summary is rendered Markdown, selectable, with the date it was made under its last line in `gutter`.\n\nToolbar, right of the list over the detail, before the search field: icon-only buttons in two groups, Mail-style. Копировать (the Markdown source), Открыть (the folder in Finder), Переименовать; then Удалить… on its own. Each shows its name as a tooltip on hover. Повторить итоги stays in the failed message and the row menu.\n\nThe buttons act on the selected call. Копировать is disabled without a summary; with no call selected all four are disabled. Disabled, not hidden: the toolbar never shifts.\n\nNo summary: one line under the header, «Нет итогов» and the link «✨ Сделать». Making, or preparing after a call: a spinner, «Делаю…» and «Отменить», over a grey skeleton of the summary; the row shows «Подготовка итогов…». Done: the summary replaces both. Failed: one centred message under the header, with Повторить итоги. With no call selected: «Звонок не выбран».\n\n↑↓ moves the selection and the detail follows at once; Tab moves focus into the detail."
     },
     {
       "type": "note",

@@ -52,11 +52,11 @@ line, Link/Make, Making line, Summary skeleton, Summary date).
   the search field.
 - No summary: one line under the header, «Нет итогов» in `gutter` and the
   link «✨ Сделать» in `me`.
-- Making, or preparing after a call: the line becomes a spinner, «Делаю…»,
-  the elapsed time (`font-data`) and «Отменить» in `sub`, over a grey
-  skeleton of the summary (`btn` bars). Another call may be selected
-  meanwhile; the row keeps the spinner. On completion the summary replaces
-  line and skeleton; Отменить returns to the no-summary line.
+- Making, or preparing after a call: the line becomes a spinner, «Делаю…»
+  and «Отменить» in `sub`, over a grey skeleton of the summary (`btn`
+  bars). Another call may be selected meanwhile; the row keeps the
+  spinner. On completion the summary replaces line and skeleton; Отменить
+  returns to the no-summary line.
 - Failed: one centred message under the header, the error and Повторить
   итоги. With no call selected: «Звонок не выбран».
 - The detail follows the selection at once. No transcript in this window.
@@ -96,7 +96,7 @@ line, Link/Make, Making line, Summary skeleton, Summary date).
 | Calls — preparing | After a call: «Делаю…» over the skeleton, as making |
 | Calls — summary failed | The error and Повторить итоги |
 | Calls — no summary | «Нет итогов» and the link «✨ Сделать» |
-| Calls — making summary | «Делаю…», elapsed time and Отменить over the skeleton |
+| Calls — making summary | «Делаю…» and Отменить over the skeleton |
 | Calls — inactive window | The selected row turns grey (`btn`) |
 | Calls — no selection | «Звонок не выбран» |
 | Calls — renaming | The title is a field; the `yyyy.MM.dd-HHmm` prefix stays fixed. Return saves, Esc cancels |
