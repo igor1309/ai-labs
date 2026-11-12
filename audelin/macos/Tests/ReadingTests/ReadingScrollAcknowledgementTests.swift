@@ -35,7 +35,10 @@ struct ReadingScrollAcknowledgementTests {
 
         let spy = RenderingSpy()
         assert(makeReading(atBottom: true, acknowledgement: latest), .textUpdated(.init(status: .off, entries: [])),
-               delivers: nil, using: makeReducer(spy))
+               delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
+            $0.rendered = prepared()
+        }
         #expect(spy.calls == [])
     }
 }

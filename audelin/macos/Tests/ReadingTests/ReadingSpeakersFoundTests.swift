@@ -9,6 +9,7 @@ struct ReadingSpeakersFoundTests {
 
         let spy = RenderingSpy()
         assert(makeUnplaced(sealed: sealed), .speakersFound([1: 1, 2: 2]), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             let placed = rows("00:00", remote: [1, nil, 2, nil])
             $0.lines.rows = .init(sealed: Array(placed.prefix(sealed)), tail: Array(placed.dropFirst(sealed)))
             for (key, entry) in zip(texts.map(\.id), shown("00:00", remote: [1, nil, 2, nil])) { $0.rendered.entries[key] = entry }
