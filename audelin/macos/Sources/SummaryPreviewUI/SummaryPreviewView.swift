@@ -88,6 +88,8 @@ public struct SummaryPreviewView: View {
                 message(text(.noSelection), detail: nil) { EmptyView() }
             }
         }
+        // The header sits in the toolbar's band, level with the window controls, and stays while the notes scroll.
+        .ignoresSafeArea(.container, edges: state == nil ? [] : .top)
         .background(tokens.surface)
     }
 
@@ -99,7 +101,8 @@ public struct SummaryPreviewView: View {
                 .textSelection(.enabled)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.top, tokens.space20).padding(.horizontal, tokens.space28).padding(.bottom, tokens.space16)
+        .padding(.top, tokens.space12).padding(.leading, tokens.space28).padding(.trailing, tokens.space28 + tokens.space40)
+        .padding(.bottom, tokens.space12)
     }
 
     /// One centred message: an icon, a title, a line of detail and, for a failed summary, Повторить итоги.

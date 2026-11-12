@@ -1,99 +1,9 @@
 import AppKit
 import GlassLedger
+import CallsWindowUI
 import Composer
-import NotesMarkdown
 import SummaryPreviewUI
 import SwiftUI
-
-/// The calls window's two panes: the list at a width the divider sets, kept
-/// across restarts, and the selected call's detail filling the rest. Tab moves
-/// the keyboard from one pane to the other. Below 700 pt the detail hides, the
-/// list fills the window, and `widthChanged` hears of each switch.
-@MainActor
-func makeCallsSplit(list: NSView, detail: NSView, defaults: UserDefaults = .standard,
-                    widthChanged: @escaping (_ narrow: Bool) -> Void = { _ in }) -> NSSplitViewController {
-    let split = CallsSplitController(defaults: defaults, widthChanged: widthChanged)
-    split.splitView.isVertical = true
-    split.splitView.dividerStyle = .thin
-    let listItem = NSSplitViewItem(contentListWithViewController: hosting(list))
-    listItem.titlebarSeparatorStyle = .line
-    listItem.minimumThickness = CallsSplit.listRange.lowerBound
-    listItem.maximumThickness = CallsSplit.listRange.upperBound
-    listItem.holdingPriority = .init(260)
-    listItem.canCollapse = false
-    let detailItem = NSSplitViewItem(viewController: hosting(detail))
-    detailItem.titlebarSeparatorStyle = .automatic
-    detailItem.minimumThickness = CallsSplit.listRange.lowerBound
-    detailItem.canCollapse = true
-    split.addSplitViewItem(listItem)
-    split.addSplitViewItem(detailItem)
-    list.nextKeyView = detail
-    detail.nextKeyView = list
-    return split
-}
-
-/// Puts the divider where it was left, or at the list's own width, once the
-/// window first lays it out wide, and saves each move from then on; hides and
-/// shows the detail as the window crosses the narrow width.
-final class CallsSplitController: NSSplitViewController {
-    private let defaults: UserDefaults
-    private let widthChanged: (Bool) -> Void
-    private var placed = false
-    private var narrow = false
-
-    init(defaults: UserDefaults, widthChanged: @escaping (Bool) -> Void) {
-        self.defaults = defaults
-        self.widthChanged = widthChanged
-        super.init(nibName: nil, bundle: nil)
-    }
-
-    @available(*, unavailable) required init?(coder: NSCoder) { fatalError("init(coder:) is not used") }
-
-    override func viewDidLayout() {
-        super.viewDidLayout()
-        let width = view.bounds.width
-        guard width > 0 else { return }
-        if (width < CallsSplit.narrowBelow) != narrow { switchWidth(narrow: width < CallsSplit.narrowBelow) }
-        guard !placed, !narrow else { return }
-        placed = true
-        let saved = defaults.object(forKey: CallsSplit.widthKey) as? Double
-        splitView.setPosition(saved.map { CGFloat($0) } ?? CallsSplit.listWidth, ofDividerAt: 0)
-    }
-
-    /// A narrow window hides the detail and lets the list fill it; a wide one shows the detail again.
-    private func switchWidth(narrow: Bool) {
-        self.narrow = narrow
-        let list = splitViewItems[0], detail = splitViewItems[1]
-        list.maximumThickness = narrow ? NSSplitViewItem.unspecifiedDimension : CallsSplit.listRange.upperBound
-        detail.isCollapsed = narrow
-        if !narrow {
-            let saved = defaults.object(forKey: CallsSplit.widthKey) as? Double
-            splitView.setPosition(saved.map { CGFloat($0) } ?? CallsSplit.listWidth, ofDividerAt: 0)
-        }
-        widthChanged(narrow)
-    }
-
-    override func splitViewDidResizeSubviews(_ notification: Notification) {
-        super.splitViewDidResizeSubviews(notification)
-        guard placed, !narrow, let list = splitView.arrangedSubviews.first else { return }
-        defaults.set(Double(list.frame.width), forKey: CallsSplit.widthKey)
-    }
-}
-
-enum CallsSplit {
-    static let listWidth: CGFloat = 340
-    static let listRange: ClosedRange<CGFloat> = 280...420
-    static let widthKey = "CallsSplit.listWidth"
-    /// The window width below which the call beside the list hides.
-    static let narrowBelow: CGFloat = 700
-}
-
-@MainActor
-private func hosting(_ view: NSView) -> NSViewController {
-    let controller = NSViewController()
-    controller.view = view
-    return controller
-}
 
 /// The detail as the summary view draws it; nil when no call is selected.
 func detailState(_ detail: CallsDetail?, text: SummaryPreviewText) -> SummaryPreviewState? {
@@ -147,15 +57,6 @@ func onClose(of window: AnyObject, center: NotificationCenter, _ closed: @escapi
     }
 }
 
-/// The detail's notes, rendered from Markdown in the view's style.
-func renderNotes(_ source: String, _ style: NotesStyle) -> NSAttributedString {
-    NotesMarkdown.render(source, style: .init(body: style.body, headings: style.headings, code: style.code, text: style.text,
-                                              secondary: style.secondary, tertiary: style.tertiary, codeBackground: style.codeBackground, rule: style.rule,
-                                              layout: .init(lineHeight: style.lineHeight, paragraphSpacing: style.paragraphSpacing,
-                                                            headingSpacing: style.headingSpacing, labelLevels: style.labelLevels,
-                                                            labelKern: style.labelKern)))
-}
-
 /// Puts the notes' Markdown on the pasteboard as plain text.
 func copyNotes(_ markdown: String, to pasteboard: NSPasteboard) {
     pasteboard.clearContents()
@@ -203,17 +104,6 @@ func onBothClosed(_ first: AnyObject, _ second: AnyObject, isVisible: @escaping 
 
 /// Holds the call's window, made once the calls list exists, for the list's Return and Space.
 @MainActor final class CallWindowSlot { var window: NSWindow? }
-
-/// Split sections keep independent titlebar surfaces and the system's scrolling pocket.
-@MainActor
-func installCallsToolbar(_ toolbar: NSToolbar, in window: NSWindow) {
-    window.styleMask.insert(.fullSizeContentView)
-    window.titlebarAppearsTransparent = true
-    window.titlebarSeparatorStyle = .automatic
-    window.titleVisibility = .hidden
-    window.toolbarStyle = .unified
-    window.toolbar = toolbar
-}
 
 /// Crosses the hosting boundary explicitly; a native field editor owns Tab while searching.
 @MainActor
