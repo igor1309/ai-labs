@@ -27,6 +27,8 @@ public final class CallsToolbar: NSObject, NSToolbarDelegate, NSToolbarItemValid
     public static let deleteItem = NSToolbarItem.Identifier("calls.delete")
     public static let copyItem = NSToolbarItem.Identifier("calls.copy")
     public static let separatorItem = NSToolbarItem.Identifier("calls.divider")
+    /// Copy's symbol, and the one it shows for a moment after it copies.
+    public static let copySymbol = "doc.on.doc", copiedSymbol = "checkmark"
 
     public let toolbar: NSToolbar
     private let title: NSToolbarItem?
@@ -35,14 +37,18 @@ public final class CallsToolbar: NSObject, NSToolbarDelegate, NSToolbarItemValid
     private let copy = NSToolbarItem(itemIdentifier: copyItem)
     private let separator: NSTrackingSeparatorToolbarItem?
     private let act: (SummaryPreviewEvent) -> Void
+    private let settle: @MainActor () async -> Void
+    private var copiedMark: Task<Void, Never>?
     private var enabled = CallActions(call: false, copy: false)
     private static let grouped: [(event: SummaryPreviewEvent, symbol: String, id: String)] = [
         (.open, "folder", "calls.open"), (.rename, "pencil", "calls.rename"),
     ]
 
     public init(identifier: String, splitView: NSSplitView? = nil, title: String? = nil, text: SummaryPreviewText,
-         act: @escaping (SummaryPreviewEvent) -> Void) {
+         act: @escaping (SummaryPreviewEvent) -> Void,
+         settle: @escaping @MainActor () async -> Void = { try? await Task.sleep(for: .seconds(1.5)) }) {
         self.act = act
+        self.settle = settle
         toolbar = NSToolbar(identifier: identifier)
         self.title = title.map { title in
             let item = NSToolbarItem(itemIdentifier: Self.titleItem)
@@ -71,7 +77,7 @@ public final class CallsToolbar: NSObject, NSToolbarDelegate, NSToolbarItemValid
         delete.isBordered = true
         delete.target = self
         delete.action = #selector(deleted)
-        copy.image = NSImage(systemSymbolName: "doc.on.doc", accessibilityDescription: nil)
+        copy.image = NSImage(systemSymbolName: Self.copySymbol, accessibilityDescription: nil)
         copy.isBordered = true
         copy.target = self
         copy.action = #selector(copied)
@@ -112,7 +118,22 @@ public final class CallsToolbar: NSObject, NSToolbarDelegate, NSToolbarItemValid
 
     @objc private func acted(_ item: NSToolbarItem) { act(Self.grouped[item.tag].event) }
     @objc private func deleted() { act(.delete) }
-    @objc private func copied() { act(.copy) }
+    @objc private func copied() {
+        act(.copy)
+        mark(copy, Self.copiedSymbol)
+        copiedMark?.cancel()
+        copiedMark = Task { [weak self] in
+            guard let self else { return }
+            await settle()
+            guard !Task.isCancelled else { return }
+            mark(copy, Self.copySymbol)
+        }
+    }
+
+    private func mark(_ item: NSToolbarItem, _ symbol: String) {
+        let name = item.image?.accessibilityDescription
+        item.image = NSImage(systemSymbolName: symbol, accessibilityDescription: name)
+    }
 
     private var identifiers: [NSToolbarItem.Identifier] {
         (title == nil ? [] : [Self.titleItem, .flexibleSpace]) + [Self.actionsItem, Self.deleteItem] + (separator == nil ? [] : [Self.separatorItem]) + [.flexibleSpace, Self.copyItem]
