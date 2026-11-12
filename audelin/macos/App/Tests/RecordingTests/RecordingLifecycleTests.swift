@@ -24,7 +24,7 @@ struct RecordingLifecycleTests {
         assert(makeFailedAfter(1), .conditionChanged(.microphoneAccess, available: false)) { $0.missing = [.microphoneAccess] }
     }
 
-    @Test func automaticOffAfterAFailureKeepsIt() { assert(makeFailedAfter(1), .automaticChanged(false)) { $0.automatic = false } }
+    @Test func automaticOffAfterAFailureKeepsIt() { assert(makeState(makeFailedAfter(1)) { $0.automatic = true }, .automaticChanged(false)) { $0.automatic = false } }
 
     @Test func micReturningAfterAFailureKeepsIt() {
         assert(makeState(makeFailedAfter(1)) { $0.missing = [.microphoneAccess] }, .conditionChanged(.microphoneAccess, available: true)) { $0.missing = [] }
@@ -68,6 +68,18 @@ struct RecordingLifecycleTests {
     @Test(arguments: [RecordingCondition.callsFolder, .room])
     func storageLostWhileBeginningEndsTheSession(_ condition: RecordingCondition) {
         assert(makeBeginning(), .conditionChanged(condition, available: false)) { $0.phase = .ending; $0.missing = [condition] }
+    }
+
+    @Test func aFailedCallSessionEndingWhileTheCallStaysOnGoesIdle() {
+        assert(makeState(makeCall()) { $0.phase = .ending; $0.cannotRecord = "no recording possible" }, .sessionReported(id: 1, .ended)) {
+            $0.phase = .idle; $0.session = nil; $0.sessionBeganDuringCall = false
+        }
+    }
+
+    @Test func aDeferredCallWithoutCallAudioEndingGoesIdle() {
+        assert(makeState(makeDeferredCall()) { $0.missing = [.callAudioAccess] }, .sessionReported(id: 2, .ended)) {
+            $0.phase = .idle; $0.session = nil; $0.sessionBeganDuringCall = false
+        }
     }
 
     @Test func aFailedCallIsNotBegunAgain() {
