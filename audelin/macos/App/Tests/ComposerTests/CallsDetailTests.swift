@@ -102,6 +102,18 @@ struct CallsDetailTests {
         #expect(sut.copies == ["# A notes"])
     }
 
+    @Test func closingTheWindowStopsTheNotesScanBeforeTheNextCall() async {
+        let sut = Fixture(notes: [a: "# A", b: "# B"])
+        sut.duringRead = { [unowned sut] id in if id == a && sut.reads.count == 1 { sut.calls.windowClosed() } }
+
+        sut.calls.show()
+        await sut.waitReads(1)
+        sut.calls.show()
+        await sut.waitReads(3)
+
+        #expect(sut.reads == [a, a, b])
+    }
+
     @Test func theDetailsActionsAreTheListsActionsOnTheShownCall() async throws {
         let sut = Fixture()
         sut.summaries.badges = [b: .failed]
@@ -141,6 +153,9 @@ private struct Unreadable: LocalizedError { var errorDescription: String? { "Ð½Ð
     var opened: [URL] = []
     var retried: [String] = []
     var sent: [RecordingsEvent] = []
+    var reads: [String] = []
+    var duringRead: (String) -> Void = { _ in }
+    private var readWaiters: [(count: Int, resume: () -> Void)] = []
     var calls: AudelinCalls!
 
     init(notes: [String: String] = [:], unreadable: Set<String> = [], notesEnabled: Bool = true) {
@@ -155,12 +170,22 @@ private struct Unreadable: LocalizedError { var errorDescription: String? { "Ð½Ð
             location: { [unowned self] in folder($0) }, openFolder: { [unowned self] in opened.append($0); return true },
             present: {}, summaryStatuses: { [summaries] in summaries.statuses }, summaryBadges: { [summaries] in summaries.badges },
             notes: { [unowned self] id in
+                reads.append(id)
+                duringRead(id)
+                let ready = readWaiters.filter { $0.count <= reads.count }
+                readWaiters.removeAll { $0.count <= reads.count }
+                ready.forEach { $0.resume() }
                 if unreadable.contains(id) { throw Unreadable() }
                 return self.notes[id]
             },
             copy: { [unowned self] in copies.append($0) }, notesEnabled: { notesEnabled },
             retryableSummaries: { [summaries] in summaries.retryable },
             retrySummary: { [unowned self] in retried.append($0) })
+    }
+
+    func waitReads(_ count: Int) async {
+        if reads.count >= count { return }
+        await withCheckedContinuation { continuation in readWaiters.append((count, { continuation.resume() })) }
     }
 
     func folder(_ id: String) -> URL { URL(fileURLWithPath: "/calls/\(id)") }

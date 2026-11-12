@@ -228,6 +228,8 @@ public final class AudelinCalls {
             for await (ids, _) in Observations({ (self.inputs.state().calls.map(\.id), self.summaryStatuses()) }) {
                 var found = Set<String>(), gists: [String: String] = [:]
                 for id in ids {
+                    // A closed window stops the scan between reads.
+                    guard !Task.isCancelled else { return }
                     do {
                         guard let text = try await notes(id) else { continue }
                         found.insert(id)
