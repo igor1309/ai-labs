@@ -5,7 +5,7 @@ Observer: the composition root requesting and observing notes.
 ## Decided
 
 - A pure reducer and effect handler own job decisions through consumer-owned ports; root composition alone connects concrete components (architecture rules 1–4).
-- Root fallback decorates each step: one primary adapter invocation and at most one fallback invocation, after transport and domain validation; cancellation never falls back. Unavoidable provider internal billing is not an invocation guarantee.
+- Root fallback decorates each step: one primary adapter invocation and at most one fallback invocation, after transport and domain validation; cancellation never falls back. A cancel by the user removes the job's record; an app exit leaves it running, to reload as interrupted. Unavoidable provider internal billing is not an invocation guarantee.
 - Eligibility requires the latest final snapshot successfully written, subsequent closure, usable recognition and actual spoken entries; placeholder Markdown is not speech. Earlier recovered writes do not disqualify a successful final write.
 - Only exclusive dispatch ownership can request generation; concurrent completion and startup recovery share arbitration. Existing records are observed, not dispatched twice.
 - Failed claim, running or speaker-checkpoint persistence prevents further requests. Corrupt records fail visibly, never become absent records.
@@ -80,8 +80,8 @@ Feature: Produce notes independently of recording
 
   Scenario: S-14 Cancel cleanly
     Given a runtime request is active
-    When the job is cancelled
-    Then I can await its end with no fallback request
+    When the user cancels the job
+    Then I can await its end with no fallback request and no record left
 
   Scenario: S-15 Reject failed final text
     Given the latest final write failed

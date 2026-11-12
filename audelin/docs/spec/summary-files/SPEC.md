@@ -119,4 +119,9 @@ Feature: Keep notes and job records durably
     When I read its notes
     Then I get them with when they were made
 
+  Scenario: S-21 Discard a cancelled job
+    Given I own a running job
+    When I discard it
+    Then the call has no job record and its transcript and complete notes stay
+
 ```

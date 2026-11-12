@@ -76,3 +76,7 @@ Automated boundary: `cd audelin/macos && swift test --filter SummaryFilesTests/c
 ## S-20 Notes read with when they were made
 
 `cd audelin/macos && swift test --filter SummaryFilesTests/publishedNotesReadWithWhenTheyWereMade` publishes notes, sets the notes file's modification time to a known date, and reads back the notes with that date.
+
+## S-21 Discard a cancelled job
+
+`cd audelin/macos && swift test --filter SummaryFilesTests/anOwnerDiscardsItsRunningJob` claims and starts a job over published notes, discards it, and reads back no record, the same notes and the transcript bytes, and another instance then starts the same job; a discard by another instance while the owner runs fails and leaves the record running.

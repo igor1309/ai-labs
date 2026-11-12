@@ -59,7 +59,7 @@ struct SummaryProtectionTests {
     }
 
     private func handler(store: ProtectionStore) -> EffectHandler {
-        .init(store: store, generation: ProtectionGeneration(), cancelled: { false })
+        .init(store: store, generation: ProtectionGeneration(), userCancelled: { _ in false })
     }
 }
 
@@ -74,6 +74,7 @@ private struct ProtectionStore: Store {
     func checkpoint(_ job: Job, identities: [Identity], warning: Bool) async throws {}
     func publish(_ job: Job, notes: String, warning: Bool) async throws {}
     func save(_ job: Job, phase: State.Phase, warning: Bool) async throws { saving.send(); await finish.next() }
+    func discard(_ job: Job) async {}
     func release(_ job: Job) async {}
 }
 

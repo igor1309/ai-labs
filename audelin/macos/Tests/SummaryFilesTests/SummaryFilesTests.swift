@@ -37,6 +37,30 @@ import Testing
             #expect(try await files.notes(call: "call") == Notes(text: "# Итоги\n", made: made))
         }
     }
+    @Test func anOwnerDiscardsItsRunningJob() async throws {
+        try await withFolder { folder, locations in
+            let leases = folder.deletingLastPathComponent().appendingPathComponent("leases")
+            let files = Files(locations: locations, disk: FileDisk(), ownershipDirectory: leases)
+            let transcript = Data("# Звонок\n".utf8)
+            try transcript.write(to: folder.appendingPathComponent("transcript.md"))
+            _ = try await files.claim(record(job: "old"))
+            #expect(try await files.start(record(job: "old")))
+            try await files.publish(record(job: "old"), notes: "# Итоги\n")
+            try FileManager.default.removeItem(at: folder.appendingPathComponent(".summary-job.json"))
+            _ = try await files.claim(record())
+            let other = Files(locations: locations, disk: FileDisk(), ownershipDirectory: leases)
+            #expect(try await files.start(record()))
+            var running = record(); running.phase = "running"
+            await #expect(throws: (any Error).self) { try await other.discard(record()) }
+            #expect(try await files.load(call: "call") == running)
+            try await files.discard(record())
+            #expect(try await files.load(call: "call") == nil)
+            #expect(try await files.notes(call: "call")?.text == "# Итоги\n")
+            #expect(try Data(contentsOf: folder.appendingPathComponent("transcript.md")) == transcript)
+            _ = try await other.claim(record())
+            #expect(try await other.start(record()))
+        }
+    }
     @Test(arguments: ["deleted folder", "folder named summary.md", "invalid UTF-8", "failing read"])
     func unreadableNotesThrowRatherThanReadAsNone(_ fault: String) async throws {
         try await withFolder { folder, locations in
@@ -408,6 +432,7 @@ private final class FailingDisk: Disk, Sendable {
         if readFailure.withLock({ $0 == url.lastPathComponent }) { throw CocoaError(.fileReadUnknown) }
         return try disk.readStamped(url)
     }
+    func remove(_ url: URL) throws { try check(url); try disk.remove(url) }
 }
 private func withFolder(_ body: (URL, Location) async throws -> Void) async throws {
     let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
@@ -431,6 +456,7 @@ private final class StaleFirstReadDisk: Disk, Sendable {
     func create(_ data: Data, at url: URL) throws -> Bool { try base.create(data, at: url) }
     func replace(_ data: Data, at url: URL) throws { try base.replace(data, at: url) }
     func readStamped(_ url: URL) throws -> (data: Data, modified: Date) { try base.readStamped(url) }
+    func remove(_ url: URL) throws { try base.remove(url) }
 }
 
 private func retryResult(_ files: Files, _ record: Record, job: String) async -> Record? {

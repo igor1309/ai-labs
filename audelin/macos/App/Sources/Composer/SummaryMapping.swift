@@ -145,4 +145,5 @@ struct SummaryJobStore: SummaryJobs.Store {
     func save(_ job: Job, phase: SummaryJobs.State.Phase, warning: Bool) async throws {
         try await files.progress(record(job, phase: phase.rawValue, warning: warning))
     }
+    func discard(_ job: Job) async throws { try await files.discard(record(job)) }
 }

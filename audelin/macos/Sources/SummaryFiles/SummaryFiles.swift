@@ -32,6 +32,7 @@ public protocol Disk: Sendable {
     func replace(_ data: Data, at url: URL) throws
     /// A file's bytes and its modification time, both from the one file opened.
     func readStamped(_ url: URL) throws -> (data: Data, modified: Date)
+    func remove(_ url: URL) throws
 }
 public struct FileDisk: Disk {
     public init() {}
@@ -55,6 +56,7 @@ public struct FileDisk: Disk {
         throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
     }
     public func replace(_ data: Data, at url: URL) throws { try data.write(to: url, options: .atomic) }
+    public func remove(_ url: URL) throws { try FileManager.default.removeItem(at: url) }
     public func readStamped(_ url: URL) throws -> (data: Data, modified: Date) {
         let handle = try FileHandle(forReadingFrom: url)
         defer { try? handle.close() }
@@ -80,6 +82,8 @@ public struct Files: Sendable {
     public func start(_ record: Record) async throws -> Bool { try await storage.start(record) }
     public func progress(_ record: Record) async throws { try await storage.progress(record) }
     public func publish(_ record: Record, notes: String) async throws { try await storage.publish(record, notes: notes) }
+    /// Removes the running job this instance owns and releases its lease; output and transcript stay.
+    public func discard(_ record: Record) async throws { try await storage.discard(record) }
     /// The call's published notes as saved, with when they were made, or nil when it has none.
     public func notes(call: String) async throws -> Notes? { try await storage.notes(call: call) }
 }
@@ -92,6 +96,7 @@ private protocol FilesStorage: Sendable {
     func progress(_ record: Record) async throws
     func publish(_ record: Record, notes: String) async throws
     func notes(call: String) async throws -> Notes?
+    func discard(_ record: Record) async throws
 }
 
 private actor DiskFiles: FilesStorage {
@@ -219,6 +224,16 @@ private actor DiskFiles: FilesStorage {
             let data = Data(("<!-- audelin-summary:" + marker + " -->\n" + notes).utf8)
             try disk.replace(data, at: folder.appendingPathComponent("summary.md"))
         }
+    }
+    public func discard(_ record: Record) async throws {
+        guard leases[.init(call: record.call, job: record.job, input: record.input)] != nil else { throw CocoaError(.fileWriteUnknown) }
+        try await locations.withFolder(call: record.call) { [disk] folder in
+            let path = folder.appendingPathComponent(".summary-job.json")
+            let current = try Self.read(path, disk: disk, call: record.call)
+            guard current.job == record.job, current.input == record.input, current.phase == "running" else { throw CocoaError(.fileWriteUnknown) }
+            try disk.remove(path)
+        }
+        release(job: record.job, call: record.call, input: record.input)
     }
     public func notes(call: String) async throws -> Notes? {
         try await locations.withFolder(call: call) { [disk] folder in
