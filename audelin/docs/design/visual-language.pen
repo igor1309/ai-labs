@@ -51612,38 +51612,34 @@
               "reusable": true,
               "width": 340,
               "fill": "$surface",
-              "stroke": "$rule",
-              "strokeWidth": {
-                "bottom": 1
-              },
-              "layout": "vertical",
-              "gap": "$space-2",
-              "padding": [
-                "$space-8",
-                "$space-16"
-              ],
               "children": [
                 {
+                  "type": "rectangle",
+                  "cornerRadius": [
+                    0,
+                    "$radius-bar",
+                    "$radius-bar",
+                    0
+                  ],
+                  "id": "lrwBar",
+                  "name": "Bar",
+                  "fill": "#00000000",
+                  "width": 4,
+                  "height": "fill_container"
+                },
+                {
                   "type": "frame",
-                  "id": "s025x",
-                  "name": "Top",
+                  "id": "lrwIn",
+                  "name": "Inner",
                   "width": "fill_container",
-                  "gap": "$space-8",
-                  "alignItems": "center",
+                  "gap": "$space-12",
+                  "padding": [
+                    "$space-8",
+                    "$space-16",
+                    "$space-8",
+                    "$space-12"
+                  ],
                   "children": [
-                    {
-                      "type": "text",
-                      "id": "s023x",
-                      "name": "Title",
-                      "fill": "$text",
-                      "textGrowth": "fixed-width-height",
-                      "width": "fill_container",
-                      "height": 16,
-                      "content": "ЦР ID",
-                      "fontFamily": "$font-ui",
-                      "fontSize": "$type-small",
-                      "fontWeight": "600"
-                    },
                     {
                       "type": "text",
                       "id": "s024x",
@@ -51652,72 +51648,106 @@
                       "content": "12:58",
                       "fontFamily": "$font-data",
                       "fontSize": "$type-small",
-                      "fontWeight": "normal"
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "s029x",
-                  "name": "Bottom",
-                  "width": "fill_container",
-                  "gap": "$space-8",
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "text",
-                      "id": "s026x",
-                      "name": "Duration",
-                      "fill": "$gutter",
+                      "fontWeight": "normal",
                       "textGrowth": "fixed-width",
-                      "width": 48,
-                      "content": "41:11",
-                      "fontFamily": "$font-data",
-                      "fontSize": "$type-small",
-                      "fontWeight": "normal"
+                      "width": 40
                     },
                     {
-                      "type": "text",
-                      "id": "s027x",
-                      "name": "Gist",
-                      "fill": "$sub",
-                      "textGrowth": "fixed-width-height",
+                      "type": "frame",
+                      "id": "lrwBo",
+                      "name": "Body",
                       "width": "fill_container",
-                      "height": 16,
-                      "content": "Идентификаторы и связка ответов",
-                      "fontFamily": "$font-ui",
-                      "fontSize": "$type-small",
-                      "fontWeight": "normal"
-                    },
-                    {
-                      "type": "icon",
-                      "id": "s028x",
-                      "x": 0,
-                      "y": 0,
-                      "name": "Failed",
-                      "enabled": false,
-                      "width": 14,
-                      "height": 14,
-                      "icon": "circle-alert",
-                      "library": "lucide",
-                      "fill": "$rec"
-                    },
-                    {
-                      "type": "icon",
-                      "id": "s057x",
-                      "x": 0,
-                      "y": 0,
-                      "name": "Pending",
-                      "enabled": false,
-                      "width": 14,
-                      "height": 14,
-                      "icon": "loader-circle",
-                      "library": "lucide",
-                      "fill": "$sub"
+                      "layout": "vertical",
+                      "gap": "$space-2",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "s025x",
+                          "name": "Top",
+                          "width": "fill_container",
+                          "gap": "$space-8",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "s023x",
+                              "name": "Title",
+                              "fill": "$text",
+                              "textGrowth": "fixed-width-height",
+                              "width": "fill_container",
+                              "height": 16,
+                              "content": "ЦР ID",
+                              "fontFamily": "$font-ui",
+                              "fontSize": "$type-small",
+                              "fontWeight": "600"
+                            },
+                            {
+                              "type": "text",
+                              "id": "s026x",
+                              "name": "Duration",
+                              "fill": "$gutter",
+                              "content": "41:11",
+                              "fontFamily": "$font-data",
+                              "fontSize": "$type-caption",
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "s029x",
+                          "name": "Bottom",
+                          "width": "fill_container",
+                          "gap": "$space-8",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "s027x",
+                              "name": "Gist",
+                              "fill": "$sub",
+                              "textGrowth": "fixed-width-height",
+                              "width": "fill_container",
+                              "height": 16,
+                              "content": "Идентификаторы и связка ответов",
+                              "fontFamily": "$font-ui",
+                              "fontSize": "$type-small",
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "icon",
+                              "id": "s028x",
+                              "x": 0,
+                              "y": 0,
+                              "name": "Failed",
+                              "enabled": false,
+                              "width": 14,
+                              "height": 14,
+                              "icon": "circle-alert",
+                              "library": "lucide",
+                              "fill": "$rec"
+                            },
+                            {
+                              "type": "icon",
+                              "id": "s057x",
+                              "x": 0,
+                              "y": 0,
+                              "name": "Pending",
+                              "enabled": false,
+                              "width": 14,
+                              "height": 14,
+                              "icon": "loader-circle",
+                              "library": "lucide",
+                              "fill": "$sub"
+                            }
+                          ]
+                        }
+                      ]
                     }
                   ]
                 }
-              ]
+              ],
+              "height": 50
             },
             {
               "type": "frame",
@@ -51726,79 +51756,34 @@
               "reusable": true,
               "width": 340,
               "fill": "$surface",
-              "stroke": "$rule",
-              "strokeWidth": {
-                "bottom": 1
-              },
-              "layout": "vertical",
-              "gap": "$space-2",
-              "padding": [
-                "$space-8",
-                "$space-16"
-              ],
               "children": [
                 {
+                  "type": "rectangle",
+                  "cornerRadius": [
+                    0,
+                    "$radius-bar",
+                    "$radius-bar",
+                    0
+                  ],
+                  "id": "lmrBar",
+                  "name": "Bar",
+                  "fill": "#00000000",
+                  "width": 4,
+                  "height": "fill_container"
+                },
+                {
                   "type": "frame",
-                  "id": "s064x",
-                  "name": "Top",
+                  "id": "lmrIn",
+                  "name": "Inner",
                   "width": "fill_container",
-                  "gap": "$space-8",
-                  "alignItems": "center",
+                  "gap": "$space-12",
+                  "padding": [
+                    "$space-8",
+                    "$space-16",
+                    "$space-8",
+                    "$space-12"
+                  ],
                   "children": [
-                    {
-                      "type": "frame",
-                      "id": "s062x",
-                      "name": "Title",
-                      "clip": true,
-                      "width": "fill_container",
-                      "height": 16,
-                      "alignItems": "center",
-                      "children": [
-                        {
-                          "type": "text",
-                          "id": "s058x",
-                          "name": "T1",
-                          "fill": "$text",
-                          "content": "Синк по ",
-                          "fontFamily": "$font-ui",
-                          "fontSize": "$type-small",
-                          "fontWeight": "600"
-                        },
-                        {
-                          "type": "frame",
-                          "id": "s060x",
-                          "name": "Hit",
-                          "fill": "$hit",
-                          "cornerRadius": "$radius-bar",
-                          "padding": [
-                            0,
-                            "$space-2"
-                          ],
-                          "children": [
-                            {
-                              "type": "text",
-                              "id": "s059x",
-                              "name": "H",
-                              "fill": "$text",
-                              "content": "OKR",
-                              "fontFamily": "$font-ui",
-                              "fontSize": "$type-small",
-                              "fontWeight": "600"
-                            }
-                          ]
-                        },
-                        {
-                          "type": "text",
-                          "id": "s061x",
-                          "name": "T2",
-                          "fill": "$text",
-                          "content": " на квартал",
-                          "fontFamily": "$font-ui",
-                          "fontSize": "$type-small",
-                          "fontWeight": "600"
-                        }
-                      ]
-                    },
                     {
                       "type": "text",
                       "id": "s063x",
@@ -51807,97 +51792,264 @@
                       "content": "16:00",
                       "fontFamily": "$font-data",
                       "fontSize": "$type-small",
-                      "fontWeight": "normal"
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "s072x",
-                  "name": "Bottom",
-                  "width": "fill_container",
-                  "gap": "$space-8",
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "text",
-                      "id": "s065x",
-                      "name": "At",
-                      "fill": "$gutter",
+                      "fontWeight": "normal",
                       "textGrowth": "fixed-width",
-                      "width": 48,
-                      "content": "14:32",
-                      "fontFamily": "$font-data",
-                      "fontSize": "$type-small",
-                      "fontWeight": "normal"
+                      "width": 40
                     },
                     {
                       "type": "frame",
-                      "id": "s070x",
-                      "name": "Snippet",
-                      "clip": true,
+                      "id": "lmrBo",
+                      "name": "Body",
                       "width": "fill_container",
-                      "height": 16,
-                      "alignItems": "center",
+                      "layout": "vertical",
+                      "gap": "$space-2",
                       "children": [
                         {
-                          "type": "text",
-                          "id": "s066x",
-                          "name": "S1",
-                          "fill": "$sub",
-                          "content": "…итак, по ",
-                          "fontFamily": "$font-ui",
-                          "fontSize": "$type-small",
-                          "fontWeight": "normal"
+                          "type": "frame",
+                          "id": "s064x",
+                          "name": "Top",
+                          "width": "fill_container",
+                          "gap": "$space-8",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "s062x",
+                              "name": "Title",
+                              "clip": true,
+                              "width": "fill_container",
+                              "height": 16,
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "s058x",
+                                  "name": "T1",
+                                  "fill": "$text",
+                                  "content": "Синк по ",
+                                  "fontFamily": "$font-ui",
+                                  "fontSize": "$type-small",
+                                  "fontWeight": "600"
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "s060x",
+                                  "name": "Hit",
+                                  "fill": "$hit",
+                                  "cornerRadius": "$radius-bar",
+                                  "padding": [
+                                    0,
+                                    "$space-2"
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "s059x",
+                                      "name": "H",
+                                      "fill": "$text",
+                                      "content": "OKR",
+                                      "fontFamily": "$font-ui",
+                                      "fontSize": "$type-small",
+                                      "fontWeight": "600"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "s061x",
+                                  "name": "T2",
+                                  "fill": "$text",
+                                  "content": " на квартал",
+                                  "fontFamily": "$font-ui",
+                                  "fontSize": "$type-small",
+                                  "fontWeight": "600"
+                                }
+                              ]
+                            }
+                          ]
                         },
                         {
                           "type": "frame",
-                          "id": "s068x",
-                          "name": "Hit",
-                          "fill": "$hit",
-                          "cornerRadius": "$radius-bar",
-                          "padding": [
-                            0,
-                            "$space-2"
-                          ],
+                          "id": "s072x",
+                          "name": "Bottom",
+                          "width": "fill_container",
+                          "gap": "$space-8",
+                          "alignItems": "center",
                           "children": [
                             {
                               "type": "text",
-                              "id": "s067x",
-                              "name": "H",
-                              "fill": "$text",
-                              "content": "OKR",
+                              "id": "s065x",
+                              "name": "At",
+                              "fill": "$gutter",
+                              "content": "14:32",
+                              "fontFamily": "$font-data",
+                              "fontSize": "$type-small",
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "s070x",
+                              "name": "Snippet",
+                              "clip": true,
+                              "width": "fill_container",
+                              "height": 16,
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "s066x",
+                                  "name": "S1",
+                                  "fill": "$sub",
+                                  "content": "…итак, по ",
+                                  "fontFamily": "$font-ui",
+                                  "fontSize": "$type-small",
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "s068x",
+                                  "name": "Hit",
+                                  "fill": "$hit",
+                                  "cornerRadius": "$radius-bar",
+                                  "padding": [
+                                    0,
+                                    "$space-2"
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "s067x",
+                                      "name": "H",
+                                      "fill": "$text",
+                                      "content": "OKR",
+                                      "fontFamily": "$font-ui",
+                                      "fontSize": "$type-small",
+                                      "fontWeight": "normal"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "s069x",
+                                  "name": "S2",
+                                  "fill": "$sub",
+                                  "content": " второго квартала закрываем два из трёх…",
+                                  "fontFamily": "$font-ui",
+                                  "fontSize": "$type-small",
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "id": "s071x",
+                              "name": "More",
+                              "fill": "$gutter",
+                              "content": "ещё 4",
                               "fontFamily": "$font-ui",
                               "fontSize": "$type-small",
                               "fontWeight": "normal"
                             }
                           ]
-                        },
-                        {
-                          "type": "text",
-                          "id": "s069x",
-                          "name": "S2",
-                          "fill": "$sub",
-                          "content": " второго квартала закрываем два из трёх…",
-                          "fontFamily": "$font-ui",
-                          "fontSize": "$type-small",
-                          "fontWeight": "normal"
                         }
                       ]
-                    },
-                    {
-                      "type": "text",
-                      "id": "s071x",
-                      "name": "More",
-                      "fill": "$gutter",
-                      "content": "ещё 4",
-                      "fontFamily": "$font-ui",
-                      "fontSize": "$type-small",
-                      "fontWeight": "normal"
                     }
                   ]
                 }
-              ]
+              ],
+              "height": 50
+            },
+            {
+              "type": "ref",
+              "reusable": true,
+              "id": "rowSel",
+              "ref": "s030x",
+              "name": "Row/Selected",
+              "fill": "$okBg",
+              "descendants": {
+                "lrwBar": {
+                  "fill": "$me"
+                },
+                "s024x": {
+                  "fill": "$me"
+                }
+              }
+            },
+            {
+              "type": "ref",
+              "reusable": true,
+              "id": "rowIna",
+              "ref": "s030x",
+              "name": "Row/Inactive selected",
+              "fill": "$btn",
+              "descendants": {
+                "lrwBar": {
+                  "fill": "$gutter"
+                }
+              }
+            },
+            {
+              "type": "ref",
+              "reusable": true,
+              "id": "rowPre",
+              "ref": "s030x",
+              "name": "Row/Preparing",
+              "descendants": {
+                "s027x": {
+                  "fill": "$gutter",
+                  "content": "Подготовка итогов…"
+                },
+                "s057x": {
+                  "enabled": true
+                }
+              }
+            },
+            {
+              "type": "ref",
+              "reusable": true,
+              "id": "rowFai",
+              "ref": "s030x",
+              "name": "Row/Failed",
+              "descendants": {
+                "s027x": {
+                  "fill": "$rec",
+                  "content": "Не удалось подготовить итоги"
+                },
+                "s028x": {
+                  "enabled": true
+                }
+              }
+            },
+            {
+              "type": "ref",
+              "reusable": true,
+              "id": "rowUnt",
+              "ref": "s030x",
+              "name": "Row/Untitled",
+              "descendants": {
+                "s023x": {
+                  "fill": "$gutter",
+                  "fontFamily": "$font-data",
+                  "fontWeight": "normal",
+                  "content": "2026.11.09-1000"
+                }
+              }
+            },
+            {
+              "type": "ref",
+              "reusable": true,
+              "id": "mrSel",
+              "ref": "s073x",
+              "name": "Match row/Selected",
+              "fill": "$okBg",
+              "descendants": {
+                "lmrBar": {
+                  "fill": "$me"
+                },
+                "s063x": {
+                  "fill": "$me"
+                }
+              }
             },
             {
               "type": "frame",
@@ -52372,26 +52524,21 @@
                     {
                       "id": "s081x",
                       "type": "ref",
-                      "ref": "s030x",
+                      "ref": "rowSel",
                       "name": "Row ЦР ID",
                       "width": "fill_container",
-                      "fill": "$selBg",
                       "descendants": {
                         "s023x": {
-                          "content": "ЦР ID",
-                          "fill": "$selText"
+                          "content": "ЦР ID"
                         },
                         "s024x": {
-                          "content": "12:58",
-                          "fill": "$selText"
+                          "content": "12:58"
                         },
                         "s026x": {
-                          "content": "41:11",
-                          "fill": "$selText"
+                          "content": "41:11"
                         },
                         "s027x": {
-                          "content": "Идентификаторы и связка ответов",
-                          "fill": "$selText"
+                          "content": "Идентификаторы и связка ответов"
                         }
                       }
                     },
@@ -52419,7 +52566,7 @@
                     {
                       "id": "s083x",
                       "type": "ref",
-                      "ref": "s030x",
+                      "ref": "rowPre",
                       "name": "Row iOS Daily",
                       "width": "fill_container",
                       "descendants": {
@@ -52433,11 +52580,7 @@
                           "content": "15:02"
                         },
                         "s027x": {
-                          "content": "Подготовка итогов…",
-                          "fill": "$gutter"
-                        },
-                        "s057x": {
-                          "enabled": true
+                          "content": "Подготовка итогов…"
                         }
                       }
                     },
@@ -52480,7 +52623,7 @@
                     {
                       "id": "s086x",
                       "type": "ref",
-                      "ref": "s030x",
+                      "ref": "rowFai",
                       "name": "Row iOS & Android daily",
                       "width": "fill_container",
                       "descendants": {
@@ -52494,11 +52637,7 @@
                           "content": "14:51"
                         },
                         "s027x": {
-                          "content": "Не удалось подготовить итоги",
-                          "fill": "$rec"
-                        },
-                        "s028x": {
-                          "enabled": true
+                          "content": "Не удалось подготовить итоги"
                         }
                       }
                     },
@@ -52541,15 +52680,12 @@
                     {
                       "id": "s089x",
                       "type": "ref",
-                      "ref": "s030x",
+                      "ref": "rowUnt",
                       "name": "Row 2026.11.09-1000",
                       "width": "fill_container",
                       "descendants": {
                         "s023x": {
-                          "content": "2026.11.09-1000",
-                          "fill": "$gutter",
-                          "fontFamily": "$font-data",
-                          "fontWeight": "normal"
+                          "content": "2026.11.09-1000"
                         },
                         "s024x": {
                           "content": "10:00"
@@ -52966,30 +53102,25 @@
                     {
                       "id": "s117x",
                       "type": "ref",
-                      "ref": "s030x",
+                      "ref": "rowSel",
                       "name": "Row iOS Daily",
                       "width": "fill_container",
-                      "fill": "$selBg",
                       "descendants": {
                         "s023x": {
-                          "content": "iOS Daily",
-                          "fill": "$selText"
+                          "content": "iOS Daily"
                         },
                         "s024x": {
-                          "content": "10:00",
-                          "fill": "$selText"
+                          "content": "10:00"
                         },
                         "s026x": {
-                          "content": "15:02",
-                          "fill": "$selText"
+                          "content": "15:02"
                         },
                         "s027x": {
                           "content": "Подготовка итогов…",
-                          "fill": "$selText"
+                          "fill": "$gutter"
                         },
                         "s057x": {
-                          "enabled": true,
-                          "fill": "$selText"
+                          "enabled": true
                         }
                       }
                     },
@@ -53032,7 +53163,7 @@
                     {
                       "id": "s120x",
                       "type": "ref",
-                      "ref": "s030x",
+                      "ref": "rowFai",
                       "name": "Row iOS & Android daily",
                       "width": "fill_container",
                       "descendants": {
@@ -53046,11 +53177,7 @@
                           "content": "14:51"
                         },
                         "s027x": {
-                          "content": "Не удалось подготовить итоги",
-                          "fill": "$rec"
-                        },
-                        "s028x": {
-                          "enabled": true
+                          "content": "Не удалось подготовить итоги"
                         }
                       }
                     },
@@ -53093,15 +53220,12 @@
                     {
                       "id": "s123x",
                       "type": "ref",
-                      "ref": "s030x",
+                      "ref": "rowUnt",
                       "name": "Row 2026.11.09-1000",
                       "width": "fill_container",
                       "descendants": {
                         "s023x": {
-                          "content": "2026.11.09-1000",
-                          "fill": "$gutter",
-                          "fontFamily": "$font-data",
-                          "fontWeight": "normal"
+                          "content": "2026.11.09-1000"
                         },
                         "s024x": {
                           "content": "10:00"
@@ -53423,7 +53547,7 @@
                     {
                       "id": "s143x",
                       "type": "ref",
-                      "ref": "s030x",
+                      "ref": "rowPre",
                       "name": "Row iOS Daily",
                       "width": "fill_container",
                       "descendants": {
@@ -53437,11 +53561,7 @@
                           "content": "15:02"
                         },
                         "s027x": {
-                          "content": "Подготовка итогов…",
-                          "fill": "$gutter"
-                        },
-                        "s057x": {
-                          "enabled": true
+                          "content": "Подготовка итогов…"
                         }
                       }
                     },
@@ -53484,30 +53604,25 @@
                     {
                       "id": "s146x",
                       "type": "ref",
-                      "ref": "s030x",
+                      "ref": "rowSel",
                       "name": "Row iOS & Android daily",
                       "width": "fill_container",
-                      "fill": "$selBg",
                       "descendants": {
                         "s023x": {
-                          "content": "iOS & Android daily",
-                          "fill": "$selText"
+                          "content": "iOS & Android daily"
                         },
                         "s024x": {
-                          "content": "09:59",
-                          "fill": "$selText"
+                          "content": "09:59"
                         },
                         "s026x": {
-                          "content": "14:51",
-                          "fill": "$selText"
+                          "content": "14:51"
                         },
                         "s027x": {
                           "content": "Не удалось подготовить итоги",
-                          "fill": "$selText"
+                          "fill": "$rec"
                         },
                         "s028x": {
-                          "enabled": true,
-                          "fill": "$selText"
+                          "enabled": true
                         }
                       }
                     },
@@ -53550,15 +53665,12 @@
                     {
                       "id": "s149x",
                       "type": "ref",
-                      "ref": "s030x",
+                      "ref": "rowUnt",
                       "name": "Row 2026.11.09-1000",
                       "width": "fill_container",
                       "descendants": {
                         "s023x": {
-                          "content": "2026.11.09-1000",
-                          "fill": "$gutter",
-                          "fontFamily": "$font-data",
-                          "fontWeight": "normal"
+                          "content": "2026.11.09-1000"
                         },
                         "s024x": {
                           "content": "10:00"
@@ -53880,7 +53992,7 @@
                     {
                       "id": "s169x",
                       "type": "ref",
-                      "ref": "s030x",
+                      "ref": "rowPre",
                       "name": "Row iOS Daily",
                       "width": "fill_container",
                       "descendants": {
@@ -53894,11 +54006,7 @@
                           "content": "15:02"
                         },
                         "s027x": {
-                          "content": "Подготовка итогов…",
-                          "fill": "$gutter"
-                        },
-                        "s057x": {
-                          "enabled": true
+                          "content": "Подготовка итогов…"
                         }
                       }
                     },
@@ -53941,7 +54049,7 @@
                     {
                       "id": "s172x",
                       "type": "ref",
-                      "ref": "s030x",
+                      "ref": "rowFai",
                       "name": "Row iOS & Android daily",
                       "width": "fill_container",
                       "descendants": {
@@ -53955,11 +54063,7 @@
                           "content": "14:51"
                         },
                         "s027x": {
-                          "content": "Не удалось подготовить итоги",
-                          "fill": "$rec"
-                        },
-                        "s028x": {
-                          "enabled": true
+                          "content": "Не удалось подготовить итоги"
                         }
                       }
                     },
@@ -54002,28 +54106,24 @@
                     {
                       "id": "s175x",
                       "type": "ref",
-                      "ref": "s030x",
+                      "ref": "rowSel",
                       "name": "Row 2026.11.09-1000",
                       "width": "fill_container",
-                      "fill": "$selBg",
                       "descendants": {
                         "s023x": {
                           "content": "2026.11.09-1000",
-                          "fill": "$selText",
                           "fontFamily": "$font-data",
-                          "fontWeight": "normal"
+                          "fontWeight": "normal",
+                          "fill": "$gutter"
                         },
                         "s024x": {
-                          "content": "10:00",
-                          "fill": "$selText"
+                          "content": "10:00"
                         },
                         "s026x": {
-                          "content": "16:10",
-                          "fill": "$selText"
+                          "content": "16:10"
                         },
                         "s027x": {
-                          "content": "",
-                          "fill": "$selText"
+                          "content": ""
                         }
                       }
                     },
@@ -54294,10 +54394,9 @@
                     {
                       "id": "s193x",
                       "type": "ref",
-                      "ref": "s030x",
+                      "ref": "rowIna",
                       "name": "Row ЦР ID",
                       "width": "fill_container",
-                      "fill": "$btn",
                       "descendants": {
                         "s023x": {
                           "content": "ЦР ID"
@@ -54337,7 +54436,7 @@
                     {
                       "id": "s195x",
                       "type": "ref",
-                      "ref": "s030x",
+                      "ref": "rowPre",
                       "name": "Row iOS Daily",
                       "width": "fill_container",
                       "descendants": {
@@ -54351,11 +54450,7 @@
                           "content": "15:02"
                         },
                         "s027x": {
-                          "content": "Подготовка итогов…",
-                          "fill": "$gutter"
-                        },
-                        "s057x": {
-                          "enabled": true
+                          "content": "Подготовка итогов…"
                         }
                       }
                     },
@@ -54398,7 +54493,7 @@
                     {
                       "id": "s198x",
                       "type": "ref",
-                      "ref": "s030x",
+                      "ref": "rowFai",
                       "name": "Row iOS & Android daily",
                       "width": "fill_container",
                       "descendants": {
@@ -54412,11 +54507,7 @@
                           "content": "14:51"
                         },
                         "s027x": {
-                          "content": "Не удалось подготовить итоги",
-                          "fill": "$rec"
-                        },
-                        "s028x": {
-                          "enabled": true
+                          "content": "Не удалось подготовить итоги"
                         }
                       }
                     },
@@ -54459,15 +54550,12 @@
                     {
                       "id": "s201x",
                       "type": "ref",
-                      "ref": "s030x",
+                      "ref": "rowUnt",
                       "name": "Row 2026.11.09-1000",
                       "width": "fill_container",
                       "descendants": {
                         "s023x": {
-                          "content": "2026.11.09-1000",
-                          "fill": "$gutter",
-                          "fontFamily": "$font-data",
-                          "fontWeight": "normal"
+                          "content": "2026.11.09-1000"
                         },
                         "s024x": {
                           "content": "10:00"
@@ -54895,7 +54983,7 @@
                     {
                       "id": "s229x",
                       "type": "ref",
-                      "ref": "s030x",
+                      "ref": "rowPre",
                       "name": "Row iOS Daily",
                       "width": "fill_container",
                       "descendants": {
@@ -54909,11 +54997,7 @@
                           "content": "15:02"
                         },
                         "s027x": {
-                          "content": "Подготовка итогов…",
-                          "fill": "$gutter"
-                        },
-                        "s057x": {
-                          "enabled": true
+                          "content": "Подготовка итогов…"
                         }
                       }
                     },
@@ -54956,7 +55040,7 @@
                     {
                       "id": "s232x",
                       "type": "ref",
-                      "ref": "s030x",
+                      "ref": "rowFai",
                       "name": "Row iOS & Android daily",
                       "width": "fill_container",
                       "descendants": {
@@ -54970,11 +55054,7 @@
                           "content": "14:51"
                         },
                         "s027x": {
-                          "content": "Не удалось подготовить итоги",
-                          "fill": "$rec"
-                        },
-                        "s028x": {
-                          "enabled": true
+                          "content": "Не удалось подготовить итоги"
                         }
                       }
                     },
@@ -55017,15 +55097,12 @@
                     {
                       "id": "s235x",
                       "type": "ref",
-                      "ref": "s030x",
+                      "ref": "rowUnt",
                       "name": "Row 2026.11.09-1000",
                       "width": "fill_container",
                       "descendants": {
                         "s023x": {
-                          "content": "2026.11.09-1000",
-                          "fill": "$gutter",
-                          "fontFamily": "$font-data",
-                          "fontWeight": "normal"
+                          "content": "2026.11.09-1000"
                         },
                         "s024x": {
                           "content": "10:00"
@@ -55289,14 +55366,12 @@
                     {
                       "id": "s252x",
                       "type": "ref",
-                      "ref": "s073x",
+                      "ref": "mrSel",
                       "name": "Match ЦР ID",
                       "width": "fill_container",
-                      "fill": "$selBg",
                       "descendants": {
                         "s058x": {
-                          "content": "ЦР ID",
-                          "fill": "$selText"
+                          "content": "ЦР ID"
                         },
                         "s060x": {
                           "enabled": false
@@ -55305,32 +55380,26 @@
                           "content": ""
                         },
                         "s061x": {
-                          "content": "",
-                          "fill": "$selText"
+                          "content": ""
                         },
                         "s063x": {
-                          "content": "12:58",
-                          "fill": "$selText"
+                          "content": "12:58"
                         },
                         "s065x": {
-                          "content": "07:38",
-                          "fill": "$selText"
+                          "content": "07:38"
                         },
                         "s066x": {
-                          "content": "…по ",
-                          "fill": "$selText"
+                          "content": "…по "
                         },
                         "s067x": {
                           "content": "correlation"
                         },
                         "s069x": {
-                          "content": " ID в XML…",
-                          "fill": "$selText"
+                          "content": " ID в XML…"
                         },
                         "s071x": {
                           "content": "ещё 3",
-                          "enabled": true,
-                          "fill": "$selText"
+                          "enabled": true
                         }
                       }
                     },
@@ -55713,14 +55782,12 @@
                     {
                       "id": "s277x",
                       "type": "ref",
-                      "ref": "s073x",
+                      "ref": "mrSel",
                       "name": "Match ЦР ID",
                       "width": "fill_container",
-                      "fill": "$selBg",
                       "descendants": {
                         "s058x": {
-                          "content": "ЦР ID",
-                          "fill": "$selText"
+                          "content": "ЦР ID"
                         },
                         "s060x": {
                           "enabled": false
@@ -55729,32 +55796,26 @@
                           "content": ""
                         },
                         "s061x": {
-                          "content": "",
-                          "fill": "$selText"
+                          "content": ""
                         },
                         "s063x": {
-                          "content": "12:58",
-                          "fill": "$selText"
+                          "content": "12:58"
                         },
                         "s065x": {
-                          "content": "07:38",
-                          "fill": "$selText"
+                          "content": "07:38"
                         },
                         "s066x": {
-                          "content": "…по ",
-                          "fill": "$selText"
+                          "content": "…по "
                         },
                         "s067x": {
                           "content": "correlation"
                         },
                         "s069x": {
-                          "content": " ID в XML…",
-                          "fill": "$selText"
+                          "content": " ID в XML…"
                         },
                         "s071x": {
                           "content": "ещё 3",
-                          "enabled": true,
-                          "fill": "$selText"
+                          "enabled": true
                         }
                       }
                     },
@@ -56672,12 +56733,10 @@
                           }
                         },
                         "s024x": {
-                          "content": "12:58",
-                          "fill": "$sub"
+                          "content": "12:58"
                         },
                         "s026x": {
-                          "content": "41:11",
-                          "fill": "$sub"
+                          "content": "41:11"
                         },
                         "s027x": {
                           "content": "Идентификаторы и связка ответов",
@@ -56709,7 +56768,7 @@
                     {
                       "id": "s352x",
                       "type": "ref",
-                      "ref": "s030x",
+                      "ref": "rowPre",
                       "name": "Row iOS Daily",
                       "width": "fill_container",
                       "descendants": {
@@ -56723,11 +56782,7 @@
                           "content": "15:02"
                         },
                         "s027x": {
-                          "content": "Подготовка итогов…",
-                          "fill": "$gutter"
-                        },
-                        "s057x": {
-                          "enabled": true
+                          "content": "Подготовка итогов…"
                         }
                       }
                     },
@@ -56770,7 +56825,7 @@
                     {
                       "id": "s355x",
                       "type": "ref",
-                      "ref": "s030x",
+                      "ref": "rowFai",
                       "name": "Row iOS & Android daily",
                       "width": "fill_container",
                       "descendants": {
@@ -56784,11 +56839,7 @@
                           "content": "14:51"
                         },
                         "s027x": {
-                          "content": "Не удалось подготовить итоги",
-                          "fill": "$rec"
-                        },
-                        "s028x": {
-                          "enabled": true
+                          "content": "Не удалось подготовить итоги"
                         }
                       }
                     },
@@ -56831,15 +56882,12 @@
                     {
                       "id": "s358x",
                       "type": "ref",
-                      "ref": "s030x",
+                      "ref": "rowUnt",
                       "name": "Row 2026.11.09-1000",
                       "width": "fill_container",
                       "descendants": {
                         "s023x": {
-                          "content": "2026.11.09-1000",
-                          "fill": "$gutter",
-                          "fontFamily": "$font-data",
-                          "fontWeight": "normal"
+                          "content": "2026.11.09-1000"
                         },
                         "s024x": {
                           "content": "10:00"
@@ -57214,26 +57262,21 @@
                     {
                       "id": "s385x",
                       "type": "ref",
-                      "ref": "s030x",
+                      "ref": "rowSel",
                       "name": "Row ЦР ID",
                       "width": "fill_container",
-                      "fill": "$selBg",
                       "descendants": {
                         "s023x": {
-                          "content": "ЦР ID",
-                          "fill": "$selText"
+                          "content": "ЦР ID"
                         },
                         "s024x": {
-                          "content": "12:58",
-                          "fill": "$selText"
+                          "content": "12:58"
                         },
                         "s026x": {
-                          "content": "41:11",
-                          "fill": "$selText"
+                          "content": "41:11"
                         },
                         "s027x": {
-                          "content": "Идентификаторы и связка ответов",
-                          "fill": "$selText"
+                          "content": "Идентификаторы и связка ответов"
                         }
                       }
                     },
@@ -57261,7 +57304,7 @@
                     {
                       "id": "s387x",
                       "type": "ref",
-                      "ref": "s030x",
+                      "ref": "rowPre",
                       "name": "Row iOS Daily",
                       "width": "fill_container",
                       "descendants": {
@@ -57275,11 +57318,7 @@
                           "content": "15:02"
                         },
                         "s027x": {
-                          "content": "Подготовка итогов…",
-                          "fill": "$gutter"
-                        },
-                        "s057x": {
-                          "enabled": true
+                          "content": "Подготовка итогов…"
                         }
                       }
                     },
@@ -57322,7 +57361,7 @@
                     {
                       "id": "s390x",
                       "type": "ref",
-                      "ref": "s030x",
+                      "ref": "rowFai",
                       "name": "Row iOS & Android daily",
                       "width": "fill_container",
                       "descendants": {
@@ -57336,11 +57375,7 @@
                           "content": "14:51"
                         },
                         "s027x": {
-                          "content": "Не удалось подготовить итоги",
-                          "fill": "$rec"
-                        },
-                        "s028x": {
-                          "enabled": true
+                          "content": "Не удалось подготовить итоги"
                         }
                       }
                     },
@@ -57383,15 +57418,12 @@
                     {
                       "id": "s393x",
                       "type": "ref",
-                      "ref": "s030x",
+                      "ref": "rowUnt",
                       "name": "Row 2026.11.09-1000",
                       "width": "fill_container",
                       "descendants": {
                         "s023x": {
-                          "content": "2026.11.09-1000",
-                          "fill": "$gutter",
-                          "fontFamily": "$font-data",
-                          "fontWeight": "normal"
+                          "content": "2026.11.09-1000"
                         },
                         "s024x": {
                           "content": "10:00"
@@ -57781,26 +57813,21 @@
                     {
                       "id": "s421x",
                       "type": "ref",
-                      "ref": "s030x",
+                      "ref": "rowSel",
                       "name": "Row ЦР ID",
                       "width": "fill_container",
-                      "fill": "$selBg",
                       "descendants": {
                         "s023x": {
-                          "content": "ЦР ID",
-                          "fill": "$selText"
+                          "content": "ЦР ID"
                         },
                         "s024x": {
-                          "content": "12:58",
-                          "fill": "$selText"
+                          "content": "12:58"
                         },
                         "s026x": {
-                          "content": "41:11",
-                          "fill": "$selText"
+                          "content": "41:11"
                         },
                         "s027x": {
-                          "content": "Идентификаторы и связка ответов",
-                          "fill": "$selText"
+                          "content": "Идентификаторы и связка ответов"
                         }
                       }
                     },
@@ -57828,7 +57855,7 @@
                     {
                       "id": "s423x",
                       "type": "ref",
-                      "ref": "s030x",
+                      "ref": "rowPre",
                       "name": "Row iOS Daily",
                       "width": "fill_container",
                       "descendants": {
@@ -57842,11 +57869,7 @@
                           "content": "15:02"
                         },
                         "s027x": {
-                          "content": "Подготовка итогов…",
-                          "fill": "$gutter"
-                        },
-                        "s057x": {
-                          "enabled": true
+                          "content": "Подготовка итогов…"
                         }
                       }
                     },
@@ -57889,7 +57912,7 @@
                     {
                       "id": "s426x",
                       "type": "ref",
-                      "ref": "s030x",
+                      "ref": "rowFai",
                       "name": "Row iOS & Android daily",
                       "width": "fill_container",
                       "descendants": {
@@ -57903,11 +57926,7 @@
                           "content": "14:51"
                         },
                         "s027x": {
-                          "content": "Не удалось подготовить итоги",
-                          "fill": "$rec"
-                        },
-                        "s028x": {
-                          "enabled": true
+                          "content": "Не удалось подготовить итоги"
                         }
                       }
                     },
@@ -57950,15 +57969,12 @@
                     {
                       "id": "s429x",
                       "type": "ref",
-                      "ref": "s030x",
+                      "ref": "rowUnt",
                       "name": "Row 2026.11.09-1000",
                       "width": "fill_container",
                       "descendants": {
                         "s023x": {
-                          "content": "2026.11.09-1000",
-                          "fill": "$gutter",
-                          "fontFamily": "$font-data",
-                          "fontWeight": "normal"
+                          "content": "2026.11.09-1000"
                         },
                         "s024x": {
                           "content": "10:00"
@@ -58345,26 +58361,21 @@
                     {
                       "id": "s445x",
                       "type": "ref",
-                      "ref": "s030x",
+                      "ref": "rowSel",
                       "name": "Row ЦР ID",
                       "width": "fill_container",
-                      "fill": "$selBg",
                       "descendants": {
                         "s023x": {
-                          "content": "ЦР ID",
-                          "fill": "$selText"
+                          "content": "ЦР ID"
                         },
                         "s024x": {
-                          "content": "12:58",
-                          "fill": "$selText"
+                          "content": "12:58"
                         },
                         "s026x": {
-                          "content": "41:11",
-                          "fill": "$selText"
+                          "content": "41:11"
                         },
                         "s027x": {
-                          "content": "Идентификаторы и связка ответов",
-                          "fill": "$selText"
+                          "content": "Идентификаторы и связка ответов"
                         }
                       }
                     },
@@ -58392,7 +58403,7 @@
                     {
                       "id": "s447x",
                       "type": "ref",
-                      "ref": "s030x",
+                      "ref": "rowPre",
                       "name": "Row iOS Daily",
                       "width": "fill_container",
                       "descendants": {
@@ -58406,11 +58417,7 @@
                           "content": "15:02"
                         },
                         "s027x": {
-                          "content": "Подготовка итогов…",
-                          "fill": "$gutter"
-                        },
-                        "s057x": {
-                          "enabled": true
+                          "content": "Подготовка итогов…"
                         }
                       }
                     },
@@ -58453,7 +58460,7 @@
                     {
                       "id": "s450x",
                       "type": "ref",
-                      "ref": "s030x",
+                      "ref": "rowFai",
                       "name": "Row iOS & Android daily",
                       "width": "fill_container",
                       "descendants": {
@@ -58467,11 +58474,7 @@
                           "content": "14:51"
                         },
                         "s027x": {
-                          "content": "Не удалось подготовить итоги",
-                          "fill": "$rec"
-                        },
-                        "s028x": {
-                          "enabled": true
+                          "content": "Не удалось подготовить итоги"
                         }
                       }
                     },
@@ -58514,15 +58517,12 @@
                     {
                       "id": "s453x",
                       "type": "ref",
-                      "ref": "s030x",
+                      "ref": "rowUnt",
                       "name": "Row 2026.11.09-1000",
                       "width": "fill_container",
                       "descendants": {
                         "s023x": {
-                          "content": "2026.11.09-1000",
-                          "fill": "$gutter",
-                          "fontFamily": "$font-data",
-                          "fontWeight": "normal"
+                          "content": "2026.11.09-1000"
                         },
                         "s024x": {
                           "content": "10:00"
