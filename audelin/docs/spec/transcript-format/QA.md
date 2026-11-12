@@ -69,3 +69,11 @@ the other unknown, and the machine-readable block decodes to both with a
 revision that grows on each rendering. A name with Markdown characters or
 a newline cannot break the section or close the block.
 Evidence: `TranscriptFormatTests.speakersHaveStableIDsAndDecodableCurrentNames()`, `TranscriptFormatTests.rowsKeepGenericIDsAndNamesLiveInOneBlock()`, `TranscriptFormatTests.renamingRewritesOnlyTheBlockAndFinalRowsStay()` and `TranscriptFormatTests.hostileNamesCannotBreakTheFile()`.
+
+## S-11 A rendered transcript reads back
+
+A rendering of mine and theirs, filled-in, speaker-labelled and wordless
+parts, read back by the reading tests: each part with words, with its label,
+whole-second start and words as written, blank lines and CRLF included,
+starts past 99 hours too; the header, text before the first part and the
+Speakers section are skipped.

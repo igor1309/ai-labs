@@ -4,8 +4,8 @@ Observer: compose, which renders call text's text for the transcript file
 during a call and renders a replaced transcript after it
 (`../../../ARCHITECTURE.md`, Transcript pipeline and Bleed cleanup), so the
 user can read the call's transcript of user S-7 and S-17 (`../SPEC.md`).
-An adapter over a file format: the only writer of the transcript's
-Markdown. It knows no disk.
+An adapter over a file format: the only writer and the only reader of the
+transcript's Markdown. It knows no disk.
 
 ## Decided
 
@@ -30,6 +30,9 @@ Markdown. It knows no disk.
   follows is rendered again, and the rendering tells how much of it is
   final, which the transcript file may keep on disk. A replaced transcript
   after the call is a new rendering from nothing.
+- **Reading gives back each part with words as rendered:** its label, its
+  start in whole seconds and its words, every line up to the next part.
+  Text before the first part and the Speakers section are skipped.
 - **A failed rendering keeps the final text:** it is told, and the final
   text rendered before stays, so the next rendering goes on from it.
 
@@ -81,4 +84,9 @@ Feature: Rendering a call's transcript
   Scenario: S-10 Their speakers are told apart and named after the text
     When I render their parts from two speakers, with one speaker's name
     Then I can tell the speakers apart, and read each one's current name after the text
+
+  Scenario: S-11 A rendered transcript reads back
+    Given a transcript I rendered, with named speakers
+    When I read it back
+    Then I can tell each part's speaker, time and words, in order
 ```
