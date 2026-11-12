@@ -17,6 +17,7 @@ let package = Package(
         .executableTarget(
             name: "Audelin",
             dependencies: [
+                .product(name: "GlassLedger", package: "macos"),
                 .product(name: "SettingsUI", package: "macos"),
                 "Composer",
                 .product(name: "FluidAudio", package: "FluidAudio"),

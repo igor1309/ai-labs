@@ -81,23 +81,21 @@ struct AudelinApp: App {
         observeAppearance(model)
         if let calls = model.calls {
             let act = detailSender { await calls.send(detail: $0) }
-            let search = CallsToolbar(identifier: "CallsToolbar", placeholder: model.callsListText(.searchPlaceholder),
-                                      text: model.previewText,
-                                      send: { text in Task { await calls.send(.search(text)) } }, act: act)
-            callsNSWindow?.toolbar = search.toolbar
-            callsNSWindow?.toolbarStyle = .unified
-            let split = makeCallsSplit(list: NSHostingView(rootView: CallsContent(model: calls, focusSearch: { search.focus() })),
-                                       detail: NSHostingView(rootView: CallsDetailContent(model: calls, text: { model.previewText })),
+            let detail = NSHostingView(rootView: CallsDetailContent(model: calls, text: { model.previewText }))
+            let split = makeCallsSplit(list: NSHostingView(rootView: CallsContent(model: calls, focusDetail: { focusCallsDetail(in: detail) })),
+                                       detail: detail,
                                        widthChanged: { calls.widthChanged(narrow: $0) })
-            let reading = CallsToolbar(identifier: "CallToolbar", placeholder: nil, text: model.previewText, act: act)
+            callsSplit = split
+            callsNSWindow?.contentViewController = split
+            let actions = CallsToolbar(identifier: "CallsToolbar", splitView: split.splitView, title: model.callsListText(.windowTitle), text: model.previewText, act: act)
+            if let callsNSWindow { installCallsToolbar(actions.toolbar, in: callsNSWindow) }
+            let reading = CallsToolbar(identifier: "CallToolbar", text: model.previewText, act: act)
             callWindow.window = makeCallWindow(content: NSHostingView(rootView: CallsDetailContent(model: calls, text: { model.previewText })),
                                         title: { calls.detail?.title })
             callWindow.window?.toolbar = reading.toolbar
             callWindow.window?.toolbarStyle = .unified
-            callToolbars = [search, reading]
-            observeToolbars(model, calls: calls, toolbars: [search, reading])
-            callsSplit = split
-            callsWindow.install(content: split.view)
+            callToolbars = [actions, reading]
+            observeToolbars(model, calls: calls, toolbars: [actions, reading])
             if let callsNSWindow, let reading = callWindow.window {
                 presence.track(reading)
                 onBothClosed(callsNSWindow, reading, isVisible: { ($0 as? NSWindow)?.isVisible == true }, center: .default) {
@@ -240,8 +238,7 @@ func observeAppearance(_ model: AudelinMenu) {
 func observeToolbars(_ model: AudelinMenu, calls: AudelinCalls, toolbars: [CallsToolbar]) {
     Task { @MainActor in
         for await _ in Observations({ model.language }) {
-            toolbars.first?.retitle(text: model.previewText, placeholder: model.callsListText(.searchPlaceholder))
-            toolbars.dropFirst().forEach { $0.retitle(text: model.previewText, placeholder: nil) }
+            toolbars.forEach { $0.retitle(text: model.previewText, title: model.callsListText(.windowTitle)) }
         }
     }
     Task { @MainActor in
@@ -253,13 +250,9 @@ func observeToolbars(_ model: AudelinMenu, calls: AudelinCalls, toolbars: [Calls
 
 private struct CallsContent: View {
     let model: AudelinCalls
-    let focusSearch: () -> Void
+    let focusDetail: () -> Bool
     var body: some View {
-        CallsListView(state: model.state, text: model.listText, event: { event in Task { await model.send(event) } })
-            .background {
-                // ⌘F moves the keyboard into the toolbar's search field.
-                Button("", action: focusSearch).keyboardShortcut("f").opacity(0).accessibilityHidden(true)
-            }
+        CallsListView(state: model.state, text: model.listText, event: { event in Task { await model.send(event) } }, focusDetail: focusDetail)
     }
 }
 

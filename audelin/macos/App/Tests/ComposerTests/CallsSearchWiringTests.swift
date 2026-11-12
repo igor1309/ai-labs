@@ -28,6 +28,7 @@ struct CallsSearchWiringTests {
             #expect(state.rows[1].match == .init(title: [], snippet: .init(
                 place: "Итоги", placeIsTime: false, text: "Итоги из пяти OKR года", hits: [14..<17], more: nil)))
             #expect(state.selectedID == nil)
+            #expect(state.searchText == "okr")
 
             await calls.send(.search("Kubernetes"))
             await wait(calls) { $0.search == .init(query: "Kubernetes", searching: false) }
@@ -35,8 +36,14 @@ struct CallsSearchWiringTests {
 
             await calls.send(.search(""))
             #expect(calls.state.search == nil)
+            #expect(calls.state.searchText == "")
             #expect(calls.state.rows.map(\.id) == ["2024.01.02-1600", "2024.01.02-1100", "2024.01.01-1030"])
             #expect(calls.state.rows.allSatisfy { $0.match == nil })
+
+            await calls.send(.search(" \t "))
+            #expect(calls.state.searchText == " \t ")
+            #expect(calls.state.search == nil)
+            #expect(calls.state.rows.map(\.id) == ["2024.01.02-1600", "2024.01.02-1100", "2024.01.01-1030"])
         }
     }
 }
