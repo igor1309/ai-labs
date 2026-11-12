@@ -117,9 +117,30 @@ public struct CallsListView: View {
         }
     }
 
-    /// Two lines at a fixed height: the title and start time; then the duration
-    /// and what the call was about, or where its summary stands.
+    /// A ledger row: the start time leads in its own column, so a day reads as
+    /// a schedule; beside it, the title and duration, then what the call was
+    /// about or where its summary stands. A selected row takes a quiet tint
+    /// with an accent bar and time.
     private func rowContent(_ row: CallsListState.Row) -> some View {
+        let selected = state.selectedID == row.id
+        return HStack(spacing: 0) {
+            UnevenRoundedRectangle(bottomTrailingRadius: tokens.radiusBar, topTrailingRadius: tokens.radiusBar)
+                .fill(selected ? (active ? tokens.me : tokens.gutter) : Color.clear)
+                .frame(width: barWidth)
+            HStack(alignment: .firstTextBaseline, spacing: tokens.space12) {
+                Text(row.time).font(tokens.data(tokens.typeSmall)).foregroundStyle(selected && active ? tokens.me : tokens.sub)
+                    .frame(width: timeWidth, alignment: .leading).allowsHitTesting(false)
+                lines(row)
+            }
+            .padding(.leading, tokens.space12).padding(.trailing, tokens.space16).padding(.vertical, tokens.space8)
+        }
+        .lineLimit(1)
+        .background(selected ? (active ? tokens.okBg : tokens.btn) : tokens.surface)
+        .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+
+    /// The title and duration; then the gist, the summary's state or a search match.
+    private func lines(_ row: CallsListState.Row) -> some View {
         VStack(alignment: .leading, spacing: tokens.space2) {
             HStack(spacing: tokens.space8) {
                 Group {
@@ -140,41 +161,33 @@ public struct CallsListView: View {
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                Text(row.time).font(tokens.data(tokens.typeSmall)).foregroundStyle(ink(row, tokens.sub)).allowsHitTesting(false)
+                Text(row.duration).font(tokens.data(tokens.typeCaption)).foregroundStyle(tokens.gutter).fixedSize().allowsHitTesting(false)
             }
             .frame(height: lineHeight)
             HStack(spacing: tokens.space8) {
                 if let snippet = row.match?.snippet {
                     Text(snippet.place)
                         .font(snippet.placeIsTime ? tokens.data(tokens.typeSmall) : tokens.ui(tokens.typeSmall))
-                        .foregroundStyle(ink(row, tokens.gutter))
-                        .fixedSize().frame(minWidth: durationWidth, alignment: .leading).allowsHitTesting(false)
-                    Text(marked(snippet.text, snippet.hits)).foregroundStyle(ink(row, tokens.sub)).truncationMode(.tail)
+                        .foregroundStyle(tokens.gutter).fixedSize().allowsHitTesting(false)
+                    Text(marked(snippet.text, snippet.hits)).foregroundStyle(tokens.sub).truncationMode(.tail)
                         .frame(maxWidth: .infinity, alignment: .leading).allowsHitTesting(false)
-                    if let more = snippet.more { Text(more).foregroundStyle(ink(row, tokens.gutter)).fixedSize().allowsHitTesting(false) }
+                    if let more = snippet.more { Text(more).foregroundStyle(tokens.gutter).fixedSize().allowsHitTesting(false) }
                 } else {
-                    Text(row.duration).font(tokens.data(tokens.typeSmall)).foregroundStyle(ink(row, tokens.gutter))
-                        .fixedSize().frame(minWidth: durationWidth, alignment: .leading).allowsHitTesting(false)
                     about(row).frame(maxWidth: .infinity, alignment: .leading).allowsHitTesting(false)
                 }
                 summary(row)
             }
             .frame(height: lineHeight)
         }
-        .lineLimit(1)
-        .padding(.horizontal, tokens.space16).padding(.vertical, tokens.space8)
-        .background(state.selectedID == row.id ? (active ? tokens.selBg : tokens.btn) : tokens.surface)
-        .overlay(alignment: .bottom) { Rectangle().fill(tokens.rule).frame(height: 1) }
-        .accessibilityAddTraits(state.selectedID == row.id ? .isSelected : [])
     }
 
     /// The second line's text: the gist, or that the summary is being prepared or failed.
     @ViewBuilder private func about(_ row: CallsListState.Row) -> some View {
         switch row.summary {
-        case .pending: Text(text(.rowPreparing)).foregroundStyle(ink(row, tokens.gutter))
-        case .failed: Text(text(.rowFailed)).foregroundStyle(ink(row, tokens.rec))
+        case .pending: Text(text(.rowPreparing)).foregroundStyle(tokens.gutter)
+        case .failed: Text(text(.rowFailed)).foregroundStyle(tokens.rec)
         case .none:
-            if let gist = row.gist { Text(gist).foregroundStyle(ink(row, tokens.sub)).truncationMode(.tail) }
+            if let gist = row.gist { Text(gist).foregroundStyle(tokens.sub).truncationMode(.tail) }
             else { Color.clear }
         }
     }
@@ -182,17 +195,12 @@ public struct CallsListView: View {
     /// Whether the window is the active one; selection loses its accent otherwise.
     private var active: Bool { activity != .inactive }
 
-    /// A selected row in the active window draws everything in `selText` on `selBg`.
-    private func ink(_ row: CallsListState.Row, _ colour: Color) -> Color {
-        state.selectedID == row.id && active ? tokens.selText : colour
-    }
-
     /// The title on one line, cut with an ellipsis, its search matches marked;
     /// an untitled call shows its folder name.
     private func title(_ row: CallsListState.Row) -> some View {
         Text(marked(row.displayTitle, row.match?.title ?? []))
             .font(row.title.isEmpty ? tokens.data(tokens.typeSmall) : tokens.ui(tokens.typeSmall, .semibold))
-            .foregroundStyle(ink(row, row.title.isEmpty ? tokens.gutter : tokens.text))
+            .foregroundStyle(row.title.isEmpty ? tokens.gutter : tokens.text)
             .truncationMode(.tail)
     }
 
@@ -213,11 +221,11 @@ public struct CallsListView: View {
         switch row.summary {
         case .none: EmptyView()
         case .pending:
-            ProgressView().controlSize(.mini).tint(ink(row, tokens.sub)).frame(width: iconSize, height: iconSize)
+            ProgressView().controlSize(.mini).tint(tokens.sub).frame(width: iconSize, height: iconSize)
                 .help(row.summaryStatus).accessibilityLabel(row.summaryStatus)
                 .accessibilityIdentifier("calls.summary.\(row.id)")
         case .failed:
-            Image(systemName: "exclamationmark.circle").font(tokens.ui(tokens.typeSmall, .semibold)).foregroundStyle(ink(row, tokens.rec))
+            Image(systemName: "exclamationmark.circle").font(tokens.ui(tokens.typeSmall, .semibold)).foregroundStyle(tokens.rec)
                 .frame(width: iconSize, height: iconSize)
                 .help(row.summaryStatus).accessibilityLabel(row.summaryStatus)
                 .accessibilityIdentifier("calls.summary.\(row.id)")
@@ -234,7 +242,8 @@ public struct CallsListView: View {
         .background(tokens.win)
     }
 
-    private let durationWidth: CGFloat = 48
+    private let timeWidth: CGFloat = 40
+    private let barWidth: CGFloat = 4
     private let iconSize: CGFloat = 14
     private var lineHeight: CGFloat { tokens.space16 }
 

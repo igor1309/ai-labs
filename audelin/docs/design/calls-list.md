@@ -10,7 +10,12 @@ header, Context menu); delete, rename and errors use the Glass Ledger
 Sheet, Rename field and Banner/Error; the window's own parts on the "Calls window —
 components" board (Detail bar, Tooltip, Two-line row, Two-line match row, Detail
 header, Section, Subhead, Paragraph, Bullet, Detail message, No summary
-line, Link/Make, Making line, Summary skeleton, Summary date).
+line, Link/Make, Making line, Summary skeleton, Summary date). Each row state
+is its own component on that board, an instance of its row holding the
+state: Row/Selected, Row/Inactive selected, Row/Preparing, Row/Failed,
+Row/Untitled and Match row/Selected. Screens use these and override only
+content; a selected row that is also preparing, failed or untitled adds
+that state's overrides to Row/Selected.
 
 ## Layout
 
@@ -25,12 +30,17 @@ line, Link/Make, Making line, Summary skeleton, Summary date).
   (Пятница, 7 ноября); older days the date (3 сентября), with the year only
   when it is not the current one (12 декабря 2025). It shows the day's call
   count.
-- Row, two lines: title and start time (HH:mm, `font-data`); then duration
-  and the gist, the first sentence of the summary's «О чём встреча». Each
-  line truncates with an ellipsis; every row has the same height.
+- Row, a ledger line: the start time (HH:mm, `font-data`) leads in its own
+  40 pt column, so a day reads as a schedule. Beside it, two lines: the
+  title with the duration (`type-caption`, `gutter`) on the right; then the
+  gist, the first sentence of the summary's «О чём встреча». Each line
+  truncates with an ellipsis; every row has the same height. Rows have no
+  dividers.
+- Selection is a quiet `okBg` tint with a 4 pt `me` bar on the leading edge
+  and the time in `me`; the text keeps its own colours.
 - Preparing: the gist line says «Подготовка итогов…» in `gutter` with a
   spinner. Failed: «Не удалось подготовить итоги» in `rec` with the alert.
-  No summary: the second line holds only the duration. An untitled call
+  No summary: the second line is empty. An untitled call
   shows its folder name in `font-data`, `gutter`.
 
 ## Detail
@@ -86,7 +96,7 @@ line, Link/Make, Making line, Summary skeleton, Summary date).
   case and ё/е. There is no scope switch.
 - Results keep the list's shape. A day shows only its matching calls and
   their count; days with no match are hidden.
-- A match row keeps two lines: the title and time, then where the first
+- A match row keeps the time column and two lines: the title, then where the first
   match is (its time in the transcript, or «Итоги»), the text around it,
   and «ещё N» for further matches. Every match is marked with `hit`.
 - While transcripts are still being read, the field shows a spinner and the
@@ -104,7 +114,7 @@ line, Link/Make, Making line, Summary skeleton, Summary date).
 | Calls — summary failed | The error and Повторить итоги |
 | Calls — no summary | «Нет итогов» and the link «✨ Сделать» |
 | Calls — making summary | «Делаю…» and Отменить over the skeleton |
-| Calls — inactive window | The selected row turns grey (`btn`) |
+| Calls — inactive window | The selected row turns grey (`btn`), its bar `gutter` and its time `sub` |
 | Calls — no selection | «Звонок не выбран» |
 | Calls — renaming | The title is a field; the `yyyy.MM.dd-HHmm` prefix stays fixed. Return saves, Esc cancels |
 | Calls — confirm delete | The Glass Ledger Sheet over the window: Удалить and Отмена |

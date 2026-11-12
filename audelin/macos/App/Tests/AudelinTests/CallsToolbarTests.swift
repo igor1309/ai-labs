@@ -11,7 +11,7 @@ struct CallsToolbarTests {
         let sut = CallsToolbar(identifier: "test", splitView: split.splitView, title: "Звонки", text: .init(language: .russian), act: { _ in })
 
         #expect(sut.toolbarDefaultItemIdentifiers(sut.toolbar)
-                == [CallsToolbar.titleItem, CallsToolbar.actionsItem, CallsToolbar.deleteItem, CallsToolbar.separatorItem, .flexibleSpace, CallsToolbar.copyItem])
+                == [CallsToolbar.titleItem, .flexibleSpace, CallsToolbar.actionsItem, CallsToolbar.deleteItem, CallsToolbar.separatorItem, .flexibleSpace, CallsToolbar.copyItem])
         let separator = try #require(item(sut, CallsToolbar.separatorItem) as? NSTrackingSeparatorToolbarItem)
         #expect(separator.splitView === split.splitView)
         #expect(separator.dividerIndex == 0)

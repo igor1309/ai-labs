@@ -70,6 +70,24 @@ extension SessionReducerTests {
         assert(state, .liveTextSet(request: state.pendingLiveText!, error: nil), delivers: nil)
     }
 
+    @Test(arguments: results)
+    func replyWhileEndingStopsTheFirstPieceUp_state(_ error: String?) {
+
+        let state = makeHoldingLiveText().with { $0.phase = .ending }
+        assert(state, .liveTextSet(request: state.pendingLiveText!, error: error)) {
+            $0.pendingLiveText = nil
+            if let error { $0.fail(.callText, error) }
+            $0.microphoneCapture = .stopping
+        }
+    }
+
+    @Test(arguments: results)
+    func replyWhileEndingStopsTheFirstPieceUp_effect(_ error: String?) {
+
+        let state = makeHoldingLiveText().with { $0.phase = .ending }
+        assert(state, .liveTextSet(request: state.pendingLiveText!, error: error), delivers: .stopCapture(.microphone))
+    }
+
     @Test func errorOnTheCurrentRequestIsRecorded_state() {
 
         let state = makeHoldingLiveText()

@@ -138,7 +138,6 @@ let package = Package(
             name: "SessionTests",
             dependencies: [
                 .product(name: "Session", package: "macos"),
-                .product(name: "IMRxObservation", package: "swift-imrx"),
             ]
         ),
     ]

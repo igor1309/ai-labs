@@ -2,6 +2,7 @@
 
 ## 2026-11-12
 
+- The calls list reads as a schedule: each row leads with its start time, the duration sits beside the title, rows have no dividers, and the selected row is a quiet tint with an accent bar and time.
 - LAB-1262: Open and Rename are grouped over the calls list, with Delete beside them, and are disabled with no call selected; Copy stands alone at the trailing edge over the detail, whose surface runs under the toolbar; search is pinned above the list.
 - LAB-1242: The calls window shows the list beside the selected call's notes, Mail-style: the detail follows the selection, Tab moves between them, and its buttons are the row's actions. The eye, «Показать итоги» and the floating summary panel are gone. Below 700 pt the list stands alone and Return or Space opens the call in its own window.
 - LAB-1257: The panel keeps an ended call's last rows and its speakers' colours and captions even when they arrive after the recording stops.
