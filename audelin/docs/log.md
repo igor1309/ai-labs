@@ -2,7 +2,7 @@
 
 ## 2026-11-12
 
-- Copy, Open, Rename and Delete are icon buttons in the calls window's toolbar, before the search field, with their names as tooltips; the detail's Copy button and ⋯ menu are gone. Without notes Copy is disabled; with no call selected all four are.
+- LAB-1262: Open and Rename are grouped over the calls list, with Delete beside them, and are disabled with no call selected; Copy stands alone at the trailing edge over the detail, whose surface runs under the toolbar; search is pinned above the list.
 - LAB-1242: The calls window shows the list beside the selected call's notes, Mail-style: the detail follows the selection, Tab moves between them, and its buttons are the row's actions. The eye, «Показать итоги» and the floating summary panel are gone. Below 700 pt the list stands alone and Return or Space opens the call in its own window.
 - LAB-1257: The panel keeps an ended call's last rows and its speakers' colours and captions even when they arrive after the recording stops.
 - LAB-1132: After a call, the far side is split among its speakers: the transcript labels them `Them 1`, `Them 2`… (or by Zoom name), cleanup and the summary wait for and use them, and the open panel recolours and captions each speaker's rows. The diarization model starts loading when a call opens.

@@ -6,40 +6,31 @@ import Testing
 @MainActor
 struct CallsToolbarTests {
 
-    @Test func typingSendsTheFieldsText() throws {
-        var sent: [String] = []
-        let sut = makeSUT(send: { sent.append($0) })
-        let field = try #require(searchField(sut))
+    @Test func putsTheRowActionsOverTheListAndCopyTrailingOverTheDetail() throws {
+        let split = makeCallsSplit(list: NSView(), detail: NSView())
+        let sut = CallsToolbar(identifier: "test", splitView: split.splitView, title: "Звонки", text: .init(language: .russian), act: { _ in })
 
-        field.stringValue = "okr"
-        field.sendAction(field.action, to: field.target)
-        field.stringValue = ""
-        field.sendAction(field.action, to: field.target)
-
-        #expect(sent == ["okr", ""])
+        #expect(sut.toolbarDefaultItemIdentifiers(sut.toolbar)
+                == [CallsToolbar.titleItem, CallsToolbar.actionsItem, CallsToolbar.deleteItem, CallsToolbar.separatorItem, .flexibleSpace, CallsToolbar.copyItem])
+        let separator = try #require(item(sut, CallsToolbar.separatorItem) as? NSTrackingSeparatorToolbarItem)
+        #expect(separator.splitView === split.splitView)
+        #expect(separator.dividerIndex == 0)
     }
 
-    @Test func showsAndRetitlesItsPlaceholder() throws {
-        let sut = makeSUT()
-        let field = try #require(searchField(sut))
-        #expect(field.placeholderString == "Поиск")
-
-        sut.retitle(text: .init(language: .english), placeholder: "Search")
-
-        #expect(field.placeholderString == "Search")
+    @Test func theListTitleFollowsItsLanguage() throws {
+        let split = makeCallsSplit(list: NSView(), detail: NSView())
+        let sut = CallsToolbar(identifier: "test", splitView: split.splitView, title: "Звонки", text: .init(language: .russian), act: { _ in })
+        let label = try #require(item(sut, CallsToolbar.titleItem)?.view as? NSTextField)
+        #expect(label.stringValue == "Звонки")
+        sut.retitle(text: .init(language: .english), title: "Calls")
+        #expect(label.stringValue == "Calls")
     }
 
-    @Test func putsTheActionGroupsBeforeTheSearchField() {
+    @Test func theCallsOwnWindowHasTheButtonsAndNoSeparator() {
         let sut = makeSUT()
 
         #expect(sut.toolbarDefaultItemIdentifiers(sut.toolbar)
-                == [.flexibleSpace, CallsToolbar.actionsItem, CallsToolbar.deleteItem, CallsToolbar.searchItem])
-    }
-
-    @Test func theCallsOwnWindowHasTheButtonsAndNoSearch() {
-        let sut = CallsToolbar(identifier: "test", placeholder: nil, text: .init(language: .russian), act: { _ in })
-
-        #expect(sut.toolbarDefaultItemIdentifiers(sut.toolbar) == [.flexibleSpace, CallsToolbar.actionsItem, CallsToolbar.deleteItem])
+                == [CallsToolbar.actionsItem, CallsToolbar.deleteItem, .flexibleSpace, CallsToolbar.copyItem])
     }
 
     @Test func eachButtonNamesItselfInItsTooltipAndReportsItsAction() throws {
@@ -56,7 +47,7 @@ struct CallsToolbarTests {
     @Test func retitlesTheButtons() throws {
         let sut = makeSUT()
 
-        sut.retitle(text: .init(language: .english), placeholder: "Search")
+        sut.retitle(text: .init(language: .english))
 
         #expect(try buttons(sut).map(\.toolTip) == ["Copy", "Open", "Rename", "Delete…"])
     }
@@ -67,7 +58,13 @@ struct CallsToolbarTests {
     func enablesOnlyTheButtonsThatActOnTheCallShown(actions: CallActions, enabled: [Bool]) throws {
         let sut = makeSUT()
 
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 600, height: 400),
+                              styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        defer { window.close() }
+        window.toolbar = sut.toolbar
         sut.show(actions)
+        sut.toolbar.validateVisibleItems()
 
         #expect(try buttons(sut).map(\.isEnabled) == enabled)
     }
@@ -84,9 +81,8 @@ struct CallsToolbarTests {
         }
     }
 
-    private func makeSUT(send: @escaping (String) -> Void = { _ in },
-                         act: @escaping (SummaryPreviewEvent) -> Void = { _ in }) -> CallsToolbar {
-        CallsToolbar(identifier: "test", placeholder: "Поиск", text: .init(language: .russian), send: send, act: act)
+    private func makeSUT(act: @escaping (SummaryPreviewEvent) -> Void = { _ in }) -> CallsToolbar {
+        CallsToolbar(identifier: "test", text: .init(language: .russian), act: act)
     }
 
     private func item(_ sut: CallsToolbar, _ identifier: NSToolbarItem.Identifier) -> NSToolbarItem? {
@@ -95,10 +91,7 @@ struct CallsToolbarTests {
 
     private func buttons(_ sut: CallsToolbar) throws -> [NSToolbarItem] {
         let group = try #require(item(sut, CallsToolbar.actionsItem) as? NSToolbarItemGroup)
-        return group.subitems + [try #require(item(sut, CallsToolbar.deleteItem))]
+        return [try #require(item(sut, CallsToolbar.copyItem))] + group.subitems + [try #require(item(sut, CallsToolbar.deleteItem))]
     }
 
-    private func searchField(_ sut: CallsToolbar) -> NSSearchField? {
-        (item(sut, CallsToolbar.searchItem) as? NSSearchToolbarItem)?.searchField
-    }
 }

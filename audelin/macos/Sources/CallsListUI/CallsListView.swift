@@ -8,9 +8,12 @@ public struct CallsListView: View {
     @Environment(\.colorScheme) private var scheme
     @Environment(\.controlActiveState) private var activity
     @FocusState private var editing: Bool
+    @State private var searchFocusRequest = 0
+    private let focusDetail: (() -> Bool)?
     private var tokens: GlassLedger { .for(scheme) }
 
-    public init(state: CallsListState, text: CallsListText, event: @escaping (CallsListEvent) -> Void) {
+    public init(state: CallsListState, text: CallsListText, event: @escaping (CallsListEvent) -> Void, focusDetail: (() -> Bool)? = nil) {
+        self.focusDetail = focusDetail
         self.state = state
         self.text = text
         self.event = event
@@ -18,6 +21,11 @@ public struct CallsListView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
+            CallsSearchField(text: state.searchText, placeholder: text(.searchPlaceholder),
+                             searching: state.search?.searching == true, focusRequest: searchFocusRequest,
+                             changed: { event(.search($0)) }, focusDetail: focusDetail)
+                .frame(height: tokens.space24)
+                .padding(.horizontal, tokens.space12).padding(.vertical, tokens.space8)
             ScrollView {
                 LazyVStack(spacing: 0) {
                     ForEach(state.rows) { row in
@@ -39,10 +47,18 @@ public struct CallsListView: View {
                     .accessibilityIdentifier("calls.failure")
             }
         }
+        .background {
+            Button("") { searchFocusRequest += 1 }
+                .keyboardShortcut("f").hidden().accessibilityHidden(true)
+        }
         .font(tokens.ui(tokens.typeSmall))
         .background(tokens.win)
         .focusable()
         .focusEffectDisabled()
+        .onKeyPress(.tab) {
+            guard state.editing == nil else { return .ignored }
+            return focusDetail?() == true ? .handled : .ignored
+        }
         .onExitCommand { if state.editing != nil { event(.cancelRename) } }
         .onKeyPress(keys: [.downArrow, .upArrow]) { press in
             guard state.editing == nil else { return .ignored }

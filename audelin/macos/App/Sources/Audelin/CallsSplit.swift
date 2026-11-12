@@ -1,4 +1,5 @@
 import AppKit
+import GlassLedger
 import Composer
 import NotesMarkdown
 import SummaryPreviewUI
@@ -14,12 +15,14 @@ func makeCallsSplit(list: NSView, detail: NSView, defaults: UserDefaults = .stan
     let split = CallsSplitController(defaults: defaults, widthChanged: widthChanged)
     split.splitView.isVertical = true
     split.splitView.dividerStyle = .thin
-    let listItem = NSSplitViewItem(viewController: hosting(list))
+    let listItem = NSSplitViewItem(contentListWithViewController: hosting(list))
+    listItem.titlebarSeparatorStyle = .line
     listItem.minimumThickness = CallsSplit.listRange.lowerBound
     listItem.maximumThickness = CallsSplit.listRange.upperBound
     listItem.holdingPriority = .init(260)
     listItem.canCollapse = false
     let detailItem = NSSplitViewItem(viewController: hosting(detail))
+    detailItem.titlebarSeparatorStyle = .automatic
     detailItem.minimumThickness = CallsSplit.listRange.lowerBound
     detailItem.canCollapse = true
     split.addSplitViewItem(listItem)
@@ -121,10 +124,13 @@ func detailEvent(_ event: SummaryPreviewEvent) -> CallsDetailEvent {
 struct CallsDetailContent: View {
     let model: AudelinCalls
     let text: () -> SummaryPreviewText
+    @Environment(\.colorScheme) private var scheme
     var body: some View {
         let text = text()
+        // The summary's surface runs up under the window's transparent toolbar.
         return SummaryPreviewView(state: detailState(model.detail, text: text), text: text,
-                           event: detailSender { await model.send(detail: $0) }, render: renderNotes)
+                                  event: detailSender { await model.send(detail: $0) }, render: renderNotes)
+            .background(GlassLedger.for(scheme).surface.ignoresSafeArea())
     }
 }
 
@@ -197,3 +203,24 @@ func onBothClosed(_ first: AnyObject, _ second: AnyObject, isVisible: @escaping 
 
 /// Holds the call's window, made once the calls list exists, for the list's Return and Space.
 @MainActor final class CallWindowSlot { var window: NSWindow? }
+
+/// Split sections keep independent titlebar surfaces and the system's scrolling pocket.
+@MainActor
+func installCallsToolbar(_ toolbar: NSToolbar, in window: NSWindow) {
+    window.styleMask.insert(.fullSizeContentView)
+    window.titlebarAppearsTransparent = true
+    window.titlebarSeparatorStyle = .automatic
+    window.titleVisibility = .hidden
+    window.toolbarStyle = .unifiedCompact
+    window.toolbar = toolbar
+}
+
+/// Crosses the hosting boundary explicitly; a native field editor owns Tab while searching.
+@MainActor
+func focusCallsDetail(in detail: NSView) -> Bool {
+    guard !detail.isHiddenOrHasHiddenAncestor else { return false }
+    func textView(in view: NSView) -> NSTextView? {
+        (view as? NSTextView) ?? view.subviews.lazy.compactMap { textView(in: $0) }.first
+    }
+    return detail.window?.makeFirstResponder(textView(in: detail) ?? detail) == true
+}

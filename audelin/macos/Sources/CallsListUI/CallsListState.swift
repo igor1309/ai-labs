@@ -83,6 +83,8 @@ public struct CallsListState: Equatable, Sendable {
 
     public var rows: [Row]
     public var search: Search?
+    /// The field's exact input, including whitespace that does not start a search.
+    public var searchText: String
     public var editing: Editing?
     public var deleteID: String?
     /// What the delete sheet says about the call it would delete.
@@ -95,7 +97,8 @@ public struct CallsListState: Equatable, Sendable {
     public var narrow: Bool
 
     public init(rows: [Row] = [], editing: Editing? = nil, deleteID: String? = nil, deleteBody: String? = nil, busy: Bool = false, failure: String? = nil,
-                selectedID: String? = nil, narrow: Bool = false, search: Search? = nil) {
+                selectedID: String? = nil, narrow: Bool = false, search: Search? = nil, searchText: String = "") {
+        self.searchText = searchText
         self.search = search
         self.rows = rows; self.editing = editing; self.deleteID = deleteID; self.deleteBody = deleteBody; self.busy = busy; self.failure = failure
         self.selectedID = selectedID; self.narrow = narrow

@@ -39,17 +39,23 @@ line, Link/Make, Making line, Summary skeleton, Summary date).
   selectable rendered Markdown (headings, lists, code, tables). Under its
   last line, the date it was made in `gutter`, `type-caption`
   («Сделано 12 ноября, 14:05»).
-- Toolbar: one bar across the window. Over the list, the title; over the
-  detail, before the search field, icon-only buttons in two Mail-style
-  groups: Копировать (the Markdown source), Открыть, Переименовать; then
-  Удалить… alone. Each shows its name as a tooltip on hover (Tooltip on the
-  components board). There is no ⋯ menu.
-- The buttons act on the selected call. Копировать is disabled without a
-  summary; with no call selected all four are disabled. They are disabled,
-  never hidden, so the toolbar does not shift. Повторить итоги stays in the
-  failed message and the row's context menu. Below 700 pt the buttons stay
-  and act on the selected row; the call's own window has them too, without
-  the search field.
+- Toolbar: one bar across the window. Over the list, the title and the
+  selected call's own actions, which act on the row: Открыть (its folder
+  in Finder) and Переименовать in one Mail-style group, Удалить… alone.
+  Each shows its name as a tooltip on hover (Tooltip on the components
+  board). There is no ⋯ menu.
+- The toolbar has no bar over the detail: the summary's surface runs to
+  the window's top edge, and text scrolling under the toolbar fades at
+  its edge.
+- Копировать belongs to the summary, not the call: an icon button in the
+  summary's top-right corner, level with the row actions, fixed while the
+  text scrolls (Copy overlay on the components board). It shows only while a
+  summary is shown and copies its Markdown source.
+- With no call selected the row actions are disabled, never hidden, so the
+  bar does not shift. Повторить итоги stays in the failed message and the
+  row's context menu. Below 700 pt the bar is the same and acts on the
+  selected row; the call's own window has the row actions in its toolbar
+  and Копировать over its summary.
 - No summary: one line under the header, «Нет итогов» in `gutter` and the
   link «✨ Сделать» in `me`.
 - Making, or preparing after a call: the line becomes a spinner, «Делаю…»
@@ -73,7 +79,8 @@ line, Link/Make, Making line, Summary skeleton, Summary date).
 
 ## Search
 
-- The search field ends the toolbar. ⌘F focuses it; Esc or its
+- The search field is the list's first row, under the bar, across the
+  list's width. ⌘F focuses it; Esc or its
   clear button empties it and the whole list returns.
 - One field searches titles, summaries and transcripts as you type, ignoring
   case and ё/е. There is no scope switch.
