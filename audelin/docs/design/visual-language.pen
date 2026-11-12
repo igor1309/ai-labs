@@ -53384,35 +53384,27 @@
                     },
                     {
                       "type": "frame",
-                      "id": "s131x",
-                      "name": "Centre",
+                      "id": "s4U89H",
+                      "name": "Body",
                       "width": "fill_container",
                       "height": "fill_container",
                       "fill": "$surface",
                       "layout": "vertical",
-                      "justifyContent": "center",
-                      "alignItems": "center",
+                      "gap": "$space-4",
                       "children": [
                         {
-                          "id": "s130x",
+                          "id": "f03Sfp",
                           "type": "ref",
-                          "ref": "s079x",
-                          "name": "Message",
-                          "descendants": {
-                            "s076x": {
-                              "icon": "loader-circle",
-                              "fill": "$sub"
-                            },
-                            "s077x": {
-                              "content": "Подготовка итогов…"
-                            },
-                            "s078x": {
-                              "content": "Итоги появятся здесь, когда будут готовы"
-                            },
-                            "s075x": {
-                              "enabled": false
-                            }
-                          }
+                          "ref": "Km7Zn",
+                          "name": "Making",
+                          "width": "fill_container"
+                        },
+                        {
+                          "id": "uaujq",
+                          "type": "ref",
+                          "ref": "nzrGX",
+                          "name": "Skeleton",
+                          "width": "fill_container"
                         }
                       ]
                     }

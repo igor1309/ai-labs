@@ -48,8 +48,8 @@ line, Link/Make, Making line, Summary skeleton, Summary date).
   (`btn` bars). The user may select another call meanwhile; the row keeps
   the spinner. On completion the summary replaces line and skeleton.
   Отменить returns to the no-summary line.
-- Preparing after a call: one centred message under the header. Failed,
-  after a call or from Сделать: the centred error with Повторить итоги.
+- Preparing after a call looks the same as making. Failed, after a call
+  or from Сделать: the centred error with Повторить итоги.
   With no call selected: «Звонок не выбран». Копировать and ⋯ are hidden
   whenever there is no summary.
 - The detail follows the selection at once. No transcript in this window.
@@ -86,7 +86,7 @@ line, Link/Make, Making line, Summary skeleton, Summary date).
 | Frame | What it shows |
 |---|---|
 | Calls — summary | A call selected, its summary in the detail |
-| Calls — preparing | The selected call's summary is being prepared |
+| Calls — preparing | After a call: «Делаю…» over the skeleton, as making |
 | Calls — summary failed | The error and Повторить итоги |
 | Calls — no summary | «Нет итогов» and the link «✨ Сделать» |
 | Calls — making summary | «Делаю…», elapsed time and Отменить over the skeleton |
