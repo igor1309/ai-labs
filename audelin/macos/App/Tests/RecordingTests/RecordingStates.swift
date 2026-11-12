@@ -40,3 +40,13 @@ func makeQueued(_ origin: RecordingState.Origin) -> RecordingState {
 }
 
 func makeQueuedWithoutFolder() -> RecordingState { makeState(makeQueued(.hand)) { $0.missing = [.callsFolder] } }
+
+/// Session 2, begun for the call that came while session 1 was ending.
+func makeDeferredCall() -> RecordingState {
+
+    makeState(makeBeginning(id: 2)) {
+        $0.session = .init(id: 2, origin: .call)
+        $0.callOn = true
+        $0.sessionBeganDuringCall = true
+    }
+}

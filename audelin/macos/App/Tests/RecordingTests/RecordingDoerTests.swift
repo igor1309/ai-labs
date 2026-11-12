@@ -38,14 +38,15 @@ struct RecordingDoerTests {
         #expect(await spies.session.beginIDs == [state.lastSessionID])
     }
 
-    @Test func unreadyBeginningReportsTheConditionAndEndsWithoutASession() async {
+    @Test(arguments: [makeBeginning(), makeState(makeDeferredCall()) { $0.missing = [.callAudioAccess] }])
+    func unreadyBeginningReportsTheConditionAndEndsWithoutASession(_ state: RecordingState) async {
 
         let (sut, spies) = makeSUT()
-        sut.act(on: makeBeginning())
+        sut.act(on: state)
         await spies.ready.complete(with: false)
         #expect(await spies.sent.next() == .conditionChanged(.callAudioAccess, available: false))
         await spies.released.complete()
-        #expect(await spies.sent.next() == .sessionReported(id: 1, .ended))
+        #expect(await spies.sent.next() == .sessionReported(id: state.lastSessionID, .ended))
         #expect(await spies.session.beginIDs.isEmpty)
         #expect(await spies.session.endIDs.isEmpty)
     }
@@ -218,14 +219,4 @@ private func makeBegun() async -> (RecordingDoer, Spies) {
     _ = await spies.sent.next()
     sut.act(on: makeRunning())
     return (sut, spies)
-}
-
-/// Session 2, begun for the call that came while session 1 was ending.
-private func makeDeferredCall() -> RecordingState {
-
-    makeState(makeBeginning(id: 2)) {
-        $0.session = .init(id: 2, origin: .call)
-        $0.callOn = true
-        $0.sessionBeganDuringCall = true
-    }
 }
