@@ -6,10 +6,12 @@ import SwiftUI
 
 /// The calls window's two panes: the list at a width the divider sets, kept
 /// across restarts, and the selected call's detail filling the rest. Tab moves
-/// the keyboard from one pane to the other.
+/// the keyboard from one pane to the other. Below 700 pt the detail hides, the
+/// list fills the window, and `widthChanged` hears of each switch.
 @MainActor
-func makeCallsSplit(list: NSView, detail: NSView, defaults: UserDefaults = .standard) -> NSSplitViewController {
-    let split = CallsSplitController(defaults: defaults)
+func makeCallsSplit(list: NSView, detail: NSView, defaults: UserDefaults = .standard,
+                    widthChanged: @escaping (_ narrow: Bool) -> Void = { _ in }) -> NSSplitViewController {
+    let split = CallsSplitController(defaults: defaults, widthChanged: widthChanged)
     split.splitView.isVertical = true
     split.splitView.dividerStyle = .thin
     let listItem = NSSplitViewItem(viewController: hosting(list))
@@ -19,7 +21,7 @@ func makeCallsSplit(list: NSView, detail: NSView, defaults: UserDefaults = .stan
     listItem.canCollapse = false
     let detailItem = NSSplitViewItem(viewController: hosting(detail))
     detailItem.minimumThickness = CallsSplit.listRange.lowerBound
-    detailItem.canCollapse = false
+    detailItem.canCollapse = true
     split.addSplitViewItem(listItem)
     split.addSplitViewItem(detailItem)
     list.nextKeyView = detail
@@ -28,13 +30,17 @@ func makeCallsSplit(list: NSView, detail: NSView, defaults: UserDefaults = .stan
 }
 
 /// Puts the divider where it was left, or at the list's own width, once the
-/// window first lays it out, and saves each move from then on.
+/// window first lays it out wide, and saves each move from then on; hides and
+/// shows the detail as the window crosses the narrow width.
 final class CallsSplitController: NSSplitViewController {
     private let defaults: UserDefaults
+    private let widthChanged: (Bool) -> Void
     private var placed = false
+    private var narrow = false
 
-    init(defaults: UserDefaults) {
+    init(defaults: UserDefaults, widthChanged: @escaping (Bool) -> Void) {
         self.defaults = defaults
+        self.widthChanged = widthChanged
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -42,15 +48,31 @@ final class CallsSplitController: NSSplitViewController {
 
     override func viewDidLayout() {
         super.viewDidLayout()
-        guard !placed, splitView.bounds.width > 0 else { return }
+        let width = view.bounds.width
+        guard width > 0 else { return }
+        if (width < CallsSplit.narrowBelow) != narrow { switchWidth(narrow: width < CallsSplit.narrowBelow) }
+        guard !placed, !narrow else { return }
         placed = true
         let saved = defaults.object(forKey: CallsSplit.widthKey) as? Double
         splitView.setPosition(saved.map { CGFloat($0) } ?? CallsSplit.listWidth, ofDividerAt: 0)
     }
 
+    /// A narrow window hides the detail and lets the list fill it; a wide one shows the detail again.
+    private func switchWidth(narrow: Bool) {
+        self.narrow = narrow
+        let list = splitViewItems[0], detail = splitViewItems[1]
+        list.maximumThickness = narrow ? NSSplitViewItem.unspecifiedDimension : CallsSplit.listRange.upperBound
+        detail.isCollapsed = narrow
+        if !narrow {
+            let saved = defaults.object(forKey: CallsSplit.widthKey) as? Double
+            splitView.setPosition(saved.map { CGFloat($0) } ?? CallsSplit.listWidth, ofDividerAt: 0)
+        }
+        widthChanged(narrow)
+    }
+
     override func splitViewDidResizeSubviews(_ notification: Notification) {
         super.splitViewDidResizeSubviews(notification)
-        guard placed, let list = splitView.arrangedSubviews.first else { return }
+        guard placed, !narrow, let list = splitView.arrangedSubviews.first else { return }
         defaults.set(Double(list.frame.width), forKey: CallsSplit.widthKey)
     }
 }
@@ -59,6 +81,8 @@ enum CallsSplit {
     static let listWidth: CGFloat = 340
     static let listRange: ClosedRange<CGFloat> = 280...420
     static let widthKey = "CallsSplit.listWidth"
+    /// The window width below which the call beside the list hides.
+    static let narrowBelow: CGFloat = 700
 }
 
 @MainActor
@@ -131,3 +155,29 @@ func copyNotes(_ markdown: String, to pasteboard: NSPasteboard) {
     pasteboard.clearContents()
     pasteboard.setString(markdown, forType: .string)
 }
+
+/// The selected call in its own window, for a calls window too narrow to show it beside the list.
+/// It keeps its frame across restarts and its title follows the call it shows.
+@MainActor
+func makeCallWindow(content: NSView, title: @escaping @MainActor () -> String?) -> NSWindow {
+    let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 440, height: 560),
+                          styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: true)
+    window.isReleasedWhenClosed = false
+    window.minSize = NSSize(width: 320, height: 240)
+    window.center()
+    window.setFrameAutosaveName("CallWindow")
+    window.contentView = content
+    followTitle(title) { [weak window] in window?.title = $0 }
+    return window
+}
+
+/// Sets each title the call's window should carry, empty with no call.
+@MainActor @discardableResult
+func followTitle(_ title: @escaping @MainActor () -> String?, set: @escaping @MainActor (String) -> Void) -> Task<Void, Never> {
+    Task { @MainActor in
+        for await current in Observations({ title() }) { set(current ?? "") }
+    }
+}
+
+/// Holds the call's window, made once the calls list exists, for the list's Return and Space.
+@MainActor final class CallWindowSlot { var window: NSWindow? }

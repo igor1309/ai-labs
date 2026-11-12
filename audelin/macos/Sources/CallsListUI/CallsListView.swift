@@ -49,7 +49,7 @@ public struct CallsListView: View {
             event(press.key == .downArrow ? .selectNext : .selectPrevious)
             return .handled
         }
-        .onKeyPress(keys: [.return, "r", .delete, .backspace]) { press in
+        .onKeyPress(keys: [.return, .space, "r", .delete, .backspace]) { press in
             guard state.editing == nil, let row = state.rows.first(where: { $0.id == state.selectedID }),
                   let action = keyAction(press, row) else { return .ignored }
             event(action)
@@ -89,10 +89,11 @@ public struct CallsListView: View {
         return items
     }
 
-    /// Return opens, ⌘R renames and ⌘⌫ asks to delete the selected call.
+    /// Return opens the folder in a wide window; in a narrow one Return and Space read the call. ⌘R renames and ⌘⌫ asks to delete the selected call.
     private func keyAction(_ press: KeyPress, _ row: CallsListState.Row) -> CallsListEvent? {
         let command = press.modifiers.contains(.command)
         switch press.key {
+        case .return where !command && state.narrow, .space where !command && state.narrow: return .read(row.id)
         case .return where !command && !state.busy: return .open(row.id)
         case "r" where command && row.editable && !state.busy: return .beginRename(row.id)
         case .delete where command && row.editable && !state.busy, .backspace where command && row.editable && !state.busy: return .askDelete(row.id)

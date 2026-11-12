@@ -91,12 +91,14 @@ public struct CallsListState: Equatable, Sendable {
     public var failure: String?
     /// The selected call, if any.
     public var selectedID: String?
+    /// The window is too narrow to show the call beside the list, so Return and Space open it in its own window.
+    public var narrow: Bool
 
     public init(rows: [Row] = [], editing: Editing? = nil, deleteID: String? = nil, deleteBody: String? = nil, busy: Bool = false, failure: String? = nil,
-                selectedID: String? = nil, search: Search? = nil) {
+                selectedID: String? = nil, narrow: Bool = false, search: Search? = nil) {
         self.search = search
         self.rows = rows; self.editing = editing; self.deleteID = deleteID; self.deleteBody = deleteBody; self.busy = busy; self.failure = failure
-        self.selectedID = selectedID
+        self.selectedID = selectedID; self.narrow = narrow
     }
 
 }
@@ -105,6 +107,8 @@ public enum CallsListEvent: Equatable, Sendable {
     case open(String), beginRename(String), editTitle(String), submitRename, cancelRename
     case askDelete(String), confirmDelete, cancelDelete
     case select(String), selectNext, selectPrevious, retrySummary(String)
+    /// Return or Space in a narrow window: read the call in its own window.
+    case read(String)
     /// The search field's text changed; an empty text ends the search.
     case search(String)
 }

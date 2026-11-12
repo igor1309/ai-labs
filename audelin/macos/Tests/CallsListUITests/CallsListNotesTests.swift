@@ -63,6 +63,21 @@ struct CallsListNotesTests {
         #expect(shown.sent == [.open(id), .beginRename(id), .askDelete(id)])
     }
 
+    @Test func inANarrowWindowReturnAndSpaceReadTheCall() throws {
+
+        var state = makeState()
+        state.selectedID = state.rows[1].id
+        state.narrow = true
+        let shown = Shown(state)
+        defer { shown.close() }
+
+        shown.type("\r", code: 36)
+        shown.type(" ", code: 49)
+
+        let id = state.rows[1].id
+        #expect(shown.sent == [.read(id), .read(id)])
+    }
+
     @Test func keysSkipWhatTheSelectedCallCannotDo() throws {
 
         var state = makeState()

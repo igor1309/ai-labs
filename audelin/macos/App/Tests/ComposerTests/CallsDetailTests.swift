@@ -102,6 +102,22 @@ struct CallsDetailTests {
         #expect(sut.copies == ["# A notes"])
     }
 
+    @Test func inANarrowWindowReadingACallSelectsItAndOpensItsWindow() async {
+        let sut = Fixture(notes: [b: "# B notes"])
+        #expect(!sut.calls.state.narrow)
+
+        sut.calls.widthChanged(narrow: true)
+        #expect(sut.calls.state.narrow)
+        await sut.calls.send(.read(b))
+        await sut.waitDetail { $0?.content == .notes("# B notes") }
+
+        #expect(sut.calls.state.selectedID == b && sut.readCalls == 1)
+        await sut.calls.send(.read("missing"))
+        #expect(sut.readCalls == 1)
+        sut.calls.widthChanged(narrow: false)
+        #expect(!sut.calls.state.narrow)
+    }
+
     @Test func closingTheWindowStopsTheNotesScanBeforeTheNextCall() async {
         let sut = Fixture(notes: [a: "# A", b: "# B"])
         sut.duringRead = { [unowned sut] id in if id == a && sut.reads.count == 1 { sut.calls.windowClosed() } }
@@ -154,6 +170,7 @@ private struct Unreadable: LocalizedError { var errorDescription: String? { "Ð½Ð
     var retried: [String] = []
     var sent: [RecordingsEvent] = []
     var reads: [String] = []
+    var readCalls = 0
     var duringRead: (String) -> Void = { _ in }
     private var readWaiters: [(count: Int, resume: () -> Void)] = []
     var calls: AudelinCalls!
@@ -178,7 +195,7 @@ private struct Unreadable: LocalizedError { var errorDescription: String? { "Ð½Ð
                 if unreadable.contains(id) { throw Unreadable() }
                 return self.notes[id]
             },
-            copy: { [unowned self] in copies.append($0) }, notesEnabled: { notesEnabled },
+            copy: { [unowned self] in copies.append($0) }, readCall: { [unowned self] in readCalls += 1 }, notesEnabled: { notesEnabled },
             retryableSummaries: { [summaries] in summaries.retryable },
             retrySummary: { [unowned self] in retried.append($0) })
     }

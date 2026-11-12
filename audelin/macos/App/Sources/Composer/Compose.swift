@@ -22,7 +22,8 @@ public func compose(
     presentSettings: @escaping () -> Void = {},
     chooseCallsFolder: @escaping () async throws -> URL? = { nil },
     summaryRuntime: SummaryRuntime.Runtime? = nil,
-    copyNotes: @escaping (String) -> Void = { _ in }
+    copyNotes: @escaping (String) -> Void = { _ in },
+    readCall: @escaping () -> Void = {}
 ) async -> AudelinMenu {
     let preferences = PreferencesStore(fileURL: preferencesURL)
     await createDefaultCallsFolder(preferences.read().callsFolder, default: Preferences().callsFolder)
@@ -65,7 +66,7 @@ public func compose(
                                   location: { try await storage.location(id: $0) }, openFolder: openCallsFolder,
                                   present: presentCalls, summaryStatuses: { summaries.statuses }, summaryBadges: { summaries.badges },
                                   notes: { try await summaryFiles.notes(call: $0) },
-                                  copy: copyNotes, notesEnabled: { preferences.read().notes.enabled },
+                                  copy: copyNotes, readCall: readCall, notesEnabled: { preferences.read().notes.enabled },
                                   retryableSummaries: { summaries.retryable }, retrySummary: { try await summaries.retry(call: $0) },
                                   describe: { language.language.settings.callsFailure($0) },
                                   listText: language.language.callsList,

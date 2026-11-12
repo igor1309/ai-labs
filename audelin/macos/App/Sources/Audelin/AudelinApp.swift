@@ -51,6 +51,7 @@ struct AudelinApp: App {
         settingsWindow.center()
         presence.track(settingsWindow)
         self.settingsWindow = settingsWindow
+        let callWindow = CallWindowSlot()
         let boundary = await makeRealBoundary()
         let model = await compose(
             boundary: boundary,
@@ -71,7 +72,7 @@ struct AudelinApp: App {
                     begin: { completion in picker.begin { completion($0 == .OK ? picker.url : nil) } },
                     isVisible: { picker.isVisible }
                 )
-            }, copyNotes: { copyNotes($0, to: .general) }
+            }, copyNotes: { copyNotes($0, to: .general) }, readCall: { callWindow.window?.makeKeyAndOrderFront(nil) }
         )
         self.model = model
         settingsWindow.contentView = NSHostingView(rootView: SettingsContent(model: model, window: settingsWindow))
@@ -83,7 +84,10 @@ struct AudelinApp: App {
             callsNSWindow?.toolbar = search.toolbar
             callsNSWindow?.toolbarStyle = .unified
             let split = makeCallsSplit(list: NSHostingView(rootView: CallsContent(model: calls, focusSearch: { search.focus() })),
-                                       detail: NSHostingView(rootView: CallsDetailContent(model: calls, text: { model.previewText })))
+                                       detail: NSHostingView(rootView: CallsDetailContent(model: calls, text: { model.previewText })),
+                                       widthChanged: { calls.widthChanged(narrow: $0) })
+            callWindow.window = makeCallWindow(content: NSHostingView(rootView: CallsDetailContent(model: calls, text: { model.previewText })),
+                                        title: { calls.detail?.title })
             callsSplit = split
             callsWindow.install(content: split.view)
             observeSearchLanguage(model, search: search)

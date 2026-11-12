@@ -53,6 +53,9 @@ public final class AudelinCalls {
     /// The call the detail was last read for: the selection as the list showed it then.
     @ObservationIgnored private var detailFor: String?
     private let copy: (String) -> Void
+    private let readCall: () -> Void
+    /// The window is too narrow for the call beside the list.
+    private var narrow = false
     private let notesEnabled: () -> Bool
     private let notes: (String) async throws -> String?
     private var selectedID: String?
@@ -94,6 +97,7 @@ public final class AudelinCalls {
          summaryBadges: @escaping () -> [String: CallsListState.Row.Summary] = { [:] },
          notes: @escaping (String) async throws -> String? = { _ in nil },
          copy: @escaping (String) -> Void = { _ in },
+         readCall: @escaping () -> Void = {},
          notesEnabled: @escaping () -> Bool = { true },
          retryableSummaries: @escaping () -> Set<String> = { [] },
          retrySummary: @escaping (String) async throws -> Void = { _ in throw CocoaError(.fileWriteUnknown) },
@@ -106,6 +110,7 @@ public final class AudelinCalls {
         self.retryableSummaries = retryableSummaries
         self.retrySummary = retrySummary
         self.copy = copy
+        self.readCall = readCall
         self.notesEnabled = notesEnabled
         self.summaryStatuses = summaryStatuses
         self.summaryBadges = summaryBadges
@@ -141,6 +146,7 @@ public final class AudelinCalls {
             state.rows[index].match = found[state.rows[index].id]
         }
         state.selectedID = state.rows.contains { $0.id == selectedID } ? selectedID : nil
+        state.narrow = narrow
         state.editing = editing
         state.failure = openFailure ?? state.failure
         state.busy = state.busy || opening
@@ -211,6 +217,12 @@ public final class AudelinCalls {
         inputs.send(.refresh)
         present()
         scanNotes()
+    }
+
+    /// The calls window became narrow or wide: below the width for the call beside the list,
+    /// Return and Space read the selected call in its own window.
+    public func widthChanged(narrow: Bool) {
+        self.narrow = narrow
     }
 
     /// With the calls window closed the list stops looking for notes.
@@ -342,6 +354,12 @@ public final class AudelinCalls {
         case let .search(text): search(text)
         case .selectNext: commitRename(); move(by: 1, in: snapshot.rows)
         case .selectPrevious: commitRename(); move(by: -1, in: snapshot.rows)
+        case let .read(id):
+            guard snapshot.rows.contains(where: { $0.id == id }) else { return }
+            if editing?.id != id { commitRename() }
+            selectedID = id
+            updateDetail()
+            readCall()
         case let .retrySummary(id):
             guard !snapshot.busy, let row = snapshot.rows.first(where: { $0.id == id }),
                   row.editable, row.canRetrySummary else { return }

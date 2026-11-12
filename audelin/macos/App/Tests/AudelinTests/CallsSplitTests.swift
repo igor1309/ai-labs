@@ -1,6 +1,7 @@
 import AppKit
 import CallsListUI
 import Composer
+import Observation
 import SummaryPreviewUI
 import SwiftUI
 import Testing
@@ -34,7 +35,34 @@ struct CallsSplitTests {
         defer { again.close() }
 
         #expect(restored.splitViewItems[0].viewController.view.frame.width == 390)
-        #expect(restored.splitViewItems.map(\.canCollapse) == [false, false])
+        #expect(restored.splitViewItems.map(\.canCollapse) == [false, true])
+    }
+
+    @Test func belowSevenHundredTheListFillsTheWindowAndWideningShowsTheCallAgain() throws {
+        var widths: [Bool] = []
+        let defaults = try #require(UserDefaults(suiteName: "CallsSplitTests-\(UUID())"))
+        let split = makeCallsSplit(list: NSView(), detail: NSView(), defaults: defaults) { widths.append($0) }
+        let window = NSWindow(contentRect: NSRect(x: -30_000, y: -30_000, width: 1000, height: 560),
+                              styleMask: [.titled, .resizable], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        defer { window.close() }
+        window.contentViewController = split
+        func resize(_ width: CGFloat) {
+            window.setContentSize(NSSize(width: width, height: 560))
+            split.view.layoutSubtreeIfNeeded()
+        }
+        let list = split.splitViewItems[0].viewController.view
+
+        resize(1000)
+        #expect(widths.isEmpty && list.frame.width == 340)
+        resize(699)
+        #expect(widths == [true])
+        #expect(split.splitViewItems[1].isCollapsed && list.frame.width == 699)
+        resize(560)
+        #expect(widths == [true] && list.frame.width == 560)
+        resize(700)
+        #expect(widths == [true, false])
+        #expect(!split.splitViewItems[1].isCollapsed && list.frame.width == 340)
     }
 
     @Test func tabMovesTheKeyboardBetweenTheListAndTheDetail() throws {
@@ -122,6 +150,31 @@ struct CallsSplitTests {
         #expect(pasteboard.string(forType: .string) == source)
     }
 
+    @Test func theCallsOwnWindowKeepsItsPlaceAndShowsTheDetail() {
+        let content = NSView()
+        let window = makeCallWindow(content: content, title: { nil })
+        defer { window.close() }
+
+        #expect(window.contentView === content)
+        #expect(window.frameAutosaveName == "CallWindow" && !window.isReleasedWhenClosed)
+        #expect(window.styleMask.isSuperset(of: [.titled, .closable, .resizable]))
+    }
+
+    @Test func theCallsWindowTitleFollowsTheCall() async {
+        let source = TitleSource()
+        let titles = TitleSpy()
+        let following = followTitle({ source.title }) { titles.set($0) }
+        defer { following.cancel() }
+
+        await titles.wait(1)
+        source.title = "Синк по OKR"
+        await titles.wait(2)
+        source.title = nil
+        await titles.wait(3)
+
+        #expect(titles.values == ["Запуск", "Синк по OKR", ""])
+    }
+
     private func show(width: CGFloat, list: NSView = NSView(), detail: NSView = NSView(),
                       defaults: UserDefaults? = nil) throws -> (NSWindow, NSSplitViewController) {
         let defaults = try defaults ?? #require(UserDefaults(suiteName: "CallsSplitTests-\(UUID())"))
@@ -142,4 +195,21 @@ private func textView(in view: NSView) -> NSTextView? {
 
 private func isInside(_ responder: NSResponder?, _ view: NSView) -> Bool {
     (responder as? NSView)?.isDescendant(of: view) ?? false
+}
+
+@MainActor @Observable private final class TitleSource { var title: String? = "Запуск" }
+
+@MainActor private final class TitleSpy {
+    private(set) var values: [String] = []
+    private var waiters: [(count: Int, resume: () -> Void)] = []
+    func set(_ title: String) {
+        values.append(title)
+        let ready = waiters.filter { $0.count <= values.count }
+        waiters.removeAll { $0.count <= values.count }
+        ready.forEach { $0.resume() }
+    }
+    func wait(_ count: Int) async {
+        if values.count >= count { return }
+        await withCheckedContinuation { continuation in waiters.append((count, { continuation.resume() })) }
+    }
 }
