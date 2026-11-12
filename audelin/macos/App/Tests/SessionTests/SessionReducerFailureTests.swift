@@ -175,6 +175,103 @@ extension SessionReducerTests {
         assert(makeStopping(.capture(side)), .accessChanged(side, available: false), delivers: nil)
     }
 
+    @Test(arguments: bringUpOrder)
+    func endWhileAFailedPieceStartsWaitsForIt_state(_ piece: SessionState.Piece) {
+
+        let state = makeBringingUp(starting: piece).with { $0.fail(piece, anyError()) }
+        assert(state, .end) { $0.phase = .ending }
+    }
+
+    @Test(arguments: bringUpOrder)
+    func endWhileAFailedPieceStartsWaitsForIt_effect(_ piece: SessionState.Piece) {
+
+        let state = makeBringingUp(starting: piece).with { $0.fail(piece, anyError()) }
+        assert(state, .end, delivers: nil)
+    }
+
+    @Test(arguments: sides)
+    func endWhileACaptureWithoutAccessStartsWaitsForIt_state(_ side: SessionSide) {
+
+        let state = makeBringingUp(starting: .capture(side)).with { $0.loseAccess(side) }
+        assert(state, .end) { $0.phase = .ending }
+    }
+
+    @Test(arguments: sides)
+    func endWhileACaptureWithoutAccessStartsWaitsForIt_effect(_ side: SessionSide) {
+
+        let state = makeBringingUp(starting: .capture(side)).with { $0.loseAccess(side) }
+        assert(state, .end, delivers: nil)
+    }
+
+    @Test(arguments: heldStarts)
+    func failedPieceStartedWhileEndingStopsTheFirstPieceUp_state(_ start: HeldStart) {
+
+        let state = makeEndingWhileStarting(start.piece).with { $0.fail(start.piece, anyError()) }
+        assert(state, startResult(start.piece, error: nil)) {
+            $0[status: start.piece] = .up
+            $0[status: start.firstStop] = .stopping
+        }
+    }
+
+    @Test(arguments: heldStarts)
+    func failedPieceStartedWhileEndingStopsTheFirstPieceUp_effect(_ start: HeldStart) {
+
+        let state = makeEndingWhileStarting(start.piece).with { $0.fail(start.piece, anyError()) }
+        assert(state, startResult(start.piece, error: nil), delivers: stopEffect(start.firstStop))
+    }
+
+    @Test(arguments: sides)
+    func captureWithoutAccessStartedWhileEndingIsStopped_state(_ side: SessionSide) {
+
+        let state = makeEndingWhileStarting(.capture(side)).with { $0.loseAccess(side) }
+        assert(state, .captureFinished(side, error: nil)) {
+            $0[status: .capture(side)] = .up
+            $0.microphoneCapture = .stopping
+        }
+    }
+
+    @Test(arguments: sides)
+    func captureWithoutAccessStartedWhileEndingIsStopped_effect(_ side: SessionSide) {
+
+        let state = makeEndingWhileStarting(.capture(side)).with { $0.loseAccess(side) }
+        assert(state, .captureFinished(side, error: nil), delivers: .stopCapture(.microphone))
+    }
+
+    @Test func folderCreatedAfterItsFailureWhileEndingEnds_state() {
+
+        let state = makeEndingWhileStarting(.folder).with { $0.fail(.folder, anyError()) }
+        let folder = anyFolder()
+        assert(state, .folderFinished(error: nil, folder: folder)) {
+            $0.folder = .closed
+            $0.recordedFolder = folder
+            $0.phase = .ended
+        }
+    }
+
+    @Test func folderCreatedAfterItsFailureWhileEndingEnds_effect() {
+
+        let state = makeEndingWhileStarting(.folder).with { $0.fail(.folder, anyError()) }
+        assert(state, .folderFinished(error: nil, folder: anyFolder()), delivers: nil)
+    }
+
+    @Test func processesSelectedAfterTheirFailureWhileEndingEnd_state() {
+
+        let state = makeEndingWhileStarting(.processes).with { $0.fail(.processes, anyError()) }
+        let selection = anySelection()
+        assert(state, .processesFinished(selection: selection, error: nil)) {
+            $0.folder = .closed
+            $0.processes = .closed
+            $0.processSelection = selection
+            $0.phase = .ended
+        }
+    }
+
+    @Test func processesSelectedAfterTheirFailureWhileEndingEnd_effect() {
+
+        let state = makeEndingWhileStarting(.processes).with { $0.fail(.processes, anyError()) }
+        assert(state, .processesFinished(selection: anySelection(), error: nil), delivers: nil)
+    }
+
     @Test(arguments: stopOrder)
     func heldStopAfterAFailureStillGoesOn_state(_ piece: SessionState.Piece) {
 
