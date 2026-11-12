@@ -9,6 +9,12 @@ struct RecordingCallTests {
         assert(makeManualIdle(), .userStart) { $0.phase = .beginning; $0.session = .init(id: 1, origin: .hand); $0.lastSessionID = 1 }
     }
 
+    @Test func userStartDuringACallBeginsAHandSessionOfThatCall() {
+        assert(makeState(makeManualIdle()) { $0.callOn = true }, .userStart) {
+            $0.phase = .beginning; $0.session = .init(id: 1, origin: .hand); $0.lastSessionID = 1; $0.sessionBeganDuringCall = true
+        }
+    }
+
     @Test func endedSessionGoesIdle() { assert(makeEnding(), .sessionReported(id: 1, .ended)) { $0.phase = .idle; $0.session = nil } }
 
     @Test(arguments: [RecordingState.Origin.call, .hand], [RecordingState.Phase.beginning, .recording])
