@@ -8,7 +8,7 @@ are the file's variables. Shared parts are on the
 "Calls window — shared components" board (Title bar, Search field, Day
 header, Context menu); delete, rename and errors use the Glass Ledger
 Sheet, Rename field and Banner/Error; the window's own parts on the "Calls window —
-components" board (Detail bar, Two-line row, Two-line match row, Detail
+components" board (Detail bar, Tooltip, Two-line row, Two-line match row, Detail
 header, Section, Subhead, Paragraph, Bullet, Detail message, No summary
 line, Link/Make, Making line, Summary skeleton, Summary date).
 
@@ -30,8 +30,7 @@ line, Link/Make, Making line, Summary skeleton, Summary date).
   line truncates with an ellipsis; every row has the same height.
 - Preparing: the gist line says «Подготовка итогов…» in `gutter` with a
   spinner. Failed: «Не удалось подготовить итоги» in `rec` with the alert.
-  No summary: the second line holds only the duration. Making a summary
-  from the detail shows the same «Подготовка итогов…» and spinner. An untitled call
+  No summary: the second line holds only the duration. An untitled call
   shows its folder name in `font-data`, `gutter`.
 
 ## Detail
@@ -39,19 +38,27 @@ line, Link/Make, Making line, Summary skeleton, Summary date).
 - Header: title, then day, start time · duration. The summary is
   selectable rendered Markdown (headings, lists, code, tables). Under its
   last line, the date it was made in `gutter`, `type-caption`
-  («Сделано 12 ноября, 14:05»). Toolbar: Копировать (the Markdown source)
-  and ⋯ with the row menu.
+  («Сделано 12 ноября, 14:05»).
+- Toolbar: one bar across the window. Over the list, the title; over the
+  detail, before the search field, icon-only buttons in two Mail-style
+  groups: Копировать (the Markdown source), Открыть, Переименовать; then
+  Удалить… alone. Each shows its name as a tooltip on hover (Tooltip on the
+  components board). There is no ⋯ menu.
+- The buttons act on the selected call. Копировать is disabled without a
+  summary; with no call selected all four are disabled. They are disabled,
+  never hidden, so the toolbar does not shift. Повторить итоги stays in the
+  failed message and the row's context menu. Below 700 pt the buttons stay
+  and act on the selected row; the call's own window has them too, without
+  the search field.
 - No summary: one line under the header, «Нет итогов» in `gutter` and the
   link «✨ Сделать» in `me`.
-- Making: the line becomes a spinner, «Делаю…», the elapsed time
-  (`font-data`) and «Отменить» in `sub`, over a grey skeleton of the summary
-  (`btn` bars). The user may select another call meanwhile; the row keeps
-  the spinner. On completion the summary replaces line and skeleton.
-  Отменить returns to the no-summary line.
-- Preparing after a call looks the same as making. Failed, after a call
-  or from Сделать: the centred error with Повторить итоги.
-  With no call selected: «Звонок не выбран». Копировать and ⋯ are hidden
-  whenever there is no summary.
+- Making, or preparing after a call: the line becomes a spinner, «Делаю…»,
+  the elapsed time (`font-data`) and «Отменить» in `sub`, over a grey
+  skeleton of the summary (`btn` bars). Another call may be selected
+  meanwhile; the row keeps the spinner. On completion the summary replaces
+  line and skeleton; Отменить returns to the no-summary line.
+- Failed: one centred message under the header, the error and Повторить
+  итоги. With no call selected: «Звонок не выбран».
 - The detail follows the selection at once. No transcript in this window.
 
 ## Actions
@@ -66,7 +73,7 @@ line, Link/Make, Making line, Summary skeleton, Summary date).
 
 ## Search
 
-- The search field is in the list's title bar. ⌘F focuses it; Esc or its
+- The search field ends the toolbar. ⌘F focuses it; Esc or its
   clear button empties it and the whole list returns.
 - One field searches titles, summaries and transcripts as you type, ignoring
   case and ё/е. There is no scope switch.

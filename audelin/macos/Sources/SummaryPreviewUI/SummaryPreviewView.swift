@@ -34,10 +34,9 @@ public struct NotesStyle {
     }
 }
 
-/// One call beside the list: a bar with Копировать and the ⋯ menu, a header
-/// with its title, day, start time and duration, and the notes as selectable
-/// formatted text. The bar's buttons show only when there are notes to act on.
-/// Without notes the detail shows one centred message under the header, and
+/// One call beside the list: a header with its title, day, start time and
+/// duration, and the notes as selectable formatted text. The actions on the
+/// call are the window's toolbar, not the view's. Without notes the detail shows one centred message under the header, and
 /// with no call (`state` nil) only «Звонок не выбран».
 public struct SummaryPreviewView: View {
     private let state: SummaryPreviewState?
@@ -60,7 +59,6 @@ public struct SummaryPreviewView: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            bar
             if let state {
                 header(state)
                 switch state.notes {
@@ -128,44 +126,6 @@ public struct SummaryPreviewView: View {
         .multilineTextAlignment(.center)
         .padding(.horizontal, tokens.space28)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    /// Копировать and ⋯ on the right, only when there are notes.
-    private var bar: some View {
-        HStack(spacing: tokens.space8) {
-            Spacer(minLength: 0)
-            if case .markdown = state?.notes {
-                Button { event(.copy) } label: {
-                    HStack(spacing: tokens.space6) {
-                        Image(systemName: "doc.on.doc")
-                        Text(text(.copy))
-                    }
-                    .font(tokens.ui(tokens.typeSmall)).foregroundStyle(tokens.text)
-                    .padding(.vertical, tokens.space4).padding(.horizontal, tokens.space12)
-                    .background(tokens.btn, in: .rect(cornerRadius: tokens.radiusControl))
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("preview.copy")
-                SummaryMoreMenu(items: moreItems, label: text(.more), font: tokens.nsUi(tokens.typeSmall),
-                                ink: NSColor(tokens.text), destructive: NSColor(tokens.rec), event: event)
-                    .frame(width: tokens.space28, height: tokens.space16)
-                    .padding(.vertical, tokens.space4).padding(.horizontal, tokens.space2)
-                    .background(tokens.btn, in: .rect(cornerRadius: tokens.radiusControl))
-            }
-        }
-        .frame(height: barHeight)
-        .padding(.horizontal, tokens.space16)
-        .background(tokens.side)
-        .overlay(alignment: .bottom) { Rectangle().fill(tokens.rule).frame(height: 1) }
-    }
-
-    private let barHeight: CGFloat = 44
-
-    private var moreItems: [SummaryMoreMenu.Item] {
-        [.init(title: text(.open), event: .open, destructive: false),
-         .init(title: text(.rename), event: .rename, destructive: false)]
-            + (state?.canRetry == true ? [.init(title: text(.retrySummary), event: .retrySummary, destructive: false)] : [])
-            + [.init(title: text(.delete), event: .delete, destructive: true)]
     }
 
     private var style: NotesStyle {

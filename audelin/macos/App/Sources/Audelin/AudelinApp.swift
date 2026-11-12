@@ -25,6 +25,7 @@ struct AudelinApp: App {
     @State private var settingsWindow: NSWindow?
     @State private var callsWindow: CallsWindow?
     @State private var callsSplit: NSSplitViewController?
+    @State private var callToolbars: [CallsToolbar] = []
     @State private var presence = WindowPresence(setPolicy: { NSApplication.shared.setActivationPolicy($0) })
 
     @MainActor
@@ -79,18 +80,24 @@ struct AudelinApp: App {
         observeLanguage(model, settingsWindow: settingsWindow, callsWindow: callsWindow)
         observeAppearance(model)
         if let calls = model.calls {
-            let search = CallsSearchToolbar(placeholder: model.callsListText(.searchPlaceholder),
-                                            send: { text in Task { await calls.send(.search(text)) } })
+            let act = detailSender { await calls.send(detail: $0) }
+            let search = CallsToolbar(identifier: "CallsToolbar", placeholder: model.callsListText(.searchPlaceholder),
+                                      text: model.previewText,
+                                      send: { text in Task { await calls.send(.search(text)) } }, act: act)
             callsNSWindow?.toolbar = search.toolbar
             callsNSWindow?.toolbarStyle = .unified
             let split = makeCallsSplit(list: NSHostingView(rootView: CallsContent(model: calls, focusSearch: { search.focus() })),
                                        detail: NSHostingView(rootView: CallsDetailContent(model: calls, text: { model.previewText })),
                                        widthChanged: { calls.widthChanged(narrow: $0) })
+            let reading = CallsToolbar(identifier: "CallToolbar", placeholder: nil, text: model.previewText, act: act)
             callWindow.window = makeCallWindow(content: NSHostingView(rootView: CallsDetailContent(model: calls, text: { model.previewText })),
                                         title: { calls.detail?.title })
+            callWindow.window?.toolbar = reading.toolbar
+            callWindow.window?.toolbarStyle = .unified
+            callToolbars = [search, reading]
+            observeToolbars(model, calls: calls, toolbars: [search, reading])
             callsSplit = split
             callsWindow.install(content: split.view)
-            observeSearchLanguage(model, search: search)
             if let callsNSWindow, let reading = callWindow.window {
                 presence.track(reading)
                 onBothClosed(callsNSWindow, reading, isVisible: { ($0 as? NSWindow)?.isVisible == true }, center: .default) {
@@ -228,12 +235,18 @@ func observeAppearance(_ model: AudelinMenu) {
     }
 }
 
-/// Keeps the search field's placeholder in the language Audelin is shown in.
+/// Keeps the toolbars' buttons on the call shown and their names in the language Audelin is shown in.
 @MainActor
-func observeSearchLanguage(_ model: AudelinMenu, search: CallsSearchToolbar) {
+func observeToolbars(_ model: AudelinMenu, calls: AudelinCalls, toolbars: [CallsToolbar]) {
     Task { @MainActor in
         for await _ in Observations({ model.language }) {
-            search.retitle(placeholder: model.callsListText(.searchPlaceholder))
+            toolbars.first?.retitle(text: model.previewText, placeholder: model.callsListText(.searchPlaceholder))
+            toolbars.dropFirst().forEach { $0.retitle(text: model.previewText, placeholder: nil) }
+        }
+    }
+    Task { @MainActor in
+        for await actions in Observations({ callActions(detailState(calls.detail, text: model.previewText)) }) {
+            toolbars.forEach { $0.show(actions) }
         }
     }
 }

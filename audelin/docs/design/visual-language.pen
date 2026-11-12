@@ -51194,6 +51194,140 @@
                       "fontWeight": "600"
                     },
                     {
+                      "type": "frame",
+                      "id": "GUfAH",
+                      "x": 0,
+                      "y": 0,
+                      "name": "Actions",
+                      "enabled": false,
+                      "fill": "$btn",
+                      "cornerRadius": "$radius-control",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "H4DTU",
+                          "name": "Копировать",
+                          "cornerRadius": "$radius-control",
+                          "padding": [
+                            "$space-4",
+                            "$space-8"
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "FGeAM",
+                              "name": "Icon",
+                              "width": 14,
+                              "height": 14,
+                              "icon": "copy",
+                              "library": "lucide",
+                              "fill": "$text"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "rectangle",
+                          "id": "B5U84",
+                          "name": "Separator",
+                          "fill": "$rule",
+                          "width": 1,
+                          "height": 14
+                        },
+                        {
+                          "type": "frame",
+                          "id": "RChlE",
+                          "name": "Открыть",
+                          "cornerRadius": "$radius-control",
+                          "padding": [
+                            "$space-4",
+                            "$space-8"
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "R9ZIZb",
+                              "name": "Icon",
+                              "width": 14,
+                              "height": 14,
+                              "icon": "folder-open",
+                              "library": "lucide",
+                              "fill": "$text"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "rectangle",
+                          "id": "aThqD",
+                          "name": "Separator",
+                          "fill": "$rule",
+                          "width": 1,
+                          "height": 14
+                        },
+                        {
+                          "type": "frame",
+                          "id": "g49Dr",
+                          "name": "Переименовать",
+                          "cornerRadius": "$radius-control",
+                          "padding": [
+                            "$space-4",
+                            "$space-8"
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "b4tx6d",
+                              "name": "Icon",
+                              "width": 14,
+                              "height": 14,
+                              "icon": "pencil",
+                              "library": "lucide",
+                              "fill": "$text"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "GYNka",
+                      "x": 0,
+                      "y": 0,
+                      "name": "Delete group",
+                      "enabled": false,
+                      "fill": "$btn",
+                      "cornerRadius": "$radius-control",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "gycko",
+                          "name": "Удалить…",
+                          "cornerRadius": "$radius-control",
+                          "padding": [
+                            "$space-4",
+                            "$space-8"
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "NfFhZ",
+                              "name": "Icon",
+                              "width": 14,
+                              "height": 14,
+                              "icon": "trash-2",
+                              "library": "lucide",
+                              "fill": "$text"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
                       "id": "b33sH",
                       "type": "ref",
                       "ref": "IcwnO",
@@ -51806,36 +51940,6 @@
                   ]
                 }
               ]
-            },
-            {
-              "type": "frame",
-              "id": "YCPQX",
-              "name": "Link/Make",
-              "reusable": true,
-              "gap": "$space-4",
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "icon",
-                  "id": "uCZg4",
-                  "name": "Icon",
-                  "width": 14,
-                  "height": 14,
-                  "icon": "sparkles",
-                  "library": "lucide",
-                  "fill": "$me"
-                },
-                {
-                  "type": "text",
-                  "id": "OLNBW",
-                  "name": "Label",
-                  "fill": "$me",
-                  "content": "Сделать",
-                  "fontFamily": "$font-ui",
-                  "fontSize": "$type-small",
-                  "fontWeight": "600"
-                }
-              ]
             }
           ]
         },
@@ -51859,7 +51963,7 @@
               "strokeWidth": {
                 "bottom": 1
               },
-              "gap": "$space-8",
+              "gap": "$space-12",
               "padding": [
                 "$space-8",
                 "$space-16"
@@ -51879,61 +51983,207 @@
                 },
                 {
                   "type": "frame",
-                  "id": "s010x",
-                  "name": "Copy",
+                  "id": "aWWXS",
+                  "name": "Actions",
                   "fill": "$btn",
                   "cornerRadius": "$radius-control",
-                  "gap": "$space-6",
-                  "padding": [
-                    "$space-4",
-                    "$space-12"
-                  ],
                   "alignItems": "center",
                   "children": [
                     {
-                      "type": "icon",
-                      "id": "s008x",
-                      "name": "copy",
-                      "width": 13,
-                      "height": 13,
-                      "icon": "copy",
-                      "library": "lucide",
-                      "fill": "$text"
+                      "type": "frame",
+                      "id": "UuRF1",
+                      "name": "Копировать",
+                      "cornerRadius": "$radius-control",
+                      "padding": [
+                        "$space-4",
+                        "$space-8"
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "V69J6",
+                          "name": "Icon",
+                          "width": 14,
+                          "height": 14,
+                          "icon": "copy",
+                          "library": "lucide",
+                          "fill": "$text"
+                        }
+                      ]
                     },
                     {
-                      "type": "text",
-                      "id": "s009x",
-                      "name": "Label",
-                      "fill": "$text",
-                      "content": "Копировать",
-                      "fontFamily": "$font-ui",
-                      "fontSize": "$type-small",
-                      "fontWeight": "normal"
+                      "type": "rectangle",
+                      "id": "odhwR",
+                      "name": "Separator",
+                      "fill": "$rule",
+                      "width": 1,
+                      "height": 14
+                    },
+                    {
+                      "type": "frame",
+                      "id": "byVYR",
+                      "name": "Открыть",
+                      "cornerRadius": "$radius-control",
+                      "padding": [
+                        "$space-4",
+                        "$space-8"
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "KI0Qf",
+                          "name": "Icon",
+                          "width": 14,
+                          "height": 14,
+                          "icon": "folder-open",
+                          "library": "lucide",
+                          "fill": "$text"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "Q1VOc",
+                      "name": "Separator",
+                      "fill": "$rule",
+                      "width": 1,
+                      "height": 14
+                    },
+                    {
+                      "type": "frame",
+                      "id": "gluOm",
+                      "name": "Переименовать",
+                      "cornerRadius": "$radius-control",
+                      "padding": [
+                        "$space-4",
+                        "$space-8"
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "BqCG1",
+                          "name": "Icon",
+                          "width": 14,
+                          "height": 14,
+                          "icon": "pencil",
+                          "library": "lucide",
+                          "fill": "$text"
+                        }
+                      ]
                     }
                   ]
                 },
                 {
                   "type": "frame",
-                  "id": "s012x",
-                  "name": "More",
+                  "id": "C5sn1",
+                  "name": "Delete group",
                   "fill": "$btn",
                   "cornerRadius": "$radius-control",
-                  "padding": [
-                    "$space-4",
-                    "$space-8"
-                  ],
+                  "alignItems": "center",
                   "children": [
                     {
-                      "type": "icon",
-                      "id": "s011x",
-                      "name": "ellipsis",
-                      "width": 14,
-                      "height": 14,
-                      "icon": "ellipsis",
-                      "library": "lucide",
-                      "fill": "$text"
+                      "type": "frame",
+                      "id": "vQ0TO",
+                      "name": "Удалить…",
+                      "cornerRadius": "$radius-control",
+                      "padding": [
+                        "$space-4",
+                        "$space-8"
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "RMjRQ",
+                          "name": "Icon",
+                          "width": 14,
+                          "height": 14,
+                          "icon": "trash-2",
+                          "library": "lucide",
+                          "fill": "$text"
+                        }
+                      ]
                     }
                   ]
+                },
+                {
+                  "id": "KF91q",
+                  "type": "ref",
+                  "ref": "IcwnO",
+                  "name": "Search",
+                  "width": 200
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "V5Mw7p",
+              "name": "Tooltip",
+              "reusable": true,
+              "fill": "$surface",
+              "cornerRadius": "$radius-control",
+              "stroke": "$rule",
+              "strokeWidth": 1,
+              "effect": {
+                "type": "shadow",
+                "shadowType": "outer",
+                "color": "$shadow",
+                "offset": {
+                  "x": 0,
+                  "y": 2
+                },
+                "blur": 6
+              },
+              "padding": [
+                "$space-2",
+                "$space-6"
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "dL7qb",
+                  "name": "Label",
+                  "fill": "$text",
+                  "content": "Переименовать",
+                  "fontFamily": "$font-ui",
+                  "fontSize": "$type-caption",
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "Kvrah",
+              "name": "Detail bar · hover",
+              "width": 760,
+              "height": 80,
+              "layout": "none",
+              "children": [
+                {
+                  "id": "iclxY",
+                  "type": "ref",
+                  "ref": "s013x",
+                  "name": "Detail bar",
+                  "width": "fill_container(760)",
+                  "x": 0,
+                  "y": 0,
+                  "descendants": {
+                    "gluOm": {
+                      "fill": "$rule"
+                    }
+                  }
+                },
+                {
+                  "id": "TSgeV",
+                  "type": "ref",
+                  "ref": "V5Mw7p",
+                  "name": "Tooltip",
+                  "width": "fit_content",
+                  "x": 437,
+                  "y": 50
                 }
               ]
             },
@@ -52160,7 +52410,37 @@
             },
             {
               "type": "frame",
-              "id": "LIFH7",
+              "id": "K3fw6",
+              "name": "Link/Make",
+              "reusable": true,
+              "gap": "$space-4",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "nHJ1f",
+                  "name": "Icon",
+                  "width": 14,
+                  "height": 14,
+                  "icon": "sparkles",
+                  "library": "lucide",
+                  "fill": "$me"
+                },
+                {
+                  "type": "text",
+                  "id": "l5pChN",
+                  "name": "Label",
+                  "fill": "$me",
+                  "content": "Сделать",
+                  "fontFamily": "$font-ui",
+                  "fontSize": "$type-small",
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "ORy2U",
               "name": "No summary line",
               "reusable": true,
               "width": 760,
@@ -52173,7 +52453,7 @@
               "children": [
                 {
                   "type": "text",
-                  "id": "RzvXS",
+                  "id": "VFUWP",
                   "name": "Text",
                   "fill": "$gutter",
                   "content": "Нет итогов",
@@ -52182,16 +52462,16 @@
                   "fontWeight": "normal"
                 },
                 {
-                  "id": "EXaFz",
+                  "id": "RqARh",
                   "type": "ref",
-                  "ref": "YCPQX",
+                  "ref": "K3fw6",
                   "name": "Сделать"
                 }
               ]
             },
             {
               "type": "frame",
-              "id": "Km7Zn",
+              "id": "fZLLb",
               "name": "Making line",
               "reusable": true,
               "width": 760,
@@ -52204,7 +52484,7 @@
               "children": [
                 {
                   "type": "icon",
-                  "id": "PR2Qf",
+                  "id": "et0cB",
                   "name": "Spinner",
                   "width": 14,
                   "height": 14,
@@ -52214,7 +52494,7 @@
                 },
                 {
                   "type": "text",
-                  "id": "FM9Mo",
+                  "id": "Vmq7I",
                   "name": "Text",
                   "fill": "$gutter",
                   "content": "Делаю…",
@@ -52224,7 +52504,7 @@
                 },
                 {
                   "type": "text",
-                  "id": "k35aVC",
+                  "id": "toSgq",
                   "name": "Time",
                   "fill": "$gutter",
                   "content": "0:24",
@@ -52234,7 +52514,7 @@
                 },
                 {
                   "type": "text",
-                  "id": "s3KNX",
+                  "id": "Ztkd8",
                   "name": "Cancel",
                   "fill": "$sub",
                   "content": "Отменить",
@@ -52246,7 +52526,7 @@
             },
             {
               "type": "frame",
-              "id": "nzrGX",
+              "id": "WpUou",
               "name": "Summary skeleton",
               "reusable": true,
               "width": 760,
@@ -52255,7 +52535,7 @@
               "children": [
                 {
                   "type": "frame",
-                  "id": "ROghh",
+                  "id": "XkATi",
                   "name": "Block",
                   "width": "fill_container",
                   "layout": "vertical",
@@ -52269,7 +52549,7 @@
                   "children": [
                     {
                       "type": "frame",
-                      "id": "fHsli",
+                      "id": "xHiTs",
                       "name": "Line",
                       "width": 640,
                       "height": 8,
@@ -52278,7 +52558,7 @@
                     },
                     {
                       "type": "frame",
-                      "id": "hnXIO",
+                      "id": "iTt8Y",
                       "name": "Line",
                       "width": 600,
                       "height": 8,
@@ -52287,7 +52567,7 @@
                     },
                     {
                       "type": "frame",
-                      "id": "tZFSu",
+                      "id": "mYBcQ",
                       "name": "Line",
                       "width": 380,
                       "height": 8,
@@ -52298,7 +52578,7 @@
                 },
                 {
                   "type": "frame",
-                  "id": "T4dKW9",
+                  "id": "TC04s",
                   "name": "Block",
                   "width": "fill_container",
                   "layout": "vertical",
@@ -52312,7 +52592,7 @@
                   "children": [
                     {
                       "type": "frame",
-                      "id": "t8aaVV",
+                      "id": "l8WM7S",
                       "name": "Line",
                       "width": 520,
                       "height": 8,
@@ -52321,7 +52601,7 @@
                     },
                     {
                       "type": "frame",
-                      "id": "l8sVZP",
+                      "id": "l9mLMA",
                       "name": "Line",
                       "width": 560,
                       "height": 8,
@@ -52330,7 +52610,7 @@
                     },
                     {
                       "type": "frame",
-                      "id": "iaZDL",
+                      "id": "Z4Qt6",
                       "name": "Line",
                       "width": 440,
                       "height": 8,
@@ -52339,7 +52619,7 @@
                     },
                     {
                       "type": "frame",
-                      "id": "H3kx4",
+                      "id": "J8A8Q",
                       "name": "Line",
                       "width": 300,
                       "height": 8,
@@ -52350,7 +52630,7 @@
                 },
                 {
                   "type": "frame",
-                  "id": "e8bJ9z",
+                  "id": "oOhoS",
                   "name": "Block",
                   "width": "fill_container",
                   "layout": "vertical",
@@ -52364,7 +52644,7 @@
                   "children": [
                     {
                       "type": "frame",
-                      "id": "y420tZ",
+                      "id": "xspwk",
                       "name": "Line",
                       "width": 480,
                       "height": 8,
@@ -52373,7 +52653,7 @@
                     },
                     {
                       "type": "frame",
-                      "id": "duEPd",
+                      "id": "mEmuu",
                       "name": "Line",
                       "width": 360,
                       "height": 8,
@@ -52386,7 +52666,7 @@
             },
             {
               "type": "frame",
-              "id": "ahKkV",
+              "id": "UisO3",
               "name": "Summary date",
               "reusable": true,
               "width": 760,
@@ -52397,7 +52677,7 @@
               "children": [
                 {
                   "type": "text",
-                  "id": "uCzZj",
+                  "id": "uPKIb",
                   "name": "Text",
                   "fill": "$gutter",
                   "content": "Сделано 12 ноября, 14:05",
@@ -52460,7 +52740,8 @@
                   "height": 44,
                   "descendants": {
                     "b33sH": {
-                      "width": 160
+                      "width": 160,
+                      "enabled": false
                     }
                   }
                 },
@@ -52946,9 +53227,9 @@
                       }
                     },
                     {
-                      "id": "kw4YG",
+                      "id": "v9ZCh",
                       "type": "ref",
-                      "ref": "ahKkV",
+                      "ref": "UisO3",
                       "name": "Date",
                       "width": "fill_container"
                     }
@@ -53009,7 +53290,8 @@
                   "height": 44,
                   "descendants": {
                     "b33sH": {
-                      "width": 160
+                      "width": 160,
+                      "enabled": false
                     }
                   }
                 },
@@ -53343,11 +53625,8 @@
                   "name": "Detail bar",
                   "width": "fill_container",
                   "descendants": {
-                    "s010x": {
-                      "enabled": false
-                    },
-                    "s012x": {
-                      "enabled": false
+                    "V69J6": {
+                      "fill": "$disText"
                     }
                   }
                 },
@@ -53384,7 +53663,7 @@
                     },
                     {
                       "type": "frame",
-                      "id": "s4U89H",
+                      "id": "hun1P",
                       "name": "Body",
                       "width": "fill_container",
                       "height": "fill_container",
@@ -53393,16 +53672,16 @@
                       "gap": "$space-4",
                       "children": [
                         {
-                          "id": "f03Sfp",
+                          "id": "tYa14",
                           "type": "ref",
-                          "ref": "Km7Zn",
+                          "ref": "fZLLb",
                           "name": "Making",
                           "width": "fill_container"
                         },
                         {
-                          "id": "uaujq",
+                          "id": "l5VYEI",
                           "type": "ref",
-                          "ref": "nzrGX",
+                          "ref": "WpUou",
                           "name": "Skeleton",
                           "width": "fill_container"
                         }
@@ -53465,7 +53744,8 @@
                   "height": 44,
                   "descendants": {
                     "b33sH": {
-                      "width": 160
+                      "width": 160,
+                      "enabled": false
                     }
                   }
                 },
@@ -53799,11 +54079,8 @@
                   "name": "Detail bar",
                   "width": "fill_container",
                   "descendants": {
-                    "s010x": {
-                      "enabled": false
-                    },
-                    "s012x": {
-                      "enabled": false
+                    "V69J6": {
+                      "fill": "$disText"
                     }
                   }
                 },
@@ -53929,7 +54206,8 @@
                   "height": 44,
                   "descendants": {
                     "b33sH": {
-                      "width": 160
+                      "width": 160,
+                      "enabled": false
                     }
                   }
                 },
@@ -54262,11 +54540,8 @@
                   "name": "Detail bar",
                   "width": "fill_container",
                   "descendants": {
-                    "s010x": {
-                      "enabled": false
-                    },
-                    "s012x": {
-                      "enabled": false
+                    "V69J6": {
+                      "fill": "$disText"
                     }
                   }
                 },
@@ -54303,7 +54578,7 @@
                     },
                     {
                       "type": "frame",
-                      "id": "fgGKC",
+                      "id": "F1NIW3",
                       "name": "Body",
                       "width": "fill_container",
                       "height": "fill_container",
@@ -54312,9 +54587,9 @@
                       "gap": "$space-4",
                       "children": [
                         {
-                          "id": "rvK3K",
+                          "id": "ks030",
                           "type": "ref",
-                          "ref": "LIFH7",
+                          "ref": "ORy2U",
                           "name": "No summary",
                           "width": "fill_container"
                         }
@@ -54377,7 +54652,8 @@
                   "height": 44,
                   "descendants": {
                     "b33sH": {
-                      "width": 160
+                      "width": 160,
+                      "enabled": false
                     }
                   }
                 },
@@ -54915,7 +55191,8 @@
                   "height": 44,
                   "descendants": {
                     "b33sH": {
-                      "width": 160
+                      "width": 160,
+                      "enabled": false
                     }
                   }
                 },
@@ -55244,11 +55521,17 @@
                   "name": "Detail bar",
                   "width": "fill_container",
                   "descendants": {
-                    "s010x": {
-                      "enabled": false
+                    "V69J6": {
+                      "fill": "$disText"
                     },
-                    "s012x": {
-                      "enabled": false
+                    "KI0Qf": {
+                      "fill": "$disText"
+                    },
+                    "BqCG1": {
+                      "fill": "$disText"
+                    },
+                    "RMjRQ": {
+                      "fill": "$disText"
                     }
                   }
                 },
@@ -55358,7 +55641,8 @@
                   "height": 44,
                   "descendants": {
                     "b33sH": {
-                      "width": 160
+                      "width": 160,
+                      "enabled": false
                     },
                     "b33sH/jw3kq": {
                       "content": "correlation",
@@ -55572,7 +55856,19 @@
                   "type": "ref",
                   "ref": "s013x",
                   "name": "Detail bar",
-                  "width": "fill_container"
+                  "width": "fill_container",
+                  "descendants": {
+                    "KF91q/jw3kq": {
+                      "content": "correlation",
+                      "fill": "$text"
+                    },
+                    "KF91q/kHRgz": {
+                      "enabled": false
+                    },
+                    "KF91q/SwwNh": {
+                      "enabled": true
+                    }
+                  }
                 },
                 {
                   "type": "frame",
@@ -55782,7 +56078,8 @@
                   "height": 44,
                   "descendants": {
                     "b33sH": {
-                      "width": 160
+                      "width": 160,
+                      "enabled": false
                     },
                     "b33sH/jw3kq": {
                       "content": "correlation",
@@ -55975,7 +56272,19 @@
                   "type": "ref",
                   "ref": "s013x",
                   "name": "Detail bar",
-                  "width": "fill_container"
+                  "width": "fill_container",
+                  "descendants": {
+                    "KF91q/jw3kq": {
+                      "content": "correlation",
+                      "fill": "$text"
+                    },
+                    "KF91q/kHRgz": {
+                      "enabled": true
+                    },
+                    "KF91q/SwwNh": {
+                      "enabled": false
+                    }
+                  }
                 },
                 {
                   "type": "frame",
@@ -56185,7 +56494,8 @@
                   "height": 44,
                   "descendants": {
                     "b33sH": {
-                      "width": 160
+                      "width": 160,
+                      "enabled": false
                     },
                     "b33sH/jw3kq": {
                       "content": "Kubernetes",
@@ -56261,11 +56571,27 @@
                   "name": "Detail bar",
                   "width": "fill_container",
                   "descendants": {
-                    "s010x": {
+                    "V69J6": {
+                      "fill": "$disText"
+                    },
+                    "KI0Qf": {
+                      "fill": "$disText"
+                    },
+                    "BqCG1": {
+                      "fill": "$disText"
+                    },
+                    "RMjRQ": {
+                      "fill": "$disText"
+                    },
+                    "KF91q/jw3kq": {
+                      "content": "Kubernetes",
+                      "fill": "$text"
+                    },
+                    "KF91q/kHRgz": {
                       "enabled": false
                     },
-                    "s012x": {
-                      "enabled": false
+                    "KF91q/SwwNh": {
+                      "enabled": true
                     }
                   }
                 },
@@ -56375,7 +56701,8 @@
                   "height": 44,
                   "descendants": {
                     "b33sH": {
-                      "width": 160
+                      "width": 160,
+                      "enabled": false
                     }
                   }
                 },
@@ -56441,11 +56768,17 @@
                   "name": "Detail bar",
                   "width": "fill_container",
                   "descendants": {
-                    "s010x": {
-                      "enabled": false
+                    "V69J6": {
+                      "fill": "$disText"
                     },
-                    "s012x": {
-                      "enabled": false
+                    "KI0Qf": {
+                      "fill": "$disText"
+                    },
+                    "BqCG1": {
+                      "fill": "$disText"
+                    },
+                    "RMjRQ": {
+                      "fill": "$disText"
                     }
                   }
                 },
@@ -56542,7 +56875,8 @@
                   "height": 44,
                   "descendants": {
                     "b33sH": {
-                      "width": 160
+                      "width": 160,
+                      "enabled": false
                     }
                   }
                 },
@@ -56609,11 +56943,17 @@
                   "name": "Detail bar",
                   "width": "fill_container",
                   "descendants": {
-                    "s010x": {
-                      "enabled": false
+                    "V69J6": {
+                      "fill": "$disText"
                     },
-                    "s012x": {
-                      "enabled": false
+                    "KI0Qf": {
+                      "fill": "$disText"
+                    },
+                    "BqCG1": {
+                      "fill": "$disText"
+                    },
+                    "RMjRQ": {
+                      "fill": "$disText"
                     }
                   }
                 },
@@ -56710,7 +57050,8 @@
                   "height": 44,
                   "descendants": {
                     "b33sH": {
-                      "width": 160
+                      "width": 160,
+                      "enabled": false
                     }
                   }
                 },
@@ -57271,7 +57612,8 @@
                   "height": 44,
                   "descendants": {
                     "b33sH": {
-                      "width": 160
+                      "width": 160,
+                      "enabled": false
                     }
                   }
                 },
@@ -57828,7 +58170,8 @@
                   "height": 44,
                   "descendants": {
                     "b33sH": {
-                      "width": 160
+                      "width": 160,
+                      "enabled": false
                     }
                   }
                 },
@@ -58381,6 +58724,12 @@
                   "width": "fill_container",
                   "height": 44,
                   "descendants": {
+                    "GUfAH": {
+                      "enabled": true
+                    },
+                    "GYNka": {
+                      "enabled": true
+                    },
                     "b33sH": {
                       "width": 160
                     }
@@ -58887,8 +59236,8 @@
       "y": 23480,
       "name": "Note detail",
       "width": 520,
-      "height": 470,
-      "content": "Detail\n\nHeader: title, then day, start time · duration. The summary is rendered Markdown, selectable, with the date it was made under its last line in `gutter`. Toolbar: Копировать (the Markdown source) and ⋯ with the row's menu: Открыть, Переименовать, Сделать итоги (no summary), Повторить итоги (failed only), Удалить….\n\nNo summary: one line under the header, «Нет итогов» and the link «✨ Сделать». Making: the line becomes a spinner, «Делаю…», the elapsed time and «Отменить», over a grey skeleton of the summary; the row shows «Подготовка итогов…». Done: the summary replaces both. Preparing after a call looks the same as making. Failed: one centred message under the header, with Повторить итоги. With no call selected: «Звонок не выбран». Copy and ⋯ are hidden whenever there is no summary.\n\n↑↓ moves the selection and the detail follows at once; Tab moves focus into the detail."
+      "height": 560,
+      "content": "Detail\n\nHeader: title, then day, start time · duration. The summary is rendered Markdown, selectable, with the date it was made under its last line in `gutter`.\n\nToolbar, right of the list over the detail, before the search field: icon-only buttons in two groups, Mail-style. Копировать (the Markdown source), Открыть (the folder in Finder), Переименовать; then Удалить… on its own. Each shows its name as a tooltip on hover. Повторить итоги stays in the failed message and the row menu.\n\nThe buttons act on the selected call. Копировать is disabled without a summary; with no call selected all four are disabled. Disabled, not hidden: the toolbar never shifts.\n\nNo summary: one line under the header, «Нет итогов» and the link «✨ Сделать». Making, or preparing after a call: a spinner, «Делаю…», the elapsed time and «Отменить», over a grey skeleton of the summary; the row shows «Подготовка итогов…». Done: the summary replaces both. Failed: one centred message under the header, with Повторить итоги. With no call selected: «Звонок не выбран».\n\n↑↓ moves the selection and the detail follows at once; Tab moves focus into the detail."
     },
     {
       "type": "note",
@@ -58898,11 +59247,11 @@
       "name": "Note search",
       "width": 520,
       "height": 380,
-      "content": "Search\n\nThe field sits in the list's title bar and works as in the calls list: titles, summaries and transcripts, as you type, ignoring case and ё/е; days with no match hide.\n\nA match row keeps the two-line shape: title and time, then where the first match is (its time in the transcript, or «Итоги»), the text around it with the hit tinted `hit`, and «ещё N». The detail shows the selected call's summary. No results: the list says so and the detail shows «Звонок не выбран».\n\nEmpty, loading and the inactive window (selection in `chip`) are as in the calls list."
+      "content": "Search\n\nThe field ends the window's toolbar (over the list when narrow) and works as in the calls list: titles, summaries and transcripts, as you type, ignoring case and ё/е; days with no match hide.\n\nA match row keeps the two-line shape: title and time, then where the first match is (its time in the transcript, or «Итоги»), the text around it with the hit tinted `hit`, and «ещё N». The detail shows the selected call's summary. No results: the list says so and the detail shows «Звонок не выбран».\n\nEmpty, loading and the inactive window (selection in `chip`) are as in the calls list."
     },
     {
       "type": "frame",
-      "id": "OFoX0",
+      "id": "ynboh",
       "x": 17660,
       "y": 22000,
       "name": "Calls — making summary",
@@ -58921,7 +59270,7 @@
       "children": [
         {
           "type": "frame",
-          "id": "NMbRP",
+          "id": "o7DJW",
           "x": 0,
           "y": 0,
           "name": "Content",
@@ -58930,7 +59279,7 @@
           "children": [
             {
               "type": "frame",
-              "id": "yHiyc",
+              "id": "qwNRZ",
               "name": "List pane",
               "width": 340,
               "height": "fill_container",
@@ -58941,7 +59290,7 @@
               "layout": "vertical",
               "children": [
                 {
-                  "id": "j3ERs",
+                  "id": "b04HQW",
                   "type": "ref",
                   "ref": "bncv0",
                   "name": "List bar",
@@ -58949,13 +59298,14 @@
                   "height": 44,
                   "descendants": {
                     "b33sH": {
-                      "width": 160
+                      "width": 160,
+                      "enabled": false
                     }
                   }
                 },
                 {
                   "type": "frame",
-                  "id": "x1z3Y",
+                  "id": "z9HCiZ",
                   "name": "List",
                   "clip": true,
                   "width": "fill_container",
@@ -58964,7 +59314,7 @@
                   "layout": "vertical",
                   "children": [
                     {
-                      "id": "MCfjU",
+                      "id": "jBG1m",
                       "type": "ref",
                       "ref": "pmtOb",
                       "name": "Day Сегодня",
@@ -58979,7 +59329,7 @@
                       }
                     },
                     {
-                      "id": "H3tYUv",
+                      "id": "W6aZT",
                       "type": "ref",
                       "ref": "s030x",
                       "name": "Row ЦР ID",
@@ -59000,7 +59350,7 @@
                       }
                     },
                     {
-                      "id": "PQvL4",
+                      "id": "dtwrX",
                       "type": "ref",
                       "ref": "s030x",
                       "name": "Row ЦР",
@@ -59021,7 +59371,7 @@
                       }
                     },
                     {
-                      "id": "U50Qh",
+                      "id": "sjd29",
                       "type": "ref",
                       "ref": "s030x",
                       "name": "Row iOS Daily",
@@ -59046,7 +59396,7 @@
                       }
                     },
                     {
-                      "id": "uuv24",
+                      "id": "eQio6",
                       "type": "ref",
                       "ref": "pmtOb",
                       "name": "Day Вчера",
@@ -59061,7 +59411,7 @@
                       }
                     },
                     {
-                      "id": "vyYhO",
+                      "id": "dRH3O",
                       "type": "ref",
                       "ref": "s030x",
                       "name": "Row Люда — передача дел",
@@ -59082,7 +59432,7 @@
                       }
                     },
                     {
-                      "id": "bbx87",
+                      "id": "t9P0NH",
                       "type": "ref",
                       "ref": "s030x",
                       "name": "Row iOS & Android daily",
@@ -59107,7 +59457,7 @@
                       }
                     },
                     {
-                      "id": "TT0UP",
+                      "id": "j9edw",
                       "type": "ref",
                       "ref": "pmtOb",
                       "name": "Day Понедельник, 9 ноября",
@@ -59122,7 +59472,7 @@
                       }
                     },
                     {
-                      "id": "FlrqA",
+                      "id": "blrDB",
                       "type": "ref",
                       "ref": "s030x",
                       "name": "Row ЦР Статус",
@@ -59143,7 +59493,7 @@
                       }
                     },
                     {
-                      "id": "ttzC6",
+                      "id": "kULuH",
                       "type": "ref",
                       "ref": "s030x",
                       "name": "Row 2026.11.09-1000",
@@ -59175,7 +59525,7 @@
                       }
                     },
                     {
-                      "id": "u0v22",
+                      "id": "X5gbpm",
                       "type": "ref",
                       "ref": "pmtOb",
                       "name": "Day Пятница, 6 ноября",
@@ -59190,7 +59540,7 @@
                       }
                     },
                     {
-                      "id": "FJH7q",
+                      "id": "kLw03",
                       "type": "ref",
                       "ref": "s030x",
                       "name": "Row Лера 17820",
@@ -59211,7 +59561,7 @@
                       }
                     },
                     {
-                      "id": "WfDI3",
+                      "id": "pBPit",
                       "type": "ref",
                       "ref": "s030x",
                       "name": "Row iOS Daily",
@@ -59232,7 +59582,7 @@
                       }
                     },
                     {
-                      "id": "t8XwYe",
+                      "id": "Cqx8I",
                       "type": "ref",
                       "ref": "pmtOb",
                       "name": "Day Четверг, 5 ноября",
@@ -59247,7 +59597,7 @@
                       }
                     },
                     {
-                      "id": "muvqn",
+                      "id": "nDAtV",
                       "type": "ref",
                       "ref": "s030x",
                       "name": "Row Планирование",
@@ -59273,30 +59623,27 @@
             },
             {
               "type": "frame",
-              "id": "A0rsus",
+              "id": "xdVQ4",
               "name": "Detail pane",
               "width": "fill_container",
               "height": "fill_container",
               "layout": "vertical",
               "children": [
                 {
-                  "id": "HEncS",
+                  "id": "IDKXF",
                   "type": "ref",
                   "ref": "s013x",
                   "name": "Detail bar",
                   "width": "fill_container",
                   "descendants": {
-                    "s010x": {
-                      "enabled": false
-                    },
-                    "s012x": {
-                      "enabled": false
+                    "V69J6": {
+                      "fill": "$disText"
                     }
                   }
                 },
                 {
                   "type": "frame",
-                  "id": "ec1ga",
+                  "id": "dLpmS",
                   "name": "Scroll",
                   "clip": true,
                   "width": "fill_container",
@@ -59311,7 +59658,7 @@
                   ],
                   "children": [
                     {
-                      "id": "s5mUN",
+                      "id": "Kvqvy",
                       "type": "ref",
                       "ref": "s033x",
                       "name": "Header",
@@ -59327,7 +59674,7 @@
                     },
                     {
                       "type": "frame",
-                      "id": "Tk1en",
+                      "id": "nELwA",
                       "name": "Body",
                       "width": "fill_container",
                       "height": "fill_container",
@@ -59336,16 +59683,16 @@
                       "gap": "$space-4",
                       "children": [
                         {
-                          "id": "hrDEg",
+                          "id": "AKwZ4",
                           "type": "ref",
-                          "ref": "Km7Zn",
+                          "ref": "fZLLb",
                           "name": "Making",
                           "width": "fill_container"
                         },
                         {
-                          "id": "dPRfG",
+                          "id": "FtG11",
                           "type": "ref",
-                          "ref": "nzrGX",
+                          "ref": "WpUou",
                           "name": "Skeleton",
                           "width": "fill_container"
                         }
@@ -59360,9 +59707,9 @@
       ]
     },
     {
-      "id": "sdgNY",
+      "id": "pQxvZ",
       "type": "ref",
-      "ref": "OFoX0",
+      "ref": "ynboh",
       "name": "Calls — making summary (dark)",
       "x": 17660,
       "y": 22740,
