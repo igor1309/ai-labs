@@ -33,7 +33,6 @@ public enum CallsListPreviews {
                                    day: .init(title: words.olderDay, count: words.one), time: "10:30", duration: "1:05:12", editable: true)
             }),
             ("notes-selected", with(notes) { $0.selectedID = $0.rows[1].id }),
-            ("notes-previewed", with(notes) { $0.selectedID = $0.rows[2].id; $0.previewedID = $0.rows[2].id }),
             ("delete", with(sample) {
                 $0.deleteID = $0.rows[0].id
                 $0.deleteBody = text(.deleteBody, "2026.10.21-1230 " + words.launch)
@@ -53,12 +52,16 @@ public enum CallsListPreviews {
 
     /// The sample calls' titles and day headers in the list's language.
     private struct Words {
-        let launch, okr, retro, long, friday, olderDay, one, today, yesterday: String
+        let launch, okr, retro, long, friday, olderDay, one, today, yesterday, launchGist, okrGist, untitledGist: String
         init(_ text: CallsListText) {
             let english = text.language == .english
             launch = english ? "Launch: roles and SLA" : "Запуск: роли и SLA"
             okr = english ? "Quarterly OKR sync" : "Синк по OKR на квартал"
             retro = english ? "Year in review" : "Ретро за год"
+            launchGist = english ? "Who owns the launch and which SLA we promise to the first customers."
+                : "Кто отвечает за запуск и какой SLA обещаем первым клиентам."
+            okrGist = english ? "Key results for the quarter, aligned before Friday." : "Ключевые результаты квартала сверяем до пятницы."
+            untitledGist = english ? "A short check on the build." : "Короткая сверка по сборке."
             long = english ? "Interview: iOS candidate — technical part, architecture, tests and questions on Swift Concurrency and SwiftUI"
                 : "Интервью: кандидат на iOS — техническая часть, архитектура, тесты и вопросы по Swift Concurrency и SwiftUI"
             friday = english ? "Friday, October 17" : "Пятница, 17 октября"
@@ -79,7 +82,10 @@ public enum CallsListPreviews {
 
     /// A call with notes above one without, and another with notes below.
     private static func notes(_ words: Words) -> CallsListState {
-        with(sample(words)) { $0.rows[0].hasNotes = true; $0.rows[2].hasNotes = true }
+        with(sample(words)) {
+            $0.rows[0].hasNotes = true; $0.rows[0].gist = words.launchGist
+            $0.rows[2].hasNotes = true; $0.rows[2].gist = words.untitledGist
+        }
     }
 
     /// «OKR» found in one call's title, another's transcript and a third's notes.
@@ -95,6 +101,7 @@ public enum CallsListPreviews {
             hits: [english ? 18 : 23].map { $0..<($0 + 3) }, more: text(.searchMore, 2)))
         let okr = state.rows[1].displayTitle
         let start = okr.distance(from: okr.startIndex, to: okr.range(of: "OKR")!.lowerBound)
+        state.rows[1].hasNotes = true; state.rows[1].gist = words.okrGist
         state.rows[1].match = .init(title: [start..<(start + 3)], snippet: nil)
         state.rows[2].match = .init(title: [], snippet: .init(
             place: text(.searchNotes), placeIsTime: false,

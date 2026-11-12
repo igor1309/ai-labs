@@ -5,11 +5,23 @@ import Testing
 @testable import Composer
 
 /// The composed calls list over a real calls folder: which calls have notes,
-/// and the preview it derives from the selected call.
+/// and the detail it derives from the selected call.
 @MainActor
 @Suite(.timeLimit(.minutes(1)))
-struct CallsPreviewWiringTests {
-    @Test func theEyeOpensThePreviewAndTheSelectionMovesIt() async throws {
+struct CallsDetailWiringTests {
+    @Test func eachRowCarriesItsGist() async throws {
+        try await withComposition { rig in
+            let calls = try #require(rig.menu.calls)
+            try call(a, notes: "## О чём встреча\n\nДейли команды. Обсудили релиз.\n\n## Решения\n\nНет.", in: rig.root)
+            try call(b, notes: nil, in: rig.root)
+            try call(c, notes: "# C notes", in: rig.root)
+            await rig.menu.perform(.showCalls)
+            await wait(calls) { $0.rows.map(\.hasNotes) == [true, false, true] }
+            #expect(calls.state.rows.map(\.gist) == ["Дейли команды.", nil, nil])
+        }
+    }
+
+    @Test func theDetailFollowsTheSelection() async throws {
         try await withComposition { rig in
             let calls = try #require(rig.menu.calls)
             try call(a, notes: "# A notes", in: rig.root)
@@ -17,26 +29,19 @@ struct CallsPreviewWiringTests {
             try call(c, notes: "# C notes", in: rig.root)
             await rig.menu.perform(.showCalls)
             await wait(calls) { $0.rows.map(\.hasNotes) == [true, false, true] }
-            #expect(calls.preview == nil)
+            #expect(calls.detail == nil)
 
-            await calls.send(.preview(c))
-            await waitPreview(calls) { $0?.notes == .text("# C notes") }
-            #expect(calls.state.selectedID == c && calls.state.previewedID == c)
-
+            await calls.send(.select(c))
+            await waitDetail(calls) { $0?.content == .notes("# C notes") }
             await calls.send(.select(a))
-            await waitPreview(calls) { $0?.notes == .text("# A notes") }
-            #expect(calls.preview?.id == a)
-
+            await waitDetail(calls) { $0?.content == .notes("# A notes") }
             await calls.send(.selectNext)
-            await waitPreview(calls) { $0 == nil }
-            #expect(calls.state.selectedID == b && calls.state.previewedID == nil)
-
+            await waitDetail(calls) { $0?.id == b && noSummary($0) }
             await calls.send(.selectNext)
-            await waitPreview(calls) { $0?.notes == .text("# C notes") }
+            await waitDetail(calls) { $0?.content == .notes("# C notes") }
             await calls.send(.selectPrevious)
-            await waitPreview(calls) { $0 == nil }
             await calls.send(.selectPrevious)
-            await waitPreview(calls) { $0?.notes == .text("# A notes") }
+            await waitDetail(calls) { $0?.content == .notes("# A notes") }
             await calls.send(.selectPrevious)
             #expect(calls.state.selectedID == a)
         }
@@ -49,73 +54,53 @@ struct CallsPreviewWiringTests {
             await rig.menu.perform(.showCalls)
             await wait(calls) { $0.rows.map(\.hasNotes) == [false] }
             await calls.send(.select(a))
+            await waitDetail(calls) { noSummary($0) }
             try call(a, notes: "# Late", in: rig.root, create: false)
 
             await rig.menu.perform(.showCalls)
             await wait(calls) { $0.rows.map(\.hasNotes) == [true] }
-            await calls.send(.preview(a))
-            await waitPreview(calls) { $0?.notes == .text("# Late") }
+            await waitDetail(calls) { $0?.content == .notes("# Late") }
         }
     }
 
-    @Test func aReloadUpdatesTheOpenPreview() async throws {
+    @Test func aReloadUpdatesTheShownDetail() async throws {
         try await withComposition { rig in
             let calls = try #require(rig.menu.calls)
-            try call(a, notes: "# Old", in: rig.root)
+            let old = "# Old\n\nСтарый смысл.", new = "# New\n\nНовый смысл."
+            try call(a, notes: old, in: rig.root)
             await rig.menu.perform(.showCalls)
             await wait(calls) { $0.rows.map(\.hasNotes) == [true] }
-            await calls.send(.preview(a))
-            await waitPreview(calls) { $0?.notes == .text("# Old") }
+            #expect(calls.state.rows.map(\.gist) == ["Старый смысл."])
+            await calls.send(.select(a))
+            await waitDetail(calls) { $0?.content == .notes(old) }
 
-            try call(a, notes: "# New", in: rig.root, create: false)
+            try call(a, notes: new, in: rig.root, create: false)
             await rig.menu.perform(.showCalls)
-            await waitPreview(calls) { $0?.notes == .text("# New") }
+            await waitDetail(calls) { $0?.content == .notes(new) }
+            await wait(calls) { $0.rows.map(\.gist) == ["Новый смысл."] }
 
             try FileManager.default.removeItem(at: folder(a, in: rig.root).appendingPathComponent("summary.md"))
             await rig.menu.perform(.showCalls)
             await wait(calls) { $0.rows.map(\.hasNotes) == [false] }
-            await waitPreview(calls) { $0 == nil }
+            #expect(calls.state.rows.map(\.gist) == [nil])
+            await waitDetail(calls) { noSummary($0) }
         }
     }
 
-    @Test func aClosedPreviewStaysClosedAndClosingTheWindowClosesIt() async throws {
-        try await withComposition { rig in
-            let calls = try #require(rig.menu.calls)
-            try call(a, notes: "# A", in: rig.root)
-            try call(b, notes: "# B", in: rig.root)
+    @Test func inANarrowWindowReadingACallOpensItsWindowOnItsNotes() async throws {
+        var shown: [CallsDetail?] = []
+        var calls: AudelinCalls?
+        try await withComposition(readCall: { shown.append(calls?.detail) }) { rig in
+            calls = try #require(rig.menu.calls)
+            let calls = try #require(calls)
+            try call(a, notes: "# A notes", in: rig.root)
             await rig.menu.perform(.showCalls)
-            await wait(calls) { $0.rows.map(\.hasNotes) == [true, true] }
+            await wait(calls) { $0.rows.count == 1 }
+            calls.widthChanged(narrow: true)
 
-            await calls.send(.preview(a))
-            await waitPreview(calls) { $0 != nil }
-            calls.closePreview()
-            #expect(calls.preview == nil)
-            await calls.send(.select(b))
-            #expect(calls.preview == nil && calls.state.previewedID == nil)
+            await calls.send(.read(a))
 
-            await calls.send(.preview(b))
-            await waitPreview(calls) { $0?.notes == .text("# B") }
-            calls.windowClosed()
-            #expect(calls.preview == nil)
-            await calls.send(.select(a))
-            #expect(calls.preview == nil)
-        }
-    }
-
-    @Test func everyEyeAsksForThePanelToBeActive() async throws {
-        let focused = Counter()
-        try await withComposition(focusPreview: { focused.count += 1 }) { rig in
-            let calls = try #require(rig.menu.calls)
-            try call(a, notes: "# A", in: rig.root)
-            await rig.menu.perform(.showCalls)
-            await wait(calls) { $0.rows.map(\.hasNotes) == [true] }
-
-            await calls.send(.preview(a))
-            await waitPreview(calls) { $0?.notes == .text("# A") }
-            #expect(focused.count == 1)
-
-            await calls.send(.preview(a))
-            #expect(focused.count == 2)
+            #expect(shown.map { $0?.content } == [.notes("# A notes")])
         }
     }
 
@@ -128,8 +113,8 @@ struct CallsPreviewWiringTests {
                                                     withIntermediateDirectories: false)
             await rig.menu.perform(.showCalls)
             await wait(calls) { $0.rows.count == 1 }
-            await calls.send(.preview(a))
-            await waitPreview(calls) { if case .unreadable = $0?.notes { true } else { false } }
+            await calls.send(.select(a))
+            await waitDetail(calls) { if case .unreadable = $0?.content { true } else { false } }
         }
     }
 }
@@ -149,8 +134,8 @@ private func call(_ id: String, notes: String?, in root: URL, create: Bool = tru
     for await state in Observations({ calls.state }) where predicate(state) { return }
 }
 
-@MainActor private func waitPreview(_ calls: AudelinCalls, until predicate: (CallsPreview?) -> Bool) async {
-    for await preview in Observations({ calls.preview }) where predicate(preview) { return }
+@MainActor private func waitDetail(_ calls: AudelinCalls, until predicate: (CallsDetail?) -> Bool) async {
+    for await detail in Observations({ calls.detail }) where predicate(detail) { return }
 }
 
-@MainActor private final class Counter { var count = 0 }
+private func noSummary(_ detail: CallsDetail?) -> Bool { if case .some(.none) = detail?.content { true } else { false } }

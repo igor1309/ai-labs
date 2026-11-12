@@ -1,89 +1,68 @@
-# Calls list — notes preview
+# Calls list — choosing a call
 
-Observer: the user, choosing which call's notes to read from the calls
-list. What the preview panel offers is `../summary-preview/SPEC.md`;
-renaming and deleting a call are user S-10 and S-18 (`../SPEC.md`). Oracle:
-the design brief `../../design/summary-preview.md` (eye A1).
+Observer: the user, choosing which call to read in the calls window. What
+the detail beside the list offers is `../summary-preview/SPEC.md`, the
+window around both `../calls-window/SPEC.md`; renaming and deleting a call are user S-10 and S-18 (`../SPEC.md`).
+Oracle: the design brief `../../design/calls-list.md`.
 
 ## Decided
 
-- **The eye column sits just before the row's action area.** The brief
-  proposed "just before the pin"; the list has no pin, and its Open and
-  Delete buttons show only on hover, so the eye goes right before them and
-  stays visible on every row that has notes.
-- **Notes that finish while the window is open show immediately.** Summary
-  status changes reread the listed calls' notes and refresh an open preview,
-  including replacement notes from an explicit retry. Showing the window
-  also rereads notes that finished while it was closed.
-- **Interrupted summaries offer explicit retry.** A request disables its retry
-  action while in progress. A refused or failed retry displays an error and
-  preserves existing notes and the transcript.
-- **A closed preview stays closed** while the selection moves; only an eye
-  opens it again.
-- **Closing the calls window closes the preview,** which has no row to
-  follow without it.
+- **A row's gist is the first sentence of «О чём встреча».** The summary
+  opens with what the call was about, so no second field has to be kept in
+  step with it.
+- **The detail follows the selection, with no step to open it.** One window
+  holds the list and the summary, as Mail and Notes do; the floating
+  preview and its eye are gone.
+- **Notes that finish while the window is open show immediately,** in the
+  row and in the detail, including replacement notes from a retry: the
+  user is looking at that call, and a list read on open would hide them
+  until the window is closed and opened again.
 
 ```gherkin
-Feature: Choosing a call's notes to read
+Feature: Choosing a call to read
 
-  Scenario: S-1 The eye marks calls with notes
-    Given some calls have notes and some do not
-    When I look at the calls list
-    Then I can see an eye on each call with notes, just before its actions
-
-  Scenario: S-2 Calls without notes keep the eye's place
-    Given some calls have notes and some do not
-    When I look at the calls list
-    Then I can see every row's columns line up, with an empty place where a call has no eye
-
-  Scenario: S-3 The eye opens the preview
+  Scenario: S-13 A row says what the call was about
     Given a call has notes
-    When I press its eye
-    Then I can read that call's notes in the preview
+    When I look at the calls list
+    Then I can read its title, start time, duration and what it was about
 
-  Scenario: S-4 A click moves the preview
-    Given the preview is open
-    When I click another call with notes
-    Then I can read that call's notes in the same preview
+  Scenario: S-14 A row whose notes are being prepared
+    Given a call's notes are being prepared
+    When I look at the calls list
+    Then I can see in its row that they are being prepared
 
-  Scenario: S-5 An arrow key moves the preview
-    Given the preview is open
-    When I move the selection with an arrow key to a call with notes
-    Then I can read that call's notes in the same preview
+  Scenario: S-15 A row whose notes failed
+    Given a call's notes failed
+    When I look at the calls list
+    Then I can see in its row that they failed
 
-  Scenario: S-6 A call without notes hides the preview
-    Given the preview is open
-    When I select a call without notes
-    Then I cannot see the preview
+  Scenario: S-16 A row without notes
+    Given a call has no notes
+    When I look at the calls list
+    Then I can read its title, start time and duration
 
-  Scenario: S-7 The preview comes back with notes
-    Given the preview is hidden on a call without notes
-    When I select a call with notes
-    Then I can read that call's notes in the preview
+  Scenario: S-17 A click shows the call
+    Given the calls window is wide
+    When I click a call
+    Then I can read that call beside the list
 
-  Scenario: S-8 Notes that finish later
-    Given a call without notes is selected and its notes finish
-    When I open the calls window again
-    Then I can see its eye and press it to read the notes
+  Scenario: S-18 An arrow key shows the call
+    Given the calls window is wide
+    When I move the selection with an arrow key
+    Then I can read the newly selected call beside the list
 
-  Scenario: S-9 A closed preview stays closed
-    Given I closed the preview
-    When I select another call with notes
-    Then I cannot see the preview until I press an eye
+  Scenario: S-19 Notes that finish while I watch
+    Given the selected call's notes are being prepared
+    When they finish
+    Then I can read them beside the list and its gist in its row
 
-  Scenario: S-10 Closing the calls window
-    Given the preview is open
-    When I close the calls window
-    Then I cannot see the preview
-
-  Scenario: S-11 Retry completion adds an eye
-    Given the calls window stays open on an interrupted call without notes
-    When I retry and its notes finish
-    Then I can see its eye and open the completed notes without reloading the list
-
-  Scenario: S-12 Retry completion refreshes an open preview
+  Scenario: S-20 Retry replaces the notes I read
     Given I am reading a call's previous notes while its retry runs
     When replacement notes finish
-    Then I can read the replacement in the same preview without reopening either window
+    Then I can read the replacement without selecting the call again
 
+  Scenario: S-26 An untitled call shows its folder name
+    Given a call has no title of its own
+    When I look at the calls list
+    Then I can read its folder name in its row
 ```

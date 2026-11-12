@@ -1,3 +1,13 @@
 "preview.copy" = "Копировать";
-"preview.windowTitle" = "Саммари — %@";
 "preview.unreadable" = "Итоги не читаются: %@";
+"preview.more" = "Ещё";
+"preview.open" = "Открыть";
+"preview.rename" = "Переименовать";
+"preview.retrySummary" = "Повторить итоги";
+"preview.delete" = "Удалить…";
+"preview.preparing" = "Подготовка итогов…";
+"preview.preparingHint" = "Итоги появятся здесь, когда будут готовы";
+"preview.failed" = "Не удалось подготовить итоги";
+"preview.noSummary" = "Итогов нет";
+"preview.notesOff" = "Подготовка итогов выключена в Настройках";
+"preview.noSelection" = "Звонок не выбран";

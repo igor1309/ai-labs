@@ -3,6 +3,7 @@ import Calls
 import CallsListUI
 import CallsSearch
 import Foundation
+import NotesMarkdown
 import Observation
 import Recording
 import Recordings
@@ -18,29 +19,49 @@ struct RecordingsInputs {
     }
 }
 
-/// The selected call's notes while the preview is open.
-public struct CallsPreview: Equatable, Sendable {
-    public enum Notes: Equatable, Sendable { case text(String), unreadable(String) }
+/// The selected call as the detail shows it.
+public struct CallsDetail: Equatable, Sendable {
+    public enum Content: Equatable, Sendable {
+        /// The notes' Markdown source.
+        case notes(String)
+        /// Why the notes cannot be read.
+        case unreadable(String)
+        case preparing
+        /// Preparing the summary failed; `canRetry` when Повторить итоги is offered.
+        case failed(reason: String, canRetry: Bool)
+        /// No summary; `notesOff` when preparing summaries is off in Settings.
+        case none(notesOff: Bool)
+    }
     public let id: String
     public let title: String
     public let date: String
     public let duration: String
-    public let notes: Notes
+    public let content: Content
 
-    public init(id: String, title: String, date: String, duration: String, notes: Notes) {
-        self.id = id; self.title = title; self.date = date; self.duration = duration; self.notes = notes
+    public init(id: String, title: String, date: String, duration: String, content: Content) {
+        self.id = id; self.title = title; self.date = date; self.duration = duration; self.content = content
     }
 }
 
+/// What the detail asks of the call it shows.
+public enum CallsDetailEvent: Equatable, Sendable { case copy, open, rename, retrySummary, delete }
+
 @MainActor @Observable
 public final class AudelinCalls {
-    /// The selected call's notes, while the preview is open and the call has them.
-    public private(set) var preview: CallsPreview?
+    /// The selected call, nil when none is selected.
+    public private(set) var detail: CallsDetail?
+    /// The call the detail was last read for: the selection as the list showed it then.
+    @ObservationIgnored private var detailFor: String?
+    private let copy: (String) -> Void
+    private let readCall: () -> Void
+    /// The window is too narrow for the call beside the list.
+    private var narrow = false
+    private let notesEnabled: () -> Bool
     private let notes: (String) async throws -> String?
-    private let focusPreview: () -> Void
     private var selectedID: String?
-    private var previewOpen = false
     private var withNotes: Set<String> = []
+    /// Each call's gist, read with its notes.
+    private var gists: [String: String] = [:]
     private var notesScan: Task<Void, Never>?
     private var loading: Task<Void, Never>?
 
@@ -75,7 +96,9 @@ public final class AudelinCalls {
          present: @escaping () -> Void, summaryStatuses: @escaping () -> [String: String] = { [:] },
          summaryBadges: @escaping () -> [String: CallsListState.Row.Summary] = { [:] },
          notes: @escaping (String) async throws -> String? = { _ in nil },
-         focusPreview: @escaping () -> Void = {},
+         copy: @escaping (String) -> Void = { _ in },
+         readCall: @escaping () -> Void = {},
+         notesEnabled: @escaping () -> Bool = { true },
          retryableSummaries: @escaping () -> Set<String> = { [] },
          retrySummary: @escaping (String) async throws -> Void = { _ in throw CocoaError(.fileWriteUnknown) },
          describe: @escaping (any Error) -> String = SettingsText(language: .russian).callsFailure,
@@ -86,7 +109,9 @@ public final class AudelinCalls {
         self.listText = listText
         self.retryableSummaries = retryableSummaries
         self.retrySummary = retrySummary
-        self.focusPreview = focusPreview
+        self.copy = copy
+        self.readCall = readCall
+        self.notesEnabled = notesEnabled
         self.summaryStatuses = summaryStatuses
         self.summaryBadges = summaryBadges
         self.notes = notes
@@ -117,10 +142,11 @@ public final class AudelinCalls {
             state.rows[index].summary = badges[state.rows[index].id] ?? .none
             state.rows[index].canRetrySummary = retryable.contains(state.rows[index].id)
             state.rows[index].hasNotes = withNotes.contains(state.rows[index].id)
+            state.rows[index].gist = gists[state.rows[index].id]
             state.rows[index].match = found[state.rows[index].id]
         }
         state.selectedID = state.rows.contains { $0.id == selectedID } ? selectedID : nil
-        state.previewedID = preview?.id
+        state.narrow = narrow
         state.editing = editing
         state.failure = openFailure ?? state.failure
         state.busy = state.busy || opening
@@ -147,6 +173,7 @@ public final class AudelinCalls {
         searchTask?.cancel()
         query = text
         textMatches = [:]
+        defer { followSelection() }
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             searching = false
             searchTask = nil
@@ -162,6 +189,7 @@ public final class AudelinCalls {
                     CallsSearch.match(text, title: "", transcript: read.transcript.map { .init(start: $0.start, words: $0.words) }, notes: read.notes)
                 }
                 textMatches[id] = .some(match?.snippet)
+                followSelection()
             }
             searching = false
         }
@@ -191,53 +219,88 @@ public final class AudelinCalls {
         scanNotes()
     }
 
-    /// The preview's own close; only an eye opens it again.
-    public func closePreview() {
-        previewOpen = false
-        updatePreview()
+    /// The calls window became narrow or wide: below the width for the call beside the list,
+    /// Return and Space read the selected call in its own window.
+    public func widthChanged(narrow: Bool) {
+        self.narrow = narrow
     }
 
-    /// With the calls window closed the preview has no row to follow.
+    /// With the calls window closed the list stops looking for notes.
     public func windowClosed() {
         notesScan?.cancel()
         notesScan = nil
-        closePreview()
     }
 
-    /// Finds which listed calls have notes as the listing or summary status changes
+    /// Finds which listed calls have notes, and each one's gist, as the listing or summary status changes
     /// while the window is shown; notes that are there but unreadable count, so their
     /// reason can be shown.
     private func scanNotes() {
         notesScan?.cancel()
         notesScan = Task { [notes] in
             for await (ids, _) in Observations({ (self.inputs.state().calls.map(\.id), self.summaryStatuses()) }) {
-                var found = Set<String>()
+                var found = Set<String>(), gists: [String: String] = [:]
                 for id in ids {
-                    do { if try await notes(id) != nil { found.insert(id) } } catch { found.insert(id) }
+                    // A closed window stops the scan between reads.
+                    guard !Task.isCancelled else { return }
+                    do {
+                        guard let text = try await notes(id) else { continue }
+                        found.insert(id)
+                        gists[id] = NotesMarkdown.gist(text)
+                    } catch { found.insert(id) }
                 }
                 if Task.isCancelled { return }
                 withNotes = found
-                // The open preview follows what the reload found.
-                updatePreview()
+                self.gists = gists
+                // The detail follows what the reload found.
+                updateDetail()
             }
         }
     }
 
-    private func updatePreview() {
+    /// A search that hides or shows the selected call empties or refills the detail.
+    private func followSelection() {
+        if state.selectedID != detailFor { updateDetail() }
+    }
+
+    /// Reads the selected call's notes into the detail.
+    private func updateDetail() {
         loading?.cancel()
-        guard previewOpen, let id = selectedID, let row = state.rows.first(where: { $0.id == id }) else {
+        let state = state
+        detailFor = state.selectedID
+        guard let id = selectedID, let index = state.rows.firstIndex(where: { $0.id == id }) else {
             loading = nil
-            preview = nil
+            detail = nil
             return
         }
-        let rows = state.rows
-        let opening = rows[...rows.firstIndex(where: { $0.id == id })!].last(where: { $0.day != nil })?.day
+        let row = state.rows[index]
+        let opening = state.rows[...index].last(where: { $0.day != nil })?.day
         let date = [opening?.title, row.time].compactMap { $0 }.joined(separator: ", ")
+        let status = summaryStatuses()[id] ?? ""
+        let notesOff = !notesEnabled()
         loading = Task { [notes] in
-            let read: CallsPreview.Notes?
-            do { read = try await notes(id).map { .text($0) } } catch { read = .unreadable(error.localizedDescription) }
+            let read: CallsDetail.Content?
+            do { read = try await notes(id).map { .notes($0) } } catch { read = .unreadable(error.localizedDescription) }
             guard !Task.isCancelled else { return }
-            preview = read.map { .init(id: id, title: row.displayTitle, date: date, duration: row.duration, notes: $0) }
+            let content: CallsDetail.Content
+            switch (read, row.summary) {
+            case let (read?, _): content = read
+            case (nil, .pending): content = .preparing
+            case (nil, .failed): content = .failed(reason: status, canRetry: row.canRetrySummary && row.editable)
+            case (nil, .none): content = .none(notesOff: notesOff)
+            }
+            detail = .init(id: id, title: row.displayTitle, date: date, duration: row.duration, content: content)
+        }
+    }
+
+    /// The detail's buttons and menu act on the call it shows, as the list's own actions do.
+    public func send(detail event: CallsDetailEvent) async {
+        guard let shown = detail else { return }
+        switch event {
+        case .copy: if case let .notes(source) = shown.content { copy(source) }
+        case .open: await send(.open(shown.id))
+        case .rename: await send(.beginRename(shown.id))
+        case .retrySummary: await send(.retrySummary(shown.id))
+        case .delete: await send(.askDelete(shown.id))
         }
     }
 
@@ -246,7 +309,7 @@ public final class AudelinCalls {
         let index = selectedID.flatMap { id in rows.firstIndex { $0.id == id } }
         let next = index.map { min(max($0 + step, 0), rows.count - 1) } ?? (step > 0 ? 0 : rows.count - 1)
         selectedID = rows[next].id
-        updatePreview()
+        updateDetail()
     }
 
     /// Ends an inline rename by saving its title, as leaving the field does in Finder.
@@ -287,18 +350,23 @@ public final class AudelinCalls {
         case let .select(id):
             if editing?.id != id { commitRename() }
             selectedID = id
-            updatePreview()
+            updateDetail()
         case let .search(text): search(text)
         case .selectNext: commitRename(); move(by: 1, in: snapshot.rows)
         case .selectPrevious: commitRename(); move(by: -1, in: snapshot.rows)
-        case let .preview(id):
+        case let .read(id):
+            guard snapshot.rows.contains(where: { $0.id == id }) else { return }
             if editing?.id != id { commitRename() }
-            // An eye asks for the panel to be the active window; a row
-            // selection only moves its content.
-            focusPreview()
             selectedID = id
-            previewOpen = true
-            updatePreview()
+            updateDetail()
+            // The call's window opens on this call's detail, not the one shown before.
+            // A reload may replace the load meanwhile; wait for the one that stands.
+            while let current = loading {
+                await current.value
+                if loading == current { break }
+            }
+            guard selectedID == id, detail?.id == id else { return }
+            readCall()
         case let .retrySummary(id):
             guard !snapshot.busy, let row = snapshot.rows.first(where: { $0.id == id }),
                   row.editable, row.canRetrySummary else { return }

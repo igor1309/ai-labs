@@ -132,8 +132,8 @@ from instances.
 |---|---|
 | Top, y < 0 | Glass Ledger — design system, Glass Ledger — components |
 | x = 0, y ≥ 0 | One frame each, Light and Dark: Glass Ledger — window sizes (how the resizable panel adapts), Glass Ledger — no footnote (the panel before any term is selected), Screens 1–8, then "Later — term chips" |
-| Right of Screen 4, x = 4100 | Screen 4b — Summary preview: eye button and preview window, Light and Dark ([brief](summary-preview.md)) |
-| [calls-list.pen](calls-list.pen) | The calls list grouped by day, its states and its parts ([brief](calls-list.md)) |
+| Right of Screen 4, x = 4100 | Screen 4b — Summary preview: an eye button and floating preview window that are not built; the calls window replaced them. Its typography is the calls window's detail ([brief](summary-preview.md)) |
+| Below everything, y ≥ 21240 | Calls window: list beside the selected call's summary, its states in Light and Dark, the boards "Calls window — shared components" and "Calls window — components" ([brief](calls-list.md)) |
 | Right of Screen 7, x = 2160 | Screen 7b — Installed update: a badge and restart item, not built; Audelin relaunches into an installed update by itself once idle ([brief](app-update.md)) |
 
 Current screens:

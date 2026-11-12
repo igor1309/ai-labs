@@ -1,5 +1,9 @@
 import SwiftUI
 
-#Preview("Notes · Light") { SummaryPreviewView(state: SummaryPreviews.state("notes"), copy: {}, render: SummaryPreviews.plain).frame(width: 440, height: 560).preferredColorScheme(.light) }
-#Preview("Notes · Dark") { SummaryPreviewView(state: SummaryPreviews.state("notes"), copy: {}, render: SummaryPreviews.plain).frame(width: 440, height: 560).preferredColorScheme(.dark) }
-#Preview("Unreadable") { SummaryPreviewView(state: SummaryPreviews.state("unreadable"), copy: {}, render: SummaryPreviews.plain).frame(width: 440, height: 560) }
+#Preview("Notes · Light") { SummaryPreviewView(state: SummaryPreviews.state("notes"), event: { _ in }, render: SummaryPreviews.plain).frame(width: 440, height: 560).preferredColorScheme(.light) }
+#Preview("Notes · Dark") { SummaryPreviewView(state: SummaryPreviews.state("notes"), event: { _ in }, render: SummaryPreviews.plain).frame(width: 440, height: 560).preferredColorScheme(.dark) }
+#Preview("Unreadable") { SummaryPreviewView(state: SummaryPreviews.state("unreadable"), event: { _ in }, render: SummaryPreviews.plain).frame(width: 440, height: 560) }
+#Preview("Preparing") { SummaryPreviewView(state: SummaryPreviews.state("preparing"), event: { _ in }, render: SummaryPreviews.plain).frame(width: 440, height: 560) }
+#Preview("Failed") { SummaryPreviewView(state: SummaryPreviews.state("failed"), event: { _ in }, render: SummaryPreviews.plain).frame(width: 440, height: 560) }
+#Preview("Notes off") { SummaryPreviewView(state: SummaryPreviews.state("notes-off"), event: { _ in }, render: SummaryPreviews.plain).frame(width: 440, height: 560) }
+#Preview("No selection") { SummaryPreviewView(state: SummaryPreviews.state("no-selection"), event: { _ in }, render: SummaryPreviews.plain).frame(width: 440, height: 560) }

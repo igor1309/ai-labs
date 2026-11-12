@@ -31,7 +31,7 @@ struct CallsListPreviewTests {
         #expect([.matches, .recorded].contains(outcome))
     }
 
-    /// In an inactive window the selected row turns grey and its eye loses the accent.
+    /// In an inactive window the selected row turns grey.
     @Test(arguments: [ColorScheme.light, .dark])
     func inactiveWindowDrawsTheSelectionGrey(scheme: ColorScheme) throws {
 

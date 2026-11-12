@@ -1,67 +1,54 @@
-# Calls list — notes preview QA
+# Calls list — QA
 
-The list's state is built directly as a value. What a row shows is proven
-by rendering that state against reference images, in light and dark.
-Each call with notes has its own notes text, read from a temporary calls
-folder. After each user event, the preview the composition derives is
-read back: the notes text it carries, or none; whether the panel is shown
-is checked through a fake of the panel.
+The list's state is built directly as a value, rendered and compared with
+reference images, in light and dark. What the detail shows is read back
+from the state the composition derives after each user event, with notes
+read from a temporary calls folder.
 
-## S-1 The eye marks calls with notes
+## S-13 A row says what the call was about
 
-A state with a call with notes; the image shows the eye just before the
-row's action area.
+A state with a call whose notes open «О чём встреча»; the image shows its
+title, time, duration and that section's first sentence. The gist itself
+is read back from the notes by the gist function's tests.
 
-## S-2 Calls without notes keep the eye's place
+## S-14 A row whose notes are being prepared
 
-A state with a call with notes above one without; the image shows the
-second with an empty eye place and both rows' columns at the same x.
+A state with a preparing call; the image shows «Подготовка итогов…» and the
+spinner on its second line.
 
-## S-3 The eye opens the preview
+## S-15 A row whose notes failed
 
-Pressing the eye of a call with notes; the preview carries that call's
-notes text, and the fake panel is ordered in.
+A state with a failed call; the image shows «Не удалось подготовить итоги»
+in the error colour with the alert.
 
-## S-4 A click moves the preview
+## S-16 A row without notes
 
-With a call previewed, a click on another call with notes; the preview
-carries the clicked call's notes text.
+A state with a call without notes; the image shows its title, time and
+duration and nothing else on the second line.
 
-## S-5 An arrow key moves the preview
+## S-17 A click shows the call
 
-With a call previewed, the down and up arrows each select the next and
-previous call; the preview carries the newly selected call's notes text.
+Selecting a call with notes; the derived detail carries that call's notes
+text.
 
-## S-6 A call without notes hides the preview
+## S-18 An arrow key shows the call
 
-With a call previewed, selecting a call without notes; there is no
-preview, and the fake panel is ordered out.
+With a call selected, the down and up arrows; the derived detail carries
+the newly selected call's notes text each time.
 
-## S-7 The preview comes back with notes
+## S-19 Notes that finish while I watch
 
-From S-6, selecting a call with notes; the preview carries its notes
-text, and the fake panel is ordered in.
+A selected preparing call; its notes are written to the folder and the
+summary status changes; the detail carries the notes text and the row
+carries the gist.
 
-## S-8 Notes that finish later
+## S-20 Retry replaces the notes I read
 
-A selected call without notes; its notes are written to the folder, and
-the calls window is shown again; the list state has its eye, and pressing
-it gives a preview carrying the written notes text.
+`cd audelin/macos/App && swift test --filter SummaryCompositionTests` holds a
+retry with previous notes selected, asserts the old text stays readable,
+completes it, and asserts the detail carries the new text.
 
-## S-9 A closed preview stays closed
+## S-26 An untitled call shows its folder name
 
-With the preview closed, selecting another call with notes; there is no
-preview, and the fake panel stays out.
-
-## S-10 Closing the calls window
-
-With a call previewed, the calls window closes; there is no preview, and
-the fake panel is ordered out.
-
-## S-11 Retry completion adds an eye
-
-`cd audelin/macos/App && swift test --filter SummaryCompositionTests/retryCompletionRefreshesTheOpenCallsWindowAndPreview` starts without notes, keeps the list open and its IDs unchanged, completes the held retry, then opens the new eye and asserts the published text.
-
-## S-12 Retry completion refreshes an open preview
-
-The same parameterized boundary starts with previous notes and keeps their preview open through generation. It asserts the old text remains readable until replacement, then the preview carries the newly published text.
+A state with a call whose title is empty; the image shows its folder name
+in the data font and the secondary colour on its first line.
