@@ -32,69 +32,97 @@ public struct NotesStyle {
     }
 }
 
-/// One call's notes: a header with its title, date and duration, the copy
-/// button, and the notes as selectable formatted text.
+/// One call beside the list: a bar with Копировать and the ⋯ menu, a header
+/// with its title, day, start time and duration, and the notes as selectable
+/// formatted text. The bar's buttons show only when there are notes to act on.
 public struct SummaryPreviewView: View {
     private let state: SummaryPreviewState
-    private let copy: () -> Void
+    private let event: (SummaryPreviewEvent) -> Void
     private let text: SummaryPreviewText
     private let render: (String, NotesStyle) -> NSAttributedString
     @Environment(\.colorScheme) private var scheme
     private var tokens: GlassLedger { .for(scheme) }
 
     /// `render` turns the notes' Markdown into formatted text in the given style.
-    public init(state: SummaryPreviewState, text: SummaryPreviewText = .init(language: .russian), copy: @escaping () -> Void,
-                render: @escaping (String, NotesStyle) -> NSAttributedString) {
+    public init(state: SummaryPreviewState, text: SummaryPreviewText = .init(language: .russian),
+                event: @escaping (SummaryPreviewEvent) -> Void, render: @escaping (String, NotesStyle) -> NSAttributedString) {
         // The style resolves the bundled fonts as the body is first built.
         GlassLedger.registerFonts()
         self.state = state
-        self.copy = copy
+        self.event = event
         self.text = text
         self.render = render
     }
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            VStack(alignment: .leading, spacing: tokens.space6) {
-                HStack(alignment: .center, spacing: tokens.space12) {
-                    Text(state.title).font(tokens.ui(tokens.typeTitle, .semibold)).foregroundStyle(tokens.text)
-                        .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    if case .markdown = state.notes {
-                        Button(action: copy) {
-                            HStack(spacing: tokens.space6) {
-                                Image(systemName: "doc.on.doc")
-                                Text(text(.copy))
-                            }
-                            .font(tokens.ui(tokens.typeSmall, .semibold)).foregroundStyle(tokens.text)
-                            .padding(.vertical, tokens.space6).padding(.horizontal, tokens.space16)
-                            .background(tokens.btn, in: .rect(cornerRadius: tokens.radiusControl))
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityIdentifier("preview.copy")
-                    }
-                }
-                Text("\(state.date) · \(state.duration)").font(tokens.ui(tokens.typeCaption)).foregroundStyle(tokens.sub)
+            bar
+            VStack(alignment: .leading, spacing: tokens.space4) {
+                Text(state.title).font(tokens.ui(tokens.typeTitle, .semibold)).foregroundStyle(tokens.text)
+                    .textSelection(.enabled)
+                Text("\(state.date) · \(state.duration)").font(tokens.ui(tokens.typeSmall)).foregroundStyle(tokens.sub)
                     .textSelection(.enabled)
             }
-            .padding(.horizontal, tokens.space24).padding(.vertical, tokens.space20)
-            Rectangle().fill(tokens.rule).frame(height: 1)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, tokens.space20).padding(.horizontal, tokens.space28).padding(.bottom, tokens.space16)
             switch state.notes {
             case let .markdown(source):
                 NotesText(text: render(source, style), background: NSColor(tokens.surface),
-                          inset: NSSize(width: tokens.space24 - 5, height: tokens.space20))
+                          inset: NSSize(width: tokens.space28 - 5, height: 0))
             case let .unreadable(reason):
                 Text(reason)
                     .font(tokens.ui(tokens.typeSmall)).foregroundStyle(tokens.rec)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(tokens.space16)
                     .background(tokens.errBg)
-                    .padding(tokens.space24)
+                    .padding(.horizontal, tokens.space28)
                 Spacer(minLength: 0)
             }
         }
         .background(tokens.surface)
     }
+
+    /// Копировать and ⋯ on the right, only when there are notes.
+    private var bar: some View {
+        HStack(spacing: tokens.space8) {
+            Spacer(minLength: 0)
+            if case .markdown = state.notes {
+                Button { event(.copy) } label: {
+                    HStack(spacing: tokens.space6) {
+                        Image(systemName: "doc.on.doc")
+                        Text(text(.copy))
+                    }
+                    .font(tokens.ui(tokens.typeSmall)).foregroundStyle(tokens.text)
+                    .padding(.vertical, tokens.space4).padding(.horizontal, tokens.space12)
+                    .background(tokens.btn, in: .rect(cornerRadius: tokens.radiusControl))
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("preview.copy")
+                Menu {
+                    Button(text(.open)) { event(.open) }
+                    Button(text(.rename)) { event(.rename) }
+                    if state.canRetry { Button(text(.retrySummary)) { event(.retrySummary) } }
+                    Divider()
+                    Button(text(.delete), role: .destructive) { event(.delete) }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(tokens.ui(tokens.typeSmall)).foregroundStyle(tokens.text)
+                        .frame(width: 14, height: 14)
+                        .padding(.vertical, tokens.space4).padding(.horizontal, tokens.space8)
+                        .background(tokens.btn, in: .rect(cornerRadius: tokens.radiusControl))
+                }
+                .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize()
+                .accessibilityLabel(text(.more))
+                .accessibilityIdentifier("preview.more")
+            }
+        }
+        .frame(height: barHeight)
+        .padding(.horizontal, tokens.space16)
+        .background(tokens.side)
+        .overlay(alignment: .bottom) { Rectangle().fill(tokens.rule).frame(height: 1) }
+    }
+
+    private let barHeight: CGFloat = 44
 
     private var style: NotesStyle {
         NotesStyle(

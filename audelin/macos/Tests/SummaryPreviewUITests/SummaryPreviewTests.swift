@@ -50,7 +50,7 @@ struct SummaryPreviewTests {
     @Test func pressingCopyAsksToCopyTheNotes() throws {
 
         var copies = 0
-        click(copyLocation, on: SummaryPreviewView(state: SummaryPreviews.state("notes"), copy: { copies += 1 }, render: markdown))
+        click(copyLocation, on: SummaryPreviewView(state: SummaryPreviews.state("notes"), event: { if $0 == .copy { copies += 1 } }, render: markdown))
 
         #expect(copies == 1)
     }
@@ -58,7 +58,7 @@ struct SummaryPreviewTests {
     @Test func unreadableNotesHaveNoCopyButton() throws {
 
         var copies = 0
-        click(copyLocation, on: SummaryPreviewView(state: SummaryPreviews.state("unreadable"), copy: { copies += 1 }, render: markdown))
+        click(copyLocation, on: SummaryPreviewView(state: SummaryPreviews.state("unreadable"), event: { if $0 == .copy { copies += 1 } }, render: markdown))
 
         #expect(copies == 0)
     }
@@ -94,7 +94,7 @@ struct SummaryPreviewTests {
 
         var calls: [(source: String, style: NotesStyle)] = []
         let rendered = NSAttributedString(string: "отрисовано")
-        let view = SummaryPreviewView(state: SummaryPreviews.state("notes"), copy: {}) { source, style in
+        let view = SummaryPreviewView(state: SummaryPreviews.state("notes"), event: { _ in }) { source, style in
             calls.append((source, style)); return rendered
         }
         let host = Offscreen.host(view, size: size)
@@ -118,7 +118,7 @@ struct SummaryPreviewTests {
     @Test func unreadableNotesRenderNothing() throws {
 
         var calls = 0
-        let view = SummaryPreviewView(state: SummaryPreviews.state("unreadable"), copy: {}) { _, _ in calls += 1; return .init() }
+        let view = SummaryPreviewView(state: SummaryPreviews.state("unreadable"), event: { _ in }) { _, _ in calls += 1; return .init() }
         _ = Offscreen.host(view, size: size)
 
         #expect(calls == 0)
@@ -136,10 +136,11 @@ struct SummaryPreviewTests {
     private let size = CGSize(width: 440, height: 560)
 
     // The header's top right, inside its 28-point margin, where the copy button sits.
-    private var copyLocation: NSPoint { NSPoint(x: size.width - 28 - 20, y: size.height - 28 - 12) }
+    /// Inside Копировать, left of ⋯ at the bar's right end.
+    private var copyLocation: NSPoint { NSPoint(x: size.width - 16 - 30 - 8 - 40, y: size.height - 22) }
 
     private func view(_ state: SummaryPreviewState, text: SummaryPreviewText = .init(language: .russian), scheme: ColorScheme = .light) -> some View {
-        SummaryPreviewView(state: state, text: text, copy: {}, render: markdown).environment(\.colorScheme, scheme)
+        SummaryPreviewView(state: state, text: text, event: { _ in }, render: markdown).environment(\.colorScheme, scheme)
     }
 
     private func click(_ location: NSPoint, on view: SummaryPreviewView) {

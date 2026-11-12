@@ -56,11 +56,11 @@ struct PreviewPanelTests {
 
         panel.show(preview("A"))
         panel.show(CallsPreview(id: "B", title: "B", date: "", duration: "", notes: .text(source)))
-        try #require(content.copies.count == 2)
-        content.copies[1]()
+        try #require(content.events.count == 2)
+        content.events[1](.copy)
 
         #expect(pasteboard.string(forType: .string) == source)
-        content.copies[0]()
+        content.events[0](.copy)
         #expect(pasteboard.string(forType: .string) == "# A")
     }
 
@@ -148,10 +148,10 @@ private func preview(_ title: String, notes: CallsPreview.Notes? = nil) -> Calls
 @MainActor private final class ContentSpy {
     var states: [SummaryPreviewState] = []
     var texts: [SummaryPreviewText] = []
-    var copies: [() -> Void] = []
+    var events: [(SummaryPreviewEvent) -> Void] = []
     var views: [NSView] = []
-    func make(_ state: SummaryPreviewState, text: SummaryPreviewText, copy: @escaping () -> Void) -> NSView {
-        states.append(state); texts.append(text); copies.append(copy)
+    func make(_ state: SummaryPreviewState, text: SummaryPreviewText, event: @escaping (SummaryPreviewEvent) -> Void) -> NSView {
+        states.append(state); texts.append(text); events.append(event)
         let view = NSView()
         views.append(view)
         return view

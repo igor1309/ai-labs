@@ -1,3 +1,8 @@
 "preview.copy" = "Копировать";
 "preview.windowTitle" = "Саммари — %@";
 "preview.unreadable" = "Итоги не читаются: %@";
+"preview.more" = "Ещё";
+"preview.open" = "Открыть";
+"preview.rename" = "Переименовать";
+"preview.retrySummary" = "Повторить итоги";
+"preview.delete" = "Удалить…";

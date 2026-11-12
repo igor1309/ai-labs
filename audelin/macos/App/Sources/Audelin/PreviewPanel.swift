@@ -21,13 +21,13 @@ extension NSPanel: PreviewPanelDriver {}
 final class PreviewPanel {
     private let panel: any PreviewPanelDriver
     private let copy: (String) -> Void
-    private let makeContent: (SummaryPreviewState, SummaryPreviewText, @escaping () -> Void) -> NSView
+    private let makeContent: (SummaryPreviewState, SummaryPreviewText, @escaping (SummaryPreviewEvent) -> Void) -> NSView
     private var shown: CallsPreview?
     private var focusDue = false
     private var text: SummaryPreviewText
 
     init(makePanel: () -> any PreviewPanelDriver, text: SummaryPreviewText, copy: @escaping (String) -> Void,
-         makeContent: @escaping (SummaryPreviewState, SummaryPreviewText, @escaping () -> Void) -> NSView) {
+         makeContent: @escaping (SummaryPreviewState, SummaryPreviewText, @escaping (SummaryPreviewEvent) -> Void) -> NSView) {
         panel = makePanel()
         self.text = text
         self.copy = copy
@@ -58,7 +58,10 @@ final class PreviewPanel {
         let state = SummaryPreviewState(title: preview.title, date: preview.date, duration: preview.duration, notes: notes)
         panel.title = text(.windowTitle, preview.title)
         let copy = self.copy
-        panel.contentView = makeContent(state, text) { if case let .markdown(source) = notes { copy(source) } }
+        // The panel acts only on Копировать; the menu's actions belong to the calls window.
+        panel.contentView = makeContent(state, text) { event in
+            if event == .copy, case let .markdown(source) = notes { copy(source) }
+        }
     }
 
     /// An eye: the panel becomes the active window, now if it shows the
@@ -104,8 +107,8 @@ func makeSummaryPanel() -> NSPanel {
 
 /// The panel's content: the preview view of one call.
 @MainActor
-func summaryContent(_ state: SummaryPreviewState, text: SummaryPreviewText, copy: @escaping () -> Void) -> NSView {
-    NSHostingView(rootView: SummaryPreviewView(state: state, text: text, copy: copy, render: renderNotes))
+func summaryContent(_ state: SummaryPreviewState, text: SummaryPreviewText, event: @escaping (SummaryPreviewEvent) -> Void) -> NSView {
+    NSHostingView(rootView: SummaryPreviewView(state: state, text: text, event: event, render: renderNotes))
 }
 
 /// The preview's notes, rendered from Markdown in the view's style.
