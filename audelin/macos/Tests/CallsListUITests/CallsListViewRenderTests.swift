@@ -1,3 +1,4 @@
+import AppKit
 import CallsListUI
 import RenderedText
 import SwiftUI
@@ -11,8 +12,8 @@ struct CallsListViewRenderTests {
         var state = makeState()
         state.editing = .init(id: state.rows[1].id, title: "Новое название")
 
-        #expect(Offscreen.textFields(in: Offscreen.host(view(state), size: size)).map(\.stringValue) == ["Новое название"])
-        #expect(Offscreen.textFields(in: Offscreen.host(view(makeState()), size: size)).isEmpty)
+        #expect(Offscreen.textFields(in: Offscreen.host(view(state), size: size)).filter { !($0 is NSSearchField) }.map(\.stringValue) == ["Новое название"])
+        #expect(Offscreen.textFields(in: Offscreen.host(view(makeState()), size: size)).filter { !($0 is NSSearchField) }.isEmpty)
     }
 
     // MARK: - Helpers

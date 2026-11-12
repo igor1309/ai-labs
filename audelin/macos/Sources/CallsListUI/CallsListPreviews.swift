@@ -42,7 +42,7 @@ public enum CallsListPreviews {
             ("rename", with(sample) { $0.editing = .init(id: $0.rows[0].id, title: $0.rows[0].title) }),
             ("search", search(words, text, searching: false)),
             ("searching", with(search(words, text, searching: true)) { $0.rows.removeLast() }),
-            ("search-none", CallsListState(search: .init(query: "Kubernetes", searching: false))),
+            ("search-none", CallsListState(search: .init(query: "Kubernetes", searching: false), searchText: "Kubernetes")),
         ]
     }
 
@@ -92,6 +92,7 @@ public enum CallsListPreviews {
     private static func search(_ words: Words, _ text: CallsListText, searching: Bool) -> CallsListState {
         let english = text.language == .english
         var state = notes(words)
+        state.searchText = "OKR"
         state.search = .init(query: "OKR", searching: searching)
         state.selectedID = state.rows[1].id
         state.rows[0].match = .init(title: [], snippet: .init(

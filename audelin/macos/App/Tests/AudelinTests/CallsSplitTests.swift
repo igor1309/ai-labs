@@ -65,19 +65,29 @@ struct CallsSplitTests {
         #expect(!split.splitViewItems[1].isCollapsed && list.frame.width == 340)
     }
 
-    @Test func tabMovesTheKeyboardBetweenTheListAndTheDetail() throws {
-        let list = NSHostingView(rootView: CallsListView(state: CallsListPreviews.state("calls"), text: .init(language: .russian), event: { _ in }))
+    @Test func tabMovesTheKeyboardBetweenTheListAndTheDetail() async throws {
         let detail = NSHostingView(rootView: SummaryPreviewView(state: SummaryPreviews.state("notes"), event: { _ in }, render: renderNotes))
+        let list = NSHostingView(rootView: CallsListView(state: CallsListPreviews.state("calls"), text: .init(language: .russian),
+                                                       event: { _ in }, focusDetail: { focusCallsDetail(in: detail) }))
         let (window, _) = try show(width: 1000, list: list, detail: detail)
         defer { window.close() }
         window.makeKeyAndOrderFront(nil)
-        RunLoop.main.run(until: Date() + 0.2)
+        await inputTurn()
         let notes = try #require(textView(in: detail))
 
         #expect(window.makeFirstResponder(list))
-        for _ in 0..<12 where window.firstResponder !== notes { window.selectNextKeyView(nil) }
+        let tab = try #require(NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0,
+                                              windowNumber: window.windowNumber, context: nil, characters: "\t",
+                                              charactersIgnoringModifiers: "\t", isARepeat: false, keyCode: 48))
+        window.sendEvent(tab)
+        await inputTurn()
         #expect(window.firstResponder === notes)
-        for _ in 0..<12 where !isInside(window.firstResponder, list) { window.selectNextKeyView(nil) }
+        let field = try #require(searchField(in: list))
+        #expect(window.makeFirstResponder(field))
+        window.sendEvent(tab)
+        await inputTurn()
+        #expect(window.firstResponder === notes)
+        for _ in 0..<12 where !isInside(window.firstResponder, list) { window.selectNextKeyView(nil); await inputTurn() }
         #expect(isInside(window.firstResponder, list))
     }
 
@@ -190,6 +200,12 @@ struct CallsSplitTests {
         #expect(titles.values == ["Запуск", "Синк по OKR", ""])
     }
 
+    private func inputTurn() async {
+        await withCheckedContinuation { continuation in
+            DispatchQueue.main.async { continuation.resume() }
+        }
+    }
+
     private func show(width: CGFloat, list: NSView = NSView(), detail: NSView = NSView(),
                       defaults: UserDefaults? = nil) throws -> (NSWindow, NSSplitViewController) {
         let defaults = try defaults ?? #require(UserDefaults(suiteName: "CallsSplitTests-\(UUID())"))
@@ -208,8 +224,15 @@ private func textView(in view: NSView) -> NSTextView? {
     (view as? NSTextView) ?? view.subviews.lazy.compactMap(textView).first
 }
 
+private func searchField(in view: NSView) -> NSSearchField? {
+    (view as? NSSearchField) ?? view.subviews.lazy.compactMap(searchField).first
+}
+
 private func isInside(_ responder: NSResponder?, _ view: NSView) -> Bool {
-    (responder as? NSView)?.isDescendant(of: view) ?? false
+    if let editor = responder as? NSTextView, editor.isFieldEditor, let control = editor.delegate as? NSView {
+        return control.isDescendant(of: view)
+    }
+    return (responder as? NSView)?.isDescendant(of: view) ?? false
 }
 
 @MainActor @Observable private final class TitleSource { var title: String? = "Запуск" }

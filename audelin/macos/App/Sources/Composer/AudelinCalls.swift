@@ -133,6 +133,7 @@ public final class AudelinCalls {
             recordings.calls = recordings.calls.filter { found[$0.id] != nil }
         }
         var state = callsListState(recordings, timeZone: timeZone, now: now(), text: listText)
+        state.searchText = query
         state.search = searchOn ? .init(query: query, searching: searching) : nil
         let statuses = summaryStatuses()
         let badges = summaryBadges()
