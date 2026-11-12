@@ -163,12 +163,8 @@ struct SessionReducerTests {
     @Test(arguments: unavailable(.microphone))
     func unavailableMicrophoneSkipsItsCapture_effect(_ health: [SessionState.Piece: SessionState.Health]) {
 
-        let selection = anySelection()
-        let state = makeBringingUp(starting: .callText).with {
-            $0.health = health
-            $0.processSelection = selection
-        }
-        assert(state, .callTextFinished(error: nil), delivers: .startCallCapture(selection: .chosen(selection)))
+        let state = makeBringingUp(starting: .callText).with { $0.health = health }
+        assert(state, .callTextFinished(error: nil), delivers: .startCallCapture(selection: .chosen(state.processSelection!)))
     }
 
     @Test(arguments: results)
@@ -185,9 +181,8 @@ struct SessionReducerTests {
     @Test(arguments: results)
     func microphoneCaptureResultStartsTheCallCapture_effect(_ error: String?) {
 
-        let selection = anySelection()
-        let state = makeBringingUp(starting: .capture(.microphone)).with { $0.processSelection = selection }
-        assert(state, .captureFinished(.microphone, error: error), delivers: .startCallCapture(selection: .chosen(selection)))
+        let state = makeBringingUp(starting: .capture(.microphone))
+        assert(state, .captureFinished(.microphone, error: error), delivers: .startCallCapture(selection: .chosen(state.processSelection!)))
     }
 
     @Test func callCaptureWithoutChosenAppsHearsEveryAppButAudelin_state() {

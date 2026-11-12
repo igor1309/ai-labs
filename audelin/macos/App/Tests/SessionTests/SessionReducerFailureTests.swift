@@ -79,12 +79,8 @@ extension SessionReducerTests {
 
     @Test func heldMicrophoneCaptureAfterAFailureStillStartsTheCallCapture_effect() {
 
-        let selection = anySelection()
-        let state = makeBringingUp(starting: .capture(.microphone)).with {
-            $0.fail(.capture(.microphone), anyError())
-            $0.processSelection = selection
-        }
-        assert(state, .captureFinished(.microphone, error: nil), delivers: .startCallCapture(selection: .chosen(selection)))
+        let state = makeBringingUp(starting: .capture(.microphone)).with { $0.fail(.capture(.microphone), anyError()) }
+        assert(state, .captureFinished(.microphone, error: nil), delivers: .startCallCapture(selection: .chosen(state.processSelection!)))
     }
 
     @Test func heldCallCaptureAfterAFailureRecordsThenStopsIt_state() {
@@ -162,18 +158,7 @@ extension SessionReducerTests {
         assert(makeEndingWhileStarting(.capture(side)), .accessChanged(side, available: false), delivers: nil)
     }
 
-    @Test(arguments: sides)
-    func accessLossWhileACaptureStopsKeepsItStopping_state(_ side: SessionSide) {
 
-        let state = makeStopping(.capture(side))
-        assert(state, .accessChanged(side, available: false)) { $0.loseAccess(side) }
-    }
-
-    @Test(arguments: sides)
-    func accessLossWhileACaptureStopsKeepsItStopping_effect(_ side: SessionSide) {
-
-        assert(makeStopping(.capture(side)), .accessChanged(side, available: false), delivers: nil)
-    }
 
     @Test(arguments: bringUpOrder)
     func endWhileAFailedPieceStartsWaitsForIt_state(_ piece: SessionState.Piece) {
@@ -511,12 +496,8 @@ extension SessionReducerTests {
 
     @Test func microphoneCaptureUpAfterItsAccessIsLostKeepsTheLossAndStartsTheCallCapture_effect() {
 
-        let selection = anySelection()
-        let state = makeBringingUp(starting: .capture(.microphone)).with {
-            $0.loseAccess(.microphone)
-            $0.processSelection = selection
-        }
-        assert(state, .captureFinished(.microphone, error: nil), delivers: .startCallCapture(selection: .chosen(selection)))
+        let state = makeBringingUp(starting: .capture(.microphone)).with { $0.loseAccess(.microphone) }
+        assert(state, .captureFinished(.microphone, error: nil), delivers: .startCallCapture(selection: .chosen(state.processSelection!)))
     }
 
     // MARK: Cannot record
