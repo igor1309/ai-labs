@@ -51194,6 +51194,140 @@
                       "fontWeight": "600"
                     },
                     {
+                      "type": "frame",
+                      "id": "GUfAH",
+                      "x": 0,
+                      "y": 0,
+                      "name": "Actions",
+                      "enabled": false,
+                      "fill": "$btn",
+                      "cornerRadius": "$radius-control",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "H4DTU",
+                          "name": "Копировать",
+                          "cornerRadius": "$radius-control",
+                          "padding": [
+                            "$space-4",
+                            "$space-8"
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "FGeAM",
+                              "name": "Icon",
+                              "width": 14,
+                              "height": 14,
+                              "icon": "copy",
+                              "library": "lucide",
+                              "fill": "$text"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "rectangle",
+                          "id": "B5U84",
+                          "name": "Separator",
+                          "fill": "$rule",
+                          "width": 1,
+                          "height": 14
+                        },
+                        {
+                          "type": "frame",
+                          "id": "RChlE",
+                          "name": "Открыть",
+                          "cornerRadius": "$radius-control",
+                          "padding": [
+                            "$space-4",
+                            "$space-8"
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "R9ZIZb",
+                              "name": "Icon",
+                              "width": 14,
+                              "height": 14,
+                              "icon": "folder-open",
+                              "library": "lucide",
+                              "fill": "$text"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "rectangle",
+                          "id": "aThqD",
+                          "name": "Separator",
+                          "fill": "$rule",
+                          "width": 1,
+                          "height": 14
+                        },
+                        {
+                          "type": "frame",
+                          "id": "g49Dr",
+                          "name": "Переименовать",
+                          "cornerRadius": "$radius-control",
+                          "padding": [
+                            "$space-4",
+                            "$space-8"
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "b4tx6d",
+                              "name": "Icon",
+                              "width": 14,
+                              "height": 14,
+                              "icon": "pencil",
+                              "library": "lucide",
+                              "fill": "$text"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "GYNka",
+                      "x": 0,
+                      "y": 0,
+                      "name": "Delete group",
+                      "enabled": false,
+                      "fill": "$btn",
+                      "cornerRadius": "$radius-control",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "gycko",
+                          "name": "Удалить…",
+                          "cornerRadius": "$radius-control",
+                          "padding": [
+                            "$space-4",
+                            "$space-8"
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "NfFhZ",
+                              "name": "Icon",
+                              "width": 14,
+                              "height": 14,
+                              "icon": "trash-2",
+                              "library": "lucide",
+                              "fill": "$text"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
                       "id": "b33sH",
                       "type": "ref",
                       "ref": "IcwnO",
@@ -58327,6 +58461,12 @@
                   "width": "fill_container",
                   "height": 44,
                   "descendants": {
+                    "GUfAH": {
+                      "enabled": true
+                    },
+                    "GYNka": {
+                      "enabled": true
+                    },
                     "b33sH": {
                       "width": 160
                     }

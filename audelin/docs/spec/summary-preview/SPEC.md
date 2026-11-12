@@ -12,9 +12,12 @@ when, is `../calls-list/SPEC.md`; the notes are made as
   their actions only.
 - **Notes that cannot be read show the reason in place of the notes,** so
   a broken file is told apart from a call without notes.
-- **⋯ offers the row menu's actions,** so the call being read can be acted
-  on without finding its row. With no notes there is nothing to copy, and
-  the row's menu still acts on the call, so Копировать and ⋯ hide.
+- **The window's toolbar holds the call's actions** as icon buttons with
+  tooltips: Копировать, Открыть, Переименовать, then Удалить…, so the call
+  being read can be acted on without finding its row. With no notes there
+  is nothing to copy, so Копировать is disabled; with no call, all are.
+  They are disabled rather than hidden, so the toolbar never shifts.
+  Повторить итоги stays in the failed message and the row's menu.
 - **«Итогов нет» says why when notes are off,** pointing to Settings; with
   notes on, a call can still have none (no speech), so it says no more.
 
@@ -77,14 +80,14 @@ Feature: Reading the selected call
     Then I can read that no call is chosen
 
   Scenario: S-19 The call's actions
-    Given notes are shown
-    When I open ⋯
-    Then I can open, rename and delete the call, and retry failed notes
+    Given a call is shown
+    When I look at the window's toolbar
+    Then I can copy its notes, open, rename and delete it, each button named in its tooltip
 
   Scenario: S-20 Nothing to copy
     Given the shown call has no notes
-    When I look at its top
-    Then I cannot see «Копировать» or ⋯
+    When I look at the window's toolbar
+    Then «Копировать» is disabled and the other buttons still act
 
   Scenario: S-12 The close button closes the call's own window
     Given a call is open in its own window
