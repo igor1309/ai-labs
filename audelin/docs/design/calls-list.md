@@ -36,17 +36,21 @@ header, Section, Subhead, Paragraph, Bullet, Detail message).
 
 - Header: title, then day, start time · duration. The summary is
   selectable rendered Markdown (headings, lists, code, tables).
-- Toolbar: one bar across the window. Over the list, the title; over the
-  detail, before the search field, icon-only buttons in two Mail-style
-  groups: Копировать (the Markdown source), Открыть, Переименовать; then
-  Удалить… alone. Each shows its name as a tooltip on hover (Tooltip on the
+- Toolbar: one bar across the window, split at the list's divider so each
+  control sits over the pane it acts on. Over the list, the title and, at
+  its right end, the search field. Over the detail, at its right end,
+  icon-only buttons in three Mail-style groups: Открыть and Переименовать
+  (the call's file); Копировать (the Markdown source); Удалить… alone. The
+  groups stand apart by a gap, so the destructive button is not next to
+  the others. Each shows its name as a tooltip on hover (Tooltip on the
   components board). There is no ⋯ menu.
 - The buttons act on the selected call. Копировать is disabled without a
   summary; with no call selected all four are disabled. They are disabled,
   never hidden, so the toolbar does not shift. Повторить итоги stays in the
-  failed message and the row's context menu. Below 700 pt the buttons stay
-  and act on the selected row; the call's own window has them too, without
-  the search field.
+  failed message and the row's context menu. Below 700 pt the one bar holds the
+  title, the groups and the search field, and the buttons act on the
+  selected row; the call's own window has the same groups, without the
+  search field.
 - Without a summary, one centred message under the header: preparing;
   failed, with the error and Повторить итоги; «Итогов нет» when notes are
   off. With no call selected: «Звонок не выбран».
@@ -63,7 +67,7 @@ header, Section, Subhead, Paragraph, Bullet, Detail message).
 
 ## Search
 
-- The search field ends the toolbar. ⌘F focuses it; Esc or its
+- The search field sits over the list (it ends the one bar when narrow). ⌘F focuses it; Esc or its
   clear button empties it and the whole list returns.
 - One field searches titles, summaries and transcripts as you type, ignoring
   case and ё/е. There is no scope switch.
