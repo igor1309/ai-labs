@@ -24,6 +24,13 @@ public enum HostBroadcast {
         public let session: Session
         public let link: Link
         public let amount: String
+
+        public init(attempt: Attempt, session: Session, link: Link, amount: String) {
+            self.attempt = attempt
+            self.session = session
+            self.link = link
+            self.amount = amount
+        }
     }
 
     public struct ProtectedAmount: Equatable, Sendable {
@@ -41,20 +48,50 @@ public enum HostBroadcast {
     }
 
     public struct State: Equatable, Sendable {
-        public fileprivate(set) var phase: Phase = .ready
-        public fileprivate(set) var amount = ""
-        public fileprivate(set) var reason: String?
-        public fileprivate(set) var secondsLeft: Int?
-        public fileprivate(set) var attempt: Attempt?
-        fileprivate var nextAttempt: UInt64 = 0
-        fileprivate var duration: Int?
-        fileprivate var session: Session?
-        fileprivate var link: Link?
-        fileprivate var clientKey: [UInt8]?
-        fileprivate var preparation: Preparation?
-        fileprivate var expiryPending = false
+        public var phase: Phase
+        public var amount: String
+        public var reason: String?
+        public var secondsLeft: Int?
+        public var attempt: Attempt?
+        /// The last attempt number issued; numbers are never reused within the flow.
+        public var nextAttempt: UInt64
+        /// The countdown setting read for this attempt.
+        public var duration: Int?
+        public var session: Session?
+        public var link: Link?
+        public var clientKey: [UInt8]?
+        public var preparation: Preparation?
+        /// The countdown ran out while the amount was being sent; the send's result settles it.
+        public var expiryPending: Bool
 
-        public init() {}
+        public init(
+            phase: Phase = .ready,
+            amount: String = "",
+            reason: String? = nil,
+            secondsLeft: Int? = nil,
+            attempt: Attempt? = nil,
+            nextAttempt: UInt64 = 0,
+            duration: Int? = nil,
+            session: Session? = nil,
+            link: Link? = nil,
+            clientKey: [UInt8]? = nil,
+            preparation: Preparation? = nil,
+            expiryPending: Bool = false
+        ) {
+            self.phase = phase
+            self.amount = amount
+            self.reason = reason
+            self.secondsLeft = secondsLeft
+            self.attempt = attempt
+            self.nextAttempt = nextAttempt
+            self.duration = duration
+            self.session = session
+            self.link = link
+            self.clientKey = clientKey
+            self.preparation = preparation
+            self.expiryPending = expiryPending
+        }
+
         public var canCancel: Bool { phase == .goingOnAir || phase == .advertising }
         public var canRetry: Bool { phase == .failed }
         public var canChooseNewAmount: Bool { phase == .failed }
@@ -63,7 +100,7 @@ public enum HostBroadcast {
         }
     }
 
-    fileprivate enum Preparation: Equatable, Sendable {
+    public enum Preparation: Equatable, Sendable {
         case readingSetting, openingSession, serving, awaitingAir
     }
 

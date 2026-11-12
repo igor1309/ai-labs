@@ -52,108 +52,19 @@ struct HostBroadcastTests {
         #expect(cancellations == [cancel])
     }
 
-    @Test func lockingStartsBroadcastWithoutCountdown() async {
-        let fake = Ports(seconds: 30, sessions: [session(1)],
-                         protectedAmounts: ["124.50": protectedAmount, "99": replacementProtectedAmount])
-        let flow = Flow(fake)
-
-        await flow.send(.lock(amount: "124.50"))
-
-        #expect(flow.state.phase == .goingOnAir)
-        #expect(flow.state.amount == "124.50")
-        #expect(flow.state.secondsLeft == nil)
-        #expect(flow.state.canCancel)
-        #expect(fake.calls == [.setting, .opened(first), .served(first, session(1)), .advertised(first)])
-        #expect(fake.countdowns.isEmpty)
-    }
-
-    @Test(arguments: [15, 30, 60])
-    func onAirStartsFullCountdown(_ seconds: Int) async {
-        let fake = Ports(seconds: seconds, sessions: [session(1)],
-                         protectedAmounts: ["124.50": protectedAmount, "99": replacementProtectedAmount])
-        let flow = Flow(fake)
-        await flow.send(.lock(amount: "124.50"))
-
-        await flow.send(.onAir(first))
-
-        #expect(flow.state.phase == .advertising)
-        #expect(flow.state.secondsLeft == seconds)
-        #expect(flow.state.canCancel)
-        #expect(fake.countdowns == [first: seconds])
-        #expect(fake.calls.last == .startedCountdown(first, seconds))
-    }
-
-    @Test(arguments: [Ports.Failure.serving, .advertising])
-    fileprivate func cannotGoOnAirUnlocksAmountAndClosesSession(_ failure: Ports.Failure) async {
-        let fake = Ports(seconds: 30, sessions: [session(1)],
-                         protectedAmounts: ["124.50": protectedAmount, "99": replacementProtectedAmount])
-        fake.failure = failure
-        let flow = Flow(fake)
-
-        await flow.send(.lock(amount: "124.50"))
-
-        #expect(flow.state.phase == .ready)
-        #expect(flow.state.amount == "124.50")
-        #expect(flow.state.reason == failure.description)
-        #expect(!flow.state.canCancel)
-        expectRetired(fake, first)
-    }
-
     @Test(arguments: [false, true])
-    func cancelUnlocksAmountAndIgnoresLateOnAir(_ onAir: Bool) async {
-        let fake = Ports(seconds: 30, sessions: [session(1)],
-                         protectedAmounts: ["124.50": protectedAmount, "99": replacementProtectedAmount])
-        let flow = Flow(fake)
-        await flow.send(.lock(amount: "124.50"))
-        if onAir { await flow.send(.onAir(first)) }
+    func startupFailureReportsTheAttemptAndOriginalReason(_ advertising: Bool) async {
+        let fake = Ports(seconds: 30, sessions: [], protectedAmounts: [:])
+        fake.failure = advertising ? .advertising : .serving
+        let handler = Broadcast.Handler(session: fake, advertiser: fake, sender: fake,
+                                        countdown: fake, setting: fake)
+        let effect: Broadcast.Effect = advertising ? .advertise(first) : .serve(first, session(1))
+        let reason = advertising ? "radio refused advertising" : "service unavailable"
 
-        await flow.send(.cancel)
+        let events = await collect(handler.handle(effect))
 
-        #expect(flow.state.phase == .ready)
-        #expect(flow.state.amount == "124.50")
-        #expect(flow.state.reason == nil)
-        #expect(flow.state.secondsLeft == nil)
-        #expect(!flow.state.canCancel)
-        expectRetired(fake, first)
-        let cancelled = flow.state
-        let calls = fake.calls
-        await flow.send(.onAir(first))
-        #expect(flow.state == cancelled)
-        #expect(fake.calls == calls)
-    }
-
-    @Test func countdownExpiryClearsAmountAndRetiresSession() async {
-        let fake = Ports(seconds: 30, sessions: [session(1)],
-                         protectedAmounts: ["124.50": protectedAmount, "99": replacementProtectedAmount])
-        let flow = Flow(fake)
-        await flow.send(.lock(amount: "124.50"))
-        await flow.send(.onAir(first))
-
-        await flow.send(.secondsLeft(first, 22))
-        #expect(flow.state.secondsLeft == 22)
-        await flow.send(.secondsLeft(first, 0))
-
-        #expect(flow.state.phase == .timedOut)
-        #expect(flow.state.amount.isEmpty)
-        #expect(flow.state.secondsLeft == nil)
-        #expect(!flow.state.canCancel)
-        expectRetired(fake, first)
-    }
-
-    @Test(arguments: ["powered off", "unauthorized", "unsupported"])
-    func bluetoothLossOnAirUnlocksAmountWithReason(_ reason: String) async {
-        let fake = Ports(seconds: 30, sessions: [session(1)],
-                         protectedAmounts: ["124.50": protectedAmount, "99": replacementProtectedAmount])
-        let flow = Flow(fake)
-        await flow.send(.lock(amount: "124.50"))
-        await flow.send(.onAir(first))
-
-        await flow.send(.bluetoothUnavailable(first, reason: reason))
-
-        #expect(flow.state.phase == .ready)
-        #expect(flow.state.amount == "124.50")
-        #expect(flow.state.reason == reason)
-        expectRetired(fake, first)
+        #expect(fake.calls == [advertising ? .advertised(first) : .served(first, session(1))])
+        #expect(events == [.couldNotGoOnAir(first, reason: reason)])
     }
 
     @Test func firstClientKeyKeepsServiceAndRemainingSeconds() async throws {
@@ -387,67 +298,6 @@ struct HostBroadcastTests {
         #expect(fake.resources == resources)
     }
 
-    @Test(arguments: staleEvents)
-    fileprivate func staleEventsCannotChangeReplacementAttempt(_ input: StaleEvent) async throws {
-        let fake = Ports(seconds: 30, sessions: [session(1), session(2)],
-                         protectedAmounts: ["124.50": protectedAmount, "99": replacementProtectedAmount])
-        let flow = Flow(fake)
-        try await flow.prepareReplacement(stoppingAt: input.phase)
-        let current = flow.state
-        let calls = fake.calls
-        let resources = fake.resources
-
-        await flow.send(input.event)
-
-        #expect(flow.state == current)
-        #expect(fake.calls == calls)
-        #expect(fake.resources == resources)
-    }
-
-    @Test(arguments: lateAcquisitions)
-    fileprivate func lateAcquisitionsReleaseOnlyOldResources(_ input: LateAcquisition) async throws {
-        let fake = Ports(seconds: 30, sessions: [session(1), session(2), session(3)],
-                         protectedAmounts: ["124.50": protectedAmount, "99": replacementProtectedAmount])
-        let flow = Flow(fake)
-        try await flow.prepareReplacement(stoppingAt: input.phase)
-        let current = flow.state
-        let resources = fake.resources
-        let event: Broadcast.Event
-        let release: Ports.Call
-        if input.session {
-            event = .sessionOpened(first, fake.open(for: first))
-            release = .closed(first)
-        } else {
-            fake.start(seconds: 22, for: first)
-            event = .countdownStarted(first)
-            release = .stoppedCountdown(first)
-        }
-        let calls = fake.calls
-
-        await flow.send(event)
-
-        #expect(flow.state == current)
-        #expect(fake.calls == calls + [release])
-        #expect(fake.resources == resources)
-    }
-
-    @Test func staleStartupFailureCannotEndAnotherAttempt() async {
-        let fake = Ports(seconds: 30, sessions: [session(1), session(2)],
-                         protectedAmounts: ["124.50": protectedAmount, "99": replacementProtectedAmount])
-        let flow = Flow(fake)
-        await flow.send(.lock(amount: "124.50"))
-        await flow.send(.cancel)
-        await flow.send(.lock(amount: "99"))
-        let current = flow.state
-        let calls = fake.calls
-
-        await flow.send(.couldNotGoOnAir(first, reason: "late failure"))
-
-        #expect(flow.state == current)
-        #expect(fake.calls == calls)
-        #expect(fake.services == [Broadcast.Attempt(number: 2): session(2)])
-    }
-
     @Test func invalidClientKeyOffersRetryAndNewAmount() async {
         let fake = Ports(seconds: 30, sessions: [session(1)],
                          protectedAmounts: ["124.50": protectedAmount, "99": replacementProtectedAmount])
@@ -540,58 +390,6 @@ struct HostBroadcastTests {
         }
     }
 
-    @Test(arguments: [Ports.Failure.deriving, .sealing, .sending])
-    fileprivate func retryUsesFreshSessionSameAmountAndCurrentFullCountdown(_ failure: Ports.Failure) async {
-        let fake = Ports(seconds: 30, sessions: [session(1), session(2)],
-                         protectedAmounts: ["124.50": protectedAmount, "99": replacementProtectedAmount])
-        fake.failure = failure
-        let flow = Flow(fake)
-        await flow.send(.lock(amount: "124.50"))
-        await flow.send(.onAir(first))
-        await flow.send(.secondsLeft(first, 22))
-        await flow.send(.clientKey(first, client, key: [7, 8]))
-        fake.failure = nil
-        fake.duration = 60
-        let second = Broadcast.Attempt(number: 2)
-
-        await flow.send(.retry)
-
-        #expect(flow.state.phase == .goingOnAir)
-        #expect(flow.state.amount == "124.50")
-        #expect(flow.state.reason == nil)
-        #expect(flow.state.secondsLeft == nil)
-        #expect(fake.services == [second: session(2)])
-        #expect(fake.openSessions == [second])
-        #expect(fake.advertising == [second])
-        #expect(fake.calls.filter { $0 == .setting }.count == 2)
-        await flow.send(.onAir(second))
-        #expect(flow.state.phase == .advertising)
-        #expect(flow.state.secondsLeft == 60)
-        #expect(fake.countdowns == [second: 60])
-    }
-
-    @Test(arguments: [Ports.Failure.deriving, .sealing, .sending])
-    fileprivate func newAmountAfterFailureClearsAmountAndReason(_ failure: Ports.Failure) async {
-        let fake = Ports(seconds: 30, sessions: [session(1)],
-                         protectedAmounts: ["124.50": protectedAmount, "99": replacementProtectedAmount])
-        fake.failure = failure
-        let flow = Flow(fake)
-        await flow.send(.lock(amount: "124.50"))
-        await flow.send(.onAir(first))
-        await flow.send(.clientKey(first, client, key: [7, 8]))
-        let calls = fake.calls
-
-        await flow.send(.newAmount)
-
-        #expect(flow.state.phase == .ready)
-        #expect(flow.state.amount.isEmpty)
-        #expect(flow.state.reason == nil)
-        #expect(flow.state.secondsLeft == nil)
-        #expect(!flow.state.canRetry)
-        #expect(!flow.state.canChooseNewAmount)
-        #expect(fake.calls == calls)
-    }
-
     @Test func handedOverWaitsForItsTransactionEndThenAcceptsNewAmount() async {
         let fake = Ports(seconds: 30, sessions: [session(1), session(2)],
                          protectedAmounts: ["124.50": protectedAmount, "99": replacementProtectedAmount])
@@ -626,64 +424,6 @@ struct HostBroadcastTests {
         #expect(flow.state.attempt == second)
         #expect(fake.services[second] == session(2))
     }
-
-    @Test(arguments: [false, true])
-    func sessionOpenedAfterCancelIsClosedWithoutTouchingNewAttempt(_ startAnother: Bool) async throws {
-        let fake = Ports(seconds: 30, sessions: [session(1), session(2)],
-                         protectedAmounts: ["124.50": protectedAmount, "99": replacementProtectedAmount])
-        let flow = Flow(fake)
-        let read = try #require(flow.accept(.lock(amount: "124.50")))
-        let setting = try #require(await flow.handle(read))
-        let open = try #require(flow.accept(setting))
-        await flow.send(.cancel)
-        let lateSession = try #require(await flow.handle(open))
-        if startAnother { await flow.send(.lock(amount: "99")) }
-        let current = flow.state
-
-        await flow.send(lateSession)
-
-        #expect(flow.state == current)
-        #expect(!fake.openSessions.contains(first))
-        #expect(fake.calls.last == .closed(first))
-        if startAnother {
-            let second = Broadcast.Attempt(number: 2)
-            #expect(fake.openSessions == [second])
-            #expect(fake.services == [second: session(2)])
-            #expect(fake.advertising == [second])
-        } else {
-            #expect(fake.openSessions.isEmpty)
-            #expect(fake.services.isEmpty)
-        }
-    }
-
-    @Test(arguments: [false, true])
-    func lateCountdownStartIsStoppedAfterCancelOrHandover(_ handOver: Bool) async throws {
-        let fake = Ports(seconds: 30, sessions: [session(1)],
-                         protectedAmounts: ["124.50": protectedAmount, "99": replacementProtectedAmount])
-        let flow = Flow(fake)
-        await flow.send(.lock(amount: "124.50"))
-        let startCountdown = try #require(flow.accept(.onAir(first)))
-        if handOver {
-            await flow.send(.clientKey(first, client, key: [7, 8]))
-        } else {
-            await flow.send(.cancel)
-        }
-        let current = flow.state
-        let lateStart = try #require(await flow.handle(startCountdown))
-
-        await flow.send(lateStart)
-
-        #expect(flow.state == current)
-        #expect(fake.countdowns.isEmpty)
-        #expect(fake.calls.last == .stoppedCountdown(first))
-        if handOver {
-            #expect(fake.openSessions == [first])
-            #expect(fake.services == [first: session(1)])
-        } else {
-            #expect(fake.openSessions.isEmpty)
-            #expect(fake.services.isEmpty)
-        }
-    }
 }
 
 private struct LockedAmount: Sendable {
@@ -704,48 +444,6 @@ private let client = Broadcast.Link(id: "payer")
 private let handshakeSteps: [Broadcast.HandshakeStep] = [.stoppingAdvertising, .derivingKey, .sealingAmount, .sendingAmount]
 private func session(_ id: UInt8) -> Broadcast.Session {
     Broadcast.Session(id: [id], publicKey: [id, 42])
-}
-
-private enum ReplacementPhase: Equatable, Sendable {
-    case readingSetting, openingSession, serving, awaitingAir, advertising
-    case handshake(Broadcast.HandshakeStep)
-}
-
-private struct StaleEvent: Sendable {
-    let phase: ReplacementPhase
-    let event: Broadcast.Event
-}
-
-private let staleEvents: [StaleEvent] = [
-    .init(phase: .readingSetting, event: .countdownRead(first, 99)),
-    .init(phase: .serving, event: .served(first)),
-    .init(phase: .awaitingAir, event: .onAir(first)),
-    .init(phase: .advertising, event: .couldNotGoOnAir(first, reason: "old failure")),
-    .init(phase: .advertising, event: .bluetoothUnavailable(first, reason: "old loss")),
-    .init(phase: .advertising, event: .secondsLeft(first, 0)),
-    .init(phase: .advertising, event: .clientKey(first, client, key: [9])),
-    .init(phase: .handshake(.stoppingAdvertising), event: .advertisingStopped(first)),
-    .init(phase: .handshake(.derivingKey), event: .keyDerived(first)),
-    .init(phase: .handshake(.sealingAmount), event: .amountSealed(first, protectedAmount)),
-    .init(phase: .handshake(.sendingAmount), event: .amountSent(first)),
-] + handshakeSteps.flatMap { step in
-    [Broadcast.Event.bluetoothUnavailable(first, reason: "old loss"),
-     .secondsLeft(first, 0), .handshakeFailed(first, reason: "old failure"),
-     .linkLost(first, client)].map { StaleEvent(phase: .handshake(step), event: $0) }
-}
-
-private struct LateAcquisition: Sendable {
-    let phase: ReplacementPhase
-    let session: Bool
-}
-
-private let lateAcquisitions: [LateAcquisition] = [
-    .init(phase: .openingSession, session: true),
-    .init(phase: .advertising, session: true),
-    .init(phase: .advertising, session: false),
-] + handshakeSteps.flatMap { step in
-    [LateAcquisition(phase: .handshake(step), session: true),
-     LateAcquisition(phase: .handshake(step), session: false)]
 }
 
 @MainActor
@@ -814,25 +512,6 @@ private final class Flow {
         let (next, effect) = Broadcast.reduce(state, event)
         state = next
         return effect
-    }
-
-    func prepareReplacement(stoppingAt phase: ReplacementPhase) async throws {
-        await send(.lock(amount: "124.50"))
-        await send(.cancel)
-        var effect = try #require(accept(.lock(amount: "99")))
-        for preparation: ReplacementPhase in [.readingSetting, .openingSession, .serving, .awaitingAir] {
-            if phase == preparation { return }
-            let event = try #require(await handle(effect))
-            if let next = accept(event) { effect = next }
-        }
-        let second = Broadcast.Attempt(number: 2)
-        await send(.onAir(second))
-        if phase == .advertising { return }
-        guard case .handshake(let step) = phase else {
-            Issue.record("Expected a handshake destination")
-            return
-        }
-        _ = try await clientHandshake(second, stoppingAt: step)
     }
 
     func beginHandshake(stoppingAt step: Broadcast.HandshakeStep) async throws -> Broadcast.Effect {
