@@ -74,6 +74,22 @@ struct CallsDetailTests {
         await sut.waitDetail { $0?.content == .notes("# Ready") }
     }
 
+    @Test func aSearchThatHidesTheSelectedCallEmptiesTheDetailAndClearingItBringsItBack() async throws {
+        let sut = Fixture(notes: [a: "# A notes"])
+        await sut.calls.send(.select(a))
+        await sut.waitDetail { $0?.id == a }
+
+        await sut.calls.send(.search("B"))
+        await sut.waitDetail { $0 == nil }
+        #expect(sut.calls.state.selectedID == nil)
+        await sut.calls.send(detail: .delete)
+        #expect(!sut.sent.contains(.askDelete(a)))
+
+        await sut.calls.send(.search(""))
+        await sut.waitDetail { $0?.content == .notes("# A notes") }
+        #expect(sut.calls.state.selectedID == a)
+    }
+
     @Test func copyPutsTheShownNotesOutAndDoesNothingWithoutThem() async throws {
         let sut = Fixture(notes: [a: "# A notes"])
 

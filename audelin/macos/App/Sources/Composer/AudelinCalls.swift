@@ -64,6 +64,8 @@ public enum CallsDetailEvent: Equatable, Sendable { case copy, open, rename, ret
 public final class AudelinCalls {
     /// The selected call, nil when none is selected.
     public private(set) var detail: CallsDetail?
+    /// The call the detail was last read for: the selection as the list showed it then.
+    @ObservationIgnored private var detailFor: String?
     private let copy: (String) -> Void
     private let notesEnabled: () -> Bool
     /// The selected call's notes, while the preview is open and the call has them.
@@ -186,6 +188,7 @@ public final class AudelinCalls {
         searchTask?.cancel()
         query = text
         textMatches = [:]
+        defer { followSelection() }
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             searching = false
             searchTask = nil
@@ -201,6 +204,7 @@ public final class AudelinCalls {
                     CallsSearch.match(text, title: "", transcript: read.transcript.map { .init(start: $0.start, words: $0.words) }, notes: read.notes)
                 }
                 textMatches[id] = .some(match?.snippet)
+                followSelection()
             }
             searching = false
         }
@@ -267,10 +271,16 @@ public final class AudelinCalls {
         }
     }
 
+    /// A search that hides or shows the selected call empties or refills the detail.
+    private func followSelection() {
+        if state.selectedID != detailFor { updatePreview() }
+    }
+
     /// Reads the selected call's notes into the detail, and into the preview while it is open.
     private func updatePreview() {
         loading?.cancel()
         let state = state
+        detailFor = state.selectedID
         guard let id = selectedID, let index = state.rows.firstIndex(where: { $0.id == id }) else {
             loading = nil
             detail = nil
