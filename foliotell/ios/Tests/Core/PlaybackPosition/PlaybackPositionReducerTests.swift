@@ -60,37 +60,55 @@ struct PlaybackPositionReducerTests {
         assert(makeState(documentPath: nil), .spokenOffsetChanged(20), delivers: nil)
     }
 
-    @Test func test_reduce_shouldClearPositionAndStore_onPlaybackFinishedNaturally() {
+    @Test func test_reduce_shouldClearPosition_onPlaybackFinishedNaturally() {
 
-        let (state, effect) = reduce(
-            makeState(storedAnchor: 16, liveDocumentUTF16Offset: 20),
-            .playbackFinishedNaturally
-        )
-
-        #expect(state == makeState())
-        #expect(effect == .clearAnchor(documentPath: "/doc.md"))
+        assert(makeState(storedAnchor: 16, liveDocumentUTF16Offset: 20), .playbackFinishedNaturally) {
+            $0.storedAnchor = nil
+            $0.liveDocumentUTF16Offset = nil
+        }
     }
 
-    @Test func test_reduce_shouldClearPositionWithoutStoreEffect_onPlaybackFinishedNaturallyWithoutDocumentPath() {
+    @Test func test_reduce_shouldDeliverClearAnchor_onPlaybackFinishedNaturally() {
 
-        let (state, effect) = reduce(
+        assert(
+            makeState(storedAnchor: 16, liveDocumentUTF16Offset: 20),
+            .playbackFinishedNaturally,
+            delivers: .clearAnchor(documentPath: "/doc.md")
+        )
+    }
+
+    @Test func test_reduce_shouldClearPosition_onPlaybackFinishedNaturallyWithoutDocumentPath() {
+
+        assert(makeState(documentPath: nil, storedAnchor: 16, liveDocumentUTF16Offset: 20), .playbackFinishedNaturally) {
+            $0.storedAnchor = nil
+            $0.liveDocumentUTF16Offset = nil
+        }
+    }
+
+    @Test func test_reduce_shouldDeliverNothing_onPlaybackFinishedNaturallyWithoutDocumentPath() {
+
+        assert(
             makeState(documentPath: nil, storedAnchor: 16, liveDocumentUTF16Offset: 20),
-            .playbackFinishedNaturally
+            .playbackFinishedNaturally,
+            delivers: nil
         )
-
-        #expect(state == makeState(documentPath: nil))
-        #expect(effect == nil)
     }
 
-    @Test func test_reduce_shouldClearPositionAndStore_onStartOverRequested() {
+    @Test func test_reduce_shouldClearPosition_onStartOverRequested() {
 
-        let (state, effect) = reduce(
+        assert(makeState(storedAnchor: 16, liveDocumentUTF16Offset: 20), .startOverRequested) {
+            $0.storedAnchor = nil
+            $0.liveDocumentUTF16Offset = nil
+        }
+    }
+
+    @Test func test_reduce_shouldDeliverClearAnchor_onStartOverRequested() {
+
+        assert(
             makeState(storedAnchor: 16, liveDocumentUTF16Offset: 20),
-            .startOverRequested
+            .startOverRequested,
+            delivers: .clearAnchor(documentPath: "/doc.md")
         )
-
-        #expect(state == makeState())
-        #expect(effect == .clearAnchor(documentPath: "/doc.md"))
     }
 
     @Test func test_reduce_shouldAnchorNextSentenceAndPersist_onIdleJumpNext() {
