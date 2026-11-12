@@ -228,28 +228,22 @@ public enum ClientReview {
             self.link = link
         }
 
-        public func handle(_ effect: Effect) -> AsyncStream<Event> {
-            AsyncStream { continuation in
-                switch effect {
-                case .seal(let decision):
-                    continuation.yield(.sealed(decision, session.seal(decision)))
-                case .write(let decision, let bytes):
-                    let task = Task.immediate {
-                        continuation.yield(.written(decision, await sender.write(bytes)))
-                        continuation.finish()
-                    }
-                    continuation.onTermination = { _ in task.cancel() }
-                    return
-                case .open(let bytes):
-                    continuation.yield(.opened(session.open(bytes)))
-                case .closeSession:
-                    session.close()
-                    continuation.yield(.sessionClosed)
-                case .dropLink:
-                    link.drop()
-                    continuation.yield(.linkDropped)
-                }
-                continuation.finish()
+        /// Runs the effect's work and returns its one event. Only a write suspends,
+        /// until the sender's write response.
+        public func handle(_ effect: Effect) async -> Event {
+            switch effect {
+            case .seal(let decision):
+                return .sealed(decision, session.seal(decision))
+            case .write(let decision, let bytes):
+                return .written(decision, await sender.write(bytes))
+            case .open(let bytes):
+                return .opened(session.open(bytes))
+            case .closeSession:
+                session.close()
+                return .sessionClosed
+            case .dropLink:
+                link.drop()
+                return .linkDropped
             }
         }
     }

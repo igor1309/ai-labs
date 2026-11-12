@@ -162,7 +162,7 @@ import Observation
                     guard let transport, self?.transport === transport else { return }
                     self?.reviewChanged(state, transport: transport)
                 }
-            }), handleEffect: handler.handle)
+            }), handleEffect: delivering(handler.handle))
             connect = nil
             let pending = pendingReview
             pendingReview.removeAll()

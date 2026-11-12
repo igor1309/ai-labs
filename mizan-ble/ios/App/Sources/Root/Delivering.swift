@@ -11,3 +11,20 @@ func delivering<Effect, Event: Sendable>(
         }
     }
 }
+
+/// Adapts an async effect handler that delivers at most one event. The handler
+/// starts before the stream is returned and runs inline until it first suspends;
+/// the stream yields its event, if any, then finishes. Ending the stream cancels it.
+func delivering<Effect, Event: Sendable>(
+    _ handle: @escaping @MainActor (Effect) async -> Event?
+) -> @MainActor (Effect) -> AsyncStream<Event> {
+    { effect in
+        AsyncStream { continuation in
+            let task = Task.immediate { @MainActor in
+                if let event = await handle(effect) { continuation.yield(event) }
+                continuation.finish()
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
+}
