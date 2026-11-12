@@ -151,7 +151,7 @@ import Observation
                             reduce: loggedReducer(HostPayment.reduce, initial: initial, category: .hostPayment, log: log,
                                                   changed: { [weak self] _, state in
                 Task { @MainActor [weak self] in self?.paymentChanged(state, attempt: secure.attempt) }
-            }), handleEffect: handler.handle)
+            }), handleEffect: delivering(handler.handle))
             for event in pendingPaymentEvents.removeValue(forKey: secure.attempt) ?? [] { payment?.event(event) }
         }
         if let attempt = previous.attempt, next.attempt != attempt { pendingPaymentEvents.removeValue(forKey: attempt) }

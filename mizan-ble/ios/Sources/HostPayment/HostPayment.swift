@@ -179,28 +179,25 @@ public enum HostPayment {
             self.link = link
         }
 
-        public func handle(_ effect: Effect) -> AsyncStream<Event> {
-            AsyncStream { continuation in
-                switch effect {
-                case .open(let bytes):
-                    do { continuation.yield(.opened(try session.open(bytes))) }
-                    catch { continuation.yield(.refused) }
-                case .seal(let message):
-                    do { continuation.yield(.sealed(message, try session.seal(message))) }
-                    catch { continuation.yield(.sendFailed(message)) }
-                case .send(let message, let bytes):
-                    do {
-                        try sender.send(bytes)
-                        continuation.yield(.sent(message))
-                    } catch { continuation.yield(.sendFailed(message)) }
-                case .closeSession:
-                    session.close()
-                    continuation.yield(.sessionClosed)
-                case .endLink:
-                    link.end()
-                    continuation.yield(.linkEnded)
-                }
-                continuation.finish()
+        public func handle(_ effect: Effect) -> Event {
+            switch effect {
+            case .open(let bytes):
+                do { return .opened(try session.open(bytes)) }
+                catch { return .refused }
+            case .seal(let message):
+                do { return .sealed(message, try session.seal(message)) }
+                catch { return .sendFailed(message) }
+            case .send(let message, let bytes):
+                do {
+                    try sender.send(bytes)
+                    return .sent(message)
+                } catch { return .sendFailed(message) }
+            case .closeSession:
+                session.close()
+                return .sessionClosed
+            case .endLink:
+                link.end()
+                return .linkEnded
             }
         }
     }
