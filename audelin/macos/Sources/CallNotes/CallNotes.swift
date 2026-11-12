@@ -1,35 +1,44 @@
 import Foundation
 
 /// What the calls window shows of one call's notes.
-public struct CallNotesState: Equatable, Sendable {
+public enum CallNotesState: Equatable, Sendable {
+    /// The call has no notes.
+    case pending
+    case loading
+    case completed(Notes)
+    case failure(Failure)
 
-    public enum Status: Equatable, Sendable {
-        case none
-        case making
-        /// The notes and when they were made, as shown.
-        case made(text: String, date: String)
-        /// Why making failed, as shown.
-        case failed(reason: String)
+    /// The notes and when they were made, as shown.
+    public struct Notes: Equatable, Sendable {
+        public let text: String
+        public let date: String
+        public init(text: String, date: String) { self.text = text; self.date = date }
     }
+}
 
-    public var status: Status
-    /// Numbers each run of making, so an outcome from a cancelled run is told apart.
-    public var run: Int
-
-    public init(status: Status, run: Int = 0) { self.status = status; self.run = run }
+/// Why making the notes failed, as shown.
+public struct Failure: Error, Equatable, Sendable {
+    public let reason: String
+    public init(reason: String) { self.reason = reason }
 }
 
 public enum CallNotesEvent: Equatable, Sendable {
-    case make
+    /// The user asked to make the notes, first or again.
+    case load
     case cancel
-    case retry
-    case made(run: Int, text: String, date: Date)
-    case failed(run: Int, reason: String)
+    case loaded(Result<Loaded, Failure>)
+
+    /// The notes as made, and when.
+    public struct Loaded: Equatable, Sendable {
+        public let text: String
+        public let date: Date
+        public init(text: String, date: Date) { self.text = text; self.date = date }
+    }
 }
 
 public enum CallNotesEffect: Equatable, Sendable {
-    case make(run: Int)
-    case stop
+    case load
+    case cancel
 }
 
 /// Keeps no clock: how long making may take belongs to the collaborator.
@@ -42,60 +51,40 @@ public struct CallNotesReducer: Sendable {
 
     public func reduce(_ state: CallNotesState, _ event: CallNotesEvent) -> (CallNotesState, CallNotesEffect?) {
 
-        switch (state.status, event) {
-        case (.none, .make), (.failed, .retry):
-            (.init(status: .making, run: state.run + 1), .make(run: state.run + 1))
-        case (.making, .cancel):
-            (.init(status: .none, run: state.run), .stop)
-        case let (.making, .made(run, text, made)) where run == state.run:
-            (.init(status: .made(text: text, date: date(made)), run: run), nil)
-        case let (.making, .failed(run, reason)) where run == state.run:
-            (.init(status: .failed(reason: reason), run: run), nil)
+        switch (state, event) {
+        case (.pending, .load), (.failure, .load):
+            (.loading, .load)
+        case (.loading, .cancel):
+            (.pending, .cancel)
+        case let (.loading, .loaded(.success(loaded))):
+            (.completed(.init(text: loaded.text, date: date(loaded.date))), nil)
+        case let (.loading, .loaded(.failure(failure))):
+            (.failure(failure), nil)
         default:
             (state, nil)
         }
     }
 }
 
-/// What making a call's notes ended with.
-public enum CallNotesOutcome: Equatable, Sendable {
-    case made(text: String, date: Date)
-    case failed(reason: String)
-}
+public struct CallNotesEffectHandler {
 
-/// Makes one call's notes. It owns how long making may take and fails when it
-/// takes too long.
-public protocol CallNotesMaking: Sendable {
+    public typealias LoadCompletion = (Result<CallNotesEvent.Loaded, Failure>) -> Void
+    /// Makes the call's notes. A load that `cancel` stopped never completes.
+    public typealias Load = (@escaping LoadCompletion) -> Void
+    public typealias Cancel = () -> Void
 
-    /// Returns once the notes are made or making failed.
-    func make() async -> CallNotesOutcome
-    /// Stops making. A `make` it stopped may still return; that outcome is ignored.
-    func stop() async
-}
+    private let load: Load
+    private let cancel: Cancel
 
-public struct CallNotesEffectHandler: Sendable {
+    public init(load: @escaping Load, cancel: @escaping Cancel) { self.load = load; self.cancel = cancel }
 
-    private let making: any CallNotesMaking
+    public typealias Dispatch = (CallNotesEvent) -> Void
 
-    public init(making: any CallNotesMaking) { self.making = making }
+    public func handleEffect(_ effect: CallNotesEffect, _ dispatch: @escaping Dispatch) {
 
-    /// Delivers the event that completes the effect, if any, then finishes.
-    public func handle(_ effect: CallNotesEffect) -> AsyncStream<CallNotesEvent> {
-
-        AsyncStream { output in
-            let task = Task {
-                switch effect {
-                case let .make(run):
-                    switch await making.make() {
-                    case let .made(text, date): output.yield(.made(run: run, text: text, date: date))
-                    case let .failed(reason): output.yield(.failed(run: run, reason: reason))
-                    }
-                case .stop:
-                    await making.stop()
-                }
-                output.finish()
-            }
-            output.onTermination = { _ in task.cancel() }
+        switch effect {
+        case .load: load { dispatch(.loaded($0)) }
+        case .cancel: cancel()
         }
     }
 }

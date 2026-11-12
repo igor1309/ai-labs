@@ -2,52 +2,47 @@
 
 The machine is checked by its reducer and effect handler tests: each
 reducer test builds the given state with a factory and states only what
-changes; each is paired with an effect test for the same state and event,
-with the collaborator a spy. The date formatter is a spy: not called on
-start or on paths that change nothing, called once with the made date, and
-its stub value is what the state holds.
+changes; each is paired with an effect test for the same state and event.
+The effect handler's load and cancel are spies: its init calls neither, each
+effect calls only its own once, and what load completes with is delivered. The date formatter
+is a spy: not called on start or on paths that change nothing, called once
+with the made date, and its stub value is what the state holds.
 
 ## S-1 A call without notes offers to make them
 
-The machine starts in no notes when the call has none; no effect.
+The machine starts pending when the call has none; no effect.
 
 ## S-2 Asking starts making
 
-Make from no notes goes to being made and asks the collaborator to make
-that call's notes; the effect handler delivers made with the notes and their
-date, or failed with the reason, as the collaborator reports.
+Load from pending goes to loading with the load effect; the effect handler
+calls load and dispatches what it completes with.
 
 ## S-3 Made notes replace the progress
 
-Made while being made goes to made with the text and the formatted date;
-no effect.
+Loaded with notes while loading goes to completed with the text and the
+formatted date; no effect.
 
 ## S-4 A failure is shown
 
-Failed while being made goes to failed with the reason; no effect.
+Loaded with a failure while loading goes to failure with its reason; no
+effect.
 
 ## S-5 Trying again starts making
 
-Retry from failed goes to being made and asks the collaborator to make.
+Load from failure goes to loading with the load effect.
 
 ## S-6 Cancelling returns to no notes
 
-Cancel while being made goes to no notes and asks the collaborator to stop;
-a made or failed outcome that arrives after it changes nothing. The effect
-handler's stop returns once the collaborator has stopped and delivers no
-event.
+Cancel while loading goes to pending with the cancel effect; the effect
+handler calls cancel and delivers nothing. An outcome sent when not loading
+changes nothing. That a cancelled load never completes is the collaborator's
+contract, checked where the root answers it.
 
 ## S-7 Asking twice makes them once
 
-Make or retry while being made changes nothing and asks nothing.
+Load while loading changes nothing and has no effect.
 
 ## S-8 Notes submitted after a call
 
-The machine started in being made shows being made and asks nothing: the
-work was already asked for.
-
-## S-9 A cancelled run's outcome never shows
-
-Each make or retry starts the next numbered run and asks the collaborator to
-make for it; the effect handler tags the outcome with that run. While run 2
-is being made, made or failed for run 1 changes nothing.
+The machine started in loading shows loading and asks nothing: the work was
+already asked for.

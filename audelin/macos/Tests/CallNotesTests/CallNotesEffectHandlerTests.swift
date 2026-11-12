@@ -2,77 +2,84 @@ import CallNotes
 import Foundation
 import Testing
 
-@Suite(.timeLimit(.minutes(1)))
 struct CallNotesEffectHandlerTests {
 
-    @Test func makeDeliversMadeNotesWithTheirDateForItsRun() async {
+    @Test func init_callsNoCollaborator() {
 
-        let (sut, spy) = makeSUT()
-        await expect(sut, with: .make(run: 3), toDeliver: [.made(run: 3, text: "notes", date: when)], on: {
-            await spy.make.complete(with: .made(text: "notes", date: when))
-        })
-        #expect(await spy.make.calls == 1)
-        #expect(await spy.stop.calls == 0)
+        let (_, load, cancel) = makeSUT()
+        #expect(load.callCount == 0)
+        #expect(cancel.callCount == 0)
     }
 
-    @Test func makeDeliversWhyMakingFailedForItsRun() async {
+    @Test func load_callsLoadOnly() {
 
-        let (sut, spy) = makeSUT()
-        await expect(sut, with: .make(run: 3), toDeliver: [.failed(run: 3, reason: "why")], on: {
-            await spy.make.complete(with: .failed(reason: "why"))
-        })
+        let (sut, load, cancel) = makeSUT()
+        sut.handleEffect(.load) { _ in }
+        #expect(load.callCount == 1)
+        #expect(cancel.callCount == 0)
     }
 
-    @Test func stopDeliversNothingOnceMakingHasStopped() async {
+    @Test func load_deliversNotes_onLoadSuccess() {
 
-        let (sut, spy) = makeSUT()
-        await expect(sut, with: .stop, toDeliver: [], on: { await spy.stop.complete() })
-        #expect(await spy.stop.calls == 1)
-        #expect(await spy.make.calls == 0)
-    }
-}
-
-private let when = Date(timeIntervalSince1970: 1_794_000_000)
-
-private func makeSUT() -> (CallNotesEffectHandler, MakingSpy) {
-
-    let spy = MakingSpy()
-    return (CallNotesEffectHandler(making: spy), spy)
-}
-
-private struct MakingSpy: CallNotesMaking {
-
-    let make = Spy<CallNotesOutcome>(), stop = Spy<Void>()
-
-    func make() async -> CallNotesOutcome { await make.call() }
-    func stop() async { await stop.call() }
-}
-
-/// Holds each call until the test completes it; completing waits for the call.
-private actor Spy<Value: Sendable> {
-
-    private(set) var calls = 0
-    private var pending: [CheckedContinuation<Value, Never>] = []
-    private var completers: [CheckedContinuation<Void, Never>] = []
-
-    func call() async -> Value {
-
-        calls += 1
-        return await withCheckedContinuation { continuation in
-            pending.append(continuation)
-            for completer in completers { completer.resume() }
-            completers.removeAll()
-        }
+        let (sut, load, _) = makeSUT()
+        expect(sut, with: .load, toDeliver: [.loaded(.success(loaded))]) { load.complete(with: .success(loaded)) }
     }
 
-    func complete(with value: Value) async {
+    @Test func load_deliversFailure_onLoadFailure() {
 
-        while pending.isEmpty { await withCheckedContinuation { completers.append($0) } }
-        pending.removeFirst().resume(returning: value)
+        let (sut, load, _) = makeSUT()
+        let failure = Failure(reason: "why")
+        expect(sut, with: .load, toDeliver: [.loaded(.failure(failure))]) { load.complete(with: .failure(failure)) }
+    }
+
+    @Test func cancel_callsCancelOnly() {
+
+        let (sut, load, cancel) = makeSUT()
+        sut.handleEffect(.cancel) { _ in }
+        #expect(cancel.callCount == 1)
+        #expect(load.callCount == 0)
+    }
+
+    @Test func cancel_deliversNothing() {
+
+        let (sut, _, _) = makeSUT()
+        expect(sut, with: .cancel, toDeliver: []) {}
     }
 }
 
-private extension Spy where Value == Void {
+private let loaded = CallNotesEvent.Loaded(text: "notes", date: Date(timeIntervalSince1970: 1_794_000_000))
 
-    func complete() async { await complete(with: ()) }
+private typealias LoadSpy = Spy<Result<CallNotesEvent.Loaded, Failure>>
+
+private func makeSUT() -> (CallNotesEffectHandler, LoadSpy, CancelSpy) {
+
+    let load = LoadSpy(), cancel = CancelSpy()
+    return (CallNotesEffectHandler(load: load.process, cancel: cancel.call), load, cancel)
+}
+
+private func expect(
+    _ sut: CallNotesEffectHandler, with effect: CallNotesEffect, toDeliver expected: [CallNotesEvent],
+    on action: () -> Void, sourceLocation: SourceLocation = #_sourceLocation
+) {
+
+    var events: [CallNotesEvent] = []
+    sut.handleEffect(effect) { events.append($0) }
+    action()
+    #expect(events == expected, sourceLocation: sourceLocation)
+}
+
+/// Keeps each call's completion; `complete(with:)` answers the oldest.
+private final class Spy<Response> {
+
+    private var completions: [(Response) -> Void] = []
+    var callCount: Int { completions.count }
+
+    func process(_ completion: @escaping (Response) -> Void) { completions.append(completion) }
+    func complete(with response: Response, at index: Int = 0) { completions[index](response) }
+}
+
+private final class CancelSpy {
+
+    private(set) var callCount = 0
+    func call() { callCount += 1 }
 }

@@ -11,8 +11,8 @@ Oracle: the design brief `../../design/calls-list.md`.
   when it takes too long, belong to whatever makes the notes; the machine
   waits for its outcome.
 - **Cancelling returns the call to no notes, with no error.** The user chose
-  to stop; nothing failed. Each run of making is told apart, so the
-  outcome of a cancelled run never shows.
+  to stop; nothing failed. Whatever makes the notes never reports a run
+  it was told to stop, so a cancelled run's notes never show.
 - **A call's notes are made once at a time.** Make, retry or cancel sent
   while they cannot apply change nothing.
 - **Notes submitted after a call start the call in being made,** so the
@@ -64,8 +64,4 @@ Feature: Making a call's notes on request
     When I read the call
     Then I can see that they are being made
 
-  Scenario: S-9 A cancelled run's outcome never shows
-    Given I cancelled making a call's notes and asked again
-    When the cancelled run finishes
-    Then I can see that they are being made
 ```
