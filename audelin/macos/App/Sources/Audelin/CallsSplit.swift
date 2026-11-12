@@ -211,7 +211,7 @@ func installCallsToolbar(_ toolbar: NSToolbar, in window: NSWindow) {
     window.titlebarAppearsTransparent = true
     window.titlebarSeparatorStyle = .automatic
     window.titleVisibility = .hidden
-    window.toolbarStyle = .unifiedCompact
+    window.toolbarStyle = .unified
     window.toolbar = toolbar
 }
 
