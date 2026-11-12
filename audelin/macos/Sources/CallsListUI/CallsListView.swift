@@ -49,7 +49,7 @@ public struct CallsListView: View {
             event(press.key == .downArrow ? .selectNext : .selectPrevious)
             return .handled
         }
-        .onKeyPress(keys: [.return, .space, "r", .delete, .backspace]) { press in
+        .onKeyPress(keys: [.return, "r", .delete, .backspace]) { press in
             guard state.editing == nil, let row = state.rows.first(where: { $0.id == state.selectedID }),
                   let action = keyAction(press, row) else { return .ignored }
             event(action)
@@ -60,8 +60,7 @@ public struct CallsListView: View {
         .onAppear { GlassLedger.registerFonts(); editing = state.editing != nil }
     }
 
-    /// The whole row is a button that selects it; the eye inside it takes its
-    /// own clicks. Renaming starts only from the menu or ⌘R.
+    /// The whole row is a button that selects it. Renaming starts only from the menu or ⌘R.
     private func callRow(_ row: CallsListState.Row) -> some View {
         Button { event(.select(row.id)) } label: { rowContent(row).contentShape(.rect) }
             .buttonStyle(.plain)
@@ -77,7 +76,6 @@ public struct CallsListView: View {
         var items: [RowMenuItem?] = [
             RowMenuItem(title: text(.open), key: "\r", isEnabled: !state.busy) { event(.open(row.id)) },
         ]
-        if row.hasNotes { items.append(RowMenuItem(title: text(.showSummary), key: " ") { event(.preview(row.id)) }) }
         items.append(RowMenuItem(title: text(.rename), key: "r", modifiers: .command, isEnabled: row.editable && !state.busy) {
             event(.beginRename(row.id))
         })
@@ -91,12 +89,11 @@ public struct CallsListView: View {
         return items
     }
 
-    /// Return opens, Space shows notes, ⌘R renames and ⌘⌫ asks to delete the selected call.
+    /// Return opens, ⌘R renames and ⌘⌫ asks to delete the selected call.
     private func keyAction(_ press: KeyPress, _ row: CallsListState.Row) -> CallsListEvent? {
         let command = press.modifiers.contains(.command)
         switch press.key {
         case .return where !command && !state.busy: return .open(row.id)
-        case .space where !command && row.hasNotes: return .preview(row.id)
         case "r" where command && row.editable && !state.busy: return .beginRename(row.id)
         case .delete where command && row.editable && !state.busy, .backspace where command && row.editable && !state.busy: return .askDelete(row.id)
         default: return nil
@@ -144,7 +141,6 @@ public struct CallsListView: View {
                     about(row).frame(maxWidth: .infinity, alignment: .leading).allowsHitTesting(false)
                 }
                 summary(row)
-                eye(row)
             }
             .frame(height: lineHeight)
         }
@@ -224,27 +220,6 @@ public struct CallsListView: View {
     private let durationWidth: CGFloat = 48
     private let iconSize: CGFloat = 14
     private var lineHeight: CGFloat { tokens.space16 }
-
-    /// The eye a call with notes shows; a call without keeps its place empty.
-    @ViewBuilder private func eye(_ row: CallsListState.Row) -> some View {
-        if row.hasNotes {
-            let previewed = state.previewedID == row.id
-            Button { event(.preview(row.id)) } label: {
-                Image(systemName: "eye")
-                    .font(tokens.ui(tokens.typeSmall, .semibold))
-                    .foregroundStyle(ink(row, tokens.sub))
-                    .frame(width: iconSize, height: iconSize)
-                    .contentShape(.rect)
-            }
-            .buttonStyle(.plain)
-            .help(text(.showSummary))
-            .accessibilityLabel(text(.showSummary))
-            .accessibilityAddTraits(previewed ? .isSelected : [])
-            .accessibilityIdentifier("calls.eye.\(row.id)")
-        } else {
-            EmptyView()
-        }
-    }
 
     private func button(_ title: String, destructive: Bool, action: @escaping () -> Void) -> some View {
         Button(role: destructive ? .destructive : nil, action: action) {

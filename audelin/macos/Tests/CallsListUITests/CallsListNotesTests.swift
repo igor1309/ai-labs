@@ -1,36 +1,23 @@
 import AppKit
 import CallsListUI
 import GlassLedger
-import RenderedText
 import SwiftUI
 import Testing
 
 /// What the view does itself with clicks and keys. SwiftUI takes clicks and
 /// keys only in a window on screen and gives an offscreen host no
 /// accessibility children, so these tests show the list far off the visible
-/// screen, find the eyes by their pixels, and click and type into it.
+/// screen, find rows by their identifiers, and click and type into it.
 @MainActor
 struct CallsListNotesTests {
-
-    @Test func pressingAnEyeAsksForThatCallsNotes() throws {
-
-        let shown = Shown(makeState())
-        defer { shown.close() }
-        let eye = try #require(try shown.eyes().last)
-
-        shown.click(CGPoint(x: eye.midX, y: eye.midY))
-
-        #expect(shown.sent == [.preview("2026.10.17-1100")])
-    }
 
     @Test func clickingARowsTitleOnlySelectsIt() throws {
 
         let shown = Shown(makeState())
         defer { shown.close() }
-        let eyes = try shown.eyes()
-        let first = try #require(eyes.first), last = try #require(eyes.last)
+        let row = try #require(shown.row("2026.10.20-1600"))
 
-        shown.click(CGPoint(x: 200, y: (first.midY + last.midY) / 2))
+        shown.click(CGPoint(x: 200, y: row.midY))
 
         #expect(shown.sent == [.select("2026.10.20-1600")])
     }
@@ -39,11 +26,9 @@ struct CallsListNotesTests {
 
         let shown = Shown(makeState())
         defer { shown.close() }
-        let eyes = try shown.eyes()
-        let first = try #require(eyes.first), last = try #require(eyes.last)
-        let middle = (first.midY + last.midY) / 2
+        let row = try #require(shown.row("2026.10.20-1600"))
 
-        shown.click(CGPoint(x: 60, y: middle))
+        shown.click(CGPoint(x: 60, y: row.midY))
 
         #expect(shown.sent == [.select("2026.10.20-1600")])
     }
@@ -75,7 +60,7 @@ struct CallsListNotesTests {
         shown.type("r", code: 15)
 
         let id = state.rows[0].id
-        #expect(shown.sent == [.open(id), .preview(id), .beginRename(id), .askDelete(id)])
+        #expect(shown.sent == [.open(id), .beginRename(id), .askDelete(id)])
     }
 
     @Test func keysSkipWhatTheSelectedCallCannotDo() throws {
@@ -118,18 +103,16 @@ struct CallsListNotesTests {
 
         func settle() { RunLoop.main.run(until: Date() + 0.15) }
 
-        /// Each eye's box, top-down, in view points from the top left.
-        func eyes() throws -> [CGRect] {
-            let image = try snapshot(), scale = CGFloat(image.pixelsWide) / 920
-            let background = { (y: Int) in image.colorAt(x: Int(834 * scale), y: y) }
-            var boxes: [CGRect] = []
-            for y in 0..<image.pixelsHigh {
-                let xs = (Int(840 * scale)..<Int(904 * scale)).filter { image.colorAt(x: $0, y: y) != background(y) }
-                guard let low = xs.min(), let high = xs.max() else { continue }
-                let row = CGRect(x: CGFloat(low) / scale, y: CGFloat(y) / scale, width: CGFloat(high - low + 1) / scale, height: 1 / scale)
-                if let last = boxes.last, row.minY - last.maxY < 2 { boxes[boxes.count - 1] = last.union(row) } else { boxes.append(row) }
-            }
-            return boxes.filter { $0.height > 4 }
+        /// The row's box in view points from the top left, found by its identifier.
+        func row(_ id: String) -> CGRect? {
+            guard let content = window.contentView, let target = find("calls.row.\(id)", in: content) else { return nil }
+            let box = target.convert(target.bounds, to: nil)
+            return CGRect(x: box.minX, y: 420 - box.maxY, width: box.width, height: box.height)
+        }
+
+        private func find(_ identifier: String, in view: NSView) -> NSView? {
+            if view.accessibilityIdentifier() == identifier { return view }
+            return view.subviews.lazy.compactMap { self.find(identifier, in: $0) }.first
         }
 
         func click(_ point: CGPoint) {
@@ -157,11 +140,6 @@ struct CallsListNotesTests {
                                               context: nil, characters: characters, charactersIgnoringModifiers: characters,
                                               isARepeat: false, keyCode: code)!)
             settle()
-        }
-
-        private func snapshot() throws -> NSBitmapImageRep {
-            let view = try #require(window.contentView)
-            return try #require(Offscreen.snapshot(view))
         }
     }
 

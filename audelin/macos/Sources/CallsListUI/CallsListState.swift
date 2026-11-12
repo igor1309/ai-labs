@@ -14,7 +14,7 @@ public struct CallsListState: Equatable, Sendable {
         public let day: Day?
         public var canRetrySummary: Bool
         public var summaryStatus: String
-        /// The call has published notes, so its row offers the eye.
+        /// The call has published notes.
         public var hasNotes: Bool
         /// What the call was about, one sentence from its notes; nil without one.
         public var gist: String?
@@ -91,14 +91,12 @@ public struct CallsListState: Equatable, Sendable {
     public var failure: String?
     /// The selected call, if any.
     public var selectedID: String?
-    /// The call whose notes the preview shows, if it is shown.
-    public var previewedID: String?
 
     public init(rows: [Row] = [], editing: Editing? = nil, deleteID: String? = nil, deleteBody: String? = nil, busy: Bool = false, failure: String? = nil,
-                selectedID: String? = nil, previewedID: String? = nil, search: Search? = nil) {
+                selectedID: String? = nil, search: Search? = nil) {
         self.search = search
         self.rows = rows; self.editing = editing; self.deleteID = deleteID; self.deleteBody = deleteBody; self.busy = busy; self.failure = failure
-        self.selectedID = selectedID; self.previewedID = previewedID
+        self.selectedID = selectedID
     }
 
 }
@@ -106,7 +104,7 @@ public struct CallsListState: Equatable, Sendable {
 public enum CallsListEvent: Equatable, Sendable {
     case open(String), beginRename(String), editTitle(String), submitRename, cancelRename
     case askDelete(String), confirmDelete, cancelDelete
-    case select(String), selectNext, selectPrevious, preview(String), retrySummary(String)
+    case select(String), selectNext, selectPrevious, retrySummary(String)
     /// The search field's text changed; an empty text ends the search.
     case search(String)
 }

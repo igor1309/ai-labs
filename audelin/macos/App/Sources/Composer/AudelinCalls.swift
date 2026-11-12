@@ -19,21 +19,7 @@ struct RecordingsInputs {
     }
 }
 
-/// The selected call's notes while the preview is open.
-public struct CallsPreview: Equatable, Sendable {
-    public enum Notes: Equatable, Sendable { case text(String), unreadable(String) }
-    public let id: String
-    public let title: String
-    public let date: String
-    public let duration: String
-    public let notes: Notes
-
-    public init(id: String, title: String, date: String, duration: String, notes: Notes) {
-        self.id = id; self.title = title; self.date = date; self.duration = duration; self.notes = notes
-    }
-}
-
-/// The selected call as the detail shows it, whether or not the preview is open.
+/// The selected call as the detail shows it.
 public struct CallsDetail: Equatable, Sendable {
     public enum Content: Equatable, Sendable {
         /// The notes' Markdown source.
@@ -68,12 +54,8 @@ public final class AudelinCalls {
     @ObservationIgnored private var detailFor: String?
     private let copy: (String) -> Void
     private let notesEnabled: () -> Bool
-    /// The selected call's notes, while the preview is open and the call has them.
-    public private(set) var preview: CallsPreview?
     private let notes: (String) async throws -> String?
-    private let focusPreview: () -> Void
     private var selectedID: String?
-    private var previewOpen = false
     private var withNotes: Set<String> = []
     /// Each call's gist, read with its notes.
     private var gists: [String: String] = [:]
@@ -111,7 +93,6 @@ public final class AudelinCalls {
          present: @escaping () -> Void, summaryStatuses: @escaping () -> [String: String] = { [:] },
          summaryBadges: @escaping () -> [String: CallsListState.Row.Summary] = { [:] },
          notes: @escaping (String) async throws -> String? = { _ in nil },
-         focusPreview: @escaping () -> Void = {},
          copy: @escaping (String) -> Void = { _ in },
          notesEnabled: @escaping () -> Bool = { true },
          retryableSummaries: @escaping () -> Set<String> = { [] },
@@ -124,7 +105,6 @@ public final class AudelinCalls {
         self.listText = listText
         self.retryableSummaries = retryableSummaries
         self.retrySummary = retrySummary
-        self.focusPreview = focusPreview
         self.copy = copy
         self.notesEnabled = notesEnabled
         self.summaryStatuses = summaryStatuses
@@ -161,7 +141,6 @@ public final class AudelinCalls {
             state.rows[index].match = found[state.rows[index].id]
         }
         state.selectedID = state.rows.contains { $0.id == selectedID } ? selectedID : nil
-        state.previewedID = preview?.id
         state.editing = editing
         state.failure = openFailure ?? state.failure
         state.busy = state.busy || opening
@@ -234,17 +213,10 @@ public final class AudelinCalls {
         scanNotes()
     }
 
-    /// The preview's own close; only an eye opens it again.
-    public func closePreview() {
-        previewOpen = false
-        updatePreview()
-    }
-
-    /// With the calls window closed the preview has no row to follow.
+    /// With the calls window closed the list stops looking for notes.
     public func windowClosed() {
         notesScan?.cancel()
         notesScan = nil
-        closePreview()
     }
 
     /// Finds which listed calls have notes, and each one's gist, as the listing or summary status changes
@@ -265,26 +237,25 @@ public final class AudelinCalls {
                 if Task.isCancelled { return }
                 withNotes = found
                 self.gists = gists
-                // The open preview follows what the reload found.
-                updatePreview()
+                // The detail follows what the reload found.
+                updateDetail()
             }
         }
     }
 
     /// A search that hides or shows the selected call empties or refills the detail.
     private func followSelection() {
-        if state.selectedID != detailFor { updatePreview() }
+        if state.selectedID != detailFor { updateDetail() }
     }
 
-    /// Reads the selected call's notes into the detail, and into the preview while it is open.
-    private func updatePreview() {
+    /// Reads the selected call's notes into the detail.
+    private func updateDetail() {
         loading?.cancel()
         let state = state
         detailFor = state.selectedID
         guard let id = selectedID, let index = state.rows.firstIndex(where: { $0.id == id }) else {
             loading = nil
             detail = nil
-            preview = nil
             return
         }
         let row = state.rows[index]
@@ -292,22 +263,18 @@ public final class AudelinCalls {
         let date = [opening?.title, row.time].compactMap { $0 }.joined(separator: ", ")
         let status = summaryStatuses()[id] ?? ""
         let notesOff = !notesEnabled()
-        let open = previewOpen
-        if !open { preview = nil }
         loading = Task { [notes] in
-            let read: CallsPreview.Notes?
-            do { read = try await notes(id).map { .text($0) } } catch { read = .unreadable(error.localizedDescription) }
+            let read: CallsDetail.Content?
+            do { read = try await notes(id).map { .notes($0) } } catch { read = .unreadable(error.localizedDescription) }
             guard !Task.isCancelled else { return }
             let content: CallsDetail.Content
             switch (read, row.summary) {
-            case let (.text(source)?, _): content = .notes(source)
-            case let (.unreadable(reason)?, _): content = .unreadable(reason)
+            case let (read?, _): content = read
             case (nil, .pending): content = .preparing
             case (nil, .failed): content = .failed(reason: status, canRetry: row.canRetrySummary && row.editable)
             case (nil, .none): content = .none(notesOff: notesOff)
             }
             detail = .init(id: id, title: row.displayTitle, date: date, duration: row.duration, content: content)
-            preview = open ? read.map { .init(id: id, title: row.displayTitle, date: date, duration: row.duration, notes: $0) } : nil
         }
     }
 
@@ -328,7 +295,7 @@ public final class AudelinCalls {
         let index = selectedID.flatMap { id in rows.firstIndex { $0.id == id } }
         let next = index.map { min(max($0 + step, 0), rows.count - 1) } ?? (step > 0 ? 0 : rows.count - 1)
         selectedID = rows[next].id
-        updatePreview()
+        updateDetail()
     }
 
     /// Ends an inline rename by saving its title, as leaving the field does in Finder.
@@ -369,18 +336,10 @@ public final class AudelinCalls {
         case let .select(id):
             if editing?.id != id { commitRename() }
             selectedID = id
-            updatePreview()
+            updateDetail()
         case let .search(text): search(text)
         case .selectNext: commitRename(); move(by: 1, in: snapshot.rows)
         case .selectPrevious: commitRename(); move(by: -1, in: snapshot.rows)
-        case let .preview(id):
-            if editing?.id != id { commitRename() }
-            // An eye asks for the panel to be the active window; a row
-            // selection only moves its content.
-            focusPreview()
-            selectedID = id
-            previewOpen = true
-            updatePreview()
         case let .retrySummary(id):
             guard !snapshot.busy, let row = snapshot.rows.first(where: { $0.id == id }),
                   row.editable, row.canRetrySummary else { return }

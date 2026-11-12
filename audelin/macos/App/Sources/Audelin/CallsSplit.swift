@@ -1,5 +1,6 @@
 import AppKit
 import Composer
+import NotesMarkdown
 import SummaryPreviewUI
 import SwiftUI
 
@@ -68,12 +69,12 @@ private func hosting(_ view: NSView) -> NSViewController {
 }
 
 /// The detail as the summary view draws it; nil when no call is selected.
-func detailState(_ detail: CallsDetail?) -> SummaryPreviewState? {
+func detailState(_ detail: CallsDetail?, text: SummaryPreviewText) -> SummaryPreviewState? {
     guard let detail else { return nil }
     let notes: SummaryPreviewState.Notes, canRetry: Bool
     switch detail.content {
     case let .notes(source): notes = .markdown(source); canRetry = false
-    case let .unreadable(reason): notes = .unreadable(reason); canRetry = false
+    case let .unreadable(reason): notes = .unreadable(text(.unreadable, reason)); canRetry = false
     case .preparing: notes = .preparing; canRetry = false
     case let .failed(reason, retry): notes = .failed(reason); canRetry = retry
     case let .none(notesOff): notes = .none(notesOff: notesOff); canRetry = false
@@ -97,7 +98,8 @@ struct CallsDetailContent: View {
     let model: AudelinCalls
     let text: () -> SummaryPreviewText
     var body: some View {
-        SummaryPreviewView(state: detailState(model.detail), text: text(),
+        let text = text()
+        return SummaryPreviewView(state: detailState(model.detail, text: text), text: text,
                            event: detailSender { await model.send(detail: $0) }, render: renderNotes)
     }
 }
@@ -105,4 +107,27 @@ struct CallsDetailContent: View {
 /// The detail view's event handler: each button sent to the calls window as its action.
 func detailSender(_ send: @escaping @MainActor (CallsDetailEvent) async -> Void) -> (SummaryPreviewEvent) -> Void {
     { event in Task { @MainActor in await send(detailEvent(event)) } }
+}
+
+/// Tells the calls list when its window closes.
+@MainActor
+func onClose(of window: AnyObject, center: NotificationCenter, _ closed: @escaping @MainActor () -> Void) {
+    center.addObserver(forName: NSWindow.willCloseNotification, object: window, queue: .main) { _ in
+        MainActor.assumeIsolated { closed() }
+    }
+}
+
+/// The detail's notes, rendered from Markdown in the view's style.
+func renderNotes(_ source: String, _ style: NotesStyle) -> NSAttributedString {
+    NotesMarkdown.render(source, style: .init(body: style.body, headings: style.headings, code: style.code, text: style.text,
+                                              secondary: style.secondary, codeBackground: style.codeBackground, rule: style.rule,
+                                              layout: .init(lineHeight: style.lineHeight, paragraphSpacing: style.paragraphSpacing,
+                                                            headingSpacing: style.headingSpacing, labelLevels: style.labelLevels,
+                                                            labelKern: style.labelKern)))
+}
+
+/// Puts the notes' Markdown on the pasteboard as plain text.
+func copyNotes(_ markdown: String, to pasteboard: NSPasteboard) {
+    pasteboard.clearContents()
+    pasteboard.setString(markdown, forType: .string)
 }

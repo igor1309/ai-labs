@@ -33,7 +33,6 @@ public enum CallsListPreviews {
                                    day: .init(title: words.olderDay, count: words.one), time: "10:30", duration: "1:05:12", editable: true)
             }),
             ("notes-selected", with(notes) { $0.selectedID = $0.rows[1].id }),
-            ("notes-previewed", with(notes) { $0.selectedID = $0.rows[2].id; $0.previewedID = $0.rows[2].id }),
             ("delete", with(sample) {
                 $0.deleteID = $0.rows[0].id
                 $0.deleteBody = text(.deleteBody, "2026.10.21-1230 " + words.launch)

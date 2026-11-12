@@ -22,8 +22,6 @@ public enum SummaryPreviewPhrase: String, CaseIterable, Sendable {
     case noSummary = "preview.noSummary"
     case notesOff = "preview.notesOff"
     case noSelection = "preview.noSelection"
-    /// Takes the call's title.
-    case windowTitle = "preview.windowTitle"
     /// Takes the system's reason.
     case unreadable = "preview.unreadable"
 }

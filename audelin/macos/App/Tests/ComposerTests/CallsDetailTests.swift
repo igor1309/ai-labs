@@ -5,20 +5,18 @@ import Recordings
 import Testing
 @testable import Composer
 
-/// The calls window's detail: it follows the selection whether or not the
-/// preview is open, shows where the summary stands when there are no notes,
+/// The calls window's detail: it follows the selection, shows where the summary stands when there are no notes,
 /// and sends its buttons to the list's own actions.
 @MainActor
 @Suite(.timeLimit(.minutes(1)))
 struct CallsDetailTests {
-    @Test func theDetailFollowsTheSelectionWithoutThePreview() async throws {
+    @Test func theDetailFollowsTheSelection() async throws {
         let sut = Fixture(notes: [a: "# A notes"])
         #expect(sut.calls.detail == nil)
 
         await sut.calls.send(.select(a))
         await sut.waitDetail { $0?.content == .notes("# A notes") }
         #expect(sut.calls.detail?.title == "A" && sut.calls.detail?.duration == "1:00")
-        #expect(sut.calls.preview == nil)
 
         await sut.calls.send(.selectNext)
         await sut.waitDetail { $0?.id == b }

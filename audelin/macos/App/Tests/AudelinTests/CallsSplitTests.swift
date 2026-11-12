@@ -64,6 +64,7 @@ struct CallsSplitTests {
     }
 
     @Test func theDetailShowsTheSelectedCallsStateAndNothingSelected() {
+        let russian = SummaryPreviewText(language: .russian)
         func detail(_ content: CallsDetail.Content) -> CallsDetail {
             .init(id: "A", title: "Zoom", date: "Сегодня, 10:00", duration: "28:00", content: content)
         }
@@ -71,18 +72,54 @@ struct CallsSplitTests {
             .init(title: "Zoom", date: "Сегодня, 10:00", duration: "28:00", notes: notes, canRetry: canRetry)
         }
 
-        #expect(detailState(nil) == nil)
-        #expect(detailState(detail(.notes("# A"))) == state(.markdown("# A")))
-        #expect(detailState(detail(.unreadable("нет доступа"))) == state(.unreadable("нет доступа")))
-        #expect(detailState(detail(.preparing)) == state(.preparing))
-        #expect(detailState(detail(.failed(reason: "лимит", canRetry: true))) == state(.failed("лимит"), canRetry: true))
-        #expect(detailState(detail(.failed(reason: "лимит", canRetry: false))) == state(.failed("лимит")))
-        #expect(detailState(detail(.none(notesOff: true))) == state(.none(notesOff: true)))
+        #expect(detailState(nil, text: russian) == nil)
+        #expect(detailState(detail(.notes("# A")), text: russian) == state(.markdown("# A")))
+        #expect(detailState(detail(.unreadable("нет доступа")), text: russian) == state(.unreadable("Итоги не читаются: нет доступа")))
+        #expect(detailState(detail(.preparing), text: russian) == state(.preparing))
+        #expect(detailState(detail(.failed(reason: "лимит", canRetry: true)), text: russian) == state(.failed("лимит"), canRetry: true))
+        #expect(detailState(detail(.failed(reason: "лимит", canRetry: false)), text: russian) == state(.failed("лимит")))
+        #expect(detailState(detail(.none(notesOff: true)), text: russian) == state(.none(notesOff: true)))
     }
 
     @Test func eachDetailButtonIsTheSameActionOnTheShownCall() {
         let events: [SummaryPreviewEvent] = [.copy, .open, .rename, .retrySummary, .delete]
         #expect(events.map(detailEvent) == [.copy, .open, .rename, .retrySummary, .delete])
+    }
+
+    @Test func closingTheCallsWindowTellsTheList() {
+        let center = NotificationCenter()
+        let window = NSObject(), other = NSObject()
+        var closes = 0
+        onClose(of: window, center: center) { closes += 1 }
+
+        center.post(name: NSWindow.willCloseNotification, object: other)
+        #expect(closes == 0)
+        center.post(name: NSWindow.willCloseNotification, object: window)
+        #expect(closes == 1)
+    }
+
+    @Test func theNotesRendererDrawsMarkdownInTheViewsStyle() throws {
+        let heading = NSFont.boldSystemFont(ofSize: 20), body = NSFont.systemFont(ofSize: 13)
+        let style = NotesStyle(body: body, headings: [heading], code: .monospacedSystemFont(ofSize: 12, weight: .regular),
+                               text: .red, secondary: .gray, codeBackground: .white, rule: .gray)
+
+        let rendered = renderNotes("# Итоги\n\nтекст", style)
+
+        #expect(rendered.string == "Итоги\nтекст")
+        #expect(rendered.attribute(.font, at: 0, effectiveRange: nil) as? NSFont == heading)
+        let bodyAt = (rendered.string as NSString).range(of: "текст").location
+        #expect(rendered.attribute(.font, at: bodyAt, effectiveRange: nil) as? NSFont == body)
+        #expect(rendered.attribute(.foregroundColor, at: bodyAt, effectiveRange: nil) as? NSColor == .red)
+    }
+
+    @Test func copyPutsTheNotesMarkdownOnThePasteboard() {
+        let pasteboard = NSPasteboard.withUniqueName()
+        defer { pasteboard.releaseGlobally() }
+        let source = "## Итоги\n\n- **важно**\n\n| a | b |\n|---|---|\n"
+
+        copyNotes(source, to: pasteboard)
+
+        #expect(pasteboard.string(forType: .string) == source)
     }
 
     private func show(width: CGFloat, list: NSView = NSView(), detail: NSView = NSView(),
