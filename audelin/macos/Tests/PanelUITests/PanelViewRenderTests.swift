@@ -66,6 +66,27 @@ struct PanelViewRenderTests {
         #expect(long.frame.width == short.frame.width)
     }
 
+    @Test(arguments: [ColorScheme.light, .dark], [PanelState.oneRemoteSpeaker, .twoRemoteSpeakers, .severalRemoteSpeakers])
+    func eachRemoteSpeakerIsDrawnInItsOwnColour(scheme: ColorScheme, state: PanelState) throws {
+
+        let tokens = PanelConfig.glassLedger.tokens(for: scheme)
+        let host = Offscreen.host(PanelPreview(state: state, scheme: scheme), scheme: scheme)
+        let text = try #require(Offscreen.textView(in: host)?.textStorage)
+        let string = text.string as NSString
+        func colour(of substring: String) throws -> NSColor? {
+            let range = string.range(of: substring)
+            try #require(range.location != NSNotFound, "«\(substring)» is not shown")
+            return (text.attribute(.foregroundColor, at: range.location, effectiveRange: nil) as? NSColor)?.usingColorSpace(.sRGB)
+        }
+        for entry in state.shownEntries {
+            let expected = NSColor(entry.speaker == .me ? tokens.me : tokens.remoteSpeaker(entry.remoteSpeaker)).usingColorSpace(.sRGB)
+            #expect(try colour(of: "\t" + entry.time + "\t") == expected, "\(entry.time)")
+            if let label = entry.label {
+                #expect(try colour(of: "\t" + label) == expected, "\(label)")
+            }
+        }
+    }
+
     @Test(arguments: [ColorScheme.light, .dark], PanelLanguage.allCases)
     func rendersEveryPreviewState(scheme: ColorScheme, language: PanelLanguage) throws {
 

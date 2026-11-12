@@ -42,6 +42,8 @@ struct SignpostedTranscriptFile: SessionTranscriptFile {
     }
 
     func close() async { await base.close() }
+
+    func attributeSpeakers() async -> Transcript.Attributed? { await base.attributeSpeakers() }
 }
 
 struct SignpostedRecognizer: Recognizer {

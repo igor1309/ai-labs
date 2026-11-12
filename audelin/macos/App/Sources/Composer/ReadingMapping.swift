@@ -49,8 +49,8 @@ struct MappedRows {
     var layout = -1
     var mapped = 0
     var sealed: [PanelState.Row] = []
-    /// The last sealed entry's remote name, so a caption shows only where it changes.
-    var previousName: String?
+    /// The last sealed entry's remote speaker, so a caption shows only where it changes.
+    var previousSpeaker: CaptionedSpeaker?
 }
 
 func panelState(_ text: (PanelPhrase) -> String, _ state: ReadingState) -> PanelState {
@@ -91,13 +91,13 @@ func panelState(_ text: (PanelPhrase) -> String, _ state: ReadingState, rows: in
     })
 }
 
-private func panelRow(_ row: ReadingState.Row, text: (PanelPhrase) -> String, previous: inout String?) -> PanelState.Row {
+private func panelRow(_ row: ReadingState.Row, text: (PanelPhrase) -> String, previous: inout CaptionedSpeaker?) -> PanelState.Row {
 
     switch row {
-    case let .entry(entry): .entry(panelEntry(entry, previous: &previous))
+    case let .entry(entry): .entry(panelEntry(entry, text: text, previous: &previous))
     case let .gap(gap):
         .gap(.init(speaker: gap.speaker == .mine ? .me : .them, text: gapText(gap, text: text)))
-    case let .late(group): .late(.init(span: group.span, entries: group.entries.map { panelEntry($0, previous: &previous) }))
+    case let .late(group): .late(.init(span: group.span, entries: group.entries.map { panelEntry($0, text: text, previous: &previous) }))
     }
 }
 
@@ -106,24 +106,36 @@ private func panelLines(_ lines: ReadingState.Lines, text: (PanelPhrase) -> Stri
     let sealed = lines.rows.sealed
     if rows.layout != lines.layout || rows.mapped > sealed.count { rows = .init(layout: lines.layout) }
     if rows.mapped < sealed.count {
-        rows.sealed.append(contentsOf: sealed[rows.mapped...].map { panelRow($0, text: text, previous: &rows.previousName) })
+        rows.sealed.append(contentsOf: sealed[rows.mapped...].map { panelRow($0, text: text, previous: &rows.previousSpeaker) })
         rows.mapped = sealed.count
     }
-    var previous = rows.previousName
+    var previous = rows.previousSpeaker
     let tail = lines.rows.tail.map { panelRow($0, text: text, previous: &previous) }
     return .init(rows: .init(sealed: rows.sealed, tail: tail), holds: lines.holds.map(panelHeld), newBelow: lines.newBelow, followsLive: lines.followsLive, scrollAcknowledgement: acknowledgement)
 }
 
-/// A remote name is captioned only where it differs from the entry before (design option C);
-/// live names are guesses until the after-call pass.
-private func panelEntry(_ entry: ReadingState.Entry, previous: inout String?) -> PanelState.Entry {
+/// A remote speaker is captioned only where it differs from the entry before (design option C):
+/// by name, else by its place among the call's speakers. Live names are guesses until the
+/// after-call pass.
+private func panelEntry(_ entry: ReadingState.Entry, text: (PanelPhrase) -> String, previous: inout CaptionedSpeaker?) -> PanelState.Entry {
 
-    let name = entry.speaker == .mine ? nil : entry.name
-    let label = name != nil && name != previous ? name : nil
-    defer { previous = name }
-    return .init(id: entry.id, time: entry.time, speaker: entry.speaker == .mine ? .me : .them,
+    let remote = entry.speaker != .mine
+    let place = remote ? entry.remoteSpeaker : nil
+    let name = remote ? entry.name : nil
+    let caption = name ?? place.map { String(format: text(.themNumbered), $0) }
+    let speaker = place.map(CaptionedSpeaker.place) ?? name.map(CaptionedSpeaker.name)
+    let label = speaker != nil && speaker != previous ? caption : nil
+    defer { previous = speaker }
+    return .init(id: entry.id, time: entry.time, speaker: remote ? .them : .me,
                  settled: entry.settled, pending: entry.pending,
-                 label: label, labelIsTentative: label != nil && !entry.nameConfirmed)
+                 label: label, labelIsTentative: label != nil && name != nil && !entry.nameConfirmed,
+                 remoteSpeaker: place)
+}
+
+/// Who a remote entry is: its place among the call's speakers once known, else its live name.
+enum CaptionedSpeaker: Equatable {
+    case place(Int)
+    case name(String)
 }
 
 private func panelHeld(_ held: ReadingState.Held) -> PanelState.Held {

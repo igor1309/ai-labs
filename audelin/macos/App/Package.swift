@@ -25,6 +25,7 @@ let package = Package(
                 .product(name: "ParakeetRecognizer", package: "macos"),
                 .product(name: "CoreAudioProcesses", package: "macos"),
                 .product(name: "CoreAudioProcessBinding", package: "macos"),
+                .product(name: "CallDiarizer", package: "macos"),
                 .product(name: "LiveText", package: "macos"),
 
                 .product(name: "Recordings", package: "macos"),
@@ -49,7 +50,7 @@ let package = Package(
         ),
         .target(
             name: "SessionRehearsal",
-            dependencies: ["Composer", .product(name: "BleedCleanup", package: "macos"), .product(name: "LiveText", package: "macos"), .product(name: "Preferences", package: "macos")]
+            dependencies: ["Composer", .product(name: "BleedCleanup", package: "macos"), .product(name: "CallDiarizer", package: "macos"), .product(name: "LiveText", package: "macos"), .product(name: "Preferences", package: "macos")]
         ),
         .target(
             name: "Composer",

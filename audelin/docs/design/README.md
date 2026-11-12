@@ -44,7 +44,10 @@ Each colour has a light and a dark value on the theme axis `mode`.
 | `text` | `#16181D` | `#E8EAED` | Main text |
 | `sub` | `#5A606A` | `#A3A9B3` | Secondary text |
 | `gutter` | `#8A909A` | `#7C828D` | Time gutter, hints, the timestamp prefix |
-| `them` | `#C27A06` | `#F5B454` | The other side's speech |
+| `them` | `#C27A06` | `#F5B454` | The other side's speech; the first remote speaker |
+| `them-2` | `#6E56CF` | `#B4A2FF` | The second remote speaker |
+| `them-3` | `#2F6FDB` | `#82AAFF` | The third remote speaker |
+| `them-4` | `#C2417F` | `#F28CC0` | The fourth remote speaker; a fifth takes `them` again |
 | `me` | `#0E9F92` | `#4FD1C5` | The owner's speech, accent, links |
 | `selBg` | `#0E9F92` | `#4FD1C5` | Selected term background |
 | `selText` | `#FFFFFF` | `#0B1F1D` | Selected term text |
@@ -56,6 +59,7 @@ Each colour has a light and a dark value on the theme axis `mode`.
 | `warn` | `#B56A00` | `#F5B454` | Warning text |
 | `warnBg` | `#C27A061A` | `#F5B4541F` | Warning banner |
 | `errBg` | `#E5484D14` | `#F2555A1F` | Error banner, Delete button |
+| `hit` | `#FFD84D8C` | `#E0B0207A` | A search match's highlight |
 | `okBg` | `#0E9F9214` | `#4FD1C51F` | Info banner, selected option |
 | `shadow` | `#00000040` | `#00000080` | Window and panel shadow |
 | `btn` | `#0000000D` | `#FFFFFF14` | Secondary button, file chips |
@@ -72,7 +76,7 @@ Each colour has a light and a dark value on the theme axis `mode`.
 | Type sizes | `type-caption` 11, `type-small` 12, `type-body` 13, `type-title` 18; weights normal and 600 only |
 | Line height | `line-body` 20 for running text on `type-body` (summary preview notes) |
 | Radius | `radius-bar` 2, `radius-control` 6, `radius-card` 10, `radius-panel` 16 |
-| Spacing | `space-2`, `-4`, `-6`, `-8`, `-12`, `-16`, `-20`, `-24`, `-28`, `-40` |
+| Spacing | `space-2`, `-4`, `-6`, `-8`, `-12`, `-16`, `-20`, `-24`, `-28`, `-32`, `-40` |
 
 UI code takes every font from `tokens.ui`, `tokens.data`, `tokens.nsUi` or
 `tokens.nsData` with a `type-*` size. `macos/scripts/check-font-tokens.py`

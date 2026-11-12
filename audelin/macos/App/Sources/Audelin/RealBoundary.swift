@@ -1,5 +1,6 @@
 import AVFoundation
 import CallAudioAccess
+import CallDiarizer
 import Composer
 import struct CoreAudioProcessBinding.CoreAudioBinding
 import protocol CoreAudioProcesses.CallClock
@@ -19,7 +20,8 @@ func makeRealBoundary() async -> ComposerBoundary {
         microphonePermission: SystemMicrophonePermission(), capacity: DiskCapacity(), time: RealClock(), log: SystemLogSink(), intervals: .systemIntervals,
         recordings: FileRecordingStorage(), trash: ComposerBoundary.systemTrash, bleedCleaning: LocalVqeCleaning(makeManager: { try await LocalVqeManager() }, process: { manager, microphone, call in
             try await manager.process(micURL: microphone, referenceURL: call)
-        }), bleedHearing: CleanupHearing(recognizers: recognizers)
+        }), bleedHearing: CleanupHearing(recognizers: recognizers),
+        transcripts: FileTranscriptStorage(diarizer: CallDiarizer(binding: FluidDiarizationBinding()))
     )
 }
 

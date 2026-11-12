@@ -1,3 +1,4 @@
+import CallDiarizer
 import Composer
 import BleedCleanup
 import Foundation
@@ -48,7 +49,8 @@ public func rehearsalBoundary(
                 output.onTermination = { _ in task.cancel() }
             }
         }), log: RehearsalLog(), intervals: intervals, recordings: FileRecordingStorage(), trash: ComposerBoundary.systemTrash, bleedCleaning: RehearsalCleaning(),
-        bleedHearing: CleanupHearing(recognizers: RehearsalRecognizers(mine: mine, theirs: theirs)))
+        bleedHearing: CleanupHearing(recognizers: RehearsalRecognizers(mine: mine, theirs: theirs)),
+        transcripts: FileTranscriptStorage(diarizer: CallDiarizer(binding: FluidDiarizationBinding())))
 }
 
 private struct RehearsalMicrophone: MicrophoneSource {

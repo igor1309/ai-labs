@@ -1,8 +1,10 @@
 import BlockingTestWork
 import CallDiarizer
 import Foundation
+import Synchronization
 import Testing
 
+@Suite(.timeLimit(.minutes(1)))
 struct CallDiarizerTests {
 
     @Test func aCallTrackIsSplitIntoTurnsByNemotron() async throws {
@@ -188,6 +190,57 @@ struct CallDiarizerTests {
         }
     }
 
+    @Test func nemotronIsLoadedOnceForEveryPass() async throws {
+
+        try await withTrack { track in
+            let binding = FakeBinding()
+            let diarizer = CallDiarizer(binding: binding)
+
+            await diarizer.prepare()
+            _ = try await diarizer.diarize(track)
+            _ = try await diarizer.diarize(track)
+
+            #expect(await binding.requests.map(\.kind) == [.load, .nemotron, .nemotron])
+        }
+    }
+
+    @Test func preparingStartsTheLoadBeforeAnyPass() async throws {
+
+        let loads = AsyncStream<Void>.makeStream()
+        let binding = FakeBinding(loaded: { loads.continuation.yield() })
+
+        await CallDiarizer(binding: binding).prepare()
+
+        var iterator = loads.stream.makeAsyncIterator()
+        await iterator.next()
+        #expect(await binding.requests.map(\.kind) == [.load])
+    }
+
+    @Test func preparingReturnsWhileTheLoadIsStillPending() async throws {
+
+        let binding = HeldBinding()
+        defer { binding.release() }
+
+        await CallDiarizer(binding: binding).prepare()
+
+        #expect(!binding.loadEnded)
+        var started = binding.started.makeAsyncIterator()
+        await started.next()
+    }
+
+    @Test func aFailedLoadIsTriedAgainByTheNextPass() async throws {
+
+        try await withTrack { track in
+            let binding = FakeBinding(load: .failure(BindingFailure.load), vbx: .success(vbxTurns))
+            let diarizer = CallDiarizer(binding: binding)
+
+            _ = try await diarizer.diarize(track)
+            _ = try await diarizer.diarize(track)
+
+            #expect(await binding.requests.map(\.kind) == [.load, .vbx, .load, .vbx])
+        }
+    }
+
     @Test func directVBxFailurePropagates() async throws {
 
         try await withTrack { track in
@@ -197,6 +250,33 @@ struct CallDiarizerTests {
             #expect(await binding.requests.map(\.kind) == [.vbx])
         }
     }
+}
+
+/// A Nemotron load that starts and then waits until it is released.
+private final class HeldBinding: DiarizationBinding, Sendable {
+
+    struct Released: Error {}
+
+    let started: AsyncStream<Void>
+    private let startedSink: AsyncStream<Void>.Continuation
+    private let gate = AsyncStream<Void>.makeStream()
+    private let ended = Mutex(false)
+
+    init() { (started, startedSink) = AsyncStream<Void>.makeStream() }
+
+    var loadEnded: Bool { ended.withLock { $0 } }
+    var nemotronSlots: Int { 8 }
+
+    func release() { gate.continuation.finish() }
+
+    func loadNemotron() async throws -> @Sendable ([Float]) async throws -> [EngineTurn] {
+        startedSink.yield()
+        for await _ in gate.stream {}
+        ended.withLock { $0 = true }
+        throw Released()
+    }
+
+    func vbx(_ samples: [Float], speakers: Int?) async throws -> [EngineTurn] { throw Released() }
 }
 
 private enum BindingFailure: Error { case load, run, vbx }
@@ -214,18 +294,21 @@ private actor FakeBinding: DiarizationBinding {
     private let load: Result<Void, any Error>
     private let nemotronResult: Result<[EngineTurn], any Error>
     private let vbxResult: Result<[EngineTurn], any Error>
+    private let loaded: @Sendable () -> Void
     private(set) var requests: [Request] = []
 
     init(
         slots: Int = 8, load: Result<Void, any Error> = .success(()),
-        nemotron: Result<[EngineTurn], any Error> = .success([]), vbx: Result<[EngineTurn], any Error> = .success([])
+        nemotron: Result<[EngineTurn], any Error> = .success([]), vbx: Result<[EngineTurn], any Error> = .success([]),
+        loaded: @escaping @Sendable () -> Void = {}
     ) {
-        nemotronSlots = slots; self.load = load; nemotronResult = nemotron; vbxResult = vbx
+        nemotronSlots = slots; self.load = load; nemotronResult = nemotron; vbxResult = vbx; self.loaded = loaded
     }
 
     func loadNemotron() throws -> @Sendable ([Float]) async throws -> [EngineTurn] {
 
         requests.append(.init(kind: .load, samples: nil, speakers: nil))
+        loaded()
         try load.get()
         return { try await self.runNemotron($0) }
     }

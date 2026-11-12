@@ -10,7 +10,7 @@ public enum PanelLanguage: String, CaseIterable, Sendable {
 /// A fixed piece of panel text; its raw value is the key in the strings tables.
 ///
 /// The `diskFullLine`, `gap*` and `lateSpan` phrases are formats that take one time or span, `%@`;
-/// `newBelow` takes a count, `%d`.
+/// `newBelow` and `themNumbered` take a number, `%d`.
 public enum PanelPhrase: String, CaseIterable, Sendable {
 
     case callAudioTitle = "banner.callAudio.title"
@@ -40,6 +40,8 @@ public enum PanelPhrase: String, CaseIterable, Sendable {
     case newBelow = "log.newBelow"
     case me = "speaker.me"
     case them = "speaker.them"
+    /// An unnamed remote speaker after the call, by its place among the call's speakers.
+    case themNumbered = "speaker.themNumbered"
     case lateSpan = "log.lateSpan"
 }
 

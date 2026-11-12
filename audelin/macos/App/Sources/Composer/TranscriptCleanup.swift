@@ -19,7 +19,7 @@ struct TranscriptCleanup: Sendable {
     let hearing: any CleanedHearing<[Float], [TranscriptSegment]>
     let sink: any LogSink
 
-    func run(_ raw: CallState, replacing replace: @escaping @Sendable ([TranscriptSegment]) async throws -> Void) async -> [Job.Entry] {
+    func run(_ raw: CallState, attributed: Transcript.Attributed? = nil, replacing replace: @escaping @Sendable ([TranscriptSegment]) async throws -> Void) async -> [Job.Entry] {
         let replacement = CleanupReplacement(replace: replace)
         let cleanup = BleedCleanup(
             gate: BleedGate(), cleaning: cleaning,
@@ -30,9 +30,9 @@ struct TranscriptCleanup: Sendable {
             microphone: words(in: raw, speaker: .mine), call: words(in: raw, speaker: .theirs), duration: duration()
         )
         if case .replaced = outcome {
-            return summaryEntries(Transcript.replacingMicrophone(in: raw, with: await replacement.heard))
+            return summaryEntries(raw, heard: await replacement.heard, attributed: attributed)
         }
-        return summaryEntries(Transcript.segments(from: raw))
+        return summaryEntries(raw, attributed: attributed)
     }
 
     private func words(in state: CallState, speaker: CallState.Speaker) -> [Word] {

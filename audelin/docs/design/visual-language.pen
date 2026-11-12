@@ -8624,6 +8624,129 @@
                             },
                             {
                               "type": "frame",
+                              "id": "c60WX",
+                              "name": "Swatch them-2",
+                              "width": 88,
+                              "layout": "vertical",
+                              "gap": 4,
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": "$radius-control",
+                                  "id": "oCBay",
+                                  "name": "Chip",
+                                  "fill": "$them-2",
+                                  "width": 88,
+                                  "height": 40,
+                                  "stroke": "$rule",
+                                  "strokeWidth": 1
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "UwscM",
+                                  "name": "Token",
+                                  "fill": "$text",
+                                  "content": "them-2",
+                                  "fontFamily": "$font-data",
+                                  "fontSize": "$type-caption",
+                                  "fontWeight": "600"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "e55UVg",
+                                  "name": "Hex",
+                                  "fill": "$gutter",
+                                  "content": "#6E56CF",
+                                  "fontFamily": "$font-data",
+                                  "fontSize": "$type-caption",
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "O9N95p",
+                              "name": "Swatch them-3",
+                              "width": 88,
+                              "layout": "vertical",
+                              "gap": 4,
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": "$radius-control",
+                                  "id": "kquwi",
+                                  "name": "Chip",
+                                  "fill": "$them-3",
+                                  "width": 88,
+                                  "height": 40,
+                                  "stroke": "$rule",
+                                  "strokeWidth": 1
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "Eemtq",
+                                  "name": "Token",
+                                  "fill": "$text",
+                                  "content": "them-3",
+                                  "fontFamily": "$font-data",
+                                  "fontSize": "$type-caption",
+                                  "fontWeight": "600"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "ri7eS",
+                                  "name": "Hex",
+                                  "fill": "$gutter",
+                                  "content": "#2F6FDB",
+                                  "fontFamily": "$font-data",
+                                  "fontSize": "$type-caption",
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "iYa0l",
+                              "name": "Swatch them-4",
+                              "width": 88,
+                              "layout": "vertical",
+                              "gap": 4,
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": "$radius-control",
+                                  "id": "l30Jc",
+                                  "name": "Chip",
+                                  "fill": "$them-4",
+                                  "width": 88,
+                                  "height": 40,
+                                  "stroke": "$rule",
+                                  "strokeWidth": 1
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "N0FWt",
+                                  "name": "Token",
+                                  "fill": "$text",
+                                  "content": "them-4",
+                                  "fontFamily": "$font-data",
+                                  "fontSize": "$type-caption",
+                                  "fontWeight": "600"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "aXdQ0",
+                                  "name": "Hex",
+                                  "fill": "$gutter",
+                                  "content": "#C2417F",
+                                  "fontFamily": "$font-data",
+                                  "fontSize": "$type-caption",
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
                               "id": "mZH6t",
                               "name": "Swatch selBg",
                               "width": 88,
@@ -9842,6 +9965,129 @@
                                   "name": "Hex",
                                   "fill": "$gutter",
                                   "content": "#F5B454",
+                                  "fontFamily": "$font-data",
+                                  "fontSize": "$type-caption",
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "LggSN",
+                              "name": "Swatch them-2",
+                              "width": 88,
+                              "layout": "vertical",
+                              "gap": 4,
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": "$radius-control",
+                                  "id": "iGHYL",
+                                  "name": "Chip",
+                                  "fill": "$them-2",
+                                  "width": 88,
+                                  "height": 40,
+                                  "stroke": "$rule",
+                                  "strokeWidth": 1
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "R5ahfA",
+                                  "name": "Token",
+                                  "fill": "$text",
+                                  "content": "them-2",
+                                  "fontFamily": "$font-data",
+                                  "fontSize": "$type-caption",
+                                  "fontWeight": "600"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "JAHOA",
+                                  "name": "Hex",
+                                  "fill": "$gutter",
+                                  "content": "#B4A2FF",
+                                  "fontFamily": "$font-data",
+                                  "fontSize": "$type-caption",
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "j7UJJ",
+                              "name": "Swatch them-3",
+                              "width": 88,
+                              "layout": "vertical",
+                              "gap": 4,
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": "$radius-control",
+                                  "id": "PZaxX",
+                                  "name": "Chip",
+                                  "fill": "$them-3",
+                                  "width": 88,
+                                  "height": 40,
+                                  "stroke": "$rule",
+                                  "strokeWidth": 1
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "MOmOw",
+                                  "name": "Token",
+                                  "fill": "$text",
+                                  "content": "them-3",
+                                  "fontFamily": "$font-data",
+                                  "fontSize": "$type-caption",
+                                  "fontWeight": "600"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "uiRTz",
+                                  "name": "Hex",
+                                  "fill": "$gutter",
+                                  "content": "#82AAFF",
+                                  "fontFamily": "$font-data",
+                                  "fontSize": "$type-caption",
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "b3V0X",
+                              "name": "Swatch them-4",
+                              "width": 88,
+                              "layout": "vertical",
+                              "gap": 4,
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": "$radius-control",
+                                  "id": "Hm4lX",
+                                  "name": "Chip",
+                                  "fill": "$them-4",
+                                  "width": 88,
+                                  "height": 40,
+                                  "stroke": "$rule",
+                                  "strokeWidth": 1
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "l94vxt",
+                                  "name": "Token",
+                                  "fill": "$text",
+                                  "content": "them-4",
+                                  "fontFamily": "$font-data",
+                                  "fontSize": "$type-caption",
+                                  "fontWeight": "600"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "vZ49f",
+                                  "name": "Hex",
+                                  "fill": "$gutter",
+                                  "content": "#F28CC0",
                                   "fontFamily": "$font-data",
                                   "fontSize": "$type-caption",
                                   "fontWeight": "normal"
@@ -58941,6 +59187,61 @@
           }
         }
       ]
+    },
+    "them-2": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#6E56CF",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#B4A2FF",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
+    },
+    "them-3": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#2F6FDB",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#82AAFF",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
+    },
+    "them-4": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#C2417F",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#F28CC0",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
+    },
+    "space-32": {
+      "type": "number",
+      "value": 32
     }
   },
   "fileToken": "11d61027-99ea-4c6c-bc5c-f6eff236c8bd"

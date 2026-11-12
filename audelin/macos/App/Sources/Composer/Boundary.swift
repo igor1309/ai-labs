@@ -149,7 +149,7 @@ public struct ComposerBoundary: Sendable {
                 time: any ComposerClock, log: any LogSink, intervals: ProfileIntervals,
                 recordings: any RecordingStorage, trash: @escaping @Sendable (URL) throws -> Void,
                 bleedCleaning: any MicrophoneCleaning<CleanupRecording, [Float]>,
-                bleedHearing: any CleanedHearing<[Float], [TranscriptSegment]>, transcripts: any TranscriptStorage = FileTranscriptStorage(),
+                bleedHearing: any CleanedHearing<[Float], [TranscriptSegment]>, transcripts: any TranscriptStorage,
                 preferredLanguages: @escaping @Sendable () -> [String] = { Locale.preferredLanguages }) {
         self.preferredLanguages = preferredLanguages
         self.bleedCleaning = bleedCleaning; self.bleedHearing = bleedHearing

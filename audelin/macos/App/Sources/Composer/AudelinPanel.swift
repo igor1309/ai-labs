@@ -64,7 +64,8 @@ actor AudelinPanel {
         if let event = readingEvent(event), let reading = current?.reading { await reading.send(event) }
     }
 
-    func begin(id: UInt64, text: AsyncStream<CallState>, enableLiveText: @escaping @Sendable () async -> Void) async -> ReadingSubscription {
+    func begin(id: UInt64, text: AsyncStream<CallState>, speakers: AsyncStream<[Int: Int]> = AsyncStream { $0.finish() },
+               enableLiveText: @escaping @Sendable () async -> Void) async -> ReadingSubscription {
 
         let reading = await makeReading()
         current = (id, reading, enableLiveText)
@@ -73,7 +74,7 @@ actor AudelinPanel {
         let update = SignpostedPanelUpdate(receive: { [weak self] state in
             await self?.receive(state, id: id)
         }, intervals: intervals)
-        return await ReadingSubscription(reading: reading, text: text, now: now, ticks: ticks(), sink: sink) { state in
+        return await ReadingSubscription(reading: reading, text: text, speakers: speakers, now: now, ticks: ticks(), sink: sink) { state in
             await update(state)
         }
     }
@@ -134,7 +135,7 @@ final class ReadingSubscription {
     private let names = ZoomLiveNames()
 
     init(
-        reading: ReadingInputs, text: AsyncStream<CallState>,
+        reading: ReadingInputs, text: AsyncStream<CallState>, speakers: AsyncStream<[Int: Int]>,
         now: @escaping @Sendable () -> Double, ticks: AsyncStream<Void>, sink: any LogSink,
         receive: @escaping @Sendable (ReadingState) async -> Void
     ) async {
@@ -164,6 +165,11 @@ final class ReadingSubscription {
                 let given = remote.isEmpty ? [:] : await names.names(for: remote)
                 reading.send(.textUpdated(readingText(state, from: mapped, names: given)))
                 mapped = state.finalCount
+            }
+            // The speakers come after the call's last text, so every row they name is shown.
+            for await places in speakers {
+                guard !Task.isCancelled else { return }
+                reading.send(.speakersFound(places))
             }
         }
         timer = Task {

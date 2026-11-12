@@ -1,5 +1,6 @@
 import AVFoundation
 import AudioConversion
+import ModelLoading
 
 /// Reads a finished call track and chooses an offline speaker diarizer.
 public struct CallDiarizer: Sendable {
@@ -21,8 +22,18 @@ public struct CallDiarizer: Sendable {
     }
 
     private let binding: any DiarizationBinding
+    /// Nemotron is downloaded and loaded once and kept for every later pass; a failed
+    /// load is tried again by the next one.
+    private let nemotron: SharedModel<@Sendable ([Float]) async throws -> [EngineTurn]>
 
-    public init(binding: any DiarizationBinding) { self.binding = binding }
+    public init(binding: any DiarizationBinding) {
+        self.binding = binding
+        nemotron = SharedModel { try await binding.loadNemotron() }
+    }
+
+    /// Starts loading Nemotron without waiting for it, so a pass after the call need not
+    /// wait for its first download.
+    public func prepare() async { _ = await nemotron.load() }
 
     /// `speakers`: the number of remote speakers when the caller knows it.
     public func diarize(_ track: URL, speakers: Int? = nil) async throws -> Diarization {
@@ -32,7 +43,7 @@ public struct CallDiarizer: Sendable {
         let beyondNemotron = speakers.map { $0 > binding.nemotronSlots } ?? false
         if !beyondNemotron {
             do {
-                let run = try await binding.loadNemotron()
+                let run = try await nemotron.load().value
                 let turns = try await run(samples).sorted { $0.start < $1.start }.map { turn in
                     guard let speaker = Int(turn.speaker) else { throw InvalidSpeaker() }
                     return Turn(speaker: speaker, start: turn.start, end: turn.end)

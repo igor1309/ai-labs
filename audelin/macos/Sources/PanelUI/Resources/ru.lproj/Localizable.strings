@@ -25,4 +25,5 @@
 "log.newBelow" = "%d новые ↓";
 "speaker.me" = "я";
 "speaker.them" = "они";
+"speaker.themNumbered" = "Собеседник %d";
 "log.lateSpan" = "дописано позже · %@";

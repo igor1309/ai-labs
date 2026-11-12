@@ -71,8 +71,8 @@ actor RecordingSessions: RecordingSession {
             running[id]?.observation = Task {
                 // Register before begin so even a short-lived state is retained.
                 let states = await session.value.states()
-                let text = await pieces.readingText()
-                let reading = await self.panel.begin(id: id, text: text, enableLiveText: {
+                let feed = await pieces.readingText()
+                let reading = await self.panel.begin(id: id, text: feed.text, speakers: feed.speakers, enableLiveText: {
                     await self.send(.liveTextChanged(true), id: id)?.value
                 })
                 self.running[id]?.reading = reading
