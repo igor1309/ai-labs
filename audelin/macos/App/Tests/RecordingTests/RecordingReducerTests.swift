@@ -98,6 +98,18 @@ struct RecordingReducerTests {
         assert(makeBlocked(.callAudioAccess), .callStarted) { $0.phase = .beginning; $0.session = .init(id: 1, origin: .call); $0.lastSessionID = 1; $0.callOn = true; $0.sessionBeganDuringCall = true }
     }
 
+    @Test(arguments: [makeBeginning(), makeCall()])
+    func callAudioReportedMissingWhileBeginningKeepsBeginning(_ beginning: RecordingState) {
+        assert(beginning, .conditionChanged(.callAudioAccess, available: false)) { $0.missing = [.callAudioAccess] }
+    }
+
+    @Test(arguments: [makeBeginning(), makeCall()])
+    func endedBeginningWithoutCallAudioGoesIdleStillMissingIt(_ beginning: RecordingState) {
+        assert(makeState(beginning) { $0.missing = [.callAudioAccess] }, .sessionReported(id: 1, .ended)) {
+            $0.phase = .idle; $0.session = nil; $0.sessionBeganDuringCall = false
+        }
+    }
+
     @Test func freshStateMissesEveryCondition() { #expect(RecordingState().missing == Set(RecordingCondition.allCases)) }
 
     @Test func userStartBeforeConditionsAreReportedChangesNothing() { assert(makeUnknown(), .userStart) }
@@ -163,6 +175,7 @@ private let faultTransitions: [FaultTransition] = RecordingFault.allCases.flatMa
         FaultTransition(state: faulted, event: .sessionReported(id: 1, .failed(.diskFull)), mutation: addDiskFull),
         FaultTransition(state: faulted, event: .userStop) { $0.phase = .ending },
         FaultTransition(state: faulted, event: .sessionReported(id: 1, .ended)) { $0.phase = .idle; $0.session = nil },
+        FaultTransition(state: makeState(makeEnding()) { $0.faults = [fault, .diskFull] }, event: .sessionReported(id: 1, .ended)) { $0.phase = .idle; $0.session = nil },
         FaultTransition(state: faultedIdle, event: .sessionReported(id: 1, .failed(.diskFull))),
         FaultTransition(state: makeState(faultedIdle) { $0.session = .init(id: 1, origin: .hand) }, event: .sessionReported(id: 1, .failed(.diskFull))),
         FaultTransition(state: faultedIdle, event: .userStart) { $0.phase = .beginning; $0.lastSessionID = 2; $0.session = .init(id: 2, origin: .hand); $0.faults = [] },
