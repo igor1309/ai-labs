@@ -46,8 +46,10 @@ that state's overrides to Row/Selected.
 ## Detail
 
 - Header: title, then day, start time · duration. The summary is
-  selectable rendered Markdown (headings, lists, code, tables). Under its
-  last line, the date it was made in `gutter`, `type-caption`
+  selectable rendered Markdown (headings, lists, code, tables). The
+  header sits in the toolbar band, level with the window controls, and
+  stays while the summary scrolls below it. Under the summary's last
+  line, the date it was made in `gutter`, `type-caption`
   («Сделано 12 ноября, 14:05»).
 - Toolbar: one bar across the window. Over the list, the title and the
   selected call's own actions, which act on the row: Открыть (its folder
@@ -55,8 +57,7 @@ that state's overrides to Row/Selected.
   Each shows its name as a tooltip on hover (Tooltip on the components
   board). There is no ⋯ menu.
 - The toolbar has no bar over the detail: the summary's surface runs to
-  the window's top edge, and text scrolling under the toolbar fades at
-  its edge.
+  the window's top edge, under the header.
 - Копировать belongs to the summary, not the call: an icon button in the
   summary's top-right corner, level with the row actions, fixed while the
   text scrolls (Copy overlay on the components board). It shows only while a

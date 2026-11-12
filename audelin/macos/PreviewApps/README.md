@@ -8,6 +8,7 @@ on them.
 | App | Feature | Mock |
 |---|---|---|
 | `PanelPreview` | The live panel (`PanelUI`) | `FakeCall`: a scripted call that advances one chunk per step |
+| `CallsPreview` | The calls window: list, summary, toolbar and split as the app builds them (`CallsWindowUI`) | The list's and the summary's preview states, picked in a controls window |
 | `LiveTextPreview` | Live text and the recognisers, in the live panel | None: the real models hear the microphone or a recorded call |
 
 `LiveTextPreview` is the one app without a mock: it is for trying the

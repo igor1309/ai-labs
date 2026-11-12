@@ -32,6 +32,7 @@ let package = Package(
                 .product(name: "Recordings", package: "macos"),
                 .product(name: "CallsListUI", package: "macos"),
                 .product(name: "SummaryPreviewUI", package: "macos"),
+                .product(name: "CallsWindowUI", package: "macos"),
                 .product(name: "NotesMarkdown", package: "macos"),
                 .product(name: "CallAudioAccess", package: "macos"),
                 .product(name: "CallAudioProbe", package: "macos"),

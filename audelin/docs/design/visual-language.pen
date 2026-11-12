@@ -21606,7 +21606,7 @@
       "type": "frame",
       "id": "u9mIH",
       "x": 0,
-      "y": 9691,
+      "y": 9937,
       "name": "Screen 4 — Calls list",
       "fill": "#FFFFFF",
       "layout": "vertical",
@@ -23997,7 +23997,7 @@
       "type": "frame",
       "id": "uz1T1",
       "x": 0,
-      "y": 11235,
+      "y": 11481,
       "name": "Screen 5 — Call after it ends",
       "fill": "#FFFFFF",
       "layout": "vertical",
@@ -28128,7 +28128,7 @@
       "type": "frame",
       "id": "tYVJz",
       "x": 0,
-      "y": 13097,
+      "y": 14039,
       "name": "Screen 6 — Settings",
       "fill": "#FFFFFF",
       "layout": "vertical",
@@ -35939,7 +35939,7 @@
       "type": "frame",
       "id": "GkHUo",
       "x": 0,
-      "y": 17341,
+      "y": 19293,
       "name": "Screen 7 — Menu bar item",
       "fill": "#FFFFFF",
       "layout": "vertical",
@@ -39986,7 +39986,7 @@
       "type": "frame",
       "id": "Dy7hy",
       "x": 0,
-      "y": 18726,
+      "y": 20678,
       "name": "Screen 8 — Errors",
       "fill": "#FFFFFF",
       "layout": "vertical",
@@ -42323,7 +42323,7 @@
       "type": "frame",
       "id": "JkT0q",
       "x": 0,
-      "y": 19993,
+      "y": 22113,
       "name": "Later — term chips",
       "fill": "#FFFFFF",
       "layout": "vertical",
@@ -42896,7 +42896,7 @@
       "type": "frame",
       "id": "i8ROL",
       "x": 0,
-      "y": 20851,
+      "y": 22971,
       "name": "Screen 9 — App icon",
       "width": 1500,
       "fill": "#2e2e32",
@@ -43092,7 +43092,7 @@
       "type": "frame",
       "id": "wbP8s",
       "x": 1700,
-      "y": 20851,
+      "y": 22971,
       "name": "Screen 9 — App icon, alternative: two tracks",
       "width": 1860,
       "fill": "#FFFFFF",
@@ -46442,7 +46442,7 @@
       "type": "frame",
       "id": "yliMO",
       "x": 3700,
-      "y": 20851,
+      "y": 22971,
       "name": "Screen 9 — App icon, two tracks, Liquid Glass edition",
       "fill": "#FFFFFF",
       "layout": "vertical",
@@ -47313,7 +47313,7 @@
       "type": "frame",
       "id": "nsHwe",
       "x": 2160,
-      "y": 17341,
+      "y": 19293,
       "name": "Screen 7b — Installed update",
       "fill": "#FFFFFF",
       "layout": "vertical",
@@ -50081,7 +50081,7 @@
       "type": "frame",
       "id": "QLpE5",
       "x": 4100,
-      "y": 9691,
+      "y": 9937,
       "name": "Screen 4b — Summary preview",
       "fill": "#FFFFFF",
       "layout": "vertical",
@@ -51096,7 +51096,7 @@
       "type": "note",
       "id": "Vyq1h",
       "x": 4100,
-      "y": 9431,
+      "y": 9677,
       "name": "Summary preview — behaviour",
       "width": 900,
       "height": 200,
@@ -51106,7 +51106,7 @@
       "type": "frame",
       "id": "QAdcr",
       "x": 0,
-      "y": 21240,
+      "y": 24476,
       "name": "Calls window — shared components",
       "width": 1440,
       "fill": "$back",
@@ -51589,7 +51589,7 @@
       "type": "frame",
       "id": "s056x",
       "x": 1500,
-      "y": 21240,
+      "y": 24476,
       "name": "Calls window — components",
       "width": 1300,
       "fill": "$win",
@@ -51611,6 +51611,7 @@
               "name": "Two-line row",
               "reusable": true,
               "width": 340,
+              "height": 50,
               "fill": "$surface",
               "children": [
                 {
@@ -51645,12 +51646,12 @@
                       "id": "s024x",
                       "name": "Time",
                       "fill": "$sub",
+                      "textGrowth": "fixed-width",
+                      "width": 40,
                       "content": "12:58",
                       "fontFamily": "$font-data",
                       "fontSize": "$type-small",
-                      "fontWeight": "normal",
-                      "textGrowth": "fixed-width",
-                      "width": 40
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "frame",
@@ -51746,8 +51747,7 @@
                     }
                   ]
                 }
-              ],
-              "height": 50
+              ]
             },
             {
               "type": "frame",
@@ -51755,6 +51755,7 @@
               "name": "Two-line match row",
               "reusable": true,
               "width": 340,
+              "height": 50,
               "fill": "$surface",
               "children": [
                 {
@@ -51789,12 +51790,12 @@
                       "id": "s063x",
                       "name": "Time",
                       "fill": "$sub",
+                      "textGrowth": "fixed-width",
+                      "width": 40,
                       "content": "16:00",
                       "fontFamily": "$font-data",
                       "fontSize": "$type-small",
-                      "fontWeight": "normal",
-                      "textGrowth": "fixed-width",
-                      "width": 40
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "frame",
@@ -51956,13 +51957,12 @@
                     }
                   ]
                 }
-              ],
-              "height": 50
+              ]
             },
             {
+              "id": "rowSel",
               "type": "ref",
               "reusable": true,
-              "id": "rowSel",
               "ref": "s030x",
               "name": "Row/Selected",
               "fill": "$okBg",
@@ -51976,9 +51976,9 @@
               }
             },
             {
+              "id": "rowIna",
               "type": "ref",
               "reusable": true,
-              "id": "rowIna",
               "ref": "s030x",
               "name": "Row/Inactive selected",
               "fill": "$btn",
@@ -51989,9 +51989,9 @@
               }
             },
             {
+              "id": "rowPre",
               "type": "ref",
               "reusable": true,
-              "id": "rowPre",
               "ref": "s030x",
               "name": "Row/Preparing",
               "descendants": {
@@ -52005,9 +52005,9 @@
               }
             },
             {
+              "id": "rowFai",
               "type": "ref",
               "reusable": true,
-              "id": "rowFai",
               "ref": "s030x",
               "name": "Row/Failed",
               "descendants": {
@@ -52021,9 +52021,9 @@
               }
             },
             {
+              "id": "rowUnt",
               "type": "ref",
               "reusable": true,
-              "id": "rowUnt",
               "ref": "s030x",
               "name": "Row/Untitled",
               "descendants": {
@@ -52036,9 +52036,9 @@
               }
             },
             {
+              "id": "mrSel",
               "type": "ref",
               "reusable": true,
-              "id": "mrSel",
               "ref": "s073x",
               "name": "Match row/Selected",
               "fill": "$okBg",
@@ -52186,12 +52186,11 @@
               "name": "Detail header",
               "reusable": true,
               "width": 760,
+              "fill": "$surface",
               "layout": "vertical",
               "gap": "$space-4",
               "padding": [
-                "$space-20",
-                "$space-28",
-                "$space-16",
+                "$space-12",
                 "$space-28"
               ],
               "children": [
@@ -52715,7 +52714,7 @@
       "type": "frame",
       "id": "s113x",
       "x": 0,
-      "y": 22000,
+      "y": 25236,
       "name": "Calls — summary",
       "theme": {
         "mode": "light"
@@ -52797,11 +52796,11 @@
                       "name": "Row ЦР ID",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "ЦР ID"
-                        },
                         "s024x": {
                           "content": "12:58"
+                        },
+                        "s023x": {
+                          "content": "ЦР ID"
                         },
                         "s026x": {
                           "content": "41:11"
@@ -52818,11 +52817,11 @@
                       "name": "Row ЦР",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "ЦР"
-                        },
                         "s024x": {
                           "content": "11:00"
+                        },
+                        "s023x": {
+                          "content": "ЦР"
                         },
                         "s026x": {
                           "content": "38:20"
@@ -52839,11 +52838,11 @@
                       "name": "Row iOS Daily",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "iOS Daily"
-                        },
                         "s024x": {
                           "content": "10:00"
+                        },
+                        "s023x": {
+                          "content": "iOS Daily"
                         },
                         "s026x": {
                           "content": "15:02"
@@ -52875,11 +52874,11 @@
                       "name": "Row Люда — передача дел",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "Люда — передача дел"
-                        },
                         "s024x": {
                           "content": "17:00"
+                        },
+                        "s023x": {
+                          "content": "Люда — передача дел"
                         },
                         "s026x": {
                           "content": "52:40"
@@ -52896,11 +52895,11 @@
                       "name": "Row iOS & Android daily",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "iOS & Android daily"
-                        },
                         "s024x": {
                           "content": "09:59"
+                        },
+                        "s023x": {
+                          "content": "iOS & Android daily"
                         },
                         "s026x": {
                           "content": "14:51"
@@ -52932,11 +52931,11 @@
                       "name": "Row ЦР Статус",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "ЦР Статус"
-                        },
                         "s024x": {
                           "content": "11:02"
+                        },
+                        "s023x": {
+                          "content": "ЦР Статус"
                         },
                         "s026x": {
                           "content": "29:45"
@@ -52953,11 +52952,11 @@
                       "name": "Row 2026.11.09-1000",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "2026.11.09-1000"
-                        },
                         "s024x": {
                           "content": "10:00"
+                        },
+                        "s023x": {
+                          "content": "2026.11.09-1000"
                         },
                         "s026x": {
                           "content": "16:10"
@@ -52989,11 +52988,11 @@
                       "name": "Row Лера 17820",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "Лера 17820"
-                        },
                         "s024x": {
                           "content": "14:59"
+                        },
+                        "s023x": {
+                          "content": "Лера 17820"
                         },
                         "s026x": {
                           "content": "33:05"
@@ -53010,11 +53009,11 @@
                       "name": "Row iOS Daily",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "iOS Daily"
-                        },
                         "s024x": {
                           "content": "09:59"
+                        },
+                        "s023x": {
+                          "content": "iOS Daily"
                         },
                         "s026x": {
                           "content": "15:30"
@@ -53046,11 +53045,11 @@
                       "name": "Row Планирование",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "Планирование"
-                        },
                         "s024x": {
                           "content": "17:34"
+                        },
+                        "s023x": {
+                          "content": "Планирование"
                         },
                         "s026x": {
                           "content": "58:00"
@@ -53073,11 +53072,19 @@
               "layout": "vertical",
               "children": [
                 {
-                  "id": "mNQLv",
+                  "id": "s095x",
                   "type": "ref",
-                  "ref": "s013x",
-                  "name": "Detail bar",
-                  "width": "fill_container"
+                  "ref": "s033x",
+                  "name": "Header",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s031x": {
+                      "content": "ЦР ID"
+                    },
+                    "s032x": {
+                      "content": "Сегодня, 12:58 · 41:11"
+                    }
+                  }
                 },
                 {
                   "type": "frame",
@@ -53095,21 +53102,6 @@
                     0
                   ],
                   "children": [
-                    {
-                      "id": "s095x",
-                      "type": "ref",
-                      "ref": "s033x",
-                      "name": "Header",
-                      "width": "fill_container",
-                      "descendants": {
-                        "s031x": {
-                          "content": "ЦР ID"
-                        },
-                        "s032x": {
-                          "content": "Сегодня, 12:58 · 41:11"
-                        }
-                      }
-                    },
                     {
                       "id": "s096x",
                       "type": "ref",
@@ -53258,7 +53250,7 @@
       "type": "frame",
       "id": "s139x",
       "x": 1180,
-      "y": 22000,
+      "y": 25236,
       "name": "Calls — preparing",
       "theme": {
         "mode": "light"
@@ -53340,11 +53332,11 @@
                       "name": "Row ЦР ID",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "ЦР ID"
-                        },
                         "s024x": {
                           "content": "12:58"
+                        },
+                        "s023x": {
+                          "content": "ЦР ID"
                         },
                         "s026x": {
                           "content": "41:11"
@@ -53361,11 +53353,11 @@
                       "name": "Row ЦР",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "ЦР"
-                        },
                         "s024x": {
                           "content": "11:00"
+                        },
+                        "s023x": {
+                          "content": "ЦР"
                         },
                         "s026x": {
                           "content": "38:20"
@@ -53382,11 +53374,11 @@
                       "name": "Row iOS Daily",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "iOS Daily"
-                        },
                         "s024x": {
                           "content": "10:00"
+                        },
+                        "s023x": {
+                          "content": "iOS Daily"
                         },
                         "s026x": {
                           "content": "15:02"
@@ -53422,11 +53414,11 @@
                       "name": "Row Люда — передача дел",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "Люда — передача дел"
-                        },
                         "s024x": {
                           "content": "17:00"
+                        },
+                        "s023x": {
+                          "content": "Люда — передача дел"
                         },
                         "s026x": {
                           "content": "52:40"
@@ -53443,11 +53435,11 @@
                       "name": "Row iOS & Android daily",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "iOS & Android daily"
-                        },
                         "s024x": {
                           "content": "09:59"
+                        },
+                        "s023x": {
+                          "content": "iOS & Android daily"
                         },
                         "s026x": {
                           "content": "14:51"
@@ -53479,11 +53471,11 @@
                       "name": "Row ЦР Статус",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "ЦР Статус"
-                        },
                         "s024x": {
                           "content": "11:02"
+                        },
+                        "s023x": {
+                          "content": "ЦР Статус"
                         },
                         "s026x": {
                           "content": "29:45"
@@ -53500,11 +53492,11 @@
                       "name": "Row 2026.11.09-1000",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "2026.11.09-1000"
-                        },
                         "s024x": {
                           "content": "10:00"
+                        },
+                        "s023x": {
+                          "content": "2026.11.09-1000"
                         },
                         "s026x": {
                           "content": "16:10"
@@ -53536,11 +53528,11 @@
                       "name": "Row Лера 17820",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "Лера 17820"
-                        },
                         "s024x": {
                           "content": "14:59"
+                        },
+                        "s023x": {
+                          "content": "Лера 17820"
                         },
                         "s026x": {
                           "content": "33:05"
@@ -53557,11 +53549,11 @@
                       "name": "Row iOS Daily",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "iOS Daily"
-                        },
                         "s024x": {
                           "content": "09:59"
+                        },
+                        "s023x": {
+                          "content": "iOS Daily"
                         },
                         "s026x": {
                           "content": "15:30"
@@ -53593,11 +53585,11 @@
                       "name": "Row Планирование",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "Планирование"
-                        },
                         "s024x": {
                           "content": "17:34"
+                        },
+                        "s023x": {
+                          "content": "Планирование"
                         },
                         "s026x": {
                           "content": "58:00"
@@ -53620,11 +53612,19 @@
               "layout": "vertical",
               "children": [
                 {
-                  "id": "bYhjl",
+                  "id": "s129x",
                   "type": "ref",
-                  "ref": "s013x",
-                  "name": "Detail bar",
-                  "width": "fill_container"
+                  "ref": "s033x",
+                  "name": "Header",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s031x": {
+                      "content": "iOS Daily"
+                    },
+                    "s032x": {
+                      "content": "Сегодня, 10:00 · 15:02"
+                    }
+                  }
                 },
                 {
                   "type": "frame",
@@ -53642,21 +53642,6 @@
                     0
                   ],
                   "children": [
-                    {
-                      "id": "s129x",
-                      "type": "ref",
-                      "ref": "s033x",
-                      "name": "Header",
-                      "width": "fill_container",
-                      "descendants": {
-                        "s031x": {
-                          "content": "iOS Daily"
-                        },
-                        "s032x": {
-                          "content": "Сегодня, 10:00 · 15:02"
-                        }
-                      }
-                    },
                     {
                       "type": "frame",
                       "id": "BDz4S",
@@ -53695,7 +53680,7 @@
       "type": "frame",
       "id": "s165x",
       "x": 2360,
-      "y": 22000,
+      "y": 25236,
       "name": "Calls — summary failed",
       "theme": {
         "mode": "light"
@@ -53777,11 +53762,11 @@
                       "name": "Row ЦР ID",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "ЦР ID"
-                        },
                         "s024x": {
                           "content": "12:58"
+                        },
+                        "s023x": {
+                          "content": "ЦР ID"
                         },
                         "s026x": {
                           "content": "41:11"
@@ -53798,11 +53783,11 @@
                       "name": "Row ЦР",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "ЦР"
-                        },
                         "s024x": {
                           "content": "11:00"
+                        },
+                        "s023x": {
+                          "content": "ЦР"
                         },
                         "s026x": {
                           "content": "38:20"
@@ -53819,11 +53804,11 @@
                       "name": "Row iOS Daily",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "iOS Daily"
-                        },
                         "s024x": {
                           "content": "10:00"
+                        },
+                        "s023x": {
+                          "content": "iOS Daily"
                         },
                         "s026x": {
                           "content": "15:02"
@@ -53855,11 +53840,11 @@
                       "name": "Row Люда — передача дел",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "Люда — передача дел"
-                        },
                         "s024x": {
                           "content": "17:00"
+                        },
+                        "s023x": {
+                          "content": "Люда — передача дел"
                         },
                         "s026x": {
                           "content": "52:40"
@@ -53876,11 +53861,11 @@
                       "name": "Row iOS & Android daily",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "iOS & Android daily"
-                        },
                         "s024x": {
                           "content": "09:59"
+                        },
+                        "s023x": {
+                          "content": "iOS & Android daily"
                         },
                         "s026x": {
                           "content": "14:51"
@@ -53916,11 +53901,11 @@
                       "name": "Row ЦР Статус",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "ЦР Статус"
-                        },
                         "s024x": {
                           "content": "11:02"
+                        },
+                        "s023x": {
+                          "content": "ЦР Статус"
                         },
                         "s026x": {
                           "content": "29:45"
@@ -53937,11 +53922,11 @@
                       "name": "Row 2026.11.09-1000",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "2026.11.09-1000"
-                        },
                         "s024x": {
                           "content": "10:00"
+                        },
+                        "s023x": {
+                          "content": "2026.11.09-1000"
                         },
                         "s026x": {
                           "content": "16:10"
@@ -53973,11 +53958,11 @@
                       "name": "Row Лера 17820",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "Лера 17820"
-                        },
                         "s024x": {
                           "content": "14:59"
+                        },
+                        "s023x": {
+                          "content": "Лера 17820"
                         },
                         "s026x": {
                           "content": "33:05"
@@ -53994,11 +53979,11 @@
                       "name": "Row iOS Daily",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "iOS Daily"
-                        },
                         "s024x": {
                           "content": "09:59"
+                        },
+                        "s023x": {
+                          "content": "iOS Daily"
                         },
                         "s026x": {
                           "content": "15:30"
@@ -54030,11 +54015,11 @@
                       "name": "Row Планирование",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "Планирование"
-                        },
                         "s024x": {
                           "content": "17:34"
+                        },
+                        "s023x": {
+                          "content": "Планирование"
                         },
                         "s026x": {
                           "content": "58:00"
@@ -54057,11 +54042,19 @@
               "layout": "vertical",
               "children": [
                 {
-                  "id": "eKWfh",
+                  "id": "s155x",
                   "type": "ref",
-                  "ref": "s013x",
-                  "name": "Detail bar",
-                  "width": "fill_container"
+                  "ref": "s033x",
+                  "name": "Header",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s031x": {
+                      "content": "iOS & Android daily"
+                    },
+                    "s032x": {
+                      "content": "Вчера, 09:59 · 14:51"
+                    }
+                  }
                 },
                 {
                   "type": "frame",
@@ -54079,21 +54072,6 @@
                     0
                   ],
                   "children": [
-                    {
-                      "id": "s155x",
-                      "type": "ref",
-                      "ref": "s033x",
-                      "name": "Header",
-                      "width": "fill_container",
-                      "descendants": {
-                        "s031x": {
-                          "content": "iOS & Android daily"
-                        },
-                        "s032x": {
-                          "content": "Вчера, 09:59 · 14:51"
-                        }
-                      }
-                    },
                     {
                       "type": "frame",
                       "id": "s157x",
@@ -54140,7 +54118,7 @@
       "type": "frame",
       "id": "s191x",
       "x": 3540,
-      "y": 22000,
+      "y": 25236,
       "name": "Calls — no summary",
       "theme": {
         "mode": "light"
@@ -54222,11 +54200,11 @@
                       "name": "Row ЦР ID",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "ЦР ID"
-                        },
                         "s024x": {
                           "content": "12:58"
+                        },
+                        "s023x": {
+                          "content": "ЦР ID"
                         },
                         "s026x": {
                           "content": "41:11"
@@ -54243,11 +54221,11 @@
                       "name": "Row ЦР",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "ЦР"
-                        },
                         "s024x": {
                           "content": "11:00"
+                        },
+                        "s023x": {
+                          "content": "ЦР"
                         },
                         "s026x": {
                           "content": "38:20"
@@ -54264,11 +54242,11 @@
                       "name": "Row iOS Daily",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "iOS Daily"
-                        },
                         "s024x": {
                           "content": "10:00"
+                        },
+                        "s023x": {
+                          "content": "iOS Daily"
                         },
                         "s026x": {
                           "content": "15:02"
@@ -54300,11 +54278,11 @@
                       "name": "Row Люда — передача дел",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "Люда — передача дел"
-                        },
                         "s024x": {
                           "content": "17:00"
+                        },
+                        "s023x": {
+                          "content": "Люда — передача дел"
                         },
                         "s026x": {
                           "content": "52:40"
@@ -54321,11 +54299,11 @@
                       "name": "Row iOS & Android daily",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "iOS & Android daily"
-                        },
                         "s024x": {
                           "content": "09:59"
+                        },
+                        "s023x": {
+                          "content": "iOS & Android daily"
                         },
                         "s026x": {
                           "content": "14:51"
@@ -54357,11 +54335,11 @@
                       "name": "Row ЦР Статус",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "ЦР Статус"
-                        },
                         "s024x": {
                           "content": "11:02"
+                        },
+                        "s023x": {
+                          "content": "ЦР Статус"
                         },
                         "s026x": {
                           "content": "29:45"
@@ -54378,14 +54356,14 @@
                       "name": "Row 2026.11.09-1000",
                       "width": "fill_container",
                       "descendants": {
+                        "s024x": {
+                          "content": "10:00"
+                        },
                         "s023x": {
                           "content": "2026.11.09-1000",
                           "fontFamily": "$font-data",
                           "fontWeight": "normal",
                           "fill": "$gutter"
-                        },
-                        "s024x": {
-                          "content": "10:00"
                         },
                         "s026x": {
                           "content": "16:10"
@@ -54417,11 +54395,11 @@
                       "name": "Row Лера 17820",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "Лера 17820"
-                        },
                         "s024x": {
                           "content": "14:59"
+                        },
+                        "s023x": {
+                          "content": "Лера 17820"
                         },
                         "s026x": {
                           "content": "33:05"
@@ -54438,11 +54416,11 @@
                       "name": "Row iOS Daily",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "iOS Daily"
-                        },
                         "s024x": {
                           "content": "09:59"
+                        },
+                        "s023x": {
+                          "content": "iOS Daily"
                         },
                         "s026x": {
                           "content": "15:30"
@@ -54474,11 +54452,11 @@
                       "name": "Row Планирование",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "Планирование"
-                        },
                         "s024x": {
                           "content": "17:34"
+                        },
+                        "s023x": {
+                          "content": "Планирование"
                         },
                         "s026x": {
                           "content": "58:00"
@@ -54501,11 +54479,19 @@
               "layout": "vertical",
               "children": [
                 {
-                  "id": "XKoe2",
+                  "id": "s181x",
                   "type": "ref",
-                  "ref": "s013x",
-                  "name": "Detail bar",
-                  "width": "fill_container"
+                  "ref": "s033x",
+                  "name": "Header",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s031x": {
+                      "content": "2026.11.09-1000"
+                    },
+                    "s032x": {
+                      "content": "Понедельник, 9 ноября, 10:00 · 16:10"
+                    }
+                  }
                 },
                 {
                   "type": "frame",
@@ -54523,21 +54509,6 @@
                     0
                   ],
                   "children": [
-                    {
-                      "id": "s181x",
-                      "type": "ref",
-                      "ref": "s033x",
-                      "name": "Header",
-                      "width": "fill_container",
-                      "descendants": {
-                        "s031x": {
-                          "content": "2026.11.09-1000"
-                        },
-                        "s032x": {
-                          "content": "Понедельник, 9 ноября, 10:00 · 16:10"
-                        }
-                      }
-                    },
                     {
                       "type": "frame",
                       "id": "PfcEc",
@@ -54569,7 +54540,7 @@
       "type": "frame",
       "id": "s225x",
       "x": 4720,
-      "y": 22000,
+      "y": 25236,
       "name": "Calls — inactive window",
       "theme": {
         "mode": "light"
@@ -54651,11 +54622,11 @@
                       "name": "Row ЦР ID",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "ЦР ID"
-                        },
                         "s024x": {
                           "content": "12:58"
+                        },
+                        "s023x": {
+                          "content": "ЦР ID"
                         },
                         "s026x": {
                           "content": "41:11"
@@ -54672,11 +54643,11 @@
                       "name": "Row ЦР",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "ЦР"
-                        },
                         "s024x": {
                           "content": "11:00"
+                        },
+                        "s023x": {
+                          "content": "ЦР"
                         },
                         "s026x": {
                           "content": "38:20"
@@ -54693,11 +54664,11 @@
                       "name": "Row iOS Daily",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "iOS Daily"
-                        },
                         "s024x": {
                           "content": "10:00"
+                        },
+                        "s023x": {
+                          "content": "iOS Daily"
                         },
                         "s026x": {
                           "content": "15:02"
@@ -54729,11 +54700,11 @@
                       "name": "Row Люда — передача дел",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "Люда — передача дел"
-                        },
                         "s024x": {
                           "content": "17:00"
+                        },
+                        "s023x": {
+                          "content": "Люда — передача дел"
                         },
                         "s026x": {
                           "content": "52:40"
@@ -54750,11 +54721,11 @@
                       "name": "Row iOS & Android daily",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "iOS & Android daily"
-                        },
                         "s024x": {
                           "content": "09:59"
+                        },
+                        "s023x": {
+                          "content": "iOS & Android daily"
                         },
                         "s026x": {
                           "content": "14:51"
@@ -54786,11 +54757,11 @@
                       "name": "Row ЦР Статус",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "ЦР Статус"
-                        },
                         "s024x": {
                           "content": "11:02"
+                        },
+                        "s023x": {
+                          "content": "ЦР Статус"
                         },
                         "s026x": {
                           "content": "29:45"
@@ -54807,11 +54778,11 @@
                       "name": "Row 2026.11.09-1000",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "2026.11.09-1000"
-                        },
                         "s024x": {
                           "content": "10:00"
+                        },
+                        "s023x": {
+                          "content": "2026.11.09-1000"
                         },
                         "s026x": {
                           "content": "16:10"
@@ -54843,11 +54814,11 @@
                       "name": "Row Лера 17820",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "Лера 17820"
-                        },
                         "s024x": {
                           "content": "14:59"
+                        },
+                        "s023x": {
+                          "content": "Лера 17820"
                         },
                         "s026x": {
                           "content": "33:05"
@@ -54864,11 +54835,11 @@
                       "name": "Row iOS Daily",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "iOS Daily"
-                        },
                         "s024x": {
                           "content": "09:59"
+                        },
+                        "s023x": {
+                          "content": "iOS Daily"
                         },
                         "s026x": {
                           "content": "15:30"
@@ -54900,11 +54871,11 @@
                       "name": "Row Планирование",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "Планирование"
-                        },
                         "s024x": {
                           "content": "17:34"
+                        },
+                        "s023x": {
+                          "content": "Планирование"
                         },
                         "s026x": {
                           "content": "58:00"
@@ -54927,11 +54898,19 @@
               "layout": "vertical",
               "children": [
                 {
-                  "id": "v8c7D",
+                  "id": "s207x",
                   "type": "ref",
-                  "ref": "s013x",
-                  "name": "Detail bar",
-                  "width": "fill_container"
+                  "ref": "s033x",
+                  "name": "Header",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s031x": {
+                      "content": "ЦР ID"
+                    },
+                    "s032x": {
+                      "content": "Сегодня, 12:58 · 41:11"
+                    }
+                  }
                 },
                 {
                   "type": "frame",
@@ -54949,21 +54928,6 @@
                     0
                   ],
                   "children": [
-                    {
-                      "id": "s207x",
-                      "type": "ref",
-                      "ref": "s033x",
-                      "name": "Header",
-                      "width": "fill_container",
-                      "descendants": {
-                        "s031x": {
-                          "content": "ЦР ID"
-                        },
-                        "s032x": {
-                          "content": "Сегодня, 12:58 · 41:11"
-                        }
-                      }
-                    },
                     {
                       "id": "s208x",
                       "type": "ref",
@@ -55105,7 +55069,7 @@
       "type": "frame",
       "id": "s250x",
       "x": 5900,
-      "y": 22000,
+      "y": 25236,
       "name": "Calls — no selection",
       "theme": {
         "mode": "light"
@@ -55198,11 +55162,11 @@
                       "name": "Row ЦР ID",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "ЦР ID"
-                        },
                         "s024x": {
                           "content": "12:58"
+                        },
+                        "s023x": {
+                          "content": "ЦР ID"
                         },
                         "s026x": {
                           "content": "41:11"
@@ -55219,11 +55183,11 @@
                       "name": "Row ЦР",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "ЦР"
-                        },
                         "s024x": {
                           "content": "11:00"
+                        },
+                        "s023x": {
+                          "content": "ЦР"
                         },
                         "s026x": {
                           "content": "38:20"
@@ -55240,11 +55204,11 @@
                       "name": "Row iOS Daily",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "iOS Daily"
-                        },
                         "s024x": {
                           "content": "10:00"
+                        },
+                        "s023x": {
+                          "content": "iOS Daily"
                         },
                         "s026x": {
                           "content": "15:02"
@@ -55276,11 +55240,11 @@
                       "name": "Row Люда — передача дел",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "Люда — передача дел"
-                        },
                         "s024x": {
                           "content": "17:00"
+                        },
+                        "s023x": {
+                          "content": "Люда — передача дел"
                         },
                         "s026x": {
                           "content": "52:40"
@@ -55297,11 +55261,11 @@
                       "name": "Row iOS & Android daily",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "iOS & Android daily"
-                        },
                         "s024x": {
                           "content": "09:59"
+                        },
+                        "s023x": {
+                          "content": "iOS & Android daily"
                         },
                         "s026x": {
                           "content": "14:51"
@@ -55333,11 +55297,11 @@
                       "name": "Row ЦР Статус",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "ЦР Статус"
-                        },
                         "s024x": {
                           "content": "11:02"
+                        },
+                        "s023x": {
+                          "content": "ЦР Статус"
                         },
                         "s026x": {
                           "content": "29:45"
@@ -55354,11 +55318,11 @@
                       "name": "Row 2026.11.09-1000",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "2026.11.09-1000"
-                        },
                         "s024x": {
                           "content": "10:00"
+                        },
+                        "s023x": {
+                          "content": "2026.11.09-1000"
                         },
                         "s026x": {
                           "content": "16:10"
@@ -55390,11 +55354,11 @@
                       "name": "Row Лера 17820",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "Лера 17820"
-                        },
                         "s024x": {
                           "content": "14:59"
+                        },
+                        "s023x": {
+                          "content": "Лера 17820"
                         },
                         "s026x": {
                           "content": "33:05"
@@ -55411,11 +55375,11 @@
                       "name": "Row iOS Daily",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "iOS Daily"
-                        },
                         "s024x": {
                           "content": "09:59"
+                        },
+                        "s023x": {
+                          "content": "iOS Daily"
                         },
                         "s026x": {
                           "content": "15:30"
@@ -55447,11 +55411,11 @@
                       "name": "Row Планирование",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "Планирование"
-                        },
                         "s024x": {
                           "content": "17:34"
+                        },
+                        "s023x": {
+                          "content": "Планирование"
                         },
                         "s026x": {
                           "content": "58:00"
@@ -55541,7 +55505,7 @@
       "type": "frame",
       "id": "s275x",
       "x": 7080,
-      "y": 22000,
+      "y": 25236,
       "name": "Calls — search",
       "theme": {
         "mode": "light"
@@ -55623,6 +55587,9 @@
                       "name": "Match ЦР ID",
                       "width": "fill_container",
                       "descendants": {
+                        "s063x": {
+                          "content": "12:58"
+                        },
                         "s058x": {
                           "content": "ЦР ID"
                         },
@@ -55634,9 +55601,6 @@
                         },
                         "s061x": {
                           "content": ""
-                        },
-                        "s063x": {
-                          "content": "12:58"
                         },
                         "s065x": {
                           "content": "07:38"
@@ -55678,6 +55642,9 @@
                       "name": "Match ЦР Статус",
                       "width": "fill_container",
                       "descendants": {
+                        "s063x": {
+                          "content": "11:02"
+                        },
                         "s058x": {
                           "content": "ЦР Статус"
                         },
@@ -55689,9 +55656,6 @@
                         },
                         "s061x": {
                           "content": ""
-                        },
-                        "s063x": {
-                          "content": "11:02"
                         },
                         "s065x": {
                           "content": "Итоги"
@@ -55733,6 +55697,9 @@
                       "name": "Match Лера 17820",
                       "width": "fill_container",
                       "descendants": {
+                        "s063x": {
+                          "content": "14:59"
+                        },
                         "s058x": {
                           "content": "Лера 17820"
                         },
@@ -55744,9 +55711,6 @@
                         },
                         "s061x": {
                           "content": ""
-                        },
-                        "s063x": {
-                          "content": "14:59"
                         },
                         "s065x": {
                           "content": "21:10"
@@ -55779,11 +55743,19 @@
               "layout": "vertical",
               "children": [
                 {
-                  "id": "LZFkC",
+                  "id": "s257x",
                   "type": "ref",
-                  "ref": "s013x",
-                  "name": "Detail bar",
-                  "width": "fill_container"
+                  "ref": "s033x",
+                  "name": "Header",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s031x": {
+                      "content": "ЦР ID"
+                    },
+                    "s032x": {
+                      "content": "Сегодня, 12:58 · 41:11"
+                    }
+                  }
                 },
                 {
                   "type": "frame",
@@ -55801,21 +55773,6 @@
                     0
                   ],
                   "children": [
-                    {
-                      "id": "s257x",
-                      "type": "ref",
-                      "ref": "s033x",
-                      "name": "Header",
-                      "width": "fill_container",
-                      "descendants": {
-                        "s031x": {
-                          "content": "ЦР ID"
-                        },
-                        "s032x": {
-                          "content": "Сегодня, 12:58 · 41:11"
-                        }
-                      }
-                    },
                     {
                       "id": "s258x",
                       "type": "ref",
@@ -55957,7 +55914,7 @@
       "type": "frame",
       "id": "s301x",
       "x": 8260,
-      "y": 22000,
+      "y": 25236,
       "name": "Calls — searching",
       "theme": {
         "mode": "light"
@@ -56039,6 +55996,9 @@
                       "name": "Match ЦР ID",
                       "width": "fill_container",
                       "descendants": {
+                        "s063x": {
+                          "content": "12:58"
+                        },
                         "s058x": {
                           "content": "ЦР ID"
                         },
@@ -56050,9 +56010,6 @@
                         },
                         "s061x": {
                           "content": ""
-                        },
-                        "s063x": {
-                          "content": "12:58"
                         },
                         "s065x": {
                           "content": "07:38"
@@ -56094,6 +56051,9 @@
                       "name": "Match ЦР Статус",
                       "width": "fill_container",
                       "descendants": {
+                        "s063x": {
+                          "content": "11:02"
+                        },
                         "s058x": {
                           "content": "ЦР Статус"
                         },
@@ -56105,9 +56065,6 @@
                         },
                         "s061x": {
                           "content": ""
-                        },
-                        "s063x": {
-                          "content": "11:02"
                         },
                         "s065x": {
                           "content": "Итоги"
@@ -56174,11 +56131,19 @@
               "layout": "vertical",
               "children": [
                 {
-                  "id": "ejMFz",
+                  "id": "s283x",
                   "type": "ref",
-                  "ref": "s013x",
-                  "name": "Detail bar",
-                  "width": "fill_container"
+                  "ref": "s033x",
+                  "name": "Header",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s031x": {
+                      "content": "ЦР ID"
+                    },
+                    "s032x": {
+                      "content": "Сегодня, 12:58 · 41:11"
+                    }
+                  }
                 },
                 {
                   "type": "frame",
@@ -56196,21 +56161,6 @@
                     0
                   ],
                   "children": [
-                    {
-                      "id": "s283x",
-                      "type": "ref",
-                      "ref": "s033x",
-                      "name": "Header",
-                      "width": "fill_container",
-                      "descendants": {
-                        "s031x": {
-                          "content": "ЦР ID"
-                        },
-                        "s032x": {
-                          "content": "Сегодня, 12:58 · 41:11"
-                        }
-                      }
-                    },
                     {
                       "id": "s284x",
                       "type": "ref",
@@ -56352,7 +56302,7 @@
       "type": "frame",
       "id": "s313x",
       "x": 9440,
-      "y": 22000,
+      "y": 25236,
       "name": "Calls — search, no results",
       "theme": {
         "mode": "light"
@@ -56536,7 +56486,7 @@
       "type": "frame",
       "id": "s325x",
       "x": 10620,
-      "y": 22000,
+      "y": 25236,
       "name": "Calls — empty",
       "theme": {
         "mode": "light"
@@ -56707,7 +56657,7 @@
       "type": "frame",
       "id": "s337x",
       "x": 11800,
-      "y": 22000,
+      "y": 25236,
       "name": "Calls — loading",
       "theme": {
         "mode": "light"
@@ -56879,7 +56829,7 @@
       "type": "frame",
       "id": "s372x",
       "x": 12980,
-      "y": 22000,
+      "y": 25236,
       "name": "Calls — renaming",
       "theme": {
         "mode": "light"
@@ -56962,6 +56912,9 @@
                       "width": "fill_container",
                       "fill": "$surface",
                       "descendants": {
+                        "s024x": {
+                          "content": "12:58"
+                        },
                         "s023x": {
                           "id": "s364x",
                           "type": "ref",
@@ -56985,9 +56938,6 @@
                             }
                           }
                         },
-                        "s024x": {
-                          "content": "12:58"
-                        },
                         "s026x": {
                           "content": "41:11"
                         },
@@ -57004,11 +56954,11 @@
                       "name": "Row ЦР",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "ЦР"
-                        },
                         "s024x": {
                           "content": "11:00"
+                        },
+                        "s023x": {
+                          "content": "ЦР"
                         },
                         "s026x": {
                           "content": "38:20"
@@ -57025,11 +56975,11 @@
                       "name": "Row iOS Daily",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "iOS Daily"
-                        },
                         "s024x": {
                           "content": "10:00"
+                        },
+                        "s023x": {
+                          "content": "iOS Daily"
                         },
                         "s026x": {
                           "content": "15:02"
@@ -57061,11 +57011,11 @@
                       "name": "Row Люда — передача дел",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "Люда — передача дел"
-                        },
                         "s024x": {
                           "content": "17:00"
+                        },
+                        "s023x": {
+                          "content": "Люда — передача дел"
                         },
                         "s026x": {
                           "content": "52:40"
@@ -57082,11 +57032,11 @@
                       "name": "Row iOS & Android daily",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "iOS & Android daily"
-                        },
                         "s024x": {
                           "content": "09:59"
+                        },
+                        "s023x": {
+                          "content": "iOS & Android daily"
                         },
                         "s026x": {
                           "content": "14:51"
@@ -57118,11 +57068,11 @@
                       "name": "Row ЦР Статус",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "ЦР Статус"
-                        },
                         "s024x": {
                           "content": "11:02"
+                        },
+                        "s023x": {
+                          "content": "ЦР Статус"
                         },
                         "s026x": {
                           "content": "29:45"
@@ -57139,11 +57089,11 @@
                       "name": "Row 2026.11.09-1000",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "2026.11.09-1000"
-                        },
                         "s024x": {
                           "content": "10:00"
+                        },
+                        "s023x": {
+                          "content": "2026.11.09-1000"
                         },
                         "s026x": {
                           "content": "16:10"
@@ -57175,11 +57125,11 @@
                       "name": "Row Лера 17820",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "Лера 17820"
-                        },
                         "s024x": {
                           "content": "14:59"
+                        },
+                        "s023x": {
+                          "content": "Лера 17820"
                         },
                         "s026x": {
                           "content": "33:05"
@@ -57196,11 +57146,11 @@
                       "name": "Row iOS Daily",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "iOS Daily"
-                        },
                         "s024x": {
                           "content": "09:59"
+                        },
+                        "s023x": {
+                          "content": "iOS Daily"
                         },
                         "s026x": {
                           "content": "15:30"
@@ -57232,11 +57182,11 @@
                       "name": "Row Планирование",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "Планирование"
-                        },
                         "s024x": {
                           "content": "17:34"
+                        },
+                        "s023x": {
+                          "content": "Планирование"
                         },
                         "s026x": {
                           "content": "58:00"
@@ -57259,11 +57209,19 @@
               "layout": "vertical",
               "children": [
                 {
-                  "id": "ihmZP",
+                  "id": "s338x",
                   "type": "ref",
-                  "ref": "s013x",
-                  "name": "Detail bar",
-                  "width": "fill_container"
+                  "ref": "s033x",
+                  "name": "Header",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s031x": {
+                      "content": "ЦР ID"
+                    },
+                    "s032x": {
+                      "content": "Сегодня, 12:58 · 41:11"
+                    }
+                  }
                 },
                 {
                   "type": "frame",
@@ -57281,21 +57239,6 @@
                     0
                   ],
                   "children": [
-                    {
-                      "id": "s338x",
-                      "type": "ref",
-                      "ref": "s033x",
-                      "name": "Header",
-                      "width": "fill_container",
-                      "descendants": {
-                        "s031x": {
-                          "content": "ЦР ID"
-                        },
-                        "s032x": {
-                          "content": "Сегодня, 12:58 · 41:11"
-                        }
-                      }
-                    },
                     {
                       "id": "s339x",
                       "type": "ref",
@@ -57437,7 +57380,7 @@
       "type": "frame",
       "id": "s408x",
       "x": 14160,
-      "y": 22000,
+      "y": 25236,
       "name": "Calls — confirm delete",
       "theme": {
         "mode": "light"
@@ -57519,11 +57462,11 @@
                       "name": "Row ЦР ID",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "ЦР ID"
-                        },
                         "s024x": {
                           "content": "12:58"
+                        },
+                        "s023x": {
+                          "content": "ЦР ID"
                         },
                         "s026x": {
                           "content": "41:11"
@@ -57540,11 +57483,11 @@
                       "name": "Row ЦР",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "ЦР"
-                        },
                         "s024x": {
                           "content": "11:00"
+                        },
+                        "s023x": {
+                          "content": "ЦР"
                         },
                         "s026x": {
                           "content": "38:20"
@@ -57561,11 +57504,11 @@
                       "name": "Row iOS Daily",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "iOS Daily"
-                        },
                         "s024x": {
                           "content": "10:00"
+                        },
+                        "s023x": {
+                          "content": "iOS Daily"
                         },
                         "s026x": {
                           "content": "15:02"
@@ -57597,11 +57540,11 @@
                       "name": "Row Люда — передача дел",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "Люда — передача дел"
-                        },
                         "s024x": {
                           "content": "17:00"
+                        },
+                        "s023x": {
+                          "content": "Люда — передача дел"
                         },
                         "s026x": {
                           "content": "52:40"
@@ -57618,11 +57561,11 @@
                       "name": "Row iOS & Android daily",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "iOS & Android daily"
-                        },
                         "s024x": {
                           "content": "09:59"
+                        },
+                        "s023x": {
+                          "content": "iOS & Android daily"
                         },
                         "s026x": {
                           "content": "14:51"
@@ -57654,11 +57597,11 @@
                       "name": "Row ЦР Статус",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "ЦР Статус"
-                        },
                         "s024x": {
                           "content": "11:02"
+                        },
+                        "s023x": {
+                          "content": "ЦР Статус"
                         },
                         "s026x": {
                           "content": "29:45"
@@ -57675,11 +57618,11 @@
                       "name": "Row 2026.11.09-1000",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "2026.11.09-1000"
-                        },
                         "s024x": {
                           "content": "10:00"
+                        },
+                        "s023x": {
+                          "content": "2026.11.09-1000"
                         },
                         "s026x": {
                           "content": "16:10"
@@ -57711,11 +57654,11 @@
                       "name": "Row Лера 17820",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "Лера 17820"
-                        },
                         "s024x": {
                           "content": "14:59"
+                        },
+                        "s023x": {
+                          "content": "Лера 17820"
                         },
                         "s026x": {
                           "content": "33:05"
@@ -57732,11 +57675,11 @@
                       "name": "Row iOS Daily",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "iOS Daily"
-                        },
                         "s024x": {
                           "content": "09:59"
+                        },
+                        "s023x": {
+                          "content": "iOS Daily"
                         },
                         "s026x": {
                           "content": "15:30"
@@ -57768,11 +57711,11 @@
                       "name": "Row Планирование",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "Планирование"
-                        },
                         "s024x": {
                           "content": "17:34"
+                        },
+                        "s023x": {
+                          "content": "Планирование"
                         },
                         "s026x": {
                           "content": "58:00"
@@ -57795,11 +57738,19 @@
               "layout": "vertical",
               "children": [
                 {
-                  "id": "v8wJd",
+                  "id": "s373x",
                   "type": "ref",
-                  "ref": "s013x",
-                  "name": "Detail bar",
-                  "width": "fill_container"
+                  "ref": "s033x",
+                  "name": "Header",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s031x": {
+                      "content": "ЦР ID"
+                    },
+                    "s032x": {
+                      "content": "Сегодня, 12:58 · 41:11"
+                    }
+                  }
                 },
                 {
                   "type": "frame",
@@ -57817,21 +57768,6 @@
                     0
                   ],
                   "children": [
-                    {
-                      "id": "s373x",
-                      "type": "ref",
-                      "ref": "s033x",
-                      "name": "Header",
-                      "width": "fill_container",
-                      "descendants": {
-                        "s031x": {
-                          "content": "ЦР ID"
-                        },
-                        "s032x": {
-                          "content": "Сегодня, 12:58 · 41:11"
-                        }
-                      }
-                    },
                     {
                       "id": "s374x",
                       "type": "ref",
@@ -57988,7 +57924,7 @@
       "type": "frame",
       "id": "s443x",
       "x": 15340,
-      "y": 22000,
+      "y": 25236,
       "name": "Calls — error",
       "theme": {
         "mode": "light"
@@ -58070,11 +58006,11 @@
                       "name": "Row ЦР ID",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "ЦР ID"
-                        },
                         "s024x": {
                           "content": "12:58"
+                        },
+                        "s023x": {
+                          "content": "ЦР ID"
                         },
                         "s026x": {
                           "content": "41:11"
@@ -58091,11 +58027,11 @@
                       "name": "Row ЦР",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "ЦР"
-                        },
                         "s024x": {
                           "content": "11:00"
+                        },
+                        "s023x": {
+                          "content": "ЦР"
                         },
                         "s026x": {
                           "content": "38:20"
@@ -58112,11 +58048,11 @@
                       "name": "Row iOS Daily",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "iOS Daily"
-                        },
                         "s024x": {
                           "content": "10:00"
+                        },
+                        "s023x": {
+                          "content": "iOS Daily"
                         },
                         "s026x": {
                           "content": "15:02"
@@ -58148,11 +58084,11 @@
                       "name": "Row Люда — передача дел",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "Люда — передача дел"
-                        },
                         "s024x": {
                           "content": "17:00"
+                        },
+                        "s023x": {
+                          "content": "Люда — передача дел"
                         },
                         "s026x": {
                           "content": "52:40"
@@ -58169,11 +58105,11 @@
                       "name": "Row iOS & Android daily",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "iOS & Android daily"
-                        },
                         "s024x": {
                           "content": "09:59"
+                        },
+                        "s023x": {
+                          "content": "iOS & Android daily"
                         },
                         "s026x": {
                           "content": "14:51"
@@ -58205,11 +58141,11 @@
                       "name": "Row ЦР Статус",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "ЦР Статус"
-                        },
                         "s024x": {
                           "content": "11:02"
+                        },
+                        "s023x": {
+                          "content": "ЦР Статус"
                         },
                         "s026x": {
                           "content": "29:45"
@@ -58226,11 +58162,11 @@
                       "name": "Row 2026.11.09-1000",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "2026.11.09-1000"
-                        },
                         "s024x": {
                           "content": "10:00"
+                        },
+                        "s023x": {
+                          "content": "2026.11.09-1000"
                         },
                         "s026x": {
                           "content": "16:10"
@@ -58262,11 +58198,11 @@
                       "name": "Row Лера 17820",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "Лера 17820"
-                        },
                         "s024x": {
                           "content": "14:59"
+                        },
+                        "s023x": {
+                          "content": "Лера 17820"
                         },
                         "s026x": {
                           "content": "33:05"
@@ -58283,11 +58219,11 @@
                       "name": "Row iOS Daily",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "iOS Daily"
-                        },
                         "s024x": {
                           "content": "09:59"
+                        },
+                        "s023x": {
+                          "content": "iOS Daily"
                         },
                         "s026x": {
                           "content": "15:30"
@@ -58319,11 +58255,11 @@
                       "name": "Row Планирование",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "Планирование"
-                        },
                         "s024x": {
                           "content": "17:34"
+                        },
+                        "s023x": {
+                          "content": "Планирование"
                         },
                         "s026x": {
                           "content": "58:00"
@@ -58361,11 +58297,19 @@
               "layout": "vertical",
               "children": [
                 {
-                  "id": "l9p5Cb",
+                  "id": "s409x",
                   "type": "ref",
-                  "ref": "s013x",
-                  "name": "Detail bar",
-                  "width": "fill_container"
+                  "ref": "s033x",
+                  "name": "Header",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s031x": {
+                      "content": "ЦР ID"
+                    },
+                    "s032x": {
+                      "content": "Сегодня, 12:58 · 41:11"
+                    }
+                  }
                 },
                 {
                   "type": "frame",
@@ -58383,21 +58327,6 @@
                     0
                   ],
                   "children": [
-                    {
-                      "id": "s409x",
-                      "type": "ref",
-                      "ref": "s033x",
-                      "name": "Header",
-                      "width": "fill_container",
-                      "descendants": {
-                        "s031x": {
-                          "content": "ЦР ID"
-                        },
-                        "s032x": {
-                          "content": "Сегодня, 12:58 · 41:11"
-                        }
-                      }
-                    },
                     {
                       "id": "s410x",
                       "type": "ref",
@@ -58539,7 +58468,7 @@
       "type": "frame",
       "id": "s463x",
       "x": 16520,
-      "y": 22000,
+      "y": 25236,
       "name": "Calls — narrow",
       "theme": {
         "mode": "light"
@@ -58618,11 +58547,11 @@
                       "name": "Row ЦР ID",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "ЦР ID"
-                        },
                         "s024x": {
                           "content": "12:58"
+                        },
+                        "s023x": {
+                          "content": "ЦР ID"
                         },
                         "s026x": {
                           "content": "41:11"
@@ -58639,11 +58568,11 @@
                       "name": "Row ЦР",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "ЦР"
-                        },
                         "s024x": {
                           "content": "11:00"
+                        },
+                        "s023x": {
+                          "content": "ЦР"
                         },
                         "s026x": {
                           "content": "38:20"
@@ -58660,11 +58589,11 @@
                       "name": "Row iOS Daily",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "iOS Daily"
-                        },
                         "s024x": {
                           "content": "10:00"
+                        },
+                        "s023x": {
+                          "content": "iOS Daily"
                         },
                         "s026x": {
                           "content": "15:02"
@@ -58696,11 +58625,11 @@
                       "name": "Row Люда — передача дел",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "Люда — передача дел"
-                        },
                         "s024x": {
                           "content": "17:00"
+                        },
+                        "s023x": {
+                          "content": "Люда — передача дел"
                         },
                         "s026x": {
                           "content": "52:40"
@@ -58717,11 +58646,11 @@
                       "name": "Row iOS & Android daily",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "iOS & Android daily"
-                        },
                         "s024x": {
                           "content": "09:59"
+                        },
+                        "s023x": {
+                          "content": "iOS & Android daily"
                         },
                         "s026x": {
                           "content": "14:51"
@@ -58753,11 +58682,11 @@
                       "name": "Row ЦР Статус",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "ЦР Статус"
-                        },
                         "s024x": {
                           "content": "11:02"
+                        },
+                        "s023x": {
+                          "content": "ЦР Статус"
                         },
                         "s026x": {
                           "content": "29:45"
@@ -58774,11 +58703,11 @@
                       "name": "Row 2026.11.09-1000",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "2026.11.09-1000"
-                        },
                         "s024x": {
                           "content": "10:00"
+                        },
+                        "s023x": {
+                          "content": "2026.11.09-1000"
                         },
                         "s026x": {
                           "content": "16:10"
@@ -58810,11 +58739,11 @@
                       "name": "Row Лера 17820",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "Лера 17820"
-                        },
                         "s024x": {
                           "content": "14:59"
+                        },
+                        "s023x": {
+                          "content": "Лера 17820"
                         },
                         "s026x": {
                           "content": "33:05"
@@ -58831,11 +58760,11 @@
                       "name": "Row iOS Daily",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "iOS Daily"
-                        },
                         "s024x": {
                           "content": "09:59"
+                        },
+                        "s023x": {
+                          "content": "iOS Daily"
                         },
                         "s026x": {
                           "content": "15:30"
@@ -58867,11 +58796,11 @@
                       "name": "Row Планирование",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "Планирование"
-                        },
                         "s024x": {
                           "content": "17:34"
+                        },
+                        "s023x": {
+                          "content": "Планирование"
                         },
                         "s026x": {
                           "content": "58:00"
@@ -58895,7 +58824,7 @@
       "ref": "s113x",
       "name": "Calls — summary (dark)",
       "x": 0,
-      "y": 22740,
+      "y": 25976,
       "theme": {
         "mode": "dark"
       }
@@ -58906,7 +58835,7 @@
       "ref": "s139x",
       "name": "Calls — preparing (dark)",
       "x": 1180,
-      "y": 22740,
+      "y": 25976,
       "theme": {
         "mode": "dark"
       }
@@ -58917,7 +58846,7 @@
       "ref": "s165x",
       "name": "Calls — summary failed (dark)",
       "x": 2360,
-      "y": 22740,
+      "y": 25976,
       "theme": {
         "mode": "dark"
       }
@@ -58928,7 +58857,7 @@
       "ref": "s191x",
       "name": "Calls — no summary (dark)",
       "x": 3540,
-      "y": 22740,
+      "y": 25976,
       "theme": {
         "mode": "dark"
       }
@@ -58939,7 +58868,7 @@
       "ref": "s225x",
       "name": "Calls — inactive window (dark)",
       "x": 4720,
-      "y": 22740,
+      "y": 25976,
       "theme": {
         "mode": "dark"
       }
@@ -58950,7 +58879,7 @@
       "ref": "s250x",
       "name": "Calls — no selection (dark)",
       "x": 5900,
-      "y": 22740,
+      "y": 25976,
       "theme": {
         "mode": "dark"
       }
@@ -58961,7 +58890,7 @@
       "ref": "s275x",
       "name": "Calls — search (dark)",
       "x": 7080,
-      "y": 22740,
+      "y": 25976,
       "theme": {
         "mode": "dark"
       }
@@ -58972,7 +58901,7 @@
       "ref": "s301x",
       "name": "Calls — searching (dark)",
       "x": 8260,
-      "y": 22740,
+      "y": 25976,
       "theme": {
         "mode": "dark"
       }
@@ -58983,7 +58912,7 @@
       "ref": "s313x",
       "name": "Calls — search, no results (dark)",
       "x": 9440,
-      "y": 22740,
+      "y": 25976,
       "theme": {
         "mode": "dark"
       }
@@ -58994,7 +58923,7 @@
       "ref": "s325x",
       "name": "Calls — empty (dark)",
       "x": 10620,
-      "y": 22740,
+      "y": 25976,
       "theme": {
         "mode": "dark"
       }
@@ -59005,7 +58934,7 @@
       "ref": "s337x",
       "name": "Calls — loading (dark)",
       "x": 11800,
-      "y": 22740,
+      "y": 25976,
       "theme": {
         "mode": "dark"
       }
@@ -59016,7 +58945,7 @@
       "ref": "s372x",
       "name": "Calls — renaming (dark)",
       "x": 12980,
-      "y": 22740,
+      "y": 25976,
       "theme": {
         "mode": "dark"
       }
@@ -59027,7 +58956,7 @@
       "ref": "s408x",
       "name": "Calls — confirm delete (dark)",
       "x": 14160,
-      "y": 22740,
+      "y": 25976,
       "theme": {
         "mode": "dark"
       }
@@ -59038,7 +58967,7 @@
       "ref": "s443x",
       "name": "Calls — error (dark)",
       "x": 15340,
-      "y": 22740,
+      "y": 25976,
       "theme": {
         "mode": "dark"
       }
@@ -59049,7 +58978,7 @@
       "ref": "s463x",
       "name": "Calls — narrow (dark)",
       "x": 16520,
-      "y": 22740,
+      "y": 25976,
       "theme": {
         "mode": "dark"
       }
@@ -59058,7 +58987,7 @@
       "type": "note",
       "id": "s464x",
       "x": 0,
-      "y": 23480,
+      "y": 26716,
       "name": "Note layout",
       "width": 520,
       "height": 380,
@@ -59068,17 +58997,17 @@
       "type": "note",
       "id": "s465x",
       "x": 560,
-      "y": 23480,
+      "y": 26716,
       "name": "Note detail",
       "width": 520,
       "height": 380,
-      "content": "Detail\n\nHeader: title, then day, start time · duration. The summary is rendered Markdown, selectable, with the date it was made under its last line in `gutter`.\n\nOver the list, the bar holds the call’s own actions, which act on the selected row: Открыть (its folder in Finder) and Переименовать in one group, Удалить… alone. Each shows its name as a tooltip on hover. Повторить итоги stays in the failed message and the row menu.\n\nThe toolbar has no bar over the detail: the summary’s surface runs to the window’s top edge, and text scrolling under the toolbar fades at its edge. Копировать belongs to the summary: an icon button in the summary’s top-right corner, level with the row actions, fixed while the text scrolls. It shows only while a summary is shown.\n\nWith no call selected the row actions are disabled, not hidden, so the bar never shifts.\n\nNo summary: one line under the header, «Нет итогов» and the link «✨ Сделать». Making, or preparing after a call: a spinner, «Делаю…» and «Отменить», over a grey skeleton of the summary; the row shows «Подготовка итогов…». Done: the summary replaces both. Failed: one centred message under the header, with Повторить итоги. With no call selected: «Звонок не выбран».\n\n↑↓ moves the selection and the detail follows at once; Tab moves focus into the detail."
+      "content": "Detail\n\nHeader: title, then day, start time · duration. The summary is rendered Markdown, selectable, with the date it was made under its last line in `gutter`. The header sits in the toolbar band, level with the window controls, and stays while the summary scrolls below it.\n\nOver the list, the bar holds the call’s own actions, which act on the selected row: Открыть (its folder in Finder) and Переименовать in one group, Удалить… alone. Each shows its name as a tooltip on hover. Повторить итоги stays in the failed message and the row menu.\n\nThe toolbar has no bar over the detail: the summary’s surface runs to the window’s top edge, under the header. Копировать belongs to the summary: an icon button in the summary’s top-right corner, level with the row actions, fixed while the text scrolls. It shows only while a summary is shown.\n\nWith no call selected the row actions are disabled, not hidden, so the bar never shifts.\n\nNo summary: one line under the header, «Нет итогов» and the link «✨ Сделать». Making, or preparing after a call: a spinner, «Делаю…» and «Отменить», over a grey skeleton of the summary; the row shows «Подготовка итогов…». Done: the summary replaces both. Failed: one centred message under the header, with Повторить итоги. With no call selected: «Звонок не выбран».\n\n↑↓ moves the selection and the detail follows at once; Tab moves focus into the detail."
     },
     {
       "type": "note",
       "id": "s466x",
       "x": 1120,
-      "y": 23480,
+      "y": 26716,
       "name": "Note search",
       "width": 520,
       "height": 380,
@@ -59170,11 +59099,11 @@
                       "name": "Row ЦР ID",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "ЦР ID"
-                        },
                         "s024x": {
                           "content": "12:58"
+                        },
+                        "s023x": {
+                          "content": "ЦР ID"
                         },
                         "s026x": {
                           "content": "41:11"
@@ -59191,11 +59120,11 @@
                       "name": "Row ЦР",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "ЦР"
-                        },
                         "s024x": {
                           "content": "11:00"
+                        },
+                        "s023x": {
+                          "content": "ЦР"
                         },
                         "s026x": {
                           "content": "38:20"
@@ -59212,11 +59141,11 @@
                       "name": "Row iOS Daily",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "iOS Daily"
-                        },
                         "s024x": {
                           "content": "10:00"
+                        },
+                        "s023x": {
+                          "content": "iOS Daily"
                         },
                         "s026x": {
                           "content": "15:02"
@@ -59252,11 +59181,11 @@
                       "name": "Row Люда — передача дел",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "Люда — передача дел"
-                        },
                         "s024x": {
                           "content": "17:00"
+                        },
+                        "s023x": {
+                          "content": "Люда — передача дел"
                         },
                         "s026x": {
                           "content": "52:40"
@@ -59273,11 +59202,11 @@
                       "name": "Row iOS & Android daily",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "iOS & Android daily"
-                        },
                         "s024x": {
                           "content": "09:59"
+                        },
+                        "s023x": {
+                          "content": "iOS & Android daily"
                         },
                         "s026x": {
                           "content": "14:51"
@@ -59313,11 +59242,11 @@
                       "name": "Row ЦР Статус",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "ЦР Статус"
-                        },
                         "s024x": {
                           "content": "11:02"
+                        },
+                        "s023x": {
+                          "content": "ЦР Статус"
                         },
                         "s026x": {
                           "content": "29:45"
@@ -59335,15 +59264,15 @@
                       "width": "fill_container",
                       "fill": "$selBg",
                       "descendants": {
+                        "s024x": {
+                          "content": "10:00",
+                          "fill": "$selText"
+                        },
                         "s023x": {
                           "content": "2026.11.09-1000",
                           "fill": "$selText",
                           "fontFamily": "$font-data",
                           "fontWeight": "normal"
-                        },
-                        "s024x": {
-                          "content": "10:00",
-                          "fill": "$selText"
                         },
                         "s026x": {
                           "content": "16:10",
@@ -59381,11 +59310,11 @@
                       "name": "Row Лера 17820",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "Лера 17820"
-                        },
                         "s024x": {
                           "content": "14:59"
+                        },
+                        "s023x": {
+                          "content": "Лера 17820"
                         },
                         "s026x": {
                           "content": "33:05"
@@ -59402,11 +59331,11 @@
                       "name": "Row iOS Daily",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "iOS Daily"
-                        },
                         "s024x": {
                           "content": "09:59"
+                        },
+                        "s023x": {
+                          "content": "iOS Daily"
                         },
                         "s026x": {
                           "content": "15:30"
@@ -59438,11 +59367,11 @@
                       "name": "Row Планирование",
                       "width": "fill_container",
                       "descendants": {
-                        "s023x": {
-                          "content": "Планирование"
-                        },
                         "s024x": {
                           "content": "17:34"
+                        },
+                        "s023x": {
+                          "content": "Планирование"
                         },
                         "s026x": {
                           "content": "58:00"
@@ -59465,15 +59394,23 @@
               "layout": "vertical",
               "children": [
                 {
-                  "id": "o6rSUV",
+                  "id": "ebgkc",
                   "type": "ref",
-                  "ref": "s013x",
-                  "name": "Detail bar",
-                  "width": "fill_container"
+                  "ref": "s033x",
+                  "name": "Header",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s031x": {
+                      "content": "2026.11.09-1000"
+                    },
+                    "s032x": {
+                      "content": "Понедельник, 9 ноября, 10:00 · 16:10"
+                    }
+                  }
                 },
                 {
                   "type": "frame",
-                  "id": "E1HV0",
+                  "id": "ZOUIP",
                   "name": "Scroll",
                   "clip": true,
                   "width": "fill_container",
@@ -59488,23 +59425,8 @@
                   ],
                   "children": [
                     {
-                      "id": "VcFTM",
-                      "type": "ref",
-                      "ref": "s033x",
-                      "name": "Header",
-                      "width": "fill_container",
-                      "descendants": {
-                        "s031x": {
-                          "content": "2026.11.09-1000"
-                        },
-                        "s032x": {
-                          "content": "Понедельник, 9 ноября, 10:00 · 16:10"
-                        }
-                      }
-                    },
-                    {
                       "type": "frame",
-                      "id": "l99nem",
+                      "id": "SHQ6v",
                       "name": "Body",
                       "width": "fill_container",
                       "height": "fill_container",
@@ -59513,14 +59435,14 @@
                       "gap": "$space-4",
                       "children": [
                         {
-                          "id": "al8M8",
+                          "id": "pOEFx",
                           "type": "ref",
                           "ref": "YbRfD",
                           "name": "Making",
                           "width": "fill_container"
                         },
                         {
-                          "id": "RebrK",
+                          "id": "pVz1A",
                           "type": "ref",
                           "ref": "nvT8E",
                           "name": "Skeleton",

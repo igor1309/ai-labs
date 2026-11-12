@@ -1,5 +1,5 @@
 import AppKit
-@testable import Audelin
+import CallsWindowUI
 import SummaryPreviewUI
 import Testing
 
@@ -79,6 +79,28 @@ struct CallsToolbarTests {
         for notes in [SummaryPreviewState.Notes.unreadable("x"), .preparing, .failed("x"), .none(notesOff: true)] {
             #expect(callActions(state(notes)) == .init(call: true, copy: false))
         }
+    }
+
+    @Test(.timeLimit(.minutes(1))) func copyShowsACheckmarkUntilItSettles() async throws {
+        let (started, start) = AsyncStream.makeStream(of: Void.self)
+        let (settled, settle) = AsyncStream.makeStream(of: Void.self)
+        nonisolated(unsafe) var waits = settled.makeAsyncIterator()
+        let sut = CallsToolbar(identifier: "test", text: .init(language: .russian), act: { _ in },
+                               settle: { start.yield(); _ = await waits.next() })
+        let copy = try #require(item(sut, CallsToolbar.copyItem))
+        func shows(_ symbol: String) -> Bool {
+            copy.image?.tiffRepresentation == NSImage(systemSymbolName: symbol, accessibilityDescription: nil)?.tiffRepresentation
+        }
+        #expect(shows(CallsToolbar.copySymbol))
+
+        _ = (copy.target as? NSObject)?.perform(copy.action, with: copy)
+        #expect(shows(CallsToolbar.copiedSymbol))
+        #expect(copy.image?.accessibilityDescription == "Копировать")
+
+        var starts = started.makeAsyncIterator()
+        _ = await starts.next()
+        settle.yield()
+        while !shows(CallsToolbar.copySymbol) { await Task.yield() }
     }
 
     private func makeSUT(act: @escaping (SummaryPreviewEvent) -> Void = { _ in }) -> CallsToolbar {
