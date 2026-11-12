@@ -706,20 +706,22 @@ func assert(
     #expect(result.1 == effect, sourceLocation: sourceLocation)
 }
 
-/// What the state holds as sealed. State equality ignores where its lists split,
-/// so `assert` compares the split here.
+/// What the state holds as sealed, and how many rendered entries its sealed rows
+/// show. State equality ignores where its lists split, so `assert` compares this too.
 private struct SealedParts: Equatable {
     let rows: [ReadingState.Row]
     let text: [ReadingTextUpdate.Entry.ID: ReadingTextUpdate.Entry]
     let anchors: [ReadingTextUpdate.Entry.ID: ReadingState.Anchor]
     let entries: [ReadingTextUpdate.Entry.ID: ReadingState.Entry]
     let locations: [ReadingTextUpdate.Entry.ID: ReadingState.Rendered.Location]
+    let inSealedRows: Int
 }
 
 private func sealedParts(_ state: ReadingState) -> SealedParts {
 
     .init(rows: state.lines.rows.sealed, text: state.text.sealed, anchors: state.anchors.sealed,
-          entries: state.rendered.entries.sealed, locations: state.rendered.locations.sealed)
+          entries: state.rendered.entries.sealed, locations: state.rendered.locations.sealed,
+          inSealedRows: state.rendered.inSealedRows)
 }
 
 private func makeState() -> ReadingState { .init() }

@@ -279,6 +279,7 @@ struct ReadingRenderingTests {
             $0.anchors.seal(text.id)
             $0.rendered.entries.seal(text.id)
             $0.rendered.locations.seal(text.id)
+            $0.rendered.inSealedRows = 1
             $0.lines.rows.seal(upTo: 1)
         }
         #expect(spy.calls == [])
