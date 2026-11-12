@@ -8,7 +8,7 @@ are the file's variables. Shared parts are on the
 "Calls window — shared components" board (Title bar, Search field, Day
 header, Context menu); delete, rename and errors use the Glass Ledger
 Sheet, Rename field and Banner/Error; the window's own parts on the "Calls window —
-components" board (Detail bar, Two-line row, Two-line match row, Detail
+components" board (Detail bar, Tooltip, Two-line row, Two-line match row, Detail
 header, Section, Subhead, Paragraph, Bullet, Detail message).
 
 ## Layout
@@ -35,12 +35,19 @@ header, Section, Subhead, Paragraph, Bullet, Detail message).
 ## Detail
 
 - Header: title, then day, start time · duration. The summary is
-  selectable rendered Markdown (headings, lists, code, tables). Toolbar:
-  Копировать (the Markdown source) and ⋯ with the row menu.
+  selectable rendered Markdown (headings, lists, code, tables).
+- Toolbar: one bar across the window. Over the list, the title; over the
+  detail, before the search field, icon-only buttons in two Mail-style
+  groups: Копировать (the Markdown source), Открыть, Переименовать; then
+  Удалить… alone. Each shows its name as a tooltip on hover (Tooltip on the
+  components board). There is no ⋯ menu.
+- The buttons act on the selected call. Копировать is disabled without a
+  summary; with no call selected all four are disabled. They are disabled,
+  never hidden, so the toolbar does not shift. Повторить итоги stays in the
+  failed message and the row's context menu.
 - Without a summary, one centred message under the header: preparing;
   failed, with the error and Повторить итоги; «Итогов нет» when notes are
-  off. With no call selected: «Звонок не выбран». Копировать and ⋯ are
-  hidden whenever there is no summary.
+  off. With no call selected: «Звонок не выбран».
 - The detail follows the selection at once. No transcript in this window.
 
 ## Actions
@@ -54,7 +61,8 @@ header, Section, Subhead, Paragraph, Bullet, Detail message).
 
 ## Search
 
-- The search field is in the list's title bar. ⌘F focuses it; Esc or its
+- The search field ends the toolbar; below 700 pt, with the detail hidden,
+  it sits in the list's bar. ⌘F focuses it; Esc or its
   clear button empties it and the whole list returns.
 - One field searches titles, summaries and transcripts as you type, ignoring
   case and ё/е. There is no scope switch.
