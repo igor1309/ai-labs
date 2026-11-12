@@ -44,13 +44,23 @@ public enum ClientFind {
     }
 
     public struct State: Equatable, Sendable {
-        public fileprivate(set) var bluetooth: Bluetooth = .unknown
-        public fileprivate(set) var selection: Selection = .none
-        public fileprivate(set) var phase: Phase = .idle
-        public fileprivate(set) var signal: Signal = .none
+        public var bluetooth: Bluetooth
+        public var selection: Selection
+        public var phase: Phase
+        public var signal: Signal
 
-        /// Waits for the root's first Bluetooth event before requesting a scan.
-        public init() {}
+        /// With the defaults it waits for the root's first Bluetooth event before requesting a scan.
+        public init(
+            bluetooth: Bluetooth = .unknown,
+            selection: Selection = .none,
+            phase: Phase = .idle,
+            signal: Signal = .none
+        ) {
+            self.bluetooth = bluetooth
+            self.selection = selection
+            self.phase = phase
+            self.signal = signal
+        }
 
         public var isScanning: Bool {
             switch phase {
