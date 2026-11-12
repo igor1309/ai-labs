@@ -16,8 +16,10 @@ are never stored or displayed. A Finder-launched app may lack shell variables;
 validation reports that without sending a transcript or making a paid request.
 
 Eligible final transcripts create durable jobs without holding the next call.
-Calls shows waiting, preparation, success/warning and failure/interruption status;
-notes are saved as `summary.md` beside the original transcript and audio. Pending
+The calls window lists calls beside the selected call's notes, Mail-style; it
+shows waiting, preparation, success/warning and failure/interruption status. In a
+narrow window the list stands alone and Return or Space opens the call in its own
+window. Notes are saved as `summary.md` beside the original transcript and audio. Pending
 jobs resume with their saved configuration; interrupted running requests are never
 automatically replayed. Claude CLI requires supported isolation controls, preserves
 subscription authentication and remains subject to managed organization policy.

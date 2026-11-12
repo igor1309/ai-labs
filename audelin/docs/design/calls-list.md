@@ -15,8 +15,9 @@ header, Section, Subhead, Paragraph, Bullet, Detail message).
 
 - The list is 340 pt; the divider moves between 280 and 420 and is kept
   across restarts. Below 700 pt the detail hides and the list fills the
-  window (minimum 560); Return or Space then opens the summary in its own
-  window.
+  window (minimum 560); Return or Space then opens the selected call in its
+  own window, which keeps its size and place and follows the selection.
+  Widening the window brings the detail back.
 - No sorting and no column header. Days run newest first, calls within a
   day newest first.
 - Day header: Сегодня, Вчера; then weekday and date within the last 7 days

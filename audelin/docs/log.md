@@ -2,6 +2,8 @@
 
 ## 2026-11-12
 
+- LAB-1242: The calls window shows the list beside the selected call's notes, Mail-style: the detail follows the selection, Tab moves between them, and its buttons are the row's actions. The eye, «Показать итоги» and the floating summary panel are gone. Below 700 pt the list stands alone and Return or Space opens the call in its own window.
+
 - LAB-1132: After a call, the far side is split among its speakers: the transcript labels them `Them 1`, `Them 2`… (or by Zoom name), cleanup and the summary wait for and use them, and the open panel recolours and captions each speaker's rows. The diarization model starts loading when a call opens.
 
 ## 2026-11-11

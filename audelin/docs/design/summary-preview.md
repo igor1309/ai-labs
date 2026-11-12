@@ -4,40 +4,10 @@ Frames: "Screen 4b — Summary preview" (right of Screen 4) and the board
 "Glass Ledger — summary preview components" in
 [visual-language.pen](visual-language.pen).
 
-## What is settled
-
-- An eye button in a call's row opens a preview of that call's `summary.md`.
-- One preview at a time. It follows the selected row (click or ↑↓); the eye
-  opens or focuses it.
-  On a row without a `summary.md` it hides, and shows again on the next
-  row that has one.
-- Size and position are kept when the preview moves to another row and
-  across app restarts.
-- Content: a header with title, date and duration, a «Копировать» button with a copy icon (SF Symbol `doc.on.doc`)
-  (copies the Markdown source), and the summary as selectable rendered
-  Markdown: headings, lists, code and tables. No transcript link.
-
-## Eye button
-
-The eye shows only on rows with a `summary.md`. Rows without one keep an
-empty slot, so the columns stay put.
-
-## Preview window
-
-A floating panel (`NSPanel`) with a standard title bar «Саммари — Zoom». An
-eye makes it the active window; following a selected row only brings it
-forward, so ↑↓ stays in the list. It
-floats above the list while Audelin is active and hides when another app
-is. It follows the selected row and keeps its size and position across rows
-and app restarts.
-
-Considered and dropped: a popover and an inspector pane, which cannot keep
-their position; a standard window, which gets lost behind the list; a
-borderless glass panel; a utility-style title bar, which is sized for tool
-palettes and looks out of place over a reading window.
-
-Proposed, not decided: the eye column sits just before the pin. The active
-eye uses the `okBg` tint with a `me` icon, like the selected row.
+The eye button and the floating preview panel these frames draw are not
+built: the calls window shows the selected call's notes beside the list
+([brief](calls-list.md)). The frames stay for the typography below, which
+the calls window's detail uses.
 
 ## Typography
 
