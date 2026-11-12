@@ -1,5 +1,4 @@
 import Reading
-import Synchronization
 import Testing
 
 struct ReadingRenderingTests {
@@ -298,34 +297,6 @@ struct ReadingRenderingTests {
             #expect(spy.calls == [])
         }
     }
-}
-
-private final class RenderingSpy: Sendable {
-    enum Call: Equatable, Sendable {
-        case recording(Double), line(Double), span(String, String)
-    }
-    private let storage = Mutex<[Call]>([])
-    var calls: [Call] { storage.withLock { $0 } }
-    func recording(_ value: Double) -> String {
-
-        storage.withLock { $0.append(.recording(value)) }
-        return "recording(\(value))"
-    }
-    func line(_ value: Double) -> String {
-
-        storage.withLock { $0.append(.line(value)) }
-        return "line(\(value))"
-    }
-    func span(_ start: String, _ end: String) -> String {
-
-        storage.withLock { $0.append(.span(start, end)) }
-        return "span[\(start)|\(end)]"
-    }
-}
-
-private func makeReducer(_ spy: RenderingSpy) -> ReadingReducer {
-
-    .init(recordingTime: { spy.recording($0) }, lineTime: { spy.line($0) }, span: { spy.span($0, $1) })
 }
 
 private func makeState() -> ReadingState { .init() }

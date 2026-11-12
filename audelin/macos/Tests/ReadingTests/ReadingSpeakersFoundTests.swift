@@ -7,8 +7,8 @@ struct ReadingSpeakersFoundTests {
     @Test(arguments: [0, 2, 4])
     func foundSpeakersGiveEachFarRowItsPlaceAndLeaveTheMicrophone(sealed: Int) {
 
-        let (sut, spy) = makeSUT()
-        assert(makeUnplaced(sealed: sealed), .speakersFound([1: 1, 2: 2]), delivers: nil, using: sut) {
+        let spy = RenderingSpy()
+        assert(makeUnplaced(sealed: sealed), .speakersFound([1: 1, 2: 2]), delivers: nil, using: makeReducer(spy)) {
             let placed = rows("00:00", remote: [1, nil, 2, nil])
             $0.lines.rows = .init(sealed: Array(placed.prefix(sealed)), tail: Array(placed.dropFirst(sealed)))
             for (key, entry) in zip(texts.map(\.id), shown("00:00", remote: [1, nil, 2, nil])) { $0.rendered.entries[key] = entry }

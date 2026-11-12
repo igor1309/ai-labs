@@ -3,11 +3,14 @@ import Testing
 
 struct ReadingNamesConfirmedTests {
 
-    @Test func confirmedNamesReplaceTentativeOnesAndUnconfirmedRowsLoseTheirs() {
+    /// `sealed` 0 leaves both entries in the tail, 1 seals the first, 2 seals both.
+    @Test(arguments: [0, 1, 2])
+    func confirmedNamesReplaceTentativeOnesAndUnconfirmedRowsLoseTheirs(sealed: Int) {
 
-        let (sut, spy) = makeSUT()
-        assert(makeTentative(), .namesConfirmed([1: "Anna K."]), delivers: nil, using: sut) {
-            $0.lines.rows = [.entry(anna("00:01", name: "Anna K.", confirmed: true)), .entry(boris("00:03", name: nil))]
+        let spy = RenderingSpy()
+        assert(makeTentative(sealed: sealed), .namesConfirmed([1: "Anna K."]), delivers: nil, using: makeReducer(spy)) {
+            let rows: [ReadingState.Row] = [.entry(anna("00:01", name: "Anna K.", confirmed: true)), .entry(boris("00:03", name: nil))]
+            $0.lines.rows = .init(sealed: Array(rows.prefix(sealed)), tail: Array(rows.dropFirst(sealed)))
             $0.rendered.entries[annaText.id] = anna("00:01", name: "Anna K.", confirmed: true)
             $0.rendered.entries[borisText.id] = boris("00:03", name: nil)
             $0.log = .lines($0.lines)
@@ -19,9 +22,9 @@ struct ReadingNamesConfirmedTests {
 private let annaText = theirs(1, at: 1, name: "Anna")
 private let borisText = theirs(2, at: 3, name: "Boris")
 
-private func makeTentative() -> ReadingState {
+private func makeTentative(sealed: Int) -> ReadingState {
 
-    makeListening(entries: [annaText, borisText], rows: [.entry(anna("00:01", name: "Anna")), .entry(boris("00:03", name: "Boris"))])
+    makeListening(entries: [annaText, borisText], rows: [.entry(anna("00:01", name: "Anna")), .entry(boris("00:03", name: "Boris"))], sealed: sealed)
 }
 
 private func anna(_ time: String, name: String?, confirmed: Bool = false) -> ReadingState.Entry {

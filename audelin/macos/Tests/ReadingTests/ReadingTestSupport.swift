@@ -50,49 +50,32 @@ func makeListening(
 }
 
 
-/// The reducer under test, built from `spy`'s formatters.
-func makeSUT() -> (sut: ReadingReducer, spy: ReadingFormattingSpy) {
 
-    let spy = ReadingFormattingSpy(recordingTime: "stub recording time", lineTime: "stub line time", span: "stub span")
-    return (ReadingReducer(recordingTime: spy.formatRecordingTime, lineTime: spy.formatLineTime, span: spy.formatSpan), spy)
+/// Records each formatter call and returns a value that names the call.
+final class RenderingSpy: Sendable {
+    enum Call: Equatable, Sendable {
+        case recording(Double), line(Double), span(String, String)
+    }
+    private let storage = Mutex<[Call]>([])
+    var calls: [Call] { storage.withLock { $0 } }
+    func recording(_ value: Double) -> String {
+
+        storage.withLock { $0.append(.recording(value)) }
+        return "recording(\(value))"
+    }
+    func line(_ value: Double) -> String {
+
+        storage.withLock { $0.append(.line(value)) }
+        return "line(\(value))"
+    }
+    func span(_ start: String, _ end: String) -> String {
+
+        storage.withLock { $0.append(.span(start, end)) }
+        return "span[\(start)|\(end)]"
+    }
 }
 
-final class ReadingFormattingSpy: Sendable {
+func makeReducer(_ spy: RenderingSpy) -> ReadingReducer {
 
-    enum Call: Equatable {
-        case recordingTime(Double)
-        case lineTime(Double)
-        case span(String, String)
-    }
-
-    let recordingTime: String
-    let lineTime: String
-    let span: String
-    private let recorded = Mutex<[Call]>([])
-    var calls: [Call] { recorded.withLock { $0 } }
-
-    init(recordingTime: String, lineTime: String, span: String) {
-
-        self.recordingTime = recordingTime
-        self.lineTime = lineTime
-        self.span = span
-    }
-
-    func formatRecordingTime(_ elapsed: Double) -> String {
-
-        recorded.withLock { $0.append(.recordingTime(elapsed)) }
-        return recordingTime
-    }
-
-    func formatLineTime(_ time: Double) -> String {
-
-        recorded.withLock { $0.append(.lineTime(time)) }
-        return lineTime
-    }
-
-    func formatSpan(_ start: String, _ end: String) -> String {
-
-        recorded.withLock { $0.append(.span(start, end)) }
-        return span
-    }
+    .init(recordingTime: { spy.recording($0) }, lineTime: { spy.line($0) }, span: { spy.span($0, $1) })
 }
