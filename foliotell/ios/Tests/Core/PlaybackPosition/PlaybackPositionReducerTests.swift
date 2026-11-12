@@ -5,21 +5,27 @@ struct PlaybackPositionReducerTests {
 
     @Test func test_reduce_shouldUpdateLiveOffsetAndRecordAnchor_onSpokenOffsetChanged() {
 
-        let (state, effect) = reduce(makeState(), .spokenOffsetChanged(20))
-
-        #expect(state == makeState(storedAnchor: 16, liveDocumentUTF16Offset: 20))
-        #expect(effect == .persistAnchor(documentPath: "/doc.md", anchor: 16))
+        assert(makeState(), .spokenOffsetChanged(20)) {
+            $0.storedAnchor = 16
+            $0.liveDocumentUTF16Offset = 20
+        }
     }
 
-    @Test func test_reduce_shouldNotPersist_onSpokenOffsetChangedWithinRecordedSentence() {
+    @Test func test_reduce_shouldDeliverPersistAnchor_onSpokenOffsetChanged() {
 
-        let (state, effect) = reduce(
-            makeState(storedAnchor: 16, liveDocumentUTF16Offset: 18),
-            .spokenOffsetChanged(20)
-        )
+        assert(makeState(), .spokenOffsetChanged(20), delivers: .persistAnchor(documentPath: "/doc.md", anchor: 16))
+    }
 
-        #expect(state == makeState(storedAnchor: 16, liveDocumentUTF16Offset: 20))
-        #expect(effect == nil)
+    @Test func test_reduce_shouldUpdateLiveOffsetOnly_onSpokenOffsetChangedWithinRecordedSentence() {
+
+        assert(makeState(storedAnchor: 16, liveDocumentUTF16Offset: 18), .spokenOffsetChanged(20)) {
+            $0.liveDocumentUTF16Offset = 20
+        }
+    }
+
+    @Test func test_reduce_shouldDeliverNothing_onSpokenOffsetChangedWithinRecordedSentence() {
+
+        assert(makeState(storedAnchor: 16, liveDocumentUTF16Offset: 18), .spokenOffsetChanged(20), delivers: nil)
     }
 
     @Test func test_reduce_shouldMapSpokenOffsetToDocumentSpace_onMarkdownDocument() {
@@ -27,23 +33,31 @@ struct PlaybackPositionReducerTests {
         // Speech text "Winter. Cold." — spoken offset 10 is inside "Cold.",
         // whose document sentence starts at 10 behind the heading marker; the
         // unsnapped document offset is 12.
-        let markdown = makeState(documentText: "# Winter. Cold.")
-
-        let (state, _) = reduce(markdown, .spokenOffsetChanged(10))
-
-        #expect(state == makeState(
-            documentText: "# Winter. Cold.",
-            storedAnchor: 10,
-            liveDocumentUTF16Offset: 12
-        ))
+        assert(makeState(documentText: "# Winter. Cold."), .spokenOffsetChanged(10)) {
+            $0.storedAnchor = 10
+            $0.liveDocumentUTF16Offset = 12
+        }
     }
 
-    @Test func test_reduce_shouldNotRecordAnchor_onSpokenOffsetChangedWithoutDocumentPath() {
+    @Test func test_reduce_shouldDeliverPersistDocumentAnchor_onMarkdownDocument() {
 
-        let (state, effect) = reduce(makeState(documentPath: nil), .spokenOffsetChanged(20))
+        assert(
+            makeState(documentText: "# Winter. Cold."),
+            .spokenOffsetChanged(10),
+            delivers: .persistAnchor(documentPath: "/doc.md", anchor: 10)
+        )
+    }
 
-        #expect(state == makeState(documentPath: nil, liveDocumentUTF16Offset: 20))
-        #expect(effect == nil)
+    @Test func test_reduce_shouldUpdateLiveOffsetOnly_onSpokenOffsetChangedWithoutDocumentPath() {
+
+        assert(makeState(documentPath: nil), .spokenOffsetChanged(20)) {
+            $0.liveDocumentUTF16Offset = 20
+        }
+    }
+
+    @Test func test_reduce_shouldDeliverNothing_onSpokenOffsetChangedWithoutDocumentPath() {
+
+        assert(makeState(documentPath: nil), .spokenOffsetChanged(20), delivers: nil)
     }
 
     @Test func test_reduce_shouldClearPositionAndStore_onPlaybackFinishedNaturally() {
@@ -128,17 +142,48 @@ struct PlaybackPositionReducerTests {
 
     @Test func test_reduce_shouldRebuildDerivationAndKeepAnchor_onFrontMatterModeChanged() {
 
-        let documentText = "---\ntitle: x\n---\nFrost. Sun."
-        let skip = makeState(documentText: documentText, frontMatterMode: .skip, storedAnchor: 24)
+        let skip = makeState(documentText: "---\ntitle: x\n---\nFrost. Sun.", frontMatterMode: .skip, storedAnchor: 24)
 
-        let (state, effect) = reduce(skip, .frontMatterModeChanged(.read))
+        assert(skip, .frontMatterModeChanged(.read)) {
+            $0.frontMatterMode = .read
+        }
+    }
 
-        #expect(state == makeState(documentText: documentText, frontMatterMode: .read, storedAnchor: 24))
-        #expect(state.resumeSpokenUTF16Offset == 16)
-        #expect(effect == nil)
+    @Test func test_reduce_shouldDeliverNothing_onFrontMatterModeChanged() {
+
+        let skip = makeState(documentText: "---\ntitle: x\n---\nFrost. Sun.", frontMatterMode: .skip, storedAnchor: 24)
+
+        assert(skip, .frontMatterModeChanged(.read), delivers: nil)
     }
 
     // MARK: - Helpers
+
+    private typealias State = PlaybackPositionState
+    private typealias Event = PlaybackPositionEvent
+    private typealias Effect = PlaybackPositionEffect
+
+    private func assert(
+        _ state: State,
+        _ event: Event,
+        sourceLocation: SourceLocation = #_sourceLocation,
+        updateStateToExpected: ((inout State) -> Void)? = nil
+    ) {
+
+        var expected = state
+        updateStateToExpected?(&expected)
+
+        #expect(reduce(state, event).0 == expected, sourceLocation: sourceLocation)
+    }
+
+    private func assert(
+        _ state: State,
+        _ event: Event,
+        delivers expected: Effect?,
+        sourceLocation: SourceLocation = #_sourceLocation
+    ) {
+
+        #expect(reduce(state, event).1 == expected, sourceLocation: sourceLocation)
+    }
 
     private func reduce(
         _ state: PlaybackPositionState,

@@ -53,6 +53,42 @@ struct PlaybackPositionStateTests {
         #expect(state.speechText == "Winter. Cold.")
     }
 
+    @Test func test_frontMatterMode_shouldRebuildDerivationKeepingPosition_onSkipToRead() {
+
+        var state = PlaybackPositionState(
+            documentText: "---\ntitle: x\n---\nFrost. Sun.",
+            frontMatterMode: .skip,
+            documentPath: nil,
+            storedAnchor: 24,
+            liveDocumentUTF16Offset: 25
+        )
+
+        state.frontMatterMode = .read
+
+        #expect(state.speechText == "title: x\nFrost. Sun.")
+        #expect(state.resumeSpokenUTF16Offset == 16)
+        #expect(state.storedAnchor == 24)
+        #expect(state.liveDocumentUTF16Offset == 25)
+    }
+
+    @Test func test_frontMatterMode_shouldRebuildDerivationKeepingPosition_onReadToSkip() {
+
+        var state = PlaybackPositionState(
+            documentText: "---\ntitle: x\n---\nFrost. Sun.",
+            frontMatterMode: .read,
+            documentPath: nil,
+            storedAnchor: 24,
+            liveDocumentUTF16Offset: 25
+        )
+
+        state.frontMatterMode = .skip
+
+        #expect(state.speechText == "Frost. Sun.")
+        #expect(state.resumeSpokenUTF16Offset == 7)
+        #expect(state.storedAnchor == 24)
+        #expect(state.liveDocumentUTF16Offset == 25)
+    }
+
     // MARK: - Helpers
 
     private func makeState(
