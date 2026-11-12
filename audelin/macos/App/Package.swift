@@ -131,7 +131,6 @@ let package = Package(
             name: "RecordingTests",
             dependencies: [
                 .product(name: "Recording", package: "macos"),
-                .product(name: "IMRxObservation", package: "swift-imrx"),
             ]
         ),
         .testTarget(
