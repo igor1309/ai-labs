@@ -51612,38 +51612,34 @@
               "reusable": true,
               "width": 340,
               "fill": "$surface",
-              "stroke": "$rule",
-              "strokeWidth": {
-                "bottom": 1
-              },
-              "layout": "vertical",
-              "gap": "$space-2",
-              "padding": [
-                "$space-8",
-                "$space-16"
-              ],
               "children": [
                 {
+                  "type": "rectangle",
+                  "cornerRadius": [
+                    0,
+                    "$radius-bar",
+                    "$radius-bar",
+                    0
+                  ],
+                  "id": "lrwBar",
+                  "name": "Bar",
+                  "fill": "#00000000",
+                  "width": 4,
+                  "height": "fill_container"
+                },
+                {
                   "type": "frame",
-                  "id": "s025x",
-                  "name": "Top",
+                  "id": "lrwIn",
+                  "name": "Inner",
                   "width": "fill_container",
-                  "gap": "$space-8",
-                  "alignItems": "center",
+                  "gap": "$space-12",
+                  "padding": [
+                    "$space-8",
+                    "$space-16",
+                    "$space-8",
+                    "$space-12"
+                  ],
                   "children": [
-                    {
-                      "type": "text",
-                      "id": "s023x",
-                      "name": "Title",
-                      "fill": "$text",
-                      "textGrowth": "fixed-width-height",
-                      "width": "fill_container",
-                      "height": 16,
-                      "content": "ЦР ID",
-                      "fontFamily": "$font-ui",
-                      "fontSize": "$type-small",
-                      "fontWeight": "600"
-                    },
                     {
                       "type": "text",
                       "id": "s024x",
@@ -51652,72 +51648,106 @@
                       "content": "12:58",
                       "fontFamily": "$font-data",
                       "fontSize": "$type-small",
-                      "fontWeight": "normal"
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "s029x",
-                  "name": "Bottom",
-                  "width": "fill_container",
-                  "gap": "$space-8",
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "text",
-                      "id": "s026x",
-                      "name": "Duration",
-                      "fill": "$gutter",
+                      "fontWeight": "normal",
                       "textGrowth": "fixed-width",
-                      "width": 48,
-                      "content": "41:11",
-                      "fontFamily": "$font-data",
-                      "fontSize": "$type-small",
-                      "fontWeight": "normal"
+                      "width": 40
                     },
                     {
-                      "type": "text",
-                      "id": "s027x",
-                      "name": "Gist",
-                      "fill": "$sub",
-                      "textGrowth": "fixed-width-height",
+                      "type": "frame",
+                      "id": "lrwBo",
+                      "name": "Body",
                       "width": "fill_container",
-                      "height": 16,
-                      "content": "Идентификаторы и связка ответов",
-                      "fontFamily": "$font-ui",
-                      "fontSize": "$type-small",
-                      "fontWeight": "normal"
-                    },
-                    {
-                      "type": "icon",
-                      "id": "s028x",
-                      "x": 0,
-                      "y": 0,
-                      "name": "Failed",
-                      "enabled": false,
-                      "width": 14,
-                      "height": 14,
-                      "icon": "circle-alert",
-                      "library": "lucide",
-                      "fill": "$rec"
-                    },
-                    {
-                      "type": "icon",
-                      "id": "s057x",
-                      "x": 0,
-                      "y": 0,
-                      "name": "Pending",
-                      "enabled": false,
-                      "width": 14,
-                      "height": 14,
-                      "icon": "loader-circle",
-                      "library": "lucide",
-                      "fill": "$sub"
+                      "layout": "vertical",
+                      "gap": "$space-2",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "s025x",
+                          "name": "Top",
+                          "width": "fill_container",
+                          "gap": "$space-8",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "s023x",
+                              "name": "Title",
+                              "fill": "$text",
+                              "textGrowth": "fixed-width-height",
+                              "width": "fill_container",
+                              "height": 16,
+                              "content": "ЦР ID",
+                              "fontFamily": "$font-ui",
+                              "fontSize": "$type-small",
+                              "fontWeight": "600"
+                            },
+                            {
+                              "type": "text",
+                              "id": "s026x",
+                              "name": "Duration",
+                              "fill": "$gutter",
+                              "content": "41:11",
+                              "fontFamily": "$font-data",
+                              "fontSize": "$type-caption",
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "s029x",
+                          "name": "Bottom",
+                          "width": "fill_container",
+                          "gap": "$space-8",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "s027x",
+                              "name": "Gist",
+                              "fill": "$sub",
+                              "textGrowth": "fixed-width-height",
+                              "width": "fill_container",
+                              "height": 16,
+                              "content": "Идентификаторы и связка ответов",
+                              "fontFamily": "$font-ui",
+                              "fontSize": "$type-small",
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "icon",
+                              "id": "s028x",
+                              "x": 0,
+                              "y": 0,
+                              "name": "Failed",
+                              "enabled": false,
+                              "width": 14,
+                              "height": 14,
+                              "icon": "circle-alert",
+                              "library": "lucide",
+                              "fill": "$rec"
+                            },
+                            {
+                              "type": "icon",
+                              "id": "s057x",
+                              "x": 0,
+                              "y": 0,
+                              "name": "Pending",
+                              "enabled": false,
+                              "width": 14,
+                              "height": 14,
+                              "icon": "loader-circle",
+                              "library": "lucide",
+                              "fill": "$sub"
+                            }
+                          ]
+                        }
+                      ]
                     }
                   ]
                 }
-              ]
+              ],
+              "height": 50
             },
             {
               "type": "frame",
@@ -51726,79 +51756,34 @@
               "reusable": true,
               "width": 340,
               "fill": "$surface",
-              "stroke": "$rule",
-              "strokeWidth": {
-                "bottom": 1
-              },
-              "layout": "vertical",
-              "gap": "$space-2",
-              "padding": [
-                "$space-8",
-                "$space-16"
-              ],
               "children": [
                 {
+                  "type": "rectangle",
+                  "cornerRadius": [
+                    0,
+                    "$radius-bar",
+                    "$radius-bar",
+                    0
+                  ],
+                  "id": "lmrBar",
+                  "name": "Bar",
+                  "fill": "#00000000",
+                  "width": 4,
+                  "height": "fill_container"
+                },
+                {
                   "type": "frame",
-                  "id": "s064x",
-                  "name": "Top",
+                  "id": "lmrIn",
+                  "name": "Inner",
                   "width": "fill_container",
-                  "gap": "$space-8",
-                  "alignItems": "center",
+                  "gap": "$space-12",
+                  "padding": [
+                    "$space-8",
+                    "$space-16",
+                    "$space-8",
+                    "$space-12"
+                  ],
                   "children": [
-                    {
-                      "type": "frame",
-                      "id": "s062x",
-                      "name": "Title",
-                      "clip": true,
-                      "width": "fill_container",
-                      "height": 16,
-                      "alignItems": "center",
-                      "children": [
-                        {
-                          "type": "text",
-                          "id": "s058x",
-                          "name": "T1",
-                          "fill": "$text",
-                          "content": "Синк по ",
-                          "fontFamily": "$font-ui",
-                          "fontSize": "$type-small",
-                          "fontWeight": "600"
-                        },
-                        {
-                          "type": "frame",
-                          "id": "s060x",
-                          "name": "Hit",
-                          "fill": "$hit",
-                          "cornerRadius": "$radius-bar",
-                          "padding": [
-                            0,
-                            "$space-2"
-                          ],
-                          "children": [
-                            {
-                              "type": "text",
-                              "id": "s059x",
-                              "name": "H",
-                              "fill": "$text",
-                              "content": "OKR",
-                              "fontFamily": "$font-ui",
-                              "fontSize": "$type-small",
-                              "fontWeight": "600"
-                            }
-                          ]
-                        },
-                        {
-                          "type": "text",
-                          "id": "s061x",
-                          "name": "T2",
-                          "fill": "$text",
-                          "content": " на квартал",
-                          "fontFamily": "$font-ui",
-                          "fontSize": "$type-small",
-                          "fontWeight": "600"
-                        }
-                      ]
-                    },
                     {
                       "type": "text",
                       "id": "s063x",
@@ -51807,97 +51792,172 @@
                       "content": "16:00",
                       "fontFamily": "$font-data",
                       "fontSize": "$type-small",
-                      "fontWeight": "normal"
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "s072x",
-                  "name": "Bottom",
-                  "width": "fill_container",
-                  "gap": "$space-8",
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "text",
-                      "id": "s065x",
-                      "name": "At",
-                      "fill": "$gutter",
+                      "fontWeight": "normal",
                       "textGrowth": "fixed-width",
-                      "width": 48,
-                      "content": "14:32",
-                      "fontFamily": "$font-data",
-                      "fontSize": "$type-small",
-                      "fontWeight": "normal"
+                      "width": 40
                     },
                     {
                       "type": "frame",
-                      "id": "s070x",
-                      "name": "Snippet",
-                      "clip": true,
+                      "id": "lmrBo",
+                      "name": "Body",
                       "width": "fill_container",
-                      "height": 16,
-                      "alignItems": "center",
+                      "layout": "vertical",
+                      "gap": "$space-2",
                       "children": [
                         {
-                          "type": "text",
-                          "id": "s066x",
-                          "name": "S1",
-                          "fill": "$sub",
-                          "content": "…итак, по ",
-                          "fontFamily": "$font-ui",
-                          "fontSize": "$type-small",
-                          "fontWeight": "normal"
+                          "type": "frame",
+                          "id": "s064x",
+                          "name": "Top",
+                          "width": "fill_container",
+                          "gap": "$space-8",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "s062x",
+                              "name": "Title",
+                              "clip": true,
+                              "width": "fill_container",
+                              "height": 16,
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "s058x",
+                                  "name": "T1",
+                                  "fill": "$text",
+                                  "content": "Синк по ",
+                                  "fontFamily": "$font-ui",
+                                  "fontSize": "$type-small",
+                                  "fontWeight": "600"
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "s060x",
+                                  "name": "Hit",
+                                  "fill": "$hit",
+                                  "cornerRadius": "$radius-bar",
+                                  "padding": [
+                                    0,
+                                    "$space-2"
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "s059x",
+                                      "name": "H",
+                                      "fill": "$text",
+                                      "content": "OKR",
+                                      "fontFamily": "$font-ui",
+                                      "fontSize": "$type-small",
+                                      "fontWeight": "600"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "s061x",
+                                  "name": "T2",
+                                  "fill": "$text",
+                                  "content": " на квартал",
+                                  "fontFamily": "$font-ui",
+                                  "fontSize": "$type-small",
+                                  "fontWeight": "600"
+                                }
+                              ]
+                            }
+                          ]
                         },
                         {
                           "type": "frame",
-                          "id": "s068x",
-                          "name": "Hit",
-                          "fill": "$hit",
-                          "cornerRadius": "$radius-bar",
-                          "padding": [
-                            0,
-                            "$space-2"
-                          ],
+                          "id": "s072x",
+                          "name": "Bottom",
+                          "width": "fill_container",
+                          "gap": "$space-8",
+                          "alignItems": "center",
                           "children": [
                             {
                               "type": "text",
-                              "id": "s067x",
-                              "name": "H",
-                              "fill": "$text",
-                              "content": "OKR",
+                              "id": "s065x",
+                              "name": "At",
+                              "fill": "$gutter",
+                              "content": "14:32",
+                              "fontFamily": "$font-data",
+                              "fontSize": "$type-small",
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "s070x",
+                              "name": "Snippet",
+                              "clip": true,
+                              "width": "fill_container",
+                              "height": 16,
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "s066x",
+                                  "name": "S1",
+                                  "fill": "$sub",
+                                  "content": "…итак, по ",
+                                  "fontFamily": "$font-ui",
+                                  "fontSize": "$type-small",
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "s068x",
+                                  "name": "Hit",
+                                  "fill": "$hit",
+                                  "cornerRadius": "$radius-bar",
+                                  "padding": [
+                                    0,
+                                    "$space-2"
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "s067x",
+                                      "name": "H",
+                                      "fill": "$text",
+                                      "content": "OKR",
+                                      "fontFamily": "$font-ui",
+                                      "fontSize": "$type-small",
+                                      "fontWeight": "normal"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "s069x",
+                                  "name": "S2",
+                                  "fill": "$sub",
+                                  "content": " второго квартала закрываем два из трёх…",
+                                  "fontFamily": "$font-ui",
+                                  "fontSize": "$type-small",
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "id": "s071x",
+                              "name": "More",
+                              "fill": "$gutter",
+                              "content": "ещё 4",
                               "fontFamily": "$font-ui",
                               "fontSize": "$type-small",
                               "fontWeight": "normal"
                             }
                           ]
-                        },
-                        {
-                          "type": "text",
-                          "id": "s069x",
-                          "name": "S2",
-                          "fill": "$sub",
-                          "content": " второго квартала закрываем два из трёх…",
-                          "fontFamily": "$font-ui",
-                          "fontSize": "$type-small",
-                          "fontWeight": "normal"
                         }
                       ]
-                    },
-                    {
-                      "type": "text",
-                      "id": "s071x",
-                      "name": "More",
-                      "fill": "$gutter",
-                      "content": "ещё 4",
-                      "fontFamily": "$font-ui",
-                      "fontSize": "$type-small",
-                      "fontWeight": "normal"
                     }
                   ]
                 }
-              ]
+              ],
+              "height": 50
             },
             {
               "type": "frame",
@@ -52375,23 +52435,26 @@
                       "ref": "s030x",
                       "name": "Row ЦР ID",
                       "width": "fill_container",
-                      "fill": "$selBg",
+                      "fill": "$okBg",
                       "descendants": {
                         "s023x": {
                           "content": "ЦР ID",
-                          "fill": "$selText"
+                          "fill": "$text"
                         },
                         "s024x": {
                           "content": "12:58",
-                          "fill": "$selText"
+                          "fill": "$me"
                         },
                         "s026x": {
                           "content": "41:11",
-                          "fill": "$selText"
+                          "fill": "$gutter"
                         },
                         "s027x": {
                           "content": "Идентификаторы и связка ответов",
-                          "fill": "$selText"
+                          "fill": "$sub"
+                        },
+                        "lrwBar": {
+                          "fill": "$me"
                         }
                       }
                     },
@@ -52969,27 +53032,30 @@
                       "ref": "s030x",
                       "name": "Row iOS Daily",
                       "width": "fill_container",
-                      "fill": "$selBg",
+                      "fill": "$okBg",
                       "descendants": {
                         "s023x": {
                           "content": "iOS Daily",
-                          "fill": "$selText"
+                          "fill": "$text"
                         },
                         "s024x": {
                           "content": "10:00",
-                          "fill": "$selText"
+                          "fill": "$me"
                         },
                         "s026x": {
                           "content": "15:02",
-                          "fill": "$selText"
+                          "fill": "$gutter"
                         },
                         "s027x": {
                           "content": "Подготовка итогов…",
-                          "fill": "$selText"
+                          "fill": "$gutter"
                         },
                         "s057x": {
                           "enabled": true,
-                          "fill": "$selText"
+                          "fill": "$sub"
+                        },
+                        "lrwBar": {
+                          "fill": "$me"
                         }
                       }
                     },
@@ -53487,27 +53553,30 @@
                       "ref": "s030x",
                       "name": "Row iOS & Android daily",
                       "width": "fill_container",
-                      "fill": "$selBg",
+                      "fill": "$okBg",
                       "descendants": {
                         "s023x": {
                           "content": "iOS & Android daily",
-                          "fill": "$selText"
+                          "fill": "$text"
                         },
                         "s024x": {
                           "content": "09:59",
-                          "fill": "$selText"
+                          "fill": "$me"
                         },
                         "s026x": {
                           "content": "14:51",
-                          "fill": "$selText"
+                          "fill": "$gutter"
                         },
                         "s027x": {
                           "content": "Не удалось подготовить итоги",
-                          "fill": "$selText"
+                          "fill": "$rec"
                         },
                         "s028x": {
                           "enabled": true,
-                          "fill": "$selText"
+                          "fill": "$rec"
+                        },
+                        "lrwBar": {
+                          "fill": "$me"
                         }
                       }
                     },
@@ -54005,25 +54074,28 @@
                       "ref": "s030x",
                       "name": "Row 2026.11.09-1000",
                       "width": "fill_container",
-                      "fill": "$selBg",
+                      "fill": "$okBg",
                       "descendants": {
                         "s023x": {
                           "content": "2026.11.09-1000",
-                          "fill": "$selText",
+                          "fill": "$text",
                           "fontFamily": "$font-data",
                           "fontWeight": "normal"
                         },
                         "s024x": {
                           "content": "10:00",
-                          "fill": "$selText"
+                          "fill": "$me"
                         },
                         "s026x": {
                           "content": "16:10",
-                          "fill": "$selText"
+                          "fill": "$gutter"
                         },
                         "s027x": {
                           "content": "",
-                          "fill": "$selText"
+                          "fill": "$sub"
+                        },
+                        "lrwBar": {
+                          "fill": "$me"
                         }
                       }
                     },
@@ -54310,6 +54382,9 @@
                         },
                         "s027x": {
                           "content": "Идентификаторы и связка ответов"
+                        },
+                        "lrwBar": {
+                          "fill": "$gutter"
                         }
                       }
                     },
@@ -55292,11 +55367,11 @@
                       "ref": "s073x",
                       "name": "Match ЦР ID",
                       "width": "fill_container",
-                      "fill": "$selBg",
+                      "fill": "$okBg",
                       "descendants": {
                         "s058x": {
                           "content": "ЦР ID",
-                          "fill": "$selText"
+                          "fill": "$text"
                         },
                         "s060x": {
                           "enabled": false
@@ -55306,31 +55381,34 @@
                         },
                         "s061x": {
                           "content": "",
-                          "fill": "$selText"
+                          "fill": "$text"
                         },
                         "s063x": {
                           "content": "12:58",
-                          "fill": "$selText"
+                          "fill": "$me"
                         },
                         "s065x": {
                           "content": "07:38",
-                          "fill": "$selText"
+                          "fill": "$gutter"
                         },
                         "s066x": {
                           "content": "…по ",
-                          "fill": "$selText"
+                          "fill": "$sub"
                         },
                         "s067x": {
                           "content": "correlation"
                         },
                         "s069x": {
                           "content": " ID в XML…",
-                          "fill": "$selText"
+                          "fill": "$sub"
                         },
                         "s071x": {
                           "content": "ещё 3",
                           "enabled": true,
-                          "fill": "$selText"
+                          "fill": "$gutter"
+                        },
+                        "lmrBar": {
+                          "fill": "$me"
                         }
                       }
                     },
@@ -55716,11 +55794,11 @@
                       "ref": "s073x",
                       "name": "Match ЦР ID",
                       "width": "fill_container",
-                      "fill": "$selBg",
+                      "fill": "$okBg",
                       "descendants": {
                         "s058x": {
                           "content": "ЦР ID",
-                          "fill": "$selText"
+                          "fill": "$text"
                         },
                         "s060x": {
                           "enabled": false
@@ -55730,31 +55808,34 @@
                         },
                         "s061x": {
                           "content": "",
-                          "fill": "$selText"
+                          "fill": "$text"
                         },
                         "s063x": {
                           "content": "12:58",
-                          "fill": "$selText"
+                          "fill": "$me"
                         },
                         "s065x": {
                           "content": "07:38",
-                          "fill": "$selText"
+                          "fill": "$gutter"
                         },
                         "s066x": {
                           "content": "…по ",
-                          "fill": "$selText"
+                          "fill": "$sub"
                         },
                         "s067x": {
                           "content": "correlation"
                         },
                         "s069x": {
                           "content": " ID в XML…",
-                          "fill": "$selText"
+                          "fill": "$sub"
                         },
                         "s071x": {
                           "content": "ещё 3",
                           "enabled": true,
-                          "fill": "$selText"
+                          "fill": "$gutter"
+                        },
+                        "lmrBar": {
+                          "fill": "$me"
                         }
                       }
                     },
@@ -57217,23 +57298,26 @@
                       "ref": "s030x",
                       "name": "Row ЦР ID",
                       "width": "fill_container",
-                      "fill": "$selBg",
+                      "fill": "$okBg",
                       "descendants": {
                         "s023x": {
                           "content": "ЦР ID",
-                          "fill": "$selText"
+                          "fill": "$text"
                         },
                         "s024x": {
                           "content": "12:58",
-                          "fill": "$selText"
+                          "fill": "$me"
                         },
                         "s026x": {
                           "content": "41:11",
-                          "fill": "$selText"
+                          "fill": "$gutter"
                         },
                         "s027x": {
                           "content": "Идентификаторы и связка ответов",
-                          "fill": "$selText"
+                          "fill": "$sub"
+                        },
+                        "lrwBar": {
+                          "fill": "$me"
                         }
                       }
                     },
@@ -57784,23 +57868,26 @@
                       "ref": "s030x",
                       "name": "Row ЦР ID",
                       "width": "fill_container",
-                      "fill": "$selBg",
+                      "fill": "$okBg",
                       "descendants": {
                         "s023x": {
                           "content": "ЦР ID",
-                          "fill": "$selText"
+                          "fill": "$text"
                         },
                         "s024x": {
                           "content": "12:58",
-                          "fill": "$selText"
+                          "fill": "$me"
                         },
                         "s026x": {
                           "content": "41:11",
-                          "fill": "$selText"
+                          "fill": "$gutter"
                         },
                         "s027x": {
                           "content": "Идентификаторы и связка ответов",
-                          "fill": "$selText"
+                          "fill": "$sub"
+                        },
+                        "lrwBar": {
+                          "fill": "$me"
                         }
                       }
                     },
@@ -58348,23 +58435,26 @@
                       "ref": "s030x",
                       "name": "Row ЦР ID",
                       "width": "fill_container",
-                      "fill": "$selBg",
+                      "fill": "$okBg",
                       "descendants": {
                         "s023x": {
                           "content": "ЦР ID",
-                          "fill": "$selText"
+                          "fill": "$text"
                         },
                         "s024x": {
                           "content": "12:58",
-                          "fill": "$selText"
+                          "fill": "$me"
                         },
                         "s026x": {
                           "content": "41:11",
-                          "fill": "$selText"
+                          "fill": "$gutter"
                         },
                         "s027x": {
                           "content": "Идентификаторы и связка ответов",
-                          "fill": "$selText"
+                          "fill": "$sub"
+                        },
+                        "lrwBar": {
+                          "fill": "$me"
                         }
                       }
                     },
