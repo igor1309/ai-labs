@@ -50,7 +50,7 @@ import Observation
         notice = .init(initialState: hidden,
                        reduce: loggedReducer(TimeoutNotice.reduce, initial: hidden, category: .timeoutNotice, log: log,
                                              changed: { _, _ in }),
-                       handleEffect: TimeoutNotice.EffectHandler(timer: noticeTimer).handle)
+                       handleEffect: deliveringNothing(TimeoutNotice.EffectHandler(timer: noticeTimer).handle))
         noticeTimer.send = { [weak self] event in self?.notice?.event(event) }
         let initial = HostBroadcast.State()
         let handler = HostBroadcast.Handler(session: bindings, advertiser: bindings, sender: bindings, countdown: bindings, setting: bindings)

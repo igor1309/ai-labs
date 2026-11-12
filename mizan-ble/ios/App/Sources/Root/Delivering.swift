@@ -28,3 +28,14 @@ func delivering<Effect, Event: Sendable>(
         }
     }
 }
+
+/// Adapts an effect handler that delivers no event. The handler runs before the
+/// stream is returned; the stream finishes empty.
+func deliveringNothing<Effect, Event: Sendable>(
+    _ handle: @escaping (Effect) -> Void
+) -> (Effect) -> AsyncStream<Event> {
+    { effect in
+        handle(effect)
+        return AsyncStream { $0.finish() }
+    }
+}

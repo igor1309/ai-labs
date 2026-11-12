@@ -14,6 +14,16 @@ struct DeliveringTests {
         #expect(handled == [effect])
         #expect(try await collect(stream) == ["\(effect)"])
     }
+
+    @Test(arguments: [7, 42])
+    func handlerWithNoEventRunsBeforeTheStreamIsReturnedAndFinishesItEmpty(effect: Int) async throws {
+        var handled: [Int] = []
+        let stream: AsyncStream<String> = deliveringNothing { (effect: Int) in handled.append(effect) }(effect)
+
+        #expect(handled == [effect])
+        #expect(try await collect(stream) == [])
+    }
+
     @Test func asyncHandlerStartsInlineAndEndsTheStreamWithItsEvent() async throws {
         let gate = Gate()
         let stream = delivering { (effect: Int) async -> String in
