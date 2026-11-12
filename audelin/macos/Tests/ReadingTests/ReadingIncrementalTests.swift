@@ -153,21 +153,17 @@ struct ReadingIncrementalTests {
 
     @Test func tailOmissionRetainsTheFinalPrefix() {
 
-        let state = makeFinalPrefix()
+        let spy = RenderingSpy()
         let omitted = segment(2, at: 2)
         let remaining = segment(3, at: 3)
-        let event = ReadingEvent.textUpdated(.init(status: .listening, entries: [remaining], from: 2, finalCount: 2))
-        assert(state, event, delivers: nil) {
+        assert(makeFinalPrefix(), .textUpdated(.init(status: .listening, entries: [remaining], from: 2, finalCount: 2)),
+               delivers: nil, using: makeReducer(spy)) {
             $0.text[omitted.id] = nil
             $0.anchors[omitted.id] = nil
             $0.lines.rows.remove(at: 2)
             $0.log = .lines($0.lines)
         }
-        let result = ReadingReducer.reduce(state, event).0
-        #expect(result.text.sealed == state.text.sealed)
-        #expect(result.lines.rows.sealed == state.lines.rows.sealed)
-        #expect(result.rendered.inSealedRows == 2)
-        #expect(result.entryCount == 3)
+        #expect(spy.calls == [])
     }
 
     @Test func unchangedUpdateChangesNothing() {
@@ -261,21 +257,10 @@ private func makeCachedJoined() -> ReadingState {
 
 private func makeFinalPrefix() -> ReadingState {
 
-    var state = makeListening(entries: (0..<4).map { segment($0, at: Double($0)) }, rows: [
+    makeListening(entries: (0..<4).map { segment($0, at: Double($0)) }, rows: [
         .entry(shown(0, "00:00")), .entry(shown(1, "00:01")),
         .entry(shown(2, "00:02")), .entry(shown(3, "00:03")),
-    ])
-    for id in 0..<2 {
-        let key = ReadingTextUpdate.Entry.ID(speaker: .mine, localID: id)
-        state.text.seal(key)
-        state.anchors.seal(key)
-        state.rendered.entries.seal(key)
-        state.rendered.locations.seal(key)
-    }
-    state.lines.rows.seal(upTo: 2)
-    state.rendered.inSealedRows = 2
-    state.log = .lines(state.lines)
-    return state
+    ], sealed: 2)
 }
 
 private func segment(

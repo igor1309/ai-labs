@@ -277,6 +277,8 @@ struct ReadingRenderingTests {
                delivers: nil, using: makeReducer(spy)) {
             $0.text.seal(text.id)
             $0.anchors.seal(text.id)
+            $0.rendered.entries.seal(text.id)
+            $0.rendered.locations.seal(text.id)
             $0.lines.rows.seal(upTo: 1)
         }
         #expect(spy.calls == [])

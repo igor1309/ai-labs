@@ -702,7 +702,24 @@ func assert(
     change(&expected)
     let result = reducer?.reduce(state, event) ?? ReadingReducer.reduce(state, event)
     #expect(result.0 == expected, sourceLocation: sourceLocation)
+    #expect(sealedParts(result.0) == sealedParts(expected), "sealed parts", sourceLocation: sourceLocation)
     #expect(result.1 == effect, sourceLocation: sourceLocation)
+}
+
+/// What the state holds as sealed. State equality ignores where its lists split,
+/// so `assert` compares the split here.
+private struct SealedParts: Equatable {
+    let rows: [ReadingState.Row]
+    let text: [ReadingTextUpdate.Entry.ID: ReadingTextUpdate.Entry]
+    let anchors: [ReadingTextUpdate.Entry.ID: ReadingState.Anchor]
+    let entries: [ReadingTextUpdate.Entry.ID: ReadingState.Entry]
+    let locations: [ReadingTextUpdate.Entry.ID: ReadingState.Rendered.Location]
+}
+
+private func sealedParts(_ state: ReadingState) -> SealedParts {
+
+    .init(rows: state.lines.rows.sealed, text: state.text.sealed, anchors: state.anchors.sealed,
+          entries: state.rendered.entries.sealed, locations: state.rendered.locations.sealed)
 }
 
 private func makeState() -> ReadingState { .init() }
