@@ -20,6 +20,16 @@ let package = Package(
             ]
         ),
         .executableTarget(
+            name: "CallsPreview",
+            dependencies: [
+                "PreviewKit",
+                .product(name: "CallsListUI", package: "macos"),
+                .product(name: "CallsWindowUI", package: "macos"),
+                .product(name: "GlassLedger", package: "macos"),
+                .product(name: "SummaryPreviewUI", package: "macos"),
+            ]
+        ),
+        .executableTarget(
             name: "LiveTextPreview",
             dependencies: [
                 "PreviewKit",

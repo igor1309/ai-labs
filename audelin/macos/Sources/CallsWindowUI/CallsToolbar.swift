@@ -4,13 +4,15 @@ import SummaryPreviewUI
 
 /// Which of the toolbar's buttons act: all need a selected call, Копировать
 /// also its notes.
-struct CallActions: Equatable {
-    var call: Bool
-    var copy: Bool
+public struct CallActions: Equatable, Sendable {
+    public var call: Bool
+    public var copy: Bool
+
+    public init(call: Bool, copy: Bool) { self.call = call; self.copy = copy }
 }
 
 /// The toolbar's buttons for the call the detail shows.
-func callActions(_ state: SummaryPreviewState?) -> CallActions {
+public func callActions(_ state: SummaryPreviewState?) -> CallActions {
     guard let state else { return .init(call: false, copy: false) }
     if case .markdown = state.notes { return .init(call: true, copy: true) }
     return .init(call: true, copy: false)
@@ -19,14 +21,14 @@ func callActions(_ state: SummaryPreviewState?) -> CallActions {
 /// The selected call's row actions over the list, with Copy trailing over the detail.
 /// A call's own window has the same actions without a split separator.
 @MainActor
-final class CallsToolbar: NSObject, NSToolbarDelegate, NSToolbarItemValidation {
-    static let titleItem = NSToolbarItem.Identifier("calls.title")
-    static let actionsItem = NSToolbarItem.Identifier("calls.actions")
-    static let deleteItem = NSToolbarItem.Identifier("calls.delete")
-    static let copyItem = NSToolbarItem.Identifier("calls.copy")
-    static let separatorItem = NSToolbarItem.Identifier("calls.divider")
+public final class CallsToolbar: NSObject, NSToolbarDelegate, NSToolbarItemValidation {
+    public static let titleItem = NSToolbarItem.Identifier("calls.title")
+    public static let actionsItem = NSToolbarItem.Identifier("calls.actions")
+    public static let deleteItem = NSToolbarItem.Identifier("calls.delete")
+    public static let copyItem = NSToolbarItem.Identifier("calls.copy")
+    public static let separatorItem = NSToolbarItem.Identifier("calls.divider")
 
-    let toolbar: NSToolbar
+    public let toolbar: NSToolbar
     private let title: NSToolbarItem?
     private let actions = NSToolbarItemGroup(itemIdentifier: actionsItem)
     private let delete = NSToolbarItem(itemIdentifier: deleteItem)
@@ -38,7 +40,7 @@ final class CallsToolbar: NSObject, NSToolbarDelegate, NSToolbarItemValidation {
         (.open, "folder", "calls.open"), (.rename, "pencil", "calls.rename"),
     ]
 
-    init(identifier: String, splitView: NSSplitView? = nil, title: String? = nil, text: SummaryPreviewText,
+    public init(identifier: String, splitView: NSSplitView? = nil, title: String? = nil, text: SummaryPreviewText,
          act: @escaping (SummaryPreviewEvent) -> Void) {
         self.act = act
         toolbar = NSToolbar(identifier: identifier)
@@ -81,7 +83,7 @@ final class CallsToolbar: NSObject, NSToolbarDelegate, NSToolbarItemValidation {
     }
 
     /// The buttons' names, as when the language changes.
-    func retitle(text: SummaryPreviewText, title: String? = nil) {
+    public func retitle(text: SummaryPreviewText, title: String? = nil) {
         if let title { (self.title?.view as? NSTextField)?.stringValue = title }
         for (item, phrase) in zip(actions.subitems, [SummaryPreviewPhrase.open, .rename]) { name(item, text(phrase)) }
         name(delete, text(.delete))
@@ -89,7 +91,7 @@ final class CallsToolbar: NSObject, NSToolbarDelegate, NSToolbarItemValidation {
     }
 
     /// Enables the buttons that act on the call shown; disabled ones stay in place.
-    func show(_ enabled: CallActions) {
+    public func show(_ enabled: CallActions) {
         self.enabled = enabled
         actions.subitems.forEach { $0.isEnabled = enabled.call }
         delete.isEnabled = enabled.call
@@ -98,7 +100,7 @@ final class CallsToolbar: NSObject, NSToolbarDelegate, NSToolbarItemValidation {
     }
 
     /// AppKit asks before it draws an item; the answer is the call shown, not whether the action exists.
-    func validateToolbarItem(_ item: NSToolbarItem) -> Bool {
+    public func validateToolbarItem(_ item: NSToolbarItem) -> Bool {
         item.itemIdentifier == Self.copyItem ? enabled.copy : enabled.call
     }
 
@@ -116,9 +118,9 @@ final class CallsToolbar: NSObject, NSToolbarDelegate, NSToolbarItemValidation {
         (title == nil ? [] : [Self.titleItem, .flexibleSpace]) + [Self.actionsItem, Self.deleteItem] + (separator == nil ? [] : [Self.separatorItem]) + [.flexibleSpace, Self.copyItem]
     }
 
-    func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] { identifiers }
-    func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] { identifiers }
-    func toolbar(_ toolbar: NSToolbar, itemForItemIdentifier identifier: NSToolbarItem.Identifier,
+    public func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] { identifiers }
+    public func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] { identifiers }
+    public func toolbar(_ toolbar: NSToolbar, itemForItemIdentifier identifier: NSToolbarItem.Identifier,
                  willBeInsertedIntoToolbar flag: Bool) -> NSToolbarItem? {
         switch identifier {
         case Self.titleItem: title

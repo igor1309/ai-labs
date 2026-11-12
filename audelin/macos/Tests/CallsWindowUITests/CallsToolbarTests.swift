@@ -1,5 +1,5 @@
 import AppKit
-@testable import Audelin
+import CallsWindowUI
 import SummaryPreviewUI
 import Testing
 

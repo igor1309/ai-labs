@@ -136,7 +136,7 @@ struct SummaryPreviewTests {
     private let size = CGSize(width: 440, height: 560)
 
     /// Повторить итоги, the last line of the failed message centred below the header.
-    private var retryLocation: NSPoint { NSPoint(x: size.width / 2, y: 194) }
+    private var retryLocation: NSPoint { NSPoint(x: size.width / 2, y: 209) }
 
     private func view(_ state: SummaryPreviewState?, text: SummaryPreviewText = .init(language: .russian), scheme: ColorScheme = .light) -> some View {
         SummaryPreviewView(state: state, text: text, event: { _ in }, render: markdown).environment(\.colorScheme, scheme)
