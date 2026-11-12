@@ -10,10 +10,10 @@ struct ReadingNamesConfirmedTests {
         let spy = RenderingSpy()
         assert(makeTentative(sealed: sealed), .namesConfirmed([1: "Anna K."]), delivers: nil, using: makeReducer(spy)) {
             $0.lines.layout = 1
-            let rows: [ReadingState.Row] = [.entry(anna("00:01", name: "Anna K.", confirmed: true)), .entry(boris("00:03", name: nil))]
+            let rows: [ReadingState.Row] = [.entry(anna("line(1.0)", name: "Anna K.", confirmed: true)), .entry(boris("line(3.0)", name: nil))]
             $0.lines.rows = .init(sealed: Array(rows.prefix(sealed)), tail: Array(rows.dropFirst(sealed)))
-            $0.rendered.entries[annaText.id] = anna("00:01", name: "Anna K.", confirmed: true)
-            $0.rendered.entries[borisText.id] = boris("00:03", name: nil)
+            $0.rendered.entries[annaText.id] = anna("line(1.0)", name: "Anna K.", confirmed: true)
+            $0.rendered.entries[borisText.id] = boris("line(3.0)", name: nil)
             $0.log = .lines($0.lines)
         }
         #expect(spy.calls == [])
@@ -25,7 +25,7 @@ private let borisText = theirs(2, at: 3, name: "Boris")
 
 private func makeTentative(sealed: Int) -> ReadingState {
 
-    makeListening(entries: [annaText, borisText], rows: [.entry(anna("00:01", name: "Anna")), .entry(boris("00:03", name: "Boris"))], sealed: sealed)
+    makeListening(entries: [annaText, borisText], rows: [.entry(anna("line(1.0)", name: "Anna")), .entry(boris("line(3.0)", name: "Boris"))], sealed: sealed)
 }
 
 private func anna(_ time: String, name: String?, confirmed: Bool = false) -> ReadingState.Entry {

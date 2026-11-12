@@ -180,7 +180,7 @@ private func update(late: Bool = false) -> ReadingTextUpdate {
 }
 
 private func makeState(
-    recording: ReadingState.Recording = .on(elapsed: "00:00:09"), late: Bool = false,
+    recording: ReadingState.Recording = .on(elapsed: "recording(9.0)"), late: Bool = false,
     problems: [ReadingProblem] = [], banners: [ReadingState.Banner] = [],
     rows: [ReadingState.Row] = [.entry(first), .entry(last)]
 ) -> ReadingState {
