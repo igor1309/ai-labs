@@ -177,12 +177,14 @@ struct RecordingDoerTests {
         #expect(await spies.sent.count == 0)
     }
 
-    @Test func idleWithNoSessionDoesNothing() async {
+    @Test(arguments: [makeIdle(), makeReserved(), makeQueued(.hand), makeQueued(.call)])
+    func aStateWithNoSessionDoesNothing(_ state: RecordingState) async {
 
         let (sut, spies) = makeSUT()
-        sut.act(on: makeIdle())
-        sut.act(on: makeIdle())
+        sut.act(on: state)
+        sut.act(on: state)
         #expect(await spies.ready.count == 0)
+        #expect(await spies.released.count == 0)
         #expect(await spies.session.beginIDs.isEmpty)
         #expect(await spies.sent.count == 0)
     }

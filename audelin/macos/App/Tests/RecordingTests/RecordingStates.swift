@@ -30,3 +30,13 @@ func makeEnded() -> RecordingState { makeState(makeIdle()) { $0.lastSessionID = 
 func makeBlocked(_ condition: RecordingCondition) -> RecordingState { makeState(makeIdle()) { $0.missing = [condition] } }
 func makeIdleAfter(_ id: UInt64) -> RecordingState { makeState(RecordingState(missing: [])) { $0.lastSessionID = id } }
 func makeFailedAfter(_ id: UInt64) -> RecordingState { makeState(makeIdleAfter(id)) { $0.cannotRecord = "cannot keep audio" } }
+func makeReserved() -> RecordingState { makeState(makeIdle()) { $0.storageReserved = true } }
+
+func makeQueued(_ origin: RecordingState.Origin) -> RecordingState {
+    makeState(makeReserved()) {
+        $0.pendingStart = origin
+        $0.callOn = origin == .call
+    }
+}
+
+func makeQueuedWithoutFolder() -> RecordingState { makeState(makeQueued(.hand)) { $0.missing = [.callsFolder] } }
