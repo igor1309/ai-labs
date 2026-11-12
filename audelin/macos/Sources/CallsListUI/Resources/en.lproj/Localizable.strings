@@ -1,6 +1,7 @@
 "list.loading" = "Loading calls…";
 "list.empty" = "No recorded calls yet";
 "row.titlePlaceholder" = "Title";
+"row.makeSummary" = "Make a summary";
 "row.retrySummary" = "Retry the summary";
 "row.open" = "Open";
 "row.delete" = "Delete";

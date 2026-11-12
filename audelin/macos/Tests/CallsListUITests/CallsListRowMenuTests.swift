@@ -41,15 +41,16 @@ struct CallsListRowMenuTests {
         #expect(spy.events == [.select(id), .open(id), .beginRename(id), .retrySummary(id), .askDelete(id)])
     }
 
-    @Test func busyListDisablesWhatWaitsForIt() throws {
+    @Test(arguments: ["2026.10.21-1230", "2026.10.20-1600", "2026.10.19-0900"])
+    func busyListDisablesWhatWaitsForIt(id: String) throws {
 
         var state = makeState()
         state.busy = true
         let host = Offscreen.host(view(state, EventSpy()), size: size)
 
-        let menu = try #require(try target("2026.10.20-1600", in: host).menu(for: rightClick()))
+        let menu = try #require(try target(id, in: host).menu(for: rightClick()))
 
-        #expect(menu.items.map(\.isEnabled) == [false, false, false, false, false])
+        #expect(menu.items.allSatisfy { !$0.isEnabled })
     }
 
     @Test func rowWithoutNotesOrFailedSummaryOmitsTheirItems() throws {
@@ -59,6 +60,18 @@ struct CallsListRowMenuTests {
         let menu = try #require(try target("2026.10.21-1230", in: host).menu(for: rightClick()))
 
         #expect(menu.items.map(\.title) == ["Открыть", "Переименовать", "", "Удалить…"])
+    }
+
+    @Test func rowThatCanMakeNotesOffersToAndSaysWhich() throws {
+
+        let spy = EventSpy()
+        let host = Offscreen.host(view(makeState(), spy), size: size)
+        let menu = try #require(try target("2026.10.19-0900", in: host).menu(for: rightClick()))
+
+        #expect(menu.items.map(\.title) == ["Открыть", "Переименовать", "Сделать итоги", "", "Удалить…"])
+        let index = try #require(menu.items.firstIndex { $0.title == "Сделать итоги" })
+        menu.performActionForItem(at: index)
+        #expect(spy.events == [.select("2026.10.19-0900"), .makeSummary("2026.10.19-0900")])
     }
 
     // MARK: - Helpers
@@ -98,6 +111,7 @@ struct CallsListRowMenuTests {
         return CallsListState(rows: [
             .init(id: "2026.10.21-1230", title: "Запуск", displayTitle: "Запуск", day: .init(title: "Сегодня", count: "1 звонок"), time: "12:30", duration: "47:00", editable: true),
             .init(id: "2026.10.20-1600", title: "Синк по OKR", displayTitle: "Синк по OKR", day: .init(title: "Вчера", count: "1 звонок"), time: "16:00", duration: "1:12:00", editable: true, hasNotes: true, canRetrySummary: true, summary: .failed),
+            .init(id: "2026.10.19-0900", title: "Дейли", displayTitle: "Дейли", day: .init(title: "Пятница", count: "1 звонок"), time: "09:00", duration: "15:00", editable: true, canMakeSummary: true),
         ])
     }
 }

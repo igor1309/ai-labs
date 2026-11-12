@@ -368,6 +368,8 @@ public final class AudelinCalls {
             }
             guard selectedID == id, detail?.id == id else { return }
             readCall()
+        // Ignored: this composer sets no row's canMakeSummary.
+        case .makeSummary: return
         case let .retrySummary(id):
             guard !snapshot.busy, let row = snapshot.rows.first(where: { $0.id == id }),
                   row.editable, row.canRetrySummary else { return }

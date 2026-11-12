@@ -1,6 +1,7 @@
 "list.loading" = "Загружаются звонки…";
 "list.empty" = "Пока нет записанных звонков";
 "row.titlePlaceholder" = "Название";
+"row.makeSummary" = "Сделать итоги";
 "row.retrySummary" = "Повторить подготовку итогов";
 "row.open" = "Открыть";
 "row.delete" = "Удалить";

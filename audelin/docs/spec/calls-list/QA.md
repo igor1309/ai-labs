@@ -48,6 +48,13 @@ carries the gist.
 retry with previous notes selected, asserts the old text stays readable,
 completes it, and asserts the detail carries the new text.
 
+## S-27 Making notes from a row
+
+The row menu of a row that can make notes lists «Сделать итоги» and
+sends the make event for that row; a row that cannot does not list it,
+and a busy list disables it (`CallsListRowMenuTests`). The row's second
+line then shows «Подготовка итогов…» and the spinner.
+
 ## S-26 An untitled call shows its folder name
 
 A state with a call whose title is empty; the image shows its folder name

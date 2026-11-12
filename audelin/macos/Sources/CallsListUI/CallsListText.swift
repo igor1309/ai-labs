@@ -15,6 +15,7 @@ public enum CallsListPhrase: String, CaseIterable, Sendable {
     case emptyHint = "list.emptyHint"
     case titlePlaceholder = "row.titlePlaceholder"
     case retrySummary = "row.retrySummary"
+    case makeSummary = "row.makeSummary"
     case open = "row.open"
     case delete = "row.delete"
     case deleteMenu = "row.deleteMenu"

@@ -17,6 +17,9 @@ Oracle: the design brief `../../design/calls-list.md`.
   row and in the detail, including replacement notes from a retry: the
   user is looking at that call, and a list read on open would hide them
   until the window is closed and opened again.
+- **The row menu offers «Сделать итоги» only to a call without notes,**
+  as it offers «Повторить подготовку итогов» only to one whose notes
+  failed: a menu lists what can be done to that call now.
 
 ```gherkin
 Feature: Choosing a call to read
@@ -60,6 +63,11 @@ Feature: Choosing a call to read
     Given I am reading a call's previous notes while its retry runs
     When replacement notes finish
     Then I can read the replacement without selecting the call again
+
+  Scenario: S-27 Making notes from a row
+    Given a call has no notes
+    When I right-click its row and choose «Сделать итоги»
+    Then I can see in its row that they are being prepared
 
   Scenario: S-26 An untitled call shows its folder name
     Given a call has no title of its own

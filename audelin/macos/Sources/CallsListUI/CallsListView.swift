@@ -95,6 +95,9 @@ public struct CallsListView: View {
         items.append(RowMenuItem(title: text(.rename), key: "r", modifiers: .command, isEnabled: row.editable && !state.busy) {
             event(.beginRename(row.id))
         })
+        if row.canMakeSummary {
+            items.append(RowMenuItem(title: text(.makeSummary), isEnabled: !state.busy) { event(.makeSummary(row.id)) })
+        }
         if row.canRetrySummary {
             items.append(RowMenuItem(title: text(.retrySummary), isEnabled: !state.busy) { event(.retrySummary(row.id)) })
         }
