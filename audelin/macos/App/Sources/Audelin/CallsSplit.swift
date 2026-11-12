@@ -60,6 +60,7 @@ enum CallsSplit {
     static let widthKey = "CallsSplit.listWidth"
 }
 
+@MainActor
 private func hosting(_ view: NSView) -> NSViewController {
     let controller = NSViewController()
     controller.view = view
@@ -97,6 +98,11 @@ struct CallsDetailContent: View {
     let text: () -> SummaryPreviewText
     var body: some View {
         SummaryPreviewView(state: detailState(model.detail), text: text(),
-                           event: { event in Task { await model.send(detail: detailEvent(event)) } }, render: renderNotes)
+                           event: detailSender { await model.send(detail: $0) }, render: renderNotes)
     }
+}
+
+/// The detail view's event handler: each button sent to the calls window as its action.
+func detailSender(_ send: @escaping @MainActor (CallsDetailEvent) async -> Void) -> (SummaryPreviewEvent) -> Void {
+    { event in Task { @MainActor in await send(detailEvent(event)) } }
 }

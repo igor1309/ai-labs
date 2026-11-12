@@ -1,6 +1,8 @@
 import AppKit
+import CallsListUI
 import Composer
 import SummaryPreviewUI
+import SwiftUI
 import Testing
 @testable import Audelin
 
@@ -36,15 +38,29 @@ struct CallsSplitTests {
     }
 
     @Test func tabMovesTheKeyboardBetweenTheListAndTheDetail() throws {
-        let list = Focusable(), detail = Focusable()
+        let list = NSHostingView(rootView: CallsListView(state: CallsListPreviews.state("calls"), text: .init(language: .russian), event: { _ in }))
+        let detail = NSHostingView(rootView: SummaryPreviewView(state: SummaryPreviews.state("notes"), event: { _ in }, render: renderNotes))
         let (window, _) = try show(width: 1000, list: list, detail: detail)
         defer { window.close() }
+        window.makeKeyAndOrderFront(nil)
+        RunLoop.main.run(until: Date() + 0.2)
+        let notes = try #require(textView(in: detail))
 
         #expect(window.makeFirstResponder(list))
-        window.selectNextKeyView(nil)
-        #expect(window.firstResponder === detail)
-        window.selectNextKeyView(nil)
-        #expect(window.firstResponder === list)
+        for _ in 0..<12 where window.firstResponder !== notes { window.selectNextKeyView(nil) }
+        #expect(window.firstResponder === notes)
+        for _ in 0..<12 where !isInside(window.firstResponder, list) { window.selectNextKeyView(nil) }
+        #expect(isInside(window.firstResponder, list))
+    }
+
+    @Test func eachDetailButtonReachesTheCallsWindow() async {
+        let events: [SummaryPreviewEvent] = [.copy, .open, .rename, .retrySummary, .delete]
+        var sent: [CallsDetailEvent] = []
+        await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+            let handle = detailSender { sent.append($0); if sent.count == events.count { done.resume() } }
+            events.forEach(handle)
+        }
+        #expect(sent == [.copy, .open, .rename, .retrySummary, .delete])
     }
 
     @Test func theDetailShowsTheSelectedCallsStateAndNothingSelected() {
@@ -83,7 +99,10 @@ struct CallsSplitTests {
     }
 }
 
-private final class Focusable: NSView {
-    override var acceptsFirstResponder: Bool { true }
-    override var canBecomeKeyView: Bool { true }
+private func textView(in view: NSView) -> NSTextView? {
+    (view as? NSTextView) ?? view.subviews.lazy.compactMap(textView).first
+}
+
+private func isInside(_ responder: NSResponder?, _ view: NSView) -> Bool {
+    (responder as? NSView)?.isDescendant(of: view) ?? false
 }
