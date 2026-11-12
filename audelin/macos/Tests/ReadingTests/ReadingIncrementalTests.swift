@@ -11,7 +11,7 @@ struct ReadingIncrementalTests {
         let shown = entries.enumerated().map {
             ReadingState.Entry(id: $0.offset, time: String(format: "%02d:%02d", $0.offset / 60, $0.offset % 60), speaker: .mine, pending: "draft")
         }
-        let state = makeState(entries: entries, rows: late
+        let state = makeListening(entries: entries, rows: late
                               ? [.late(.init(span: "given span", entries: shown))]
                               : shown.map(ReadingState.Row.entry))
         var revised = entries
@@ -224,44 +224,44 @@ private let sameTimeRow = shown(3, "00:04")
 private let gapRow = ReadingState.Row.gap(.init(speaker: .mine, time: "00:04", kind: .microphone))
 private func makeInitial() -> ReadingState {
 
-    makeState(entries: [first, last], rows: [late("00:02–00:12", [firstRow, lastRow])])
+    makeListening(entries: [first, last], rows: [late("00:02–00:12", [firstRow, lastRow])])
 }
 
 private func makeCachedSeparated() -> ReadingState {
 
-    makeState(entries: [first, last, middle], rows: [
+    makeListening(entries: [first, last, middle], rows: [
         late("00:02–00:12", [firstRow]), .entry(middleRow), late("00:06–00:07", [lastRow]),
     ])
 }
 
 private func makeCachedMerged() -> ReadingState {
 
-    makeState(entries: [first, last, middleLate], rows: [late("00:02–00:12", [firstRow, middleRow, lastRow])])
+    makeListening(entries: [first, last, middleLate], rows: [late("00:02–00:12", [firstRow, middleRow, lastRow])])
 }
 
 private func makeCachedInserted() -> ReadingState {
 
-    makeState(entries: [first, last, middle, sameTime], rows: [
+    makeListening(entries: [first, last, middle, sameTime], rows: [
         late("00:02–00:12", [firstRow]), .entry(middleRow), .entry(sameTimeRow), late("00:06–00:07", [lastRow]),
     ])
 }
 
 private func makeCachedSplit() -> ReadingState {
 
-    makeState(entries: [first, last], rows: [late("00:02–00:12", [firstRow]), gapRow, late("00:06–00:07", [lastRow])],
+    makeListening(entries: [first, last], rows: [late("00:02–00:12", [firstRow]), gapRow, late("00:06–00:07", [lastRow])],
               problems: [gap], banners: [.init(kind: .microphone, time: "00:04")])
 }
 
 private func makeCachedJoined() -> ReadingState {
 
-    makeState(entries: [first, last, middleLate, sameTime], rows: [
+    makeListening(entries: [first, last, middleLate, sameTime], rows: [
         late("00:02–00:12", [firstRow, middleRow]), .entry(sameTimeRow), late("00:06–00:07", [lastRow]),
     ])
 }
 
 private func makeFinalPrefix() -> ReadingState {
 
-    var state = makeState(entries: (0..<4).map { segment($0, at: Double($0)) }, rows: [
+    var state = makeListening(entries: (0..<4).map { segment($0, at: Double($0)) }, rows: [
         .entry(shown(0, "00:00")), .entry(shown(1, "00:01")),
         .entry(shown(2, "00:02")), .entry(shown(3, "00:03")),
     ])
@@ -275,38 +275,6 @@ private func makeFinalPrefix() -> ReadingState {
     state.lines.rows.seal(upTo: 2)
     state.rendered.inSealedRows = 2
     state.log = .lines(state.lines)
-    return state
-}
-
-private func makeState(
-    entries: [ReadingTextUpdate.Entry], rows: [ReadingState.Row],
-    problems: [ReadingProblem] = [], banners: [ReadingState.Banner] = []
-) -> ReadingState {
-
-    let lines = ReadingState.Lines(rows: .init(tail: rows))
-    var state = ReadingState(banners: banners, recording: .on(elapsed: "00:00:20"), log: .lines(lines),
-                             problems: problems, status: .listening, nextDisplayID: entries.count,
-                             lines: lines, rendered: .init(prepared: true))
-    for entry in entries {
-        state.text[entry.id] = entry
-        state.anchors[entry.id] = .init(id: entry.id.localID, start: entry.start)
-    }
-    let keys = Dictionary(uniqueKeysWithValues: entries.map { ($0.id.localID, $0.id) })
-    func cache(_ entry: ReadingState.Entry, row: Int, lateEntry: Int? = nil) {
-
-        let key = keys[entry.id]!
-        state.rendered.ordered.append(key)
-        state.rendered.entries[key] = entry
-        state.rendered.locations[key] = .init(row: row, lateEntry: lateEntry)
-    }
-    for (row, value) in rows.enumerated() {
-        switch value {
-        case let .entry(entry): cache(entry, row: row)
-        case let .late(group):
-            for (index, entry) in group.entries.enumerated() { cache(entry, row: row, lateEntry: index) }
-        case .gap: break
-        }
-    }
     return state
 }
 

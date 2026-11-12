@@ -3,19 +3,39 @@ import Testing
 
 struct ReadingSpeakersFoundTests {
 
-    /// `finalCount` 0 leaves every row in the tail, 2 seals the first two, 4 seals them all.
+    /// `sealed` 0 leaves every row in the tail, 2 seals the first two, 4 seals them all.
     @Test(arguments: [0, 2, 4])
-    func foundSpeakersGiveEachFarRowItsPlaceAndLeaveTheMicrophone(finalCount: Int) {
+    func foundSpeakersGiveEachFarRowItsPlaceAndLeaveTheMicrophone(sealed: Int) {
 
-        func entry(_ speaker: ReadingState.Speaker, _ id: Int, _ start: Double) -> ReadingTextUpdate.Entry {
-            .init(id: .init(speaker: speaker, localID: id), start: start, end: start + 1, settled: "x")
+        let (sut, spy) = makeSUT()
+        assert(makeUnplaced(sealed: sealed), .speakersFound([1: 1, 2: 2]), delivers: nil, using: sut) {
+            let placed = rows("00:00", remote: [1, nil, 2, nil])
+            $0.lines.rows = .init(sealed: Array(placed.prefix(sealed)), tail: Array(placed.dropFirst(sealed)))
+            for (key, entry) in zip(texts.map(\.id), shown("00:00", remote: [1, nil, 2, nil])) { $0.rendered.entries[key] = entry }
+            $0.log = .lines($0.lines)
         }
-        let update = ReadingTextUpdate(status: .listening, entries: [entry(.theirs, 1, 1), entry(.mine, 1, 2), entry(.theirs, 2, 3), entry(.theirs, 3, 5)], finalCount: finalCount)
-        var state = ReadingReducer.reduce(ReadingState(), .textUpdated(update)).0
-        state = ReadingReducer.reduce(state, .speakersFound([1: 1, 2: 2])).0
-        let entries = state.lines.rows.compactMap { row -> ReadingState.Entry? in
-            if case let .entry(entry) = row { entry } else { nil }
-        }
-        #expect(entries.map(\.remoteSpeaker) == [1, nil, 2, nil])
+        #expect(spy.calls == [])
     }
+}
+
+private let texts = [entry(.theirs, 1, at: 1), entry(.mine, 1, at: 2), entry(.theirs, 2, at: 3), entry(.theirs, 3, at: 5)]
+
+private func makeUnplaced(sealed: Int) -> ReadingState {
+
+    makeListening(entries: texts, rows: rows("00:00", remote: [nil, nil, nil, nil]), displayIDs: [0, 1, 2, 3], sealed: sealed)
+}
+
+private func rows(_ time: String, remote: [Int?]) -> [ReadingState.Row] { shown(time, remote: remote).map(ReadingState.Row.entry) }
+
+private func shown(_ time: String, remote: [Int?]) -> [ReadingState.Entry] {
+
+    zip(texts.indices, remote).map { index, speaker in
+        .init(id: index, time: time, speaker: texts[index].id.speaker,
+              settled: "x", remoteSpeaker: speaker)
+    }
+}
+
+private func entry(_ speaker: ReadingState.Speaker, _ id: Int, at start: Double) -> ReadingTextUpdate.Entry {
+
+    .init(id: .init(speaker: speaker, localID: id), start: start, end: start + 1, settled: "x")
 }
