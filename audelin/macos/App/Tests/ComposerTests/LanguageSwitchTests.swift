@@ -50,9 +50,9 @@ struct LanguageSwitchTests {
             #expect(gap.text.contains("00:00"))
             break
         }
+        text.continuation.finish()
         await reading.end()
         await panel.end(id: 1)
-        text.continuation.finish()
         clock.finish()
     }
 }

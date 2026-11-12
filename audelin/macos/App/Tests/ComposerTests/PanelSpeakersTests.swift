@@ -32,4 +32,30 @@ struct PanelSpeakersTests {
         await panel.end(id: 1)
         clock.finish()
     }
+
+    /// The recording ends while its last text and speakers still wait for the panel's text task;
+    /// the finished call still shows them.
+    @MainActor
+    @Test func anEndedRecordingStillShowsItsLastTextAndSpeakers() async throws {
+        let clock = FixtureClock(), text = AsyncStream<CallState>.makeStream(), speakers = AsyncStream<[Int: Int]>.makeStream()
+        let panel = AudelinPanel(now: clock.time.monotonicNow, ticks: clock.ticks, sink: TestLogSink(), intervals: testIntervals)
+        let reading = await panel.begin(id: 1, text: text.stream, speakers: speakers.stream, enableLiveText: {})
+        reading.sessionChanged(SessionState(phase: .recording))
+        func far(_ id: Int) -> CallState.Entry {
+            .init(speaker: .theirs, text: .init(id: id, start: Double(id), end: Double(id) + 1, words: [.init("far\(id)", start: Double(id), end: Double(id) + 1)], settledCount: 1), writtenLater: false)
+        }
+        text.continuation.yield(.init(status: .listening, entries: .init(tail: [far(1), far(2)]), finalCount: 2))
+        speakers.continuation.yield([1: 1, 2: 2])
+        let ending = Task { await panel.end(id: 1) }
+        text.continuation.finish()
+        speakers.continuation.finish()
+        await ending.value
+        for await shown in await panel.states() {
+            #expect(shown.recording == .off)
+            guard case let .lines(lines) = shown.log else { Issue.record("no rows: \(shown.log)"); break }
+            #expect(lines.entries.map(\.remoteSpeaker) == [1, 2])
+            break
+        }
+        clock.finish()
+    }
 }

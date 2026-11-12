@@ -54,6 +54,13 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
         return (output.stream, speakers.stream)
     }
 
+    /// Ends the reading feed once the session has ended, whether or not its transcript opened.
+    func finishReading() {
+
+        readingOutput?.finish()
+        readingSpeakers?.finish()
+    }
+
     /// A long call's transcript is saved at most this often, and at once when its text stops.
     static let transcriptInterval: Duration = .seconds(5)
 
