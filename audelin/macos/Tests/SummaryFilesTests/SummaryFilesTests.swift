@@ -13,7 +13,28 @@ import Testing
             _ = try await files.claim(record())
             #expect(try await files.start(record()))
             try await files.publish(record(), notes: notes)
-            #expect(try await files.notes(call: "call") == notes)
+            #expect(try await files.notes(call: "call")?.text == notes)
+        }
+    }
+    @Test func aFileReadsWithItsOwnModificationTime() throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: url) }
+        try Data("notes".utf8).write(to: url)
+        let made = Date(timeIntervalSince1970: 1_794_000_000)
+        try FileManager.default.setAttributes([.modificationDate: made], ofItemAtPath: url.path)
+        let read = try FileDisk().readStamped(url)
+        #expect(read.data == Data("notes".utf8))
+        #expect(read.modified == made)
+    }
+    @Test func publishedNotesReadWithWhenTheyWereMade() async throws {
+        try await withFolder { folder, locations in
+            let files = Files(locations: locations, disk: FileDisk(), ownershipDirectory: folder.deletingLastPathComponent().appendingPathComponent("leases"))
+            _ = try await files.claim(record())
+            #expect(try await files.start(record()))
+            try await files.publish(record(), notes: "# Итоги\n")
+            let made = Date(timeIntervalSince1970: 1_794_000_000)
+            try FileManager.default.setAttributes([.modificationDate: made], ofItemAtPath: folder.appendingPathComponent("summary.md").path)
+            #expect(try await files.notes(call: "call") == Notes(text: "# Итоги\n", made: made))
         }
     }
     @Test(arguments: ["deleted folder", "folder named summary.md", "invalid UTF-8", "failing read"])
@@ -302,7 +323,7 @@ import Testing
             #expect(try await first.start(next))
             await #expect(throws: (any Error).self) { try await first.publish(interrupted, notes: "stale output") }
             try await first.publish(next, notes: "fresh output")
-            #expect(try await first.notes(call: "call") == "fresh output")
+            #expect(try await first.notes(call: "call")?.text == "fresh output")
             await first.release(job: next.job, call: next.call, input: next.input)
         }
     }
@@ -325,7 +346,7 @@ import Testing
             let request = stale
             await #expect(throws: (any Error).self) { try await files.retry(request, job: "fresh") }
             #expect(try await files.load(call: "call") == current)
-            #expect(try await files.notes(call: "call") == "complete previous notes")
+            #expect(try await files.notes(call: "call")?.text == "complete previous notes")
             #expect(try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8) == "original transcript")
         }
     }
@@ -351,7 +372,7 @@ import Testing
             disk.failure.withLock { $0 = ".summary-job.json" }
             await #expect(throws: (any Error).self) { try await files.retry(current, job: "fresh") }
             #expect(try await files.load(call: "call") == current)
-            #expect(try await files.notes(call: "call") == "old output")
+            #expect(try await files.notes(call: "call")?.text == "old output")
             disk.failure.withLock { $0 = nil }
             #expect(try await files.retry(current, job: "fresh").phase == "pending")
         }
@@ -383,6 +404,10 @@ private final class FailingDisk: Disk, Sendable {
     }
     func create(_ data: Data, at url: URL) throws -> Bool { try check(url); return try disk.create(data, at: url) }
     func replace(_ data: Data, at url: URL) throws { try check(url); try disk.replace(data, at: url) }
+    func readStamped(_ url: URL) throws -> (data: Data, modified: Date) {
+        if readFailure.withLock({ $0 == url.lastPathComponent }) { throw CocoaError(.fileReadUnknown) }
+        return try disk.readStamped(url)
+    }
 }
 private func withFolder(_ body: (URL, Location) async throws -> Void) async throws {
     let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
@@ -405,6 +430,7 @@ private final class StaleFirstReadDisk: Disk, Sendable {
     func exists(_ url: URL) throws -> Bool { try base.exists(url) }
     func create(_ data: Data, at url: URL) throws -> Bool { try base.create(data, at: url) }
     func replace(_ data: Data, at url: URL) throws { try base.replace(data, at: url) }
+    func readStamped(_ url: URL) throws -> (data: Data, modified: Date) { try base.readStamped(url) }
 }
 
 private func retryResult(_ files: Files, _ record: Record, job: String) async -> Record? {

@@ -11,6 +11,7 @@ Observer: the caller storing and reading a call summary job.
 - Record immutable job/input identity, captured configuration and credential references, accepted evidence and sanitized outcomes; never credential values or raw runtime diagnostics.
 - Atomic replacement uses a job/input-matched publication receipt so an old summary cannot complete a new claim; preserve existing complete output on failed replacement.
 - All disk work runs on a dedicated awaited executor. Identity resolution and publication coordinate with rename, delete and whole-folder moves, including partially completed moves, through consumer-owned storage ports.
+- **Notes read with when they were made: the notes file's last change.** The calls window shows that date under the notes. Publishing is unchanged and needs no time of its own; a user's later edit counts as the latest notes.
 - Failed terminal-state saving leaves a durable running claim, so recovery cannot replay an already dispatched request. These choices preserve output and avoid duplicate billing.
 
 ```gherkin
@@ -112,5 +113,10 @@ Feature: Keep notes and job records durably
     Given retry cannot save a fresh attempt
     When I explicitly retry
     Then I receive a failure and retain the interrupted record and complete output
+
+  Scenario: S-20 Notes read with when they were made
+    Given a call with published notes
+    When I read its notes
+    Then I get them with when they were made
 
 ```

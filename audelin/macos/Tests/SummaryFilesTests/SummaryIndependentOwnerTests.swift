@@ -43,6 +43,7 @@ private final class LeaseProbingDisk: Disk, Sendable {
     func read(_ url: URL) throws -> Data { try disk.read(url) }
     func exists(_ url: URL) throws -> Bool { try disk.exists(url) }
     func create(_ data: Data, at url: URL) throws -> Bool { try disk.create(data, at: url) }
+    func readStamped(_ url: URL) throws -> (data: Data, modified: Date) { try FileDisk().readStamped(url) }
     func replace(_ data: Data, at url: URL) throws {
         if url.lastPathComponent == ".summary-job.json", try JSONDecoder().decode(Record.self, from: data).phase == "running",
            leaseHeldDuringFirstStart.withLock({ $0 == nil }) {

@@ -65,7 +65,7 @@ public func compose(
                                   timeZone: timeZone, now: boundary.time.now, recordingState: { [weak menu] in menu?.state ?? .init() },
                                   location: { try await storage.location(id: $0) }, openFolder: openCallsFolder,
                                   present: presentCalls, summaryStatuses: { summaries.statuses }, summaryBadges: { summaries.badges },
-                                  notes: { try await summaryFiles.notes(call: $0) },
+                                  notes: { try await summaryFiles.notes(call: $0)?.text },
                                   copy: copyNotes, readCall: readCall, notesEnabled: { preferences.read().notes.enabled },
                                   retryableSummaries: { summaries.retryable }, retrySummary: { try await summaries.retry(call: $0) },
                                   describe: { language.language.settings.callsFailure($0) },

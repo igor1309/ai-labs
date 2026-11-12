@@ -72,3 +72,7 @@ Automated boundary: `cd audelin/macos && swift test --filter SummaryFilesTests/c
 ## S-19 Preserve an interrupted attempt on retry failure
 
 `cd audelin/macos && swift test --filter SummaryFilesTests/failedRetryWriteLeavesTheInterruptedAttemptAndOutputIntact` fails the replacement write, reads back the unchanged record and notes, then allows a successful retry.
+
+## S-20 Notes read with when they were made
+
+`cd audelin/macos && swift test --filter SummaryFilesTests/publishedNotesReadWithWhenTheyWereMade` publishes notes, sets the notes file's modification time to a known date, and reads back the notes with that date.

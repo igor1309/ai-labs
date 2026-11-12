@@ -15,6 +15,12 @@ public struct Record: Codable, Equatable, Sendable {
         self.phase = phase; self.checkpoint = checkpoint; self.warning = warning
     }
 }
+/// A call's notes as saved, and when the notes file last changed.
+public struct Notes: Equatable, Sendable {
+    public let text: String
+    public let made: Date
+    public init(text: String, made: Date) { self.text = text; self.made = made }
+}
 public protocol Locations: Sendable {
     /// The operation and rename/delete/move share one storage transaction boundary.
     func withFolder<Value: Sendable>(call: String, _ operation: @Sendable (URL) throws -> Value) async throws -> Value
@@ -24,6 +30,8 @@ public protocol Disk: Sendable {
     func exists(_ url: URL) throws -> Bool
     func create(_ data: Data, at url: URL) throws -> Bool
     func replace(_ data: Data, at url: URL) throws
+    /// A file's bytes and its modification time, both from the one file opened.
+    func readStamped(_ url: URL) throws -> (data: Data, modified: Date)
 }
 public struct FileDisk: Disk {
     public init() {}
@@ -47,6 +55,14 @@ public struct FileDisk: Disk {
         throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
     }
     public func replace(_ data: Data, at url: URL) throws { try data.write(to: url, options: .atomic) }
+    public func readStamped(_ url: URL) throws -> (data: Data, modified: Date) {
+        let handle = try FileHandle(forReadingFrom: url)
+        defer { try? handle.close() }
+        var info = stat()
+        guard fstat(handle.fileDescriptor, &info) == 0 else { throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO) }
+        let modified = Date(timeIntervalSince1970: TimeInterval(info.st_mtimespec.tv_sec) + TimeInterval(info.st_mtimespec.tv_nsec) / 1e9)
+        return (try handle.readToEnd() ?? Data(), modified)
+    }
 }
 
 /// Keeps the isolated storage implementation behind an async boundary.
@@ -64,8 +80,8 @@ public struct Files: Sendable {
     public func start(_ record: Record) async throws -> Bool { try await storage.start(record) }
     public func progress(_ record: Record) async throws { try await storage.progress(record) }
     public func publish(_ record: Record, notes: String) async throws { try await storage.publish(record, notes: notes) }
-    /// The call's published notes as saved, or nil when it has none.
-    public func notes(call: String) async throws -> String? { try await storage.notes(call: call) }
+    /// The call's published notes as saved, with when they were made, or nil when it has none.
+    public func notes(call: String) async throws -> Notes? { try await storage.notes(call: call) }
 }
 private protocol FilesStorage: Sendable {
     func release(job: String, call: String, input: String) async
@@ -75,7 +91,7 @@ private protocol FilesStorage: Sendable {
     func start(_ record: Record) async throws -> Bool
     func progress(_ record: Record) async throws
     func publish(_ record: Record, notes: String) async throws
-    func notes(call: String) async throws -> String?
+    func notes(call: String) async throws -> Notes?
 }
 
 private actor DiskFiles: FilesStorage {
@@ -204,16 +220,19 @@ private actor DiskFiles: FilesStorage {
             try disk.replace(data, at: folder.appendingPathComponent("summary.md"))
         }
     }
-    public func notes(call: String) async throws -> String? {
+    public func notes(call: String) async throws -> Notes? {
         try await locations.withFolder(call: call) { [disk] folder in
             let output = folder.appendingPathComponent("summary.md")
             guard try disk.exists(output) else { return nil }
-            guard let text = String(data: try disk.read(output), encoding: .utf8) else {
+            let (data, made) = try disk.readStamped(output)
+            guard let text = String(data: data, encoding: .utf8) else {
                 throw CocoaError(.fileReadInapplicableStringEncoding)
             }
             // The publication receipt is the first line; the notes follow it.
-            guard text.hasPrefix("<!-- audelin-summary:"), let newline = text.firstIndex(of: "\n") else { return text }
-            return String(text[text.index(after: newline)...])
+            guard text.hasPrefix("<!-- audelin-summary:"), let newline = text.firstIndex(of: "\n") else {
+                return Notes(text: text, made: made)
+            }
+            return Notes(text: String(text[text.index(after: newline)...]), made: made)
         }
     }
     private static func read(_ url: URL, disk: any Disk, call: String) throws -> Record {

@@ -174,7 +174,7 @@ struct SummaryCompositionTests {
                     #expect(await http.count == 1)
                     #expect(try await files.load(call: id)?.job != job.id)
                 }
-                #expect(try await files.notes(call: id) == "previous notes")
+                #expect(try await files.notes(call: id)?.text == "previous notes")
                 #expect(try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8) == "saved transcript")
                 if !retryFails {
                     http.complete.send()
@@ -247,7 +247,7 @@ struct SummaryCompositionTests {
                 if previousNotes { #expect(calls.detail?.content == .notes("previous notes")) }
                 http.complete.send()
                 _ = try await summary(rig.menu) { $0[id] == "Итоги готовы" }
-                let published = try #require(try await files.notes(call: id))
+                let published = try #require(try await files.notes(call: id)?.text)
                 for await state in Observations({ calls.state }) where state.rows.first(where: { $0.id == id })?.hasNotes == true { break }
                 #expect(calls.state.rows.map(\.id) == rows)
                 for await detail in Observations({ calls.detail }) where detail?.content == .notes(published) { break }
