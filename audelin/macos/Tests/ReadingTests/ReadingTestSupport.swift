@@ -79,3 +79,10 @@ func makeReducer(_ spy: RenderingSpy) -> ReadingReducer {
 
     .init(recordingTime: { spy.recording($0) }, lineTime: { spy.line($0) }, span: { spy.span($0, $1) })
 }
+
+/// Each call with how many times it was made, for a reducer that renders a
+/// whole layout by walking a dictionary, whose order changes from run to run.
+func counted(_ calls: [RenderingSpy.Call]) -> [String: Int] {
+
+    calls.reduce(into: [:]) { $0[String(describing: $1), default: 0] += 1 }
+}
