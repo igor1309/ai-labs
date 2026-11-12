@@ -63,7 +63,7 @@ import Observation
             }
             // A queued actor job runs after the reduction has invoked its effect handler.
             Task { @MainActor [weak self] in self?.broadcastChanged(from: previous, to: next) }
-        }), handleEffect: handler.handle)
+        }), handleEffect: delivering(handler.handle))
         bindings.send = { [weak self] event in self?.broadcast?.event(event) }
     }
 
