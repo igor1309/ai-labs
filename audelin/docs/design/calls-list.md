@@ -9,7 +9,12 @@ are the file's variables. Shared parts are on the
 header, Context menu); delete, rename and errors use the Glass Ledger
 Sheet, Rename field and Banner/Error; the window's own parts on the "Calls window —
 components" board (Detail bar, Tooltip, Two-line row, Two-line match row, Detail
-header, Section, Subhead, Paragraph, Bullet, Detail message).
+header, Section, Subhead, Paragraph, Bullet, Detail message). Each row state
+is its own component on that board, an instance of its row holding the
+state: Row/Selected, Row/Inactive selected, Row/Preparing, Row/Failed,
+Row/Untitled and Match row/Selected. Screens use these and override only
+content; a selected row that is also preparing, failed or untitled adds
+that state's overrides to Row/Selected.
 
 ## Layout
 
