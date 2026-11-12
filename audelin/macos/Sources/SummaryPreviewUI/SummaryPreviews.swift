@@ -46,7 +46,7 @@ public enum SummaryPreviews {
     public static let states = states(in: SummaryPreviewText(language: .russian))
 
     /// The named states with the header and messages the app gives in that language; the notes are the call's own.
-    public static func states(in text: SummaryPreviewText) -> [(name: String, state: SummaryPreviewState)] {
+    public static func states(in text: SummaryPreviewText) -> [(name: String, state: SummaryPreviewState?)] {
         let english = text.language == .english
         let minutes = { (count: Int) in english ? "\(count) min" : "\(count) мин" }
         return [
@@ -55,10 +55,17 @@ public enum SummaryPreviews {
             ("unreadable", .init(title: "Zoom", date: "17.10 · 11:00", duration: minutes(28),
                                  notes: .unreadable(english ? "The notes can’t be read: “summary.md” is damaged."
                                                             : "Заметки не читаются: файл «summary.md» повреждён."))),
+            ("preparing", .init(title: "iOS Daily", date: "11.11 · 10:00", duration: minutes(15), notes: .preparing)),
+            ("failed", .init(title: "iOS & Android daily", date: "10.11 · 09:59", duration: minutes(14),
+                             notes: .failed(english ? "Claude CLI exited with an error: request limit exceeded"
+                                                    : "Claude CLI завершился с ошибкой: превышен лимит запросов"), canRetry: true)),
+            ("no-summary", .init(title: "Zoom", date: "17.10 · 11:00", duration: minutes(28), notes: .none(notesOff: false))),
+            ("notes-off", .init(title: "2026.11.09-1000", date: "09.11 · 10:00", duration: minutes(16), notes: .none(notesOff: true))),
+            ("no-selection", nil),
         ]
     }
 
-    public static func state(_ name: String, in text: SummaryPreviewText = .init(language: .russian)) -> SummaryPreviewState {
+    public static func state(_ name: String, in text: SummaryPreviewText = .init(language: .russian)) -> SummaryPreviewState? {
         states(in: text).first { $0.name == name }!.state
     }
 

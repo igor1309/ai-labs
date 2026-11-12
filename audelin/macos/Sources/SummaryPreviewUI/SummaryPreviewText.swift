@@ -16,6 +16,12 @@ public enum SummaryPreviewPhrase: String, CaseIterable, Sendable {
     case rename = "preview.rename"
     case retrySummary = "preview.retrySummary"
     case delete = "preview.delete"
+    case preparing = "preview.preparing"
+    case preparingHint = "preview.preparingHint"
+    case failed = "preview.failed"
+    case noSummary = "preview.noSummary"
+    case notesOff = "preview.notesOff"
+    case noSelection = "preview.noSelection"
     /// Takes the call's title.
     case windowTitle = "preview.windowTitle"
     /// Takes the system's reason.

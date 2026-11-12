@@ -6,3 +6,9 @@
 "preview.rename" = "Переименовать";
 "preview.retrySummary" = "Повторить итоги";
 "preview.delete" = "Удалить…";
+"preview.preparing" = "Подготовка итогов…";
+"preview.preparingHint" = "Итоги появятся здесь, когда будут готовы";
+"preview.failed" = "Не удалось подготовить итоги";
+"preview.noSummary" = "Итогов нет";
+"preview.notesOff" = "Подготовка итогов выключена в Настройках";
+"preview.noSelection" = "Звонок не выбран";

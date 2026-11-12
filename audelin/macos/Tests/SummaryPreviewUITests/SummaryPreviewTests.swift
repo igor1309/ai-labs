@@ -58,7 +58,7 @@ struct SummaryPreviewTests {
     @Test(arguments: [false, true])
     func theMoreMenuListsTheCallsActionsInTheLedgerTypeAndReportsEach(canRetry: Bool) throws {
 
-        var state = SummaryPreviews.state("notes")
+        var state = try #require(SummaryPreviews.state("notes"))
         state.canRetry = canRetry
         var events: [SummaryPreviewEvent] = []
         let host = Offscreen.host(SummaryPreviewView(state: state, event: { events.append($0) }, render: markdown), size: size)
@@ -80,6 +80,27 @@ struct SummaryPreviewTests {
 
         let expected: [SummaryPreviewEvent] = canRetry ? [.open, .rename, .retrySummary, .delete] : [.open, .rename, .delete]
         #expect(events == expected)
+    }
+
+    @Test func aFailedSummaryOffersToRetryIt() throws {
+
+        var events: [SummaryPreviewEvent] = []
+        click(retryLocation, on: SummaryPreviewView(state: SummaryPreviews.state("failed"), event: { events.append($0) }, render: markdown))
+
+        #expect(events == [.retrySummary])
+    }
+
+    @Test(arguments: ["preparing", "failed", "no-summary", "notes-off", "no-selection"])
+    func aMessageInPlaceOfNotesHasNoCopyNoMenuAndNoText(name: String) throws {
+
+        var events: [SummaryPreviewEvent] = []
+        let state = SummaryPreviews.state(name)
+        let host = Offscreen.host(SummaryPreviewView(state: state, event: { events.append($0) }, render: markdown), size: size)
+        click(copyLocation, on: SummaryPreviewView(state: state, event: { events.append($0) }, render: markdown))
+
+        #expect(popUps(in: host).isEmpty)
+        #expect(Offscreen.textView(in: host) == nil)
+        #expect(events.isEmpty)
     }
 
     @Test func unreadableNotesHaveNoMoreMenu() throws {
@@ -172,7 +193,10 @@ struct SummaryPreviewTests {
     /// Inside Копировать, left of ⋯ at the bar's right end.
     private var copyLocation: NSPoint { NSPoint(x: size.width - 16 - 30 - 8 - 40, y: size.height - 22) }
 
-    private func view(_ state: SummaryPreviewState, text: SummaryPreviewText = .init(language: .russian), scheme: ColorScheme = .light) -> some View {
+    /// Повторить итоги, the last line of the failed message centred below the header.
+    private var retryLocation: NSPoint { NSPoint(x: size.width / 2, y: 172) }
+
+    private func view(_ state: SummaryPreviewState?, text: SummaryPreviewText = .init(language: .russian), scheme: ColorScheme = .light) -> some View {
         SummaryPreviewView(state: state, text: text, event: { _ in }, render: markdown).environment(\.colorScheme, scheme)
     }
 

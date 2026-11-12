@@ -35,8 +35,10 @@ public struct NotesStyle {
 /// One call beside the list: a bar with Копировать and the ⋯ menu, a header
 /// with its title, day, start time and duration, and the notes as selectable
 /// formatted text. The bar's buttons show only when there are notes to act on.
+/// Without notes the detail shows one centred message under the header, and
+/// with no call (`state` nil) only «Звонок не выбран».
 public struct SummaryPreviewView: View {
-    private let state: SummaryPreviewState
+    private let state: SummaryPreviewState?
     private let event: (SummaryPreviewEvent) -> Void
     private let text: SummaryPreviewText
     private let render: (String, NotesStyle) -> NSAttributedString
@@ -44,7 +46,7 @@ public struct SummaryPreviewView: View {
     private var tokens: GlassLedger { .for(scheme) }
 
     /// `render` turns the notes' Markdown into formatted text in the given style.
-    public init(state: SummaryPreviewState, text: SummaryPreviewText = .init(language: .russian),
+    public init(state: SummaryPreviewState?, text: SummaryPreviewText = .init(language: .russian),
                 event: @escaping (SummaryPreviewEvent) -> Void, render: @escaping (String, NotesStyle) -> NSAttributedString) {
         // The style resolves the bundled fonts as the body is first built.
         GlassLedger.registerFonts()
@@ -57,36 +59,80 @@ public struct SummaryPreviewView: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             bar
-            VStack(alignment: .leading, spacing: tokens.space4) {
-                Text(state.title).font(tokens.ui(tokens.typeTitle, .semibold)).foregroundStyle(tokens.text)
-                    .textSelection(.enabled)
-                Text("\(state.date) · \(state.duration)").font(tokens.ui(tokens.typeSmall)).foregroundStyle(tokens.sub)
-                    .textSelection(.enabled)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.top, tokens.space20).padding(.horizontal, tokens.space28).padding(.bottom, tokens.space16)
-            switch state.notes {
-            case let .markdown(source):
-                NotesText(text: render(source, style), background: NSColor(tokens.surface),
-                          inset: NSSize(width: tokens.space28 - 5, height: 0))
-            case let .unreadable(reason):
-                Text(reason)
-                    .font(tokens.ui(tokens.typeSmall)).foregroundStyle(tokens.rec)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(tokens.space16)
-                    .background(tokens.errBg)
-                    .padding(.horizontal, tokens.space28)
-                Spacer(minLength: 0)
+            if let state {
+                header(state)
+                switch state.notes {
+                case let .markdown(source):
+                    NotesText(text: render(source, style), background: NSColor(tokens.surface),
+                              inset: NSSize(width: tokens.space28 - 5, height: 0))
+                case let .unreadable(reason):
+                    Text(reason)
+                        .font(tokens.ui(tokens.typeSmall)).foregroundStyle(tokens.rec)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(tokens.space16)
+                        .background(tokens.errBg)
+                        .padding(.horizontal, tokens.space28)
+                    Spacer(minLength: 0)
+                case .preparing:
+                    message(text(.preparing), detail: text(.preparingHint)) { ProgressView().controlSize(.small) }
+                case let .failed(reason):
+                    message(text(.failed), detail: reason, retry: true) {
+                        Image(systemName: "exclamationmark.circle").foregroundStyle(tokens.rec)
+                    }
+                case let .none(notesOff):
+                    message(text(.noSummary), detail: notesOff ? text(.notesOff) : nil) {
+                        Image(systemName: "doc.text").foregroundStyle(tokens.sub)
+                    }
+                }
+            } else {
+                message(text(.noSelection), detail: nil) { EmptyView() }
             }
         }
         .background(tokens.surface)
+    }
+
+    private func header(_ state: SummaryPreviewState) -> some View {
+        VStack(alignment: .leading, spacing: tokens.space4) {
+            Text(state.title).font(tokens.ui(tokens.typeTitle, .semibold)).foregroundStyle(tokens.text)
+                .textSelection(.enabled)
+            Text("\(state.date) · \(state.duration)").font(tokens.ui(tokens.typeSmall)).foregroundStyle(tokens.sub)
+                .textSelection(.enabled)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.top, tokens.space20).padding(.horizontal, tokens.space28).padding(.bottom, tokens.space16)
+    }
+
+    /// One centred message: an icon, a title, a line of detail and, for a failed summary, Повторить итоги.
+    private func message(_ title: String, detail: String?, retry: Bool = false,
+                         @ViewBuilder icon: () -> some View) -> some View {
+        VStack(spacing: tokens.space8) {
+            icon().font(tokens.ui(tokens.typeTitle))
+            Text(title).font(tokens.ui(tokens.typeBody, .semibold)).foregroundStyle(tokens.text)
+            if let detail {
+                Text(detail).font(tokens.ui(tokens.typeSmall)).foregroundStyle(tokens.sub)
+                    .textSelection(.enabled)
+            }
+            if retry {
+                Button { event(.retrySummary) } label: {
+                    Text(text(.retrySummary))
+                        .font(tokens.ui(tokens.typeSmall)).foregroundStyle(tokens.text)
+                        .padding(.vertical, tokens.space4).padding(.horizontal, tokens.space12)
+                        .background(tokens.btn, in: .rect(cornerRadius: tokens.radiusControl))
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("preview.retry")
+            }
+        }
+        .multilineTextAlignment(.center)
+        .padding(.horizontal, tokens.space28)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     /// Копировать and ⋯ on the right, only when there are notes.
     private var bar: some View {
         HStack(spacing: tokens.space8) {
             Spacer(minLength: 0)
-            if case .markdown = state.notes {
+            if case .markdown = state?.notes {
                 Button { event(.copy) } label: {
                     HStack(spacing: tokens.space6) {
                         Image(systemName: "doc.on.doc")
@@ -116,7 +162,7 @@ public struct SummaryPreviewView: View {
     private var moreItems: [SummaryMoreMenu.Item] {
         [.init(title: text(.open), event: .open, destructive: false),
          .init(title: text(.rename), event: .rename, destructive: false)]
-            + (state.canRetry ? [.init(title: text(.retrySummary), event: .retrySummary, destructive: false)] : [])
+            + (state?.canRetry == true ? [.init(title: text(.retrySummary), event: .retrySummary, destructive: false)] : [])
             + [.init(title: text(.delete), event: .delete, destructive: true)]
     }
 

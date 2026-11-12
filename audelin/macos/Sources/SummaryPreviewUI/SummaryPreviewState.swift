@@ -5,6 +5,12 @@ public struct SummaryPreviewState: Equatable, Sendable {
         case markdown(String)
         /// Why the notes cannot be shown.
         case unreadable(String)
+        /// The summary is being prepared.
+        case preparing
+        /// Preparing the summary failed, for the given reason.
+        case failed(String)
+        /// There is no summary; `notesOff` when preparing summaries is off in Settings.
+        case none(notesOff: Bool)
     }
 
     public var title: String
