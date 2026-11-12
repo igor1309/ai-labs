@@ -25,4 +25,5 @@
 "log.newBelow" = "%d new ↓";
 "speaker.me" = "me";
 "speaker.them" = "them";
+"speaker.themNumbered" = "Them %d";
 "log.lateSpan" = "written later · %@";

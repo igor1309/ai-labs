@@ -33,11 +33,15 @@ public struct ReadingState: Equatable, Sendable {
         public var name: String?
         /// Confirmed after the call, not a live guess.
         public var nameConfirmed: Bool
+        /// The remote speaker's 1-based place among the call's speakers once the call is
+        /// diarized; nil while the far side is one Them.
+        public var remoteSpeaker: Int?
 
-        public init(id: Int, time: String, speaker: Speaker, settled: String = "", pending: String = "", name: String? = nil, nameConfirmed: Bool = false) {
+        public init(id: Int, time: String, speaker: Speaker, settled: String = "", pending: String = "", name: String? = nil, nameConfirmed: Bool = false, remoteSpeaker: Int? = nil) {
 
             self.name = name
             self.nameConfirmed = nameConfirmed
+            self.remoteSpeaker = remoteSpeaker
 
             self.id = id
             self.time = time

@@ -82,6 +82,50 @@ struct ReadingCompositionTests {
         #expect(lines.entries.filter { $0.label != nil }.allSatisfy { $0.labelIsTentative })
     }
 
+    @Test(arguments: [PanelLanguage.russian, .english])
+    func diarizedSpeakersAreCaptionedByNameElseByNumberWhereTheSpeakerChanges(language: PanelLanguage) throws {
+
+        var reading = ReadingState()
+        reading.log = .lines(.init(rows: .init(tail: [
+            .entry(.init(id: 0, time: "00:01", speaker: .theirs, settled: "раз", remoteSpeaker: 1)),
+            .entry(.init(id: 1, time: "00:02", speaker: .theirs, settled: "два", remoteSpeaker: 1)),
+            .entry(.init(id: 2, time: "00:03", speaker: .mine, settled: "мой")),
+            .entry(.init(id: 3, time: "00:04", speaker: .theirs, settled: "три", name: "Анна", nameConfirmed: true, remoteSpeaker: 2)),
+            .entry(.init(id: 4, time: "00:05", speaker: .theirs, settled: "четыре", remoteSpeaker: 1)),
+            .entry(.init(id: 5, time: "00:06", speaker: .theirs, settled: "пять")),
+        ])))
+        let text = PanelText(language: language)
+        guard case let .lines(lines) = panelState({ text($0) }, reading).log else { throw ScriptFailure.failed }
+        let first = language == .russian ? "Собеседник 1" : "Them 1"
+        #expect(lines.entries.map(\.label) == [first, nil, nil, "Анна", first, nil])
+        #expect(lines.entries.map(\.remoteSpeaker) == [1, 1, nil, 2, 1, nil])
+        #expect(lines.entries.allSatisfy { !$0.labelIsTentative })
+    }
+
+    @Test func twoSpeakersWithOneNameAreEachCaptionedAcrossTheSealedLines() throws {
+
+        var reading = ReadingState()
+        reading.log = .lines(.init(rows: .init(sealed: [
+            .entry(.init(id: 0, time: "00:01", speaker: .theirs, settled: "раз", name: "Анна", nameConfirmed: true, remoteSpeaker: 1)),
+        ], tail: [
+            .entry(.init(id: 1, time: "00:02", speaker: .theirs, settled: "два", name: "Анна", nameConfirmed: true, remoteSpeaker: 2)),
+            .entry(.init(id: 2, time: "00:03", speaker: .theirs, settled: "три", name: "Анна", nameConfirmed: true, remoteSpeaker: 2)),
+        ])))
+        guard case let .lines(lines) = panelState(russianPanel, reading).log else { throw ScriptFailure.failed }
+        #expect(lines.entries.map(\.label) == ["Анна", "Анна", nil])
+    }
+
+    @Test func aMicrophoneEntryNeverTakesARemoteSpeaker() throws {
+
+        var reading = ReadingState()
+        reading.log = .lines(.init(rows: .init(tail: [
+            .entry(.init(id: 0, time: "00:01", speaker: .mine, settled: "мой", name: "Анна", remoteSpeaker: 3)),
+        ])))
+        guard case let .lines(lines) = panelState(russianPanel, reading).log else { throw ScriptFailure.failed }
+        #expect(lines.entries.map(\.label) == [nil])
+        #expect(lines.entries.map(\.remoteSpeaker) == [nil])
+    }
+
     @Test func translatesPopulatedReadingAndEveryTextStatusAndLogMode() async throws {
 
         let statuses: [(CallState.Status, ReadingTextUpdate.Status)] = [
