@@ -23,17 +23,13 @@ func assert(
 }
 
 /// Handles `effect`, runs `action` once the handler waits on a collaborator,
-/// and expects exactly `expected` before the stream finishes.
+/// and expects `expected` as the event it returns.
 func expect(
     _ sut: LifecycleEffectHandler, with effect: LifecycleEffect, toDeliver expected: LifecycleEvent,
     on action: @escaping @Sendable () async -> Void, sourceLocation: SourceLocation = #_sourceLocation
 ) async {
 
-    let events = Task {
-        var events: [LifecycleEvent] = []
-        for await event in sut.handle(effect) { events.append(event) }
-        return events
-    }
+    async let event = sut.handle(effect)
     await action()
-    #expect(await events.value == [expected], sourceLocation: sourceLocation)
+    #expect(await event == expected, sourceLocation: sourceLocation)
 }

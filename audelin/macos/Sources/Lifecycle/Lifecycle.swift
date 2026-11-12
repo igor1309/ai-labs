@@ -67,19 +67,8 @@ public struct LifecycleEffectHandler: Sendable {
         self.terminate = terminate
     }
 
-    /// Delivers the one event that completes the effect, then finishes.
-    public func handle(_ effect: LifecycleEffect) -> AsyncStream<LifecycleEvent> {
-
-        AsyncStream { output in
-            let task = Task {
-                output.yield(await perform(effect))
-                output.finish()
-            }
-            output.onTermination = { _ in task.cancel() }
-        }
-    }
-
-    private func perform(_ effect: LifecycleEffect) async -> LifecycleEvent {
+    /// Returns the one event that completes the effect.
+    public func handle(_ effect: LifecycleEffect) async -> LifecycleEvent {
 
         switch effect {
         case .stopDelivery:
