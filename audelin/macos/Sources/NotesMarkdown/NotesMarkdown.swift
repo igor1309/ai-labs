@@ -13,15 +13,17 @@ public enum NotesMarkdown {
         public let code: NSFont
         public let text: NSColor
         public let secondary: NSColor
+        /// Time references such as `[02:45]`.
+        public let tertiary: NSColor
         public let codeBackground: NSColor
         public let rule: NSColor
         /// The rhythm the text is set in.
         public let layout: NotesLayout
 
-        public init(body: NSFont, headings: [NSFont], code: NSFont, text: NSColor, secondary: NSColor,
+        public init(body: NSFont, headings: [NSFont], code: NSFont, text: NSColor, secondary: NSColor, tertiary: NSColor,
                     codeBackground: NSColor, rule: NSColor, layout: NotesLayout = .init()) {
             self.body = body; self.headings = headings; self.code = code; self.text = text
-            self.secondary = secondary; self.codeBackground = codeBackground; self.rule = rule; self.layout = layout
+            self.secondary = secondary; self.tertiary = tertiary; self.codeBackground = codeBackground; self.rule = rule; self.layout = layout
         }
     }
 
@@ -232,6 +234,17 @@ private struct Renderer {
                 text.append(inline(child, font: font))
             }
         }
+        markTimes(text)
         return text
+    }
+
+    private static let time = try! NSRegularExpression(pattern: #"\[(?:\d{1,2}:)?\d{1,2}:\d{2}\]"#)
+
+    /// Sets time references such as `[02:45]` or `[1:02:45]` in the tertiary colour, outside code.
+    private func markTimes(_ text: NSMutableAttributedString) {
+        for match in Self.time.matches(in: text.string, range: NSRange(location: 0, length: text.length))
+        where text.attribute(.font, at: match.range.location, effectiveRange: nil) as? NSFont != style.code {
+            text.addAttribute(.foregroundColor, value: style.tertiary, range: match.range)
+        }
     }
 }
