@@ -22,19 +22,23 @@ public enum ClientReview {
     }
     public enum WriteResult: Equatable, Sendable { case accepted, refused }
 
-    fileprivate enum Cleanup: Equatable, Sendable { case none, closing, dropping, complete }
+    public enum Cleanup: Equatable, Sendable { case none, closing, dropping, complete }
 
     public struct State: Equatable, Sendable {
         public let host: Host
         /// The handed-over amount, in hundredths of a Mizan.
         public let amount: UInt64
-        public fileprivate(set) var phase: Phase = .reviewing
-        public fileprivate(set) var acknowledgedDecision: Decision?
-        fileprivate var writeStarted = false
-        fileprivate var pendingMessages = 0
-        fileprivate var deferredLinkLoss: Charge?
-        fileprivate var cleanup: Cleanup = .none
-        fileprivate var doneRequested = false
+        public var phase: Phase
+        public var acknowledgedDecision: Decision?
+        /// The decision's write was issued; a link loss after a confirm write leaves the charge unknown.
+        public var writeStarted: Bool
+        /// Received messages not yet opened; they can still carry the host's answer.
+        public var pendingMessages: Int
+        /// A link loss held until the pending messages are opened.
+        public var deferredLinkLoss: Charge?
+        public var cleanup: Cleanup
+        /// The payer pressed done; the flow ends once cleanup completes.
+        public var doneRequested: Bool
         /// The charge status of an ended review; absent while it is in progress.
         public var charge: Charge? {
             switch phase {
@@ -52,9 +56,26 @@ public enum ClientReview {
 
         /// Takes the host and amount from an already secure link. The root keeps
         /// that link and session alive through an acknowledged-confirm hand-over.
-        public init(host: Host, amount: UInt64) {
+        public init(
+            host: Host,
+            amount: UInt64,
+            phase: Phase = .reviewing,
+            acknowledgedDecision: Decision? = nil,
+            writeStarted: Bool = false,
+            pendingMessages: Int = 0,
+            deferredLinkLoss: Charge? = nil,
+            cleanup: Cleanup = .none,
+            doneRequested: Bool = false
+        ) {
             self.host = host
             self.amount = amount
+            self.phase = phase
+            self.acknowledgedDecision = acknowledgedDecision
+            self.writeStarted = writeStarted
+            self.pendingMessages = pendingMessages
+            self.deferredLinkLoss = deferredLinkLoss
+            self.cleanup = cleanup
+            self.doneRequested = doneRequested
         }
     }
 
