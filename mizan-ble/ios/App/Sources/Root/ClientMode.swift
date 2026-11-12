@@ -140,7 +140,7 @@ import Observation
                     guard let transport, self?.transport === transport else { return }
                     self?.connectChanged(state, transport: transport)
                 }
-            }), handleEffect: handler.handle)
+            }), handleEffect: delivering(handler.handle))
             transport.send = { [weak self, weak transport] event in
                 guard let transport, self?.transport === transport else { return }
                 self?.connect?.event(event)
