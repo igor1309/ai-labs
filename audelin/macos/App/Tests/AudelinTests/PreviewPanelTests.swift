@@ -64,6 +64,25 @@ struct PreviewPanelTests {
         #expect(pasteboard.string(forType: .string) == "# A")
     }
 
+    @Test(arguments: [SummaryPreviewEvent.open, .rename, .retrySummary, .delete])
+    func thePanelLeavesEveryOtherEventToTheCallsWindow(_ event: SummaryPreviewEvent) throws {
+        let window = PreviewPanelSpy()
+        let content = ContentSpy()
+        var copies: [String] = []
+        let panel = PreviewPanel(makePanel: { window }, text: .init(language: .russian), copy: { copies.append($0) },
+                                 makeContent: content.make)
+
+        panel.show(preview("A"))
+        try #require(content.events.count == 1)
+        content.events[0](event)
+
+        #expect(copies.isEmpty)
+        #expect(content.views.count == 1 && window.contentView === content.views[0])
+        #expect(window.title == "Саммари — A" && window.orders == ["front"])
+        content.events[0](.copy)
+        #expect(copies == ["# A"])
+    }
+
     @Test func thePanelFollowsThePreviewAndBothClosesCloseIt() async {
         let center = NotificationCenter()
         let window = PreviewPanelSpy()

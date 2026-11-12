@@ -98,22 +98,11 @@ public struct SummaryPreviewView: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("preview.copy")
-                Menu {
-                    Button(text(.open)) { event(.open) }
-                    Button(text(.rename)) { event(.rename) }
-                    if state.canRetry { Button(text(.retrySummary)) { event(.retrySummary) } }
-                    Divider()
-                    Button(text(.delete), role: .destructive) { event(.delete) }
-                } label: {
-                    Image(systemName: "ellipsis")
-                        .font(tokens.ui(tokens.typeSmall)).foregroundStyle(tokens.text)
-                        .frame(width: 14, height: 14)
-                        .padding(.vertical, tokens.space4).padding(.horizontal, tokens.space8)
-                        .background(tokens.btn, in: .rect(cornerRadius: tokens.radiusControl))
-                }
-                .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize()
-                .accessibilityLabel(text(.more))
-                .accessibilityIdentifier("preview.more")
+                SummaryMoreMenu(items: moreItems, label: text(.more), font: tokens.nsUi(tokens.typeSmall),
+                                ink: NSColor(tokens.text), destructive: NSColor(tokens.rec), event: event)
+                    .frame(width: tokens.space28, height: tokens.space16)
+                    .padding(.vertical, tokens.space4).padding(.horizontal, tokens.space2)
+                    .background(tokens.btn, in: .rect(cornerRadius: tokens.radiusControl))
             }
         }
         .frame(height: barHeight)
@@ -123,6 +112,13 @@ public struct SummaryPreviewView: View {
     }
 
     private let barHeight: CGFloat = 44
+
+    private var moreItems: [SummaryMoreMenu.Item] {
+        [.init(title: text(.open), event: .open, destructive: false),
+         .init(title: text(.rename), event: .rename, destructive: false)]
+            + (state.canRetry ? [.init(title: text(.retrySummary), event: .retrySummary, destructive: false)] : [])
+            + [.init(title: text(.delete), event: .delete, destructive: true)]
+    }
 
     private var style: NotesStyle {
         NotesStyle(
