@@ -51938,15 +51938,12 @@
             {
               "type": "frame",
               "id": "s013x",
-              "name": "Detail bar",
+              "name": "Detail top",
               "reusable": true,
               "width": 760,
               "height": 44,
-              "fill": "$side",
+              "fill": "$surface",
               "stroke": "$rule",
-              "strokeWidth": {
-                "bottom": 1
-              },
               "gap": "$space-12",
               "padding": [
                 "$space-8",
@@ -52837,7 +52834,7 @@
                   "name": "Copy",
                   "layoutPosition": "absolute",
                   "x": 712,
-                  "y": 60
+                  "y": 10
                 }
               ]
             }
@@ -54755,7 +54752,7 @@
                   "name": "Copy",
                   "layoutPosition": "absolute",
                   "x": 712,
-                  "y": 60
+                  "y": 10
                 }
               ]
             }
@@ -55626,7 +55623,7 @@
                   "name": "Copy",
                   "layoutPosition": "absolute",
                   "x": 712,
-                  "y": 60
+                  "y": 10
                 }
               ]
             }
@@ -56029,7 +56026,7 @@
                   "name": "Copy",
                   "layoutPosition": "absolute",
                   "x": 712,
-                  "y": 60
+                  "y": 10
                 }
               ]
             }
@@ -57127,7 +57124,7 @@
                   "name": "Copy",
                   "layoutPosition": "absolute",
                   "x": 712,
-                  "y": 60
+                  "y": 10
                 }
               ]
             }
@@ -57679,7 +57676,7 @@
                   "name": "Copy",
                   "layoutPosition": "absolute",
                   "x": 712,
-                  "y": 60
+                  "y": 10
                 }
               ]
             }
@@ -58261,7 +58258,7 @@
                   "name": "Copy",
                   "layoutPosition": "absolute",
                   "x": 712,
-                  "y": 60
+                  "y": 10
                 }
               ]
             }
@@ -58822,7 +58819,7 @@
       "name": "Note detail",
       "width": 520,
       "height": 380,
-      "content": "Detail\n\nHeader: title, then day, start time · duration. The summary is rendered Markdown, selectable.\n\nOver the list, the bar holds the call’s own actions, which act on the selected row: Открыть (its folder in Finder) and Переименовать in one group, Удалить… alone. Each shows its name as a tooltip on hover. Повторить итоги stays in the failed message and the row menu.\n\nКопировать belongs to the summary: an icon button pinned to the summary’s top-right corner, over the text, that stays put as it scrolls. It shows only while a summary is shown.\n\nWith no call selected the row actions are disabled, not hidden, so the bar never shifts.\n\nWithout a summary the detail shows one centred message under the header: preparing, failed with the error and Повторить итоги, or «Итогов нет» when notes are off. With no call selected: «Звонок не выбран».\n\n↑↓ moves the selection and the detail follows at once; Tab moves focus into the detail."
+      "content": "Detail\n\nHeader: title, then day, start time · duration. The summary is rendered Markdown, selectable.\n\nOver the list, the bar holds the call’s own actions, which act on the selected row: Открыть (its folder in Finder) and Переименовать in one group, Удалить… alone. Each shows its name as a tooltip on hover. Повторить итоги stays in the failed message and the row menu.\n\nThe toolbar has no bar over the detail: the summary’s surface runs to the window’s top edge, and text scrolling under the toolbar fades at its edge. Копировать belongs to the summary: an icon button in the summary’s top-right corner, level with the row actions, fixed while the text scrolls. It shows only while a summary is shown.\n\nWith no call selected the row actions are disabled, not hidden, so the bar never shifts.\n\nWithout a summary the detail shows one centred message under the header: preparing, failed with the error and Повторить итоги, or «Итогов нет» when notes are off. With no call selected: «Звонок не выбран».\n\n↑↓ moves the selection and the detail follows at once; Tab moves focus into the detail."
     },
     {
       "type": "note",

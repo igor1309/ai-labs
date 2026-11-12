@@ -40,10 +40,13 @@ header, Section, Subhead, Paragraph, Bullet, Detail message).
   selected call's own actions, which act on the row: Открыть (its folder
   in Finder) and Переименовать in one Mail-style group, Удалить… alone.
   Each shows its name as a tooltip on hover (Tooltip on the components
-  board). Over the detail the bar is empty. There is no ⋯ menu.
-- Копировать belongs to the summary, not the call: an icon button pinned to
-  the summary's top-right corner, over the text, fixed while the text
-  scrolls (Copy overlay on the components board). It shows only while a
+  board). There is no ⋯ menu.
+- The toolbar has no bar over the detail: the summary's surface runs to
+  the window's top edge, and text scrolling under the toolbar fades at
+  its edge.
+- Копировать belongs to the summary, not the call: an icon button in the
+  summary's top-right corner, level with the row actions, fixed while the
+  text scrolls (Copy overlay on the components board). It shows only while a
   summary is shown and copies its Markdown source.
 - With no call selected the row actions are disabled, never hidden, so the
   bar does not shift. Повторить итоги stays in the failed message and the
