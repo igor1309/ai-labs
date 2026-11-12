@@ -51145,6 +51145,7 @@
                   "name": "Title bar",
                   "reusable": true,
                   "width": 900,
+                  "height": 44,
                   "fill": "$side",
                   "stroke": "$rule",
                   "strokeWidth": {
@@ -51196,10 +51197,7 @@
                     {
                       "type": "frame",
                       "id": "GUfAH",
-                      "x": 0,
-                      "y": 0,
-                      "name": "Call group",
-                      "enabled": false,
+                      "name": "Row group",
                       "fill": "$btn",
                       "cornerRadius": "$radius-control",
                       "alignItems": "center",
@@ -51262,47 +51260,8 @@
                     },
                     {
                       "type": "frame",
-                      "id": "V4JDku",
-                      "x": 0,
-                      "y": 0,
-                      "name": "Copy group",
-                      "enabled": false,
-                      "fill": "$btn",
-                      "cornerRadius": "$radius-control",
-                      "alignItems": "center",
-                      "children": [
-                        {
-                          "type": "frame",
-                          "id": "H4DTU",
-                          "name": "Копировать",
-                          "cornerRadius": "$radius-control",
-                          "padding": [
-                            "$space-4",
-                            "$space-8"
-                          ],
-                          "alignItems": "center",
-                          "children": [
-                            {
-                              "type": "icon",
-                              "id": "FGeAM",
-                              "name": "Icon",
-                              "width": 14,
-                              "height": 14,
-                              "icon": "copy",
-                              "library": "lucide",
-                              "fill": "$text"
-                            }
-                          ]
-                        }
-                      ]
-                    },
-                    {
-                      "type": "frame",
                       "id": "GYNka",
-                      "x": 0,
-                      "y": 0,
                       "name": "Delete group",
-                      "enabled": false,
                       "fill": "$btn",
                       "cornerRadius": "$radius-control",
                       "alignItems": "center",
@@ -51331,12 +51290,6 @@
                           ]
                         }
                       ]
-                    },
-                    {
-                      "id": "b33sH",
-                      "type": "ref",
-                      "ref": "IcwnO",
-                      "name": "Search"
                     }
                   ]
                 },
@@ -51945,6 +51898,32 @@
                   ]
                 }
               ]
+            },
+            {
+              "type": "frame",
+              "id": "FE6zE",
+              "name": "List search",
+              "reusable": true,
+              "width": 340,
+              "fill": "$side",
+              "stroke": "$rule",
+              "strokeWidth": {
+                "bottom": 1
+              },
+              "padding": [
+                "$space-8",
+                "$space-12"
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "id": "tYXgR",
+                  "type": "ref",
+                  "ref": "IcwnO",
+                  "name": "Search",
+                  "width": "fill_container"
+                }
+              ]
             }
           ]
         },
@@ -51985,136 +51964,6 @@
                   "fontFamily": "$font-ui",
                   "fontSize": "$type-small",
                   "fontWeight": "normal"
-                },
-                {
-                  "type": "frame",
-                  "id": "aWWXS",
-                  "name": "Call group",
-                  "fill": "$btn",
-                  "cornerRadius": "$radius-control",
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "frame",
-                      "id": "byVYR",
-                      "name": "Открыть",
-                      "cornerRadius": "$radius-control",
-                      "padding": [
-                        "$space-4",
-                        "$space-8"
-                      ],
-                      "alignItems": "center",
-                      "children": [
-                        {
-                          "type": "icon",
-                          "id": "KI0Qf",
-                          "name": "Icon",
-                          "width": 14,
-                          "height": 14,
-                          "icon": "folder-open",
-                          "library": "lucide",
-                          "fill": "$text"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "rectangle",
-                      "id": "Q1VOc",
-                      "name": "Separator",
-                      "fill": "$rule",
-                      "width": 1,
-                      "height": 14
-                    },
-                    {
-                      "type": "frame",
-                      "id": "gluOm",
-                      "name": "Переименовать",
-                      "cornerRadius": "$radius-control",
-                      "padding": [
-                        "$space-4",
-                        "$space-8"
-                      ],
-                      "alignItems": "center",
-                      "children": [
-                        {
-                          "type": "icon",
-                          "id": "BqCG1",
-                          "name": "Icon",
-                          "width": 14,
-                          "height": 14,
-                          "icon": "pencil",
-                          "library": "lucide",
-                          "fill": "$text"
-                        }
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "Rb7Bt",
-                  "name": "Copy group",
-                  "fill": "$btn",
-                  "cornerRadius": "$radius-control",
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "frame",
-                      "id": "UuRF1",
-                      "name": "Копировать",
-                      "cornerRadius": "$radius-control",
-                      "padding": [
-                        "$space-4",
-                        "$space-8"
-                      ],
-                      "alignItems": "center",
-                      "children": [
-                        {
-                          "type": "icon",
-                          "id": "V69J6",
-                          "name": "Icon",
-                          "width": 14,
-                          "height": 14,
-                          "icon": "copy",
-                          "library": "lucide",
-                          "fill": "$text"
-                        }
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "C5sn1",
-                  "name": "Delete group",
-                  "fill": "$btn",
-                  "cornerRadius": "$radius-control",
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "frame",
-                      "id": "vQ0TO",
-                      "name": "Удалить…",
-                      "cornerRadius": "$radius-control",
-                      "padding": [
-                        "$space-4",
-                        "$space-8"
-                      ],
-                      "alignItems": "center",
-                      "children": [
-                        {
-                          "type": "icon",
-                          "id": "RMjRQ",
-                          "name": "Icon",
-                          "width": 14,
-                          "height": 14,
-                          "icon": "trash-2",
-                          "library": "lucide",
-                          "fill": "$text"
-                        }
-                      ]
-                    }
-                  ]
                 }
               ]
             },
@@ -52169,12 +52018,7 @@
                   "name": "Detail bar",
                   "width": "fill_container(760)",
                   "x": 0,
-                  "y": 0,
-                  "descendants": {
-                    "gluOm": {
-                      "fill": "$rule"
-                    }
-                  }
+                  "y": 0
                 },
                 {
                   "id": "TSgeV",
@@ -52407,6 +52251,43 @@
                   ]
                 }
               ]
+            },
+            {
+              "type": "frame",
+              "id": "hb8Q9",
+              "name": "Copy overlay",
+              "reusable": true,
+              "fill": "$btn",
+              "cornerRadius": "$radius-control",
+              "stroke": "$rule",
+              "strokeWidth": 1,
+              "effect": {
+                "type": "shadow",
+                "shadowType": "outer",
+                "color": "$shadow",
+                "offset": {
+                  "x": 0,
+                  "y": 1
+                },
+                "blur": 4
+              },
+              "padding": [
+                "$space-4",
+                "$space-8"
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "DM5iz",
+                  "name": "Icon",
+                  "width": 14,
+                  "height": 14,
+                  "icon": "copy",
+                  "library": "lucide",
+                  "fill": "$text"
+                }
+              ]
             }
           ]
         }
@@ -52453,18 +52334,18 @@
               "layout": "vertical",
               "children": [
                 {
-                  "id": "s108x",
+                  "id": "FhFig",
                   "type": "ref",
                   "ref": "bncv0",
                   "name": "List bar",
-                  "width": "fill_container",
-                  "height": 44,
-                  "descendants": {
-                    "b33sH": {
-                      "width": 160,
-                      "enabled": true
-                    }
-                  }
+                  "width": "fill_container"
+                },
+                {
+                  "id": "nrnIn",
+                  "type": "ref",
+                  "ref": "FE6zE",
+                  "name": "List search",
+                  "width": "fill_container"
                 },
                 {
                   "type": "frame",
@@ -52790,7 +52671,7 @@
               "layout": "vertical",
               "children": [
                 {
-                  "id": "s106x",
+                  "id": "mNQLv",
                   "type": "ref",
                   "ref": "s013x",
                   "name": "Detail bar",
@@ -52948,6 +52829,15 @@
                       }
                     }
                   ]
+                },
+                {
+                  "id": "Eg9G1",
+                  "type": "ref",
+                  "ref": "hb8Q9",
+                  "name": "Copy",
+                  "layoutPosition": "absolute",
+                  "x": 712,
+                  "y": 60
                 }
               ]
             }
@@ -52996,18 +52886,18 @@
               "layout": "vertical",
               "children": [
                 {
-                  "id": "s134x",
+                  "id": "NiyZF",
                   "type": "ref",
                   "ref": "bncv0",
                   "name": "List bar",
-                  "width": "fill_container",
-                  "height": 44,
-                  "descendants": {
-                    "b33sH": {
-                      "width": 160,
-                      "enabled": true
-                    }
-                  }
+                  "width": "fill_container"
+                },
+                {
+                  "id": "A2GD1m",
+                  "type": "ref",
+                  "ref": "FE6zE",
+                  "name": "List search",
+                  "width": "fill_container"
                 },
                 {
                   "type": "frame",
@@ -53333,16 +53223,11 @@
               "layout": "vertical",
               "children": [
                 {
-                  "id": "s132x",
+                  "id": "bYhjl",
                   "type": "ref",
                   "ref": "s013x",
                   "name": "Detail bar",
-                  "width": "fill_container",
-                  "descendants": {
-                    "V69J6": {
-                      "fill": "$disText"
-                    }
-                  }
+                  "width": "fill_container"
                 },
                 {
                   "type": "frame",
@@ -53458,18 +53343,18 @@
               "layout": "vertical",
               "children": [
                 {
-                  "id": "s160x",
+                  "id": "lSKdg",
                   "type": "ref",
                   "ref": "bncv0",
                   "name": "List bar",
-                  "width": "fill_container",
-                  "height": 44,
-                  "descendants": {
-                    "b33sH": {
-                      "width": 160,
-                      "enabled": true
-                    }
-                  }
+                  "width": "fill_container"
+                },
+                {
+                  "id": "ZPxAl",
+                  "type": "ref",
+                  "ref": "FE6zE",
+                  "name": "List search",
+                  "width": "fill_container"
                 },
                 {
                   "type": "frame",
@@ -53795,16 +53680,11 @@
               "layout": "vertical",
               "children": [
                 {
-                  "id": "s158x",
+                  "id": "eKWfh",
                   "type": "ref",
                   "ref": "s013x",
                   "name": "Detail bar",
-                  "width": "fill_container",
-                  "descendants": {
-                    "V69J6": {
-                      "fill": "$disText"
-                    }
-                  }
+                  "width": "fill_container"
                 },
                 {
                   "type": "frame",
@@ -53920,18 +53800,18 @@
               "layout": "vertical",
               "children": [
                 {
-                  "id": "s186x",
+                  "id": "x3dtr",
                   "type": "ref",
                   "ref": "bncv0",
                   "name": "List bar",
-                  "width": "fill_container",
-                  "height": 44,
-                  "descendants": {
-                    "b33sH": {
-                      "width": 160,
-                      "enabled": true
-                    }
-                  }
+                  "width": "fill_container"
+                },
+                {
+                  "id": "SiZei",
+                  "type": "ref",
+                  "ref": "FE6zE",
+                  "name": "List search",
+                  "width": "fill_container"
                 },
                 {
                   "type": "frame",
@@ -54256,16 +54136,11 @@
               "layout": "vertical",
               "children": [
                 {
-                  "id": "s184x",
+                  "id": "XKoe2",
                   "type": "ref",
                   "ref": "s013x",
                   "name": "Detail bar",
-                  "width": "fill_container",
-                  "descendants": {
-                    "V69J6": {
-                      "fill": "$disText"
-                    }
-                  }
+                  "width": "fill_container"
                 },
                 {
                   "type": "frame",
@@ -54381,18 +54256,18 @@
               "layout": "vertical",
               "children": [
                 {
-                  "id": "s220x",
+                  "id": "tPSsr",
                   "type": "ref",
                   "ref": "bncv0",
                   "name": "List bar",
-                  "width": "fill_container",
-                  "height": 44,
-                  "descendants": {
-                    "b33sH": {
-                      "width": 160,
-                      "enabled": true
-                    }
-                  }
+                  "width": "fill_container"
+                },
+                {
+                  "id": "Gptek",
+                  "type": "ref",
+                  "ref": "FE6zE",
+                  "name": "List search",
+                  "width": "fill_container"
                 },
                 {
                   "type": "frame",
@@ -54714,7 +54589,7 @@
               "layout": "vertical",
               "children": [
                 {
-                  "id": "s218x",
+                  "id": "v8c7D",
                   "type": "ref",
                   "ref": "s013x",
                   "name": "Detail bar",
@@ -54872,6 +54747,15 @@
                       }
                     }
                   ]
+                },
+                {
+                  "id": "QCsgm",
+                  "type": "ref",
+                  "ref": "hb8Q9",
+                  "name": "Copy",
+                  "layoutPosition": "absolute",
+                  "x": 712,
+                  "y": 60
                 }
               ]
             }
@@ -54920,18 +54804,29 @@
               "layout": "vertical",
               "children": [
                 {
-                  "id": "s245x",
+                  "id": "ZSZYb",
                   "type": "ref",
                   "ref": "bncv0",
                   "name": "List bar",
                   "width": "fill_container",
-                  "height": 44,
                   "descendants": {
-                    "b33sH": {
-                      "width": 160,
-                      "enabled": true
+                    "R9ZIZb": {
+                      "fill": "$disText"
+                    },
+                    "b4tx6d": {
+                      "fill": "$disText"
+                    },
+                    "NfFhZ": {
+                      "fill": "$disText"
                     }
                   }
+                },
+                {
+                  "id": "UBeVS",
+                  "type": "ref",
+                  "ref": "FE6zE",
+                  "name": "List search",
+                  "width": "fill_container"
                 },
                 {
                   "type": "frame",
@@ -55252,25 +55147,11 @@
               "layout": "vertical",
               "children": [
                 {
-                  "id": "s243x",
+                  "id": "hqEl4",
                   "type": "ref",
                   "ref": "s013x",
                   "name": "Detail bar",
-                  "width": "fill_container",
-                  "descendants": {
-                    "KI0Qf": {
-                      "fill": "$disText"
-                    },
-                    "BqCG1": {
-                      "fill": "$disText"
-                    },
-                    "V69J6": {
-                      "fill": "$disText"
-                    },
-                    "RMjRQ": {
-                      "fill": "$disText"
-                    }
-                  }
+                  "width": "fill_container"
                 },
                 {
                   "type": "frame",
@@ -55370,28 +55251,18 @@
               "layout": "vertical",
               "children": [
                 {
-                  "id": "s269x",
+                  "id": "jVhfL",
                   "type": "ref",
                   "ref": "bncv0",
                   "name": "List bar",
-                  "width": "fill_container",
-                  "height": 44,
-                  "descendants": {
-                    "b33sH": {
-                      "width": 160,
-                      "enabled": true
-                    },
-                    "b33sH/jw3kq": {
-                      "content": "correlation",
-                      "fill": "$text"
-                    },
-                    "b33sH/kHRgz": {
-                      "enabled": false
-                    },
-                    "b33sH/SwwNh": {
-                      "enabled": true
-                    }
-                  }
+                  "width": "fill_container"
+                },
+                {
+                  "id": "enwaj",
+                  "type": "ref",
+                  "ref": "FE6zE",
+                  "name": "List search",
+                  "width": "fill_container"
                 },
                 {
                   "type": "frame",
@@ -55589,7 +55460,7 @@
               "layout": "vertical",
               "children": [
                 {
-                  "id": "s268x",
+                  "id": "LZFkC",
                   "type": "ref",
                   "ref": "s013x",
                   "name": "Detail bar",
@@ -55747,6 +55618,15 @@
                       }
                     }
                   ]
+                },
+                {
+                  "id": "BGBni",
+                  "type": "ref",
+                  "ref": "hb8Q9",
+                  "name": "Copy",
+                  "layoutPosition": "absolute",
+                  "x": 712,
+                  "y": 60
                 }
               ]
             }
@@ -55795,28 +55675,18 @@
               "layout": "vertical",
               "children": [
                 {
-                  "id": "s295x",
+                  "id": "tg7jG",
                   "type": "ref",
                   "ref": "bncv0",
                   "name": "List bar",
-                  "width": "fill_container",
-                  "height": 44,
-                  "descendants": {
-                    "b33sH": {
-                      "width": 160,
-                      "enabled": true
-                    },
-                    "b33sH/jw3kq": {
-                      "content": "correlation",
-                      "fill": "$text"
-                    },
-                    "b33sH/kHRgz": {
-                      "enabled": true
-                    },
-                    "b33sH/SwwNh": {
-                      "enabled": false
-                    }
-                  }
+                  "width": "fill_container"
+                },
+                {
+                  "id": "pyv2C",
+                  "type": "ref",
+                  "ref": "FE6zE",
+                  "name": "List search",
+                  "width": "fill_container"
                 },
                 {
                   "type": "frame",
@@ -55993,7 +55863,7 @@
               "layout": "vertical",
               "children": [
                 {
-                  "id": "s294x",
+                  "id": "ejMFz",
                   "type": "ref",
                   "ref": "s013x",
                   "name": "Detail bar",
@@ -56151,6 +56021,15 @@
                       }
                     }
                   ]
+                },
+                {
+                  "id": "R1eU3B",
+                  "type": "ref",
+                  "ref": "hb8Q9",
+                  "name": "Copy",
+                  "layoutPosition": "absolute",
+                  "x": 712,
+                  "y": 60
                 }
               ]
             }
@@ -56199,28 +56078,29 @@
               "layout": "vertical",
               "children": [
                 {
-                  "id": "s307x",
+                  "id": "R4lpl",
                   "type": "ref",
                   "ref": "bncv0",
                   "name": "List bar",
                   "width": "fill_container",
-                  "height": 44,
                   "descendants": {
-                    "b33sH": {
-                      "width": 160,
-                      "enabled": true
+                    "R9ZIZb": {
+                      "fill": "$disText"
                     },
-                    "b33sH/jw3kq": {
-                      "content": "Kubernetes",
-                      "fill": "$text"
+                    "b4tx6d": {
+                      "fill": "$disText"
                     },
-                    "b33sH/kHRgz": {
-                      "enabled": false
-                    },
-                    "b33sH/SwwNh": {
-                      "enabled": true
+                    "NfFhZ": {
+                      "fill": "$disText"
                     }
                   }
+                },
+                {
+                  "id": "eUDGL",
+                  "type": "ref",
+                  "ref": "FE6zE",
+                  "name": "List search",
+                  "width": "fill_container"
                 },
                 {
                   "type": "frame",
@@ -56278,25 +56158,11 @@
               "layout": "vertical",
               "children": [
                 {
-                  "id": "s306x",
+                  "id": "lBQqL",
                   "type": "ref",
                   "ref": "s013x",
                   "name": "Detail bar",
-                  "width": "fill_container",
-                  "descendants": {
-                    "KI0Qf": {
-                      "fill": "$disText"
-                    },
-                    "BqCG1": {
-                      "fill": "$disText"
-                    },
-                    "V69J6": {
-                      "fill": "$disText"
-                    },
-                    "RMjRQ": {
-                      "fill": "$disText"
-                    }
-                  }
+                  "width": "fill_container"
                 },
                 {
                   "type": "frame",
@@ -56396,18 +56262,29 @@
               "layout": "vertical",
               "children": [
                 {
-                  "id": "s320x",
+                  "id": "z19q5",
                   "type": "ref",
                   "ref": "bncv0",
                   "name": "List bar",
                   "width": "fill_container",
-                  "height": 44,
                   "descendants": {
-                    "b33sH": {
-                      "width": 160,
-                      "enabled": true
+                    "R9ZIZb": {
+                      "fill": "$disText"
+                    },
+                    "b4tx6d": {
+                      "fill": "$disText"
+                    },
+                    "NfFhZ": {
+                      "fill": "$disText"
                     }
                   }
+                },
+                {
+                  "id": "TOHGi",
+                  "type": "ref",
+                  "ref": "FE6zE",
+                  "name": "List search",
+                  "width": "fill_container"
                 },
                 {
                   "type": "frame",
@@ -56465,25 +56342,11 @@
               "layout": "vertical",
               "children": [
                 {
-                  "id": "s318x",
+                  "id": "LDP94",
                   "type": "ref",
                   "ref": "s013x",
                   "name": "Detail bar",
-                  "width": "fill_container",
-                  "descendants": {
-                    "KI0Qf": {
-                      "fill": "$disText"
-                    },
-                    "BqCG1": {
-                      "fill": "$disText"
-                    },
-                    "V69J6": {
-                      "fill": "$disText"
-                    },
-                    "RMjRQ": {
-                      "fill": "$disText"
-                    }
-                  }
+                  "width": "fill_container"
                 },
                 {
                   "type": "frame",
@@ -56570,18 +56433,29 @@
               "layout": "vertical",
               "children": [
                 {
-                  "id": "s332x",
+                  "id": "IGhuv",
                   "type": "ref",
                   "ref": "bncv0",
                   "name": "List bar",
                   "width": "fill_container",
-                  "height": 44,
                   "descendants": {
-                    "b33sH": {
-                      "width": 160,
-                      "enabled": true
+                    "R9ZIZb": {
+                      "fill": "$disText"
+                    },
+                    "b4tx6d": {
+                      "fill": "$disText"
+                    },
+                    "NfFhZ": {
+                      "fill": "$disText"
                     }
                   }
+                },
+                {
+                  "id": "AQVlg",
+                  "type": "ref",
+                  "ref": "FE6zE",
+                  "name": "List search",
+                  "width": "fill_container"
                 },
                 {
                   "type": "frame",
@@ -56640,25 +56514,11 @@
               "layout": "vertical",
               "children": [
                 {
-                  "id": "s330x",
+                  "id": "OzteQ",
                   "type": "ref",
                   "ref": "s013x",
                   "name": "Detail bar",
-                  "width": "fill_container",
-                  "descendants": {
-                    "KI0Qf": {
-                      "fill": "$disText"
-                    },
-                    "BqCG1": {
-                      "fill": "$disText"
-                    },
-                    "V69J6": {
-                      "fill": "$disText"
-                    },
-                    "RMjRQ": {
-                      "fill": "$disText"
-                    }
-                  }
+                  "width": "fill_container"
                 },
                 {
                   "type": "frame",
@@ -56745,18 +56605,18 @@
               "layout": "vertical",
               "children": [
                 {
-                  "id": "s367x",
+                  "id": "B2kiN",
                   "type": "ref",
                   "ref": "bncv0",
                   "name": "List bar",
-                  "width": "fill_container",
-                  "height": 44,
-                  "descendants": {
-                    "b33sH": {
-                      "width": 160,
-                      "enabled": true
-                    }
-                  }
+                  "width": "fill_container"
+                },
+                {
+                  "id": "A8dfaj",
+                  "type": "ref",
+                  "ref": "FE6zE",
+                  "name": "List search",
+                  "width": "fill_container"
                 },
                 {
                   "type": "frame",
@@ -57101,7 +56961,7 @@
               "layout": "vertical",
               "children": [
                 {
-                  "id": "s365x",
+                  "id": "ihmZP",
                   "type": "ref",
                   "ref": "s013x",
                   "name": "Detail bar",
@@ -57259,6 +57119,15 @@
                       }
                     }
                   ]
+                },
+                {
+                  "id": "XYQNY",
+                  "type": "ref",
+                  "ref": "hb8Q9",
+                  "name": "Copy",
+                  "layoutPosition": "absolute",
+                  "x": 712,
+                  "y": 60
                 }
               ]
             }
@@ -57307,18 +57176,18 @@
               "layout": "vertical",
               "children": [
                 {
-                  "id": "s403x",
+                  "id": "y9QX9",
                   "type": "ref",
                   "ref": "bncv0",
                   "name": "List bar",
-                  "width": "fill_container",
-                  "height": 44,
-                  "descendants": {
-                    "b33sH": {
-                      "width": 160,
-                      "enabled": true
-                    }
-                  }
+                  "width": "fill_container"
+                },
+                {
+                  "id": "d5Rf2",
+                  "type": "ref",
+                  "ref": "FE6zE",
+                  "name": "List search",
+                  "width": "fill_container"
                 },
                 {
                   "type": "frame",
@@ -57644,7 +57513,7 @@
               "layout": "vertical",
               "children": [
                 {
-                  "id": "s399x",
+                  "id": "v8wJd",
                   "type": "ref",
                   "ref": "s013x",
                   "name": "Detail bar",
@@ -57802,6 +57671,15 @@
                       }
                     }
                   ]
+                },
+                {
+                  "id": "IEgjz",
+                  "type": "ref",
+                  "ref": "hb8Q9",
+                  "name": "Copy",
+                  "layoutPosition": "absolute",
+                  "x": 712,
+                  "y": 60
                 }
               ]
             }
@@ -57865,18 +57743,18 @@
               "layout": "vertical",
               "children": [
                 {
-                  "id": "s438x",
+                  "id": "x94SGw",
                   "type": "ref",
                   "ref": "bncv0",
                   "name": "List bar",
-                  "width": "fill_container",
-                  "height": 44,
-                  "descendants": {
-                    "b33sH": {
-                      "width": 160,
-                      "enabled": true
-                    }
-                  }
+                  "width": "fill_container"
+                },
+                {
+                  "id": "QOwtd",
+                  "type": "ref",
+                  "ref": "FE6zE",
+                  "name": "List search",
+                  "width": "fill_container"
                 },
                 {
                   "type": "frame",
@@ -58217,7 +58095,7 @@
               "layout": "vertical",
               "children": [
                 {
-                  "id": "s435x",
+                  "id": "l9p5Cb",
                   "type": "ref",
                   "ref": "s013x",
                   "name": "Detail bar",
@@ -58375,6 +58253,15 @@
                       }
                     }
                   ]
+                },
+                {
+                  "id": "V80NsN",
+                  "type": "ref",
+                  "ref": "hb8Q9",
+                  "name": "Copy",
+                  "layoutPosition": "absolute",
+                  "x": 712,
+                  "y": 60
                 }
               ]
             }
@@ -58420,26 +58307,18 @@
               "layout": "vertical",
               "children": [
                 {
-                  "id": "s460x",
+                  "id": "vVIUm",
                   "type": "ref",
                   "ref": "bncv0",
                   "name": "List bar",
-                  "width": "fill_container",
-                  "height": 44,
-                  "descendants": {
-                    "GUfAH": {
-                      "enabled": true
-                    },
-                    "V4JDku": {
-                      "enabled": true
-                    },
-                    "GYNka": {
-                      "enabled": true
-                    },
-                    "b33sH": {
-                      "width": 160
-                    }
-                  }
+                  "width": "fill_container"
+                },
+                {
+                  "id": "wNaYt",
+                  "type": "ref",
+                  "ref": "FE6zE",
+                  "name": "List search",
+                  "width": "fill_container"
                 },
                 {
                   "type": "frame",
@@ -58943,7 +58822,7 @@
       "name": "Note detail",
       "width": 520,
       "height": 380,
-      "content": "Detail\n\nHeader: title, then day, start time · duration. The summary is rendered Markdown, selectable.\n\nToolbar over the detail, at its right end: icon-only buttons in three groups, Mail-style. Открыть (the folder in Finder) and Переименовать act on the call file; Копировать (the Markdown source) stands alone; Удалить… stands alone. Each shows its name as a tooltip on hover. Повторить итоги stays in the failed message and the row menu. The call’s own window has the same groups.\n\nThe buttons act on the selected call. Копировать is disabled without a summary; with no call selected all four are disabled. Disabled, not hidden: the toolbar never shifts.\n\nWithout a summary the detail shows one centred message under the header: preparing, failed with the error and Повторить итоги, or «Итогов нет» when notes are off. With no call selected: «Звонок не выбран».\n\n↑↓ moves the selection and the detail follows at once; Tab moves focus into the detail."
+      "content": "Detail\n\nHeader: title, then day, start time · duration. The summary is rendered Markdown, selectable.\n\nOver the list, the bar holds the call’s own actions, which act on the selected row: Открыть (its folder in Finder) and Переименовать in one group, Удалить… alone. Each shows its name as a tooltip on hover. Повторить итоги stays in the failed message and the row menu.\n\nКопировать belongs to the summary: an icon button pinned to the summary’s top-right corner, over the text, that stays put as it scrolls. It shows only while a summary is shown.\n\nWith no call selected the row actions are disabled, not hidden, so the bar never shifts.\n\nWithout a summary the detail shows one centred message under the header: preparing, failed with the error and Повторить итоги, or «Итогов нет» when notes are off. With no call selected: «Звонок не выбран».\n\n↑↓ moves the selection and the detail follows at once; Tab moves focus into the detail."
     },
     {
       "type": "note",
@@ -58953,7 +58832,7 @@
       "name": "Note search",
       "width": 520,
       "height": 380,
-      "content": "Search\n\nThe field sits over the list, at the right end of its bar, apart from the call’s buttons (when narrow it ends the one bar) and works as in the calls list: titles, summaries and transcripts, as you type, ignoring case and ё/е; days with no match hide.\n\nA match row keeps the two-line shape: title and time, then where the first match is (its time in the transcript, or «Итоги»), the text around it with the hit tinted `hit`, and «ещё N». The detail shows the selected call's summary. No results: the list says so and the detail shows «Звонок не выбран».\n\nEmpty, loading and the inactive window (selection in `chip`) are as in the calls list."
+      "content": "Search\n\nThe field is the list’s first row, under its bar, across the list’s width, and works as in the calls list: titles, summaries and transcripts, as you type, ignoring case and ё/е; days with no match hide.\n\nA match row keeps the two-line shape: title and time, then where the first match is (its time in the transcript, or «Итоги»), the text around it with the hit tinted `hit`, and «ещё N». The detail shows the selected call's summary. No results: the list says so and the detail shows «Звонок не выбран».\n\nEmpty, loading and the inactive window (selection in `chip`) are as in the calls list."
     }
   ],
   "themes": {

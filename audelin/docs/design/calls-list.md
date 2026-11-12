@@ -36,21 +36,20 @@ header, Section, Subhead, Paragraph, Bullet, Detail message).
 
 - Header: title, then day, start time · duration. The summary is
   selectable rendered Markdown (headings, lists, code, tables).
-- Toolbar: one bar across the window, split at the list's divider so each
-  control sits over the pane it acts on. Over the list, the title and, at
-  its right end, the search field. Over the detail, at its right end,
-  icon-only buttons in three Mail-style groups: Открыть and Переименовать
-  (the call's file); Копировать (the Markdown source); Удалить… alone. The
-  groups stand apart by a gap, so the destructive button is not next to
-  the others. Each shows its name as a tooltip on hover (Tooltip on the
-  components board). There is no ⋯ menu.
-- The buttons act on the selected call. Копировать is disabled without a
-  summary; with no call selected all four are disabled. They are disabled,
-  never hidden, so the toolbar does not shift. Повторить итоги stays in the
-  failed message and the row's context menu. Below 700 pt the one bar holds the
-  title, the groups and the search field, and the buttons act on the
-  selected row; the call's own window has the same groups, without the
-  search field.
+- Toolbar: one bar across the window. Over the list, the title and the
+  selected call's own actions, which act on the row: Открыть (its folder
+  in Finder) and Переименовать in one Mail-style group, Удалить… alone.
+  Each shows its name as a tooltip on hover (Tooltip on the components
+  board). Over the detail the bar is empty. There is no ⋯ menu.
+- Копировать belongs to the summary, not the call: an icon button pinned to
+  the summary's top-right corner, over the text, fixed while the text
+  scrolls (Copy overlay on the components board). It shows only while a
+  summary is shown and copies its Markdown source.
+- With no call selected the row actions are disabled, never hidden, so the
+  bar does not shift. Повторить итоги stays in the failed message and the
+  row's context menu. Below 700 pt the bar is the same and acts on the
+  selected row; the call's own window has the row actions in its toolbar
+  and Копировать over its summary.
 - Without a summary, one centred message under the header: preparing;
   failed, with the error and Повторить итоги; «Итогов нет» when notes are
   off. With no call selected: «Звонок не выбран».
@@ -67,7 +66,8 @@ header, Section, Subhead, Paragraph, Bullet, Detail message).
 
 ## Search
 
-- The search field sits over the list (it ends the one bar when narrow). ⌘F focuses it; Esc or its
+- The search field is the list's first row, under the bar, across the
+  list's width. ⌘F focuses it; Esc or its
   clear button empties it and the whole list returns.
 - One field searches titles, summaries and transcripts as you type, ignoring
   case and ё/е. There is no scope switch.
