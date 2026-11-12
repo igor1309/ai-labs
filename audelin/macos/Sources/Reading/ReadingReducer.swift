@@ -145,6 +145,17 @@ public struct ReadingReducer: Sendable {
             confirm(&state.rendered.entries.sealed)
             confirm(&state.rendered.entries.tail)
             if state.rendered.prepared { rebuildLayout(&state) }
+        case let .speakersFound(places):
+            func place(_ entries: inout [ReadingTextUpdate.Entry.ID: ReadingState.Entry]) {
+                for (id, entry) in entries where id.speaker == .theirs {
+                    var entry = entry
+                    entry.remoteSpeaker = places[id.localID]
+                    entries[id] = entry
+                }
+            }
+            place(&state.rendered.entries.sealed)
+            place(&state.rendered.entries.tail)
+            if state.rendered.prepared { rebuildLayout(&state) }
         case .jumpToLive:
             state.lines.followsLive = true
             state.lines.newBelow = 0

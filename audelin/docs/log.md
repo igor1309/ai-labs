@@ -1,5 +1,9 @@
 # Log
 
+## 2026-11-12
+
+- LAB-1132: After a call, the far side is split among its speakers: the transcript labels them `Them 1`, `Them 2`… (or by Zoom name), cleanup and the summary wait for and use them, and the open panel recolours and captions each speaker's rows. The diarization model starts loading when a call opens.
+
 ## 2026-11-11
 
 - Renaming a call in the calls list: Return saves the name instead of opening the folder, selecting another row saves it, and the field has room above and below its text.

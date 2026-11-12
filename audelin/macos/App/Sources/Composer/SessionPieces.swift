@@ -41,14 +41,17 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
     var transcriptFile: (any SessionTranscriptFile)?
     var writing: WritingReader?
     private var readingOutput: NewestText?
+    private var readingSpeakers: AsyncStream<[Int: Int]>.Continuation?
     private var readingObservation: Task<Void, Never>?
 
     // Register before Session begins so its first text state cannot be missed.
-    func readingText() -> AsyncStream<CallState> {
+    func readingText() -> (text: AsyncStream<CallState>, speakers: AsyncStream<[Int: Int]>) {
 
         let output = NewestText()
         readingOutput = output
-        return output.stream
+        let speakers = AsyncStream<[Int: Int]>.makeStream()
+        readingSpeakers = speakers.continuation
+        return (output.stream, speakers.stream)
     }
 
     /// A long call's transcript is saved at most this often, and at once when its text stops.
@@ -127,8 +130,12 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
 
     func closeTranscript() async throws {
 
-        defer { news.continuation.finish(); readingOutput?.finish() }
+        defer { news.continuation.finish(); readingOutput?.finish(); readingSpeakers?.finish() }
         await transcriptFile?.close()
+        // The pass ran inside close; the reading model takes each row's speaker after the text.
+        if let places = await transcriptFile?.attributeSpeakers()?.rows, !places.isEmpty {
+            readingSpeakers?.yield(places)
+        }
     }
 
     func start(enabled: Bool) async throws {

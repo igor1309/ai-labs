@@ -24,7 +24,7 @@ struct AfterCallPassTests {
             await writer.close()
             let attributed = try #require(await writer.attributeSpeakers())
             #expect(attributed.speakers.map(\.id) == ["d0", "d1"])
-            #expect(await writer.attributeSpeakers() == nil)
+            #expect(await writer.attributeSpeakers() == attributed)
             #expect(samples.all == [160])
             #expect(await bytes.calls == ["write", "close", "replace"])
         }
@@ -142,6 +142,30 @@ struct AfterCallPassTests {
             #expect(text.contains("**Them 1** 00:00:00\nfar1\n\n**Them 2** 00:00:02\nfar2\n\n**Them 1** 00:00:04\nfar3\n"))
             #expect(text.contains("- Them 1: unknown\n- Them 2: unknown\n"))
             #expect(await bytes.calls.suffix(2) == ["close", "replace"])
+        }
+    }
+
+    @Test func savedSpeakersGiveEachRowItsPlaceAndAreReturnedAgainLater() async throws {
+        try await withCallTrack { track in
+            let binding = PassBinding(nemotron: { _ in
+                [EngineTurn(speaker: "3", start: 0, end: 2), EngineTurn(speaker: "5", start: 2, end: 4), EngineTurn(speaker: "3", start: 4, end: 6)]
+            })
+            let (logs, _, writer) = try await unnamedWriter(track: track, binding: binding, theirs: [(1, 0, 1), (2, 2, 3), (3, 4, 5)])
+            await writer.close()
+            #expect(await writer.attributeSpeakers()?.rows == [1: 1, 2: 2, 3: 1])
+            #expect(await writer.attributeSpeakers()?.rows == [1: 1, 2: 2, 3: 1])
+            #expect(logs.all.filter { $0.message.hasPrefix("remote speakers model=") }.count == 1)
+        }
+    }
+
+    @Test func unsavedSpeakersAreNotReturned() async throws {
+        try await withCallTrack { track in
+            let binding = PassBinding(nemotron: { _ in [EngineTurn(speaker: "0", start: 0, end: 2), EngineTurn(speaker: "1", start: 2, end: 4)] })
+            let (_, _, writer) = try await unnamedWriter(track: track, binding: binding, entries: [far(1, 0, 1), far(2, 2, 3)],
+                                                         bytes: PassBytes(failingReplaces: 1))
+            await writer.close()
+            #expect(await writer.attributeSpeakers() == nil)
+            #expect(await writer.attributeSpeakers() == nil)
         }
     }
 

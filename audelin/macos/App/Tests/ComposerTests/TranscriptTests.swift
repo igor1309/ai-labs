@@ -5,6 +5,7 @@ import Testing
 import TranscriptFormat
 import CallText
 import Reading
+import CallDiarizer
 
 @Suite(.timeLimit(.minutes(1)))
 struct TranscriptTests {
@@ -66,5 +67,42 @@ struct TranscriptTests {
                 #expect(Transcript.segments(from: single) == [segment])
             }
         }
+    }
+}
+
+struct RowSpeakersTests {
+
+    private let two: [TranscriptFormat.Speaker] = [.init(id: "d3", name: nil, state: "diarized"), .init(id: "d5", name: nil, state: "diarized")]
+
+    private func turn(_ speaker: Int, _ start: Double, _ end: Double) -> CallDiarizer.Turn { .init(speaker: speaker, start: start, end: end) }
+
+    @Test func aPauseBeforeTheNextSpeakerCountsForNoOne() {
+        let places = Composer.Transcript.rowSpeakers(rows: [(id: 1, start: 0, end: 10)],
+                                                     turns: [turn(3, 0, 1), turn(5, 8, 10)], speakers: two)
+        #expect(places == [1: 2])
+    }
+
+    @Test func aReturningSpeakersTimeAddsUp() {
+        let places = Composer.Transcript.rowSpeakers(rows: [(id: 1, start: 0, end: 10)],
+                                                     turns: [turn(3, 0, 2), turn(5, 2, 5), turn(3, 5, 7)], speakers: two)
+        #expect(places == [1: 1])
+    }
+
+    @Test func addedUpTimesThatTieGoToTheEarlierPlace() {
+        let places = Composer.Transcript.rowSpeakers(rows: [(id: 1, start: 0, end: 10)],
+                                                     turns: [turn(5, 0, 2), turn(3, 2, 3), turn(5, 3, 4), turn(3, 4, 6)], speakers: two)
+        #expect(places == [1: 1])
+    }
+
+    @Test func aRowNoTurnOverlapsHasNoPlace() {
+        let places = Composer.Transcript.rowSpeakers(rows: [(id: 1, start: 0, end: 1), (id: 2, start: 5, end: 6)],
+                                                     turns: [turn(3, 0, 1), turn(5, 2, 3)], speakers: two)
+        #expect(places == [1: 1])
+    }
+
+    @Test func aLoneSpeakerGivesNoPlaces() {
+        let places = Composer.Transcript.rowSpeakers(rows: [(id: 1, start: 0, end: 1)], turns: [turn(0, 0, 1)],
+                                                     speakers: [.init(id: "d0", name: nil, state: "diarized")])
+        #expect(places.isEmpty)
     }
 }

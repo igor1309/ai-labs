@@ -30,7 +30,8 @@ public protocol SessionTranscriptFile: Sendable {
     func close() async
 
     /// After close: gives the far side to its diarized speakers and saves it in the file;
-    /// nil when there is no call track or the pass failed.
+    /// nil when there is no call track or the pass failed. The pass runs once; a later call
+    /// returns its result.
     func attributeSpeakers() async -> AttributedFar?
 
     /// Replaces the closed transcript atomically; a failure keeps its previous bytes.
@@ -92,6 +93,8 @@ actor WritingTranscript: SessionTranscriptFile {
     /// The far side as the after-call pass gave it to diarized speakers; nil keeps plain Them.
     private var attributed: Composer.Transcript.Attributed?
     private var last: CallState?
+    /// The after-call pass runs once; a later call returns what it saved.
+    private var passed = false
 
     init(file: any TranscriptBytes, format: any TranscriptRenderer, names: LiveNameBoard, diarizer: CallDiarizer, sink: any LogSink) {
         self.file = file; self.format = format; self.names = names; self.diarizer = diarizer; self.sink = sink
@@ -158,8 +161,10 @@ actor WritingTranscript: SessionTranscriptFile {
     /// Them and Zoom's names tentative.
     func attributeSpeakers() async -> Composer.Transcript.Attributed? {
 
+        guard attributed == nil else { return attributed }
         let board = names.snapshot()
-        guard closed, attributed == nil, let state = last, let track = board.callTrack else { return nil }
+        guard closed, !passed, let state = last, let track = board.callTrack else { return nil }
+        passed = true
         await afterCall(state, track: track, board: board)
         closedNames = names.snapshot()
         return attributed
@@ -178,7 +183,9 @@ actor WritingTranscript: SessionTranscriptFile {
             clusters = AfterCallNames.clusterNames(turns: result.turns, board: board)
             sink.write(.init(category: .session, message: "after-call names confirmed=\(clusters.count) turns=\(result.turns.count)"))
         }
-        let attributed = Composer.Transcript.attributed(result.pieces, in: state, names: clusters)
+        var attributed = Composer.Transcript.attributed(result.pieces, in: state, names: clusters)
+        let rows = state.entries.filter { $0.speaker != .mine }.map { (id: $0.text.id, start: $0.text.start, end: $0.text.end) }
+        attributed.rows = Composer.Transcript.rowSpeakers(rows: rows, turns: result.turns, speakers: attributed.speakers)
         let microphone = state.entries.filter { $0.speaker == .mine }.map { Composer.Transcript.segment(from: $0) }
         do {
             let rendering = try format.renderWhole(Composer.Transcript.merging(microphone, with: attributed.far), speakers: attributed.speakers)

@@ -82,6 +82,9 @@ public enum ReadingEvent: Equatable, Sendable {
     /// The after-call pass: remote entries take these confirmed names by local ID;
     /// every other remote entry loses its tentative name.
     case namesConfirmed([Int: String])
+    /// The after-call pass found several remote speakers: remote entries take these
+    /// 1-based places by local ID; every other remote entry stays plain Them.
+    case speakersFound([Int: Int])
 }
 
 /// A recording problem, stamped on the same elapsed clock as the text.

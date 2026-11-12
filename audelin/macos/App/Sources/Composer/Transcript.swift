@@ -1,3 +1,4 @@
+import CallDiarizer
 import CallText
 import LiveText
 import SpeakerAttribution
@@ -60,6 +61,26 @@ enum Transcript {
         return Attributed(far: far, speakers: speakers)
     }
 
+    /// Each far row's speaker as its 1-based place in `speakers`: the one whose diarized turns
+    /// overlap the row most, the earlier place on a tie. Empty for a lone speaker, who stays
+    /// plain Them.
+    static func rowSpeakers(rows: [(id: Int, start: Double, end: Double)], turns: [CallDiarizer.Turn],
+                            speakers: [TranscriptFormat.Speaker]) -> [Int: Int] {
+
+        guard speakers.count > 1 else { return [:] }
+        var result: [Int: Int] = [:]
+        for row in rows {
+            var spoken: [Int: Double] = [:]
+            for turn in turns {
+                guard let index = speakers.firstIndex(where: { $0.id == "d\(turn.speaker)" }) else { continue }
+                let overlap = min(row.end, turn.end) - max(row.start, turn.start)
+                if overlap > 0 { spoken[index + 1, default: 0] += overlap }
+            }
+            result[row.id] = spoken.max { $0.value == $1.value ? $0.key > $1.key : $0.value < $1.value }?.key
+        }
+        return result
+    }
+
     /// The microphone's rows with an attributed far side, in time order.
     static func merging(_ microphone: [TranscriptFormat.Segment], with far: [TranscriptFormat.Segment]) -> [TranscriptFormat.Segment] {
 
@@ -78,4 +99,6 @@ public struct AttributedFar: Sendable, Equatable {
 
     public var far: [TranscriptFormat.Segment]
     public var speakers: [TranscriptFormat.Speaker]
+    /// Each far row's speaker as its 1-based place in `speakers` (`Transcript.rowSpeakers`).
+    public var rows: [Int: Int] = [:]
 }
