@@ -1,4 +1,5 @@
 import AppKit
+import GlassLedger
 import SummaryPreviewUI
 
 /// Which of the toolbar's buttons act: all need a selected call, Копировать
@@ -44,7 +45,8 @@ final class CallsToolbar: NSObject, NSToolbarDelegate, NSToolbarItemValidation {
         self.title = title.map { title in
             let item = NSToolbarItem(itemIdentifier: Self.titleItem)
             let label = NSTextField(labelWithString: title)
-            label.font = .boldSystemFont(ofSize: NSFont.systemFontSize)
+            let tokens = GlassLedger.for(.light)
+            label.font = tokens.nsUi(tokens.typeBody, .bold)
             label.lineBreakMode = .byTruncatingTail
             item.view = label
             return item
