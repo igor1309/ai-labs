@@ -79,12 +79,8 @@ extension SessionReducerTests {
 
     @Test func heldMicrophoneCaptureAfterAFailureStillStartsTheCallCapture_effect() {
 
-        let selection = anySelection()
-        let state = makeBringingUp(starting: .capture(.microphone)).with {
-            $0.fail(.capture(.microphone), anyError())
-            $0.processSelection = selection
-        }
-        assert(state, .captureFinished(.microphone, error: nil), delivers: .startCallCapture(selection: .chosen(selection)))
+        let state = makeBringingUp(starting: .capture(.microphone)).with { $0.fail(.capture(.microphone), anyError()) }
+        assert(state, .captureFinished(.microphone, error: nil), delivers: .startCallCapture(selection: .chosen(state.processSelection!)))
     }
 
     @Test func heldCallCaptureAfterAFailureRecordsThenStopsIt_state() {
@@ -130,6 +126,135 @@ extension SessionReducerTests {
     func failureWhileAPieceStopsKeepsItStopping_effect(_ piece: SessionState.Piece) {
 
         assert(makeStopping(piece), .pieceFailed(piece, error: anyError()), delivers: nil)
+    }
+
+    @Test(arguments: bringUpOrder)
+    func failureWhileEndingKeepsAPieceStarting_state(_ piece: SessionState.Piece) {
+
+        let state = makeEndingWhileStarting(piece)
+        let error = anyError()
+        assert(state, .pieceFailed(piece, error: error)) {
+            $0.fail(piece, error)
+            if piece == .folder { $0.cannotRecord = "folder: \(error)" }
+        }
+    }
+
+    @Test(arguments: bringUpOrder)
+    func failureWhileEndingKeepsAPieceStarting_effect(_ piece: SessionState.Piece) {
+
+        assert(makeEndingWhileStarting(piece), .pieceFailed(piece, error: anyError()), delivers: nil)
+    }
+
+    @Test(arguments: sides)
+    func accessLossWhileEndingKeepsACaptureStarting_state(_ side: SessionSide) {
+
+        let state = makeEndingWhileStarting(.capture(side))
+        assert(state, .accessChanged(side, available: false)) { $0.loseAccess(side) }
+    }
+
+    @Test(arguments: sides)
+    func accessLossWhileEndingKeepsACaptureStarting_effect(_ side: SessionSide) {
+
+        assert(makeEndingWhileStarting(.capture(side)), .accessChanged(side, available: false), delivers: nil)
+    }
+
+
+
+    @Test(arguments: bringUpOrder)
+    func endWhileAFailedPieceStartsWaitsForIt_state(_ piece: SessionState.Piece) {
+
+        let state = makeBringingUp(starting: piece).with { $0.fail(piece, anyError()) }
+        assert(state, .end) { $0.phase = .ending }
+    }
+
+    @Test(arguments: bringUpOrder)
+    func endWhileAFailedPieceStartsWaitsForIt_effect(_ piece: SessionState.Piece) {
+
+        let state = makeBringingUp(starting: piece).with { $0.fail(piece, anyError()) }
+        assert(state, .end, delivers: nil)
+    }
+
+    @Test(arguments: sides)
+    func endWhileACaptureWithoutAccessStartsWaitsForIt_state(_ side: SessionSide) {
+
+        let state = makeBringingUp(starting: .capture(side)).with { $0.loseAccess(side) }
+        assert(state, .end) { $0.phase = .ending }
+    }
+
+    @Test(arguments: sides)
+    func endWhileACaptureWithoutAccessStartsWaitsForIt_effect(_ side: SessionSide) {
+
+        let state = makeBringingUp(starting: .capture(side)).with { $0.loseAccess(side) }
+        assert(state, .end, delivers: nil)
+    }
+
+    @Test(arguments: heldStarts)
+    func failedPieceStartedWhileEndingStopsTheFirstPieceUp_state(_ start: HeldStart) {
+
+        let state = makeEndingWhileStarting(start.piece).with { $0.fail(start.piece, anyError()) }
+        assert(state, startResult(start.piece, error: nil)) {
+            $0[status: start.piece] = .up
+            $0[status: start.firstStop] = .stopping
+        }
+    }
+
+    @Test(arguments: heldStarts)
+    func failedPieceStartedWhileEndingStopsTheFirstPieceUp_effect(_ start: HeldStart) {
+
+        let state = makeEndingWhileStarting(start.piece).with { $0.fail(start.piece, anyError()) }
+        assert(state, startResult(start.piece, error: nil), delivers: stopEffect(start.firstStop))
+    }
+
+    @Test(arguments: sides)
+    func captureWithoutAccessStartedWhileEndingIsStopped_state(_ side: SessionSide) {
+
+        let state = makeEndingWhileStarting(.capture(side)).with { $0.loseAccess(side) }
+        assert(state, .captureFinished(side, error: nil)) {
+            $0[status: .capture(side)] = .up
+            $0.microphoneCapture = .stopping
+        }
+    }
+
+    @Test(arguments: sides)
+    func captureWithoutAccessStartedWhileEndingIsStopped_effect(_ side: SessionSide) {
+
+        let state = makeEndingWhileStarting(.capture(side)).with { $0.loseAccess(side) }
+        assert(state, .captureFinished(side, error: nil), delivers: .stopCapture(.microphone))
+    }
+
+    @Test func folderCreatedAfterItsFailureWhileEndingEnds_state() {
+
+        let state = makeEndingWhileStarting(.folder).with { $0.fail(.folder, anyError()) }
+        let folder = anyFolder()
+        assert(state, .folderFinished(error: nil, folder: folder)) {
+            $0.folder = .closed
+            $0.recordedFolder = folder
+            $0.phase = .ended
+        }
+    }
+
+    @Test func folderCreatedAfterItsFailureWhileEndingEnds_effect() {
+
+        let state = makeEndingWhileStarting(.folder).with { $0.fail(.folder, anyError()) }
+        assert(state, .folderFinished(error: nil, folder: anyFolder()), delivers: nil)
+    }
+
+    @Test func processesSelectedAfterTheirFailureWhileEndingEnd_state() {
+
+        let state = makeEndingWhileStarting(.processes).with { $0.fail(.processes, anyError()) }
+        let selection = anySelection()
+        assert(state, .processesFinished(selection: selection, error: nil)) {
+            $0.folder = .closed
+            $0.processes = .closed
+            $0.processSelection = selection
+            $0.phase = .ended
+        }
+    }
+
+    @Test func processesSelectedAfterTheirFailureWhileEndingEnd_effect() {
+
+        let state = makeEndingWhileStarting(.processes).with { $0.fail(.processes, anyError()) }
+        assert(state, .processesFinished(selection: anySelection(), error: nil), delivers: nil)
     }
 
     @Test(arguments: stopOrder)
@@ -315,6 +440,129 @@ extension SessionReducerTests {
             $0.callCapture = .stopping
         }
         assert(state, .captureStopped(side, error: anyError()), delivers: nil)
+    }
+
+    @Test(arguments: sides)
+    func failedCaptureStoppedWhileRecordingIsClosed_state(_ side: SessionSide) {
+
+        let state = makeRecording().with {
+            $0.fail(.capture(side), anyError())
+            $0[status: .capture(side)] = .stopping
+        }
+        assert(state, .captureStopped(side, error: nil)) { $0[status: .capture(side)] = .closed }
+    }
+
+    @Test(arguments: sides)
+    func failedCaptureStoppedWhileRecordingIsClosed_effect(_ side: SessionSide) {
+
+        let state = makeRecording().with {
+            $0.fail(.capture(side), anyError())
+            $0[status: .capture(side)] = .stopping
+        }
+        assert(state, .captureStopped(side, error: nil), delivers: nil)
+    }
+
+    @Test(arguments: sides)
+    func endAfterAFailedCaptureClosedStopsTheOtherCapture_state(_ side: SessionSide) {
+
+        let state = makeRecording().with {
+            $0.fail(.capture(side), anyError())
+            $0[status: .capture(side)] = .closed
+        }
+        assert(state, .end) {
+            $0.phase = .ending
+            $0[status: .capture(side.other)] = .stopping
+        }
+    }
+
+    @Test(arguments: sides)
+    func endAfterAFailedCaptureClosedStopsTheOtherCapture_effect(_ side: SessionSide) {
+
+        let state = makeRecording().with {
+            $0.fail(.capture(side), anyError())
+            $0[status: .capture(side)] = .closed
+        }
+        assert(state, .end, delivers: .stopCapture(side.other))
+    }
+
+    @Test func microphoneCaptureUpAfterItsAccessIsLostKeepsTheLossAndStartsTheCallCapture_state() {
+
+        let state = makeBringingUp(starting: .capture(.microphone)).with { $0.loseAccess(.microphone) }
+        assert(state, .captureFinished(.microphone, error: nil)) {
+            $0.microphoneCapture = .up
+            $0.callCapture = .starting
+        }
+    }
+
+    @Test func microphoneCaptureUpAfterItsAccessIsLostKeepsTheLossAndStartsTheCallCapture_effect() {
+
+        let state = makeBringingUp(starting: .capture(.microphone)).with { $0.loseAccess(.microphone) }
+        assert(state, .captureFinished(.microphone, error: nil), delivers: .startCallCapture(selection: .chosen(state.processSelection!)))
+    }
+
+    @Test(arguments: sides)
+    func accessLossAfterTheOtherTrackFailedCannotRecord_state(_ side: SessionSide) {
+
+        let state = makeRecording().with { $0.fail(.track(side.other), anyError()) }
+        assert(state, .accessChanged(side, available: false)) {
+            $0.loseAccess(side)
+            $0.cannotRecord = "no track can record"
+            $0.phase = .bringingUp
+        }
+    }
+
+    @Test(arguments: sides)
+    func accessLossAfterTheOtherTrackFailedCannotRecord_effect(_ side: SessionSide) {
+
+        let state = makeRecording().with { $0.fail(.track(side.other), anyError()) }
+        assert(state, .accessChanged(side, available: false), delivers: nil)
+    }
+
+    @Test(arguments: sides)
+    func captureFailureAfterTheOtherCaptureFailedCannotRecordAndStops_state(_ side: SessionSide) {
+
+        let state = makeRecording().with {
+            $0.fail(.capture(side.other), anyError())
+            $0[status: .capture(side.other)] = .closed
+        }
+        let error = anyError()
+        assert(state, .pieceFailed(.capture(side), error: error)) {
+            $0.fail(.capture(side), error)
+            $0.cannotRecord = "no track can record"
+            $0.phase = .bringingUp
+            $0[status: .capture(side)] = .stopping
+        }
+    }
+
+    @Test(arguments: sides)
+    func captureFailureAfterTheOtherCaptureFailedCannotRecordAndStops_effect(_ side: SessionSide) {
+
+        let state = makeRecording().with {
+            $0.fail(.capture(side.other), anyError())
+            $0[status: .capture(side.other)] = .closed
+        }
+        assert(state, .pieceFailed(.capture(side), error: anyError()), delivers: .stopCapture(side))
+    }
+
+    @Test func failedMicrophoneCaptureUpWithTheCallCaptureUpRecordsThenStopsIt_state() {
+
+        let state = makeBringingUp(starting: .capture(.microphone)).with {
+            $0.callCapture = .up
+            $0.fail(.capture(.microphone), anyError())
+        }
+        assert(state, .captureFinished(.microphone, error: nil)) {
+            $0.microphoneCapture = .stopping
+            $0.phase = .recording
+        }
+    }
+
+    @Test func failedMicrophoneCaptureUpWithTheCallCaptureUpRecordsThenStopsIt_effect() {
+
+        let state = makeBringingUp(starting: .capture(.microphone)).with {
+            $0.callCapture = .up
+            $0.fail(.capture(.microphone), anyError())
+        }
+        assert(state, .captureFinished(.microphone, error: nil), delivers: .stopCapture(.microphone))
     }
 
     // MARK: Cannot record
