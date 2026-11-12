@@ -22,7 +22,7 @@ func makeReading() -> ReadingInputs {
 private func noEvents<Effect, Event>(_: Effect) -> AsyncStream<Event> { AsyncStream { $0.finish() } }
 
 /// The stream a model reads from a handler that returns one event.
-private func oneEvent<Event: Sendable>(_ handle: @escaping @Sendable () async -> Event) -> AsyncStream<Event> {
+func oneEvent<Event: Sendable>(_ handle: @escaping @Sendable () async -> Event) -> AsyncStream<Event> {
 
     AsyncStream { output in
         let task = Task {
@@ -121,15 +121,7 @@ actor SessionModel {
             let (next, effect) = SessionReducer.reduce(state, event)
             if next != state { feed.publish(next) }
             return (next, effect)
-        }, handleEffect: { effect in
-            AsyncStream { events in
-                let task = Task {
-                    events.yield(await handler.handle(effect))
-                    events.finish()
-                }
-                events.onTermination = { _ in task.cancel() }
-            }
-        }, isolation: self)
+        }, handleEffect: { effect in oneEvent { await handler.handle(effect) } }, isolation: self)
     }
 
     func send(_ event: SessionEvent) { model?.event(event) }
