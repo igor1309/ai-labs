@@ -14,8 +14,10 @@ public struct CallsListState: Equatable, Sendable {
         public let day: Day?
         public var canRetrySummary: Bool
         public var summaryStatus: String
-        /// The call has published notes, so its row offers the eye.
+        /// The call has published notes.
         public var hasNotes: Bool
+        /// What the call was about, one sentence from its notes; nil without one.
+        public var gist: String?
         public let id: String
         public let title: String
         /// The start time, HH:mm.
@@ -47,13 +49,14 @@ public struct CallsListState: Equatable, Sendable {
         }
 
         public init(id: String, title: String, displayTitle: String, day: Day?, time: String, duration: String, editable: Bool,
-                    summaryStatus: String = "", hasNotes: Bool = false, canRetrySummary: Bool = false, summary: Summary = .none,
+                    summaryStatus: String = "", hasNotes: Bool = false, gist: String? = nil, canRetrySummary: Bool = false, summary: Summary = .none,
                     match: Match? = nil) {
             self.match = match
             self.summary = summary
             self.canRetrySummary = canRetrySummary
             self.summaryStatus = summaryStatus
             self.hasNotes = hasNotes
+            self.gist = gist
             self.id = id
             self.title = title
             self.displayTitle = displayTitle
@@ -88,14 +91,14 @@ public struct CallsListState: Equatable, Sendable {
     public var failure: String?
     /// The selected call, if any.
     public var selectedID: String?
-    /// The call whose notes the preview shows, if it is shown.
-    public var previewedID: String?
+    /// The window is too narrow to show the call beside the list, so Return and Space open it in its own window.
+    public var narrow: Bool
 
     public init(rows: [Row] = [], editing: Editing? = nil, deleteID: String? = nil, deleteBody: String? = nil, busy: Bool = false, failure: String? = nil,
-                selectedID: String? = nil, previewedID: String? = nil, search: Search? = nil) {
+                selectedID: String? = nil, narrow: Bool = false, search: Search? = nil) {
         self.search = search
         self.rows = rows; self.editing = editing; self.deleteID = deleteID; self.deleteBody = deleteBody; self.busy = busy; self.failure = failure
-        self.selectedID = selectedID; self.previewedID = previewedID
+        self.selectedID = selectedID; self.narrow = narrow
     }
 
 }
@@ -103,7 +106,9 @@ public struct CallsListState: Equatable, Sendable {
 public enum CallsListEvent: Equatable, Sendable {
     case open(String), beginRename(String), editTitle(String), submitRename, cancelRename
     case askDelete(String), confirmDelete, cancelDelete
-    case select(String), selectNext, selectPrevious, preview(String), retrySummary(String)
+    case select(String), selectNext, selectPrevious, retrySummary(String)
+    /// Return or Space in a narrow window: read the call in its own window.
+    case read(String)
     /// The search field's text changed; an empty text ends the search.
     case search(String)
 }

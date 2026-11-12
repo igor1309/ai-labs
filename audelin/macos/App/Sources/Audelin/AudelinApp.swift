@@ -24,6 +24,7 @@ struct AudelinApp: App {
     @State private var panel: FloatingPanel?
     @State private var settingsWindow: NSWindow?
     @State private var callsWindow: CallsWindow?
+    @State private var callsSplit: NSSplitViewController?
     @State private var presence = WindowPresence(setPolicy: { NSApplication.shared.setActivationPolicy($0) })
 
     @MainActor
@@ -50,9 +51,7 @@ struct AudelinApp: App {
         settingsWindow.center()
         presence.track(settingsWindow)
         self.settingsWindow = settingsWindow
-        let summaryWindow = makeSummaryPanel()
-        let previewPanel = PreviewPanel(makePanel: { summaryWindow }, text: SummaryPreviewText(language: .russian), copy: { copyNotes($0, to: .general) },
-                                        makeContent: summaryContent)
+        let callWindow = CallWindowSlot()
         let boundary = await makeRealBoundary()
         let model = await compose(
             boundary: boundary,
@@ -73,22 +72,31 @@ struct AudelinApp: App {
                     begin: { completion in picker.begin { completion($0 == .OK ? picker.url : nil) } },
                     isVisible: { picker.isVisible }
                 )
-            }, focusPreview: { previewPanel.focus() }
+            }, copyNotes: { copyNotes($0, to: .general) }, readCall: { if let window = callWindow.window { presentCall(window, shown: { presence.shown($0) }) } }
         )
         self.model = model
         settingsWindow.contentView = NSHostingView(rootView: SettingsContent(model: model, window: settingsWindow))
-        observeLanguage(model, settingsWindow: settingsWindow, callsWindow: callsWindow, previewPanel: previewPanel)
+        observeLanguage(model, settingsWindow: settingsWindow, callsWindow: callsWindow)
         observeAppearance(model)
         if let calls = model.calls {
             let search = CallsSearchToolbar(placeholder: model.callsListText(.searchPlaceholder),
                                             send: { text in Task { await calls.send(.search(text)) } })
             callsNSWindow?.toolbar = search.toolbar
             callsNSWindow?.toolbarStyle = .unified
-            callsWindow.install(content: NSHostingView(rootView: CallsContent(model: calls, focusSearch: { search.focus() })))
+            let split = makeCallsSplit(list: NSHostingView(rootView: CallsContent(model: calls, focusSearch: { search.focus() })),
+                                       detail: NSHostingView(rootView: CallsDetailContent(model: calls, text: { model.previewText })),
+                                       widthChanged: { calls.widthChanged(narrow: $0) })
+            callWindow.window = makeCallWindow(content: NSHostingView(rootView: CallsDetailContent(model: calls, text: { model.previewText })),
+                                        title: { calls.detail?.title })
+            callsSplit = split
+            callsWindow.install(content: split.view)
             observeSearchLanguage(model, search: search)
-            _ = connectPreview(panel: previewPanel, preview: { calls.preview }, panelWindow: summaryWindow,
-                               callsWindow: callsNSWindow, center: .default,
-                               closePreview: { calls.closePreview() }, windowClosed: { calls.windowClosed() })
+            if let callsNSWindow, let reading = callWindow.window {
+                presence.track(reading)
+                onBothClosed(callsNSWindow, reading, isVisible: { ($0 as? NSWindow)?.isVisible == true }, center: .default) {
+                    calls.windowClosed()
+                }
+            }
         }
         panel.install(model)
         appDelegate.connect(model)
@@ -195,14 +203,13 @@ final class AudelinAppDelegate: NSObject, NSApplicationDelegate {
     func handleReopen() { reopen?() }
 }
 
-/// Keeps the window titles and the preview in the language Audelin is shown in.
+/// Keeps the window titles in the language Audelin is shown in.
 @MainActor
-func observeLanguage(_ model: AudelinMenu, settingsWindow: NSWindow, callsWindow: CallsWindow, previewPanel: PreviewPanel) {
+func observeLanguage(_ model: AudelinMenu, settingsWindow: NSWindow, callsWindow: CallsWindow) {
     Task { @MainActor in
         for await _ in Observations({ model.language }) {
             settingsWindow.title = model.settingsText(.windowTitle)
             callsWindow.retitle(model.callsListText(.windowTitle))
-            previewPanel.languageChanged(model.previewText)
         }
     }
 }

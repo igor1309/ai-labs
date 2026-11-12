@@ -11,8 +11,17 @@ public enum SummaryPreviewLanguage: String, CaseIterable, Sendable {
 public enum SummaryPreviewPhrase: String, CaseIterable, Sendable {
 
     case copy = "preview.copy"
-    /// Takes the call's title.
-    case windowTitle = "preview.windowTitle"
+    case more = "preview.more"
+    case open = "preview.open"
+    case rename = "preview.rename"
+    case retrySummary = "preview.retrySummary"
+    case delete = "preview.delete"
+    case preparing = "preview.preparing"
+    case preparingHint = "preview.preparingHint"
+    case failed = "preview.failed"
+    case noSummary = "preview.noSummary"
+    case notesOff = "preview.notesOff"
+    case noSelection = "preview.noSelection"
     /// Takes the system's reason.
     case unreadable = "preview.unreadable"
 }

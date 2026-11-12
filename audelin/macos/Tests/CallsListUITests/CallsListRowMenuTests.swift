@@ -15,7 +15,7 @@ struct CallsListRowMenuTests {
         let menu = try #require(try target("2026.10.20-1600", in: host).menu(for: rightClick()))
 
         #expect(spy.events == [.select("2026.10.20-1600")])
-        #expect(menu.items.map(\.title) == ["Открыть", "Показать итоги", "Переименовать", "Повторить подготовку итогов", "", "Удалить…"])
+        #expect(menu.items.map(\.title) == ["Открыть", "Переименовать", "Повторить подготовку итогов", "", "Удалить…"])
     }
 
     @Test func menuShowsTheRowsKeys() throws {
@@ -25,8 +25,8 @@ struct CallsListRowMenuTests {
         let menu = try #require(try target("2026.10.20-1600", in: host).menu(for: rightClick()))
 
         let items = menu.items.filter { !$0.isSeparatorItem }
-        #expect(items.map(\.keyEquivalent) == ["\r", " ", "r", "", "\u{8}"])
-        #expect(items.map(\.keyEquivalentModifierMask) == [[], [], .command, [], .command])
+        #expect(items.map(\.keyEquivalent) == ["\r", "r", "", "\u{8}"])
+        #expect(items.map(\.keyEquivalentModifierMask) == [[], .command, [], .command])
     }
 
     @Test func menuItemsActOnTheRightClickedRow() throws {
@@ -38,7 +38,7 @@ struct CallsListRowMenuTests {
         for index in menu.items.indices where !menu.items[index].isSeparatorItem { menu.performActionForItem(at: index) }
 
         let id = "2026.10.20-1600"
-        #expect(spy.events == [.select(id), .open(id), .preview(id), .beginRename(id), .retrySummary(id), .askDelete(id)])
+        #expect(spy.events == [.select(id), .open(id), .beginRename(id), .retrySummary(id), .askDelete(id)])
     }
 
     @Test func busyListDisablesWhatWaitsForIt() throws {
@@ -49,7 +49,7 @@ struct CallsListRowMenuTests {
 
         let menu = try #require(try target("2026.10.20-1600", in: host).menu(for: rightClick()))
 
-        #expect(menu.items.map(\.isEnabled) == [false, true, false, false, false, false])
+        #expect(menu.items.map(\.isEnabled) == [false, false, false, false, false])
     }
 
     @Test func rowWithoutNotesOrFailedSummaryOmitsTheirItems() throws {

@@ -1,3 +1,13 @@
 "preview.copy" = "Copy";
-"preview.windowTitle" = "Summary — %@";
 "preview.unreadable" = "The summary can’t be read: %@";
+"preview.more" = "More";
+"preview.open" = "Open";
+"preview.rename" = "Rename";
+"preview.retrySummary" = "Retry Summary";
+"preview.delete" = "Delete…";
+"preview.preparing" = "Preparing the summary…";
+"preview.preparingHint" = "The summary will appear here when it’s ready";
+"preview.failed" = "Couldn’t prepare the summary";
+"preview.noSummary" = "No summary";
+"preview.notesOff" = "Preparing summaries is turned off in Settings";
+"preview.noSelection" = "No call selected";

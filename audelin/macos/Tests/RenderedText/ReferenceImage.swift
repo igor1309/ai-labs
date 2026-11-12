@@ -10,12 +10,15 @@ public enum ReferenceImage {
         case matches
         case recorded
         case missing(String)
-        case differs(fraction: Double)
+        case differs(pixels: Int)
     }
 
     /// Antialiasing differs a little between machines, so a pixel counts as
-    /// changed only past a tenth of a channel, and the image as changed only
-    /// past one pixel in two hundred.
+    /// changed only past a tenth of a channel. The image counts as changed
+    /// past `tolerance` pixels, fewer than the smallest word a preview shows,
+    /// so a missing or recoloured line of text always fails.
+    public static let tolerance = 100
+
     public static func compare(_ image: NSBitmapImageRep, with url: URL) throws -> Outcome {
 
         if ProcessInfo.processInfo.environment["AUDELIN_RECORD_REFERENCES"] != nil {
@@ -27,12 +30,11 @@ public enum ReferenceImage {
             return .missing(url.lastPathComponent)
         }
         guard reference.pixelsWide == image.pixelsWide, reference.pixelsHigh == image.pixelsHigh else {
-            return .differs(fraction: 1)
+            return .differs(pixels: image.pixelsWide * image.pixelsHigh)
         }
-        guard let actual = rgba(image), let expected = rgba(reference) else { return .differs(fraction: 1) }
+        guard let actual = rgba(image), let expected = rgba(reference) else { return .differs(pixels: image.pixelsWide * image.pixelsHigh) }
         let changed = changedPixels(actual, expected)
-        let fraction = Double(changed) / Double(image.pixelsWide * image.pixelsHigh)
-        return fraction <= 0.005 ? .matches : .differs(fraction: fraction)
+        return changed <= tolerance ? .matches : .differs(pixels: changed)
     }
 
     /// Pixels whose red, green or blue moved past a tenth of a channel. A

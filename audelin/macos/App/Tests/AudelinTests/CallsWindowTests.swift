@@ -32,6 +32,19 @@ struct CallsWindowTests {
     }
 }
 
+@MainActor @Suite struct PresentCallTests {
+    @Test func aMinimizedCallWindowIsRestoredAndBroughtToFront() {
+        let window = CallsWindowSpy()
+        window.isMiniaturized = true
+        var shown = 0
+
+        presentCall(window, shown: { _ in shown += 1 })
+        presentCall(window, shown: { _ in shown += 1 })
+
+        #expect(window.restores == 1 && window.fronts == 2 && shown == 2)
+    }
+}
+
 @MainActor private final class CallsWindowSpy: CallsWindowDriver {
     var title = ""
     var isReleasedWhenClosed = true

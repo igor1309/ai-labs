@@ -4,7 +4,6 @@
 "row.retrySummary" = "Retry the summary";
 "row.open" = "Open";
 "row.delete" = "Delete";
-"row.showSummary" = "Show summary";
 "delete.title" = "Delete the call?";
 "delete.body" = "“%@”: the whole call folder — audio, transcripts and summary — moves to the Trash.";
 "delete.cancel" = "Cancel";
@@ -36,3 +35,5 @@
 "search.searching" = "Searching transcripts…";
 "search.noMatches" = "No matches";
 "search.noMatchesHint" = "“%@” is not in any title, summary or transcript";
+"row.preparing" = "Preparing the summary…";
+"row.failed" = "Couldn’t prepare the summary";

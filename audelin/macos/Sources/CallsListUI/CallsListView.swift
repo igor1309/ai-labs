@@ -60,8 +60,7 @@ public struct CallsListView: View {
         .onAppear { GlassLedger.registerFonts(); editing = state.editing != nil }
     }
 
-    /// The whole row is a button that selects it; the eye inside it takes its
-    /// own clicks. Renaming starts only from the menu or ⌘R.
+    /// The whole row is a button that selects it. Renaming starts only from the menu or ⌘R.
     private func callRow(_ row: CallsListState.Row) -> some View {
         Button { event(.select(row.id)) } label: { rowContent(row).contentShape(.rect) }
             .buttonStyle(.plain)
@@ -77,7 +76,6 @@ public struct CallsListView: View {
         var items: [RowMenuItem?] = [
             RowMenuItem(title: text(.open), key: "\r", isEnabled: !state.busy) { event(.open(row.id)) },
         ]
-        if row.hasNotes { items.append(RowMenuItem(title: text(.showSummary), key: " ") { event(.preview(row.id)) }) }
         items.append(RowMenuItem(title: text(.rename), key: "r", modifiers: .command, isEnabled: row.editable && !state.busy) {
             event(.beginRename(row.id))
         })
@@ -91,82 +89,95 @@ public struct CallsListView: View {
         return items
     }
 
-    /// Return opens, Space shows notes, ⌘R renames and ⌘⌫ asks to delete the selected call.
+    /// Return opens the folder in a wide window; in a narrow one Return and Space read the call. ⌘R renames and ⌘⌫ asks to delete the selected call.
     private func keyAction(_ press: KeyPress, _ row: CallsListState.Row) -> CallsListEvent? {
         let command = press.modifiers.contains(.command)
         switch press.key {
+        case .return where !command && state.narrow, .space where !command && state.narrow: return .read(row.id)
         case .return where !command && !state.busy: return .open(row.id)
-        case .space where !command && row.hasNotes: return .preview(row.id)
         case "r" where command && row.editable && !state.busy: return .beginRename(row.id)
         case .delete where command && row.editable && !state.busy, .backspace where command && row.editable && !state.busy: return .askDelete(row.id)
         default: return nil
         }
     }
 
-    /// One line at a fixed height: start time, title, duration and the status cell.
+    /// Two lines at a fixed height: the title and start time; then the duration
+    /// and what the call was about, or where its summary stands.
     private func rowContent(_ row: CallsListState.Row) -> some View {
-        HStack(spacing: tokens.space12) {
-            Text(row.time).font(tokens.data(tokens.typeSmall)).foregroundStyle(tokens.gutter)
-                .frame(width: timeWidth, alignment: .leading).allowsHitTesting(false)
-            Group {
-                if let edit = state.editing, edit.id == row.id {
-                    HStack(spacing: 0) {
-                        Text(row.id + " ").font(tokens.data(tokens.typeSmall)).foregroundStyle(tokens.gutter)
-                        TextField(text(.titlePlaceholder), text: Binding(get: { edit.title }, set: { event(.editTitle($0)) }))
-                            .textFieldStyle(.plain)
-                            .focused($editing)
-                            .onSubmit { event(.submitRename) }
-                            .onExitCommand { event(.cancelRename) }
+        VStack(alignment: .leading, spacing: tokens.space2) {
+            HStack(spacing: tokens.space8) {
+                Group {
+                    if let edit = state.editing, edit.id == row.id {
+                        HStack(spacing: 0) {
+                            Text(row.id + " ").font(tokens.data(tokens.typeSmall)).foregroundStyle(tokens.gutter)
+                            TextField(text(.titlePlaceholder), text: Binding(get: { edit.title }, set: { event(.editTitle($0)) }))
+                                .textFieldStyle(.plain)
+                                .focused($editing)
+                                .onSubmit { event(.submitRename) }
+                                .onExitCommand { event(.cancelRename) }
+                        }
+                        .padding(.horizontal, tokens.space4)
+                        .background(tokens.surface, in: .rect(cornerRadius: tokens.radiusControl))
+                        .overlay(RoundedRectangle(cornerRadius: tokens.radiusControl).stroke(tokens.me, lineWidth: 1.5))
+                    } else {
+                        title(row).allowsHitTesting(false)
                     }
-                    .padding(.horizontal, tokens.space4).padding(.vertical, tokens.space4)
-                    .background(tokens.surface, in: .rect(cornerRadius: tokens.radiusControl))
-                    .overlay(RoundedRectangle(cornerRadius: tokens.radiusControl).stroke(tokens.me, lineWidth: 1.5))
-                } else {
-                    title(row).frame(maxWidth: .infinity, alignment: .leading).allowsHitTesting(false)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                Text(row.time).font(tokens.data(tokens.typeSmall)).foregroundStyle(ink(row, tokens.sub)).allowsHitTesting(false)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            Text(row.duration).font(tokens.data(tokens.typeSmall)).foregroundStyle(tokens.sub)
-                .frame(width: cellWidth, alignment: .trailing).allowsHitTesting(false)
-            HStack(spacing: tokens.space6) {
+            .frame(height: lineHeight)
+            HStack(spacing: tokens.space8) {
+                if let snippet = row.match?.snippet {
+                    Text(snippet.place)
+                        .font(snippet.placeIsTime ? tokens.data(tokens.typeSmall) : tokens.ui(tokens.typeSmall))
+                        .foregroundStyle(ink(row, tokens.gutter))
+                        .fixedSize().frame(minWidth: durationWidth, alignment: .leading).allowsHitTesting(false)
+                    Text(marked(snippet.text, snippet.hits)).foregroundStyle(ink(row, tokens.sub)).truncationMode(.tail)
+                        .frame(maxWidth: .infinity, alignment: .leading).allowsHitTesting(false)
+                    if let more = snippet.more { Text(more).foregroundStyle(ink(row, tokens.gutter)).fixedSize().allowsHitTesting(false) }
+                } else {
+                    Text(row.duration).font(tokens.data(tokens.typeSmall)).foregroundStyle(ink(row, tokens.gutter))
+                        .fixedSize().frame(minWidth: durationWidth, alignment: .leading).allowsHitTesting(false)
+                    about(row).frame(maxWidth: .infinity, alignment: .leading).allowsHitTesting(false)
+                }
                 summary(row)
-                eye(row)
             }
-            .frame(width: cellWidth, alignment: .trailing)
+            .frame(height: lineHeight)
         }
         .lineLimit(1)
-        .frame(height: rowHeight)
-        .padding(.horizontal, tokens.space16)
-        .background(state.selectedID == row.id ? (active ? tokens.okBg : tokens.btn) : tokens.surface)
+        .padding(.horizontal, tokens.space16).padding(.vertical, tokens.space8)
+        .background(state.selectedID == row.id ? (active ? tokens.selBg : tokens.btn) : tokens.surface)
+        .overlay(alignment: .bottom) { Rectangle().fill(tokens.rule).frame(height: 1) }
         .accessibilityAddTraits(state.selectedID == row.id ? .isSelected : [])
+    }
+
+    /// The second line's text: the gist, or that the summary is being prepared or failed.
+    @ViewBuilder private func about(_ row: CallsListState.Row) -> some View {
+        switch row.summary {
+        case .pending: Text(text(.rowPreparing)).foregroundStyle(ink(row, tokens.gutter))
+        case .failed: Text(text(.rowFailed)).foregroundStyle(ink(row, tokens.rec))
+        case .none:
+            if let gist = row.gist { Text(gist).foregroundStyle(ink(row, tokens.sub)).truncationMode(.tail) }
+            else { Color.clear }
+        }
     }
 
     /// Whether the window is the active one; selection loses its accent otherwise.
     private var active: Bool { activity != .inactive }
 
-    /// The title on one line, cut with an ellipsis; an untitled call shows its folder name.
-    /// In a search, the title's matches are marked and a snippet of the first
-    /// other match follows; the snippet's text gives way first, then «ещё N», then the title.
+    /// A selected row in the active window draws everything in `selText` on `selBg`.
+    private func ink(_ row: CallsListState.Row, _ colour: Color) -> Color {
+        state.selectedID == row.id && active ? tokens.selText : colour
+    }
+
+    /// The title on one line, cut with an ellipsis, its search matches marked;
+    /// an untitled call shows its folder name.
     private func title(_ row: CallsListState.Row) -> some View {
-        HStack(spacing: tokens.space8) {
-            Text(marked(row.displayTitle, row.match?.title ?? []))
-                .font(row.title.isEmpty ? tokens.data(tokens.typeSmall) : tokens.ui(tokens.typeSmall, .semibold))
-                .foregroundStyle(row.title.isEmpty ? tokens.gutter : tokens.text)
-                .truncationMode(.tail)
-                .layoutPriority(3)
-            if let snippet = row.match?.snippet {
-                Text(snippet.place)
-                    .font(snippet.placeIsTime ? tokens.data(tokens.typeSmall) : tokens.ui(tokens.typeSmall))
-                    .foregroundStyle(tokens.gutter)
-                    .fixedSize().layoutPriority(2)
-                Text(marked(snippet.text, snippet.hits))
-                    .foregroundStyle(tokens.sub)
-                    .truncationMode(.tail)
-                if let more = snippet.more {
-                    Text(more).foregroundStyle(tokens.gutter).layoutPriority(1)
-                }
-            }
-        }
+        Text(marked(row.displayTitle, row.match?.title ?? []))
+            .font(row.title.isEmpty ? tokens.data(tokens.typeSmall) : tokens.ui(tokens.typeSmall, .semibold))
+            .foregroundStyle(ink(row, row.title.isEmpty ? tokens.gutter : tokens.text))
+            .truncationMode(.tail)
     }
 
     /// The text with each range, in characters, on the `hit` colour.
@@ -186,11 +197,11 @@ public struct CallsListView: View {
         switch row.summary {
         case .none: EmptyView()
         case .pending:
-            ProgressView().controlSize(.mini).frame(width: iconSize, height: iconSize)
+            ProgressView().controlSize(.mini).tint(ink(row, tokens.sub)).frame(width: iconSize, height: iconSize)
                 .help(row.summaryStatus).accessibilityLabel(row.summaryStatus)
                 .accessibilityIdentifier("calls.summary.\(row.id)")
         case .failed:
-            Image(systemName: "exclamationmark.circle").font(tokens.ui(tokens.typeSmall, .semibold)).foregroundStyle(tokens.rec)
+            Image(systemName: "exclamationmark.circle").font(tokens.ui(tokens.typeSmall, .semibold)).foregroundStyle(ink(row, tokens.rec))
                 .frame(width: iconSize, height: iconSize)
                 .help(row.summaryStatus).accessibilityLabel(row.summaryStatus)
                 .accessibilityIdentifier("calls.summary.\(row.id)")
@@ -207,31 +218,9 @@ public struct CallsListView: View {
         .background(tokens.win)
     }
 
-    private let timeWidth: CGFloat = 40
-    private let cellWidth: CGFloat = 64
+    private let durationWidth: CGFloat = 48
     private let iconSize: CGFloat = 14
-    private var rowHeight: CGFloat { tokens.space32 }
-
-    /// The eye a call with notes shows; a call without keeps its place empty.
-    @ViewBuilder private func eye(_ row: CallsListState.Row) -> some View {
-        if row.hasNotes {
-            let previewed = state.previewedID == row.id
-            Button { event(.preview(row.id)) } label: {
-                Image(systemName: "eye")
-                    .font(tokens.ui(tokens.typeSmall, .semibold))
-                    .foregroundStyle(state.selectedID == row.id && active ? tokens.me : tokens.sub)
-                    .frame(width: iconSize, height: iconSize)
-                    .contentShape(.rect)
-            }
-            .buttonStyle(.plain)
-            .help(text(.showSummary))
-            .accessibilityLabel(text(.showSummary))
-            .accessibilityAddTraits(previewed ? .isSelected : [])
-            .accessibilityIdentifier("calls.eye.\(row.id)")
-        } else {
-            EmptyView()
-        }
-    }
+    private var lineHeight: CGFloat { tokens.space16 }
 
     private func button(_ title: String, destructive: Bool, action: @escaping () -> Void) -> some View {
         Button(role: destructive ? .destructive : nil, action: action) {

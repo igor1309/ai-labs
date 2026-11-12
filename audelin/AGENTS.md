@@ -16,6 +16,20 @@ Issues are in the Multica project `Audelin`, in the `ai-labs` workspace (parent 
   `macos/Sources`. Build and test both packages from their directories with
   `swift build --build-tests` and `swift test`; `scripts/gate-step.sh` gates both and bundles.
 
+## Design
+
+- The whole Audelin design is one file, `docs/design/visual-language.pen`:
+  the Glass Ledger tokens, every component and every screen. Draw new
+  screens and states in it; do not start another `.pen` for a feature, not
+  even for drafts.
+- Its variables are the only token source. Build from its components; a
+  new part goes on a components board in that file. `docs/design/tokens.json`
+  is a snapshot of those variables and changes with them (steps in
+  `docs/design/README.md`).
+- Each feature keeps a brief, a Markdown file beside it in `docs/design/`,
+  and a row in the README's frame index saying where its frames sit.
+- `docs/research/gallery/` holds research boards of other apps, not design.
+
 ## Real-audio tests
 
 - Four test files use the Mac's audio hardware through `coreaudiod`: the call-audio probe, the

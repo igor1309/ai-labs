@@ -213,7 +213,7 @@ struct SummaryCompositionTests {
     }
 
     @Test(arguments: [false, true])
-    func retryCompletionRefreshesTheOpenCallsWindowAndPreview(previousNotes: Bool) async throws {
+    func retryCompletionRefreshesTheOpenCallsWindowAndDetail(previousNotes: Bool) async throws {
         try await withComposeFolder { root in
             let id = "1970.01.01-0000", folder = root.appendingPathComponent("1970.01.01-0000")
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
@@ -232,30 +232,26 @@ struct SummaryCompositionTests {
             do {
                 let calls = try #require(rig.menu.calls)
                 calls.show()
-                // The other call's eye confirms the initial scan completed even when this call has no notes.
+                // The other call's notes confirm the initial scan completed even when this call has no notes.
                 for await state in Observations({ calls.state }) where !state.busy &&
                     state.rows.first(where: { $0.id == otherID })?.hasNotes == true &&
                     state.rows.first(where: { $0.id == id })?.hasNotes == previousNotes { break }
                 let rows = calls.state.rows.map(\.id)
+                await calls.send(.select(id))
                 if previousNotes {
-                    await calls.send(.preview(id))
-                    for await preview in Observations({ calls.preview }) where preview?.notes == .text("previous notes") { break }
-                } else { await calls.send(.select(id)) }
+                    for await detail in Observations({ calls.detail }) where detail?.content == .notes("previous notes") { break }
+                }
                 await calls.send(.retrySummary(id))
                 await http.started.next()
                 #expect(calls.state.rows.first(where: { $0.id == id })?.hasNotes == previousNotes)
-                if previousNotes { #expect(calls.preview?.notes == .text("previous notes")) }
+                if previousNotes { #expect(calls.detail?.content == .notes("previous notes")) }
                 http.complete.send()
                 _ = try await summary(rig.menu) { $0[id] == "Итоги готовы" }
                 let published = try #require(try await files.notes(call: id))
                 for await state in Observations({ calls.state }) where state.rows.first(where: { $0.id == id })?.hasNotes == true { break }
                 #expect(calls.state.rows.map(\.id) == rows)
-                if !previousNotes {
-                    #expect(calls.preview == nil)
-                    await calls.send(.preview(id))
-                }
-                for await preview in Observations({ calls.preview }) where preview?.notes == .text(published) { break }
-                #expect(calls.preview?.id == id)
+                for await detail in Observations({ calls.detail }) where detail?.content == .notes(published) { break }
+                #expect(calls.detail?.id == id)
                 #expect(published.contains("Synthetic meeting"))
                 #expect(calls.state.failure == nil)
                 calls.windowClosed()

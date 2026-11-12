@@ -109,7 +109,6 @@ Feature: Optional call notes
   Scenario: S-21 Read retry completion in the open window
     Given the calls window is open while an explicit retry runs
     When replacement notes finish
-    Then I can open their eye without reopening the calls window
-    And an already open preview shows the replacement notes
+    Then I can read the replacement notes without reopening the calls window
 
 ```
