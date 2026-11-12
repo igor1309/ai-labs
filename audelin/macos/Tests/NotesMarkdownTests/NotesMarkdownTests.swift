@@ -19,7 +19,7 @@ struct NotesMarkdownTests {
         let layout = NotesLayout(lineHeight: 26, paragraphSpacing: 9, headingSpacing: [(28, 10), (28, 10), (20, 8)],
                                  labelLevels: [2], labelKern: 1)
         let styled = NotesMarkdown.Style(body: style.body, headings: style.headings, code: style.code, text: .black,
-                                         secondary: .gray, codeBackground: .lightGray, rule: .separatorColor, layout: layout)
+                                         secondary: .gray, tertiary: .darkGray, codeBackground: .lightGray, rule: .separatorColor, layout: layout)
         let text = NotesMarkdown.render("## О чём встреча\n\nДейли команды.\n\n### Topic\n\n## Итоги\n\n### Under", style: styled)
 
         #expect(text.string.hasPrefix("О ЧЁМ ВСТРЕЧА\n"))
@@ -30,6 +30,18 @@ struct NotesMarkdownTests {
         #expect(paragraph(text, "Topic")?.paragraphSpacingBefore == 20)
         #expect(attribute(.kern, text, "Topic") == nil)
         #expect(paragraph(text, "Under")?.paragraphSpacingBefore == 0)
+    }
+
+    @Test func timeReferencesAreTertiaryOutsideCode() throws {
+
+        let text = render("- Решили [02:45] и **[1:02:45]**, не `[03:00]` и не [ab:cd]")
+
+        #expect(text.string.contains("Решили [02:45] и [1:02:45]"))
+        #expect(attribute(.foregroundColor, text, "[02:45]") as? NSColor == .darkGray)
+        #expect(attribute(.foregroundColor, text, "[1:02:45]") as? NSColor == .darkGray)
+        #expect(attribute(.foregroundColor, text, "Решили") as? NSColor == .black)
+        #expect(attribute(.foregroundColor, text, "[03:00]") as? NSColor == .black)
+        #expect(attribute(.foregroundColor, text, "[ab:cd]") as? NSColor == .black)
     }
 
     @Test func emphasisAndInlineCodeKeepTheirText() throws {
@@ -112,7 +124,7 @@ struct NotesMarkdownTests {
 
     private let style = NotesMarkdown.Style(
         body: .systemFont(ofSize: 13), headings: [.systemFont(ofSize: 20, weight: .semibold), .systemFont(ofSize: 16, weight: .semibold), .systemFont(ofSize: 14, weight: .semibold)],
-        code: .monospacedSystemFont(ofSize: 12, weight: .regular), text: .black, secondary: .gray,
+        code: .monospacedSystemFont(ofSize: 12, weight: .regular), text: .black, secondary: .gray, tertiary: .darkGray,
         codeBackground: .lightGray, rule: .separatorColor
     )
 

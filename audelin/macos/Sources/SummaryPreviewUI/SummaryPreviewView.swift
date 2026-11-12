@@ -9,6 +9,8 @@ public struct NotesStyle {
     public let code: NSFont
     public let text: NSColor
     public let secondary: NSColor
+    /// Time references such as `[02:45]`.
+    public let tertiary: NSColor
     public let codeBackground: NSColor
     public let rule: NSColor
     /// The height of a line of body text; nil keeps the font's own.
@@ -22,11 +24,11 @@ public struct NotesStyle {
     /// The tracking of a section label.
     public let labelKern: CGFloat
 
-    public init(body: NSFont, headings: [NSFont], code: NSFont, text: NSColor, secondary: NSColor,
+    public init(body: NSFont, headings: [NSFont], code: NSFont, text: NSColor, secondary: NSColor, tertiary: NSColor,
                 codeBackground: NSColor, rule: NSColor, lineHeight: CGFloat? = nil, paragraphSpacing: CGFloat = 4,
                 headingSpacing: [(before: CGFloat, after: CGFloat)] = [], labelLevels: Set<Int> = [], labelKern: CGFloat = 0) {
         self.body = body; self.headings = headings; self.code = code; self.text = text
-        self.secondary = secondary; self.codeBackground = codeBackground; self.rule = rule
+        self.secondary = secondary; self.tertiary = tertiary; self.codeBackground = codeBackground; self.rule = rule
         self.lineHeight = lineHeight; self.paragraphSpacing = paragraphSpacing; self.headingSpacing = headingSpacing
         self.labelLevels = labelLevels; self.labelKern = labelKern
     }
@@ -103,7 +105,7 @@ public struct SummaryPreviewView: View {
                        tokens.nsUi(tokens.typeCaption, .semibold),
                        tokens.nsUi(tokens.typeBody, .semibold)],
             code: tokens.nsData(tokens.typeBody),
-            text: NSColor(tokens.text), secondary: NSColor(tokens.sub),
+            text: NSColor(tokens.text), secondary: NSColor(tokens.sub), tertiary: NSColor(tokens.gutter),
             codeBackground: NSColor(tokens.btn), rule: NSColor(tokens.rule),
             lineHeight: tokens.lineBody, paragraphSpacing: tokens.space6,
             headingSpacing: [(before: tokens.space20, after: tokens.space8), (before: tokens.space20, after: tokens.space8),

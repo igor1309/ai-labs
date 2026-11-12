@@ -94,7 +94,7 @@ struct PreviewPanelTests {
     @Test func theNotesRendererDrawsMarkdownInTheViewsStyle() throws {
         let heading = NSFont.boldSystemFont(ofSize: 20), body = NSFont.systemFont(ofSize: 13)
         let style = NotesStyle(body: body, headings: [heading], code: .monospacedSystemFont(ofSize: 12, weight: .regular),
-                               text: .red, secondary: .gray, codeBackground: .white, rule: .gray)
+                               text: .red, secondary: .gray, tertiary: .lightGray, codeBackground: .white, rule: .gray)
 
         let rendered = renderNotes("# Итоги\n\nтекст", style)
 

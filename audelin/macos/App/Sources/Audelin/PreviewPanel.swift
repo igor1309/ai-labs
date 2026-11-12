@@ -111,7 +111,7 @@ func summaryContent(_ state: SummaryPreviewState, text: SummaryPreviewText, copy
 /// The preview's notes, rendered from Markdown in the view's style.
 func renderNotes(_ source: String, _ style: NotesStyle) -> NSAttributedString {
     NotesMarkdown.render(source, style: .init(body: style.body, headings: style.headings, code: style.code, text: style.text,
-                                              secondary: style.secondary, codeBackground: style.codeBackground, rule: style.rule,
+                                              secondary: style.secondary, tertiary: style.tertiary, codeBackground: style.codeBackground, rule: style.rule,
                                               layout: .init(lineHeight: style.lineHeight, paragraphSpacing: style.paragraphSpacing,
                                                             headingSpacing: style.headingSpacing, labelLevels: style.labelLevels,
                                                             labelKern: style.labelKern)))
