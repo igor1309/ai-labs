@@ -16,20 +16,20 @@ from pathlib import Path
 # Lane: (title, colour, x, y, width, height, columns)
 LANES = {
     "compose": ("Composition", "#60a5fa", 560, 110, 1240, 130, 5),
-    "ui": ("UI", "#7dd3fc", 40, 280, 460, 400, 2),
+    "ui": ("UI", "#7dd3fc", 40, 280, 460, 230, 2),
     "machines": ("State machines", "#fbbf24", 560, 280, 1240, 230, 5),
-    "text": ("Live text", "#bef264", 40, 700, 820, 460, 3),
-    "capture": ("Capture and processes", "#fb923c", 900, 700, 440, 400, 2),
-    "storage": ("Storage", "#a78bfa", 1380, 700, 460, 640, 2),
-    "tools": ("Rehearsal and integration helpers", "#60a5fa", 40, 1380, 1800, 140, 4),
-    "external": ("Platform and packages", "#94a3b8", 40, 1540, 1800, 210, 4),
+    "text": ("Live text", "#bef264", 40, 530, 820, 460, 3),
+    "capture": ("Capture and processes", "#fb923c", 900, 530, 440, 300, 2),
+    "storage": ("Storage", "#a78bfa", 1380, 530, 460, 550, 2),
+    "tools": ("Rehearsal and integration helpers", "#60a5fa", 40, 1120, 1800, 140, 4),
+    "external": ("Platform and packages", "#94a3b8", 40, 1280, 1800, 120, 4),
 }
 
 # Target: (lane, line under its name, slot in the lane). Planned boxes have no target yet.
 TARGETS = {
     "SummarySettings": ("machines", "validates and saves call-note settings", 6),
     "SummaryJobs": ("machines", "coordinates durable call-note jobs", 7),
-    "SummaryFiles": ("storage", "keeps a call's summary job record", 9),
+    "SummaryFiles": ("storage", "claims and publishes call notes", 9),
     "SummaryRuntime": ("capture", "executes bounded note requests", 6),
     "BleedCleanup": ("machines", "cleans far-side bleed from the mic after a call", 8),
     "SpeakerIdentification": ("text", "validates self-introduction evidence", 10),
@@ -91,7 +91,7 @@ TARGETS = {
     "CallAppProcesses": ("capture", "which processes to hear\nfor the call app", 2),
 }
 
-PLANNED = [("storage", "PublishedNotes", "publishes and reads a call's notes", 12)]
+PLANNED = []
 
 STANDING = [("external", "Apple frameworks", "AVFoundation, Core Audio,\nAppKit, SwiftUI", 1)]
 
@@ -143,12 +143,12 @@ def main():
         sys.exit(f"update TARGETS: not drawn {unknown}, no longer in the package {gone}")
 
     cells = [
-        cell("canvas", "", "rounded=0;whiteSpace=wrap;html=1;fillColor=#252525;strokeColor=none;container=1;pointerEvents=0;", "1", 0, 0, 1880, 1820),
+        cell("canvas", "", "rounded=0;whiteSpace=wrap;html=1;fillColor=#252525;strokeColor=none;container=1;pointerEvents=0;", "1", 0, 0, 1880, 1470),
         cell("title", "Audelin", "text;html=1;align=left;verticalAlign=middle;fontSize=28;fontColor=#f8fafc;fontStyle=1;", "canvas", 40, 24, 400, 40),
         cell("subtitle", "components as built — generated from both package manifests by scripts/component-diagram.py",
              "text;html=1;align=left;verticalAlign=middle;fontSize=15;fontColor=#94a3b8;", "canvas", 42, 66, 900, 26),
         cell("legend", "solid box: a target · dashed box: planned · arrow: depends on",
-             "text;html=1;align=left;verticalAlign=middle;fontSize=13;fontColor=#94a3b8;", "canvas", 40, 1770, 900, 26),
+             "text;html=1;align=left;verticalAlign=middle;fontSize=13;fontColor=#94a3b8;", "canvas", 40, 1430, 900, 26),
     ]
     for lane, (title, colour, x, y, w, h, _) in LANES.items():
         cells.append(cell(f"lane-{lane}", title,
@@ -189,7 +189,7 @@ def main():
         '<?xml version="1.0" encoding="UTF-8"?>\n'
         '<mxfile host="drawio"><diagram id="audelin-live" name="Components"><mxGraphModel dx="1880" dy="1310" '
         'grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" '
-        'pageWidth="1880" pageHeight="1820" background="#252525" math="0" shadow="0"><root>\n'
+        'pageWidth="1880" pageHeight="1310" background="#252525" math="0" shadow="0"><root>\n'
         '<mxCell id="0"/>\n<mxCell id="1" parent="0"/>\n' + "\n".join(cells) + "\n</root></mxGraphModel></diagram></mxfile>\n"
     )
     (root / "docs" / "live-text.drawio").write_text(xml)
