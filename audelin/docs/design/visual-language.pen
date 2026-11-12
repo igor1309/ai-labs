@@ -58636,6 +58636,1753 @@
       "width": 520,
       "height": 380,
       "content": "Search\n\nThe field sits in the list's title bar and works as in the calls list: titles, summaries and transcripts, as you type, ignoring case and ё/е; days with no match hide.\n\nA match row keeps the two-line shape: title and time, then where the first match is (its time in the transcript, or «Итоги»), the text around it with the hit tinted `hit`, and «ещё N». The detail shows the selected call's summary. No results: the list says so and the detail shows «Звонок не выбран».\n\nEmpty, loading and the inactive window (selection in `chip`) are as in the calls list."
+    },
+    {
+      "id": "FC8C9",
+      "type": "ref",
+      "ref": "s191x",
+      "name": "Make summary — 1 Нет итогов — A Centred button",
+      "x": 0,
+      "y": 24100,
+      "descendants": {
+        "s175x/s027x": {
+          "content": ""
+        },
+        "s184x": {
+          "id": "eDJcl",
+          "type": "ref",
+          "ref": "s013x",
+          "name": "Detail bar",
+          "width": "fill_container",
+          "descendants": {
+            "s010x": {
+              "enabled": false
+            },
+            "s012x": {
+              "enabled": false
+            }
+          }
+        },
+        "s183x": {
+          "type": "frame",
+          "id": "XRPoq",
+          "name": "Centre",
+          "width": "fill_container",
+          "height": "fill_container",
+          "fill": "$surface",
+          "layout": "vertical",
+          "gap": "$space-12",
+          "justifyContent": "center",
+          "alignItems": "center",
+          "children": [
+            {
+              "id": "DTOWu",
+              "type": "ref",
+              "ref": "s079x",
+              "name": "Message",
+              "descendants": {
+                "s076x": {
+                  "icon": "sparkles",
+                  "fill": "$sub"
+                },
+                "s077x": {
+                  "content": "Итогов нет"
+                },
+                "s078x": {
+                  "content": "Итоги можно сделать из расшифровки звонка"
+                },
+                "s075x": {
+                  "fill": "$selBg",
+                  "padding": [
+                    "$space-6",
+                    "$space-16"
+                  ]
+                },
+                "s074x": {
+                  "content": "Сделать итоги",
+                  "fill": "$selText",
+                  "fontWeight": "600"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "QPFjw",
+      "type": "ref",
+      "ref": "s191x",
+      "name": "Make summary — 1 Нет итогов — B Toolbar button",
+      "x": 1180,
+      "y": 24100,
+      "descendants": {
+        "s175x/s027x": {
+          "content": ""
+        },
+        "s184x": {
+          "id": "rX4CM",
+          "type": "ref",
+          "ref": "s013x",
+          "name": "Detail bar",
+          "width": "fill_container",
+          "descendants": {
+            "s010x": {
+              "fill": "$selBg"
+            },
+            "s008x": {
+              "icon": "sparkles",
+              "fill": "$selText"
+            },
+            "s009x": {
+              "content": "Сделать итоги",
+              "fill": "$selText",
+              "fontWeight": "600"
+            },
+            "s012x": {
+              "enabled": true
+            }
+          }
+        },
+        "s183x": {
+          "type": "frame",
+          "id": "Ht2gt",
+          "name": "Centre",
+          "width": "fill_container",
+          "height": "fill_container",
+          "fill": "$surface",
+          "layout": "vertical",
+          "gap": "$space-12",
+          "justifyContent": "center",
+          "alignItems": "center",
+          "children": [
+            {
+              "id": "O1awVL",
+              "type": "ref",
+              "ref": "s079x",
+              "name": "Message",
+              "descendants": {
+                "s076x": {
+                  "icon": "file-text",
+                  "fill": "$gutter"
+                },
+                "s077x": {
+                  "content": "Итогов нет"
+                },
+                "s078x": {
+                  "content": "Сделать итоги — кнопка вверху или ⌘⇧S"
+                },
+                "s075x": {
+                  "enabled": false
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "c5DJi",
+      "type": "ref",
+      "ref": "s191x",
+      "name": "Make summary — 1 Нет итогов — C Card over an outline",
+      "x": 2360,
+      "y": 24100,
+      "descendants": {
+        "s175x/s027x": {
+          "content": ""
+        },
+        "s184x": {
+          "id": "Jmbm1",
+          "type": "ref",
+          "ref": "s013x",
+          "name": "Detail bar",
+          "width": "fill_container",
+          "descendants": {
+            "s010x": {
+              "enabled": false
+            },
+            "s012x": {
+              "enabled": false
+            }
+          }
+        },
+        "s183x": {
+          "type": "frame",
+          "id": "bynbd",
+          "name": "Centre",
+          "width": "fill_container",
+          "height": "fill_container",
+          "fill": "$surface",
+          "layout": "vertical",
+          "gap": "$space-4",
+          "children": [
+            {
+              "type": "frame",
+              "id": "UekgI",
+              "name": "Card",
+              "width": "fill_container",
+              "layout": "vertical",
+              "padding": [
+                "$space-8",
+                "$space-28"
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "OF6AS",
+                  "name": "Card body",
+                  "width": "fill_container",
+                  "fill": "$card",
+                  "cornerRadius": "$radius-card",
+                  "gap": "$space-12",
+                  "padding": [
+                    "$space-12",
+                    "$space-16"
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "Bxic9",
+                      "name": "Icon",
+                      "width": 20,
+                      "height": 20,
+                      "icon": "sparkles",
+                      "library": "lucide",
+                      "fill": "$me"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "i9fjWI",
+                      "name": "Text",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": "$space-2",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "E88UQ",
+                          "name": "H",
+                          "fill": "$text",
+                          "content": "У звонка нет итогов",
+                          "fontFamily": "$font-ui",
+                          "fontSize": "$type-small",
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "IrYuv",
+                          "name": "Sub",
+                          "fill": "$sub",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Расшифровка готова: 16:10. Итоги займут около минуты.",
+                          "fontFamily": "$font-ui",
+                          "fontSize": "$type-small",
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "jh659",
+                      "type": "ref",
+                      "ref": "f7Y4eS",
+                      "name": "Button Сделать итоги",
+                      "descendants": {
+                        "Wz52g": {
+                          "content": "Сделать итоги"
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "ijjdL",
+              "name": "Ghost О ЧЁМ ВСТРЕЧА",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": "$space-8",
+              "padding": [
+                "$space-16",
+                "$space-28",
+                "$space-4",
+                "$space-28"
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "YJKJj",
+                  "name": "Label",
+                  "fill": "$disText",
+                  "content": "О ЧЁМ ВСТРЕЧА",
+                  "fontFamily": "$font-ui",
+                  "fontSize": "$type-caption",
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": "$radius-bar",
+                  "id": "NGAsA",
+                  "name": "Ghost line",
+                  "fill": "$btn",
+                  "width": 640,
+                  "height": 8
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": "$radius-bar",
+                  "id": "Y5i4H6",
+                  "name": "Ghost line",
+                  "fill": "$btn",
+                  "width": 600,
+                  "height": 8
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": "$radius-bar",
+                  "id": "A4zhYY",
+                  "name": "Ghost line",
+                  "fill": "$btn",
+                  "width": 380,
+                  "height": 8
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "H59wkG",
+              "name": "Ghost КЛЮЧЕВЫЕ МОМЕНТЫ",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": "$space-8",
+              "padding": [
+                "$space-16",
+                "$space-28",
+                "$space-4",
+                "$space-28"
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "fk7WQ",
+                  "name": "Label",
+                  "fill": "$disText",
+                  "content": "КЛЮЧЕВЫЕ МОМЕНТЫ",
+                  "fontFamily": "$font-ui",
+                  "fontSize": "$type-caption",
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": "$radius-bar",
+                  "id": "zlUa9",
+                  "name": "Ghost line",
+                  "fill": "$btn",
+                  "width": 520,
+                  "height": 8
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": "$radius-bar",
+                  "id": "WrorZ",
+                  "name": "Ghost line",
+                  "fill": "$btn",
+                  "width": 560,
+                  "height": 8
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": "$radius-bar",
+                  "id": "hNf06",
+                  "name": "Ghost line",
+                  "fill": "$btn",
+                  "width": 440,
+                  "height": 8
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": "$radius-bar",
+                  "id": "a8ltw",
+                  "name": "Ghost line",
+                  "fill": "$btn",
+                  "width": 300,
+                  "height": 8
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "a8hb4h",
+              "name": "Ghost РЕШЕНИЯ И ЗАДАЧИ",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": "$space-8",
+              "padding": [
+                "$space-16",
+                "$space-28",
+                "$space-4",
+                "$space-28"
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "dZGsY",
+                  "name": "Label",
+                  "fill": "$disText",
+                  "content": "РЕШЕНИЯ И ЗАДАЧИ",
+                  "fontFamily": "$font-ui",
+                  "fontSize": "$type-caption",
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": "$radius-bar",
+                  "id": "VF7BN",
+                  "name": "Ghost line",
+                  "fill": "$btn",
+                  "width": 480,
+                  "height": 8
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": "$radius-bar",
+                  "id": "oIDU6",
+                  "name": "Ghost line",
+                  "fill": "$btn",
+                  "width": 360,
+                  "height": 8
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "WnOH7",
+      "type": "ref",
+      "ref": "s191x",
+      "name": "Make summary — 2 Делаю итоги — A Centred progress",
+      "x": 0,
+      "y": 24920,
+      "descendants": {
+        "s175x/s027x": {
+          "content": "Подготовка итогов…"
+        },
+        "s175x/s057x": {
+          "enabled": true,
+          "fill": "$selText"
+        },
+        "s184x": {
+          "id": "F5n04",
+          "type": "ref",
+          "ref": "s013x",
+          "name": "Detail bar",
+          "width": "fill_container",
+          "descendants": {
+            "s010x": {
+              "enabled": false
+            },
+            "s012x": {
+              "enabled": false
+            }
+          }
+        },
+        "s183x": {
+          "type": "frame",
+          "id": "qLS5H",
+          "name": "Centre",
+          "width": "fill_container",
+          "height": "fill_container",
+          "fill": "$surface",
+          "layout": "vertical",
+          "gap": "$space-12",
+          "justifyContent": "center",
+          "alignItems": "center",
+          "children": [
+            {
+              "id": "CSUap",
+              "type": "ref",
+              "ref": "s079x",
+              "name": "Message",
+              "descendants": {
+                "s076x": {
+                  "icon": "loader-circle",
+                  "fill": "$sub"
+                },
+                "s077x": {
+                  "content": "Делаю итоги…"
+                },
+                "s078x": {
+                  "content": "Читаю расшифровку · 0:24"
+                },
+                "s075x": {
+                  "enabled": false
+                }
+              }
+            },
+            {
+              "id": "SXrrj",
+              "type": "ref",
+              "ref": "GQV4X",
+              "name": "Progress",
+              "width": 200
+            },
+            {
+              "id": "Z4R4V",
+              "type": "ref",
+              "ref": "wmGeO",
+              "name": "Button Отмена",
+              "descendants": {
+                "EWsWH": {
+                  "content": "Отмена"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "LUcsE",
+      "type": "ref",
+      "ref": "s191x",
+      "name": "Make summary — 2 Делаю итоги — B Banner and skeleton",
+      "x": 1180,
+      "y": 24920,
+      "descendants": {
+        "s175x/s027x": {
+          "content": "Подготовка итогов…"
+        },
+        "s175x/s057x": {
+          "enabled": true,
+          "fill": "$selText"
+        },
+        "s184x": {
+          "id": "A60xD",
+          "type": "ref",
+          "ref": "s013x",
+          "name": "Detail bar",
+          "width": "fill_container",
+          "descendants": {
+            "s008x": {
+              "icon": "x"
+            },
+            "s009x": {
+              "content": "Отмена"
+            },
+            "s012x": {
+              "enabled": true
+            }
+          }
+        },
+        "s183x": {
+          "type": "frame",
+          "id": "eHsgd",
+          "name": "Centre",
+          "width": "fill_container",
+          "height": "fill_container",
+          "fill": "$surface",
+          "layout": "vertical",
+          "gap": "$space-4",
+          "children": [
+            {
+              "type": "frame",
+              "id": "nyimB",
+              "name": "Banner wrap",
+              "width": "fill_container",
+              "padding": [
+                "$space-8",
+                "$space-28"
+              ],
+              "children": [
+                {
+                  "id": "w9wS9s",
+                  "type": "ref",
+                  "ref": "jjhu5",
+                  "name": "Banner",
+                  "width": "fill_container",
+                  "descendants": {
+                    "XbvpQ": {
+                      "content": "Делаю итоги…"
+                    },
+                    "P4t1H": {
+                      "content": "Около минуты. Можно открыть другой звонок: итоги появятся в списке."
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "QvdKP",
+              "name": "Ghost ",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": "$space-8",
+              "padding": [
+                "$space-16",
+                "$space-28",
+                "$space-4",
+                "$space-28"
+              ],
+              "children": [
+                {
+                  "type": "rectangle",
+                  "cornerRadius": "$radius-bar",
+                  "id": "SVq6d",
+                  "name": "Ghost line",
+                  "fill": "$btn",
+                  "width": 640,
+                  "height": 8
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": "$radius-bar",
+                  "id": "OJwnZ",
+                  "name": "Ghost line",
+                  "fill": "$btn",
+                  "width": 600,
+                  "height": 8
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": "$radius-bar",
+                  "id": "TDfNZ",
+                  "name": "Ghost line",
+                  "fill": "$btn",
+                  "width": 380,
+                  "height": 8
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "OZGbn",
+              "name": "Ghost ",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": "$space-8",
+              "padding": [
+                "$space-16",
+                "$space-28",
+                "$space-4",
+                "$space-28"
+              ],
+              "children": [
+                {
+                  "type": "rectangle",
+                  "cornerRadius": "$radius-bar",
+                  "id": "f2EcxJ",
+                  "name": "Ghost line",
+                  "fill": "$btn",
+                  "width": 520,
+                  "height": 8
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": "$radius-bar",
+                  "id": "XHeyW",
+                  "name": "Ghost line",
+                  "fill": "$btn",
+                  "width": 560,
+                  "height": 8
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": "$radius-bar",
+                  "id": "g4aQZu",
+                  "name": "Ghost line",
+                  "fill": "$btn",
+                  "width": 440,
+                  "height": 8
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": "$radius-bar",
+                  "id": "K0D6p",
+                  "name": "Ghost line",
+                  "fill": "$btn",
+                  "width": 300,
+                  "height": 8
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "k6pUF",
+              "name": "Ghost ",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": "$space-8",
+              "padding": [
+                "$space-16",
+                "$space-28",
+                "$space-4",
+                "$space-28"
+              ],
+              "children": [
+                {
+                  "type": "rectangle",
+                  "cornerRadius": "$radius-bar",
+                  "id": "Sftvd",
+                  "name": "Ghost line",
+                  "fill": "$btn",
+                  "width": 480,
+                  "height": 8
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": "$radius-bar",
+                  "id": "KhDvL",
+                  "name": "Ghost line",
+                  "fill": "$btn",
+                  "width": 360,
+                  "height": 8
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "JqA0T",
+      "type": "ref",
+      "ref": "s191x",
+      "name": "Make summary — 2 Делаю итоги — C Streaming text",
+      "x": 2360,
+      "y": 24920,
+      "descendants": {
+        "s175x/s027x": {
+          "content": "Подготовка итогов…"
+        },
+        "s175x/s057x": {
+          "enabled": true,
+          "fill": "$selText"
+        },
+        "s184x": {
+          "id": "Mg5dO",
+          "type": "ref",
+          "ref": "s013x",
+          "name": "Detail bar",
+          "width": "fill_container",
+          "descendants": {
+            "s007x": {
+              "content": "Пишу итоги…",
+              "fill": "$sub"
+            },
+            "s008x": {
+              "icon": "square"
+            },
+            "s009x": {
+              "content": "Остановить"
+            },
+            "s012x": {
+              "enabled": false
+            }
+          }
+        },
+        "s183x": {
+          "type": "frame",
+          "id": "pYe1b",
+          "name": "Centre",
+          "width": "fill_container",
+          "height": "fill_container",
+          "fill": "$surface",
+          "layout": "vertical",
+          "gap": "$space-4",
+          "children": [
+            {
+              "id": "T4pgc",
+              "type": "ref",
+              "ref": "s035x",
+              "name": "S О ЧЁМ ВСТРЕЧА",
+              "width": "fill_container",
+              "descendants": {
+                "s034x": {
+                  "content": "О ЧЁМ ВСТРЕЧА"
+                }
+              }
+            },
+            {
+              "id": "fbgC3",
+              "type": "ref",
+              "ref": "s039x",
+              "name": "P Встреча была пос",
+              "width": "fill_container",
+              "descendants": {
+                "s038x": {
+                  "content": "Встреча была посвящена идентификаторам в сообщениях (application message ID, Oper ID, message ID, doc ID, correlation message ID) и тому, как связывать ответы с запросами между шиной, бэком и фронтом. Также обсудили пополнение счёта и классификацию асинхронных сообщений."
+                }
+              }
+            },
+            {
+              "id": "tNCdd",
+              "type": "ref",
+              "ref": "s035x",
+              "name": "S КЛЮЧЕВЫЕ МОМЕНТЫ",
+              "width": "fill_container",
+              "descendants": {
+                "s034x": {
+                  "content": "КЛЮЧЕВЫЕ МОМЕНТЫ"
+                }
+              }
+            },
+            {
+              "id": "TLQVz",
+              "type": "ref",
+              "ref": "s037x",
+              "name": "H Пополнение счёта",
+              "width": "fill_container",
+              "descendants": {
+                "s036x": {
+                  "content": "Пополнение счёта"
+                }
+              }
+            },
+            {
+              "id": "X4cn9",
+              "type": "ref",
+              "ref": "s042x",
+              "name": "B Пополнение работ",
+              "width": "fill_container",
+              "descendants": {
+                "s041x": {
+                  "content": "Пополнение работает, открыты лишь вопросы по ответам [02:02–03:10]."
+                }
+              }
+            },
+            {
+              "type": "frame",
+              "id": "SBRec",
+              "name": "Writing",
+              "gap": "$space-8",
+              "padding": [
+                "$space-8",
+                "$space-28"
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "T4D3Uu",
+                  "name": "Spinner",
+                  "width": 14,
+                  "height": 14,
+                  "icon": "loader-circle",
+                  "library": "lucide",
+                  "fill": "$gutter"
+                },
+                {
+                  "type": "text",
+                  "id": "f9t0y",
+                  "name": "Text",
+                  "fill": "$gutter",
+                  "content": "Пишу дальше…",
+                  "fontFamily": "$font-ui",
+                  "fontSize": "$type-small",
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "wqrQl",
+      "type": "ref",
+      "ref": "s191x",
+      "name": "Make summary — 3 Итоги готовы — A Summary in place",
+      "x": 0,
+      "y": 25740,
+      "descendants": {
+        "s175x/s027x": {
+          "content": "Встреча была посвящена идентификаторам в сообщениях"
+        },
+        "s184x": {
+          "id": "L8qOOJ",
+          "type": "ref",
+          "ref": "s013x",
+          "name": "Detail bar",
+          "width": "fill_container"
+        },
+        "s183x": {
+          "type": "frame",
+          "id": "MEs0K",
+          "name": "Centre",
+          "width": "fill_container",
+          "height": "fill_container",
+          "fill": "$surface",
+          "layout": "vertical",
+          "gap": "$space-4",
+          "children": [
+            {
+              "id": "KVzXa",
+              "type": "ref",
+              "ref": "s035x",
+              "name": "S О ЧЁМ ВСТРЕЧА",
+              "width": "fill_container",
+              "descendants": {
+                "s034x": {
+                  "content": "О ЧЁМ ВСТРЕЧА"
+                }
+              }
+            },
+            {
+              "id": "ImG3D",
+              "type": "ref",
+              "ref": "s039x",
+              "name": "P Встреча была пос",
+              "width": "fill_container",
+              "descendants": {
+                "s038x": {
+                  "content": "Встреча была посвящена идентификаторам в сообщениях (application message ID, Oper ID, message ID, doc ID, correlation message ID) и тому, как связывать ответы с запросами между шиной, бэком и фронтом. Также обсудили пополнение счёта и классификацию асинхронных сообщений."
+                }
+              }
+            },
+            {
+              "id": "ppueY",
+              "type": "ref",
+              "ref": "s035x",
+              "name": "S КЛЮЧЕВЫЕ МОМЕНТЫ",
+              "width": "fill_container",
+              "descendants": {
+                "s034x": {
+                  "content": "КЛЮЧЕВЫЕ МОМЕНТЫ"
+                }
+              }
+            },
+            {
+              "id": "nNWkO",
+              "type": "ref",
+              "ref": "s037x",
+              "name": "H Пополнение счёта",
+              "width": "fill_container",
+              "descendants": {
+                "s036x": {
+                  "content": "Пополнение счёта"
+                }
+              }
+            },
+            {
+              "id": "zzIMg",
+              "type": "ref",
+              "ref": "s042x",
+              "name": "B Пополнение работ",
+              "width": "fill_container",
+              "descendants": {
+                "s041x": {
+                  "content": "Пополнение работает, открыты лишь вопросы по ответам [02:02–03:10]."
+                }
+              }
+            },
+            {
+              "id": "DxKgy",
+              "type": "ref",
+              "ref": "s042x",
+              "name": "B Отдельные вопрос",
+              "width": "fill_container",
+              "descendants": {
+                "s041x": {
+                  "content": "Отдельные вопросы остаются по C2C и по Oper ID в пополнении [03:10]."
+                }
+              }
+            },
+            {
+              "id": "WbmUo",
+              "type": "ref",
+              "ref": "s037x",
+              "name": "H Идентификаторы с",
+              "width": "fill_container",
+              "descendants": {
+                "s036x": {
+                  "content": "Идентификаторы сообщений"
+                }
+              }
+            },
+            {
+              "id": "n2iOJ",
+              "type": "ref",
+              "ref": "s042x",
+              "name": "B Application mess",
+              "width": "fill_container",
+              "descendants": {
+                "s041x": {
+                  "content": "Application message ID — поле ЦБ; operation ID — поле адаптера [04:41–08:08]."
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "AgSBU",
+      "type": "ref",
+      "ref": "s191x",
+      "name": "Make summary — 3 Итоги готовы — B Summary with a done banner",
+      "x": 1180,
+      "y": 25740,
+      "descendants": {
+        "s175x/s027x": {
+          "content": "Встреча была посвящена идентификаторам в сообщениях"
+        },
+        "s184x": {
+          "id": "UnjlQ",
+          "type": "ref",
+          "ref": "s013x",
+          "name": "Detail bar",
+          "width": "fill_container"
+        },
+        "s183x": {
+          "type": "frame",
+          "id": "L7vpR4",
+          "name": "Centre",
+          "width": "fill_container",
+          "height": "fill_container",
+          "fill": "$surface",
+          "layout": "vertical",
+          "gap": "$space-4",
+          "children": [
+            {
+              "type": "frame",
+              "id": "fTpSs",
+              "name": "Banner wrap",
+              "width": "fill_container",
+              "padding": [
+                "$space-8",
+                "$space-28"
+              ],
+              "children": [
+                {
+                  "id": "wHGGk",
+                  "type": "ref",
+                  "ref": "jjhu5",
+                  "name": "Banner",
+                  "width": "fill_container",
+                  "descendants": {
+                    "XbvpQ": {
+                      "content": "Итоги готовы"
+                    },
+                    "P4t1H": {
+                      "content": "Сделаны из расшифровки. Переделать — в меню ⋯."
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "id": "p5Bgw",
+              "type": "ref",
+              "ref": "s035x",
+              "name": "S О ЧЁМ ВСТРЕЧА",
+              "width": "fill_container",
+              "descendants": {
+                "s034x": {
+                  "content": "О ЧЁМ ВСТРЕЧА"
+                }
+              }
+            },
+            {
+              "id": "DrlE3",
+              "type": "ref",
+              "ref": "s039x",
+              "name": "P Встреча была пос",
+              "width": "fill_container",
+              "descendants": {
+                "s038x": {
+                  "content": "Встреча была посвящена идентификаторам в сообщениях (application message ID, Oper ID, message ID, doc ID, correlation message ID) и тому, как связывать ответы с запросами между шиной, бэком и фронтом. Также обсудили пополнение счёта и классификацию асинхронных сообщений."
+                }
+              }
+            },
+            {
+              "id": "b4nnFP",
+              "type": "ref",
+              "ref": "s035x",
+              "name": "S КЛЮЧЕВЫЕ МОМЕНТЫ",
+              "width": "fill_container",
+              "descendants": {
+                "s034x": {
+                  "content": "КЛЮЧЕВЫЕ МОМЕНТЫ"
+                }
+              }
+            },
+            {
+              "id": "nCVG6",
+              "type": "ref",
+              "ref": "s037x",
+              "name": "H Пополнение счёта",
+              "width": "fill_container",
+              "descendants": {
+                "s036x": {
+                  "content": "Пополнение счёта"
+                }
+              }
+            },
+            {
+              "id": "qSOfi",
+              "type": "ref",
+              "ref": "s042x",
+              "name": "B Пополнение работ",
+              "width": "fill_container",
+              "descendants": {
+                "s041x": {
+                  "content": "Пополнение работает, открыты лишь вопросы по ответам [02:02–03:10]."
+                }
+              }
+            },
+            {
+              "id": "LG7lZ",
+              "type": "ref",
+              "ref": "s042x",
+              "name": "B Отдельные вопрос",
+              "width": "fill_container",
+              "descendants": {
+                "s041x": {
+                  "content": "Отдельные вопросы остаются по C2C и по Oper ID в пополнении [03:10]."
+                }
+              }
+            },
+            {
+              "id": "U8ATcI",
+              "type": "ref",
+              "ref": "s037x",
+              "name": "H Идентификаторы с",
+              "width": "fill_container",
+              "descendants": {
+                "s036x": {
+                  "content": "Идентификаторы сообщений"
+                }
+              }
+            },
+            {
+              "id": "n8rBOW",
+              "type": "ref",
+              "ref": "s042x",
+              "name": "B Application mess",
+              "width": "fill_container",
+              "descendants": {
+                "s041x": {
+                  "content": "Application message ID — поле ЦБ; operation ID — поле адаптера [04:41–08:08]."
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "MF0k6",
+      "type": "ref",
+      "ref": "s191x",
+      "name": "Make summary — 3 Итоги готовы — C Summary with a toolbar status",
+      "x": 2360,
+      "y": 25740,
+      "descendants": {
+        "s175x/s027x": {
+          "content": "Встреча была посвящена идентификаторам в сообщениях"
+        },
+        "s184x": {
+          "id": "fwSMU",
+          "type": "ref",
+          "ref": "s013x",
+          "name": "Detail bar",
+          "width": "fill_container",
+          "descendants": {
+            "s007x": {
+              "content": "✓ Итоги готовы · только что",
+              "fill": "$me",
+              "fontWeight": "600"
+            }
+          }
+        },
+        "s183x": {
+          "type": "frame",
+          "id": "t9fvKP",
+          "name": "Centre",
+          "width": "fill_container",
+          "height": "fill_container",
+          "fill": "$surface",
+          "layout": "vertical",
+          "gap": "$space-4",
+          "children": [
+            {
+              "id": "d2KG6",
+              "type": "ref",
+              "ref": "s035x",
+              "name": "S О ЧЁМ ВСТРЕЧА",
+              "width": "fill_container",
+              "descendants": {
+                "s034x": {
+                  "content": "О ЧЁМ ВСТРЕЧА"
+                }
+              }
+            },
+            {
+              "id": "mlgRx",
+              "type": "ref",
+              "ref": "s039x",
+              "name": "P Встреча была пос",
+              "width": "fill_container",
+              "descendants": {
+                "s038x": {
+                  "content": "Встреча была посвящена идентификаторам в сообщениях (application message ID, Oper ID, message ID, doc ID, correlation message ID) и тому, как связывать ответы с запросами между шиной, бэком и фронтом. Также обсудили пополнение счёта и классификацию асинхронных сообщений."
+                }
+              }
+            },
+            {
+              "id": "p1P72c",
+              "type": "ref",
+              "ref": "s035x",
+              "name": "S КЛЮЧЕВЫЕ МОМЕНТЫ",
+              "width": "fill_container",
+              "descendants": {
+                "s034x": {
+                  "content": "КЛЮЧЕВЫЕ МОМЕНТЫ"
+                }
+              }
+            },
+            {
+              "id": "jP3Zo",
+              "type": "ref",
+              "ref": "s037x",
+              "name": "H Пополнение счёта",
+              "width": "fill_container",
+              "descendants": {
+                "s036x": {
+                  "content": "Пополнение счёта"
+                }
+              }
+            },
+            {
+              "id": "zCBts",
+              "type": "ref",
+              "ref": "s042x",
+              "name": "B Пополнение работ",
+              "width": "fill_container",
+              "descendants": {
+                "s041x": {
+                  "content": "Пополнение работает, открыты лишь вопросы по ответам [02:02–03:10]."
+                }
+              }
+            },
+            {
+              "id": "UOiIT",
+              "type": "ref",
+              "ref": "s042x",
+              "name": "B Отдельные вопрос",
+              "width": "fill_container",
+              "descendants": {
+                "s041x": {
+                  "content": "Отдельные вопросы остаются по C2C и по Oper ID в пополнении [03:10]."
+                }
+              }
+            },
+            {
+              "id": "EWICT",
+              "type": "ref",
+              "ref": "s037x",
+              "name": "H Идентификаторы с",
+              "width": "fill_container",
+              "descendants": {
+                "s036x": {
+                  "content": "Идентификаторы сообщений"
+                }
+              }
+            },
+            {
+              "id": "b7bFX",
+              "type": "ref",
+              "ref": "s042x",
+              "name": "B Application mess",
+              "width": "fill_container",
+              "descendants": {
+                "s041x": {
+                  "content": "Application message ID — поле ЦБ; operation ID — поле адаптера [04:41–08:08]."
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ONsDn",
+      "type": "ref",
+      "ref": "s191x",
+      "name": "Make summary — 4 Не удалось — A Centred error",
+      "x": 0,
+      "y": 26560,
+      "descendants": {
+        "s175x/s027x": {
+          "content": "Не удалось подготовить итоги"
+        },
+        "s175x/s028x": {
+          "enabled": true,
+          "fill": "$selText"
+        },
+        "s184x": {
+          "id": "GoOGp",
+          "type": "ref",
+          "ref": "s013x",
+          "name": "Detail bar",
+          "width": "fill_container",
+          "descendants": {
+            "s010x": {
+              "enabled": false
+            },
+            "s012x": {
+              "enabled": false
+            }
+          }
+        },
+        "s183x": {
+          "type": "frame",
+          "id": "cJArf",
+          "name": "Centre",
+          "width": "fill_container",
+          "height": "fill_container",
+          "fill": "$surface",
+          "layout": "vertical",
+          "gap": "$space-12",
+          "justifyContent": "center",
+          "alignItems": "center",
+          "children": [
+            {
+              "id": "Nptbi",
+              "type": "ref",
+              "ref": "s079x",
+              "name": "Message",
+              "descendants": {
+                "s076x": {
+                  "icon": "circle-alert",
+                  "fill": "$rec"
+                },
+                "s077x": {
+                  "content": "Не удалось сделать итоги"
+                },
+                "s078x": {
+                  "content": "Claude CLI завершился с ошибкой: превышен лимит запросов"
+                },
+                "s074x": {
+                  "content": "Повторить"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "U4TTHx",
+      "type": "ref",
+      "ref": "s191x",
+      "name": "Make summary — 4 Не удалось — B Error banner, toolbar retry",
+      "x": 1180,
+      "y": 26560,
+      "descendants": {
+        "s175x/s027x": {
+          "content": "Не удалось подготовить итоги"
+        },
+        "s175x/s028x": {
+          "enabled": true,
+          "fill": "$selText"
+        },
+        "s184x": {
+          "id": "W45AAF",
+          "type": "ref",
+          "ref": "s013x",
+          "name": "Detail bar",
+          "width": "fill_container",
+          "descendants": {
+            "s010x": {
+              "fill": "$selBg"
+            },
+            "s008x": {
+              "icon": "rotate-ccw",
+              "fill": "$selText"
+            },
+            "s009x": {
+              "content": "Повторить",
+              "fill": "$selText",
+              "fontWeight": "600"
+            },
+            "s012x": {
+              "enabled": true
+            }
+          }
+        },
+        "s183x": {
+          "type": "frame",
+          "id": "LxCBq",
+          "name": "Centre",
+          "width": "fill_container",
+          "height": "fill_container",
+          "fill": "$surface",
+          "layout": "vertical",
+          "gap": "$space-4",
+          "children": [
+            {
+              "type": "frame",
+              "id": "K48WS",
+              "name": "Banner wrap",
+              "width": "fill_container",
+              "padding": [
+                "$space-8",
+                "$space-28"
+              ],
+              "children": [
+                {
+                  "id": "eGG9F",
+                  "type": "ref",
+                  "ref": "qAImO",
+                  "name": "Banner",
+                  "width": "fill_container",
+                  "descendants": {
+                    "uxXzz": {
+                      "content": "Не удалось сделать итоги"
+                    },
+                    "q9Ta7": {
+                      "content": "Claude CLI завершился с ошибкой: превышен лимит запросов"
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "Kc1pc",
+      "type": "ref",
+      "ref": "s191x",
+      "name": "Make summary — 4 Не удалось — C Error card over the outline",
+      "x": 2360,
+      "y": 26560,
+      "descendants": {
+        "s175x/s027x": {
+          "content": "Не удалось подготовить итоги"
+        },
+        "s175x/s028x": {
+          "enabled": true,
+          "fill": "$selText"
+        },
+        "s184x": {
+          "id": "V3vQZw",
+          "type": "ref",
+          "ref": "s013x",
+          "name": "Detail bar",
+          "width": "fill_container",
+          "descendants": {
+            "s010x": {
+              "enabled": false
+            },
+            "s012x": {
+              "enabled": false
+            }
+          }
+        },
+        "s183x": {
+          "type": "frame",
+          "id": "qjDje",
+          "name": "Centre",
+          "width": "fill_container",
+          "height": "fill_container",
+          "fill": "$surface",
+          "layout": "vertical",
+          "gap": "$space-4",
+          "children": [
+            {
+              "type": "frame",
+              "id": "AESq2",
+              "name": "Card",
+              "width": "fill_container",
+              "layout": "vertical",
+              "padding": [
+                "$space-8",
+                "$space-28"
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "pm9DJ",
+                  "name": "Card body",
+                  "width": "fill_container",
+                  "fill": "$errBg",
+                  "cornerRadius": "$radius-card",
+                  "gap": "$space-12",
+                  "padding": [
+                    "$space-12",
+                    "$space-16"
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "k3Q3l",
+                      "name": "Icon",
+                      "width": 20,
+                      "height": 20,
+                      "icon": "circle-alert",
+                      "library": "lucide",
+                      "fill": "$rec"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "s3ttt",
+                      "name": "Text",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": "$space-2",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "J0GaA",
+                          "name": "H",
+                          "fill": "$rec",
+                          "content": "Не удалось сделать итоги",
+                          "fontFamily": "$font-ui",
+                          "fontSize": "$type-small",
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "uxCIM",
+                          "name": "Sub",
+                          "fill": "$sub",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Claude CLI завершился с ошибкой: превышен лимит запросов",
+                          "fontFamily": "$font-ui",
+                          "fontSize": "$type-small",
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "R0O3v2",
+                      "type": "ref",
+                      "ref": "f7Y4eS",
+                      "name": "Button Повторить",
+                      "descendants": {
+                        "Wz52g": {
+                          "content": "Повторить"
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "XMlDi",
+              "name": "Ghost О ЧЁМ ВСТРЕЧА",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": "$space-8",
+              "padding": [
+                "$space-16",
+                "$space-28",
+                "$space-4",
+                "$space-28"
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "VMUD4",
+                  "name": "Label",
+                  "fill": "$disText",
+                  "content": "О ЧЁМ ВСТРЕЧА",
+                  "fontFamily": "$font-ui",
+                  "fontSize": "$type-caption",
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": "$radius-bar",
+                  "id": "oGYPU",
+                  "name": "Ghost line",
+                  "fill": "$btn",
+                  "width": 640,
+                  "height": 8
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": "$radius-bar",
+                  "id": "jRbZy",
+                  "name": "Ghost line",
+                  "fill": "$btn",
+                  "width": 600,
+                  "height": 8
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": "$radius-bar",
+                  "id": "E74KR",
+                  "name": "Ghost line",
+                  "fill": "$btn",
+                  "width": 380,
+                  "height": 8
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "b13No",
+              "name": "Ghost КЛЮЧЕВЫЕ МОМЕНТЫ",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": "$space-8",
+              "padding": [
+                "$space-16",
+                "$space-28",
+                "$space-4",
+                "$space-28"
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "VEPTS",
+                  "name": "Label",
+                  "fill": "$disText",
+                  "content": "КЛЮЧЕВЫЕ МОМЕНТЫ",
+                  "fontFamily": "$font-ui",
+                  "fontSize": "$type-caption",
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": "$radius-bar",
+                  "id": "aw58F",
+                  "name": "Ghost line",
+                  "fill": "$btn",
+                  "width": 520,
+                  "height": 8
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": "$radius-bar",
+                  "id": "SdzBR",
+                  "name": "Ghost line",
+                  "fill": "$btn",
+                  "width": 560,
+                  "height": 8
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": "$radius-bar",
+                  "id": "PUND6",
+                  "name": "Ghost line",
+                  "fill": "$btn",
+                  "width": 440,
+                  "height": 8
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": "$radius-bar",
+                  "id": "FUBuP",
+                  "name": "Ghost line",
+                  "fill": "$btn",
+                  "width": 300,
+                  "height": 8
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "iSFe5",
+              "name": "Ghost РЕШЕНИЯ И ЗАДАЧИ",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": "$space-8",
+              "padding": [
+                "$space-16",
+                "$space-28",
+                "$space-4",
+                "$space-28"
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "hA5pP",
+                  "name": "Label",
+                  "fill": "$disText",
+                  "content": "РЕШЕНИЯ И ЗАДАЧИ",
+                  "fontFamily": "$font-ui",
+                  "fontSize": "$type-caption",
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": "$radius-bar",
+                  "id": "UsRDI",
+                  "name": "Ghost line",
+                  "fill": "$btn",
+                  "width": 480,
+                  "height": 8
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": "$radius-bar",
+                  "id": "q6kG5",
+                  "name": "Ghost line",
+                  "fill": "$btn",
+                  "width": 360,
+                  "height": 8
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "note",
+      "id": "gRiZe",
+      "x": 3540,
+      "y": 24100,
+      "name": "Note make summary 1",
+      "width": 520,
+      "height": 300,
+      "content": "Нет итогов — options\n\nA: centred message with the primary «Сделать итоги» in the detail.\nB: «Сделать итоги» in the detail bar where Копировать sits; the body only says there are none. ⋯ holds the same action.\nC: a card under the header with the button, over a grey outline of the sections the summary will have.\n\nThe row's second line stays the duration alone."
+    },
+    {
+      "type": "note",
+      "id": "a2cfDQ",
+      "x": 3540,
+      "y": 24920,
+      "name": "Note make summary 2",
+      "width": 520,
+      "height": 300,
+      "content": "Делаю итоги — options\n\nA: centred spinner, stage and elapsed time, a progress bar and Отмена.\nB: an info banner under the header, a grey skeleton below; Отмена in the detail bar.\nC: the summary appears as it is written; the detail bar says «Пишу итоги…» and offers Остановить.\n\nIn all three the row shows «Подготовка итогов…» with a spinner, and the user may select another call meanwhile."
+    },
+    {
+      "type": "note",
+      "id": "Nz4d3",
+      "x": 3540,
+      "y": 25740,
+      "name": "Note make summary 3",
+      "width": 520,
+      "height": 300,
+      "content": "Итоги готовы — options\n\nA: the summary replaces the progress, nothing else; Копировать and ⋯ return.\nB: as A with an «Итоги готовы» banner above the summary until the call is left.\nC: as A with «✓ Итоги готовы · только что» in the detail bar.\n\nThe row's gist becomes the first sentence of «О чём встреча»."
+    },
+    {
+      "type": "note",
+      "id": "VbcQ0",
+      "x": 3540,
+      "y": 26560,
+      "name": "Note make summary 4",
+      "width": 520,
+      "height": 300,
+      "content": "Не удалось — options\n\nA: centred error with Повторить, as the after-call failure looks today.\nB: an error banner under the header; Повторить in the detail bar.\nC: the card from Нет итогов C turns into an error card with Повторить, over the same outline.\n\nOpen: one option per state, or one column (A, B or C) for the whole flow; dark instances and the narrow window follow the choice."
     }
   ],
   "themes": {
