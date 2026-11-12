@@ -113,7 +113,7 @@ final class CallsToolbar: NSObject, NSToolbarDelegate, NSToolbarItemValidation {
     @objc private func copied() { act(.copy) }
 
     private var identifiers: [NSToolbarItem.Identifier] {
-        (title == nil ? [] : [Self.titleItem]) + [Self.actionsItem, Self.deleteItem] + (separator == nil ? [] : [Self.separatorItem]) + [.flexibleSpace, Self.copyItem]
+        (title == nil ? [] : [Self.titleItem, .flexibleSpace]) + [Self.actionsItem, Self.deleteItem] + (separator == nil ? [] : [Self.separatorItem]) + [.flexibleSpace, Self.copyItem]
     }
 
     func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] { identifiers }
