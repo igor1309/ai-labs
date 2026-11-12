@@ -73,7 +73,7 @@ struct AudelinApp: App {
                     begin: { completion in picker.begin { completion($0 == .OK ? picker.url : nil) } },
                     isVisible: { picker.isVisible }
                 )
-            }, focusPreview: { previewPanel.focus() }
+            }, focusPreview: { previewPanel.focus() }, copyNotes: { copyNotes($0, to: .general) }
         )
         self.model = model
         settingsWindow.contentView = NSHostingView(rootView: SettingsContent(model: model, window: settingsWindow))

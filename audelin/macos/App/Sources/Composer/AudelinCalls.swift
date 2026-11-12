@@ -33,8 +33,39 @@ public struct CallsPreview: Equatable, Sendable {
     }
 }
 
+/// The selected call as the detail shows it, whether or not the preview is open.
+public struct CallsDetail: Equatable, Sendable {
+    public enum Content: Equatable, Sendable {
+        /// The notes' Markdown source.
+        case notes(String)
+        /// Why the notes cannot be read.
+        case unreadable(String)
+        case preparing
+        /// Preparing the summary failed; `canRetry` when Повторить итоги is offered.
+        case failed(reason: String, canRetry: Bool)
+        /// No summary; `notesOff` when preparing summaries is off in Settings.
+        case none(notesOff: Bool)
+    }
+    public let id: String
+    public let title: String
+    public let date: String
+    public let duration: String
+    public let content: Content
+
+    public init(id: String, title: String, date: String, duration: String, content: Content) {
+        self.id = id; self.title = title; self.date = date; self.duration = duration; self.content = content
+    }
+}
+
+/// What the detail asks of the call it shows.
+public enum CallsDetailEvent: Equatable, Sendable { case copy, open, rename, retrySummary, delete }
+
 @MainActor @Observable
 public final class AudelinCalls {
+    /// The selected call, nil when none is selected.
+    public private(set) var detail: CallsDetail?
+    private let copy: (String) -> Void
+    private let notesEnabled: () -> Bool
     /// The selected call's notes, while the preview is open and the call has them.
     public private(set) var preview: CallsPreview?
     private let notes: (String) async throws -> String?
@@ -79,6 +110,8 @@ public final class AudelinCalls {
          summaryBadges: @escaping () -> [String: CallsListState.Row.Summary] = { [:] },
          notes: @escaping (String) async throws -> String? = { _ in nil },
          focusPreview: @escaping () -> Void = {},
+         copy: @escaping (String) -> Void = { _ in },
+         notesEnabled: @escaping () -> Bool = { true },
          retryableSummaries: @escaping () -> Set<String> = { [] },
          retrySummary: @escaping (String) async throws -> Void = { _ in throw CocoaError(.fileWriteUnknown) },
          describe: @escaping (any Error) -> String = SettingsText(language: .russian).callsFailure,
@@ -90,6 +123,8 @@ public final class AudelinCalls {
         self.retryableSummaries = retryableSummaries
         self.retrySummary = retrySummary
         self.focusPreview = focusPreview
+        self.copy = copy
+        self.notesEnabled = notesEnabled
         self.summaryStatuses = summaryStatuses
         self.summaryBadges = summaryBadges
         self.notes = notes
@@ -232,21 +267,49 @@ public final class AudelinCalls {
         }
     }
 
+    /// Reads the selected call's notes into the detail, and into the preview while it is open.
     private func updatePreview() {
         loading?.cancel()
-        guard previewOpen, let id = selectedID, let row = state.rows.first(where: { $0.id == id }) else {
+        let state = state
+        guard let id = selectedID, let index = state.rows.firstIndex(where: { $0.id == id }) else {
             loading = nil
+            detail = nil
             preview = nil
             return
         }
-        let rows = state.rows
-        let opening = rows[...rows.firstIndex(where: { $0.id == id })!].last(where: { $0.day != nil })?.day
+        let row = state.rows[index]
+        let opening = state.rows[...index].last(where: { $0.day != nil })?.day
         let date = [opening?.title, row.time].compactMap { $0 }.joined(separator: ", ")
+        let status = summaryStatuses()[id] ?? ""
+        let notesOff = !notesEnabled()
+        let open = previewOpen
+        if !open { preview = nil }
         loading = Task { [notes] in
             let read: CallsPreview.Notes?
             do { read = try await notes(id).map { .text($0) } } catch { read = .unreadable(error.localizedDescription) }
             guard !Task.isCancelled else { return }
-            preview = read.map { .init(id: id, title: row.displayTitle, date: date, duration: row.duration, notes: $0) }
+            let content: CallsDetail.Content
+            switch (read, row.summary) {
+            case let (.text(source)?, _): content = .notes(source)
+            case let (.unreadable(reason)?, _): content = .unreadable(reason)
+            case (nil, .pending): content = .preparing
+            case (nil, .failed): content = .failed(reason: status, canRetry: row.canRetrySummary && row.editable)
+            case (nil, .none): content = .none(notesOff: notesOff)
+            }
+            detail = .init(id: id, title: row.displayTitle, date: date, duration: row.duration, content: content)
+            preview = open ? read.map { .init(id: id, title: row.displayTitle, date: date, duration: row.duration, notes: $0) } : nil
+        }
+    }
+
+    /// The detail's buttons and menu act on the call it shows, as the list's own actions do.
+    public func send(detail event: CallsDetailEvent) async {
+        guard let shown = detail else { return }
+        switch event {
+        case .copy: if case let .notes(source) = shown.content { copy(source) }
+        case .open: await send(.open(shown.id))
+        case .rename: await send(.beginRename(shown.id))
+        case .retrySummary: await send(.retrySummary(shown.id))
+        case .delete: await send(.askDelete(shown.id))
         }
     }
 
