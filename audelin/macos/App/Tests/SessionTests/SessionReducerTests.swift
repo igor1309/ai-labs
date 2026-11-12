@@ -23,6 +23,24 @@ struct SessionReducerTests {
         assert(makeIdle(), .begin(liveText: wanted), delivers: .checkModels)
     }
 
+    @Test func newSessionShowsLiveTextOff() {
+
+        #expect(SessionState().liveText == .off)
+    }
+
+    @Test func beginOnANewSessionKeepsLiveTextOff_state() {
+
+        assert(SessionState(), .begin(liveText: true)) {
+            $0.phase = .bringingUp
+            $0.wantedLiveText = true
+        }
+    }
+
+    @Test func beginOnANewSessionKeepsLiveTextOff_effect() {
+
+        assert(SessionState(), .begin(liveText: true), delivers: .checkModels)
+    }
+
     @Test func modelsOnDiskCreateTheFolder_state() {
 
         let state = makeCheckingModels()
