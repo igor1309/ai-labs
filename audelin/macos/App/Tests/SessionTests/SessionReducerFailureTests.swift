@@ -500,6 +500,71 @@ extension SessionReducerTests {
         assert(state, .captureFinished(.microphone, error: nil), delivers: .startCallCapture(selection: .chosen(state.processSelection!)))
     }
 
+    @Test(arguments: sides)
+    func accessLossAfterTheOtherTrackFailedCannotRecord_state(_ side: SessionSide) {
+
+        let state = makeRecording().with { $0.fail(.track(side.other), anyError()) }
+        assert(state, .accessChanged(side, available: false)) {
+            $0.loseAccess(side)
+            $0.cannotRecord = "no track can record"
+            $0.phase = .bringingUp
+        }
+    }
+
+    @Test(arguments: sides)
+    func accessLossAfterTheOtherTrackFailedCannotRecord_effect(_ side: SessionSide) {
+
+        let state = makeRecording().with { $0.fail(.track(side.other), anyError()) }
+        assert(state, .accessChanged(side, available: false), delivers: nil)
+    }
+
+    @Test(arguments: sides)
+    func captureFailureAfterTheOtherCaptureFailedCannotRecordAndStops_state(_ side: SessionSide) {
+
+        let state = makeRecording().with {
+            $0.fail(.capture(side.other), anyError())
+            $0[status: .capture(side.other)] = .closed
+        }
+        let error = anyError()
+        assert(state, .pieceFailed(.capture(side), error: error)) {
+            $0.fail(.capture(side), error)
+            $0.cannotRecord = "no track can record"
+            $0.phase = .bringingUp
+            $0[status: .capture(side)] = .stopping
+        }
+    }
+
+    @Test(arguments: sides)
+    func captureFailureAfterTheOtherCaptureFailedCannotRecordAndStops_effect(_ side: SessionSide) {
+
+        let state = makeRecording().with {
+            $0.fail(.capture(side.other), anyError())
+            $0[status: .capture(side.other)] = .closed
+        }
+        assert(state, .pieceFailed(.capture(side), error: anyError()), delivers: .stopCapture(side))
+    }
+
+    @Test func failedMicrophoneCaptureUpWithTheCallCaptureUpRecordsThenStopsIt_state() {
+
+        let state = makeBringingUp(starting: .capture(.microphone)).with {
+            $0.callCapture = .up
+            $0.fail(.capture(.microphone), anyError())
+        }
+        assert(state, .captureFinished(.microphone, error: nil)) {
+            $0.microphoneCapture = .stopping
+            $0.phase = .recording
+        }
+    }
+
+    @Test func failedMicrophoneCaptureUpWithTheCallCaptureUpRecordsThenStopsIt_effect() {
+
+        let state = makeBringingUp(starting: .capture(.microphone)).with {
+            $0.callCapture = .up
+            $0.fail(.capture(.microphone), anyError())
+        }
+        assert(state, .captureFinished(.microphone, error: nil), delivers: .stopCapture(.microphone))
+    }
+
     // MARK: Cannot record
 
     @Test(arguments: Unusable.allCases)
