@@ -14,7 +14,8 @@ The machine starts in no notes when the call has none; no effect.
 ## S-2 Asking starts making
 
 Make from no notes goes to being made and asks the collaborator to make
-that call's notes.
+that call's notes; the effect handler delivers made with the notes and their
+date, or failed with the reason, as the collaborator reports.
 
 ## S-3 Made notes replace the progress
 
@@ -32,7 +33,9 @@ Retry from failed goes to being made and asks the collaborator to make.
 ## S-6 Cancelling returns to no notes
 
 Cancel while being made goes to no notes and asks the collaborator to stop;
-a made or failed outcome that arrives after it changes nothing.
+a made or failed outcome that arrives after it changes nothing. The effect
+handler's stop returns once the collaborator has stopped and delivers no
+event.
 
 ## S-7 Asking twice makes them once
 
@@ -42,3 +45,9 @@ Make or retry while being made changes nothing and asks nothing.
 
 The machine started in being made shows being made and asks nothing: the
 work was already asked for.
+
+## S-9 A cancelled run's outcome never shows
+
+Each make or retry starts the next numbered run and asks the collaborator to
+make for it; the effect handler tags the outcome with that run. While run 2
+is being made, made or failed for run 1 changes nothing.
