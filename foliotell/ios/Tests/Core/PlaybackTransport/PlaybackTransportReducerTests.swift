@@ -233,56 +233,85 @@ struct PlaybackTransportReducerTests {
         )
     }
 
-    @Test func test_reduce_shouldStopPlayback_onStopTappedWhileSpeaking() {
+    @Test func test_reduce_shouldGoIdleKeepingToken_onStopTappedWhileSpeaking() {
 
-        let (state, effect) = reduce(.speaking(makeSession()), .stopTapped)
-
-        #expect(state == .idle(lastUtteranceToken: 1))
-        #expect(effect == .stopPlayback)
+        assert(.speaking(makeSession()), .stopTapped) {
+            $0.becomeIdle()
+        }
     }
 
-    @Test func test_reduce_shouldStopPlayback_onStopTappedWhilePaused() {
+    @Test func test_reduce_shouldDeliverStopPlayback_onStopTappedWhileSpeaking() {
 
-        let (state, effect) = reduce(.paused(makeSession()), .stopTapped)
-
-        #expect(state == .idle(lastUtteranceToken: 1))
-        #expect(effect == .stopPlayback)
+        assert(.speaking(makeSession()), .stopTapped, delivers: .stopPlayback)
     }
 
-    @Test func test_reduce_shouldIgnoreStop_onIdle() {
+    @Test func test_reduce_shouldGoIdleKeepingToken_onStopTappedWhilePaused() {
 
-        let (state, effect) = reduce(.idle(lastUtteranceToken: 0),.stopTapped)
-
-        #expect(state == .idle(lastUtteranceToken: 0))
-        #expect(effect == nil)
+        assert(.paused(makeSession()), .stopTapped) {
+            $0.becomeIdle()
+        }
     }
 
-    @Test func test_reduce_shouldNotifyStartOverOnly_onStartOverTappedInIdle() {
+    @Test func test_reduce_shouldDeliverStopPlayback_onStopTappedWhilePaused() {
 
-        let (state, effect) = reduce(.idle(lastUtteranceToken: 0),.startOverTapped)
-
-        #expect(state == .idle(lastUtteranceToken: 0))
-        #expect(effect == .notifyStartOver)
+        assert(.paused(makeSession()), .stopTapped, delivers: .stopPlayback)
     }
 
-    @Test func test_reduce_shouldRestartFromBeginning_onStartOverTappedWhileSpeaking() {
+    @Test func test_reduce_shouldNotChange_onStopTappedInIdle() {
 
-        let speaking = makeSession(utteranceToken: 3, utteranceStartUTF16Offset: 16, spokenUTF16Offset: 20)
-
-        let (state, effect) = reduce(.speaking(speaking), .startOverTapped)
-
-        #expect(state == .speaking(makeSession(utteranceToken: 4)))
-        #expect(effect == .restartPlayback(makeCommand(utteranceToken: 4)))
+        assert(.idle(lastUtteranceToken: 0), .stopTapped)
     }
 
-    @Test func test_reduce_shouldRestartFromBeginning_onStartOverTappedWhilePaused() {
+    @Test func test_reduce_shouldDeliverNothing_onStopTappedInIdle() {
 
-        let paused = makeSession(spokenUTF16Offset: 20, hasActiveUtterance: false)
+        assert(.idle(lastUtteranceToken: 0), .stopTapped, delivers: nil)
+    }
 
-        let (state, effect) = reduce(.paused(paused), .startOverTapped)
+    @Test func test_reduce_shouldNotChange_onStartOverTappedInIdle() {
 
-        #expect(state == .speaking(makeSession(utteranceToken: 2)))
-        #expect(effect == .restartPlayback(makeCommand(utteranceToken: 2)))
+        assert(.idle(lastUtteranceToken: 0), .startOverTapped)
+    }
+
+    @Test func test_reduce_shouldDeliverNotifyStartOver_onStartOverTappedInIdle() {
+
+        assert(.idle(lastUtteranceToken: 0), .startOverTapped, delivers: .notifyStartOver)
+    }
+
+    @Test func test_reduce_shouldRestartFromBeginningWithFreshToken_onStartOverTappedWhileSpeaking() {
+
+        assert(.speaking(makeSession(utteranceToken: 3, utteranceStartUTF16Offset: 16, spokenUTF16Offset: 20)), .startOverTapped) {
+            $0.session.utteranceToken = 4
+            $0.session.utteranceStartUTF16Offset = 0
+            $0.session.spokenUTF16Offset = 0
+        }
+    }
+
+    @Test func test_reduce_shouldDeliverRestartPlayback_onStartOverTappedWhileSpeaking() {
+
+        assert(
+            .speaking(makeSession(utteranceToken: 3, utteranceStartUTF16Offset: 16, spokenUTF16Offset: 20)),
+            .startOverTapped,
+            delivers: .restartPlayback(makeCommand(utteranceToken: 4))
+        )
+    }
+
+    @Test func test_reduce_shouldSpeakFromBeginningWithFreshToken_onStartOverTappedWhilePaused() {
+
+        assert(.paused(makeSession(spokenUTF16Offset: 20, hasActiveUtterance: false)), .startOverTapped) {
+            $0.becomeSpeaking()
+            $0.session.utteranceToken = 2
+            $0.session.spokenUTF16Offset = 0
+            $0.session.hasActiveUtterance = true
+        }
+    }
+
+    @Test func test_reduce_shouldDeliverRestartPlayback_onStartOverTappedWhilePaused() {
+
+        assert(
+            .paused(makeSession(spokenUTF16Offset: 20, hasActiveUtterance: false)),
+            .startOverTapped,
+            delivers: .restartPlayback(makeCommand(utteranceToken: 2))
+        )
     }
 
     @Test func test_reduce_shouldReplaceUtteranceAtSpokenOffset_onSpeedChangedWhileSpeaking() {
