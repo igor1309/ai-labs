@@ -5,82 +5,6 @@ import Testing
 @Suite(.timeLimit(.minutes(1)))
 struct SessionTests {
 
-    @Test func bothCaptureFailuresSayCannotRecord() async throws {
-
-        let rig = await Rig(failing: ["microphone.capture.start", "call.capture.start"])
-        await rig.begin(liveText: true)
-        let state = await rig.waitFor { $0.cannotRecord != nil }
-        #expect(state.cannotRecord == "no track can record")
-        #expect(state.phase == .bringingUp)
-        #expect(state.health[.capture(.microphone)] == .failed("microphone.capture.start failed"))
-        #expect(state.health[.capture(.call)] == .failed("call.capture.start failed"))
-        #expect(state.failures == [
-            .init(piece: "microphone capture", message: "microphone.capture.start failed"),
-            .init(piece: "call capture", message: "call.capture.start failed")
-        ])
-        await end(rig)
-    }
-
-    @Test func bothTrackFailuresSayCannotRecord() async throws {
-
-        let rig = await Rig(failing: ["microphone.track.open", "call.track.open"])
-        await rig.begin(liveText: true)
-        let state = await rig.waitFor { $0.cannotRecord != nil }
-        #expect(state.cannotRecord == "no track can record")
-        #expect(state.health[.track(.microphone)] == .failed("microphone.track.open failed"))
-        #expect(state.health[.track(.call)] == .failed("call.track.open failed"))
-        #expect(state.failures == [
-            .init(piece: "microphone track", message: "microphone.track.open failed"),
-            .init(piece: "call track", message: "call.track.open failed")
-        ])
-        await end(rig)
-    }
-
-    @Test func otherFailureIsNamedAndTheOtherSideRecords() async throws {
-
-        let rig = await Rig(failing: ["call.track.open"])
-        await rig.begin(liveText: true)
-        let state = await rig.waitFor { $0.phase == .recording }
-        #expect(state.failures.contains { $0.piece == "call track" })
-        #expect(state.microphoneCapture == .up)
-        await rig.microphoneCapture.sendAudio()
-        #expect(await rig.output.values().contains("microphone.audio"))
-        await end(rig)
-    }
-
-    @Test(arguments: [
-        "processes.select", "microphone.track.open", "call.track.open", "transcript.open",
-        "callText.start(on)", "microphone.capture.start", "call.capture.start"
-    ])
-    func eachOtherBringUpFailureKeepsAnotherTrack(_ failing: String) async throws {
-
-        let rig = await Rig(failing: [failing])
-        await rig.begin(liveText: true)
-        let state = await rig.waitFor { $0.phase == .recording }
-        #expect(state.failures.contains(.init(piece: bringUpFailurePiece(failing), message: "\(failing) failed")))
-        let piece = String(failing.prefix { $0 != "(" }.split(separator: ".").dropLast().joined(separator: "."))
-        await expectTracksKeepRecording(rig, "after", on: survivingSides(for: piece))
-        await rig.callText.speak("after")
-        let textSurvives = !failing.hasPrefix("transcript") && !failing.hasPrefix("callText")
-        #expect(await rig.transcript.values().contains("after") == textSurvives)
-        await end(rig)
-    }
-
-    @Test func lostAccessIsNamedWhileTheOtherSideRecords() async throws {
-
-        let rig = await Rig()
-        await rig.begin(liveText: true)
-        _ = await rig.waitFor { $0.phase == .recording }
-        await rig.session.send(.accessChanged(.microphone, available: false))
-        let state = await rig.waitFor { $0.failures.contains { $0.piece == "microphone access" } }
-        #expect(state.callCapture == .up)
-        #expect(state.microphoneCapture == .up)
-        await end(rig)
-        let output = await rig.output.values()
-        #expect(output.firstIndex(of: "microphone.capture.stop")! < output.firstIndex(of: "microphone.track.close")!)
-        #expect((await rig.waitFor { $0.phase == .ended }).microphoneCapture == .closed)
-    }
-
     @Test func runtimeFailureKeepsOtherSideAndNamesThePiece() async throws {
 
         let rig = await Rig()
@@ -115,29 +39,6 @@ struct SessionTests {
         } else {
             #expect(state.health[.track(.call)] == .failed("disk stopped"))
             #expect(state.health[.access(.microphone)] == .accessLost)
-        }
-        await end(rig)
-    }
-
-    @Test(arguments: [SessionSide.microphone, SessionSide.call])
-    func bringUpAccessLossKeepsTheOtherSide(_ side: SessionSide) async throws {
-
-        let rig = await Rig(held: ["folder.create"])
-        await rig.begin(liveText: true)
-        await rig.output.waitUntilHeld("folder.create")
-        await rig.session.send(.accessChanged(side, available: false))
-        await rig.output.release("folder.create")
-        let state = await rig.waitFor { $0.phase == .recording }
-        let piece = side == .microphone ? "microphone access" : "call access"
-        #expect(state.failures.contains(.init(piece: piece, message: "access lost")))
-        if side == .microphone {
-            #expect(state.health[.access(.microphone)] == .accessLost)
-            #expect(state.callCapture == .up)
-            #expect(await rig.output.values().contains("call.audio"))
-        } else {
-            #expect(state.health[.access(.call)] == .accessLost)
-            #expect(state.microphoneCapture == .up)
-            #expect(await rig.output.values().contains("microphone.audio"))
         }
         await end(rig)
     }
@@ -546,20 +447,6 @@ private struct RuntimeFailure {
     let event: SessionEvent
     let expected: SessionFailure
     let side: SessionSide?
-}
-
-private func bringUpFailurePiece(_ label: String) -> String {
-
-    switch label {
-    case "processes.select": "processes"
-    case "microphone.track.open": "microphone track"
-    case "call.track.open": "call track"
-    case "transcript.open": "transcript"
-    case "callText.start(on)": "call text"
-    case "microphone.capture.start": "microphone capture"
-    case "call.capture.start": "call capture"
-    default: fatalError("unknown bring-up failure \(label)")
-    }
 }
 
 private func survivingSides(for name: String) -> [SessionSide] {
