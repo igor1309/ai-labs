@@ -360,6 +360,68 @@ extension SessionReducerTests {
         assert(state, .captureStopped(side, error: anyError()), delivers: nil)
     }
 
+    @Test(arguments: sides)
+    func failedCaptureStoppedWhileRecordingIsClosed_state(_ side: SessionSide) {
+
+        let state = makeRecording().with {
+            $0.fail(.capture(side), anyError())
+            $0[status: .capture(side)] = .stopping
+        }
+        assert(state, .captureStopped(side, error: nil)) { $0[status: .capture(side)] = .closed }
+    }
+
+    @Test(arguments: sides)
+    func failedCaptureStoppedWhileRecordingIsClosed_effect(_ side: SessionSide) {
+
+        let state = makeRecording().with {
+            $0.fail(.capture(side), anyError())
+            $0[status: .capture(side)] = .stopping
+        }
+        assert(state, .captureStopped(side, error: nil), delivers: nil)
+    }
+
+    @Test(arguments: sides)
+    func endAfterAFailedCaptureClosedStopsTheOtherCapture_state(_ side: SessionSide) {
+
+        let state = makeRecording().with {
+            $0.fail(.capture(side), anyError())
+            $0[status: .capture(side)] = .closed
+        }
+        assert(state, .end) {
+            $0.phase = .ending
+            $0[status: .capture(side.other)] = .stopping
+        }
+    }
+
+    @Test(arguments: sides)
+    func endAfterAFailedCaptureClosedStopsTheOtherCapture_effect(_ side: SessionSide) {
+
+        let state = makeRecording().with {
+            $0.fail(.capture(side), anyError())
+            $0[status: .capture(side)] = .closed
+        }
+        assert(state, .end, delivers: .stopCapture(side.other))
+    }
+
+    @Test func microphoneCaptureUpAfterItsAccessIsLostKeepsTheLossAndStartsTheCallCapture_state() {
+
+        let state = makeBringingUp(starting: .capture(.microphone)).with { $0.loseAccess(.microphone) }
+        assert(state, .captureFinished(.microphone, error: nil)) {
+            $0.microphoneCapture = .up
+            $0.callCapture = .starting
+        }
+    }
+
+    @Test func microphoneCaptureUpAfterItsAccessIsLostKeepsTheLossAndStartsTheCallCapture_effect() {
+
+        let selection = anySelection()
+        let state = makeBringingUp(starting: .capture(.microphone)).with {
+            $0.loseAccess(.microphone)
+            $0.processSelection = selection
+        }
+        assert(state, .captureFinished(.microphone, error: nil), delivers: .startCallCapture(selection: .chosen(selection)))
+    }
+
     // MARK: Cannot record
 
     @Test(arguments: Unusable.allCases)
