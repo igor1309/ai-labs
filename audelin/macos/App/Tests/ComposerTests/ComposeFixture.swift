@@ -31,7 +31,7 @@ struct ComposeFixture {
         configure: (inout ComposerBoundary) -> Void = { _ in },
         openFolder: @escaping (URL) -> Bool = { _ in false }, presentCalls: @escaping () -> Void = {},
         openURL: @escaping (URL) -> Void = { _ in }, presentPanel: @escaping (Bool) -> Void = { _ in },
-        terminate: @escaping @Sendable () async -> Void = {}
+        terminate: @escaping @Sendable () async -> Void = {}, readCall: @escaping () -> Void = {}
     ) async throws -> Self {
         let first = rates.map { Array(repeating: Float(0), count: Int($0[0] / 100)) }
         let last = rates.map { Array(repeating: Float(0), count: Int($0[1] / 100)) }
@@ -63,7 +63,7 @@ struct ComposeFixture {
         }
         let menu = await compose(boundary: boundary, preferencesURL: preferencesURL,
             openCallsFolder: openFolder, presentCalls: presentCalls, openURL: openURL,
-            presentPanel: presentPanel, terminate: terminate, summaryRuntime: summaryRuntime)
+            presentPanel: presentPanel, terminate: terminate, summaryRuntime: summaryRuntime, readCall: readCall)
         return Self(menu: menu, root: root, microphone: microphone, call: call, mine: mine, theirs: theirs,
                     selections: selections, clock: clock, log: log)
     }
@@ -131,14 +131,14 @@ func withComposition(
     rates: [Double]? = nil, recognizers: (any Recognizer, any Recognizer)? = nil,
     configure: (inout ComposerBoundary) -> Void = { _ in },
     openFolder: @escaping (URL) -> Bool = { _ in false }, presentCalls: @escaping () -> Void = {},
-    terminate: @escaping @Sendable () async -> Void = {},
+    terminate: @escaping @Sendable () async -> Void = {}, readCall: @escaping () -> Void = {},
     _ body: @MainActor (ComposeFixture) async throws -> Void
 ) async throws {
     try await withComposeFolder { root in
         let fixture = try await ComposeFixture.make(root: root, preferences: preferences?(root),
             microphoneFails: microphoneFails, stopFailure: stopFailure, stopEndsStream: stopEndsStream,
             rates: rates, recognizers: recognizers, configure: configure,
-            openFolder: openFolder, presentCalls: presentCalls, terminate: terminate)
+            openFolder: openFolder, presentCalls: presentCalls, terminate: terminate, readCall: readCall)
         do { try await body(fixture); await fixture.finish() }
         catch { await fixture.finish(); throw error }
     }

@@ -118,6 +118,22 @@ struct CallsDetailTests {
         #expect(!sut.calls.state.narrow)
     }
 
+    @Test func theCallsWindowOpensOnlyOnceItsDetailIsThatCall() async {
+        let sut = Fixture(notes: [a: "# A notes", b: "# B notes"])
+        await sut.calls.send(.select(a))
+        await sut.waitDetail { $0?.id == a }
+        sut.calls.widthChanged(narrow: true)
+        sut.held = b
+
+        let reading = Task { await sut.calls.send(.read(b)) }
+        await sut.waitHeld()
+        #expect(sut.readCalls == 0)
+        sut.letGo()
+        await reading.value
+
+        #expect(sut.readDetails == [b])
+    }
+
     @Test func closingTheWindowStopsTheNotesScanBeforeTheNextCall() async {
         let sut = Fixture(notes: [a: "# A", b: "# B"])
         sut.duringRead = { [unowned sut] id in if id == a && sut.reads.count == 1 { sut.calls.windowClosed() } }
@@ -171,6 +187,11 @@ private struct Unreadable: LocalizedError { var errorDescription: String? { "Ð½Ð
     var sent: [RecordingsEvent] = []
     var reads: [String] = []
     var readCalls = 0
+    /// The detail's call each time the call's window was asked for.
+    var readDetails: [String?] = []
+    /// Holds a call's notes read until the test lets it go.
+    var held: String?
+    private var release: CheckedContinuation<Void, Never>?
     var duringRead: (String) -> Void = { _ in }
     private var readWaiters: [(count: Int, resume: () -> Void)] = []
     var calls: AudelinCalls!
@@ -187,6 +208,7 @@ private struct Unreadable: LocalizedError { var errorDescription: String? { "Ð½Ð
             location: { [unowned self] in folder($0) }, openFolder: { [unowned self] in opened.append($0); return true },
             present: {}, summaryStatuses: { [summaries] in summaries.statuses }, summaryBadges: { [summaries] in summaries.badges },
             notes: { [unowned self] id in
+                if id == held { await withCheckedContinuation { release = $0 } }
                 reads.append(id)
                 duringRead(id)
                 let ready = readWaiters.filter { $0.count <= reads.count }
@@ -195,10 +217,13 @@ private struct Unreadable: LocalizedError { var errorDescription: String? { "Ð½Ð
                 if unreadable.contains(id) { throw Unreadable() }
                 return self.notes[id]
             },
-            copy: { [unowned self] in copies.append($0) }, readCall: { [unowned self] in readCalls += 1 }, notesEnabled: { notesEnabled },
+            copy: { [unowned self] in copies.append($0) }, readCall: { [unowned self] in readCalls += 1; readDetails.append(calls.detail?.id) }, notesEnabled: { notesEnabled },
             retryableSummaries: { [summaries] in summaries.retryable },
             retrySummary: { [unowned self] in retried.append($0) })
     }
+
+    func waitHeld() async { while release == nil { await Task.yield() } }
+    func letGo() { release?.resume(); release = nil; held = nil }
 
     func waitReads(_ count: Int) async {
         if reads.count >= count { return }

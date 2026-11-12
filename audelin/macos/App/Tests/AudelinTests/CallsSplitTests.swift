@@ -126,6 +126,21 @@ struct CallsSplitTests {
         #expect(closes == 1)
     }
 
+    @Test func theListStopsWatchingOnlyOnceBothWindowsAreClosed() {
+        let center = NotificationCenter()
+        let calls = NSObject(), reading = NSObject()
+        var open: Set<ObjectIdentifier> = [ObjectIdentifier(calls), ObjectIdentifier(reading)]
+        var closes = 0
+        onBothClosed(calls, reading, isVisible: { open.contains(ObjectIdentifier($0)) }, center: center) { closes += 1 }
+
+        open.remove(ObjectIdentifier(calls))
+        center.post(name: NSWindow.willCloseNotification, object: calls)
+        #expect(closes == 0)
+        open.remove(ObjectIdentifier(reading))
+        center.post(name: NSWindow.willCloseNotification, object: reading)
+        #expect(closes == 1)
+    }
+
     @Test func theNotesRendererDrawsMarkdownInTheViewsStyle() throws {
         let heading = NSFont.boldSystemFont(ofSize: 20), body = NSFont.systemFont(ofSize: 13)
         let style = NotesStyle(body: body, headings: [heading], code: .monospacedSystemFont(ofSize: 12, weight: .regular),

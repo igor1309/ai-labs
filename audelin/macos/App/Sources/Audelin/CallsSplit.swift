@@ -179,5 +179,21 @@ func followTitle(_ title: @escaping @MainActor () -> String?, set: @escaping @Ma
     }
 }
 
+/// Brings the call's window forward, from the Dock too, and tells the app a window is shown.
+@MainActor
+func presentCall(_ window: any CallsWindowDriver, shown: (AnyObject) -> Void) {
+    if window.isMiniaturized { window.deminiaturize(nil) }
+    shown(window)
+    window.makeKeyAndOrderFront(nil)
+}
+
+/// The calls list stops watching for notes only once both the calls window and the call's own window are closed.
+@MainActor
+func onBothClosed(_ first: AnyObject, _ second: AnyObject, isVisible: @escaping @MainActor (AnyObject) -> Bool,
+                  center: NotificationCenter, _ closed: @escaping @MainActor () -> Void) {
+    onClose(of: first, center: center) { if !isVisible(second) { closed() } }
+    onClose(of: second, center: center) { if !isVisible(first) { closed() } }
+}
+
 /// Holds the call's window, made once the calls list exists, for the list's Return and Space.
 @MainActor final class CallWindowSlot { var window: NSWindow? }

@@ -359,6 +359,13 @@ public final class AudelinCalls {
             if editing?.id != id { commitRename() }
             selectedID = id
             updateDetail()
+            // The call's window opens on this call's detail, not the one shown before.
+            // A reload may replace the load meanwhile; wait for the one that stands.
+            while let current = loading {
+                await current.value
+                if loading == current { break }
+            }
+            guard selectedID == id, detail?.id == id else { return }
             readCall()
         case let .retrySummary(id):
             guard !snapshot.busy, let row = snapshot.rows.first(where: { $0.id == id }),

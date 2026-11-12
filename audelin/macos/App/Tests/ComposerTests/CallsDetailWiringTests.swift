@@ -87,6 +87,23 @@ struct CallsDetailWiringTests {
         }
     }
 
+    @Test func inANarrowWindowReadingACallOpensItsWindowOnItsNotes() async throws {
+        var shown: [CallsDetail?] = []
+        var calls: AudelinCalls?
+        try await withComposition(readCall: { shown.append(calls?.detail) }) { rig in
+            calls = try #require(rig.menu.calls)
+            let calls = try #require(calls)
+            try call(a, notes: "# A notes", in: rig.root)
+            await rig.menu.perform(.showCalls)
+            await wait(calls) { $0.rows.count == 1 }
+            calls.widthChanged(narrow: true)
+
+            await calls.send(.read(a))
+
+            #expect(shown.map { $0?.content } == [.notes("# A notes")])
+        }
+    }
+
     @Test func unreadableNotesCarryTheReason() async throws {
         try await withComposition { rig in
             let calls = try #require(rig.menu.calls)

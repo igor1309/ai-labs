@@ -72,7 +72,7 @@ struct AudelinApp: App {
                     begin: { completion in picker.begin { completion($0 == .OK ? picker.url : nil) } },
                     isVisible: { picker.isVisible }
                 )
-            }, copyNotes: { copyNotes($0, to: .general) }, readCall: { callWindow.window?.makeKeyAndOrderFront(nil) }
+            }, copyNotes: { copyNotes($0, to: .general) }, readCall: { if let window = callWindow.window { presentCall(window, shown: { presence.shown($0) }) } }
         )
         self.model = model
         settingsWindow.contentView = NSHostingView(rootView: SettingsContent(model: model, window: settingsWindow))
@@ -91,7 +91,12 @@ struct AudelinApp: App {
             callsSplit = split
             callsWindow.install(content: split.view)
             observeSearchLanguage(model, search: search)
-            if let callsNSWindow { onClose(of: callsNSWindow, center: .default) { calls.windowClosed() } }
+            if let callsNSWindow, let reading = callWindow.window {
+                presence.track(reading)
+                onBothClosed(callsNSWindow, reading, isVisible: { ($0 as? NSWindow)?.isVisible == true }, center: .default) {
+                    calls.windowClosed()
+                }
+            }
         }
         panel.install(model)
         appDelegate.connect(model)
