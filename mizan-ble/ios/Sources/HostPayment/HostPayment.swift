@@ -28,23 +28,43 @@ public enum HostPayment {
     }
 
     public struct State: Equatable, Sendable {
-        public fileprivate(set) var amount: String
-        public fileprivate(set) var phase: Phase = .awaitingDecision
-        public fileprivate(set) var resultSent = false
-        public fileprivate(set) var nothingCharged = true
-        fileprivate var cleanupComplete = false
-        fileprivate var pending: Pending?
-        fileprivate var queuedOutcome: Outcome?
+        public var amount: String
+        public var phase: Phase
+        public var resultSent: Bool
+        public var nothingCharged: Bool
+        public var cleanupComplete: Bool
+        /// The step in flight: a message being sealed or sent, or the session or link being finished.
+        public var pending: Pending?
+        /// An outcome picked while the acknowledgement was still in flight; it is sent right after it.
+        public var queuedOutcome: Outcome?
 
         /// The amount already sent on the secure link; the root supplies that link's ports.
-        public init(amount: String) { self.amount = amount }
+        public init(amount: String) { self.init(amount: amount, phase: .awaitingDecision) }
+
+        public init(
+            amount: String,
+            phase: Phase,
+            resultSent: Bool = false,
+            nothingCharged: Bool = true,
+            cleanupComplete: Bool = false,
+            pending: Pending? = nil,
+            queuedOutcome: Outcome? = nil
+        ) {
+            self.amount = amount
+            self.phase = phase
+            self.resultSent = resultSent
+            self.nothingCharged = nothingCharged
+            self.cleanupComplete = cleanupComplete
+            self.pending = pending
+            self.queuedOutcome = queuedOutcome
+        }
 
         public var canEnterNewAmount: Bool { cleanupComplete && phase != .over }
         /// The root can end this flow and return the host to amount entry.
         public var isOver: Bool { phase == .over }
     }
 
-    fileprivate enum Pending: Equatable, Sendable {
+    public enum Pending: Equatable, Sendable {
         case sealing(Message), sending(Message), closing, ending
     }
 
