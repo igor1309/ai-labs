@@ -1,274 +1,246 @@
 import Recording
-import Synchronization
 import Testing
 
 @Suite(.timeLimit(.minutes(1)))
 struct RecordingDoerTests {
 
-    @Test(arguments: ["user", "call", "deferred"])
-    func eachStartOriginAwaitsReadiness(_ origin: String) async {
-        let gate = AsyncStream<Bool>.makeStream()
-        let asked = AsyncStream<Void>.makeStream()
-        let (sut, session, sent) = makeSUT(callAudioReady: {
-            asked.continuation.yield(())
-            for await answer in gate.stream { return answer }
-            return false
-        })
-        var initial = RecordingState(automatic: true, missing: [])
-        let start: RecordingState
-        switch origin {
-        case "user": start = RecordingReducer.reduce(initial, .userStart)
-        case "call": start = RecordingReducer.reduce(initial, .callStarted)
-        default:
-            initial = state(.ending, id: 1)
-            initial.automatic = true; initial.callOn = true; initial.pendingCall = true
-            start = RecordingReducer.reduce(initial, .sessionReported(id: 1, .ended))
-        }
-        sut.act(on: start)
-        for await _ in asked.stream { break }
-        #expect(await session.beginIDs.isEmpty)
-        gate.continuation.yield(true)
-        await session.completeBegin(with: .ready)
-        #expect(await sent.next() == .sessionReported(id: start.lastSessionID, .ready))
+    @Test(arguments: [makeBeginning(), makeCall(), makeDeferredCall()])
+    func beginningAsksReadinessBeforeBeginning(_ state: RecordingState) async {
+
+        let (sut, spies) = makeSUT()
+        sut.act(on: state)
+        await spies.ready.waitForCall()
+        #expect(await spies.session.beginIDs.isEmpty)
     }
 
-    @Test func falseReadinessBlocksSessionReportsConditionAndReleases() async {
-        let releases = AsyncStream<Void>.makeStream()
-        let (sut, session, sent) = makeSUT(callAudioReady: { false }, callAudioReleased: { releases.continuation.yield(()) })
-        sut.act(on: state(.beginning, id: 1))
-        #expect(await sent.next() == .conditionChanged(.callAudioAccess, available: false))
-        for await _ in releases.stream { break }
-        #expect(await sent.next() == .sessionReported(id: 1, .ended))
-        #expect(await session.beginIDs.isEmpty)
-        #expect(await session.endIDs.isEmpty)
+    @Test(arguments: [makeBeginning(), makeCall(), makeDeferredCall()])
+    func readyBeginningBeginsThatSessionAndSendsItsReport(_ state: RecordingState) async {
+
+        let (sut, spies) = makeSUT()
+        sut.act(on: state)
+        await spies.ready.complete(with: true)
+        await spies.session.completeBegin(with: .ready)
+        #expect(await spies.sent.next() == .sessionReported(id: state.lastSessionID, .ready))
+        #expect(await spies.session.beginIDs == [state.lastSessionID])
+        #expect(await spies.session.endIDs.isEmpty)
     }
 
-    @Test func releaseFollowsSessionCleanup() async {
-        let released = Mutex(false)
-        let (sut, session, sent) = makeSUT(callAudioReleased: { released.withLock { $0 = true } })
-        sut.act(on: state(.beginning, id: 1))
-        await session.completeBegin(with: .ready)
-        #expect(await sent.next() == .sessionReported(id: 1, .ready))
-        sut.act(on: state(.ending, id: 1))
-        await session.waitForEnd()
-        #expect(!released.withLock { $0 })
-        await session.completeEnd()
-        #expect(await sent.next() == .sessionReported(id: 1, .ended))
-        #expect(released.withLock { $0 })
+    @Test(arguments: [makeBeginning(), makeCall(), makeDeferredCall()])
+    func beginningSeenTwiceAsksAndBeginsOnce(_ state: RecordingState) async {
+
+        let (sut, spies) = makeSUT()
+        sut.act(on: state)
+        sut.act(on: state)
+        await spies.ready.complete(with: true)
+        await spies.session.completeBegin(with: .ready)
+        #expect(await spies.sent.next() == .sessionReported(id: state.lastSessionID, .ready))
+        #expect(await spies.ready.count == 1)
+        #expect(await spies.session.beginIDs == [state.lastSessionID])
     }
 
-    @Test func stopWhileAwaitingReadinessReleasesWithoutBeginningSession() async {
-        let gate = AsyncStream<Bool>.makeStream()
-        let asked = AsyncStream<Void>.makeStream()
-        let released = Mutex(false)
-        let (sut, session, sent) = makeSUT(callAudioReady: {
-            asked.continuation.yield(())
-            for await answer in gate.stream { return answer }
-            return false
-        }, callAudioReleased: { released.withLock { $0 = true } })
-        sut.act(on: state(.beginning, id: 1))
-        for await _ in asked.stream { break }
-        sut.act(on: state(.ending, id: 1))
-        gate.continuation.yield(true)
-        #expect(await sent.next() == .sessionReported(id: 1, .ended))
-        #expect(released.withLock { $0 })
-        #expect(await session.beginIDs.isEmpty)
-        #expect(await session.endIDs.isEmpty)
+    @Test(arguments: [makeBeginning(), makeState(makeDeferredCall()) { $0.missing = [.callAudioAccess] }])
+    func unreadyBeginningReportsTheConditionAndEndsWithoutASession(_ state: RecordingState) async {
+
+        let (sut, spies) = makeSUT()
+        sut.act(on: state)
+        await spies.ready.complete(with: false)
+        #expect(await spies.sent.next() == .conditionChanged(.callAudioAccess, available: false))
+        await spies.released.complete()
+        #expect(await spies.sent.next() == .sessionReported(id: state.lastSessionID, .ended))
+        #expect(await spies.session.beginIDs.isEmpty)
+        #expect(await spies.session.endIDs.isEmpty)
     }
 
-    @Test func beginningStateBeginsThatSessionAndSendsItsReport() async {
+    @Test func unreadyBeginningSeenTwiceReportsOnce() async {
 
-        let (sut, session, sent) = makeSUT()
-        sut.act(on: state(.beginning, id: 3))
-        await session.completeBegin(with: .ready)
-        #expect(await sent.next() == .sessionReported(id: 3, .ready))
-        #expect(await session.beginIDs == [3])
-        #expect(await session.endIDs == [])
+        let (sut, spies) = makeSUT()
+        sut.act(on: makeBeginning())
+        sut.act(on: makeBeginning())
+        await spies.ready.complete(with: false)
+        #expect(await spies.sent.next() == .conditionChanged(.callAudioAccess, available: false))
+        await spies.released.complete()
+        #expect(await spies.sent.next() == .sessionReported(id: 1, .ended))
+        #expect(await spies.ready.count == 1)
+        #expect(await spies.released.count == 1)
+        #expect(await spies.sent.count == 0)
     }
 
-    @Test func sameBeginningStateSeenTwiceBeginsOnce() async {
+    @Test func endingWhileAwaitingReadinessReleasesWithoutASession() async {
 
-        let (sut, session, sent) = makeSUT()
-        sut.act(on: state(.beginning, id: 1))
-        sut.act(on: state(.beginning, id: 1))
-        await session.completeBegin(with: .ready)
-        #expect(await sent.next() == .sessionReported(id: 1, .ready))
-        sut.act(on: state(.recording, id: 1))
-        sut.act(on: state(.beginning, id: 2))
-        await session.completeBegin(with: .cannotRecord("no mic"))
-        #expect(await sent.next() == .sessionReported(id: 2, .cannotRecord("no mic")))
-        #expect(await session.beginIDs == [1, 2])
+        let (sut, spies) = makeSUT()
+        sut.act(on: makeBeginning())
+        await spies.ready.waitForCall()
+        sut.act(on: makeEnding())
+        await spies.ready.complete(with: true)
+        await spies.released.complete()
+        #expect(await spies.sent.next() == .sessionReported(id: 1, .ended))
+        #expect(await spies.session.beginIDs.isEmpty)
+        #expect(await spies.session.endIDs.isEmpty)
     }
 
-    @Test func recordingStateForAnUnseenIDBeginsIt() async {
+    @Test func recordingForAnUnseenSessionBeginsIt() async {
 
-        let (sut, session, sent) = makeSUT()
-        sut.act(on: state(.recording, id: 4))
-        await session.completeBegin(with: .ready)
-        #expect(await sent.next() == .sessionReported(id: 4, .ready))
-        #expect(await session.beginIDs == [4])
-        #expect(await session.endIDs == [])
+        let (sut, spies) = makeSUT()
+        sut.act(on: makeRunning(id: 4))
+        await spies.ready.complete(with: true)
+        await spies.session.completeBegin(with: .ready)
+        #expect(await spies.sent.next() == .sessionReported(id: 4, .ready))
+        #expect(await spies.session.beginIDs == [4])
+        #expect(await spies.session.endIDs.isEmpty)
     }
 
-    @Test func endingStateForAnUnseenIDBeginsAndEndsIt() async {
+    @Test func recordingForAnUnseenSessionSeenTwiceBeginsOnce() async {
 
-        let (sut, session, sent) = makeSUT()
-        sut.act(on: state(.ending, id: 5))
-        await session.completeBegin(with: .ended)
-        #expect(await sent.next() == .sessionReported(id: 5, .ended))
-        await session.completeEnd()
-        #expect(await sent.next() == .sessionReported(id: 5, .ended))
-        #expect(await session.beginIDs == [5])
-        #expect(await session.endIDs == [5])
+        let (sut, spies) = makeSUT()
+        sut.act(on: makeRunning(id: 4))
+        sut.act(on: makeRunning(id: 4))
+        await spies.ready.complete(with: true)
+        await spies.session.completeBegin(with: .ready)
+        #expect(await spies.sent.next() == .sessionReported(id: 4, .ready))
+        #expect(await spies.session.beginIDs == [4])
     }
 
-    @Test func endingStateAfterBeginEndsOnceHoweverOftenSeen() async {
+    @Test func endingForAnUnseenSessionBeginsAndEndsIt() async {
 
-        let (sut, session, sent) = makeSUT()
-        sut.act(on: state(.beginning, id: 1))
-        await session.completeBegin(with: .ready)
-        #expect(await sent.next() == .sessionReported(id: 1, .ready))
-        sut.act(on: state(.ending, id: 1))
-        sut.act(on: state(.ending, id: 1))
-        await session.completeEnd()
-        #expect(await sent.next() == .sessionReported(id: 1, .ended))
-        sut.act(on: state(.ending, id: 1))
-        sut.act(on: state(.ending, id: 2))
-        await session.completeBegin(with: .ended)
-        await session.completeEnd()
-        #expect([await sent.next(), await sent.next()] == [.sessionReported(id: 2, .ended), .sessionReported(id: 2, .ended)])
-        #expect(await session.beginIDs == [1, 2])
-        #expect(await session.endIDs == [1, 2])
+        let (sut, spies) = makeSUT()
+        sut.act(on: makeEnding(id: 5))
+        await spies.ready.complete(with: true)
+        await spies.session.waitForEnd()
+        await spies.session.completeBegin(with: .ended)
+        await spies.released.complete()
+        #expect(await spies.sent.next() == .sessionReported(id: 5, .ended))
+        await spies.session.completeEnd()
+        #expect(await spies.sent.next() == .sessionReported(id: 5, .ended))
+        #expect(await spies.session.beginIDs == [5])
+        #expect(await spies.session.endIDs == [5])
     }
 
-    @Test func endSendsEndedOnlyAfterTheSessionsEndReturns() async {
+    @Test func endingForAnUnseenSessionSeenTwiceBeginsAndEndsOnce() async {
 
-        let (sut, session, sent) = makeSUT()
-        sut.act(on: state(.beginning, id: 1))
-        await session.completeBegin(with: .ready)
-        #expect(await sent.next() == .sessionReported(id: 1, .ready))
-        sut.act(on: state(.ending, id: 1))
-        await session.waitForEnd()
-        #expect(await session.endReturned == false)
-        await session.completeEnd()
-        #expect(await sent.next() == .sessionReported(id: 1, .ended))
-        #expect(await session.endReturned == true)
+        let (sut, spies) = makeSUT()
+        sut.act(on: makeEnding(id: 5))
+        sut.act(on: makeEnding(id: 5))
+        await spies.ready.complete(with: true)
+        await spies.session.waitForEnd()
+        await spies.session.completeBegin(with: .ended)
+        await spies.released.complete()
+        await spies.session.completeEnd()
+        #expect(await spies.sent.next() == .sessionReported(id: 5, .ended))
+        #expect(await spies.sent.next() == .sessionReported(id: 5, .ended))
+        #expect(await spies.session.beginIDs == [5])
+        #expect(await spies.session.endIDs == [5])
+        #expect(await spies.released.count == 1)
     }
 
-    @Test func idleWithNoSessionDoesNothing() async {
+    @Test func endingOfABegunSessionEndsIt() async {
 
-        let (sut, session, sent) = makeSUT()
-        sut.act(on: RecordingState(missing: []))
-        sut.act(on: state(.beginning, id: 1))
-        await session.completeBegin(with: .ready)
-        #expect(await sent.next() == .sessionReported(id: 1, .ready))
-        #expect(await session.beginIDs == [1])
-        #expect(await session.endIDs == [])
-        #expect(await sent.count == 0)
+        let (sut, spies) = await makeBegun()
+        sut.act(on: makeEnding())
+        await spies.session.completeEnd()
+        await spies.released.complete()
+        #expect(await spies.sent.next() == .sessionReported(id: 1, .ended))
+        #expect(await spies.session.endIDs == [1])
+    }
+
+    @Test func endingSeenTwiceEndsOnce() async {
+
+        let (sut, spies) = await makeBegun()
+        sut.act(on: makeEnding())
+        sut.act(on: makeEnding())
+        await spies.session.completeEnd()
+        await spies.released.complete()
+        #expect(await spies.sent.next() == .sessionReported(id: 1, .ended))
+        sut.act(on: makeEnding())
+        #expect(await spies.session.endIDs == [1])
+        #expect(await spies.released.count == 1)
+    }
+
+    @Test func aSecondSessionIsBegunAndEndedOnceAfterTheFirst() async {
+
+        let (sut, spies) = await makeBegun()
+        sut.act(on: makeEnding())
+        await spies.session.completeEnd()
+        await spies.released.complete()
+        #expect(await spies.sent.next() == .sessionReported(id: 1, .ended))
+        sut.act(on: makeBeginning(id: 2))
+        sut.act(on: makeBeginning(id: 2))
+        await spies.ready.complete(with: true)
+        await spies.session.completeBegin(with: .cannotRecord("no mic"))
+        #expect(await spies.sent.next() == .sessionReported(id: 2, .cannotRecord("no mic")))
+        sut.act(on: makeEnding(id: 2))
+        sut.act(on: makeEnding(id: 2))
+        await spies.session.completeEnd()
+        await spies.released.complete()
+        #expect(await spies.sent.next() == .sessionReported(id: 2, .ended))
+        #expect(await spies.session.beginIDs == [1, 2])
+        #expect(await spies.session.endIDs == [1, 2])
+        #expect(await spies.ready.count == 2)
+    }
+
+    @Test func endedIsSentOnlyAfterTheSessionEndsAndAudioIsReleased() async {
+
+        let (sut, spies) = await makeBegun()
+        sut.act(on: makeEnding())
+        await spies.session.waitForEnd()
+        #expect(await spies.released.count == 0)
+        await spies.session.completeEnd()
+        await spies.released.waitForCall()
+        #expect(await spies.session.endReturned)
+        #expect(await spies.sent.count == 0)
+        await spies.released.complete()
+        #expect(await spies.sent.next() == .sessionReported(id: 1, .ended))
+    }
+
+    @Test func aSessionGoneFromTheStateIsReleasedOnce() async {
+
+        let (sut, spies) = await makeBegun()
+        sut.act(on: makeIdleAfter(1))
+        sut.act(on: makeIdleAfter(1))
+        await spies.released.complete()
+        #expect(await spies.released.count == 1)
+        #expect(await spies.session.endIDs.isEmpty)
+        #expect(await spies.sent.count == 0)
+    }
+
+    @Test(arguments: [makeIdle(), makeReserved(), makeQueued(.hand), makeQueued(.call)])
+    func aStateWithNoSessionDoesNothing(_ state: RecordingState) async {
+
+        let (sut, spies) = makeSUT()
+        sut.act(on: state)
+        sut.act(on: state)
+        #expect(await spies.ready.count == 0)
+        #expect(await spies.released.count == 0)
+        #expect(await spies.session.beginIDs.isEmpty)
+        #expect(await spies.sent.count == 0)
     }
 }
 
-private func makeSUT(callAudioReady: @escaping @Sendable () async -> Bool = { true },
-                     callAudioReleased: @escaping @Sendable () async -> Void = {}) -> (RecordingDoer, SessionSpy, SendSpy) {
+private struct Spies {
 
     let session = SessionSpy()
     let sent = SendSpy()
-    return (RecordingDoer(session: session, callAudioReady: callAudioReady, callAudioReleased: callAudioReleased, send: { await sent.send($0) }), session, sent)
+    let ready = CallSpy<Bool>()
+    let released = CallSpy<Void>()
 }
 
-private func state(_ phase: RecordingState.Phase, id: UInt64) -> RecordingState {
+private func makeSUT() -> (RecordingDoer, Spies) {
 
-    var state = RecordingState(missing: [])
-    state.phase = phase
-    state.session = .init(id: id, origin: .hand)
-    state.lastSessionID = id
-    return state
+    let spies = Spies()
+    let sut = RecordingDoer(session: spies.session,
+                            callAudioReady: { [ready = spies.ready] in await ready.call() },
+                            callAudioReleased: { [released = spies.released] in await released.call() },
+                            send: { [sent = spies.sent] in await sent.send($0) })
+    return (sut, spies)
 }
 
-/// Keeps each sent event until the test takes it; taking waits for one.
-private actor SendSpy {
+/// A doer whose session 1 has begun and reported ready.
+private func makeBegun() async -> (RecordingDoer, Spies) {
 
-    private var events: [RecordingEvent] = []
-    private let changed = AsyncStream<Void>.makeStream()
-
-    var count: Int { events.count }
-
-    func send(_ event: RecordingEvent) {
-
-        events.append(event)
-        changed.continuation.yield(())
-    }
-
-    func next() async -> RecordingEvent {
-
-        while events.isEmpty {
-            var iterator = changed.stream.makeAsyncIterator()
-            guard await iterator.next() != nil else { return .sessionReported(id: 0, .ended) }
-        }
-        return events.removeFirst()
-    }
-}
-
-/// Holds each call until the test completes it; completing waits for the call.
-private actor SessionSpy: RecordingSession {
-
-    private(set) var beginIDs: [UInt64] = []
-    private(set) var endIDs: [UInt64] = []
-    private(set) var endReturned = false
-    private var pendingBegins: [AsyncStream<RecordingSessionReport>.Continuation] = []
-    private var pendingEnds: [AsyncStream<Void>.Continuation] = []
-    private let changed = AsyncStream<Void>.makeStream()
-
-    func begin(id: UInt64) async -> RecordingSessionReport {
-
-        beginIDs.append(id)
-        let (stream, continuation) = AsyncStream<RecordingSessionReport>.makeStream()
-        pendingBegins.append(continuation)
-        wakeWaiters()
-        for await report in stream { return report }
-        return .ended
-    }
-
-    func end(id: UInt64) async {
-
-        endIDs.append(id)
-        let (stream, continuation) = AsyncStream<Void>.makeStream()
-        pendingEnds.append(continuation)
-        wakeWaiters()
-        for await _ in stream { break }
-        endReturned = true
-    }
-
-    func completeBegin(with report: RecordingSessionReport) async {
-
-        while pendingBegins.isEmpty {
-            var iterator = changed.stream.makeAsyncIterator()
-            guard await iterator.next() != nil else { return }
-        }
-        let continuation = pendingBegins.removeFirst()
-        continuation.yield(report)
-        continuation.finish()
-    }
-
-    func waitForEnd() async {
-
-        while pendingEnds.isEmpty {
-            var iterator = changed.stream.makeAsyncIterator()
-            guard await iterator.next() != nil else { return }
-        }
-    }
-
-    func completeEnd() async {
-
-        await waitForEnd()
-        guard !pendingEnds.isEmpty else { return }
-        let continuation = pendingEnds.removeFirst()
-        continuation.yield(())
-        continuation.finish()
-    }
-
-    private func wakeWaiters() {
-
-        changed.continuation.yield(())
-    }
+    let (sut, spies) = makeSUT()
+    sut.act(on: makeBeginning())
+    await spies.ready.complete(with: true)
+    await spies.session.completeBegin(with: .ready)
+    _ = await spies.sent.next()
+    sut.act(on: makeRunning())
+    return (sut, spies)
 }

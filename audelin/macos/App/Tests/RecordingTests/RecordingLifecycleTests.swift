@@ -1,180 +1,88 @@
 import Recording
 import Testing
 
-@Suite(.timeLimit(.minutes(1)))
 struct RecordingLifecycleTests {
 
-    @Test(arguments: [false, true], [false, true])
-    func callJoiningManualRecordingDoesNotEndIt(_ ready: Bool, _ automatic: Bool) async throws {
-
-        try await withRecording(automatic: automatic) { rig in
-            try await rig.start(.hand, ready: ready)
-            let before = await rig.recording.snapshot()
-            await rig.recording.send(.callStarted)
-            let after = await rig.recording.snapshot()
-            #expect(after.callOn)
-            #expect(after.session == before.session)
-            #expect(after.phase == before.phase)
-            #expect(await rig.session.values() == [.begin(1)])
-            await rig.recording.send(.callEnded)
-            #expect(await rig.recording.snapshot() == before)
-            #expect(await rig.session.values() == [.begin(1)])
-            if !ready {
-                await rig.session.comeUp(1)
-                _ = try await rig.waitFor { $0.phase == .recording }
-            }
-            try await rig.stop()
-            let ended = try await rig.finish()
-            #expect(ended.session == nil)
-            #expect(await rig.session.values() == [.begin(1), .end(1)])
-        }
+    @Test(arguments: [makeBeginning(), makeRunning()], [false, true])
+    func callJoiningAManualRecordingOnlyMarksTheCall(_ manual: RecordingState, _ automatic: Bool) {
+        assert(makeState(manual) { $0.automatic = automatic }, .callStarted) { $0.callOn = true }
     }
 
-    @Test func lateBeginAndFailureReportsCannotChangeTheNextSession() async throws {
-
-        try await withRecording { rig in
-            try await rig.start(.hand, ready: false)
-            try await rig.stop()
-            _ = try await rig.finish()
-            try await rig.start(.hand, id: 2)
-            let before = await rig.recording.snapshot()
-            await rig.session.comeUp(1)
-            await rig.recording.waitForDelivery(of: .sessionReported(id: 1, .ready))
-            await rig.recording.send(.sessionReported(id: 1, .cannotRecord("late failure")))
-            await rig.recording.send(.sessionReported(id: 1, .ended))
-            #expect(await rig.recording.snapshot() == before)
-            #expect(await rig.session.values() == [.begin(1), .end(1), .begin(2)])
-        }
+    @Test(arguments: [makeBeginning(), makeRunning()], [false, true])
+    func callLeavingAManualRecordingOnlyClearsTheCall(_ manual: RecordingState, _ automatic: Bool) {
+        assert(makeState(manual) { $0.automatic = automatic; $0.callOn = true }, .callEnded) { $0.callOn = false }
     }
 
-    @Test func lateReadyWhileEndingCannotRestoreRecording() async throws {
-
-        try await withRecording { rig in
-            try await rig.start(.hand, ready: false)
-            try await rig.stop()
-            let before = await rig.recording.snapshot()
-            await rig.recording.send(.sessionReported(id: 1, .ready))
-            await rig.recording.send(.userStart)
-            await rig.recording.send(.userStop)
-            #expect(await rig.recording.snapshot() == before)
-            #expect(await rig.session.values() == [.begin(1), .end(1)])
-            _ = try await rig.finish()
-        }
+    @Test(arguments: [RecordingSessionReport.ready, .cannotRecord("late failure"), .ended])
+    func aLateReportOfTheLastSessionLeavesTheNextOneAlone(_ report: RecordingSessionReport) {
+        assert(makeRunning(id: 2), .sessionReported(id: 1, report))
     }
 
-    @Test(arguments: [false, true])
-    func failureAfterSessionEndsStaysNamedUntilNextBegin(_ ready: Bool) async throws {
+    @Test func userStartWhileEndingChangesNothing() { assert(makeEnding(), .userStart) }
 
-        try await withRecording { rig in
-            try await rig.start(.hand, ready: ready)
-            try await rig.stop()
-            let idle = try await rig.finish()
-            await rig.session.fail(1, reason: "cannot keep audio")
-            _ = try await rig.waitFor { $0.cannotRecord == "cannot keep audio" }
-            let failed = await rig.recording.snapshot()
-            #expect(failed.phase == .idle)
-            #expect(failed.session == nil)
-            #expect(failed.cannotRecord == "cannot keep audio")
-            var expected = idle
-            expected.cannotRecord = "cannot keep audio"
-            #expect(failed == expected)
-            #expect(await rig.session.values() == [.begin(1), .end(1)])
-            await rig.recording.send(.conditionChanged(.microphoneAccess, available: false))
-            await rig.recording.send(.automaticChanged(false))
-            #expect(await rig.recording.snapshot().cannotRecord == "cannot keep audio")
-            await rig.recording.send(.conditionChanged(.microphoneAccess, available: true))
-            try await rig.start(.hand, id: 2)
-            #expect(await rig.recording.snapshot().cannotRecord == nil)
-            #expect(await rig.session.values() == [.begin(1), .end(1), .begin(2)])
-        }
+    @Test func micLostAfterAFailureKeepsIt() {
+        assert(makeFailedAfter(1), .conditionChanged(.microphoneAccess, available: false)) { $0.missing = [.microphoneAccess] }
+    }
+
+    @Test func automaticOffAfterAFailureKeepsIt() { assert(makeState(makeFailedAfter(1)) { $0.automatic = true }, .automaticChanged(false)) { $0.automatic = false } }
+
+    @Test func micReturningAfterAFailureKeepsIt() {
+        assert(makeState(makeFailedAfter(1)) { $0.missing = [.microphoneAccess] }, .conditionChanged(.microphoneAccess, available: true)) { $0.missing = [] }
     }
 
     @Test(arguments: RecordingCondition.allCases)
-    func deferredCallRechecksConditionsBeforeBeginning(_ condition: RecordingCondition) async throws {
+    func aConditionLostWhileACallWaitsIsRecorded(_ condition: RecordingCondition) {
+        assert(makePending(), .conditionChanged(condition, available: false)) { $0.missing = [condition] }
+    }
 
-        try await withRecording { rig in
-            try await rig.start(.hand)
-            try await rig.stop()
-            await rig.recording.send(.callStarted)
-            await rig.recording.send(.conditionChanged(condition, available: false))
-            #expect(await rig.recording.snapshot().pendingCall)
-            await rig.session.finish(1)
-            if condition == .callAudioAccess {
-                await rig.recording.waitForDelivery(of: .sessionReported(id: 2, .ended))
-            }
-            let idle = try await rig.waitFor { $0.phase == .idle }
-            #expect(idle.missing == [condition])
-            #expect(await rig.session.values() == [.begin(1), .end(1)])
+    @Test(arguments: RecordingCondition.allCases.filter { $0 != .callAudioAccess })
+    func aWaitingCallIsDroppedWhenAConditionIsMissing(_ condition: RecordingCondition) {
+        assert(makeState(makePending()) { $0.missing = [condition] }, .sessionReported(id: 1, .ended)) {
+            $0.phase = .idle; $0.session = nil; $0.pendingCall = false
         }
     }
 
-    @Test func disablingAutomaticRecordingCancelsDeferredCall() async throws {
-
-        try await withRecording { rig in
-            try await rig.start(.hand)
-            try await rig.stop()
-            await rig.recording.send(.callStarted)
-            await rig.recording.send(.automaticChanged(false))
-            #expect(!(await rig.recording.snapshot().automatic))
-            let idle = try await rig.finish()
-            #expect(idle.callOn)
-            #expect(await rig.session.values() == [.begin(1), .end(1)])
+    @Test func aWaitingCallWithoutCallAudioBeginsForTheDoerToRecheck() {
+        assert(makeState(makePending()) { $0.missing = [.callAudioAccess] }, .sessionReported(id: 1, .ended)) {
+            $0.phase = .beginning; $0.pendingCall = false; $0.lastSessionID = 2
+            $0.session = .init(id: 2, origin: .call); $0.sessionBeganDuringCall = true
         }
     }
 
-    @Test func stoppingDeferredCallHoldsItUntilCallEnds() async throws {
+    @Test func automaticOffDropsTheWaitingCall() { assert(makePending(), .automaticChanged(false)) { $0.automatic = false; $0.pendingCall = false } }
 
-        try await withRecording { rig in
-            try await rig.start(.hand)
-            try await rig.stop()
-            await rig.recording.send(.callStarted)
-            await rig.recording.send(.userStop)
-            #expect(await rig.recording.snapshot().heldForCall)
-            _ = try await rig.finish()
-            await rig.recording.send(.callStarted)
-            #expect(await rig.recording.snapshot().phase == .idle)
-            #expect(await rig.session.values() == [.begin(1), .end(1)])
-        }
+    @Test func endingWithAutomaticOffKeepsTheCallOn() {
+        assert(makeState(makeEnding()) { $0.automatic = false; $0.callOn = true }, .sessionReported(id: 1, .ended)) { $0.phase = .idle; $0.session = nil }
     }
 
-    @Test func duplicateCallEndDoesNotStopAnUnrelatedManualRecording() async throws {
+    @Test func userStopHoldsTheWaitingCallUntilItEnds() { assert(makePending(), .userStop) { $0.pendingCall = false; $0.heldForCall = true } }
 
-        try await withRecording { rig in
-            try await rig.start(.call)
-            try await rig.stop(.callEnded)
-            _ = try await rig.finish()
-            try await rig.start(.hand, id: 2)
-            let before = await rig.recording.snapshot()
-            await rig.recording.send(.callEnded)
-            #expect(await rig.recording.snapshot() == before)
-            #expect(await rig.session.values() == [.begin(1), .end(1), .begin(2)])
-        }
+    @Test func aHeldCallEndingIsNotBegun() {
+        assert(makeState(makeEnding()) { $0.callOn = true; $0.heldForCall = true }, .sessionReported(id: 1, .ended)) { $0.phase = .idle; $0.session = nil }
     }
+
+    @Test func callStartWhileHeldChangesNothing() { assert(makeState(makeIdleAfter(1)) { $0.automatic = true; $0.callOn = true; $0.heldForCall = true }, .callStarted) }
+
+    @Test func aRepeatedCallEndLeavesAManualRecordingAlone() { assert(makeRunning(id: 2), .callEnded) }
 
     @Test(arguments: [RecordingCondition.callsFolder, .room])
-    func storageLossWhileBeginningEndsSession(_ condition: RecordingCondition) async throws {
+    func storageLostWhileBeginningEndsTheSession(_ condition: RecordingCondition) {
+        assert(makeBeginning(), .conditionChanged(condition, available: false)) { $0.phase = .ending; $0.missing = [condition] }
+    }
 
-        try await withRecording { rig in
-            try await rig.start(.hand, ready: false)
-            try await rig.stop(.conditionChanged(condition, available: false))
-            let idle = try await rig.finish()
-            #expect(idle.missing == [condition])
-            #expect(await rig.session.values() == [.begin(1), .end(1)])
+    @Test func aFailedCallSessionEndingWhileTheCallStaysOnGoesIdle() {
+        assert(makeState(makeCall()) { $0.phase = .ending; $0.cannotRecord = "no recording possible" }, .sessionReported(id: 1, .ended)) {
+            $0.phase = .idle; $0.session = nil; $0.sessionBeganDuringCall = false
         }
     }
 
-    @Test func failedCallIsNotAutomaticallyBegunAgain() async throws {
-
-        try await withRecording { rig in
-            try await rig.start(.call)
-            await rig.session.fail(1, reason: "no recording possible")
-            try await rig.session.waitFor(.end(1))
-            let idle = try await rig.finish()
-            #expect(idle.callOn)
-            #expect(idle.cannotRecord == "no recording possible")
-            await rig.recording.send(.callStarted)
-            #expect(await rig.recording.snapshot() == idle)
-            #expect(await rig.session.values() == [.begin(1), .end(1)])
+    @Test func aDeferredCallWithoutCallAudioEndingGoesIdle() {
+        assert(makeState(makeDeferredCall()) { $0.missing = [.callAudioAccess] }, .sessionReported(id: 2, .ended)) {
+            $0.phase = .idle; $0.session = nil; $0.sessionBeganDuringCall = false
         }
+    }
+
+    @Test func aFailedCallIsNotBegunAgain() {
+        assert(makeState(makeIdleAfter(1)) { $0.automatic = true; $0.callOn = true; $0.cannotRecord = "no recording possible" }, .callStarted)
     }
 }

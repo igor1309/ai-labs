@@ -2,51 +2,50 @@ import Recording
 import Testing
 
 struct RecordingMoveTests {
-    @Test(arguments: [RecordingEvent.userStart, .callStarted])
-    func startsDuringAMoveWaitForRelease(event: RecordingEvent) {
-        let given = makeState()
-        assert(given, .reserveStorage) { $0.storageReserved = true }
-        let reserved = makeState { $0.storageReserved = true }
-        assert(reserved, event) {
-            $0.pendingStart = event == .userStart ? .hand : .call
-            if event == .callStarted { $0.callOn = true }
-        }
-        let pending = makeState { $0.storageReserved = true; $0.pendingStart = event == .userStart ? .hand : .call; $0.callOn = event == .callStarted }
-        assert(pending, .releaseStorage) {
+
+    @Test func idleReservesStorage() { assert(makeIdle(), .reserveStorage) { $0.storageReserved = true } }
+
+    @Test func userStartDuringAMoveIsQueued() { assert(makeReserved(), .userStart) { $0.pendingStart = .hand } }
+
+    @Test func callStartDuringAMoveIsQueued() { assert(makeReserved(), .callStarted) { $0.pendingStart = .call; $0.callOn = true } }
+
+    @Test func releaseBeginsAQueuedUserStart() {
+        assert(makeQueued(.hand), .releaseStorage) {
             $0.storageReserved = false; $0.pendingStart = nil; $0.phase = .beginning
-            $0.lastSessionID = 1; $0.session = .init(id: 1, origin: event == .userStart ? .hand : .call)
-            $0.sessionBeganDuringCall = event == .callStarted
+            $0.lastSessionID = 1; $0.session = .init(id: 1, origin: .hand)
         }
     }
-    @Test func releaseStillWaitsForTheFolderAndStopCancelsThePendingStart() {
-        let pending = makeState { $0.storageReserved = true; $0.pendingStart = .hand; $0.missing = [.callsFolder] }
-        assert(pending, .releaseStorage) { $0.storageReserved = false }
-        assert(pending, .userStop) { $0.pendingStart = nil }
-        assert(pending, .conditionChanged(.callsFolder, available: true)) { $0.missing = [] }
-        let released = makeState { $0.pendingStart = .hand; $0.missing = [.callsFolder] }
-        assert(released, .conditionChanged(.callsFolder, available: true)) {
+
+    @Test func releaseBeginsAQueuedCallStart() {
+        assert(makeQueued(.call), .releaseStorage) {
+            $0.storageReserved = false; $0.pendingStart = nil; $0.phase = .beginning
+            $0.lastSessionID = 1; $0.session = .init(id: 1, origin: .call); $0.sessionBeganDuringCall = true
+        }
+    }
+
+    @Test func releaseWithoutTheFolderKeepsTheStartQueued() { assert(makeQueuedWithoutFolder(), .releaseStorage) { $0.storageReserved = false } }
+
+    @Test func userStopCancelsAQueuedStart() { assert(makeQueuedWithoutFolder(), .userStop) { $0.pendingStart = nil } }
+
+    @Test func folderReturningDuringAMoveKeepsTheStartQueued() { assert(makeQueuedWithoutFolder(), .conditionChanged(.callsFolder, available: true)) { $0.missing = [] } }
+
+    @Test func folderReturningAfterReleaseBeginsTheQueuedStart() {
+        assert(makeState(makeQueuedWithoutFolder()) { $0.storageReserved = false }, .conditionChanged(.callsFolder, available: true)) {
             $0.missing = []; $0.pendingStart = nil; $0.phase = .beginning
             $0.lastSessionID = 1; $0.session = .init(id: 1, origin: .hand)
         }
     }
-    @Test func anAutomaticStartCannotReplaceAQueuedManualStart() {
-        let manual = makeState { $0.storageReserved = true; $0.pendingStart = .hand }
-        assert(manual, .callStarted) { $0.callOn = true }
-        let callOn = makeState { $0.storageReserved = true; $0.pendingStart = .hand; $0.callOn = true }
-        assert(callOn, .callEnded) { $0.callOn = false }
-        assert(callOn, .automaticChanged(false)) { $0.automatic = false }
-    }
-    @Test func endingTheCallOrDisablingAutomaticCancelsItsPendingStart() {
-        let pending = makeState { $0.storageReserved = true; $0.pendingStart = .call; $0.callOn = true }
-        assert(pending, .callEnded) { $0.callOn = false; $0.pendingStart = nil }
-        assert(pending, .automaticChanged(false)) { $0.automatic = false; $0.pendingStart = nil }
-    }
-    @Test(arguments: [RecordingState.Phase.beginning, .recording, .ending])
-    func everyActivePhaseRejectsAStorageReservation(phase: RecordingState.Phase) {
-        let active = makeState { $0.phase = phase; $0.session = .init(id: 1, origin: .hand); $0.lastSessionID = 1 }
-        assert(active, .reserveStorage)
-    }
-}
-private func makeState(_ change: (inout RecordingState) -> Void = { _ in }) -> RecordingState {
-    var state = RecordingState(automatic: true, missing: []); change(&state); return state
+
+    @Test func callStartKeepsAQueuedUserStart() { assert(makeQueued(.hand), .callStarted) { $0.callOn = true } }
+
+    @Test func callEndKeepsAQueuedUserStart() { assert(makeState(makeQueued(.hand)) { $0.callOn = true }, .callEnded) { $0.callOn = false } }
+
+    @Test func automaticOffKeepsAQueuedUserStart() { assert(makeState(makeQueued(.hand)) { $0.callOn = true }, .automaticChanged(false)) { $0.automatic = false } }
+
+    @Test func callEndCancelsAQueuedCallStart() { assert(makeQueued(.call), .callEnded) { $0.callOn = false; $0.pendingStart = nil } }
+
+    @Test func automaticOffCancelsAQueuedCallStart() { assert(makeQueued(.call), .automaticChanged(false)) { $0.automatic = false; $0.pendingStart = nil } }
+
+    @Test(arguments: [makeBeginning(), makeRunning(), makeEnding()])
+    func everyActivePhaseRejectsAStorageReservation(_ active: RecordingState) { assert(active, .reserveStorage) }
 }

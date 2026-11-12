@@ -61,6 +61,8 @@ struct RecordingReducerTests {
 
     @Test func cannotRecordWhileRecordingKeepsTheFailureAndEnds() { assert(makeRunning(), .sessionReported(id: 1, .cannotRecord("cannot keep audio"))) { $0.phase = .ending; $0.cannotRecord = "cannot keep audio" } }
 
+    @Test func cannotRecordWhileBeginningKeepsTheFailureAndEnds() { assert(makeBeginning(), .sessionReported(id: 1, .cannotRecord("cannot keep audio"))) { $0.phase = .ending; $0.cannotRecord = "cannot keep audio" } }
+
     @Test func endedFailedSessionGoesIdleKeepingTheFailure() { assert(makeFailed(), .sessionReported(id: 1, .ended)) { $0.phase = .idle; $0.session = nil } }
 
     @Test func userStartAfterFailureBeginsSessionTwo() { assert(makeEnded(), .userStart) { $0.phase = .beginning; $0.lastSessionID = 2; $0.session = .init(id: 2, origin: .hand); $0.cannotRecord = nil } }
@@ -96,6 +98,18 @@ struct RecordingReducerTests {
         assert(makeBlocked(.callAudioAccess), .callStarted) { $0.phase = .beginning; $0.session = .init(id: 1, origin: .call); $0.lastSessionID = 1; $0.callOn = true; $0.sessionBeganDuringCall = true }
     }
 
+    @Test(arguments: [makeBeginning(), makeCall()])
+    func callAudioReportedMissingWhileBeginningKeepsBeginning(_ beginning: RecordingState) {
+        assert(beginning, .conditionChanged(.callAudioAccess, available: false)) { $0.missing = [.callAudioAccess] }
+    }
+
+    @Test(arguments: [makeBeginning(), makeCall()])
+    func endedBeginningWithoutCallAudioGoesIdleStillMissingIt(_ beginning: RecordingState) {
+        assert(makeState(beginning) { $0.missing = [.callAudioAccess] }, .sessionReported(id: 1, .ended)) {
+            $0.phase = .idle; $0.session = nil; $0.sessionBeganDuringCall = false
+        }
+    }
+
     @Test func freshStateMissesEveryCondition() { #expect(RecordingState().missing == Set(RecordingCondition.allCases)) }
 
     @Test func userStartBeforeConditionsAreReportedChangesNothing() { assert(makeUnknown(), .userStart) }
@@ -121,38 +135,8 @@ struct RecordingReducerTests {
     func partialRecoveryKeepsTheOtherConditionMissing(_ p: ConditionPair) { assert(makeBlockedByTwo(p), .conditionChanged(p.recovered, available: true)) { $0.missing.remove(p.recovered) } }
 }
 
-private func makeState(_ state: RecordingState, _ configure: (inout RecordingState) -> Void) -> RecordingState {
-    var state = state
-    configure(&state)
-    return state
-}
-
-private func makeUnknown() -> RecordingState { RecordingState() }
-private func makeIdle() -> RecordingState { RecordingState(automatic: true, missing: []) }
-private func makeBeginning(id: UInt64 = 1) -> RecordingState {
-    makeState(makeIdle()) {
-        $0.phase = .beginning
-        $0.session = .init(id: id, origin: .hand)
-        $0.lastSessionID = id
-    }
-}
-private func makeRunning(id: UInt64 = 1) -> RecordingState { makeState(makeBeginning(id: id)) { $0.phase = .recording } }
-private func makeEnding() -> RecordingState { makeState(makeRunning()) { $0.phase = .ending } }
-private func makePending() -> RecordingState { makeState(makeEnding()) { $0.callOn = true; $0.pendingCall = true } }
-private func makeCall() -> RecordingState {
-    makeState(makeBeginning()) {
-        $0.callOn = true
-        $0.sessionBeganDuringCall = true
-        $0.session = .init(id: 1, origin: .call)
-    }
-}
-private func makeFailed() -> RecordingState { makeState(makeEnding()) { $0.cannotRecord = "cannot keep audio" } }
-private func makeEnded() -> RecordingState { makeState(makeIdle()) { $0.lastSessionID = 1; $0.cannotRecord = "cannot keep audio" } }
-private func makeBlocked(_ condition: RecordingCondition) -> RecordingState { makeState(makeIdle()) { $0.missing = [condition] } }
 private func losesStorage(_ condition: RecordingCondition) -> Bool { condition == .callsFolder || condition == .room }
 private let sessionIDs: [UInt64] = [1, 7]
-private func makeIdleAfter(_ id: UInt64) -> RecordingState { makeState(RecordingState(missing: [])) { $0.lastSessionID = id } }
-private func makeFailedAfter(_ id: UInt64) -> RecordingState { makeState(makeIdleAfter(id)) { $0.cannotRecord = "cannot keep audio" } }
 
 struct ConditionPair: Sendable, CustomTestStringConvertible {
     let recovered: RecordingCondition
@@ -191,6 +175,7 @@ private let faultTransitions: [FaultTransition] = RecordingFault.allCases.flatMa
         FaultTransition(state: faulted, event: .sessionReported(id: 1, .failed(.diskFull)), mutation: addDiskFull),
         FaultTransition(state: faulted, event: .userStop) { $0.phase = .ending },
         FaultTransition(state: faulted, event: .sessionReported(id: 1, .ended)) { $0.phase = .idle; $0.session = nil },
+        FaultTransition(state: makeState(makeEnding()) { $0.faults = [fault, .diskFull] }, event: .sessionReported(id: 1, .ended)) { $0.phase = .idle; $0.session = nil },
         FaultTransition(state: faultedIdle, event: .sessionReported(id: 1, .failed(.diskFull))),
         FaultTransition(state: makeState(faultedIdle) { $0.session = .init(id: 1, origin: .hand) }, event: .sessionReported(id: 1, .failed(.diskFull))),
         FaultTransition(state: faultedIdle, event: .userStart) { $0.phase = .beginning; $0.lastSessionID = 2; $0.session = .init(id: 2, origin: .hand); $0.faults = [] },
