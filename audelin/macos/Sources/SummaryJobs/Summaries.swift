@@ -65,6 +65,10 @@ public struct SummariesSaved: Equatable, Sendable {
 }
 
 public enum SummariesEvent: Equatable, Sendable {
+    case recover(String)
+    /// The call's saved job, or none when storage holds no job for it.
+    case recovered(String, SummariesSaved?)
+    case loadFailed(String)
     case submit(SummariesSubmission)
     /// The submission's job, or none when notes are off and the user did not ask.
     case prepared(String, Job?)
@@ -73,6 +77,7 @@ public enum SummariesEvent: Equatable, Sendable {
 }
 
 public enum SummariesEffect: Equatable, Sendable {
+    case load(String)
     case prepare(SummariesSubmission)
     case claim(Job)
 }
@@ -86,6 +91,29 @@ public struct SummariesReducer: Sendable {
         var effect: SummariesEffect?
         let call: String
         switch event {
+        case let .recover(id) where state.lifecycle == .accepting && state.calls[id] == nil:
+            call = id
+            next.calls[id] = .init(stage: .recovering)
+            effect = .load(id)
+        case let .recovered(id, saved) where state.calls[id]?.stage == .recovering:
+            call = id
+            if let saved {
+                next.calls[id] = .init(stage: saved.stage, job: saved.job, identities: saved.identities, warning: saved.warning,
+                                       notes: saved.notes, terminal: saved.terminal)
+            } else if let submission = state.calls[id]?.submission {
+                next.calls[id] = .init(stage: .preparing, requested: submission.requested, submission: submission)
+                effect = .prepare(submission)
+            } else {
+                next.calls[id] = nil
+            }
+        case let .loadFailed(id) where state.calls[id]?.stage == .recovering:
+            call = id
+            next.calls[id] = .init(stage: .failed)
+        case let .submit(submission) where state.lifecycle == .accepting && state.calls[submission.call]?.stage == .recovering
+                                        && state.calls[submission.call]?.submission == nil:
+            // A submission waits for recovery; a saved job takes precedence over it.
+            next.calls[submission.call]?.submission = submission
+            return (next, nil)
         case let .submit(submission) where state.lifecycle == .accepting && state.calls[submission.call] == nil:
             call = submission.call
             next.calls[call] = .init(stage: .preparing, requested: submission.requested, submission: submission)
