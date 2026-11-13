@@ -90,6 +90,9 @@ public enum SummariesEvent: Equatable, Sendable {
     case retryFailed(String)
     /// Drops a settled call from the machine.
     case forget(String)
+    /// The user's wish to stop a call's notes; a running stage is discarded when its result arrives.
+    case cancel(String)
+    case discarded(String)
     /// Stops starting jobs; a start not yet answered goes back to pending.
     case stopDispatch
 }
@@ -105,6 +108,7 @@ public enum SummariesEffect: Equatable, Sendable {
     case publish(Job, String, warning: Bool)
     case save(Job, SummariesState.Call.Stage, warning: Bool)
     case retry(Job)
+    case discard(Job)
 }
 
 public struct SummariesReducer: Sendable {
@@ -114,11 +118,31 @@ public struct SummariesReducer: Sendable {
     /// The stages that wait on storage or generation, which a storage failure ends.
     /// The stages a call rests in once nothing runs for it.
     static let settled: Set<SummariesState.Call.Stage> = [.succeeded, .failed, .interrupted, .unavailable]
-    static let working: Set<SummariesState.Call.Stage> = [.claiming, .starting, .identifying, .checkpointing, .noting, .publishing, .saving]
+    /// The stages whose result a cancel waits for before it discards the job.
+    static let running: Set<SummariesState.Call.Stage> = [.starting, .identifying, .checkpointing, .noting, .publishing, .saving]
+    /// The call and stage a result answers, for the results a cancel turns into a discard.
+    static func answered(_ event: SummariesEvent) -> (String, SummariesState.Call.Stage)? {
+        switch event {
+        case let .started(id, owned: true): (id, .starting)
+        case let .identified(id, _), let .identificationFailed(id): (id, .identifying)
+        case let .checkpointed(id): (id, .checkpointing)
+        case let .noted(id, _), let .notesFailed(id): (id, .noting)
+        case let .published(id): (id, .publishing)
+        case let .saved(id): (id, .saving)
+        default: nil
+        }
+    }
+    static let working: Set<SummariesState.Call.Stage> = [.claiming, .starting, .identifying, .checkpointing, .noting, .publishing, .saving, .discarding]
     public func reduce(_ state: SummariesState, _ event: SummariesEvent) -> (SummariesState, SummariesEffect?) {
         var next = state
         var effect: SummariesEffect?
         let call: String
+        if let (id, stage) = SummariesReducer.answered(event), let work = state.calls[id], work.cancelling,
+           work.stage == stage, let job = work.job {
+            next.calls[id]?.stage = .discarding
+            next.calls[id]?.status = format(.discarding, work.warning)
+            return (next, .discard(job))
+        }
         switch event {
         case let .recover(id) where state.lifecycle == .accepting && state.calls[id] == nil:
             call = id
@@ -226,6 +250,15 @@ public struct SummariesReducer: Sendable {
             call = id
             next.calls[id]?.stage = state.calls[id]?.terminal ?? .failed; next.calls[id]?.retryFailed = true
         case let .forget(id) where state.calls[id].map({ SummariesReducer.settled.contains($0.stage) }) ?? false:
+            next.calls[id] = nil
+            return (next, nil)
+        case let .cancel(id) where state.calls[id].map({ SummariesReducer.running.contains($0.stage) && !$0.cancelling }) ?? false:
+            call = id
+            next.calls[id]?.cancelling = true
+        case let .cancel(id) where state.calls[id]?.stage == .observed || state.calls[id]?.stage == .unavailable:
+            call = id
+            next.calls[id]?.stage = .interrupted
+        case let .discarded(id) where state.calls[id]?.stage == .discarding:
             next.calls[id] = nil
             return (next, nil)
         default:

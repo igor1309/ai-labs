@@ -28,6 +28,8 @@ public protocol SummariesStorage: Sendable {
     func checkpoint(_ job: Job, identities: [Identity], warning: Bool) async throws
     func publish(_ job: Job, notes: String, warning: Bool) async throws
     func save(_ job: Job, stage: SummariesState.Call.Stage, warning: Bool) async throws
+    /// Removes the job's record and releases this process's lease on it.
+    func discard(_ job: Job) async throws
     /// Releases this process's lease on the job.
     func release(_ job: Job) async
 }
@@ -70,6 +72,8 @@ public struct SummariesEffectHandler: Sendable {
             let event = await stored(job, .saved(job.call)) { try await storage.save(job, stage: stage, warning: warning) }
             if event == .saved(job.call) { await storage.release(job) }
             return event
+        case let .discard(job):
+            return await stored(job, .discarded(job.call)) { try await storage.discard(job) }
         case let .retry(job):
             do { return .retried(job.call, try await records.retry(job)) }
             catch { return .retryFailed(job.call) }
