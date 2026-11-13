@@ -15,16 +15,27 @@ public protocol SummariesRecords: Sendable {
     func load(call: String) async throws -> SummariesSaved?
 }
 
+/// Starts a pending job in storage.
+public protocol SummariesStarts: Sendable {
+    /// Whether this process now runs the job; false when another process already does.
+    func start(_ job: Job) async throws -> Bool
+}
+
 /// Hands each effect to its collaborator and answers with the event its result means; it keeps nothing.
 public struct SummariesEffectHandler: Sendable {
     private let preparation: any SummariesPreparation
     private let claims: any SummariesClaims
     private let records: any SummariesRecords
-    public init(preparation: any SummariesPreparation, claims: any SummariesClaims, records: any SummariesRecords) {
-        self.preparation = preparation; self.claims = claims; self.records = records
+    private let starts: any SummariesStarts
+    public init(preparation: any SummariesPreparation, claims: any SummariesClaims, records: any SummariesRecords,
+                starts: any SummariesStarts) {
+        self.preparation = preparation; self.claims = claims; self.records = records; self.starts = starts
     }
     public func handle(_ effect: SummariesEffect) async -> SummariesEvent {
         switch effect {
+        case let .start(job):
+            do { return .started(job.call, owned: try await starts.start(job)) }
+            catch { return .storageFailed(job.call) }
         case let .load(call):
             do { return .recovered(call, try await records.load(call: call)) }
             catch { return .loadFailed(call) }
