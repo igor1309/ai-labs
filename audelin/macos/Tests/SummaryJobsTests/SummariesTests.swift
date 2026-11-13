@@ -486,9 +486,14 @@ final class ClaimsSpy: SummariesClaims {
 final class RecordsSpy: SummariesRecords {
     private let recorded = Mutex<[String]>([])
     private let result: Result<SummariesSaved?, SpyFailure>
-    init(result: Result<SummariesSaved?, SpyFailure> = .success(nil)) { self.result = result }
+    private let retried: Result<SummariesSaved, SpyFailure>
+    init(result: Result<SummariesSaved?, SpyFailure> = .success(nil),
+         retried: Result<SummariesSaved, SpyFailure> = .success(.init(stage: .pending, job: makeJob()))) {
+        self.result = result; self.retried = retried
+    }
     var payloads: [String] { recorded.withLock { $0 } }
     func load(call: String) async throws -> SummariesSaved? { recorded.withLock { $0.append(call) }; return try result.get() }
+    func retry(_ job: Job) async throws -> SummariesSaved { recorded.withLock { $0.append("retry:\(job.id)") }; return try retried.get() }
 }
 final class StartsSpy: SummariesStarts {
     private let recorded = Mutex<[Job]>([])

@@ -83,6 +83,13 @@ public enum SummariesEvent: Equatable, Sendable {
     case published(String)
     case saved(String)
     case storageFailed(String)
+    /// Runs a failed or interrupted call's job again.
+    case retry(String)
+    /// The job saved anew for its next run.
+    case retried(String, SummariesSaved)
+    case retryFailed(String)
+    /// Drops a settled call from the machine.
+    case forget(String)
     /// Stops starting jobs; a start not yet answered goes back to pending.
     case stopDispatch
 }
@@ -97,6 +104,7 @@ public enum SummariesEffect: Equatable, Sendable {
     case notes(Job, [Identity])
     case publish(Job, String, warning: Bool)
     case save(Job, SummariesState.Call.Stage, warning: Bool)
+    case retry(Job)
 }
 
 public struct SummariesReducer: Sendable {
@@ -104,6 +112,8 @@ public struct SummariesReducer: Sendable {
     /// Renders a call's status line from its stage and whether its notes lack speaker names.
     public init(format: @escaping @Sendable (SummariesState.Call.Stage, Bool) -> String) { self.format = format }
     /// The stages that wait on storage or generation, which a storage failure ends.
+    /// The stages a call rests in once nothing runs for it.
+    static let settled: Set<SummariesState.Call.Stage> = [.succeeded, .failed, .interrupted, .unavailable]
     static let working: Set<SummariesState.Call.Stage> = [.claiming, .starting, .identifying, .checkpointing, .noting, .publishing, .saving]
     public func reduce(_ state: SummariesState, _ event: SummariesEvent) -> (SummariesState, SummariesEffect?) {
         var next = state
@@ -200,6 +210,23 @@ public struct SummariesReducer: Sendable {
                 next.calls[id]?.stage = .pending
                 next.calls[id]?.status = format(.pending, work.warning)
             }
+            return (next, nil)
+        case let .retry(id) where state.lifecycle == .accepting && state.dispatch
+                                && (state.calls[id]?.stage == .failed || state.calls[id]?.stage == .interrupted):
+            guard let work = state.calls[id], let job = work.job else { return (state, nil) }
+            call = id
+            next.calls[id]?.stage = .retrying; next.calls[id]?.terminal = work.stage; next.calls[id]?.retryFailed = false
+            effect = .retry(job)
+        case let .retried(id, saved) where state.calls[id]?.stage == .retrying:
+            call = id
+            next.calls[id] = .init(stage: saved.stage, job: saved.job, identities: saved.identities, warning: saved.warning,
+                                   notes: saved.notes, terminal: saved.terminal, requested: state.calls[id]?.requested ?? false)
+            if saved.stage == .pending && state.dispatch { next.calls[id]?.stage = .starting; effect = .start(saved.job) }
+        case let .retryFailed(id) where state.calls[id]?.stage == .retrying:
+            call = id
+            next.calls[id]?.stage = state.calls[id]?.terminal ?? .failed; next.calls[id]?.retryFailed = true
+        case let .forget(id) where state.calls[id].map({ SummariesReducer.settled.contains($0.stage) }) ?? false:
+            next.calls[id] = nil
             return (next, nil)
         default:
             return (state, nil)
