@@ -1,0 +1,1 @@
+{"version":1,"callId":"12345678901234","sequence":0,"event":{"type":"roster","at":1731499200000.5,"participants":[{"id":"telemost-tile-1","name":"Анна Петрова","isSelf":true},{"id":"telemost-tile-2","name":"Boris Ivanov","isSelf":false}]}}

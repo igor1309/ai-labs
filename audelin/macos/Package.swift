@@ -15,6 +15,7 @@ let package = Package(
         .library(name: "SpeakerNaming", targets: ["SpeakerNaming"]),
         .library(name: "CallObservation", targets: ["CallObservation"]),
         .library(name: "ZoomAccessibility", targets: ["ZoomAccessibility"]),
+        .library(name: "BrowserBridge", targets: ["BrowserBridge"]),
         .library(name: "CallDiarizer", targets: ["CallDiarizer"]),
         .library(name: "SpeakerAttribution", targets: ["SpeakerAttribution"]),
 
@@ -90,6 +91,8 @@ let package = Package(
         .target(name: "CallDiarizer", dependencies: ["AudioConversion", "ModelLoading", .product(name: "FluidAudio", package: "FluidAudio")]),
         .testTarget(name: "CallDiarizerTests", dependencies: ["CallDiarizer", "BlockingTestWork"]),
         .testTarget(name: "ZoomAccessibilityTests", dependencies: ["ZoomAccessibility"], resources: [.copy("Fixtures")]),
+        .target(name: "BrowserBridge"),
+        .testTarget(name: "BrowserBridgeTests", dependencies: ["BrowserBridge"], resources: [.copy("Fixtures")]),
 
         .testTarget(name: "SourceChecksTests", dependencies: ["BlockingTestWork"]),
         .target(name: "Calls", dependencies: ["CallFolderName"]),
