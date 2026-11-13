@@ -2,6 +2,7 @@
 
 ## 2026-11-13
 
+- LAB-1360: The extension sends call events to the app through its native-messaging host, holding up to 1000 while the app is not reachable and sending them in order once it reconnects.
 - LAB-1359: The app accepts extension connections and turns their messages into one stream; a malformed or replayed message closes its connection without affecting others.
 - LAB-1358: The extension and the app share one versioned message format for roster and speaking events; the app rejects a message of an unknown version or shape.
 - LAB-1357: On a Telemost call page the extension follows the page as it changes and reports roster changes and when each remote participant starts and stops speaking, stamped with the browser clock; it does not reach the app yet.

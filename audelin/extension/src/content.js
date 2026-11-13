@@ -1,8 +1,10 @@
 // Runs in a Telemost call page: reads the page after each change and passes
-// the resulting events on. Until the channel to the app exists, events go to
-// the console.
+// the resulting events to the background worker, which forwards them to the
+// app. The call is the room number in the page's address.
 import { createCallObserver } from "./observer.js";
 import { createRosterReader } from "./roster.js";
+
+const callId = location.pathname.match(/^\/j\/([0-9]{14})/)?.[1];
 
 let nextTile = 0;
 const observe = createCallObserver({
@@ -11,7 +13,9 @@ const observe = createCallObserver({
     afterStyle: (element) => getComputedStyle(element, "::after"),
   }),
   now: () => performance.timeOrigin + performance.now(),
-  emit: (event) => console.debug("audelin", event),
+  emit: (event) => {
+    if (callId) chrome.runtime.sendMessage({ callId, event }).catch(() => {});
+  },
 });
 
 // Many mutations arrive together; one read follows each burst.
