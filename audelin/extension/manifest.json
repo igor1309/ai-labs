@@ -3,6 +3,7 @@
   "name": "Audelin Call Companion",
   "version": "0.1.0",
   "description": "Tells Audelin who is in a Telemost call and who is speaking.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxC9/m9u51FSYNv5xO+FqmLTQzl+13axhWrFuRKoy5QNhN6ceRGv4+o+saR3jVdGdzDWvmLscelgifme7avANQQ3byFwknism9cbFRmlCmw5Ho0TJJiSkQPRqVmkmFqRqJWPJe2Jvd9G+FUgxtr0HInxJ6aED4wHBC1qhF4O2dF+znfF2w8u0uCBMdXmbEN8qoOYa7peWXoKg3e3E35nuViHrzLmR1sC7rkpUjZvvLGAXV/YBzhxe60946ZkOHMh657N7xByhg7chKVH6LJHtY7CNNqccAraQ4uwa5bZoxwZydTsZCfsLnhwQRo7LIxf64xB4K9JmDjkrEdB+5bYGRQIDAQAB",
   "permissions": [
     "nativeMessaging"
   ],
