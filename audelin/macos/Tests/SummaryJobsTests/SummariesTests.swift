@@ -153,8 +153,133 @@ import Testing
         _ = await makeSUT(preparation, ClaimsSpy()).handle(.claim(makeJob()))
         #expect(preparation.payloads.isEmpty)
     }
+    @Test func prepareAndClaimDoNotLoad() async {
+        let records = RecordsSpy()
+        let sut = SummariesEffectHandler(preparation: PreparationSpy(job: makeJob()), claims: ClaimsSpy(), records: records)
+        _ = await sut.handle(.prepare(makeSubmission()))
+        _ = await sut.handle(.claim(makeJob()))
+        #expect(records.payloads.isEmpty)
+    }
     private func makeSUT(_ preparation: PreparationSpy, _ claims: ClaimsSpy) -> SummariesEffectHandler {
-        .init(preparation: preparation, claims: claims)
+        .init(preparation: preparation, claims: claims, records: RecordsSpy())
+    }
+}
+
+@Suite struct SummariesRecoveryReducerTests {
+    let format = FormatSpy()
+    let saved = SummariesSaved(stage: .pending, job: makeJob(), identities: [makeIdentity()], warning: true, notes: "notes", terminal: .succeeded)
+
+    @Test func recoveringANewCallLoadsIt() {
+        assert(makeState(), .recover("call")) { $0.calls["call"] = .init(stage: .recovering, status: "recovering:false") }
+        #expect(format.payloads == [.init(stage: .recovering, warning: false)])
+    }
+    @Test func recoveringANewCallDeliversLoad() {
+        assert(makeState(), .recover("call"), delivers: .load("call"))
+    }
+    @Test func recoveringAKnownCallChangesNothing() {
+        assert(makeClaiming(), .recover("call"))
+        #expect(format.payloads.isEmpty)
+    }
+    @Test func recoveringAKnownCallDeliversNothing() {
+        assert(makeClaiming(), .recover("call"), delivers: nil)
+    }
+    @Test(arguments: [SummariesState.Lifecycle.draining, .ended]) func recoveringAfterShutdownChangesNothing(lifecycle: SummariesState.Lifecycle) {
+        assert(makeState(lifecycle: lifecycle), .recover("call"))
+    }
+    @Test(arguments: [SummariesState.Lifecycle.draining, .ended]) func recoveringAfterShutdownDeliversNothing(lifecycle: SummariesState.Lifecycle) {
+        assert(makeState(lifecycle: lifecycle), .recover("call"), delivers: nil)
+    }
+
+    @Test func aSubmissionWhileRecoveringWaits() {
+        assert(makeRecovering(), .submit(makeSubmission(requested: true))) { $0.calls["call"]?.submission = makeSubmission(requested: true) }
+        #expect(format.payloads.isEmpty)
+    }
+    @Test func aSubmissionWhileRecoveringDeliversNothing() {
+        assert(makeRecovering(), .submit(makeSubmission()), delivers: nil)
+    }
+    @Test func aSecondSubmissionWhileRecoveringChangesNothing() {
+        assert(makeRecovering(submission: makeSubmission()), .submit(makeSubmission(requested: true)))
+    }
+
+    @Test(arguments: [false, true]) func aSavedJobIsInstalled(queued: Bool) {
+        assert(makeRecovering(submission: queued ? makeSubmission() : nil), .recovered("call", saved)) {
+            $0.calls["call"] = .init(stage: .pending, job: makeJob(), identities: [makeIdentity()], warning: true, notes: "notes",
+                                     terminal: .succeeded, status: "pending:true")
+        }
+        #expect(format.payloads == [.init(stage: .pending, warning: true)])
+    }
+    @Test(arguments: [false, true]) func aSavedJobDeliversNothing(queued: Bool) {
+        assert(makeRecovering(submission: queued ? makeSubmission() : nil), .recovered("call", saved), delivers: nil)
+    }
+    @Test func noSavedJobForgetsTheCall() {
+        assert(makeRecovering(), .recovered("call", nil)) { $0.calls["call"] = nil }
+        #expect(format.payloads.isEmpty)
+    }
+    @Test func noSavedJobDeliversNothing() {
+        assert(makeRecovering(), .recovered("call", nil), delivers: nil)
+    }
+    @Test func noSavedJobPreparesTheQueuedSubmission() {
+        assert(makeRecovering(submission: makeSubmission(requested: true)), .recovered("call", nil)) {
+            $0.calls["call"] = .init(stage: .preparing, requested: true, submission: makeSubmission(requested: true), status: "preparing:false")
+        }
+        #expect(format.payloads == [.init(stage: .preparing, warning: false)])
+    }
+    @Test func noSavedJobDeliversPrepareForTheQueuedSubmission() {
+        assert(makeRecovering(submission: makeSubmission()), .recovered("call", nil), delivers: .prepare(makeSubmission()))
+    }
+    @Test func aLoadFailureFailsTheCall() {
+        assert(makeRecovering(submission: makeSubmission()), .loadFailed("call")) { $0.calls["call"] = .init(stage: .failed, status: "failed:false") }
+        #expect(format.payloads == [.init(stage: .failed, warning: false)])
+    }
+    @Test func aLoadFailureDeliversNothing() {
+        assert(makeRecovering(), .loadFailed("call"), delivers: nil)
+    }
+    @Test func recoveryResultsForACallNotRecoveringChangeNothing() {
+        assert(makeClaiming(), .recovered("call", saved))
+        assert(makeClaiming(), .recovered("call", nil))
+        assert(makeClaiming(), .loadFailed("call"))
+    }
+    @Test func recoveryResultsForACallNotRecoveringDeliverNothing() {
+        assert(makeClaiming(), .recovered("call", nil), delivers: nil)
+        assert(makeClaiming(), .loadFailed("call"), delivers: nil)
+    }
+
+    private func makeRecovering(submission: SummariesSubmission? = nil) -> SummariesState {
+        makeState(calls: ["call": .init(stage: .recovering, submission: submission)])
+    }
+    private func assert(_ state: SummariesState, _ event: SummariesEvent, changes: (inout SummariesState) -> Void = { _ in },
+                        sourceLocation: SourceLocation = #_sourceLocation) {
+        var expected = state; changes(&expected)
+        #expect(SummariesReducer(format: format.call).reduce(state, event).0 == expected, sourceLocation: sourceLocation)
+    }
+    private func assert(_ state: SummariesState, _ event: SummariesEvent, delivers effect: SummariesEffect?,
+                        sourceLocation: SourceLocation = #_sourceLocation) {
+        #expect(SummariesReducer(format: format.call).reduce(state, event).1 == effect, sourceLocation: sourceLocation)
+    }
+}
+
+@Suite struct SummariesRecoveryEffectHandlerTests {
+    @Test func loadAsksRecordsForTheCall() async {
+        let records = RecordsSpy()
+        _ = await makeSUT(records).handle(.load("call"))
+        #expect(records.payloads == ["call"])
+    }
+    @Test(arguments: [false, true]) func loadDeliversWhatStorageHolds(found: Bool) async {
+        let saved = found ? SummariesSaved(stage: .noting, job: makeJob()) : nil
+        let event = await makeSUT(RecordsSpy(result: .success(saved))).handle(.load("call"))
+        #expect(event == .recovered("call", saved))
+    }
+    @Test func aFailedLoadDeliversLoadFailure() async {
+        let event = await makeSUT(RecordsSpy(result: .failure(SpyFailure()))).handle(.load("call"))
+        #expect(event == .loadFailed("call"))
+    }
+    @Test func loadDoesNotPrepareOrClaim() async {
+        let preparation = PreparationSpy(job: nil), claims = ClaimsSpy()
+        _ = await SummariesEffectHandler(preparation: preparation, claims: claims, records: RecordsSpy()).handle(.load("call"))
+        #expect(preparation.payloads.isEmpty && claims.payloads.isEmpty)
+    }
+    private func makeSUT(_ records: RecordsSpy) -> SummariesEffectHandler {
+        .init(preparation: PreparationSpy(job: nil), claims: ClaimsSpy(), records: records)
     }
 }
 
@@ -206,4 +331,11 @@ final class ClaimsSpy: SummariesClaims {
         recorded.withLock { $0.append(job) }
         let (owned, saved) = try result.get(); return (owned, saved)
     }
+}
+final class RecordsSpy: SummariesRecords {
+    private let recorded = Mutex<[String]>([])
+    private let result: Result<SummariesSaved?, SpyFailure>
+    init(result: Result<SummariesSaved?, SpyFailure> = .success(nil)) { self.result = result }
+    var payloads: [String] { recorded.withLock { $0 } }
+    func load(call: String) async throws -> SummariesSaved? { recorded.withLock { $0.append(call) }; return try result.get() }
 }
