@@ -1,4 +1,3 @@
-import Synchronization
 
 public struct SummarySubmission: Equatable, Sendable {
     public struct Entry: Equatable, Sendable {
@@ -126,32 +125,25 @@ public protocol SummaryCoordinatorJobs: Sendable {
 }
 
 /// Work is keyed by the phase held until its result arrives; repeated observations do nothing.
-public final class SummaryCoordinatorDoer: Sendable {
-    private struct Work {
-        var started: Set<UInt64> = []
-        var tasks: [UInt64: Task<Void, Never>] = [:]
-        var joining: Task<Void, Never>?
-    }
+/// Runs on its owner's actor; the work itself runs off it.
+public final class SummaryCoordinatorDoer {
     private let jobs: any SummaryCoordinatorJobs
     private let send: @Sendable (SummaryCoordinatorEvent) async -> Void
-    private let work = Mutex(Work())
+    private var started: Set<UInt64> = []
+    private var tasks: [UInt64: Task<Void, Never>] = [:]
+    private var joining: Task<Void, Never>?
     public init(jobs: any SummaryCoordinatorJobs, send: @escaping @Sendable (SummaryCoordinatorEvent) async -> Void) {
         self.jobs = jobs; self.send = send
     }
-    public func join() async {
-        while true {
-            let tasks = work.withLock { $0.tasks }
-            if tasks.isEmpty { break }
-            for task in tasks.values { await task.value }
-            work.withLock { work in for key in tasks.keys { work.tasks[key] = nil } }
-        }
-        await work.withLock { $0.joining }?.value
+    public func join(isolation: isolated (any Actor)? = #isolation) async {
+        for task in tasks.values { await task.value }
+        await joining?.value
     }
     public func act(on state: SummaryCoordinatorState) {
         for (call, item) in state.calls {
             guard item.phase != .pending && item.phase != .installed,
-                  work.withLock({ $0.started.insert(item.operation).inserted }) else { continue }
-            let task = Task { [jobs, send] in
+                  started.insert(item.operation).inserted else { continue }
+            tasks[item.operation] = Task { [jobs, send] in
                 let event: SummaryCoordinatorEvent
                 switch item.phase {
                 case .recovering:
@@ -171,13 +163,9 @@ public final class SummaryCoordinatorDoer: Sendable {
                 }
                 await send(event)
             }
-            work.withLock { $0.tasks[item.operation] = task }
         }
-        if state.phase == .joining {
-            work.withLock { work in
-                guard work.joining == nil else { return }
-                work.joining = Task { [jobs, send] in await jobs.join(); await send(.joined) }
-            }
+        if state.phase == .joining && joining == nil {
+            joining = Task { [jobs, send] in await jobs.join(); await send(.joined) }
         }
     }
 }
