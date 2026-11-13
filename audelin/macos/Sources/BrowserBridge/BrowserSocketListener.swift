@@ -7,7 +7,8 @@ public enum BrowserSocketListenerFailure: Error, Equatable {
 }
 
 /// Listens on the Unix socket the native host connects to and hands each
-/// accepted connection to the receiver as frames plus a close. A socket file
+/// accepted connection to the receiver as frames plus a close, once its first
+/// message has presented the secret; any other connection is closed unseen. A socket file
 /// left at the path by an earlier run is replaced; `stop` removes the file.
 public final class BrowserSocketListener: Sendable {
     public let connections: AsyncStream<BrowserConnection>
@@ -15,7 +16,7 @@ public final class BrowserSocketListener: Sendable {
     private let handle: FileHandle
     private let path: URL
 
-    public init(path: URL) throws {
+    public init(path: URL, secret: Data) throws {
         self.path = path
         let bytes = Array(path.path.utf8)
         var address = sockaddr_un()
@@ -44,7 +45,7 @@ public final class BrowserSocketListener: Sendable {
                 let accepted = accept(descriptor, nil, nil)
                 guard accepted >= 0 else { return }
                 _ = fcntl(accepted, F_SETFL, fcntl(accepted, F_GETFL) & ~O_NONBLOCK)
-                continuation.yield(Self.connection(accepted))
+                Self.admit(accepted, secret: secret, to: continuation)
             }
         }
     }
@@ -58,15 +59,21 @@ public final class BrowserSocketListener: Sendable {
         continuation.finish()
     }
 
-    private static func connection(_ descriptor: Int32) -> BrowserConnection {
+    private static func admit(_ descriptor: Int32, secret: Data,
+                              to continuation: AsyncStream<BrowserConnection>.Continuation) {
         let link = RelayLink.socket(descriptor)
-        let frames = AsyncStream<Data> { continuation in
-            let reading = Task {
-                while let message = try? await link.receive() { continuation.yield(message) }
-                continuation.finish()
+        Task {
+            guard let presented = try? await link.receive(), BrowserSocketSecret.matches(presented, secret) else {
+                link.close(); return
             }
-            continuation.onTermination = { _ in reading.cancel() }
+            let frames = AsyncStream<Data> { frames in
+                let reading = Task {
+                    while let message = try? await link.receive() { frames.yield(message) }
+                    frames.finish()
+                }
+                frames.onTermination = { _ in reading.cancel() }
+            }
+            continuation.yield(BrowserConnection(frames: frames, close: link.close))
         }
-        return BrowserConnection(frames: frames, close: link.close)
     }
 }

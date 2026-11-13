@@ -2,6 +2,7 @@
 
 ## 2026-11-13
 
+- LAB-1372: Only Audelin's own native host can talk to the app's socket: it presents a secret kept in a file only the user can read, and the app drops any other connection.
 - LAB-1371: The app accepts native host connections on its local socket and passes each one's messages to the browser receiver, replacing a socket left by an earlier run.
 - LAB-1370: A native host program the browser starts for the Audelin extension relays its messages to the running app over a local socket and the app's replies back.
 - LAB-1369: The app reads and writes the framing browsers use to talk to a native host, refusing messages over each direction's size limit.
