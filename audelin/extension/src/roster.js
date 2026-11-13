@@ -1,4 +1,5 @@
-// Reads the participant roster from a Telemost call document.
+// Reads the participant roster, and who is speaking, from a Telemost call
+// document.
 //
 // Telemost exposes no participant ID, so an ID names one observed tile: the
 // same video element under the same name keeps its ID across reads, and a
@@ -10,9 +11,12 @@ const SHARE = 'button[data-testid="share-button"]';
 const CAMERA = 'button[data-testid="turn-on-camera-button"], button[data-testid="turn-off-camera-button"]';
 const ENTER = 'button[data-testid="enter-conference-button"]';
 const MAX_NAME = 200;
+const SPEAKING_GREEN = "rgb(29, 204, 102)";
 
 // newId: () => string, called once for each tile seen for the first time.
-export function createRosterReader(newId) {
+// afterStyle: (element) => the computed style of its ::after pseudo-element;
+// the browser's is getComputedStyle(element, "::after").
+export function createRosterReader({ newId, afterStyle }) {
   const seen = new WeakMap();
 
   function idFor(video, name) {
@@ -25,12 +29,14 @@ export function createRosterReader(newId) {
   }
 
   // Returns { inCall: false } for a page that is not a connected call, and
-  // { inCall: true, participants: [{ id, name, isSelf }] } for one.
+  // { inCall: true, participants: [{ id, name, isSelf }], speakingIds } for
+  // one, where speakingIds lists the remote participants marked as speaking.
   return function readRoster(doc) {
     if (doc.querySelector(ENTER) || !hasCallToolbar(doc)) return { inCall: false };
 
     const participants = [];
     const byTrack = new Map();
+    const speakingIds = [];
     for (const video of doc.querySelectorAll('[data-video-root="true"] video')) {
       const tile = video.parentElement;
       if (!tile || !shown(tile)) continue;
@@ -40,13 +46,38 @@ export function createRosterReader(newId) {
       // Speaker view shows the same track in the main tile and a thumbnail.
       const track = video.getAttribute("data-g_track_id")?.trim();
       const key = track ? JSON.stringify([track, name, isSelf]) : null;
-      if (key && byTrack.has(key)) continue;
-      const participant = { id: idFor(video, name), name, isSelf };
-      participants.push(participant);
-      if (key) byTrack.set(key, participant);
+      let participant = key ? byTrack.get(key) : undefined;
+      if (!participant) {
+        participant = { id: idFor(video, name), name, isSelf };
+        participants.push(participant);
+        if (key) byTrack.set(key, participant);
+      }
+      if (!isSelf && marksSpeaking(tile, video) && !speakingIds.includes(participant.id)) {
+        speakingIds.push(participant.id);
+      }
     }
-    return { inCall: true, participants };
+    // Two tiles with one name may be two people: say nobody is speaking
+    // rather than give one person's speech to the other.
+    const names = participants.map((participant) => participant.name);
+    const ambiguous = new Set(names).size !== names.length;
+    return { inCall: true, participants, speakingIds: ambiguous ? [] : speakingIds };
   };
+
+  // A speaking tile's overlay draws a green border in its ::after; a muted
+  // tile is never marked speaking.
+  function marksSpeaking(tile, video) {
+    if (tile.querySelector('[data-testid="micro-off-icon"]')) return false;
+    return [...tile.children].some((overlay) => {
+      if (overlay === video || !shown(overlay)) return false;
+      const style = afterStyle(overlay);
+      return (
+        style.content === '""' &&
+        style.borderTopStyle === "solid" &&
+        parseFloat(style.borderTopWidth) >= 2 &&
+        style.borderTopColor === SPEAKING_GREEN
+      );
+    });
+  }
 }
 
 // A connected call has one end-call button in a toolbar with Share and
