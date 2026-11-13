@@ -116,9 +116,11 @@ struct ReadingRenderingTests {
             .gap(.init(speaker: .mine, time: "given gap", kind: .microphone)),
             .late(.init(span: "after", entries: [makeEntry(1, time: "given last")])),
         ]
+        state.rendered.locations[last.id] = .init(row: 2, lateEntry: 0)
         state.log = .lines(state.lines)
         assert(state, .recordingChanged(.off), delivers: nil, using: makeReducer(spy)) {
             $0.lines.layout = 1
+            $0.rendered.locations[last.id] = .init(row: 0, lateEntry: 1)
             $0.problems = []
             $0.banners = []
             $0.lines.rows = [.late(.init(span: "span[line(2.0)|line(8.0)]", entries: [
