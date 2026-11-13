@@ -138,12 +138,10 @@ Evidence: `SessionTranscriptTests.theAppWaitsFiveSecondsAfterEachTranscriptWrite
 
 ## S-16 A crash keeps every final entry already saved
 
-`SessionCrashWriter` runs a call through the app's composition that keeps
-saving every 10 ms and reports each save once it returns. It is killed with
-SIGKILL once a save holds 2, 4 or 8 final entries, wherever the writer then
-is; the file starts with the header and every entry final in that last
-reported save. A planted rewrite that cut the file to nothing failed all
-three cases (2026-10-31). Evidence: `SessionCrashTests.sigkillDuringACallKeepsEveryFinalEntryAlreadySaved(finalEntries:)`.
+A writer killed with SIGKILL just before or just after it renames the new
+transcript into place leaves exactly one whole transcript: the last one saved,
+or the one it was writing. Evidence:
+`TranscriptFileCrashTests.sigkillAtRenameKeepsExactlyOneWholeTranscript(point:)`.
 
 ## Silent call warning
 
