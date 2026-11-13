@@ -174,6 +174,8 @@ actor WritingTranscript: SessionTranscriptFile {
 
         let zoom = !board.spoken.isEmpty
         guard let result = await RemoteSpeakers(diarizer: diarizer, sink: sink).attribute(state, track: track, speakers: nil) else { return }
+        // A pass that heard no one has nothing to confirm or attribute: the live names stay tentative.
+        guard !result.turns.isEmpty else { return }
         var clusters: [Int: String] = [:]
         if zoom {
             let rows = state.entries.filter { $0.speaker != .mine }.map { (id: $0.text.id, start: $0.text.start, end: $0.text.end) }
