@@ -56,9 +56,28 @@ jobs:
             ${{ env.NIGHTLY_OUT }}/endurance.log
             ${{ env.NIGHTLY_OUT }}/capture-*/summary.*
 
-  notify:
-    if: ${{ always() && !cancelled() && needs.long-runs.result == 'failure' }}
+  # The live scenario of remote names from the browser extension: the
+  # rehearsal replays recorded Telemost events through the app's socket and
+  # the driver reads the panel through Accessibility, which needs the Mac's
+  # logged-in session. It runs after the long runs so they keep the Mac quiet.
+  live-browser-names:
+    if: ${{ always() && !cancelled() }}
     needs: [long-runs]
+    runs-on: [self-hosted, local-mac]
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.ref || 'trunk' }}
+
+      - name: Run the live scenario
+        working-directory: audelin/macos
+        run: scripts/live-browser-names.sh
+
+  notify:
+    if: ${{ always() && !cancelled() && (needs.long-runs.result == 'failure' || needs.live-browser-names.result == 'failure') }}
+    needs: [long-runs, live-browser-names]
     uses: ./.github/workflows/notify-telegram-failure.yml
     with:
       title: "Audelin Nightly"
@@ -66,6 +85,7 @@ jobs:
       ref_value: "trunk"
       job_results: |
         long-runs=${{ needs.long-runs.result }}
+        live-browser-names=${{ needs.live-browser-names.result }}
     secrets:
       CI_BOT_TOKEN: ${{ secrets.CI_BOT_TOKEN }}
       CI_CHAT_ID: ${{ secrets.CI_CHAT_ID }}
