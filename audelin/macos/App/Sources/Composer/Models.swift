@@ -21,6 +21,18 @@ func makeReading() -> ReadingInputs {
 /// taking `Never`: a closure given it "will never be executed".
 private func noEvents<Effect, Event>(_: Effect) -> AsyncStream<Event> { AsyncStream { $0.finish() } }
 
+/// The stream a model reads from a handler that returns one event.
+func oneEvent<Event: Sendable>(_ handle: @escaping @Sendable () async -> Event) -> AsyncStream<Event> {
+
+    AsyncStream { output in
+        let task = Task {
+            output.yield(await handle())
+            output.finish()
+        }
+        output.onTermination = { _ in task.cancel() }
+    }
+}
+
 /// Recording's model, reducing on the main actor, and the doer that makes the Session follow it.
 @MainActor
 func makeRecording(
@@ -109,15 +121,7 @@ actor SessionModel {
             let (next, effect) = SessionReducer.reduce(state, event)
             if next != state { feed.publish(next) }
             return (next, effect)
-        }, handleEffect: { effect in
-            AsyncStream { events in
-                let task = Task {
-                    events.yield(await handler.handle(effect))
-                    events.finish()
-                }
-                events.onTermination = { _ in task.cancel() }
-            }
-        }, isolation: self)
+        }, handleEffect: { effect in oneEvent { await handler.handle(effect) } }, isolation: self)
     }
 
     func send(_ event: SessionEvent) { model?.event(event) }
@@ -138,7 +142,8 @@ actor SessionModel {
 @MainActor
 func quit(_ handler: LifecycleEffectHandler) async {
 
-    let model = ObservableModel(initialState: LifecycleState.running, reduce: LifecycleReducer.reduce, handleEffect: handler.handle)
+    let model = ObservableModel(initialState: LifecycleState.running, reduce: LifecycleReducer.reduce,
+                                handleEffect: { effect in oneEvent { await handler.handle(effect) } })
     model.event(.quit)
     for await state in Observations({ model.state }) where state == .terminated { break }
 }

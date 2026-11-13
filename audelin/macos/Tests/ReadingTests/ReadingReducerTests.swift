@@ -5,104 +5,136 @@ struct ReadingReducerTests {
 
     @Test func recordingOnShowsElapsedTime() {
 
-        assert(makeState(), .recordingChanged(.on(elapsed: 3_661.9)), delivers: nil) {
-            $0.recording = .on(elapsed: "01:01:01")
+        let spy = RenderingSpy()
+        assert(makeState(), .recordingChanged(.on(elapsed: 3_661.9)), delivers: nil, using: makeReducer(spy)) {
+            $0.recording = .on(elapsed: "recording(3661.9)")
             $0.log = .liveTextOff(kept: nil)
         }
+        #expect(spy.calls == [.recording(3661.9)])
     }
 
     @Test func recordingOffClearsElapsedTime() {
 
-        assert(makeRecording(.on(elapsed: "00:00:12")), .recordingChanged(.off), delivers: nil) {
+        let spy = RenderingSpy()
+        assert(makeRecording(.on(elapsed: "recording(12.0)")), .recordingChanged(.off), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.recording = .off
             $0.log = .empty
+            $0.rendered = prepared()
         }
+        #expect(spy.calls == [])
     }
 
     @Test func listeningTextBecomesARow() {
 
-        assert(makeState(), .textUpdated(listening(entry)), delivers: nil) {
+        let spy = RenderingSpy()
+        assert(makeState(), .textUpdated(listening(entry)), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.status = .listening
             $0.anchors[entry.id] = .init(id: 0, start: 2)
             $0.text[entry.id] = entry
             $0.nextDisplayID = 1
-            $0.lines.rows = [row(0, "00:02", .mine, settled: "words")]
+            $0.lines.rows = [row(0, "line(2.0)", .mine, settled: "words")]
             $0.log = .lines($0.lines)
+            $0.rendered = prepared((entry.id, shown(0, "line(2.0)", .mine, settled: "words"), .init(row: 0)))
         }
+        #expect(spy.calls == [.line(2.0)])
     }
 
     @Test func holdAddsAHold() {
 
-        assert(makeState(), .hold(held), delivers: nil) {
+        let spy = RenderingSpy()
+        assert(makeState(), .hold(held), delivers: nil, using: makeReducer(spy)) {
             $0.lines.holds = [held]
             $0.log = .lines($0.lines)
         }
+        #expect(spy.calls == [])
     }
 
     @Test func letGoRemovesTheHold() {
 
-        assert(makeLines { $0.holds = [held] }, .letGo(held), delivers: nil) {
+        let spy = RenderingSpy()
+        assert(makeLines { $0.holds = [held] }, .letGo(held), delivers: nil, using: makeReducer(spy)) {
             $0.lines.holds = []
             $0.log = .empty
         }
+        #expect(spy.calls == [])
     }
 
     @Test func scrollingUpStopsFollowing() {
 
-        assert(makeState(), .scrolled(atBottom: false), delivers: nil) {
+        let spy = RenderingSpy()
+        assert(makeState(), .scrolled(atBottom: false), delivers: nil, using: makeReducer(spy)) {
             $0.lines.followsLive = false
         }
+        #expect(spy.calls == [])
     }
 
     @Test func scrollingToBottomFollowsAndClearsNew() {
 
-        assert(makeBehind(), .scrolled(atBottom: true), delivers: nil) {
+        let spy = RenderingSpy()
+        assert(makeBehind(), .scrolled(atBottom: true), delivers: nil, using: makeReducer(spy)) {
             $0.lines.followsLive = true
             $0.lines.newBelow = 0
         }
+        #expect(spy.calls == [])
     }
 
     @Test func jumpToLiveFollowsAndClearsNew() {
 
-        assert(makeBehind(), .jumpToLive, delivers: nil) {
+        let spy = RenderingSpy()
+        assert(makeBehind(), .jumpToLive, delivers: nil, using: makeReducer(spy)) {
             $0.lines.followsLive = true
             $0.lines.newBelow = 0
         }
+        #expect(spy.calls == [])
     }
 
     @Test func callOrderGivesEachSpeakerItsOwnRow() {
 
-        assert(makeState(), .textUpdated(listening(draft, first)), delivers: nil) {
+        let spy = RenderingSpy()
+        assert(makeState(), .textUpdated(listening(draft, first)), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.status = .listening
             $0.anchors[draft.id] = .init(id: 0, start: 8)
             $0.anchors[first.id] = .init(id: 1, start: 2)
             $0.text[draft.id] = draft
             $0.text[first.id] = first
             $0.nextDisplayID = 2
-            $0.lines.rows = [row(1, "00:02", .theirs, settled: "first"), row(0, "00:08", .mine, pending: "draft")]
+            $0.lines.rows = [row(1, "line(2.0)", .theirs, settled: "first"), row(0, "line(8.0)", .mine, pending: "draft")]
             $0.log = .lines($0.lines)
+            $0.rendered = prepared((first.id, shown(1, "line(2.0)", .theirs, settled: "first"), .init(row: 0)), (draft.id, shown(0, "line(8.0)", .mine, pending: "draft"), .init(row: 1)))
         }
+        #expect(counted(spy.calls) == counted([.line(8.0), .line(2.0)]))
     }
 
     @Test func settlingKeepsIDsTimesAndOrder() {
 
-        assert(makeCalled(), .textUpdated(listening(firm, first)), delivers: nil) {
+        let spy = RenderingSpy()
+        assert(makeCalled(), .textUpdated(listening(firm, first)), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.text[firm.id] = firm
-            $0.lines.rows[1] = row(0, "00:08", .mine, settled: "firm", pending: " next")
+            $0.lines.rows[1] = row(0, "line(8.0)", .mine, settled: "firm", pending: " next")
             $0.log = .lines($0.lines)
+            $0.rendered = prepared((first.id, shown(1, "line(2.0)", .theirs, settled: "first"), .init(row: 0)), (firm.id, shown(0, "line(8.0)", .mine, settled: "firm", pending: " next"), .init(row: 1)))
         }
+        #expect(counted(spy.calls) == counted([.line(2.0), .line(8.0), .line(8.0)]))
     }
 
     @Test func recordingRestartShowsZero() {
 
-        assert(makeRecording(.on(elapsed: "01:01:01")), .recordingChanged(.on(elapsed: 0)), delivers: nil) {
-            $0.recording = .on(elapsed: "00:00:00")
+        let spy = RenderingSpy()
+        assert(makeRecording(.on(elapsed: "recording(3661.9)")), .recordingChanged(.on(elapsed: 0)), delivers: nil, using: makeReducer(spy)) {
+            $0.recording = .on(elapsed: "recording(0.0)")
         }
+        #expect(spy.calls == [.recording(0.0)])
     }
 
     @Test func consecutiveLateEntriesGroupInCallOrder() {
 
-        assert(makeState(), .textUpdated(listening(late4, on3, late2, late1, early)), delivers: nil) {
+        let spy = RenderingSpy()
+        assert(makeState(), .textUpdated(listening(late4, on3, late2, late1, early)), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.status = .listening
             for (id, text) in [late4, on3, late2, late1, early].enumerated() {
                 $0.anchors[text.id] = .init(id: id, start: text.start)
@@ -110,320 +142,464 @@ struct ReadingReducerTests {
             }
             $0.nextDisplayID = 5
             $0.lines.rows = [
-                row(4, "00:59", .theirs),
-                .late(.init(span: "60:00–60:08", entries: [shown(3, "60:00", .mine), shown(2, "60:02", .theirs)])),
-                row(1, "60:06", .mine),
-                .late(.init(span: "60:07–60:10", entries: [shown(0, "60:07", .mine)])),
+                row(4, "line(59.9)", .theirs),
+                .late(.init(span: "span[line(3600.9)|line(3608.0)]", entries: [shown(3, "line(3600.9)", .mine), shown(2, "line(3602.0)", .theirs)])),
+                row(1, "line(3606.0)", .mine),
+                .late(.init(span: "span[line(3607.0)|line(3610.0)]", entries: [shown(0, "line(3607.0)", .mine)])),
             ]
             $0.log = .lines($0.lines)
+            $0.rendered = prepared((early.id, shown(4, "line(59.9)", .theirs), .init(row: 0)), (late1.id, shown(3, "line(3600.9)", .mine), .init(row: 1, lateEntry: 0)), (late2.id, shown(2, "line(3602.0)", .theirs), .init(row: 1, lateEntry: 1)), (on3.id, shown(1, "line(3606.0)", .mine), .init(row: 2)), (late4.id, shown(0, "line(3607.0)", .mine), .init(row: 3, lateEntry: 0)))
         }
+        #expect(counted(spy.calls) == counted([.line(3607.0), .line(3606.0), .line(3602.0), .line(3600.9), .line(59.9), .line(3600.9), .line(3608.0), .span("line(3600.9)", "line(3608.0)"), .line(3607.0), .line(3610.0), .span("line(3607.0)", "line(3610.0)")]))
     }
 
     @Test func holdAddsToTheHolds() {
 
-        assert(makeHolding(heldFirst), .hold(heldSecond), delivers: nil) {
+        let spy = RenderingSpy()
+        assert(makeHolding(heldFirst), .hold(heldSecond), delivers: nil, using: makeReducer(spy)) {
             $0.lines.holds.append(heldSecond)
             $0.log = .lines($0.lines)
         }
+        #expect(spy.calls == [])
     }
 
     @Test func holdingAgainChangesNothing() {
 
-        assert(makeHolding(heldFirst, heldSecond), .hold(heldFirst), delivers: nil)
+        let spy = RenderingSpy()
+        assert(makeHolding(heldFirst, heldSecond), .hold(heldFirst), delivers: nil, using: makeReducer(spy))
+        #expect(spy.calls == [])
     }
 
     @Test func holdsSurviveRevisedText() {
 
-        assert(makeHolding(heldFirst, heldSecond), .textUpdated(listening(different)), delivers: nil) {
+        let spy = RenderingSpy()
+        assert(makeHolding(heldFirst, heldSecond), .textUpdated(listening(different)), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.text[different.id] = different
-            $0.lines.rows[0] = row(0, "00:01", .mine, settled: "different text")
+            $0.lines.rows[0] = row(0, "line(1.0)", .mine, settled: "different text")
             $0.log = .lines($0.lines)
+            $0.rendered = prepared((different.id, shown(0, "line(1.0)", .mine, settled: "different text"), .init(row: 0)))
         }
+        #expect(counted(spy.calls) == counted([.line(1.0), .line(1.0)]))
     }
 
     @Test func holdsSurviveTheirEntryLeaving() {
 
-        assert(makeHolding(heldFirst, heldSecond), .textUpdated(listening()), delivers: nil) {
+        let spy = RenderingSpy()
+        assert(makeHolding(heldFirst, heldSecond), .textUpdated(listening()), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.text[uncertain.id] = nil
             $0.anchors[uncertain.id] = nil
             $0.lines.rows = []
             $0.log = .lines($0.lines)
+            $0.rendered = prepared()
         }
+        #expect(spy.calls == [.line(1.0)])
     }
 
     @Test func holdsSurviveScrollingUp() {
 
-        assert(makeHeldOnly(), .scrolled(atBottom: false), delivers: nil) {
+        let spy = RenderingSpy()
+        assert(makeHeldOnly(), .scrolled(atBottom: false), delivers: nil, using: makeReducer(spy)) {
             $0.lines.followsLive = false
             $0.log = .lines($0.lines)
         }
+        #expect(spy.calls == [])
     }
 
     @Test func holdsSurviveJumpToLive() {
 
-        assert(makeHeldOnly(followsLive: false), .jumpToLive, delivers: nil) {
+        let spy = RenderingSpy()
+        assert(makeHeldOnly(followsLive: false), .jumpToLive, delivers: nil, using: makeReducer(spy)) {
             $0.lines.followsLive = true
             $0.log = .lines($0.lines)
         }
+        #expect(spy.calls == [])
     }
 
     @Test func holdsSurviveRecordingOff() {
 
-        assert(makeHeldOnly(), .recordingChanged(.off), delivers: nil)
+        let spy = RenderingSpy()
+        assert(makeHeldOnly(), .recordingChanged(.off), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
+            $0.log = .lines($0.lines)
+            $0.rendered = prepared()
+        }
+        #expect(spy.calls == [])
     }
 
     @Test func holdsSurviveLiveTextOff() {
 
-        assert(makeHeldOnly(), .textUpdated(.init(status: .off, entries: [])), delivers: nil) {
+        let spy = RenderingSpy()
+        assert(makeHeldOnly(), .textUpdated(.init(status: .off, entries: [])), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.status = .off
+            $0.log = .lines($0.lines)
+            $0.rendered = prepared()
         }
+        #expect(spy.calls == [])
     }
 
     @Test func holdsSurviveRecordingOn() {
 
-        assert(makeHeldOnly(.off), .recordingChanged(.on(elapsed: 12)), delivers: nil) {
-            $0.recording = .on(elapsed: "00:00:12")
+        let spy = RenderingSpy()
+        assert(makeHeldOnly(.off), .recordingChanged(.on(elapsed: 12)), delivers: nil, using: makeReducer(spy)) {
+            $0.recording = .on(elapsed: "recording(12.0)")
             $0.log = .liveTextOff(kept: $0.lines)
         }
+        #expect(spy.calls == [.recording(12.0)])
     }
 
     @Test func holdsSurviveRecordingOffWithLiveTextOff() {
 
-        assert(makeHeldOnly(.off, recording: .on(elapsed: "00:00:12")), .recordingChanged(.off), delivers: nil) {
+        let spy = RenderingSpy()
+        assert(makeHeldOnly(.off, recording: .on(elapsed: "recording(12.0)")), .recordingChanged(.off), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.recording = .off
             $0.log = .lines($0.lines)
+            $0.rendered = prepared()
         }
+        #expect(spy.calls == [])
     }
 
     @Test func holdsSurviveGettingReady() {
 
-        assert(makeHeldOnly(.off), .textUpdated(.init(status: .gettingReady, entries: [])), delivers: nil) {
+        let spy = RenderingSpy()
+        assert(makeHeldOnly(.off), .textUpdated(.init(status: .gettingReady, entries: [])), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.status = .gettingReady
             $0.log = .preparing(holds: $0.lines.holds)
+            $0.rendered = prepared()
         }
+        #expect(spy.calls == [])
     }
 
     @Test func holdsSurviveFailure() {
 
-        assert(makeHeldOnly(.gettingReady), .textUpdated(.init(status: .failed("unavailable"), entries: [])), delivers: nil) {
+        let spy = RenderingSpy()
+        assert(makeHeldOnly(.gettingReady), .textUpdated(.init(status: .failed("unavailable"), entries: [])), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.status = .failed("unavailable")
             $0.log = .lines($0.lines)
+            $0.rendered = prepared()
         }
+        #expect(spy.calls == [])
     }
 
     @Test func holdsSurviveFinishing() {
 
-        assert(makeHeldOnly(.failed("unavailable")), .textUpdated(.init(status: .finished, entries: [])), delivers: nil) {
+        let spy = RenderingSpy()
+        assert(makeHeldOnly(.failed("unavailable")), .textUpdated(.init(status: .finished, entries: [])), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.status = .finished
+            $0.log = .lines($0.lines)
+            $0.rendered = prepared()
         }
+        #expect(spy.calls == [])
     }
 
     @Test func letGoRemovesOnlyThatHold() {
 
-        assert(makeHeldOnly(.finished), .letGo(heldFirst), delivers: nil) {
+        let spy = RenderingSpy()
+        assert(makeHeldOnly(.finished), .letGo(heldFirst), delivers: nil, using: makeReducer(spy)) {
             $0.lines.holds.removeFirst()
             $0.log = .lines($0.lines)
         }
+        #expect(spy.calls == [])
     }
 
     @Test func letGoOfAnAbsentHoldChangesNothing() {
 
-        assert(makeHeldOnly(.finished, holds: [heldSecond]), .letGo(heldFirst), delivers: nil)
+        let spy = RenderingSpy()
+        assert(makeHeldOnly(.finished, holds: [heldSecond]), .letGo(heldFirst), delivers: nil, using: makeReducer(spy))
+        #expect(spy.calls == [])
     }
 
     @Test func letGoOfTheLastHoldEmptiesHolds() {
 
-        assert(makeHeldOnly(.finished, holds: [heldSecond]), .letGo(heldSecond), delivers: nil) {
+        let spy = RenderingSpy()
+        assert(makeHeldOnly(.finished, holds: [heldSecond]), .letGo(heldSecond), delivers: nil, using: makeReducer(spy)) {
             $0.lines.holds = []
             $0.log = .lines($0.lines)
         }
+        #expect(spy.calls == [])
     }
 
     @Test func settlingIsNotNewBelow() {
 
-        assert(makeAwayDraft(), .textUpdated(listening(settledDraft)), delivers: nil) {
+        let spy = RenderingSpy()
+        assert(makeAwayDraft(), .textUpdated(listening(settledDraft)), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.text[settledDraft.id] = settledDraft
-            $0.lines.rows[0] = row(0, "00:10", .mine, settled: "settled")
+            $0.lines.rows[0] = row(0, "line(10.0)", .mine, settled: "settled")
             $0.log = .lines($0.lines)
+            $0.rendered = prepared((settledDraft.id, shown(0, "line(10.0)", .mine, settled: "settled"), .init(row: 0)))
         }
+        #expect(counted(spy.calls) == counted([.line(10.0), .line(10.0)]))
     }
 
     @Test func newIdentitiesCountBelow() {
 
-        assert(makeAwaySettled(), .textUpdated(listening(next, lateTheirs, settledDraft)), delivers: nil) {
+        let spy = RenderingSpy()
+        assert(makeAwaySettled(), .textUpdated(listening(next, lateTheirs, settledDraft)), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.text[next.id] = next
             $0.text[lateTheirs.id] = lateTheirs
             $0.anchors[next.id] = .init(id: 1, start: 12)
             $0.anchors[lateTheirs.id] = .init(id: 2, start: 2)
             $0.nextDisplayID = 3
             $0.lines.newBelow = 2
-            $0.lines.rows.insert(.late(.init(span: "00:02–00:03", entries: [shown(2, "00:02", .theirs)])), at: 0)
-            $0.lines.rows.append(row(1, "00:12", .mine))
+            $0.lines.rows.insert(.late(.init(span: "span[line(2.0)|line(3.0)]", entries: [shown(2, "line(2.0)", .theirs)])), at: 0)
+            $0.lines.rows.append(row(1, "line(12.0)", .mine))
             $0.log = .lines($0.lines)
+            $0.rendered = prepared((lateTheirs.id, shown(2, "line(2.0)", .theirs), .init(row: 0, lateEntry: 0)), (settledDraft.id, shown(0, "line(10.0)", .mine, settled: "settled"), .init(row: 1)), (next.id, shown(1, "line(12.0)", .mine), .init(row: 2)))
         }
+        #expect(counted(spy.calls) == counted([.line(10.0), .line(12.0), .line(2.0), .line(2.0), .line(3.0), .span("line(2.0)", "line(3.0)")]))
     }
 
     @Test func reorderedEntriesAreNotNew() {
 
-        assert(makeArrivals(), .textUpdated(listening(settledDraft, lateTheirs, next)), delivers: nil)
+        let spy = RenderingSpy()
+        assert(makeArrivals(), .textUpdated(listening(settledDraft, lateTheirs, next)), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
+            $0.log = .lines($0.lines)
+            $0.rendered = prepared((lateTheirs.id, shown(2, "line(2.0)", .theirs), .init(row: 0, lateEntry: 0)), (settledDraft.id, shown(0, "line(10.0)", .mine, settled: "settled"), .init(row: 1)), (next.id, shown(1, "line(12.0)", .mine), .init(row: 2)))
+        }
+        #expect(counted(spy.calls) == counted([.line(2.0), .line(10.0), .line(12.0), .line(2.0), .line(3.0), .span("line(2.0)", "line(3.0)")]))
     }
 
     @Test func liveTextOffKeepsNewBelow() {
 
-        assert(makeArrivals(), .textUpdated(.init(status: .off, entries: [])), delivers: nil) {
+        let spy = RenderingSpy()
+        assert(makeArrivals(), .textUpdated(.init(status: .off, entries: [])), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.status = .off
+            $0.log = .lines($0.lines)
+            $0.rendered = prepared((lateTheirs.id, shown(2, "line(2.0)", .theirs), .init(row: 0, lateEntry: 0)), (settledDraft.id, shown(0, "line(10.0)", .mine, settled: "settled"), .init(row: 1)), (next.id, shown(1, "line(12.0)", .mine), .init(row: 2)))
         }
+        #expect(counted(spy.calls) == counted([.line(2.0), .line(12.0), .line(10.0), .line(2.0), .line(3.0), .span("line(2.0)", "line(3.0)")]))
     }
 
     @Test func scrollingToBottomWithLiveTextOffFollows() {
 
-        assert(makeArrivals(.off), .scrolled(atBottom: true), delivers: nil) {
+        let spy = RenderingSpy()
+        assert(makeArrivals(.off), .scrolled(atBottom: true), delivers: nil, using: makeReducer(spy)) {
             $0.lines.newBelow = 0
             $0.lines.followsLive = true
             $0.log = .lines($0.lines)
         }
+        #expect(spy.calls == [])
     }
 
     @Test func gettingReadyKeepsTheRecording() {
 
-        assert(makeRecording(.on(elapsed: "00:00:12")), .textUpdated(.init(status: .gettingReady, entries: [])), delivers: nil) {
+        let spy = RenderingSpy()
+        assert(makeRecording(.on(elapsed: "recording(12.0)")), .textUpdated(.init(status: .gettingReady, entries: [])), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.status = .gettingReady
             $0.log = .preparing(holds: [])
+            $0.rendered = prepared()
         }
+        #expect(spy.calls == [])
     }
 
     @Test func listeningWithNothingShowsEmptyLines() {
 
-        assert(makeGiven(next: 0, status: .gettingReady, recording: twelve), .textUpdated(listening()), delivers: nil) {
+        let spy = RenderingSpy()
+        assert(makeGiven(next: 0, status: .gettingReady, recording: twelve), .textUpdated(listening()), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.status = .listening
             $0.log = .lines($0.lines)
+            $0.rendered = prepared()
         }
+        #expect(spy.calls == [])
     }
 
     @Test func liveTextOffKeepsWhatWasRead() {
 
-        assert(makeReadSoFar(), .textUpdated(.init(status: .off, entries: [])), delivers: nil) {
+        let spy = RenderingSpy()
+        assert(makeReadSoFar(), .textUpdated(.init(status: .off, entries: [])), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.status = .off
             $0.log = .liveTextOff(kept: $0.lines)
+            $0.rendered = prepared((readEntry.id, shown(0, "line(1.0)", .mine, settled: "read so far"), .init(row: 0)))
         }
+        #expect(spy.calls == [.line(1.0)])
     }
 
     @Test func gettingReadyKeepsWhatWasRead() {
 
-        assert(makeReadSoFar(.off), .textUpdated(.init(status: .gettingReady, entries: [])), delivers: nil) {
+        let spy = RenderingSpy()
+        assert(makeReadSoFar(.off), .textUpdated(.init(status: .gettingReady, entries: [])), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.status = .gettingReady
             $0.log = .preparing(holds: [])
+            $0.rendered = prepared((readEntry.id, shown(0, "line(1.0)", .mine, settled: "read so far"), .init(row: 0)))
         }
+        #expect(spy.calls == [.line(1.0)])
     }
 
     @Test func failedRestartKeepsWhatWasRead() {
 
-        assert(makeReadSoFar(.gettingReady), .textUpdated(.init(status: .failed("could not restart"), entries: [])), delivers: nil) {
+        let spy = RenderingSpy()
+        assert(makeReadSoFar(.gettingReady), .textUpdated(.init(status: .failed("could not restart"), entries: [])), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.status = .failed("could not restart")
             $0.log = .lines($0.lines)
+            $0.rendered = prepared((readEntry.id, shown(0, "line(1.0)", .mine, settled: "read so far"), .init(row: 0)))
         }
+        #expect(spy.calls == [.line(1.0)])
     }
 
     @Test func listeningAfterFailureShowsTheSameLines() {
 
-        assert(makeReadSoFar(.failed("could not restart")), .textUpdated(listening(readEntry)), delivers: nil) {
+        let spy = RenderingSpy()
+        assert(makeReadSoFar(.failed("could not restart")), .textUpdated(listening(readEntry)), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.status = .listening
+            $0.log = .lines($0.lines)
+            $0.rendered = prepared((readEntry.id, shown(0, "line(1.0)", .mine, settled: "read so far"), .init(row: 0)))
         }
+        #expect(spy.calls == [.line(1.0)])
     }
 
     @Test func failureKeepsLinesAndRecording() {
 
-        assert(makeReadSoFar(), .textUpdated(.init(status: .failed("recognition failed"), entries: [])), delivers: nil) {
+        let spy = RenderingSpy()
+        assert(makeReadSoFar(), .textUpdated(.init(status: .failed("recognition failed"), entries: [])), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.status = .failed("recognition failed")
+            $0.log = .lines($0.lines)
+            $0.rendered = prepared((readEntry.id, shown(0, "line(1.0)", .mine, settled: "read so far"), .init(row: 0)))
         }
+        #expect(spy.calls == [.line(1.0)])
     }
 
     @Test func finishingKeepsWhatWasRead() {
 
-        assert(makeReadSoFar(.failed("recognition failed")), .textUpdated(.init(status: .finished, entries: [])), delivers: nil) {
+        let spy = RenderingSpy()
+        assert(makeReadSoFar(.failed("recognition failed")), .textUpdated(.init(status: .finished, entries: [])), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.status = .finished
+            $0.log = .lines($0.lines)
+            $0.rendered = prepared((readEntry.id, shown(0, "line(1.0)", .mine, settled: "read so far"), .init(row: 0)))
         }
+        #expect(spy.calls == [.line(1.0)])
     }
 
     @Test func recordingOffAfterFinishingKeepsLines() {
 
-        assert(makeReadSoFar(.finished), .recordingChanged(.off), delivers: nil) {
+        let spy = RenderingSpy()
+        assert(makeReadSoFar(.finished), .recordingChanged(.off), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.recording = .off
+            $0.log = .lines($0.lines)
+            $0.rendered = prepared((readEntry.id, shown(0, "line(1.0)", .mine, settled: "read so far"), .init(row: 0)))
         }
+        #expect(spy.calls == [.line(1.0)])
     }
 
     @Test func liveTextOffAfterRecordingKeepsLines() {
 
-        assert(makeReadSoFar(.finished, recording: .off), .textUpdated(.init(status: .off, entries: [])), delivers: nil) {
+        let spy = RenderingSpy()
+        assert(makeReadSoFar(.finished, recording: .off), .textUpdated(.init(status: .off, entries: [])), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.status = .off
+            $0.log = .lines($0.lines)
+            $0.rendered = prepared((readEntry.id, shown(0, "line(1.0)", .mine, settled: "read so far"), .init(row: 0)))
         }
+        #expect(spy.calls == [.line(1.0)])
     }
 
     @Test(arguments: transitions) func transitionsReviseAndAddWithoutListening(_ status: ReadingTextUpdate.Status) {
 
-        assert(makeBeforeRevision(), .textUpdated(.init(status: status, entries: [revised, added])), delivers: nil) {
+        let spy = RenderingSpy()
+        assert(makeBeforeRevision(), .textUpdated(.init(status: status, entries: [revised, added])), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.status = status
             $0.text[revised.id] = revised
             $0.text[added.id] = added
             $0.anchors[added.id] = .init(id: 2, start: 3)
             $0.nextDisplayID = 3
-            $0.lines.rows[0] = row(0, "00:01", .mine, settled: "final words")
-            $0.lines.rows.append(row(2, "00:03", .mine, settled: "new words"))
+            $0.lines.rows[0] = row(0, "line(1.0)", .mine, settled: "final words")
+            $0.lines.rows.append(row(2, "line(3.0)", .mine, settled: "new words"))
             $0.log = status == .gettingReady ? .preparing(holds: []) : .lines($0.lines)
+            $0.rendered = prepared((revised.id, shown(0, "line(1.0)", .mine, settled: "final words"), .init(row: 0)), (keep.id, shown(1, "line(2.0)", .theirs, settled: "keep this"), .init(row: 1)), (added.id, shown(2, "line(3.0)", .mine, settled: "new words"), .init(row: 2)))
         }
+        #expect(counted(spy.calls) == counted([.line(1.0), .line(2.0), .line(1.0), .line(3.0)]))
     }
 
     @Test func omittedEntryLeavesNoIdentity() {
 
-        assert(makeAwayAtFour(), .textUpdated(listening()), delivers: nil) {
+        let spy = RenderingSpy()
+        assert(makeAwayAtFour(), .textUpdated(listening()), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.text[atFour.id] = nil
             $0.anchors[atFour.id] = nil
             $0.lines.rows = []
             $0.log = .lines($0.lines)
+            $0.rendered = prepared()
         }
+        #expect(spy.calls == [.line(4.0)])
     }
 
     @Test func returningEntryGetsAFreshIdentity() {
 
-        assert(makeGiven(next: 1, followsLive: false), .textUpdated(listening(atFour)), delivers: nil) {
+        let spy = RenderingSpy()
+        assert(makeGiven(next: 1, followsLive: false), .textUpdated(listening(atFour)), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.text[atFour.id] = atFour
             $0.anchors[atFour.id] = .init(id: 1, start: 4)
             $0.nextDisplayID = 2
-            $0.lines.rows = [row(1, "00:04", .mine)]
+            $0.lines.rows = [row(1, "line(4.0)", .mine)]
             $0.lines.newBelow = 1
             $0.log = .lines($0.lines)
+            $0.rendered = prepared((atFour.id, shown(1, "line(4.0)", .mine), .init(row: 0)))
         }
+        #expect(spy.calls == [.line(4.0)])
     }
 
     @Test func freeingASlotKeepsItsHold() {
 
-        assert(makeSlotTaken(), .textUpdated(listening(still)), delivers: nil) {
+        let spy = RenderingSpy()
+        assert(makeSlotTaken(), .textUpdated(listening(still)), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.text[heldDraft.id] = nil
             $0.anchors[heldDraft.id] = nil
             $0.lines.rows.removeFirst()
             $0.log = .lines($0.lines)
+            $0.rendered = prepared((still.id, shown(1, "line(5.0)", .theirs, settled: "still here"), .init(row: 0)))
         }
+        #expect(counted(spy.calls) == counted([.line(2.0), .line(5.0)]))
     }
 
     @Test func reusedSlotGetsAFreshTimeAndID() {
 
-        assert(makeSlotFreed(), .textUpdated(listening(reused, still)), delivers: nil) {
+        let spy = RenderingSpy()
+        assert(makeSlotFreed(), .textUpdated(listening(reused, still)), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.text[reused.id] = reused
             $0.anchors[reused.id] = .init(id: 2, start: 12)
             $0.nextDisplayID = 3
             $0.lines.newBelow = 1
-            $0.lines.rows.append(row(2, "00:12", .mine, pending: "new speech"))
+            $0.lines.rows.append(row(2, "line(12.0)", .mine, pending: "new speech"))
             $0.log = .lines($0.lines)
+            $0.rendered = prepared((still.id, shown(1, "line(5.0)", .theirs, settled: "still here"), .init(row: 0)), (reused.id, shown(2, "line(12.0)", .mine, pending: "new speech"), .init(row: 1)))
         }
+        #expect(counted(spy.calls) == counted([.line(5.0), .line(12.0)]))
     }
 
     @Test func reusedSlotSettlesInPlace() {
 
-        assert(makeSlotReused(), .textUpdated(listening(still, reusedSettled)), delivers: nil) {
+        let spy = RenderingSpy()
+        assert(makeSlotReused(), .textUpdated(listening(still, reusedSettled)), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.text[reusedSettled.id] = reusedSettled
-            $0.lines.rows[1] = row(2, "00:12", .mine, settled: "new speech")
+            $0.lines.rows[1] = row(2, "line(12.0)", .mine, settled: "new speech")
             $0.log = .lines($0.lines)
+            $0.rendered = prepared((still.id, shown(1, "line(5.0)", .theirs, settled: "still here"), .init(row: 0)), (reusedSettled.id, shown(2, "line(12.0)", .mine, settled: "new speech"), .init(row: 1)))
         }
+        #expect(counted(spy.calls) == counted([.line(12.0), .line(5.0), .line(12.0)]))
     }
 }
 
@@ -431,57 +607,73 @@ struct ReadingLogTests {
 
     @Test func nothingReadIsEmpty() {
 
-        assert(makeState(), .jumpToLive, delivers: nil)
+        let spy = RenderingSpy()
+        assert(makeState(), .jumpToLive, delivers: nil, using: makeReducer(spy))
+        #expect(spy.calls == [])
     }
 
     @Test func recordingWithLiveTextOffKeepsNothing() {
 
-        assert(makeLogState(recording: twelve), .jumpToLive, delivers: nil) {
+        let spy = RenderingSpy()
+        assert(makeLogState(recording: twelve), .jumpToLive, delivers: nil, using: makeReducer(spy)) {
             $0.log = .liveTextOff(kept: nil)
         }
+        #expect(spy.calls == [])
     }
 
     @Test func recordingWithLiveTextOffKeepsHolds() {
 
-        assert(makeLogState(holds: [heldFirst, heldSecond], recording: twelve), .jumpToLive, delivers: nil) {
+        let spy = RenderingSpy()
+        assert(makeLogState(holds: [heldFirst, heldSecond], recording: twelve), .jumpToLive, delivers: nil, using: makeReducer(spy)) {
             $0.log = .liveTextOff(kept: $0.lines)
         }
+        #expect(spy.calls == [])
     }
 
     @Test func liveTextOffWithoutRecordingShowsHolds() {
 
-        assert(makeLogState(holds: [heldFirst, heldSecond]), .jumpToLive, delivers: nil) {
+        let spy = RenderingSpy()
+        assert(makeLogState(holds: [heldFirst, heldSecond]), .jumpToLive, delivers: nil, using: makeReducer(spy)) {
             $0.log = .lines($0.lines)
         }
+        #expect(spy.calls == [])
     }
 
     @Test func gettingReadyShowsHolds() {
 
-        assert(makeLogState(.gettingReady, holds: [heldFirst, heldSecond]), .jumpToLive, delivers: nil) {
+        let spy = RenderingSpy()
+        assert(makeLogState(.gettingReady, holds: [heldFirst, heldSecond]), .jumpToLive, delivers: nil, using: makeReducer(spy)) {
             $0.log = .preparing(holds: $0.lines.holds)
         }
+        #expect(spy.calls == [])
     }
 
     @Test func gettingReadyShowsNoLines() {
 
-        assert(makeLogState(.gettingReady, rows: [row(0, "00:01", .mine, settled: "read so far")]), .jumpToLive, delivers: nil) {
+        let spy = RenderingSpy()
+        assert(makeLogState(.gettingReady, rows: [row(0, "line(1.0)", .mine, settled: "read so far")]), .jumpToLive, delivers: nil, using: makeReducer(spy)) {
             $0.log = .preparing(holds: [])
         }
+        #expect(spy.calls == [])
     }
 
     @Test func recordingWithLiveTextOffKeepsLines() {
 
-        assert(makeLogState(rows: [row(0, "00:01", .mine, settled: "read so far")], recording: twelve), .jumpToLive, delivers: nil) {
+        let spy = RenderingSpy()
+        assert(makeLogState(rows: [row(0, "line(1.0)", .mine, settled: "read so far")], recording: twelve), .jumpToLive, delivers: nil, using: makeReducer(spy)) {
             $0.log = .liveTextOff(kept: $0.lines)
         }
+        #expect(spy.calls == [])
     }
 
     @Test(arguments: [ReadingTextUpdate.Status.listening, .failed("could not restart"), .finished, .off])
     func availableLinesStayVisible(_ status: ReadingTextUpdate.Status) {
 
-        assert(makeLogState(status, rows: [row(0, "00:01", .mine, settled: "read so far")]), .jumpToLive, delivers: nil) {
+        let spy = RenderingSpy()
+        assert(makeLogState(status, rows: [row(0, "line(1.0)", .mine, settled: "read so far")]), .jumpToLive, delivers: nil, using: makeReducer(spy)) {
             $0.log = .lines($0.lines)
         }
+        #expect(spy.calls == [])
     }
 }
 
@@ -503,7 +695,7 @@ private func makeBehind() -> ReadingState {
     }
 }
 
-private let twelve = ReadingState.Recording.on(elapsed: "00:00:12")
+private let twelve = ReadingState.Recording.on(elapsed: "recording(12.0)")
 
 private let draft = text(.mine, 0, start: 8, pending: "draft")
 private let first = text(.theirs, 0, start: 2, settled: "first")
@@ -513,7 +705,7 @@ private func makeCalled() -> ReadingState {
 
     makeGiven(
         [anchored(draft, 0), anchored(first, 1)],
-        rows: [row(1, "00:02", .theirs, settled: "first"), row(0, "00:08", .mine, pending: "draft")], next: 2
+        rows: [row(1, "line(2.0)", .theirs, settled: "first"), row(0, "line(8.0)", .mine, pending: "draft")], next: 2
     )
 }
 
@@ -530,7 +722,7 @@ private let heldSecond = ReadingState.Held(entryID: 0, text: "words")
 
 private func makeHolding(_ holds: ReadingState.Held...) -> ReadingState {
 
-    makeGiven([anchored(uncertain, 0)], rows: [row(0, "00:01", .mine, pending: "uncertain words")], next: 1, holds: holds)
+    makeGiven([anchored(uncertain, 0)], rows: [row(0, "line(1.0)", .mine, pending: "uncertain words")], next: 1, holds: holds)
 }
 
 private func makeHeldOnly(
@@ -547,11 +739,11 @@ private let lateTheirs = text(.theirs, 1, start: 2, late: true)
 private let next = text(.mine, 2, start: 12)
 private func makeAwayDraft() -> ReadingState {
 
-    makeGiven([anchored(pendingDraft, 0)], rows: [row(0, "00:10", .mine, pending: "draft")], next: 1, followsLive: false)
+    makeGiven([anchored(pendingDraft, 0)], rows: [row(0, "line(10.0)", .mine, pending: "draft")], next: 1, followsLive: false)
 }
 private func makeAwaySettled() -> ReadingState {
 
-    makeGiven([anchored(settledDraft, 0)], rows: [row(0, "00:10", .mine, settled: "settled")], next: 1, followsLive: false)
+    makeGiven([anchored(settledDraft, 0)], rows: [row(0, "line(10.0)", .mine, settled: "settled")], next: 1, followsLive: false)
 }
 
 private func makeArrivals(
@@ -561,9 +753,9 @@ private func makeArrivals(
     makeGiven(
         [anchored(settledDraft, 0), anchored(next, 1), anchored(lateTheirs, 2)],
         rows: [
-            .late(.init(span: "00:02–00:03", entries: [shown(2, "00:02", .theirs)])),
-            row(0, "00:10", .mine, settled: "settled"),
-            row(1, "00:12", .mine),
+            .late(.init(span: "span[line(2.0)|line(3.0)]", entries: [shown(2, "line(2.0)", .theirs)])),
+            row(0, "line(10.0)", .mine, settled: "settled"),
+            row(1, "line(12.0)", .mine),
         ],
         next: 3, status: status, newBelow: newBelow, followsLive: followsLive
     )
@@ -573,7 +765,7 @@ private let readEntry = text(.mine, 0, start: 1, settled: "read so far")
 
 private func makeReadSoFar(_ status: ReadingTextUpdate.Status = .listening, recording: ReadingState.Recording = twelve) -> ReadingState {
 
-    makeGiven([anchored(readEntry, 0)], rows: [row(0, "00:01", .mine, settled: "read so far")], next: 1, status: status, recording: recording)
+    makeGiven([anchored(readEntry, 0)], rows: [row(0, "line(1.0)", .mine, settled: "read so far")], next: 1, status: status, recording: recording)
 }
 
 private let transitions: [ReadingTextUpdate.Status] = [.off, .gettingReady, .failed("interrupted"), .finished]
@@ -585,14 +777,14 @@ private func makeBeforeRevision() -> ReadingState {
 
     makeGiven(
         [anchored(toRevise, 0), anchored(keep, 1)],
-        rows: [row(0, "00:01", .mine, pending: "draft"), row(1, "00:02", .theirs, settled: "keep this")], next: 2
+        rows: [row(0, "line(1.0)", .mine, pending: "draft"), row(1, "line(2.0)", .theirs, settled: "keep this")], next: 2
     )
 }
 
 private let atFour = text(.mine, 1, start: 4)
 private func makeAwayAtFour() -> ReadingState {
 
-    makeGiven([anchored(atFour, 0)], rows: [row(0, "00:04", .mine)], next: 1, followsLive: false)
+    makeGiven([anchored(atFour, 0)], rows: [row(0, "line(4.0)", .mine)], next: 1, followsLive: false)
 }
 
 private let heldDraft = text(.mine, 0, start: 2, pending: "held draft")
@@ -600,11 +792,11 @@ private let still = text(.theirs, 0, start: 5, settled: "still here")
 private let reused = text(.mine, 0, start: 12, pending: "new speech")
 private let reusedSettled = text(.mine, 0, start: 11, settled: "new speech")
 private let slotHeld = ReadingState.Held(entryID: 0, text: "held draft")
-private let stillRow = row(1, "00:05", .theirs, settled: "still here")
+private let stillRow = row(1, "line(5.0)", .theirs, settled: "still here")
 private func makeSlotTaken() -> ReadingState {
 
     makeGiven(
-        [anchored(heldDraft, 0), anchored(still, 1)], rows: [row(0, "00:02", .mine, pending: "held draft"), stillRow],
+        [anchored(heldDraft, 0), anchored(still, 1)], rows: [row(0, "line(2.0)", .mine, pending: "held draft"), stillRow],
         next: 2, holds: [slotHeld], followsLive: false
     )
 }
@@ -615,7 +807,7 @@ private func makeSlotFreed() -> ReadingState {
 private func makeSlotReused() -> ReadingState {
 
     makeGiven(
-        [anchored(still, 1), anchored(reused, 2)], rows: [stillRow, row(2, "00:12", .mine, pending: "new speech")],
+        [anchored(still, 1), anchored(reused, 2)], rows: [stillRow, row(2, "line(12.0)", .mine, pending: "new speech")],
         next: 3, holds: [slotHeld], newBelow: 1, followsLive: false
     )
 }
@@ -695,14 +887,56 @@ private func makeLines(_ change: (inout ReadingState.Lines) -> Void) -> ReadingS
 
 func assert(
     _ state: ReadingState, _ event: ReadingEvent, delivers effect: Never?,
-    using reducer: ReadingReducer? = nil,
+    using reducer: ReadingReducer,
     sourceLocation: SourceLocation = #_sourceLocation, _ change: (inout ReadingState) -> Void = { _ in }
 ) {
     var expected = state
     change(&expected)
-    let result = reducer?.reduce(state, event) ?? ReadingReducer.reduce(state, event)
+    let result = reducer.reduce(state, event)
     #expect(result.0 == expected, sourceLocation: sourceLocation)
+    #expect(sealedParts(result.0) == sealedParts(expected), "sealed parts", sourceLocation: sourceLocation)
+    #expect(renderedParts(result.0) == renderedParts(expected), "rendered cache and layout", sourceLocation: sourceLocation)
     #expect(result.1 == effect, sourceLocation: sourceLocation)
+}
+
+/// The rendered cache and the layout count, which state equality also ignores.
+private struct RenderedParts: Equatable {
+    let prepared: Bool
+    let ordered: [ReadingTextUpdate.Entry.ID]
+    let entries: [ReadingTextUpdate.Entry.ID: ReadingState.Entry]
+    let locations: [ReadingTextUpdate.Entry.ID: ReadingState.Rendered.Location]
+    let layout: Int
+    let logLayout: Int?
+}
+
+private func renderedParts(_ state: ReadingState) -> RenderedParts {
+
+    let logLayout: Int? = switch state.log {
+    case let .lines(lines): lines.layout
+    case let .liveTextOff(kept): kept?.layout
+    default: nil
+    }
+    return .init(prepared: state.rendered.prepared, ordered: state.rendered.ordered,
+                 entries: state.rendered.entries.tail, locations: state.rendered.locations.tail,
+                 layout: state.lines.layout, logLayout: logLayout)
+}
+
+/// What the state holds as sealed, and how many rendered entries its sealed rows
+/// show. State equality ignores where its lists split, so `assert` compares this too.
+private struct SealedParts: Equatable {
+    let rows: [ReadingState.Row]
+    let text: [ReadingTextUpdate.Entry.ID: ReadingTextUpdate.Entry]
+    let anchors: [ReadingTextUpdate.Entry.ID: ReadingState.Anchor]
+    let entries: [ReadingTextUpdate.Entry.ID: ReadingState.Entry]
+    let locations: [ReadingTextUpdate.Entry.ID: ReadingState.Rendered.Location]
+    let inSealedRows: Int
+}
+
+private func sealedParts(_ state: ReadingState) -> SealedParts {
+
+    .init(rows: state.lines.rows.sealed, text: state.text.sealed, anchors: state.anchors.sealed,
+          entries: state.rendered.entries.sealed, locations: state.rendered.locations.sealed,
+          inSealedRows: state.rendered.inSealedRows)
 }
 
 private func makeState() -> ReadingState { .init() }

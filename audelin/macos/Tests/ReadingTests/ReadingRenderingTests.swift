@@ -1,5 +1,4 @@
 import Reading
-import Synchronization
 import Testing
 
 struct ReadingRenderingTests {
@@ -32,6 +31,7 @@ struct ReadingRenderingTests {
         let second = makeText(1, start: 65, end: 70, late: true)
         let last = makeText(2, start: 90, end: 91)
         assert(makeState(), .textUpdated(.init(status: .listening, entries: [first, second, last])), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.status = .listening
             $0.nextDisplayID = 3
             for text in [first, second, last] {
@@ -45,6 +45,7 @@ struct ReadingRenderingTests {
                 .entry(makeEntry(2, time: "line(90.0)")),
             ]
             $0.log = .lines($0.lines)
+            $0.rendered = prepared((first.id, makeEntry(0, time: "line(61.9)"), .init(row: 0, lateEntry: 0)), (second.id, makeEntry(1, time: "line(65.0)"), .init(row: 0, lateEntry: 1)), (last.id, makeEntry(2, time: "line(90.0)"), .init(row: 1)))
         }
         #expect(spy.calls == [.line(61.9), .line(65), .line(90), .line(61.9), .line(80),
                               .span("line(61.9)", "line(80.0)")])
@@ -59,6 +60,7 @@ struct ReadingRenderingTests {
             $0.text[text.id] = text
             $0.lines.rows = [.entry(makeEntry(0, time: "line(2.0)"))]
             $0.log = .lines($0.lines)
+            $0.rendered.entries[text.id] = makeEntry(0, time: "line(2.0)")
         }
         #expect(spy.calls == [.line(2)])
     }
@@ -69,9 +71,11 @@ struct ReadingRenderingTests {
         var state = makePreparedState()
         state.rendered = .init()
         assert(state, .textUpdated(.init(status: .finished, entries: [])), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.status = .finished
             $0.lines.rows = [.entry(makeEntry(0, time: "line(2.0)"))]
             $0.log = .lines($0.lines)
+            $0.rendered = prepared((makeText(0, start: 2, end: 3).id, makeEntry(0, time: "line(2.0)"), .init(row: 0)))
         }
         #expect(spy.calls == [.line(2)])
     }
@@ -84,6 +88,7 @@ struct ReadingRenderingTests {
         let state = makeLateState(first, last)
         let problems: [ReadingProblem] = [.init(.microphone, began: 4), .init(.callSilent, began: 9)]
         assert(state, .problemsChanged(problems), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.problems = problems
             $0.banners = [.init(kind: .callSilent, time: "line(9.0)"), .init(kind: .microphone, time: "line(4.0)")]
             $0.lines.rows = [
@@ -92,6 +97,7 @@ struct ReadingRenderingTests {
                 .late(.init(span: "span[line(6.0)|line(7.0)]", entries: [makeEntry(1, time: "given last")])),
             ]
             $0.log = .lines($0.lines)
+            $0.rendered.locations[last.id] = .init(row: 2, lateEntry: 0)
         }
         #expect(spy.calls == [.line(9), .line(4), .line(2), .line(8), .span("line(2.0)", "line(8.0)"),
                               .line(4), .line(6), .line(7), .span("line(6.0)", "line(7.0)")])
@@ -110,8 +116,11 @@ struct ReadingRenderingTests {
             .gap(.init(speaker: .mine, time: "given gap", kind: .microphone)),
             .late(.init(span: "after", entries: [makeEntry(1, time: "given last")])),
         ]
+        state.rendered.locations[last.id] = .init(row: 2, lateEntry: 0)
         state.log = .lines(state.lines)
         assert(state, .recordingChanged(.off), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
+            $0.rendered.locations[last.id] = .init(row: 0, lateEntry: 1)
             $0.problems = []
             $0.banners = []
             $0.lines.rows = [.late(.init(span: "span[line(2.0)|line(8.0)]", entries: [
@@ -182,6 +191,7 @@ struct ReadingRenderingTests {
                 makeEntry(1, time: "given last"),
             ]))]
             $0.log = .lines($0.lines)
+            $0.rendered.entries[first.id] = .init(id: 0, time: "line(2.0)", speaker: .mine, settled: "revised")
         }
         #expect(spy.calls == [.line(2)])
     }
@@ -199,6 +209,7 @@ struct ReadingRenderingTests {
         state.log = .lines(state.lines)
         state.rendered = .init()
         assert(state, .problemsChanged([.init(.microphone, began: 4)]), delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
             $0.problems = [.init(.microphone, began: 4)]
             $0.banners = [.init(kind: .microphone, time: "line(4.0)")]
             $0.lines.rows = [
@@ -206,6 +217,7 @@ struct ReadingRenderingTests {
                 .gap(.init(speaker: .mine, time: "line(4.0)", kind: .microphone)),
             ]
             $0.log = .lines($0.lines)
+            $0.rendered = prepared((first.id, makeEntry(0, time: "line(2.0)"), .init(row: 0, lateEntry: 0)))
         }
         #expect(spy.calls == [.line(4), .line(2), .line(2), .line(8),
                               .span("line(2.0)", "line(8.0)"), .line(4)])
@@ -278,6 +290,9 @@ struct ReadingRenderingTests {
                delivers: nil, using: makeReducer(spy)) {
             $0.text.seal(text.id)
             $0.anchors.seal(text.id)
+            $0.rendered.entries.seal(text.id)
+            $0.rendered.locations.seal(text.id)
+            $0.rendered.inSealedRows = 1
             $0.lines.rows.seal(upTo: 1)
         }
         #expect(spy.calls == [])
@@ -298,34 +313,6 @@ struct ReadingRenderingTests {
             #expect(spy.calls == [])
         }
     }
-}
-
-private final class RenderingSpy: Sendable {
-    enum Call: Equatable, Sendable {
-        case recording(Double), line(Double), span(String, String)
-    }
-    private let storage = Mutex<[Call]>([])
-    var calls: [Call] { storage.withLock { $0 } }
-    func recording(_ value: Double) -> String {
-
-        storage.withLock { $0.append(.recording(value)) }
-        return "recording(\(value))"
-    }
-    func line(_ value: Double) -> String {
-
-        storage.withLock { $0.append(.line(value)) }
-        return "line(\(value))"
-    }
-    func span(_ start: String, _ end: String) -> String {
-
-        storage.withLock { $0.append(.span(start, end)) }
-        return "span[\(start)|\(end)]"
-    }
-}
-
-private func makeReducer(_ spy: RenderingSpy) -> ReadingReducer {
-
-    .init(recordingTime: { spy.recording($0) }, lineTime: { spy.line($0) }, span: { spy.span($0, $1) })
 }
 
 private func makeState() -> ReadingState { .init() }

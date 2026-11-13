@@ -42,14 +42,16 @@ struct ReadingStateTests {
 
     @Test func logIsStoredUntilReduction() {
 
+        let spy = RenderingSpy()
         var state = makeState()
         state.status = .gettingReady
         state.recording = .on(elapsed: "given")
         state.lines.holds = [.init(entryID: 1, text: "held")]
         #expect(state.log == .empty)
-        assert(state, .jumpToLive, delivers: nil) {
+        assert(state, .jumpToLive, delivers: nil, using: makeReducer(spy)) {
             $0.log = .preparing(holds: $0.lines.holds)
         }
+        #expect(spy.calls == [])
     }
 
     @Test func equalityIgnoresIndexesButObservesStoredLog() {

@@ -7,50 +7,39 @@ struct ReadingScrollAcknowledgementTests {
     @Test(arguments: [false, true])
     func eachScrollAcknowledgesItsIdentityWithoutABooleanTransition(atBottom: Bool) {
 
-        let state = makeReading(atBottom: atBottom, acknowledgement: previous)
-        assert(state, .scrolled(atBottom: atBottom, interaction: latest)) {
+        let spy = RenderingSpy()
+        assert(makeReading(atBottom: atBottom, acknowledgement: previous), .scrolled(atBottom: atBottom, interaction: latest),
+               delivers: nil, using: makeReducer(spy)) {
             $0.scrollAcknowledgement = latest
         }
-    }
-
-    @Test(arguments: [false, true])
-    func acknowledgingAScrollHasNoEffect(atBottom: Bool) {
-
-        assert(makeReading(atBottom: atBottom, acknowledgement: previous), .scrolled(atBottom: atBottom, interaction: latest), delivers: nil) {
-            $0.scrollAcknowledgement = latest
-        }
+        #expect(spy.calls == [])
     }
 
     @Test(arguments: [false, true])
     func legacyScrollRetainsTheLastAcknowledgement(atBottom: Bool) {
 
-        assert(makeReading(atBottom: atBottom, acknowledgement: latest), .scrolled(atBottom: atBottom))
-    }
-
-    @Test(arguments: [false, true])
-    func legacyScrollHasNoEffect(atBottom: Bool) {
-
-        assert(makeReading(atBottom: atBottom, acknowledgement: latest), .scrolled(atBottom: atBottom), delivers: nil)
+        let spy = RenderingSpy()
+        assert(makeReading(atBottom: atBottom, acknowledgement: latest), .scrolled(atBottom: atBottom),
+               delivers: nil, using: makeReducer(spy))
+        #expect(spy.calls == [])
     }
 
     @Test func jumpKeepsTheIdentityOfTheScrollItFollows() {
 
-        assert(makeReading(atBottom: true, acknowledgement: latest), .jumpToLive)
-    }
-
-    @Test func jumpHasNoEffect() {
-
-        assert(makeReading(atBottom: true, acknowledgement: latest), .jumpToLive, delivers: nil)
+        let spy = RenderingSpy()
+        assert(makeReading(atBottom: true, acknowledgement: latest), .jumpToLive, delivers: nil, using: makeReducer(spy))
+        #expect(spy.calls == [])
     }
 
     @Test func textUpdatesKeepTheReaderAcknowledgement() {
 
-        assert(makeReading(atBottom: true, acknowledgement: latest), .textUpdated(.init(status: .off, entries: [])))
-    }
-
-    @Test func textUpdateHasNoEffect() {
-
-        assert(makeReading(atBottom: true, acknowledgement: latest), .textUpdated(.init(status: .off, entries: [])), delivers: nil)
+        let spy = RenderingSpy()
+        assert(makeReading(atBottom: true, acknowledgement: latest), .textUpdated(.init(status: .off, entries: [])),
+               delivers: nil, using: makeReducer(spy)) {
+            $0.lines.layout = 1
+            $0.rendered = prepared()
+        }
+        #expect(spy.calls == [])
     }
 }
 
@@ -59,17 +48,7 @@ private let latest = UUID(uuid: (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2)
 
 private func makeReading(atBottom: Bool, acknowledgement: UUID) -> ReadingState {
 
-    var state = ReadingReducer.reduce(.init(), .scrolled(atBottom: atBottom)).0
-    state.scrollAcknowledgement = acknowledgement
+    var state = ReadingState(scrollAcknowledgement: acknowledgement)
+    state.lines.followsLive = atBottom
     return state
-}
-
-private func assert(
-    _ state: ReadingState, _ event: ReadingEvent, sourceLocation: SourceLocation = #_sourceLocation,
-    changes: (inout ReadingState) -> Void = { _ in }
-) {
-
-    var expected = state
-    changes(&expected)
-    #expect(ReadingReducer.reduce(state, event).0 == expected, sourceLocation: sourceLocation)
 }

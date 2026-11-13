@@ -15,12 +15,7 @@ public final class AudelinSettings {
         self.text = text
         let reducer = summarySettingsReducer(text)
         let handler = SummarySettings.EffectHandler(preferences: preferences, availability: availability)
-        model = ObservableModel(initialState: .init(), reduce: reducer.reduce, handleEffect: { effect in
-            AsyncStream { output in
-                let task = Task { output.yield(await handler.handle(effect)); output.finish() }
-                output.onTermination = { _ in task.cancel() }
-            }
-        })
+        model = ObservableModel(initialState: .init(), reduce: reducer.reduce, handleEffect: { effect in oneEvent { await handler.handle(effect) } })
         model.event(.load)
     }
     var snapshot: SummarySettings.State { model.state }
