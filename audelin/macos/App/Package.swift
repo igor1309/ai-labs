@@ -103,13 +103,6 @@ let package = Package(
                 .product(name: "CallDiarizer", package: "macos"),
             ]
         ),
-        .executableTarget(
-            name: "SessionCrashWriter",
-            dependencies: [
-                "Composer",
-                "SessionRehearsal",
-            ]
-        ),
         .testTarget(
             name: "AudelinTests",
             dependencies: ["Audelin", "Composer", .product(name: "BlockingTestWork", package: "macos"), .product(name: "CoreAudioProcesses", package: "macos"), .product(name: "LiveText", package: "macos"), .product(name: "SummaryPreviewUI", package: "macos")]
@@ -125,7 +118,6 @@ let package = Package(
                 .product(name: "Recording", package: "macos"),
                 .product(name: "BlockingTestWork", package: "macos"),
                 "SessionRehearsal",
-                "SessionCrashWriter",
                 .product(name: "IMRxObservation", package: "swift-imrx"),
             ]
         ),
@@ -133,7 +125,6 @@ let package = Package(
             name: "RecordingTests",
             dependencies: [
                 .product(name: "Recording", package: "macos"),
-                .product(name: "IMRxObservation", package: "swift-imrx"),
             ]
         ),
         .testTarget(

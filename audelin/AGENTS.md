@@ -14,7 +14,9 @@ Issues are in the Multica project `Audelin`, in the `ai-labs` workspace (parent 
 
 - The app and rehearsal compose machines in `macos/App/Sources/Composer`; components stay in
   `macos/Sources`. Build and test both packages from their directories with
-  `swift build --build-tests` and `swift test`; `scripts/gate-step.sh` gates both and bundles.
+  `swift build --build-tests`, then run the tests through `scripts/swift-test-bounded.sh <seconds>`,
+  never bare `swift test`: the runner kills a run past its time or memory cap, where a runaway
+  test would otherwise exhaust the Mac. `scripts/gate-step.sh` gates both and bundles.
 
 ## Design
 
