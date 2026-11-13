@@ -17,10 +17,12 @@ public struct RehearsalOptions: Sendable {
     public var speech: String?
     /// Speech for their side instead, so a recorded call replays its two tracks.
     public var theirSpeech: String?
+    /// Recorded browser extension events replayed through the app's socket.
+    public var browserEvents: String?
 
     public static let usage = """
         usage: AudelinRehearsal|AudelinBaseline [--minutes 180] [--speed 10] [--monologue-every SECONDS] [--monologue-length 120] [--keep]
-                                [--speech FILE] [--their-speech FILE]
+                                [--speech FILE] [--their-speech FILE] [--browser-events FILE]
           --minutes           the call's length in audio minutes (default 180, or the speech's length)
           --speed             audio seconds fed each wall-clock second
           --monologue-every   every this many seconds my side talks without a pause
@@ -30,6 +32,7 @@ public struct RehearsalOptions: Sendable {
           --recordings-dir DIR  record into DIR (the profiling script owns its cleanup)
           --speech FILE       feed FILE on both sides, looped, to real Parakeet (AudelinBaseline only)
           --their-speech FILE  feed FILE on their side instead of --speech
+          --browser-events FILE  replay FILE's browser extension events, timed by the audio fed
         """
 
     public init(_ arguments: [String]) throws {
@@ -58,6 +61,9 @@ public struct RehearsalOptions: Sendable {
             case "--their-speech":
                 guard let path = rest.popFirst() else { throw Failure("--their-speech needs an audio file") }
                 theirSpeech = path
+            case "--browser-events":
+                guard let path = rest.popFirst() else { throw Failure("--browser-events needs a file") }
+                browserEvents = path
             case "--help": throw Failure("")
             default: throw Failure("unknown option \(flag)")
             }

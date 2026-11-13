@@ -69,6 +69,7 @@ struct TranscriptLog: NSViewRepresentable {
         if storage.length != coordinator.rows.length { coordinator.rows = Transcript.Rows() }
         let edit = coordinator.rows.update(lines, style: .init(tokens: tokens, config: config, text: panelText))
         coordinator.entries = edit.entries
+        text.rowLines = lines
 
         coordinator.quietly {
             // AppKit moves the selection to the end on any storage edit, even
@@ -312,6 +313,58 @@ final class LogTextView: NSTextView {
     }
 
     var ruleColor = NSColor.clear
+
+    /// What each row tells assistive apps and live tests: an element per
+    /// entry, identified `panel.row.<id>`, labelled with its text, its value
+    /// the name of the speaker it is drawn under ("" when unnamed).
+    struct RowAccessibility: Equatable {
+        let id: Int
+        let text: String
+        let speaker: String
+
+        /// A name is drawn where the speaker changes; the rows after it, up
+        /// to the next change, are that speaker's too.
+        static func rows(_ entries: [PanelState.Entry]) -> [RowAccessibility] {
+            var previous: PanelState.Entry?
+            var name = ""
+            return entries.map { entry in
+                if let label = entry.label {
+                    name = label
+                } else if previous.map({ $0.speaker != entry.speaker || $0.remoteSpeaker != entry.remoteSpeaker }) ?? true {
+                    name = ""
+                }
+                previous = entry
+                return RowAccessibility(id: entry.id, text: entry.settled + entry.pending, speaker: name)
+            }
+        }
+    }
+
+    /// The rows accessibility reads. Their elements are built only when it
+    /// asks, so an update costs the same however long the log is.
+    var rowLines: PanelState.Lines? {
+        didSet {
+            rowElements = nil
+            NSAccessibility.post(element: self, notification: .layoutChanged)
+        }
+    }
+
+    private var rowElements: [NSAccessibilityElement]?
+
+    override func accessibilityChildren() -> [Any]? {
+
+        let elements = rowElements ?? RowAccessibility.rows(rowLines?.entries ?? []).map { row in
+            let element = NSAccessibilityElement()
+            element.setAccessibilityRole(.staticText)
+            element.setAccessibilityIdentifier("panel.row.\(row.id)")
+            element.setAccessibilityLabel(row.text)
+            element.setAccessibilityValue(row.speaker)
+            element.setAccessibilityParent(self)
+            element.setAccessibilityFrameInParentSpace(bounds)
+            return element
+        }
+        rowElements = elements
+        return (super.accessibilityChildren() ?? []) + elements
+    }
 
     override func drawBackground(in rect: NSRect) {
 

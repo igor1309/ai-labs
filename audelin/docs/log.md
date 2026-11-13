@@ -1,5 +1,9 @@
 # Log
 
+## 2026-11-14
+
+- LAB-1365: The extension has install steps, and a nightly live scenario checks that Telemost speakers are named on the panel and in the transcript from the extension's events. A diarization pass that hears no one now keeps the live names instead of erasing them.
+
 ## 2026-11-13
 
 - LAB-1364: During a recording Audelin listens for the browser extension and names Telemost speakers live from what the call page shows; with no extension connected they stay unnamed.

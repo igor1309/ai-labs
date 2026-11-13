@@ -1,0 +1,84 @@
+{
+  "callId": "12345678901234",
+  "events": [
+    {
+      "at": 1,
+      "event": {
+        "type": "roster",
+        "participants": [
+          {
+            "id": "t1",
+            "name": "Игорь",
+            "isSelf": true
+          },
+          {
+            "id": "t2",
+            "name": "Анна",
+            "isSelf": false
+          },
+          {
+            "id": "t3",
+            "name": "Борис",
+            "isSelf": false
+          }
+        ]
+      }
+    },
+    {
+      "at": 5,
+      "event": {
+        "type": "speakingStarted",
+        "participantId": "t2"
+      }
+    },
+    {
+      "at": 17,
+      "event": {
+        "type": "speakingStopped",
+        "participantId": "t2"
+      }
+    },
+    {
+      "at": 20,
+      "event": {
+        "type": "speakingStarted",
+        "participantId": "t3"
+      }
+    },
+    {
+      "at": 32,
+      "event": {
+        "type": "speakingStopped",
+        "participantId": "t3"
+      }
+    },
+    {
+      "at": 35,
+      "event": {
+        "type": "speakingStarted",
+        "participantId": "t2"
+      }
+    },
+    {
+      "at": 47,
+      "event": {
+        "type": "speakingStopped",
+        "participantId": "t2"
+      }
+    },
+    {
+      "at": 50,
+      "event": {
+        "type": "speakingStarted",
+        "participantId": "t3"
+      }
+    },
+    {
+      "at": 62,
+      "event": {
+        "type": "speakingStopped",
+        "participantId": "t3"
+      }
+    }
+  ]
+}

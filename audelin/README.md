@@ -89,11 +89,17 @@ folder it prints under `$TMPDIR` keeps the fixtures and screenshots.
 
 ## Browser extension
 
-`extension/` holds the Manifest V3 extension that will name remote speakers in
-Telemost calls, for Chrome and Yandex Browser. It ships no dependencies;
-its tests read saved Telemost pages under jsdom. After `npm ci`, `npm test`
-runs its tests and `npm run build` writes `extension/dist/`; load that folder
-unpacked from the browser's extensions page with developer mode on.
+`extension/` holds the Manifest V3 extension that names remote speakers in
+Telemost calls, for Chrome and Yandex Browser. Its [README](extension/README.md)
+gives the install steps; Audelin registers the extension's native helper at
+each launch.
+
+`sh macos/scripts/live-browser-names.sh` rehearses a one-minute call twice,
+once with recorded Telemost extension events replayed through the app's socket
+(`AudelinRehearsal --browser-events FILE`) and once without. It reads the panel
+rows through Accessibility and checks that the two remote speakers are named on
+their rows and in `transcript.md` only with the events. Screenshots go to the
+folder it prints under `$TMPDIR`. It runs nightly on the self-hosted Mac.
 
 ## Install and updates
 

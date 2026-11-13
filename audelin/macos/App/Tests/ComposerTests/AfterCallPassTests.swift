@@ -61,6 +61,19 @@ struct AfterCallPassTests {
         }
     }
 
+    @Test func aPassThatHearsNoOneKeepsTheLiveNamesTentative() async throws {
+        try await withCallTrack { track in
+            let names = LiveNameBoard()
+            let (_, bytes, writer) = try await zoomWriter(track: track, binding: PassBinding(nemotron: { _ in [] }),
+                                                          given: [1: "Anna", 2: "Boris"], names: names)
+            await writer.close()
+            #expect(await writer.attributeSpeakers() == nil)
+            #expect(await bytes.calls == ["write", "close"])
+            #expect(names.snapshot().rows == [1: "Anna", 2: "Boris"])
+            #expect(!names.snapshot().confirmed)
+        }
+    }
+
     @Test func aZoomCallConfirmsItsRowNamesAndAnnouncesThem() async throws {
         try await withCallTrack { track in
             let names = LiveNameBoard()
