@@ -2,6 +2,7 @@
 
 ## 2026-11-13
 
+- LAB-1358: The extension and the app share one versioned message format for roster and speaking events; the app rejects a message of an unknown version or shape.
 - LAB-1357: On a Telemost call page the extension follows the page as it changes and reports roster changes and when each remote participant starts and stops speaking, stamped with the browser clock; it does not reach the app yet.
 - LAB-1356: The extension reads which remote participants Telemost marks as speaking; nobody is marked when two tiles share a name.
 - LAB-1355: The extension reads who is in a Telemost call, which tile is you, and tells a call page from one that is not.

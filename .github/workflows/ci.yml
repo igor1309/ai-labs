@@ -308,6 +308,7 @@ jobs:
               - "audelin/extension/src/**"
               - "audelin/extension/scripts/**"
               - "audelin/extension/tests/**"
+              - "audelin/macos/Tests/BrowserBridgeTests/Fixtures/**"
             audelin-extension-ci:
               - ".github/workflows/audelin-extension-core.yml"
             mizan-ble:
