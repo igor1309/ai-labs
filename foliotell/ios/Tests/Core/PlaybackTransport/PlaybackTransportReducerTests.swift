@@ -664,74 +664,124 @@ struct PlaybackTransportReducerTests {
         )
     }
 
-    @Test func test_reduce_shouldFinishPlayback_onDidFinishWithCurrentTokenWhileSpeaking() {
+    @Test func test_reduce_shouldGoIdleKeepingToken_onDidFinishWithCurrentTokenWhileSpeaking() {
 
-        let (state, effect) = reduce(.speaking(makeSession()), .utteranceDidFinish(utteranceToken: 1))
-
-        #expect(state == .idle(lastUtteranceToken: 1))
-        #expect(effect == .finishPlayback)
+        assert(.speaking(makeSession()), .utteranceDidFinish(utteranceToken: 1)) {
+            $0.becomeIdle()
+        }
     }
 
-    @Test func test_reduce_shouldFinishPlayback_onDidFinishWithCurrentTokenWhilePaused() {
+    @Test func test_reduce_shouldDeliverFinishPlayback_onDidFinishWithCurrentTokenWhileSpeaking() {
 
-        let (state, effect) = reduce(.paused(makeSession()), .utteranceDidFinish(utteranceToken: 1))
-
-        #expect(state == .idle(lastUtteranceToken: 1))
-        #expect(effect == .finishPlayback)
-    }
-
-    @Test func test_reduce_shouldIgnoreDidFinish_onStaleToken() {
-
-        let (state, effect) = reduce(
-            .speaking(makeSession(utteranceToken: 2)),
-            .utteranceDidFinish(utteranceToken: 1)
+        assert(
+            .speaking(makeSession()),
+            .utteranceDidFinish(utteranceToken: 1),
+            delivers: .finishPlayback
         )
-
-        #expect(state == .speaking(makeSession(utteranceToken: 2)))
-        #expect(effect == nil)
     }
 
-    @Test func test_reduce_shouldIgnoreDidFinish_onIdleAfterStop() {
+    @Test func test_reduce_shouldGoIdleKeepingToken_onDidFinishWithCurrentTokenWhilePaused() {
 
-        let (state, effect) = reduce(.idle(lastUtteranceToken: 0),.utteranceDidFinish(utteranceToken: 1))
-
-        #expect(state == .idle(lastUtteranceToken: 0))
-        #expect(effect == nil)
+        assert(.paused(makeSession()), .utteranceDidFinish(utteranceToken: 1)) {
+            $0.becomeIdle()
+        }
     }
 
-    @Test func test_reduce_shouldDeactivateAudioSession_onExternalCancelWithCurrentTokenWhileSpeaking() {
+    @Test func test_reduce_shouldDeliverFinishPlayback_onDidFinishWithCurrentTokenWhilePaused() {
 
-        let (state, effect) = reduce(.speaking(makeSession()), .utteranceDidCancel(utteranceToken: 1))
-
-        #expect(state == .idle(lastUtteranceToken: 1))
-        #expect(effect == .deactivateAudioSession)
-    }
-
-    @Test func test_reduce_shouldDeactivateAudioSession_onExternalCancelWithCurrentTokenWhilePaused() {
-
-        let (state, effect) = reduce(.paused(makeSession()), .utteranceDidCancel(utteranceToken: 1))
-
-        #expect(state == .idle(lastUtteranceToken: 1))
-        #expect(effect == .deactivateAudioSession)
-    }
-
-    @Test func test_reduce_shouldIgnoreDidCancel_onStaleTokenFromUtteranceReplacement() {
-
-        let (state, effect) = reduce(
-            .speaking(makeSession(utteranceToken: 2)),
-            .utteranceDidCancel(utteranceToken: 1)
+        assert(
+            .paused(makeSession()),
+            .utteranceDidFinish(utteranceToken: 1),
+            delivers: .finishPlayback
         )
-
-        #expect(state == .speaking(makeSession(utteranceToken: 2)))
-        #expect(effect == nil)
     }
 
-    @Test func test_reduce_shouldIgnoreDidCancel_onIdleAfterStop() {
+    @Test func test_reduce_shouldNotChange_onDidFinishWithStaleToken() {
 
-        let (state, effect) = reduce(.idle(lastUtteranceToken: 0),.utteranceDidCancel(utteranceToken: 1))
+        assert(.speaking(makeSession(utteranceToken: 2)), .utteranceDidFinish(utteranceToken: 1))
+    }
 
-        #expect(state == .idle(lastUtteranceToken: 0))
-        #expect(effect == nil)
+    @Test func test_reduce_shouldDeliverNothing_onDidFinishWithStaleToken() {
+
+        assert(
+            .speaking(makeSession(utteranceToken: 2)),
+            .utteranceDidFinish(utteranceToken: 1),
+            delivers: nil
+        )
+    }
+
+    @Test func test_reduce_shouldNotChange_onDidFinishInIdleAfterStop() {
+
+        assert(.idle(lastUtteranceToken: 0), .utteranceDidFinish(utteranceToken: 1))
+    }
+
+    @Test func test_reduce_shouldDeliverNothing_onDidFinishInIdleAfterStop() {
+
+        assert(
+            .idle(lastUtteranceToken: 0),
+            .utteranceDidFinish(utteranceToken: 1),
+            delivers: nil
+        )
+    }
+
+    @Test func test_reduce_shouldGoIdleKeepingToken_onExternalCancelWithCurrentTokenWhileSpeaking() {
+
+        assert(.speaking(makeSession()), .utteranceDidCancel(utteranceToken: 1)) {
+            $0.becomeIdle()
+        }
+    }
+
+    @Test func test_reduce_shouldDeliverDeactivateAudioSession_onExternalCancelWithCurrentTokenWhileSpeaking() {
+
+        assert(
+            .speaking(makeSession()),
+            .utteranceDidCancel(utteranceToken: 1),
+            delivers: .deactivateAudioSession
+        )
+    }
+
+    @Test func test_reduce_shouldGoIdleKeepingToken_onExternalCancelWithCurrentTokenWhilePaused() {
+
+        assert(.paused(makeSession()), .utteranceDidCancel(utteranceToken: 1)) {
+            $0.becomeIdle()
+        }
+    }
+
+    @Test func test_reduce_shouldDeliverDeactivateAudioSession_onExternalCancelWithCurrentTokenWhilePaused() {
+
+        assert(
+            .paused(makeSession()),
+            .utteranceDidCancel(utteranceToken: 1),
+            delivers: .deactivateAudioSession
+        )
+    }
+
+    @Test func test_reduce_shouldNotChange_onDidCancelWithStaleTokenFromUtteranceReplacement() {
+
+        assert(.speaking(makeSession(utteranceToken: 2)), .utteranceDidCancel(utteranceToken: 1))
+    }
+
+    @Test func test_reduce_shouldDeliverNothing_onDidCancelWithStaleTokenFromUtteranceReplacement() {
+
+        assert(
+            .speaking(makeSession(utteranceToken: 2)),
+            .utteranceDidCancel(utteranceToken: 1),
+            delivers: nil
+        )
+    }
+
+    @Test func test_reduce_shouldNotChange_onDidCancelInIdleAfterStop() {
+
+        assert(.idle(lastUtteranceToken: 0), .utteranceDidCancel(utteranceToken: 1))
+    }
+
+    @Test func test_reduce_shouldDeliverNothing_onDidCancelInIdleAfterStop() {
+
+        assert(
+            .idle(lastUtteranceToken: 0),
+            .utteranceDidCancel(utteranceToken: 1),
+            delivers: nil
+        )
     }
 
     // MARK: - Helpers
