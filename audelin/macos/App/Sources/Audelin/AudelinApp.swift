@@ -89,6 +89,7 @@ struct AudelinApp: App {
         appDelegate.connect(model)
         let bundle = Bundle.main.bundleURL
         if bundle.pathExtension == "app" {
+            installBrowserHost(appBundle: bundle)
             model.relaunchAfterUpdate(wait: { try await Task.sleep(for: .seconds(5)) }, replaced: bundleReplaced(at: bundle),
                                       relaunch: { try relaunchProcess(after: getpid(), bundle: bundle).run() })
         }

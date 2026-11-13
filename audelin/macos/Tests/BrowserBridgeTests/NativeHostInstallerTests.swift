@@ -39,7 +39,7 @@ import Testing
 
     @Test func repairsAStaleManifestOfOurs() throws {
         let home = try TempHome(browsers: [.chrome])
-        _ = try home.installer(host: "/old/place/audelin-browser-host").install()
+        _ = try home.installer(app: "/old/place/Audelin.app").install()
         let sut = home.installer()
 
         #expect(try sut.install()[.chrome] == .written)
@@ -70,8 +70,8 @@ private struct TempHome {
         }
     }
 
-    func installer(host: String = "/Applications/Audelin.app/Contents/MacOS/audelin-browser-host") -> NativeHostInstaller {
-        NativeHostInstaller(home: url, hostExecutable: URL(filePath: host))
+    func installer(app: String = "/Applications/Audelin.app") -> NativeHostInstaller {
+        NativeHostInstaller(home: url, appBundle: URL(filePath: app))
     }
 
     func manifest(_ sut: NativeHostInstaller, _ browser: NativeHostInstaller.Browser) throws -> [String: Any] {

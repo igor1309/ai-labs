@@ -11,6 +11,11 @@ mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 bin=$(swift build --package-path App --scratch-path "$scratch" -c release --show-bin-path)
 cp "$bin/Audelin" "$app/Contents/MacOS/Audelin"
 cp -R "$bin"/Audelin_*.bundle "$app/Contents/Resources/"
+# The browser starts this helper to talk to the app; the native host
+# installer points Chrome and Yandex Browser at this copy.
+swift build -c release --product AudelinNativeHost
+host_bin=$(swift build -c release --show-bin-path)
+cp "$host_bin/AudelinNativeHost" "$app/Contents/MacOS/audelin-browser-host"
 # The build number is trunk's commit count, so each installed update reads
 # higher than the last; the About panel names the commit it was built from.
 build=$(git rev-list --count HEAD 2>/dev/null || echo 0)
@@ -55,6 +60,8 @@ for key in CFBundleIconName CFBundleIconFile; do
     value=$(/usr/libexec/PlistBuddy -c "Print :$key" "$partial")
     /usr/libexec/PlistBuddy -c "Add :$key string $value" "$app/Contents/Info.plist"
 done
+identity=${AUDELIN_SIGN_IDENTITY:-Apple Development: Igor Malyarov (W78EER96YQ)}
+codesign --force --options runtime --sign "$identity" "$app/Contents/MacOS/audelin-browser-host"
 codesign --force --options runtime --entitlements App/Audelin.entitlements \
-    --sign "${AUDELIN_SIGN_IDENTITY:-Apple Development: Igor Malyarov (W78EER96YQ)}" "$app"
+    --sign "$identity" "$app"
 echo "$app"

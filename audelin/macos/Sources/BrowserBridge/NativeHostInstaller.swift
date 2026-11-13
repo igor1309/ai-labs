@@ -10,6 +10,8 @@ public struct NativeHostInstaller: Sendable {
     public static let hostName = "app.audelin.call_companion"
     public static let extensionID = "boljabpcnipijdcdjjnmnpbfbdjjodkf"
     static let description = "Audelin call companion"
+    /// The helper's file name in the app's `Contents/MacOS`.
+    public static let helperName = "audelin-browser-host"
 
     public enum Browser: String, CaseIterable, Sendable {
         case chrome, yandex
@@ -34,10 +36,11 @@ public struct NativeHostInstaller: Sendable {
     private let home: URL
     private let hostExecutable: URL
 
-    /// `home` is the owner's home folder; `hostExecutable` the host bundled
-    /// in the app.
-    public init(home: URL, hostExecutable: URL) {
-        self.home = home; self.hostExecutable = hostExecutable
+    /// `home` is the owner's home folder; `appBundle` the running
+    /// `Audelin.app`, whose bundled helper the browsers start.
+    public init(home: URL, appBundle: URL) {
+        self.home = home
+        hostExecutable = appBundle.appending(path: "Contents/MacOS").appending(path: Self.helperName)
     }
 
     public func install() throws -> [Browser: Outcome] {
