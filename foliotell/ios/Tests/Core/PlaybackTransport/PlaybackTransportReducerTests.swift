@@ -314,79 +314,131 @@ struct PlaybackTransportReducerTests {
         )
     }
 
-    @Test func test_reduce_shouldReplaceUtteranceAtSpokenOffset_onSpeedChangedWhileSpeaking() {
+    @Test func test_reduce_shouldReplaceUtteranceAtSpokenOffsetWithNewSpeed_onSpeedChangedWhileSpeaking() {
 
-        let speaking = makeSession(spokenUTF16Offset: 16)
+        assert(.speaking(makeSession(spokenUTF16Offset: 16)), .speedChanged(.oneAndHalf)) {
+            $0.session.speed = .oneAndHalf
+            $0.session.utteranceToken = 2
+            $0.session.utteranceStartUTF16Offset = 16
+        }
+    }
 
-        let (state, effect) = reduce(.speaking(speaking), .speedChanged(.oneAndHalf))
+    @Test func test_reduce_shouldDeliverReplacingUtteranceWithNewSpeed_onSpeedChangedWhileSpeaking() {
 
-        #expect(state == .speaking(makeSession(
-            speed: .oneAndHalf,
-            utteranceToken: 2,
-            utteranceStartUTF16Offset: 16,
-            spokenUTF16Offset: 16
-        )))
-        #expect(effect == .beginSpeaking(
-            makeCommand(utteranceToken: 2, text: "Frost and sun.", speed: .oneAndHalf),
-            replacingCurrentUtterance: true
-        ))
+        assert(
+            .speaking(makeSession(spokenUTF16Offset: 16)),
+            .speedChanged(.oneAndHalf),
+            delivers: .beginSpeaking(makeCommand(utteranceToken: 2, text: "Frost and sun.", speed: .oneAndHalf), replacingCurrentUtterance: true)
+        )
     }
 
     @Test func test_reduce_shouldResumeSpeakingWithNewSpeed_onSpeedChangedWhilePaused() {
 
-        let (state, _) = reduce(.paused(makeSession()), .speedChanged(.oneAndHalf))
-
-        #expect(state == .speaking(makeSession(speed: .oneAndHalf, utteranceToken: 2)))
+        assert(.paused(makeSession()), .speedChanged(.oneAndHalf)) {
+            $0.becomeSpeaking()
+            $0.session.speed = .oneAndHalf
+            $0.session.utteranceToken = 2
+        }
     }
 
-    @Test func test_reduce_shouldIgnoreSpeedChange_onUnchangedSpeed() {
+    @Test func test_reduce_shouldDeliverReplacingUtteranceWithNewSpeed_onSpeedChangedWhilePaused() {
 
-        let (state, effect) = reduce(.speaking(makeSession(speed: .one)), .speedChanged(.one))
-
-        #expect(state == .speaking(makeSession(speed: .one)))
-        #expect(effect == nil)
+        assert(
+            .paused(makeSession()),
+            .speedChanged(.oneAndHalf),
+            delivers: .beginSpeaking(makeCommand(utteranceToken: 2, speed: .oneAndHalf), replacingCurrentUtterance: true)
+        )
     }
 
-    @Test func test_reduce_shouldIgnoreSpeedChange_onIdle() {
+    @Test func test_reduce_shouldNotChange_onUnchangedSpeed() {
 
-        let (state, effect) = reduce(.idle(lastUtteranceToken: 0),.speedChanged(.oneAndHalf))
+        assert(.speaking(makeSession(speed: .one)), .speedChanged(.one))
+    }
 
-        #expect(state == .idle(lastUtteranceToken: 0))
-        #expect(effect == nil)
+    @Test func test_reduce_shouldDeliverNothing_onUnchangedSpeed() {
+
+        assert(
+            .speaking(makeSession(speed: .one)),
+            .speedChanged(.one),
+            delivers: nil
+        )
+    }
+
+    @Test func test_reduce_shouldNotChange_onSpeedChangedInIdle() {
+
+        assert(.idle(lastUtteranceToken: 0), .speedChanged(.oneAndHalf))
+    }
+
+    @Test func test_reduce_shouldDeliverNothing_onSpeedChangedInIdle() {
+
+        assert(
+            .idle(lastUtteranceToken: 0),
+            .speedChanged(.oneAndHalf),
+            delivers: nil
+        )
     }
 
     @Test func test_reduce_shouldReplaceUtteranceWithNewVoice_onVoiceChangedWhileSpeaking() {
 
-        let (state, effect) = reduce(.speaking(makeSession()), .voiceChanged("voice.ru"))
+        assert(.speaking(makeSession()), .voiceChanged("voice.ru")) {
+            $0.session.voiceIdentifier = "voice.ru"
+            $0.session.utteranceToken = 2
+        }
+    }
 
-        #expect(state == .speaking(makeSession(voiceIdentifier: "voice.ru", utteranceToken: 2)))
-        #expect(effect == .beginSpeaking(
-            makeCommand(utteranceToken: 2, voiceIdentifier: "voice.ru"),
-            replacingCurrentUtterance: true
-        ))
+    @Test func test_reduce_shouldDeliverReplacingUtteranceWithNewVoice_onVoiceChangedWhileSpeaking() {
+
+        assert(
+            .speaking(makeSession()),
+            .voiceChanged("voice.ru"),
+            delivers: .beginSpeaking(makeCommand(utteranceToken: 2, voiceIdentifier: "voice.ru"), replacingCurrentUtterance: true)
+        )
     }
 
     @Test func test_reduce_shouldResumeSpeakingWithNewVoice_onVoiceChangedWhilePaused() {
 
-        let (state, _) = reduce(.paused(makeSession()), .voiceChanged("voice.ru"))
-
-        #expect(state == .speaking(makeSession(voiceIdentifier: "voice.ru", utteranceToken: 2)))
+        assert(.paused(makeSession()), .voiceChanged("voice.ru")) {
+            $0.becomeSpeaking()
+            $0.session.voiceIdentifier = "voice.ru"
+            $0.session.utteranceToken = 2
+        }
     }
 
-    @Test func test_reduce_shouldIgnoreVoiceChange_onUnchangedVoice() {
+    @Test func test_reduce_shouldDeliverReplacingUtteranceWithNewVoice_onVoiceChangedWhilePaused() {
 
-        let (state, effect) = reduce(.speaking(makeSession(voiceIdentifier: nil)), .voiceChanged(nil))
-
-        #expect(state == .speaking(makeSession(voiceIdentifier: nil)))
-        #expect(effect == nil)
+        assert(
+            .paused(makeSession()),
+            .voiceChanged("voice.ru"),
+            delivers: .beginSpeaking(makeCommand(utteranceToken: 2, voiceIdentifier: "voice.ru"), replacingCurrentUtterance: true)
+        )
     }
 
-    @Test func test_reduce_shouldIgnoreVoiceChange_onIdle() {
+    @Test func test_reduce_shouldNotChange_onUnchangedVoice() {
 
-        let (state, effect) = reduce(.idle(lastUtteranceToken: 0),.voiceChanged("voice.ru"))
+        assert(.speaking(makeSession(voiceIdentifier: nil)), .voiceChanged(nil))
+    }
 
-        #expect(state == .idle(lastUtteranceToken: 0))
-        #expect(effect == nil)
+    @Test func test_reduce_shouldDeliverNothing_onUnchangedVoice() {
+
+        assert(
+            .speaking(makeSession(voiceIdentifier: nil)),
+            .voiceChanged(nil),
+            delivers: nil
+        )
+    }
+
+    @Test func test_reduce_shouldNotChange_onVoiceChangedInIdle() {
+
+        assert(.idle(lastUtteranceToken: 0), .voiceChanged("voice.ru"))
+    }
+
+    @Test func test_reduce_shouldDeliverNothing_onVoiceChangedInIdle() {
+
+        assert(
+            .idle(lastUtteranceToken: 0),
+            .voiceChanged("voice.ru"),
+            delivers: nil
+        )
     }
 
     @Test func test_reduce_shouldReplaceUtteranceAtNextSentence_onJumpNextWhileSpeaking() {
