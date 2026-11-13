@@ -38,7 +38,7 @@ struct AudelinApp: App {
         self.panel = panel
         var callsNSWindow: NSWindow?
         let callsWindow = CallsWindow(makeWindow: {
-            let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1000, height: 560),
+            let window = NSWindow(contentRect: NSRect(origin: .zero, size: CallsWindow.firstSize),
                                   styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
             presence.track(window)
             callsNSWindow = window
@@ -87,7 +87,7 @@ struct AudelinApp: App {
                                        detail: detail,
                                        widthChanged: { calls.widthChanged(narrow: $0) })
             callsSplit = split
-            callsNSWindow?.contentViewController = split
+            callsWindow.install(controller: split)
             let actions = CallsToolbar(identifier: "CallsToolbar", splitView: split.splitView, title: model.callsListText(.windowTitle), text: model.previewText, act: act)
             if let callsNSWindow { installCallsToolbar(actions.toolbar, in: callsNSWindow) }
             let reading = CallsToolbar(identifier: "CallToolbar", text: model.previewText, act: act)
