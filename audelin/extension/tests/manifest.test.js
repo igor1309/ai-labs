@@ -25,3 +25,8 @@ test("contentScript_shouldNotRun_offTelemostCallPages", () => {
   assert.equal(contentScriptRuns("https://telemost.yandex.ru/"), false);
   assert.equal(contentScriptRuns("https://yandex.ru/j/12345678901234"), false);
 });
+
+test("background_shouldBeAWorker_allowedToReachTheNativeHost", () => {
+  assert.equal(manifest.background.service_worker, "src/background.js");
+  assert.deepEqual(manifest.permissions, ["nativeMessaging"]);
+});
