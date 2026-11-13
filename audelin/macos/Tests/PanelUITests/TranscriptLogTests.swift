@@ -972,3 +972,22 @@ struct TranscriptLogTests {
         return scroll.contentView.documentVisibleRect.maxY >= document.bounds.height - 1
     }
 }
+
+extension TranscriptLogTests {
+
+    @Test func eachRowIsAnElementNamedByTheSpeakerItIsDrawnUnder() throws {
+
+        let text = try #require(Offscreen.textView(in: hosted(.init(rows: [
+            .entry(.init(id: 1, time: "12:44", speaker: .me, settled: "mine")),
+            .entry(.init(id: 2, time: "12:45", speaker: .them, settled: "hello", label: "Анна", labelIsTentative: true, remoteSpeaker: 1)),
+            .entry(.init(id: 3, time: "12:46", speaker: .them, settled: "again", pending: " more", remoteSpeaker: 1)),
+            .entry(.init(id: 4, time: "12:47", speaker: .them, settled: "other", remoteSpeaker: 2)),
+        ]))))
+
+        let rows = (text.accessibilityChildren() ?? []).compactMap { $0 as? NSAccessibilityElement }
+            .filter { ($0.accessibilityIdentifier() ?? "").hasPrefix("panel.row.") }
+        #expect(rows.map { $0.accessibilityIdentifier() } == ["panel.row.1", "panel.row.2", "panel.row.3", "panel.row.4"])
+        #expect(rows.map { $0.accessibilityLabel() } == ["mine", "hello", "again more", "other"])
+        #expect(rows.map { $0.accessibilityValue() as? String } == ["", "Анна", "Анна", ""])
+    }
+}
