@@ -137,6 +137,88 @@ struct PlaybackTransportEffectHandlerTests {
         #expect(log.calls == [.deactivateAudioSession])
     }
 
+    @Test func test_handleEffect_shouldDeliverNothing_onBeginSpeaking() {
+
+        let (sut, _) = makeSUT()
+
+        expect(sut, with: .beginSpeaking(makeCommand(), replacingCurrentUtterance: false), toDeliver: nil)
+    }
+
+    @Test func test_handleEffect_shouldDeliverNothing_onBeginSpeakingReplacingUtterance() {
+
+        let (sut, _) = makeSUT()
+
+        expect(sut, with: .beginSpeaking(makeCommand(), replacingCurrentUtterance: true), toDeliver: nil)
+    }
+
+    @Test func test_handleEffect_shouldDeliverNothing_onStopPlayback() {
+
+        let (sut, _) = makeSUT()
+
+        expect(sut, with: .stopPlayback, toDeliver: nil)
+    }
+
+    @Test func test_handleEffect_shouldDeliverNothing_onCancelUtterance() {
+
+        let (sut, _) = makeSUT()
+
+        expect(sut, with: .cancelUtterance, toDeliver: nil)
+    }
+
+    @Test func test_handleEffect_shouldDeliverNothing_onRestartPlayback() {
+
+        let (sut, _) = makeSUT()
+
+        expect(sut, with: .restartPlayback(makeCommand()), toDeliver: nil)
+    }
+
+    @Test func test_handleEffect_shouldDeliverNothing_onNotifyStartOver() {
+
+        let (sut, _) = makeSUT()
+
+        expect(sut, with: .notifyStartOver, toDeliver: nil)
+    }
+
+    @Test func test_handleEffect_shouldDeliverNothing_onNotifyIdleJump() {
+
+        let (sut, _) = makeSUT()
+
+        expect(sut, with: .notifyIdleJump(.next), toDeliver: nil)
+    }
+
+    @Test func test_handleEffect_shouldDeliverNothing_onFinishPlayback() {
+
+        let (sut, _) = makeSUT()
+
+        expect(sut, with: .finishPlayback, toDeliver: nil)
+    }
+
+    @Test func test_handleEffect_shouldDeliverNothing_onDeactivateAudioSession() {
+
+        let (sut, _) = makeSUT()
+
+        expect(sut, with: .deactivateAudioSession, toDeliver: nil)
+    }
+
+    @Test func test_handleEffect_shouldForwardPreviousDirection_onNotifyIdleJumpPrevious() {
+
+        let (sut, log) = makeSUT()
+
+        sut.handleEffect(.notifyIdleJump(.previous)) { _ in }
+
+        #expect(log.calls == [.notifyIdleJump(.previous)])
+    }
+
+    @Test func test_handleEffect_shouldSpeakGivenCommand_onBeginSpeakingWithOtherCommand() {
+
+        let (sut, log) = makeSUT()
+        let command = SpeakCommand(utteranceToken: 9, text: "Frost.", speed: .oneAndHalf, voiceIdentifier: "voice.ru", languageCode: "ru-RU")
+
+        sut.handleEffect(.beginSpeaking(command, replacingCurrentUtterance: false)) { _ in }
+
+        #expect(log.calls == [.activateAudioSession, .speak(command)])
+    }
+
     // MARK: - Helpers
 
     private typealias SUT = PlaybackTransportEffectHandler
