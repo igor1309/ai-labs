@@ -24,6 +24,13 @@ public enum HostBroadcast {
         public let session: Session
         public let link: Link
         public let amount: String
+
+        public init(attempt: Attempt, session: Session, link: Link, amount: String) {
+            self.attempt = attempt
+            self.session = session
+            self.link = link
+            self.amount = amount
+        }
     }
 
     public struct ProtectedAmount: Equatable, Sendable {
@@ -41,20 +48,50 @@ public enum HostBroadcast {
     }
 
     public struct State: Equatable, Sendable {
-        public fileprivate(set) var phase: Phase = .ready
-        public fileprivate(set) var amount = ""
-        public fileprivate(set) var reason: String?
-        public fileprivate(set) var secondsLeft: Int?
-        public fileprivate(set) var attempt: Attempt?
-        fileprivate var nextAttempt: UInt64 = 0
-        fileprivate var duration: Int?
-        fileprivate var session: Session?
-        fileprivate var link: Link?
-        fileprivate var clientKey: [UInt8]?
-        fileprivate var preparation: Preparation?
-        fileprivate var expiryPending = false
+        public var phase: Phase
+        public var amount: String
+        public var reason: String?
+        public var secondsLeft: Int?
+        public var attempt: Attempt?
+        /// The last attempt number issued; numbers are never reused within the flow.
+        public var nextAttempt: UInt64
+        /// The countdown setting read for this attempt.
+        public var duration: Int?
+        public var session: Session?
+        public var link: Link?
+        public var clientKey: [UInt8]?
+        public var preparation: Preparation?
+        /// The countdown ran out while the amount was being sent; the send's result settles it.
+        public var expiryPending: Bool
 
-        public init() {}
+        public init(
+            phase: Phase = .ready,
+            amount: String = "",
+            reason: String? = nil,
+            secondsLeft: Int? = nil,
+            attempt: Attempt? = nil,
+            nextAttempt: UInt64 = 0,
+            duration: Int? = nil,
+            session: Session? = nil,
+            link: Link? = nil,
+            clientKey: [UInt8]? = nil,
+            preparation: Preparation? = nil,
+            expiryPending: Bool = false
+        ) {
+            self.phase = phase
+            self.amount = amount
+            self.reason = reason
+            self.secondsLeft = secondsLeft
+            self.attempt = attempt
+            self.nextAttempt = nextAttempt
+            self.duration = duration
+            self.session = session
+            self.link = link
+            self.clientKey = clientKey
+            self.preparation = preparation
+            self.expiryPending = expiryPending
+        }
+
         public var canCancel: Bool { phase == .goingOnAir || phase == .advertising }
         public var canRetry: Bool { phase == .failed }
         public var canChooseNewAmount: Bool { phase == .failed }
@@ -63,7 +100,7 @@ public enum HostBroadcast {
         }
     }
 
-    fileprivate enum Preparation: Equatable, Sendable {
+    public enum Preparation: Equatable, Sendable {
         case readingSetting, openingSession, serving, awaitingAir
     }
 
@@ -138,69 +175,63 @@ public enum HostBroadcast {
             self.setting = setting
         }
 
-        public func handle(_ effect: Effect) -> AsyncStream<Event> {
-            AsyncStream { continuation in
-                switch effect {
-                case .readCountdown(let attempt):
-                    continuation.yield(.countdownRead(attempt, setting.seconds()))
-                case .openSession(let attempt):
-                    continuation.yield(.sessionOpened(attempt, session.open(for: attempt)))
-                case .serve(let attempt, let descriptor):
-                    let task = Task.immediate {
-                        do {
-                            try await advertiser.serve(descriptor, for: attempt)
-                            continuation.yield(.served(attempt))
-                        } catch {
-                            continuation.yield(.couldNotGoOnAir(attempt, reason: String(describing: error)))
-                        }
-                        continuation.finish()
-                    }
-                    continuation.onTermination = { _ in task.cancel() }
-                    return
-                case .advertise(let attempt):
-                    do {
-                        try advertiser.advertise(attempt)
-                        continuation.yield(.advertisingRequested(attempt))
-                    } catch {
-                        continuation.yield(.couldNotGoOnAir(attempt, reason: String(describing: error)))
-                    }
-                case .startCountdown(let attempt, let seconds):
-                    countdown.start(seconds: seconds, for: attempt)
-                    continuation.yield(.countdownStarted(attempt))
-                case .stopCountdown(let attempt, let retire):
-                    countdown.stop(attempt)
-                    continuation.yield(.countdownStopped(attempt, retire: retire))
-                case .retire(let attempt):
-                    advertiser.retire(attempt)
-                    continuation.yield(.retired(attempt))
-                case .closeSession(let attempt):
-                    session.close(attempt)
-                case .stopAdvertising(let attempt):
-                    advertiser.stopAdvertising(attempt)
-                    continuation.yield(.advertisingStopped(attempt))
-                case .deriveKey(let attempt, let key):
-                    do {
-                        try session.derive(clientKey: key, for: attempt)
-                        continuation.yield(.keyDerived(attempt))
-                    } catch {
-                        continuation.yield(.handshakeFailed(attempt, reason: String(describing: error)))
-                    }
-                case .sealAmount(let attempt, let amount):
-                    do {
-                        let message = try session.seal(amount: amount, for: attempt)
-                        continuation.yield(.amountSealed(attempt, message))
-                    } catch {
-                        continuation.yield(.handshakeFailed(attempt, reason: String(describing: error)))
-                    }
-                case .sendAmount(let attempt, let link, let message):
-                    do {
-                        try sender.sendAmount(message, to: link, for: attempt)
-                        continuation.yield(.amountSent(attempt))
-                    } catch {
-                        continuation.yield(.handshakeFailed(attempt, reason: String(describing: error)))
-                    }
+        /// Runs the effect's work and returns its event; closing a session has none.
+        /// Only serving suspends, until the service is up or fails.
+        public func handle(_ effect: Effect) async -> Event? {
+            switch effect {
+            case .readCountdown(let attempt):
+                return .countdownRead(attempt, setting.seconds())
+            case .openSession(let attempt):
+                return .sessionOpened(attempt, session.open(for: attempt))
+            case .serve(let attempt, let descriptor):
+                do {
+                    try await advertiser.serve(descriptor, for: attempt)
+                    return .served(attempt)
+                } catch {
+                    return .couldNotGoOnAir(attempt, reason: String(describing: error))
                 }
-                continuation.finish()
+            case .advertise(let attempt):
+                do {
+                    try advertiser.advertise(attempt)
+                    return .advertisingRequested(attempt)
+                } catch {
+                    return .couldNotGoOnAir(attempt, reason: String(describing: error))
+                }
+            case .startCountdown(let attempt, let seconds):
+                countdown.start(seconds: seconds, for: attempt)
+                return .countdownStarted(attempt)
+            case .stopCountdown(let attempt, let retire):
+                countdown.stop(attempt)
+                return .countdownStopped(attempt, retire: retire)
+            case .retire(let attempt):
+                advertiser.retire(attempt)
+                return .retired(attempt)
+            case .closeSession(let attempt):
+                session.close(attempt)
+                return nil
+            case .stopAdvertising(let attempt):
+                advertiser.stopAdvertising(attempt)
+                return .advertisingStopped(attempt)
+            case .deriveKey(let attempt, let key):
+                do {
+                    try session.derive(clientKey: key, for: attempt)
+                    return .keyDerived(attempt)
+                } catch {
+                    return .handshakeFailed(attempt, reason: String(describing: error))
+                }
+            case .sealAmount(let attempt, let amount):
+                do {
+                    return .amountSealed(attempt, try session.seal(amount: amount, for: attempt))
+                } catch {
+                    return .handshakeFailed(attempt, reason: String(describing: error))
+                }
+            case .sendAmount(let attempt, let link, let message):
+                do {
+                    try sender.sendAmount(message, to: link, for: attempt)
+                    return .amountSent(attempt)
+                } catch {
+                    return .handshakeFailed(attempt, reason: String(describing: error))
+                }
             }
         }
     }

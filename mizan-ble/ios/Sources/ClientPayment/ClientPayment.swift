@@ -19,16 +19,32 @@ public enum ClientPayment {
     public struct State: Equatable, Sendable {
         public let hostName: String?
         public let amountMinorUnits: UInt64
-        public fileprivate(set) var status: Status = .waiting
-        fileprivate var resourcesReleased = false
-        fileprivate var doneRequested = false
-        fileprivate var pendingMessages = 0
-        fileprivate var linkLost = false
+        public var status: Status
+        /// The session is closed and the link dropped.
+        public var resourcesReleased: Bool
+        /// The payer pressed done; the flow ends once resources are released.
+        public var doneRequested: Bool
+        /// Received messages not yet opened; each still needs the session.
+        public var pendingMessages: Int
+        public var linkLost: Bool
 
-        /// The host and amount from the secure link's acknowledged confirm.
-        public init(hostName: String?, amountMinorUnits: UInt64) {
+        /// With the defaults it holds the host and amount from the secure link's acknowledged confirm.
+        public init(
+            hostName: String?,
+            amountMinorUnits: UInt64,
+            status: Status = .waiting,
+            resourcesReleased: Bool = false,
+            doneRequested: Bool = false,
+            pendingMessages: Int = 0,
+            linkLost: Bool = false
+        ) {
             self.hostName = hostName
             self.amountMinorUnits = amountMinorUnits
+            self.status = status
+            self.resourcesReleased = resourcesReleased
+            self.doneRequested = doneRequested
+            self.pendingMessages = pendingMessages
+            self.linkLost = linkLost
         }
     }
 
@@ -108,17 +124,15 @@ public enum ClientPayment {
             self.link = link
         }
 
-        public func handle(_ effect: Effect) -> AsyncStream<Event> {
-            AsyncStream { continuation in
-                switch effect {
-                case .open(let message):
-                    continuation.yield(.opened(session.open(message)))
-                case .finish:
-                    session.close()
-                    link.drop()
-                    continuation.yield(.finished)
-                }
-                continuation.finish()
+        /// Runs the effect's work before it returns.
+        public func handle(_ effect: Effect) -> Event {
+            switch effect {
+            case .open(let message):
+                return .opened(session.open(message))
+            case .finish:
+                session.close()
+                link.drop()
+                return .finished
             }
         }
     }

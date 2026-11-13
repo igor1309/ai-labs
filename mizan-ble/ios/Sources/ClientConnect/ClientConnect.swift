@@ -108,16 +108,33 @@ public enum ClientConnect {
 
     public struct State: Equatable, Sendable {
         public let host: Host
-        public fileprivate(set) var phase: Phase = .idle
-        fileprivate var largestWrite = 0
-        fileprivate var pendingAmount: SealedAmount?
-        fileprivate var handover: Handover?
-        fileprivate var cleanup: Cleanup = .none
-        fileprivate var outstanding: Set<Work> = []
+        public var phase: Phase
+        public var largestWrite: Int
+        /// An amount that arrived before the key write was acknowledged.
+        public var pendingAmount: SealedAmount?
+        /// The opened amount, held while the deadline stops.
+        public var handover: Handover?
+        public var cleanup: Cleanup
+        /// Resource work issued and not yet answered; cleanup waits for it.
+        public var outstanding: Set<Work>
 
-        /// The chosen host is handed in by the root; `start` begins this transaction.
-        public init(host: Host) {
+        /// With the defaults it holds the host the root chose; `start` begins this transaction.
+        public init(
+            host: Host,
+            phase: Phase = .idle,
+            largestWrite: Int = 0,
+            pendingAmount: SealedAmount? = nil,
+            handover: Handover? = nil,
+            cleanup: Cleanup = .none,
+            outstanding: Set<Work> = []
+        ) {
             self.host = host
+            self.phase = phase
+            self.largestWrite = largestWrite
+            self.pendingAmount = pendingAmount
+            self.handover = handover
+            self.cleanup = cleanup
+            self.outstanding = outstanding
         }
 
         public var canCancel: Bool {
@@ -138,15 +155,15 @@ public enum ClientConnect {
         }
     }
 
-    fileprivate enum Cleanup: Equatable, Sendable {
+    public enum Cleanup: Equatable, Sendable {
         case none, stoppingDeadline, waitingForWork, droppingLink, closingSession, done
     }
 
-    fileprivate enum Work: Hashable, Sendable {
+    public enum Work: Hashable, Sendable {
         case startDeadline, connect, derive, writeKey, open
     }
 
-    public enum Event: Sendable {
+    public enum Event: Equatable, Sendable {
         case start, cancel, retry, deadlineStarted, deadlineExpired, linkDropped
         case connectionResult(Result<Connection, Failure>)
         case derivationResult(Result<[UInt8], Failure>)
@@ -306,34 +323,54 @@ public enum ClientConnect {
             self.deadline = deadline
         }
 
-        public func handle(_ effect: Effect) -> AsyncStream<Event> {
-            AsyncStream { continuation in
-                switch effect {
-                case .startDeadline(let seconds):
-                    deadline.start(seconds: seconds)
-                    continuation.yield(.deadlineStarted)
-                case .connect(let host):
-                    link.connect(to: host)
-                    continuation.yield(.connectionInitiated)
-                case .derive(let host):
-                    continuation.yield(.derivationResult(session.derive(with: host)))
-                case .writeKey(let key):
-                    link.writeKey(key)
-                    continuation.yield(.keyWriteInitiated)
-                case .open(let amount):
-                    continuation.yield(.amountOpened(session.open(amount), link: link, session: session))
-                case .stopDeadline:
-                    deadline.stop()
-                    continuation.yield(.deadlineStopped)
-                case .dropLink:
-                    link.drop()
-                    continuation.yield(.linkDroppedForCleanup)
-                case .closeSession:
-                    session.close()
-                    continuation.yield(.sessionClosed)
-                }
-                continuation.finish()
+        /// Runs the effect's work before it returns; the event says it is done or holds its result.
+        public func handle(_ effect: Effect) -> Event {
+            switch effect {
+            case .startDeadline(let seconds):
+                deadline.start(seconds: seconds)
+                return .deadlineStarted
+            case .connect(let host):
+                link.connect(to: host)
+                return .connectionInitiated
+            case .derive(let host):
+                return .derivationResult(session.derive(with: host))
+            case .writeKey(let key):
+                link.writeKey(key)
+                return .keyWriteInitiated
+            case .open(let amount):
+                return .amountOpened(session.open(amount), link: link, session: session)
+            case .stopDeadline:
+                deadline.stop()
+                return .deadlineStopped
+            case .dropLink:
+                link.drop()
+                return .linkDroppedForCleanup
+            case .closeSession:
+                session.close()
+                return .sessionClosed
             }
+        }
+    }
+}
+
+extension ClientConnect.Event {
+    /// Links and sessions compare by identity, as in `Handover`.
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        switch (lhs, rhs) {
+        case (.connectionResult(let l), .connectionResult(let r)): l == r
+        case (.derivationResult(let l), .derivationResult(let r)): l == r
+        case (.keyWriteResult(.success), .keyWriteResult(.success)): true
+        case (.keyWriteResult(.failure(let l)), .keyWriteResult(.failure(let r))): l == r
+        case (.amountReceived(let l), .amountReceived(let r)): l == r
+        case (.amountOpened(let l, let lLink, let lSession), .amountOpened(let r, let rLink, let rSession)):
+            l == r && lLink === rLink && lSession === rSession
+        case (.start, .start), (.cancel, .cancel), (.retry, .retry), (.deadlineStarted, .deadlineStarted),
+             (.deadlineExpired, .deadlineExpired), (.linkDropped, .linkDropped),
+             (.connectionInitiated, .connectionInitiated), (.keyWriteInitiated, .keyWriteInitiated),
+             (.deadlineStopped, .deadlineStopped), (.linkDroppedForCleanup, .linkDroppedForCleanup),
+             (.sessionClosed, .sessionClosed):
+            true
+        default: false
         }
     }
 }

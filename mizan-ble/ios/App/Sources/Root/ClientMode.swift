@@ -52,7 +52,7 @@ import Observation
                      reduce: loggedReducer(ClientFind.reduce, initial: initial, category: .clientFind, log: log,
                                            changed: { [weak self] _, state in
             Task { @MainActor [weak self] in self?.findChanged(state) }
-        }), handleEffect: handler.handle)
+        }), handleEffect: delivering(handler.handle))
         discovery.send = { [weak self] in self?.find?.event($0) }
         find?.event(.bluetoothChanged(bluetooth.findAvailability))
     }
@@ -140,7 +140,7 @@ import Observation
                     guard let transport, self?.transport === transport else { return }
                     self?.connectChanged(state, transport: transport)
                 }
-            }), handleEffect: handler.handle)
+            }), handleEffect: delivering(handler.handle))
             transport.send = { [weak self, weak transport] event in
                 guard let transport, self?.transport === transport else { return }
                 self?.connect?.event(event)
@@ -162,7 +162,7 @@ import Observation
                     guard let transport, self?.transport === transport else { return }
                     self?.reviewChanged(state, transport: transport)
                 }
-            }), handleEffect: handler.handle)
+            }), handleEffect: delivering(handler.handle))
             connect = nil
             let pending = pendingReview
             pendingReview.removeAll()
@@ -186,7 +186,7 @@ import Observation
                     if state.status == .over { self?.endTransaction() }
                     self?.restChanged()
                 }
-            }), handleEffect: handler.handle)
+            }), handleEffect: delivering(handler.handle))
             review = nil
             let pending = pendingPayment
             pendingPayment.removeAll()

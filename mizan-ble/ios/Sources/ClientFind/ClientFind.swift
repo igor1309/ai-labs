@@ -44,13 +44,23 @@ public enum ClientFind {
     }
 
     public struct State: Equatable, Sendable {
-        public fileprivate(set) var bluetooth: Bluetooth = .unknown
-        public fileprivate(set) var selection: Selection = .none
-        public fileprivate(set) var phase: Phase = .idle
-        public fileprivate(set) var signal: Signal = .none
+        public var bluetooth: Bluetooth
+        public var selection: Selection
+        public var phase: Phase
+        public var signal: Signal
 
-        /// Waits for the root's first Bluetooth event before requesting a scan.
-        public init() {}
+        /// With the defaults it waits for the root's first Bluetooth event before requesting a scan.
+        public init(
+            bluetooth: Bluetooth = .unknown,
+            selection: Selection = .none,
+            phase: Phase = .idle,
+            signal: Signal = .none
+        ) {
+            self.bluetooth = bluetooth
+            self.selection = selection
+            self.phase = phase
+            self.signal = signal
+        }
 
         public var isScanning: Bool {
             switch phase {
@@ -95,17 +105,16 @@ public enum ClientFind {
             self.scanner = scanner
         }
 
-        public func handle(_ effect: Effect) -> AsyncStream<Event> {
-            AsyncStream { continuation in
-                switch effect {
-                case .startScanning:
-                    scanner.start()
-                    continuation.yield(.scanningStarted)
-                case .stopScanning:
-                    scanner.stop()
-                    continuation.yield(.scanningStopped)
-                }
-                continuation.finish()
+        /// Runs the scanner command before it returns, so the scan has started or
+        /// stopped by the time its event is delivered.
+        public func handle(_ effect: Effect) -> Event {
+            switch effect {
+            case .startScanning:
+                scanner.start()
+                return .scanningStarted
+            case .stopScanning:
+                scanner.stop()
+                return .scanningStopped
             }
         }
     }

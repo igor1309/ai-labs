@@ -12,11 +12,14 @@ public enum TimeoutNotice {
 
     public struct State: Equatable, Sendable {
         /// The notice drawn now, or nil when none shows.
-        public fileprivate(set) var showing: Notice?
+        public var showing: Notice?
         /// The newest timeout accepted, kept after its notice hides.
-        public fileprivate(set) var newest: Notice?
+        public var newest: Notice?
 
-        public init() {}
+        public init(showing: Notice? = nil, newest: Notice? = nil) {
+            self.showing = showing
+            self.newest = newest
+        }
     }
 
     public enum Event: Equatable, Sendable {
@@ -63,15 +66,14 @@ public enum TimeoutNotice {
             self.timer = timer
         }
 
-        /// Calls the timer before returning, and returns a stream that finishes with no event.
-        public func handle(_ effect: Effect) -> AsyncStream<Event> {
+        /// Calls the timer; a notice's wait ends through the root as `elapsed`, so no event comes back here.
+        public func handle(_ effect: Effect) {
             switch effect {
             case .start(let notice, let seconds):
                 timer.start(seconds: seconds, for: notice)
             case .stop(let notice):
                 timer.stop(notice)
             }
-            return AsyncStream { $0.finish() }
         }
     }
 }

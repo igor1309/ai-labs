@@ -50,7 +50,7 @@ import Observation
         notice = .init(initialState: hidden,
                        reduce: loggedReducer(TimeoutNotice.reduce, initial: hidden, category: .timeoutNotice, log: log,
                                              changed: { _, _ in }),
-                       handleEffect: TimeoutNotice.EffectHandler(timer: noticeTimer).handle)
+                       handleEffect: deliveringNothing(TimeoutNotice.EffectHandler(timer: noticeTimer).handle))
         noticeTimer.send = { [weak self] event in self?.notice?.event(event) }
         let initial = HostBroadcast.State()
         let handler = HostBroadcast.Handler(session: bindings, advertiser: bindings, sender: bindings, countdown: bindings, setting: bindings)
@@ -63,7 +63,7 @@ import Observation
             }
             // A queued actor job runs after the reduction has invoked its effect handler.
             Task { @MainActor [weak self] in self?.broadcastChanged(from: previous, to: next) }
-        }), handleEffect: handler.handle)
+        }), handleEffect: delivering(handler.handle))
         bindings.send = { [weak self] event in self?.broadcast?.event(event) }
     }
 
@@ -151,7 +151,7 @@ import Observation
                             reduce: loggedReducer(HostPayment.reduce, initial: initial, category: .hostPayment, log: log,
                                                   changed: { [weak self] _, state in
                 Task { @MainActor [weak self] in self?.paymentChanged(state, attempt: secure.attempt) }
-            }), handleEffect: handler.handle)
+            }), handleEffect: delivering(handler.handle))
             for event in pendingPaymentEvents.removeValue(forKey: secure.attempt) ?? [] { payment?.event(event) }
         }
         if let attempt = previous.attempt, next.attempt != attempt { pendingPaymentEvents.removeValue(forKey: attempt) }
