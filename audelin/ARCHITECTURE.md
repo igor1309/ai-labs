@@ -22,7 +22,9 @@ designing, specifying or building anything.
    a fake, a stub or the real framework. A composer owns the interfaces at
    its boundary and imports whatever it keeps inside. Coordination that
    decides anything is a state machine with its own tests; composition only
-   builds and subscribes.
+   builds and subscribes. One line of work is one machine: its state holds
+   every stage, and its stages are collaborators behind its effect handler,
+   never machines that drive each other.
 5. **Cross-cutting concerns are decorators at the root.** Logging, metrics
    and retries wrap interfaces in the composition root. No component logs.
 
@@ -32,7 +34,12 @@ The user overview delegates panel presentation to Live panel and optional
 post-call notes to Call summaries. Existing panel scenario identities and
 wording are preserved as that responsibility is separated from the overview.
 
-SummaryJobs owns the generation state machine and its consumer-owned ports.
+Summaries is one state machine for the whole line of a call's notes:
+recovering a saved job, submitting, claiming, dispatching, generating,
+publishing and saving, stopping dispatch and shutdown. Its state holds every
+call's stage; storage, generation and preferences are its collaborators. No
+coordinator, per-call job model or registry of models sits beside it. It
+owns its consumer-owned ports.
 SpeakerIdentification accepts supported identity evidence without rewriting the
 transcript. SummaryRuntime adapts one bounded process or compatible HTTP
 attempt; SummaryFiles owns durable job records and complete note publication.
