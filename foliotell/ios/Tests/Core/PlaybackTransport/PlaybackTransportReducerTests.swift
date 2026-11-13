@@ -443,92 +443,147 @@ struct PlaybackTransportReducerTests {
 
     @Test func test_reduce_shouldReplaceUtteranceAtNextSentence_onJumpNextWhileSpeaking() {
 
-        let (state, effect) = reduce(.speaking(makeSession(spokenUTF16Offset: 3)), .jumpToNextSentenceTapped)
-
-        #expect(state == .speaking(makeSession(
-            utteranceToken: 2,
-            utteranceStartUTF16Offset: 16,
-            spokenUTF16Offset: 16
-        )))
-        #expect(effect == .beginSpeaking(
-            makeCommand(utteranceToken: 2, text: "Frost and sun."),
-            replacingCurrentUtterance: true
-        ))
+        assert(.speaking(makeSession(spokenUTF16Offset: 3)), .jumpToNextSentenceTapped) {
+            $0.session.utteranceToken = 2
+            $0.session.utteranceStartUTF16Offset = 16
+            $0.session.spokenUTF16Offset = 16
+        }
     }
 
-    @Test func test_reduce_shouldIgnoreJumpNext_onLastSentenceWhileSpeaking() {
+    @Test func test_reduce_shouldDeliverReplacingUtteranceAtNextSentence_onJumpNextWhileSpeaking() {
 
-        let lastSentence = makeSession(spokenUTF16Offset: 20)
+        assert(
+            .speaking(makeSession(spokenUTF16Offset: 3)),
+            .jumpToNextSentenceTapped,
+            delivers: .beginSpeaking(makeCommand(utteranceToken: 2, text: "Frost and sun."), replacingCurrentUtterance: true)
+        )
+    }
 
-        let (state, effect) = reduce(.speaking(lastSentence), .jumpToNextSentenceTapped)
+    @Test func test_reduce_shouldNotChange_onJumpNextOnLastSentenceWhileSpeaking() {
 
-        #expect(state == .speaking(lastSentence))
-        #expect(effect == nil)
+        assert(.speaking(makeSession(spokenUTF16Offset: 20)), .jumpToNextSentenceTapped)
+    }
+
+    @Test func test_reduce_shouldDeliverNothing_onJumpNextOnLastSentenceWhileSpeaking() {
+
+        assert(
+            .speaking(makeSession(spokenUTF16Offset: 20)),
+            .jumpToNextSentenceTapped,
+            delivers: nil
+        )
     }
 
     @Test func test_reduce_shouldReplaceUtteranceAtPreviousSentenceStart_onJumpPreviousWhileSpeaking() {
 
-        let (state, effect) = reduce(.speaking(makeSession(spokenUTF16Offset: 20)), .jumpToPreviousSentenceTapped)
+        assert(.speaking(makeSession(spokenUTF16Offset: 20)), .jumpToPreviousSentenceTapped) {
+            $0.session.utteranceToken = 2
+            $0.session.spokenUTF16Offset = 0
+        }
+    }
 
-        #expect(state == .speaking(makeSession(utteranceToken: 2)))
-        #expect(effect == .beginSpeaking(
-            makeCommand(utteranceToken: 2),
-            replacingCurrentUtterance: true
-        ))
+    @Test func test_reduce_shouldDeliverReplacingUtteranceAtPreviousSentenceStart_onJumpPreviousWhileSpeaking() {
+
+        assert(
+            .speaking(makeSession(spokenUTF16Offset: 20)),
+            .jumpToPreviousSentenceTapped,
+            delivers: .beginSpeaking(makeCommand(utteranceToken: 2), replacingCurrentUtterance: true)
+        )
     }
 
     @Test func test_reduce_shouldRestartFirstSentence_onJumpPreviousInFirstSentenceWhileSpeaking() {
 
-        let (state, _) = reduce(.speaking(makeSession(spokenUTF16Offset: 3)), .jumpToPreviousSentenceTapped)
-
-        #expect(state == .speaking(makeSession(utteranceToken: 2)))
+        assert(.speaking(makeSession(spokenUTF16Offset: 3)), .jumpToPreviousSentenceTapped) {
+            $0.session.utteranceToken = 2
+            $0.session.spokenUTF16Offset = 0
+        }
     }
 
-    @Test func test_reduce_shouldRepositionAndCancelUtterance_onJumpNextWhilePaused() {
+    @Test func test_reduce_shouldDeliverReplacingUtteranceAtFirstSentence_onJumpPreviousInFirstSentenceWhileSpeaking() {
 
-        let (state, effect) = reduce(.paused(makeSession(spokenUTF16Offset: 3)), .jumpToNextSentenceTapped)
-
-        #expect(state == .paused(makeSession(
-            utteranceToken: 2,
-            utteranceStartUTF16Offset: 16,
-            spokenUTF16Offset: 16,
-            hasActiveUtterance: false
-        )))
-        #expect(effect == .cancelUtterance)
+        assert(
+            .speaking(makeSession(spokenUTF16Offset: 3)),
+            .jumpToPreviousSentenceTapped,
+            delivers: .beginSpeaking(makeCommand(utteranceToken: 2), replacingCurrentUtterance: true)
+        )
     }
 
-    @Test func test_reduce_shouldRepositionAndCancelUtterance_onJumpPreviousWhilePaused() {
+    @Test func test_reduce_shouldRepositionAtNextSentenceWithoutUtterance_onJumpNextWhilePaused() {
 
-        let (state, effect) = reduce(.paused(makeSession(spokenUTF16Offset: 20)), .jumpToPreviousSentenceTapped)
-
-        #expect(state == .paused(makeSession(
-            utteranceToken: 2,
-            utteranceStartUTF16Offset: 0,
-            spokenUTF16Offset: 0,
-            hasActiveUtterance: false
-        )))
-        #expect(effect == .cancelUtterance)
+        assert(.paused(makeSession(spokenUTF16Offset: 3)), .jumpToNextSentenceTapped) {
+            $0.session.utteranceToken = 2
+            $0.session.utteranceStartUTF16Offset = 16
+            $0.session.spokenUTF16Offset = 16
+            $0.session.hasActiveUtterance = false
+        }
     }
 
-    @Test func test_reduce_shouldIgnoreJumpNext_onLastSentenceWhilePaused() {
+    @Test func test_reduce_shouldDeliverCancelUtterance_onJumpNextWhilePaused() {
 
-        let lastSentence = makeSession(spokenUTF16Offset: 20)
-
-        let (state, effect) = reduce(.paused(lastSentence), .jumpToNextSentenceTapped)
-
-        #expect(state == .paused(lastSentence))
-        #expect(effect == nil)
+        assert(
+            .paused(makeSession(spokenUTF16Offset: 3)),
+            .jumpToNextSentenceTapped,
+            delivers: .cancelUtterance
+        )
     }
 
-    @Test func test_reduce_shouldNotifyIdleJump_onJumpTapsInIdle() {
+    @Test func test_reduce_shouldRepositionAtPreviousSentenceWithoutUtterance_onJumpPreviousWhilePaused() {
 
-        let results = [
-            reduce(.idle(lastUtteranceToken: 0),.jumpToNextSentenceTapped),
-            reduce(.idle(lastUtteranceToken: 0),.jumpToPreviousSentenceTapped),
-        ]
+        assert(.paused(makeSession(spokenUTF16Offset: 20)), .jumpToPreviousSentenceTapped) {
+            $0.session.utteranceToken = 2
+            $0.session.spokenUTF16Offset = 0
+            $0.session.hasActiveUtterance = false
+        }
+    }
 
-        #expect(results.map(\.0) == [.idle(lastUtteranceToken: 0), .idle(lastUtteranceToken: 0)])
-        #expect(results.map(\.1) == [.notifyIdleJump(.next), .notifyIdleJump(.previous)])
+    @Test func test_reduce_shouldDeliverCancelUtterance_onJumpPreviousWhilePaused() {
+
+        assert(
+            .paused(makeSession(spokenUTF16Offset: 20)),
+            .jumpToPreviousSentenceTapped,
+            delivers: .cancelUtterance
+        )
+    }
+
+    @Test func test_reduce_shouldNotChange_onJumpNextOnLastSentenceWhilePaused() {
+
+        assert(.paused(makeSession(spokenUTF16Offset: 20)), .jumpToNextSentenceTapped)
+    }
+
+    @Test func test_reduce_shouldDeliverNothing_onJumpNextOnLastSentenceWhilePaused() {
+
+        assert(
+            .paused(makeSession(spokenUTF16Offset: 20)),
+            .jumpToNextSentenceTapped,
+            delivers: nil
+        )
+    }
+
+    @Test func test_reduce_shouldNotChange_onJumpNextInIdle() {
+
+        assert(.idle(lastUtteranceToken: 0), .jumpToNextSentenceTapped)
+    }
+
+    @Test func test_reduce_shouldDeliverNotifyIdleJumpNext_onJumpNextInIdle() {
+
+        assert(
+            .idle(lastUtteranceToken: 0),
+            .jumpToNextSentenceTapped,
+            delivers: .notifyIdleJump(.next)
+        )
+    }
+
+    @Test func test_reduce_shouldNotChange_onJumpPreviousInIdle() {
+
+        assert(.idle(lastUtteranceToken: 0), .jumpToPreviousSentenceTapped)
+    }
+
+    @Test func test_reduce_shouldDeliverNotifyIdleJumpPrevious_onJumpPreviousInIdle() {
+
+        assert(
+            .idle(lastUtteranceToken: 0),
+            .jumpToPreviousSentenceTapped,
+            delivers: .notifyIdleJump(.previous)
+        )
     }
 
     @Test func test_reduce_shouldAdvanceSpokenOffsetFromUtteranceStart_onWillSpeakRangeWithCurrentToken() {
