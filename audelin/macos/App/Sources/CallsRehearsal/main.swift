@@ -24,6 +24,7 @@ final class CallsRehearsalDelegate: NSObject, NSApplicationDelegate {
         startWithDefaultLayout()
         let nsWindow = NSWindow(contentRect: NSRect(origin: .zero, size: CallsWindow.firstSize),
                                 styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
+        nsWindow.setAccessibilityIdentifier("calls.window")
         let window = CallsWindow(makeWindow: { nsWindow }, title: "",
                                  activate: { NSApplication.shared.activate(ignoringOtherApps: true) })
         self.window = window

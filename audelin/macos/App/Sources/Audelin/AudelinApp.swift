@@ -40,6 +40,7 @@ struct AudelinApp: App {
         let callsWindow = CallsWindow(makeWindow: {
             let window = NSWindow(contentRect: NSRect(origin: .zero, size: CallsWindow.firstSize),
                                   styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
+            window.setAccessibilityIdentifier("calls.window")
             presence.track(window)
             callsNSWindow = window
             return window

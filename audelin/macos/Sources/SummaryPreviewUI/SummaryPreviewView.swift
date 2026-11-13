@@ -64,7 +64,8 @@ public struct SummaryPreviewView: View {
                 switch state.notes {
                 case let .markdown(source, made):
                     NotesText(text: notes(source, made: made), background: NSColor(tokens.surface),
-                              inset: NSSize(width: tokens.space28 - 5, height: 0))
+                              inset: NSSize(width: tokens.space28 - 5, height: 0),
+                              label: text(.notes), made: made.map { text(.made, $0) })
                 case let .unreadable(reason):
                     Text(reason)
                         .font(tokens.ui(tokens.typeSmall)).foregroundStyle(tokens.rec)
@@ -119,11 +120,15 @@ public struct SummaryPreviewView: View {
     private var noSummary: some View {
         HStack(spacing: tokens.space12) {
             Text(text(.noSummary)).foregroundStyle(tokens.gutter)
+                .accessibilityIdentifier("preview.empty")
+                .accessibilityValue(text(.noSummary))
             Button { event(.makeSummary) } label: {
                 Label(text(.make), systemImage: "sparkles").fontWeight(.semibold).foregroundStyle(tokens.me)
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("preview.make")
+            .accessibilityLabel(text(.make))
+            .accessibilityValue(text(.make))
         }
         .font(tokens.ui(tokens.typeBody))
         .padding(.horizontal, tokens.space28).padding(.top, tokens.space16)
@@ -136,9 +141,13 @@ public struct SummaryPreviewView: View {
             HStack(spacing: tokens.space12) {
                 ProgressView().controlSize(.small)
                 Text(text(.making)).foregroundStyle(tokens.gutter)
+                    .accessibilityIdentifier("preview.making")
+                    .accessibilityValue(text(.making))
                 Button { event(.cancelSummary) } label: { Text(text(.cancel)).foregroundStyle(tokens.sub) }
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("preview.cancel")
+                    .accessibilityLabel(text(.cancel))
+                    .accessibilityValue(text(.cancel))
             }
             .font(tokens.ui(tokens.typeBody))
             VStack(alignment: .leading, spacing: tokens.space24) {
@@ -208,13 +217,15 @@ private struct NotesText: NSViewRepresentable {
     let text: NSAttributedString
     let background: NSColor
     let inset: NSSize
+    let label: String
+    let made: String?
 
     func makeNSView(context: Context) -> NSScrollView {
         // TextKit 1: TextKit 2 draws text tables as plain lines.
         let scroll = NSScrollView()
         scroll.hasVerticalScroller = true
         scroll.drawsBackground = false
-        let view = NSTextView(usingTextLayoutManager: false)
+        let view = NotesAccessibilityTextView(usingTextLayoutManager: false)
         view.autoresizingMask = [.width]
         view.isVerticallyResizable = true
         view.textContainer?.widthTracksTextView = true
@@ -229,8 +240,31 @@ private struct NotesText: NSViewRepresentable {
     }
 
     func updateNSView(_ scroll: NSScrollView, context: Context) {
-        guard let view = scroll.documentView as? NSTextView else { return }
+        guard let view = scroll.documentView as? NotesAccessibilityTextView else { return }
+        view.setAccessibilityLabel(label)
+        view.made = made
         view.backgroundColor = background
         if view.textStorage?.isEqual(to: text) != true { view.textStorage?.setAttributedString(text) }
+    }
+}
+
+/// The date shares the rendered text view, but remains independently addressable to assistive tools.
+private final class NotesAccessibilityTextView: NSTextView {
+    var made: String?
+    private let date = NSAccessibilityElement()
+
+    override func accessibilityChildren() -> [Any]? {
+        var children = super.accessibilityChildren() ?? []
+        if let made {
+            date.setAccessibilityRole(.staticText)
+            let range = (string as NSString).range(of: made, options: .backwards)
+            date.setAccessibilityFrame(firstRect(forCharacterRange: range, actualRange: nil))
+            date.setAccessibilityLabel(made)
+            date.setAccessibilityParent(self)
+            date.setAccessibilityIdentifier("preview.made")
+            date.setAccessibilityValue(made)
+            children.append(date)
+        }
+        return children
     }
 }

@@ -11,3 +11,4 @@
 "preview.failed" = "Не удалось подготовить итоги";
 "preview.noSummary" = "Нет итогов";
 "preview.noSelection" = "Звонок не выбран";
+"preview.notesLabel" = "Итоги";

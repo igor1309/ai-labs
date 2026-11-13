@@ -10,6 +10,7 @@ public enum SummaryPreviewLanguage: String, CaseIterable, Sendable {
 /// A fixed piece of summary preview text; its raw value is the key in the strings tables.
 public enum SummaryPreviewPhrase: String, CaseIterable, Sendable {
 
+    case notes = "preview.notesLabel"
     case copy = "preview.copy"
     case open = "preview.open"
     case rename = "preview.rename"

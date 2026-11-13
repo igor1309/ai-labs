@@ -73,6 +73,12 @@ struct SummaryPreviewTests {
                                       text: text, event: { _ in }) { source, _ in calls.append(source); return NSAttributedString(string: "отрисовано") }
         let shown = try #require(Offscreen.textView(in: Offscreen.host(view, size: size)))
 
+        #expect(shown.accessibilityIdentifier() == "preview.notes")
+        #expect(shown.accessibilityLabel() == text(.notes))
+        let date = try #require(shown.accessibilityChildren()?.compactMap { $0 as? NSAccessibilityElement }
+            .first { $0.accessibilityIdentifier() == "preview.made" })
+        #expect(date.accessibilityLabel() == text(.made, "12.11, 14:05"))
+        #expect(date.accessibilityValue() as? String == text(.made, "12.11, 14:05"))
         #expect(calls.last == "# Итоги")
         #expect(shown.string == "отрисовано\n" + text(.made, "12.11, 14:05"))
         #expect(text(.made, "12.11, 14:05").contains("12.11, 14:05"))
@@ -85,6 +91,8 @@ struct SummaryPreviewTests {
         let shown = try #require(Offscreen.textView(in: Offscreen.host(view, size: size)))
 
         #expect(shown.string == "отрисовано")
+        #expect(shown.accessibilityChildren()?.compactMap { $0 as? NSAccessibilityElement }
+            .contains { $0.accessibilityIdentifier() == "preview.made" } != true)
     }
 
     @Test(arguments: ["making", "failed", "no-summary", "no-selection"])

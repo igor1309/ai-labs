@@ -11,3 +11,4 @@
 "preview.failed" = "Couldn’t prepare the summary";
 "preview.noSummary" = "No summary";
 "preview.noSelection" = "No call selected";
+"preview.notesLabel" = "Notes";

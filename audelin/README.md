@@ -68,6 +68,25 @@ marked as skipped there. It runs `swift test --no-parallel`: in a parallel run a
 main-actor test's duration includes its wait in the main-actor queue, which ranked
 dozens of cheap tests together at about 19.6 s.
 
+## Live calls-window scenario
+
+In a logged-in macOS session, run `sh scripts/live-calls-summary.sh` from
+`audelin/macos`. The terminal or runner hosting it needs Accessibility and Screen
+Recording access, so it runs locally or on the self-hosted runner, not on hosted CI.
+
+The script builds `CallsRehearsal`, an executable that shows the app's calls window
+with no audio devices, and launches it twice on a temporary folder:
+`--calls <folder>` holds one call with a transcript and no notes, and
+`--state <folder>` holds its preferences and the fake summary service's control
+files. The fake writes `control/started-N`, waits for `control/finish-N`, then
+returns fixed notes; a cancelled request writes `control/cancelled-N` and returns none.
+
+The script drives the row, Сделать and Отменить by accessibility identifier, waits
+on accessibility and file notifications, checks the notes file and that a cancel
+leaves no `summary.md` or `.summary-job.json`, saves screenshots of the making,
+completed and cancelled states (and of any failed wait), and quits each run. The
+folder it prints under `$TMPDIR` keeps the fixtures and screenshots.
+
 ## Install and updates
 
 - **First install:** `sh audelin/macos/scripts/install.sh` from the repository root
