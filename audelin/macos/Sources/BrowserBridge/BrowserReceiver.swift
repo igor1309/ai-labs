@@ -16,6 +16,8 @@ public struct BrowserConnection: Sendable {
 /// accepted it.
 public enum BrowserReceiverEvent: Equatable, Sendable {
     case message(connection: Int, BrowserMessage)
+    /// The extension answered a clock ping.
+    case clockReply(connection: Int, BrowserClockReply)
     /// The connection sent a frame that is not a valid message, or a sequence
     /// that does not increase; the receiver closed it.
     case rejected(connection: Int, reason: String)
@@ -49,6 +51,10 @@ public struct BrowserReceiver: Sendable {
     private static func serve(_ connection: BrowserConnection, id: Int, into out: AsyncStream<BrowserReceiverEvent>.Continuation) async {
         var last: Int?
         for await frame in connection.frames {
+            if let reply = BrowserClockReply.decode(frame) {
+                out.yield(.clockReply(connection: id, reply))
+                continue
+            }
             let message: BrowserMessage
             do {
                 message = try BrowserMessage.decode(frame)

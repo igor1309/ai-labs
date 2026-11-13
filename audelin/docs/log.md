@@ -2,6 +2,7 @@
 
 ## 2026-11-13
 
+- LAB-1361: The app can place browser event times on its call clock: the extension answers clock pings, and the app estimates the offset from the quickest recent round trip; times from before the call land at its start.
 - LAB-1360: The extension sends call events to the app through its native-messaging host, holding up to 1000 while the app is not reachable and sending them in order once it reconnects.
 - LAB-1359: The app accepts extension connections and turns their messages into one stream; a malformed or replayed message closes its connection without affecting others.
 - LAB-1358: The extension and the app share one versioned message format for roster and speaking events; the app rejects a message of an unknown version or shape.

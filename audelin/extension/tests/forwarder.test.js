@@ -9,6 +9,7 @@ const ended = (at) => ({ type: "callEnded", at });
 // does when the native host exits or is not installed.
 function fakePort({ absent = false } = {}) {
   const listeners = [];
+  const receivers = [];
   const port = {
     sent: [],
     up: !absent,
@@ -17,6 +18,8 @@ function fakePort({ absent = false } = {}) {
       port.sent.push(message);
     },
     onDisconnect: { addListener: (listener) => listeners.push(listener) },
+    onMessage: { addListener: (listener) => receivers.push(listener) },
+    receive: (message) => receivers.forEach((listener) => listener(message)),
     drop() {
       port.up = false;
       listeners.forEach((listener) => listener());
@@ -36,6 +39,7 @@ function harness(ports) {
       return port;
     },
     setTimer: (fn, delay) => timers.push({ fn, delay }),
+    now: () => 1_731_499_200_000.5,
     retryDelay: 50,
     capacity: 3,
   });
@@ -107,4 +111,21 @@ test("forwarder_shouldRetryOnce_whenSeveralFailuresArriveTogether", () => {
   forwarder.send(CALL, ended(1));
   connects[0].drop();
   assert.equal(timers.length, 1);
+});
+
+test("forwarder_shouldAnswerAClockPing_withTheBrowserClock_outsideTheSequence", () => {
+  const { forwarder, connects } = harness([fakePort()]);
+  connects[0].receive({ ping: 7 });
+  forwarder.send(CALL, ended(1));
+  assert.deepEqual(connects[0].sent, [
+    { version: 1, ping: 7, at: 1_731_499_200_000.5 },
+    { version: 1, callId: CALL, sequence: 0, event: ended(1) },
+  ]);
+});
+
+test("forwarder_shouldIgnoreAMessageThatIsNotAPing", () => {
+  const { connects } = harness([fakePort()]);
+  connects[0].receive({ ping: -1 });
+  connects[0].receive({ hello: 1 });
+  assert.deepEqual(connects[0].sent, []);
 });
