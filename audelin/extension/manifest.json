@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "Audelin Call Companion",
+  "version": "0.1.0",
+  "description": "Tells Audelin who is in a Telemost call and who is speaking.",
+  "content_scripts": [
+    {
+      "matches": ["https://telemost.yandex.ru/j/*", "https://telemost.360.yandex.ru/j/*"],
+      "js": ["src/content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
