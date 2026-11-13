@@ -221,7 +221,7 @@ private func withSessions(folderFails: Bool = false, _ body: @Sendable (Sessions
         let processes = CoreAudioProcesses(binding: BoundaryProcesses(base: boundary.processes), clock: BoundaryCallClock(time: boundary.time))
         let app = RecordingCallApp()
         app.started("us.zoom.xos")
-        let panel = await AudelinPanel(now: clock.time.monotonicNow, ticks: clock.ticks, sink: log, intervals: testIntervals)
+        let panel = await AudelinPanel(now: clock.time.monotonicNow, ticks: clock.ticks, sink: log, intervals: testIntervals, browser: { nil }, sleep: { _ in })
         let sessions = RecordingSessions(preferences: preferences, occupiedCallNames: { [] }, callApp: app, processes: processes, boundary: boundary,
                                          report: { id, report in reports.append(.init(id: id, report: report)) }, panel: panel, cleanupRuns: CleanupRuns())
         try await body(SessionsRig(sessions: sessions, panel: panel, microphones: microphones, calls: calls, reports: reports, log: log))

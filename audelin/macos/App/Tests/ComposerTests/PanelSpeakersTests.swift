@@ -13,7 +13,7 @@ struct PanelSpeakersTests {
     @MainActor
     @Test func theSessionsSpeakersReachTheRowsOfItsLastText() async throws {
         let clock = FixtureClock(), text = AsyncStream<CallState>.makeStream(), speakers = AsyncStream<[Int: Int]>.makeStream()
-        let panel = AudelinPanel(now: clock.time.monotonicNow, ticks: clock.ticks, sink: TestLogSink(), intervals: testIntervals)
+        let panel = AudelinPanel(now: clock.time.monotonicNow, ticks: clock.ticks, sink: TestLogSink(), intervals: testIntervals, browser: { nil }, sleep: { _ in })
         let reading = await panel.begin(id: 1, text: text.stream, speakers: speakers.stream, enableLiveText: {})
         reading.sessionChanged(SessionState(phase: .recording))
         speakers.continuation.yield([1: 1, 2: 2])
@@ -38,7 +38,7 @@ struct PanelSpeakersTests {
     @MainActor
     @Test func anEndedRecordingStillShowsItsLastTextAndSpeakers() async throws {
         let clock = FixtureClock(), text = AsyncStream<CallState>.makeStream(), speakers = AsyncStream<[Int: Int]>.makeStream()
-        let panel = AudelinPanel(now: clock.time.monotonicNow, ticks: clock.ticks, sink: TestLogSink(), intervals: testIntervals)
+        let panel = AudelinPanel(now: clock.time.monotonicNow, ticks: clock.ticks, sink: TestLogSink(), intervals: testIntervals, browser: { nil }, sleep: { _ in })
         let reading = await panel.begin(id: 1, text: text.stream, speakers: speakers.stream, enableLiveText: {})
         reading.sessionChanged(SessionState(phase: .recording))
         func far(_ id: Int) -> CallState.Entry {

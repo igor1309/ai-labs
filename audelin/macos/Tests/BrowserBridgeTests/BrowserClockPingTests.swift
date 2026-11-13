@@ -91,6 +91,18 @@ import Testing
         peer.finishSent()
         #expect(await sent.next() == nil)
     }
+
+    @Test func endingTheEventsClosesAnOpenConnection() async {
+        let (sut, transport, _, _) = makeSUT()
+        let peer = transport.connect()
+        var sent = peer.sent.makeAsyncIterator()
+        let reading = Task { for await _ in sut.events {} }
+        _ = await sent.next()
+
+        reading.cancel()
+
+        await peer.closed()
+    }
 }
 
 private func makeSUT() -> (BrowserReceiver, FakeTransport, FakeClock, FakeScheduler) {
@@ -157,7 +169,7 @@ private final class FakeTransport: Sendable {
 
     func connect() -> FakePeer {
         let peer = FakePeer()
-        continuation.yield(BrowserConnection(frames: peer.frames, send: { peer.received($0) }, close: { peer.disconnect() }))
+        continuation.yield(BrowserConnection(frames: peer.frames, send: { peer.received($0) }, close: { peer.close() }))
         return peer
     }
 
@@ -171,11 +183,18 @@ private final class FakePeer: Sendable {
     let sent: AsyncStream<Data>
     private let framesIn: AsyncStream<Data>.Continuation
     private let sentIn: AsyncStream<Data>.Continuation
+    private let closes: AsyncStream<Void>
+    private let closesIn: AsyncStream<Void>.Continuation
 
     init() {
         (frames, framesIn) = AsyncStream.makeStream()
         (sent, sentIn) = AsyncStream.makeStream()
+        (closes, closesIn) = AsyncStream.makeStream()
     }
+
+    func close() { closesIn.yield(); disconnect() }
+    /// Returns once the receiver has closed the connection.
+    func closed() async { for await _ in closes { return } }
 
     func send(_ data: Data) { framesIn.yield(data) }
     func disconnect() { framesIn.finish() }

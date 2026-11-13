@@ -34,6 +34,7 @@ public enum BrowserReceiverEvent: Equatable, Sendable {
 /// connection; other connections go on. Each connection is pinged for the
 /// extension's clock when it arrives and then every `interval`; the replies
 /// build its `BrowserClock`, timed by `now`, a monotonic clock in seconds.
+/// Ending the event stream closes every open connection.
 public struct BrowserReceiver: Sendable {
     public let events: AsyncStream<BrowserReceiverEvent>
 
@@ -125,6 +126,8 @@ public struct BrowserReceiver: Sendable {
             last = message.sequence
             out.yield(.message(connection: id, message))
         }
+        // The receiver was cancelled: the connection is no longer wanted.
+        connection.close()
     }
 
     private static func reject(_ connection: BrowserConnection, _ id: Int, _ reason: String, _ out: AsyncStream<BrowserReceiverEvent>.Continuation) {

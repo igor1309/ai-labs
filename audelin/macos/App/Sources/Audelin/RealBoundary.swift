@@ -21,7 +21,8 @@ func makeRealBoundary() async -> ComposerBoundary {
         recordings: FileRecordingStorage(), trash: ComposerBoundary.systemTrash, bleedCleaning: LocalVqeCleaning(makeManager: { try await LocalVqeManager() }, process: { manager, microphone, call in
             try await manager.process(micURL: microphone, referenceURL: call)
         }), bleedHearing: CleanupHearing(recognizers: recognizers),
-        transcripts: FileTranscriptStorage(diarizer: CallDiarizer(binding: FluidDiarizationBinding()))
+        transcripts: FileTranscriptStorage(diarizer: CallDiarizer(binding: FluidDiarizationBinding())),
+        browser: openBrowserChannel
     )
 }
 

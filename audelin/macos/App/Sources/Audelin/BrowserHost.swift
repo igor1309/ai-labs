@@ -1,4 +1,5 @@
 import BrowserBridge
+import Composer
 import Foundation
 import os
 
@@ -14,5 +15,21 @@ func installBrowserHost(appBundle: URL) {
         }
     } catch {
         log.error("native host install failed: \(error.localizedDescription, privacy: .public)")
+    }
+}
+
+/// Opens the socket the extension's native host connects to, with the secret
+/// only that host can read. Nil, logged, when the socket cannot be opened: the
+/// recording goes on without names from the browser.
+@Sendable func openBrowserChannel() -> BrowserChannel? {
+    let home = FileManager.default.homeDirectoryForCurrentUser
+    do {
+        let secret = try BrowserSocketSecret.prepare(at: BrowserSocketSecret.path(home: home))
+        let listener = try BrowserSocketListener(path: BrowserSocket.path(home: home), secret: secret)
+        return BrowserChannel(connections: listener.connections, stop: { listener.stop() })
+    } catch {
+        Logger(subsystem: "dev.igor1309.audelin", category: "browser")
+            .error("browser channel failed to open: \(String(describing: error), privacy: .public)")
+        return nil
     }
 }

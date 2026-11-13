@@ -25,6 +25,8 @@ actor AudelinPanel {
     private let ticks: @Sendable () -> AsyncStream<Void>
     private let intervals: ProfileIntervals
     private let sink: any LogSink
+    private let browser: @Sendable () -> BrowserChannel?
+    private let sleep: @Sendable (Duration) async throws -> Void
     private var current: (id: UInt64, reading: ReadingInputs, enableLiveText: @Sendable () async -> Void)?
     private var subscription: (id: UInt64, value: ReadingSubscription)?
     private var state = PanelState(recording: .off, log: .empty)
@@ -37,9 +39,12 @@ actor AudelinPanel {
 
     init(
         now: @escaping @Sendable () -> Double, ticks: @escaping @Sendable () -> AsyncStream<Void>, sink: any LogSink,
-        intervals: ProfileIntervals
+        intervals: ProfileIntervals, browser: @escaping @Sendable () -> BrowserChannel?,
+        sleep: @escaping @Sendable (Duration) async throws -> Void
     ) {
 
+        self.browser = browser
+        self.sleep = sleep
         self.now = now
         self.ticks = ticks
         self.sink = sink
@@ -75,7 +80,8 @@ actor AudelinPanel {
         let update = SignpostedPanelUpdate(receive: { [weak self] state in
             await self?.receive(state, id: id)
         }, intervals: intervals)
-        let made = await ReadingSubscription(reading: reading, text: text, speakers: speakers, now: now, ticks: ticks(), sink: sink) { state in
+        let made = await ReadingSubscription(reading: reading, text: text, speakers: speakers, now: now, ticks: ticks(), sink: sink,
+                                                  names: CallLiveNames(openBrowser: browser, monotonic: now, sleep: sleep)) { state in
             await update(state)
         }
         if current?.id == id { subscription = (id, made) }
@@ -140,15 +146,16 @@ final class ReadingSubscription {
     private let text: Task<Void, Never>
     private let timer: Task<Void, Never>
     private let observation: Task<Void, Never>
-    private let names = ZoomLiveNames()
+    private let names: CallLiveNames
     private var ended = false
 
     init(
         reading: ReadingInputs, text: AsyncStream<CallState>, speakers: AsyncStream<[Int: Int]>,
-        now: @escaping @Sendable () -> Double, ticks: AsyncStream<Void>, sink: any LogSink,
+        now: @escaping @Sendable () -> Double, ticks: AsyncStream<Void>, sink: any LogSink, names: CallLiveNames,
         receive: @escaping @Sendable (ReadingState) async -> Void
     ) async {
 
+        self.names = names
         self.reading = reading
         let time = ReadingTime(reading: reading, now: now)
         self.time = time
