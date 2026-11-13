@@ -69,7 +69,7 @@ struct TranscriptLog: NSViewRepresentable {
         if storage.length != coordinator.rows.length { coordinator.rows = Transcript.Rows() }
         let edit = coordinator.rows.update(lines, style: .init(tokens: tokens, config: config, text: panelText))
         coordinator.entries = edit.entries
-        text.rowAccessibility = LogTextView.RowAccessibility.rows(lines.entries)
+        text.rowLines = lines
 
         coordinator.quietly {
             // AppKit moves the selection to the end on any storage edit, even
@@ -339,28 +339,31 @@ final class LogTextView: NSTextView {
         }
     }
 
-    var rowAccessibility: [RowAccessibility] = [] {
+    /// The rows accessibility reads. Their elements are built only when it
+    /// asks, so an update costs the same however long the log is.
+    var rowLines: PanelState.Lines? {
         didSet {
-            guard rowAccessibility != oldValue else { return }
-            rowElements = rowAccessibility.map { row in
-                let element = NSAccessibilityElement()
-                element.setAccessibilityRole(.staticText)
-                element.setAccessibilityIdentifier("panel.row.\(row.id)")
-                element.setAccessibilityLabel(row.text)
-                element.setAccessibilityValue(row.speaker)
-                element.setAccessibilityParent(self)
-                element.setAccessibilityFrameInParentSpace(bounds)
-                return element
-            }
+            rowElements = nil
             NSAccessibility.post(element: self, notification: .layoutChanged)
         }
     }
 
-    private var rowElements: [NSAccessibilityElement] = []
+    private var rowElements: [NSAccessibilityElement]?
 
     override func accessibilityChildren() -> [Any]? {
 
-        (super.accessibilityChildren() ?? []) + rowElements
+        let elements = rowElements ?? RowAccessibility.rows(rowLines?.entries ?? []).map { row in
+            let element = NSAccessibilityElement()
+            element.setAccessibilityRole(.staticText)
+            element.setAccessibilityIdentifier("panel.row.\(row.id)")
+            element.setAccessibilityLabel(row.text)
+            element.setAccessibilityValue(row.speaker)
+            element.setAccessibilityParent(self)
+            element.setAccessibilityFrameInParentSpace(bounds)
+            return element
+        }
+        rowElements = elements
+        return (super.accessibilityChildren() ?? []) + elements
     }
 
     override func drawBackground(in rect: NSRect) {
