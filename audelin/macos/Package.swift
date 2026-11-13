@@ -91,8 +91,8 @@ let package = Package(
         .target(name: "CallDiarizer", dependencies: ["AudioConversion", "ModelLoading", .product(name: "FluidAudio", package: "FluidAudio")]),
         .testTarget(name: "CallDiarizerTests", dependencies: ["CallDiarizer", "BlockingTestWork"]),
         .testTarget(name: "ZoomAccessibilityTests", dependencies: ["ZoomAccessibility"], resources: [.copy("Fixtures")]),
-        .target(name: "BrowserBridge"),
-        .testTarget(name: "BrowserBridgeTests", dependencies: ["BrowserBridge"], resources: [.copy("Fixtures")]),
+        .target(name: "BrowserBridge", dependencies: ["CallObservation"]),
+        .testTarget(name: "BrowserBridgeTests", dependencies: ["BrowserBridge", "CallObservation"], resources: [.copy("Fixtures")]),
 
         .testTarget(name: "SourceChecksTests", dependencies: ["BlockingTestWork"]),
         .target(name: "Calls", dependencies: ["CallFolderName"]),

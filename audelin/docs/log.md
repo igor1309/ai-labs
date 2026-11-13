@@ -2,6 +2,7 @@
 
 ## 2026-11-13
 
+- LAB-1363: Telemost roster and speaking events become the same call observations Zoom produces, so the speaker-name matcher can use either.
 - LAB-1362: The app can register its browser host with Chrome and Yandex Browser, allowing only the Audelin extension, whose ID is now fixed; it repairs its own registration and leaves files it did not write alone.
 - LAB-1361: The app can place browser event times on its call clock: the extension answers clock pings, and the app estimates the offset from the quickest recent round trip; times from before the call land at its start.
 - LAB-1360: The extension sends call events to the app through its native-messaging host, holding up to 1000 while the app is not reachable and sending them in order once it reconnects.
