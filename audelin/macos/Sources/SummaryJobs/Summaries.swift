@@ -19,13 +19,16 @@ public struct SummariesState: Equatable, Sendable {
         public var retryFailed: Bool
         /// The submission waiting for its job, until the job is prepared.
         public var submission: SummariesSubmission?
+        public enum Badge: Equatable, Sendable { case none, pending, failed }
         public var status: String
+        /// The mark the call's row shows.
+        public var badge: Badge
         public init(stage: Stage, job: Job? = nil, identities: [Identity] = [], warning: Bool = false, notes: String? = nil,
                     terminal: Stage? = nil, requested: Bool = false, cancelling: Bool = false, retryFailed: Bool = false,
-                    submission: SummariesSubmission? = nil, status: String = "") {
+                    submission: SummariesSubmission? = nil, status: String = "", badge: Badge = .none) {
             self.stage = stage; self.job = job; self.identities = identities; self.warning = warning; self.notes = notes
             self.terminal = terminal; self.requested = requested; self.cancelling = cancelling; self.retryFailed = retryFailed
-            self.submission = submission; self.status = status
+            self.submission = submission; self.status = status; self.badge = badge
         }
     }
     public var lifecycle: Lifecycle
@@ -124,8 +127,12 @@ public enum SummariesEffect: Equatable, Sendable {
 
 public struct SummariesReducer: Sendable {
     private let format: @Sendable (SummariesState.Call.Stage, Bool) -> String
-    /// Renders a call's status line from its stage and whether its notes lack speaker names.
-    public init(format: @escaping @Sendable (SummariesState.Call.Stage, Bool) -> String) { self.format = format }
+    private let badge: @Sendable (SummariesState.Call.Stage) -> SummariesState.Call.Badge
+    /// Renders a call's status line from its stage and whether its notes lack speaker names, and its row's badge from its stage.
+    public init(format: @escaping @Sendable (SummariesState.Call.Stage, Bool) -> String,
+                badge: @escaping @Sendable (SummariesState.Call.Stage) -> SummariesState.Call.Badge) {
+        self.format = format; self.badge = badge
+    }
     /// The stages that wait on storage or generation, which a storage failure ends.
     /// The stages a call rests in once nothing runs for it.
     static let settled: Set<SummariesState.Call.Stage> = [.succeeded, .failed, .interrupted, .unavailable]
@@ -161,7 +168,7 @@ public struct SummariesReducer: Sendable {
         if let (id, stage) = SummariesReducer.answered(event), let work = state.calls[id], work.cancelling,
            work.stage == stage, let job = work.job {
             next.calls[id]?.stage = .discarding
-            next.calls[id]?.status = format(.discarding, work.warning)
+            next.calls[id]?.status = format(.discarding, work.warning); next.calls[id]?.badge = badge(.discarding)
             return (next, .discard(job))
         }
         switch event {
@@ -253,7 +260,7 @@ public struct SummariesReducer: Sendable {
             next.dispatch = false
             for (id, work) in state.calls where work.stage == .starting {
                 next.calls[id]?.stage = .pending
-                next.calls[id]?.status = format(.pending, work.warning)
+                next.calls[id]?.status = format(.pending, work.warning); next.calls[id]?.badge = badge(.pending)
             }
             return (next, nil)
         case let .retry(id) where state.lifecycle == .accepting && state.dispatch
@@ -288,7 +295,7 @@ public struct SummariesReducer: Sendable {
             for (id, work) in state.calls.sorted(by: { $0.key < $1.key })
             where SummariesReducer.running.contains(work.stage) || work.stage == .discarding {
                 next.calls[id]?.stage = .interrupted
-                next.calls[id]?.status = format(.interrupted, work.warning)
+                next.calls[id]?.status = format(.interrupted, work.warning); next.calls[id]?.badge = badge(.interrupted)
                 if let job = work.job { jobs.append(job) }
             }
             next.releasing = !jobs.isEmpty
@@ -305,13 +312,13 @@ public struct SummariesReducer: Sendable {
                 let stage = saved.stage == .pending ? .observed : saved.stage
                 next.calls[id] = .init(stage: stage, job: saved.job, identities: saved.identities, warning: saved.warning,
                                        notes: saved.notes, terminal: saved.terminal, requested: state.calls[id]?.requested ?? false,
-                                       status: format(stage, saved.warning))
+                                       status: format(stage, saved.warning), badge: badge(stage))
             }
             return (next, nil)
         default:
             return (state, nil)
         }
-        if let work = next.calls[call] { next.calls[call]?.status = format(work.stage, work.warning) }
+        if let work = next.calls[call] { next.calls[call]?.status = format(work.stage, work.warning); next.calls[call]?.badge = badge(work.stage) }
         return (next, effect)
     }
 }

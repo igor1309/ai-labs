@@ -4,9 +4,9 @@ import Testing
 
 @Suite struct SummariesTests {
     @Test func makingTheReducerRendersNothing() {
-        let format = FormatSpy()
-        _ = SummariesReducer(format: format.call)
-        #expect(format.payloads.isEmpty)
+        let format = FormatSpy(), badge = BadgeSpy()
+        _ = SummariesReducer(format: format.call, badge: badge.call)
+        #expect(format.payloads.isEmpty && badge.payloads.isEmpty)
     }
     @Test func aNewMachineAcceptsWithDispatchOnAndNoCalls() {
         let state = makeState()
@@ -113,11 +113,11 @@ import Testing
     private func assert(_ state: SummariesState, _ event: SummariesEvent, changes: (inout SummariesState) -> Void = { _ in },
                         sourceLocation: SourceLocation = #_sourceLocation) {
         var expected = state; changes(&expected)
-        #expect(SummariesReducer(format: format.call).reduce(state, event).0 == expected, sourceLocation: sourceLocation)
+        #expect(SummariesReducer(format: format.call, badge: { _ in .none }).reduce(state, event).0 == expected, sourceLocation: sourceLocation)
     }
     private func assert(_ state: SummariesState, _ event: SummariesEvent, delivers effect: SummariesEffect?,
                         sourceLocation: SourceLocation = #_sourceLocation) {
-        #expect(SummariesReducer(format: format.call).reduce(state, event).1 == effect, sourceLocation: sourceLocation)
+        #expect(SummariesReducer(format: format.call, badge: { _ in .none }).reduce(state, event).1 == effect, sourceLocation: sourceLocation)
     }
 }
 
@@ -253,11 +253,11 @@ import Testing
     private func assert(_ state: SummariesState, _ event: SummariesEvent, changes: (inout SummariesState) -> Void = { _ in },
                         sourceLocation: SourceLocation = #_sourceLocation) {
         var expected = state; changes(&expected)
-        #expect(SummariesReducer(format: format.call).reduce(state, event).0 == expected, sourceLocation: sourceLocation)
+        #expect(SummariesReducer(format: format.call, badge: { _ in .none }).reduce(state, event).0 == expected, sourceLocation: sourceLocation)
     }
     private func assert(_ state: SummariesState, _ event: SummariesEvent, delivers effect: SummariesEffect?,
                         sourceLocation: SourceLocation = #_sourceLocation) {
-        #expect(SummariesReducer(format: format.call).reduce(state, event).1 == effect, sourceLocation: sourceLocation)
+        #expect(SummariesReducer(format: format.call, badge: { _ in .none }).reduce(state, event).1 == effect, sourceLocation: sourceLocation)
     }
 }
 
@@ -390,11 +390,11 @@ import Testing
     private func assert(_ state: SummariesState, _ event: SummariesEvent, changes: (inout SummariesState) -> Void = { _ in },
                         sourceLocation: SourceLocation = #_sourceLocation) {
         var expected = state; changes(&expected)
-        #expect(SummariesReducer(format: format.call).reduce(state, event).0 == expected, sourceLocation: sourceLocation)
+        #expect(SummariesReducer(format: format.call, badge: { _ in .none }).reduce(state, event).0 == expected, sourceLocation: sourceLocation)
     }
     private func assert(_ state: SummariesState, _ event: SummariesEvent, delivers effect: SummariesEffect?,
                         sourceLocation: SourceLocation = #_sourceLocation) {
-        #expect(SummariesReducer(format: format.call).reduce(state, event).1 == effect, sourceLocation: sourceLocation)
+        #expect(SummariesReducer(format: format.call, badge: { _ in .none }).reduce(state, event).1 == effect, sourceLocation: sourceLocation)
     }
 }
 
@@ -501,4 +501,14 @@ final class StartsSpy: SummariesStarts {
     init(result: Result<Bool, SpyFailure> = .success(true)) { self.result = result }
     var payloads: [Job] { recorded.withLock { $0 } }
     func start(_ job: Job) async throws -> Bool { recorded.withLock { $0.append(job) }; return try result.get() }
+}
+/// Records each stage the reducer renders a badge for and answers with its stub.
+final class BadgeSpy: Sendable {
+    private let recorded = Mutex<[SummariesState.Call.Stage]>([])
+    private let stub: SummariesState.Call.Badge
+    init(stub: SummariesState.Call.Badge = .failed) { self.stub = stub }
+    var payloads: [SummariesState.Call.Stage] { recorded.withLock { $0 } }
+    var call: @Sendable (SummariesState.Call.Stage) -> SummariesState.Call.Badge {
+        { [self] stage in recorded.withLock { $0.append(stage) }; return stub }
+    }
 }
