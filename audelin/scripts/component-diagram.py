@@ -42,7 +42,6 @@ TARGETS = {
     "RenderedText": ("external", "test helper: hosts a view offscreen", 4),
     "AudelinRehearsal": ("tools", "synthetic call through the shipped composition", 0),
     "SessionRehearsal": ("tools", "synthetic recogniser", 1),
-    "SessionCrashWriter": ("tools", "test helper: call killed mid-save", 2),
     "Audelin": ("compose", "launches recording, menu and panel", 0),
     "RecordedCapture": ("compose", "records one capture to its track", 3),
     "LiveAudio": ("compose", "hears and reads one capture,\nkeeps its time", 4),

@@ -33,6 +33,12 @@ class SwiftTestBoundedTests(unittest.TestCase):
 import os, sys, time
 assert sys.argv[1:3] == ["test", "--skip-build"]
 open(os.environ["CUE"], "w").close()
+if os.environ.get("STUB_CHILD_MB"):
+    import subprocess
+    subprocess.Popen([sys.executable, "-I", "-c",
+        "import sys, time\\nheld = bytearray(int(sys.argv[1]) * 1024 * 1024)\\n"
+        "for i in range(0, len(held), 4096): held[i] = 1\\ntime.sleep(120)",
+        os.environ["STUB_CHILD_MB"]])
 time.sleep(float(os.environ["STUB_SECONDS"]))
 print("stub swift finished")
 ''')
@@ -68,6 +74,17 @@ print("stub swift finished")
         self.assertIn("stub swift finished", result.stdout)
         self.assertIn("coreaudiod before the run:", result.stderr)
         self.assertIn("coreaudiod after the run:", result.stderr)
+
+    def test_a_test_child_that_grows_past_the_tree_cap_kills_the_run(self):
+        env = dict(self.env, BOUNDED_WATCH_PID="999999", STUB_SECONDS="40",
+                   STUB_CHILD_MB="300", BOUNDED_TREE_RSS_KB=str(100 * 1024))
+        started = time.monotonic()
+        result = subprocess.run(["sh", str(RUNNER), "60"], env=env, capture_output=True, text=True, timeout=90)
+        self.assertEqual(result.returncode, 125, result.stdout + result.stderr)
+        self.assertIn("past the cap of 100 MB", result.stderr)
+        self.assertIn("grew past its limit and the run was killed", result.stdout)
+        self.assertNotIn("stub swift finished", result.stdout)
+        self.assertLess(time.monotonic() - started, 20)
 
     def test_an_unreadable_daemon_is_reported_and_not_watched(self):
         env = dict(self.env, BOUNDED_WATCH_PID="999999", STUB_SECONDS="0")

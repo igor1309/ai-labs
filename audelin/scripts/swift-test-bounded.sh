@@ -16,6 +16,11 @@
 # daemon grows by more than BOUNDED_RSS_GROWTH_KB (1 GB by default) the run
 # is killed and exits 125: a daemon that keeps growing takes the whole Mac
 # down with it. BOUNDED_WATCH_PID watches another process instead.
+#
+# The run's own processes, the test runner and every child it starts, are
+# capped too: when their memory together passes BOUNDED_TREE_RSS_KB (16 GB
+# by default) the run is killed and exits 125. A runaway test then fails the
+# run instead of exhausting the Mac.
 
 [ $# -ge 1 ] || { echo "usage: $(basename "$0") <seconds> [swift test args]" >&2; exit 2; }
 limit=$1
@@ -45,6 +50,21 @@ BOUNDED_EVENTS="$events" BOUNDED_GROWN="$grown" SWIFT_BACKTRACE=enable=yes perl 
     return $kb eq "" ? undef : $kb;
   }
   my $growth = $ENV{BOUNDED_RSS_GROWTH_KB} // 1048576;
+  my $cap = $ENV{BOUNDED_TREE_RSS_KB} // 16777216;
+  sub tree_rss {
+    my @pids = @_;
+    my $kb = 0;
+    $kb += $_ for map { s/\s//gr } `ps -o rss= -p @{[join ",", @pids]} 2>/dev/null`;
+    return $kb;
+  }
+  sub kill_run {
+    my ($message) = @_;
+    print STDERR $message;
+    open(my $mark, ">", $ENV{BOUNDED_GROWN}) and close $mark;
+    my @all = tree($_[1]);
+    kill("TERM", @all); sleep 2; kill("KILL", tree($_[1]), @all);
+    exit 0;
+  }
   my $before = rss();
   print STDERR defined $before
     ? "coreaudiod before the run: " . int($before / 1024) . " MB\n"
@@ -60,12 +80,13 @@ BOUNDED_EVENTS="$events" BOUNDED_GROWN="$grown" SWIFT_BACKTRACE=enable=yes perl 
     while (kill(0, $pid)) {
       my $now = rss();
       if (defined $before && defined $now && $now - $before > $growth) {
-        print STDERR "error: coreaudiod grew from " . int($before / 1024) . " MB to "
-          . int($now / 1024) . " MB during the run; killing it\n";
-        open(my $mark, ">", $ENV{BOUNDED_GROWN}) and close $mark;
-        my @all = tree($pid);
-        kill("TERM", @all); sleep 2; kill("KILL", tree($pid), @all);
-        exit 0;
+        kill_run("error: coreaudiod grew from " . int($before / 1024) . " MB to "
+          . int($now / 1024) . " MB during the run; killing it\n", $pid);
+      }
+      my $used = tree_rss(tree($pid));
+      if ($used > $cap) {
+        kill_run("error: the tests used " . int($used / 1024) . " MB, past the cap of "
+          . int($cap / 1024) . " MB; killing them\n", $pid);
       }
       if (!$sampled && open(my $fh, "<", $ENV{BOUNDED_EVENTS})) {
         local $/; my $text = <$fh>; close $fh;
@@ -82,7 +103,7 @@ BOUNDED_EVENTS="$events" BOUNDED_GROWN="$grown" SWIFT_BACKTRACE=enable=yes perl 
           $sampled = 1;
         }
       }
-      sleep 2;
+      sleep 1;
     }
     exit 0;
   }
@@ -106,7 +127,7 @@ BOUNDED_EVENTS="$events" BOUNDED_GROWN="$grown" SWIFT_BACKTRACE=enable=yes perl 
   --event-stream-output-path "$events" --event-stream-version 0 "$@"
 code=$?
 if [ -e "$grown" ]; then
-  echo "error: coreaudiod grew past its limit and the run was killed; started and never ended:"
+  echo "error: memory grew past its limit and the run was killed; started and never ended:"
   code=125
 fi
 
