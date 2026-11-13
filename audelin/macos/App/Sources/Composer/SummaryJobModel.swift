@@ -51,12 +51,21 @@ final class SummaryJobModel {
     func waitForClaim() async {
         for await state in feed.subscribe(from: model.state) where state.phase != .idle && state.phase != .claiming { return }
     }
-    func cancelAndJoin() async {
+    func cancel() {
         stopping = true
         model.event(.cancel)
+        for task in effects.values { task.cancel() }
+    }
+    func cancelAndJoin() async { await cancelAndJoin(beforeRelease: { _ in }) }
+    /// Discarding a user-cancelled attempt must finish before its ownership is released.
+    func cancelAndJoin(beforeRelease: (Job) async throws -> Void) async rethrows {
+        cancel()
         let tasks = Array(effects.values)
-        for task in tasks { task.cancel() }
         for task in tasks { await task.value }
-        if let job = model.state.job { await handler.release(job) }
+        if let job = model.state.job {
+            do { try await beforeRelease(job) }
+            catch { await handler.release(job); throw error }
+            await handler.release(job)
+        }
     }
 }

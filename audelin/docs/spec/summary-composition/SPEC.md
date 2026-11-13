@@ -9,7 +9,8 @@ Observer: the application composing recording, storage and summary jobs.
 - On quit stop dispatch first, finish recording cleanup, persist eligible never-started handoffs, cancel and join summary resources, then allow termination; cancellation cannot fallback. Durable running claims prevent replay even if interruption saving fails.
 - Automatic updates wait from submission or retry reservation through asynchronous dispatch and terminal saving. A dispatch approval remains in coordinator state until the job processes it; stopping dispatch withdraws unprocessed approvals and leaves their jobs pending.
 - Before permitting an update, reread observed calls, including interrupted calls another instance can retry. Unresolved ownership stays protected on missing, unreadable or invalid records; a confirmed inactive record releases protection. Observer refresh never replaces a locally executing job.
-- Explicit retry replaces only the current interrupted attempt with a fresh identity, using its saved input and runtime settings. Refusal or storage failure is shown to the caller; a later retry clears that call’s previous retry error.
+- Explicit retry replaces only the current interrupted or failed attempt with a fresh identity, using its saved input and runtime settings. Refusal or storage failure is shown to the caller; a later retry clears that call’s previous retry error.
+- A transcript read failure before submission retries reading through the call's notes machine; there is no stored attempt to retry. One request starts one attempt.
 - Storage coordinates publication with existing rename/delete/move operations, resolving call identity even before a whole-folder move commits its new preference.
 
 ```gherkin
@@ -70,5 +71,21 @@ Feature: Coordinate notes and recording
     When I retry that call successfully
     Then I can follow the new attempt without the previous retry error
     And retry errors for other calls remain unchanged
+
+  Scenario: S-12 Make on request with automatic notes off
+    Given automatic notes are off and a saved call has no notes
+    When I make its notes from its row or detail
+    Then I see making followed by the notes and their made date using the saved model settings
+
+  Scenario: S-13 Cancel only the requested attempt
+    Given two calls are making notes
+    When I cancel one call's notes
+    Then it has no notes or job record and I can make them again
+    And the other call keeps its job, as does a later attempt stopped by app exit
+
+  Scenario: S-14 Call end starts the call's notes machine
+    Given automatic notes are on and a call ends with usable final text
+    When I read that call while generation is held
+    Then I see making followed by its notes when generation completes
 
 ```

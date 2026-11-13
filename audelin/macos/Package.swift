@@ -21,6 +21,7 @@ let package = Package(
         .library(name: "BlockingTestWork", targets: ["BlockingTestWork"]),
         .library(name: "SplitRows", targets: ["SplitRows"]),
         .library(name: "Lifecycle", targets: ["Lifecycle"]),
+        .library(name: "CallNotes", targets: ["CallNotes"]),
         .library(name: "Calls", targets: ["Calls"]),
         .library(name: "Recordings", targets: ["Recordings"]),
         .library(name: "CallsListUI", targets: ["CallsListUI"]),
@@ -143,6 +144,9 @@ let package = Package(
         ),
         .target(
             name: "Lifecycle"
+        ),
+        .target(
+            name: "CallNotes"
         ),
         .target(
             name: "LiveAudio"
@@ -286,6 +290,10 @@ let package = Package(
         .testTarget(
             name: "LifecycleTests",
             dependencies: ["Lifecycle"]
+        ),
+        .testTarget(
+            name: "CallNotesTests",
+            dependencies: ["CallNotes"]
         ),
         .testTarget(
             name: "LiveAudioTests",

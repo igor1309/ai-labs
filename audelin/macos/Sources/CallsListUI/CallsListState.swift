@@ -13,6 +13,8 @@ public struct CallsListState: Equatable, Sendable {
         }
         public let day: Day?
         public var canRetrySummary: Bool
+        /// The call has no notes, so its menu offers to make them.
+        public var canMakeSummary: Bool
         public var summaryStatus: String
         /// The call has published notes.
         public var hasNotes: Bool
@@ -49,11 +51,12 @@ public struct CallsListState: Equatable, Sendable {
         }
 
         public init(id: String, title: String, displayTitle: String, day: Day?, time: String, duration: String, editable: Bool,
-                    summaryStatus: String = "", hasNotes: Bool = false, gist: String? = nil, canRetrySummary: Bool = false, summary: Summary = .none,
+                    summaryStatus: String = "", hasNotes: Bool = false, gist: String? = nil, canRetrySummary: Bool = false, canMakeSummary: Bool = false, summary: Summary = .none,
                     match: Match? = nil) {
             self.match = match
             self.summary = summary
             self.canRetrySummary = canRetrySummary
+            self.canMakeSummary = canMakeSummary
             self.summaryStatus = summaryStatus
             self.hasNotes = hasNotes
             self.gist = gist
@@ -109,7 +112,7 @@ public struct CallsListState: Equatable, Sendable {
 public enum CallsListEvent: Equatable, Sendable {
     case open(String), beginRename(String), editTitle(String), submitRename, cancelRename
     case askDelete(String), confirmDelete, cancelDelete
-    case select(String), selectNext, selectPrevious, retrySummary(String)
+    case select(String), selectNext, selectPrevious, retrySummary(String), makeSummary(String)
     /// Return or Space in a narrow window: read the call in its own window.
     case read(String)
     /// The search field's text changed; an empty text ends the search.

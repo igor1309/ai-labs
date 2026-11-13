@@ -59,7 +59,7 @@ public enum Event: Equatable, Sendable {
     case dispatch, started(Bool)
     case identified([Identity]), identificationFailed
     case checkpointed, noted(String), notesFailed
-    case published, saved, cancel
+    case published, saved, cancel, discarded
 }
 public enum Effect: Equatable, Sendable {
     case claim(Job), start(Job), identify(Job), checkpoint(Job, [Identity], warning: Bool)
@@ -112,6 +112,7 @@ public struct Reducer: Sendable {
         case .storageFailed: next.phase = .failed
         case .cancel where state.phase != .succeeded && state.phase != .failed && state.phase != .pending && state.phase != .running:
             next.phase = .interrupted
+        case .discarded where state.phase == .identifying || state.phase == .noting: next = State()
         default: return (state, nil)
         }
         next.status = format(next.phase, next.warning)
@@ -127,6 +128,8 @@ public protocol Store: Sendable {
     func checkpoint(_ job: Job, identities: [Identity], warning: Bool) async throws
     func publish(_ job: Job, notes: String, warning: Bool) async throws
     func save(_ job: Job, phase: State.Phase, warning: Bool) async throws
+    /// Removes this owner's job record and releases its lease.
+    func discard(_ job: Job) async throws
 }
 public protocol Generation: Sendable {
     /// Each port returns only domain-validated results; the root decorates attempts with fallback.
@@ -136,9 +139,10 @@ public protocol Generation: Sendable {
 public struct EffectHandler: Sendable {
     private let store: any Store
     private let generation: any Generation
-    private let cancelled: @Sendable () -> Bool
-    public init(store: any Store, generation: any Generation, cancelled: @escaping @Sendable () -> Bool) {
-        self.store = store; self.generation = generation; self.cancelled = cancelled
+    /// Whether the user cancelled this job; a cancelled task without it is an app exit.
+    private let userCancelled: @Sendable (Job) -> Bool
+    public init(store: any Store, generation: any Generation, userCancelled: @escaping @Sendable (Job) -> Bool) {
+        self.store = store; self.generation = generation; self.userCancelled = userCancelled
     }
     public func release(_ job: Job) async { await store.release(job) }
     public func handle(_ effect: Effect) async -> Event {
@@ -150,7 +154,8 @@ public struct EffectHandler: Sendable {
             case let .identify(job):
                 do { return .identified(try await generation.identify(job)) }
                 catch {
-                    if cancelled() || Task.isCancelled { await store.release(job); return .cancel }
+                    if userCancelled(job) { try await store.discard(job); return .discarded }
+                    if Task.isCancelled { await store.release(job); return .cancel }
                     return .identificationFailed
                 }
             case let .checkpoint(job, identities, warning):
@@ -158,7 +163,8 @@ public struct EffectHandler: Sendable {
             case let .notes(job, identities):
                 do { return .noted(try await generation.notes(job, identities: identities)) }
                 catch {
-                    if cancelled() || Task.isCancelled { await store.release(job); return .cancel }
+                    if userCancelled(job) { try await store.discard(job); return .discarded }
+                    if Task.isCancelled { await store.release(job); return .cancel }
                     return .notesFailed
                 }
             case let .publish(job, notes, warning):

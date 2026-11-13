@@ -80,6 +80,9 @@ public struct CallsListView: View {
     private func callRow(_ row: CallsListState.Row) -> some View {
         Button { event(.select(row.id)) } label: { rowContent(row).contentShape(.rect) }
             .buttonStyle(.plain)
+            .accessibilityIdentifier("calls.select.\(row.id)")
+            .accessibilityLabel(row.displayTitle)
+            .accessibilityValue(row.duration)
             .simultaneousGesture(TapGesture(count: 2).onEnded { if !state.busy { event(.open(row.id)) } })
             .overlay {
                 RowMenuTarget(identifier: "calls.row.\(row.id)", select: { event(.select(row.id)) }, items: { menu(row) })
@@ -95,6 +98,9 @@ public struct CallsListView: View {
         items.append(RowMenuItem(title: text(.rename), key: "r", modifiers: .command, isEnabled: row.editable && !state.busy) {
             event(.beginRename(row.id))
         })
+        if row.canMakeSummary {
+            items.append(RowMenuItem(title: text(.makeSummary), isEnabled: !state.busy) { event(.makeSummary(row.id)) })
+        }
         if row.canRetrySummary {
             items.append(RowMenuItem(title: text(.retrySummary), isEnabled: !state.busy) { event(.retrySummary(row.id)) })
         }

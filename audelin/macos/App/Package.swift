@@ -44,11 +44,39 @@ let package = Package(
                 .product(name: "Recording", package: "macos"),
                 .product(name: "Session", package: "macos"),
                 .product(name: "IMRxObservation", package: "swift-imrx"),
+                "CallsWindowShell",
+            ]
+        ),
+        .target(
+            name: "CallsWindowShell",
+            dependencies: [
+                "Composer",
+                .product(name: "GlassLedger", package: "macos"),
+                .product(name: "CallsListUI", package: "macos"),
+                .product(name: "CallsWindowUI", package: "macos"),
+                .product(name: "SummaryPreviewUI", package: "macos"),
             ]
         ),
         .executableTarget(
             name: "AudelinRehearsal",
             dependencies: ["Composer", "SessionRehearsal"]
+        ),
+        .executableTarget(
+            name: "CallsRehearsal",
+            dependencies: [
+                "Composer", "SessionRehearsal", "CallsWindowShell", "CallsRehearsalSupport",
+            ]
+        ),
+        .target(
+            name: "CallsRehearsalSupport",
+            dependencies: [
+                .product(name: "Preferences", package: "macos"),
+                .product(name: "SummaryRuntime", package: "macos"),
+            ]
+        ),
+        .testTarget(
+            name: "CallsRehearsalSupportTests",
+            dependencies: ["CallsRehearsalSupport"]
         ),
         .target(
             name: "SessionRehearsal",
@@ -61,6 +89,7 @@ let package = Package(
                 .product(name: "SummarySettings", package: "macos"),
                 .product(name: "SummaryPreviewUI", package: "macos"),
                 .product(name: "SummaryJobs", package: "macos"),
+                .product(name: "CallNotes", package: "macos"),
                 .product(name: "SummaryFiles", package: "macos"),
                 .product(name: "SummaryRuntime", package: "macos"),
                 .product(name: "SpeakerIdentification", package: "macos"),
@@ -105,6 +134,15 @@ let package = Package(
         .testTarget(
             name: "AudelinTests",
             dependencies: ["Audelin", "Composer", .product(name: "BlockingTestWork", package: "macos"), .product(name: "CoreAudioProcesses", package: "macos"), .product(name: "LiveText", package: "macos"), .product(name: "SummaryPreviewUI", package: "macos")]
+        ),
+        .testTarget(
+            name: "CallsWindowShellTests",
+            dependencies: [
+                "CallsWindowShell", "Composer",
+                .product(name: "CallsListUI", package: "macos"),
+                .product(name: "CallsWindowUI", package: "macos"),
+                .product(name: "SummaryPreviewUI", package: "macos"),
+            ]
         ),
         .testTarget(
             name: "ComposerTests",

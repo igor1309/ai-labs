@@ -49,9 +49,36 @@ publication with call rename, deletion and calls-folder moves.
 
 SummaryFiles is also the one reader of published notes: it gives a call's
 notes text, none, or why they cannot be read. The calls list holds the
-selected call and derives its detail; the summary view draws that call's
-notes, Markdown included, beside the list. The app owns the calls window, its
+selected call; that call's Call notes machine (below) holds its notes, and
+the summary view draws them, Markdown included, beside the list. The app owns the calls window, its
 split and, for a narrow window, the call's own window.
+
+### Making a call's notes on request
+
+The user can make notes for a call that has none, from the calls window,
+and cancel them while they are being made.
+
+Call notes is a state machine for what the calls window shows of one call's
+notes: none, being made, made (the text and when), or failed (why). The
+user's make, cancel and retry and the outcome its collaborator reports are
+its events. It owns one port, a collaborator that makes a call's notes or
+stops making them, and reports made or failed. It keeps no clock: how long
+making may take, and failing when it takes too long, belong to the
+collaborator.
+
+The root answers that port. Transcript format, the format's one writer, is
+also its one reader: it reads a saved transcript back into labelled entries,
+so the root can submit them to SummaryJobs as a closed call's entries are
+submitted. A cancel by the user stops the job and SummaryFiles drops its
+record, leaving the transcript and any earlier notes. SummaryFiles records
+when notes were published, for the date shown under them.
+
+The root holds one Call notes machine per call, so making goes on while
+another call is selected. It starts each machine from what SummaryFiles
+reads: made with the published notes and their date, none, or failed; and
+in being made when notes are submitted after a call ends. The calls list draws the selected
+call's state and sends make, cancel and retry; it decides nothing. Calls
+lists folders and reads transcripts through Transcript format.
 
 ## Transcript pipeline
 

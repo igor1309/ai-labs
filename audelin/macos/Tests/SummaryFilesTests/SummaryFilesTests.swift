@@ -13,7 +13,66 @@ import Testing
             _ = try await files.claim(record())
             #expect(try await files.start(record()))
             try await files.publish(record(), notes: notes)
-            #expect(try await files.notes(call: "call") == notes)
+            #expect(try await files.notes(call: "call")?.text == notes)
+        }
+    }
+    @Test func aFileReadsWithItsOwnModificationTime() throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: url) }
+        try Data("notes".utf8).write(to: url)
+        let made = Date(timeIntervalSince1970: 1_794_000_000)
+        try FileManager.default.setAttributes([.modificationDate: made], ofItemAtPath: url.path)
+        let read = try FileDisk().readStamped(url)
+        #expect(read.data == Data("notes".utf8))
+        #expect(read.modified == made)
+    }
+    @Test func publishedNotesReadWithWhenTheyWereMade() async throws {
+        try await withFolder { folder, locations in
+            let files = Files(locations: locations, disk: FileDisk(), ownershipDirectory: folder.deletingLastPathComponent().appendingPathComponent("leases"))
+            _ = try await files.claim(record())
+            #expect(try await files.start(record()))
+            try await files.publish(record(), notes: "# Итоги\n")
+            let made = Date(timeIntervalSince1970: 1_794_000_000)
+            try FileManager.default.setAttributes([.modificationDate: made], ofItemAtPath: folder.appendingPathComponent("summary.md").path)
+            #expect(try await files.notes(call: "call") == Notes(text: "# Итоги\n", made: made))
+        }
+    }
+    @Test func anOwnerDiscardsItsRunningJob() async throws {
+        try await withFolder { folder, locations in
+            let leases = folder.deletingLastPathComponent().appendingPathComponent("leases")
+            let files = Files(locations: locations, disk: FileDisk(), ownershipDirectory: leases)
+            let transcript = Data("# Звонок\n".utf8)
+            try transcript.write(to: folder.appendingPathComponent("transcript.md"))
+            _ = try await files.claim(record(job: "old"))
+            #expect(try await files.start(record(job: "old")))
+            try await files.publish(record(job: "old"), notes: "# Итоги\n")
+            try FileManager.default.removeItem(at: folder.appendingPathComponent(".summary-job.json"))
+            _ = try await files.claim(record())
+            let other = Files(locations: locations, disk: FileDisk(), ownershipDirectory: leases)
+            #expect(try await files.start(record()))
+            var running = record(); running.phase = "running"
+            await #expect(throws: (any Error).self) { try await other.discard(record()) }
+            #expect(try await files.load(call: "call") == running)
+            try await files.discard(record())
+            #expect(try await files.load(call: "call") == nil)
+            #expect(try await files.notes(call: "call")?.text == "# Итоги\n")
+            #expect(try Data(contentsOf: folder.appendingPathComponent("transcript.md")) == transcript)
+            _ = try await other.claim(record())
+            #expect(try await other.start(record()))
+        }
+    }
+    @Test(arguments: ["pending", "interrupted"])
+    func inactiveAttemptCanBeDiscardedWithoutTakingAnotherOwnersRecord(phase: String) async throws {
+        try await withFolder { folder, locations in
+            let files = Files(locations: locations, disk: FileDisk(), ownershipDirectory: folder.deletingLastPathComponent().appendingPathComponent("leases"))
+            var value = record(); value.phase = phase
+            let saved = value
+            _ = try await files.claim(saved)
+            await #expect(throws: (any Error).self) { try await files.discard(record(job: "another")) }
+            #expect(try await files.load(call: "call") == saved)
+            try await files.discard(saved)
+            #expect(try await files.load(call: "call") == nil)
+            #expect(try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8) == "original transcript")
         }
     }
     @Test(arguments: ["deleted folder", "folder named summary.md", "invalid UTF-8", "failing read"])
@@ -139,6 +198,43 @@ import Testing
             #expect(try await files.start(changed) == false)
         }
     }
+    @Test(arguments: [false, true], [false, true])
+    func discardingPublishedAttemptRestoresEarlierNotes(previousNotes: Bool, terminalSaved: Bool) async throws {
+        try await withFolder { folder, locations in
+            let files = Files(locations: locations, disk: FileDisk(), ownershipDirectory: folder.deletingLastPathComponent().appendingPathComponent("leases"))
+            _ = try await files.claim(record()); _ = try await files.start(record())
+            if previousNotes { try Data("earlier complete notes".utf8).write(to: folder.appendingPathComponent("summary.md")) }
+            try await files.publish(record(), notes: "cancelled notes")
+            if terminalSaved {
+                var completed = record(); completed.phase = "succeeded"
+                try await files.progress(completed)
+            }
+            try await files.discard(record())
+            #expect(try await files.notes(call: "call")?.text == (previousNotes ? "earlier complete notes" : nil))
+            #expect(try await files.load(call: "call") == nil)
+        }
+    }
+
+    @Test(arguments: [false, true])
+    func cancellationWhilePublicationWaitsPreservesEarlierNotes(previousNotes: Bool) async throws {
+        try await withFolder { folder, _ in
+            let locations = HeldPublicationLocation(folder: folder)
+            let files = Files(locations: locations, disk: FileDisk(), ownershipDirectory: folder.deletingLastPathComponent().appendingPathComponent("leases"))
+            _ = try await files.claim(record()); _ = try await files.start(record())
+            if previousNotes { try Data("earlier complete notes".utf8).write(to: folder.appendingPathComponent("summary.md")) }
+            await locations.hold()
+            let publishing = Task { try await files.publish(record(), notes: "cancelled notes") }
+            for await _ in locations.entered.stream { break }
+            publishing.cancel()
+            await locations.release()
+            await #expect(throws: CancellationError.self) { try await publishing.value }
+            try await files.discard(record())
+            #expect(try await files.notes(call: "call")?.text == (previousNotes ? "earlier complete notes" : nil))
+            #expect(try await files.load(call: "call") == nil)
+            #expect(try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8) == "original transcript")
+        }
+    }
+
     @Test func failedReplacementKeepsPreviousCompleteNotes() async throws {
         try await withFolder { folder, locations in
             let disk = FailingDisk(), files = Files(locations: locations, disk: disk, ownershipDirectory: folder.deletingLastPathComponent().appendingPathComponent("leases"))
@@ -278,12 +374,13 @@ import Testing
             }
         }
     }
-    @Test func concurrentRetriesReplaceOnlyTheInterruptedAttemptAndPreserveOutputs() async throws {
+    @Test(arguments: ["interrupted", "failed"])
+    func concurrentRetriesReplaceOnlyTheInactiveAttemptAndPreserveOutputs(phase: String) async throws {
         try await withFolder { folder, locations in
             let directory = folder.deletingLastPathComponent().appendingPathComponent("leases")
             let first = Files(locations: locations, disk: FileDisk(), ownershipDirectory: directory)
             let second = Files(locations: Location(folder), disk: FileDisk(), ownershipDirectory: directory)
-            var old = record(); old.phase = "interrupted"; old.checkpoint = Data("speaker evidence".utf8)
+            var old = record(); old.phase = phase; old.checkpoint = Data("speaker evidence".utf8)
             let interrupted = old
             _ = try await first.claim(interrupted)
             let output = folder.appendingPathComponent("summary.md")
@@ -302,7 +399,7 @@ import Testing
             #expect(try await first.start(next))
             await #expect(throws: (any Error).self) { try await first.publish(interrupted, notes: "stale output") }
             try await first.publish(next, notes: "fresh output")
-            #expect(try await first.notes(call: "call") == "fresh output")
+            #expect(try await first.notes(call: "call")?.text == "fresh output")
             await first.release(job: next.job, call: next.call, input: next.input)
         }
     }
@@ -325,12 +422,12 @@ import Testing
             let request = stale
             await #expect(throws: (any Error).self) { try await files.retry(request, job: "fresh") }
             #expect(try await files.load(call: "call") == current)
-            #expect(try await files.notes(call: "call") == "complete previous notes")
+            #expect(try await files.notes(call: "call")?.text == "complete previous notes")
             #expect(try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8) == "original transcript")
         }
     }
-    @Test(arguments: ["pending", "running", "succeeded", "failed"])
-    func retryRefusesEveryNonInterruptedPhase(phase: String) async throws {
+    @Test(arguments: ["pending", "running", "succeeded"])
+    func retryRefusesEveryActiveOrSuccessfulPhase(phase: String) async throws {
         try await withFolder { folder, locations in
             let files = Files(locations: locations, disk: FileDisk(), ownershipDirectory: folder.deletingLastPathComponent().appendingPathComponent("leases"))
             var value = record(); value.phase = phase
@@ -351,7 +448,7 @@ import Testing
             disk.failure.withLock { $0 = ".summary-job.json" }
             await #expect(throws: (any Error).self) { try await files.retry(current, job: "fresh") }
             #expect(try await files.load(call: "call") == current)
-            #expect(try await files.notes(call: "call") == "old output")
+            #expect(try await files.notes(call: "call")?.text == "old output")
             disk.failure.withLock { $0 = nil }
             #expect(try await files.retry(current, job: "fresh").phase == "pending")
         }
@@ -383,6 +480,11 @@ private final class FailingDisk: Disk, Sendable {
     }
     func create(_ data: Data, at url: URL) throws -> Bool { try check(url); return try disk.create(data, at: url) }
     func replace(_ data: Data, at url: URL) throws { try check(url); try disk.replace(data, at: url) }
+    func readStamped(_ url: URL) throws -> (data: Data, modified: Date) {
+        if readFailure.withLock({ $0 == url.lastPathComponent }) { throw CocoaError(.fileReadUnknown) }
+        return try disk.readStamped(url)
+    }
+    func remove(_ url: URL) throws { try check(url); try disk.remove(url) }
 }
 private func withFolder(_ body: (URL, Location) async throws -> Void) async throws {
     let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
@@ -405,8 +507,26 @@ private final class StaleFirstReadDisk: Disk, Sendable {
     func exists(_ url: URL) throws -> Bool { try base.exists(url) }
     func create(_ data: Data, at url: URL) throws -> Bool { try base.create(data, at: url) }
     func replace(_ data: Data, at url: URL) throws { try base.replace(data, at: url) }
+    func readStamped(_ url: URL) throws -> (data: Data, modified: Date) { try base.readStamped(url) }
+    func remove(_ url: URL) throws { try base.remove(url) }
 }
 
 private func retryResult(_ files: Files, _ record: Record, job: String) async -> Record? {
     try? await files.retry(record, job: job)
+}
+
+private actor HeldPublicationLocation: Locations {
+    let folder: URL
+    nonisolated let entered = AsyncStream<Void>.makeStream()
+    private var held = false
+    private var waiter: CheckedContinuation<Void, Never>?
+    init(folder: URL) { self.folder = folder }
+    func hold() { held = true }
+    func release() { held = false; waiter?.resume(); waiter = nil }
+    func withFolder<Value: Sendable>(call: String, _ work: @Sendable (URL) throws -> Value) async throws -> Value {
+        if held {
+            await withCheckedContinuation { waiter = $0; entered.continuation.yield(()) }
+        }
+        return try work(folder)
+    }
 }

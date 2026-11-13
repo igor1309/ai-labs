@@ -32,8 +32,8 @@ import SummaryJobs
                       entries: submission.entries.map { .init(label: $0.label, time: $0.time, text: $0.text) },
                       speakers: config.speakers, primary: runtime(config.primary), fallback: config.fallback.map(runtime))
         let model = install(.init(), call: submission.call)
-        guard config.enabled else { return false }
-        model.send(.offer(job, enabled: config.enabled, finalWrite: submission.finalWrite, usable: submission.usable))
+        guard config.enabled || submission.requested else { return false }
+        model.send(.offer(job, enabled: config.enabled || submission.requested, finalWrite: submission.finalWrite, usable: submission.usable))
         await model.waitForClaim()
         let pending = model.state.phase == .pending
         if !pending { _ = install(model.state, call: submission.call, observing: true) }
@@ -61,7 +61,7 @@ import SummaryJobs
     func retry(call: String) async throws {
         guard models[call]?.busy != true, let record = try await load(call) else { throw CocoaError(.fileWriteUnknown) }
         let previous = try store.state(record)
-        guard previous.phase == .interrupted else {
+        guard previous.phase == .interrupted || previous.phase == .failed else {
             _ = install(previous, call: call, observing: true)
             throw CocoaError(.fileWriteUnknown)
         }
@@ -76,6 +76,16 @@ import SummaryJobs
         let model = install(.init(), call: call)
         model.send(.storageFailed)
         await model.waitForClaim()
+    }
+    func job(call: String) -> Job? { models[call]?.state.job }
+    func stop(call: String) { models[call]?.cancel() }
+    func cancel(call: String) async throws {
+        guard let model = models[call] else { return }
+        try await model.cancelAndJoin { [store] job in
+            guard try await store.files.load(call: call) != nil else { return }
+            try await store.discard(job)
+        }
+        models.removeValue(forKey: call)
     }
     func forget(call: String) async {
         let removed = models.removeValue(forKey: call)

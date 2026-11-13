@@ -45,8 +45,12 @@ public func compose(
         deadline: { try await boundary.time.sleep(.seconds(120)) })
     let summaryFiles = SummaryFiles.Files(locations: storage, disk: FileDisk(), ownershipDirectory: preferencesURL.deletingLastPathComponent().appendingPathComponent("summary-ownership"))
     let language = CurrentLanguage(uiLanguage(LanguageChoice(preferences.read().language), preferred: boundary.preferredLanguages()))
+    let made: @Sendable (Date) -> String = { date in
+        date.formatted(Date.FormatStyle(date: .abbreviated, time: .shortened, locale: language.language.callsList.locale, timeZone: timeZone))
+    }
     let summaries = AudelinSummaries(files: summaryFiles,
                                      runtime: runtime, preferences: preferences, sink: boundary.log,
+                                     callText: { try await storage.text(id: $0) }, date: made,
                                      text: language.language.callsList, status: { language.language.callsList.summaryStatus($0, $1) })
     let cleanupRuns = CleanupRuns()
     let menu = await AudelinMenu(storage: preferences, occupiedCallNames: { try storage.occupiedCallNames() }, boundary: boundary, processes: processes, panel: panel,
@@ -65,8 +69,10 @@ public func compose(
                                   timeZone: timeZone, now: boundary.time.now, recordingState: { [weak menu] in menu?.state ?? .init() },
                                   location: { try await storage.location(id: $0) }, openFolder: openCallsFolder,
                                   present: presentCalls, summaryStatuses: { summaries.statuses }, summaryBadges: { summaries.badges },
-                                  notes: { try await summaryFiles.notes(call: $0) },
-                                  copy: copyNotes, readCall: readCall, notesEnabled: { preferences.read().notes.enabled },
+                                  notes: { try await summaries.notes(call: $0).map { (text: $0.text, made: made($0.made)) } },
+                                  notesState: { summaries.notesState(call: $0) },
+                                  makeSummary: { summaries.make(call: $0) }, cancelSummary: { await summaries.cancel(call: $0) },
+                                  copy: copyNotes, readCall: readCall,
                                   retryableSummaries: { summaries.retryable }, retrySummary: { try await summaries.retry(call: $0) },
                                   describe: { language.language.settings.callsFailure($0) },
                                   listText: language.language.callsList,

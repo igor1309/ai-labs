@@ -12,8 +12,9 @@ public struct SummarySubmission: Equatable, Sendable {
     public var entries: [Entry]
     public var finalWrite: Bool
     public var usable: Bool
-    public init(call: String, input: String, entries: [Entry], finalWrite: Bool, usable: Bool) {
-        self.call = call; self.input = input; self.entries = entries; self.finalWrite = finalWrite; self.usable = usable
+    public var requested: Bool
+    public init(call: String, input: String, entries: [Entry], finalWrite: Bool, usable: Bool, requested: Bool = false) {
+        self.call = call; self.input = input; self.entries = entries; self.finalWrite = finalWrite; self.usable = usable; self.requested = requested
     }
 }
 
@@ -44,6 +45,7 @@ public enum SummaryCoordinatorEvent: Equatable, Sendable {
     case recovered(String, SummaryRecovery), recoveryFailed(String)
     case submitted(String, pending: Bool), dispatched(String), failureInstalled(String)
     case retry(String), retried(String), retryFailed(String)
+    case forget(String)
     case stopDispatch, shutdown, joined
 }
 
@@ -85,6 +87,9 @@ public struct SummaryCoordinatorReducer {
         case let .retryFailed(call) where state.calls[call]?.phase == .retrying:
             next.retryFailures.insert(call)
             next.calls[call] = .init(phase: .installed)
+        case let .forget(call) where state.calls[call]?.phase == .installed || state.calls[call]?.phase == .pending:
+            next.calls[call] = nil
+            next.retryFailures.remove(call)
         case .stopDispatch:
             next.dispatch = false
         case .shutdown where state.phase == .accepting:

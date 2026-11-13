@@ -151,6 +151,54 @@ public struct TranscriptFormat: Sendable {
         return "Them \(index + 1)"
     }
 
+    /// One part read back from a rendered transcript: its label as rendered, its start
+    /// in whole seconds of call time, and its words.
+    public struct Entry: Sendable, Equatable {
+
+        public let label: String
+        public let start: Double
+        public let words: String
+
+        public init(label: String, start: Double, words: String) { self.label = label; self.start = start; self.words = words }
+    }
+
+    /// Reads a rendered transcript back into its parts with words, in order. A part is
+    /// its header line (`**Me**`, `**Them**` or `**Them N**`, its start, and maybe the
+    /// filled-in mark) and every line up to the next header or the Speakers section.
+    /// Lines before the first part, and the Speakers section, are skipped.
+    public static func entries(_ markdown: String) -> [Entry] {
+
+        var entries: [Entry] = []
+        var current: (label: String, start: Double, lines: [Substring])?
+        func close() {
+            guard let part = current else { return }
+            let words = part.lines.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+            if !words.isEmpty { entries.append(Entry(label: part.label, start: part.start, words: words)) }
+            current = nil
+        }
+        let normalized = markdown.replacingOccurrences(of: "\r\n", with: "\n")
+        for line in normalized.split(separator: "\n", omittingEmptySubsequences: false) {
+            if let header = header(line) {
+                close()
+                current = (header.label, header.start, [])
+            } else if line == "## Speakers" {
+                close()
+                break
+            } else {
+                current?.lines.append(line)
+            }
+        }
+        close()
+        return entries
+    }
+
+    private static func header(_ line: Substring) -> (label: String, start: Double)? {
+
+        guard let match = line.wholeMatch(of: /\*\*(Me|Them|Them [1-9][0-9]*)\*\* ([0-9]{2,}):([0-5][0-9]):([0-5][0-9])( \(filled in later\))?/),
+              let h = Double(match.2), let m = Double(match.3), let s = Double(match.4) else { return nil }
+        return (String(match.1), h * 3_600 + m * 60 + s)
+    }
+
     /// A readable Speakers section and one versioned machine-readable block after it.
     private func speakerBlock() -> String {
 

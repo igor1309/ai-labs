@@ -15,6 +15,12 @@ public struct Record: Codable, Equatable, Sendable {
         self.phase = phase; self.checkpoint = checkpoint; self.warning = warning
     }
 }
+/// A call's notes as saved, and when the notes file last changed.
+public struct Notes: Equatable, Sendable {
+    public let text: String
+    public let made: Date
+    public init(text: String, made: Date) { self.text = text; self.made = made }
+}
 public protocol Locations: Sendable {
     /// The operation and rename/delete/move share one storage transaction boundary.
     func withFolder<Value: Sendable>(call: String, _ operation: @Sendable (URL) throws -> Value) async throws -> Value
@@ -24,6 +30,9 @@ public protocol Disk: Sendable {
     func exists(_ url: URL) throws -> Bool
     func create(_ data: Data, at url: URL) throws -> Bool
     func replace(_ data: Data, at url: URL) throws
+    /// A file's bytes and its modification time, both from the one file opened.
+    func readStamped(_ url: URL) throws -> (data: Data, modified: Date)
+    func remove(_ url: URL) throws
 }
 public struct FileDisk: Disk {
     public init() {}
@@ -47,6 +56,15 @@ public struct FileDisk: Disk {
         throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
     }
     public func replace(_ data: Data, at url: URL) throws { try data.write(to: url, options: .atomic) }
+    public func remove(_ url: URL) throws { try FileManager.default.removeItem(at: url) }
+    public func readStamped(_ url: URL) throws -> (data: Data, modified: Date) {
+        let handle = try FileHandle(forReadingFrom: url)
+        defer { try? handle.close() }
+        var info = stat()
+        guard fstat(handle.fileDescriptor, &info) == 0 else { throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO) }
+        let modified = Date(timeIntervalSince1970: TimeInterval(info.st_mtimespec.tv_sec) + TimeInterval(info.st_mtimespec.tv_nsec) / 1e9)
+        return (try handle.readToEnd() ?? Data(), modified)
+    }
 }
 
 /// Keeps the isolated storage implementation behind an async boundary.
@@ -59,13 +77,16 @@ public struct Files: Sendable {
     public func release(job: String, call: String, input: String) async { await storage.release(job: job, call: call, input: input) }
     public func claim(_ record: Record) async throws -> (owned: Bool, record: Record) { try await storage.claim(record) }
     public func load(call: String) async throws -> Record? { try await storage.load(call: call) }
-    /// Replaces only the named interrupted attempt; its durable input and outputs survive.
+    /// Replaces only the named interrupted or failed attempt; its durable input and outputs survive.
     public func retry(_ record: Record, job: String) async throws -> Record { try await storage.retry(record, job: job) }
     public func start(_ record: Record) async throws -> Bool { try await storage.start(record) }
     public func progress(_ record: Record) async throws { try await storage.progress(record) }
     public func publish(_ record: Record, notes: String) async throws { try await storage.publish(record, notes: notes) }
-    /// The call's published notes as saved, or nil when it has none.
-    public func notes(call: String) async throws -> String? { try await storage.notes(call: call) }
+    /// Removes a cancelled attempt, restoring notes replaced by this instance's publication.
+    /// Earlier notes and the transcript stay; a completed record without notes can also be retired.
+    public func discard(_ record: Record) async throws { try await storage.discard(record) }
+    /// The call's published notes as saved, with when they were made, or nil when it has none.
+    public func notes(call: String) async throws -> Notes? { try await storage.notes(call: call) }
 }
 private protocol FilesStorage: Sendable {
     func release(job: String, call: String, input: String) async
@@ -75,7 +96,8 @@ private protocol FilesStorage: Sendable {
     func start(_ record: Record) async throws -> Bool
     func progress(_ record: Record) async throws
     func publish(_ record: Record, notes: String) async throws
-    func notes(call: String) async throws -> String?
+    func notes(call: String) async throws -> Notes?
+    func discard(_ record: Record) async throws
 }
 
 private actor DiskFiles: FilesStorage {
@@ -84,6 +106,8 @@ private actor DiskFiles: FilesStorage {
     private let ownershipDirectory: URL
     private struct Identity: Hashable { var call: String; var job: String; var input: String }
     private var leases: [Identity: Int32] = [:]
+    private struct Publication: Sendable { var previous: Data?; var data: Data }
+    private var publications: [Identity: Publication] = [:]
     /// All instances sharing calls must use the same ownership directory, outside movable call storage.
     public init(locations: any Locations, disk: any Disk, ownershipDirectory: URL) {
         self.locations = locations; self.disk = disk; self.ownershipDirectory = ownershipDirectory
@@ -151,7 +175,7 @@ private actor DiskFiles: FilesStorage {
             defer { flock(lease, LOCK_UN); close(lease) }
             let path = folder.appendingPathComponent(".summary-job.json")
             let current = try Self.read(path, disk: disk, call: record.call)
-            guard current == record, current.phase == "interrupted", !job.isEmpty, job != current.job else {
+            guard current == record, ["interrupted", "failed"].contains(current.phase), !job.isEmpty, job != current.job else {
                 throw CocoaError(.fileWriteUnknown)
             }
             var next = current
@@ -178,6 +202,7 @@ private actor DiskFiles: FilesStorage {
         }
         guard let lease else { return false }
         leases[identity] = lease
+        publications = publications.filter { $0.key.call != record.call || $0.key == identity }
         return true
     }
     public func progress(_ record: Record) async throws {
@@ -193,27 +218,70 @@ private actor DiskFiles: FilesStorage {
         }
     }
     public func publish(_ record: Record, notes: String) async throws {
-        guard leases[.init(call: record.call, job: record.job, input: record.input)] != nil else { throw CocoaError(.fileWriteUnknown) }
-        try await locations.withFolder(call: record.call) { [disk] folder in
+        let identity = Identity(call: record.call, job: record.job, input: record.input)
+        guard leases[identity] != nil else { throw CocoaError(.fileWriteUnknown) }
+        let saved = publications[identity]
+        let publication = try await locations.withFolder(call: record.call) { [disk] folder in
+            try Task.checkCancellation()
             let current = try Self.read(folder.appendingPathComponent(".summary-job.json"), disk: disk, call: record.call)
             guard current.job == record.job, current.input == record.input, current.phase == "running" else { throw CocoaError(.fileWriteUnknown) }
             let receipt = Receipt(job: record.job, input: record.input, warning: record.warning)
             let marker = try JSONEncoder().encode(receipt).base64EncodedString()
             // Receipt and notes are one atomic file replacement; an old complete output survives failure.
             let data = Data(("<!-- audelin-summary:" + marker + " -->\n" + notes).utf8)
-            try disk.replace(data, at: folder.appendingPathComponent("summary.md"))
+            let output = folder.appendingPathComponent("summary.md")
+            let previous: Data?
+            if let saved { previous = saved.previous }
+            else { previous = try disk.exists(output) ? disk.read(output) : nil }
+            try Task.checkCancellation()
+            try disk.replace(data, at: output)
+            return Publication(previous: previous, data: data)
         }
+        // Keep rollback evidence through terminal saving: the caller may still accept cancellation.
+        publications[identity] = publication
     }
-    public func notes(call: String) async throws -> String? {
+    public func discard(_ record: Record) async throws {
+        let identity = Identity(call: record.call, job: record.job, input: record.input)
+        let ownsRunning = leases[identity] != nil
+        let inactiveLease: Int32?
+        if ownsRunning { inactiveLease = nil }
+        else {
+            guard let lease = try Self.acquire(record, directory: ownershipDirectory) else { throw CocoaError(.fileWriteUnknown) }
+            inactiveLease = lease
+        }
+        defer { if let inactiveLease { flock(inactiveLease, LOCK_UN); close(inactiveLease) } }
+        let publication = publications[identity]
+        try await locations.withFolder(call: record.call) { [disk] folder in
+            let path = folder.appendingPathComponent(".summary-job.json")
+            let current = try Self.read(path, disk: disk, call: record.call)
+            let output = folder.appendingPathComponent("summary.md")
+            let completedWithoutNotes = try current.phase == "succeeded" && !disk.exists(output)
+            guard current.job == record.job, current.input == record.input,
+                  ownsRunning ? current.phase == "running" : (["pending", "interrupted"].contains(current.phase) || completedWithoutNotes || publication != nil) else {
+                throw CocoaError(.fileWriteUnknown)
+            }
+            if let publication, try disk.exists(output), try disk.read(output) == publication.data {
+                if let previous = publication.previous { try disk.replace(previous, at: output) }
+                else { try disk.remove(output) }
+            }
+            try disk.remove(path)
+        }
+        publications[identity] = nil
+        release(job: record.job, call: record.call, input: record.input)
+    }
+    public func notes(call: String) async throws -> Notes? {
         try await locations.withFolder(call: call) { [disk] folder in
             let output = folder.appendingPathComponent("summary.md")
             guard try disk.exists(output) else { return nil }
-            guard let text = String(data: try disk.read(output), encoding: .utf8) else {
+            let (data, made) = try disk.readStamped(output)
+            guard let text = String(data: data, encoding: .utf8) else {
                 throw CocoaError(.fileReadInapplicableStringEncoding)
             }
             // The publication receipt is the first line; the notes follow it.
-            guard text.hasPrefix("<!-- audelin-summary:"), let newline = text.firstIndex(of: "\n") else { return text }
-            return String(text[text.index(after: newline)...])
+            guard text.hasPrefix("<!-- audelin-summary:"), let newline = text.firstIndex(of: "\n") else {
+                return Notes(text: text, made: made)
+            }
+            return Notes(text: String(text[text.index(after: newline)...]), made: made)
         }
     }
     private static func read(_ url: URL, disk: any Disk, call: String) throws -> Record {

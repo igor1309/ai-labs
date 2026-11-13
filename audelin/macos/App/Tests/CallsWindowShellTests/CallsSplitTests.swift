@@ -6,7 +6,7 @@ import Observation
 import SummaryPreviewUI
 import SwiftUI
 import Testing
-@testable import Audelin
+@testable import CallsWindowShell
 
 @MainActor
 struct CallsSplitTests {
@@ -37,13 +37,13 @@ struct CallsSplitTests {
     }
 
     @Test func eachDetailButtonReachesTheCallsWindow() async {
-        let events: [SummaryPreviewEvent] = [.copy, .open, .rename, .retrySummary, .delete]
+        let events: [SummaryPreviewEvent] = [.copy, .open, .rename, .retrySummary, .delete, .makeSummary, .cancelSummary]
         var sent: [CallsDetailEvent] = []
         await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
             let handle = detailSender { sent.append($0); if sent.count == events.count { done.resume() } }
             events.forEach(handle)
         }
-        #expect(sent == [.copy, .open, .rename, .retrySummary, .delete])
+        #expect(sent == [.copy, .open, .rename, .retrySummary, .delete, .makeSummary, .cancelSummary])
     }
 
     @Test func theDetailShowsTheSelectedCallsStateAndNothingSelected() {
@@ -56,17 +56,18 @@ struct CallsSplitTests {
         }
 
         #expect(detailState(nil, text: russian) == nil)
-        #expect(detailState(detail(.notes("# A")), text: russian) == state(.markdown("# A")))
+        #expect(detailState(detail(.notes("# A", made: "12 октября, 10:30")), text: russian) == state(.markdown("# A", made: "12 октября, 10:30")))
         #expect(detailState(detail(.unreadable("нет доступа")), text: russian) == state(.unreadable("Итоги не читаются: нет доступа")))
-        #expect(detailState(detail(.preparing), text: russian) == state(.preparing))
+        #expect(detailState(detail(.preparing), text: russian) == state(.making))
         #expect(detailState(detail(.failed(reason: "лимит", canRetry: true)), text: russian) == state(.failed("лимит"), canRetry: true))
         #expect(detailState(detail(.failed(reason: "лимит", canRetry: false)), text: russian) == state(.failed("лимит")))
-        #expect(detailState(detail(.none(notesOff: true)), text: russian) == state(.none(notesOff: true)))
+        #expect(detailState(detail(.notes("# A")), text: russian) == state(.markdown("# A", made: nil)))
+        #expect(detailState(detail(.none), text: russian) == state(.none))
     }
 
     @Test func eachDetailButtonIsTheSameActionOnTheShownCall() {
-        let events: [SummaryPreviewEvent] = [.copy, .open, .rename, .retrySummary, .delete]
-        #expect(events.map(detailEvent) == [.copy, .open, .rename, .retrySummary, .delete])
+        let events: [SummaryPreviewEvent] = [.copy, .open, .rename, .retrySummary, .delete, .makeSummary, .cancelSummary]
+        #expect(events.map(detailEvent) == [.copy, .open, .rename, .retrySummary, .delete, .makeSummary, .cancelSummary])
     }
 
     @Test func closingTheCallsWindowTellsTheList() {

@@ -10,7 +10,7 @@ struct CallsMoveTests {
     @Test func moveKeepsEveryFileAndIdentityAfterAFinderRename() async throws {
         try await withMoveFolders { (source: URL, target: URL) async throws in
             try FileManager.default.moveItem(at: source.appendingPathComponent(name), to: source.appendingPathComponent(id + " Finder"))
-            let disk = Calls(folder: source, timeZone: .gmt, duration: { _ in 0 }, disk: .system)
+            let disk = Calls(folder: source, timeZone: .gmt, duration: { _ in 0 }, transcript: { _ in [] }, disk: .system)
             #expect(try disk.move(id: id, to: target) == 7)
             #expect(try FileManager.default.contentsOfDirectory(atPath: source.path).isEmpty)
             #expect(try FileManager.default.contentsOfDirectory(atPath: target.path) == [id + " Finder"])
@@ -30,6 +30,7 @@ struct CallsMoveTests {
             try Data([99]).write(to: target.appendingPathComponent("unrelated"))
             let disk = Calls(folder: source, timeZone: .gmt,
                 duration: { _ in 0 },
+                transcript: { _ in [] },
                 disk: CallsDisk(
                     children: { try FileManager.default.contentsOfDirectory(at: $0, includingPropertiesForKeys: nil) },
                     values: { url in
@@ -81,7 +82,7 @@ struct CallsMoveTests {
     @Test(arguments: [Calls.Move.Phase.copying, .publishing, .removingSource])
     func journalFailureBeforeSourceDeletionKeepsTheWholeSource(phase: Calls.Move.Phase) async throws {
         try await withMoveFolders { (source: URL, target: URL) async throws in
-            let disk = Calls(folder: source, timeZone: .gmt, duration: { _ in 0 }, disk: .system)
+            let disk = Calls(folder: source, timeZone: .gmt, duration: { _ in 0 }, transcript: { _ in [] }, disk: .system)
             await #expect(throws: (any Error).self) {
                 do {
                     try disk.move(id: id, to: target) { record in
@@ -197,7 +198,7 @@ struct CallsMoveTests {
 
     @Test func completedCopyRemainsSuccessfulWhenOnlyItsFinalJournalWriteFails() async throws {
         try await withMoveFolders { (source: URL, target: URL) async throws in
-            let disk = Calls(folder: source, timeZone: .gmt, duration: { _ in 0 }, disk: .system)
+            let disk = Calls(folder: source, timeZone: .gmt, duration: { _ in 0 }, transcript: { _ in [] }, disk: .system)
             let durable = Mutex<Calls.Move?>(nil)
             #expect(try {
                 try disk.move(id: id, to: target) { move in
@@ -261,7 +262,7 @@ struct CallsMoveTests {
                     try Data([99]).write(to: target.appendingPathComponent(id + " other\(number)/kept"))
                 }
             }
-            let disk = Calls(folder: source, timeZone: .gmt, duration: { _ in 0 }, disk: .system)
+            let disk = Calls(folder: source, timeZone: .gmt, duration: { _ in 0 }, transcript: { _ in [] }, disk: .system)
             await #expect(throws: (any Error).self) { try disk.move(id: id, to: target) }
             #expect(try FileManager.default.contentsOfDirectory(atPath: target.path).sorted() == (1...count).map { id + " other\($0)" })
             for number in 1...count {
@@ -280,7 +281,7 @@ struct CallsMoveTests {
                 else if kind == "link" { try FileManager.default.createSymbolicLink(at: occupied, withDestinationURL: source) }
                 else { try Data([99]).write(to: occupied) }
             }
-            let disk = Calls(folder: source, timeZone: .gmt, duration: { _ in 0 }, disk: .system)
+            let disk = Calls(folder: source, timeZone: .gmt, duration: { _ in 0 }, transcript: { _ in [] }, disk: .system)
             await #expect(throws: (any Error).self) { try disk.move(id: id, to: target) }
             #expect(try FileManager.default.contentsOfDirectory(atPath: target.path) == [name])
             #expect(try Data(contentsOf: source.appendingPathComponent(name + "/one")) == Data([1, 2, 3]))
@@ -290,7 +291,7 @@ struct CallsMoveTests {
 
     @Test func missingCallAndDestinationInsideTheCallFailWithoutChanges() async throws {
         try await withMoveFolders { (source: URL, target: URL) async throws in
-            let disk = Calls(folder: source, timeZone: .gmt, duration: { _ in 0 }, disk: .system)
+            let disk = Calls(folder: source, timeZone: .gmt, duration: { _ in 0 }, transcript: { _ in [] }, disk: .system)
             await #expect(throws: (any Error).self) { try disk.move(id: "gone", to: target) }
             await #expect(throws: (any Error).self) { try disk.move(id: id, to: source.appendingPathComponent(name + "/nested")) }
             #expect(try FileManager.default.contentsOfDirectory(atPath: target.path).isEmpty)
@@ -308,6 +309,7 @@ private func testCalls(folder: URL,
                        remove: @escaping @Sendable (URL) throws -> Void = { try FileManager.default.removeItem(at: $0) }) -> Calls {
     Calls(folder: folder, timeZone: .gmt,
           duration: { _ in 0 },
+          transcript: { _ in [] },
           disk: CallsDisk(
               children: children,
               values: values,

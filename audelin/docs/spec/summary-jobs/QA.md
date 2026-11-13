@@ -55,7 +55,7 @@ Automated boundary: `cd audelin/macos && swift test --filter SummaryJobsTests/st
 
 ## S-14 Cancel cleanly
 
-Automated boundary: `cd audelin/macos/App && swift test --filter SummaryGenerationTests/cancellationNeverCallsFallback`. Setup fixture: a runtime request is active; drive: the job is cancelled; read-back oracle: I can await its end with no fallback request. Gate claim/runtime/checkpoint ports as named, count adapter invocations and read saved output/state; compare original transcript bytes.
+Automated boundary: `cd audelin/macos/App && swift test --filter SummaryGenerationTests/cancellationNeverCallsFallback`. Setup fixture: a runtime request is active; drive: its runtime request is cancelled; read-back oracle: no fallback request. The user's cancel and the removed record: `cd audelin/macos && swift test --filter SummaryJobsTests/aCancelEndsAsTheUserOrTheAppMeantIt`, over identify and notes, with and without the user's cancel and the task's. Gate claim/runtime/checkpoint ports as named, count adapter invocations and read saved output/state; compare original transcript bytes.
 
 ## S-15 Reject failed final text
 

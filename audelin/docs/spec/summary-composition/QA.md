@@ -48,3 +48,17 @@ The observer cases cover running and lost-dispatch states against a read error, 
 ## S-11 Retry after an earlier error
 
 `cd audelin/macos/App && swift test --filter SummaryCoordinatorTests` starts retry with failures for the requested call and another call. Both successful and failed results clear the requested call's old error at retry start, preserving the unrelated error.
+
+## S-12 Make on request with automatic notes off
+
+`swift test --filter CallNotesWiringTests/requestedNotesWorkWithAutomaticNotesOff` in the App package drives both row and detail requests over a temporary calls folder with automatic notes off. Controlled generation receives the saved transcript and configured model; the detail carries the generated text and the notes file's formatted modification date. `CallsSplitTests` checks button forwarding and the rendered date mapping.
+
+## S-13 Cancel only the requested attempt
+
+`swift test --filter CallNotesWiringTests/cancelDiscardsOnlyThatAttemptAndAllowsMakingAgain` holds two requests, cancels one through the detail, reads no notes or job record for it, and keeps the other job running. Making again then quitting retains both current attempts as interrupted. `failureShowsItsReasonAndRetryMakesAgain` proves failure text and a successful saved-attempt retry.
+
+`transcriptReadFailureCanBeRetriedBeforeAJobExists` uses an unreadable transcript in a temporary calls folder, checks the failure offers retry without a job record, restores readable text and retries through the detail. Generation runs once and the detail receives the notes. `unreadableJobRecordRetryReportsTheStorageFailure` keeps a corrupt stored record and reports the retry refusal.
+
+## S-14 Call end starts the call's notes machine
+
+`swift test --filter CallNotesWiringTests/callEndShowsMakingThenTheNotes` ends a recorded call with automatic notes on and controlled generation held. The selected detail shows making, then the published notes after release.

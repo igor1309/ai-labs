@@ -50,7 +50,7 @@ import Testing
     }
     @Test func successPersistsBeforeRequestsAndCheckpointsBeforeNotes() async {
         let store = StoreSpy(), generation = GenerationSpy()
-        let handler = EffectHandler(store: store, generation: generation, cancelled: { false })
+        let handler = EffectHandler(store: store, generation: generation, userCancelled: { _ in false })
         let job = job()
         var state = State()
         func send(_ event: Event) -> Effect? {
@@ -75,7 +75,7 @@ import Testing
     @Test(arguments: ["claim", "start", "checkpoint", "publish", "succeeded"])
     func storageFailuresStopThePipeline(at failure: String) async {
         let store = StoreSpy(failure: failure), generation = GenerationSpy()
-        let handler = EffectHandler(store: store, generation: generation, cancelled: { false })
+        let handler = EffectHandler(store: store, generation: generation, userCancelled: { _ in false })
         var (state, effect) = reducer.reduce(.init(), .offer(job(), enabled: true, finalWrite: true, usable: true))
         while let work = effect {
             (state, effect) = reducer.reduce(state, await handler.handle(work))
@@ -88,7 +88,7 @@ import Testing
         if failure == "checkpoint" { #expect(calls == ["identify"]) }
     }
     @Test func exhaustedIdentificationWarnsAndNotesFailureIsPersisted() async {
-        let handler = EffectHandler(store: StoreSpy(), generation: GenerationSpy(fails: true), cancelled: { false })
+        let handler = EffectHandler(store: StoreSpy(), generation: GenerationSpy(fails: true), userCancelled: { _ in false })
         let job = job()
         let (checkpoint, effect) = reducer.reduce(.init(phase: .identifying, job: job), await handler.handle(.identify(job)))
         #expect(checkpoint.warning)
@@ -101,7 +101,7 @@ import Testing
         let saved = makeState(phase: .running, job: job())
         let job = job()
         let store = StoreSpy(existing: saved)
-        let handler = EffectHandler(store: store, generation: GenerationSpy(), cancelled: { false })
+        let handler = EffectHandler(store: store, generation: GenerationSpy(), userCancelled: { _ in false })
         let event = await handler.handle(.claim(job))
         #expect(event == .claimed(owned: false, saved))
         #expect(await store.calls == ["claim"])
@@ -116,13 +116,49 @@ import Testing
         let observed = reducer.reduce(.init(phase: .claiming), .claimed(owned: false, .init(phase: .pending, job: job))).0
         #expect(reducer.reduce(observed, .dispatch).1 == nil)
         let store = StoreSpy()
-        let handler = EffectHandler(store: store, generation: GenerationSpy(fails: true), cancelled: { true })
-        #expect(await handler.handle(.notes(job, [])) == .cancel)
+        let handler = EffectHandler(store: store, generation: GenerationSpy(fails: true), userCancelled: { _ in false })
+        let exit = Task {
+            withUnsafeCurrentTask { $0?.cancel() }
+            return await handler.handle(.notes(job, []))
+        }
+        #expect(await exit.value == .cancel)
         #expect(await store.released == [job])
+        #expect(await store.calls.isEmpty)
         let (cancelled, effect) = reducer.reduce(.init(phase: .noting, job: job), .cancel)
         #expect(cancelled.phase == .interrupted)
         #expect(effect == nil)
         #expect(reducer.reduce(cancelled, .noted("late")).0 == cancelled)
+    }
+    @Test(arguments: ["identify", "notes"], [(true, false), (true, true), (false, true)])
+    func aCancelEndsAsTheUserOrTheAppMeantIt(during step: String, cancel: (user: Bool, task: Bool)) async {
+        let job = job()
+        let store = StoreSpy()
+        let handler = EffectHandler(store: store, generation: GenerationSpy(fails: true), userCancelled: { $0 == job && cancel.user })
+        let effect: Effect = step == "identify" ? .identify(job) : .notes(job, [])
+        let run = Task {
+            if cancel.task { withUnsafeCurrentTask { $0?.cancel() } }
+            return await handler.handle(effect)
+        }
+        let event = await run.value
+        #expect(event == (cancel.user ? .discarded : .cancel))
+        #expect(await store.calls == (cancel.user ? ["discard"] : []))
+        #expect(await store.released == (cancel.user ? [] : [job]))
+        let phase: State.Phase = step == "identify" ? .identifying : .noting
+        let (ended, next) = reducer.reduce(.init(phase: phase, job: job), event)
+        #expect(ended == (cancel.user ? State(status: "idle:false") : State(phase: .interrupted, job: job, status: "interrupted:false")))
+        #expect(next == nil)
+        #expect(reducer.reduce(ended, .noted("late")).0 == ended)
+    }
+    @Test func anotherJobsCancelIsNotThisJobs() async {
+        let other = { var other = job(); other.id = "other"; return other }()
+        let handler = EffectHandler(store: StoreSpy(), generation: GenerationSpy(fails: true), userCancelled: { $0 == other })
+        #expect(await handler.handle(.notes(job(), [])) == .notesFailed)
+    }
+    @Test func aFailedDiscardIsAStorageFailure() async {
+        let store = StoreSpy(failure: "discard")
+        let handler = EffectHandler(store: store, generation: GenerationSpy(fails: true), userCancelled: { _ in true })
+        #expect(await handler.handle(.notes(job(), [])) == .storageFailed)
+        #expect(await store.released == [job()])
     }
     @discardableResult private func assert(_ state: State, _ event: Event, changes: (inout State) -> Void = { _ in }) -> State {
         var expected = state; changes(&expected)
@@ -155,6 +191,7 @@ private actor StoreSpy: Store {
     func checkpoint(_ job: Job, identities: [Identity], warning: Bool) throws { try call("checkpoint") }
     func publish(_ job: Job, notes: String, warning: Bool) throws { try call("publish") }
     func save(_ job: Job, phase: State.Phase, warning: Bool) throws { try call(phase.rawValue) }
+    func discard(_ job: Job) throws { try call("discard") }
 }
 private actor GenerationSpy: Generation {
     var calls: [String] = []

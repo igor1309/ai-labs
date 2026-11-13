@@ -96,6 +96,35 @@ struct SummaryCompositionTests {
             } catch { storage.release.send(); await rig.finish(); throw error }
         }
     }
+    @Test func disablingAutomaticNotesDuringFinalWriteAllowsMakingOnRequest() async throws {
+        try await withComposeFolder { root in
+            let storage = ControlledTranscripts(holdFinal: true), http = ControlledHTTP(hold: false)
+            let rig = try await fixture(root: root, storage: storage, http: http)
+            do {
+                try await rig.start(); await rig.mine.heard.next(); await rig.theirs.heard.next()
+                let stopping = Task { try await rig.stop() }
+                await storage.held.next()
+                let settings = try #require(rig.menu.summarySettings)
+                for await state in Observations({ settings.snapshot }) where state.phase == .saved { break }
+                settings.send(.setAutomaticNotes(false))
+                for await state in Observations({ settings.snapshot }) where state.phase == .editing { break }
+                settings.send(.notesAction(.save))
+                for await state in Observations({ settings.snapshot }) where state.phase == .saved { break }
+                storage.release.send(); try await stopping.value
+                let calls = try #require(rig.menu.calls)
+                await rig.menu.perform(.showCalls)
+                for await state in Observations({ calls.state }) where !state.busy && state.rows.count == 1 { break }
+                #expect(await http.count == 0)
+                try #require(calls.state.rows[0].canMakeSummary)
+                #expect(calls.state.rows[0].summaryStatus.isEmpty)
+                await calls.send(.makeSummary("1970.01.01-0000"))
+                _ = try await summary(rig.menu) { $0.values.contains("Итоги готовы") }
+                #expect(await http.count == 1)
+                await rig.finish()
+            } catch { storage.release.send(); await rig.finish(); throw error }
+        }
+    }
+
     @Test(arguments: [false, true])
     func latestWriteOverridesEarlierOutcome(finalFails: Bool) async throws {
         try await withComposeFolder { root in
@@ -174,7 +203,7 @@ struct SummaryCompositionTests {
                     #expect(await http.count == 1)
                     #expect(try await files.load(call: id)?.job != job.id)
                 }
-                #expect(try await files.notes(call: id) == "previous notes")
+                #expect(try await files.notes(call: id)?.text == "previous notes")
                 #expect(try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8) == "saved transcript")
                 if !retryFails {
                     http.complete.send()
@@ -239,18 +268,18 @@ struct SummaryCompositionTests {
                 let rows = calls.state.rows.map(\.id)
                 await calls.send(.select(id))
                 if previousNotes {
-                    for await detail in Observations({ calls.detail }) where detail?.content == .notes("previous notes") { break }
+                    for await detail in Observations({ calls.detail }) where notesText(detail) == "previous notes" { break }
                 }
                 await calls.send(.retrySummary(id))
                 await http.started.next()
                 #expect(calls.state.rows.first(where: { $0.id == id })?.hasNotes == previousNotes)
-                if previousNotes { #expect(calls.detail?.content == .notes("previous notes")) }
+                if previousNotes { #expect(notesText(calls.detail) == "previous notes") }
                 http.complete.send()
                 _ = try await summary(rig.menu) { $0[id] == "Итоги готовы" }
-                let published = try #require(try await files.notes(call: id))
+                let published = try #require(try await files.notes(call: id)?.text)
                 for await state in Observations({ calls.state }) where state.rows.first(where: { $0.id == id })?.hasNotes == true { break }
                 #expect(calls.state.rows.map(\.id) == rows)
-                for await detail in Observations({ calls.detail }) where detail?.content == .notes(published) { break }
+                for await detail in Observations({ calls.detail }) where notesText(detail) == published { break }
                 #expect(calls.detail?.id == id)
                 #expect(published.contains("Synthetic meeting"))
                 #expect(calls.state.failure == nil)
@@ -395,4 +424,8 @@ private func waitForCancellation() async throws {
     let never = AsyncStream<Void> { _ in }
     for await _ in never {}
     try Task.checkCancellation()
+}
+
+private func notesText(_ detail: CallsDetail?) -> String? {
+    if case let .notes(text, _) = detail?.content { text } else { nil }
 }

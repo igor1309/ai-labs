@@ -52436,6 +52436,275 @@
                   "fill": "$text"
                 }
               ]
+            },
+            {
+              "type": "frame",
+              "id": "joL3p",
+              "name": "Link/Make",
+              "reusable": true,
+              "gap": "$space-4",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "JzOZP",
+                  "name": "Icon",
+                  "width": 14,
+                  "height": 14,
+                  "icon": "sparkles",
+                  "library": "lucide",
+                  "fill": "$me"
+                },
+                {
+                  "type": "text",
+                  "id": "BXGnu",
+                  "name": "Label",
+                  "fill": "$me",
+                  "content": "Сделать",
+                  "fontFamily": "$font-ui",
+                  "fontSize": "$type-small",
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "IUa4N",
+              "name": "No summary line",
+              "reusable": true,
+              "width": 760,
+              "gap": "$space-8",
+              "padding": [
+                "$space-8",
+                "$space-28"
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "OlVSW",
+                  "name": "Text",
+                  "fill": "$gutter",
+                  "content": "Нет итогов",
+                  "fontFamily": "$font-ui",
+                  "fontSize": "$type-small",
+                  "fontWeight": "normal"
+                },
+                {
+                  "id": "rLLqQ",
+                  "type": "ref",
+                  "ref": "joL3p",
+                  "name": "Сделать"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "YbRfD",
+              "name": "Making line",
+              "reusable": true,
+              "width": 760,
+              "gap": "$space-8",
+              "padding": [
+                "$space-8",
+                "$space-28"
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "rMEwf",
+                  "name": "Spinner",
+                  "width": 14,
+                  "height": 14,
+                  "icon": "loader-circle",
+                  "library": "lucide",
+                  "fill": "$gutter"
+                },
+                {
+                  "type": "text",
+                  "id": "X83v4R",
+                  "name": "Text",
+                  "fill": "$gutter",
+                  "content": "Делаю…",
+                  "fontFamily": "$font-ui",
+                  "fontSize": "$type-small",
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "rSTLd",
+                  "name": "Cancel",
+                  "fill": "$sub",
+                  "content": "Отменить",
+                  "fontFamily": "$font-ui",
+                  "fontSize": "$type-small",
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "nvT8E",
+              "name": "Summary skeleton",
+              "reusable": true,
+              "width": 760,
+              "layout": "vertical",
+              "gap": "$space-4",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "nOxNl",
+                  "name": "Block",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": "$space-8",
+                  "padding": [
+                    "$space-12",
+                    "$space-28",
+                    "$space-4",
+                    "$space-28"
+                  ],
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "mpJjb",
+                      "name": "Line",
+                      "width": 640,
+                      "height": 8,
+                      "fill": "$btn",
+                      "cornerRadius": "$radius-bar"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "ozBtm",
+                      "name": "Line",
+                      "width": 600,
+                      "height": 8,
+                      "fill": "$btn",
+                      "cornerRadius": "$radius-bar"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "d2ivNX",
+                      "name": "Line",
+                      "width": 380,
+                      "height": 8,
+                      "fill": "$btn",
+                      "cornerRadius": "$radius-bar"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "etFFu",
+                  "name": "Block",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": "$space-8",
+                  "padding": [
+                    "$space-12",
+                    "$space-28",
+                    "$space-4",
+                    "$space-28"
+                  ],
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "iOGPw",
+                      "name": "Line",
+                      "width": 520,
+                      "height": 8,
+                      "fill": "$btn",
+                      "cornerRadius": "$radius-bar"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "LjGED",
+                      "name": "Line",
+                      "width": 560,
+                      "height": 8,
+                      "fill": "$btn",
+                      "cornerRadius": "$radius-bar"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "fMjIb",
+                      "name": "Line",
+                      "width": 440,
+                      "height": 8,
+                      "fill": "$btn",
+                      "cornerRadius": "$radius-bar"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "MQg0K",
+                      "name": "Line",
+                      "width": 300,
+                      "height": 8,
+                      "fill": "$btn",
+                      "cornerRadius": "$radius-bar"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "ysgBo",
+                  "name": "Block",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": "$space-8",
+                  "padding": [
+                    "$space-12",
+                    "$space-28",
+                    "$space-4",
+                    "$space-28"
+                  ],
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "cyeuX",
+                      "name": "Line",
+                      "width": 480,
+                      "height": 8,
+                      "fill": "$btn",
+                      "cornerRadius": "$radius-bar"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "YUxKC",
+                      "name": "Line",
+                      "width": 360,
+                      "height": 8,
+                      "fill": "$btn",
+                      "cornerRadius": "$radius-bar"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "lSAuc",
+              "name": "Summary date",
+              "reusable": true,
+              "width": 760,
+              "padding": [
+                "$space-16",
+                "$space-28"
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "ugxZS",
+                  "name": "Text",
+                  "fill": "$gutter",
+                  "content": "Сделано 12 ноября, 14:05",
+                  "fontFamily": "$font-ui",
+                  "fontSize": "$type-caption",
+                  "fontWeight": "normal"
+                }
+              ]
             }
           ]
         }
@@ -52952,6 +53221,13 @@
                           "content": "Предложение: Oper ID как ключ верхнего уровня для всех ответов на запрос [08:08–10:04]."
                         }
                       }
+                    },
+                    {
+                      "id": "pau2G",
+                      "type": "ref",
+                      "ref": "lSAuc",
+                      "name": "Date",
+                      "width": "fill_container"
                     }
                   ]
                 },
@@ -53368,35 +53644,27 @@
                   "children": [
                     {
                       "type": "frame",
-                      "id": "s131x",
-                      "name": "Centre",
+                      "id": "BDz4S",
+                      "name": "Body",
                       "width": "fill_container",
                       "height": "fill_container",
                       "fill": "$surface",
                       "layout": "vertical",
-                      "justifyContent": "center",
-                      "alignItems": "center",
+                      "gap": "$space-4",
                       "children": [
                         {
-                          "id": "s130x",
+                          "id": "wSI0t",
                           "type": "ref",
-                          "ref": "s079x",
-                          "name": "Message",
-                          "descendants": {
-                            "s076x": {
-                              "icon": "loader-circle",
-                              "fill": "$sub"
-                            },
-                            "s077x": {
-                              "content": "Подготовка итогов…"
-                            },
-                            "s078x": {
-                              "content": "Итоги появятся здесь, когда будут готовы"
-                            },
-                            "s075x": {
-                              "enabled": false
-                            }
-                          }
+                          "ref": "YbRfD",
+                          "name": "Making",
+                          "width": "fill_container"
+                        },
+                        {
+                          "id": "q6VKI",
+                          "type": "ref",
+                          "ref": "nvT8E",
+                          "name": "Skeleton",
+                          "width": "fill_container"
                         }
                       ]
                     }
@@ -54243,35 +54511,20 @@
                   "children": [
                     {
                       "type": "frame",
-                      "id": "s183x",
-                      "name": "Centre",
+                      "id": "PfcEc",
+                      "name": "Body",
                       "width": "fill_container",
                       "height": "fill_container",
                       "fill": "$surface",
                       "layout": "vertical",
-                      "justifyContent": "center",
-                      "alignItems": "center",
+                      "gap": "$space-4",
                       "children": [
                         {
-                          "id": "s182x",
+                          "id": "RB9aG",
                           "type": "ref",
-                          "ref": "s079x",
-                          "name": "Message",
-                          "descendants": {
-                            "s076x": {
-                              "icon": "file-text",
-                              "fill": "$gutter"
-                            },
-                            "s077x": {
-                              "content": "Итогов нет"
-                            },
-                            "s078x": {
-                              "content": "Подготовка итогов выключена в Настройках"
-                            },
-                            "s075x": {
-                              "enabled": false
-                            }
-                          }
+                          "ref": "IUa4N",
+                          "name": "No summary",
+                          "width": "fill_container"
                         }
                       ]
                     }
@@ -58748,7 +59001,7 @@
       "name": "Note detail",
       "width": 520,
       "height": 380,
-      "content": "Detail\n\nHeader: title, then day, start time · duration. The summary is rendered Markdown, selectable. The header sits in the toolbar band, level with the window controls, and stays while the summary scrolls below it.\n\nOver the list, the bar holds the call’s own actions, which act on the selected row: Открыть (its folder in Finder) and Переименовать in one group, Удалить… alone. Each shows its name as a tooltip on hover. Повторить итоги stays in the failed message and the row menu.\n\nThe toolbar has no bar over the detail: the summary’s surface runs to the window’s top edge, under the header. Копировать belongs to the summary: an icon button in the summary’s top-right corner, level with the row actions, fixed while the text scrolls. It shows only while a summary is shown.\n\nWith no call selected the row actions are disabled, not hidden, so the bar never shifts.\n\nWithout a summary the detail shows one centred message under the header: preparing, failed with the error and Повторить итоги, or «Итогов нет» when notes are off. With no call selected: «Звонок не выбран».\n\n↑↓ moves the selection and the detail follows at once; Tab moves focus into the detail."
+      "content": "Detail\n\nHeader: title, then day, start time · duration. The summary is rendered Markdown, selectable, with the date it was made under its last line in `gutter`. The header sits in the toolbar band, level with the window controls, and stays while the summary scrolls below it.\n\nOver the list, the bar holds the call’s own actions, which act on the selected row: Открыть (its folder in Finder) and Переименовать in one group, Удалить… alone. Each shows its name as a tooltip on hover. Повторить итоги stays in the failed message and the row menu.\n\nThe toolbar has no bar over the detail: the summary’s surface runs to the window’s top edge, under the header. Копировать belongs to the summary: an icon button in the summary’s top-right corner, level with the row actions, fixed while the text scrolls. It shows only while a summary is shown.\n\nWith no call selected the row actions are disabled, not hidden, so the bar never shifts.\n\nNo summary: one line under the header, «Нет итогов» and the link «✨ Сделать». Making, or preparing after a call: a spinner, «Делаю…» and «Отменить», over a grey skeleton of the summary; the row shows «Подготовка итогов…». Done: the summary replaces both. Failed: one centred message under the header, with Повторить итоги. With no call selected: «Звонок не выбран».\n\n↑↓ moves the selection and the detail follows at once; Tab moves focus into the detail."
     },
     {
       "type": "note",
@@ -58759,6 +59012,462 @@
       "width": 520,
       "height": 380,
       "content": "Search\n\nThe field is the list’s first row, under its bar, across the list’s width, and works as in the calls list: titles, summaries and transcripts, as you type, ignoring case and ё/е; days with no match hide.\n\nA match row keeps the two-line shape: title and time, then where the first match is (its time in the transcript, or «Итоги»), the text around it with the hit tinted `hit`, and «ещё N». The detail shows the selected call's summary. No results: the list says so and the detail shows «Звонок не выбран».\n\nEmpty, loading and the inactive window (selection in `chip`) are as in the calls list."
+    },
+    {
+      "type": "frame",
+      "id": "wo7Cm",
+      "x": 17660,
+      "y": 22000,
+      "name": "Calls — making summary",
+      "theme": {
+        "mode": "light"
+      },
+      "reusable": true,
+      "clip": true,
+      "width": 1100,
+      "height": 680,
+      "fill": "$win",
+      "cornerRadius": "$radius-card",
+      "stroke": "$rule",
+      "strokeWidth": 1,
+      "layout": "none",
+      "children": [
+        {
+          "type": "frame",
+          "id": "uMBZm",
+          "x": 0,
+          "y": 0,
+          "name": "Content",
+          "width": 1100,
+          "height": 680,
+          "children": [
+            {
+              "type": "frame",
+              "id": "WvD3Y",
+              "name": "List pane",
+              "width": 340,
+              "height": "fill_container",
+              "stroke": "$rule",
+              "strokeWidth": {
+                "right": 1
+              },
+              "layout": "vertical",
+              "children": [
+                {
+                  "id": "u1aaX",
+                  "type": "ref",
+                  "ref": "bncv0",
+                  "name": "List bar",
+                  "width": "fill_container"
+                },
+                {
+                  "id": "Czy7u",
+                  "type": "ref",
+                  "ref": "FE6zE",
+                  "name": "List search",
+                  "width": "fill_container"
+                },
+                {
+                  "type": "frame",
+                  "id": "qazbv",
+                  "name": "List",
+                  "clip": true,
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$win",
+                  "layout": "vertical",
+                  "children": [
+                    {
+                      "id": "MN2He",
+                      "type": "ref",
+                      "ref": "pmtOb",
+                      "name": "Day Сегодня",
+                      "width": "fill_container",
+                      "descendants": {
+                        "OPQgF": {
+                          "content": "Сегодня"
+                        },
+                        "u0i8d": {
+                          "content": "3 звонка"
+                        }
+                      }
+                    },
+                    {
+                      "id": "wtxab",
+                      "type": "ref",
+                      "ref": "s030x",
+                      "name": "Row ЦР ID",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s024x": {
+                          "content": "12:58"
+                        },
+                        "s023x": {
+                          "content": "ЦР ID"
+                        },
+                        "s026x": {
+                          "content": "41:11"
+                        },
+                        "s027x": {
+                          "content": "Идентификаторы и связка ответов"
+                        }
+                      }
+                    },
+                    {
+                      "id": "K23xD",
+                      "type": "ref",
+                      "ref": "s030x",
+                      "name": "Row ЦР",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s024x": {
+                          "content": "11:00"
+                        },
+                        "s023x": {
+                          "content": "ЦР"
+                        },
+                        "s026x": {
+                          "content": "38:20"
+                        },
+                        "s027x": {
+                          "content": "Статус задач и план релиза"
+                        }
+                      }
+                    },
+                    {
+                      "id": "sd2ZG",
+                      "type": "ref",
+                      "ref": "s030x",
+                      "name": "Row iOS Daily",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s024x": {
+                          "content": "10:00"
+                        },
+                        "s023x": {
+                          "content": "iOS Daily"
+                        },
+                        "s026x": {
+                          "content": "15:02"
+                        },
+                        "s027x": {
+                          "content": "Подготовка итогов…",
+                          "fill": "$gutter"
+                        },
+                        "s057x": {
+                          "enabled": true
+                        }
+                      }
+                    },
+                    {
+                      "id": "aSYLK",
+                      "type": "ref",
+                      "ref": "pmtOb",
+                      "name": "Day Вчера",
+                      "width": "fill_container",
+                      "descendants": {
+                        "OPQgF": {
+                          "content": "Вчера"
+                        },
+                        "u0i8d": {
+                          "content": "2 звонка"
+                        }
+                      }
+                    },
+                    {
+                      "id": "TneaA",
+                      "type": "ref",
+                      "ref": "s030x",
+                      "name": "Row Люда — передача дел",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s024x": {
+                          "content": "17:00"
+                        },
+                        "s023x": {
+                          "content": "Люда — передача дел"
+                        },
+                        "s026x": {
+                          "content": "52:40"
+                        },
+                        "s027x": {
+                          "content": "Передача задач и доступов перед отпуском"
+                        }
+                      }
+                    },
+                    {
+                      "id": "tYgND",
+                      "type": "ref",
+                      "ref": "s030x",
+                      "name": "Row iOS & Android daily",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s024x": {
+                          "content": "09:59"
+                        },
+                        "s023x": {
+                          "content": "iOS & Android daily"
+                        },
+                        "s026x": {
+                          "content": "14:51"
+                        },
+                        "s027x": {
+                          "content": "Не удалось подготовить итоги",
+                          "fill": "$rec"
+                        },
+                        "s028x": {
+                          "enabled": true
+                        }
+                      }
+                    },
+                    {
+                      "id": "QqSUQ",
+                      "type": "ref",
+                      "ref": "pmtOb",
+                      "name": "Day Понедельник, 9 ноября",
+                      "width": "fill_container",
+                      "descendants": {
+                        "OPQgF": {
+                          "content": "Понедельник, 9 ноября"
+                        },
+                        "u0i8d": {
+                          "content": "2 звонка"
+                        }
+                      }
+                    },
+                    {
+                      "id": "wSYom",
+                      "type": "ref",
+                      "ref": "s030x",
+                      "name": "Row ЦР Статус",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s024x": {
+                          "content": "11:02"
+                        },
+                        "s023x": {
+                          "content": "ЦР Статус"
+                        },
+                        "s026x": {
+                          "content": "29:45"
+                        },
+                        "s027x": {
+                          "content": "Сроки по пополнению и открытые вопросы"
+                        }
+                      }
+                    },
+                    {
+                      "id": "mUWYv",
+                      "type": "ref",
+                      "ref": "s030x",
+                      "name": "Row 2026.11.09-1000",
+                      "width": "fill_container",
+                      "fill": "$selBg",
+                      "descendants": {
+                        "s024x": {
+                          "content": "10:00",
+                          "fill": "$selText"
+                        },
+                        "s023x": {
+                          "content": "2026.11.09-1000",
+                          "fill": "$selText",
+                          "fontFamily": "$font-data",
+                          "fontWeight": "normal"
+                        },
+                        "s026x": {
+                          "content": "16:10",
+                          "fill": "$selText"
+                        },
+                        "s027x": {
+                          "content": "Подготовка итогов…",
+                          "fill": "$selText"
+                        },
+                        "s057x": {
+                          "enabled": true,
+                          "fill": "$selText"
+                        }
+                      }
+                    },
+                    {
+                      "id": "YAiNn",
+                      "type": "ref",
+                      "ref": "pmtOb",
+                      "name": "Day Пятница, 6 ноября",
+                      "width": "fill_container",
+                      "descendants": {
+                        "OPQgF": {
+                          "content": "Пятница, 6 ноября"
+                        },
+                        "u0i8d": {
+                          "content": "2 звонка"
+                        }
+                      }
+                    },
+                    {
+                      "id": "M3NUQA",
+                      "type": "ref",
+                      "ref": "s030x",
+                      "name": "Row Лера 17820",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s024x": {
+                          "content": "14:59"
+                        },
+                        "s023x": {
+                          "content": "Лера 17820"
+                        },
+                        "s026x": {
+                          "content": "33:05"
+                        },
+                        "s027x": {
+                          "content": "Разбор заявки 17820 и следующие шаги"
+                        }
+                      }
+                    },
+                    {
+                      "id": "OfyDP",
+                      "type": "ref",
+                      "ref": "s030x",
+                      "name": "Row iOS Daily",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s024x": {
+                          "content": "09:59"
+                        },
+                        "s023x": {
+                          "content": "iOS Daily"
+                        },
+                        "s026x": {
+                          "content": "15:30"
+                        },
+                        "s027x": {
+                          "content": "Короткий синк по задачам спринта"
+                        }
+                      }
+                    },
+                    {
+                      "id": "Abx6f",
+                      "type": "ref",
+                      "ref": "pmtOb",
+                      "name": "Day Четверг, 5 ноября",
+                      "width": "fill_container",
+                      "descendants": {
+                        "OPQgF": {
+                          "content": "Четверг, 5 ноября"
+                        },
+                        "u0i8d": {
+                          "content": "8 звонков"
+                        }
+                      }
+                    },
+                    {
+                      "id": "NP2wu",
+                      "type": "ref",
+                      "ref": "s030x",
+                      "name": "Row Планирование",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s024x": {
+                          "content": "17:34"
+                        },
+                        "s023x": {
+                          "content": "Планирование"
+                        },
+                        "s026x": {
+                          "content": "58:00"
+                        },
+                        "s027x": {
+                          "content": "Цели спринта и оценки"
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "G3x6W",
+              "name": "Detail pane",
+              "width": "fill_container",
+              "height": "fill_container",
+              "layout": "vertical",
+              "children": [
+                {
+                  "id": "ebgkc",
+                  "type": "ref",
+                  "ref": "s033x",
+                  "name": "Header",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s031x": {
+                      "content": "2026.11.09-1000"
+                    },
+                    "s032x": {
+                      "content": "Понедельник, 9 ноября, 10:00 · 16:10"
+                    }
+                  }
+                },
+                {
+                  "type": "frame",
+                  "id": "ZOUIP",
+                  "name": "Scroll",
+                  "clip": true,
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$surface",
+                  "layout": "vertical",
+                  "padding": [
+                    0,
+                    0,
+                    "$space-24",
+                    0
+                  ],
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "SHQ6v",
+                      "name": "Body",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": "$surface",
+                      "layout": "vertical",
+                      "gap": "$space-4",
+                      "children": [
+                        {
+                          "id": "pOEFx",
+                          "type": "ref",
+                          "ref": "YbRfD",
+                          "name": "Making",
+                          "width": "fill_container"
+                        },
+                        {
+                          "id": "pVz1A",
+                          "type": "ref",
+                          "ref": "nvT8E",
+                          "name": "Skeleton",
+                          "width": "fill_container"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rVBGz",
+      "type": "ref",
+      "ref": "wo7Cm",
+      "name": "Calls — making summary (dark)",
+      "x": 17660,
+      "y": 22740,
+      "theme": {
+        "mode": "dark"
+      }
     }
   ],
   "themes": {

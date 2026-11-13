@@ -1,16 +1,25 @@
 import AppKit
 import Testing
-@testable import Audelin
+@testable import CallsWindowShell
 
 @MainActor
 struct CallsWindowTests {
-    @Test func aSavedFrameIsRestoredInsteadOfCentering() {
+    @Test func aSavedFrameIsRestoredAfterTheContentIsInstalled() {
         let window = CallsWindowSpy()
         window.savedFrames = ["CallsWindow"]
-        _ = CallsWindow(makeWindow: { window }, title: "Звонки", activate: {})
-        #expect(window.restoredNames == ["CallsWindow"])
-        #expect(window.centers == 0)
-        #expect(window.autosaveNames == ["CallsWindow"])
+        let calls = CallsWindow(makeWindow: { window }, title: "Звонки", activate: {})
+        #expect(window.steps.isEmpty)
+        let controller = NSViewController()
+        calls.install(controller: controller)
+        #expect(window.contentViewController === controller)
+        #expect(window.steps == ["content", "restore CallsWindow", "autosave CallsWindow"])
+    }
+
+    @Test func aFirstLaunchOpensWideAndCentredAfterTheContentIsInstalled() {
+        let window = CallsWindowSpy()
+        let calls = CallsWindow(makeWindow: { window }, title: "Звонки", activate: {})
+        calls.install(controller: NSViewController())
+        #expect(window.steps == ["content", "size 1000x560", "center", "autosave CallsWindow"])
     }
 
     @Test func showingAgainUsesTheSameWindowAndRestoresItFromTheDock() {
@@ -20,8 +29,6 @@ struct CallsWindowTests {
         #expect(window.title == "Звонки")
         #expect(!window.isReleasedWhenClosed)
         #expect(window.minSize == NSSize(width: 560, height: 360))
-        #expect(window.centers == 1)
-        #expect(window.autosaveNames == ["CallsWindow"])
         calls.show()
         window.isMiniaturized = true
         calls.show()
@@ -49,16 +56,17 @@ struct CallsWindowTests {
     var title = ""
     var isReleasedWhenClosed = true
     var minSize = NSSize.zero
-    var contentView: NSView?
+    var contentViewController: NSViewController? { didSet { steps.append("content") } }
     var isMiniaturized = false
-    var centers = 0, fronts = 0, restores = 0
-    var savedFrames: Set<String> = [], restoredNames: [String] = [], autosaveNames: [String] = []
-    func center() { centers += 1 }
+    var fronts = 0, restores = 0
+    var savedFrames: Set<String> = [], steps: [String] = []
+    func center() { steps.append("center") }
+    func setContentSize(_ size: NSSize) { steps.append("size \(Int(size.width))x\(Int(size.height))") }
     func setFrameUsingName(_ name: NSWindow.FrameAutosaveName) -> Bool {
         guard savedFrames.contains(name) else { return false }
-        restoredNames.append(name); return true
+        steps.append("restore \(name)"); return true
     }
-    func setFrameAutosaveName(_ name: NSWindow.FrameAutosaveName) -> Bool { autosaveNames.append(name); return true }
+    func setFrameAutosaveName(_ name: NSWindow.FrameAutosaveName) -> Bool { steps.append("autosave \(name)"); return true }
     func deminiaturize(_ sender: Any?) { restores += 1; isMiniaturized = false }
     func makeKeyAndOrderFront(_ sender: Any?) { fronts += 1 }
 }

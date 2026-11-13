@@ -89,5 +89,5 @@ the recording ends, and does not return during that recording.
 
 Panel presentation is owned by `live-panel/SPEC.md`; recording-problem copy and colours remain in the design brief.
 Optional post-call notes are owned by `call-summaries/SPEC.md`; recording and notes are independent.
-The calls window is owned by `calls-window/SPEC.md`, choosing a call in it by `calls-list/SPEC.md`, reading it beside the list by `summary-preview/SPEC.md`.
+The calls window is owned by `calls-window/SPEC.md`, choosing a call in it by `calls-list/SPEC.md`, reading it beside the list by `summary-preview/SPEC.md`, making its notes on request by `call-notes/SPEC.md`.
 Installed-update notification and call-safe restart are owned by `installed-update/SPEC.md`.

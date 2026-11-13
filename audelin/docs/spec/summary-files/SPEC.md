@@ -7,10 +7,11 @@ Observer: the caller storing and reading a call summary job.
 - This adapter owns job records and summary output; transcript bytes are never rewritten (architecture rule 2).
 - Exclusive claim creation and dispatch arbitration distinguish owner from observers; pending/running must persist before runtime work. A cross-process ownership lease stays held through terminal completion or joined cancellation/shutdown, including failed terminal saves. Its descriptor is closed on exec, and its stable location outside call folders survives rename and copied moves. Unreadable records are errors, not absence.
 - Loading running work first tries to acquire its ownership lease. A busy lease proves a live owner: return running unchanged, even if output is already published. Only an acquired lease permits reconciliation using the exact job/input receipt, or interruption without replay. Release the reconciliation lease even when saving fails.
-- Explicit retry requires an unchanged current interrupted record and no active owner. It replaces that attempt with a fresh pending identity while retaining its saved input, configuration and checkpoint. A stale request, a non-interrupted record or a failed write preserves the current record, transcript and previous complete notes.
+- Explicit retry requires an unchanged current interrupted or failed record and no active owner. It replaces that attempt with a fresh pending identity while retaining its saved input, configuration and checkpoint. A stale request, an active or successful record or a failed write preserves the current record, transcript and previous complete notes.
 - Record immutable job/input identity, captured configuration and credential references, accepted evidence and sanitized outcomes; never credential values or raw runtime diagnostics.
 - Atomic replacement uses a job/input-matched publication receipt so an old summary cannot complete a new claim; preserve existing complete output on failed replacement.
 - All disk work runs on a dedicated awaited executor. Identity resolution and publication coordinate with rename, delete and whole-folder moves, including partially completed moves, through consumer-owned storage ports.
+- **Notes read with when they were made: the notes file's last change.** The calls window shows that date under the notes. Publishing is unchanged and needs no time of its own; a user's later edit counts as the latest notes.
 - Failed terminal-state saving leaves a durable running claim, so recovery cannot replay an already dispatched request. These choices preserve output and avoid duplicate billing.
 
 ```gherkin
@@ -97,8 +98,8 @@ Feature: Keep notes and job records durably
     When I read its notes
     Then I learn it has none, not a failure
 
-  Scenario: S-17 Retry the current interrupted attempt
-    Given an interrupted attempt and previous complete notes
+  Scenario: S-17 Retry the current inactive attempt
+    Given an interrupted or failed attempt and previous complete notes
     When I explicitly retry that exact saved record
     Then I can retrieve a fresh pending attempt with the same saved input and settings
     And I can still read the previous complete notes and unchanged transcript
@@ -112,5 +113,15 @@ Feature: Keep notes and job records durably
     Given retry cannot save a fresh attempt
     When I explicitly retry
     Then I receive a failure and retain the interrupted record and complete output
+
+  Scenario: S-20 Notes read with when they were made
+    Given a call with published notes
+    When I read its notes
+    Then I get them with when they were made
+
+  Scenario: S-21 Discard a cancelled job
+    Given I own a running job or its pending or interrupted attempt has no active owner
+    When I discard it
+    Then the call has no job record and its transcript and complete notes stay
 
 ```

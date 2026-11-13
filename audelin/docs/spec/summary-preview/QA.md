@@ -33,9 +33,11 @@ for byte.
 A state carrying a read failure; the image shows the reason in place of
 the notes.
 
-## S-13 Notes being prepared
+## S-13 Notes being made
 
-A preparing state; the image shows the spinner and «Подготовка итогов…».
+A making state; the image shows the spinner, «Делаю…» and «Отменить» over
+the grey skeleton. Pressing «Отменить» sends the cancel event
+(`SummaryPreviewTests/makeAndCancelSendTheirEvents`).
 
 ## S-14 Notes that failed
 
@@ -45,16 +47,18 @@ A failed state with a reason; the image shows the alert, «Не удалось
 ## S-15 Retrying failed notes
 
 Pressing «Повторить итоги» sends the retry event for the call; the
-composition then derives the preparing state for it.
+composition then derives the making state for it.
 
-## S-16 No notes while notes are off
+## S-16 No notes
 
-A no-notes state with notes off; the image shows «Итогов нет» and the
-Settings hint.
+A no-notes state; the image shows «Нет итогов» and «✨ Сделать». Pressing
+«✨ Сделать» sends the make event (`SummaryPreviewTests/makeAndCancelSendTheirEvents`).
 
-## S-17 No notes while notes are on
+## S-17 When the notes were made
 
-A no-notes state with notes on; the image shows «Итогов нет» alone.
+A notes state with its date; the image shows «Сделано» and that date
+under the notes' last line. Notes without a date end at their last line
+(`SummaryPreviewTests/undatedNotesAreTheNotesAlone`).
 
 ## S-18 Nothing selected
 

@@ -257,6 +257,26 @@ import Testing
         _ = assert(stopped, .dispatched("call"))
     }
 
+    @Test(arguments: [SummaryCoordinatorState.Call.Phase.installed, .pending])
+    func forgettingAnInactiveCallAllowsANewSubmission(phase: SummaryCoordinatorState.Call.Phase) async {
+        let given = makeState(calls: ["call": .init(phase: phase, operation: 1), "other": .init(phase: .installed, operation: 2)], retryFailures: ["call", "other"])
+        let forgotten = assert(given, .forget("call")) { $0.calls["call"] = nil; $0.retryFailures.remove("call") }
+        let spy = CoordinatorJobsSpy(), events = EventSpy()
+        let doer = SummaryCoordinatorDoer(jobs: spy, send: events.send)
+        doer.act(on: forgotten)
+        await doer.join()
+        #expect(spy.offered.isEmpty && events.values.isEmpty)
+        let submitting = assert(forgotten, .submit(offer())) {
+            $0.sequence = 3; $0.calls["call"] = .init(phase: .submitting, operation: 3, submission: offer())
+        }
+        doer.act(on: submitting)
+        await spy.submitStarted.next()
+        #expect(spy.offered == [offer()])
+        spy.completeSubmission(true)
+        await doer.join()
+        #expect(events.values == [.submitted("call", pending: true)])
+    }
+
     @discardableResult private func assert(_ state: SummaryCoordinatorState, _ event: SummaryCoordinatorEvent,
                                            changes: (inout SummaryCoordinatorState) -> Void = { _ in }) -> SummaryCoordinatorState {
         var expected = state; changes(&expected)

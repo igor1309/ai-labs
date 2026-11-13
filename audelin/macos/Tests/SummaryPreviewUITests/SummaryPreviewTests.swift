@@ -55,7 +55,47 @@ struct SummaryPreviewTests {
         #expect(events == [.retrySummary])
     }
 
-    @Test(arguments: ["preparing", "failed", "no-summary", "notes-off", "no-selection"])
+    @Test func makeAndCancelSendTheirEvents() throws {
+
+        var events: [SummaryPreviewEvent] = []
+        click(lineActionLocation, on: SummaryPreviewView(state: SummaryPreviews.state("no-summary"), event: { events.append($0) }, render: markdown))
+        click(lineActionLocation, on: SummaryPreviewView(state: SummaryPreviews.state("making"), event: { events.append($0) }, render: markdown))
+
+        #expect(events == [.makeSummary, .cancelSummary])
+    }
+
+    @Test(arguments: SummaryPreviewLanguage.allCases)
+    func theNotesEndWithWhenTheyWereMade(language: SummaryPreviewLanguage) throws {
+
+        let text = SummaryPreviewText(language: language)
+        var calls: [String] = []
+        let view = SummaryPreviewView(state: .init(title: "Zoom", date: "17.10 · 11:00", duration: "28 мин", notes: .markdown("# Итоги", made: "12.11, 14:05")),
+                                      text: text, event: { _ in }) { source, _ in calls.append(source); return NSAttributedString(string: "отрисовано") }
+        let shown = try #require(Offscreen.textView(in: Offscreen.host(view, size: size)))
+
+        #expect(shown.accessibilityIdentifier() == "preview.notes")
+        #expect(shown.accessibilityLabel() == text(.notes))
+        let date = try #require(shown.accessibilityChildren()?.compactMap { $0 as? NSAccessibilityElement }
+            .first { $0.accessibilityIdentifier() == "preview.made" })
+        #expect(date.accessibilityLabel() == text(.made, "12.11, 14:05"))
+        #expect(date.accessibilityValue() as? String == text(.made, "12.11, 14:05"))
+        #expect(calls.last == "# Итоги")
+        #expect(shown.string == "отрисовано\n" + text(.made, "12.11, 14:05"))
+        #expect(text(.made, "12.11, 14:05").contains("12.11, 14:05"))
+    }
+
+    @Test func undatedNotesAreTheNotesAlone() throws {
+
+        let view = SummaryPreviewView(state: .init(title: "Zoom", date: "17.10 · 11:00", duration: "28 мин", notes: .markdown("# Итоги", made: nil)),
+                                      event: { _ in }) { _, _ in NSAttributedString(string: "отрисовано") }
+        let shown = try #require(Offscreen.textView(in: Offscreen.host(view, size: size)))
+
+        #expect(shown.string == "отрисовано")
+        #expect(shown.accessibilityChildren()?.compactMap { $0 as? NSAccessibilityElement }
+            .contains { $0.accessibilityIdentifier() == "preview.made" } != true)
+    }
+
+    @Test(arguments: ["making", "failed", "no-summary", "no-selection"])
     func aMessageInPlaceOfNotesHasNoText(name: String) throws {
 
         let host = Offscreen.host(view(SummaryPreviews.state(name)), size: size)
@@ -112,7 +152,7 @@ struct SummaryPreviewTests {
         #expect(call.style.headings[2].familyName == sans && call.style.headings[2].pointSize == tokens.typeBody)
         #expect(call.style.text == NSColor(tokens.text))
         #expect(call.style.secondary == NSColor(tokens.sub))
-        #expect(text.string == "отрисовано")
+        #expect(text.string.hasPrefix("отрисовано\n"))
     }
 
     @Test func unreadableNotesRenderNothing() throws {
@@ -137,6 +177,9 @@ struct SummaryPreviewTests {
 
     /// Повторить итоги, the last line of the failed message centred below the header.
     private var retryLocation: NSPoint { NSPoint(x: size.width / 2, y: 209) }
+
+    /// «✨ Сделать» or «Отменить», the action in the line under the header.
+    private var lineActionLocation: NSPoint { NSPoint(x: 140, y: size.height - 91) }
 
     private func view(_ state: SummaryPreviewState?, text: SummaryPreviewText = .init(language: .russian), scheme: ColorScheme = .light) -> some View {
         SummaryPreviewView(state: state, text: text, event: { _ in }, render: markdown).environment(\.colorScheme, scheme)

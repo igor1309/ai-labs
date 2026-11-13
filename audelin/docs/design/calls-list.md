@@ -9,7 +9,8 @@ are the file's variables. Shared parts are on the
 header, Context menu); delete, rename and errors use the Glass Ledger
 Sheet, Rename field and Banner/Error; the window's own parts on the "Calls window —
 components" board (Detail bar, Tooltip, Two-line row, Two-line match row, Detail
-header, Section, Subhead, Paragraph, Bullet, Detail message). Each row state
+header, Section, Subhead, Paragraph, Bullet, Detail message, No summary
+line, Link/Make, Making line, Summary skeleton, Summary date). Each row state
 is its own component on that board, an instance of its row holding the
 state: Row/Selected, Row/Inactive selected, Row/Preparing, Row/Failed,
 Row/Untitled and Match row/Selected. Screens use these and override only
@@ -47,7 +48,9 @@ that state's overrides to Row/Selected.
 - Header: title, then day, start time · duration. The summary is
   selectable rendered Markdown (headings, lists, code, tables). The
   header sits in the toolbar band, level with the window controls, and
-  stays while the summary scrolls below it.
+  stays while the summary scrolls below it. Under the summary's last
+  line, the date it was made in `gutter`, `type-caption`
+  («Сделано 12 ноября, 14:05»).
 - Toolbar: one bar across the window. Over the list, the title and the
   selected call's own actions, which act on the row: Открыть (its folder
   in Finder) and Переименовать in one Mail-style group, Удалить… alone.
@@ -64,16 +67,23 @@ that state's overrides to Row/Selected.
   row's context menu. Below 700 pt the bar is the same and acts on the
   selected row; the call's own window has the row actions in its toolbar
   and Копировать over its summary.
-- Without a summary, one centred message under the header: preparing;
-  failed, with the error and Повторить итоги; «Итогов нет» when notes are
-  off. With no call selected: «Звонок не выбран».
+- No summary: one line under the header, «Нет итогов» in `gutter` and the
+  link «✨ Сделать» in `me`.
+- Making, or preparing after a call: the line becomes a spinner, «Делаю…»
+  and «Отменить» in `sub`, over a grey skeleton of the summary (`btn`
+  bars). Another call may be selected meanwhile; the row keeps the
+  spinner. On completion the summary replaces line and skeleton; Отменить
+  returns to the no-summary line.
+- Failed: one centred message under the header, the error and Повторить
+  итоги. With no call selected: «Звонок не выбран».
 - The detail follows the selection at once. No transcript in this window.
 
 ## Actions
 
 - Hover changes nothing in a row. A right-click selects the row and opens
-  its menu at the pointer: Открыть, Переименовать, Повторить итоги (only
-  when the summary failed), Удалить…. Открыть shows the call's folder in
+  its menu at the pointer: Открыть, Переименовать, Сделать итоги (only
+  when there is none), Повторить итоги (only when the summary failed),
+  Удалить…. Открыть shows the call's folder in
   Finder.
 - Keys: ↑↓ select, Return opens, ⌘R renames, ⌘⌫ asks to delete, Tab moves
   focus between the list and the detail. Double-click opens.
@@ -101,9 +111,10 @@ that state's overrides to Row/Selected.
 | Frame | What it shows |
 |---|---|
 | Calls — summary | A call selected, its summary in the detail |
-| Calls — preparing | The selected call's summary is being prepared |
+| Calls — preparing | After a call: «Делаю…» over the skeleton, as making |
 | Calls — summary failed | The error and Повторить итоги |
-| Calls — no summary | Notes off: «Итогов нет» |
+| Calls — no summary | «Нет итогов» and the link «✨ Сделать» |
+| Calls — making summary | «Делаю…» and Отменить over the skeleton |
 | Calls — inactive window | The selected row turns grey (`btn`), its bar `gutter` and its time `sub` |
 | Calls — no selection | «Звонок не выбран» |
 | Calls — renaming | The title is a field; the `yyyy.MM.dd-HHmm` prefix stays fixed. Return saves, Esc cancels |
@@ -122,5 +133,6 @@ token; the only raw colours are the window's traffic lights and the
 transparent menu-item fill. Running text uses line height 1.54, which is
 `line-body` 20 on `type-body` 13; the file's line height is a multiplier,
 so the token cannot be bound. Fixed sizes with no token are layout widths:
-list 340, window 1100 and minimum 560, time 40, duration 48, icons 14 and
+list 340, window 1100 and minimum 560, skeleton bars 8 high (a height
+cannot bind `space-8`) and 640–300 wide, time 40, duration 48, icons 14 and
 20, search field 160, menu 240, alert 340.

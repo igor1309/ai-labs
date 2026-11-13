@@ -15,7 +15,7 @@ from pathlib import Path
 
 # Lane: (title, colour, x, y, width, height, columns)
 LANES = {
-    "compose": ("Composition", "#60a5fa", 560, 110, 1240, 130, 5),
+    "compose": ("Composition", "#60a5fa", 40, 110, 1800, 130, 6),
     "ui": ("UI", "#7dd3fc", 40, 280, 460, 230, 2),
     "machines": ("State machines", "#fbbf24", 560, 280, 1240, 230, 5),
     "text": ("Live text", "#bef264", 40, 530, 820, 460, 3),
@@ -42,11 +42,14 @@ TARGETS = {
     "RenderedText": ("external", "test helper: hosts a view offscreen", 4),
     "AudelinRehearsal": ("tools", "synthetic call through the shipped composition", 0),
     "SessionRehearsal": ("tools", "synthetic recogniser", 1),
+    "CallsRehearsal": ("tools", "shows calls with controlled summaries", 2),
+    "CallsRehearsalSupport": ("tools", "rehearsal paths, preferences and fake HTTP", 3),
     "Audelin": ("compose", "launches recording, menu and panel", 0),
     "RecordedCapture": ("compose", "records one capture to its track", 3),
     "LiveAudio": ("compose", "hears and reads one capture,\nkeeps its time", 4),
     "Composer": ("compose", "wires one recording's pieces\nbehind Session's ports", 1),
     "Reading": ("compose", "decides what the panel shows", 2),
+    "CallsWindowShell": ("compose", "builds the calls window\nfrom the composed calls", 5),
     "CallsListUI": ("ui", "lists, opens, renames and deletes calls", 4),
     "NotesMarkdown": ("ui", "renders call notes from Markdown", 5),
     "SummaryPreviewUI": ("ui", "shows one call's notes", 6),
@@ -59,6 +62,7 @@ TARGETS = {
     "GlassLedger": ("ui", "design tokens for both views", 2),
     "MenuBar": ("ui", "menu entries and panel presence", 3),
     "Lifecycle": ("machines", "drains recording before termination", 3),
+    "CallNotes": ("machines", "shows one call's notes and makes them on request", 3),
     "CallAudioAccess": ("machines", "keeps reception evidence fresh", 4),
     "Recording": ("machines", "decides whether a recording runs", 2),
     "Session": ("machines", "brings one recording's\npieces up and down", 0),

@@ -62,9 +62,10 @@ public struct SummaryPreviewView: View {
             if let state {
                 header(state)
                 switch state.notes {
-                case let .markdown(source):
-                    NotesText(text: render(source, style), background: NSColor(tokens.surface),
-                              inset: NSSize(width: tokens.space28 - 5, height: 0))
+                case let .markdown(source, made):
+                    NotesText(text: notes(source, made: made), background: NSColor(tokens.surface),
+                              inset: NSSize(width: tokens.space28 - 5, height: 0),
+                              label: text(.notes), made: made.map { text(.made, $0) })
                 case let .unreadable(reason):
                     Text(reason)
                         .font(tokens.ui(tokens.typeSmall)).foregroundStyle(tokens.rec)
@@ -73,16 +74,14 @@ public struct SummaryPreviewView: View {
                         .background(tokens.errBg)
                         .padding(.horizontal, tokens.space28)
                     Spacer(minLength: 0)
-                case .preparing:
-                    message(text(.preparing), detail: text(.preparingHint)) { ProgressView().controlSize(.small) }
+                case .making:
+                    making
                 case let .failed(reason):
                     message(text(.failed), detail: reason, retry: true) {
                         Image(systemName: "exclamationmark.circle").foregroundStyle(tokens.rec)
                     }
-                case let .none(notesOff):
-                    message(text(.noSummary), detail: notesOff ? text(.notesOff) : nil) {
-                        Image(systemName: "doc.text").foregroundStyle(tokens.sub)
-                    }
+                case .none:
+                    noSummary
                 }
             } else {
                 message(text(.noSelection), detail: nil) { EmptyView() }
@@ -104,6 +103,71 @@ public struct SummaryPreviewView: View {
         .padding(.top, tokens.space12).padding(.leading, tokens.space28).padding(.trailing, tokens.space28 + tokens.space40)
         .padding(.bottom, tokens.space12)
     }
+
+    /// The notes, then when they were made under their last line.
+    private func notes(_ source: String, made: String?) -> NSAttributedString {
+        let rendered = NSMutableAttributedString(attributedString: render(source, style))
+        guard let made else { return rendered }
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.paragraphSpacingBefore = tokens.space16
+        rendered.append(NSAttributedString(string: "\n" + text(.made, made), attributes: [
+            .font: tokens.nsUi(tokens.typeCaption), .foregroundColor: NSColor(tokens.gutter), .paragraphStyle: paragraph,
+        ]))
+        return rendered
+    }
+
+    /// «Нет итогов» and the link «✨ Сделать», one line under the header.
+    private var noSummary: some View {
+        HStack(spacing: tokens.space12) {
+            Text(text(.noSummary)).foregroundStyle(tokens.gutter)
+                .accessibilityIdentifier("preview.empty")
+                .accessibilityValue(text(.noSummary))
+            Button { event(.makeSummary) } label: {
+                Label(text(.make), systemImage: "sparkles").fontWeight(.semibold).foregroundStyle(tokens.me)
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("preview.make")
+            .accessibilityLabel(text(.make))
+            .accessibilityValue(text(.make))
+        }
+        .font(tokens.ui(tokens.typeBody))
+        .padding(.horizontal, tokens.space28).padding(.top, tokens.space16)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    /// A spinner, «Делаю…» and «Отменить» over a grey skeleton of the notes.
+    private var making: some View {
+        VStack(alignment: .leading, spacing: tokens.space32) {
+            HStack(spacing: tokens.space12) {
+                ProgressView().controlSize(.small)
+                Text(text(.making)).foregroundStyle(tokens.gutter)
+                    .accessibilityIdentifier("preview.making")
+                    .accessibilityValue(text(.making))
+                Button { event(.cancelSummary) } label: { Text(text(.cancel)).foregroundStyle(tokens.sub) }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("preview.cancel")
+                    .accessibilityLabel(text(.cancel))
+                    .accessibilityValue(text(.cancel))
+            }
+            .font(tokens.ui(tokens.typeBody))
+            VStack(alignment: .leading, spacing: tokens.space24) {
+                ForEach(Array(Self.skeleton.enumerated()), id: \.offset) { _, group in
+                    VStack(alignment: .leading, spacing: tokens.space8) {
+                        ForEach(Array(group.enumerated()), id: \.offset) { _, width in
+                            RoundedRectangle(cornerRadius: tokens.radiusBar).fill(tokens.btn).frame(maxWidth: width).frame(height: Self.bar)
+                        }
+                    }
+                }
+            }
+            .accessibilityHidden(true)
+        }
+        .padding(.horizontal, tokens.space28).padding(.top, tokens.space16)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    /// The skeleton's paragraphs as bar widths, the longest first, and the bar height; layout sizes with no token.
+    private static let skeleton: [[CGFloat]] = [[640, 600, 380], [520, 560, 440, 300], [480, 360]]
+    private static let bar: CGFloat = 8
 
     /// One centred message: an icon, a title, a line of detail and, for a failed summary, Повторить итоги.
     private func message(_ title: String, detail: String?, retry: Bool = false,
@@ -153,13 +217,15 @@ private struct NotesText: NSViewRepresentable {
     let text: NSAttributedString
     let background: NSColor
     let inset: NSSize
+    let label: String
+    let made: String?
 
     func makeNSView(context: Context) -> NSScrollView {
         // TextKit 1: TextKit 2 draws text tables as plain lines.
         let scroll = NSScrollView()
         scroll.hasVerticalScroller = true
         scroll.drawsBackground = false
-        let view = NSTextView(usingTextLayoutManager: false)
+        let view = NotesAccessibilityTextView(usingTextLayoutManager: false)
         view.autoresizingMask = [.width]
         view.isVerticallyResizable = true
         view.textContainer?.widthTracksTextView = true
@@ -174,8 +240,31 @@ private struct NotesText: NSViewRepresentable {
     }
 
     func updateNSView(_ scroll: NSScrollView, context: Context) {
-        guard let view = scroll.documentView as? NSTextView else { return }
+        guard let view = scroll.documentView as? NotesAccessibilityTextView else { return }
+        view.setAccessibilityLabel(label)
+        view.made = made
         view.backgroundColor = background
         if view.textStorage?.isEqual(to: text) != true { view.textStorage?.setAttributedString(text) }
+    }
+}
+
+/// The date shares the rendered text view, but remains independently addressable to assistive tools.
+private final class NotesAccessibilityTextView: NSTextView {
+    var made: String?
+    private let date = NSAccessibilityElement()
+
+    override func accessibilityChildren() -> [Any]? {
+        var children = super.accessibilityChildren() ?? []
+        if let made {
+            date.setAccessibilityRole(.staticText)
+            let range = (string as NSString).range(of: made, options: .backwards)
+            date.setAccessibilityFrame(firstRect(forCharacterRange: range, actualRange: nil))
+            date.setAccessibilityLabel(made)
+            date.setAccessibilityParent(self)
+            date.setAccessibilityIdentifier("preview.made")
+            date.setAccessibilityValue(made)
+            children.append(date)
+        }
+        return children
     }
 }

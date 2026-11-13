@@ -11,7 +11,7 @@ struct SummaryAcceptedEvidenceTests {
     func acceptedIdentitiesReachCheckpointAndNotesAndSurviveNotesFailure(notesFail: Bool) async throws {
         let job = evidenceJob(), identities = acceptedIdentities()
         let trace = EvidenceTrace(), store = EvidenceStore(trace: trace)
-        let handler = EffectHandler(store: store, generation: EvidenceGeneration(trace: trace, identities: identities, fails: notesFail), cancelled: { false })
+        let handler = EffectHandler(store: store, generation: EvidenceGeneration(trace: trace, identities: identities, fails: notesFail), userCancelled: { _ in false })
         let reducer = Reducer(format: { phase, _ in phase.rawValue })
         let given = SummaryJobs.State(phase: .identifying, job: job)
         let identified = await handler.handle(.identify(job))
@@ -93,6 +93,7 @@ private struct EvidenceStore: Store {
     func checkpoint(_ job: Job, identities: [Identity], warning: Bool) async { await trace.append(.checkpoint(job, identities, warning)) }
     func publish(_ job: Job, notes: String, warning: Bool) async { await trace.append(.publish(job, notes, warning)) }
     func save(_ job: Job, phase: SummaryJobs.State.Phase, warning: Bool) async { await trace.append(.save(job, phase, warning)) }
+    func discard(_ job: Job) async {}
 }
 private struct EvidenceGeneration: Generation {
     let trace: EvidenceTrace

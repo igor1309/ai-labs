@@ -28,6 +28,7 @@ import Testing
                 makeCalls: { folder in
                     Calls(folder: folder, timeZone: .gmt,
                         duration: { _ in 0 },
+                        transcript: { _ in [] },
                         disk: CallsDisk(
                             children: { try FileManager.default.contentsOfDirectory(at: $0, includingPropertiesForKeys: nil) },
                             values: { try $0.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey, .fileSizeKey]) },
@@ -298,6 +299,7 @@ import Testing
                 makeCalls: { folder in
                     Calls(folder: folder, timeZone: .gmt,
                         duration: { _ in 0 },
+                        transcript: { _ in [] },
                         disk: CallsDisk(
                             children: { try FileManager.default.contentsOfDirectory(at: $0, includingPropertiesForKeys: nil) },
                             values: { url in
@@ -378,6 +380,7 @@ import Testing
                 makeCalls: { folder in
                     Calls(folder: folder, timeZone: .gmt,
                         duration: { _ in 0 },
+                        transcript: { _ in [] },
                         disk: CallsDisk(
                             children: { try FileManager.default.contentsOfDirectory(at: $0, includingPropertiesForKeys: nil) },
                             values: { try $0.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey, .fileSizeKey]) },
@@ -420,6 +423,7 @@ import Testing
                 makeCalls: { folder in
                     Calls(folder: folder, timeZone: .gmt,
                         duration: { _ in 0 },
+                        transcript: { _ in [] },
                         disk: CallsDisk(
                             children: { try FileManager.default.contentsOfDirectory(at: $0, includingPropertiesForKeys: nil) },
                             values: { try $0.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey, .fileSizeKey]) },

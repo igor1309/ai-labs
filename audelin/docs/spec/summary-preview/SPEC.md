@@ -18,8 +18,9 @@ when, is `../calls-list/SPEC.md`; the notes are made as
   is nothing to copy, so Копировать is disabled; with no call, all are.
   They are disabled rather than hidden, so the toolbar never shifts.
   Повторить итоги stays in the failed message and the row's menu.
-- **«Итогов нет» says why when notes are off,** pointing to Settings; with
-  notes on, a call can still have none (no speech), so it says no more.
+- **A call without notes offers to make them,** whether notes are on or
+  off in Settings. While they are made, asked for or after a call, a grey
+  skeleton of notes stands in their place under «Делаю…» and «Отменить».
 
 ```gherkin
 Feature: Reading the selected call
@@ -49,10 +50,10 @@ Feature: Reading the selected call
     When that call is shown
     Then I can read why its notes cannot be shown
 
-  Scenario: S-13 Notes being prepared
-    Given the shown call's notes are being prepared
+  Scenario: S-13 Notes being made
+    Given the shown call's notes are being made
     When I look at it
-    Then I can see that they are being prepared
+    Then I can see that they are being made, and cancel making them
 
   Scenario: S-14 Notes that failed
     Given the shown call's notes failed
@@ -62,17 +63,17 @@ Feature: Reading the selected call
   Scenario: S-15 Retrying failed notes
     Given the shown call's notes failed
     When I press «Повторить итоги»
-    Then I can see that they are being prepared again
+    Then I can see that they are being made again
 
-  Scenario: S-16 No notes while notes are off
-    Given notes are off and the shown call has none
+  Scenario: S-16 No notes
+    Given the shown call has no notes
     When I look at it
-    Then I can read that notes are turned off in Settings
+    Then I can read that it has none, and make them
 
-  Scenario: S-17 No notes while notes are on
-    Given notes are on and the shown call has none
-    When I look at it
-    Then I can read that it has no notes
+  Scenario: S-17 When the notes were made
+    Given notes are shown
+    When I read to their end
+    Then I can read when they were made
 
   Scenario: S-18 Nothing selected
     Given no call is selected
