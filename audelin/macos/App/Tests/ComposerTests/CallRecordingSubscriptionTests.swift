@@ -104,7 +104,7 @@ struct CallRecordingSubscriptionTests {
 
 private func automatic(_ root: URL) -> Preferences { .init(automaticRecording: true, liveText: false, callsFolder: root) }
 
-private func detecting(_ binding: CallBinding, _ deadlines: FixtureDeadlines) -> (inout ComposerBoundary) -> Void {
+private func detecting(_ binding: CallBinding, _ deadlines: FixtureDeadlines) -> @MainActor (inout ComposerBoundary) -> Void {
     { boundary in
         boundary.processes = FixtureProcesses(binding: binding)
         boundary.time = deadlines.time(over: boundary.time)

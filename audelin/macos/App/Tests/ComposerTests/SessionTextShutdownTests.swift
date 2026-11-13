@@ -17,7 +17,6 @@ private actor FinalizingRecognizer: Recognizer {
     }
 }
 
-@MainActor
 @Suite(.timeLimit(.minutes(1)))
 struct SessionTextShutdownTests {
     @Test(arguments: [ComposerSide.microphone, .call])

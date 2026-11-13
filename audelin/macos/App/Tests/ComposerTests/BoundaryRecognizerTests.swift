@@ -4,7 +4,6 @@ import Foundation
 import SessionRehearsal
 import Testing
 
-@MainActor
 @Suite(.timeLimit(.minutes(1)))
 struct BoundaryRecognizerTests {
     @Test func sessionRecordsWhileGettingReadyThenReadsBothTracksFromStart() async throws {

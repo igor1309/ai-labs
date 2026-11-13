@@ -3,7 +3,6 @@ import Composer
 import Foundation
 import Testing
 
-@MainActor
 @Suite(.timeLimit(.minutes(1)))
 struct CallRecordingTranscriptTests {
     @Test func detectedCallLeavesBothTracksAndAFinishedTranscript() async throws {

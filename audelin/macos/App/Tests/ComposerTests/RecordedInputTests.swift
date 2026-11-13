@@ -2,7 +2,6 @@ import Composer
 import PanelUI
 import Testing
 
-@MainActor
 @Suite(.timeLimit(.minutes(1)))
 struct RecordedInputTests {
 

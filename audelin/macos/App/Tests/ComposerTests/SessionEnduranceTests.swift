@@ -15,7 +15,6 @@ import Composer
 /// recogniser that speaks in sentences. Two minutes of audio by default;
 /// AUDELIN_ENDURANCE_MINUTES sets a longer call, such as 180.
 @Suite(.timeLimit(.minutes(60)))
-@MainActor
 struct SessionEnduranceTests {
 
     static let minutes = ProcessInfo.processInfo.environment["AUDELIN_ENDURANCE_MINUTES"].flatMap(Double.init) ?? 2

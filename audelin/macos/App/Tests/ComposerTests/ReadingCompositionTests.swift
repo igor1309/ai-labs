@@ -13,7 +13,7 @@ import protocol TranscriptWriting.CallText
 
 struct ReadingCompositionTests {
 
-    @Test @MainActor func panelActionsReachTheCurrentReading() async throws {
+    @Test func panelActionsReachTheCurrentReading() async throws {
         try await withComposition { rig in
             try await rig.start()
             let shown = try await rig.panel { if case let .lines(lines) = $0.log { !lines.entries.isEmpty } else { false } }

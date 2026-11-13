@@ -3,7 +3,6 @@ import LiveText
 import PanelUI
 import Testing
 
-@MainActor
 @Suite(.timeLimit(.minutes(1)))
 struct TransientCaptureTextTests {
     /// A transient capture writes no track, so there is nothing to fill in from: audio

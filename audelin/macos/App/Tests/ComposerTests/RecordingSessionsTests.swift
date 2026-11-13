@@ -125,7 +125,6 @@ struct RecordingSessionsTests {
 }
 
 /// The same through the menu: a session that follows another owns its switch.
-@MainActor
 @Suite(.timeLimit(.minutes(1)))
 struct FollowingSessionsTests {
 

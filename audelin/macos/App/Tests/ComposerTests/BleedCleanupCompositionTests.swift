@@ -115,7 +115,7 @@ struct BleedCleanupCompositionTests {
         }
     }
 
-    @MainActor @Test(arguments: [false, true])
+    @Test(arguments: [false, true])
     func quitHandsOffRawBeforeSummaryShutdown(holdingHearing: Bool) async throws {
         try await withComposeFolder { root in
             let held = HeldCleanupStep()
@@ -170,7 +170,7 @@ struct BleedCleanupCompositionTests {
         }
     }
 
-    @MainActor @Test
+    @Test
     func sessionClosesWhileCleanupIsHeld() async throws {
         let started = Signal(), release = Signal(), replaced = Signal()
         defer { started.end(); release.end(); replaced.end() }

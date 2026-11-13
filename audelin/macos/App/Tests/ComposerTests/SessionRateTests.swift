@@ -7,7 +7,6 @@ import Testing
 import Composer
 
 @Suite(.timeLimit(.minutes(1)))
-@MainActor
 struct SessionRateTests {
 
     @Test(arguments: [[16_000.0, 16_000], [24_000, 24_000], [44_100, 44_100], [96_000, 96_000], [24_000, 96_000]])

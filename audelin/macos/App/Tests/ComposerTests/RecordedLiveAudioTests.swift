@@ -3,7 +3,6 @@ import LiveText
 import PanelUI
 import Testing
 
-@MainActor
 @Suite(.timeLimit(.minutes(1)))
 struct RecordedLiveAudioTests {
 

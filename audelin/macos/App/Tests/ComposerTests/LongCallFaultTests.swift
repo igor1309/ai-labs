@@ -12,7 +12,6 @@ import PanelUI
 /// A piece that fails partway through a long call: the user hears of it,
 /// once rather than for every word that follows, and the recording goes on.
 @Suite(.timeLimit(.minutes(1)))
-@MainActor
 struct LongCallFaultTests {
 
     /// When one side's text fails, the panel says so, the recording goes on

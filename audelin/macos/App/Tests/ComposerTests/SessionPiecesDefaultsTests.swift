@@ -1,7 +1,6 @@
 import Composer
 import Testing
 
-@MainActor
 @Suite(.timeLimit(.minutes(1)))
 struct SessionPiecesDefaultsTests {
     @Test func productionDefaultsRecordRecognizeDeliverAndWriteBothSides() async throws {

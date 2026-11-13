@@ -12,8 +12,7 @@ import SummaryRuntime
 import Testing
 
 /// Drives the public composition with real machines, UI models and files.
-@MainActor
-struct ComposeFixture {
+struct ComposeFixture: Sendable {
     let menu: AudelinMenu
     let root: URL
     let microphone: CaptureScript<CaptureBuffer>
@@ -24,14 +23,14 @@ struct ComposeFixture {
     let clock: FixtureClock
     let log: FixtureLog
 
-    static func make(
+    @MainActor static func make(
         root: URL, preferences: Preferences? = nil, summaryRuntime: SummaryRuntime.Runtime? = nil,
         microphoneFails: Bool = false, stopFailure: ComposerSide? = nil, stopEndsStream: Bool = true,
         rates: [Double]? = nil, recognizers: (any Recognizer, any Recognizer)? = nil,
-        configure: (inout ComposerBoundary) -> Void = { _ in },
-        openFolder: @escaping (URL) -> Bool = { _ in false }, presentCalls: @escaping () -> Void = {},
-        openURL: @escaping (URL) -> Void = { _ in }, presentPanel: @escaping (Bool) -> Void = { _ in },
-        terminate: @escaping @Sendable () async -> Void = {}, readCall: @escaping () -> Void = {}
+        configure: @MainActor (inout ComposerBoundary) -> Void = { _ in },
+        openFolder: @escaping @MainActor (URL) -> Bool = { _ in false }, presentCalls: @escaping @MainActor () -> Void = {},
+        openURL: @escaping @MainActor (URL) -> Void = { _ in }, presentPanel: @escaping @MainActor (Bool) -> Void = { _ in },
+        terminate: @escaping @Sendable () async -> Void = {}, readCall: @escaping @MainActor () -> Void = {}
     ) async throws -> Self {
         let first = rates.map { Array(repeating: Float(0), count: Int($0[0] / 100)) }
         let last = rates.map { Array(repeating: Float(0), count: Int($0[1] / 100)) }
@@ -62,18 +61,18 @@ struct ComposeFixture {
             try PreferencesStore(fileURL: preferencesURL).write(preferences ?? Preferences(automaticRecording: false, liveText: true, callsFolder: root))
         }
         let menu = await compose(boundary: boundary, preferencesURL: preferencesURL,
-            openCallsFolder: openFolder, presentCalls: presentCalls, openURL: openURL,
-            presentPanel: presentPanel, terminate: terminate, summaryRuntime: summaryRuntime, readCall: readCall)
+            openCallsFolder: { openFolder($0) }, presentCalls: { presentCalls() }, openURL: { openURL($0) },
+            presentPanel: { presentPanel($0) }, terminate: terminate, summaryRuntime: summaryRuntime, readCall: { readCall() })
         return Self(menu: menu, root: root, microphone: microphone, call: call, mine: mine, theirs: theirs,
                     selections: selections, clock: clock, log: log)
     }
 
-    func state(where matches: (RecordingState) -> Bool) async throws -> RecordingState {
+    func state(isolation: isolated (any Actor)? = #isolation, where matches: (RecordingState) -> Bool) async throws -> RecordingState {
         for await state in await menu.states() { if matches(state) { return state } }
         throw ScriptFailure.failed
     }
 
-    func panel(where matches: (PanelState) -> Bool) async throws -> PanelState {
+    func panel(isolation: isolated (any Actor)? = #isolation, where matches: (PanelState) -> Bool) async throws -> PanelState {
         for await state in await menu.panelStates() { if matches(state) { return state } }
         throw ScriptFailure.failed
     }
@@ -124,15 +123,15 @@ func entries(of state: PanelState) -> [PanelState.Entry] {
     if case let .lines(lines) = state.log { lines.entries } else { [] }
 }
 
-@MainActor
 func withComposition(
+    isolation: isolated (any Actor)? = #isolation,
     preferences: ((URL) -> Preferences)? = nil,
     microphoneFails: Bool = false, stopFailure: ComposerSide? = nil, stopEndsStream: Bool = true,
     rates: [Double]? = nil, recognizers: (any Recognizer, any Recognizer)? = nil,
-    configure: (inout ComposerBoundary) -> Void = { _ in },
-    openFolder: @escaping (URL) -> Bool = { _ in false }, presentCalls: @escaping () -> Void = {},
-    terminate: @escaping @Sendable () async -> Void = {}, readCall: @escaping () -> Void = {},
-    _ body: @MainActor (ComposeFixture) async throws -> Void
+    configure: @MainActor (inout ComposerBoundary) -> Void = { _ in },
+    openFolder: @escaping @MainActor (URL) -> Bool = { _ in false }, presentCalls: @escaping @MainActor () -> Void = {},
+    terminate: @escaping @Sendable () async -> Void = {}, readCall: @escaping @MainActor () -> Void = {},
+    _ body: (ComposeFixture) async throws -> Void
 ) async throws {
     try await withComposeFolder { root in
         let fixture = try await ComposeFixture.make(root: root, preferences: preferences?(root),
