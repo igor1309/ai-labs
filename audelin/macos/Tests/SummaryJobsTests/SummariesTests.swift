@@ -78,7 +78,7 @@ import Testing
         assert(makeState(calls: ["call": .init(stage: .claiming)]), .prepared("call", makeJob()), delivers: nil)
     }
 
-    @Test(arguments: [(true, SummariesState.Call.Stage.pending, SummariesState.Call.Stage.pending),
+    @Test(arguments: [(true, SummariesState.Call.Stage.pending, SummariesState.Call.Stage.starting),
                       (false, .pending, .observed), (false, .succeeded, .succeeded), (true, .failed, .failed)])
     func aClaimTakesTheSavedJob(owned: Bool, saved: SummariesState.Call.Stage, stage: SummariesState.Call.Stage) {
         let record = SummariesSaved(stage: saved, job: makeJob(), identities: [makeIdentity()], warning: true, notes: "notes", terminal: .succeeded)
@@ -88,8 +88,11 @@ import Testing
         }
         #expect(format.payloads == [.init(stage: stage, warning: true)])
     }
-    @Test(arguments: [true, false]) func aClaimDeliversNothing(owned: Bool) {
-        assert(makeClaiming(), .claimed("call", owned: owned, .init(stage: .pending, job: makeJob())), delivers: nil)
+    @Test func aClaimNotPendingDeliversNothing() {
+        assert(makeClaiming(), .claimed("call", owned: true, .init(stage: .noting, job: makeJob())), delivers: nil)
+    }
+    @Test func anObservedClaimDeliversNothing() {
+        assert(makeClaiming(), .claimed("call", owned: false, .init(stage: .pending, job: makeJob())), delivers: nil)
     }
     @Test func aClaimForACallNotClaimingChangesNothing() {
         assert(makePreparing(), .claimed("call", owned: true, .init(stage: .pending, job: makeJob())))
@@ -155,19 +158,19 @@ import Testing
     }
     @Test func prepareAndClaimDoNotLoad() async {
         let records = RecordsSpy()
-        let sut = SummariesEffectHandler(preparation: PreparationSpy(job: makeJob()), claims: ClaimsSpy(), records: records)
+        let sut = SummariesEffectHandler(preparation: PreparationSpy(job: makeJob()), claims: ClaimsSpy(), records: records, starts: StartsSpy())
         _ = await sut.handle(.prepare(makeSubmission()))
         _ = await sut.handle(.claim(makeJob()))
         #expect(records.payloads.isEmpty)
     }
     private func makeSUT(_ preparation: PreparationSpy, _ claims: ClaimsSpy) -> SummariesEffectHandler {
-        .init(preparation: preparation, claims: claims, records: RecordsSpy())
+        .init(preparation: preparation, claims: claims, records: RecordsSpy(), starts: StartsSpy())
     }
 }
 
 @Suite struct SummariesRecoveryReducerTests {
     let format = FormatSpy()
-    let saved = SummariesSaved(stage: .pending, job: makeJob(), identities: [makeIdentity()], warning: true, notes: "notes", terminal: .succeeded)
+    let saved = SummariesSaved(stage: .noting, job: makeJob(), identities: [makeIdentity()], warning: true, notes: "notes", terminal: .succeeded)
 
     @Test func recoveringANewCallLoadsIt() {
         assert(makeState(), .recover("call")) { $0.calls["call"] = .init(stage: .recovering, status: "recovering:false") }
@@ -203,10 +206,10 @@ import Testing
 
     @Test(arguments: [false, true]) func aSavedJobIsInstalled(queued: Bool) {
         assert(makeRecovering(submission: queued ? makeSubmission() : nil), .recovered("call", saved)) {
-            $0.calls["call"] = .init(stage: .pending, job: makeJob(), identities: [makeIdentity()], warning: true, notes: "notes",
-                                     terminal: .succeeded, status: "pending:true")
+            $0.calls["call"] = .init(stage: .noting, job: makeJob(), identities: [makeIdentity()], warning: true, notes: "notes",
+                                     terminal: .succeeded, status: "noting:true")
         }
-        #expect(format.payloads == [.init(stage: .pending, warning: true)])
+        #expect(format.payloads == [.init(stage: .noting, warning: true)])
     }
     @Test(arguments: [false, true]) func aSavedJobDeliversNothing(queued: Bool) {
         assert(makeRecovering(submission: queued ? makeSubmission() : nil), .recovered("call", saved), delivers: nil)
@@ -275,16 +278,150 @@ import Testing
     }
     @Test func loadDoesNotPrepareOrClaim() async {
         let preparation = PreparationSpy(job: nil), claims = ClaimsSpy()
-        _ = await SummariesEffectHandler(preparation: preparation, claims: claims, records: RecordsSpy()).handle(.load("call"))
+        _ = await SummariesEffectHandler(preparation: preparation, claims: claims, records: RecordsSpy(), starts: StartsSpy()).handle(.load("call"))
         #expect(preparation.payloads.isEmpty && claims.payloads.isEmpty)
     }
     private func makeSUT(_ records: RecordsSpy) -> SummariesEffectHandler {
-        .init(preparation: PreparationSpy(job: nil), claims: ClaimsSpy(), records: records)
+        .init(preparation: PreparationSpy(job: nil), claims: ClaimsSpy(), records: records, starts: StartsSpy())
     }
 }
 
-func makeState(lifecycle: SummariesState.Lifecycle = .accepting, calls: [String: SummariesState.Call] = [:]) -> SummariesState {
-    .init(lifecycle: lifecycle, calls: calls)
+@Suite struct SummariesDispatchReducerTests {
+    let format = FormatSpy()
+    let pending = SummariesSaved(stage: .pending, job: makeJob(), warning: true)
+
+    @Test func anOwnedPendingClaimStartsWhileDispatching() {
+        assert(makeClaiming(), .claimed("call", owned: true, pending)) {
+            $0.calls["call"] = .init(stage: .starting, job: makeJob(), warning: true, status: "starting:true")
+        }
+        #expect(format.payloads == [.init(stage: .starting, warning: true)])
+    }
+    @Test func anOwnedPendingClaimDeliversStartWhileDispatching() {
+        assert(makeClaiming(), .claimed("call", owned: true, pending), delivers: .start(makeJob()))
+    }
+    @Test func anOwnedPendingClaimStaysPendingWithoutDispatch() {
+        assert(makeClaiming(dispatch: false), .claimed("call", owned: true, pending)) {
+            $0.calls["call"] = .init(stage: .pending, job: makeJob(), warning: true, status: "pending:true")
+        }
+    }
+    @Test func anOwnedPendingClaimDeliversNothingWithoutDispatch() {
+        assert(makeClaiming(dispatch: false), .claimed("call", owned: true, pending), delivers: nil)
+    }
+    @Test func aRecoveredPendingJobStartsWhileDispatching() {
+        assert(makeRecovering(), .recovered("call", pending)) {
+            $0.calls["call"] = .init(stage: .starting, job: makeJob(), warning: true, status: "starting:true")
+        }
+        #expect(format.payloads == [.init(stage: .starting, warning: true)])
+    }
+    @Test func aRecoveredPendingJobDeliversStartWhileDispatching() {
+        assert(makeRecovering(), .recovered("call", pending), delivers: .start(makeJob()))
+    }
+    @Test func aRecoveredPendingJobStaysPendingWithoutDispatch() {
+        assert(makeRecovering(dispatch: false), .recovered("call", pending)) {
+            $0.calls["call"] = .init(stage: .pending, job: makeJob(), warning: true, status: "pending:true")
+        }
+    }
+    @Test func aRecoveredPendingJobDeliversNothingWithoutDispatch() {
+        assert(makeRecovering(dispatch: false), .recovered("call", pending), delivers: nil)
+    }
+
+    @Test(arguments: [(true, true, SummariesState.Call.Stage.identifying), (true, false, .noting), (false, true, .observed)])
+    func anAnsweredStartMovesOn(owned: Bool, speakers: Bool, stage: SummariesState.Call.Stage) {
+        assert(makeStarting(speakers: speakers), .started("call", owned: owned)) {
+            $0.calls["call"]?.stage = stage; $0.calls["call"]?.status = "\(stage):false"
+        }
+        #expect(format.payloads == [.init(stage: stage, warning: false)])
+    }
+    @Test(arguments: [true, false]) func anAnsweredStartDeliversNothing(owned: Bool) {
+        assert(makeStarting(), .started("call", owned: owned), delivers: nil)
+    }
+    @Test func aStartAnswerForACallNotStartingChangesNothing() {
+        assert(makePending(), .started("call", owned: true))
+    }
+    @Test func aStartAnswerForACallNotStartingDeliversNothing() {
+        assert(makePending(), .started("call", owned: true), delivers: nil)
+    }
+    @Test func aFailedStartFailsTheCall() {
+        assert(makeStarting(), .storageFailed("call")) { $0.calls["call"]?.stage = .failed; $0.calls["call"]?.status = "failed:false" }
+    }
+    @Test func aFailedStartDeliversNothing() {
+        assert(makeStarting(), .storageFailed("call"), delivers: nil)
+    }
+
+    @Test func stoppingDispatchTakesDueStartsBackToPending() {
+        var state = makeStarting()
+        state.calls["other"] = .init(stage: .noting, job: makeJob())
+        assert(state, .stopDispatch) {
+            $0.dispatch = false; $0.calls["call"]?.stage = .pending; $0.calls["call"]?.status = "pending:false"
+        }
+        #expect(format.payloads == [.init(stage: .pending, warning: false)])
+    }
+    @Test func stoppingDispatchDeliversNothing() {
+        assert(makeStarting(), .stopDispatch, delivers: nil)
+    }
+    @Test func stoppingStoppedDispatchChangesNothing() {
+        assert(makeState(dispatch: false), .stopDispatch)
+        #expect(format.payloads.isEmpty)
+    }
+    @Test func stoppingStoppedDispatchDeliversNothing() {
+        assert(makeState(dispatch: false), .stopDispatch, delivers: nil)
+    }
+
+    private func makeClaiming(dispatch: Bool = true) -> SummariesState {
+        makeState(dispatch: dispatch, calls: ["call": .init(stage: .claiming, job: makeJob())])
+    }
+    private func makeRecovering(dispatch: Bool = true) -> SummariesState {
+        makeState(dispatch: dispatch, calls: ["call": .init(stage: .recovering)])
+    }
+    private func makeStarting(speakers: Bool = true) -> SummariesState {
+        var job = makeJob(); job.speakers = speakers
+        return makeState(calls: ["call": .init(stage: .starting, job: job)])
+    }
+    private func makePending() -> SummariesState {
+        makeState(calls: ["call": .init(stage: .pending, job: makeJob())])
+    }
+    private func assert(_ state: SummariesState, _ event: SummariesEvent, changes: (inout SummariesState) -> Void = { _ in },
+                        sourceLocation: SourceLocation = #_sourceLocation) {
+        var expected = state; changes(&expected)
+        #expect(SummariesReducer(format: format.call).reduce(state, event).0 == expected, sourceLocation: sourceLocation)
+    }
+    private func assert(_ state: SummariesState, _ event: SummariesEvent, delivers effect: SummariesEffect?,
+                        sourceLocation: SourceLocation = #_sourceLocation) {
+        #expect(SummariesReducer(format: format.call).reduce(state, event).1 == effect, sourceLocation: sourceLocation)
+    }
+}
+
+@Suite struct SummariesDispatchEffectHandlerTests {
+    @Test func startHandsTheJobToStarts() async {
+        let starts = StartsSpy()
+        _ = await makeSUT(starts).handle(.start(makeJob()))
+        #expect(starts.payloads == [makeJob()])
+    }
+    @Test(arguments: [false, true]) func startDeliversWhetherItIsOwned(owned: Bool) async {
+        let event = await makeSUT(StartsSpy(result: .success(owned))).handle(.start(makeJob()))
+        #expect(event == .started("call", owned: owned))
+    }
+    @Test func aFailedStartDeliversStorageFailure() async {
+        let event = await makeSUT(StartsSpy(result: .failure(SpyFailure()))).handle(.start(makeJob()))
+        #expect(event == .storageFailed("call"))
+    }
+    @Test func startDoesNothingElse() async {
+        let preparation = PreparationSpy(job: nil), claims = ClaimsSpy(), records = RecordsSpy()
+        _ = await SummariesEffectHandler(preparation: preparation, claims: claims, records: records, starts: StartsSpy()).handle(.start(makeJob()))
+        #expect(preparation.payloads.isEmpty && claims.payloads.isEmpty && records.payloads.isEmpty)
+    }
+    @Test func otherEffectsDoNotStart() async {
+        let starts = StartsSpy(), sut = makeSUT(starts)
+        _ = await sut.handle(.load("call")); _ = await sut.handle(.prepare(makeSubmission())); _ = await sut.handle(.claim(makeJob()))
+        #expect(starts.payloads.isEmpty)
+    }
+    private func makeSUT(_ starts: StartsSpy) -> SummariesEffectHandler {
+        .init(preparation: PreparationSpy(job: nil), claims: ClaimsSpy(), records: RecordsSpy(), starts: starts)
+    }
+}
+
+func makeState(lifecycle: SummariesState.Lifecycle = .accepting, dispatch: Bool = true, calls: [String: SummariesState.Call] = [:]) -> SummariesState {
+    .init(lifecycle: lifecycle, dispatch: dispatch, calls: calls)
 }
 func makeEntries() -> [Job.Entry] { [.init(label: "A", time: "0", text: "spoken")] }
 func makeJob(entries: [Job.Entry] = makeEntries()) -> Job {
@@ -338,4 +475,11 @@ final class RecordsSpy: SummariesRecords {
     init(result: Result<SummariesSaved?, SpyFailure> = .success(nil)) { self.result = result }
     var payloads: [String] { recorded.withLock { $0 } }
     func load(call: String) async throws -> SummariesSaved? { recorded.withLock { $0.append(call) }; return try result.get() }
+}
+final class StartsSpy: SummariesStarts {
+    private let recorded = Mutex<[Job]>([])
+    private let result: Result<Bool, SpyFailure>
+    init(result: Result<Bool, SpyFailure> = .success(true)) { self.result = result }
+    var payloads: [Job] { recorded.withLock { $0 } }
+    func start(_ job: Job) async throws -> Bool { recorded.withLock { $0.append(job) }; return try result.get() }
 }

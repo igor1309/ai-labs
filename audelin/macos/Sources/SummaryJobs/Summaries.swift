@@ -73,13 +73,18 @@ public enum SummariesEvent: Equatable, Sendable {
     /// The submission's job, or none when notes are off and the user did not ask.
     case prepared(String, Job?)
     case claimed(String, owned: Bool, SummariesSaved)
+    /// Storage's answer to a start: owned when this machine runs the job, else another process does.
+    case started(String, owned: Bool)
     case storageFailed(String)
+    /// Stops starting jobs; a start not yet answered goes back to pending.
+    case stopDispatch
 }
 
 public enum SummariesEffect: Equatable, Sendable {
     case load(String)
     case prepare(SummariesSubmission)
     case claim(Job)
+    case start(Job)
 }
 
 public struct SummariesReducer: Sendable {
@@ -100,6 +105,7 @@ public struct SummariesReducer: Sendable {
             if let saved {
                 next.calls[id] = .init(stage: saved.stage, job: saved.job, identities: saved.identities, warning: saved.warning,
                                        notes: saved.notes, terminal: saved.terminal)
+                if saved.stage == .pending && state.dispatch { next.calls[id]?.stage = .starting; effect = .start(saved.job) }
             } else if let submission = state.calls[id]?.submission {
                 next.calls[id] = .init(stage: .preparing, requested: submission.requested, submission: submission)
                 effect = .prepare(submission)
@@ -131,9 +137,21 @@ public struct SummariesReducer: Sendable {
             let stage = owned || saved.stage != .pending ? saved.stage : .observed
             next.calls[id] = .init(stage: stage, job: saved.job, identities: saved.identities, warning: saved.warning,
                                    notes: saved.notes, terminal: saved.terminal, requested: state.calls[id]?.requested ?? false)
-        case let .storageFailed(id) where state.calls[id]?.stage == .claiming:
+            if stage == .pending && state.dispatch { next.calls[id]?.stage = .starting; effect = .start(saved.job) }
+        case let .started(id, owned) where state.calls[id]?.stage == .starting:
+            call = id
+            let speakers = state.calls[id]?.job?.speakers ?? false
+            next.calls[id]?.stage = owned ? (speakers ? .identifying : .noting) : .observed
+        case let .storageFailed(id) where state.calls[id]?.stage == .claiming || state.calls[id]?.stage == .starting:
             call = id
             next.calls[id]?.stage = .failed
+        case .stopDispatch where state.dispatch:
+            next.dispatch = false
+            for (id, work) in state.calls where work.stage == .starting {
+                next.calls[id]?.stage = .pending
+                next.calls[id]?.status = format(.pending, work.warning)
+            }
+            return (next, nil)
         default:
             return (state, nil)
         }
