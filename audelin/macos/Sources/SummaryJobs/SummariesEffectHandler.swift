@@ -13,6 +13,8 @@ public protocol SummariesClaims: Sendable {
 public protocol SummariesRecords: Sendable {
     /// The call's saved job, or none when storage holds no job for it.
     func load(call: String) async throws -> SummariesSaved?
+    /// Saves the job anew under a fresh id, ready to run again.
+    func retry(_ job: Job) async throws -> SummariesSaved
 }
 
 /// Starts a pending job in storage.
@@ -68,6 +70,9 @@ public struct SummariesEffectHandler: Sendable {
             let event = await stored(job, .saved(job.call)) { try await storage.save(job, stage: stage, warning: warning) }
             if event == .saved(job.call) { await storage.release(job) }
             return event
+        case let .retry(job):
+            do { return .retried(job.call, try await records.retry(job)) }
+            catch { return .retryFailed(job.call) }
         case let .load(call):
             do { return .recovered(call, try await records.load(call: call)) }
             catch { return .loadFailed(call) }
