@@ -87,6 +87,13 @@ leaves no `summary.md` or `.summary-job.json`, saves screenshots of the making,
 completed and cancelled states (and of any failed wait), and quits each run. The
 folder it prints under `$TMPDIR` keeps the fixtures and screenshots.
 
+## Browser extension
+
+`extension/` holds the Manifest V3 extension that will name remote speakers in
+Telemost calls, for Chrome and Yandex Browser. It has no dependencies.
+`npm test` runs its tests and `npm run build` writes `extension/dist/`; load
+that folder unpacked from the browser's extensions page with developer mode on.
+
 ## Install and updates
 
 - **First install:** `sh audelin/macos/scripts/install.sh` from the repository root

@@ -62,6 +62,7 @@ Each test, what runs it, and the change that triggers it (LAB-167, LAB-220, LAB-
 | loki (`loki/tests/*.test.js`) | `loki-core` | the `loki` filter, with every compose file: its label check reads those of the projects its allowlist names | runs |
 | neris (`neris/packages/swift-neris/Tests/`) | `neris-core` | the `neris` filter | runs |
 | audelin (`audelin/macos/Tests/`, `audelin/macos/App/Tests/`, `audelin/macos/PreviewApps/Tests/`), profiling tool tests (`audelin/macos/scripts/tests/`) | `audelin-core`: all three test packages built with `-Xswiftc -O` in one cached scratch directory, component and app test runs bounded to 180 seconds, preview to 120 | the `audelin` filter, with the recorded fixtures its tests read | runs |
+| audelin browser extension (`audelin/extension/tests/*.test.js`) and its build | `audelin-extension-core` on Ubuntu, so an extension change starts no Swift build | the `audelin-extension` filter | runs |
 | mizan-ble (`mizan-ble/ios/Tests/`), Python token-generator tests, the token check, iOS and preview-app builds; screen snapshots on the self-hosted `local-mac` runner | `mizan-ble-core` | the `mizan-ble` filter, with the design file `mizan-ble.pen` its tests read | runs |
 | claude-insights: the script's pytest, all shared Deno tests and edge-function type checks | `claude-insights-core` | the `claude-insights` filter, including the shared sessions analyzer Python sources | runs |
 | The langfuse stack (`tests/test_langfuse_shared_stack.py`) | `langfuse-core` | the `langfuse` filter | runs |

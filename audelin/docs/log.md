@@ -2,6 +2,7 @@
 
 ## 2026-11-13
 
+- LAB-1354: A Chromium extension project for Chrome and Yandex Browser loads on Telemost call pages; it reads nothing yet.
 - LAB-1274: Call notes can be made on request even with automatic notes off, cancelled or retried from the calls window, and show when they were made.
 - LAB-1347: On first launch the calls window opens wide enough to show a call beside the list.
 
