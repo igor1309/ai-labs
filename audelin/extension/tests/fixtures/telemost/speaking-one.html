@@ -1,0 +1,40 @@
+<!doctype html><meta charset="utf-8" />
+<!-- Gallery view, one remote speaking; a muted remote still showing the border and the local tile speaking are not counted. -->
+<style>
+  .tile { position: relative; }
+  .overlay { position: absolute; inset: 0; }
+  .speaking::after { content: ""; position: absolute; inset: 0; border: 4px solid rgb(29, 204, 102); }
+</style>
+<div data-video-root="true">
+  <div>
+    <div class="tile">
+      <video style="transform: scaleX(-1)"></video>
+      <div class="overlay speaking">
+        <span title="Анна Петрова">Анна Петрова</span>
+      </div>
+    </div>
+    <div class="tile">
+      <video></video>
+      <div class="overlay speaking">
+        <span title="Boris Ivanov">Boris Ivanov</span>
+      </div>
+    </div>
+    <div class="tile">
+      <video></video>
+      <div class="overlay speaking">
+        <span title="Chen Wei">Chen Wei</span><svg data-testid="micro-off-icon"></svg>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="toolbar">
+  <div>
+    <button data-testid="share-button">Share</button>
+    <button data-testid="turn-off-mic-button">Mic</button>
+    <button data-testid="turn-on-camera-button">Camera</button>
+  </div>
+  <div>
+    <button data-testid="more-popup-alt-button">More</button>
+    <div><div><button data-testid="end-call-alt-button">Leave</button></div></div>
+  </div>
+</div>
