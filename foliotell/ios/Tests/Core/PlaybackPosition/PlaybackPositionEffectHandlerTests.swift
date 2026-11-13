@@ -1,7 +1,6 @@
 import FolioTellCore
 import Testing
 
-@MainActor
 struct PlaybackPositionEffectHandlerTests {
 
     @Test func test_init_shouldNotCallCollaborators() {
@@ -11,7 +10,7 @@ struct PlaybackPositionEffectHandlerTests {
         #expect(log.calls.isEmpty)
     }
 
-    @Test func test_handleEffect_shouldPersistAnchorWithPathAndValue_onPersistAnchor() {
+    @Test func test_handleEffect_shouldPersistOnlyWithPathAndAnchor_onPersistAnchor() {
 
         let (sut, log) = makeSUT()
 
@@ -20,13 +19,27 @@ struct PlaybackPositionEffectHandlerTests {
         #expect(log.calls == [.persistAnchor("/doc.md", 16)])
     }
 
-    @Test func test_handleEffect_shouldClearAnchorWithPath_onClearAnchor() {
+    @Test func test_handleEffect_shouldDeliverNothing_onPersistAnchor() {
+
+        let (sut, _) = makeSUT()
+
+        expect(sut, with: .persistAnchor(documentPath: "/doc.md", anchor: 16), toDeliver: nil)
+    }
+
+    @Test func test_handleEffect_shouldClearOnlyWithPath_onClearAnchor() {
 
         let (sut, log) = makeSUT()
 
-        sut.handleEffect(.clearAnchor(documentPath: "/doc.md")) { _ in }
+        sut.handleEffect(.clearAnchor(documentPath: "/other.md")) { _ in }
 
-        #expect(log.calls == [.clearAnchor("/doc.md")])
+        #expect(log.calls == [.clearAnchor("/other.md")])
+    }
+
+    @Test func test_handleEffect_shouldDeliverNothing_onClearAnchor() {
+
+        let (sut, _) = makeSUT()
+
+        expect(sut, with: .clearAnchor(documentPath: "/doc.md"), toDeliver: nil)
     }
 
     // MARK: - Helpers
@@ -42,9 +55,22 @@ struct PlaybackPositionEffectHandlerTests {
         )
         return (sut, log)
     }
+
+    private func expect(
+        _ sut: SUT,
+        with effect: PlaybackPositionEffect,
+        toDeliver expected: PlaybackPositionEvent?,
+        sourceLocation: SourceLocation = #_sourceLocation
+    ) {
+
+        var delivered = [PlaybackPositionEvent]()
+
+        sut.handleEffect(effect) { delivered.append($0) }
+
+        #expect(delivered == (expected.map { [$0] } ?? []), sourceLocation: sourceLocation)
+    }
 }
 
-@MainActor
 private final class StoreLog {
 
     enum Call: Equatable {

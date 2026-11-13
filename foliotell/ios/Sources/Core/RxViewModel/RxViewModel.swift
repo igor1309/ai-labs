@@ -46,8 +46,8 @@ public final class RxViewModel<State, Event, Effect>: ObservableObject {
             let (newState, effect) = reduce(state, next)
             state = newState
             if let effect {
-                handleEffect(effect) { [weak self] in
-                    self?.event($0)
+                handleEffect(effect) { [weak self] event in
+                    MainActor.assumeIsolated { self?.event(event) }
                 }
             }
         }
@@ -61,7 +61,7 @@ public extension RxViewModel {
     typealias Reduce = (State, Event) -> (State, Effect?)
 
     /// Handles an effect and may dispatch follow-up events.
-    typealias HandleEffect = (Effect, @escaping @MainActor (Event) -> Void) -> Void
+    typealias HandleEffect = (Effect, @escaping (Event) -> Void) -> Void
 }
 
 /// Seam serializing event intake onto the main actor.

@@ -1,6 +1,5 @@
 /// Executes transport effects against injected collaborators: synthesizer
 /// operations, audio session, and cross-machine notifications.
-@MainActor
 public final class PlaybackTransportEffectHandler {
 
     private let speak: (SpeakCommand) -> Void
@@ -38,7 +37,7 @@ public final class PlaybackTransportEffectHandler {
 
     public func handleEffect(
         _ effect: PlaybackTransportEffect,
-        _ dispatch: @escaping @MainActor (PlaybackTransportEvent) -> Void
+        _ dispatch: @escaping (PlaybackTransportEvent) -> Void
     ) {
 
         switch effect {
