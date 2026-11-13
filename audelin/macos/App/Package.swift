@@ -32,6 +32,7 @@ let package = Package(
                 .product(name: "Recordings", package: "macos"),
                 .product(name: "CallsListUI", package: "macos"),
                 .product(name: "SummaryPreviewUI", package: "macos"),
+                .product(name: "BrowserBridge", package: "macos"),
                 .product(name: "CallsWindowUI", package: "macos"),
                 .product(name: "NotesMarkdown", package: "macos"),
                 .product(name: "CallAudioAccess", package: "macos"),
@@ -55,6 +56,7 @@ let package = Package(
                 .product(name: "CallsListUI", package: "macos"),
                 .product(name: "CallsWindowUI", package: "macos"),
                 .product(name: "SummaryPreviewUI", package: "macos"),
+                .product(name: "BrowserBridge", package: "macos"),
             ]
         ),
         .executableTarget(
@@ -88,6 +90,7 @@ let package = Package(
                 .product(name: "BleedCleanup", package: "macos"),
                 .product(name: "SummarySettings", package: "macos"),
                 .product(name: "SummaryPreviewUI", package: "macos"),
+                .product(name: "BrowserBridge", package: "macos"),
                 .product(name: "SummaryJobs", package: "macos"),
                 .product(name: "CallNotes", package: "macos"),
                 .product(name: "SummaryFiles", package: "macos"),
@@ -142,6 +145,7 @@ let package = Package(
                 .product(name: "CallsListUI", package: "macos"),
                 .product(name: "CallsWindowUI", package: "macos"),
                 .product(name: "SummaryPreviewUI", package: "macos"),
+                .product(name: "BrowserBridge", package: "macos"),
             ]
         ),
         .testTarget(
