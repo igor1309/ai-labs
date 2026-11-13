@@ -1,5 +1,6 @@
 import SettingsUI
 import Calls
+import CallNotes
 import CallsListUI
 import CallsSearch
 import Foundation
@@ -23,14 +24,14 @@ struct RecordingsInputs {
 public struct CallsDetail: Equatable, Sendable {
     public enum Content: Equatable, Sendable {
         /// The notes' Markdown source.
-        case notes(String)
+        case notes(String, made: String? = nil)
         /// Why the notes cannot be read.
         case unreadable(String)
         case preparing
         /// Preparing the summary failed; `canRetry` when Повторить итоги is offered.
         case failed(reason: String, canRetry: Bool)
-        /// No summary; `notesOff` when preparing summaries is off in Settings.
-        case none(notesOff: Bool)
+        /// No summary.
+        case none
     }
     public let id: String
     public let title: String
@@ -44,7 +45,7 @@ public struct CallsDetail: Equatable, Sendable {
 }
 
 /// What the detail asks of the call it shows.
-public enum CallsDetailEvent: Equatable, Sendable { case copy, open, rename, retrySummary, delete }
+public enum CallsDetailEvent: Equatable, Sendable { case copy, open, rename, makeSummary, cancelSummary, retrySummary, delete }
 
 @MainActor @Observable
 public final class AudelinCalls {
@@ -56,8 +57,10 @@ public final class AudelinCalls {
     private let readCall: () -> Void
     /// The window is too narrow for the call beside the list.
     private var narrow = false
-    private let notesEnabled: () -> Bool
-    private let notes: (String) async throws -> String?
+    private let notes: (String) async throws -> (text: String, made: String?)?
+    private let notesState: (String) -> CallNotesState?
+    private let makeSummary: (String) -> Void
+    private let cancelSummary: (String) async -> Void
     private var selectedID: String?
     private var withNotes: Set<String> = []
     /// Each call's gist, read with its notes.
@@ -95,10 +98,12 @@ public final class AudelinCalls {
          location: @escaping (String) async throws -> URL, openFolder: @escaping (URL) -> Bool,
          present: @escaping () -> Void, summaryStatuses: @escaping () -> [String: String] = { [:] },
          summaryBadges: @escaping () -> [String: CallsListState.Row.Summary] = { [:] },
-         notes: @escaping (String) async throws -> String? = { _ in nil },
+         notes: @escaping (String) async throws -> (text: String, made: String?)? = { _ in nil },
+         notesState: @escaping (String) -> CallNotesState? = { _ in nil },
+         makeSummary: @escaping (String) -> Void = { _ in },
+         cancelSummary: @escaping (String) async -> Void = { _ in },
          copy: @escaping (String) -> Void = { _ in },
          readCall: @escaping () -> Void = {},
-         notesEnabled: @escaping () -> Bool = { true },
          retryableSummaries: @escaping () -> Set<String> = { [] },
          retrySummary: @escaping (String) async throws -> Void = { _ in throw CocoaError(.fileWriteUnknown) },
          describe: @escaping (any Error) -> String = SettingsText(language: .russian).callsFailure,
@@ -111,7 +116,7 @@ public final class AudelinCalls {
         self.retrySummary = retrySummary
         self.copy = copy
         self.readCall = readCall
-        self.notesEnabled = notesEnabled
+        self.notesState = notesState; self.makeSummary = makeSummary; self.cancelSummary = cancelSummary
         self.summaryStatuses = summaryStatuses
         self.summaryBadges = summaryBadges
         self.notes = notes
@@ -143,6 +148,9 @@ public final class AudelinCalls {
             state.rows[index].summary = badges[state.rows[index].id] ?? .none
             state.rows[index].canRetrySummary = retryable.contains(state.rows[index].id)
             state.rows[index].hasNotes = withNotes.contains(state.rows[index].id)
+            let machine = notesState(state.rows[index].id)
+            state.rows[index].canMakeSummary = state.rows[index].editable && !state.rows[index].hasNotes
+                && state.rows[index].summary == .none && (machine == nil || machine == .pending)
             state.rows[index].gist = gists[state.rows[index].id]
             state.rows[index].match = found[state.rows[index].id]
         }
@@ -238,7 +246,10 @@ public final class AudelinCalls {
     private func scanNotes() {
         notesScan?.cancel()
         notesScan = Task { [notes] in
-            for await (ids, _) in Observations({ (self.inputs.state().calls.map(\.id), self.summaryStatuses()) }) {
+            for await (ids, _, _) in Observations({
+                let ids = self.inputs.state().calls.map(\.id)
+                return (ids, self.summaryStatuses(), ids.map(self.notesState))
+            }) {
                 var found = Set<String>(), gists: [String: String] = [:]
                 for id in ids {
                     // A closed window stops the scan between reads.
@@ -246,7 +257,7 @@ public final class AudelinCalls {
                     do {
                         guard let text = try await notes(id) else { continue }
                         found.insert(id)
-                        gists[id] = NotesMarkdown.gist(text)
+                        gists[id] = NotesMarkdown.gist(text.text)
                     } catch { found.insert(id) }
                 }
                 if Task.isCancelled { return }
@@ -277,17 +288,18 @@ public final class AudelinCalls {
         let opening = state.rows[...index].last(where: { $0.day != nil })?.day
         let date = [opening?.title, row.time].compactMap { $0 }.joined(separator: ", ")
         let status = summaryStatuses()[id] ?? ""
-        let notesOff = !notesEnabled()
         loading = Task { [notes] in
             let read: CallsDetail.Content?
-            do { read = try await notes(id).map { .notes($0) } } catch { read = .unreadable(error.localizedDescription) }
+            do { read = try await notes(id).map { .notes($0.text, made: $0.made) } } catch { read = .unreadable(error.localizedDescription) }
             guard !Task.isCancelled else { return }
             let content: CallsDetail.Content
-            switch (read, row.summary) {
-            case let (read?, _): content = read
-            case (nil, .pending): content = .preparing
-            case (nil, .failed): content = .failed(reason: status, canRetry: row.canRetrySummary && row.editable)
-            case (nil, .none): content = .none(notesOff: notesOff)
+            switch (read, notesState(id), row.summary) {
+            case let (read?, _, _): content = read
+            case (nil, .loading?, _): content = .preparing
+            case let (nil, .failure(failure)?, _): content = .failed(reason: failure.reason, canRetry: row.canRetrySummary && row.editable)
+            case (nil, _, .pending): content = .preparing
+            case (nil, _, .failed): content = .failed(reason: status, canRetry: row.canRetrySummary && row.editable)
+            case (nil, _, .none): content = .none
             }
             detail = .init(id: id, title: row.displayTitle, date: date, duration: row.duration, content: content)
         }
@@ -297,9 +309,11 @@ public final class AudelinCalls {
     public func send(detail event: CallsDetailEvent) async {
         guard let shown = detail else { return }
         switch event {
-        case .copy: if case let .notes(source) = shown.content { copy(source) }
+        case .copy: if case let .notes(source, _) = shown.content { copy(source) }
         case .open: await send(.open(shown.id))
         case .rename: await send(.beginRename(shown.id))
+        case .makeSummary: await send(.makeSummary(shown.id))
+        case .cancelSummary: await cancelSummary(shown.id)
         case .retrySummary: await send(.retrySummary(shown.id))
         case .delete: await send(.askDelete(shown.id))
         }
@@ -368,8 +382,9 @@ public final class AudelinCalls {
             }
             guard selectedID == id, detail?.id == id else { return }
             readCall()
-        // Ignored: this composer sets no row's canMakeSummary.
-        case .makeSummary: return
+        case let .makeSummary(id):
+            guard !snapshot.busy, let row = snapshot.rows.first(where: { $0.id == id }), row.canMakeSummary else { return }
+            makeSummary(id)
         case let .retrySummary(id):
             guard !snapshot.busy, let row = snapshot.rows.first(where: { $0.id == id }),
                   row.editable, row.canRetrySummary else { return }

@@ -1,5 +1,9 @@
 # Log
 
+## 2026-11-13
+
+- LAB-1274: Call notes can be made on request even with automatic notes off, cancelled or retried from the calls window, and show when they were made.
+
 ## 2026-11-12
 
 - The selected call's title and date sit in the toolbar band beside the window controls and stay while its notes scroll below them.

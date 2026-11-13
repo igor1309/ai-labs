@@ -10,7 +10,7 @@ func detailState(_ detail: CallsDetail?, text: SummaryPreviewText) -> SummaryPre
     guard let detail else { return nil }
     let notes: SummaryPreviewState.Notes, canRetry: Bool
     switch detail.content {
-    case let .notes(source): notes = .markdown(source, made: nil); canRetry = false
+    case let .notes(source, made): notes = .markdown(source, made: made); canRetry = false
     case let .unreadable(reason): notes = .unreadable(text(.unreadable, reason)); canRetry = false
     case .preparing: notes = .making; canRetry = false
     case let .failed(reason, retry): notes = .failed(reason); canRetry = retry
@@ -19,10 +19,11 @@ func detailState(_ detail: CallsDetail?, text: SummaryPreviewText) -> SummaryPre
     return .init(title: detail.title, date: detail.date, duration: detail.duration, notes: notes, canRetry: canRetry)
 }
 
-/// The detail's buttons, as the calls window's actions on the call it shows; nil for the ones the window does not act on yet.
+/// The detail's buttons, as the calls window's actions on the call it shows.
 func detailEvent(_ event: SummaryPreviewEvent) -> CallsDetailEvent? {
     switch event {
-    case .makeSummary, .cancelSummary: nil
+    case .makeSummary: .makeSummary
+    case .cancelSummary: .cancelSummary
     case .copy: .copy
     case .open: .open
     case .rename: .rename

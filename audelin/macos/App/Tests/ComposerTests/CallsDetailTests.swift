@@ -20,7 +20,7 @@ struct CallsDetailTests {
 
         await sut.calls.send(.selectNext)
         await sut.waitDetail { $0?.id == b }
-        #expect(sut.calls.detail?.content == CallsDetail.Content.none(notesOff: false))
+        #expect(sut.calls.detail?.content == CallsDetail.Content.none)
     }
 
     @Test func withoutNotesTheDetailShowsWhereTheSummaryStands() async throws {
@@ -40,13 +40,13 @@ struct CallsDetailTests {
         await sut.waitDetail { $0?.content == .failed(reason: "Лимит запросов", canRetry: false) }
     }
 
-    @Test(arguments: [true, false])
-    func noSummaryNamesSettingsWhenNotesAreOff(enabled: Bool) async throws {
-        let sut = Fixture(notesEnabled: enabled)
+    @Test
+    func noSummaryOffersMakingNotes() async throws {
+        let sut = Fixture()
 
         await sut.calls.send(.select(a))
 
-        await sut.waitDetail { $0?.content == CallsDetail.Content.none(notesOff: !enabled) }
+        await sut.waitDetail { $0?.content == CallsDetail.Content.none }
     }
 
     @Test func unreadableNotesCarryTheReason() async throws {
@@ -146,6 +146,20 @@ struct CallsDetailTests {
         #expect(sut.reads == [a, a, b])
     }
 
+    @Test func makingAndCancellingActOnTheShownCall() async {
+        let sut = Fixture()
+        await sut.calls.send(.read(b))
+        #expect(sut.calls.state.rows.first { $0.id == b }?.canMakeSummary == true)
+        await sut.calls.send(detail: .makeSummary)
+        #expect(sut.made == [b])
+        sut.summaries.badges[b] = .pending
+        #expect(sut.calls.state.rows.first { $0.id == b }?.canMakeSummary == false)
+        await sut.calls.send(detail: .cancelSummary)
+        #expect(sut.cancelled == [b])
+        sut.summaries.badges[b] = .failed
+        #expect(sut.calls.state.rows.first { $0.id == b }?.canMakeSummary == false)
+    }
+
     @Test func theDetailsActionsAreTheListsActionsOnTheShownCall() async throws {
         let sut = Fixture()
         sut.summaries.badges = [b: .failed]
@@ -184,6 +198,8 @@ private struct Unreadable: LocalizedError { var errorDescription: String? { "н�
     var copies: [String] = []
     var opened: [URL] = []
     var retried: [String] = []
+    var made: [String] = []
+    var cancelled: [String] = []
     var sent: [RecordingsEvent] = []
     var reads: [String] = []
     var readCalls = 0
@@ -196,7 +212,7 @@ private struct Unreadable: LocalizedError { var errorDescription: String? { "н�
     private var readWaiters: [(count: Int, resume: () -> Void)] = []
     var calls: AudelinCalls!
 
-    init(notes: [String: String] = [:], unreadable: Set<String> = [], notesEnabled: Bool = true) {
+    init(notes: [String: String] = [:], unreadable: Set<String> = []) {
         self.notes = notes
         let listing = RecordingsState(calls: [
             .init(id: a, title: "A", start: Date(timeIntervalSince1970: 36_000), duration: 60),
@@ -215,9 +231,10 @@ private struct Unreadable: LocalizedError { var errorDescription: String? { "н�
                 readWaiters.removeAll { $0.count <= reads.count }
                 ready.forEach { $0.resume() }
                 if unreadable.contains(id) { throw Unreadable() }
-                return self.notes[id]
+                return self.notes[id].map { (text: $0, made: nil) }
             },
-            copy: { [unowned self] in copies.append($0) }, readCall: { [unowned self] in readCalls += 1; readDetails.append(calls.detail?.id) }, notesEnabled: { notesEnabled },
+            makeSummary: { [unowned self] in made.append($0) }, cancelSummary: { [unowned self] in cancelled.append($0) },
+            copy: { [unowned self] in copies.append($0) }, readCall: { [unowned self] in readCalls += 1; readDetails.append(calls.detail?.id) },
             retryableSummaries: { [summaries] in summaries.retryable },
             retrySummary: { [unowned self] in retried.append($0) })
     }

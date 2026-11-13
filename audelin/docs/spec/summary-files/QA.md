@@ -61,9 +61,9 @@ Automated boundary: `cd audelin/macos && swift test --filter SummaryFilesTests/m
 
 Automated boundary: `cd audelin/macos && swift test --filter SummaryFilesTests/callWithoutNotesReadsNone`. Setup fixture: a call folder with a transcript and no `summary.md`; drive: read its notes; read-back oracle: the read returns none and throws nothing.
 
-## S-17 Retry the current interrupted attempt
+## S-17 Retry the current inactive attempt
 
-`cd audelin/macos && swift test --filter SummaryFilesTests/concurrentRetriesReplaceOnlyTheInterruptedAttemptAndPreserveOutputs` submits two retries of one interrupted record. Only one wins; its new pending identity retains the saved payload, and old notes cannot complete the fresh attempt.
+`cd audelin/macos && swift test --filter SummaryFilesTests/concurrentRetriesReplaceOnlyTheInactiveAttemptAndPreserveOutputs` submits two retries of one interrupted record. Only one wins; its new pending identity retains the saved payload, and old notes cannot complete the fresh attempt.
 
 ## S-18 Refuse a stale interrupted retry
 
@@ -80,3 +80,5 @@ Automated boundary: `cd audelin/macos && swift test --filter SummaryFilesTests/c
 ## S-21 Discard a cancelled job
 
 `cd audelin/macos && swift test --filter SummaryFilesTests/anOwnerDiscardsItsRunningJob` claims and starts a job over published notes, discards it, and reads back no record, the same notes and the transcript bytes, and another instance then starts the same job; a discard by another instance while the owner runs fails and leaves the record running.
+
+`inactiveAttemptCanBeDiscardedWithoutTakingAnotherOwnersRecord` also covers pending and interrupted attempts: the exact inactive identity is removed under its lease; a different identity is refused and the transcript stays.

@@ -53,7 +53,7 @@ final class SummaryStorage: SummaryFiles.Locations, Sendable {
     }
     /// A saved transcript's lines, read by the format's one reader.
     static func transcriptLines(_ markdown: String) -> [Calls.Text.Line] {
-        TranscriptFormat.entries(markdown).map { .init(start: $0.start, words: $0.words) }
+        TranscriptFormat.entries(markdown).map { .init(start: $0.start, words: $0.words, label: $0.label) }
     }
 
     init(folder: URL, journal: URL?, writeJournal: @escaping @Sendable (Journal, URL) throws -> Void,

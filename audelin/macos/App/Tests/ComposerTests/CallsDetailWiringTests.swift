@@ -32,16 +32,16 @@ struct CallsDetailWiringTests {
             #expect(calls.detail == nil)
 
             await calls.send(.select(c))
-            await waitDetail(calls) { $0?.content == .notes("# C notes") }
+            await waitDetail(calls) { notesText($0) == "# C notes" }
             await calls.send(.select(a))
-            await waitDetail(calls) { $0?.content == .notes("# A notes") }
+            await waitDetail(calls) { notesText($0) == "# A notes" }
             await calls.send(.selectNext)
             await waitDetail(calls) { $0?.id == b && noSummary($0) }
             await calls.send(.selectNext)
-            await waitDetail(calls) { $0?.content == .notes("# C notes") }
+            await waitDetail(calls) { notesText($0) == "# C notes" }
             await calls.send(.selectPrevious)
             await calls.send(.selectPrevious)
-            await waitDetail(calls) { $0?.content == .notes("# A notes") }
+            await waitDetail(calls) { notesText($0) == "# A notes" }
             await calls.send(.selectPrevious)
             #expect(calls.state.selectedID == a)
         }
@@ -59,31 +59,48 @@ struct CallsDetailWiringTests {
 
             await rig.menu.perform(.showCalls)
             await wait(calls) { $0.rows.map(\.hasNotes) == [true] }
-            await waitDetail(calls) { $0?.content == .notes("# Late") }
+            await waitDetail(calls) { notesText($0) == "# Late" }
         }
     }
 
     @Test func aReloadUpdatesTheShownDetail() async throws {
-        try await withComposition { rig in
+        try await withNotesComposition { rig, http in
             let calls = try #require(rig.menu.calls)
             let old = "# Old\n\nСтарый смысл.", new = "# New\n\nНовый смысл."
-            try call(a, notes: old, in: rig.root)
+            try call(a, notes: nil, in: rig.root)
+            try Data("**Me** 00:00:03\n\nsaved words\n".utf8).write(to: folder(a, in: rig.root).appendingPathComponent("transcript.md"))
             await rig.menu.perform(.showCalls)
+            await wait(calls) { !$0.busy && $0.rows.count == 1 }
+            await calls.send(.makeSummary(a)); await http.started.next()
+            try await http.succeed()
             await wait(calls) { $0.rows.map(\.hasNotes) == [true] }
+            await calls.send(.read(a))
+            await waitDetail(calls) { notesText($0) == generatedNotes }
+            try call(a, notes: old, in: rig.root, create: false)
+            await rig.menu.perform(.showCalls)
+            await wait(calls) { $0.rows.map(\.gist) == ["Старый смысл."] }
             #expect(calls.state.rows.map(\.gist) == ["Старый смысл."])
             await calls.send(.select(a))
-            await waitDetail(calls) { $0?.content == .notes(old) }
+            await waitDetail(calls) { notesText($0) == old }
 
             try call(a, notes: new, in: rig.root, create: false)
             await rig.menu.perform(.showCalls)
-            await waitDetail(calls) { $0?.content == .notes(new) }
+            await waitDetail(calls) { notesText($0) == new }
             await wait(calls) { $0.rows.map(\.gist) == ["Новый смысл."] }
 
             try FileManager.default.removeItem(at: folder(a, in: rig.root).appendingPathComponent("summary.md"))
             await rig.menu.perform(.showCalls)
             await wait(calls) { $0.rows.map(\.hasNotes) == [false] }
             #expect(calls.state.rows.map(\.gist) == [nil])
-            await waitDetail(calls) { noSummary($0) }
+            await calls.send(.read(a))
+            #expect(noSummary(calls.detail))
+            try #require(calls.state.rows[0].canMakeSummary)
+            await calls.send(detail: .makeSummary)
+            await waitDetail(calls) { if case .some(.none) = $0?.content { false } else { true } }
+            try #require(calls.detail?.content == .preparing)
+            await http.started.next(); try await http.succeed()
+            await waitDetail(calls) { notesText($0) == generatedNotes }
+            #expect(await http.bodies.count == 2)
         }
     }
 
@@ -100,7 +117,7 @@ struct CallsDetailWiringTests {
 
             await calls.send(.read(a))
 
-            #expect(shown.map { $0?.content } == [.notes("# A notes")])
+            #expect(shown.map(notesText) == ["# A notes"])
         }
     }
 
@@ -139,3 +156,7 @@ private func call(_ id: String, notes: String?, in root: URL, create: Bool = tru
 }
 
 private func noSummary(_ detail: CallsDetail?) -> Bool { if case .some(.none) = detail?.content { true } else { false } }
+
+private func notesText(_ detail: CallsDetail?) -> String? {
+    if case let .notes(text, _) = detail?.content { text } else { nil }
+}

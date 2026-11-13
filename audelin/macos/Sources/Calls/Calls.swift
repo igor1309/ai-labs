@@ -22,7 +22,11 @@ public struct Calls: Sendable {
             /// Seconds from the call's start.
             public let start: TimeInterval
             public let words: String
-            public init(start: TimeInterval, words: String) { self.start = start; self.words = words }
+            /// The speaker label written in the saved transcript.
+            public let label: String
+            public init(start: TimeInterval, words: String, label: String = "") {
+                self.start = start; self.words = words; self.label = label
+            }
         }
         public let notes: String?
         public let transcript: [Line]

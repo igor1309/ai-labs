@@ -18,7 +18,7 @@ import Testing
             let files = Files(locations: SummaryStorage(folder: root, timeZone: .gmt, trash: removeForTrash), disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("leases"))
             let readStarted = Signal(), releaseRead = Signal(), submitStarted = Signal()
             let runtime = Runtime(process: ArbitrationProcess(), http: ArbitrationHTTP(), credential: { _ in nil }, resolveProgram: { $0 }, deadline: { throw Failure.timeout })
-            let summaries = AudelinSummaries(files: files, runtime: runtime, preferences: preferences, sink: TestLogSink(), load: { call in
+            let summaries = AudelinSummaries(files: files, runtime: runtime, preferences: preferences, sink: TestLogSink(), callText: { _ in .init(notes: nil, transcript: []) }, date: { _ in "made" }, load: { call in
                 readStarted.send(); await releaseRead.next(); return try await files.load(call: call)
             })
             summaries.stopDispatch()
@@ -50,8 +50,8 @@ import Testing
             let observerFiles = Files(locations: SummaryStorage(folder: root, timeZone: .gmt, trash: removeForTrash), disk: FileDisk(), ownershipDirectory: directory)
             let http = HeldSummaryHTTP()
             let runtime = Runtime(process: ArbitrationProcess(), http: http, credential: { _ in nil }, resolveProgram: { $0 }, deadline: { try await waitForCancellation() })
-            let owner = AudelinSummaries(files: ownerFiles, runtime: runtime, preferences: preferences, sink: TestLogSink())
-            let observer = AudelinSummaries(files: observerFiles, runtime: runtime, preferences: preferences, sink: TestLogSink())
+            let owner = AudelinSummaries(files: ownerFiles, runtime: runtime, preferences: preferences, sink: TestLogSink(), callText: { _ in .init(notes: nil, transcript: []) }, date: { _ in "made" })
+            let observer = AudelinSummaries(files: observerFiles, runtime: runtime, preferences: preferences, sink: TestLogSink(), callText: { _ in .init(notes: nil, transcript: []) }, date: { _ in "made" })
             await owner.submit(call: id, input: "input", entries: [.init(label: "A", time: "0", text: "spoken")], finalWrite: true, usable: true)
             await http.started.next()
             do {
@@ -93,8 +93,8 @@ import Testing
             _ = try await ownerFiles.claim(SummaryJobStore(files: ownerFiles).record(savedJob(call: id), phase: "interrupted"))
             let http = HeldSummaryHTTP()
             let runtime = Runtime(process: ArbitrationProcess(), http: http, credential: { _ in nil }, resolveProgram: { $0 }, deadline: { try await waitForCancellation() })
-            let owner = AudelinSummaries(files: ownerFiles, runtime: runtime, preferences: preferences, sink: TestLogSink())
-            let observer = AudelinSummaries(files: observerFiles, runtime: runtime, preferences: preferences, sink: TestLogSink())
+            let owner = AudelinSummaries(files: ownerFiles, runtime: runtime, preferences: preferences, sink: TestLogSink(), callText: { _ in .init(notes: nil, transcript: []) }, date: { _ in "made" })
+            let observer = AudelinSummaries(files: observerFiles, runtime: runtime, preferences: preferences, sink: TestLogSink(), callText: { _ in .init(notes: nil, transcript: []) }, date: { _ in "made" })
             await owner.recover(calls: [id])
             if recoverObserver { await observer.recover(calls: [id]) }
             else {
@@ -134,7 +134,7 @@ import Testing
             let reads = HeldObserverRead(files: files, fails: failedRead)
             let http = HeldSummaryHTTP()
             let runtime = Runtime(process: ArbitrationProcess(), http: http, credential: { _ in nil }, resolveProgram: { $0 }, deadline: { try await waitForCancellation() })
-            let summaries = AudelinSummaries(files: files, runtime: runtime, preferences: preferences, sink: TestLogSink(), load: { try await reads.load(call: $0) })
+            let summaries = AudelinSummaries(files: files, runtime: runtime, preferences: preferences, sink: TestLogSink(), callText: { _ in .init(notes: nil, transcript: []) }, date: { _ in "made" }, load: { try await reads.load(call: $0) })
             await summaries.recover(calls: [id])
             let refresh = Task { await summaries.refreshObserved() }
             await reads.started.next()
@@ -178,7 +178,7 @@ import Testing
             let failedRead: Result<Record?, ObserverReadFailure> = failure == "read-error" ? .failure(.unavailable) : .success(failure == "absent" ? nil : invalid)
             let reads = ObserverReads([.success(initial == "running" ? running : pending), failedRead, .success(terminal)])
             let runtime = Runtime(process: ArbitrationProcess(), http: ArbitrationHTTP(), credential: { _ in nil }, resolveProgram: { $0 }, deadline: { throw Failure.timeout })
-            let observer = AudelinSummaries(files: files, runtime: runtime, preferences: preferences, sink: TestLogSink(), load: { _ in try await reads.next() })
+            let observer = AudelinSummaries(files: files, runtime: runtime, preferences: preferences, sink: TestLogSink(), callText: { _ in .init(notes: nil, transcript: []) }, date: { _ in "made" }, load: { _ in try await reads.next() })
             await observer.recover(calls: [id])
             if initial == "observed" {
                 for await status in observer.updates() where status[id] == CallsListText(language: .russian).summaryStatus(.observed, false) { break }
@@ -207,7 +207,7 @@ import Testing
             var terminal = pending; terminal.phase = "failed"
             let reads = ObserverReads([.success(running), .success(pending), .success(running), .success(terminal)])
             let runtime = Runtime(process: ArbitrationProcess(), http: ArbitrationHTTP(), credential: { _ in nil }, resolveProgram: { $0 }, deadline: { throw Failure.timeout })
-            let observer = AudelinSummaries(files: files, runtime: runtime, preferences: preferences, sink: TestLogSink(), load: { _ in try await reads.next() })
+            let observer = AudelinSummaries(files: files, runtime: runtime, preferences: preferences, sink: TestLogSink(), callText: { _ in .init(notes: nil, transcript: []) }, date: { _ in "made" }, load: { _ in try await reads.next() })
             await observer.recover(calls: [id])
             #expect(observer.busy)
             await observer.refreshObserved()
@@ -231,7 +231,7 @@ import Testing
             let observerFiles = Files(locations: SummaryStorage(folder: root, timeZone: .gmt, trash: removeForTrash), disk: FileDisk(), ownershipDirectory: directory)
             let http = JoinedCancellationHTTP()
             let runtime = Runtime(process: ArbitrationProcess(), http: http, credential: { _ in nil }, resolveProgram: { $0 }, deadline: { try await waitForCancellation() })
-            let summaries = AudelinSummaries(files: ownerFiles, runtime: runtime, preferences: preferences, sink: TestLogSink())
+            let summaries = AudelinSummaries(files: ownerFiles, runtime: runtime, preferences: preferences, sink: TestLogSink(), callText: { _ in .init(notes: nil, transcript: []) }, date: { _ in "made" })
             await summaries.submit(call: id, input: "input", entries: [.init(label: "A", time: "0", text: "spoken")], finalWrite: true, usable: true)
             await http.started.next()
             let shutdown = Task { await summaries.shutdown() }
@@ -258,7 +258,7 @@ import Testing
             let readStarted = Signal(), releaseRead = Signal(), submitStarted = Signal()
             let http = HeldSummaryHTTP()
             let runtime = Runtime(process: ArbitrationProcess(), http: http, credential: { _ in nil }, resolveProgram: { $0 }, deadline: { try await waitForCancellation() })
-            let summaries = AudelinSummaries(files: files, runtime: runtime, preferences: preferences, sink: TestLogSink(), load: { call in
+            let summaries = AudelinSummaries(files: files, runtime: runtime, preferences: preferences, sink: TestLogSink(), callText: { _ in .init(notes: nil, transcript: []) }, date: { _ in "made" }, load: { call in
                 readStarted.send(); await releaseRead.next(); return try await files.load(call: call)
             })
             let recovery = Task { await summaries.recover(calls: [id]) }
@@ -293,7 +293,7 @@ import Testing
             try preferences.updateNotes(enabledNotes())
             let files = Files(locations: SummaryStorage(folder: root, timeZone: .gmt, trash: removeForTrash), disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("leases"))
             let runtime = Runtime(process: ArbitrationProcess(), http: ArbitrationHTTP(), credential: { _ in nil }, resolveProgram: { $0 }, deadline: { throw Failure.timeout })
-            let summaries = AudelinSummaries(files: files, runtime: runtime, preferences: preferences, sink: TestLogSink())
+            let summaries = AudelinSummaries(files: files, runtime: runtime, preferences: preferences, sink: TestLogSink(), callText: { _ in .init(notes: nil, transcript: []) }, date: { _ in "made" })
             await summaries.recover(calls: [id])
             #expect(summaries.statuses[id] == CallsListText(language: .russian).summaryStatus(.failed, false))
             await summaries.submit(call: id, input: "input", entries: [.init(label: "A", time: "0", text: "spoken")], finalWrite: true, usable: true)
@@ -314,7 +314,7 @@ import Testing
             #expect(try await SummaryJobStore(files: files).claim(saved).owned)
             let readStarted = Signal(), releaseRead = Signal(), shutdownStarted = Signal()
             let runtime = Runtime(process: ArbitrationProcess(), http: ArbitrationHTTP(), credential: { _ in nil }, resolveProgram: { $0 }, deadline: { throw Failure.timeout })
-            let summaries = AudelinSummaries(files: files, runtime: runtime, preferences: preferences, sink: TestLogSink(), load: { call in
+            let summaries = AudelinSummaries(files: files, runtime: runtime, preferences: preferences, sink: TestLogSink(), callText: { _ in .init(notes: nil, transcript: []) }, date: { _ in "made" }, load: { call in
                 readStarted.send(); await releaseRead.next(); return try await files.load(call: call)
             })
             let recovery = Task { await summaries.recover(calls: [id]) }
@@ -334,7 +334,7 @@ import Testing
             try preferences.updateNotes(.init(enabled: true))
             let files = Files(locations: SummaryStorage(folder: root, timeZone: .gmt, trash: removeForTrash), disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("leases"))
             let runtime = Runtime(process: ArbitrationProcess(), http: ArbitrationHTTP(), credential: { _ in nil }, resolveProgram: { $0 }, deadline: { throw Failure.timeout })
-            let summaries = AudelinSummaries(files: files, runtime: runtime, preferences: preferences, sink: TestLogSink())
+            let summaries = AudelinSummaries(files: files, runtime: runtime, preferences: preferences, sink: TestLogSink(), callText: { _ in .init(notes: nil, transcript: []) }, date: { _ in "made" })
             summaries.waiting(call: "call")
             #expect(summaries.statuses == ["call": CallsListText(language: .russian).summaryStatus(.waiting, false)])
             var updates = summaries.updates().makeAsyncIterator()

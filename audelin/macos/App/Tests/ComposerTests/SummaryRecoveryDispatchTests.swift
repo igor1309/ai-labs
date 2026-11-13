@@ -38,7 +38,7 @@ struct SummaryRecoveryDispatchTests {
                 try Task.checkCancellation()
             })
             let loads = Values<String>()
-            let summaries = AudelinSummaries(files: files, runtime: runtime, preferences: preferences, sink: TestLogSink(), load: { call in
+            let summaries = AudelinSummaries(files: files, runtime: runtime, preferences: preferences, sink: TestLogSink(), callText: { _ in .init(notes: nil, transcript: []) }, date: { _ in "made" }, load: { call in
                 loads.append(call); return try await files.load(call: call)
             })
             do {
