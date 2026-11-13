@@ -6,7 +6,7 @@ import Testing
 @Suite(.timeLimit(.minutes(1))) struct BrowserReceiverTests {
     @Test func publishesAValidStreamAndItsDisconnect() async {
         let transport = FakeTransport()
-        let sut = BrowserReceiver(connections: transport.connections)
+        let sut = BrowserReceiver(connections: transport.connections, now: { 0 }, sleep: { try await Task.sleep(for: $0 * 1000) })
         let peer = transport.connect()
         peer.send(frame(sequence: 0)); peer.send(frame(sequence: 1)); peer.disconnect()
         transport.stop()
@@ -21,7 +21,7 @@ import Testing
 
     @Test func closesAConnectionOnAMalformedMessage() async {
         let transport = FakeTransport()
-        let sut = BrowserReceiver(connections: transport.connections)
+        let sut = BrowserReceiver(connections: transport.connections, now: { 0 }, sleep: { try await Task.sleep(for: $0 * 1000) })
         let peer = transport.connect()
         peer.send(frame(sequence: 0)); peer.send(Data("{\"version\":2}".utf8)); peer.send(frame(sequence: 1))
         transport.stop()
@@ -35,7 +35,7 @@ import Testing
 
     @Test func closesAConnectionThatReplaysASequence() async {
         let transport = FakeTransport()
-        let sut = BrowserReceiver(connections: transport.connections)
+        let sut = BrowserReceiver(connections: transport.connections, now: { 0 }, sleep: { try await Task.sleep(for: $0 * 1000) })
         let peer = transport.connect()
         peer.send(frame(sequence: 3)); peer.send(frame(sequence: 3))
         transport.stop()
@@ -48,7 +48,7 @@ import Testing
 
     @Test func aRejectedConnectionLeavesTheNextOneOpen() async {
         let transport = FakeTransport()
-        let sut = BrowserReceiver(connections: transport.connections)
+        let sut = BrowserReceiver(connections: transport.connections, now: { 0 }, sleep: { try await Task.sleep(for: $0 * 1000) })
         let bad = transport.connect()
         bad.send(Data("not json".utf8))
         let good = transport.connect()
@@ -65,16 +65,15 @@ import Testing
 }
 
 extension BrowserReceiverTests {
-    @Test func publishesClockRepliesBesideMessages() async {
+    @Test func ignoresAReplyToAPingNeverSent() async {
         let transport = FakeTransport()
-        let sut = BrowserReceiver(connections: transport.connections)
+        let sut = BrowserReceiver(connections: transport.connections, now: { 0 }, sleep: { try await Task.sleep(for: $0 * 1000) })
         let peer = transport.connect()
         peer.send(frame(sequence: 0)); peer.send(Data(#"{"version":1,"ping":3,"at":1000}"#.utf8)); peer.send(frame(sequence: 1)); peer.disconnect()
         transport.stop()
 
         #expect(await Array(sut.events) == [
             .message(connection: 0, message(sequence: 0)),
-            .clockReply(connection: 0, BrowserClockReply(ping: 3, at: 1000)),
             .message(connection: 0, message(sequence: 1)),
             .disconnected(connection: 0),
         ])
@@ -104,7 +103,7 @@ private final class FakeTransport: Sendable {
 
     func connect() -> FakePeer {
         let peer = FakePeer()
-        continuation.yield(BrowserConnection(frames: peer.frames, close: { peer.closed() }))
+        continuation.yield(BrowserConnection(frames: peer.frames, send: { _ in }, close: { peer.closed() }))
         return peer
     }
 

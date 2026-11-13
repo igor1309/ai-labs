@@ -8,7 +8,7 @@ import Testing
         try await withSocketFolder { path in
             let listener = try BrowserSocketListener(path: path, secret: secret)
             defer { listener.stop() }
-            let receiver = BrowserReceiver(connections: listener.connections)
+            let receiver = BrowserReceiver(connections: listener.connections, now: { 0 }, sleep: { try await Task.sleep(for: $0 * 1000) })
             var events = receiver.events.makeAsyncIterator()
             let host = try await admitted(path)
             try await host.send(frame(sequence: 0))
