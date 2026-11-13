@@ -30,3 +30,14 @@ test("background_shouldBeAWorker_allowedToReachTheNativeHost", () => {
   assert.equal(manifest.background.service_worker, "src/background.js");
   assert.deepEqual(manifest.permissions, ["nativeMessaging"]);
 });
+
+// The key pins the extension's ID, even when loaded unpacked, so the app can
+// name it in the native host's allowed origins.
+const EXTENSION_ID = "boljabpcnipijdcdjjnmnpbfbdjjodkf";
+
+test("key_shouldPinTheExtensionID_theAppAllows", async () => {
+  const { createHash } = await import("node:crypto");
+  const hex = createHash("sha256").update(Buffer.from(manifest.key, "base64")).digest("hex").slice(0, 32);
+  const id = [...hex].map((digit) => String.fromCharCode(97 + parseInt(digit, 16))).join("");
+  assert.equal(id, EXTENSION_ID);
+});
