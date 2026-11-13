@@ -61,6 +61,23 @@ let package = Package(
             name: "AudelinRehearsal",
             dependencies: ["Composer", "SessionRehearsal"]
         ),
+        .executableTarget(
+            name: "CallsRehearsal",
+            dependencies: [
+                "Composer", "SessionRehearsal", "CallsWindowShell", "CallsRehearsalSupport",
+            ]
+        ),
+        .target(
+            name: "CallsRehearsalSupport",
+            dependencies: [
+                .product(name: "Preferences", package: "macos"),
+                .product(name: "SummaryRuntime", package: "macos"),
+            ]
+        ),
+        .testTarget(
+            name: "CallsRehearsalSupportTests",
+            dependencies: ["CallsRehearsalSupport"]
+        ),
         .target(
             name: "SessionRehearsal",
             dependencies: ["Composer", .product(name: "BleedCleanup", package: "macos"), .product(name: "CallDiarizer", package: "macos"), .product(name: "LiveText", package: "macos"), .product(name: "Preferences", package: "macos")]
