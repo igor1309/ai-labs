@@ -161,14 +161,15 @@ modules are machines; an app composes them.
 - **Async** (`ObservableModel`): `event(_:)` returns before the event is
   reduced. Use it unless a caller needs the sync order below.
 - **Sync** (`SyncModel`): `event(_:)` reduces before it returns, so a read
-  of `state` after it includes every event sent before. Use it only when a
-  caller must read state that includes the events it already sent. Its
-  machine has the same shape: a reducer with an optional effect and an
-  effect handler, never a doer that observes state and remembers its work.
+  of `state` after it includes every event sent before. It has no effects:
+  a pure reducer `(State, Event) -> State` and nothing that does work. Use
+  it only for state that no work follows; a line of work with effects is
+  an async machine.
 - No module imports swift-imrx or any state machine, and none wraps or
   re-implements one. Only an app (a main app or a preview app), or in Audelin
   its composer package, imports swift-imrx. It composes each instance from
-  the generic model, the tested reducer and the tested effect handler. A
+  the generic model, the tested reducer and, for an async machine, the
+  tested effect handler. A
   sync model stays on the actor that made it; callers elsewhere `await` the
   hop.
 - Each reducer state test is paired with an effect test for the same
