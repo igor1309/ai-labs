@@ -125,4 +125,73 @@ Accessibility only when the user turns naming on. Adapters tell "nobody speaking
   where it appears outside screen share.
 - Live latency numbers wait for LAB-1103's measurements (first text, first name, correction
   rate, time to stable identity; p50 and p95).
-- LAB-1128's survey of open-source recorders, folded in when it lands.
+- The Telemost indicator's lag behind the captured speech. Gristmill starts from an
+  unmeasured 300 ms guess (plausible 200–500 ms); Audelin measures it on recorded calls.
+- Whether Yandex Browser reads native-messaging host manifests from its own
+  `NativeMessagingHosts` folder as Chrome does. Its registration is proved on a real install
+  before it is listed as supported.
+
+## Browser calls (Telemost, Google Meet)
+
+### Prior art
+
+Of the open-source recorders surveyed (Gristmill, Meetily, Open Granola, who-said-what),
+only Gristmill reads browser calls. Its Companion extension has Telemost and Meet adapters
+and feeds the same timing matcher as its Zoom AX reader. None publishes accuracy figures, so
+nothing here is measured; the choices follow what Gristmill shows working, and the
+thresholds stay `Policy`'s until Audelin's own recorded calls recalibrate them.
+
+Gristmill's Telemost adapter (`extension/src/telemostAdapter.ts`) relies only on test IDs
+and structure, not on localised labels or generated class names:
+
+- The call is a same-origin `iframe[allowfullscreen]` whose room (`/j/<14 digits>`) matches
+  the top page. Only that frame is read.
+- A connected call shows `end-call-alt-button` in a toolbar with Share and Camera; the shell
+  widgets present before joining prove nothing.
+- Each tile is a `video` under `[data-video-root="true"]`; its name is the one `span[title]`
+  whose title equals its text. A mirrored video marks the local tile.
+- A remote speaker shows as a green `::after` border on the video overlay
+  (`4px solid rgb(29, 204, 102)`). A tile with `micro-off-icon` gives no activity.
+- Speaker view shows one person twice; copies with the same non-empty `data-g_track_id` and
+  name collapse. Otherwise duplicate names suppress activity.
+- Telemost exposes no participant ID. IDs are observation IDs of the DOM node; a replaced or
+  renamed node starts a new one.
+- The roster is never complete: the participant list is paginated and a hidden tab cannot
+  be read.
+
+### Browsers
+
+One Manifest V3 extension for Chromium, supported in **Chrome** and **Yandex Browser**:
+Yandex Browser is Chromium and is the one used for Telemost calls, so a single build covers
+both. It is loaded unpacked until store publication is its own work. Safari and Firefox are
+not supported: each needs a separate extension and host registration, and neither is the
+browser these calls run in.
+
+### Channel: native messaging
+
+The extension reaches Audelin through **Chrome native messaging**, as Gristmill does
+(`extension/src/worker.ts`, `src/helpers/companionNativeHost.ts`):
+
+- The browser starts a small host executable bundled in the app and talks to it over stdio.
+  The browser itself checks the extension's origin against the host manifest's
+  `allowed_origins`, so no page or other extension can connect.
+- The host relays frames to the running app over a Unix socket in the app's support folder,
+  owner-only, authenticated with a credential file only the app and host read. With the app
+  not running the host exits and the extension shows the app as unavailable.
+- Frames are length-prefixed versioned JSON with a size limit checked before allocation.
+  A malformed frame, an unknown version or a replayed sequence closes the connection.
+- The worker takes tab, document and call identity from the browser's sender, never from
+  the page.
+
+A local WebSocket was rejected: it opens a listening port any local process or web page can
+reach, its `Origin` header is checked only by convention, and the port can clash. Native
+messaging costs a host executable and one manifest per browser; the app writes both and
+repairs them at launch, never overwriting a file it does not own.
+
+### Time and tiers
+
+Browser timestamps reach call time through the ping/reply offset above. The extension's
+intervals take the same two tiers as Zoom: live tentative names when one remote participant
+is shown alone over most of a row, and confirmed names from `SpeakerNaming` after the call.
+Without the extension, or when the adapter reports the page unrecognised, recording goes on
+and speakers stay unnamed.
