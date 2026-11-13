@@ -31,8 +31,10 @@ public struct SummariesState: Equatable, Sendable {
     public var lifecycle: Lifecycle
     public var dispatch: Bool
     public var calls: [String: Call]
-    public init(lifecycle: Lifecycle = .accepting, dispatch: Bool = true, calls: [String: Call] = [:]) {
-        self.lifecycle = lifecycle; self.dispatch = dispatch; self.calls = calls
+    /// Shutdown's release of the interrupted jobs has not answered yet.
+    public var releasing: Bool
+    public init(lifecycle: Lifecycle = .accepting, dispatch: Bool = true, calls: [String: Call] = [:], releasing: Bool = false) {
+        self.lifecycle = lifecycle; self.dispatch = dispatch; self.calls = calls; self.releasing = releasing
     }
 }
 
@@ -93,6 +95,13 @@ public enum SummariesEvent: Equatable, Sendable {
     /// The user's wish to stop a call's notes; a running stage is discarded when its result arrives.
     case cancel(String)
     case discarded(String)
+    /// Stops the machine: running jobs are interrupted and released, and it ends once nothing is in flight.
+    case shutdown
+    case released
+    /// Reloads the calls another process runs.
+    case refresh
+    /// Each reloaded call's saved job, or none when storage no longer holds one; a call that failed to load is absent.
+    case reloaded([String: SummariesSaved?])
     /// Stops starting jobs; a start not yet answered goes back to pending.
     case stopDispatch
 }
@@ -109,6 +118,8 @@ public enum SummariesEffect: Equatable, Sendable {
     case save(Job, SummariesState.Call.Stage, warning: Bool)
     case retry(Job)
     case discard(Job)
+    case release([Job])
+    case reload([String])
 }
 
 public struct SummariesReducer: Sendable {
@@ -132,8 +143,18 @@ public struct SummariesReducer: Sendable {
         default: nil
         }
     }
+    /// The stages that wait on a storage answer shutdown lets arrive before the machine ends.
+    static let inFlight: Set<SummariesState.Call.Stage> = [.recovering, .preparing, .claiming, .retrying]
     static let working: Set<SummariesState.Call.Stage> = [.claiming, .starting, .identifying, .checkpointing, .noting, .publishing, .saving, .discarding]
     public func reduce(_ state: SummariesState, _ event: SummariesEvent) -> (SummariesState, SummariesEffect?) {
+        var (next, effect) = step(state, event)
+        if next == state && effect == nil { return (state, nil) }
+        if next.lifecycle == .draining && !next.releasing && !next.calls.values.contains(where: { SummariesReducer.inFlight.contains($0.stage) }) {
+            next.lifecycle = .ended
+        }
+        return (next, effect)
+    }
+    private func step(_ state: SummariesState, _ event: SummariesEvent) -> (SummariesState, SummariesEffect?) {
         var next = state
         var effect: SummariesEffect?
         let call: String
@@ -260,6 +281,32 @@ public struct SummariesReducer: Sendable {
             next.calls[id]?.stage = .interrupted
         case let .discarded(id) where state.calls[id]?.stage == .discarding:
             next.calls[id] = nil
+            return (next, nil)
+        case .shutdown where state.lifecycle == .accepting:
+            next.lifecycle = .draining; next.dispatch = false
+            var jobs: [Job] = []
+            for (id, work) in state.calls.sorted(by: { $0.key < $1.key })
+            where SummariesReducer.running.contains(work.stage) || work.stage == .discarding {
+                next.calls[id]?.stage = .interrupted
+                next.calls[id]?.status = format(.interrupted, work.warning)
+                if let job = work.job { jobs.append(job) }
+            }
+            next.releasing = !jobs.isEmpty
+            return (next, jobs.isEmpty ? nil : .release(jobs))
+        case .released where state.releasing:
+            next.releasing = false
+            return (next, nil)
+        case .refresh where state.lifecycle != .ended:
+            let observed = state.calls.filter { $0.value.stage == .observed }.keys.sorted()
+            return (state, observed.isEmpty ? nil : .reload(observed))
+        case let .reloaded(results):
+            for (id, saved) in results where state.calls[id]?.stage == .observed {
+                guard let saved else { next.calls[id] = nil; continue }
+                let stage = saved.stage == .pending ? .observed : saved.stage
+                next.calls[id] = .init(stage: stage, job: saved.job, identities: saved.identities, warning: saved.warning,
+                                       notes: saved.notes, terminal: saved.terminal, requested: state.calls[id]?.requested ?? false,
+                                       status: format(stage, saved.warning))
+            }
             return (next, nil)
         default:
             return (state, nil)
