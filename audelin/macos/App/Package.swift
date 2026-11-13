@@ -44,6 +44,17 @@ let package = Package(
                 .product(name: "Recording", package: "macos"),
                 .product(name: "Session", package: "macos"),
                 .product(name: "IMRxObservation", package: "swift-imrx"),
+                "CallsWindowShell",
+            ]
+        ),
+        .target(
+            name: "CallsWindowShell",
+            dependencies: [
+                "Composer",
+                .product(name: "GlassLedger", package: "macos"),
+                .product(name: "CallsListUI", package: "macos"),
+                .product(name: "CallsWindowUI", package: "macos"),
+                .product(name: "SummaryPreviewUI", package: "macos"),
             ]
         ),
         .executableTarget(
@@ -106,6 +117,15 @@ let package = Package(
         .testTarget(
             name: "AudelinTests",
             dependencies: ["Audelin", "Composer", .product(name: "BlockingTestWork", package: "macos"), .product(name: "CoreAudioProcesses", package: "macos"), .product(name: "LiveText", package: "macos"), .product(name: "SummaryPreviewUI", package: "macos")]
+        ),
+        .testTarget(
+            name: "CallsWindowShellTests",
+            dependencies: [
+                "CallsWindowShell", "Composer",
+                .product(name: "CallsListUI", package: "macos"),
+                .product(name: "CallsWindowUI", package: "macos"),
+                .product(name: "SummaryPreviewUI", package: "macos"),
+            ]
         ),
         .testTarget(
             name: "ComposerTests",

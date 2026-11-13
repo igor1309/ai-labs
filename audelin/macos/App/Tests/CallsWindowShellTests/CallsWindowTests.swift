@@ -1,6 +1,6 @@
 import AppKit
 import Testing
-@testable import Audelin
+@testable import CallsWindowShell
 
 @MainActor
 struct CallsWindowTests {

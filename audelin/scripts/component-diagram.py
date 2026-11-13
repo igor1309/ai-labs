@@ -15,7 +15,7 @@ from pathlib import Path
 
 # Lane: (title, colour, x, y, width, height, columns)
 LANES = {
-    "compose": ("Composition", "#60a5fa", 560, 110, 1240, 130, 5),
+    "compose": ("Composition", "#60a5fa", 40, 110, 1800, 130, 6),
     "ui": ("UI", "#7dd3fc", 40, 280, 460, 230, 2),
     "machines": ("State machines", "#fbbf24", 560, 280, 1240, 230, 5),
     "text": ("Live text", "#bef264", 40, 530, 820, 460, 3),
@@ -47,6 +47,7 @@ TARGETS = {
     "LiveAudio": ("compose", "hears and reads one capture,\nkeeps its time", 4),
     "Composer": ("compose", "wires one recording's pieces\nbehind Session's ports", 1),
     "Reading": ("compose", "decides what the panel shows", 2),
+    "CallsWindowShell": ("compose", "builds the calls window\nfrom the composed calls", 5),
     "CallsListUI": ("ui", "lists, opens, renames and deletes calls", 4),
     "NotesMarkdown": ("ui", "renders call notes from Markdown", 5),
     "SummaryPreviewUI": ("ui", "shows one call's notes", 6),

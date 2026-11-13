@@ -6,7 +6,7 @@ import Observation
 import SummaryPreviewUI
 import SwiftUI
 import Testing
-@testable import Audelin
+@testable import CallsWindowShell
 
 @MainActor
 struct CallsSplitTests {

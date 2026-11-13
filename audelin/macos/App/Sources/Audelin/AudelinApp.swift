@@ -14,6 +14,7 @@ import Preferences
 import Reading
 import Recording
 import Session
+import CallsWindowShell
 import os
 import SwiftUI
 
@@ -25,8 +26,7 @@ struct AudelinApp: App {
     @State private var panel: FloatingPanel?
     @State private var settingsWindow: NSWindow?
     @State private var callsWindow: CallsWindow?
-    @State private var callsSplit: NSSplitViewController?
-    @State private var callToolbars: [CallsToolbar] = []
+    @State private var callsWindows: CallsWindows?
     @State private var presence = WindowPresence(setPolicy: { NSApplication.shared.setActivationPolicy($0) })
 
     @MainActor
@@ -80,29 +80,9 @@ struct AudelinApp: App {
         settingsWindow.contentView = NSHostingView(rootView: SettingsContent(model: model, window: settingsWindow))
         observeLanguage(model, settingsWindow: settingsWindow, callsWindow: callsWindow)
         observeAppearance(model)
-        if let calls = model.calls {
-            let act = detailSender { await calls.send(detail: $0) }
-            let detail = NSHostingView(rootView: CallsDetailContent(model: calls, text: { model.previewText }))
-            let split = makeCallsSplit(list: NSHostingView(rootView: CallsContent(model: calls, focusDetail: { focusCallsDetail(in: detail) })),
-                                       detail: detail,
-                                       widthChanged: { calls.widthChanged(narrow: $0) })
-            callsSplit = split
-            callsWindow.install(controller: split)
-            let actions = CallsToolbar(identifier: "CallsToolbar", splitView: split.splitView, title: model.callsListText(.windowTitle), text: model.previewText, act: act)
-            if let callsNSWindow { installCallsToolbar(actions.toolbar, in: callsNSWindow) }
-            let reading = CallsToolbar(identifier: "CallToolbar", text: model.previewText, act: act)
-            callWindow.window = makeCallWindow(content: NSHostingView(rootView: CallsDetailContent(model: calls, text: { model.previewText })),
-                                        title: { calls.detail?.title })
-            callWindow.window?.toolbar = reading.toolbar
-            callWindow.window?.toolbarStyle = .unified
-            callToolbars = [actions, reading]
-            observeToolbars(model, calls: calls, toolbars: [actions, reading])
-            if let callsNSWindow, let reading = callWindow.window {
-                presence.track(reading)
-                onBothClosed(callsNSWindow, reading, isVisible: { ($0 as? NSWindow)?.isVisible == true }, center: .default) {
-                    calls.windowClosed()
-                }
-            }
+        if let calls = model.calls, let callsNSWindow {
+            callsWindows = CallsWindows(model: model, calls: calls, window: callsWindow, nsWindow: callsNSWindow,
+                                        callWindow: callWindow, track: { presence.track($0) })
         }
         panel.install(model)
         appDelegate.connect(model)
@@ -231,29 +211,6 @@ func observeAppearance(_ model: AudelinMenu) {
             case .dark: NSAppearance(named: .darkAqua)
             }
         }
-    }
-}
-
-/// Keeps the toolbars' buttons on the call shown and their names in the language Audelin is shown in.
-@MainActor
-func observeToolbars(_ model: AudelinMenu, calls: AudelinCalls, toolbars: [CallsToolbar]) {
-    Task { @MainActor in
-        for await _ in Observations({ model.language }) {
-            toolbars.forEach { $0.retitle(text: model.previewText, title: model.callsListText(.windowTitle)) }
-        }
-    }
-    Task { @MainActor in
-        for await actions in Observations({ callActions(detailState(calls.detail, text: model.previewText)) }) {
-            toolbars.forEach { $0.show(actions) }
-        }
-    }
-}
-
-private struct CallsContent: View {
-    let model: AudelinCalls
-    let focusDetail: () -> Bool
-    var body: some View {
-        CallsListView(state: model.state, text: model.listText, event: { event in Task { await model.send(event) } }, focusDetail: focusDetail)
     }
 }
 

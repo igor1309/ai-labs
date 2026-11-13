@@ -60,7 +60,7 @@ func onClose(of window: AnyObject, center: NotificationCenter, _ closed: @escapi
 }
 
 /// Puts the notes' Markdown on the pasteboard as plain text.
-func copyNotes(_ markdown: String, to pasteboard: NSPasteboard) {
+public func copyNotes(_ markdown: String, to pasteboard: NSPasteboard) {
     pasteboard.clearContents()
     pasteboard.setString(markdown, forType: .string)
 }
@@ -90,7 +90,7 @@ func followTitle(_ title: @escaping @MainActor () -> String?, set: @escaping @Ma
 
 /// Brings the call's window forward, from the Dock too, and tells the app a window is shown.
 @MainActor
-func presentCall(_ window: any CallsWindowDriver, shown: (AnyObject) -> Void) {
+public func presentCall(_ window: any CallsWindowDriver, shown: (AnyObject) -> Void) {
     if window.isMiniaturized { window.deminiaturize(nil) }
     shown(window)
     window.makeKeyAndOrderFront(nil)
@@ -105,7 +105,10 @@ func onBothClosed(_ first: AnyObject, _ second: AnyObject, isVisible: @escaping 
 }
 
 /// Holds the call's window, made once the calls list exists, for the list's Return and Space.
-@MainActor final class CallWindowSlot { var window: NSWindow? }
+@MainActor public final class CallWindowSlot {
+    public var window: NSWindow?
+    public init() {}
+}
 
 /// Crosses the hosting boundary explicitly; a native field editor owns Tab while searching.
 @MainActor
