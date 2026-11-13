@@ -9,7 +9,10 @@ FileHandle.standardInput.readabilityHandler = { handle in
     if bytes.isEmpty { handle.readabilityHandler = nil; input.continuation.finish() }
     else { input.continuation.yield(bytes) }
 }
-guard let link = try? RelayLink.connect(to: BrowserSocket.path(home: FileManager.default.homeDirectoryForCurrentUser)) else {
+let home = FileManager.default.homeDirectoryForCurrentUser
+guard let secret = try? BrowserSocketSecret.read(at: BrowserSocketSecret.path(home: home)),
+      let link = try? RelayLink.connect(to: BrowserSocket.path(home: home)),
+      (try? await link.send(secret)) != nil else {
     exit(1)
 }
 await NativeHostRelay(

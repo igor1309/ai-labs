@@ -69,3 +69,16 @@ private func readAll(_ fd: Int32, count: Int) -> Data {
 private func frame(_ text: String) -> Data {
     withUnsafeBytes(of: UInt32(text.utf8.count).littleEndian) { Data($0) } + Data(text.utf8)
 }
+
+@Suite(.timeLimit(.minutes(1))) struct SocketLinkClosedPeerTests {
+    @Test func sendingAfterThePeerClosedFailsInsteadOfEndingTheProcess() async throws {
+        var fds: [Int32] = [0, 0]
+        #expect(socketpair(AF_UNIX, SOCK_STREAM, 0, &fds) == 0)
+        let link = RelayLink.socket(fds[0])
+        defer { link.close() }
+        Darwin.close(fds[1])
+        await #expect(throws: (any Error).self) {
+            for _ in 0..<4 { try await link.send(Data(repeating: 1, count: 4096)) }
+        }
+    }
+}

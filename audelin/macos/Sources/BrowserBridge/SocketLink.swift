@@ -19,6 +19,9 @@ extension RelayLink {
     /// messages. Reads arrive through the file handle's readability handler,
     /// so no thread waits on the socket.
     public static func socket(_ descriptor: Int32) -> RelayLink {
+        // A write after the peer closed fails with EPIPE instead of killing the process.
+        var on: Int32 = 1
+        setsockopt(descriptor, SOL_SOCKET, SO_NOSIGPIPE, &on, socklen_t(MemoryLayout<Int32>.size))
         let handle = FileHandle(fileDescriptor: descriptor, closeOnDealloc: true)
         let messages = AsyncThrowingStream<Data, any Error>.makeStream()
         let pending = Mutex(Data())
