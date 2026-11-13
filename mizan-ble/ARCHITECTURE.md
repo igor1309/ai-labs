@@ -58,7 +58,7 @@ knows the chain; no machine knows the next.
 | Part | What it is | How it is tested |
 |---|---|---|
 | Reducer | A pure function: `(State, Event) -> (State, Effect?)` | Tables of event in, state and effect out |
-| Effect handler | Reads the effect, hands it to the one dependency given for it, and returns its results as a stream of events. It decides nothing | Fakes behind its dependencies |
+| Effect handler | Reads the effect, hands it to the one dependency given for it, and returns the one event that comes back, or none. It decides nothing | Spies behind its dependencies, one `expect(sut, with:, toDeliver:)` per effect |
 | Model | swift-imrx's `ObservableModel`, built by the root: takes events one at a time, reduces, publishes the state, runs the effect and feeds its results back in | In swift-imrx |
 
 A reducer never does I/O. When a choice depends on state, the reducer makes
@@ -326,7 +326,9 @@ Each line can be overturned by the owner.
 - **swift-imrx's `ObservableModel` is the loop,** not one of our own:
   it reduces on the actor that makes it, starts each effect while
   reducing and queues its results behind the events already sent, so a
-  flow is only a reducer and a handler that returns a stream of events.
+  flow is only a reducer and a handler that returns one event. The root
+  adapts the handler to the model's stream with `delivering(_:)`, or
+  `deliveringNothing(_:)` for a handler that returns no event.
 - **A chain of machines per side,** split where a spec would pass 100
   lines and where the work changes: typing, broadcasting and paying on the
   host; finding, connecting, deciding and paying on the client. The secure link is
