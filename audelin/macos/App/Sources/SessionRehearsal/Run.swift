@@ -163,6 +163,12 @@ private func rehearse(_ options: RehearsalOptions, voices: any RehearsalVoices, 
     )
     let callApp = RehearsalCallApp()
     boundary.processes = callApp
+    let replay: BrowserReplay?
+    do { replay = try options.browserEvents.map { try BrowserReplay(file: URL(fileURLWithPath: $0)) } } catch {
+        report("cannot replay browser events: \(error)")
+        return 1
+    }
+    if let replay { boundary.browser = { replay.channel } }
     let composition: AudelinMenu
     do {
         composition = try await startRehearsal(boundary: boundary, root: root, call: callApp,
@@ -172,6 +178,11 @@ private func rehearse(_ options: RehearsalOptions, voices: any RehearsalVoices, 
         return 1
     }
     panel.install(composition)
+    let replaying = replay.map { replay in
+        Task {
+            do { try await replay.run() } catch { report("browser replay failed: \(error)") }
+        }
+    }
     report("call detected, recording into \(root.path)")
 
     let clock = ContinuousClock()
@@ -204,6 +215,7 @@ private func rehearse(_ options: RehearsalOptions, voices: any RehearsalVoices, 
         while micSent + micFrames <= target { microphone.yield(voices.mine(from: micSent, count: micFrames)); micSent += micFrames }
         while callSent + callFrames <= target { call.yield(voices.theirs(from: callSent, count: callFrames)); callSent += callFrames }
         voices.fed(Double(min(micSent, callSent)) / rate)
+        replay?.feed(Double(min(micSent, callSent)) / rate)
 
         let footprint = sampled.duration(to: clock.now) >= .seconds(1) ? footprintMiB() : nil
         if let footprint {
@@ -228,6 +240,8 @@ private func rehearse(_ options: RehearsalOptions, voices: any RehearsalVoices, 
     // Detection waits 30 wall-clock seconds after the app leaves before it ends the call.
     report("call app left")
     let stopping = await endRehearsalCall(composition, call: callApp)
+    replay?.finish()
+    await replaying?.value
     report("call ended, recording stopped\(stopping.map { "; stop to final transcript \(format($0.seconds)) s" } ?? "")")
     firstText.cancel()
     let first = await firstText.value

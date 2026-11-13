@@ -82,7 +82,7 @@ let package = Package(
         ),
         .target(
             name: "SessionRehearsal",
-            dependencies: ["Composer", .product(name: "BleedCleanup", package: "macos"), .product(name: "CallDiarizer", package: "macos"), .product(name: "LiveText", package: "macos"), .product(name: "Preferences", package: "macos")]
+            dependencies: ["Composer", .product(name: "BrowserBridge", package: "macos"), .product(name: "BleedCleanup", package: "macos"), .product(name: "CallDiarizer", package: "macos"), .product(name: "LiveText", package: "macos"), .product(name: "Preferences", package: "macos")]
         ),
         .target(
             name: "Composer",
