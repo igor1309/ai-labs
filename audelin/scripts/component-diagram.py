@@ -37,6 +37,7 @@ TARGETS = {
     "CallDiarizer": ("text", "the call track's speakers,\nafter the call", 12),
     "ZoomAccessibility": ("capture", "who Zoom shows talking,\nthrough Accessibility", 7),
     "BrowserBridge": ("capture", "call observations from\nthe browser extension", 8),
+    "AudelinNativeHost": ("capture", "native host the browser\nstarts; relays to the app", 9),
     "CallObservation": ("machines", "one call's roster and\nwho is speaking, kept honest", 9),
     "SpeakerNaming": ("machines", "names diarized speakers\nfrom active-speaker timing", 8),
     "BlockingTestWork": ("external", "test helper: dispatches blocking work", 3),

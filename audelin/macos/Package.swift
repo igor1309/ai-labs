@@ -92,6 +92,7 @@ let package = Package(
         .testTarget(name: "CallDiarizerTests", dependencies: ["CallDiarizer", "BlockingTestWork"]),
         .testTarget(name: "ZoomAccessibilityTests", dependencies: ["ZoomAccessibility"], resources: [.copy("Fixtures")]),
         .target(name: "BrowserBridge", dependencies: ["CallObservation"]),
+        .executableTarget(name: "AudelinNativeHost", dependencies: ["BrowserBridge"]),
         .testTarget(name: "BrowserBridgeTests", dependencies: ["BrowserBridge", "CallObservation"], resources: [.copy("Fixtures")]),
 
         .testTarget(name: "SourceChecksTests", dependencies: ["BlockingTestWork"]),

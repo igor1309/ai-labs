@@ -2,6 +2,7 @@
 
 ## 2026-11-13
 
+- LAB-1370: A native host program the browser starts for the Audelin extension relays its messages to the running app over a local socket and the app's replies back.
 - LAB-1369: The app reads and writes the framing browsers use to talk to a native host, refusing messages over each direction's size limit.
 - LAB-1363: Telemost roster and speaking events become the same call observations Zoom produces, so the speaker-name matcher can use either.
 - LAB-1362: The app can register its browser host with Chrome and Yandex Browser, allowing only the Audelin extension, whose ID is now fixed; it repairs its own registration and leaves files it did not write alone.
