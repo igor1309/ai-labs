@@ -187,7 +187,7 @@ import Testing
 
 final class StorageSpy: SummariesStorage {
     enum Payload: Equatable, Sendable {
-        case checkpoint(Job, [Identity], Bool), publish(Job, String, Bool), save(Job, SummariesState.Call.Stage, Bool), release(Job)
+        case checkpoint(Job, [Identity], Bool), publish(Job, String, Bool), save(Job, SummariesState.Call.Stage, Bool), discard(Job), release(Job)
     }
     private let recorded = Mutex<[Payload]>([])
     private let fails: Bool
@@ -196,6 +196,7 @@ final class StorageSpy: SummariesStorage {
     func checkpoint(_ job: Job, identities: [Identity], warning: Bool) async throws { try record(.checkpoint(job, identities, warning)) }
     func publish(_ job: Job, notes: String, warning: Bool) async throws { try record(.publish(job, notes, warning)) }
     func save(_ job: Job, stage: SummariesState.Call.Stage, warning: Bool) async throws { try record(.save(job, stage, warning)) }
+    func discard(_ job: Job) async throws { try record(.discard(job)) }
     func release(_ job: Job) async { recorded.withLock { $0.append(.release(job)) } }
     private func record(_ payload: Payload) throws {
         recorded.withLock { $0.append(payload) }
