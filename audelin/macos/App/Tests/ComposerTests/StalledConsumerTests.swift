@@ -13,7 +13,6 @@ import BlockingTestWork
 /// a recogniser that stalls. What waits behind it must stay small, the
 /// recording must not wait for it, and it must catch up once it moves again.
 @Suite(.timeLimit(.minutes(5)))
-@MainActor
 struct StalledConsumerTests {
 
     static let rate = 48_000.0

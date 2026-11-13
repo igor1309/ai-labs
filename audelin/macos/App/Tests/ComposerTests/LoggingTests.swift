@@ -4,7 +4,6 @@ import Recording
 import Testing
 
 /// What the composed application writes to the boundary's log sink.
-@MainActor
 @Suite(.timeLimit(.minutes(1)))
 struct LoggingTests {
 

@@ -4,7 +4,6 @@ import Foundation
 import Preferences
 import Testing
 
-@MainActor
 @Suite(.timeLimit(.minutes(1)))
 struct PreferencesCompositionTests {
     @Test(arguments: [false, true])

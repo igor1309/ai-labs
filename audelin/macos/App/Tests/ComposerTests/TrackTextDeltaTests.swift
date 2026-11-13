@@ -3,7 +3,6 @@ import LiveText
 import Testing
 
 /// However long the call, a word only changes the text it belongs to.
-@MainActor
 @Suite(.timeLimit(.minutes(1)))
 struct TrackTextDeltaTests {
 

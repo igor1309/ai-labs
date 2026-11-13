@@ -6,7 +6,6 @@ import SessionRehearsal
 import Testing
 
 /// Live text from recogniser to panel and transcript, through the composition.
-@MainActor
 @Suite(.timeLimit(.minutes(1)))
 struct TextTests {
 

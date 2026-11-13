@@ -9,7 +9,7 @@ import IMRxObservation
     init(jobs: any SummaryCoordinatorJobs) {
         let reducer = SummaryCoordinatorReducer()
         model = SyncModel(initialState: .init(), reduce: reducer.reduce)
-        doer = SummaryCoordinatorDoer(jobs: jobs, send: { [weak self] in self?.send($0) })
+        doer = SummaryCoordinatorDoer(jobs: jobs, send: { [weak self] in await self?.send($0) })
     }
     func send(_ event: SummaryCoordinatorEvent) {
         model.event(event)

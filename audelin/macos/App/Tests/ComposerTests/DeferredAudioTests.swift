@@ -4,7 +4,6 @@ import Testing
 
 /// Through the session: text listens before the capture exists when Live text
 /// is on, and after it has been attached when Live text comes on later.
-@MainActor
 @Suite(.timeLimit(.minutes(1)))
 struct DeferredAudioCompositionTests {
 

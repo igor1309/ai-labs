@@ -2,7 +2,6 @@ import Composer
 import Synchronization
 import Testing
 
-@MainActor
 @Suite(.timeLimit(.minutes(1)))
 struct CallAudioAccessWiringTests {
     @Test func cleanupCompletesBeforeSessionStarts() async throws {

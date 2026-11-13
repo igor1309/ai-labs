@@ -1,3 +1,5 @@
+import Synchronization
+
 public struct SummarySubmission: Equatable, Sendable {
     public struct Entry: Equatable, Sendable {
         public var label: String
@@ -114,7 +116,7 @@ public struct SummaryCoordinatorReducer {
 }
 
 /// The coordinator speaks only in recovery and job lifecycle outcomes.
-@MainActor public protocol SummaryCoordinatorJobs {
+public protocol SummaryCoordinatorJobs: Sendable {
     func recover(call: String) async throws -> SummaryRecovery
     func submit(_ submission: SummarySubmission) async -> Bool
     func retry(call: String) async throws
@@ -124,51 +126,58 @@ public struct SummaryCoordinatorReducer {
 }
 
 /// Work is keyed by the phase held until its result arrives; repeated observations do nothing.
-@MainActor public final class SummaryCoordinatorDoer {
+public final class SummaryCoordinatorDoer: Sendable {
+    private struct Work {
+        var started: Set<UInt64> = []
+        var tasks: [UInt64: Task<Void, Never>] = [:]
+        var joining: Task<Void, Never>?
+    }
     private let jobs: any SummaryCoordinatorJobs
-    private let send: (SummaryCoordinatorEvent) -> Void
-    private var started: Set<UInt64> = []
-    private var tasks: [String: Task<Void, Never>] = [:]
-    private var joining: Task<Void, Never>?
-    public init(jobs: any SummaryCoordinatorJobs, send: @escaping (SummaryCoordinatorEvent) -> Void) {
+    private let send: @Sendable (SummaryCoordinatorEvent) async -> Void
+    private let work = Mutex(Work())
+    public init(jobs: any SummaryCoordinatorJobs, send: @escaping @Sendable (SummaryCoordinatorEvent) async -> Void) {
         self.jobs = jobs; self.send = send
     }
     public func join() async {
-        while !tasks.isEmpty { for task in Array(tasks.values) { await task.value } }
-        await joining?.value
+        while true {
+            let tasks = work.withLock { $0.tasks }
+            if tasks.isEmpty { break }
+            for task in tasks.values { await task.value }
+            work.withLock { work in for key in tasks.keys { work.tasks[key] = nil } }
+        }
+        await work.withLock { $0.joining }?.value
     }
     public func act(on state: SummaryCoordinatorState) {
-        for (call, work) in state.calls {
-            guard work.phase != .pending && work.phase != .installed,
-                  started.insert(work.operation).inserted else { continue }
-            switch work.phase {
-            case .recovering, .submitting, .retrying, .failing, .dispatching:
-                tasks[call] = Task { [self] in
-                    let event: SummaryCoordinatorEvent
-                    switch work.phase {
-                    case .recovering:
-                        do { event = .recovered(call, try await jobs.recover(call: call)) }
-                        catch { event = .recoveryFailed(call) }
-                    case .submitting:
-                        guard let submission = work.submission else { preconditionFailure("Submission phase requires input") }
-                        event = .submitted(call, pending: await jobs.submit(submission))
-                    case .retrying:
-                        do { try await jobs.retry(call: call); event = .retried(call) }
-                        catch { event = .retryFailed(call) }
-                    case .dispatching:
-                        await jobs.dispatch(call: call); event = .dispatched(call)
-                    case .failing:
-                        await jobs.recoveryFailed(call: call); event = .failureInstalled(call)
-                    default: preconditionFailure("No asynchronous work for phase")
-                    }
-                    tasks[call] = nil
-                    send(event)
+        for (call, item) in state.calls {
+            guard item.phase != .pending && item.phase != .installed,
+                  work.withLock({ $0.started.insert(item.operation).inserted }) else { continue }
+            let task = Task { [jobs, send] in
+                let event: SummaryCoordinatorEvent
+                switch item.phase {
+                case .recovering:
+                    do { event = .recovered(call, try await jobs.recover(call: call)) }
+                    catch { event = .recoveryFailed(call) }
+                case .submitting:
+                    guard let submission = item.submission else { preconditionFailure("Submission phase requires input") }
+                    event = .submitted(call, pending: await jobs.submit(submission))
+                case .retrying:
+                    do { try await jobs.retry(call: call); event = .retried(call) }
+                    catch { event = .retryFailed(call) }
+                case .dispatching:
+                    await jobs.dispatch(call: call); event = .dispatched(call)
+                case .failing:
+                    await jobs.recoveryFailed(call: call); event = .failureInstalled(call)
+                case .pending, .installed: preconditionFailure("No asynchronous work for phase")
                 }
-            case .pending, .installed: break
+                await send(event)
             }
+            work.withLock { $0.tasks[item.operation] = task }
         }
-        if state.phase == .joining && joining == nil {
-            joining = Task { [self] in await jobs.join(); send(.joined) }
+        if state.phase == .joining {
+            work.withLock { work in
+                guard work.joining == nil else { return }
+                work.joining = Task { [jobs, send] in await jobs.join(); await send(.joined) }
+            }
         }
     }
 }

@@ -5,7 +5,6 @@ import Recording
 import Synchronization
 import Testing
 
-@MainActor
 @Suite(.timeLimit(.minutes(1)))
 struct RecordingConditionsTests {
     @Test(arguments: [nil, Int64(0), 29_999_999_999, 30_000_000_000, 30_000_000_001])

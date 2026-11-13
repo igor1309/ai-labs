@@ -78,7 +78,7 @@ private struct ProtectionStore: Store {
     func release(_ job: Job) async {}
 }
 
-@MainActor private struct HeldHandoff: SummaryCoordinatorJobs {
+private struct HeldHandoff: SummaryCoordinatorJobs {
     let started = Signal(), finish = Signal()
     func recover(call: String) async throws -> SummaryRecovery { .pending }
     func submit(_ submission: SummarySubmission) async -> Bool { Issue.record("unexpected submission"); return false }

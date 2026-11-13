@@ -1,7 +1,8 @@
 import Composer
+import Synchronization
 import Testing
 
-@MainActor @Suite(.timeLimit(.minutes(1))) struct SummaryCoordinatorTests {
+@Suite(.timeLimit(.minutes(1))) struct SummaryCoordinatorTests {
     private let reducer = SummaryCoordinatorReducer()
 
     @Test func recoveryDefersOnlyTheFirstCompletionAndAbsenceSubmitsIt() async {
@@ -238,8 +239,7 @@ import Testing
 
     @Test func dispatchReservationLastsUntilTheJobAcknowledgesTheHandoff() async {
         let given = makeState(calls: ["call": .init(phase: .dispatching, operation: 1)])
-        let spy = CoordinatorJobsSpy(), events = EventSpy(), finish = Signal()
-        spy.holdDispatch = finish
+        let finish = Signal(), spy = CoordinatorJobsSpy(holdDispatch: finish), events = EventSpy()
         let doer = SummaryCoordinatorDoer(jobs: spy, send: events.send)
         doer.act(on: given); doer.act(on: given)
         await spy.dispatchStarted.next()
@@ -293,44 +293,54 @@ private func offer(call: String = "call", input: String = "input") -> SummarySub
     .init(call: call, input: input, entries: [.init(label: "A", time: "0", text: "spoken")], finalWrite: true, usable: true)
 }
 private struct CoordinatorFailure: Error {}
-@MainActor private final class EventSpy {
-    var values: [SummaryCoordinatorEvent] = []
-    func send(_ event: SummaryCoordinatorEvent) { values.append(event) }
+private final class EventSpy: Sendable {
+    private let stored = Values<SummaryCoordinatorEvent>()
+    var values: [SummaryCoordinatorEvent] { stored.all }
+    @Sendable func send(_ event: SummaryCoordinatorEvent) async { stored.append(event) }
 }
-@MainActor private final class CoordinatorJobsSpy: SummaryCoordinatorJobs {
-    var loaded: [String] = [], offered: [SummarySubmission] = [], dispatched: [String] = [], failed: [String] = []
-    var joins = 0
+private final class CoordinatorJobsSpy: SummaryCoordinatorJobs {
+    private struct Calls {
+        var loaded: [String] = [], offered: [SummarySubmission] = [], dispatched: [String] = [], failed: [String] = []
+        var retried: [String] = []
+        var joins = 0
+    }
+    private let calls = Mutex(Calls())
+    var loaded: [String] { calls.withLock { $0.loaded } }
+    var offered: [SummarySubmission] { calls.withLock { $0.offered } }
+    var dispatched: [String] { calls.withLock { $0.dispatched } }
+    var failed: [String] { calls.withLock { $0.failed } }
+    var retried: [String] { calls.withLock { $0.retried } }
+    var joins: Int { calls.withLock { $0.joins } }
     let recoverStarted = Signal(), submitStarted = Signal(), joinStarted = Signal()
+    let retryStarted = Signal(), dispatchStarted = Signal()
+    let holdDispatch: Signal?
     private let recovery = AsyncStream<Result<SummaryRecovery, CoordinatorFailure>>.makeStream()
     private let submission = AsyncStream<Bool>.makeStream()
+    private let retryResult = AsyncStream<Result<Void, CoordinatorFailure>>.makeStream()
     private let joined = Signal()
+    init(holdDispatch: Signal? = nil) { self.holdDispatch = holdDispatch }
     func recover(call: String) async throws -> SummaryRecovery {
-        loaded.append(call); recoverStarted.send()
+        calls.withLock { $0.loaded.append(call) }; recoverStarted.send()
         var values = recovery.stream.makeAsyncIterator()
         return try await values.next()!.get()
     }
     func submit(_ value: SummarySubmission) async -> Bool {
-        offered.append(value); submitStarted.send()
+        calls.withLock { $0.offered.append(value) }; submitStarted.send()
         var values = submission.stream.makeAsyncIterator()
         return await values.next()!
     }
     func retry(call: String) async throws {
-        retried.append(call); retryStarted.send()
+        calls.withLock { $0.retried.append(call) }; retryStarted.send()
         var values = retryResult.stream.makeAsyncIterator()
         try await values.next()!.get()
     }
-    var retried: [String] = []
-    let retryStarted = Signal()
-    private let retryResult = AsyncStream<Result<Void, CoordinatorFailure>>.makeStream()
-    func completeRetry(_ result: Result<Void, CoordinatorFailure>) { retryResult.continuation.yield(result) }
     func dispatch(call: String) async {
-        dispatched.append(call); dispatchStarted.send()
+        calls.withLock { $0.dispatched.append(call) }; dispatchStarted.send()
         if let holdDispatch { await holdDispatch.next() }
     }
-    var holdDispatch: Signal?
-    let dispatchStarted = Signal()
-    func recoveryFailed(call: String) async { failed.append(call) }
-    func join() async { joins += 1; joinStarted.send(); await joined.next() }
+    func recoveryFailed(call: String) async { calls.withLock { $0.failed.append(call) } }
+    func join() async { calls.withLock { $0.joins += 1 }; joinStarted.send(); await joined.next() }
+    func completeRetry(_ result: Result<Void, CoordinatorFailure>) { retryResult.continuation.yield(result) }
     func completeRecovery(_ result: Result<SummaryRecovery, CoordinatorFailure>) { recovery.continuation.yield(result) }
     func completeSubmission(_ pending: Bool) { submission.continuation.yield(pending) }
     func completeJoin() { joined.send() }

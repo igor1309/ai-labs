@@ -6,7 +6,6 @@ import PanelUI
 import Recording
 import Testing
 
-@MainActor
 @Suite(.timeLimit(.minutes(1)))
 struct SessionRecordingTests {
     @Test(arguments: [false, true])

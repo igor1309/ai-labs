@@ -6,7 +6,6 @@ import Testing
 
 /// The recogniser reaches a side through the boundary's source, at the time
 /// the session asks for it.
-@MainActor
 @Suite(.timeLimit(.minutes(1)))
 struct RecognizerSourceTests {
 

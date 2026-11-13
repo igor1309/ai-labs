@@ -4,7 +4,6 @@ import Foundation
 import Synchronization
 import Testing
 
-@MainActor
 @Suite(.timeLimit(.minutes(1)))
 struct SessionFailureTests {
     @Test func aRemovedCallsFolderIsReportedWithoutStartingCaptures() async throws {
