@@ -73,7 +73,7 @@ public final class BrowserSocketListener: Sendable {
                 }
                 frames.onTermination = { _ in reading.cancel() }
             }
-            continuation.yield(BrowserConnection(frames: frames, close: link.close))
+            continuation.yield(BrowserConnection(frames: frames, send: link.send, close: link.close))
         }
     }
 }

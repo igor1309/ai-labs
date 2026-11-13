@@ -2,6 +2,7 @@
 
 ## 2026-11-13
 
+- LAB-1374: Audelin pings the browser extension for its clock when it connects and every five seconds after, so browser times can be placed on the call clock; a reconnect starts the clock afresh.
 - LAB-1373: The app bundle carries the native host helper, and at launch Audelin points Chrome and Yandex Browser at that copy.
 - LAB-1372: Only Audelin's own native host can talk to the app's socket: it presents a secret kept in a file only the user can read, and the app drops any other connection.
 - LAB-1371: The app accepts native host connections on its local socket and passes each one's messages to the browser receiver, replacing a socket left by an earlier run.
