@@ -588,60 +588,80 @@ struct PlaybackTransportReducerTests {
 
     @Test func test_reduce_shouldAdvanceSpokenOffsetFromUtteranceStart_onWillSpeakRangeWithCurrentToken() {
 
-        let speaking = makeSession(utteranceStartUTF16Offset: 16, spokenUTF16Offset: 16)
+        assert(.speaking(makeSession(utteranceStartUTF16Offset: 16, spokenUTF16Offset: 16)), .willSpeakRange(utteranceToken: 1, utteranceUTF16Offset: 6)) {
+            $0.session.spokenUTF16Offset = 22
+        }
+    }
 
-        let (state, effect) = reduce(
-            .speaking(speaking),
-            .willSpeakRange(utteranceToken: 1, utteranceUTF16Offset: 6)
+    @Test func test_reduce_shouldDeliverNothing_onWillSpeakRangeWithCurrentToken() {
+
+        assert(
+            .speaking(makeSession(utteranceStartUTF16Offset: 16, spokenUTF16Offset: 16)),
+            .willSpeakRange(utteranceToken: 1, utteranceUTF16Offset: 6),
+            delivers: nil
         )
-
-        #expect(state == .speaking(makeSession(utteranceStartUTF16Offset: 16, spokenUTF16Offset: 22)))
-        #expect(effect == nil)
     }
 
     @Test func test_reduce_shouldClampSpokenOffsetToTextLength_onWillSpeakRangeBeyondEnd() {
 
-        let (state, _) = reduce(
+        assert(.speaking(makeSession()), .willSpeakRange(utteranceToken: 1, utteranceUTF16Offset: 1000)) {
+            $0.session.spokenUTF16Offset = 30
+        }
+    }
+
+    @Test func test_reduce_shouldDeliverNothing_onWillSpeakRangeBeyondEnd() {
+
+        assert(
             .speaking(makeSession()),
-            .willSpeakRange(utteranceToken: 1, utteranceUTF16Offset: 1000)
+            .willSpeakRange(utteranceToken: 1, utteranceUTF16Offset: 1000),
+            delivers: nil
         )
-
-        #expect(state == .speaking(makeSession(spokenUTF16Offset: 30)))
     }
 
-    @Test func test_reduce_shouldIgnoreWillSpeakRange_onStaleToken() {
+    @Test func test_reduce_shouldNotChange_onWillSpeakRangeWithStaleToken() {
 
-        let (state, effect) = reduce(
+        assert(.speaking(makeSession(utteranceToken: 2)), .willSpeakRange(utteranceToken: 1, utteranceUTF16Offset: 6))
+    }
+
+    @Test func test_reduce_shouldDeliverNothing_onWillSpeakRangeWithStaleToken() {
+
+        assert(
             .speaking(makeSession(utteranceToken: 2)),
-            .willSpeakRange(utteranceToken: 1, utteranceUTF16Offset: 6)
+            .willSpeakRange(utteranceToken: 1, utteranceUTF16Offset: 6),
+            delivers: nil
         )
-
-        #expect(state == .speaking(makeSession(utteranceToken: 2)))
-        #expect(effect == nil)
     }
 
-    @Test func test_reduce_shouldIgnoreWillSpeakRange_onIdle() {
+    @Test func test_reduce_shouldNotChange_onWillSpeakRangeInIdle() {
 
-        let (state, effect) = reduce(
+        assert(.idle(lastUtteranceToken: 1), .willSpeakRange(utteranceToken: 1, utteranceUTF16Offset: 6))
+    }
+
+    @Test func test_reduce_shouldDeliverNothing_onWillSpeakRangeInIdle() {
+
+        assert(
             .idle(lastUtteranceToken: 1),
-            .willSpeakRange(utteranceToken: 1, utteranceUTF16Offset: 6)
+            .willSpeakRange(utteranceToken: 1, utteranceUTF16Offset: 6),
+            delivers: nil
         )
-
-        #expect(state == .idle(lastUtteranceToken: 1))
-        #expect(effect == nil)
     }
 
     @Test func test_reduce_shouldAdvancePausedBoundary_onWillSpeakRangeWithCurrentTokenWhilePaused() {
 
         // A word-boundary callback can land just after an accepted pause; the
         // paused position must track it so resume does not repeat the word.
-        let (state, effect) = reduce(
-            .paused(makeSession()),
-            .willSpeakRange(utteranceToken: 1, utteranceUTF16Offset: 6)
-        )
+        assert(.paused(makeSession()), .willSpeakRange(utteranceToken: 1, utteranceUTF16Offset: 6)) {
+            $0.session.spokenUTF16Offset = 6
+        }
+    }
 
-        #expect(state == .paused(makeSession(spokenUTF16Offset: 6)))
-        #expect(effect == nil)
+    @Test func test_reduce_shouldDeliverNothing_onWillSpeakRangeWithCurrentTokenWhilePaused() {
+
+        assert(
+            .paused(makeSession()),
+            .willSpeakRange(utteranceToken: 1, utteranceUTF16Offset: 6),
+            delivers: nil
+        )
     }
 
     @Test func test_reduce_shouldFinishPlayback_onDidFinishWithCurrentTokenWhileSpeaking() {
