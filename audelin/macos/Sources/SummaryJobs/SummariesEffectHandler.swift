@@ -74,6 +74,15 @@ public struct SummariesEffectHandler: Sendable {
             return event
         case let .discard(job):
             return await stored(job, .discarded(job.call)) { try await storage.discard(job) }
+        case let .release(jobs):
+            for job in jobs { await storage.release(job) }
+            return .released
+        case let .reload(calls):
+            var results: [String: SummariesSaved?] = [:]
+            for call in calls {
+                do { results[call] = .some(try await records.load(call: call)) } catch {}
+            }
+            return .reloaded(results)
         case let .retry(job):
             do { return .retried(job.call, try await records.retry(job)) }
             catch { return .retryFailed(job.call) }
