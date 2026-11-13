@@ -304,6 +304,7 @@ jobs:
             audelin-extension:
               - "audelin/extension/manifest.json"
               - "audelin/extension/package.json"
+              - "audelin/extension/package-lock.json"
               - "audelin/extension/src/**"
               - "audelin/extension/scripts/**"
               - "audelin/extension/tests/**"
