@@ -1,10 +1,11 @@
 // Runs in the background worker: forwards each call event to the app over a
 // native-messaging port, numbering the messages in order. While the port is
 // down, events wait in a bounded buffer; the worker reconnects after a delay
-// and sends what waited, oldest first.
+// and sends what waited, oldest first. It answers the app's clock pings at
+// once with the browser's clock, so the app can place event times on its own.
 import { checkMessage, MESSAGE_VERSION } from "./message.js";
 
-export function createForwarder({ connect, setTimer, retryDelay = 2000, capacity = 1000 }) {
+export function createForwarder({ connect, setTimer, now, retryDelay = 2000, capacity = 1000 }) {
   let port = null;
   let sequence = 0;
   let retrying = false;
@@ -19,6 +20,14 @@ export function createForwarder({ connect, setTimer, retryDelay = 2000, capacity
       return retry();
     }
     port = next;
+    next.onMessage?.addListener((message) => {
+      if (port !== next || !Number.isSafeInteger(message?.ping) || message.ping < 0) return;
+      try {
+        next.postMessage({ version: MESSAGE_VERSION, ping: message.ping, at: now() });
+      } catch {
+        // A lost reply only means the app pings again.
+      }
+    });
     next.onDisconnect.addListener(() => {
       if (port === next) port = null;
       retry();

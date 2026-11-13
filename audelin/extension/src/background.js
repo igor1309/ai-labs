@@ -7,6 +7,8 @@ export const NATIVE_HOST = "app.audelin.call_companion";
 const forwarder = createForwarder({
   connect: () => chrome.runtime.connectNative(NATIVE_HOST),
   setTimer: (fn, delay) => setTimeout(fn, delay),
+  // The same clock the content script stamps events with.
+  now: () => performance.timeOrigin + performance.now(),
 });
 
 chrome.runtime.onMessage.addListener((message, sender) => {

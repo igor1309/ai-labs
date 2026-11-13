@@ -64,6 +64,23 @@ import Testing
     }
 }
 
+extension BrowserReceiverTests {
+    @Test func publishesClockRepliesBesideMessages() async {
+        let transport = FakeTransport()
+        let sut = BrowserReceiver(connections: transport.connections)
+        let peer = transport.connect()
+        peer.send(frame(sequence: 0)); peer.send(Data(#"{"version":1,"ping":3,"at":1000}"#.utf8)); peer.send(frame(sequence: 1)); peer.disconnect()
+        transport.stop()
+
+        #expect(await Array(sut.events) == [
+            .message(connection: 0, message(sequence: 0)),
+            .clockReply(connection: 0, BrowserClockReply(ping: 3, at: 1000)),
+            .message(connection: 0, message(sequence: 1)),
+            .disconnected(connection: 0),
+        ])
+    }
+}
+
 private func message(sequence: Int) -> BrowserMessage {
     BrowserMessage(callID: "12345678901234", sequence: sequence, event: .callEnded(at: 1000))
 }
