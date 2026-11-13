@@ -28,7 +28,8 @@ public func compose(
     let preferences = PreferencesStore(fileURL: preferencesURL)
     await createDefaultCallsFolder(preferences.read().callsFolder, default: Preferences().callsFolder)
     let panel = AudelinPanel(now: boundary.time.monotonicNow,
-                             ticks: boundary.time.ticks, sink: boundary.log, intervals: boundary.intervals)
+                             ticks: boundary.time.ticks, sink: boundary.log, intervals: boundary.intervals,
+                             browser: boundary.browser, sleep: boundary.time.sleep)
     let processes = CoreAudioProcesses(binding: BoundaryProcesses(base: boundary.processes),
                                        clock: BoundaryCallClock(time: boundary.time))
     let timeZone = boundary.time.timeZone()

@@ -158,6 +158,7 @@ let package = Package(
                 .product(name: "Lifecycle", package: "macos"),
                 .product(name: "Recording", package: "macos"),
                 .product(name: "BlockingTestWork", package: "macos"),
+                .product(name: "BrowserBridge", package: "macos"),
                 "SessionRehearsal",
                 .product(name: "IMRxObservation", package: "swift-imrx"),
             ]

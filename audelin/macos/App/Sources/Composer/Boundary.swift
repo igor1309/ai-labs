@@ -140,6 +140,9 @@ public struct ComposerBoundary: Sendable {
     public var recordings: any RecordingStorage
     /// macOS's preferred languages, most preferred first, as BCP 47 identifiers.
     public var preferredLanguages: @Sendable () -> [String]
+    /// Opens the browser extension's channel for one recording, or gives nil
+    /// when it cannot; speakers then stay unnamed unless Zoom names them.
+    public var browser: @Sendable () -> BrowserChannel?
     /// Moves a deleted call's folder to the Trash.
     public var trash: @Sendable (URL) throws -> Void
 
@@ -150,7 +153,9 @@ public struct ComposerBoundary: Sendable {
                 recordings: any RecordingStorage, trash: @escaping @Sendable (URL) throws -> Void,
                 bleedCleaning: any MicrophoneCleaning<CleanupRecording, [Float]>,
                 bleedHearing: any CleanedHearing<[Float], [TranscriptSegment]>, transcripts: any TranscriptStorage,
-                preferredLanguages: @escaping @Sendable () -> [String] = { Locale.preferredLanguages }) {
+                preferredLanguages: @escaping @Sendable () -> [String] = { Locale.preferredLanguages },
+                browser: @escaping @Sendable () -> BrowserChannel? = { nil }) {
+        self.browser = browser
         self.preferredLanguages = preferredLanguages
         self.bleedCleaning = bleedCleaning; self.bleedHearing = bleedHearing
         self.transcripts = transcripts

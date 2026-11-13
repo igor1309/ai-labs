@@ -29,7 +29,7 @@ enum AfterCallNames {
         var naming = SpeakerNaming(policy: policy)
         naming.observe(roster: board.roster.map { Participant(id: $0, name: $0) })
         naming.observe(activities: board.spoken.map {
-            Activity(participantID: $0.name, start: $0.start, end: $0.end, uncertainty: ZoomLiveNames.uncertainty)
+            Activity(participantID: $0.name, start: $0.start, end: $0.end, uncertainty: CallLiveNames.uncertainty)
         }, through: board.through)
         for (index, turn) in turns.enumerated() {
             let overlapped = turns.contains { $0.speaker != turn.speaker && $0.start < turn.end && turn.start < $0.end }
