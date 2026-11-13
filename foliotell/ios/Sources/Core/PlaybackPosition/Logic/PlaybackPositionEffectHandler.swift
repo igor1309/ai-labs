@@ -1,5 +1,4 @@
 /// Executes position effects against the injected persistence collaborators.
-@MainActor
 public final class PlaybackPositionEffectHandler {
 
     private let persistAnchor: (String, Int) -> Void
@@ -16,7 +15,7 @@ public final class PlaybackPositionEffectHandler {
 
     public func handleEffect(
         _ effect: PlaybackPositionEffect,
-        _ dispatch: @escaping @MainActor (PlaybackPositionEvent) -> Void
+        _ dispatch: @escaping (PlaybackPositionEvent) -> Void
     ) {
 
         switch effect {

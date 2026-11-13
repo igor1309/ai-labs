@@ -25,7 +25,7 @@ public extension PlaybackPositionReducer {
 
         case let .frontMatterModeChanged(mode):
             var state = state
-            state.applyFrontMatterMode(mode)
+            state.frontMatterMode = mode
             return (state, nil)
         }
     }

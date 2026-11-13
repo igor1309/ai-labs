@@ -3,11 +3,14 @@
 public struct PlaybackPositionState: Equatable, Sendable {
 
     public let documentText: String
-    public private(set) var frontMatterMode: FrontMatterPlaybackMode
+    /// Setting it rebuilds the cached derivation; the document-space anchor survives.
+    public var frontMatterMode: FrontMatterPlaybackMode {
+        didSet { derivation = SpeechDerivation(documentText: documentText, frontMatterMode: frontMatterMode) }
+    }
     public let documentPath: String?
     public private(set) var derivation: SpeechDerivation
-    public internal(set) var storedAnchor: Int?
-    public internal(set) var liveDocumentUTF16Offset: Int?
+    public var storedAnchor: Int?
+    public var liveDocumentUTF16Offset: Int?
 
     public init(
         documentText: String,
@@ -23,12 +26,6 @@ public struct PlaybackPositionState: Equatable, Sendable {
         self.derivation = SpeechDerivation(documentText: documentText, frontMatterMode: frontMatterMode)
         self.storedAnchor = storedAnchor
         self.liveDocumentUTF16Offset = liveDocumentUTF16Offset
-    }
-
-    /// Rebuilds the cached derivation; the document-space anchor survives.
-    mutating func applyFrontMatterMode(_ mode: FrontMatterPlaybackMode) {
-        frontMatterMode = mode
-        derivation = SpeechDerivation(documentText: documentText, frontMatterMode: mode)
     }
 }
 

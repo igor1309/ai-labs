@@ -1,7 +1,6 @@
 import FolioTellCore
 import Testing
 
-@MainActor
 struct PlaybackTransportEffectHandlerTests {
 
     @Test func test_init_shouldNotCallCollaborators() {
@@ -47,46 +46,50 @@ struct PlaybackTransportEffectHandlerTests {
         #expect(log.calls == [.stopSpeaking])
     }
 
-    @Test func test_handleEffect_shouldDispatchAcceptedPause_onPauseAccepted() {
+    @Test func test_handleEffect_shouldOnlyPause_onPause() {
 
-        let (sut, log) = makeSUT(pauseResult: true)
-        var dispatched = [PlaybackTransportEvent]()
+        let (sut, log) = makeSUT()
 
-        sut.handleEffect(.pause(utteranceToken: 1)) { dispatched.append($0) }
+        sut.handleEffect(.pause(utteranceToken: 7)) { _ in }
 
         #expect(log.calls == [.pause])
-        #expect(dispatched == [.pauseResolved(accepted: true, utteranceToken: 1)])
     }
 
-    @Test func test_handleEffect_shouldDispatchRejectedPause_onPauseRejected() {
+    @Test func test_handleEffect_shouldDeliverAcceptedPauseWithToken_onPauseAccepted() {
+
+        let (sut, _) = makeSUT(pauseResult: true)
+
+        expect(sut, with: .pause(utteranceToken: 7), toDeliver: .pauseResolved(accepted: true, utteranceToken: 7))
+    }
+
+    @Test func test_handleEffect_shouldDeliverRejectedPauseWithToken_onPauseRejected() {
 
         let (sut, _) = makeSUT(pauseResult: false)
-        var dispatched = [PlaybackTransportEvent]()
 
-        sut.handleEffect(.pause(utteranceToken: 1)) { dispatched.append($0) }
-
-        #expect(dispatched == [.pauseResolved(accepted: false, utteranceToken: 1)])
+        expect(sut, with: .pause(utteranceToken: 7), toDeliver: .pauseResolved(accepted: false, utteranceToken: 7))
     }
 
-    @Test func test_handleEffect_shouldDispatchAcceptedResume_onResumeAccepted() {
+    @Test func test_handleEffect_shouldOnlyResume_onResume() {
 
-        let (sut, log) = makeSUT(resumeResult: true)
-        var dispatched = [PlaybackTransportEvent]()
+        let (sut, log) = makeSUT()
 
-        sut.handleEffect(.resume(utteranceToken: 1)) { dispatched.append($0) }
+        sut.handleEffect(.resume(utteranceToken: 7)) { _ in }
 
         #expect(log.calls == [.resume])
-        #expect(dispatched == [.resumeResolved(accepted: true, utteranceToken: 1)])
     }
 
-    @Test func test_handleEffect_shouldDispatchRejectedResume_onResumeRejected() {
+    @Test func test_handleEffect_shouldDeliverAcceptedResumeWithToken_onResumeAccepted() {
+
+        let (sut, _) = makeSUT(resumeResult: true)
+
+        expect(sut, with: .resume(utteranceToken: 7), toDeliver: .resumeResolved(accepted: true, utteranceToken: 7))
+    }
+
+    @Test func test_handleEffect_shouldDeliverRejectedResumeWithToken_onResumeRejected() {
 
         let (sut, _) = makeSUT(resumeResult: false)
-        var dispatched = [PlaybackTransportEvent]()
 
-        sut.handleEffect(.resume(utteranceToken: 1)) { dispatched.append($0) }
-
-        #expect(dispatched == [.resumeResolved(accepted: false, utteranceToken: 1)])
+        expect(sut, with: .resume(utteranceToken: 7), toDeliver: .resumeResolved(accepted: false, utteranceToken: 7))
     }
 
     @Test func test_handleEffect_shouldNotifyStartOverThenReplaceUtterance_onRestartPlayback() {
@@ -134,6 +137,88 @@ struct PlaybackTransportEffectHandlerTests {
         #expect(log.calls == [.deactivateAudioSession])
     }
 
+    @Test func test_handleEffect_shouldDeliverNothing_onBeginSpeaking() {
+
+        let (sut, _) = makeSUT()
+
+        expect(sut, with: .beginSpeaking(makeCommand(), replacingCurrentUtterance: false), toDeliver: nil)
+    }
+
+    @Test func test_handleEffect_shouldDeliverNothing_onBeginSpeakingReplacingUtterance() {
+
+        let (sut, _) = makeSUT()
+
+        expect(sut, with: .beginSpeaking(makeCommand(), replacingCurrentUtterance: true), toDeliver: nil)
+    }
+
+    @Test func test_handleEffect_shouldDeliverNothing_onStopPlayback() {
+
+        let (sut, _) = makeSUT()
+
+        expect(sut, with: .stopPlayback, toDeliver: nil)
+    }
+
+    @Test func test_handleEffect_shouldDeliverNothing_onCancelUtterance() {
+
+        let (sut, _) = makeSUT()
+
+        expect(sut, with: .cancelUtterance, toDeliver: nil)
+    }
+
+    @Test func test_handleEffect_shouldDeliverNothing_onRestartPlayback() {
+
+        let (sut, _) = makeSUT()
+
+        expect(sut, with: .restartPlayback(makeCommand()), toDeliver: nil)
+    }
+
+    @Test func test_handleEffect_shouldDeliverNothing_onNotifyStartOver() {
+
+        let (sut, _) = makeSUT()
+
+        expect(sut, with: .notifyStartOver, toDeliver: nil)
+    }
+
+    @Test func test_handleEffect_shouldDeliverNothing_onNotifyIdleJump() {
+
+        let (sut, _) = makeSUT()
+
+        expect(sut, with: .notifyIdleJump(.next), toDeliver: nil)
+    }
+
+    @Test func test_handleEffect_shouldDeliverNothing_onFinishPlayback() {
+
+        let (sut, _) = makeSUT()
+
+        expect(sut, with: .finishPlayback, toDeliver: nil)
+    }
+
+    @Test func test_handleEffect_shouldDeliverNothing_onDeactivateAudioSession() {
+
+        let (sut, _) = makeSUT()
+
+        expect(sut, with: .deactivateAudioSession, toDeliver: nil)
+    }
+
+    @Test func test_handleEffect_shouldForwardPreviousDirection_onNotifyIdleJumpPrevious() {
+
+        let (sut, log) = makeSUT()
+
+        sut.handleEffect(.notifyIdleJump(.previous)) { _ in }
+
+        #expect(log.calls == [.notifyIdleJump(.previous)])
+    }
+
+    @Test func test_handleEffect_shouldSpeakGivenCommand_onBeginSpeakingWithOtherCommand() {
+
+        let (sut, log) = makeSUT()
+        let command = SpeakCommand(utteranceToken: 9, text: "Frost.", speed: .oneAndHalf, voiceIdentifier: "voice.ru", languageCode: "ru-RU")
+
+        sut.handleEffect(.beginSpeaking(command, replacingCurrentUtterance: false)) { _ in }
+
+        #expect(log.calls == [.activateAudioSession, .speak(command)])
+    }
+
     // MARK: - Helpers
 
     private typealias SUT = PlaybackTransportEffectHandler
@@ -158,6 +243,20 @@ struct PlaybackTransportEffectHandlerTests {
         return (sut, log)
     }
 
+    private func expect(
+        _ sut: SUT,
+        with effect: PlaybackTransportEffect,
+        toDeliver expected: PlaybackTransportEvent?,
+        sourceLocation: SourceLocation = #_sourceLocation
+    ) {
+
+        var delivered = [PlaybackTransportEvent]()
+
+        sut.handleEffect(effect) { delivered.append($0) }
+
+        #expect(delivered == (expected.map { [$0] } ?? []), sourceLocation: sourceLocation)
+    }
+
     private func makeCommand() -> SpeakCommand {
 
         return SpeakCommand(
@@ -170,7 +269,6 @@ struct PlaybackTransportEffectHandlerTests {
     }
 }
 
-@MainActor
 private final class CollaboratorLog {
 
     enum Call: Equatable {
