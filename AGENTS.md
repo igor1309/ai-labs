@@ -141,34 +141,41 @@
 
 Not every module defines a state machine: an adapter binds an outside API
 and a UI module draws a screen. The project's architecture says which
-modules are machines. A machine's module picks one of two shapes; an app
-composes it.
+modules are machines; an app composes them.
 
-- **Async** (`ObservableModel`): the machine runs effects. A module defines
-  `State`, `Event`, `Effect`, a pure reducer
-  `(State, Event) -> (State, Effect?)` and an effect handler with injected
-  collaborators. `event(_:)` returns before the event is reduced. Use it
-  unless a caller needs the sync order below.
+- A state machine is a holder, as an actor is: it holds observable state
+  and takes events. A module defines `State`, `Event`, `Effect`, a pure
+  reducer `(State, Event) -> (State, Effect?)` and an effect handler with
+  injected collaborators. The reducer changes the state; the effect handler
+  only dispatches each effect to a collaborator and sends its result back
+  as an event. It keeps nothing: what is started, running or stopping is in
+  the state.
+- One line of work that runs as one sequence is one machine whose state
+  holds every stage. Its stages are collaborators of that machine, not
+  machines of their own. Do not cut a line into machines that start each
+  other, read each other's state or wait for each other: no machine's effect
+  drives another machine, no registry of models per item, no reducer that
+  reads another machine through a closure, no wait or join that only syncs
+  two machines, and no doer, wrapper or adapter that remembers work outside
+  the state.
+- **Async** (`ObservableModel`): `event(_:)` returns before the event is
+  reduced. Use it unless a caller needs the sync order below.
 - **Sync** (`SyncModel`): `event(_:)` reduces before it returns, so a read
-  of `state` after it includes every event sent before. Use it when a
-  caller must read state that includes the events it already sent. A
-  module defines `State`, `Event`, a pure reducer `(State, Event) -> State`
-  with no effect output, and a doer with injected collaborators. The state
-  says what work is due (a phase that holds until its result arrives); the
-  doer observes the state, does the work once and sends the result back as
-  an event.
+  of `state` after it includes every event sent before. It has no effects:
+  a pure reducer `(State, Event) -> State` and nothing that does work. Use
+  it only for state that no work follows; a line of work with effects is
+  an async machine.
 - No module imports swift-imrx or any state machine, and none wraps or
   re-implements one. Only an app (a main app or a preview app), or in Audelin
   its composer package, imports swift-imrx. It composes each instance from
-  the generic model, the tested
-  reducer and the tested effect handler or doer. A sync model stays on the
-  actor that made it; callers elsewhere `await` the hop.
+  the generic model, the tested reducer and, for an async machine, the
+  tested effect handler. A
+  sync model stays on the actor that made it; callers elsewhere `await` the
+  hop.
 - Each reducer state test is paired with an effect test for the same
   `(state, event)`: `assert(state, event, delivers:)`. Effect
   handler tests drive collaborators through spies:
   `expect(sut, with: effect, toDeliver: event, on: { spy.complete(…) })`.
-  Doer tests feed it states and check its collaborator and `send` spies,
-  including that a state seen twice does the work once.
 - `State` is the machine's whole contract, as in Vortex
   (`ios.config/.claude/skills/rx-state-machine-development/references/state-machine-dod.md`
   § Tests and § Dependencies; canonical: `swift-vortex/Tests/Feature/CBDC/Core/PaymentClose/`).
