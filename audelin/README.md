@@ -90,9 +90,10 @@ folder it prints under `$TMPDIR` keeps the fixtures and screenshots.
 ## Browser extension
 
 `extension/` holds the Manifest V3 extension that will name remote speakers in
-Telemost calls, for Chrome and Yandex Browser. It has no dependencies.
-`npm test` runs its tests and `npm run build` writes `extension/dist/`; load
-that folder unpacked from the browser's extensions page with developer mode on.
+Telemost calls, for Chrome and Yandex Browser. It ships no dependencies;
+its tests read saved Telemost pages under jsdom. After `npm ci`, `npm test`
+runs its tests and `npm run build` writes `extension/dist/`; load that folder
+unpacked from the browser's extensions page with developer mode on.
 
 ## Install and updates
 

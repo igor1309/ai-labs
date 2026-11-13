@@ -28,6 +28,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
+          cache-dependency-path: audelin/extension/package-lock.json
+
+      - name: Install
+        run: npm ci
 
       - name: Test
         run: npm test
