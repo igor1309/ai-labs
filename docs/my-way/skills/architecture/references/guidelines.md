@@ -186,6 +186,18 @@ top of its ARCHITECTURE.md "because you tend to ignore these grounding rules".)
 - A store that holds state and changes it on async completion is "in a way a
   state machine"; ask who holds it, who creates it, whether it notifies
   changes, and what its interface promises.
+- A state machine is a holder, as an actor is: it holds observable state and
+  takes events. A pure reducer `(State, Event) -> (State, Effect?)` changes
+  the state; an effect handler only dispatches each effect to a collaborator
+  and sends the result back as an event. It keeps nothing: what is started,
+  running or stopping is in the state.
+- One line of work is one machine: "the conveyor line is a single thing".
+  Its state holds every stage; the stages are its collaborators, not
+  machines of their own. Signs of a line cut into stacked machines: a
+  machine's effect, doer or adapter drives another machine; a registry of
+  models, one per item; a reducer that reads another machine's state
+  through a closure; a wait or join that only syncs two machines; a doer or
+  wrapper that remembers what it started. Merge them into one machine.
 - A screen that pages a list may be a state machine that "gets its data from
   somewhere and exposes it in chunks", even if all data sits in memory.
 
