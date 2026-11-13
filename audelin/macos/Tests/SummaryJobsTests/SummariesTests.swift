@@ -158,13 +158,13 @@ import Testing
     }
     @Test func prepareAndClaimDoNotLoad() async {
         let records = RecordsSpy()
-        let sut = SummariesEffectHandler(preparation: PreparationSpy(job: makeJob()), claims: ClaimsSpy(), records: records, starts: StartsSpy())
+        let sut = SummariesEffectHandler(preparation: PreparationSpy(job: makeJob()), claims: ClaimsSpy(), records: records, starts: StartsSpy(), storage: StorageSpy(), generation: GenerationsSpy())
         _ = await sut.handle(.prepare(makeSubmission()))
         _ = await sut.handle(.claim(makeJob()))
         #expect(records.payloads.isEmpty)
     }
     private func makeSUT(_ preparation: PreparationSpy, _ claims: ClaimsSpy) -> SummariesEffectHandler {
-        .init(preparation: preparation, claims: claims, records: RecordsSpy(), starts: StartsSpy())
+        .init(preparation: preparation, claims: claims, records: RecordsSpy(), starts: StartsSpy(), storage: StorageSpy(), generation: GenerationsSpy())
     }
 }
 
@@ -278,11 +278,11 @@ import Testing
     }
     @Test func loadDoesNotPrepareOrClaim() async {
         let preparation = PreparationSpy(job: nil), claims = ClaimsSpy()
-        _ = await SummariesEffectHandler(preparation: preparation, claims: claims, records: RecordsSpy(), starts: StartsSpy()).handle(.load("call"))
+        _ = await SummariesEffectHandler(preparation: preparation, claims: claims, records: RecordsSpy(), starts: StartsSpy(), storage: StorageSpy(), generation: GenerationsSpy()).handle(.load("call"))
         #expect(preparation.payloads.isEmpty && claims.payloads.isEmpty)
     }
     private func makeSUT(_ records: RecordsSpy) -> SummariesEffectHandler {
-        .init(preparation: PreparationSpy(job: nil), claims: ClaimsSpy(), records: records, starts: StartsSpy())
+        .init(preparation: PreparationSpy(job: nil), claims: ClaimsSpy(), records: records, starts: StartsSpy(), storage: StorageSpy(), generation: GenerationsSpy())
     }
 }
 
@@ -332,8 +332,15 @@ import Testing
         }
         #expect(format.payloads == [.init(stage: stage, warning: false)])
     }
-    @Test(arguments: [true, false]) func anAnsweredStartDeliversNothing(owned: Bool) {
-        assert(makeStarting(), .started("call", owned: owned), delivers: nil)
+    @Test func anOwnedStartWithSpeakersDeliversIdentify() {
+        assert(makeStarting(), .started("call", owned: true), delivers: .identify(makeJob()))
+    }
+    @Test func anOwnedStartWithoutSpeakersDeliversNotes() {
+        var job = makeJob(); job.speakers = false
+        assert(makeStarting(speakers: false), .started("call", owned: true), delivers: .notes(job, []))
+    }
+    @Test func anObservedStartDeliversNothing() {
+        assert(makeStarting(), .started("call", owned: false), delivers: nil)
     }
     @Test func aStartAnswerForACallNotStartingChangesNothing() {
         assert(makePending(), .started("call", owned: true))
@@ -405,9 +412,16 @@ import Testing
         let event = await makeSUT(StartsSpy(result: .failure(SpyFailure()))).handle(.start(makeJob()))
         #expect(event == .storageFailed("call"))
     }
+    @Test func aFailedStartReleasesTheJob() async {
+        let storage = StorageSpy()
+        _ = await SummariesEffectHandler(preparation: PreparationSpy(job: nil), claims: ClaimsSpy(), records: RecordsSpy(),
+                                         starts: StartsSpy(result: .failure(SpyFailure())), storage: storage, generation: GenerationsSpy())
+            .handle(.start(makeJob()))
+        #expect(storage.payloads == [.release(makeJob())])
+    }
     @Test func startDoesNothingElse() async {
         let preparation = PreparationSpy(job: nil), claims = ClaimsSpy(), records = RecordsSpy()
-        _ = await SummariesEffectHandler(preparation: preparation, claims: claims, records: records, starts: StartsSpy()).handle(.start(makeJob()))
+        _ = await SummariesEffectHandler(preparation: preparation, claims: claims, records: records, starts: StartsSpy(), storage: StorageSpy(), generation: GenerationsSpy()).handle(.start(makeJob()))
         #expect(preparation.payloads.isEmpty && claims.payloads.isEmpty && records.payloads.isEmpty)
     }
     @Test func otherEffectsDoNotStart() async {
@@ -416,7 +430,7 @@ import Testing
         #expect(starts.payloads.isEmpty)
     }
     private func makeSUT(_ starts: StartsSpy) -> SummariesEffectHandler {
-        .init(preparation: PreparationSpy(job: nil), claims: ClaimsSpy(), records: RecordsSpy(), starts: starts)
+        .init(preparation: PreparationSpy(job: nil), claims: ClaimsSpy(), records: RecordsSpy(), starts: starts, storage: StorageSpy(), generation: GenerationsSpy())
     }
 }
 

@@ -75,6 +75,13 @@ public enum SummariesEvent: Equatable, Sendable {
     case claimed(String, owned: Bool, SummariesSaved)
     /// Storage's answer to a start: owned when this machine runs the job, else another process does.
     case started(String, owned: Bool)
+    case identified(String, [Identity])
+    case identificationFailed(String)
+    case checkpointed(String)
+    case noted(String, String)
+    case notesFailed(String)
+    case published(String)
+    case saved(String)
     case storageFailed(String)
     /// Stops starting jobs; a start not yet answered goes back to pending.
     case stopDispatch
@@ -85,12 +92,19 @@ public enum SummariesEffect: Equatable, Sendable {
     case prepare(SummariesSubmission)
     case claim(Job)
     case start(Job)
+    case identify(Job)
+    case checkpoint(Job, [Identity], warning: Bool)
+    case notes(Job, [Identity])
+    case publish(Job, String, warning: Bool)
+    case save(Job, SummariesState.Call.Stage, warning: Bool)
 }
 
 public struct SummariesReducer: Sendable {
     private let format: @Sendable (SummariesState.Call.Stage, Bool) -> String
     /// Renders a call's status line from its stage and whether its notes lack speaker names.
     public init(format: @escaping @Sendable (SummariesState.Call.Stage, Bool) -> String) { self.format = format }
+    /// The stages that wait on storage or generation, which a storage failure ends.
+    static let working: Set<SummariesState.Call.Stage> = [.claiming, .starting, .identifying, .checkpointing, .noting, .publishing, .saving]
     public func reduce(_ state: SummariesState, _ event: SummariesEvent) -> (SummariesState, SummariesEffect?) {
         var next = state
         var effect: SummariesEffect?
@@ -140,9 +154,44 @@ public struct SummariesReducer: Sendable {
             if stage == .pending && state.dispatch { next.calls[id]?.stage = .starting; effect = .start(saved.job) }
         case let .started(id, owned) where state.calls[id]?.stage == .starting:
             call = id
-            let speakers = state.calls[id]?.job?.speakers ?? false
-            next.calls[id]?.stage = owned ? (speakers ? .identifying : .noting) : .observed
-        case let .storageFailed(id) where state.calls[id]?.stage == .claiming || state.calls[id]?.stage == .starting:
+            guard owned else { next.calls[id]?.stage = .observed; break }
+            guard let job = state.calls[id]?.job else { return (state, nil) }
+            if job.speakers { next.calls[id]?.stage = .identifying; effect = .identify(job) }
+            else { next.calls[id]?.stage = .noting; effect = .notes(job, []) }
+        case let .identified(id, identities) where state.calls[id]?.stage == .identifying:
+            guard let job = state.calls[id]?.job else { return (state, nil) }
+            call = id
+            next.calls[id]?.identities = identities; next.calls[id]?.stage = .checkpointing
+            effect = .checkpoint(job, identities, warning: false)
+        case let .identificationFailed(id) where state.calls[id]?.stage == .identifying:
+            guard let job = state.calls[id]?.job else { return (state, nil) }
+            call = id
+            next.calls[id]?.warning = true; next.calls[id]?.stage = .checkpointing
+            effect = .checkpoint(job, [], warning: true)
+        case let .checkpointed(id) where state.calls[id]?.stage == .checkpointing:
+            guard let work = state.calls[id], let job = work.job else { return (state, nil) }
+            call = id
+            next.calls[id]?.stage = .noting
+            effect = .notes(job, work.identities)
+        case let .noted(id, notes) where state.calls[id]?.stage == .noting:
+            guard let work = state.calls[id], let job = work.job else { return (state, nil) }
+            call = id
+            next.calls[id]?.notes = notes; next.calls[id]?.stage = .publishing
+            effect = .publish(job, notes, warning: work.warning)
+        case let .notesFailed(id) where state.calls[id]?.stage == .noting:
+            guard let work = state.calls[id], let job = work.job else { return (state, nil) }
+            call = id
+            next.calls[id]?.stage = .saving; next.calls[id]?.terminal = .failed
+            effect = .save(job, .failed, warning: work.warning)
+        case let .published(id) where state.calls[id]?.stage == .publishing:
+            guard let work = state.calls[id], let job = work.job else { return (state, nil) }
+            call = id
+            next.calls[id]?.stage = .saving; next.calls[id]?.terminal = .succeeded
+            effect = .save(job, .succeeded, warning: work.warning)
+        case let .saved(id) where state.calls[id]?.stage == .saving:
+            call = id
+            next.calls[id]?.stage = state.calls[id]?.terminal ?? .failed
+        case let .storageFailed(id) where state.calls[id].map({ SummariesReducer.working.contains($0.stage) }) ?? false:
             call = id
             next.calls[id]?.stage = .failed
         case .stopDispatch where state.dispatch:
