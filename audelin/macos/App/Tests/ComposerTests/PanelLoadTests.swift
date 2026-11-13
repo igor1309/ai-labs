@@ -17,19 +17,18 @@ import Testing
 struct PanelLoadTests {
 
     static let states = 100
-    /// Updates timed through a composed session, each a main-actor round trip.
-    static let sessionStates = 30
     /// The most text states per audio second the composed session sends, to
     /// put the cost in terms of the main actor.
     static let todaysRate = 10.0
 
     @Test func aTextStateLateInALongCallCostsThePanelAboutWhatAnEarlyOneDoes() async throws {
 
-        // One session each. Every update waits its turn on the main actor, which
-        // the rest of the test run shares, so the wall time goes to waiting, not
-        // to the panel: the timed intervals cover only the panel's own update.
-        let early = try await secondsPerUpdate(entries: 20)
-        let late = try await secondsPerUpdate(entries: 1_620)
+        // The quickest of three runs each, so a busy machine slows neither side alone.
+        var early = Double.infinity, late = Double.infinity
+        for _ in 0..<3 {
+            early = min(early, try await secondsPerUpdate(entries: 20))
+            late = min(late, try await secondsPerUpdate(entries: 1_620))
+        }
         let busy = Int(late * Self.todaysRate * 100)
         let line = report("\(early * 1000) ms an update early, \(late * 1000) ms late; "
             + "at today's rate the model alone would keep the main actor \(busy)% busy late")
@@ -151,7 +150,7 @@ struct PanelLoadTests {
         let revision = { (step: Int) in Hearing(words: [Word("w\(step)", start: start, end: start + 0.1 + Double(step) / Self.todaysRate)], from: start) }
         let recognizer = ScriptRecognizer(
             hearings: [.success(Hearing(words: history + [Word("w0", start: start, end: start + 0.1)], finalThrough: start - 1))]
-                + (1..<Self.sessionStates).map { .success(revision($0)) },
+                + (1..<Self.states).map { .success(revision($0)) },
             endings: [.success(Hearing(words: []))]
         )
         let microphone = FedCapture(), call = FedCapture()
@@ -178,7 +177,7 @@ struct PanelLoadTests {
             microphone.send([0])
             await waitFor("w0")
             updates.reset()
-            for step in 1..<Self.sessionStates {
+            for step in 1..<Self.states {
                 microphone.send([0])
                 await waitFor("w\(step)")
             }
