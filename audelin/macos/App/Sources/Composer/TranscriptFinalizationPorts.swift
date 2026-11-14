@@ -38,15 +38,15 @@ struct FinalizationReplacement: TranscriptReplacement {
     }
 }
 
+/// Returns once each call's final transcript is delivered and the call's handles are released.
 struct FinalTranscriptsPort: FinalTranscripts {
-    struct Publication: Sendable {
-        let call: String
-        let transcript: FinalTranscript<Job.Entry>
-    }
-
-    let output: AsyncStream<Publication>.Continuation
+    let resources: FinalizationResources
+    let deliver: @Sendable (String, FinalTranscript<Job.Entry>) async -> Void
 
     func publish(_ finals: [String: FinalTranscript<Job.Entry>]) async {
-        for (call, transcript) in finals { output.yield(.init(call: call, transcript: transcript)) }
+        for (call, transcript) in finals.sorted(by: { $0.key < $1.key }) {
+            await deliver(call, transcript)
+            await resources.published(call: call)
+        }
     }
 }

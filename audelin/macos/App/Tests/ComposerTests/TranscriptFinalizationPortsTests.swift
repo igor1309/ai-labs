@@ -138,17 +138,26 @@ struct TranscriptFinalizationPortsTests {
         }
     }
 
-    @Test func finalTranscriptsPublishesEachCallWithoutChangingItsFlagsOrEntries() async throws {
-        let stream = AsyncStream<FinalTranscriptsPort.Publication>.makeStream()
-        defer { stream.continuation.finish() }
-        let sut = FinalTranscriptsPort(output: stream.continuation)
+    /// Each call is delivered unchanged, and its handles are released only after its delivery returns.
+    @Test func finalTranscriptsDeliversEachCallThenReleasesItsHandles() async throws {
+        let resources = FinalizationResources(), log = FixtureLog()
+        let events = Values<String>()
+        let opened = openedTranscript(bytes: FinalizationBytes(), names: RecordingNames(), diarizer: .unused, sink: log)
+        for call in ["a", "b"] {
+            resources.add(call: call, transcript: opened, cleanup: unusedCleanup(sink: log), speakers: { _ in },
+                          finishReading: { events.append("released \(call)") })
+        }
+        let received = Values<FinalTranscript<Job.Entry>>()
+        let sut = FinalTranscriptsPort(resources: resources, deliver: { call, transcript in
+            received.append(transcript)
+            events.append("delivered \(call)")
+        })
         let finals = ["a": FinalTranscript(entries: [Job.Entry(label: "Me", time: "3", text: "answer")], usable: true, finalWrite: true),
                       "b": FinalTranscript<Job.Entry>(entries: [], usable: false, finalWrite: false)]
         await sut.publish(finals)
-        var iterator = stream.stream.makeAsyncIterator()
-        var received: [String: FinalTranscript<Job.Entry>] = [:]
-        for _ in finals { let value = try #require(await iterator.next()); received[value.call] = value.transcript }
-        #expect(received == finals)
+        #expect(received.all == [finals["a"]!, finals["b"]!])
+        #expect(events.all == ["delivered a", "released a", "delivered b", "released b"])
+        #expect(resources.resource(call: "a") == nil && resources.resource(call: "b") == nil)
     }
 
     @Test func publishedCallReleasesItsHandlesAndFinishesOnlyItsReadingFeed() async throws {
@@ -166,7 +175,6 @@ struct TranscriptFinalizationPortsTests {
         #expect(resources.resource(call: "b") != nil)
         #expect(finished.all == ["a"])
         await resources.published(call: "b")
-        await resources.drain()
         #expect(finished.all == ["a", "b"])
     }
 }

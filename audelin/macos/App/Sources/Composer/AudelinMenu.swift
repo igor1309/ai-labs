@@ -65,7 +65,6 @@ public final class AudelinMenu {
     private var shutdownObservation: Task<Void, Never>?
     private let pendingRelaunch = PendingRelaunch()
     private var finalizationSubscriptions: [Task<Void, Never>] = []
-    private var finishFinalTranscripts: () -> Void = {}
     private var observation: Task<Void, Never>?
     private var detectionObservation: Task<Void, Never>?
     private var updateWatch: Task<Void, Never>?
@@ -177,7 +176,7 @@ public final class AudelinMenu {
                 // A started relaunch quits without the menu's quit, so the menu learns it here.
                 self?.quitting = true
                 self?.summaries?.stopDispatch()
-                self?.shutDown(application: application, finalization: finalization, finalizationResources: finalizationResources)
+                self?.shutDown(application: application, finalization: finalization)
                 return
             }
         }
@@ -207,10 +206,8 @@ public final class AudelinMenu {
         }
     }
 
-    func installFinalizationSubscriptions(speakers: Task<Void, Never>, publication: Task<Void, Never>, transactions: Task<Void, Never>,
-                                          finish: @escaping () -> Void) {
-        finalizationSubscriptions = [speakers, publication, transactions]
-        finishFinalTranscripts = finish
+    func installFinalizationSubscriptions(speakers: Task<Void, Never>, transactions: Task<Void, Never>) {
+        finalizationSubscriptions = [speakers, transactions]
     }
 
     func installFolderPicker(_ choose: @escaping () async throws -> URL?) { chooseFolder = choose }
@@ -315,8 +312,7 @@ public final class AudelinMenu {
 
     /// Sends shutdown to each participant on the quit intention, and each one's settled outcome
     /// to the termination machine. Summaries shut down once final transcripts have reached them.
-    private func shutDown(application: MenuApplication?, finalization: TranscriptFinalizationModel,
-                          finalizationResources: FinalizationResources) {
+    private func shutDown(application: MenuApplication?, finalization: TranscriptFinalizationModel) {
 
         let termination = termination
         if let application {
@@ -334,7 +330,6 @@ public final class AudelinMenu {
         }
         Task { [summaries] in
             await finalization.shutdown()
-            await finalizationResources.drain()
             termination.event(.settled(.finalization))
             await summaries?.shutdown()
             termination.event(.settled(.summaries))
@@ -458,7 +453,6 @@ public final class AudelinMenu {
 
     isolated deinit {
 
-        finishFinalTranscripts()
         for subscription in finalizationSubscriptions { subscription.cancel() }
         hideDelay?.cancel()
         panelObservation?.cancel()

@@ -14,7 +14,6 @@ final class FinalizationResources {
     /// The running cleanup of each call, and the calls whose cleanup was stopped.
     private var cleaning: [String: Task<[TranscriptSegment]?, Never>] = [:]
     private var stopped: Set<String> = []
-    private var draining: [CheckedContinuation<Void, Never>] = []
 
     func add(call: String, transcript: OpenedTranscript, cleanup: TranscriptCleanup,
              speakers: @escaping @Sendable ([Int: Int]) async -> Void,
@@ -49,15 +48,5 @@ final class FinalizationResources {
         cleaning.removeValue(forKey: call)
         stopped.remove(call)
         await resource.finishReading()
-        if calls.isEmpty {
-            let waiting = draining
-            draining.removeAll()
-            for answer in waiting { answer.resume() }
-        }
-    }
-
-    /// Quit keeps final transcript delivery ahead of the summaries machine's shutdown.
-    func drain() async {
-        if !calls.isEmpty { await withCheckedContinuation { draining.append($0) } }
     }
 }
