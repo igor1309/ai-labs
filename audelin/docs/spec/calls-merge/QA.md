@@ -57,3 +57,9 @@ the target gives one call.
 
 Merge A and B with B's tracks unreadable: the error names B, and every
 file is where it was. Evidence: Missing.
+
+## S-11 Each part's transcript is read whole
+
+A part's transcript with named speakers, a gap and filled-in text reads
+back byte for byte; with B's unreadable the error names B and every file is
+where it was. Evidence: Missing.

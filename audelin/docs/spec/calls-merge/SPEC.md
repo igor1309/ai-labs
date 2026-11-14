@@ -30,6 +30,9 @@ and moves hold as in `../calls/SPEC.md`.
 - **Every part needs a known length,** read from its tracks, so its gap can
   be placed; a part without one fails the merge, named, before anything
   moves.
+- **A part's saved transcript is read whole,** as written, for compose to
+  read back through Transcript format; a part whose transcript cannot be
+  read fails the merge, named, before anything moves.
 - **Rename, delete, move and text treat a merged call as any call:** delete
   sends it to the Trash with its parts, a move carries them, and its text
   is its joined transcript and its own notes.
@@ -86,4 +89,9 @@ Feature: Keeping merged calls on disk
     Given a call whose tracks cannot be read
     When I merge it with another
     Then nothing moves and I can tell which call has no known length
+
+  Scenario: S-11 Each part's transcript is read whole
+    Given calls to merge
+    When I read each one's saved transcript
+    Then I get it as written, or which call's cannot be read and why
 ```
