@@ -1,3 +1,4 @@
+import Calls
 import CallsListUI
 import Composer
 import Foundation
@@ -10,12 +11,44 @@ import Testing
     @Test func aSubmissionRunsThroughFilesAndGenerationToPublishedNotes() async throws {
         let files = FilesFake()
         let sut = makeSUT(files)
-        sut.send(.submit(.init(call: "call", input: "input", entries: [.init(label: "A", time: "0", text: "spoken")], finalWrite: true, usable: true)))
+        sut.completed(call: "call", entries: [.init(label: "A", time: "0", text: "spoken")], finalWrite: true, usable: true)
         try await waitUntil("notes are saved") { sut.state.calls["call"]?.stage == .succeeded }
         #expect(files.claimed.map(\.job) == ["job"])
         #expect(files.writes.contains { if case .publish(_, "notes") = $0 { true } else { false } })
         #expect(sut.state.calls["call"]?.status == CallsListText(language: .english)(.summaryReady))
         #expect(sut.state.calls["call"]?.badge == SummariesState.Call.Badge.none)
+    }
+    @Test func makeSubmitsTheStoredTranscriptAsAsked() async throws {
+        let files = FilesFake()
+        let sut = makeSUT(files, notes: false, transcript: [.init(start: 3, words: "spoken", label: "A")])
+        try await sut.make(call: "call")
+        try await waitUntil("notes are saved") { sut.state.calls["call"]?.stage == .succeeded }
+        let snapshot = try #require(files.claimed.first).snapshot
+        #expect(String(decoding: snapshot, as: UTF8.self).contains(#"{"label":"A","text":"spoken","time":"3.0"}"#))
+    }
+    @Test func aFailedTranscriptReadThrows() async {
+        let sut = makeSUT(FilesFake(), readFails: true)
+        await #expect(throws: (any Error).self) { try await sut.make(call: "call") }
+        #expect(sut.state.calls.isEmpty)
+    }
+    @Test func retryRunsAFailedJobAgainUnderAFreshID() async throws {
+        let files = FilesFake()
+        files.stored = try await record(phase: "failed")
+        let sut = makeSUT(files)
+        sut.recover(calls: ["call"])
+        try await waitUntil("the call is recovered") { sut.state.calls["call"]?.retryable == true }
+        sut.retry(call: "call")
+        try await waitUntil("the retry succeeds") { sut.state.calls["call"]?.stage == .succeeded }
+        #expect(files.retried.map(\.1) == ["fresh"])
+    }
+    @Test func forgetDropsASettledCall() async throws {
+        let files = FilesFake()
+        files.stored = try await record(phase: "succeeded")
+        let sut = makeSUT(files)
+        sut.recover(calls: ["call"])
+        try await waitUntil("the call is recovered") { sut.state.calls["call"]?.stage == .succeeded }
+        sut.forget(call: "call")
+        try await waitUntil("the call is dropped") { sut.state.calls["call"] == nil }
     }
     @Test func launchRecoversEachStoredCall() async throws {
         let files = FilesFake()
@@ -41,9 +74,10 @@ import Testing
         #expect(sut.state.lifecycle == .ended)
     }
 
-    private func makeSUT(_ files: FilesFake) -> SummariesModel {
+    private func makeSUT(_ files: FilesFake, notes: Bool = true, transcript: [Calls.Text.Line] = [], readFails: Bool = false) -> SummariesModel {
         SummariesModel(text: { CallsListText(language: .english) },
-                       preparation: SummariesPreparationPort(notes: { .init(enabled: true, speakers: false, primary: .init(kind: "cli", model: "m", executable: "/bin/p", endpoint: "", credentialVariable: "")) },
+                       callText: { _ in if readFails { throw CocoaError(.fileReadNoSuchFile) }; return .init(notes: nil, transcript: transcript) },
+                       preparation: SummariesPreparationPort(notes: { .init(enabled: notes, speakers: false, primary: .init(kind: "cli", model: "m", executable: "/bin/p", endpoint: "", credentialVariable: "")) },
                                                              makeID: { "job" }),
                        files: .init(files: files, makeID: { "fresh" }), generation: GenerationStub())
     }

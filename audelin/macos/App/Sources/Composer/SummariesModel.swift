@@ -1,3 +1,4 @@
+import Calls
 import CallsListUI
 import IMRxObservation
 import Observation
@@ -7,8 +8,10 @@ import SummaryJobs
 @MainActor @Observable
 public final class SummariesModel {
     private let model: ObservableModel<SummariesState, SummariesEvent, SummariesEffect>
-    public init(text: @escaping @Sendable () -> CallsListText, preparation: any SummariesPreparation, files: SummariesFilesPort,
+    private let callText: @Sendable (String) async throws -> Calls.Text
+    public init(text: @escaping @Sendable () -> CallsListText, callText: @escaping @Sendable (String) async throws -> Calls.Text, preparation: any SummariesPreparation, files: SummariesFilesPort,
          generation: any SummariesGeneration) {
+        self.callText = callText
         let reducer = SummariesReducer(format: { text().summariesStatus($0, $1) }, badge: summariesBadge)
         let handler = SummariesEffectHandler(preparation: preparation, claims: files, records: files, starts: files,
                                              storage: files, generation: generation)
@@ -18,6 +21,20 @@ public final class SummariesModel {
     public var state: SummariesState { model.state }
     public func send(_ event: SummariesEvent) { model.event(event) }
 
+    /// Hands a finished recording's transcript to the machine.
+    public func completed(call: String, entries: [Job.Entry], finalWrite: Bool, usable: Bool) {
+        model.event(.submit(.init(call: call, input: summaryInput(entries), entries: entries, finalWrite: finalWrite, usable: usable)))
+    }
+    /// Makes notes the user asked for from the call's stored transcript, even when notes are off.
+    public func make(call: String) async throws {
+        let entries = try await callText(call).transcript.map { Job.Entry(label: $0.label, time: String($0.start), text: $0.words) }
+        model.event(.submit(.init(call: call, input: summaryInput(entries), entries: entries, finalWrite: true,
+                                  usable: !entries.isEmpty, requested: true)))
+    }
+    public func cancel(call: String) { model.event(.cancel(call)) }
+    public func retry(call: String) { model.event(.retry(call)) }
+    /// Drops a deleted call once its notes have settled.
+    public func forget(call: String) { model.event(.forget(call)) }
     /// Picks up each stored call's job at launch.
     public func recover(calls: [String]) { calls.forEach { model.event(.recover($0)) } }
     /// Reads again the calls whose jobs another process runs.
