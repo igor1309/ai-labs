@@ -109,7 +109,7 @@ from instances.
 | Pin/Off, /On | `w24st`, `S5zLs` | — |
 | Title bar | `H1efZf` | `Title` |
 | Banner/Error, /Warn, /Info | `qAImO`, `XK4si`, `jjhu5` | `H`, `Sub` |
-| Entry/Me, /Them, /Pending | `Nescm`, `ysZuS`, `Dl07G` | `Symbol` (`microphone.fill` for me, `speaker.wave.3.fill` for them ; stand-in vectors redrawn to match, the app draws the SF Symbols) on the time's first baseline, `Time` in the same `me` or `them` colour, `Confirmed`; Pending adds `Pending` |
+| Entry/Me, /Them, /Pending | `Nescm`, `ysZuS`, `Dl07G` | `Time`, right-aligned so the symbols line up, then `Symbol` (`microphone.fill` for me, `speaker.wave.3.fill` for them ; stand-in vectors redrawn to match, the app draws the SF Symbols) on the time's first baseline in the same `me` or `them` colour, `Confirmed`; Pending adds `Pending` |
 | Footnote card | `bMU2S` | `Term`, `Hint`, `Text` |
 | Panel header/Idle, /Recording | `MaM9e`, `rVa43` | `Status` |
 | File chip | `U4MdJG` | `Name` |
