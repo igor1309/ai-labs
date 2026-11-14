@@ -6,16 +6,16 @@ struct RecordingCallTests {
     @Test func callWithAutomaticOffOnlyMarksTheCall() { assert(makeManualIdle(), .callStarted) { $0.callOn = true } }
 
     @Test func userStartWithAutomaticOffBeginsAHandSession() {
-        assert(makeManualIdle(), .userStart) { $0.phase = .beginning; $0.session = .init(id: 1, origin: .hand); $0.lastSessionID = 1 }
+        assert(makeManualIdle(), .userStart) { $0.phase = .beginning; $0.stage = .preparing; $0.session = .init(id: 1, origin: .hand); $0.lastSessionID = 1 }
     }
 
     @Test func userStartDuringACallBeginsAHandSessionOfThatCall() {
         assert(makeState(makeManualIdle()) { $0.callOn = true }, .userStart) {
-            $0.phase = .beginning; $0.session = .init(id: 1, origin: .hand); $0.lastSessionID = 1; $0.sessionBeganDuringCall = true
+            $0.phase = .beginning; $0.stage = .preparing; $0.session = .init(id: 1, origin: .hand); $0.lastSessionID = 1; $0.sessionBeganDuringCall = true
         }
     }
 
-    @Test func endedSessionGoesIdle() { assert(makeEnding(), .sessionReported(id: 1, .ended)) { $0.phase = .idle; $0.session = nil } }
+    @Test func endedSessionGoesIdle() { assert(makeEnding(), .sessionReported(id: 1, .ended)) { $0.phase = .idle; $0.stage = nil; $0.session = nil } }
 
     @Test(arguments: [RecordingState.Origin.call, .hand], [RecordingState.Phase.beginning, .recording])
     func callEndEndsASessionBegunDuringTheCall(_ origin: RecordingState.Origin, _ phase: RecordingState.Phase) {
@@ -35,7 +35,7 @@ struct RecordingCallTests {
 
     @Test func endingAHeldCallStaysIdle() {
         assert(makeState(makeEnding()) { $0.callOn = true; $0.heldForCall = true; $0.sessionBeganDuringCall = true }, .sessionReported(id: 1, .ended)) {
-            $0.phase = .idle; $0.session = nil; $0.sessionBeganDuringCall = false
+            $0.phase = .idle; $0.stage = nil; $0.session = nil; $0.sessionBeganDuringCall = false
         }
     }
 
@@ -48,7 +48,7 @@ struct RecordingCallTests {
 
     @Test func aNewCallAfterTheHoldBeginsSessionTwo() {
         assert(makeState(makeIdleAfter(1)) { $0.automatic = true }, .callStarted) {
-            $0.callOn = true; $0.phase = .beginning; $0.lastSessionID = 2
+            $0.callOn = true; $0.phase = .beginning; $0.stage = .preparing; $0.lastSessionID = 2
             $0.session = .init(id: 2, origin: .call); $0.sessionBeganDuringCall = true
         }
     }

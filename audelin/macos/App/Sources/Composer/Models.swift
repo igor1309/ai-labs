@@ -68,7 +68,7 @@ final class RecordingModel {
         let feed = feed
         model = SyncModel(initialState: initial, reduce: { state, event in
             guard !feed.finished else { return state }
-            let next = RecordingReducer.reduce(state, event)
+            let next = RecordingReducer.reduce(state, event).0
             if next != state {
                 log(next)
                 feed.publish(next)

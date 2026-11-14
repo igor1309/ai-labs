@@ -97,6 +97,18 @@ public struct RecordingState: Equatable, Sendable {
     public var callSilent = false
     /// Set by a shutdown; `settled` once no session runs, and no session begins after it.
     public var shutdown: Shutdown?
+    /// The work running for the current session, if any.
+    public var stage: Stage?
+
+    /// One session's line of work: get call audio, begin the Session, end it, release call audio.
+    public enum Stage: Equatable, Sendable {
+
+        case preparing
+        case beginning
+        case begun
+        case ending
+        case releasing
+    }
 
     public enum Shutdown: Equatable, Sendable {
 
@@ -127,14 +139,83 @@ public enum RecordingEvent: Equatable, Sendable {
     case sessionReported(id: UInt64, RecordingSessionReport)
     case sessionChanged(id: UInt64, RecordingSessionStatus)
     case shutdown
+    /// Call audio was checked and reserved for the session, or could not be.
+    case callAudioPrepared(id: UInt64, ready: Bool)
+    /// The Session exists and its begin is queued.
+    case sessionAccepted(id: UInt64)
+    /// The Session has finished, asked to or on its own.
+    case sessionFinished(id: UInt64)
+}
+
+public enum RecordingEffect: Equatable, Sendable {
+
+    case prepareCallAudio(id: UInt64)
+    case begin(id: UInt64)
+    case end(id: UInt64)
+    case releaseCallAudio(id: UInt64)
 }
 
 public enum RecordingReducer {
 
-    public static func reduce(_ state: RecordingState, _ event: RecordingEvent) -> RecordingState {
+    public static func reduce(_ state: RecordingState, _ event: RecordingEvent) -> (RecordingState, RecordingEffect?) {
+
+        var state = state
+        if let id = state.session?.id {
+            switch event {
+            case let .callAudioPrepared(reported, ready) where reported == id && state.stage == .preparing:
+                if !ready { state.missing.insert(.callAudioAccess) }
+                guard ready, state.phase != .ending else { return release(&state, id) }
+                state.stage = .beginning
+                return (state, .begin(id: id))
+            case let .sessionAccepted(reported) where reported == id && state.stage == .beginning:
+                state.stage = .begun
+                return advance(state)
+            case let .sessionFinished(reported) where reported == id
+                && (state.stage == .beginning || state.stage == .begun || state.stage == .ending):
+                return release(&state, id)
+            case .callAudioPrepared, .sessionAccepted, .sessionFinished:
+                return (state, nil)
+            default:
+                break
+            }
+        } else if case .callAudioPrepared = event { return (state, nil) }
+        else if case .sessionAccepted = event { return (state, nil) }
+        else if case .sessionFinished = event { return (state, nil) }
+        return advance(policy(state, event))
+    }
+
+    /// Starts the next piece of the current session's work, one at a time.
+    private static func advance(_ state: RecordingState) -> (RecordingState, RecordingEffect?) {
+
+        var state = state
+        guard let id = state.session?.id else { return (state, nil) }
+        switch state.stage {
+        case nil where state.phase == .ending:
+            // Ended before any work started: nothing to end or release.
+            return advance(policy(state, .sessionReported(id: id, .ended)))
+        case nil where state.phase == .beginning || state.phase == .recording:
+            state.stage = .preparing
+            return (state, .prepareCallAudio(id: id))
+        case .begun? where state.phase == .ending:
+            state.stage = .ending
+            return (state, .end(id: id))
+        default:
+            return (state, nil)
+        }
+    }
+
+    private static func release(_ state: inout RecordingState, _ id: UInt64) -> (RecordingState, RecordingEffect?) {
+
+        state.stage = .releasing
+        return (state, .releaseCallAudio(id: id))
+    }
+
+    private static func policy(_ state: RecordingState, _ event: RecordingEvent) -> RecordingState {
 
         var state = state
         switch event {
+        case .callAudioPrepared, .sessionAccepted, .sessionFinished:
+            return state
         case .shutdown:
             guard state.shutdown == nil else { return state }
             state.pendingStart = nil
@@ -229,6 +310,7 @@ public enum RecordingReducer {
             guard state.session?.id == id else { return state }
             switch report {
             case .ended:
+                state.stage = nil
                 state.phase = .idle
                 state.callSilent = false
                 state.callID = nil
@@ -266,6 +348,40 @@ public enum RecordingReducer {
               state.session != nil else { return state }
         state.phase = .ending
         return state
+    }
+}
+
+/// Dispatches each Recording effect to its collaborator and answers with the event it ends in.
+public final class RecordingEffectHandler: Sendable {
+
+    private let session: any RecordingSession
+    private let prepareCallAudio: @Sendable () async -> Bool
+    private let releaseCallAudio: @Sendable () async -> Void
+
+    public init(session: any RecordingSession,
+                prepareCallAudio: @escaping @Sendable () async -> Bool,
+                releaseCallAudio: @escaping @Sendable () async -> Void) {
+
+        self.session = session
+        self.prepareCallAudio = prepareCallAudio
+        self.releaseCallAudio = releaseCallAudio
+    }
+
+    public func handle(_ effect: RecordingEffect) async -> RecordingEvent {
+
+        switch effect {
+        case let .prepareCallAudio(id):
+            return .callAudioPrepared(id: id, ready: await prepareCallAudio())
+        case let .begin(id):
+            await session.begin(id: id)
+            return .sessionAccepted(id: id)
+        case let .end(id):
+            await session.end(id: id)
+            return .sessionFinished(id: id)
+        case let .releaseCallAudio(id):
+            await releaseCallAudio()
+            return .sessionReported(id: id, .ended)
+        }
     }
 }
 

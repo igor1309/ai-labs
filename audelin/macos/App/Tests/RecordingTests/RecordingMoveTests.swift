@@ -17,14 +17,14 @@ struct RecordingMoveTests {
 
     @Test func releaseBeginsAQueuedUserStart() {
         assert(makeQueued(.hand), .releaseStorage) {
-            $0.storageReserved = false; $0.pendingStart = nil; $0.phase = .beginning
+            $0.storageReserved = false; $0.pendingStart = nil; $0.phase = .beginning; $0.stage = .preparing
             $0.lastSessionID = 1; $0.session = .init(id: 1, origin: .hand)
         }
     }
 
     @Test func releaseBeginsAQueuedCallStart() {
         assert(makeQueued(.call), .releaseStorage) {
-            $0.storageReserved = false; $0.pendingStart = nil; $0.phase = .beginning
+            $0.storageReserved = false; $0.pendingStart = nil; $0.phase = .beginning; $0.stage = .preparing
             $0.lastSessionID = 1; $0.session = .init(id: 1, origin: .call); $0.sessionBeganDuringCall = true
         }
     }
@@ -37,7 +37,7 @@ struct RecordingMoveTests {
 
     @Test func folderReturningAfterReleaseBeginsTheQueuedStart() {
         assert(makeState(makeQueuedWithoutFolder()) { $0.storageReserved = false }, .conditionChanged(.callsFolder, available: true)) {
-            $0.missing = []; $0.pendingStart = nil; $0.phase = .beginning
+            $0.missing = []; $0.pendingStart = nil; $0.phase = .beginning; $0.stage = .preparing
             $0.lastSessionID = 1; $0.session = .init(id: 1, origin: .hand)
         }
     }
