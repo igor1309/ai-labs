@@ -88,13 +88,13 @@ struct TranscriptFinalizationPortsTests {
             #expect(await bytes.replacements.isEmpty)
             #expect(log.entries.all == [.init(category: .session, message: "bleed cleanup kept raw: replacing failed", error: "failed")])
         } else {
-            // The attributed far side names its own speakers; the names taken at close are not read.
             let text = try #require(await bytes.replacements.first)
             #expect(text.contains("**Them 1** 00:00:00\ntheir words"))
             #expect(text.contains("**Them 2** 00:00:02\nlater words"))
             #expect(text.contains("**Me** 00:00:03\nmy answer"))
-            #expect(text.contains("- Them 1: Anna"))
-            #expect(!text.contains("raw mic") && !text.contains("raw far") && !text.contains("Boris"))
+            #expect(text.contains("- Them 1: Vera"))
+            // An attributed far side names its own speakers; the names taken at close are not read.
+            #expect(!text.contains("raw mic") && !text.contains("raw far") && !text.contains("Anna") && !text.contains("Boris"))
         }
         await resources.published(call: "a")
     }
@@ -110,7 +110,7 @@ struct TranscriptFinalizationPortsTests {
         try await FinalizationReplacement(resources: resources).replace(
             call: "a", raw, names: liveNames([0: "Anna"]), far: nil, heard: [line("my answer", start: 3)])
         let text = try #require(await bytes.replacements.first)
-        #expect(text.contains("- Them: Anna") && !text.contains("Boris"))
+        #expect(text.contains("- Them: Anna") && !text.contains("Vera") && !text.contains("Boris"))
         await resources.published(call: "a")
     }
 
@@ -182,7 +182,7 @@ struct TranscriptFinalizationPortsTests {
 private let attributedFar = AttributedFar(
     far: [.init(side: .theirs, start: 0, settled: "their words", pending: "", speaker: "d0"),
           .init(side: .theirs, start: 2, settled: "later words", pending: "", speaker: "d1")],
-    speakers: [.init(id: "d0", name: "Anna", state: "confirmed"), .init(id: "d1", name: nil, state: "diarized")])
+    speakers: [.init(id: "d0", name: "Vera", state: "confirmed"), .init(id: "d1", name: nil, state: "diarized")])
 
 private func line(_ text: String, start: Double) -> TranscriptSegment {
     let words = text.split(separator: " ").enumerated().map {

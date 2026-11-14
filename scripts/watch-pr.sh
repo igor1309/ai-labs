@@ -2,9 +2,14 @@
 set -euo pipefail
 
 # Watches a PR's checks until they all pass (exit 0) or one fails (exit 1).
-# A watch never holds forever: it stops with exit 3 when a check has waited
-# for a runner longer than WATCH_PR_QUEUE_LIMIT seconds (default 15 min),
-# naming it, and with exit 4 after WATCH_PR_LIMIT seconds (default 90 min).
+# Passing needs the required check WATCH_PR_REQUIRED (default `report`, the
+# PR run's verdict in ci.yml) to have run and passed; other checks passing
+# alone is not enough. A watch never holds forever: it stops with exit 3
+# when a check has waited for a runner longer than WATCH_PR_QUEUE_LIMIT
+# seconds (default 15 min), naming it, with exit 4 after WATCH_PR_LIMIT
+# seconds (default 90 min), and with exit 5 when the PR conflicts with its
+# base: GitHub runs no pull_request workflows for a conflicting PR. A PR
+# that is already merged passes; a closed one fails.
 
 if [[ $# -lt 1 ]]; then
     echo "usage: $(basename "$0") <pr-number> [extra gh pr checks args...]" >&2
@@ -18,10 +23,12 @@ repo=$(basename "$(git rev-parse --show-toplevel)")
 log="/tmp/${repo}-pr-${pr}.log"
 : > "$log"
 
+required="${WATCH_PR_REQUIRED:-report}"
 queue_limit="${WATCH_PR_QUEUE_LIMIT:-900}"
 limit="${WATCH_PR_LIMIT:-5400}"
 interval="${WATCH_PR_INTERVAL:-30}"
 started=$(date +%s)
+waiting_on="the PR's state"
 
 finish() {
     echo "log: $log"
@@ -32,7 +39,7 @@ finish() {
 # workflow runs yet: gh then fails with "no checks reported", or still shows
 # the checks of the commit before. Either case is retried for up to a
 # minute, and the checks pass only once the head commit's own runs have
-# all completed.
+# all completed and the required check has passed.
 unregistered=0
 not_registered() {
     echo "$1" >> "$log"
@@ -40,6 +47,7 @@ not_registered() {
         sleep "${WATCH_PR_RETRY_DELAY:-5}"
         return
     fi
+    echo "CI never ran for this PR: $1" >&2
     finish 1
 }
 # A gh call that fails otherwise, such as GitHub's API timing out
@@ -56,33 +64,69 @@ gh_failed() {
     sleep "$interval"
 }
 while true; do
+    now=$(date +%s)
+    if ((now - started >= limit)); then
+        echo "still pending after ${limit}s: $waiting_on" >&2
+        finish 4
+    fi
+
+    view=$(gh pr view "$pr" --json state,mergeable,headRefOid 2>&1) || { gh_failed "$view"; continue; }
+    pr_state=$(jq -r .state <<< "$view")
+    mergeable=$(jq -r .mergeable <<< "$view")
+    head=$(jq -r .headRefOid <<< "$view")
+    case "$pr_state" in
+        MERGED)
+            echo "already merged" >> "$log"
+            finish 0
+            ;;
+        CLOSED)
+            echo "PR $pr is closed" >&2
+            finish 1
+            ;;
+    esac
+    if [[ "$mergeable" == CONFLICTING ]]; then
+        echo "PR $pr conflicts with its base: merge the base in, resolve and push" >&2
+        finish 5
+    fi
+
     checks=$(gh pr checks "$pr" --json name,state,bucket,startedAt "$@" 2>&1) || true
     if ! jq -e 'type == "array"' > /dev/null 2>&1 <<< "$checks"; then
         if grep -q "no checks reported" <<< "$checks"; then
-            not_registered "$checks"
+            waiting_on="checks to be reported"
+            # Until GitHub knows whether the PR merges, missing checks may
+            # be a conflict it has not found yet; wait within the limit.
+            if [[ "$mergeable" == UNKNOWN ]]; then
+                echo "no checks yet, mergeable unknown" >> "$log"
+                sleep "$interval"
+            else
+                not_registered "$checks"
+            fi
         else
             gh_failed "$checks"
         fi
         continue
     fi
-    head=$(gh pr view "$pr" --json headRefOid --jq .headRefOid 2>&1) || { gh_failed "$head"; continue; }
     runs=$(gh run list --commit "$head" --json status --limit 100 2>&1) || { gh_failed "$runs"; continue; }
     failed_calls=0
     if ! jq -e 'length > 0' > /dev/null <<< "$runs"; then
+        waiting_on="workflow runs for $head"
         not_registered "no workflow runs for $head yet"
         continue
     fi
     runs_done=$(jq 'all(.[]; .status == "completed")' <<< "$runs")
 
-    now=$(date +%s)
     # A queued check's startedAt is when it was queued; a commit status
     # that has not started has none.
-    verdict=$(jq -r --argjson now "$now" --argjson limit "$queue_limit" --argjson runs_done "$runs_done" '
+    verdict=$(jq -r --argjson now "$now" --argjson limit "$queue_limit" --argjson runs_done "$runs_done" --arg required "$required" '
         def waited: (.startedAt // "") | if startswith("20") then $now - fromdateiso8601 else 0 end;
         def names(f): [.[] | select(f) | .name] | join(", ");
         if any(.[]; .bucket == "fail" or .bucket == "cancel") then
             "fail\t" + names(.bucket == "fail" or .bucket == "cancel")
-        elif $runs_done and all(.[]; .bucket == "pass" or .bucket == "skipping") then "pass\t"
+        elif $runs_done and all(.[]; .bucket == "pass" or .bucket == "skipping") then
+            if any(.[]; .name == $required and .bucket == "pass") then "pass\t"
+            elif any(.[]; .name == $required) then "fail\t" + $required + " skipped"
+            else "missing\t" + $required
+            end
         elif any(.[]; .state == "QUEUED" and waited > $limit) then
             "stuck\t" + names(.state == "QUEUED" and waited > $limit)
         elif any(.[]; .bucket == "pending") then "pending\t" + names(.bucket == "pending")
@@ -90,6 +134,7 @@ while true; do
         end' <<< "$checks")
     state="${verdict%%$'\t'*}"
     names="${verdict#*$'\t'}"
+    waiting_on="$names"
     echo "$(date -u +%H:%M:%SZ) $state $names" >> "$log"
 
     case "$state" in
@@ -102,10 +147,10 @@ while true; do
             echo "queued over ${queue_limit}s with no runner: $names" >&2
             finish 3
             ;;
+        missing)
+            not_registered "required check $names not reported for $head"
+            continue
+            ;;
     esac
-    if ((now - started >= limit)); then
-        echo "still pending after ${limit}s: $names" >&2
-        finish 4
-    fi
     sleep "$interval"
 done

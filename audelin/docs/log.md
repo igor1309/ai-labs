@@ -3,6 +3,7 @@
 ## 2026-11-14
 
 - LAB-1484: Transcript finalization keeps the speaker names taken when a transcript closes, stops cleanup itself on quit, and settles only once every recording's final transcript has reached notes; quit waits on that alone. Behaviour is unchanged.
+- LAB-1470: The panel's live text feed is a generic latest-text operator, given the rule that a listening state replaces the text; behaviour is unchanged.
 - LAB-1466: One state machine per recording names the far-side rows from Zoom's Talking indicator or the browser extension and confirms them after the call; the panel and the transcript take their names from it.
 - LAB-1467: Recognising each call side, including keeping audio already heard when live text is switched off and back on, now belongs to Live text instead of the app's composition; behaviour is unchanged.
 - LAB-1465: One state machine decides which recording conditions are met, from the microphone permission, call-audio access, the calls folder and its free room; readings that arrive late no longer overwrite newer ones, and the calls folder stays unavailable while storage moves.
