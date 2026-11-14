@@ -364,3 +364,17 @@ public actor RecognitionStream {
         }
     }
 }
+
+/// What a reader of one track's text needs from its recognition stream.
+public protocol TrackRecognition: Sendable {
+
+    func prepare() async throws
+    func hear(_ audio: RecognitionStream.Audio) async throws -> RecognitionStream.Update
+    /// Cancels the hear in flight, if any, and returns once it has ended.
+    func cancelHearing() async
+    func finish() async throws -> RecognitionStream.Update
+    /// Ends and joins the work without another update.
+    func shutdown() async
+}
+
+extension RecognitionStream: TrackRecognition {}
