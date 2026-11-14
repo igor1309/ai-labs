@@ -162,8 +162,7 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
         defer { news.continuation.finish() }
         await transcriptFile?.close()
         guard let made, transcriptFile != nil else { endReading(); return }
-        await finalizationResources.captureNames(call: made.url.path)
-        await finalization.send(.closed(call: made.url.path))
+        await finalization.send(.closed(call: made.url.path, names: names.snapshot()))
     }
 
     func start(enabled: Bool) async throws {

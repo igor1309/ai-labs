@@ -1,3 +1,4 @@
+import CallNames
 import SummaryJobs
 import TranscriptFinalization
 
@@ -23,9 +24,9 @@ struct FinalizationCleanup: MicrophoneCleanup {
 struct FinalizationReplacement: TranscriptReplacement {
     let resources: FinalizationResources
 
-    func replace(call: String, _ raw: CallState, far: Transcript.Attributed?, heard: [TranscriptSegment]) async throws {
+    func replace(call: String, _ raw: CallState, names: CallNamesState?, far: Transcript.Attributed?, heard: [TranscriptSegment]) async throws {
         guard let resource = await resources.resource(call: call) else { throw CancellationError() }
-        let replacement = Transcript.microphoneReplacement(in: raw, far: far, names: resource.names, heard: heard)
+        let replacement = Transcript.microphoneReplacement(in: raw, far: far, names: names ?? .init(), heard: heard)
         do {
             try await resource.transcript.writer.replaceWhole(replacement.segments, speakers: replacement.speakers)
         } catch {

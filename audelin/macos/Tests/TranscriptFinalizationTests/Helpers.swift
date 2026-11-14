@@ -2,10 +2,10 @@ import Synchronization
 import Testing
 import TranscriptFinalization
 
-typealias State = TranscriptFinalizationState<String, String, String>
-typealias Event = TranscriptFinalizationEvent<String, String, String>
-typealias Effect = TranscriptFinalizationEffect<String, String, String, String>
-typealias Reducer = TranscriptFinalizationReducer<String, String, String, String>
+typealias State = TranscriptFinalizationState<String, String, String, String>
+typealias Event = TranscriptFinalizationEvent<String, String, String, String>
+typealias Effect = TranscriptFinalizationEffect<String, String, String, String, String>
+typealias Reducer = TranscriptFinalizationReducer<String, String, String, String, String>
 
 let callID = "call"
 
@@ -14,9 +14,9 @@ func makeState(_ call: State.Call? = nil, shuttingDown: Bool = false) -> State {
 }
 
 func makeCall(
-    _ stage: State.Stage = .writing, saved: Bool = true, raw: String? = "raw", far: String? = nil, heard: String? = nil
+    _ stage: State.Stage = .writing, saved: Bool = true, raw: String? = "raw", names: String? = nil, far: String? = nil, heard: String? = nil
 ) -> State.Call {
-    .init(stage: stage, latestWriteSucceeded: saved, raw: raw, far: far, heard: heard)
+    .init(stage: stage, latestWriteSucceeded: saved, raw: raw, names: names, far: far, heard: heard)
 }
 
 /// Records each entries request and answers with `stub`.

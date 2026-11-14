@@ -54,13 +54,14 @@ struct TranscriptFinalizationShutdownTests {
     }
 
     @Test func closedAfterShutdownIsFinalWithoutDiarizing_state() {
-        assert(makeState(makeCall(), shuttingDown: true), .closed(call: callID)) {
+        assert(makeState(makeCall(), shuttingDown: true), .closed(call: callID, names: "names")) {
             $0.settled = true
             $0.calls[callID]?.stage = .finalized
+            $0.calls[callID]?.names = "names"
         }
     }
     @Test func closedAfterShutdownIsFinalWithoutDiarizing_effect() {
-        assert(makeState(makeCall(), shuttingDown: true), .closed(call: callID), delivers: published())
+        assert(makeState(makeCall(), shuttingDown: true), .closed(call: callID, names: "names"), delivers: published())
     }
 
     /// A cleanup result that arrives after its call was settled is dropped.

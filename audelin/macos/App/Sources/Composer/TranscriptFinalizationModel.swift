@@ -1,3 +1,4 @@
+import CallNames
 import IMRxObservation
 import Observation
 import SummaryJobs
@@ -5,18 +6,18 @@ import TranscriptFinalization
 
 @MainActor @Observable
 final class TranscriptFinalizationModel {
-    typealias State = TranscriptFinalizationState<CallState, Transcript.Attributed, [TranscriptSegment]>
-    typealias Event = TranscriptFinalizationEvent<CallState, Transcript.Attributed, [TranscriptSegment]>
-    typealias Effect = TranscriptFinalizationEffect<CallState, Transcript.Attributed, [TranscriptSegment], Job.Entry>
+    typealias State = TranscriptFinalizationState<CallState, CallNamesState, Transcript.Attributed, [TranscriptSegment]>
+    typealias Event = TranscriptFinalizationEvent<CallState, CallNamesState, Transcript.Attributed, [TranscriptSegment]>
+    typealias Effect = TranscriptFinalizationEffect<CallState, CallNamesState, Transcript.Attributed, [TranscriptSegment], Job.Entry>
 
     private let model: ObservableModel<State, Event, Effect>
     private let feed = StateFeed<State>()
 
     init(diarizing: any TranscriptDiarizing<CallState, Transcript.Attributed>,
          cleanup: any MicrophoneCleanup<CallState, Transcript.Attributed, [TranscriptSegment]>,
-         replacement: any TranscriptReplacement<CallState, Transcript.Attributed, [TranscriptSegment]>,
+         replacement: any TranscriptReplacement<CallState, CallNamesState, Transcript.Attributed, [TranscriptSegment]>,
          finals: any FinalTranscripts<Job.Entry>) {
-        let reducer = TranscriptFinalizationReducer<CallState, Transcript.Attributed, [TranscriptSegment], Job.Entry>(
+        let reducer = TranscriptFinalizationReducer<CallState, CallNamesState, Transcript.Attributed, [TranscriptSegment], Job.Entry>(
             entries: { summaryEntries($0, heard: $2, attributed: $1) })
         let handler = TranscriptFinalizationEffectHandler(diarizing: diarizing, cleanup: cleanup, replacement: replacement, finals: finals)
         let feed = feed

@@ -1,7 +1,7 @@
 import Testing
 import TranscriptFinalization
 
-typealias Handler = TranscriptFinalizationEffectHandler<String, String, String, String>
+typealias Handler = TranscriptFinalizationEffectHandler<String, String, String, String, String>
 
 @Suite(.timeLimit(.minutes(1)))
 struct TranscriptFinalizationEffectHandlerTests {
@@ -38,15 +38,15 @@ struct TranscriptFinalizationEffectHandlerTests {
 
     @Test func commitDeliversSuccessOnceReplaced() async {
         let (sut, spies) = makeHandler()
-        await expect(sut, with: .commit(call: callID, "raw", "far", "heard"), toDeliver: .committed(call: callID, succeeded: true), on: {
+        await expect(sut, with: .commit(call: callID, "raw", "names", "far", "heard"), toDeliver: .committed(call: callID, succeeded: true), on: {
             await spies.replacement.complete(with: .success(()))
         })
-        #expect(await spies.replacement.payloads == [.init(call: callID, raw: "raw", far: "far", heard: "heard")])
+        #expect(await spies.replacement.payloads == [.init(call: callID, raw: "raw", names: "names", far: "far", heard: "heard")])
     }
 
     @Test func failedReplacementDeliversFailure() async {
         let (sut, spies) = makeHandler()
-        await expect(sut, with: .commit(call: callID, "raw", nil, "heard"), toDeliver: .committed(call: callID, succeeded: false), on: {
+        await expect(sut, with: .commit(call: callID, "raw", nil, nil, "heard"), toDeliver: .committed(call: callID, succeeded: false), on: {
             await spies.replacement.complete(with: .failure(Refused()))
         })
     }
@@ -66,7 +66,7 @@ private struct Refused: Error {}
 
 private struct Diarized: Equatable { let call: String; let raw: String }
 private struct Cleaned: Equatable { let call: String; let raw: String; let far: String? }
-private struct Replaced: Equatable { let call: String; let raw: String; let far: String?; let heard: String }
+private struct Replaced: Equatable { let call: String; let raw: String; let names: String?; let far: String?; let heard: String }
 
 private struct Spies {
     let diarizing = Spy<Diarized, String?>()
@@ -103,8 +103,8 @@ private struct Cleanup: MicrophoneCleanup {
 
 private struct Replacement: TranscriptReplacement {
     let spy: Spy<Replaced, Result<Void, Refused>>
-    func replace(call: String, _ raw: String, far: String?, heard: String) async throws {
-        try await spy.call(.init(call: call, raw: raw, far: far, heard: heard)).get()
+    func replace(call: String, _ raw: String, names: String?, far: String?, heard: String) async throws {
+        try await spy.call(.init(call: call, raw: raw, names: names, far: far, heard: heard)).get()
     }
 }
 

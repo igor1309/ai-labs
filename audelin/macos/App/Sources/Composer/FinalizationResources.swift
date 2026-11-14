@@ -1,4 +1,3 @@
-import CallNames
 import Foundation
 
 /// Per-call handles only. The machine holds every stage and every transcript value.
@@ -7,7 +6,6 @@ final class FinalizationResources {
     struct Resource: Sendable {
         let transcript: OpenedTranscript
         let cleanup: TranscriptCleanup
-        var names: CallNamesState
         let speakers: @Sendable ([Int: Int]) async -> Void
         let finishReading: @Sendable () async -> Void
     }
@@ -18,16 +16,10 @@ final class FinalizationResources {
     func add(call: String, transcript: OpenedTranscript, cleanup: TranscriptCleanup,
              speakers: @escaping @Sendable ([Int: Int]) async -> Void,
              finishReading: @escaping @Sendable () async -> Void) {
-        calls[call] = Resource(transcript: transcript, cleanup: cleanup, names: transcript.names.snapshot(),
-                               speakers: speakers, finishReading: finishReading)
+        calls[call] = Resource(transcript: transcript, cleanup: cleanup, speakers: speakers, finishReading: finishReading)
     }
 
     func resource(call: String) -> Resource? { calls[call] }
-
-    func captureNames(call: String) {
-        guard let resource = calls[call] else { return }
-        calls[call]?.names = resource.transcript.names.snapshot()
-    }
 
     func showSpeakers(_ state: TranscriptFinalizationModel.State) async {
         for (call, value) in state.calls {
