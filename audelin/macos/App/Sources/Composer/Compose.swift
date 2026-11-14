@@ -79,7 +79,7 @@ public func compose(
                                   describe: { language.language.settings.callsFailure($0) },
                                   listText: language.language.callsList,
                                   callText: { try await storage.text(id: $0) }))
-    do { await summaries.recover(calls: try await storage.list().map(\.id)) }
+    do { summaries.recover(calls: try await storage.list().map(\.id)) }
     catch { boundary.log.write(.init(category: .session, message: "summary recovery listing failed")) }
     return menu
 }

@@ -76,7 +76,7 @@ struct CallNotesWiringTests {
             let http = NotesHTTP()
             let sut = makeSummaries(files: files, storage: storage, http: http, enabled: true)
             do {
-                await sut.completed(call: a, entries: [.init(label: "Me", time: "3.0", text: "saved words")], finalWrite: true, usable: true)
+                sut.completed(call: a, entries: [.init(label: "Me", time: "3.0", text: "saved words")], finalWrite: true, usable: true)
                 await http.started.next()
                 await locations.hold(); try await http.succeed()
                 await locations.entered.next()
@@ -180,7 +180,7 @@ struct CallNotesWiringTests {
             let http = NotesHTTP()
             let sut = makeSummaries(files: files, storage: storage, http: http, enabled: false)
             do {
-                await sut.recover(calls: [a])
+                sut.recover(calls: [a])
                 try await waitUntil("the call fails") { sut.state.calls[a]?.stage == .failed }
 
                 await #expect(throws: (any Error).self) { try await sut.retry(call: a) }
@@ -202,7 +202,7 @@ struct CallNotesWiringTests {
             let sut = makeSummaries(files: files, storage: storage, http: http, enabled: automatic)
             do {
                 if automatic {
-                    await sut.completed(call: a, entries: [.init(label: "Me", time: "3.0", text: "saved words")], finalWrite: true, usable: true)
+                    sut.completed(call: a, entries: [.init(label: "Me", time: "3.0", text: "saved words")], finalWrite: true, usable: true)
                 } else { sut.make(call: a) }
                 await http.started.next()
                 #expect(sut.badges[a] == .pending)

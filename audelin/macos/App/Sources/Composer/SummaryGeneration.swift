@@ -4,7 +4,7 @@ import SpeakerIdentification
 import SummaryJobs
 import SummaryRuntime
 
-struct SummaryGeneration: SummaryJobs.Generation {
+struct SummaryGeneration: SummariesGeneration {
     let runtime: SummaryRuntime.Runtime
     let sink: any LogSink
     private let running = RunningCalls()
@@ -41,8 +41,6 @@ struct SummaryGeneration: SummaryJobs.Generation {
         job.entries.map { "[\($0.time)] \($0.label): \($0.text)" }.joined(separator: "\n")
     }
 }
-
-extension SummaryGeneration: SummariesGeneration {}
 
 /// The generation calls running now, by job, so a cancel can stop one.
 private final class RunningCalls: Sendable {

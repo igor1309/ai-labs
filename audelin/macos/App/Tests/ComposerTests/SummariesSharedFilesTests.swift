@@ -20,11 +20,12 @@ import Testing
             try makeCall(root)
             let http = HeldHTTP()
             let owner = makeSUT(root, http: http), observer = makeSUT(root, http: http)
-            await owner.completed(call: id, entries: [spoken], finalWrite: true, usable: true)
+            owner.completed(call: id, entries: [spoken], finalWrite: true, usable: true)
             await http.started.next()
             do {
-                if recoverObserver { await observer.recover(calls: [id]) }
-                else { await observer.completed(call: id, entries: [.init(label: "B", time: "0", text: "competing")], finalWrite: true, usable: true) }
+                if recoverObserver { observer.recover(calls: [id]) }
+                else { observer.completed(call: id, entries: [.init(label: "B", time: "0", text: "competing")], finalWrite: true, usable: true) }
+                await until(observer) { $0.calls[id]?.stage == .observed }
                 #expect(observer.statuses[id] == text.summariesStatus(.observed, false))
                 #expect(owner.busy && observer.busy)
                 await #expect(throws: (any Error).self) { try await observer.retry(call: id) }
@@ -46,7 +47,9 @@ import Testing
             try await storeInterrupted(root)
             let http = HeldHTTP()
             let owner = makeSUT(root, http: http), observer = makeSUT(root, http: http)
-            await owner.recover(calls: [id]); await observer.recover(calls: [id])
+            owner.recover(calls: [id]); observer.recover(calls: [id])
+            await until(owner) { $0.calls[id]?.stage == .interrupted }
+            await until(observer) { $0.calls[id]?.stage == .interrupted }
             #expect(owner.retryable == [id] && observer.retryable == [id] && !observer.busy)
             do {
                 try await owner.retry(call: id)
@@ -69,7 +72,7 @@ import Testing
             try makeCall(root)
             let http = CleanupHTTP()
             let sut = makeSUT(root, http: http)
-            await sut.completed(call: id, entries: [spoken], finalWrite: true, usable: true)
+            sut.completed(call: id, entries: [spoken], finalWrite: true, usable: true)
             await http.started.next()
             let shutdown = Task { await sut.shutdown() }
             await http.cancelled.next()
@@ -87,12 +90,13 @@ import Testing
             let corrupt = Data("{broken".utf8), record = root.appendingPathComponent(id).appendingPathComponent(".summary-job.json")
             try makeCall(root); try corrupt.write(to: record)
             let sut = makeSUT(root, http: UnusedHTTP())
-            await sut.recover(calls: [id])
-            #expect(sut.statuses[id] == text.summariesStatus(.failed, false))
-            await sut.completed(call: id, entries: [spoken], finalWrite: true, usable: true)
+            sut.recover(calls: [id])
+            await until(sut) { $0.calls[id]?.stage == .failed }
+            sut.completed(call: id, entries: [spoken], finalWrite: true, usable: true)
+            // Shutdown returns once nothing is in flight, so the completion has been handled.
+            await sut.shutdown()
             #expect(try Data(contentsOf: record) == corrupt)
             #expect(sut.statuses[id] == text.summariesStatus(.failed, false))
-            await sut.shutdown()
         }
     }
 
@@ -102,7 +106,8 @@ import Testing
             _ = try await port(root).claim(saved)
             let sut = makeSUT(root, http: UnusedHTTP())
             sut.stopDispatch()
-            await sut.recover(calls: [id])
+            sut.recover(calls: [id])
+            await until(sut) { $0.calls[id]?.stage == .pending }
             #expect(sut.statuses[id] == "Итоги ожидают запуска")
             #expect(try await phase(root) == "pending")
             await sut.shutdown()
@@ -123,8 +128,9 @@ import Testing
             let http = HeldHTTP()
             let sut = makeSUT(root, http: http)
             do {
-                await sut.recover(calls: [id, id])
+                sut.recover(calls: [id, id])
                 if interrupted {
+                    await until(sut) { $0.calls[id]?.stage == .interrupted }
                     #expect(sut.retryable == [id] && !sut.busy); #expect(await http.requests == 0)
                     try await sut.retry(call: id)
                     #expect(try String(contentsOf: folder.appendingPathComponent("summary.md"), encoding: .utf8) == "previous notes")
@@ -165,6 +171,9 @@ import Testing
         }
     }
 
+    private func until(_ sut: SummariesModel, _ holds: (SummariesState) -> Bool) async {
+        for await state in Observations({ sut.state }) where holds(state) { return }
+    }
     private var spoken: Job.Entry { .init(label: "A", time: "0", text: "spoken") }
     private var saved: Job {
         let runtime = Job.Runtime(kind: "compatibleAPI", model: "saved-model", program: "", endpoint: "http://127.0.0.1:8181/saved", credentialVariable: "")

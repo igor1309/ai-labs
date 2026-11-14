@@ -152,6 +152,11 @@ public struct SummariesReducer: Sendable {
     }
     /// The stages a call rests in once nothing runs for it.
     static let settled: Set<SummariesState.Call.Stage> = [.succeeded, .failed, .interrupted, .unavailable]
+    /// Whether a job is being made or stored in this process, which an app update must not cut short. A pending
+    /// job is stored and runs at the next launch.
+    public static func busy(_ state: SummariesState) -> Bool {
+        state.calls.values.contains { !settled.contains($0.stage) && $0.stage != .waiting && $0.stage != .pending }
+    }
     /// A call a refresh reads again: one another process runs, or a stopped job another process may run again.
     static func reloadable(_ call: SummariesState.Call) -> Bool {
         call.stage == .observed || ([.failed, .interrupted] as Set).contains(call.stage) && call.job != nil

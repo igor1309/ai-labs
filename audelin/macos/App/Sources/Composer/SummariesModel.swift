@@ -41,9 +41,7 @@ public final class SummariesModel {
         }
     }
     /// Whether a job is being made or stored in this process, which an update must not cut short.
-    public var busy: Bool {
-        model.state.calls.values.contains { ![.waiting, .succeeded, .failed, .interrupted, .unavailable].contains($0.stage) }
-    }
+    public var busy: Bool { SummariesReducer.busy(model.state) }
     /// What a recording session reports to the machine: an ended recording, then its transcript.
     func callbacks(timeZone: TimeZone, notesOn: @escaping @Sendable () -> Bool) -> SummaryCallbacks {
         SummaryCallbacks(waiting: { [weak self] folder in
@@ -67,11 +65,8 @@ public final class SummariesModel {
     /// Shows a just-ended recording as waiting for its transcript.
     public func waiting(call: String) { model.event(.waiting(call)) }
     /// Hands a finished recording's transcript to the machine.
-    /// Returns once the transcript is stored as a job, or dropped.
-    public func completed(call: String, entries: [Job.Entry], finalWrite: Bool, usable: Bool) async {
-        let submission = SummariesSubmission(call: call, input: summaryInput(entries), entries: entries, finalWrite: finalWrite, usable: usable)
-        model.event(.submit(submission))
-        await taken(.submit(submission), call: call)
+    public func completed(call: String, entries: [Job.Entry], finalWrite: Bool, usable: Bool) {
+        model.event(.submit(.init(call: call, input: summaryInput(entries), entries: entries, finalWrite: finalWrite, usable: usable)))
     }
     /// Makes notes the user asked for from the call's stored transcript, even when notes are off.
     public func make(call: String) { model.event(.request(call)) }
@@ -94,17 +89,7 @@ public final class SummariesModel {
     /// Drops a deleted call once its notes have settled.
     public func forget(call: String) { model.event(.forget(call)) }
     /// Picks up each stored call's job at launch.
-    /// Returns once each call's stored job is read.
-    public func recover(calls: [String]) async {
-        for call in calls { model.event(.recover(call)) }
-        for call in calls { await taken(.recover(call), call: call) }
-    }
-    /// Waits until the event is reduced and the call has left the stages that wait on storage.
-    private func taken(_ event: SummariesEvent, call: String) async {
-        let storing: Set<SummariesState.Call.Stage> = [.recovering, .preparing, .claiming]
-        while reducer.reduce(model.state, event).0 != model.state
-                || model.state.calls[call].map({ storing.contains($0.stage) }) == true { await changed() }
-    }
+    public func recover(calls: [String]) { calls.forEach { model.event(.recover($0)) } }
     /// Reads again the calls whose jobs another process runs or may run again, and returns once they are read.
     public func refresh() async {
         let before = model.state
